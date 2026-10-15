@@ -26,3 +26,7 @@ separate explicit operator command.
 - Document registry (generated, do not edit): `governance/DOCUMENT_REGISTRY.md`, built by
   `tools/build_document_registry.py`; regenerate when Markdown documents change.
 - Change records: `docs/changes/`
+
+## SDLC workflow (virtual scrum team)
+
+For sprint or feature work in this project use the global skill `sdlc-orchestrator`. It keeps the phase state in `docs/sdlc/STATE.md` and launches the role agents of each phase; artifacts live in `docs/sdlc/`. The global Development Rules v4 still apply (one PR per sprint, tests only after sprint coding, final GPT-PM review before push/PR).
