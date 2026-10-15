@@ -11,7 +11,7 @@ tools:
 - Grep
 - Glob
 model: sonnet
-maxTurns: 20
+maxTurns: 25
 skills:
 - functional-testing
 - verification-contract

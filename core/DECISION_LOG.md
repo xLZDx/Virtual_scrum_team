@@ -30,3 +30,9 @@ the parent's request, document or test files only, never product code.
   and 7 MAJOR findings the internal reviewers had not found (tenant-bound identity, visibility-scoped
   removal). Lesson: internal review does not replace the GPT gate; include security-reviewer for
   trust-boundary designs when the operator allows it.
+
+## 2026-10-15 -- Team fixes after the RQDO pilot (VST-001 done)
+
+- Raised `maxTurns` of the agents that hit their limit in the pilot (see VST-001); `functional-test-reviewer` stays at the lint cap of 25. Snapshot of the previous definitions: `~/.claude/control-plane/snapshots/team-fixes-before-2026-10-15/`. After the change `agentctl.py --strict` shows only a pre-existing ERP CLAUDE.md size error and `run_eval.py --router` passes 15/15.
+- Added a "Reporting discipline" section to `security-reviewer`, `silent-failure-hunter` and `reliability-reviewer`: the final message must contain full findings in the finding contract, never only titles, and the agent must report early when turns run out.
+- Pilot lessons: (1) GPT-PM final review rejected a head whose evidence was only agent-reported with no retained run record: keep `docs/sdlc/evidence/` files (VST-007); (2) a security review must name the exact committed head, and a later source commit invalidates it (VST-008); (3) tests written from the plan and design found five real defects (DNS failure outcome, Retry-After shortening, missing source time, deadline precedence, tenant mismatch handling) and the GPT-PM review found three more that tests and three specialist reviews missed (rescan authority, terminal-path deadline, freshness aggregate consistency): keep the final GPT gate; (4) large multi-epic test authoring is better split per epic.
