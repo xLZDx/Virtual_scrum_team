@@ -13,7 +13,7 @@ Last updated: 2026-10-15. Re-verify volatile facts (`git log --oneline -1`, `git
 
 ## Pilot
 
-First pilot: sprint G10-FEED-0 in the RQDO repository (`D:\Repo\Remote_Quality_Delivery_Office_Platform_rqdo`,
+First pilot: sprint G10-FEED-0 in the RQDO repository (a separate local checkout,
 branch `g10-feed-0`). Phases 1-5 round 1 produced requirements, backlog, design and test plan; GPT-PM
 documentation review round 1 returned REJECT (2 BLOCKER, 7 MAJOR) and remediation was in progress.
 Pilot observations that change the team definitions are recorded in `core/DECISION_LOG.md`.

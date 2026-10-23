@@ -10,4 +10,7 @@
 | `../core/DECISION_LOG.md` | Decisions, evidence, refusals (append-only) | current |
 | `../governance/DEFINITION_OF_DONE.md` | DoD for a team change and for a delivered sprint | current |
 | `../governance/DOCUMENT_REGISTRY.md` | Generated list of every Markdown document | generated |
+| `FULL_TEAM_EXPANSION_PLAN_2026-10-23.md` | Existing 39-role expansion baseline | proposal |
+| `UNIFIED_ENGINEERING_ORGANIZATION_MASTER_BLUEPRINT_2026-10-23.md` | Cross-repository integration blueprint, role coverage, contracts and roadmap | proposal |
+| `INDEPENDENT_REVIEW_DECISION_PROVENANCE_2026-10-23.md` | Evidence-tagged decision history, options, blind spots and adversarial review brief | review candidate |
 | `changes/` | One change record per commit | append-only |
