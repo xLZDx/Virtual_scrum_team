@@ -1,6 +1,6 @@
 # Virtual Scrum Team - current state (read first)
 
-Last updated: 2026-10-15. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
+Last updated: 2026-10-23. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
 
 ## What exists
 
@@ -18,11 +18,22 @@ branch `g10-feed-0`). Phases 1-5 round 1 produced requirements, backlog, design 
 documentation review round 1 returned REJECT (2 BLOCKER, 7 MAJOR) and remediation was in progress.
 Pilot observations that change the team definitions are recorded in `core/DECISION_LOG.md`.
 
+## Unified organization design (proposal)
+
+`docs/UNIFIED_ENGINEERING_ORGANIZATION_MASTER_BLUEPRINT_2026-10-23.md` and its review dossier are a
+proposal with verdict MODIFY DESIGN (Round 1 and Round 2 reviews; a Round 3 self-check by the
+authoring session confirmed it). No blocker is closed and nothing is implemented. Open operator
+decisions: test-authoring authority (workspace `AGENTS.md`, `team-roster.md` and the global contract
+disagree), model-allowlist precedence, CI ownership, a distinct verdict for NOT_RUN waivers, and the
+public-repository inventory question (blueprint section 13.6).
+
 ## Open items
 
 See `core/BACKLOG.md`.
 
 ## Remote
 
-`origin` = `https://github.com/xLZDx/Virtual_scrum_team.git` (public, empty at creation). Nothing has
-been pushed; pushing is a separate explicit operator command.
+`origin` = `https://github.com/xLZDx/Virtual_scrum_team.git` (public). `origin/main` is at `d4aefb5`
+(verified with `git ls-remote` on 2026-10-23); later local commits are not pushed. Pushing is a
+separate explicit operator command. The first commit `0a5821b` on `origin/main` contains a local
+absolute path in this file; the operator decided on 2026-10-23 to keep history unrewritten.
