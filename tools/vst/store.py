@@ -116,7 +116,9 @@ BEGIN SELECT RAISE(ABORT, 'events are append-only'); END;
 class StoreError(Exception):
     """Store rule violation. `kind` is a short machine-readable category.
 
-    Kinds: story, epoch, lease, slot, chain, duplicate, budget, argument.
+    Kinds: story, epoch, lease, slot, chain, duplicate, budget, argument,
+    append_only (an UPDATE/DELETE of receipts or events hit the append-only
+    triggers inside a Store transaction).
     """
 
     def __init__(self, message: str, kind: str = "store") -> None:
@@ -185,6 +187,13 @@ class Store:
         self._conn.execute("BEGIN IMMEDIATE")
         try:
             yield self._conn
+        except sqlite3.IntegrityError as exc:
+            self._conn.execute("ROLLBACK")
+            if "append-only" in str(exc):
+                raise StoreError(
+                    f"append-only violation: {exc}", kind="append_only"
+                ) from exc
+            raise
         except BaseException:
             self._conn.execute("ROLLBACK")
             raise
@@ -325,6 +334,52 @@ class Store:
                 conn, story_id, owner, "EPOCH_ACQUIRED", {"epoch": new_epoch}
             )
         return new_epoch
+
+    def renew_epoch(self, story_id: str, owner: str, ttl_sec: float) -> None:
+        """Extend the owner's liveness; only the current, still-live owner may renew.
+
+        The epoch number is unchanged. Any other caller, or the owner after its
+        ownership expired, gets StoreError(kind='epoch').
+        """
+        _need_str(owner, "owner")
+        ttl = _need_ttl(ttl_sec)
+        with self._tx() as conn:
+            now = self._now()
+            story = self._story_row(conn, story_id)
+            expires = story["owner_expires_at"]
+            if story["owner"] != owner or expires is None or expires <= now:
+                raise StoreError(
+                    f"{owner!r} is not the live owner of story {story_id!r}", kind="epoch"
+                )
+            conn.execute(
+                "UPDATE stories SET owner_expires_at = ? WHERE story_id = ?",
+                (now + ttl, story_id),
+            )
+            self._record_event_locked(
+                conn, story_id, owner, "EPOCH_RENEWED", {"epoch": int(story["epoch"])}
+            )
+
+    def release_epoch(self, story_id: str, owner: str) -> None:
+        """Give up ownership (owner and expiry cleared, epoch number kept).
+
+        Only the recorded owner may release; otherwise StoreError(kind='epoch').
+        The next acquire_epoch then succeeds immediately and bumps the epoch.
+        """
+        _need_str(owner, "owner")
+        with self._tx() as conn:
+            story = self._story_row(conn, story_id)
+            if story["owner"] != owner:
+                raise StoreError(
+                    f"{owner!r} is not the owner of story {story_id!r}", kind="epoch"
+                )
+            conn.execute(
+                "UPDATE stories SET owner = NULL, owner_expires_at = NULL, state = 'OPEN' "
+                "WHERE story_id = ?",
+                (story_id,),
+            )
+            self._record_event_locked(
+                conn, story_id, owner, "EPOCH_RELEASED", {"epoch": int(story["epoch"])}
+            )
 
     # --------------------------------------------------------------- leases
 
@@ -630,12 +685,32 @@ class Store:
         key: bytes,
         runner_id: str,
     ) -> dict:
-        task_id = lease["task_id"]
+        exhausted = lease["attempt"] > manifest["retry_cap"] + 1
+        return self._write_supervisor_receipt(
+            conn, lease["task_id"], lease["story_id"], manifest, key, runner_id,
+            reason="RETRY_EXHAUSTED" if exhausted else "WORKER_LOST",
+            result="BLOCKED" if exhausted else "INCONCLUSIVE",
+            invocation_id=f"supervisor-{lease['task_id']}-{lease['attempt']}",
+        )
+
+    def _write_supervisor_receipt(
+        self,
+        conn: sqlite3.Connection,
+        task_id: str,
+        story_id: str,
+        manifest: dict,
+        key: bytes,
+        runner_id: str,
+        *,
+        reason: str,
+        result: str,
+        invocation_id: str,
+    ) -> dict:
+        """Build, sign and append one supervisor Documentation receipt (locked)."""
         slots = manifest["required_receipts"]
         chosen = next((s for s in slots if s["receipt_type"] == "Documentation"), slots[0])
         slot = chosen["slot"]
-        exhausted = lease["attempt"] > manifest["retry_cap"] + 1
-        story = self._story_row(conn, lease["story_id"])
+        story = self._story_row(conn, story_id)
         last = conn.execute(
             "SELECT attempt, receipt_sha256 FROM receipts WHERE task_id = ? AND slot = ? "
             "ORDER BY attempt DESC LIMIT 1",
@@ -646,7 +721,6 @@ class Store:
         ).fetchone()
         head = json.loads(newest["body"])["candidate_head"] if newest else manifest["base_head"]
         attempt = 1 if last is None else last["attempt"] + 1
-        reason = "RETRY_EXHAUSTED" if exhausted else "WORKER_LOST"
         body = {
             "receipt_id": f"sup-{task_id}-{slot}-{attempt}",
             "receipt_type": "Documentation",
@@ -659,15 +733,45 @@ class Store:
             "runner_id": runner_id,
             "role_sha256": manifest["role_sha256"],
             "resolved_model": "supervisor",
-            "invocation_id": f"supervisor-{task_id}-{lease['attempt']}",
-            "result": "BLOCKED" if exhausted else "INCONCLUSIVE",
+            "invocation_id": invocation_id,
+            "result": result,
             "created_at": _iso(self._now()),
             "check_description": reason,
             "covered_acceptance": [],
         }
         body["signature"] = sign(dict(body), key)
-        self._append_receipt_locked(conn, body, lease["story_id"])
+        self._append_receipt_locked(conn, body, story_id)
         return body
+
+    def mark_budget_exceeded(
+        self, task_id: str, story_id: str, manifest: dict, key: bytes, runner_id: str
+    ) -> dict:
+        """Write the supervisor BLOCKED(BUDGET_EXCEEDED) receipt and an event.
+
+        Same slot, attempt, epoch and candidate_head rules as
+        supervisor_reap_and_mark: a signed Documentation receipt with result
+        BLOCKED and check_description 'BUDGET_EXCEEDED' is appended to the
+        first Documentation slot of the manifest (else its first slot). The
+        manifest must be valid and its task_id must equal task_id. Returns the
+        receipt. Does not require a lease or an exceeded budget row: the caller
+        (supervisor) decides after charge raised StoreError(kind='budget').
+        """
+        _need_str(task_id, "task_id")
+        _need_str(runner_id, "runner_id")
+        valid = validate_task_manifest(manifest)
+        if valid["task_id"] != task_id:
+            raise StoreError("manifest task_id does not match task_id", kind="argument")
+        with self._tx() as conn:
+            receipt = self._write_supervisor_receipt(
+                conn, task_id, story_id, valid, key, runner_id,
+                reason="BUDGET_EXCEEDED", result="BLOCKED",
+                invocation_id=f"supervisor-{task_id}-budget",
+            )
+            self._record_event_locked(
+                conn, task_id, runner_id, "BUDGET_BLOCKED",
+                {"receipt_id": receipt["receipt_id"]},
+            )
+        return receipt
 
     # --------------------------------------------------------------- render
 

@@ -52,7 +52,7 @@ The gate treats a receipt whose `result != derive_result(receipt)` as invalid.
 
 ## Store (`tools/vst/store.py`)
 
-`Store(path, clock=time.time)`: one sqlite3 connection per instance, WAL, foreign keys on, autocommit with an explicit `BEGIN IMMEDIATE` per mutating method (each public method is atomic). Context manager closes the connection. `StoreError(message, kind)`; kinds: story, epoch, lease, slot, chain, duplicate, budget, argument.
+`Store(path, clock=time.time)`: one sqlite3 connection per instance, WAL, foreign keys on, autocommit with an explicit `BEGIN IMMEDIATE` per mutating method (each public method is atomic). Context manager closes the connection. `StoreError(message, kind)`; kinds: story, epoch, lease, slot, chain, duplicate, budget, argument, append_only.
 
 Tables: `stories(story_id, project_id, phase, epoch, owner, state, owner_expires_at)`, `leases(task_id, story_id, attempt, worker_id, epoch, expires_at, released, marked)`, `slots(slot_no, task_id, worker_id, expires_at)`, `receipts(seq, receipt_id UNIQUE, story_id, task_id, slot, attempt, epoch, receipt_sha256, prev_receipt_sha256, body, UNIQUE(task_id, slot, attempt))`, `events(seq, ts, task_id, actor, kind, payload, prev_hash, hash)`, `budget(task_id, cap, spent)`. Columns beyond the minimal design: `owner_expires_at` (owner liveness), `marked` (supervisor receipt already written), `receipts.story_id` (story view).
 
@@ -63,11 +63,19 @@ Tables: `stories(story_id, project_id, phase, epoch, owner, state, owner_expires
 - Events: `hash = sha256(prev_hash + canonical JSON of {ts, task_id, actor, kind, payload})`, first `prev_hash` is 64 zeros; `verify_event_chain` recomputes the chain.
 - Budget: `charge` never lets `spent` exceed `cap`; on overflow it commits a `BUDGET_EXCEEDED` event and raises `StoreError(kind='budget')` without charging.
 - Supervisor receipts: `supervisor_reap_and_mark(manifest_lookup, key, runner_id)` writes, for each reaped lease with no receipt for its `(task_id, attempt)`, a signed Documentation receipt with result INCONCLUSIVE and `check_description` `WORKER_LOST`; when the lease attempt exceeds `retry_cap + 1` the result is BLOCKED and the description `RETRY_EXHAUSTED`. Slot rule: the first `required_receipts` entry of type Documentation, else the first entry. Attempt = next in that slot's chain; epoch = current story epoch; `candidate_head` = head of the task's latest receipt, else manifest `base_head`.
+- Append-only errors: inside any Store transaction a `sqlite3.IntegrityError` raised by the append-only triggers is re-raised as `StoreError(kind='append_only')`. No Store method mutates receipts or events; tests attempt UPDATE/DELETE with raw sqlite3 on the database file and expect the raw trigger error.
+- `mark_budget_exceeded(task_id, story_id, manifest, key, runner_id) -> dict`: validates the manifest (its `task_id` must equal `task_id`, else `StoreError(kind='argument')`), then writes a signed supervisor Documentation receipt with result BLOCKED and `check_description` `BUDGET_EXCEEDED` using the same slot, attempt, epoch and `candidate_head` rules as `supervisor_reap_and_mark`, and records a `BUDGET_BLOCKED` event. Returns the receipt.
+- `renew_epoch(story_id, owner, ttl_sec) -> None`: only the recorded owner whose ownership is still live may extend `owner_expires_at`; anyone else, or an expired owner, gets `StoreError(kind='epoch')`. The epoch number is unchanged.
+- `release_epoch(story_id, owner) -> None`: only the recorded owner may clear ownership (epoch number kept, state OPEN); otherwise `StoreError(kind='epoch')`. The next `acquire_epoch` then succeeds and bumps the epoch.
 - `render_state_md(story_id)`: deterministic markdown view, first line states it is a generated view that must not be edited.
 
 ## Runner (`tools/vst/runner.py`)
 
 `run_and_sign(...)` runs each argv with `subprocess.run` (no shell, captured text output, timeout, cwd), records `argv` and `exit_code` (-1 timeout, -2 missing executable), joins stdout, calls the injected parser to get `(executed, skipped, xfail)`, builds a TestRun receipt, sets `result = derive_result(receipt)`, signs it with `signing.sign`, validates it and returns it. An empty commands list raises `ContractError`. The key is a plain argument: never written, logged or read from the worker cwd. Helpers: `file_sha256(path)` (64 KiB chunks) and `artifact_digests(paths)`.
+
+## Slice harness (`tools/vst/slice.py`)
+
+Synthetic vertical slice: no real project, no process spawning, no network. `build_synthetic_manifest(task_id, base_head)` returns a valid manifest with slots `tests` (TestRun), `static` (StaticAnalysis), `review` (IndependentReview), acceptance `AC-1`, `AC-2`, `retry_cap` 1. `SliceFixture(workdir, key, clock)` creates `workdir/state.db` (2 slots, story `story-1`, epoch acquired) and builds signed receipts directly (`make_test_receipt`, `make_static_receipt`, `make_review_receipt`; expected test ids `t1`, `t2`; `current_head` is a fixed 40-hex string). `gate(receipts=None, waiver=None)` evaluates with receipts read from the store when not given. `run_scenarios(workdir)` runs ten named scenarios (happy_path, worker_death_before_receipt, zombie_late_write, stale_head, retry_after_fail, forged_receipt, partial_static_coverage, missing_required_receipt, not_run_with_waiver, budget_exceeded), each in its own subdirectory with a fake clock, and returns `{name: {verdict, reasons, unresolved_findings, extra}}`. Expected `StoreError`s are caught and reported in `extra`; anything else propagates. CLI: `python -m tools.vst.slice <directory>` prints a sorted-key JSON report.
 
 ## Gate rules
 

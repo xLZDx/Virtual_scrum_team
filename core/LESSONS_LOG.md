@@ -81,3 +81,10 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Facts: the plan's table had no notion of a live story owner, no budget-exceeded receipt writer and no error type for trigger violations; the implementer had to invent `owner_expires_at`.
 - Root cause: BD-1/BD-5/BD-6 were written without a state-transition table, which the Round 1 reliability review had asked for.
 - Rule: write the state-transition table (event, writer, precondition) before implementing a store; the gaps are fixed in the next sub-step.
+
+## 2026-10-24 -- S1 E5 harness and gap fixes
+
+- Kind: SUCCESS.
+- Facts: the three gaps found in E3/E4 (raw trigger errors, no budget receipt, no owner renewal) were closed in the very next sub-step because they were written down in the decision log and lessons log first.
+- Why it worked: gaps recorded at the moment of discovery became a concrete task list for the next implementer.
+- Rule: list known gaps in the log at the commit that finds them and put them verbatim in the next implementer's brief.
