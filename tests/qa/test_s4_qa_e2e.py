@@ -52,9 +52,9 @@ def test_s4_e6_qa_snapshot_cli_refuses_an_unapproved_distribution(tmp_path, caps
     exit_code = snapshot_main([
         "--cwd", str(tmp_path),
         "--distribution", "Unapproved-Distro",
-        "--wsl-user", "runner",
-        "--worker-gid", "989",
-        "--snapshot-root", "/var/lib/vst/qa-snapshots",
+        "--wsl-user", "unused-test-value",
+        "--worker-gid", "0",
+        "--snapshot-root", "/unused/test-snapshot-root",
     ])
 
     captured = capsys.readouterr()
