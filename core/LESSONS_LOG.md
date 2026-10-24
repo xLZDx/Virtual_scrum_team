@@ -495,6 +495,8 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — A second bounded transfer returned `Broken pipe` before returning run metadata. Without a run ID, any receiver-side partial state is not safely addressable; do not inspect, delete, or retry that destination. Preserve bounded receiver diagnostics on future broken-pipe failures, with private provisioning values redacted, to distinguish receiver validation from transport startup. See change records 0117–0118.
 
+2026-10-25 — After the receiver correction, the transfer stopped at `snapshot run directory did not receive mode 2710` and returned no run ID. Preserve the exact mode failure and do not inspect or retry an unidentified run; correct the receiver mode check before another fresh attempt. See change record 0119.
+
 2026-10-25 — A cross-OS source snapshot must preserve both Git identity and the worker's read-only boundary. Stream a self-contained Git bundle through the WSL process boundary, verify exact HEAD and digest on both sides, and provision directory permissions for runner ownership plus worker traversal/read without write. Implemented behavior remains `NOT_RUN` until the exact isolated destination is exercised. See change record 0101.
 
 2026-10-25 — A registry entry can reference an existing tracked test file but a nonexistent pytest node. The functional regression exposed the gap; validate source-resolvable function/class selectors, not just the file path. Runtime-generated parameter IDs remain unsupported until their exact IDs can be established without executing collection code. The failing test and rerun belong to the functional-test-reviewer; Codex changed the registry implementation. See change record 0104; remediation result pending.
