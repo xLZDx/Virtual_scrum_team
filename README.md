@@ -15,7 +15,7 @@ This repository is the **source of truth** for the team's definitions. Installed
 | Product owner | `product-owner` |
 | Architect | `architect`, `code-architect` (existing global agents) |
 | UI designer | `ui-designer` |
-| Tester | `tdd-guide`, `e2e-runner`, `functional-test-reviewer` |
+| Tester | `e2e-runner`, `functional-test-reviewer` (authors and runners); `tdd-guide` is advisory only (ADR-0001) |
 | Developer | `implementation-engineer` |
 | Project manager / scrum master | skill `sdlc-orchestrator` (run by the main session) |
 | Technical writer | `technical-writer` |

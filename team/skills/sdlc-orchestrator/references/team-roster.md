@@ -16,10 +16,10 @@ Single list of who is on the team, which phase they serve, and the exact agent f
 ## Test and review roles (phases 4-8)
 | Operator name | Real agent (+ skills) | Duty |
 |---|---|---|
-| `adk-test-engineer` (alias, role test-engineer) | `tdd-guide` | Writes and runs per-epic functional scripts as test engineer |
+| `adk-test-engineer` (alias, role test-engineer) | `tdd-guide` | Advisory only: test-first coaching and test-quality review; does NOT author or execute required tests (ADR-0001) |
 | `adk-test-engineer` (E2E, Playwright) | `e2e-runner` + skill `e2e-testing-contract` | Writes and runs E2E journeys for every epic |
 | `adk-test-engineer` (test assessment) | `functional-test-reviewer` + skill `functional-testing` | Acceptance-to-test map; authors and runs focused functional tests; judges whether tests can fail |
-| `adk-data-engineer/perf-tuning` (alias) | `performance-optimizer` + skill `performance-testing` | Data/perf-tuning evidence when a hot path or data pipeline changed |
+| `adk-data-engineer/perf-tuning` (alias) | `performance-optimizer` + skill `performance-testing` | Advisory data/perf-tuning analysis when a hot path or data pipeline changed; does NOT author or execute required tests (ADR-0001) |
 | `adk-tune-sql-query` (alias, confirmed by operator 2026-10-15) | `database-reviewer` + skills `db-change-contract`, `performance-testing` | Query plans, SQL tuning, schema and migration review |
 | `silent-failure-hunter` | `silent-failure-hunter` | Swallowed errors, false success, unobserved failures |
 | `database-reviewer` | `database-reviewer` | Schema, transactions, locks, migrations |

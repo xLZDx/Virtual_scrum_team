@@ -230,3 +230,7 @@ New contradictions and gaps added to section 7 (all unresolved):
 | C-18 | HIGH | Public-repository disclosure of private repository names, URLs and bridge topology. | Operator decision O-1 in blueprint section 13.6. |
 
 Reviewer questions 9-14 in section 8 are answered **UNSUPPORTED** or **UNCLEAR** by the current design text, not SUPPORTED. The "NOT_EVALUATED" alternatives (section 5) stay unevaluated; the review asks only that the worker choice be made after a bake-off on one crash/resume fixture.
+
+## 12. Operator decisions of 2026-10-24 (ADR-0001)
+
+The operator answered four open questions; see `ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`. Effect on section 7: C-02 and C-03 are settled at documentation level (no red/green, no CI outside the two test agents' focused runs); C-13 is settled by "no mutation runs, known-defect fixtures on synthetic repositories only"; C-01 is settled for this repository (the operator's global contract governs) but the workspace `AGENTS.md` outside the repository still disagrees. Decision O-2 (more than two test authors): no. Decision O-3 (CI): none. Settled at documentation level is not implemented: C-14, C-15 and C-16 (signed receipts, gate verdict function, fenced state store) and the single phase-state authority remain open.

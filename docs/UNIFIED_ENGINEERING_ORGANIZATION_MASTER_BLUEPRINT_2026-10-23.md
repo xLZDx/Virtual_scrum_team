@@ -50,7 +50,7 @@ flowchart TB
     H["Operator: mission, policy and approvals"] --> S["Virtual Scrum Team: single SDLC authority"]
     R["agents-skills-repo: versioned roles and skills"] --> S
     S --> W["Sandboxed AI workers / isolated worktrees"]
-    W --> C["Native tests and CI: reproducible results"]
+    W --> C["Native focused tests: reproducible results"]
     C --> A["AEVE: independent bounded verification"]
     A --> G{"Exact-HEAD release gate"}
     G -->|"PASS and permitted"| P["PR, acceptance and PM Bridge closure"]
@@ -62,7 +62,7 @@ Enforce **one writer per domain**:
 - Scrum workflow and story states: Virtual Scrum Team (per-project `docs/sdlc/STATE.md`).
 - Global role/skill source: agents-skills-repo; team-specific workflow roles in Virtual Scrum Team, with a manifest referencing source hashes rather than silent duplication.
 - Branch files: single implementation worker per worktree. Other reviewers see immutable snapshots.
-- Runner result: native test process/CI only. Agent summaries cannot set `PASSED` by fiat.
+- Runner result: native test process only. Agent summaries cannot set `PASSED` by fiat.
 - Analyzer result: AEVE only for the deterministic check **it actually executed**.
 - Release acceptance: designated independent gate/operator. PM Bridge receives an accepted immutable record; it does not reopen or rewrite testing outcomes.
 
@@ -81,7 +81,7 @@ The current `Virtual_scrum_team/docs/SDLC_PROCESS.md` prescribes these **ten pha
 | 7. Verify | Native functional, integration, E2E and risk-specific tests | Authorized test writers/runners | Exact-head evidence and independent review |
 | 8. Gate | Go/no-go decision, approved PR | GPT-PM / designated acceptance owner | All required evidence current and valid |
 | 9. Accept & release | Accepted deliverable and release docs | Product owner / release owner | Operator-reserved release actions preserved |
-| 10. Report & retro | Metrics, retro, sprint closure | Reporting analyst + PM Bridge | No state rewritten after signed closure |
+| 10. Report & retro | Metrics, retro, sprint closure | Reporting analyst (PM Bridge only consumes the accepted closure afterwards) | No state rewritten after signed closure |
 
 **Important existing rule:** the live workflow forbids tests/checks during the implementation phase and restricts test authoring/execution to `functional-test-reviewer` and `e2e-runner`. The roster also describes `tdd-guide` as a test author, creating an unresolved contradiction. Resolve this in an explicit policy ADR before implementing a red-green TDD loop or enabling additional test-writing agents; do not silently break the current workflow. Tests may be *planned* in phase 4 and executed in phase 7 under the present contract.
 
@@ -188,12 +188,12 @@ No orphan receipts, path traversal, stale HEAD, absent model authorization, miss
 
 | Risk / layer | Native runner | Positive + adversarial evidence required |
 |---|---|---|
-| Unit/functional/property | pytest, project-native Flutter/JS tests, Hypothesis | Red/green or known-defect falsification; boundary cases; deterministic fixtures |
+| Unit/functional/property | pytest, project-native Flutter/JS tests, Hypothesis | Known-defect fixtures on synthetic repositories; boundary cases; deterministic fixtures (no red/green and no mutation runs, ADR-0001) |
 | API/contract | Schemathesis + schema validation | Tenant/auth negative tests, error paths, pagination, version/serialization failures |
 | Integration | Testcontainers, emulator fixtures | DB transactions, outbox/idempotency, service boundaries, timeouts and rollback |
 | Web E2E | Playwright | Critical journeys, traces, network failures, logout and multi-tenant isolation |
 | Android E2E | Maestro + Android emulator/device | Resume/offline, permission changes, account transitions, accessibility |
-| Regression / mutation | Native suites + mutation tools per language | Seeded known bug is detected; no silent skipped assertions |
+| Regression / mutation | Native focused suites run by the two test agents; mutation tools are NOT_RUN by operator decision (ADR-0001) | No silent skipped assertions; every expected test id executed |
 | Performance | k6 | Pre-approved SLOs, p95/p99, error rate, bounded isolated target |
 | Security / supply chain | ZAP, Semgrep/Trivy as applicable | AuthZ/tenant/RLS, secret scans, dependency evidence; scope authorization |
 | Database | pgTAP / SQLite harness / DB-native migration verifier | Isolation, constraints, locks, concurrent writer fencing, forward/backward migration |
@@ -229,10 +229,10 @@ Project overlays:
 | **S3: Worker pilot** | Single isolated BMad Loop story adapter; compare OpenHands/Aider only on controlled fixtures | Crash/STOP/retry/budget/worktree tests; no unauthorized write |
 | **S4: QA automation** | Wire real native runners for functional, integration, API, E2E, regression and seeded failures | Tests run with reproducible artifacts; skipped test cannot satisfy DoD |
 | **S5: AEVE gate** | Bounded static review + hashes, independent evidence/coverage receipt | Analyzer supported/unsupported status truthful; stale HEAD fails |
-| **S6: CI/PR** | Exact-head CI evidence, English PRs, one PR/sprint, manual release approval; PM Bridge closure | No publication without matching authority and receipt set |
+| **S6: CI/PR** | Exact-head focused-test evidence from the two test agents (no CI, ADR-0001), English PRs, one PR/sprint, manual release approval; PM Bridge closure | No publication without matching authority and receipt set |
 | **S7: Reliability** | Race, worker expiry, network outage, manual fallback, observability, cost controls | Restart/rollback/STOP drills pass and audit log complete |
 | **S8: End-to-end pilot** | First synthetic sprint, then approved FitnessUp sprint; PDCC security regression separately | Full ten phases and independent acceptance, without production side effects |
-| **S9: Scale** | Add broader ERP/ERP_MCP adapters; expand concurrency only after evidence | 13 required gates PASS where applicable; release-head CI+E2E; rollback/runbook; only designated manual acceptance remains |
+| **S9: Scale** | Add broader ERP/ERP_MCP adapters; expand concurrency only after evidence | 13 required gates PASS where applicable; exact-head focused functional+E2E evidence (no CI, ADR-0001); rollback/runbook; only designated manual acceptance remains |
 
 Recommended implementation order: **S0 → S1 → S2 → S3 → S4 → S5 → S6 → S7 → S8 → S9**. Parallelize independent *verification* work within permitted bounds, but retain one authoritative state machine.
 
@@ -271,11 +271,11 @@ Virtual Scrum Team as the single SDLC authority; workers that never approve thei
 
 | ID | Requirement | Acceptance test |
 |---|---|---|
-| R-1 | Receipts are written by a runner outside the worker's trust domain, signed, kept in an append-only store outside the worker's mount. `result` is computed by the harness (PASS only if commands are non-empty, every exit code is 0 and collected tests > 0). `reviewer_identity` is a verifiable principal, not a string | A forged PASS, a receipt replayed after a new commit, and an artifact edited after hashing are all rejected |
+| R-1 | Receipts are written by a runner outside the worker's trust domain, signed, kept in an append-only store outside the worker's mount. `result` is computed by the harness (typed success conditions per receipt type: test run - collected ids equal expected ids, none skipped, every exit code 0; static analysis - coverage status; review - signed verdict; documentation task - its stated check). `reviewer_identity` is a verifiable principal, not a string | A forged PASS, a receipt replayed after a new commit, and an artifact edited after hashing are all rejected |
 | R-2 | The gate has a total verdict function: the gate, not the decision author, derives the required (role, kind) receipt slots from the manifest; APPROVE only if every acceptance id is covered and no unsupported rule intersects acceptance; a coverage status PARTIAL exists and never satisfies a required id; a receipt for the task that is not listed is a fault | Acceptance {A,B} with a receipt covering {A} is not APPROVE; a deleted required receipt gives NO_GO |
 | R-3 | A durable state store with compare-and-swap epoch fencing (for example SQLite in WAL mode, or an append-only log under an exclusive lock); `docs/sdlc/STATE.md` becomes a generated view; manifest and receipts carry `attempt_id`, `fence_epoch`, `lease_expiry` | Two orchestrators on one story: exactly one holds the epoch; a zombie's late receipt is rejected |
 | R-4 | Receipts are append-only with an attempt number and a previous-receipt hash; a supervisor writes `INCONCLUSIVE(WORKER_LOST)` when a lease expires without a receipt and `BLOCKED(RETRY_EXHAUSTED)` at the retry cap; a failed attempt stays visible after a later PASS | Worker killed after commit and before receipt blocks the gate; FAIL followed by PASS keeps the FAIL readable |
-| R-5 | One ADR settles C-02 (test order), C-03 (who owns verification, and whether any CI is allowed outside phase 7) and the new C-13 (falsifiability without mutation runs). Until it is approved, the red/green, mutation and seeded-bug clauses in section 8 and the CI wording in the S6 and S9 exits are suspended and read as `NOT_RUN` | Every mention of mutation, red/green, seeded defect or CI in the documents cites an ADR id or `NOT_RUN` |
+| R-5 | One ADR settles C-02 (test order), C-03 (who owns verification, and whether any CI is allowed outside phase 7) and the new C-13 (falsifiability without mutation runs). ADR-0001 (2026-10-24) records the operator decisions (two test authors, no CI, no mutation runs, NOT_RUN waiver verdict); enforcement in code does not exist yet. Accordingly the red/green, mutation and seeded-bug clauses in section 8 and the CI wording in the S6 and S9 exits are suspended and read as `NOT_RUN` | Every mention of mutation, red/green, seeded defect or CI in the documents cites an ADR id or `NOT_RUN` |
 | R-6 | The initial 5 AI + 5 CI limit and every cost cap are enforced by infrastructure (a slot table taken in the same transaction as the lease, a metered budget ledger with a kill action), not by manifest fields. Unattended mode stays off until the kill path is proven | 20 queued items never exceed 5 running; a worker with a tiny cap is killed and recorded as `BLOCKED(budget)` |
 
 ### 13.3 Roadmap amendments
@@ -283,14 +283,14 @@ Virtual Scrum Team as the single SDLC authority; workers that never approve thei
 - The state store, fencing fields and event log move from S7 into S1; the STOP and kill-injection harness is built before S3.
 - Replace "S0-S2 breadth first" with a thin vertical slice: one synthetic story, one worktree, one worker (a hand-written loop is acceptable), one native test run that emits a signed receipt, one stale-HEAD rejection, one worker-death recovery.
 - S3 compares BMad Loop, a hand-written loop and one durable engine on the same crash/resume fixture before any "TOP" choice; the worker interface stays vendor-neutral. The label "TOP execution pilot" in section 6 is provisional.
-- Every S0-S9 exit and the Definition of Done must name a non-empty denominator and one seeded failing input; "where applicable" needs a recorded per-project applicability table; the DoD becomes drills D1..Dn on a synthetic repository with a local bare remote.
+- Every S0-S9 exit and the Definition of Done must name its acceptance mechanism class (executable negative test, schema validation, signed inventory, static audit, independently reviewed proof, or explicit operator decision), a non-empty denominator, and for executable checks a failing input that must be rejected; "where applicable" needs a recorded per-project applicability table; the DoD becomes drills D1..Dn on a synthetic repository with a local bare remote.
 - AEVE is an optional receipt in v1; it becomes required only for rule ids with seeded-defect evidence.
 
 ### 13.4 Other required specifications
 Sandbox (dedicated distro or VM with automount and interop disabled, no container-engine socket, default-deny egress, non-root, per-run scoped secrets, pre-flight probe); deterministic diff gate before any model review (path allowlist from scope; block edits to CI configuration, lockfiles, hooks, manifests, install scripts); read-only separately credentialed reviewer with a signed verdict; worker and CI credential model (no push token, least-privilege CI permissions); threat model for the local access bridge (authentication, path allowlist, audit); commit-SHA pinning with hash-locked dependencies for every upstream; synthetic-data and redaction rules for pilot projects; STOP and rollback transition table; idempotency keys for push, pull request and receipts; circuit breaker with a paused-provider state; startup reconciliation after restart; hash-chained event log; authority class per QA role (only `functional-test-reviewer` and `e2e-runner` author and run tests unless an ADR changes that); a `ManualOverrideReceipt` so a manual fallback is never recorded as a plain APPROVE; role hash, resolved model and invocation id echoed in receipts.
 
 ### 13.5 Consistency corrections
-- C-1 Model policy has three sources: workspace `AGENTS.md` (GPT-6 Luna for reviewer and test agents), the operator's global contract and this repository's `README.md` / `docs/SDLC_PROCESS.md` (Sonnet 5.5 medium or GPT-5.6 Luna low/medium). This repository's `AGENTS.md` sets only the `sonnet` alias. Precedence is undecided and blocks role launch (VERIFIED).
+- C-1 (RESOLVED for this repository in ADR-0001: the operator's global contract wins; the workspace `AGENTS.md` still needs a correction outside this repository) Model policy has three sources: workspace `AGENTS.md` (GPT-6 Luna for reviewer and test agents), the operator's global contract and this repository's `README.md` / `docs/SDLC_PROCESS.md` (Sonnet 5.5 medium or GPT-5.6 Luna low/medium). This repository's `AGENTS.md` sets only the `sonnet` alias. Precedence is undecided and blocks role launch (VERIFIED).
 - C-2 The earlier "DESIGN GO" verdict is withdrawn (VERIFIED against the status line).
 - C-3 The list of "13 security/release gates", the origin of the 5+5 limit and the mapping between S0-S9 here and P0-P4 in the expansion plan are undefined; PM Bridge as a phase-10 owner changes `docs/SDLC_PROCESS.md` and is a proposed change.
 - C-4 Statements of the form "verified" or "checked via" the local bridge or GitHub are unreproducible observations.
@@ -298,5 +298,5 @@ Sandbox (dedicated distro or VM with automount and interop disabled, no containe
 
 ### 13.6 Open operator decisions
 - O-1 Keep the inventory of private repositories and the local bridge topology (sections 2 and 12) in this public repository, generalize it, or move it to a private location.
-- O-2 Whether more than two agents may author and run tests (a policy change, not a roster change).
-- O-3 Whether any CI (outside phase 7) is allowed at all, given the operator's existing rule not to read or wait for CI.
+- O-2 (RESOLVED 2026-10-24, ADR-0001: two agents only) Whether more than two agents may author and run tests (a policy change, not a roster change).
+- O-3 (RESOLVED 2026-10-24, ADR-0001: no CI) Whether any CI (outside phase 7) is allowed at all, given the operator's existing rule not to read or wait for CI.

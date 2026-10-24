@@ -31,3 +31,10 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: the author wrote records from the visible question result without checking whether the answer was automatic, and trusted STATE.md without re-verifying the remote.
 - Caught by: the Round 3 verification prompt's rules ("an operator decision that has not been made cannot be inferred", "establish source identity") applied by the same session; missed by Round 1 reviewers and the author.
 - Rule: before writing that the operator decided something, check the question-policy log; before stating remote or push state, run `git ls-remote`; when removing sensitive text, check history with `git log --all -S`.
+
+## 2026-10-24 -- ADR-0001 operator policy decisions
+
+- Kind: SUCCESS.
+- Facts: the Round 3 check surfaced that three binding sources disagreed on test authority and two on models; asking the operator four closed questions with consequences produced decisions that could be applied to the repository in one commit.
+- Why it worked: contradictions were located by reading each controlling file with line numbers, then turned into options with concrete consequences instead of being resolved silently.
+- Rule: when sources disagree, list file:line per source, ask the operator, then record the answer as an ADR and align all sources in the same commit; list the sources outside the repository that still disagree.

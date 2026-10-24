@@ -13,4 +13,5 @@
 | `FULL_TEAM_EXPANSION_PLAN_2026-10-23.md` | Existing 39-role expansion baseline | proposal |
 | `UNIFIED_ENGINEERING_ORGANIZATION_MASTER_BLUEPRINT_2026-10-23.md` | Cross-repository integration blueprint, role coverage, contracts and roadmap | proposal |
 | `INDEPENDENT_REVIEW_DECISION_PROVENANCE_2026-10-23.md` | Evidence-tagged decision history, options, blind spots and adversarial review brief | review candidate |
+| `ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md` | Operator decisions: test authors, reviewer models, no CI, NOT_RUN waiver verdict | accepted |
 | `changes/` | One change record per commit | append-only |
