@@ -136,3 +136,7 @@ Operator authorization of 2026-10-24 (finish S0 and S1 autonomously, push and me
 ## 2026-10-24 -- S0 and S1 approved by GPT-PM and merged
 
 GPT-PM returned APPROVE for the exact head abc0d50 (request 50828a0d-f780-405b-b49c-30de58c5bd52; no new in-scope BLOCKER or MAJOR; deferred S2 items acknowledged; the reviewer ran no tests on the head). Branch `s1-control-plane-core` was pushed, pull request 1 opened and merged into `main` (d5cd7f5) on the operator's authorization of 2026-10-24. Evidence is recorded here and in change record 0032 after the merge because a new commit would have invalidated the approval. The first GPT-PM send failed without reaching the chat (PM Bridge daemon restarted while MCP servers reconnected, no receipt written) and was resent once.
+
+## 2026-10-24 -- S0 and S1 closure report written
+
+Closure report added (change record 0033). It states that the tests were run by agents on the working tree before the final commit and not re-run on the approved head, and lists the deferred S2 items and the open operator decisions (waiver scope, model-default drift).

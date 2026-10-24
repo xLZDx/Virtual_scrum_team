@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S0 and S1 closure</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--fg:#1c1c1c;--mut:#666;--line:#ccc;--bad:#b00020;--warn:#a15c00;--ok:#1b7a3a}
+@media(prefers-color-scheme:dark){:root{--bg:#161616;--fg:#e8e8e8;--mut:#9a9a9a;--line:#444;--bad:#ff6b81;--warn:#e0a040;--ok:#5fcf80}}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max-width:960px;margin:0 auto;padding:16px}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.bad{color:var(--bad)}.warn{color:var(--warn)}.ok{color:var(--ok)}.mut{color:var(--mut)}
+</style>
+</head>
+<body>
+<header>
+<h1>Closure of sprints S0 and S1</h1>
+<p class="mut">Date: 2026-10-24. State: S0 and S1 were approved by GPT-PM on the exact head abc0d50 and merged into main (pull request 1, commit d5cd7f5); the approval record is in commit c5a8eb1.</p>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>Virtual_scrum_team</dd>
+    <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; main @ c5a8eb1</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+
+<h2>What was done</h2>
+<div class="tw"><table>
+<tr><th>Item</th><th>State</th><th>Evidence</th></tr>
+<tr><td>S1: control-plane core (tools/vst)</td><td class="ok">merged into main</td><td>pull request 1, merge d5cd7f5</td></tr>
+<tr><td>S1 independent review</td><td class="ok">passed after fixes</td><td>verdict MODIFY, two MAJOR store defects, fixed (record 0031)</td></tr>
+<tr><td>GPT-PM final gate</td><td class="ok">APPROVE</td><td>request 50828a0d-f780-405b-b49c-30de58c5bd52 for head abc0d50; no new BLOCKER or MAJOR</td></tr>
+<tr><td>S0: ground-truth inventory</td><td class="ok">done</td><td>docs/sdlc/s0 (3 documents), record 0028</td></tr>
+<tr><td>S2 plan, retrospective, backlog, state</td><td class="ok">done</td><td>records 0029, 0030; docs/S2_SANDBOX_WORKER_PLAN_2026-10-24.md</td></tr>
+</table></div>
+
+<h2>Defects fixed after the independent review</h2>
+<ul>
+<li><strong>The retry bound counted PASS receipts.</strong> Re-attesting at a new head could be refused and the story stuck. The bound now counts only non-PASS receipts of the current epoch.</li>
+<li><strong>Spending exactly the budget cap.</strong> Any later lease call committed a terminal marker and cancelled an already complete APPROVE. The budget now blocks only on overspend.</li>
+<li><strong>Pre-claiming supervisor receipt ids.</strong> A worker could claim a supervisor marker id and break the supervisor. Worker receipt ids with the prefix sup- are rejected.</li>
+</ul>
+
+<h2>Test results</h2>
+<p class="mut">Tests were written and run by the test agents on the working tree before the final commit. They were not re-run on the exact head abc0d50, and GPT-PM did not run them either.</p>
+<div class="tw"><table>
+<tr><th>Suite</th><th>Passed</th><th>Skipped</th><th>Skip reason</th></tr>
+<tr><td>E1 + E2 + E3 (contracts, gate, store)</td><td>1193</td><td>1</td><td>POSIX permission bits on Windows</td></tr>
+<tr><td>E4 (command runner)</td><td>289</td><td>1</td><td>os.symlink not permitted on this machine; symlink-escape behavior is unverified here</td></tr>
+<tr><td>E5 (slice scenarios, process death)</td><td>72</td><td>0</td><td></td></tr>
+</table></div>
+<p>The new tests were not run against the old code, so their ability to fail on the old behavior is argued from the assertions, not observed.</p>
+
+<h2>What remains</h2>
+<ul>
+<li><strong>Deferred to S2:</strong> authenticated reviewer key, runner-derived candidate head, signing-key isolation, whole-database rollback detection, POSIX and Job Object nesting verification, mandatory per-slot commands, signed waiver scope.</li>
+<li><strong>Operator decision:</strong> a signed waiver currently covers any FAIL, not only NOT_RUN. Restrict it or document it in ADR-0001.</li>
+<li><strong>Model drift:</strong> workspace AGENTS.md names GPT-6 Luna as the default review model; the agents source repository still has 2 opus and 5 haiku agents. Not changed.</li>
+<li><strong>Not verified in S0:</strong> remote repository state, whether the alias sonnet binds to Sonnet 5.5, gh authentication.</li>
+<li><strong>S2 not started.</strong> The plan is ready.</li>
+</ul>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

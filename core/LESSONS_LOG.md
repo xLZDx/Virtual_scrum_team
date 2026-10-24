@@ -179,3 +179,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: shared orchestrator daemon with a hidden browser; MCP reconnect restarted it. The operator was not told that the attempts were invisible.
 - Layer: coordinator (communication gap), platform (daemon restart).
 - Rule: when an external transport fails, check receipts and health before resending, and tell the operator what is and is not visible to them.
+
+## 2026-10-24 -- Closure report
+
+- Kind: SHORTCOMING.
+- Facts: `py -3` resolves to a non-existent interpreter on this machine, so the report conformer failed until the pinned `C:\Python314\python.exe` was used.
+- Root cause: PATH launcher points at a sibling project's Python (see the PATH-resolves-to-sibling-venv memory note).
+- Layer: coordinator (used the skill's command verbatim without checking the interpreter).
+- Rule: use the pinned interpreter for tooling commands on this machine.
