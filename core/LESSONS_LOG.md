@@ -438,6 +438,8 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - The same four Store-level regressions passed again on source HEAD `1ef3fee07d5743dc8e42c632e1dc3100601116a7` after bounded object-storage changes (change record 0078). Do not treat this as evidence for E2E Git pack handling, hook denial, or concurrency; retain distinct exact-head coverage for those surfaces.
 - E2E record 0079 closes those distinct surfaces at source HEAD `1ef3fee`: ordinary Git push triggers a temporary source hook in the positive control, while backend pack transfer does not; source and target pack config/storage boundaries are exercised without entering prohibited overflow-cleanup/process-kill paths. Windows lock behavior and POSIX `flock` behavior are recorded separately.
 
+The functional-owned recovery module passed again at exact source HEAD `dc95915018b80f498d5cf775363712fb915fe04e`: 4 passed, 0 skipped, 1 pytest-asyncio deprecation warning. The checkout also contained the following E2E evidence commit, but it did not alter product source or the functional module. Keep this Store-level regression result distinct from E2E snapshot/import acceptance; see change record 0085.
+
 ## 2026-10-25 -- Preserve platform-specific file identity evidence
 
 - Kind: E2E / PLATFORM COMPATIBILITY.
