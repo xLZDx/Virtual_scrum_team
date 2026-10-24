@@ -118,3 +118,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 
 - Kind: NEUTRAL (routine report commit; the report-due hook fired after six code commits without a report, so the report is a checkpoint written while the specialist re-review is still running).
 - Rule: write the status report in the same step as the commit that closes a code phase, not after the hook.
+
+## 2026-10-24 -- S1 second remediation round (re-review of 3e27720)
+
+- Kind: FAILURE (author, tests and first review layer) / SUCCESS (second review layer).
+- Facts: four re-reviewers all returned MODIFY on 3e27720 and all four independently found the same MAJOR defect, confirmed by reading `tools/vst/gate.py:200-207`: head and artifact checks were applied to every receipt including history and supervisor markers, so a fix-and-retry on a new commit could never be approved. 1105 tests were green because every slice scenario used a single head. Also found: retry cap consumed by epoch takeovers, budget not tied to the lease or `cost_cap`, event anchor re-signable over a truncated log, key distinctness enforced only in the test fixture. The second round's tests then found one more real defect: on Windows the process tree kill after a normal exit used `taskkill` on an already exited pid (fixed with a Job Object).
+- Root cause: the first remediation moved epochs to a history model but left heads on the old exclusion model; tests reused one head in every scenario, so the interaction was never exercised; the post-exit kill was written and documented as best effort without a test that held a grandchild.
+- Layer: author and first-round tests missed; four independent reviewers caught the head defect (same finding from all four is strong evidence); a test written from a reviewer's finding caught the Windows kill defect.
+- Rule: every history model (epoch, head, attempt) needs a scenario where that dimension changes between attempts; any claim of process cleanup needs a test with a live grandchild; the same reviewer finding from several independent reviewers is a MAJOR by default.

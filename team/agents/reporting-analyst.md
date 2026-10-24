@@ -22,7 +22,7 @@ color: orange
 Report what actually happened, from primary sources.
 
 ## Method
-1. Take the changed set from git (log, diff stat, status, HEAD); take phase and artifacts from `docs/sdlc/STATE.md`.
+1. Take the changed set from git (log, diff stat, status, HEAD); take phase and artifacts from the phase authority: until the S1 state store (`tools/vst/store.py`) is in use for a project, `docs/sdlc/STATE.md` is the phase authority; once it is in use, the store is the authority and `STATE.md` is its generated read-only view (baseline decision BD-1). Read the store or the generated view; never edit the view by hand.
 2. Report goal vs outcome, stories done/carried/rejected, test evidence with exact commands and results (or NOT_RUN with the reason), findings by severity, agent/model runs, risks and blockers with verified cause.
 3. Label numbers MEASURED or INFERRED; never present a reviewer claim as own measurement.
 

@@ -305,10 +305,12 @@ def test_report_dict_describes_each_command(work):
     run(work, commands=[PASS_CMD, printer("PASSED t1")], report=report,
         allowed=[PASS_CMD, printer("PASSED t1")])
     assert len(report["commands"]) == 2
+    assert report["capture_incomplete"] is False
     for info in report["commands"]:
         assert info == {
             "stdout_truncated": False, "stderr_truncated": False,
-            "timed_out": False, "skipped_by_deadline": False,
+            "timed_out": False, "capture_incomplete": False,
+            "job_object": (os.name == "nt"), "skipped_by_deadline": False,
         }
 
 
@@ -988,8 +990,11 @@ def test_worker_receipt_cannot_masquerade_as_supervisor_or_waiver_signed(work):
     relabeled = dict(body, signature=signing.sign(body, KEY, signing.WAIVER_LABEL))
     d = gate_eval(m, full_set(m, relabeled))
     assert d["verdict"] == "MODIFY" and "invalid signature" in " ".join(d["reasons"])
-    d2 = gate_eval(m, full_set(m, r), key=SUPERVISOR_KEY)  # gate holding the wrong worker key
+    d2 = gate_eval(m, full_set(m, r), key=WRONG_KEY)  # gate holding the wrong worker key
     assert "invalid signature" in " ".join(d2["reasons"])
+    # a gate whose worker key equals the supervisor key is refused outright (NO_GO)
+    d3 = gate_eval(m, full_set(m, r), key=SUPERVISOR_KEY)
+    assert d3["verdict"] == "NO_GO"
 
 
 def test_edited_exit_code_after_signing_is_rejected(work):
@@ -1269,3 +1274,214 @@ def test_non_os_errors_from_subprocess_propagate(work, monkeypatch):
     monkeypatch.setattr(runner.subprocess, "Popen", fake_popen)
     with pytest.raises(RuntimeError):
         run(work)
+
+
+# ----------------------------------------------------- extra_env shadowing (C2)
+
+SHADOW_NAMES = [
+    "PATH", "path", "Path", "PYTHONPATH", "pythonpath", "PyThOnPaTh", "PYTHONSTARTUP",
+    "PYTHONHOME", "PYTEST_ADDOPTS", "pytest_plugins", "LD_PRELOAD", "ld_library_path",
+    "DYLD_INSERT_LIBRARIES", "dyld_library_path", "DYLD_X", "dyld_",
+    "PATHEXT", "SYSTEMROOT", "SystemRoot", "SYSTEMDRIVE", "WINDIR", "TEMP", "tmp", "TMPDIR",
+    "LANG", "lc_all",
+]
+
+
+@pytest.mark.parametrize("name", SHADOW_NAMES)
+def test_extra_env_that_shadows_loader_or_allowlisted_names_is_refused_before_running(work, name):
+    marker = os.path.join(work, "ran.txt")
+    cmd = marker_cmd(marker)
+    parsed = []
+
+    def parser(stdout):
+        parsed.append(stdout)
+        return ["t1", "t2"], [], []
+
+    with pytest.raises(c.ContractError) as exc:
+        run(work, m=mf([cmd]), commands=[cmd], extra_env={name: "x"}, test_result_parser=parser)
+    assert isinstance(exc.value, ValueError)
+    assert not os.path.exists(marker), "the command ran although extra_env was invalid"
+    assert parsed == []
+
+
+def test_extra_env_with_one_forbidden_key_among_good_ones_is_refused_as_a_whole(work):
+    marker = os.path.join(work, "ran.txt")
+    cmd = marker_cmd(marker)
+    with pytest.raises(c.ContractError):
+        run(work, m=mf([cmd]), commands=[cmd], extra_env={"VST_OK": "1", "PYTHONPATH": "/evil"})
+    assert not os.path.exists(marker)
+
+
+@pytest.mark.parametrize("name", ["MYPATH", "PATH_EXTRA", "PYTHONPATHX", "XDYLD_FOO", "VST_LANG", "LANGUAGE_X"])
+def test_extra_env_names_that_only_contain_a_forbidden_word_are_still_allowed(work, name):
+    r, out = captured(
+        work, f"import os; print(os.environ.get({name!r}))", extra_env={name: "kept"}
+    )
+    assert out.strip() == "kept" and r["commands"][0]["exit_code"] == 0
+
+
+def test_forbidden_env_name_sets_cover_the_documented_names():
+    assert set(runner.ENV_ALLOWLIST) <= set(runner.FORBIDDEN_ENV_NAMES)
+    for name in ("PATH", "PYTHONPATH", "PYTHONSTARTUP", "PYTHONHOME", "PYTEST_ADDOPTS",
+                 "PYTEST_PLUGINS", "LD_PRELOAD", "LD_LIBRARY_PATH"):
+        assert name in runner.FORBIDDEN_ENV_NAMES
+    assert "DYLD_" in runner.FORBIDDEN_ENV_PREFIXES
+
+
+def test_malformed_extra_env_is_still_a_contract_error(work):
+    for bad in ({"A=B": "x"}, {"": "x"}, {"A": 1}, {1: "x"}, {"A\0": "x"}, {"A": "v\0"}, ["A"], "A=1"):
+        with pytest.raises(c.ContractError):
+            run(work, extra_env=bad)
+
+
+# ---------------------------------------------- capture completeness (-4) (C2)
+
+
+def _holder_command(hold_sec, flood_bytes=0):
+    """Child that leaves a background process holding stdout/stderr, then exits 0.
+
+    The background process starts in its own session on POSIX (so the runner's
+    process-group kill cannot reach it). On Windows the Job Object would kill
+    it, so tests that need it to survive use the no_stray_kill fixture (job and
+    taskkill disabled). It prints its pid so the test can clean up, and ends by itself after
+    `hold_sec` seconds (no leak even if the test fails).
+    """
+    holder = f"import time; time.sleep({hold_sec})"
+    return pycmd(
+        "import subprocess, sys, os\n"
+        f"sys.stdout.write('x' * {flood_bytes}); sys.stdout.flush()\n"
+        "kw = {'start_new_session': True} if os.name != 'nt' else {}\n"
+        f"p = subprocess.Popen([sys.executable, '-c', {holder!r}], stdin=subprocess.DEVNULL,"
+        " stdout=sys.stdout, stderr=sys.stderr, **kw)\n"
+        "print('HOLDER_PID', p.pid); sys.stdout.flush()\n"
+        "sys.exit(0)\n"
+    )
+
+
+def _kill_holder(stdout):
+    for line in stdout.splitlines():
+        if "HOLDER_PID " in line:
+            try:
+                os.kill(int(line.split("HOLDER_PID ")[1].split()[0]), 9)
+            except (OSError, ValueError, IndexError):
+                pass
+
+
+@pytest.fixture
+def no_stray_kill(monkeypatch):
+    """Hermetic capture-incomplete setup: the post-exit kill and the Windows Job
+    Object are disabled and the reader join is short, so a background holder reliably outlives the join on
+    every platform (independent of how well the OS finds descendants)."""
+    monkeypatch.setattr(runner, "_JOIN_SEC", 0.5)
+    monkeypatch.setattr(runner, "_taskkill_tree", lambda pid: None)
+    monkeypatch.setattr(runner.os, "killpg", lambda *a, **k: None, raising=False)
+    monkeypatch.setattr(runner._JobObject, "attach", classmethod(lambda cls, proc: None))
+
+
+def test_background_process_holding_the_pipe_gives_exit_minus_four_and_capture_incomplete(
+    work, no_stray_kill
+):
+    cmd = _holder_command(hold_sec=8)
+    seen = []
+
+    def parser(stdout):
+        seen.append(stdout)
+        return ["t1", "t2"], [], []
+
+    report = {}
+    started = time.monotonic()
+    m = mf([cmd])
+    try:
+        r = run(work, m=m, commands=[cmd], test_result_parser=parser, report=report)
+    finally:
+        if seen:
+            _kill_holder(seen[0])
+    assert time.monotonic() - started < 30
+    assert r["commands"][0]["exit_code"] == runner.EXIT_CAPTURE_INCOMPLETE == -4
+    assert report["capture_incomplete"] is True
+    assert report["commands"][0]["capture_incomplete"] is True
+    assert report["commands"][0]["timed_out"] is False
+    # fail-closed: the parser reported every id, yet the result is not PASS
+    assert r["result"] == "FAIL"
+    assert signing.verify(r, KEY)
+    assert gate_eval(m, full_set(m, r))["verdict"] != "APPROVE"
+
+
+def test_capture_incomplete_takes_precedence_over_output_truncation(work, no_stray_kill):
+    cmd = _holder_command(hold_sec=8, flood_bytes=5000)
+    seen = []
+
+    def parser(stdout):
+        seen.append(stdout)
+        return ["t1", "t2"], [], []
+
+    report = {}
+    try:
+        r = run(work, m=mf([cmd]), commands=[cmd], test_result_parser=parser,
+                report=report, max_output_bytes=100)
+    finally:
+        if seen:
+            _kill_holder(seen[0])
+    assert report["commands"][0]["stdout_truncated"] is True
+    assert r["commands"][0]["exit_code"] == -4  # not -3
+    assert report["capture_incomplete"] is True
+
+
+def test_a_short_lived_background_holder_is_fully_captured_and_not_flagged(work):
+    cmd = _holder_command(hold_sec=1)
+    report = {}
+    seen = []
+
+    def parser(stdout):
+        seen.append(stdout)
+        return ["t1", "t2"], [], []
+
+    r = run(work, m=mf([cmd]), commands=[cmd], test_result_parser=parser, report=report)
+    assert r["commands"][0]["exit_code"] == 0
+    assert report["capture_incomplete"] is False
+    assert "HOLDER_PID" in seen[0]
+    assert r["result"] == "PASS"
+
+
+def test_report_capture_incomplete_is_false_for_every_normal_outcome(work):
+    report = {}
+    run(work, commands=[printer("PASSED t1", "PASSED t2", exit_code=3)], report=report)
+    assert report["capture_incomplete"] is False
+    report = {}
+    slow = pycmd("import time; time.sleep(60)")
+    run(work, m=mf([slow], timeout_sec=20), commands=[slow], timeout_sec=1, deadline_sec=5,
+        report=report, test_result_parser=ALL_IDS)
+    assert report["commands"][0]["timed_out"] is True
+    assert report["capture_incomplete"] is False  # a killed tree closes its pipes
+
+
+# --------------------------------------------- post-exit tree kill (Windows) (C2)
+
+
+def test_stray_descendant_is_killed_after_the_root_command_exited_normally(work, tmp_path):
+    beat = str(tmp_path / "beat-after-exit.txt")
+    grandchild = (
+        "import time\n"
+        "for _ in range(150):\n"  # bounded: ends by itself after ~30 s even if never killed
+        f"    open({beat!r}, 'a').write('.')\n"
+        "    time.sleep(0.2)\n"
+    )
+    parent = (
+        "import os, subprocess, sys, time\n"
+        f"subprocess.Popen([sys.executable, '-c', {grandchild!r}],"
+        " stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
+        "t0 = time.time()\n"
+        f"while not os.path.exists({beat!r}) and time.time() - t0 < 20:\n"
+        "    time.sleep(0.05)\n"
+        "sys.exit(0)\n"  # the root exits normally while the grandchild is alive
+    )
+    report = {}
+    r = run(work, commands=[pycmd(parent)], test_result_parser=ALL_IDS, report=report)
+    assert r["commands"][0]["exit_code"] == 0
+    if os.name == "nt":
+        assert report["commands"][0]["job_object"] is True, "Windows Job Object was not attached"
+    assert os.path.exists(beat) and os.path.getsize(beat) > 0, "grandchild never started; test proves nothing"
+    time.sleep(1.5)  # grace for the OS to finish terminating the tree
+    size = os.path.getsize(beat)
+    time.sleep(1.5)  # seven heartbeat periods: a surviving grandchild would keep writing
+    assert os.path.getsize(beat) == size, "a stray descendant outlived the command after a normal exit"

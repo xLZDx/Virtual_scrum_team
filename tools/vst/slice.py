@@ -526,9 +526,18 @@ def _scenario_not_run_with_waiver(fx: SliceFixture, clock: FakeClock) -> dict:
 
 def _scenario_budget_exceeded(fx: SliceFixture, clock: FakeClock) -> dict:
     fx.store.set_budget(fx.task_id, 5)
-    remaining = fx.store.charge(fx.task_id, 3)
+    remaining = fx.store.charge(fx.task_id, 3, supervisor_key=fx.supervisor_key)
     extra: dict[str, Any] = {"remaining_after_first_charge": remaining}
-    extra["charge_error_kind"] = _error_kind(lambda: fx.store.charge(fx.task_id, 3))
+    extra["charge_error_kind"] = _error_kind(
+        lambda: fx.store.charge(
+            fx.task_id, 3, supervisor_key=fx.supervisor_key, runner_id=SUPERVISOR_RUNNER
+        )
+    )
+    extra["marker_written_by_charge"] = any(
+        r["slot"] == SUPERVISOR_SLOT and r["check_description"] == "BUDGET_EXCEEDED"
+        for r in fx.store.receipts_for_task(fx.task_id)
+    )
+    extra["begin_after_exceeded_kind"] = _error_kind(lambda: fx.begin(1))
     receipt = fx.store.mark_budget_exceeded(fx.task_id, fx.supervisor_key, SUPERVISOR_RUNNER)
     again = fx.store.mark_budget_exceeded(fx.task_id, fx.supervisor_key, SUPERVISOR_RUNNER)
     extra["marker"] = {
@@ -654,6 +663,73 @@ def _scenario_manifest_swap(fx: SliceFixture, clock: FakeClock) -> dict:
     return _observe(decision, extra)
 
 
+def _scenario_retry_across_head_change(fx: SliceFixture, clock: FakeClock) -> dict:
+    head_a = fx.current_head
+    fx.begin(1)
+    first = fx.make_test_receipt(1, EXPECTED_TEST_IDS, exit_code=1, head=head_a)
+    fx.append(first)
+    fx.end()
+    fx.current_head = OTHER_HEAD  # the fix lands on a new commit
+    fx.begin(2)
+    second = fx.make_test_receipt(2, EXPECTED_TEST_IDS, prev=receipt_sha256(first))
+    fx.append(second)
+    fx.append(fx.make_static_receipt())
+    fx.append(fx.make_review_receipt(REVIEWER, AUTHOR))
+    fx.end()
+    decision = fx.gate()
+    return _observe(decision, {
+        "failed_head": head_a,
+        "passing_head": OTHER_HEAD,
+        "failed_attempts": fx.store.failed_attempts(fx.task_id),
+        "test_attempts": [
+            {"attempt": r["attempt"], "result": r["result"], "head": r["candidate_head"]}
+            for r in fx.store.receipts_for_task(fx.task_id)
+            if r["slot"] == "tests"
+        ],
+    })
+
+
+def _scenario_worker_lost_then_new_head(fx: SliceFixture, clock: FakeClock) -> dict:
+    fx.begin(1, 60)
+    clock.advance(120)  # the first worker dies before writing any receipt
+    written = fx.store.supervisor_reap_and_mark(fx.supervisor_key, SUPERVISOR_RUNNER)
+    fx.current_head = OTHER_HEAD
+    fx.begin(2)
+    fx.append_good_set()
+    fx.end()
+    decision = fx.gate()
+    return _observe(decision, {
+        "markers": [
+            {"reason": r["check_description"], "head": r["candidate_head"]} for r in written
+        ],
+        "passing_head": OTHER_HEAD,
+        "failed_attempts": fx.store.failed_attempts(fx.task_id),
+    })
+
+
+def _scenario_takeover_does_not_exhaust_cap(fx: SliceFixture, clock: FakeClock) -> dict:
+    takeovers = 3  # more than retry_cap + 1 = 2 fenced leases, none wrote a receipt
+    for round_no in range(1, takeovers + 1):
+        fx.begin(round_no)
+        fx.store.release_epoch(fx.story_id, fx.owner)
+        fx.owner = f"supervisor-{round_no + 1}"
+        fx.epoch = fx.store.acquire_epoch(fx.story_id, fx.owner, 3600)
+        fx.store.supervisor_reap_and_mark(fx.supervisor_key, SUPERVISOR_RUNNER)
+    extra: dict[str, Any] = {
+        "retry_cap": fx.manifest["retry_cap"],
+        "takeovers": takeovers,
+        "failed_attempts_after_takeovers": fx.store.failed_attempts(fx.task_id),
+    }
+    begin_kind = _error_kind(lambda: fx.begin(takeovers + 1))
+    extra["next_begin_error_kind"] = begin_kind
+    if begin_kind is None:
+        fx.append_good_set()
+        fx.end()
+    extra["final_epoch"] = fx.epoch
+    decision = fx.gate()
+    return _observe(decision, extra)
+
+
 SCENARIOS: tuple[tuple[str, Callable[[SliceFixture, FakeClock], dict]], ...] = (
     ("happy_path", _scenario_happy_path),
     ("worker_death_before_receipt", _scenario_worker_death),
@@ -669,6 +745,9 @@ SCENARIOS: tuple[tuple[str, Callable[[SliceFixture, FakeClock], dict]], ...] = (
     ("retry_exhausted", _scenario_retry_exhausted),
     ("forged_supervisor_receipt", _scenario_forged_supervisor),
     ("manifest_swap", _scenario_manifest_swap),
+    ("retry_across_head_change", _scenario_retry_across_head_change),
+    ("worker_lost_before_first_receipt", _scenario_worker_lost_then_new_head),
+    ("takeover_does_not_exhaust_retry_cap", _scenario_takeover_does_not_exhaust_cap),
 )
 
 

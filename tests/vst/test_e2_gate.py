@@ -314,28 +314,38 @@ def test_replay_against_another_task_manifest_is_not_approval():
 # --------------------------------------------------------------- staleness
 
 
-def test_stale_head_one_receipt_is_excluded_and_blocks():
+def test_stale_head_one_receipt_is_a_hard_reason_and_the_slot_is_unmet():
     stale = receipt("TestRun", candidate_head=HEAD2)
     rs = [stale, receipt("StaticAnalysis"), receipt("IndependentReview")]
     d = ev(rs)
-    assert d["verdict"] == "MODIFY"
-    assert "stale head" in reasons_text(d)
-    assert "missing receipt for slot 'tests'" in d["reasons"]
+    assert d["verdict"] == "MODIFY"  # 1 of 3 deciding receipts stale: not NO_GO
+    assert f"receipt {stale['receipt_id']} stale head" in reasons_text(d)
+    # the stale receipt is in the chain (not "missing"), but it cannot decide the slot
+    assert "missing receipt for slot 'tests'" not in d["reasons"]
+    assert any(r.startswith("slot 'tests' needs an attempt at the current head") for r in d["reasons"])
+    assert d["acceptance_unmet"] == ["AC-1"]
+    assert hash_of(stale) not in d["required_receipt_hashes"]
+    assert len(d["required_receipt_hashes"]) == 2
 
 
 def test_replay_of_valid_set_against_other_head_is_no_go():
     d = ev(happy_receipts(), head=HEAD2)
     assert d["verdict"] == "NO_GO"
     assert "stale head" in reasons_text(d)
-    assert "all receipts for this task are stale" in reasons_text(d)
+    assert "all deciding receipts for this task are stale" in reasons_text(d)
     assert d["candidate_head"] == HEAD2
 
 
-def test_stale_plus_wrong_signature_all_own_receipts_still_no_go():
+def test_stale_plus_wrong_signature_is_not_a_deciding_receipt_so_not_no_go():
+    # The signature check runs before the head check: a forged receipt is dropped,
+    # so it is neither deciding nor stale. Only 'invalid signature' is reported.
     stale_unsigned = receipt("TestRun", candidate_head=HEAD2)
     stale_unsigned["signature"] = "0" * 64
     d = ev([stale_unsigned])
-    assert d["verdict"] == "NO_GO"
+    assert d["verdict"] == "MODIFY"
+    assert "invalid signature" in reasons_text(d)
+    assert "stale head" not in reasons_text(d)
+    assert "all deciding receipts" not in reasons_text(d)
 
 
 # ------------------------------------------------------ epochs are history
@@ -382,7 +392,7 @@ def test_replay_against_older_gate_epoch_is_no_go_with_future_epoch_reason():
     d = ev(happy_receipts(), epoch=EPOCH - 1)
     assert d["verdict"] == "NO_GO"
     assert "future epoch" in reasons_text(d)
-    assert "all receipts for this task are stale" in reasons_text(d)
+    assert "all deciding receipts for this task are stale" in reasons_text(d)
 
 
 def test_failure_in_older_epoch_is_retained_when_current_epoch_retries_and_passes():
@@ -971,7 +981,7 @@ def test_normalized_principal_spoof_reviewer_variant_of_author_claiming_pass_is_
     assert d["acceptance_unmet"] == ["AC-2"]
 
 
-@pytest.mark.parametrize("variant", ["Author-Y ", " AUTHOR-Y", "\tauthor-y\n"])
+@pytest.mark.parametrize("variant", ["Author-Y ", " AUTHOR-Y", "ＡＵＴＨＯＲ－Ｙ", "author-y　"])
 def test_normalized_principal_spoof_honest_fail_is_hard_and_unmet(variant):
     r = receipt("IndependentReview", reviewer_principal=variant, author_principal="author-y")
     assert r["result"] == "FAIL"
@@ -1622,7 +1632,7 @@ def test_resolver_mismatching_digest_is_hard_reason_and_receipt_invalid():
     assert d["verdict"] == "MODIFY"
     assert "digest mismatch" in reasons_text(d) and "out/report.txt" in reasons_text(d)
     assert "r-tests-1" in reasons_text(d)
-    assert "missing receipt for slot 'tests'" in d["reasons"]
+    assert "slot 'tests' latest attempt 1 rejected: artifact check failed" in d["reasons"]
     assert d["acceptance_unmet"] == ["AC-1"]
 
 
@@ -1630,7 +1640,7 @@ def test_resolver_returning_none_is_rejected():
     d = ev(_with_artifact(), resolver=lambda p: None)
     assert d["verdict"] == "MODIFY"
     assert "digest mismatch" in reasons_text(d)
-    assert "missing receipt for slot 'tests'" in d["reasons"]
+    assert "slot 'tests' latest attempt 1 rejected: artifact check failed" in d["reasons"]
 
 
 def test_raising_resolver_is_default_deny_not_an_exception():
@@ -1640,14 +1650,14 @@ def test_raising_resolver_is_default_deny_not_an_exception():
     d = ev(_with_artifact(), resolver=boom)
     assert d["verdict"] == "MODIFY"
     assert "cannot be resolved" in reasons_text(d) and "OSError" in reasons_text(d)
-    assert "missing receipt for slot 'tests'" in d["reasons"]
+    assert "slot 'tests' latest attempt 1 rejected: artifact check failed" in d["reasons"]
 
 
 def test_artifact_digests_without_a_resolver_are_denied_by_default():
     d = ev(_with_artifact())
     assert d["verdict"] == "MODIFY"
     assert "artifact digests present but no artifact_resolver" in d["reasons"]
-    assert "missing receipt for slot 'tests'" in d["reasons"]
+    assert "slot 'tests' latest attempt 1 rejected: artifact check failed" in d["reasons"]
     assert d["acceptance_unmet"] == ["AC-1"]
     assert d["required_receipt_hashes"] != []  # the other slots are still recorded
     # explicit None is the same as omitting the resolver
@@ -1699,3 +1709,485 @@ def test_zero_digest_receipt_claiming_pass_is_rejected_as_derived_mismatch():
     d = ev([lying, receipt("StaticAnalysis"), receipt("IndependentReview")], resolver=lambda p: "0" * 64)
     assert d["verdict"] == "MODIFY"
     assert "does not match derived result FAIL" in reasons_text(d)
+
+
+# ====================================================================
+# S1 second remediation (package C1): deciding receipt, history, markers,
+# key distinctness, artifact keys
+# ====================================================================
+
+
+def at_head(head):
+    """Complete valid receipt set whose candidate_head is `head`."""
+    return [
+        receipt("TestRun", candidate_head=head),
+        receipt("StaticAnalysis", candidate_head=head),
+        receipt("IndependentReview", candidate_head=head),
+    ]
+
+
+def history_text(d):
+    return [f for f in d["unresolved_findings"] if f.startswith("history attempt at other head")]
+
+
+# ---- retry across a head change: older attempts are history, not blockers
+
+
+def test_retry_after_head_change_reaches_approve_with_history_finding():
+    first = receipt("TestRun", attempt=1, candidate_head=HEAD2, skipped_test_ids=["t3"])
+    assert first["result"] == "FAIL"
+    second = receipt("TestRun", attempt=2, prev_receipt_sha256=hash_of(first))
+    d = ev([first, second, receipt("StaticAnalysis"), receipt("IndependentReview")])
+    assert d["verdict"] == "APPROVE"
+    assert d["reasons"] == []
+    assert d["unresolved_findings"] == [
+        "earlier failure retained: tests attempt 1 FAIL",
+        "history attempt at other head: tests attempt 1",
+    ]
+    assert hash_of(second) in d["required_receipt_hashes"]
+    assert hash_of(first) not in d["required_receipt_hashes"]
+    assert d["acceptance_unmet"] == []
+
+
+def test_earlier_pass_at_other_head_is_only_a_history_finding():
+    first = receipt("TestRun", attempt=1, candidate_head=HEAD2)
+    assert first["result"] == "PASS"
+    second = receipt("TestRun", attempt=2, prev_receipt_sha256=hash_of(first))
+    d = ev([second, first, receipt("StaticAnalysis"), receipt("IndependentReview")])
+    assert d["verdict"] == "APPROVE"
+    assert d["reasons"] == []
+    assert d["unresolved_findings"] == ["history attempt at other head: tests attempt 1"]
+
+
+def test_history_at_other_head_and_older_epoch_both_do_not_block():
+    first = receipt("TestRun", attempt=1, epoch=EPOCH - 1, candidate_head=HEAD2, skipped_test_ids=["t3"])
+    second = receipt("TestRun", attempt=2, prev_receipt_sha256=hash_of(first))
+    d = ev([first, second, receipt("StaticAnalysis"), receipt("IndependentReview")])
+    assert d["verdict"] == "APPROVE"
+    assert d["reasons"] == []
+    assert history_text(d) == ["history attempt at other head: tests attempt 1"]
+
+
+def test_three_attempt_chain_over_two_heads_lists_each_other_head_attempt():
+    a1 = receipt("TestRun", attempt=1, candidate_head=HEAD2, result="BLOCKED")
+    a2 = receipt("TestRun", attempt=2, candidate_head=HEAD2, prev_receipt_sha256=hash_of(a1), result="INCONCLUSIVE")
+    a3 = receipt("TestRun", attempt=3, prev_receipt_sha256=hash_of(a2))
+    d = ev([a3, a2, a1, receipt("StaticAnalysis"), receipt("IndependentReview")])
+    assert d["verdict"] == "APPROVE"
+    assert d["reasons"] == []
+    assert history_text(d) == [
+        "history attempt at other head: tests attempt 1",
+        "history attempt at other head: tests attempt 2",
+    ]
+
+
+def test_older_attempt_at_the_current_head_gets_no_history_finding():
+    first = receipt("TestRun", attempt=1, skipped_test_ids=["t3"])
+    second = receipt("TestRun", attempt=2, prev_receipt_sha256=hash_of(first))
+    d = ev([first, second, receipt("StaticAnalysis"), receipt("IndependentReview")])
+    assert d["verdict"] == "APPROVE"
+    assert history_text(d) == []
+
+
+def test_older_attempt_with_wrong_head_and_broken_chain_is_still_a_hard_chain_error():
+    # History is tolerated only inside an intact chain.
+    first = receipt("TestRun", attempt=1, candidate_head=HEAD2, skipped_test_ids=["t3"])
+    second = receipt("TestRun", attempt=2, prev_receipt_sha256="e" * 64)
+    d = ev([first, second, receipt("StaticAnalysis"), receipt("IndependentReview")])
+    assert d["verdict"] == "MODIFY"
+    assert "attempt chain broken for slot 'tests'" in reasons_text(d)
+    assert hash_of(second) not in d["required_receipt_hashes"]
+
+
+# ---- deciding receipt at another head: hard + unmet
+
+
+def test_latest_attempt_at_other_head_is_stale_even_if_an_earlier_one_is_current():
+    first = receipt("TestRun", attempt=1)
+    second = receipt("TestRun", attempt=2, candidate_head=HEAD2, prev_receipt_sha256=hash_of(first))
+    d = ev([first, second, receipt("StaticAnalysis"), receipt("IndependentReview")])
+    assert d["verdict"] == "MODIFY"
+    assert f"receipt {second['receipt_id']} stale head" in reasons_text(d)
+    assert any(r.startswith("slot 'tests' needs an attempt at the current head") for r in d["reasons"])
+    assert d["acceptance_unmet"] == ["AC-1"]  # the earlier current-head PASS gives no coverage
+    assert hash_of(first) not in d["required_receipt_hashes"]
+    assert hash_of(second) not in d["required_receipt_hashes"]
+    assert history_text(d) == []  # attempt 1 is at the current head; attempt 2 is deciding, not history
+
+
+def test_deciding_stale_receipt_is_a_hard_reason_so_a_waiver_cannot_cover_it():
+    stale = receipt("TestRun", candidate_head=HEAD2)
+    rs = [stale, receipt("StaticAnalysis"), receipt("IndependentReview")]
+    d = ev(rs, waiver=broad_waiver())
+    assert d["verdict"] == "MODIFY"
+    assert d["waiver_record"] is None and d["human_approvals"] == []
+    # control: the same slot merely NOT_RUN at the current head is waivable
+    assert ev(not_run_tests(), waiver=broad_waiver())["verdict"] == "APPROVED_WITH_WAIVER"
+
+
+@pytest.mark.parametrize(
+    "rtype,slot,unmet",
+    [("TestRun", "tests", ["AC-1"]), ("StaticAnalysis", "static", []), ("IndependentReview", "review", ["AC-2"])],
+)
+def test_stale_deciding_receipt_of_any_slot_type_is_hard_and_unmet(rtype, slot, unmet):
+    stale = receipt(rtype, candidate_head=HEAD2)
+    rs = [stale] + [r for r in happy_receipts() if r["slot"] != slot]
+    d = ev(rs)
+    assert d["verdict"] == "MODIFY"
+    assert f"receipt {stale['receipt_id']} stale head" in reasons_text(d)
+    assert any(r.startswith(f"slot '{slot}' needs an attempt at the current head") for r in d["reasons"])
+    assert d["acceptance_unmet"] == unmet
+    assert hash_of(stale) not in d["required_receipt_hashes"]
+    assert len(d["required_receipt_hashes"]) == 2
+
+
+def test_two_of_three_deciding_stale_is_modify_not_no_go():
+    rs = [
+        receipt("TestRun", candidate_head=HEAD2),
+        receipt("StaticAnalysis", candidate_head=HEAD2),
+        receipt("IndependentReview"),
+    ]
+    d = ev(rs)
+    assert d["verdict"] == "MODIFY"
+    assert "all deciding receipts" not in reasons_text(d)
+    assert reasons_text(d).count("stale head") == 2
+
+
+# ---- all deciding receipts stale -> NO_GO (markers / history do not count)
+
+
+def test_all_deciding_stale_is_no_go_even_with_a_current_head_history_attempt():
+    first = receipt("TestRun", attempt=1, skipped_test_ids=["t3"])  # current head, but history
+    second = receipt("TestRun", attempt=2, candidate_head=HEAD2, prev_receipt_sha256=hash_of(first))
+    rs = [first, second, receipt("StaticAnalysis", candidate_head=HEAD2), receipt("IndependentReview", candidate_head=HEAD2)]
+    d = ev(rs)
+    assert d["verdict"] == "NO_GO"
+    assert "all deciding receipts for this task are stale" in reasons_text(d)
+
+
+def test_all_deciding_stale_is_no_go_even_with_a_current_head_worker_lost_marker():
+    d = ev(at_head(HEAD2) + [supervisor_receipt("WORKER_LOST")])  # marker at the CURRENT head
+    assert d["verdict"] == "NO_GO"
+    assert "all deciding receipts for this task are stale" in reasons_text(d)
+    assert d["unresolved_findings"] == ["worker lost: attempt 1"]  # still reported
+
+
+def test_all_deciding_stale_is_no_go_with_marker_at_the_stale_head_too():
+    d = ev(at_head(HEAD2) + [supervisor_receipt("WORKER_LOST", candidate_head=HEAD2)])
+    assert d["verdict"] == "NO_GO"
+
+
+def test_all_deciding_stale_is_no_go_with_history_at_another_head():
+    first = receipt("TestRun", attempt=1, candidate_head=HEAD2, skipped_test_ids=["t3"])
+    second = receipt("TestRun", attempt=2, candidate_head=HEAD2, prev_receipt_sha256=hash_of(first))
+    d = ev([first, second, receipt("StaticAnalysis", candidate_head=HEAD2), receipt("IndependentReview", candidate_head=HEAD2)])
+    assert d["verdict"] == "NO_GO"
+    assert history_text(d) == ["history attempt at other head: tests attempt 1"]
+
+
+def test_single_stale_deciding_receipt_plus_marker_is_no_go():
+    d = ev([receipt("TestRun", candidate_head=HEAD2), supervisor_receipt("WORKER_LOST")])
+    assert d["verdict"] == "NO_GO"
+
+
+def test_supervisor_marker_alone_does_not_make_the_set_stale():
+    # A marker is not a deciding receipt: with nothing else there is nothing stale.
+    d = ev([supervisor_receipt("WORKER_LOST", candidate_head=HEAD2)])
+    assert d["verdict"] == "MODIFY"
+    assert "all deciding receipts" not in reasons_text(d)
+    assert d["acceptance_unmet"] == ["AC-1", "AC-2"]
+
+
+def test_future_epoch_worker_receipts_and_stale_head_receipts_together_are_no_go():
+    rs = [
+        receipt("TestRun", epoch=EPOCH + 1),
+        receipt("StaticAnalysis", candidate_head=HEAD2),
+        receipt("IndependentReview", candidate_head=HEAD2),
+    ]
+    d = ev(rs)
+    assert d["verdict"] == "NO_GO"
+    assert "future epoch" in reasons_text(d) and "stale head" in reasons_text(d)
+
+
+def test_future_epoch_supervisor_marker_does_not_count_toward_the_stale_set():
+    d = ev(at_head(HEAD2) + [supervisor_receipt("WORKER_LOST", epoch=EPOCH + 1)])
+    assert d["verdict"] == "NO_GO"  # all three deciding receipts are stale
+    d2 = ev([supervisor_receipt("WORKER_LOST", epoch=EPOCH + 1)])
+    assert d2["verdict"] == "MODIFY"  # a marker alone is not a stale deciding receipt
+    assert "future epoch" in reasons_text(d2)
+
+
+def test_waiver_cannot_rescue_all_deciding_stale_with_history():
+    first = receipt("TestRun", attempt=1, result="NOT_RUN")
+    second = receipt("TestRun", attempt=2, candidate_head=HEAD2, prev_receipt_sha256=hash_of(first), result="NOT_RUN")
+    rs = [first, second, receipt("StaticAnalysis", candidate_head=HEAD2), receipt("IndependentReview", candidate_head=HEAD2)]
+    d = ev(rs, waiver=broad_waiver())
+    assert d["verdict"] == "NO_GO"
+    assert d["waiver_record"] is None and d["human_approvals"] == []
+
+
+# ---- supervisor markers vs. the head
+
+
+def test_worker_lost_marker_at_another_head_is_not_a_hard_reason():
+    d = ev(happy_receipts() + [supervisor_receipt("WORKER_LOST", candidate_head=HEAD2)])
+    assert d["verdict"] == "APPROVE"
+    assert d["reasons"] == []
+    assert d["unresolved_findings"] == ["worker lost: attempt 1"]
+    assert d["acceptance_unmet"] == []
+
+
+def test_worker_lost_marker_at_base_head_while_gate_head_moved_is_not_a_hard_reason():
+    assert M["base_head"] == HEAD and HEAD2 != HEAD
+    marker = supervisor_receipt("WORKER_LOST", candidate_head=M["base_head"])
+    d = ev(at_head(HEAD2) + [marker], head=HEAD2)
+    assert d["verdict"] == "APPROVE"
+    assert d["reasons"] == []
+    assert d["candidate_head"] == HEAD2
+    assert d["unresolved_findings"] == ["worker lost: attempt 1"]
+
+
+def test_worker_lost_chain_across_heads_lists_each_loss_and_approves():
+    m1 = supervisor_receipt("WORKER_LOST", candidate_head=HEAD2)
+    m2 = supervisor_receipt("WORKER_LOST", attempt=2, prev=hash_of(m1))
+    d = ev(happy_receipts() + [m2, m1])
+    assert d["verdict"] == "APPROVE"
+    assert d["unresolved_findings"] == ["worker lost: attempt 1", "worker lost: attempt 2"]
+
+
+@pytest.mark.parametrize("marker", ["BUDGET_EXCEEDED", "RETRY_EXHAUSTED"])
+def test_terminal_marker_at_another_head_is_still_hard(marker):
+    d = ev(happy_receipts() + [supervisor_receipt(marker, candidate_head=HEAD2)])
+    assert d["verdict"] == "MODIFY"
+    assert f"terminal marker {marker} (supervisor attempt 1)" in d["reasons"]
+    assert "stale head" not in reasons_text(d)  # hard because it is terminal, not because of the head
+    assert d["acceptance_unmet"] == []
+
+
+@pytest.mark.parametrize("marker", ["BUDGET_EXCEEDED", "RETRY_EXHAUSTED"])
+def test_terminal_marker_at_another_head_is_not_waivable(marker):
+    rs = not_run_tests() + [supervisor_receipt(marker, candidate_head=HEAD2)]
+    d = ev(rs, waiver=broad_waiver())
+    assert d["verdict"] == "MODIFY"
+    assert d["waiver_record"] is None and d["human_approvals"] == []
+
+
+def test_unknown_marker_at_another_head_is_hard_for_its_text_not_its_head():
+    d = ev(happy_receipts() + [supervisor_receipt("ALL_GOOD", result="PASS", candidate_head=HEAD2)])
+    assert d["verdict"] == "MODIFY"
+    assert "unknown supervisor marker 'ALL_GOOD'" in reasons_text(d)
+    assert "stale head" not in reasons_text(d)
+
+
+def test_marker_chain_worker_lost_then_terminal_at_other_heads_keeps_loss_and_blocks():
+    m1 = supervisor_receipt("WORKER_LOST", candidate_head=HEAD2)
+    m2 = supervisor_receipt("RETRY_EXHAUSTED", attempt=2, prev=hash_of(m1), candidate_head=HEAD2)
+    d = ev(happy_receipts() + [m1, m2])
+    assert d["verdict"] == "MODIFY"
+    assert "terminal marker RETRY_EXHAUSTED (supervisor attempt 2)" in d["reasons"]
+    assert "worker lost: attempt 1" in d["unresolved_findings"]
+
+
+# ---- terminal markers are dropped only for bad signature / binding
+
+
+def test_future_epoch_worker_lost_marker_is_kept_and_hard():
+    d = ev(happy_receipts() + [supervisor_receipt("WORKER_LOST", epoch=EPOCH + 1)])
+    assert d["verdict"] == "MODIFY"
+    assert f"future epoch: {EPOCH + 1} > {EPOCH}" in reasons_text(d)
+    assert d["unresolved_findings"] == ["worker lost: attempt 1"]  # kept, not dropped
+    assert d["acceptance_unmet"] == []
+
+
+@pytest.mark.parametrize("marker", ["BUDGET_EXCEEDED", "RETRY_EXHAUSTED"])
+def test_future_epoch_terminal_marker_is_kept_both_reasons_are_hard(marker):
+    d = ev(happy_receipts() + [supervisor_receipt(marker, epoch=EPOCH + 1)])
+    assert d["verdict"] == "MODIFY"
+    assert "future epoch" in reasons_text(d)
+    assert f"terminal marker {marker} (supervisor attempt 1)" in d["reasons"]
+    assert ev(not_run_tests() + [supervisor_receipt(marker, epoch=EPOCH + 1)], waiver=broad_waiver())["verdict"] == "MODIFY"
+
+
+def test_future_epoch_marker_chain_is_intact_after_a_kept_marker():
+    m1 = supervisor_receipt("WORKER_LOST", epoch=EPOCH + 1)
+    m2 = supervisor_receipt("WORKER_LOST", attempt=2, prev=hash_of(m1))
+    d = ev(happy_receipts() + [m1, m2])
+    assert "attempt chain broken" not in reasons_text(d)  # m1 was kept, so m2 links to it
+    assert d["unresolved_findings"] == ["worker lost: attempt 1", "worker lost: attempt 2"]
+
+
+def test_forged_future_epoch_terminal_marker_is_dropped():
+    d = ev(happy_receipts() + [supervisor_receipt("BUDGET_EXCEEDED", epoch=EPOCH + 1, key=KEY)])
+    assert d["verdict"] == "MODIFY"
+    assert "invalid signature" in reasons_text(d) and "future epoch" in reasons_text(d)
+    assert "terminal marker" not in reasons_text(d)
+    assert d["unresolved_findings"] == []
+
+
+def test_terminal_marker_bound_to_another_manifest_is_dropped_not_recorded():
+    d = ev(happy_receipts() + [supervisor_receipt("RETRY_EXHAUSTED", manifest_sha256="f" * 64)])
+    assert d["verdict"] == "MODIFY"
+    assert "manifest_sha256 does not match the manifest" in reasons_text(d)
+    assert "terminal marker" not in reasons_text(d)
+
+
+def test_terminal_marker_with_wrong_role_is_dropped_not_recorded():
+    d = ev(happy_receipts() + [supervisor_receipt("RETRY_EXHAUSTED", role_sha256="e" * 64)])
+    assert d["verdict"] == "MODIFY"
+    assert "role_sha256 does not match the manifest" in reasons_text(d)
+    assert "terminal marker" not in reasons_text(d)
+
+
+# ---- artifact checks only on the deciding attempt
+
+
+def _retry_with_artifact(first_artifacts, second_artifacts):
+    first = receipt("TestRun", attempt=1, skipped_test_ids=["t3"], artifact_digests=first_artifacts)
+    second = receipt("TestRun", attempt=2, prev_receipt_sha256=hash_of(first), artifact_digests=second_artifacts)
+    return first, second, [first, second, receipt("StaticAnalysis"), receipt("IndependentReview")]
+
+
+@pytest.mark.parametrize("resolver", [lambda p: "b" * 64, lambda p: None])
+def test_artifact_mismatch_on_an_older_attempt_gives_no_hard_reason(resolver):
+    _, second, rs = _retry_with_artifact({"out/report.txt": ART}, {})
+    d = ev(rs, resolver=resolver)
+    assert d["verdict"] == "APPROVE"
+    assert d["reasons"] == []
+    assert hash_of(second) in d["required_receipt_hashes"]
+
+
+def test_older_attempt_with_artifacts_needs_no_resolver():
+    _, _, rs = _retry_with_artifact({"out/report.txt": ART}, {})
+    d = ev(rs)  # no resolver at all
+    assert d["verdict"] == "APPROVE"
+    assert "no artifact_resolver" not in reasons_text(d)
+
+
+def test_resolver_is_not_consulted_for_older_attempts():
+    calls = []
+    _, _, rs = _retry_with_artifact({"out/old.txt": ART}, {})
+    d = ev(rs, resolver=lambda p: calls.append(p) or "b" * 64)
+    assert d["verdict"] == "APPROVE" and calls == []
+
+
+def test_artifact_mismatch_on_the_deciding_attempt_is_hard_and_slot_unmet():
+    _, second, rs = _retry_with_artifact({}, {"out/report.txt": ART})
+    d = ev(rs, resolver=lambda p: "b" * 64)
+    assert d["verdict"] == "MODIFY"
+    assert f"receipt {second['receipt_id']} artifact 'out/report.txt' digest mismatch" in reasons_text(d)
+    assert "slot 'tests' latest attempt 2 rejected: artifact check failed" in d["reasons"]
+    assert d["acceptance_unmet"] == ["AC-1"]
+    assert hash_of(second) not in d["required_receipt_hashes"]
+    assert ev(rs, resolver=lambda p: "b" * 64, waiver=broad_waiver())["verdict"] == "MODIFY"
+
+
+def test_artifact_on_the_deciding_attempt_without_resolver_is_denied_but_matching_resolver_approves():
+    _, second, rs = _retry_with_artifact({}, {"out/report.txt": ART})
+    assert "artifact digests present but no artifact_resolver" in ev(rs)["reasons"]
+    d = ev(rs, resolver=lambda p: ART)
+    assert d["verdict"] == "APPROVE"
+    assert hash_of(second) in d["required_receipt_hashes"]
+
+
+def test_stale_deciding_receipt_is_not_artifact_checked():
+    calls = []
+    stale = receipt("TestRun", candidate_head=HEAD2, artifact_digests={"out/report.txt": ART})
+    d = ev([stale, receipt("StaticAnalysis"), receipt("IndependentReview")],
+           resolver=lambda p: calls.append(p) or "b" * 64)
+    assert d["verdict"] == "MODIFY"
+    assert "stale head" in reasons_text(d)
+    assert "digest mismatch" not in reasons_text(d) and calls == []
+
+
+# ---- artifact keys through the gate
+
+
+@pytest.mark.parametrize("key", ["../x", "a/../b", "/abs/x", "C:/x", "C:\\x", "a//b"])
+def test_receipt_with_non_repo_relative_artifact_key_is_invalid_in_the_gate(key):
+    calls = []
+    bad = receipt("TestRun", artifact_digests={key: ART})
+    d = ev([bad, receipt("StaticAnalysis"), receipt("IndependentReview")],
+           resolver=lambda p: calls.append(p) or ART)
+    assert d["verdict"] == "MODIFY"
+    assert "receipt[0] invalid" in reasons_text(d) and "artifact_digests" in reasons_text(d)
+    assert "missing receipt for slot 'tests'" in d["reasons"]
+    assert calls == []  # the resolver never sees an escaping path
+
+
+# ---- keys must be pairwise distinct
+
+
+def _no_go_for_keys(d, *messages):
+    assert d["verdict"] == "NO_GO"
+    for message in messages:
+        assert message in d["reasons"]
+    assert d["required_receipt_hashes"] == []
+    assert d["acceptance_unmet"] == ["AC-1", "AC-2"]
+    assert d["waiver_record"] is None and d["human_approvals"] == []
+    c.validate_gate_decision(d)
+
+
+def test_key_equal_to_supervisor_key_is_no_go_even_with_otherwise_valid_receipts():
+    rs = [receipt("TestRun", key=KEY), receipt("StaticAnalysis", key=KEY), receipt("IndependentReview", key=KEY)]
+    d = ev(rs, key=KEY, supervisor_key=KEY)
+    _no_go_for_keys(d, "keys must be pairwise distinct: key equals supervisor_key")
+
+
+def test_key_equal_to_operator_key_is_no_go():
+    d = ev(happy_receipts(), key=OPERATOR_KEY, operator_key=OPERATOR_KEY)
+    _no_go_for_keys(d, "keys must be pairwise distinct: key equals operator_key")
+
+
+def test_supervisor_key_equal_to_operator_key_is_no_go():
+    d = ev(happy_receipts(), supervisor_key=OPERATOR_KEY, operator_key=OPERATOR_KEY)
+    _no_go_for_keys(d, "keys must be pairwise distinct: supervisor_key equals operator_key")
+
+
+def test_all_three_keys_equal_reports_every_colliding_pair():
+    d = ev(happy_receipts(), key=KEY, supervisor_key=KEY, operator_key=KEY)
+    _no_go_for_keys(
+        d,
+        "keys must be pairwise distinct: key equals supervisor_key",
+        "keys must be pairwise distinct: key equals operator_key",
+        "keys must be pairwise distinct: supervisor_key equals operator_key",
+    )
+
+
+def test_bytearray_key_equal_to_bytes_key_is_a_collision():
+    d = ev(happy_receipts(), key=bytearray(SUPERVISOR_KEY), supervisor_key=SUPERVISOR_KEY)
+    _no_go_for_keys(d, "keys must be pairwise distinct: key equals supervisor_key")
+    d2 = ev(happy_receipts(), supervisor_key=bytearray(OPERATOR_KEY), operator_key=OPERATOR_KEY)
+    _no_go_for_keys(d2, "keys must be pairwise distinct: supervisor_key equals operator_key")
+
+
+def test_equal_keys_cannot_be_rescued_by_a_waiver():
+    d = ev(not_run_tests(), key=OPERATOR_KEY, operator_key=OPERATOR_KEY, waiver=broad_waiver())
+    assert d["verdict"] == "NO_GO"
+    assert d["waiver_record"] is None and d["human_approvals"] == []
+
+
+def test_operator_key_none_is_allowed_when_worker_and_supervisor_keys_differ():
+    d = ev(happy_receipts(), operator_key=None)
+    assert d["verdict"] == "APPROVE"
+    assert not any("pairwise distinct" in r for r in d["reasons"])
+
+
+def test_operator_key_none_does_not_hide_a_worker_supervisor_collision():
+    d = ev(happy_receipts(), key=SUPERVISOR_KEY, operator_key=None)
+    assert d["verdict"] == "NO_GO"
+    assert "keys must be pairwise distinct: key equals supervisor_key" in d["reasons"]
+    assert not any("operator_key" in r and "pairwise" in r for r in d["reasons"])
+
+
+def test_keys_differing_in_one_byte_are_distinct():
+    near = KEY[:-1] + bytes([KEY[-1] ^ 1])
+    assert near != KEY and len(near) == len(KEY)
+    d = ev(happy_receipts(), supervisor_key=near)
+    assert d["verdict"] == "APPROVE"
+    assert not any("pairwise distinct" in r for r in d["reasons"])
+
+
+def test_invalid_manifest_still_reports_no_go_when_keys_collide():
+    d = ev(happy_receipts(), m=manifest(extra=1), key=KEY, supervisor_key=KEY)
+    assert d["verdict"] == "NO_GO"
+    assert "manifest invalid" in reasons_text(d)

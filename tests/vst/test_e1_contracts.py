@@ -443,8 +443,10 @@ def test_derive_independent_review():
     [
         ("Author-Y ", "author-y"),
         ("author-y", " AUTHOR-Y"),
-        ("  same\t", "same"),
+        ("  same  ", "same"),  # a tab here would now be rejected (Cc), see principals below
         ("SAME", "same"),
+        ("ＳＡＭＥ", "same"),  # full-width forms are folded by NFKC before the comparison
+        ("same　", "same"),  # ideographic space is stripped after NFKC
         ("Straße", "STRASSE"),  # casefold, not just lower
     ],
 )
@@ -702,6 +704,49 @@ def test_artifact_digests_empty_key_rejected(key):
     r["artifact_digests"] = {key: "a" * 64}
     with pytest.raises(ContractError, match="artifact_digests"):
         c.validate_receipt(r)
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "../x",
+        "..",
+        "a/../b",
+        "a\\..\\b",
+        "out/..",
+        "/abs/x.bin",
+        "\\abs\\x.bin",
+        "C:/x.bin",
+        "C:\\x.bin",
+        "c:x.bin",
+        "out/a:b",
+        "a//b",
+        "a\\\\b",
+        "out/",
+        "a/./b",
+        "./a",
+        " out/a.bin",
+        "out/a.bin ",
+    ],
+)
+def test_artifact_digests_key_must_be_a_repo_relative_path(key):
+    r = receipt("TestRun")
+    r["artifact_digests"] = {key: "a" * 64}
+    with pytest.raises(ContractError, match="artifact_digests"):
+        c.validate_receipt(r)
+
+
+def test_artifact_digests_one_bad_key_rejects_the_whole_receipt():
+    r = receipt("TestRun")
+    r["artifact_digests"] = {"out/ok.bin": "a" * 64, "../evil": "b" * 64}
+    with pytest.raises(ContractError, match="artifact_digests"):
+        c.validate_receipt(r)
+
+
+@pytest.mark.parametrize("key", ["report.txt", "out/report.txt", "out/sub/dir/r.bin", "a b/c d.txt", "out\\win.bin", "v1..2/x"])
+def test_artifact_digests_repo_relative_keys_are_accepted(key):
+    r = receipt("TestRun", artifact_digests={key: "a" * 64})
+    assert c.validate_receipt(r)["artifact_digests"] == {key: "a" * 64}
 
 
 @pytest.mark.parametrize("value", ["a" * 63, "a" * 65, "A" * 64, "g" * 64, "", None, 5, ["a" * 64]])
@@ -1008,18 +1053,92 @@ def test_manifest_sha256_does_not_mutate_input():
     [
         ("author-y", "author-y"),
         ("  Author-Y ", "author-y"),
-        ("AUTHOR-Y\t", "author-y"),
+        ("AUTHOR-Y  ", "author-y"),
         ("Straße", "strasse"),
+        # NFKC: full-width letters and hyphen, ligature, circled letters, nbsp
+        ("ＡＵＴＨＯＲ－Ｙ", "author-y"),
+        ("ｒｅｖｉｅｗｅｒ", "reviewer"),
+        ("ﬁle", "file"),
+        ("ⓐⓑ", "ab"),
+        (" x ", "x"),
+        ("　Ａ　", "a"),
     ],
 )
 def test_normalize_principal(raw, norm):
     assert c.normalize_principal(raw) == norm
 
 
+def test_normalize_principal_nfkc_form_equals_ascii_form():
+    # The point of NFKC: a spoofed spelling and the real name compare equal.
+    assert c.normalize_principal("ＡＵＴＨＯＲ－Ｙ") == c.normalize_principal("author-y")
+    assert c.normalize_principal("ａuthor-y") == c.normalize_principal("AUTHOR-Y")
+
+
 @pytest.mark.parametrize("bad", ["", "   ", "\t\n", None, 5, b"x", ["a"]])
 def test_normalize_principal_rejects_empty_or_non_string(bad):
     with pytest.raises(ContractError):
         c.normalize_principal(bad)
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "a​b",  # zero-width space (Cf) inside
+        "author-y​",  # trailing zero-width space
+        "​author-y",  # leading zero-width space
+        "a‍b",  # zero-width joiner (Cf)
+        "﻿author-y",  # BOM / zero-width no-break space (Cf)
+        "a­b",  # soft hyphen (Cf)
+        "a‮b",  # right-to-left override (Cf)
+        "a\x00b",  # NUL (Cc)
+        "a\nb",  # embedded newline (Cc)
+        "a\rb",
+        "a\tb",  # embedded tab (Cc)
+        "author-y\n",  # trailing newline: rejected BEFORE strip, not stripped away
+        "\nauthor-y",
+        "\tauthor-y\n",
+        "author-y\t",
+        "a\x7fb",  # DEL (Cc)
+        "​",  # only a zero-width char: rejected as a control/format character
+    ],
+)
+def test_normalize_principal_rejects_control_and_format_characters(bad):
+    with pytest.raises(ContractError, match="control or format"):
+        c.normalize_principal(bad)
+
+
+def test_normalize_principal_zero_width_variant_is_not_silently_equal_to_the_real_name():
+    # Without the Cc/Cf rejection these two would normalize differently, letting
+    # an author review under 'author​-y'; now the spoof does not normalize at all.
+    assert c.normalize_principal("author-y") == "author-y"
+    with pytest.raises(ContractError):
+        c.normalize_principal("author​-y")
+
+
+@pytest.mark.parametrize("field", ["reviewer_principal", "author_principal"])
+@pytest.mark.parametrize("bad", ["rev​iewer", "rev\x00iewer", "reviewer\n", "﻿reviewer"])
+def test_review_receipt_principal_with_control_or_format_char_fails_validate_receipt(field, bad):
+    r = receipt("IndependentReview")
+    r[field] = bad
+    with pytest.raises(ContractError, match="control or format"):
+        c.validate_receipt(r)
+
+
+@pytest.mark.parametrize("bad", ["author​-y", "author-y\n", "﻿author-y", "author\x00y"])
+def test_manifest_author_principal_with_control_or_format_char_is_rejected(bad):
+    with pytest.raises(ContractError, match="control or format"):
+        c.validate_task_manifest(manifest(author_principal=bad))
+
+
+def test_derive_result_of_review_with_hidden_char_principal_raises_not_pass():
+    # A reviewer name that only differs from the author by a zero-width char must
+    # never derive PASS: the contract rejects it outright.
+    r = unsigned_receipt(
+        "IndependentReview", result="FAIL", reviewer_principal="reviewer-x", author_principal="author-y"
+    )
+    r["reviewer_principal"] = "author​-y"
+    with pytest.raises(ContractError):
+        c.derive_result(r)
 
 
 @pytest.mark.parametrize("field", ["reviewer_principal", "author_principal"])

@@ -11,6 +11,7 @@ Self-contained: the child script and every helper are defined in this file.
 
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 import subprocess
@@ -26,7 +27,7 @@ if REPO_ROOT not in sys.path:
 from tools.vst import slice as vst_slice  # noqa: E402
 from tools.vst.contracts import SUPERVISOR_SLOT, ContractError, receipt_sha256  # noqa: E402
 from tools.vst.signing import verify  # noqa: E402
-from tools.vst.store import Store, StoreError  # noqa: E402
+from tools.vst.store import SCHEMA_VERSION, Store, StoreError  # noqa: E402
 
 # argv: mode, directory, clock value, attempt
 #   die_no_receipt        first attempt: epoch + task + lease, then hard death
@@ -365,6 +366,240 @@ class ProcessDeathTests(ProcessDeathBase):
             [(1, "FAIL"), (2, "PASS")],
         )
         self.assertTrue(store.verify_event_chain())
+
+
+class SecondRoundStoreTests(ProcessDeathBase):
+    """Store contract of schema version 3 observed across a real process death."""
+
+    def _events(self) -> list[tuple[str, dict]]:
+        return [
+            (r["kind"], json.loads(r["payload"]))
+            for r in self._raw().execute("SELECT kind, payload FROM events ORDER BY seq")
+        ]
+
+    def test_schema_is_version_3_with_receipt_count_after_a_real_death(self) -> None:
+        self._kill_child()
+        conn = self._raw()
+        self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], 3)
+        self.assertEqual(SCHEMA_VERSION, 3)
+        columns = [r["name"] for r in conn.execute("PRAGMA table_info(leases)")]
+        self.assertIn("receipt_count", columns)
+        self.assertEqual(
+            conn.execute("SELECT receipt_count FROM leases").fetchone()[0], 0
+        )
+        # Reopening the file by a second Store keeps the version.
+        store = self._open()
+        self.assertTrue(store.verify_event_chain())
+        self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], 3)
+
+    def test_a_version_2_database_is_refused_not_migrated(self) -> None:
+        os.makedirs(self.dir, exist_ok=True)
+        old = sqlite3.connect(self.db)
+        old.execute("PRAGMA user_version = 2")
+        old.execute("CREATE TABLE stories (story_id TEXT)")
+        old.commit()
+        old.close()
+        with self.assertRaises(StoreError) as ctx:
+            Store(self.db, self.clock, event_key=vst_slice.EVENT_KEY)
+        self.assertEqual(ctx.exception.kind, "schema")
+        check = self._raw()
+        self.assertEqual(check.execute("PRAGMA user_version").fetchone()[0], 2)  # untouched
+        self.assertEqual(
+            [r[0] for r in check.execute("SELECT name FROM sqlite_master WHERE type='table'")],
+            ["stories"],
+        )
+
+    def test_budget_row_is_seeded_from_the_manifest_cost_cap(self) -> None:
+        self._kill_child()
+        row = self._raw().execute(
+            "SELECT cap, spent FROM budget WHERE task_id = ?", (TASK,)
+        ).fetchone()
+        self.assertEqual((row["cap"], row["spent"]), (self.manifest["cost_cap"], 0))
+
+    def test_partial_lease_records_lease_expired_partial_but_no_worker_lost(self) -> None:
+        self._kill_child("die_after_receipt")
+        store = self._open()
+        lease_id = self._raw().execute(
+            "SELECT lease_id FROM leases WHERE task_id = ?", (TASK,)
+        ).fetchone()[0]
+        self.assertEqual(
+            self._raw().execute("SELECT receipt_count FROM leases").fetchone()[0], 1
+        )
+        self.clock.advance(LEASE_TTL + 1)
+        self.assertEqual(self._mark(store), [])  # no WORKER_LOST for a lease that wrote
+        events = self._events()
+        kinds = [k for k, _ in events]
+        self.assertEqual(kinds.count("LEASE_EXPIRED"), 1)
+        self.assertEqual(kinds.count("LEASE_EXPIRED_PARTIAL"), 1)
+        # The partial event directly follows the expiry event of the same lease.
+        at = kinds.index("LEASE_EXPIRED")
+        self.assertEqual(kinds[at + 1], "LEASE_EXPIRED_PARTIAL")
+        self.assertEqual(events[at][1], {"attempt": 1})
+        self.assertEqual(
+            events[at + 1][1], {"attempt": 1, "lease_id": lease_id, "receipts": 1}
+        )
+        self.assertEqual(
+            [r for r in store.receipts_for_task(TASK) if r["slot"] == SUPERVISOR_SLOT], []
+        )
+        # A second pass records nothing new: the event is written once per expiry.
+        self.clock.advance(LEASE_TTL + 1)
+        self.assertEqual(self._mark(store), [])
+        self.assertEqual([k for k, _ in self._events()].count("LEASE_EXPIRED_PARTIAL"), 1)
+        self.assertTrue(store.verify_event_chain())
+
+    def test_lease_that_wrote_nothing_records_no_partial_event(self) -> None:
+        self._kill_child()
+        store = self._open()
+        self.clock.advance(LEASE_TTL + 1)
+        self.assertEqual(len(self._mark(store)), 1)
+        kinds = [k for k, _ in self._events()]
+        self.assertEqual(kinds.count("LEASE_EXPIRED"), 1)
+        self.assertNotIn("LEASE_EXPIRED_PARTIAL", kinds)
+
+    def test_fenced_takeover_leases_do_not_count_toward_the_retry_cap(self) -> None:
+        # retry_cap is 1, so the cap trips at 2 worker failures. Fence more leases than that.
+        self._kill_child()
+        store = self._open()
+        owner_ttl = OWNER_TTL
+        epoch = store.current_epoch(STORY)
+        for round_no in range(1, 4):
+            if round_no > 1:
+                store.acquire_lease(TASK, STORY, vst_slice.WORKER_ID, epoch, round_no, LEASE_TTL,
+                                    supervisor_key=vst_slice.SUPERVISOR_KEY)
+            self.clock.advance(owner_ttl + 1)
+            epoch = store.acquire_epoch(STORY, f"supervisor-{round_no + 1}", owner_ttl)
+            written = self._mark(store)
+            self.assertEqual([r["check_description"] for r in written], ["WORKER_LOST"])
+            self.assertEqual(store.failed_attempts(TASK), 0, round_no)
+        self.assertEqual(
+            [(a, s) for a, s, _w, _m in self._leases()],
+            [(1, "FENCED"), (2, "FENCED"), (3, "FENCED")],
+        )
+        # A fourth lease is still granted and no RETRY_EXHAUSTED marker exists.
+        store.acquire_lease(TASK, STORY, vst_slice.WORKER_ID, epoch, 4, LEASE_TTL,
+                            supervisor_key=vst_slice.SUPERVISOR_KEY)
+        self.assertEqual(self._leases()[-1], (4, "LIVE", 0, 0))
+        reasons = [
+            r["check_description"] for r in store.receipts_for_task(TASK)
+            if r["slot"] == SUPERVISOR_SLOT
+        ]
+        self.assertEqual(reasons, ["WORKER_LOST"] * 3)
+        self.assertTrue(store.verify_event_chain())
+
+    def test_expired_lease_without_receipts_counts_and_trips_the_cap(self) -> None:
+        self._kill_child()
+        store = self._open()
+        self.clock.advance(LEASE_TTL + 1)
+        self.assertEqual(len(self._mark(store)), 1)
+        self.assertEqual(store.failed_attempts(TASK), 1)
+        epoch = store.current_epoch(STORY)
+        self._kill_child("next_attempt", 2)
+        self.clock.advance(LEASE_TTL + 1)
+        self.assertEqual(len(self._mark(store)), 1)
+        self.assertEqual(store.failed_attempts(TASK), 2)  # == retry_cap + 1
+        with self.assertRaises(StoreError) as ctx:
+            store.acquire_lease(TASK, STORY, "worker-3", epoch, 3, LEASE_TTL,
+                                supervisor_key=vst_slice.SUPERVISOR_KEY)
+        self.assertEqual(ctx.exception.kind, "retry")
+        reasons = [
+            r["check_description"] for r in store.receipts_for_task(TASK)
+            if r["slot"] == SUPERVISOR_SLOT
+        ]
+        self.assertEqual(reasons, ["WORKER_LOST", "WORKER_LOST", "RETRY_EXHAUSTED"])
+        self.assertEqual(len(self._leases()), 2)
+
+    def test_worker_receipt_failures_count_per_slot_not_per_receipt_total(self) -> None:
+        self._kill_child("die_after_receipt")  # one FAIL receipt in slot 'tests'
+        store = self._open()
+        self.assertEqual(store.failed_attempts(TASK), 1)
+        self.clock.advance(LEASE_TTL + 1)
+        self.assertEqual(self._mark(store), [])
+        # Still counted exactly once after the lease expired with its receipt.
+        self.assertEqual(store.failed_attempts(TASK), 1)
+        # Attempt 2 is allowed (1 < retry_cap + 1).
+        store.acquire_lease(TASK, STORY, vst_slice.WORKER_ID, store.current_epoch(STORY), 2,
+                            LEASE_TTL, supervisor_key=vst_slice.SUPERVISOR_KEY)
+        self.assertEqual(self._leases(), [(1, "EXPIRED", 1, 1), (2, "LIVE", 0, 0)])
+
+    def test_charge_set_budget_and_record_event_signatures_on_a_real_file(self) -> None:
+        self._kill_child()
+        store = self._open()
+        with self.assertRaises(TypeError):  # supervisor_key is keyword-only and required
+            store.charge(TASK, 1)  # type: ignore[call-arg]
+        with self.assertRaises(TypeError):
+            store.charge(TASK, 1, vst_slice.SUPERVISOR_KEY)  # type: ignore[misc]
+        with self.assertRaises(StoreError) as ctx:  # the event key must not sign markers
+            store.charge(TASK, 1, supervisor_key=vst_slice.EVENT_KEY)
+        self.assertEqual(ctx.exception.kind, "key")
+        with self.assertRaises(StoreError) as ctx:
+            store.set_budget("task-unregistered", 5)
+        self.assertEqual(ctx.exception.kind, "task")
+        with self.assertRaises(StoreError) as ctx:
+            store.set_budget(TASK, self.manifest["cost_cap"] + 1)
+        self.assertEqual(ctx.exception.kind, "budget")
+        store.set_budget(TASK, 5)
+        self.assertEqual(store.charge(TASK, 2, supervisor_key=vst_slice.SUPERVISOR_KEY), 3)
+        with self.assertRaises(StoreError) as ctx:
+            store.set_budget(TASK, 1)  # below the 2 already spent
+        self.assertEqual(ctx.exception.kind, "argument")
+        for forbidden in ("OPERATOR_ACTION", "LEASE_EXPIRED_PARTIAL", "BUDGET_EXCEEDED"):
+            with self.assertRaises(StoreError, msg=forbidden) as ctx:
+                store.record_event(TASK, "someone", forbidden, {})
+            self.assertEqual(ctx.exception.kind, "argument")
+        store.record_event(TASK, "someone", "NOTE", {"text": "hi"})
+        self.assertIn(("NOTE", {"text": "hi"}), self._events())
+        self.assertNotIn("OPERATOR_ACTION", [k for k, _ in self._events()])
+        # The failed calls left the budget untouched.
+        row = self._raw().execute("SELECT cap, spent FROM budget WHERE task_id=?", (TASK,)).fetchone()
+        self.assertEqual((row["cap"], row["spent"]), (5, 2))
+
+    def test_charge_over_cap_commits_the_marker_in_the_file_and_blocks_new_leases(self) -> None:
+        self._kill_child()
+        store = self._open()
+        self.clock.advance(LEASE_TTL + 1)
+        self._mark(store)  # close the dead lease so only the budget can refuse the next one
+        store.set_budget(TASK, 4)
+        with self.assertRaises(StoreError) as ctx:
+            store.charge(TASK, 5, supervisor_key=vst_slice.SUPERVISOR_KEY, runner_id="meter-1")
+        self.assertEqual(ctx.exception.kind, "budget")
+        # Committed despite the raise: seen by an independent connection and a second Store.
+        other = self._open()
+        budget_markers = [
+            r for r in other.receipts_for_task(TASK) if r["check_description"] == "BUDGET_EXCEEDED"
+        ]
+        self.assertEqual(len(budget_markers), 1)
+        self.assertEqual(budget_markers[0]["result"], "BLOCKED")
+        self.assertEqual(budget_markers[0]["runner_id"], "meter-1")
+        self.assertTrue(verify(budget_markers[0], vst_slice.SUPERVISOR_KEY))
+        kinds = [k for k, _ in self._events()]
+        self.assertEqual(kinds.count("BUDGET_EXCEEDED"), 1)
+        self.assertEqual(kinds.count("BUDGET_BLOCKED"), 1)
+        row = self._raw().execute("SELECT cap, spent FROM budget WHERE task_id=?", (TASK,)).fetchone()
+        self.assertEqual((row["cap"], row["spent"]), (4, 0))  # nothing was charged
+        with self.assertRaises(StoreError) as ctx:
+            other.acquire_lease(TASK, STORY, "worker-2", other.current_epoch(STORY), 2, LEASE_TTL,
+                                supervisor_key=vst_slice.SUPERVISOR_KEY)
+        self.assertEqual(ctx.exception.kind, "budget")
+        self.assertEqual(len(self._leases()), 1)  # the refused lease left no row
+        self.assertTrue(other.verify_event_chain())
+
+    def test_missing_event_anchor_is_an_integrity_error_not_a_silent_recompute(self) -> None:
+        self._kill_child()
+        store = self._open()
+        self.assertTrue(store.verify_event_chain())
+        count = len(self._events())
+        conn = sqlite3.connect(self.db)
+        self.addCleanup(conn.close)
+        conn.execute("DELETE FROM meta WHERE key = 'events_anchor'")
+        conn.commit()
+        self.assertFalse(store.verify_event_chain())
+        with self.assertRaises(StoreError) as ctx:
+            store.record_event(TASK, "someone", "NOTE", {"n": 1})
+        self.assertEqual(ctx.exception.kind, "integrity")
+        self.assertEqual(len(self._events()), count)  # nothing was appended
+        with self.assertRaises(StoreError) as ctx:
+            store.event_anchor()
+        self.assertEqual(ctx.exception.kind, "integrity")
 
 
 class ConcurrentSerialisationTests(unittest.TestCase):

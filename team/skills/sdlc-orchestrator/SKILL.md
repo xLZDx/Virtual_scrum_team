@@ -9,9 +9,9 @@ description: Drive a project through the SDLC from idea to release with a scrum-
 A project or sprint needs to move through phases with the right specialist at each step.
 
 ## Method
-1. Read the phase state. Once the S1 state store (`tools/vst/store.py`) is accepted and in use, the store is the only source of phase truth and `docs/sdlc/STATE.md` is its generated read-only view, never edited by hand (baseline decision BD-1). Until then `docs/sdlc/STATE.md` is the only source of phase truth (create from `references/artifact-templates.md` if missing). Confirm HEAD with git.
+1. Read the phase state. Until the S1 state store (`tools/vst/store.py`) is in use for a project, `docs/sdlc/STATE.md` is the phase authority; once it is in use, the store is the authority and `docs/sdlc/STATE.md` is its generated read-only view (baseline decision BD-1), never edited by hand. Create STATE.md from `references/artifact-templates.md` if missing before cutover. Confirm HEAD with git.
 2. Find the current phase below; launch ONLY that phase's role agents (actual Agent runs, never in-chat role play). Each role writes its artifact to `docs/sdlc/`.
-3. When every exit artifact of the phase exists and is linked in the state store (rendered into STATE.md), advance the phase. Record head, date, artifact paths and the agents/models actually used.
+3. When every exit artifact of the phase exists and is recorded as a Documentation receipt or event (a dedicated artifact registry in the store is deferred to S2), advance the phase. Record head, date, artifact paths and the agents/models actually used.
 4. Reviewer agents use only Sonnet 5.5 medium or GPT-5.6 Luna low/medium. Opus is never automatic.
 
 ## Phases, roles, exit artifacts

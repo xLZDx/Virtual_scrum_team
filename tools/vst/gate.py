@@ -9,28 +9,39 @@ ALL reasons instead of stopping at the first problem.
 Keys: worker receipts are verified with `key`; receipts in the reserved
 SUPERVISOR_SLOT with `supervisor_key`; the waiver with `operator_key` and
 WAIVER_LABEL. Every key must be bytes of length >= 32 (operator_key may be
-None, which makes any waiver unusable).
+None, which makes any waiver unusable). `key`, `supervisor_key` and
+`operator_key` (when given) must be pairwise distinct (bytes comparison),
+otherwise the verdict is NO_GO.
 
 Rules, in order:
 
 1. Inputs. current_head 40 lowercase hex, current_epoch an int >= 1 (not
-   bool), key and supervisor_key valid keys, receipts a list, manifest valid
-   per validate_task_manifest. Any failure is a hard reason and the verdict is
-   NO_GO. An invalid manifest returns immediately (slots are unknown).
-2. Per-receipt checks (a). A receipt is "good" only if it validates, belongs
-   to manifest.task_id, carries manifest_sha256 == manifest_sha256(manifest)
-   and role_sha256 == manifest.role_sha256, has candidate_head ==
-   current_head, has epoch <= current_epoch (epoch > current_epoch is the hard
-   reason 'future epoch'), has a valid signature and has result ==
+   bool), key and supervisor_key valid keys, keys pairwise distinct, receipts
+   a list, manifest valid per validate_task_manifest. Any failure is a hard
+   reason and the verdict is NO_GO. An invalid manifest returns immediately
+   (slots are unknown).
+2. Per-receipt checks (a), applied to EVERY receipt. A receipt is "good" only
+   if it validates, belongs to manifest.task_id, carries manifest_sha256 ==
+   manifest_sha256(manifest) and role_sha256 == manifest.role_sha256, has
+   epoch <= current_epoch (epoch > current_epoch is the hard reason 'future
+   epoch'; in SUPERVISOR_SLOT the marker is still kept so a terminal marker is
+   never dropped), has a valid signature and has result ==
    derive_result(receipt). Otherwise a hard reason is recorded and the receipt
-   is excluded. An OLDER epoch is not a reason: it is history. If at least one
-   receipt belongs to this task and ALL of those fail the head or future-epoch
-   check, the verdict is NO_GO.
-3. Artifacts (f). A good TestRun receipt with non-empty artifact_digests and
-   no artifact_resolver is a hard reason 'artifact digests present but no
-   artifact_resolver' (default deny) and is excluded. With a resolver, every
-   (path, digest) must equal artifact_resolver(path); a mismatch, None or a
-   raising resolver is a hard reason and the receipt is excluded.
+   is excluded. An OLDER epoch is not a reason: it is history. The head match
+   and the artifact checks (rule 3) are NOT per-receipt checks: they apply
+   only to the deciding receipt of a slot (rule 5).
+3. Head and artifacts (f), on the DECIDING receipt of each real slot only (the
+   latest attempt of the slot chain, once the chain is intact). Its
+   candidate_head must equal current_head, else the hard reason 'stale head'
+   and the slot is unmet. A deciding TestRun receipt with non-empty
+   artifact_digests and no artifact_resolver is a hard reason 'artifact
+   digests present but no artifact_resolver' (default deny); with a resolver,
+   every (path, digest) must equal artifact_resolver(path); a mismatch, None
+   or a raising resolver is a hard reason. A rejected deciding receipt leaves
+   its slot unmet. Older attempts are history: no head or artifact reason; an
+   older attempt whose head differs from current_head is listed in
+   unresolved_findings as 'history attempt at other head: <slot> attempt <n>'.
+   SUPERVISOR_SLOT markers are exempt from the head check entirely.
 4. Slot matching. A good receipt whose slot is neither in
    manifest.required_receipts nor SUPERVISOR_SLOT is the hard reason
    'unlisted receipt'; a receipt type different from the slot's declared type
@@ -38,7 +49,9 @@ Rules, in order:
 5. Chains (b). Per real slot the chain is the good receipts of the slot
    ordered by attempt across ALL epochs. Attempts must be exactly 1..n and
    each prev_receipt_sha256 must equal receipt_sha256 of the previous attempt
-   (hard reason otherwise). The LATEST attempt decides the slot; it must have
+   (hard reason otherwise). The chain is built from signature-valid, bound
+   receipts BEFORE the head and artifact checks of rule 3, which then run on
+   its latest attempt. The LATEST attempt decides the slot; it must have
    epoch == current_epoch, else the slot is unmet (soft 'slot needs a
    current-epoch attempt'). A latest result other than PASS is an unmet slot
    (soft). Every earlier attempt with a result other than PASS is listed in
@@ -70,8 +83,9 @@ Rules, in order:
 8. Acceptance. acceptance_unmet = manifest.acceptance ids not covered (manifest
    order); each is a soft reason.
 9. Verdict.
-   - NO_GO: bad inputs / invalid manifest / every receipt of this task stale
-     by head or by future epoch.
+   - NO_GO: bad inputs (including non-distinct keys) / invalid manifest /
+     every deciding receipt of this task stale by head or by future epoch
+     (supervisor markers and older attempts do not count either way).
    - APPROVE: no reasons at all and acceptance_unmet empty.
    - APPROVED_WITH_WAIVER: no hard reasons and a valid waiver (g): exact keys
      record_id, operator, task_id, epoch (int), head, manifest_sha256,
@@ -172,14 +186,20 @@ def _check_receipt(
     raw: Any,
     manifest: dict,
     manifest_hash: str,
-    head: str,
     epoch: int,
     key: bytes,
     supervisor_key: bytes,
     hard: list[str],
-    artifact_resolver: Callable[[str], str | None] | None,
 ) -> tuple[dict | None, bool, bool]:
-    """Return (good_receipt_or_None, belongs_to_task, is_stale)."""
+    """Return (good_receipt_or_None, belongs_to_task, is_future_epoch).
+
+    Checks contract, task, manifest and role binding, future epoch, signature
+    and derived result. The head and artifact checks are NOT done here: they
+    apply only to the deciding receipt of a slot (see evaluate). A future-epoch
+    receipt is a hard reason and is excluded, except in SUPERVISOR_SLOT where
+    the marker is kept (so a terminal marker is never dropped) and the hard
+    reason alone is recorded.
+    """
     label = f"receipt[{index}]"
     try:
         receipt = validate_receipt(raw)
@@ -196,16 +216,14 @@ def _check_receipt(
     if receipt["role_sha256"] != manifest["role_sha256"]:
         hard.append(f"{label} role_sha256 does not match the manifest")
         return None, True, False
-    stale = False
-    if receipt["candidate_head"] != head:
-        hard.append(f"{label} stale head: candidate_head != current head")
-        stale = True
+    is_supervisor = receipt["slot"] == SUPERVISOR_SLOT
+    future = False
     if receipt["epoch"] > epoch:
         hard.append(f"{label} future epoch: {receipt['epoch']} > {epoch}")
-        stale = True
-    if stale:
-        return None, True, True
-    signing_key = supervisor_key if receipt["slot"] == SUPERVISOR_SLOT else key
+        future = True
+        if not is_supervisor:
+            return None, True, True
+    signing_key = supervisor_key if is_supervisor else key
     if not verify(receipt, signing_key, RECEIPT_LABEL):
         hard.append(f"{label} invalid signature")
         return None, True, False
@@ -215,27 +233,38 @@ def _check_receipt(
             f"{label} result {receipt['result']} does not match derived result {derived}"
         )
         return None, True, False
-    if receipt["receipt_type"] == "TestRun" and receipt["artifact_digests"]:
-        if artifact_resolver is None:
-            if _NO_RESOLVER_REASON not in hard:
-                hard.append(_NO_RESOLVER_REASON)
-            return None, True, False
-        for path, digest in receipt["artifact_digests"].items():
-            try:
-                current = artifact_resolver(path)
-            except Exception as exc:  # resolver is caller code: default-deny
-                hard.append(
-                    f"{label} artifact {path!r} cannot be resolved: "
-                    f"{type(exc).__name__}"
-                )
-                return None, True, False
-            if current != digest:
-                hard.append(
-                    f"{label} artifact {path!r} digest mismatch: "
-                    f"artifact changed or missing"
-                )
-                return None, True, False
-    return receipt, True, False
+    return receipt, True, future and not is_supervisor
+
+
+def _check_artifacts(
+    receipt: dict,
+    hard: list[str],
+    artifact_resolver: Callable[[str], str | None] | None,
+) -> bool:
+    """Artifact-digest check of a deciding TestRun receipt; False = rejected."""
+    if receipt["receipt_type"] != "TestRun" or not receipt["artifact_digests"]:
+        return True
+    label = f"receipt {receipt['receipt_id']}"
+    if artifact_resolver is None:
+        if _NO_RESOLVER_REASON not in hard:
+            hard.append(_NO_RESOLVER_REASON)
+        return False
+    for path, digest in receipt["artifact_digests"].items():
+        try:
+            current = artifact_resolver(path)
+        except Exception as exc:  # resolver is caller code: default-deny
+            hard.append(
+                f"{label} artifact {path!r} cannot be resolved: "
+                f"{type(exc).__name__}"
+            )
+            return False
+        if current != digest:
+            hard.append(
+                f"{label} artifact {path!r} digest mismatch: "
+                f"artifact changed or missing"
+            )
+            return False
+    return True
 
 
 def _group_by_slot(
@@ -472,6 +501,18 @@ def evaluate(
     if not isinstance(receipts, list):
         hard.append("receipts: must be a list")
         fatal = True
+    supplied = [("key", key), ("supervisor_key", supervisor_key)]
+    if operator_key is not None:
+        supplied.append(("operator_key", operator_key))
+    for i, (name_a, value_a) in enumerate(supplied):
+        for name_b, value_b in supplied[i + 1:]:
+            if (
+                isinstance(value_a, (bytes, bytearray))
+                and isinstance(value_b, (bytes, bytearray))
+                and bytes(value_a) == bytes(value_b)
+            ):
+                hard.append(f"keys must be pairwise distinct: {name_a} equals {name_b}")
+                fatal = True
 
     try:
         valid_manifest = validate_task_manifest(manifest)
@@ -495,26 +536,23 @@ def evaluate(
     own_count = 0
     stale_count = 0
     for index, raw in enumerate(receipts):
-        receipt, own, stale = _check_receipt(
-            index, raw, valid_manifest, manifest_hash, current_head,
-            current_epoch, bytes(key), bytes(supervisor_key), hard,
-            artifact_resolver,
+        receipt, own, future = _check_receipt(
+            index, raw, valid_manifest, manifest_hash, current_epoch,
+            bytes(key), bytes(supervisor_key), hard,
         )
         own_count += 1 if own else 0
-        stale_count += 1 if stale else 0
+        stale_count += 1 if future else 0
         if receipt is not None:
             good.append(receipt)
-    if own_count > 0 and stale_count == own_count:
-        fatal = True
-        hard.append(
-            "all receipts for this task are stale (head mismatch or future epoch)"
-        )
 
     slot_types = {
         s["slot"]: s["receipt_type"] for s in valid_manifest["required_receipts"]
     }
     grouped, supervisor = _group_by_slot(good, slot_types, hard)
     _check_supervisor_chain(supervisor, findings, hard)
+    # Supervisor markers and older attempts are history, not deciding receipts:
+    # they never count toward the "all receipts stale" test below.
+    own_count -= len(supervisor)
 
     covered: set[str] = set()
     unmet_slots: list[str] = []
@@ -524,15 +562,40 @@ def evaluate(
             soft.append(f"missing receipt for slot {slot!r}")
             unmet_slots.append(slot)
             continue
+        own_count -= len(chain) - 1
         for earlier in chain[:-1]:
             if earlier["result"] != "PASS":
                 findings.append(
                     f"earlier failure retained: {slot} attempt "
                     f"{earlier['attempt']} {earlier['result']}"
                 )
+            if earlier["candidate_head"] != current_head:
+                findings.append(
+                    f"history attempt at other head: {slot} attempt "
+                    f"{earlier['attempt']}"
+                )
         if not _chain_intact(slot, chain, hard):
             continue
         latest = chain[-1]
+        if latest["candidate_head"] != current_head:
+            hard.append(
+                f"receipt {latest['receipt_id']} stale head: candidate_head != "
+                f"current head (slot {slot!r} attempt {latest['attempt']})"
+            )
+            stale_count += 1
+            soft.append(
+                f"slot {slot!r} needs an attempt at the current head (latest "
+                f"attempt {latest['attempt']} is at another head)"
+            )
+            unmet_slots.append(slot)
+            continue
+        if not _check_artifacts(latest, hard, artifact_resolver):
+            soft.append(
+                f"slot {slot!r} latest attempt {latest['attempt']} rejected: "
+                f"artifact check failed"
+            )
+            unmet_slots.append(slot)
+            continue
         hashes.append(receipt_sha256(latest))
         if latest["epoch"] != current_epoch:
             soft.append(
@@ -555,6 +618,13 @@ def evaluate(
             unmet_slots.append(slot)
             continue
         covered.update(contribution)
+
+    if own_count > 0 and stale_count == own_count:
+        fatal = True
+        hard.append(
+            "all deciding receipts for this task are stale (head mismatch or "
+            "future epoch)"
+        )
 
     acceptance_unmet = [a for a in valid_manifest["acceptance"] if a not in covered]
     for acc in acceptance_unmet:

@@ -1,6 +1,6 @@
 # Virtual Scrum Team - current state (read first)
 
-Last updated: 2026-10-23. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
+Last updated: 2026-10-24. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
 
 ## What exists
 
@@ -22,10 +22,20 @@ Pilot observations that change the team definitions are recorded in `core/DECISI
 
 `docs/UNIFIED_ENGINEERING_ORGANIZATION_MASTER_BLUEPRINT_2026-10-23.md` and its review dossier are a
 proposal with verdict MODIFY DESIGN (Round 1 and Round 2 reviews; a Round 3 self-check by the
-authoring session confirmed it). No blocker is closed and nothing is implemented. Open operator
+authoring session confirmed it). That design review history (2026-10-23) is kept as written: no design
+blocker was closed by it. Implementation has since started with S1 (see below). Open operator
 decisions: test-authoring authority (workspace `AGENTS.md`, `team-roster.md` and the global contract
 disagree), model-allowlist precedence, CI ownership, a distinct verdict for NOT_RUN waivers, and the
 public-repository inventory question (blueprint section 13.6).
+
+## S1 control-plane core (in progress)
+
+Implemented in `tools/vst` on branch `s1-control-plane-core`: contracts, signing, gate, store, runner
+and slice. Two remediation rounds followed specialist reviews; focused tests were green on the
+working tree for the first round, the second round is in progress. Independent review and the pull
+request are pending. Nothing is pushed. Until the state store (`tools/vst/store.py`) is in use for a
+project, `docs/sdlc/STATE.md` is the phase authority; once it is in use, the store is the authority
+and `STATE.md` is its generated read-only view (baseline decision BD-1).
 
 ## Open items
 
@@ -33,7 +43,8 @@ See `core/BACKLOG.md`.
 
 ## Remote
 
-`origin` = `https://github.com/xLZDx/Virtual_scrum_team.git` (public). `origin/main` is at `d4aefb5`
-(verified with `git ls-remote` on 2026-10-23); later local commits are not pushed. Pushing is a
-separate explicit operator command. The first commit `0a5821b` on `origin/main` contains a local
+`origin` = `https://github.com/xLZDx/Virtual_scrum_team.git` (public). `origin/main` is at `9b5b597`
+(verified with `git ls-remote` on 2026-10-24, pushed on the operator's instruction); the commits of
+branch `s1-control-plane-core` are local and not pushed. Pushing is a separate explicit operator
+command. The first commit `0a5821b` on `origin/main` contains a local
 absolute path in this file; the operator decided on 2026-10-23 to keep history unrewritten.

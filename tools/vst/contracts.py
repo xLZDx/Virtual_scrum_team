@@ -22,6 +22,7 @@ import copy
 import hashlib
 import json
 import re
+import unicodedata
 from typing import Any
 
 RESULT = frozenset({"PASS", "FAIL", "BLOCKED", "NOT_RUN", "INCONCLUSIVE"})
@@ -247,10 +248,21 @@ def manifest_sha256(manifest: dict) -> str:
 
 
 def normalize_principal(value: Any) -> str:
-    """Strip + casefold a principal name; empty after normalization is an error."""
+    """NFKC + strip + casefold a principal name.
+
+    Raises ContractError for a non-string, for a string containing a control
+    (Cc) or format / zero-width (Cf) character, and for an empty result.
+    """
     if not isinstance(value, str):
         raise ContractError("principal: must be a string")
-    normalized = value.strip().casefold()
+    composed = unicodedata.normalize("NFKC", value)
+    for char in composed:
+        if unicodedata.category(char) in ("Cc", "Cf"):
+            raise ContractError(
+                f"principal: must not contain control or format characters "
+                f"(found U+{ord(char):04X})"
+            )
+    normalized = composed.strip().casefold()
     if not normalized:
         raise ContractError("principal: must not be empty after normalization")
     return normalized
@@ -478,6 +490,7 @@ def _validate_artifact_digests(digests: Any) -> None:
     for path, digest in digests.items():
         if not isinstance(path, str) or not path.strip():
             raise ContractError("artifact_digests: keys must be non-empty strings")
+        _validate_repo_path(path, f"artifact_digests key {path!r}")
         _req_hex(digest, f"artifact_digests[{path!r}]", 64)
 
 

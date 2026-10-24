@@ -21,21 +21,42 @@ Execution (subprocess.Popen, shell=False):
   ENV_ALLOWLIST copied from the runner process (PATH, SYSTEMROOT, TEMP ...) plus
   PYTHONIOENCODING and the caller's explicit `extra_env`. No other inherited
   variable (tokens, API keys) reaches the child. stdin is /dev/null.
+  `extra_env` may not shadow or inject loader/search variables: a key that
+  (case-insensitively) equals an ENV_ALLOWLIST name, PATH, PYTHONPATH,
+  PYTHONSTARTUP, PYTHONHOME, PYTEST_ADDOPTS, PYTEST_PLUGINS, LD_PRELOAD or
+  LD_LIBRARY_PATH, or starts with DYLD_, is rejected with ContractError (a
+  ValueError) before anything runs (FORBIDDEN_ENV_NAMES).
 - stdout and stderr are captured through reader threads with a hard cap of
   `max_output_bytes` per stream (default 1 MiB); the excess is drained and
   dropped. A command whose output was truncated is recorded with exit code -3
   (EXIT_OUTPUT_TRUNCATED), which makes the derived result FAIL (the parser saw
   partial output). The truncated flag is also available in the optional
   `report` dict.
-- on timeout the WHOLE process tree is killed (Windows: taskkill /T /F; POSIX:
-  the process group, the child is started in its own session). Exit code -1.
+- process-tree containment. Windows: right after Popen the child is assigned to
+  a Job Object created with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE (ctypes, stdlib
+  only). On EVERY exit path (normal exit, timeout/deadline, output cap, any
+  exception) the runner calls TerminateJobObject and then CloseHandle, so all
+  descendants die even after the root process has exited (taskkill /T cannot do
+  that: the root pid is gone). Known tiny race: the child is not created
+  suspended, so a grandchild spawned before the assignment is not a member. If
+  the assignment fails (e.g. the process already belongs to a non-nestable job)
+  the runner falls back to taskkill /PID <pid> /T /F (failures ignored; best
+  effort once the root exited) and reports job_object=False. On timeout
+  taskkill /T /F is always run as an extra fallback. POSIX: the process group
+  (the child is started in its own session) is killed with SIGKILL on timeout
+  and after a normal exit. Timeout exit code -1.
+- capture completeness: after both pipes were joined, a reader thread that is
+  still alive, or a read error (OSError/ValueError), means the captured output
+  may be incomplete. That command is recorded with exit code -4
+  (EXIT_CAPTURE_INCOMPLETE, fail-closed: the derived result is FAIL) and
+  report['capture_incomplete'] is True. This takes precedence over -1 and -3.
 - `timeout_sec` is the per-command limit; `deadline_sec` is the overall limit
   across all commands (both default to the manifest timeout_sec). A command
   that cannot start before the deadline is recorded as -1 without running.
 
 Exit code conventions recorded in the receipt: the process exit code, -1
 timeout / deadline, -2 executable or cwd missing or the process cannot be
-started (any OSError), -3 output truncated.
+started (any OSError), -3 output truncated, -4 output capture incomplete.
 
 Artifacts are hashed AFTER the commands; a missing, non-regular, symlinked or
 escaping artifact gets the all-zero digest (FAIL).
@@ -71,6 +92,7 @@ from .signing import MIN_KEY_BYTES, sign
 EXIT_TIMEOUT = -1
 EXIT_MISSING_EXECUTABLE = -2
 EXIT_OUTPUT_TRUNCATED = -3
+EXIT_CAPTURE_INCOMPLETE = -4
 DEFAULT_MAX_OUTPUT_BYTES = 1024 * 1024
 MAX_OUTPUT_BYTES_LIMIT = 64 * 1024 * 1024
 MAX_COUNTER = 2**31 - 1
@@ -86,6 +108,20 @@ ENV_ALLOWLIST = (
     "LANG",
     "LC_ALL",
 )
+FORBIDDEN_ENV_NAMES = frozenset(
+    {
+        *ENV_ALLOWLIST,
+        "PATH",
+        "PYTHONPATH",
+        "PYTHONSTARTUP",
+        "PYTHONHOME",
+        "PYTEST_ADDOPTS",
+        "PYTEST_PLUGINS",
+        "LD_PRELOAD",
+        "LD_LIBRARY_PATH",
+    }
+)
+FORBIDDEN_ENV_PREFIXES = ("DYLD_",)
 _CHUNK = 64 * 1024
 _JOIN_SEC = 5.0
 
@@ -182,6 +218,7 @@ class _Capture:
         self._cap = cap
         self.data = bytearray()
         self.truncated = False
+        self.read_error = False
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
@@ -197,10 +234,15 @@ class _Capture:
                 if len(chunk) > max(room, 0):
                     self.truncated = True
         except (OSError, ValueError):
-            pass
+            self.read_error = True
 
     def finish(self) -> None:
         self._thread.join(_JOIN_SEC)
+
+    @property
+    def incomplete(self) -> bool:
+        """True if the reader is still running after the join or a read failed."""
+        return self._thread.is_alive() or self.read_error
 
     def text(self) -> str:
         return bytes(self.data).decode("utf-8", errors="replace")
@@ -214,26 +256,169 @@ def _spawn_kwargs() -> dict:
     return {"start_new_session": True}
 
 
-def _kill_tree(proc: subprocess.Popen) -> None:
-    """Kill the child and all its descendants; never raises."""
+def _taskkill_tree(pid: int) -> None:
+    """Windows: taskkill /T /F on pid; every failure is ignored."""
     try:
-        if os.name == "nt":
-            root = os.environ.get("SYSTEMROOT", r"C:\Windows")
-            exe = os.path.join(root, "System32", "taskkill.exe")
-            if not os.path.isfile(exe):
-                exe = "taskkill"
-            subprocess.run(
-                [exe, "/PID", str(proc.pid), "/T", "/F"],
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=15,
-                check=False,
-            )
-        else:
-            os.killpg(proc.pid, signal.SIGKILL)
+        root = os.environ.get("SYSTEMROOT", r"C:\Windows")
+        exe = os.path.join(root, "System32", "taskkill.exe")
+        if not os.path.isfile(exe):
+            exe = "taskkill"
+        subprocess.run(
+            [exe, "/PID", str(pid), "/T", "/F"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=15,
+            check=False,
+        )
     except (OSError, subprocess.SubprocessError):
         pass
+
+
+_JOB_OBJECT_EXTENDED_LIMIT_INFORMATION_CLASS = 9
+_JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000
+_JOB_TERMINATE_EXIT_CODE = 1
+_WIN_API = None  # lazily built ctypes namespace (Windows only)
+
+
+def _win_api():
+    """Windows only: kernel32 job-object bindings with explicit, 64-bit safe types.
+
+    Built lazily so that importing this module never touches ctypes.wintypes or
+    kernel32 on non-Windows platforms. Returns None if the bindings cannot be
+    built (the caller then falls back to taskkill).
+    """
+    global _WIN_API
+    if os.name != "nt":
+        return None
+    if _WIN_API is not None:
+        return _WIN_API or None
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class _BasicLimits(ctypes.Structure):
+            _fields_ = [
+                ("PerProcessUserTimeLimit", ctypes.c_int64),
+                ("PerJobUserTimeLimit", ctypes.c_int64),
+                ("LimitFlags", wintypes.DWORD),
+                ("MinimumWorkingSetSize", ctypes.c_size_t),
+                ("MaximumWorkingSetSize", ctypes.c_size_t),
+                ("ActiveProcessLimit", wintypes.DWORD),
+                ("Affinity", ctypes.c_size_t),  # ULONG_PTR
+                ("PriorityClass", wintypes.DWORD),
+                ("SchedulingClass", wintypes.DWORD),
+            ]
+
+        class _IoCounters(ctypes.Structure):
+            _fields_ = [(name, ctypes.c_uint64) for name in (
+                "ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
+                "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
+
+        class _ExtendedLimits(ctypes.Structure):
+            _fields_ = [
+                ("BasicLimitInformation", _BasicLimits),
+                ("IoInfo", _IoCounters),
+                ("ProcessMemoryLimit", ctypes.c_size_t),
+                ("JobMemoryLimit", ctypes.c_size_t),
+                ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                ("PeakJobMemoryUsed", ctypes.c_size_t),
+            ]
+
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.CreateJobObjectW.restype = wintypes.HANDLE
+        k32.CreateJobObjectW.argtypes = [wintypes.LPVOID, wintypes.LPCWSTR]
+        k32.SetInformationJobObject.restype = wintypes.BOOL
+        k32.SetInformationJobObject.argtypes = [
+            wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD]
+        k32.AssignProcessToJobObject.restype = wintypes.BOOL
+        k32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+        k32.TerminateJobObject.restype = wintypes.BOOL
+        k32.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
+        k32.CloseHandle.restype = wintypes.BOOL
+        k32.CloseHandle.argtypes = [wintypes.HANDLE]
+        _WIN_API = type("_WinApi", (), {
+            "ctypes": ctypes, "k32": k32, "ExtendedLimits": _ExtendedLimits})
+        return _WIN_API
+    except Exception:  # noqa: BLE001 - any binding failure means "no job object"
+        _WIN_API = False
+        return None
+
+
+class _JobObject:
+    """Windows Job Object that kills every member when terminated or closed.
+
+    Created with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, so even if the runner dies
+    the OS kills the whole tree when the last handle closes. Descendants of a
+    member are members too, and membership survives the exit of the root, which
+    is what taskkill /T cannot do after the root has exited. Known tiny race:
+    the child is assigned right after Popen (no CREATE_SUSPENDED), so a
+    grandchild spawned in that window would not be a member. If assignment
+    fails (for example the process already belongs to a non-nestable job) the
+    caller falls back to taskkill and reports job_object=False.
+    """
+
+    def __init__(self, api, handle) -> None:
+        self._api = api
+        self._handle = handle
+
+    @classmethod
+    def attach(cls, proc: subprocess.Popen) -> "_JobObject | None":
+        """Create a kill-on-close job and assign `proc` to it, or return None."""
+        api = _win_api()
+        if api is None:
+            return None
+        k32 = api.k32
+        job = None
+        try:
+            job = k32.CreateJobObjectW(None, None)
+            if not job:
+                return None
+            limits = api.ExtendedLimits()
+            limits.BasicLimitInformation.LimitFlags = _JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+            if not k32.SetInformationJobObject(
+                job, _JOB_OBJECT_EXTENDED_LIMIT_INFORMATION_CLASS,
+                api.ctypes.byref(limits), api.ctypes.sizeof(limits),
+            ):
+                raise OSError("SetInformationJobObject failed")
+            process_handle = getattr(proc, "_handle", None)
+            if process_handle is None or not k32.AssignProcessToJobObject(
+                job, int(process_handle)
+            ):
+                raise OSError("AssignProcessToJobObject failed")
+            return cls(api, job)
+        except Exception:  # noqa: BLE001 - never let job setup break the run
+            if job:
+                try:
+                    k32.CloseHandle(job)
+                except Exception:  # noqa: BLE001
+                    pass
+            return None
+
+    def terminate_and_close(self) -> None:
+        """TerminateJobObject then CloseHandle; idempotent, never raises."""
+        handle, self._handle = self._handle, None
+        if not handle:
+            return
+        try:
+            self._api.k32.TerminateJobObject(handle, _JOB_TERMINATE_EXIT_CODE)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            self._api.k32.CloseHandle(handle)
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def _kill_tree(proc: subprocess.Popen) -> None:
+    """Kill the child and all its descendants; never raises."""
+    if os.name == "nt":
+        _taskkill_tree(proc.pid)
+    else:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except OSError:
+            pass
     try:
         proc.kill()
     except OSError:
@@ -244,7 +429,13 @@ def _run_one(
     argv: list[str], cwd: str, limit_sec: float, env: dict[str, str], cap: int
 ) -> tuple[int, str, dict]:
     """Run one argv without a shell; return (exit_code, stdout_text, info)."""
-    info = {"stdout_truncated": False, "stderr_truncated": False, "timed_out": False}
+    info = {
+        "stdout_truncated": False,
+        "stderr_truncated": False,
+        "timed_out": False,
+        "capture_incomplete": False,
+        "job_object": False,
+    }
     try:
         proc = subprocess.Popen(
             argv,
@@ -261,28 +452,45 @@ def _run_one(
         # Missing executable, missing/invalid cwd, no permission, or any other
         # OS-level failure to start. Non-OSError exceptions propagate.
         return EXIT_MISSING_EXECUTABLE, "", info
+    # Windows: put the child in a kill-on-close Job Object right away so every
+    # descendant dies on any exit path, even after the root has exited.
+    job = _JobObject.attach(proc) if os.name == "nt" else None
+    info["job_object"] = job is not None
     out = _Capture(proc.stdout, cap)
     err = _Capture(proc.stderr, cap)
     try:
-        proc.wait(timeout=limit_sec)
-    except subprocess.TimeoutExpired:
-        info["timed_out"] = True
-        _kill_tree(proc)
         try:
-            proc.wait(timeout=10)
+            proc.wait(timeout=limit_sec)
         except subprocess.TimeoutExpired:
-            pass
-    else:
-        if os.name != "nt":
-            try:  # reap stray members of the process group
-                os.killpg(proc.pid, signal.SIGKILL)
-            except OSError:
+            info["timed_out"] = True
+            if job is not None:
+                job.terminate_and_close()
+            _kill_tree(proc)  # taskkill /T /F fallback (also the no-job path)
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
                 pass
+        else:
+            if job is not None:
+                job.terminate_and_close()
+            elif os.name == "nt":
+                _taskkill_tree(proc.pid)  # no job: best effort, failures ignored
+            else:
+                try:  # reap stray members of the process group
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except OSError:
+                    pass
+    finally:
+        if job is not None:
+            job.terminate_and_close()  # idempotent; covers unexpected exceptions
     out.finish()
     err.finish()
     info["stdout_truncated"] = out.truncated
     info["stderr_truncated"] = err.truncated
-    if info["timed_out"]:
+    info["capture_incomplete"] = out.incomplete or err.incomplete
+    if info["capture_incomplete"]:
+        code = EXIT_CAPTURE_INCOMPLETE
+    elif info["timed_out"]:
         code = EXIT_TIMEOUT
     elif out.truncated or err.truncated:
         code = EXIT_OUTPUT_TRUNCATED
@@ -321,6 +529,11 @@ def _check_env(extra_env: object) -> dict[str, str]:
             or "\0" in value
         ):
             raise ContractError("extra_env: names and values must be valid str")
+        upper = name.upper()
+        if upper in FORBIDDEN_ENV_NAMES or upper.startswith(FORBIDDEN_ENV_PREFIXES):
+            raise ContractError(
+                f"extra_env: {name!r} shadows an allowlisted or loader/search variable"
+            )
     return dict(extra_env)
 
 
@@ -443,7 +656,10 @@ def run_and_sign(
     may be empty) are hashed AFTER the commands ran, resolved against cwd.
 
     If `report` is a dict it is filled with {"commands": [{"stdout_truncated",
-    "stderr_truncated", "timed_out", "skipped_by_deadline"}, ...]}.
+    "stderr_truncated", "timed_out", "capture_incomplete", "job_object",
+    "skipped_by_deadline"}, ...], "capture_incomplete": bool}. "job_object" is
+    True only if the command ran inside a Windows Job Object (always False on
+    POSIX, for commands skipped by the deadline and for -2 start failures).
     """
     valid, manifest_hash, argvs, per_command, deadline_sec_n, env = _prepare(
         manifest=manifest, slot=slot, attempt=attempt, epoch=epoch,
@@ -467,7 +683,8 @@ def run_and_sign(
             outputs.append("")
             infos.append(
                 {"stdout_truncated": False, "stderr_truncated": False,
-                 "timed_out": False, "skipped_by_deadline": True}
+                 "timed_out": False, "capture_incomplete": False,
+                 "job_object": False, "skipped_by_deadline": True}
             )
             continue
         exit_code, stdout, info = _run_one(
@@ -479,6 +696,7 @@ def run_and_sign(
         infos.append(info)
     if report is not None:
         report["commands"] = infos
+        report["capture_incomplete"] = any(info["capture_incomplete"] for info in infos)
 
     executed, skipped, xfail = test_result_parser("\n".join(outputs))
 
