@@ -18,5 +18,5 @@ agents. Source: `team/skills/sdlc-orchestrator/SKILL.md` (kept short on purpose;
 
 Rules: existing project gets one review of current docs and code and one fix pass; no tests or checks
 during coding; only focused tests written and run by the test agents; reviewers use only Claude
-Sonnet 5.5 medium or GPT-5.6 Luna low or medium; the project keeps its own state in `docs/sdlc/STATE.md`.
+Sonnet 5.5 medium or GPT-5.6 Luna low or medium; until the S1 state store (`tools/vst/store.py`) is in use for a project, `docs/sdlc/STATE.md` is the phase authority; once it is in use, the store is the authority and `STATE.md` is its generated read-only view (baseline decision BD-1).
 Artifact templates: `docs/templates/artifact-templates.md`.

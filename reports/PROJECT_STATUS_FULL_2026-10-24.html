@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Full status of the Virtual Scrum Team project</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--fg:#1c1c1c;--mut:#666;--line:#ccc;--bad:#b00020;--warn:#a15c00;--ok:#1b7a3a;--chip:#eee}
+@media(prefers-color-scheme:dark){:root{--bg:#161616;--fg:#e8e8e8;--mut:#9a9a9a;--line:#444;--bad:#ff6b81;--warn:#e0a040;--ok:#5fcf80;--chip:#2a2a2a}}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max-width:1040px;margin:0 auto;padding:16px}
+h2{margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:15px}th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:var(--chip)}
+.bad{color:var(--bad);font-weight:600}.warn{color:var(--warn);font-weight:600}.ok{color:var(--ok);font-weight:600}.mut{color:var(--mut)}
+.bar{display:flex;height:18px;border:1px solid var(--line);border-radius:3px;overflow:hidden;margin:6px 0}
+.bar span{display:block;height:100%}.b-ok{background:var(--ok)}.b-warn{background:var(--warn)}.b-bad{background:var(--bad)}.b-no{background:var(--chip)}
+.box{border:1px solid var(--line);border-left:4px solid var(--warn);padding:8px 12px;margin:12px 0;background:var(--chip)}
+code{background:var(--chip);padding:0 4px;border-radius:3px}
+@media(max-width:700px){table{font-size:13px}}
+</style>
+</head>
+<body>
+<header>
+<h1>Full status of the Virtual Scrum Team project</h1>
+<p class="mut">Date: 2026-10-24. Sources: repository <code>D:\Repo\Virtual_scrum_team</code> (commit log, core/STATE.md, core/BACKLOG.md, blueprint roadmap, DoD, evidence). All figures come from repository files at the time of the report; anything not in the files is marked "not verified".</p>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>Virtual_scrum_team</dd>
+    <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s1-control-plane-core @ 45653fc</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+
+<h2>1. What is happening right now</h2>
+<div class="box">
+<ul>
+<li><b>No background agents:</b> every implementer, test agent and reviewer has finished; nothing is running or being written.</li>
+<li><b>Work is parked on the operator's decision.</b> The S1 code is finished, tested by the agents and checked four times by specialists. The next step is the independent review of the final commit on an allowed model (Sonnet 5.5 or GPT-5.6 Luna) and the operator's decision on push and pull request. Without them the sprint is not closed.</li>
+<li><b>Branch:</b> <code>s1-control-plane-core</code>, 12 commits ahead of <code>main</code>, latest 45653fc. <code>origin/main</code> = 9b5b597; none of the S1 code is on GitHub.</li>
+<li><b>An unexpected commit.</b> Commit 45653fc ("Add S1 independent review request to the repository") was not made in this session. It carries the operator's git identity and changes documents only: the review-request file <code>docs/sdlc/INDEPENDENT_REVIEW_REQUEST_S1.md</code>, record 0026 and log lines. I read it; no code is touched. It looks like a parallel session in the same folder; if it was not you, check.</li>
+<li><b>What I missed against my own rules:</b> process rule v4 item 7 (when testing of the current sprint starts, prepare next-sprint documentation in parallel) was not done - there are no S2 documents. <code>core/BACKLOG.md</code> is stale (VST-007 and VST-008 are in effect closed by code and evidence but still listed open), and <code>core/STATE.md</code> still speaks of "the next local commit" for the zero-cap fix that already exists.</li>
+</ul>
+</div>
+
+<h2>2. How the project is laid out and where we are on the map</h2>
+<p>The project is a unified virtual engineering organization: Virtual Scrum Team as the single SDLC authority (ten phases), isolated workers that never approve their own output, independent reviewers, a gate with signed receipts and a state machine. The blueprint roadmap runs S0-S9. Design baseline 1.0 (2026-10-24) replaces S0-S9 for near-term planning only; the rest follows the blueprint.</p>
+<div class="bar" title="Progress by sprint">
+<span class="b-warn" style="width:5%"></span><span class="b-ok" style="width:5%"></span><span class="b-no" style="width:90%"></span>
+</div>
+<p class="mut">Indicative scale: 10 sprints on the map; S0 partial, S1 code finished, S2-S9 not started. It counts stages, not effort.</p>
+
+<h2>3. Sprints S0-S9: state</h2>
+<table>
+<tr><th>Sprint</th><th>What it must deliver (blueprint exit)</th><th>State</th><th>Facts</th></tr>
+<tr><td>S0 Ground truth</td><td>REPO_REGISTRY, PROFILE_RESOLUTION, TOOLS_CAPABILITY_MATRIX; ADRs for contested decisions; no overwritten files</td><td class="warn">Partial</td><td>Only ADR-0001 (operator decisions) and the in-repository model-policy conflict are resolved. No inventory of repositories, profiles or tools in docs/; the Personal DC AEVE misbinding is not fixed; the workspace <code>AGENTS.md</code> and the global contract are not aligned</td></tr>
+<tr><td>S1 Contracts and core (baseline: control-plane core)</td><td>Schemas, gate function, epoch-fenced state store, signed receipts, end-to-end run with injected failures</td><td class="warn">Code finished, awaiting independent review and PR</td><td>Details in section 4</td></tr>
+<tr><td>S2 Planning router (baseline: isolated worker in a sandbox)</td><td>baseline: sandbox specification (WSL or VM, default-deny network, per-run secrets), candidate bake-off on one crash/resume fixture; blueprint: risk router, 39 roles classified</td><td class="bad">Not started</td><td>No S2 documents; start after S1 acceptance. Deferred into S2: an authenticated reviewer key, runner-derived <code>candidate_head</code>, signing-key isolation</td></tr>
+<tr><td>S3 Worker pilot</td><td>One isolated BMad Loop adapter; compare OpenHands/Aider on controlled fixtures</td><td class="bad">Not started</td><td>Blocked by requirements R-1 to R-6, only partly closed by S1 code (section 6)</td></tr>
+<tr><td>S4 QA automation</td><td>Real test runners, reproducible artifacts</td><td class="bad">Not started</td><td>-</td></tr>
+<tr><td>S5 AEVE gate</td><td>Bounded static review with hashes</td><td class="bad">Not started</td><td>-</td></tr>
+<tr><td>S6 Pull request</td><td>Exact-head evidence from the two test agents (no CI), English PRs</td><td class="bad">Not started</td><td>-</td></tr>
+<tr><td>S7 Reliability</td><td>Races, worker expiry, network, observability</td><td class="warn">Partly pulled forward</td><td>State store, leases, retries, budget moved into S1 per plan and implemented there; network failures, manual mode and observability not started</td></tr>
+<tr><td>S8 End-to-end pilot</td><td>Synthetic sprint, then an approved real one</td><td class="bad">Not started</td><td>-</td></tr>
+<tr><td>S9 Scale</td><td>Broader adapters, 13 gates</td><td class="bad">Not started</td><td>-</td></tr>
+</table>
+<p class="mut">The parallel team expansion plan (FULL_TEAM_EXPANSION_PLAN) has stages P0-P4: P0 (foundation correctness: result schema PASS/FAIL/BLOCKED/NOT_RUN/INCONCLUSIVE, evidence, head binding) is in effect closed by S1 code; P1-P4 (draft the remaining of 39 roles, adapters, adversarial qualification, pilot) are not started. Of the 39 logical roles, the repository defines 6 team agents (business-analyst, product-owner, ui-designer, technical-writer, reporting-analyst, functional test reviewer) and 7 skills; the other roles are a proposal.</p>
+
+<h2>4. Sprint S1 in detail</h2>
+<h3>4.1 Epics</h3>
+<table>
+<tr><th>Epic</th><th>Content</th><th>Code</th><th>Tests (agents)</th></tr>
+<tr><td>E1 Contracts</td><td>Manifest, four receipt types, closed enums, strict validation</td><td class="ok">Done (contracts.py, 633 lines)</td><td class="ok">Green</td></tr>
+<tr><td>E2 Gate</td><td>Pure default-deny verdict function: APPROVE, APPROVED_WITH_WAIVER, MODIFY, NO_GO</td><td class="ok">Done (gate.py, 659 lines)</td><td class="ok">Green</td></tr>
+<tr><td>E3 State store</td><td>SQLite: epoch fencing, leases, slots, budget, keyed event log, STATE view</td><td class="ok">Done (store.py, 1670 lines)</td><td class="ok">Green</td></tr>
+<tr><td>E4 Runner and signing</td><td>Run allowed commands, signed receipt, output and environment limits, Windows Job Object</td><td class="ok">Done (runner.py 765, signing.py 63)</td><td class="ok">Green</td></tr>
+<tr><td>E5 End-to-end run</td><td>19 scenarios: worker death, zombie write, stale head, retry after FAIL, retry on a new head, exact-cap spend, epoch takeover and more</td><td class="ok">Done (slice.py, 846 lines)</td><td class="ok">Green</td></tr>
+<tr><td>E6 Process alignment</td><td>One state authority: the store, STATE.md as a view; wording in SKILL.md, DoD, README, blueprint</td><td class="ok">Done</td><td class="mut">Checked by document reviews</td></tr>
+</table>
+<p>Size: code 4637 lines in <code>tools/vst/</code>, tests 10 461 lines in <code>tests/vst/</code> (six test files plus a shared helper file).</p>
+
+<h3>4.2 S1 timeline (all commits on 2026-10-24)</h3>
+<table>
+<tr><th>Commit</th><th>Event</th></tr>
+<tr><td>768dff9, e0ea991, c786755, f664888</td><td>Code E1...E6 (no tests, per "all code first")</td></tr>
+<tr><td>63e0e35</td><td>First test run: 603 + 18 green, one Windows defect fixed (working directory), artifact binding added</td></tr>
+<tr><td>3e27720</td><td>Fixes after the first review by four specialists (all: MODIFY)</td></tr>
+<tr><td>f1956e2</td><td>Fixes after the second review (shared MAJOR: the head check broke retries)</td></tr>
+<tr><td>176a095</td><td>Fixes after the third review (exact-cap budget, slot bound after takeover)</td></tr>
+<tr><td>4ce6f8a</td><td>Fixes after the fourth check (zero cost cap), status report</td></tr>
+<tr><td>45653fc</td><td>Independent review request stored in the repository (not by me, see section 1)</td></tr>
+</table>
+
+<h3>4.3 Code review rounds of S1</h3>
+<table>
+<tr><th>Round</th><th>Head</th><th>Result</th><th>Main findings</th></tr>
+<tr><td>1</td><td>63e0e35</td><td class="bad">MODIFY from four</td><td>Different chain models in gate and store, success conditions from the receipt itself, unsigned waiver, store did not verify signatures, leases overwritten</td></tr>
+<tr><td>2</td><td>3e27720</td><td class="bad">MODIFY from four</td><td>Shared MAJOR: head check applied to old attempts and markers so a fixed retry could not be approved; epoch takeovers consumed the retry cap; the log anchor could be re-signed</td></tr>
+<tr><td>3</td><td>f1956e2</td><td class="bad">MODIFY from four</td><td>Exact-cap spending lost the result; the slot bound counted earlier epochs; runner environment through a denylist</td></tr>
+<tr><td>4</td><td>176a095</td><td class="warn">MODIFY from one</td><td>Regression: a zero-cost-cap task could not start (fixed)</td></tr>
+</table>
+
+<h3>4.4 Tests</h3>
+<table>
+<tr><th>Set</th><th>Result on the working tree</th></tr>
+<tr><td>E1 + E2 (contracts, gate)</td><td class="ok">863 passed</td></tr>
+<tr><td>E3 + E4 (store, runner)</td><td class="ok">593 passed, 2 skipped (POSIX permission bits; one POSIX/symlink-dependent case)</td></tr>
+<tr><td>E5 (end-to-end, process death)</td><td class="ok">64 passed</td></tr>
+<tr><td>E1, E2, E3, E5 together after the zero-cap fix</td><td class="ok">1205 passed, 1 skipped</td></tr>
+</table>
+<p class="warn">Caveat: tests ran on the working tree, not on the committed head. The zero-cap fix is covered by tests but the fourth reviewer did not re-check it. I ran no tests myself (process rule). There are no mutation runs, by operator decision.</p>
+
+<h2>5. Gates</h2>
+<h3>5.1 Sprint Definition of Done (governance/DEFINITION_OF_DONE.md)</h3>
+<table>
+<tr><th>#</th><th>Requirement</th><th>State</th></tr>
+<tr><td>1</td><td>Every phase has its exit artifact in the phase state</td><td class="mut">Not applicable to S1: it is tooling; no project has been moved to the store yet</td></tr>
+<tr><td>2</td><td>All code committed, each commit with its change record</td><td class="ok">Done: records 0009-0026</td></tr>
+<tr><td>3</td><td>Per-epic tests written and fully run by the two test agents, commands recorded</td><td class="ok">Done on the working tree; evidence in <code>docs/sdlc/evidence/</code> (10 files)</td></tr>
+<tr><td>4</td><td>Specialists reached consensus on the exact head; valid BLOCKER/MAJOR fixed</td><td class="warn">Nearly: no open serious findings on 176a095; the last fix (zero cap) was not re-checked by a reviewer</td></tr>
+<tr><td>5</td><td>GPT-PM approved the exact final head; one PR per sprint; push only on the operator's command</td><td class="bad">Not done: neither GPT-PM nor an independent review on an allowed model; no PR</td></tr>
+<tr><td>6</td><td>product-owner accepted the stories on evidence; reporting-analyst produced the sprint report</td><td class="warn">Status reports exist; no formal product-owner acceptance of stories</td></tr>
+</table>
+
+<h3>5.2 Higher-level gates</h3>
+<table>
+<tr><th>Gate</th><th>State</th></tr>
+<tr><td>Design documentation: review by six agents</td><td class="warn">Passed with verdict MODIFY; the baseline was accepted by the operator for the S1 pilot without an independent review</td></tr>
+<tr><td>Independent review of the baseline on an allowed model</td><td class="bad">Not done</td></tr>
+<tr><td>S1 code: tests</td><td class="ok">Green (working tree)</td></tr>
+<tr><td>S1 code: specialists</td><td class="ok">No open serious findings (except the unreviewed last fix)</td></tr>
+<tr><td>S1 code: independent review</td><td class="bad">Waiting for the operator</td></tr>
+<tr><td>S1 push and pull request</td><td class="bad">Waiting for the operator</td></tr>
+<tr><td>Runtime, autonomous pilot, production, release</td><td class="bad">NO-GO until evidence from S0-S8 (blueprint decision)</td></tr>
+</table>
+
+<h2>6. Review requirements R-1 to R-6 from the blueprint (needed before S3)</h2>
+<table>
+<tr><th>Code</th><th>In plain words</th><th>State</th></tr>
+<tr><td>R-1</td><td>Receipts are signed by a runner outside the worker's trust, the gate derives the result</td><td class="warn">Partial: signing and result derivation are in code; the signing key is still reachable by the process running commands and the "reviewer" is a self-asserted string (both deferred to S2)</td></tr>
+<tr><td>R-2</td><td>The gate has a total default-deny verdict function</td><td class="ok">Implemented and tested</td></tr>
+<tr><td>R-3</td><td>One state store with epoch fencing, STATE.md as a view</td><td class="ok">Implemented in code; no project has actually been moved to the store</td></tr>
+<tr><td>R-4</td><td>Failures never vanish: append-only, lost-worker marker, retry cap</td><td class="ok">Implemented and tested</td></tr>
+<tr><td>R-5</td><td>One ADR on test order, verification owner, CI and no mutation</td><td class="ok">ADR-0001 accepted by the operator; the code does not enforce "no mutation" (convention only)</td></tr>
+<tr><td>R-6</td><td>The 5 concurrent limit and budgets enforced by infrastructure, not manifest fields</td><td class="ok">Slot table and budget ledger in the store, implemented and tested</td></tr>
+</table>
+
+<h2>7. Tasks and backlog</h2>
+<table>
+<tr><th>ID</th><th>Task</th><th>Listed in backlog</th><th>Actually</th></tr>
+<tr><td>VST-001</td><td>Agent turn limits</td><td>done</td><td class="ok">Closed (note: agents still hit the limit on large tasks - split by epic)</td></tr>
+<tr><td>VST-002</td><td>Let design agents save their document</td><td>open</td><td class="warn">Open</td></tr>
+<tr><td>VST-003</td><td>License</td><td>done</td><td class="ok">MIT</td></tr>
+<tr><td>VST-004</td><td>Security reviewer in every pilot sprint</td><td>open</td><td class="warn">Open; in S1 it ran in every round</td></tr>
+<tr><td>VST-005</td><td>Project template docs/sdlc with STATE.md</td><td>open</td><td class="warn">Open</td></tr>
+<tr><td>VST-006</td><td>SQL-tuning agent</td><td>open</td><td class="warn">Open</td></tr>
+<tr><td>VST-007</td><td>Keep the exact record of the final test run</td><td>open</td><td class="ok">In effect closed: 10 evidence files with command, head and counts - the backlog needs updating</td></tr>
+<tr><td>VST-008</td><td>Exact-head rule</td><td>open</td><td class="warn">Closed in the gate code (head check); the orchestrator skill has no wording of the rule - the backlog needs updating</td></tr>
+</table>
+
+<h3>Open decisions and work outside the repository (the operator's)</h3>
+<ul>
+<li>Independent review of the final commit (allowed models: Sonnet 5.5 medium or GPT-5.6 Luna low/medium).</li>
+<li>Decision on pushing the branch and the S1 pull request.</li>
+<li>Align <code>D:\Repo\AGENTS.md</code> (default model GPT-6 Luna instead of the allowed list) and the global contract (four test authors instead of two).</li>
+<li>Reinstall the changed roster and skills into <code>~/.claude</code> with a snapshot and agent lint.</li>
+<li>O-1: whether private repository names (PDCC, ERP, AEVE, PM_Bridge) stay in the public blueprint.</li>
+<li>A local path remains in public history (commit 0a5821b); the operator decided not to rewrite history.</li>
+</ul>
+
+<h2>8. Deferred to S2 and risks</h2>
+<table>
+<tr><th>Deferred</th><th>Why it matters</th></tr>
+<tr><td>Authenticated reviewer key</td><td>Today "independent" review is a string in a receipt signed with the worker key; APPROVE does not prove the review was independent</td></tr>
+<tr><td>Runner-derived <code>candidate_head</code></td><td>Today the caller states the head</td></tr>
+<tr><td>Isolating the signing key from the command process</td><td>A command could in theory reach the key; needs a sandbox</td></tr>
+<tr><td>Detecting a rollback of the whole database</td><td>The keyed anchor catches edits and truncation, not a swap of the whole database</td></tr>
+<tr><td>POSIX, Job Object nesting, unkillable processes</td><td>Checked on Windows only; the kill failure was injected</td></tr>
+</table>
+<p><b>Process risk:</b> four review rounds in a row found new serious defects at the seams between rules, and one defect (zero cap) was introduced by my own fix. Causes and rules are in <code>core/LESSONS_LOG.md</code> (20 entries). Lesson for S2: list the contract boundary values before writing the fix.</p>
+
+<h2>9. Options for the next step (the operator chooses)</h2>
+<table>
+<tr><th>Option</th><th>What happens</th><th>Consequence</th></tr>
+<tr><td><b>A. Independent S1 review, then push and PR (recommended)</b></td><td>You launch the review from the prepared request; with APPROVE or no serious findings, the branch is pushed and one PR opened</td><td>Closes S1 by DoD; S2 can follow. Slowest, but it is a mandatory gate</td></tr>
+<tr><td>B. Prepare S2 documentation in parallel</td><td>On your command I work through baseline S2: sandbox specification, list of deferred items, epic plan; I also refresh the backlog and STATE.md</td><td>Covers the missed v4 rule item 7; does not delay the S1 review; touches no code</td></tr>
+<tr><td>C. Final gate through GPT-PM instead of the independent review</td><td>Send the exact head to PM Bridge</td><td>Matches DoD item 5, but your decision replaced it with an independent review by an allowed model; needs your explicit confirmation</td></tr>
+<tr><td>D. Stop and rethink the approach</td><td>Pause development, analyse why MODIFY repeated</td><td>Lowers the risk of repeats in S2 but postpones S1 acceptance</td></tr>
+</table>
+
+<p class="mut">Sources: core/STATE.md, core/BACKLOG.md, core/DECISION_LOG.md (25 entries), core/LESSONS_LOG.md (20 entries), docs/UNIFIED_ENGINEERING_ORGANIZATION_MASTER_BLUEPRINT_2026-10-23.md (sections 10, 12, 13), docs/DESIGN_BASELINE_AND_IMPLEMENTATION_PLAN_2026-10-24.md, docs/FULL_TEAM_EXPANSION_PLAN_2026-10-23.md, governance/DEFINITION_OF_DONE.md, docs/changes/0001-0026, docs/sdlc/evidence/.</p>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

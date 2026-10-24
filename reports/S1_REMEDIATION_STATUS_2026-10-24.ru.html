@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Статус S1: исправления после ревью</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--fg:#1c1c1c;--mut:#666;--line:#ccc;--bad:#b00020;--warn:#a15c00;--ok:#1b7a3a}
+@media(prefers-color-scheme:dark){:root{--bg:#161616;--fg:#e8e8e8;--mut:#9a9a9a;--line:#444;--bad:#ff6b81;--warn:#e0a040;--ok:#5fcf80}}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max-width:960px;margin:0 auto;padding:16px}
+table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.bad{color:var(--bad)}.warn{color:var(--warn)}.ok{color:var(--ok)}.mut{color:var(--mut)}
+</style>
+</head>
+<body>
+<header>
+<h1>Статус S1: исправления после ревью специалистов</h1>
+<p class="mut">Дата: 2026-10-24. Состояние: код трёх раундов исправлений и правки четвёртой проверки закоммичены локально на ветке s1-control-plane-core, у ревьюеров-специалистов открытых серьёзных замечаний нет, ждёт независимое ревью оператора.</p>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>Virtual_scrum_team</dd>
+    <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s1-control-plane-core @ 176a095</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+
+<h2>1. Итог</h2>
+<p>Первую версию кода S1 четыре специалиста единогласно отклонили (MODIFY). Затем прошли три раунда исправлений и четыре раунда ревью. Последняя проверка нашла один серьёзный дефект (задача с нулевым лимитом стоимости не могла стартовать); он исправлен и покрыт тестами. Других открытых BLOCKER и MAJOR у специалистов нет. Спринт не закрыт: нужно независимое ревью финального коммита на разрешённой модели, затем решение о push и pull request.</p>
+
+<h2>2. Раунды</h2>
+<table>
+<tr><th>Раунд</th><th>Результат ревью</th><th>Что исправлено</th></tr>
+<tr><td>1 (63e0e35)</td><td class="bad">MODIFY у четырёх</td><td>Единая модель цепочки, условия успеха из манифеста, подписанный waiver, проверка подписей и аренд в хранилище, ограничения раннера</td></tr>
+<tr><td>2 (3e27720)</td><td class="bad">MODIFY у четырёх; общий серьёзный дефект: проверка head ломала повторы</td><td>Проверка head только для решающей попытки, лимит повторов по отказам воркера, бюджет от лимита манифеста, проверка якоря журнала, различные ключи, Job Object на Windows</td></tr>
+<tr><td>3 (f1956e2)</td><td class="bad">MODIFY у четырёх; два серьёзных: бюджет «впритык» и граница слота после смены эпохи</td><td>Квитанции допускаются при расходе ровно в лимит, граница слота считается в текущей эпохе, список разрешённых переменных окружения, сверка журнала событий, ключ воркера не равен ключу журнала</td></tr>
+<tr><td>4 (176a095)</td><td class="warn">MODIFY у одного: задача с нулевым лимитом не стартовала</td><td>Исправлено, тесты заменены. Остальное было мелкой документацией</td></tr>
+</table>
+
+<h2>3. Проверено и не проверено</h2>
+<ul>
+<li class="ok">Тесты, написанные агентами, на рабочем дереве перед коммитами: E1 и E2 — 863 прошли; E3 и E4 — 593 прошли, 2 пропущены; E5 — 64 прошли; после последних правок E1, E2, E3 и E5 вместе — 1205 прошли, 1 пропущен. Продуктовых багов тесты в третьем и четвёртом раундах не нашли.</li>
+<li class="warn">Тесты запускались на рабочем дереве, а не на самом коммите; перед коммитом содержимое совпадало. Я сам тесты не запускал.</li>
+<li class="warn">Не проверено: биты прав POSIX и убийство группы процессов (машина Windows), вложенность Job Object под родительским job, процессы, которые действительно не убиваются (сбой имитировался), mutation-прогоны (по вашему решению).</li>
+<li class="bad">Независимого ревью финального коммита на разрешённой модели нет.</li>
+<li class="mut">Отложено в S2: отдельный проверяемый ключ ревьюера (сейчас независимость ревью — заявленная строка, APPROVE её не доказывает), вычисление candidate_head самим раннером, изоляция ключа подписи от процесса с командами, обнаружение отката всей базы к старой копии.</li>
+</ul>
+
+<h2>4. Что нужно от оператора</h2>
+<ul>
+<li>Независимое ревью финального коммита на Sonnet 5.5 или GPT-5.6 Luna; затем решение о push и pull request. Подсказка по scope: tools/vst и записи docs/changes/0015–0025.</li>
+<li>Выравнивание внешних файлов: workspace <code>AGENTS.md</code> (модель по умолчанию), глобальный контракт (число авторов тестов), переустановка roster и skill в <code>~/.claude</code> со снимком и линтом.</li>
+<li>Решение об именах приватных репозиториев в публичном blueprint.</li>
+</ul>
+
+<p class="mut">Записи изменений: docs/changes/0015–0025. Доказательства тестов: docs/sdlc/evidence/s1-remediation-*.md и s1-second-round-*, s1-third-round-*.</p>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S1 status: post-review remediation</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--fg:#1c1c1c;--mut:#666;--line:#ccc;--bad:#b00020;--warn:#a15c00;--ok:#1b7a3a}
+@media(prefers-color-scheme:dark){:root{--bg:#161616;--fg:#e8e8e8;--mut:#9a9a9a;--line:#444;--bad:#ff6b81;--warn:#e0a040;--ok:#5fcf80}}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max-width:960px;margin:0 auto;padding:16px}
+table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.bad{color:var(--bad)}.warn{color:var(--warn)}.ok{color:var(--ok)}.mut{color:var(--mut)}
+</style>
+</head>
+<body>
+<header>
+<h1>S1 status: remediation after the specialist reviews</h1>
+<p class="mut">Date: 2026-10-24. State: the code of three remediation rounds and the fourth-check fixes is committed locally on branch s1-control-plane-core; the specialist reviewers have no open serious findings; the operator's independent review is pending.</p>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>Virtual_scrum_team</dd>
+    <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s1-control-plane-core @ 176a095</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+
+<h2>1. Summary</h2>
+<p>Four specialists unanimously rejected the first S1 code (MODIFY). Three remediation rounds and four review rounds followed. The last check found one serious defect (a task with a zero cost cap could never start); it is fixed and covered by tests. The specialists have no other open BLOCKER or MAJOR. The sprint is not closed: it needs the independent review of the final commit on an allowed model, then the push and pull request decision.</p>
+
+<h2>2. Rounds</h2>
+<table>
+<tr><th>Round</th><th>Review result</th><th>What was fixed</th></tr>
+<tr><td>1 (63e0e35)</td><td class="bad">MODIFY from four</td><td>One chain model, manifest-bound success conditions, signed waiver, signature and lease checks in the store, runner limits</td></tr>
+<tr><td>2 (3e27720)</td><td class="bad">MODIFY from four; one shared MAJOR: the head check broke retries</td><td>Head check on the deciding attempt only, retry cap by worker failures, budget from the manifest cap, verified event anchor, distinct keys, Windows Job Object</td></tr>
+<tr><td>3 (f1956e2)</td><td class="bad">MODIFY from four; two MAJOR: budget boundary and slot bound after takeover</td><td>Receipts allowed when spending exactly the cap, slot bound counted per epoch, environment-variable allowlist, event log cross-check, worker key differs from the event key</td></tr>
+<tr><td>4 (176a095)</td><td class="warn">MODIFY from one: zero-cap task could not start</td><td>Fixed, tests replaced. The rest was minor documentation</td></tr>
+</table>
+
+<h2>3. Verified and unverified</h2>
+<ul>
+<li class="ok">Tests written by the agents, run on the working tree before the commits: E1 and E2 863 passed; E3 and E4 593 passed, 2 skipped; E5 64 passed; after the last fixes E1, E2, E3 and E5 together 1205 passed, 1 skipped. The tests found no product bug in rounds three and four.</li>
+<li class="warn">Tests ran on the working tree, not on the commit itself; the content matched before each commit. The coordinator ran no tests.</li>
+<li class="warn">Not verified: POSIX permission bits and process-group kill (Windows host), Job Object nesting under a parent job, genuinely unkillable processes (failure was injected), mutation runs (by operator decision).</li>
+<li class="bad">There is no independent review of the final commit on an allowed model.</li>
+<li class="mut">Deferred to S2: an authenticated reviewer key (reviewer independence is a self-asserted label, APPROVE does not prove it), runner-derived candidate_head, isolating the signing key from the process running commands, detecting a rollback of the whole database.</li>
+</ul>
+
+<h2>4. Needed from the operator</h2>
+<ul>
+<li>Independent review of the final commit on Sonnet 5.5 or GPT-5.6 Luna; then the push and pull request decision. Suggested scope: tools/vst and change records docs/changes/0015-0025.</li>
+<li>Align external files: workspace <code>AGENTS.md</code> (default model), the global contract (number of test authors), reinstall roster and skill into <code>~/.claude</code> with a snapshot and lint.</li>
+<li>Decide on private repository names in the public blueprint.</li>
+</ul>
+
+<p class="mut">Change records: docs/changes/0015-0025. Test evidence: docs/sdlc/evidence/s1-remediation-*.md, s1-second-round-*, s1-third-round-*.</p>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

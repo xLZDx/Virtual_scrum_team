@@ -1,0 +1,679 @@
+# S1 E1-E4 functional test run (second run, after defect fixes)
+
+- Head: c7867550669a340588d1016ccdbf238ce9124221 (`git rev-parse HEAD`, branch s1-control-plane-core). The defect fixes of change record 0014 are uncommitted working-tree changes on top of this head (tools/vst/runner.py, contracts.py, gate.py, slice.py, schemas/README.md); this run tests that working tree.
+- Python: 3.14.3 (C:\Python314\python.exe), pytest 8.4.2
+- Author/runner: functional-test-reviewer. No CI, no mutation runs. Nothing under tools/vst was edited by the test author.
+- Earlier run (same head, before the fixes): 1 failed, 522 passed of 523. The failure was test_missing_cwd_records_exit_minus_two (runner raised NotADirectoryError for a missing cwd); it is fixed and now passes. The earlier NOT_RUN "modified artifact rejected" is now covered by artifact_digests / artifact_resolver tests.
+- Files: tests/vst/conftest.py, e1e4_helpers.py, test_e1_contracts.py, test_e2_gate.py, test_e3_store.py, test_e4_runner.py
+
+## Commands
+
+- Collect: `C:\Python314\python.exe -m pytest tests/vst/test_e1_contracts.py tests/vst/test_e2_gate.py tests/vst/test_e3_store.py tests/vst/test_e4_runner.py --collect-only -q -p no:cacheprovider`
+- Each epic file once: `C:\Python314\python.exe -m pytest tests/vst/test_eN_*.py -q -p no:cacheprovider` (e1: 251 passed, e2: 149 passed, e3: 83 passed, e4: 120 passed)
+- Complete set once: `C:\Python314\python.exe -m pytest tests/vst/test_e1_contracts.py tests/vst/test_e2_gate.py tests/vst/test_e3_store.py tests/vst/test_e4_runner.py -q -p no:cacheprovider --junitxml=<scratch>/junit.xml` -> 603 passed, 0 failed, 0 skipped, 0 xfailed (75.24 s)
+- E5 set: `C:\Python314\python.exe -m pytest tests/vst/test_e5_slice.py tests/vst/test_e5_process_death.py -q -p no:cacheprovider -rA` -> 18 passed
+
+## Counts (complete-set run)
+
+| File | Collected | Passed | Failed | Skipped | Xfailed |
+|---|---|---|---|---|---|
+| test_e1_contracts.py | 251 | 251 | 0 | 0 | 0 |
+| test_e2_gate.py | 149 | 149 | 0 | 0 | 0 |
+| test_e3_store.py | 83 | 83 | 0 | 0 | 0 |
+| test_e4_runner.py | 120 | 120 | 0 | 0 | 0 |
+| Total | 603 | 603 | 0 | 0 | 0 |
+
+Expected (collected) ids equal executed ids (junit): 603 = 603, identical sets.
+
+## E5 set (authored by another agent, re-run only)
+
+| File | Collected | Passed | Failed | Skipped | Xfailed |
+|---|---|---|---|---|---|
+| test_e5_slice.py | 13 | 13 | 0 | 0 | 0 |
+| test_e5_process_death.py | 5 | 5 | 0 | 0 | 0 |
+| Total | 18 | 18 | 0 | 0 | 0 |
+
+## NOT_RUN
+
+- Mutation / red-green evidence: NOT_RUN by operator decision (ADR-0001).
+- Known limits not tested (documented in schemas/README.md "Known limits"): event-chain tail truncation is undetectable; gate reviewer==author check is defence in depth (unreachable behind derive_result; the rejection by derived-result mismatch is tested); HMAC proves origin within the machine trust boundary, not honesty of the run.
+- Gate artifact re-check is opt-in (artifact_resolver=None means no re-check); tested both ways.
+
+## Executed test ids (expected = collected = executed)
+
+
+### tests/vst/test_e1_contracts.py
+
+- test_manifest_valid_returns_equal_deep_copy
+- test_manifest_missing_each_field_rejected[acceptance]
+- test_manifest_missing_each_field_rejected[base_head]
+- test_manifest_missing_each_field_rejected[cost_cap]
+- test_manifest_missing_each_field_rejected[forbidden_actions]
+- test_manifest_missing_each_field_rejected[model_policy]
+- test_manifest_missing_each_field_rejected[owner_role]
+- test_manifest_missing_each_field_rejected[phase]
+- test_manifest_missing_each_field_rejected[project_id]
+- test_manifest_missing_each_field_rejected[required_receipts]
+- test_manifest_missing_each_field_rejected[retry_cap]
+- test_manifest_missing_each_field_rejected[role_sha256]
+- test_manifest_missing_each_field_rejected[scope]
+- test_manifest_missing_each_field_rejected[skills]
+- test_manifest_missing_each_field_rejected[story_id]
+- test_manifest_missing_each_field_rejected[task_id]
+- test_manifest_missing_each_field_rejected[timeout_sec]
+- test_manifest_missing_each_field_rejected[tools]
+- test_manifest_unknown_field_rejected
+- test_manifest_non_dict_rejected[None]
+- test_manifest_non_dict_rejected[bad1]
+- test_manifest_non_dict_rejected[x]
+- test_manifest_non_dict_rejected[5]
+- test_manifest_wrong_scalar_rejected[phase-True]
+- test_manifest_wrong_scalar_rejected[phase-0]
+- test_manifest_wrong_scalar_rejected[phase-11]
+- test_manifest_wrong_scalar_rejected[phase-4]
+- test_manifest_wrong_scalar_rejected[phase-4.0]
+- test_manifest_wrong_scalar_rejected[timeout_sec-True]
+- test_manifest_wrong_scalar_rejected[timeout_sec-0]
+- test_manifest_wrong_scalar_rejected[timeout_sec--1]
+- test_manifest_wrong_scalar_rejected[cost_cap-True]
+- test_manifest_wrong_scalar_rejected[cost_cap--1]
+- test_manifest_wrong_scalar_rejected[retry_cap-False]
+- test_manifest_wrong_scalar_rejected[retry_cap--1]
+- test_manifest_wrong_scalar_rejected[retry_cap-1.5]
+- test_manifest_wrong_scalar_rejected[task_id-]
+- test_manifest_wrong_scalar_rejected[task_id-   ]
+- test_manifest_wrong_scalar_rejected[task_id-5]
+- test_manifest_wrong_scalar_rejected[project_id-]
+- test_manifest_wrong_scalar_rejected[story_id-None]
+- test_manifest_wrong_scalar_rejected[owner_role-]
+- test_manifest_wrong_scalar_rejected[model_policy-]
+- test_manifest_wrong_scalar_rejected[base_head-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+- test_manifest_wrong_scalar_rejected[base_head-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA]
+- test_manifest_wrong_scalar_rejected[base_head-gggggggggggggggggggggggggggggggggggggggg]
+- test_manifest_wrong_scalar_rejected[role_sha256-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc]
+- test_manifest_wrong_scalar_rejected[role_sha256-CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC]
+- test_manifest_boundary_values_accepted
+- test_manifest_bad_scope_path_rejected[..]
+- test_manifest_bad_scope_path_rejected[../x]
+- test_manifest_bad_scope_path_rejected[a/../b]
+- test_manifest_bad_scope_path_rejected[a\\..\\b]
+- test_manifest_bad_scope_path_rejected[/etc/passwd]
+- test_manifest_bad_scope_path_rejected[\\share\\x]
+- test_manifest_bad_scope_path_rejected[C:/x]
+- test_manifest_bad_scope_path_rejected[C:\\x]
+- test_manifest_bad_scope_path_rejected[C:x]
+- test_manifest_bad_scope_path_rejected[a:b]
+- test_manifest_bad_scope_path_rejected[a//b]
+- test_manifest_bad_scope_path_rejected[src/]
+- test_manifest_bad_scope_path_rejected[./a]
+- test_manifest_bad_scope_path_rejected[a/./b]
+- test_manifest_bad_scope_path_rejected[.]
+- test_manifest_bad_scope_path_rejected[]
+- test_manifest_bad_scope_path_rejected[ a]
+- test_manifest_bad_scope_path_rejected[a ]
+- test_manifest_good_scope_path_accepted[src/app.py]
+- test_manifest_good_scope_path_accepted[a-b/c.d]
+- test_manifest_good_scope_path_accepted[file]
+- test_manifest_good_scope_path_accepted[dir\\file.txt]
+- test_manifest_good_scope_path_accepted[..hidden/x]
+- test_manifest_good_scope_path_accepted[a/.b]
+- test_manifest_scope_empty_duplicate_or_nonlist_rejected
+- test_manifest_lists_of_strings_enforced
+- test_manifest_acceptance_rules
+- test_manifest_duplicate_ids_rejected_for_slots_and_skills
+- test_manifest_zero_required_receipts_rejected
+- test_manifest_bad_required_receipt_entry_rejected[slot0]
+- test_manifest_bad_required_receipt_entry_rejected[slot1]
+- test_manifest_bad_required_receipt_entry_rejected[slot2]
+- test_manifest_bad_required_receipt_entry_rejected[slot3]
+- test_manifest_bad_required_receipt_entry_rejected[slot4]
+- test_manifest_bad_required_receipt_entry_rejected[tests]
+- test_manifest_bad_skill_rejected[skill0]
+- test_manifest_bad_skill_rejected[skill1]
+- test_manifest_bad_skill_rejected[skill2]
+- test_manifest_bad_skill_rejected[skill3]
+- test_receipt_valid_each_type_returns_deep_copy[Documentation]
+- test_receipt_valid_each_type_returns_deep_copy[IndependentReview]
+- test_receipt_valid_each_type_returns_deep_copy[StaticAnalysis]
+- test_receipt_valid_each_type_returns_deep_copy[TestRun]
+- test_receipt_missing_each_field_rejected[Documentation]
+- test_receipt_missing_each_field_rejected[IndependentReview]
+- test_receipt_missing_each_field_rejected[StaticAnalysis]
+- test_receipt_missing_each_field_rejected[TestRun]
+- test_receipt_unknown_field_rejected[Documentation]
+- test_receipt_unknown_field_rejected[IndependentReview]
+- test_receipt_unknown_field_rejected[StaticAnalysis]
+- test_receipt_unknown_field_rejected[TestRun]
+- test_receipt_bad_type_value_rejected[None]
+- test_receipt_bad_type_value_rejected[x]
+- test_receipt_bad_type_value_rejected[bad2]
+- test_receipt_bad_type_value_rejected[5]
+- test_receipt_bad_type_value_rejected[bad4]
+- test_receipt_bad_type_value_rejected[bad5]
+- test_receipt_non_dict_rejected
+- test_receipt_wrong_common_value_rejected[result-pass]
+- test_receipt_wrong_common_value_rejected[result-SKIPPED]
+- test_receipt_wrong_common_value_rejected[result-True]
+- test_receipt_wrong_common_value_rejected[result-None]
+- test_receipt_wrong_common_value_rejected[attempt-True]
+- test_receipt_wrong_common_value_rejected[attempt-0]
+- test_receipt_wrong_common_value_rejected[attempt-1]
+- test_receipt_wrong_common_value_rejected[attempt-1.0]
+- test_receipt_wrong_common_value_rejected[epoch-True]
+- test_receipt_wrong_common_value_rejected[epoch-0]
+- test_receipt_wrong_common_value_rejected[epoch-1.5]
+- test_receipt_wrong_common_value_rejected[candidate_head-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+- test_receipt_wrong_common_value_rejected[candidate_head-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA]
+- test_receipt_wrong_common_value_rejected[role_sha256-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc]
+- test_receipt_wrong_common_value_rejected[signature-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+- test_receipt_wrong_common_value_rejected[signature-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA]
+- test_receipt_wrong_common_value_rejected[signature-None]
+- test_receipt_wrong_common_value_rejected[receipt_id-]
+- test_receipt_wrong_common_value_rejected[task_id- ]
+- test_receipt_wrong_common_value_rejected[slot-]
+- test_receipt_wrong_common_value_rejected[runner_id-3]
+- test_receipt_wrong_common_value_rejected[resolved_model-]
+- test_receipt_wrong_common_value_rejected[invocation_id-None]
+- test_receipt_wrong_common_value_rejected[created_at-]
+- test_receipt_prev_hash_null_iff_attempt_one
+- test_testrun_bad_field_rejected[expected_test_ids-t1]
+- test_testrun_bad_field_rejected[executed_test_ids-value1]
+- test_testrun_bad_field_rejected[skipped_test_ids-value2]
+- test_testrun_bad_field_rejected[xfail_test_ids-None]
+- test_testrun_bad_field_rejected[covered_acceptance-value4]
+- test_testrun_bad_field_rejected[commands-value5]
+- test_testrun_bad_field_rejected[commands-None]
+- test_testrun_bad_field_rejected[commands-value7]
+- test_testrun_bad_field_rejected[commands-value8]
+- test_testrun_bad_field_rejected[commands-value9]
+- test_testrun_bad_field_rejected[commands-value10]
+- test_testrun_bad_field_rejected[commands-value11]
+- test_testrun_bad_field_rejected[commands-value12]
+- test_testrun_bad_field_rejected[commands-value13]
+- test_testrun_negative_exit_code_is_a_valid_integer
+- test_other_types_bad_field_rejected[StaticAnalysis-coverage-full]
+- test_other_types_bad_field_rejected[StaticAnalysis-coverage-None]
+- test_other_types_bad_field_rejected[StaticAnalysis-covered_rules-R1]
+- test_other_types_bad_field_rejected[StaticAnalysis-unsupported_rules-value3]
+- test_other_types_bad_field_rejected[IndependentReview-signed_verdict-APPROVED_WITH_WAIVER]
+- test_other_types_bad_field_rejected[IndependentReview-signed_verdict-PASS]
+- test_other_types_bad_field_rejected[IndependentReview-reviewer_principal-]
+- test_other_types_bad_field_rejected[IndependentReview-author_principal-None]
+- test_other_types_bad_field_rejected[IndependentReview-findings-value8]
+- test_other_types_bad_field_rejected[Documentation-check_description-]
+- test_other_types_bad_field_rejected[Documentation-check_description-None]
+- test_other_types_bad_field_rejected[Documentation-covered_acceptance-AC-1]
+- test_receipt_type_specific_fields_not_interchangeable
+- test_derive_testrun_pass_when_everything_matches
+- test_derive_testrun_zero_executed_is_inconclusive_even_with_failing_exit
+- test_derive_testrun_fail_cases[overrides0]
+- test_derive_testrun_fail_cases[overrides1]
+- test_derive_testrun_fail_cases[overrides2]
+- test_derive_testrun_fail_cases[overrides3]
+- test_derive_testrun_fail_cases[overrides4]
+- test_derive_testrun_fail_cases[overrides5]
+- test_derive_testrun_fail_cases[overrides6]
+- test_derive_testrun_fail_cases[overrides7]
+- test_derive_testrun_fail_cases[overrides8]
+- test_derive_testrun_id_order_irrelevant
+- test_derive_static_analysis
+- test_derive_independent_review
+- test_derive_documentation_keeps_pass_and_fail_only
+- test_derive_non_approving_results_accepted_as_given[BLOCKED-Documentation]
+- test_derive_non_approving_results_accepted_as_given[BLOCKED-IndependentReview]
+- test_derive_non_approving_results_accepted_as_given[BLOCKED-StaticAnalysis]
+- test_derive_non_approving_results_accepted_as_given[BLOCKED-TestRun]
+- test_derive_non_approving_results_accepted_as_given[INCONCLUSIVE-Documentation]
+- test_derive_non_approving_results_accepted_as_given[INCONCLUSIVE-IndependentReview]
+- test_derive_non_approving_results_accepted_as_given[INCONCLUSIVE-StaticAnalysis]
+- test_derive_non_approving_results_accepted_as_given[INCONCLUSIVE-TestRun]
+- test_derive_non_approving_results_accepted_as_given[NOT_RUN-Documentation]
+- test_derive_non_approving_results_accepted_as_given[NOT_RUN-IndependentReview]
+- test_derive_non_approving_results_accepted_as_given[NOT_RUN-StaticAnalysis]
+- test_derive_non_approving_results_accepted_as_given[NOT_RUN-TestRun]
+- test_derive_given_pass_or_fail_is_compared_with_computed_value
+- test_derive_unknown_type_raises
+- test_derive_unknown_type_with_non_approving_result_returns_given
+- test_canonical_bytes_exact_form
+- test_canonical_bytes_key_order_independent
+- test_canonical_bytes_unserialisable_raises_contract_error[nan]
+- test_canonical_bytes_unserialisable_raises_contract_error[inf]
+- test_canonical_bytes_unserialisable_raises_contract_error[bad2]
+- test_canonical_bytes_unserialisable_raises_contract_error[bad3]
+- test_canonical_bytes_unserialisable_raises_contract_error[bad4]
+- test_receipt_sha256_matches_independent_computation_and_is_stable
+- test_receipt_sha256_sensitive_to_every_field[Documentation]
+- test_receipt_sha256_sensitive_to_every_field[IndependentReview]
+- test_receipt_sha256_sensitive_to_every_field[StaticAnalysis]
+- test_receipt_sha256_sensitive_to_every_field[TestRun]
+- test_receipt_sha256_sensitive_to_nested_command_fields
+- test_receipt_sha256_includes_signature
+- test_gate_decision_valid_and_deep_copy
+- test_gate_decision_missing_field_rejected[acceptance_unmet]
+- test_gate_decision_missing_field_rejected[candidate_head]
+- test_gate_decision_missing_field_rejected[epoch]
+- test_gate_decision_missing_field_rejected[human_approvals]
+- test_gate_decision_missing_field_rejected[reasons]
+- test_gate_decision_missing_field_rejected[required_receipt_hashes]
+- test_gate_decision_missing_field_rejected[task_id]
+- test_gate_decision_missing_field_rejected[unresolved_findings]
+- test_gate_decision_missing_field_rejected[verdict]
+- test_gate_decision_missing_field_rejected[waiver_record]
+- test_gate_decision_unknown_field_and_enum_rejected
+- test_gate_decision_bad_values_rejected[kw0]
+- test_gate_decision_bad_values_rejected[kw1]
+- test_gate_decision_bad_values_rejected[kw2]
+- test_gate_decision_bad_values_rejected[kw3]
+- test_gate_decision_bad_values_rejected[kw4]
+- test_gate_decision_bad_values_rejected[kw5]
+- test_gate_decision_bad_values_rejected[kw6]
+- test_gate_decision_bad_values_rejected[kw7]
+- test_gate_decision_bad_values_rejected[kw8]
+- test_gate_decision_bad_values_rejected[kw9]
+- test_gate_decision_allows_empty_echo_strings_and_epoch_zero
+- test_gate_decision_waiver_record_iff_approved_with_waiver
+- test_gate_decision_approve_requires_no_reasons_and_no_unmet
+- test_validate_manifest_with_documentation_slot_fixture_is_valid
+- test_artifact_digests_missing_field_rejected_by_name
+- test_artifact_digests_valid_values_accepted_and_deep_copied
+- test_artifact_digests_non_dict_rejected[None]
+- test_artifact_digests_non_dict_rejected[bad1]
+- test_artifact_digests_non_dict_rejected[x]
+- test_artifact_digests_non_dict_rejected[bad3]
+- test_artifact_digests_non_dict_rejected[5]
+- test_artifact_digests_empty_key_rejected[]
+- test_artifact_digests_empty_key_rejected[   ]
+- test_artifact_digests_non_hex_value_rejected[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+- test_artifact_digests_non_hex_value_rejected[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+- test_artifact_digests_non_hex_value_rejected[AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA]
+- test_artifact_digests_non_hex_value_rejected[gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg]
+- test_artifact_digests_non_hex_value_rejected[]
+- test_artifact_digests_non_hex_value_rejected[None]
+- test_artifact_digests_non_hex_value_rejected[5]
+- test_artifact_digests_non_hex_value_rejected[value7]
+- test_zero_digest_is_a_valid_value_but_derives_fail
+- test_zero_digest_fails_even_when_everything_else_passes_and_when_nothing_executed
+- test_zero_digest_with_given_non_approving_result_is_accepted_as_given
+- test_receipt_sha256_sensitive_to_artifact_digest_value
+
+### tests/vst/test_e2_gate.py
+
+- test_approve_only_when_fully_satisfied
+- test_approve_independent_of_receipt_order
+- test_decision_is_deterministic_and_does_not_alias_inputs
+- test_extra_acceptance_ids_covered_by_receipts_do_not_block
+- test_missing_required_receipt_is_not_approval[tests-unmet0]
+- test_missing_required_receipt_is_not_approval[static-unmet1]
+- test_missing_required_receipt_is_not_approval[review-unmet2]
+- test_no_receipts_gives_modify_with_everything_unmet
+- test_unlisted_failing_receipt_blocks_approval_even_if_all_required_pass
+- test_unlisted_passing_receipt_also_blocks_approval
+- test_receipt_type_mismatch_is_hard_and_slot_stays_unsatisfied
+- test_receipt_of_another_task_is_rejected_not_counted
+- test_receipt_of_another_task_added_to_complete_set_blocks_approval
+- test_malformed_receipt_gives_hard_reason_and_is_excluded
+- test_non_dict_receipt_item_does_not_raise
+- test_stale_head_one_receipt_is_excluded_and_blocks
+- test_stale_epoch_one_receipt_is_excluded_and_blocks
+- test_replay_of_valid_set_against_other_head_is_no_go
+- test_replay_of_valid_set_against_newer_epoch_is_no_go
+- test_replay_against_another_task_manifest_is_not_approval
+- test_stale_plus_wrong_signature_all_own_receipts_still_no_go
+- test_forged_unsigned_receipt_rejected
+- test_signature_by_wrong_key_rejected
+- test_post_signing_tamper_rejected[runner_id-attacker]
+- test_post_signing_tamper_rejected[covered_acceptance-value1]
+- test_post_signing_tamper_rejected[created_at-2030-01-01]
+- test_post_signing_tamper_rejected[commands-value3]
+- test_result_not_matching_derived_rejected_even_with_valid_signature
+- test_testrun_claiming_pass_without_evidence_rejected[overrides0]
+- test_testrun_claiming_pass_without_evidence_rejected[overrides1]
+- test_testrun_claiming_pass_without_evidence_rejected[overrides2]
+- test_static_partial_coverage_claiming_pass_rejected
+- test_static_partial_honest_inconclusive_is_unmet_slot
+- test_retry_after_fail_is_approved_but_failure_is_retained
+- test_every_non_pass_earlier_attempt_is_retained[FAIL]
+- test_every_non_pass_earlier_attempt_is_retained[NOT_RUN]
+- test_every_non_pass_earlier_attempt_is_retained[BLOCKED]
+- test_every_non_pass_earlier_attempt_is_retained[INCONCLUSIVE]
+- test_earlier_pass_is_not_listed_as_finding
+- test_later_failure_overrides_earlier_pass
+- test_three_attempt_chain_valid
+- test_attempt_chain_wrong_prev_hash_is_hard_reason
+- test_attempt_gap_is_hard_reason
+- test_chain_not_starting_at_one_is_hard_reason
+- test_duplicate_attempt_number_is_hard_reason
+- test_replayed_identical_receipt_twice_is_hard_reason
+- test_broken_chain_still_retains_earlier_failure
+- test_acceptance_not_covered_blocks_approval
+- test_acceptance_union_across_slots_counts
+- test_acceptance_from_non_pass_slot_does_not_count
+- test_non_approving_slot_result_is_unmet_and_not_approve[NOT_RUN]
+- test_non_approving_slot_result_is_unmet_and_not_approve[INCONCLUSIVE]
+- test_non_approving_slot_result_is_unmet_and_not_approve[BLOCKED]
+- test_non_approving_review_slot_is_not_approve[NOT_RUN]
+- test_non_approving_review_slot_is_not_approve[INCONCLUSIVE]
+- test_non_approving_review_slot_is_not_approve[BLOCKED]
+- test_supervisor_style_documentation_blocked_receipt_is_unmet
+- test_reviewer_equal_author_claiming_pass_is_rejected
+- test_reviewer_equal_author_honest_fail_is_unmet
+- test_review_signed_modify_is_not_approval
+- test_valid_waiver_for_not_run_slot_gives_approved_with_waiver
+- test_not_run_without_waiver_is_never_approve
+- test_waiver_may_cover_more_than_needed
+- test_waiver_for_missing_slot_receipt
+- test_invalid_waiver_leaves_modify[kw0-waiver head != current head]
+- test_invalid_waiver_leaves_modify[kw1-slot 'tests' is not waived]
+- test_invalid_waiver_leaves_modify[kw2-slot 'tests' is not waived]
+- test_invalid_waiver_leaves_modify[kw3-acceptance 'AC-1' is not waived]
+- test_invalid_waiver_leaves_modify[kw4-acceptance 'AC-1' is not waived]
+- test_invalid_waiver_leaves_modify[kw5-operator must be a non-empty string]
+- test_invalid_waiver_leaves_modify[kw6-operator must be a non-empty string]
+- test_invalid_waiver_leaves_modify[kw7-record_id must be a non-empty string]
+- test_invalid_waiver_leaves_modify[kw8-expires_epoch_or_date must be a non-empty string]
+- test_invalid_waiver_leaves_modify[kw9-waived_slots must be a list of strings]
+- test_invalid_waiver_leaves_modify[kw10-waived_acceptance must be a list of strings]
+- test_invalid_waiver_leaves_modify[kw11-operator must be a non-empty string]
+- test_waiver_missing_field_rejected[record_id]
+- test_waiver_missing_field_rejected[operator]
+- test_waiver_missing_field_rejected[waived_slots]
+- test_waiver_missing_field_rejected[waived_acceptance]
+- test_waiver_missing_field_rejected[head]
+- test_waiver_missing_field_rejected[expires_epoch_or_date]
+- test_waiver_unknown_field_rejected
+- test_non_dict_waiver_rejected[W-1]
+- test_non_dict_waiver_rejected[bad1]
+- test_non_dict_waiver_rejected[5]
+- test_non_dict_waiver_rejected[True]
+- test_waiver_ignored_when_nothing_is_unmet
+- test_waiver_cannot_cover_hard_reason
+- test_waiver_cannot_cover_forged_signature
+- test_waiver_cannot_cover_broken_chain
+- test_waiver_cannot_rescue_all_stale_no_go
+- test_waiver_for_other_head_does_not_approve_current_head
+- test_invalid_manifest_is_no_go_with_echoed_task_id
+- test_non_dict_manifest_is_no_go_not_exception[None]
+- test_non_dict_manifest_is_no_go_not_exception[x]
+- test_non_dict_manifest_is_no_go_not_exception[bad2]
+- test_non_dict_manifest_is_no_go_not_exception[5]
+- test_manifest_with_zero_required_receipts_is_no_go
+- test_bad_gate_inputs_are_no_go[kwargs0-current_head]
+- test_bad_gate_inputs_are_no_go[kwargs1-current_head]
+- test_bad_gate_inputs_are_no_go[kwargs2-current_head]
+- test_bad_gate_inputs_are_no_go[kwargs3-current_epoch]
+- test_bad_gate_inputs_are_no_go[kwargs4-current_epoch]
+- test_bad_gate_inputs_are_no_go[kwargs5-current_epoch]
+- test_bad_gate_inputs_are_no_go[kwargs6-current_epoch]
+- test_bad_gate_inputs_are_no_go[kwargs7-key]
+- test_bad_gate_inputs_are_no_go[kwargs8-key]
+- test_bad_gate_inputs_are_no_go[kwargs9-key]
+- test_receipts_not_a_list_is_no_go[None]
+- test_receipts_not_a_list_is_no_go[bad1]
+- test_receipts_not_a_list_is_no_go[x]
+- test_receipts_not_a_list_is_no_go[bad3]
+- test_bytearray_key_accepted
+- test_never_approve_when_any_hard_or_soft_reason_exists[blocked]
+- test_never_approve_when_any_hard_or_soft_reason_exists[empty]
+- test_never_approve_when_any_hard_or_soft_reason_exists[forged]
+- test_never_approve_when_any_hard_or_soft_reason_exists[gap]
+- test_never_approve_when_any_hard_or_soft_reason_exists[inconclusive]
+- test_never_approve_when_any_hard_or_soft_reason_exists[lying]
+- test_never_approve_when_any_hard_or_soft_reason_exists[missing]
+- test_never_approve_when_any_hard_or_soft_reason_exists[not_run]
+- test_never_approve_when_any_hard_or_soft_reason_exists[other_task]
+- test_never_approve_when_any_hard_or_soft_reason_exists[self_review]
+- test_never_approve_when_any_hard_or_soft_reason_exists[stale_epoch]
+- test_never_approve_when_any_hard_or_soft_reason_exists[stale_head]
+- test_never_approve_when_any_hard_or_soft_reason_exists[type_mismatch]
+- test_never_approve_when_any_hard_or_soft_reason_exists[uncovered]
+- test_never_approve_when_any_hard_or_soft_reason_exists[unlisted]
+- test_hard_reason_scenarios_are_never_waivable[unlisted]
+- test_hard_reason_scenarios_are_never_waivable[stale_head]
+- test_hard_reason_scenarios_are_never_waivable[stale_epoch]
+- test_hard_reason_scenarios_are_never_waivable[forged]
+- test_hard_reason_scenarios_are_never_waivable[lying]
+- test_hard_reason_scenarios_are_never_waivable[gap]
+- test_hard_reason_scenarios_are_never_waivable[other_task]
+- test_hard_reason_scenarios_are_never_waivable[type_mismatch]
+- test_inputs_are_not_mutated_in_any_scenario
+- test_resigned_tamper_with_stolen_key_would_pass_only_with_valid_derived_result
+- test_resolver_matching_digest_keeps_approve_and_receives_the_path
+- test_resolver_mismatching_digest_is_hard_reason_and_receipt_invalid
+- test_resolver_returning_none_is_rejected
+- test_raising_resolver_is_default_deny_not_an_exception
+- test_no_resolver_means_artifacts_are_not_rechecked
+- test_resolver_not_called_for_receipts_without_artifacts_or_other_types
+- test_resolver_checks_every_artifact_of_the_receipt
+- test_resolver_mismatch_is_not_waivable
+- test_resolver_not_consulted_for_receipt_already_invalid
+- test_zero_digest_receipt_claiming_pass_is_rejected_as_derived_mismatch
+
+### tests/vst/test_e3_store.py
+
+- test_open_story_starts_at_epoch_one_without_owner
+- test_open_story_duplicate_and_unknown_story_errors
+- test_open_story_bad_arguments[args0]
+- test_open_story_bad_arguments[args1]
+- test_open_story_bad_arguments[args2]
+- test_open_story_bad_arguments[args3]
+- test_acquire_epoch_bumps_and_returns_new_epoch
+- test_second_acquire_while_owner_live_fails_and_keeps_epoch
+- test_same_owner_cannot_reacquire_while_live
+- test_acquire_after_ttl_succeeds_and_old_epoch_is_fenced
+- test_acquire_epoch_one_instant_before_expiry_still_fails
+- test_two_store_instances_on_one_file_only_one_wins
+- test_concurrent_acquire_exactly_one_holds_the_epoch
+- test_acquire_epoch_bad_arguments
+- test_renew_epoch_extends_liveness_without_changing_epoch
+- test_renew_epoch_rejects_non_owner_and_expired_owner
+- test_release_epoch_owner_only_then_next_acquire_succeeds
+- test_release_epoch_without_owner_fails
+- test_acquire_lease_takes_lease_and_lowest_free_slot
+- test_no_free_slot_rejected_and_leaves_no_lease_row
+- test_stale_epoch_lease_rejected_and_takes_no_slot
+- test_live_lease_blocks_second_acquire_for_same_task
+- test_acquire_lease_unknown_story_and_bad_args
+- test_expired_lease_is_reaped_on_next_acquire_and_slot_reused
+- test_attempt_must_increase_after_release
+- test_lost_attempt_must_be_marked_before_retry
+- test_lost_attempt_with_receipt_needs_no_marker
+- test_heartbeat_extends_lease_beyond_original_expiry
+- test_heartbeat_rejections
+- test_release_lease_frees_slot_and_second_release_fails
+- test_reap_expired_returns_only_expired_and_is_idempotent
+- test_append_receipt_roundtrip_preserves_body
+- test_append_receipt_chain_of_three_and_independent_slots
+- test_append_receipt_stale_or_future_epoch_rejected
+- test_append_receipt_attempt_gap_rejected
+- test_append_receipt_wrong_prev_hash_rejected
+- test_append_receipt_repeated_attempt_rejected
+- test_append_receipt_duplicate_receipt_id_rejected
+- test_append_invalid_receipt_and_unknown_story
+- test_failed_append_leaves_no_event
+- test_receipts_survive_reopen
+- test_raw_update_delete_of_receipts_and_events_fail[UPDATE receipts SET slot = 'x']
+- test_raw_update_delete_of_receipts_and_events_fail[UPDATE receipts SET body = '{}']
+- test_raw_update_delete_of_receipts_and_events_fail[DELETE FROM receipts]
+- test_raw_update_delete_of_receipts_and_events_fail[UPDATE events SET payload = 'x']
+- test_raw_update_delete_of_receipts_and_events_fail[UPDATE events SET hash = 'x']
+- test_raw_update_delete_of_receipts_and_events_fail[DELETE FROM events]
+- test_append_only_violation_inside_store_transaction_maps_to_store_error
+- test_empty_event_chain_verifies
+- test_event_chain_links_to_genesis_and_grows
+- test_record_event_argument_validation
+- test_tampered_event_is_detected_on_a_copy[actor]
+- test_tampered_event_is_detected_on_a_copy[delete_first]
+- test_tampered_event_is_detected_on_a_copy[delete_middle]
+- test_tampered_event_is_detected_on_a_copy[hash_only]
+- test_tampered_event_is_detected_on_a_copy[kind]
+- test_tampered_event_is_detected_on_a_copy[payload_of_first]
+- test_tampered_event_is_detected_on_a_copy[payload_of_last]
+- test_tampered_event_is_detected_on_a_copy[prev_hash_only]
+- test_tampered_event_is_detected_on_a_copy[ts]
+- test_charge_returns_remaining_and_allows_exact_cap
+- test_charge_over_cap_raises_charges_nothing_and_commits_event
+- test_charge_unknown_task_and_bad_amount
+- test_zero_cap_rejects_any_positive_charge
+- test_set_budget_preserves_spent_and_validates
+- test_supervisor_writes_worker_lost_receipt_for_reaped_lease
+- test_supervisor_receipt_is_a_non_approval_for_the_gate
+- test_supervisor_skips_lease_that_already_has_a_receipt_but_marks_it
+- test_supervisor_ignores_live_and_released_leases
+- test_supervisor_uses_first_slot_when_manifest_has_no_documentation_slot
+- test_supervisor_candidate_head_comes_from_latest_receipt_of_task
+- test_supervisor_retry_exhausted_boundary
+- test_supervisor_retry_cap_zero_exhausts_on_second_attempt
+- test_supervisor_with_invalid_manifest_raises_and_rolls_back
+- test_supervisor_requires_runner_id_and_key
+- test_zombie_late_receipt_after_fencing_is_rejected
+- test_mark_budget_exceeded_writes_signed_blocked_receipt_and_event
+- test_mark_budget_exceeded_rejects_task_mismatch_and_bad_manifest
+- test_mark_budget_exceeded_makes_gate_non_approving
+- test_render_state_md_is_deterministic_and_marked_generated
+- test_render_state_md_identical_for_identical_histories
+- test_render_state_md_reflects_state_changes
+- test_render_state_md_is_read_only
+
+### tests/vst/test_e4_runner.py
+
+- test_harmless_command_produces_signed_passing_testrun
+- test_receipt_carries_every_caller_supplied_field
+- test_failing_command_nonzero_exit_gives_fail
+- test_all_commands_run_and_recorded_even_after_a_failure
+- test_parser_receives_joined_stdout_in_order
+- test_timeout_records_exit_minus_one_and_fails
+- test_missing_executable_records_exit_minus_two
+- test_missing_cwd_records_exit_minus_two
+- test_no_shell_metacharacters_are_not_interpreted
+- test_command_runs_in_the_given_cwd
+- test_empty_or_malformed_commands_rejected[bad0]
+- test_empty_or_malformed_commands_rejected[None]
+- test_empty_or_malformed_commands_rejected[python]
+- test_empty_or_malformed_commands_rejected[bad3]
+- test_empty_or_malformed_commands_rejected[bad4]
+- test_empty_or_malformed_commands_rejected[bad5]
+- test_empty_or_malformed_commands_rejected[bad6]
+- test_empty_or_malformed_commands_rejected[x]
+- test_empty_or_malformed_commands_rejected[bad8]
+- test_rejected_commands_do_not_execute_anything
+- test_invalid_receipt_fields_rejected[over0]
+- test_invalid_receipt_fields_rejected[over1]
+- test_invalid_receipt_fields_rejected[over2]
+- test_invalid_receipt_fields_rejected[over3]
+- test_invalid_receipt_fields_rejected[over4]
+- test_invalid_receipt_fields_rejected[over5]
+- test_invalid_receipt_fields_rejected[over6]
+- test_invalid_receipt_fields_rejected[over7]
+- test_invalid_key_rejected[]
+- test_invalid_key_rejected[string-key]
+- test_invalid_key_rejected[None]
+- test_mismatched_executed_vs_expected_is_not_pass
+- test_output_injection_of_extra_test_ids_does_not_make_pass
+- test_output_injection_of_missing_ids_cannot_be_hidden
+- test_skipped_or_xfail_ids_prevent_pass
+- test_zero_executed_is_inconclusive_not_pass
+- test_empty_expected_never_passes
+- test_parser_returning_blank_ids_is_rejected
+- test_parser_exception_propagates_instead_of_silent_pass
+- test_result_is_computed_not_caller_controlled
+- test_key_never_appears_in_receipt
+- test_runner_writes_nothing_under_cwd_and_key_not_on_disk
+- test_key_does_not_leak_into_cwd_even_with_preexisting_files
+- test_key_is_not_visible_to_the_child_process
+- test_signature_verifies_and_is_64_hex
+- test_signature_is_deterministic_for_same_inputs
+- test_every_field_tamper_breaks_verification
+- test_nested_command_tamper_breaks_verification
+- test_wrong_key_fails_and_bad_key_raises
+- test_verify_non_dict_or_bad_signature_is_false_not_error
+- test_sign_refuses_receipt_that_already_has_signature
+- test_sign_matches_independent_hmac_over_canonical_bytes
+- test_receipt_without_signature_helper_does_not_mutate
+- test_runner_receipt_is_approved_by_gate_at_its_head_and_epoch
+- test_replay_against_another_head_is_rejected
+- test_replay_against_another_epoch_is_rejected
+- test_replay_against_another_task_is_rejected
+- test_forged_unsigned_and_wrong_key_receipts_are_rejected
+- test_edited_exit_code_after_signing_is_rejected
+- test_retry_after_fail_through_runner_is_approved_with_retained_failure
+- test_retry_with_wrong_prev_hash_is_rejected
+- test_zero_executed_receipt_never_satisfies_gate
+- test_file_sha256_known_vectors
+- test_file_sha256_chunk_boundaries_match_hashlib[1]
+- test_file_sha256_chunk_boundaries_match_hashlib[65535]
+- test_file_sha256_chunk_boundaries_match_hashlib[65536]
+- test_file_sha256_chunk_boundaries_match_hashlib[65537]
+- test_file_sha256_chunk_boundaries_match_hashlib[200000]
+- test_file_sha256_detects_one_byte_modification
+- test_file_sha256_missing_file_raises
+- test_artifact_digests_maps_each_path
+- test_artifacts_are_hashed_after_the_commands_ran
+- test_absolute_artifact_path_is_hashed
+- test_empty_artifact_paths_gives_empty_digests
+- test_missing_artifact_gets_zero_digest_and_fail
+- test_artifact_in_missing_directory_is_zero_digest
+- test_modified_artifact_is_rejected_by_gate_resolver
+- test_deleted_artifact_is_rejected_by_gate_resolver
+- test_artifact_digest_tamper_after_signing_is_rejected
+- test_invalid_inputs_raise_before_any_subprocess_starts[0-task_id]
+- test_invalid_inputs_raise_before_any_subprocess_starts[1-slot]
+- test_invalid_inputs_raise_before_any_subprocess_starts[2-resolved_model]
+- test_invalid_inputs_raise_before_any_subprocess_starts[3-invocation_id]
+- test_invalid_inputs_raise_before_any_subprocess_starts[4-runner_id]
+- test_invalid_inputs_raise_before_any_subprocess_starts[5-created_at]
+- test_invalid_inputs_raise_before_any_subprocess_starts[6-attempt]
+- test_invalid_inputs_raise_before_any_subprocess_starts[7-attempt]
+- test_invalid_inputs_raise_before_any_subprocess_starts[8-epoch]
+- test_invalid_inputs_raise_before_any_subprocess_starts[9-epoch]
+- test_invalid_inputs_raise_before_any_subprocess_starts[10-candidate_head]
+- test_invalid_inputs_raise_before_any_subprocess_starts[11-role_sha256]
+- test_invalid_inputs_raise_before_any_subprocess_starts[12-attempt]
+- test_invalid_inputs_raise_before_any_subprocess_starts[13-attempt]
+- test_invalid_inputs_raise_before_any_subprocess_starts[14-key]
+- test_invalid_inputs_raise_before_any_subprocess_starts[15-key]
+- test_invalid_inputs_raise_before_any_subprocess_starts[16-key]
+- test_invalid_inputs_raise_before_any_subprocess_starts[17-commands]
+- test_invalid_inputs_raise_before_any_subprocess_starts[18-commands]
+- test_invalid_inputs_raise_before_any_subprocess_starts[19-commands]
+- test_invalid_inputs_raise_before_any_subprocess_starts[20-expected_test_ids]
+- test_invalid_inputs_raise_before_any_subprocess_starts[21-expected_test_ids]
+- test_invalid_inputs_raise_before_any_subprocess_starts[22-covered_acceptance]
+- test_invalid_inputs_raise_before_any_subprocess_starts[23-artifact_paths]
+- test_invalid_inputs_raise_before_any_subprocess_starts[24-artifact_paths]
+- test_invalid_inputs_raise_before_any_subprocess_starts[25-artifact_paths]
+- test_invalid_inputs_raise_before_any_subprocess_starts[26-artifact_paths]
+- test_invalid_inputs_raise_before_any_subprocess_starts[27-timeout_sec]
+- test_invalid_inputs_raise_before_any_subprocess_starts[28-timeout_sec]
+- test_invalid_inputs_raise_before_any_subprocess_starts[29-timeout_sec]
+- test_invalid_inputs_raise_before_any_subprocess_starts[30-cwd]
+- test_invalid_inputs_raise_before_any_subprocess_starts[31-cwd]
+- test_invalid_inputs_raise_before_any_subprocess_starts[32-test_result_parser]
+- test_invalid_inputs_raise_before_any_subprocess_starts[33-test_result_parser]
+- test_os_errors_starting_a_process_map_to_exit_minus_two[FileNotFound]
+- test_os_errors_starting_a_process_map_to_exit_minus_two[NotADirectory]
+- test_os_errors_starting_a_process_map_to_exit_minus_two[Permission]
+- test_os_errors_starting_a_process_map_to_exit_minus_two[OSError]
+- test_os_errors_starting_a_process_map_to_exit_minus_two[OSError22]
+- test_non_os_errors_from_subprocess_propagate
+- test_cwd_that_is_a_file_maps_to_exit_minus_two
+
+## E5 executed test ids
+
+- test_e5_slice.py::SliceScenarioTests::test_budget_exceeded_blocks
+- test_e5_slice.py::SliceScenarioTests::test_forged_receipt_is_not_approved
+- test_e5_slice.py::SliceScenarioTests::test_happy_path_approves
+- test_e5_slice.py::SliceScenarioTests::test_missing_required_receipt_is_not_approved
+- test_e5_slice.py::SliceScenarioTests::test_not_run_with_waiver_matrix
+- test_e5_slice.py::SliceScenarioTests::test_partial_static_coverage_is_not_approved
+- test_e5_slice.py::SliceScenarioTests::test_retry_after_fail_approves_and_keeps_earlier_failure
+- test_e5_slice.py::SliceScenarioTests::test_scenario_names_are_exactly_the_ten_expected
+- test_e5_slice.py::SliceScenarioTests::test_stale_head_is_not_approved
+- test_e5_slice.py::SliceScenarioTests::test_worker_death_before_receipt_is_not_approved_and_attempt_retained
+- test_e5_slice.py::SliceScenarioTests::test_zombie_late_write_rejected_with_epoch_error
+- test_e5_slice.py::SliceCliTests::test_cli_exits_zero_and_prints_deterministic_sorted_json
+- test_e5_slice.py::SliceCliTests::test_cli_without_directory_exits_two
+- test_e5_process_death.py::ProcessDeathTests::test_dead_worker_state_survives_in_the_file
+- test_e5_process_death.py::ProcessDeathTests::test_dead_workers_old_epoch_cannot_write_after_new_owner
+- test_e5_process_death.py::ProcessDeathTests::test_reap_expired_frees_the_slot_of_the_dead_worker
+- test_e5_process_death.py::ProcessDeathTests::test_supervisor_marks_worker_lost_and_gate_refuses
+- test_e5_process_death.py::ConcurrentEpochTests::test_two_store_instances_exactly_one_wins_each_round

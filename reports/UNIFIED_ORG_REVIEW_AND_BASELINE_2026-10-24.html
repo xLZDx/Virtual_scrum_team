@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unified engineering organization review and design baseline</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--fg:#1c1c1c;--mut:#666;--line:#ccc;--bad:#b00020;--warn:#a15c00;--ok:#1b7a3a}
+@media(prefers-color-scheme:dark){:root{--bg:#161616;--fg:#e8e8e8;--mut:#9a9a9a;--line:#444;--bad:#ff6b81;--warn:#e0a040;--ok:#5fcf80}}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max-width:960px;margin:0 auto;padding:16px}
+table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.bad{color:var(--bad)}.warn{color:var(--warn)}.ok{color:var(--ok)}.mut{color:var(--mut)}
+</style>
+</head>
+<body>
+<header>
+<h1>Unified engineering organization review and design baseline</h1>
+<p class="mut">Period: 2026-10-23 to 2026-10-24. Status: design MODIFY, baseline accepted by the operator for the S1 pilot, S1 development started.</p>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>Virtual_scrum_team</dd>
+    <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s1-control-plane-core @ 9b5b597</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+
+<h2>1. Summary</h2>
+<p>Six reviewer agents, a self-verification and an external verification unanimously returned <b>MODIFY DESIGN</b>: the architectural boundaries are right, but the key properties (signed receipts, gate verdict, single state, enforced limits) were stated in words only. No critical blocker is closed. The operator accepted the baseline and ordered S1 development to start, where the blockers become work items.</p>
+
+<h2>2. What was reviewed</h2>
+<table>
+<tr><th>Round</th><th>Who</th><th>Verdict</th></tr>
+<tr><td>1</td><td>architect, security-reviewer, reliability-reviewer, functional-test-reviewer, code-reviewer, silent-failure-hunter (Sonnet 5.5, medium, read-only)</td><td>MODIFY DESIGN from all six</td></tr>
+<tr><td>2</td><td>External verification of the amendments at da22d2a</td><td>MODIFY DESIGN; R-1..R-4 and R-6 open, R-5 partly</td></tr>
+<tr><td>3</td><td>Self-check by the authoring session (Opus 5.5, outside the allowlist) and external verification of e4be280</td><td>MODIFY DESIGN; not an independent review</td></tr>
+</table>
+
+<h2>3. Blockers at the time of this report</h2>
+<table>
+<tr><th>Code</th><th>Plain meaning</th><th>Status</th></tr>
+<tr><td>R-1</td><td>Execution receipts are unsigned: a worker could forge results</td><td class="bad">Open. Plan: runner signature, epic E4</td></tr>
+<tr><td>R-2</td><td>The gate has no total verdict function: partial evidence could be approved</td><td class="bad">Open. Plan: epic E2 (code in progress)</td></tr>
+<tr><td>R-3</td><td>State lives in an LLM-edited markdown file with no protection against two writers</td><td class="bad">Open. Plan: SQLite with epochs, epic E3</td></tr>
+<tr><td>R-4</td><td>A failure could vanish: worker died before writing, or a retry overwrote FAIL</td><td class="bad">Open. Plan: append-only log, E3/E5</td></tr>
+<tr><td>R-5</td><td>Red/green, mutation and CI conflicted with the process rules</td><td class="warn">Partly: decided in ADR-0001, no code</td></tr>
+<tr><td>R-6</td><td>The "5 AI + 5 CI" limit and budgets are enforced by nothing</td><td class="bad">Open. Plan: slot table in the store, E3</td></tr>
+<tr><td>B01</td><td>Two documents name different sources of phase truth</td><td class="bad">Open. Decision BD-1, SKILL.md change in E6</td></tr>
+<tr><td>B02</td><td>A mandatory test with status NOT_RUN could pass acceptance</td><td class="warn">Partly: DoD rule and the separate verdict APPROVED_WITH_WAIVER; gate schema in progress</td></tr>
+<tr><td>N-1</td><td>Sources disagreed on who writes tests (2, 3 or 4 agents)</td><td class="warn">Partly: ADR-0001 (two agents); external files not aligned</td></tr>
+</table>
+
+<h2>4. Operator decisions (ADR-0001, 2026-10-24)</h2>
+<ul>
+<li>Only <code>functional-test-reviewer</code> and <code>e2e-runner</code> write and run required tests; <code>tdd-guide</code> and <code>performance-optimizer</code> are advisory.</li>
+<li>Reviewer models: Sonnet 5.5 medium or GPT-5.6 Luna low/medium; the operator's global contract governs.</li>
+<li>No CI; no mutation runs; no red/green.</li>
+<li>NOT_RUN never gives an ordinary APPROVE; the separate verdict APPROVED_WITH_WAIVER needs a named operator record.</li>
+</ul>
+
+<h2>5. What was done in the repository</h2>
+<table>
+<tr><th>Commit</th><th>Content</th></tr>
+<tr><td>da22d2a</td><td>Blueprint, decision dossier, 39-role plan, amendments from the first review</td></tr>
+<tr><td>514eef3</td><td>Records corrected: STATE.md and attribution of an automatic answer</td></tr>
+<tr><td>e4be280</td><td>ADR-0001 and alignment of roster, README, DoD</td></tr>
+<tr><td>20ae344</td><td>Four inconsistencies after the ADR: waiver verdict, stale phrases, CI</td></tr>
+<tr><td>9b5b597</td><td>Baseline 1.0 (BD-1..BD-7) and S1 plan; URLs of four private repositories withheld before publication</td></tr>
+</table>
+<p>All five commits were pushed to <code>origin/main</code> (now 9b5b597) on the operator's direct instruction. This is a one-time exception to "push only after independent approval"; it is recorded in the decision log and does not extend to the sprint pull request.</p>
+
+<h2>6. S1 development (started)</h2>
+<p>Branch <code>s1-control-plane-core</code>. Plan: E1 contracts, E2 gate (being written), E3 state store, E4 runner and signing, E5 end-to-end run with injected failures, E6 process alignment. The two test agents will write and run tests after the code is complete, then specialist reviewers on the exact head, then the final independent review and one pull request.</p>
+
+<h2>7. Not verified and left to the operator</h2>
+<ul>
+<li>No independent review on an allowed model was done for the design or the baseline.</li>
+<li>External files are not aligned: the workspace <code>AGENTS.md</code> (default model GPT-6 Luna) and the global contract (four test authors); the installed roster copy is stale.</li>
+<li>A private local path remains in public history (commit 0a5821b); the operator decided not to rewrite history.</li>
+<li>Names of private repositories (PDCC, ERP, AEVE, PM_Bridge) remain in the public blueprint; the decision is the operator's.</li>
+</ul>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

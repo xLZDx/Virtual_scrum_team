@@ -9,7 +9,7 @@
 
 ## A sprint delivered by the team (applied through the `sdlc-orchestrator` skill)
 
-1. Every phase has its exit artifact linked from the project's `docs/sdlc/STATE.md`.
+1. Every phase has its exit artifact recorded in the phase state. Until the S1 state store (`tools/vst/store.py`) is in use for a project, `docs/sdlc/STATE.md` is the phase authority; once it is in use, the store is the authority and `STATE.md` is its generated read-only view (baseline decision BD-1). After cutover, exit artifacts are recorded as Documentation receipts or events; a dedicated artifact registry in the store is deferred (S2).
 2. All sprint code is committed, each commit with its change record.
 3. Per-epic functional tests were authored and run in full by `functional-test-reviewer` and `e2e-runner`; results recorded with exact commands. A mandatory test recorded as NOT_RUN blocks an ordinary approval; only the separate verdict APPROVED_WITH_WAIVER with a named operator record may proceed (ADR-0001).
 4. Relevant specialist reviewers reached consensus on the exact head; all valid BLOCKER/MAJOR findings are fixed.
