@@ -1243,7 +1243,9 @@ def _build_qa_report(
             "dependency_lock_path": metadata["dependency_lock_path"],
             "dependency_lock_sha256": metadata["dependency_lock_sha256"],
             "environment_variable_names": sorted(
-                set(build_environment().keys()) | {"VST_QA_EVENTS_PATH"}
+                set(build_environment().keys()) | {
+                    "VST_QA_EVENTS_PATH", "PYTEST_DISABLE_PLUGIN_AUTOLOAD",
+                }
             ),
         },
         "category_registry": {
@@ -1397,6 +1399,11 @@ def run_manifest_commands(
     initial_head = _derive_head(cwd)
     initial_changed_paths = _git_changed_paths(cwd)
     env = build_environment(_check_env(extra_env))
+    if report_artifact_path is not None:
+        # The native QA lane pins its plugin set in the tracked manifest.
+        # Prevent ambient site-installed pytest entry points from changing
+        # discovery or execution outside that manifest.
+        env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
     deadline_at = time.monotonic() + deadline
     commands: list[dict] = []
     parser_results: list[dict] = []

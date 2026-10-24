@@ -1,6 +1,6 @@
 # Sprint S4 plan: reproducible QA automation
 
-Status: **S4.1/E1 AND S4.2/E2 SOURCE SLICE IMPLEMENTED LOCALLY; ACCEPTANCE PARTIAL; TESTS NOT RUN**. The category registry, pinned lock, POSIX native runner and report-to-v2-receipt seam are implemented on `s4-native-qa-runner`. No test, build, install, CI, migration, external service call, or sandbox execution was performed for this code slice. Full category coverage, report tests, signer runtime, and source transfer remain open.
+Status: **S4.1/E1 AND S4.2/E2 SOURCE SLICE IMPLEMENTED LOCALLY; ACCEPTANCE PARTIAL; TESTS NOT RUN**. The category registry, pinned lock, POSIX native runner and report-to-v2-receipt seam are implemented on `s4-native-qa-runner`; change record 0095 fixes worker-to-runner event readability and disables ambient pytest plugin autoload in the QA path. No test, build, install, CI, migration, external service call, or sandbox execution was performed for this code slice. Full category coverage, report tests, signer runtime, and source transfer remain open.
 
 Sources: `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` section 1; `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`; `governance/DEFINITION_OF_DONE.md`; S2 and S3 plans; current `tests/vst/`, `tools/vst/runner.py`, `tools/vst/slice.py`, and `tools/vst/{contracts,gate,store}.py`.
 
@@ -160,9 +160,9 @@ Identifiers VST-032–037 are proposals only and must be reconciled with the can
 ## Ordered work and safe stopping points
 
 1. Reconcile S3 accepted adapter interfaces and complete the denominator: current functional, integration, Python API and E2E inventory is only `PARTIAL`; seeded-failure is `NOT_RUN` pending tests authored by the authorized test owner.
-2. Implement and commit environment lock, runner and evidence schema; verify each new seam with its own focused local contract proof after all S4 coding is complete.
+2. Implement and commit environment lock, runner and evidence schema; verify each new seam with its own focused local contract proof after all S4 coding is complete. The runner now disables ambient pytest plugin autoload for the report-bound QA lane, and the bounded event file is readable by the runner through its private run directory.
 3. Add category manifests and synthetic fixtures; connect all six category selectors to native execution.
-4. Complete all S4 code before test phase; only then test agents author/run the per-epic and final exact-head suites.
+4. Complete all S4 code before test phase; only then test agents author/run the per-epic and final exact-head suites. Keep the current emphasis on implementation; test inventory expansion is the authorized test roles' next phase.
 5. Run relevant reviewers, resolve valid findings, request the exact-head GPT-PM gate, then push and merge one S4 PR only after approval.
 
 The first independently safe stopping point is after E1, with the S3 dependency map and denominator frozen. Total gates: **6**, one per epic above. Source transfer from the Windows checkout to an isolated repository snapshot inside `Ubuntu-24.04` has no implementation in this slice; actual v2 execution is `NOT_RUN` until that exact integration and signer socket are available. No package installation or test execution is authorized during coding.

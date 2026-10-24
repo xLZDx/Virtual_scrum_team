@@ -97,10 +97,15 @@ def pytest_sessionfinish(session, exitstatus):
         return
     try:
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
-        descriptor = os.open(target, flags, 0o600)
+        # The runner owns the parent directory and reads the completed event
+        # file after the worker exits. The parent is mode 0730 (only runner
+        # owner and worker group can traverse it), so a world-readable file is
+        # safe here and avoids relying on runner membership in the worker GID.
+        descriptor = os.open(target, flags, 0o644)
         with os.fdopen(descriptor, "wb") as handle:
             if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
                 return
+            os.fchmod(handle.fileno(), 0o644)
             handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())

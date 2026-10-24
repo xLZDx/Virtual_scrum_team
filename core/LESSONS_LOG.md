@@ -481,3 +481,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — Preserve observed pytest outcomes when binding reports to signed receipts: malformed/missing/inconsistent events must abort signing, while valid failures (including skipped, xfailed, uncollected, and XPASS tests) should remain typed FAIL rather than being erased into BLOCKED or INCONCLUSIVE. Derive the v2 outcome before signer calls and require exact report/evidence agreement. See change record 0094.
 
+2026-10-25 — When a test worker and evidence runner use different POSIX identities, validate both sides of every artifact permission. A worker-owned `0600` event file cannot be consumed by the runner; keep the parent run directory private and grant only the bounded event file the read mode needed by the runner. Also disable ambient pytest entry-point autoload when the manifest pins the allowed plugin set. See change record 0095.
+
