@@ -75,3 +75,13 @@ These are `NOT_RUN`, not passes; they remain dependencies for the complete S2 ru
 - Environment: Python 3.14.3, pytest 8.4.2, Windows NT 10.0.26300.0, PowerShell 7.6.7.
 - Passed IDs: `test_completed_override_action_id_with_changed_valid_signed_record_rejected_after_restart`, `test_external_operation_intent_and_completion_are_committed_around_callback`, `test_external_operation_timeout_stays_pending_and_same_key_payload_recovers`, `test_completed_legacy_idempotent_operation_remains_replayable`.
 - This command verifies the four Store-level recovery and override contracts on the newer source head. It does not execute the E2E-owned pack transfer, hook-denial, storage-cap, concurrency, ref-conflict or timeout-boundary cases; record those only from the separate E2E exact-head run.
+
+## Functional-owned follow-up on fail-closed object-import source HEAD `ed53126`
+
+- Full source revision: `ed531264d0344c67e948e126c420e60f5272226c`.
+- E2E test author confirmed authoring was complete before this run; E2E changes were confined to `tests/vst/test_s2_runner_lifecycle.py`.
+- Exact command: `C:\Python314\python.exe -m pytest -q -rs -p no:cacheprovider tests/vst/test_s2_operation_recovery.py`.
+- Environment: Python 3.14.3, pytest 8.4.2, Windows NT 10.0.26300.0, PowerShell 7.6.7.
+- Result: exit 0; 4 passed, 0 skipped, 1 pytest-asyncio deprecation warning in 2.02 seconds.
+- Passed IDs: `test_completed_override_action_id_with_changed_valid_signed_record_rejected_after_restart`, `test_external_operation_intent_and_completion_are_committed_around_callback`, `test_external_operation_timeout_stays_pending_and_same_key_payload_recovers`, and `test_completed_legacy_idempotent_operation_remains_replayable`.
+- This focused module verifies the Store recovery and signed-record replay contracts. E2E owns the new isolated Git snapshot, poisoned-journal, and bounded object-import cases; they are not covered by this command.
