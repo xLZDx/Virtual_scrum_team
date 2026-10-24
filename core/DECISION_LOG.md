@@ -304,6 +304,10 @@ The report-bound runner independently validates the catalog's exact root fields 
 
 Perform seeded fixture-to-manifest ID comparison only after report metadata has passed schema/type validation, so malformed direct calls yield `ContractError`. Enforce the same 16 KiB canonical input ceiling at the signing boundary as in the CLI loader. See change record 0100; no tests or runtime proof are claimed.
 
+## 2026-10-25 -- Preserve WSL snapshot group inheritance and set an explicit WSL working directory
+
+The first bounded S4 transfer at `ea008c9ecfdf93dc689614ace957d6dfb7693627` returned no metadata: WSL reported `chdir(/nonexistent) failed`, then the receiver rejected the snapshot owner/group. Source review found that the receiver cleared setgid on the run root before Git cloned descendants; this is a plausible explanation, not a reproduced cause. Keep mode 2710 on the per-run root so newly created clone paths inherit the provisioned worker group, and use WSL `--cd /` so an unavailable runner home cannot prevent process startup. See change record 0116. A fresh transfer and permission probe are still required.
+
 ## 2026-10-25 -- Stream exact S4 source snapshots into the isolated WSL destination
 
 Use a self-contained Git bundle over the Windows-to-WSL stdin boundary; do not depend on drive automount, host path mounts, network access, or an archive without Git provenance. Require a clean named branch, exact SHA equality after clone, sender/receiver bundle-digest equality, a pre-provisioned runner-owned mode-2710 root shared only for worker traversal, and a runner-owned, worker-readable/nonwritable clone. The transfer command does not provision the distro or signer and has not been executed. See change record 0101; source-transfer acceptance remains `NOT_RUN`.

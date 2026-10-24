@@ -62,9 +62,9 @@ run_path.mkdir(mode=0o710)
 run_info = run_path.stat(follow_symlinks=False)
 if run_info.st_uid != os.geteuid() or run_info.st_gid != worker_gid:
     raise SystemExit("snapshot run directory did not inherit the worker group")
-os.chmod(run_path, 0o710)
-if stat.S_IMODE(run_path.stat(follow_symlinks=False).st_mode) != 0o710:
-    raise SystemExit("snapshot run directory did not receive mode 0710")
+os.chmod(run_path, 0o2710)
+if stat.S_IMODE(run_path.stat(follow_symlinks=False).st_mode) != 0o2710:
+    raise SystemExit("snapshot run directory did not receive mode 2710")
 bundle_part = run_path / "source.bundle.part"
 bundle_path = run_path / "source.bundle"
 repo_path = run_path / "repo"
@@ -256,6 +256,7 @@ def transfer_snapshot(
     run_id = uuid.uuid4().hex
     command = [
         wsl_executable, "--distribution", distribution, "--user", wsl_user,
+        "--cd", "/",
         "--exec", "python3", "-c", _WSL_RECEIVER,
         snapshot_root, run_id, candidate_head, branch, str(worker_gid),
         str(MAX_BUNDLE_BYTES),
