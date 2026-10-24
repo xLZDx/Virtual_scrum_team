@@ -28,6 +28,7 @@ import subprocess
 import sys
 import threading
 import time
+from contextlib import contextmanager
 from typing import Any, Callable
 
 from . import gate as gate_module
@@ -1103,9 +1104,12 @@ def run_scenarios(workdir: str) -> dict[str, dict]:
 class SyntheticOperationBackend:
     """Supervisor-only adapter for a local bare Git remote."""
 
+    _LOCAL_STORAGE_LOCK = threading.RLock()
     _MAX_PACK_BYTES = 64 * 1024 * 1024
     _MAX_PACK_OBJECTS = 250_000
     _MAX_GIT_DIAGNOSTIC_BYTES = 8 * 1024
+    _MAX_TARGET_OBJECT_STORAGE_BYTES = 512 * 1024 * 1024
+    _MAX_PACK_INDEX_BYTES = (_MAX_PACK_OBJECTS * 48) + 4096
 
     def __init__(
         self, bare_path: str, *, source_repo: str, command_timeout_sec: int = 10,
@@ -1116,22 +1120,128 @@ class SyntheticOperationBackend:
             raise ValueError("bare_path must be a non-empty path")
         if not isinstance(source_repo, str) or not source_repo.strip():
             raise ValueError("source_repo must be a non-empty path")
-        self.bare_path = bare_path
+        self.bare_path = os.path.realpath(bare_path)
         self.source_repo = source_repo
         self.command_timeout_sec = command_timeout_sec
+
+    def _target_git_env(self) -> dict[str, str]:
+        env = {
+            name: os.environ[name]
+            for name in (
+                "PATH", "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "TEMP", "TMP",
+                "TMPDIR", "LANG", "LC_ALL",
+            )
+            if name in os.environ
+        }
+        env.update({
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_OBJECT_DIRECTORY": os.path.abspath(os.path.join(self.bare_path, "objects")),
+            "GIT_NO_REPLACE_OBJECTS": "1",
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_OPTIONAL_LOCKS": "0",
+            "GIT_PAGER": "cat",
+            "GIT_NO_LAZY_FETCH": "1",
+        })
+        return env
 
     def _git(self, *args: str, input_bytes: bytes | None = None) -> str:
         completed = subprocess.run(
             ["git", "--git-dir", self.bare_path, *args],
             input=input_bytes, stdin=None if input_bytes is not None else subprocess.DEVNULL,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            check=False, timeout=self.command_timeout_sec,
+            check=False, timeout=self.command_timeout_sec, env=self._target_git_env(),
         )
         if completed.returncode:
             raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
         return completed.stdout.decode("utf-8", "replace").strip()
 
+    @contextmanager
+    def _target_storage_lock(self):
+        """Serialize every target object write across processes/supervisors."""
+        object_dir = os.path.abspath(os.path.join(self.bare_path, "objects"))
+        if os.path.islink(object_dir):
+            raise RuntimeError("synthetic target object directory must not be a symlink")
+        if not os.path.isdir(object_dir):
+            raise RuntimeError("synthetic target object directory is unavailable")
+        deadline = time.monotonic() + self.command_timeout_sec
+        local_lock = self._LOCAL_STORAGE_LOCK
+        if not local_lock.acquire(timeout=self.command_timeout_sec):
+            raise TimeoutError("timed out waiting for in-process synthetic target storage lock")
+        lock_path = os.path.join(self.bare_path, ".vst-object-storage.lock")
+        if os.path.islink(lock_path):
+            local_lock.release()
+            raise RuntimeError("synthetic target storage lock must not be a symlink")
+        try:
+            with open(lock_path, "a+b") as lock_file:
+                if os.fstat(lock_file.fileno()).st_size == 0:
+                    lock_file.write(b"\0")
+                    lock_file.flush()
+                while True:
+                    lock_file.seek(0)
+                    try:
+                        if os.name == "nt":
+                            import msvcrt
+                            msvcrt.locking(lock_file.fileno(), msvcrt.LK_NBLCK, 1)
+                        else:
+                            import fcntl
+                            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        break
+                    except OSError as exc:
+                        if time.monotonic() >= deadline:
+                            raise TimeoutError("timed out waiting for synthetic target storage lock") from exc
+                        time.sleep(0.01)
+                try:
+                    yield
+                finally:
+                    lock_file.seek(0)
+                    if os.name == "nt":
+                        import msvcrt
+                        msvcrt.locking(lock_file.fileno(), msvcrt.LK_UNLCK, 1)
+                    else:
+                        import fcntl
+                        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+        finally:
+            local_lock.release()
+
+    def _target_object_storage_bytes(self) -> int:
+        object_dir = os.path.join(self.bare_path, "objects")
+        total = 0
+        for root, directories, files in os.walk(object_dir, followlinks=False):
+            for name in directories:
+                path = os.path.join(root, name)
+                if os.path.islink(path):
+                    raise RuntimeError("synthetic target object directory contains a symlink")
+            for name in files:
+                path = os.path.join(root, name)
+                if os.path.islink(path):
+                    raise RuntimeError("synthetic target object store contains a symlink")
+                total += os.stat(path, follow_symlinks=False).st_size
+                if total > self._MAX_TARGET_OBJECT_STORAGE_BYTES:
+                    return total
+        return total
+
+    def _reserve_target_object_storage(self, additional_bytes: int) -> None:
+        current = self._target_object_storage_bytes()
+        if current + additional_bytes > self._MAX_TARGET_OBJECT_STORAGE_BYTES:
+            raise StoreError(
+                "synthetic target object storage cap would be exceeded",
+                kind="budget",
+            )
+
     def _import_head(self, head: str) -> None:
+        with self._target_storage_lock():
+            self._reserve_target_object_storage(
+                self._MAX_PACK_BYTES + self._MAX_PACK_INDEX_BYTES,
+            )
+            self._import_head_locked(head)
+            if self._target_object_storage_bytes() > self._MAX_TARGET_OBJECT_STORAGE_BYTES:
+                raise StoreError(
+                    "synthetic target object storage cap was exceeded during pack import",
+                    kind="budget",
+                )
+
+    def _import_head_locked(self, head: str) -> None:
         env = {
             name: os.environ[name]
             for name in (
@@ -1193,7 +1303,7 @@ class SyntheticOperationBackend:
             )
             target = subprocess.Popen(
                 target_command, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE, bufsize=0,
+                stderr=subprocess.PIPE, env=self._target_git_env(), bufsize=0,
             )
             source_stderr_thread = threading.Thread(
                 target=drain, args=(source.stderr, source_diagnostic), daemon=True,
@@ -1300,6 +1410,10 @@ class SyntheticOperationBackend:
         return self._git("rev-parse", "--verify", ref)
 
     def _bind_operation(self, kind: str, operation_key: str, payload: dict) -> None:
+        with self._target_storage_lock():
+            self._bind_operation_locked(kind, operation_key, payload)
+
+    def _bind_operation_locked(self, kind: str, operation_key: str, payload: dict) -> None:
         key_hash = hashlib.sha256(f"{kind}\0{operation_key}".encode("utf-8")).hexdigest()
         ref = f"refs/vst/idempotency/{key_hash}"
         record = canonical_bytes({"kind": kind, "payload": payload})
@@ -1316,6 +1430,7 @@ class SyntheticOperationBackend:
             if existing != record:
                 raise StoreError("remote idempotency key reused with different payload", kind="duplicate")
             return
+        self._reserve_target_object_storage(len(record) + (len(record) // 100) + 256)
         new_oid = self._git("hash-object", "-w", "--stdin", input_bytes=record)
         try:
             self._git("update-ref", ref, new_oid, "0" * 40)
