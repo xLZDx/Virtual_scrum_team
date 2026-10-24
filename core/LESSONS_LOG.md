@@ -142,3 +142,8 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: the decision text listed only the exact-cap case and said nothing about the zero-cap case that the manifest contract allows (`cost_cap` int >= 0); the test agent derived its expectation from the new code rather than from the manifest contract.
 - Layer: coordinator (decision) missed; tests encoded the defect; the fourth reviewer caught it before any independent review.
 - Rule: when a rule is changed, enumerate the manifest-contract boundaries (zero, one, max) before specifying the fix; a test that pins a terminal side effect (a marker, a blocked state) needs the contract sentence it proves, not just the current code.
+
+## 2026-10-24 -- Independent review request moved into the repository
+
+- Kind: NEUTRAL (documentation only).
+- Rule: any artifact the operator must act on lives in the repository or a stated stable path, never only in a temporary session folder.
