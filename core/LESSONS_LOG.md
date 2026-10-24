@@ -227,3 +227,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: manifest syntax was checked but the parser identity was not resolved against the trusted implementation catalog at contract validation time.
 - Layer: contract implementation missed; functional tests caught it before release review.
 - Rule: validate all security-relevant external identifiers against the trusted registry at the earliest contract boundary, then repeat the consistency check at the authoritative gate.
+
+## 2026-10-24 -- S2 receipt signatures require route-specific authority tests
+
+- Kind: SUCCESS (test design correction).
+- Facts: source inspection found that receipt authority is not one generic worker signature: TestRun uses the signer, IndependentReview the registry-mapped reviewer, and StaticAnalysis/Documentation worker or supervisor authority by slot. The runner tests now exercise five public-gate routes against six key kinds and reject every wrong-key route; the functional tests separately check pairwise distinctness of all six roots.
+- Root cause: an earlier test-design draft treated all receipt/key combinations as interchangeable and its denominator did not reflect the gate's actual trust routing.
+- Layer: acceptance design; corrected before the final committed-head runtime suite.
+- Rule: derive signature test matrices from the public authority decision path and include both valid routes and wrong-root negative cases; schema validation alone does not prove gate authority.

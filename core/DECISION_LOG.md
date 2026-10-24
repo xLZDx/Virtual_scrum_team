@@ -154,3 +154,7 @@ Decisions: (1) use the hand-written worker only; no external candidate is author
 ## 2026-10-24 -- S2 parser-pin test defect and fix
 
 The functional-test agent's first focused run at code HEAD `b2b168e71000323443882988cd24af2cdbabf4df` reported 30 passed and 3 failed in v2 parser-pin rejection cases. Exact command: `C:\Python314\python.exe -m pytest -q tests/vst/test_s2_contract_gate.py tests/vst/test_s2_diffgate.py`; the test working tree was dirty with newly authored files. `validate_task_manifest` accepted parser id/version/digest values absent from `TRUSTED_PARSER_CATALOG`. An `implementation-engineer` on `gpt-6-luna` low effort added fail-closed validation in `tools/vst/contracts.py`; its diff leaves the v1 branch unchanged. The fix has not yet been rerun by a test agent and is not runtime-verified.
+
+## 2026-10-24 -- S2 test authority and S3 preparation
+
+S2 test authors completed the focused contract, diff-gate, runner/lifecycle, store/anchor, and sandbox-probe modules. The suite includes public-gate receipt authority routing for five receipt/slot routes across six trust-root key kinds, wrong-key rejection, and pairwise key distinctness. The E2E agent's final collect-only on the completed authored files returned exit 0 with 126 IDs (55 functional and 71 E2E). No runtime test result is claimed by this entry. The S3 worker-pilot plan was also prepared while S2 verification proceeds. Source: `docs/changes/0038-s2-test-suite-and-s3-preparation.md`, the five `tests/vst/test_s2_*.py` files, and `docs/S3_WORKER_PILOT_PLAN_2026-10-24.md`.
