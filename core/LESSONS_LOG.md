@@ -383,6 +383,14 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Rule: bind negative assertions to the earliest correct contract boundary for each input shape; record the returned rejection reason rather than assuming execution reached a deeper layer.
 - Fix status: assertion corrected; final command passed 60 tests with 0 skipped and one deprecation warning. Evidence is in `docs/sdlc/evidence/s2-contract-diffgate-run-280e2d0.md`; change record 0056.
 
+## 2026-10-24 -- Bind synthetic pushes to the candidate object source
+
+- Kind: FAILURE (an external-operation retry could preserve a pending intent but the synthetic backend could not push a candidate commit that existed only in the worker repository).
+- Facts: the first bounded-operation run failed before invoking its backend because the Store history verifier did not recognize intent-backed PENDING rows. After that fix, a local-Git timeout retry reached the backend but the bare target did not contain the candidate object. The integration fixture and backend source binding were corrected in changes 0067 and 0069.
+- Root cause: external operation history had only the legacy completed-row invariant, and the synthetic push adapter used a bare destination as its own source instead of the worker repository holding the commit.
+- Rule: verify pending/completed/unknown external intent chains against append-only events; pass the authorized candidate repository explicitly to the supervisor-side synthetic publisher and test a retry after a timeout.
+- Fix status: functional regressions and relevant modules passed at `c0e7e9ce15958b6c6de7811bcaf1020119ba169d` (76 passed, 14 skipped, 1 warning); remaining skipped platform scenarios are still NOT_RUN. Evidence is in `docs/sdlc/evidence/s2-bounded-operation-recovery-run.md`; change record 0070.
+
 ## 2026-10-24 -- Keep replay assertions aligned with durable rejection order
 
 - Kind: TEST DEFECT (manual override replay was rejected at the persisted event-ID boundary before reaching the stale-episode validator).
