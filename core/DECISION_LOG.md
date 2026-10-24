@@ -280,3 +280,7 @@ The functional adapter tests reported 8 passed and synthetic pilot E2E reported 
 
 Independent code, security, and reliability reviews at exact reviewed head `b9e8d77e2be5f55f5260f276406149f0d23d61ba` found no BLOCKER or MAJOR. Retain the reliability MINOR (cleanup exception cause is swallowed) as non-blocking backlog. Do not expose STOP through an untrusted caller until an authenticated service boundary exists. See record 0094.
 
+## 2026-10-25 -- Keep BMad v0.11 behavior claims at documentation evidence level
+
+Pinned v0.11 README describes coding-CLI orchestration, configured verification, worktree/branch handling, merge and commit behavior; pinned security policy identifies configuration, plugins and on-disk signals as trust boundaries. These are maintainer documentation claims, not code-level verification. Keep BMad acquisition gated until complete source-level security/compatibility review and explicit operator authorization. See change record 0095.
+

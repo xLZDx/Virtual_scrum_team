@@ -479,3 +479,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — Store fencing and local synthetic recovery can be reviewed independently of process cleanup, but they do not prove it. Specialist review kept OS cleanup and untrusted STOP authentication as explicit externalization gates; a non-blocking cleanup-cause diagnostic issue remains in VST-029. See change record 0094.
 
+2026-10-25 — Release-to-release behavior cannot be inherited from documentation alone. For BMad v0.11, retain README/security-policy observations as documented claims and keep code-level permissions, prompt injection, network and sandbox behavior `NOT_VERIFIED` until the pinned source is fully reviewed. See change record 0095.
+
