@@ -251,16 +251,24 @@ def normalize_principal(value: Any) -> str:
     """NFKC + strip + casefold a principal name.
 
     Raises ContractError for a non-string, for a string containing a control
-    (Cc) or format / zero-width (Cf) character, and for an empty result.
+    (Cc), format / zero-width (Cf), surrogate (Cs), private-use (Co) or
+    unassigned (Cn) character, a variation selector, or an invisible filler
+    code point, and for an empty result.
     """
     if not isinstance(value, str):
         raise ContractError("principal: must be a string")
     composed = unicodedata.normalize("NFKC", value)
     for char in composed:
-        if unicodedata.category(char) in ("Cc", "Cf"):
+        code = ord(char)
+        if (
+            unicodedata.category(char) in ("Cc", "Cf", "Cs", "Co", "Cn")
+            or 0xFE00 <= code <= 0xFE0F
+            or 0xE0100 <= code <= 0xE01EF
+            or code in (0x034F, 0x17B4, 0x17B5, 0x115F, 0x1160, 0x3164, 0xFFA0)
+        ):
             raise ContractError(
-                f"principal: must not contain control or format characters "
-                f"(found U+{ord(char):04X})"
+                f"principal: must not contain control, format, invisible or "
+                f"filler characters (found U+{code:04X})"
             )
     normalized = composed.strip().casefold()
     if not normalized:

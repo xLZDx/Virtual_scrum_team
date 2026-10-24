@@ -432,15 +432,17 @@ def test_covered_acceptance_must_be_a_subset_of_manifest_acceptance(work):
     assert run(work, covered_acceptance=["AC-2", "AC-1"])["result"] == "PASS"
 
 
-def test_attempt_is_bounded_by_the_manifest_retry_cap(work):
+def test_runner_does_not_bound_the_attempt_by_retry_cap_the_store_does(work):
+    # Attempt numbers are global across epochs; the per-epoch bound lives in the store.
     m = mf([PASS_CMD], retry_cap=1)
-    run(work, m=m, attempt=2, prev_receipt_sha256="e" * 64)  # cap + 1 is the last allowed attempt
-    with pytest.raises(c.ContractError, match="retry_cap"):
-        run(work, m=m, attempt=3, prev_receipt_sha256="e" * 64)
+    for attempt in (2, 3, 9):
+        r = run(work, m=m, attempt=attempt, prev_receipt_sha256="e" * 64)
+        assert r["attempt"] == attempt and r["result"] == "PASS" and signing.verify(r, KEY)
     m0 = mf([PASS_CMD], retry_cap=0)
-    with pytest.raises(c.ContractError, match="retry_cap"):
-        run(work, m=m0, attempt=2, prev_receipt_sha256="e" * 64)
+    assert run(work, m=m0, attempt=2, prev_receipt_sha256="e" * 64)["attempt"] == 2
     assert run(work, m=m0)["attempt"] == 1
+    with pytest.raises(c.ContractError, match="prev_receipt_sha256"):
+        run(work, m=m0, attempt=2, prev_receipt_sha256=None)  # the chain rule is still enforced
 
 
 def test_timeouts_are_bounded_by_the_manifest(work):
@@ -483,7 +485,7 @@ def test_runner_does_not_mutate_the_manifest(work):
 INVALID_OVERRIDES = [
     {"slot": ""}, {"slot": " "}, {"slot": "nope"}, {"slot": "review"},
     {"resolved_model": ""}, {"invocation_id": None}, {"runner_id": 3}, {"created_at": ""},
-    {"attempt": 0}, {"attempt": True}, {"attempt": "1"}, {"attempt": 3, "prev_receipt_sha256": "e" * 64},
+    {"attempt": 0}, {"attempt": True}, {"attempt": "1"}, {"attempt": 2**31, "prev_receipt_sha256": "e" * 64},
     {"epoch": 0}, {"epoch": True}, {"epoch": 2**31},
     {"candidate_head": "xyz"}, {"candidate_head": "A" * 40},
     {"attempt": 2, "prev_receipt_sha256": None}, {"attempt": 2, "prev_receipt_sha256": "zz"},
@@ -504,6 +506,10 @@ INVALID_OVERRIDES = [
     {"test_result_parser": None}, {"test_result_parser": "x"},
     {"extra_env": "A=B"}, {"extra_env": {"A=B": "1"}}, {"extra_env": {"A": 1}}, {"extra_env": {"A": "x\0"}},
     {"extra_env": {"": "1"}},
+    {"extra_env": {"A": "1"}}, {"extra_env": {"VST_ok": "1"}}, {"extra_env": {"vst_ok": "1"}},
+    {"extra_env": {"PYTHONPYCACHEPREFIX": "/x"}}, {"extra_env": {"PYTHONUSERBASE": "/x"}},
+    {"extra_env": {"PYTHONBREAKPOINT": "os.system"}}, {"extra_env": {"VST-X": "1"}},
+    {"extra_env": {"VST_": "1"}}, {"extra_env": {" VST_X": "1"}}, {"extra_env": {"VST_X\n": "1"}},
 ]
 
 
@@ -678,10 +684,10 @@ def test_extra_env_is_passed_explicitly_and_only_that(work, monkeypatch):
 def test_build_environment_unit(monkeypatch):
     monkeypatch.setenv("PATH", "/some/path")
     monkeypatch.setenv("VST_SECRET", "s")
-    env = runner.build_environment({"EXTRA": "1"})
-    assert env["PATH"] == "/some/path" and env["EXTRA"] == "1" and env["PYTHONIOENCODING"] == "utf-8"
+    env = runner.build_environment({"VST_EXTRA": "1"})
+    assert env["PATH"] == "/some/path" and env["VST_EXTRA"] == "1" and env["PYTHONIOENCODING"] == "utf-8"
     assert "VST_SECRET" not in env
-    assert set(env) <= set(runner.ENV_ALLOWLIST) | {"PYTHONIOENCODING", "EXTRA"}
+    assert set(env) <= set(runner.ENV_ALLOWLIST) | {"PYTHONIOENCODING", "VST_EXTRA"}
     assert runner.build_environment() == runner.build_environment(None) == runner.build_environment({})
 
 
@@ -1279,7 +1285,9 @@ def test_non_os_errors_from_subprocess_propagate(work, monkeypatch):
 # ----------------------------------------------------- extra_env shadowing (C2)
 
 SHADOW_NAMES = [
-    "PATH", "path", "Path", "PYTHONPATH", "pythonpath", "PyThOnPaTh", "PYTHONSTARTUP",
+    "PYTHONPYCACHEPREFIX", "PYTHONUSERBASE", "PYTHONBREAKPOINT", "PYTHONWARNINGS", "PYTHONSAFEPATH",
+    "Vst_Mixed", "vst_lower", "VST_lower", "VST_", "VST", "VSTX", "XVST_A", "VST-A", "VST_A B",
+    "VST_\u00c9", "PATH", "path", "Path", "PYTHONPATH", "pythonpath", "PyThOnPaTh", "PYTHONSTARTUP",
     "PYTHONHOME", "PYTEST_ADDOPTS", "pytest_plugins", "LD_PRELOAD", "ld_library_path",
     "DYLD_INSERT_LIBRARIES", "dyld_library_path", "DYLD_X", "dyld_",
     "PATHEXT", "SYSTEMROOT", "SystemRoot", "SYSTEMDRIVE", "WINDIR", "TEMP", "tmp", "TMPDIR",
@@ -1309,15 +1317,31 @@ def test_extra_env_with_one_forbidden_key_among_good_ones_is_refused_as_a_whole(
     cmd = marker_cmd(marker)
     with pytest.raises(c.ContractError):
         run(work, m=mf([cmd]), commands=[cmd], extra_env={"VST_OK": "1", "PYTHONPATH": "/evil"})
+    with pytest.raises(c.ContractError):
+        run(work, m=mf([cmd]), commands=[cmd], extra_env={"VST_OK": "1", "vst_bad": "1"})
     assert not os.path.exists(marker)
 
 
-@pytest.mark.parametrize("name", ["MYPATH", "PATH_EXTRA", "PYTHONPATHX", "XDYLD_FOO", "VST_LANG", "LANGUAGE_X"])
-def test_extra_env_names_that_only_contain_a_forbidden_word_are_still_allowed(work, name):
+@pytest.mark.parametrize("name", ["MYPATH", "PATH_EXTRA", "PYTHONPATHX", "XDYLD_FOO", "LANGUAGE_X"])
+def test_extra_env_names_outside_the_vst_namespace_are_refused_even_if_harmless(work, name):
+    marker = os.path.join(work, "ran.txt")
+    cmd = marker_cmd(marker)
+    with pytest.raises(c.ContractError, match=r"VST_\[A-Z0-9_\]\+"):
+        run(work, m=mf([cmd]), commands=[cmd], extra_env={name: "x"})
+    assert not os.path.exists(marker)
+
+
+@pytest.mark.parametrize("name", ["VST_LANG", "VST_A", "VST_A1_B2", "VST_0", "VST___"])
+def test_extra_env_vst_upper_case_names_are_passed_to_the_child(work, name):
     r, out = captured(
         work, f"import os; print(os.environ.get({name!r}))", extra_env={name: "kept"}
     )
     assert out.strip() == "kept" and r["commands"][0]["exit_code"] == 0
+
+
+def test_extra_env_allowlist_is_the_documented_pattern():
+    assert runner._EXTRA_ENV_NAME.pattern == "VST_[A-Z0-9_]+"
+    assert runner._EXTRA_ENV_NAME.fullmatch("VST_A") and not runner._EXTRA_ENV_NAME.fullmatch("VST_A\n")
 
 
 def test_forbidden_env_name_sets_cover_the_documented_names():
@@ -1329,7 +1353,8 @@ def test_forbidden_env_name_sets_cover_the_documented_names():
 
 
 def test_malformed_extra_env_is_still_a_contract_error(work):
-    for bad in ({"A=B": "x"}, {"": "x"}, {"A": 1}, {1: "x"}, {"A\0": "x"}, {"A": "v\0"}, ["A"], "A=1"):
+    for bad in ({"A=B": "x"}, {"": "x"}, {"A": 1}, {1: "x"}, {"A\0": "x"}, {"A": "v\0"}, ["A"], "A=1",
+                {"VST_A": 1}, {"VST_A": "v\0"}, {"VST_A=B": "x"}):
         with pytest.raises(c.ContractError):
             run(work, extra_env=bad)
 
@@ -1485,3 +1510,154 @@ def test_stray_descendant_is_killed_after_the_root_command_exited_normally(work,
     size = os.path.getsize(beat)
     time.sleep(1.5)  # seven heartbeat periods: a surviving grandchild would keep writing
     assert os.path.getsize(beat) == size, "a stray descendant outlived the command after a normal exit"
+
+
+# ------------------------------------------- third round: capture and cleanup
+
+
+class _BoomStream:
+    """Wraps the real pipe; read() raises `exc`, close() closes the real pipe."""
+
+    def __init__(self, real, exc):
+        self._real, self._exc = real, exc
+
+    def read(self, n=-1):
+        raise self._exc
+
+    def close(self):
+        self._real.close()
+
+
+def _patch_popen(monkeypatch, wrap):
+    real_popen = subprocess.Popen
+    made = []
+
+    def fake(*a, **k):
+        proc = real_popen(*a, **k)
+        made.append(proc)
+        wrap(proc)
+        return proc
+
+    monkeypatch.setattr(runner.subprocess, "Popen", fake)
+    return made
+
+
+@pytest.mark.parametrize(
+    "exc", [RuntimeError("boom"), KeyError("k"), MemoryError(), TypeError("t")],
+    ids=["RuntimeError", "KeyError", "MemoryError", "TypeError"],
+)
+def test_reader_exception_other_than_oserror_marks_capture_incomplete(work, monkeypatch, exc):
+    _patch_popen(monkeypatch, lambda p: setattr(p, "stdout", _BoomStream(p.stdout, exc)))
+    report = {}
+    r = run(work, test_result_parser=ALL_IDS, report=report)
+    assert r["commands"][0]["exit_code"] == runner.EXIT_CAPTURE_INCOMPLETE == -4
+    assert report["capture_incomplete"] is True and report["commands"][0]["capture_incomplete"] is True
+    assert r["result"] == "FAIL" and signing.verify(r, KEY)  # the parser claimed both ids: still not PASS
+
+
+@pytest.mark.parametrize("exc", [OSError("io"), ValueError("closed file")], ids=["OSError", "ValueError"])
+def test_reader_oserror_and_valueerror_also_mark_capture_incomplete(work, monkeypatch, exc):
+    _patch_popen(monkeypatch, lambda p: setattr(p, "stderr", _BoomStream(p.stderr, exc)))
+    report = {}
+    r = run(work, test_result_parser=ALL_IDS, report=report)
+    assert r["commands"][0]["exit_code"] == -4 and report["capture_incomplete"] is True
+
+
+def test_a_healthy_capture_is_not_flagged_when_nothing_raises(work):
+    report = {}
+    r = run(work, report=report)
+    assert r["commands"][0]["exit_code"] == 0 and report["capture_incomplete"] is False
+
+
+def test_root_that_survives_the_kill_gives_exit_minus_four(work, monkeypatch):
+    # The kill is neutralised and the root ignores the timeout: wait(10) after the kill
+    # also times out, so the output cannot be trusted.
+    monkeypatch.setattr(runner, "_kill_tree", lambda proc: None)
+    monkeypatch.setattr(runner, "_JOIN_SEC", 0.5)
+    monkeypatch.setattr(runner._JobObject, "attach", classmethod(lambda cls, proc: None))
+    real_wait = subprocess.Popen.wait
+    calls = []
+
+    def fake_wait(self, timeout=None):
+        calls.append(timeout)
+        if timeout is not None and len(calls) <= 2:
+            raise subprocess.TimeoutExpired("x", timeout)  # first: command timeout; second: after kill
+        return real_wait(self, timeout)
+
+    monkeypatch.setattr(subprocess.Popen, "wait", fake_wait)
+    sleeper = pycmd("import time; time.sleep(4)")
+    report = {}
+    try:
+        r = run(work, m=mf([sleeper]), commands=[sleeper], test_result_parser=ALL_IDS,
+                timeout_sec=1, report=report)
+    finally:
+        monkeypatch.undo()
+    assert calls[:2] == [1.0, 10] or calls[1] == 10
+    assert r["commands"][0]["exit_code"] == -4  # not -1: the timeout is outranked
+    assert report["commands"][0]["timed_out"] is True
+    assert report["commands"][0]["capture_incomplete"] is True and report["capture_incomplete"] is True
+    assert r["result"] == "FAIL"
+
+
+def test_thread_start_failure_kills_the_child_and_cleans_up(work, monkeypatch):
+    made = _patch_popen(monkeypatch, lambda p: None)
+    marker = os.path.join(work, "child-alive.txt")
+    child = pycmd(
+        "import time\n"
+        "for _ in range(100):\n"
+        f"    open({marker!r}, 'a').write('.'); time.sleep(0.1)\n"
+    )
+    real_start = runner.threading.Thread.start
+    state = {"n": 0}
+
+    def failing_start(self):
+        state["n"] += 1
+        if state["n"] == 2:  # the stderr reader fails to start
+            raise RuntimeError("can't start new thread")
+        return real_start(self)
+
+    monkeypatch.setattr(runner.threading.Thread, "start", failing_start)
+    with pytest.raises(RuntimeError, match="start new thread"):
+        run(work, m=mf([child]), commands=[child], test_result_parser=ALL_IDS)
+    monkeypatch.undo()
+    proc = made[0]
+    assert proc.poll() is not None, "the child was left running after the thread-start failure"
+    assert proc.stdout.closed and proc.stderr.closed
+    time.sleep(1.0)
+    size = os.path.getsize(marker) if os.path.exists(marker) else 0
+    time.sleep(1.0)
+    assert (os.path.getsize(marker) if os.path.exists(marker) else 0) == size, "child kept running"
+
+
+def test_thread_start_failure_for_the_first_reader_also_cleans_up(work, monkeypatch):
+    made = _patch_popen(monkeypatch, lambda p: None)
+    real_start = runner.threading.Thread.start
+
+    def failing_start(self):
+        raise RuntimeError("no threads")
+
+    sleeper = pycmd("import time; time.sleep(30)")
+    monkeypatch.setattr(runner.threading.Thread, "start", failing_start)
+    with pytest.raises(RuntimeError, match="no threads"):
+        run(work, m=mf([sleeper]), commands=[sleeper], test_result_parser=ALL_IDS)
+    monkeypatch.setattr(runner.threading.Thread, "start", real_start)
+    assert made[0].poll() is not None and made[0].stdout.closed and made[0].stderr.closed
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Job Object is Windows only")
+def test_job_is_closed_when_thread_start_fails(work, monkeypatch):
+    closed = []
+    real_term = runner._JobObject.terminate_and_close
+
+    def spy(self):
+        closed.append(self._handle is not None)
+        return real_term(self)
+
+    monkeypatch.setattr(runner._JobObject, "terminate_and_close", spy)
+    monkeypatch.setattr(
+        runner.threading.Thread, "start", lambda self: (_ for _ in ()).throw(RuntimeError("x"))
+    )
+    sleeper = pycmd("import time; time.sleep(30)")
+    with pytest.raises(RuntimeError):
+        run(work, m=mf([sleeper]), commands=[sleeper], test_result_parser=ALL_IDS)
+    assert closed and closed[0] is True  # the job was terminated on the exception path

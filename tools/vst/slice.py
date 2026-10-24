@@ -82,7 +82,7 @@ class FakeClock:
         self.now += float(seconds)
 
 
-def build_synthetic_manifest(task_id: str, base_head: str) -> dict:
+def build_synthetic_manifest(task_id: str, base_head: str, retry_cap: int = 1) -> dict:
     """A valid TaskManifest with the slots tests, static and review."""
     manifest = {
         "task_id": task_id,
@@ -118,7 +118,7 @@ def build_synthetic_manifest(task_id: str, base_head: str) -> dict:
         ],
         "timeout_sec": 600,
         "cost_cap": 100,
-        "retry_cap": 1,
+        "retry_cap": retry_cap,
     }
     return validate_task_manifest(manifest)
 
@@ -142,6 +142,7 @@ class SliceFixture:
         supervisor_key: bytes = SUPERVISOR_KEY,
         operator_key: bytes = OPERATOR_KEY,
         event_key: bytes = EVENT_KEY,
+        retry_cap: int = 1,
     ) -> None:
         if len({bytes(key), bytes(supervisor_key), bytes(operator_key), bytes(event_key)}) != 4:
             raise ValueError("worker, supervisor, operator and event keys must be distinct")
@@ -156,7 +157,7 @@ class SliceFixture:
         self.story_id = STORY_ID
         self.owner = OWNER
         self.runner_id = WORKER_ID
-        self.manifest = build_synthetic_manifest(self.task_id, self.current_head)
+        self.manifest = build_synthetic_manifest(self.task_id, self.current_head, retry_cap)
         self.manifest_hash = manifest_sha256(self.manifest)
         self.store = Store(os.path.join(workdir, "state.db"), clock, event_key=event_key)
         self.store.init_slots(2)
@@ -707,6 +708,65 @@ def _scenario_worker_lost_then_new_head(fx: SliceFixture, clock: FakeClock) -> d
     })
 
 
+def _scenario_budget_exact_cap(fx: SliceFixture, clock: FakeClock) -> dict:
+    fx.begin(1)
+    fx.store.set_budget(fx.task_id, 5)
+    remaining = fx.store.charge(fx.task_id, 5, supervisor_key=fx.supervisor_key)  # exactly the cap
+    extra: dict[str, Any] = {"remaining_after_exact_charge": remaining}
+    extra["final_receipts_error_kind"] = _error_kind(fx.append_good_set)
+    fx.end()
+    decision = fx.gate()  # evaluated before any marker exists
+    extra["stored_receipts"] = len(fx.store.receipts_for_task(fx.task_id))
+    extra["acquire_lease_error_kinds"] = [
+        _error_kind(lambda: fx.begin(2)),
+        _error_kind(lambda: fx.begin(2)),
+    ]
+    extra["budget_markers"] = sum(
+        1
+        for r in fx.store.receipts_for_task(fx.task_id)
+        if r["slot"] == SUPERVISOR_SLOT and r["check_description"] == "BUDGET_EXCEEDED"
+    )
+    extra["event_chain_ok"] = fx.store.verify_event_chain()
+    extra["gate_after_marker"] = _brief(fx.gate())
+    return _observe(decision, extra)
+
+
+def _next_pass_set(fx: SliceFixture, attempt: int) -> None:
+    """Append a PASS set as attempt `attempt` of every slot, chained to the previous one."""
+    last: dict[str, str] = {}
+    for r in fx.store.receipts_for_task(fx.task_id):
+        if r["slot"] != SUPERVISOR_SLOT:
+            last[r["slot"]] = receipt_sha256(r)
+    fx.append(fx.make_test_receipt(attempt, EXPECTED_TEST_IDS, prev=last.get("tests")))
+    fx.append(fx.make_static_receipt(attempt=attempt, prev=last.get("static")))
+    fx.append(fx.make_review_receipt(REVIEWER, AUTHOR, attempt=attempt, prev=last.get("review")))
+
+
+def _scenario_takeover_after_full_pass_set(fx: SliceFixture, clock: FakeClock) -> dict:
+    # Runs on a fixture with retry_cap 0 (see _SCENARIO_RETRY_CAP): one attempt per
+    # slot per epoch. A takeover after a complete PASS set must stay satisfiable.
+    extra: dict[str, Any] = {"retry_cap": fx.manifest["retry_cap"]}
+    fx.begin(1)
+    fx.append_good_set()
+    fx.end()
+    extra["verdict_epoch_1"] = _brief(fx.gate())["verdict"]
+    for round_no in (2, 3):
+        fx.store.release_epoch(fx.story_id, fx.owner)
+        fx.owner = f"supervisor-{round_no}"
+        fx.epoch = fx.store.acquire_epoch(fx.story_id, fx.owner, 3600)
+        fx.begin(round_no)
+        _next_pass_set(fx, round_no)
+        fx.end()
+        extra[f"verdict_takeover_{round_no - 1}"] = _brief(fx.gate())["verdict"]
+    extra["final_epoch"] = fx.epoch
+    extra["failed_attempts"] = fx.store.failed_attempts(fx.task_id)
+    extra["attempts_per_slot"] = {
+        slot: [r["attempt"] for r in fx.store.receipts_for_task(fx.task_id) if r["slot"] == slot]
+        for slot in ("tests", "static", "review")
+    }
+    return _observe(fx.gate(), extra)
+
+
 def _scenario_takeover_does_not_exhaust_cap(fx: SliceFixture, clock: FakeClock) -> dict:
     takeovers = 3  # more than retry_cap + 1 = 2 fenced leases, none wrote a receipt
     for round_no in range(1, takeovers + 1):
@@ -748,7 +808,12 @@ SCENARIOS: tuple[tuple[str, Callable[[SliceFixture, FakeClock], dict]], ...] = (
     ("retry_across_head_change", _scenario_retry_across_head_change),
     ("worker_lost_before_first_receipt", _scenario_worker_lost_then_new_head),
     ("takeover_does_not_exhaust_retry_cap", _scenario_takeover_does_not_exhaust_cap),
+    ("budget_exact_cap_allows_final_receipts", _scenario_budget_exact_cap),
+    ("takeover_after_full_pass_set", _scenario_takeover_after_full_pass_set),
 )
+
+# Scenarios that need a manifest retry_cap other than the default 1.
+_SCENARIO_RETRY_CAP = {"takeover_after_full_pass_set": 0}
 
 
 def run_scenarios(workdir: str) -> dict[str, dict]:
@@ -757,7 +822,10 @@ def run_scenarios(workdir: str) -> dict[str, dict]:
     report: dict[str, dict] = {}
     for name, scenario in SCENARIOS:
         clock = FakeClock()
-        fixture = SliceFixture(os.path.join(workdir, name), SLICE_KEY, clock)
+        fixture = SliceFixture(
+            os.path.join(workdir, name), SLICE_KEY, clock,
+            retry_cap=_SCENARIO_RETRY_CAP.get(name, 1),
+        )
         try:
             report[name] = scenario(fixture, clock)
         finally:

@@ -126,3 +126,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: the first remediation moved epochs to a history model but left heads on the old exclusion model; tests reused one head in every scenario, so the interaction was never exercised; the post-exit kill was written and documented as best effort without a test that held a grandchild.
 - Layer: author and first-round tests missed; four independent reviewers caught the head defect (same finding from all four is strong evidence); a test written from a reviewer's finding caught the Windows kill defect.
 - Rule: every history model (epoch, head, attempt) needs a scenario where that dimension changes between attempts; any claim of process cleanup needs a test with a live grandchild; the same reviewer finding from several independent reviewers is a MAJOR by default.
+
+## 2026-10-24 -- S1 third review and remediation
+
+- Kind: FAILURE (author and test layers) / SUCCESS (reviewers).
+- Facts: four reviewers on f1956e2 again returned MODIFY; two MAJOR findings were made independently by two or more reviewers: the budget boundary (`charge` allows `spent == cap`, `append_receipt` refused at `spent >= cap`, so a worker that spent its whole cap could not record its result and nothing was persisted) and the slot-chain bound counting attempts of earlier epochs (a takeover after a full PASS set left a slot unsatisfiable without a terminal marker). The coordinator had written the `>=` boundary himself and had already flagged it as risky in the decision log, yet it shipped.
+- Root cause: the same boundary was expressed in two places with two comparison operators; the retry bound was written for one epoch and the history model for many; tests exercised each rule alone, never the spend-exactly-the-cap or takeover-after-full-set paths.
+- Layer: author missed; tests green but vacuous for both paths; reviewers caught (this time through a documented risk plus an independent second finding).
+- Rule: a risk written into the decision log is a work item, not a note - resolve it before the next gate; define a limit once (one helper) and test both sides of the boundary (cap-1, cap, cap+1); any bound that mixes counters from different epochs needs a scenario with a takeover after success.

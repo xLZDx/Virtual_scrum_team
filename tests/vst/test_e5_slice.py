@@ -1,4 +1,4 @@
-"""E5 vertical-slice end-to-end tests: the seventeen synthetic scenarios, the fixture keys and the CLI.
+"""E5 vertical-slice end-to-end tests: the nineteen synthetic scenarios, the fixture keys and the CLI.
 
 Journey: synthetic story -> Store (epoch, task registration, lease, receipts)
 -> signing -> gate. Every scenario is asserted on its exact observable verdict
@@ -25,7 +25,7 @@ if REPO_ROOT not in sys.path:
 from tools.vst import slice as vst_slice  # noqa: E402
 from tools.vst.contracts import ContractError, SUPERVISOR_SLOT  # noqa: E402
 from tools.vst.signing import verify  # noqa: E402
-from tools.vst.store import StoreError  # noqa: E402
+from tools.vst.store import SUPERVISOR_RUNNER_ID, StoreError  # noqa: E402
 
 EXPECTED_SCENARIOS = {
     "happy_path",
@@ -45,6 +45,8 @@ EXPECTED_SCENARIOS = {
     "retry_across_head_change",
     "worker_lost_before_first_receipt",
     "takeover_does_not_exhaust_retry_cap",
+    "budget_exact_cap_allows_final_receipts",
+    "takeover_after_full_pass_set",
 }
 
 APPROVING = {
@@ -54,6 +56,8 @@ APPROVING = {
     "retry_across_head_change",
     "worker_lost_before_first_receipt",
     "takeover_does_not_exhaust_retry_cap",
+    "budget_exact_cap_allows_final_receipts",
+    "takeover_after_full_pass_set",
 }
 
 MISSING_ALL = [
@@ -101,12 +105,12 @@ class SliceScenarioTests(unittest.TestCase):
 
     # ----------------------------------------------------------- catalogue
 
-    def test_scenario_catalogue_is_exactly_the_seventeen_expected(self) -> None:
+    def test_scenario_catalogue_is_exactly_the_nineteen_expected(self) -> None:
         self.assertEqual(set(self.report), EXPECTED_SCENARIOS)
-        self.assertEqual(len(self.report), 17)
+        self.assertEqual(len(self.report), 19)
         names = [name for name, _ in vst_slice.SCENARIOS]
-        self.assertEqual(len(names), 17)
-        self.assertEqual(len(set(names)), 17)  # no duplicate scenario name
+        self.assertEqual(len(names), 19)
+        self.assertEqual(len(set(names)), 19)  # no duplicate scenario name
         self.assertEqual(set(names), EXPECTED_SCENARIOS)
         for name, obs in self.report.items():
             self.assertEqual(
@@ -118,7 +122,7 @@ class SliceScenarioTests(unittest.TestCase):
         for name in EXPECTED_SCENARIOS:
             self.assertTrue(os.path.isfile(os.path.join(self.workdir, name, "state.db")), name)
 
-    def test_only_six_scenarios_approve_and_none_by_waiver_at_top_level(self) -> None:
+    def test_only_eight_scenarios_approve_and_none_by_waiver_at_top_level(self) -> None:
         approving = {n for n, o in self.report.items() if o["verdict"] == "APPROVE"}
         self.assertEqual(approving, APPROVING)
         self.assertNotIn(
@@ -186,17 +190,20 @@ class SliceScenarioTests(unittest.TestCase):
         extra = obs["extra"]
         self.assertEqual((extra["old_epoch"], extra["new_epoch"]), (2, 3))
         self.assertEqual(extra["append_error_kind"], "epoch")
-        # The takeover fenced the old lease, so the zombie heartbeat has no live lease.
+        # The old lease had already expired when the new owner took over: acquire_epoch
+        # reaps it to EXPIRED (not FENCED), so the zombie heartbeat has no live lease.
         self.assertEqual(extra["heartbeat_error_kind"], "lease")
         self.assertEqual(extra["stored_count"], 0)
         leases = self._leases("zombie_late_write")
         self.assertEqual(len(leases), 1)
-        self.assertEqual((leases[0]["status"], leases[0]["wrote"]), ("FENCED", 0))
+        self.assertEqual((leases[0]["status"], leases[0]["wrote"]), ("EXPIRED", 0))
         self.assertEqual(self._held_slots("zombie_late_write"), 0)
         self.assertEqual(
             self._db("zombie_late_write").execute("SELECT COUNT(*) FROM receipts").fetchone()[0], 0
         )
-        self.assertIn("LEASE_FENCED", self._event_kinds("zombie_late_write"))
+        zombie_kinds = self._event_kinds("zombie_late_write")
+        self.assertEqual(zombie_kinds.count("LEASE_EXPIRED"), 1)
+        self.assertNotIn("LEASE_FENCED", zombie_kinds)
         # Even forced into the gate the stale-epoch receipt cannot approve.
         self.assertEqual(obs["verdict"], "MODIFY")
         self.assertEqual(
@@ -574,6 +581,104 @@ class SliceScenarioTests(unittest.TestCase):
             3,
         )
 
+    # ------------------------------------------------------------ third round
+
+    def test_budget_exact_cap_allows_final_receipts_then_blocks_new_leases(self) -> None:
+        name = "budget_exact_cap_allows_final_receipts"
+        obs = self.report[name]
+        extra = obs["extra"]
+        # Spending exactly the cap leaves 0 and the worker still records its full PASS set.
+        self.assertEqual(extra["remaining_after_exact_charge"], 0)
+        self.assertIsNone(extra["final_receipts_error_kind"])
+        self.assertEqual(extra["stored_receipts"], 3)
+        self.assertEqual(obs["verdict"], "APPROVE", obs["reasons"])  # evaluated before any marker
+        self.assertEqual(obs["reasons"], [])
+        self.assertEqual(obs["unresolved_findings"], [])
+        # A new lease is refused (spent >= cap) both times, with ONE marker in total.
+        self.assertEqual(extra["acquire_lease_error_kinds"], ["budget", "budget"])
+        self.assertEqual(extra["budget_markers"], 1)
+        self.assertIs(extra["event_chain_ok"], True)
+        # After the marker the gate no longer approves: a terminal marker blocks.
+        self.assertEqual(
+            extra["gate_after_marker"],
+            {
+                "verdict": "MODIFY",
+                "reasons": ["terminal marker BUDGET_EXCEEDED (supervisor attempt 1)"],
+            },
+        )
+        conn = self._db(name)
+        budget = conn.execute("SELECT cap, spent FROM budget").fetchone()
+        self.assertEqual((budget["cap"], budget["spent"]), (5, 5))
+        rows = conn.execute("SELECT slot, attempt, body FROM receipts ORDER BY seq").fetchall()
+        self.assertEqual(
+            [(r["slot"], r["attempt"]) for r in rows],
+            [("tests", 1), ("static", 1), ("review", 1), (SUPERVISOR_SLOT, 1)],
+        )
+        marker = json.loads(rows[3]["body"])
+        self.assertEqual(marker["check_description"], "BUDGET_EXCEEDED")
+        self.assertEqual(marker["result"], "BLOCKED")
+        self.assertEqual(marker["runner_id"], SUPERVISOR_RUNNER_ID)  # written by acquire_lease itself
+        self.assertTrue(verify(marker, vst_slice.SUPERVISOR_KEY))
+        self.assertFalse(verify(marker, vst_slice.WORKER_KEY))
+        # Only the first lease exists: the refused attempt 2 left no lease row and no slot.
+        self.assertEqual(
+            [(l["attempt"], l["status"], l["wrote"], l["marked"]) for l in self._leases(name)],
+            [(1, "RELEASED", 1, 0)],
+        )
+        self.assertEqual(self._held_slots(name), 0)
+        kinds = self._event_kinds(name)
+        self.assertEqual(kinds.count("BUDGET_EXCEEDED"), 1)  # the event is recorded once
+        self.assertEqual(kinds.count("LEASE_ACQUIRED"), 1)
+        self.assertEqual(kinds.count("RECEIPT_APPENDED"), 4)
+
+    def test_takeover_after_full_pass_set_stays_satisfiable_with_retry_cap_zero(self) -> None:
+        name = "takeover_after_full_pass_set"
+        obs = self.report[name]
+        extra = obs["extra"]
+        self.assertEqual(extra["retry_cap"], 0)
+        # The verdict is APPROVE after the first PASS set and after each takeover.
+        self.assertEqual(extra["verdict_epoch_1"], "APPROVE")
+        self.assertEqual(extra["verdict_takeover_1"], "APPROVE")
+        self.assertEqual(extra["verdict_takeover_2"], "APPROVE")
+        self.assertEqual(obs["verdict"], "APPROVE", obs["reasons"])
+        self.assertEqual(obs["reasons"], [])
+        self.assertEqual(obs["unresolved_findings"], [])
+        self.assertEqual(extra["final_epoch"], 4)  # 2 at start, then 3 and 4
+        self.assertEqual(extra["failed_attempts"], 0)
+        # Attempt numbers stay globally consecutive across epochs, per slot.
+        self.assertEqual(
+            extra["attempts_per_slot"],
+            {"tests": [1, 2, 3], "static": [1, 2, 3], "review": [1, 2, 3]},
+        )
+        conn = self._db(name)
+        per_epoch = {
+            (r["slot"], r["epoch"]): r["n"]
+            for r in conn.execute(
+                "SELECT slot, epoch, COUNT(*) AS n FROM receipts GROUP BY slot, epoch"
+            )
+        }
+        # retry_cap 0 means one attempt per slot per epoch, and that is what is stored.
+        self.assertEqual(
+            per_epoch,
+            {(slot, epoch): 1 for slot in ("tests", "static", "review") for epoch in (2, 3, 4)},
+        )
+        self.assertEqual(
+            conn.execute(
+                "SELECT COUNT(*) FROM receipts WHERE slot = ?", (SUPERVISOR_SLOT,)
+            ).fetchone()[0],
+            0,  # no WORKER_LOST / RETRY_EXHAUSTED marker
+        )
+        self.assertEqual(
+            [(l["attempt"], l["status"], l["wrote"], l["marked"]) for l in self._leases(name)],
+            [(1, "RELEASED", 1, 0), (2, "RELEASED", 1, 0), (3, "RELEASED", 1, 0)],
+        )
+        self.assertEqual(self._held_slots(name), 0)
+        kinds = self._event_kinds(name)
+        self.assertEqual(kinds.count("EPOCH_RELEASED"), 2)
+        self.assertEqual(kinds.count("RECEIPT_APPENDED"), 9)
+        self.assertEqual(kinds.count("LEASE_ACQUIRED"), 3)
+        self.assertNotIn("RETRY_EXHAUSTED", kinds)
+
     def test_every_scenario_event_chain_is_intact_in_its_file(self) -> None:
         from tools.vst.store import Store
 
@@ -708,7 +813,7 @@ class SliceCliTests(unittest.TestCase):
             cwd=REPO_ROOT, capture_output=True, text=True, timeout=300, check=False,
         )
 
-    def test_cli_runs_end_to_end_and_reports_all_seventeen_scenarios(self) -> None:
+    def test_cli_runs_end_to_end_and_reports_all_nineteen_scenarios(self) -> None:
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
             first = self._run_cli(os.path.join(one, "run"))
             second = self._run_cli(os.path.join(two, "run"))
@@ -721,7 +826,7 @@ class SliceCliTests(unittest.TestCase):
                     os.path.isfile(os.path.join(one, "run", name, "state.db")), name
                 )
         self.assertEqual(set(parsed), EXPECTED_SCENARIOS)
-        self.assertEqual(len(parsed), 17)
+        self.assertEqual(len(parsed), 19)
         self.assertEqual(first.stdout, second.stdout)  # deterministic
         self.assertEqual(first.stdout.strip(), json.dumps(parsed, sort_keys=True, indent=2))
         verdicts = {name: obs["verdict"] for name, obs in parsed.items()}
@@ -745,6 +850,8 @@ class SliceCliTests(unittest.TestCase):
                 "retry_across_head_change": "APPROVE",
                 "worker_lost_before_first_receipt": "APPROVE",
                 "takeover_does_not_exhaust_retry_cap": "APPROVE",
+                "budget_exact_cap_allows_final_receipts": "APPROVE",
+                "takeover_after_full_pass_set": "APPROVE",
             },
         )
         for name, obs in parsed.items():

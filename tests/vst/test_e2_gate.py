@@ -992,6 +992,21 @@ def test_normalized_principal_spoof_honest_fail_is_hard_and_unmet(variant):
     assert ev([receipt("TestRun"), receipt("StaticAnalysis"), r], waiver=broad_waiver())["verdict"] == "MODIFY"
 
 
+@pytest.mark.parametrize(
+    "variant",
+    ["author-y️", "author-y͏", "author-yㅤ", "author឴-y", "author-y͸"],
+)
+def test_invisible_char_reviewer_variant_of_author_never_approves(variant):
+    # An invisible/filler suffix must not make the reviewer look distinct from
+    # the author: the review receipt is not accepted as an approval.
+    r = receipt("IndependentReview", result="PASS", reviewer_principal=variant, author_principal="author-y")
+    try:
+        d = ev([receipt("TestRun"), receipt("StaticAnalysis"), r])
+    except c.ContractError:
+        return
+    assert d["verdict"] != "APPROVE"
+
+
 def test_review_author_spelling_variant_of_manifest_author_is_accepted_after_normalization():
     r = receipt("IndependentReview", author_principal="  AUTHOR-Y ")
     assert ev([receipt("TestRun"), receipt("StaticAnalysis"), r])["verdict"] == "APPROVE"

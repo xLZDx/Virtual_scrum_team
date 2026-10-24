@@ -11,7 +11,8 @@ Safety rules enforced BEFORE any process starts (ContractError):
 - every argv must EXACTLY equal an `allowed_commands` entry of that slot;
 - set(expected_test_ids) must equal the manifest `required_tests` ids of the
   slot, and covered_acceptance must be a subset of manifest acceptance;
-- attempt <= retry_cap + 1; timeouts <= manifest timeout_sec;
+- timeouts <= manifest timeout_sec (the retry_cap bound is per epoch and is
+  enforced by the store, not here: attempt numbers are global);
 - artifact paths are repo-style relative paths (no absolute path, no `..`, no
   drive letter) that stay under the run directory `cwd` and pass through no
   symlink or junction.
@@ -21,11 +22,11 @@ Execution (subprocess.Popen, shell=False):
   ENV_ALLOWLIST copied from the runner process (PATH, SYSTEMROOT, TEMP ...) plus
   PYTHONIOENCODING and the caller's explicit `extra_env`. No other inherited
   variable (tokens, API keys) reaches the child. stdin is /dev/null.
-  `extra_env` may not shadow or inject loader/search variables: a key that
-  (case-insensitively) equals an ENV_ALLOWLIST name, PATH, PYTHONPATH,
-  PYTHONSTARTUP, PYTHONHOME, PYTEST_ADDOPTS, PYTEST_PLUGINS, LD_PRELOAD or
-  LD_LIBRARY_PATH, or starts with DYLD_, is rejected with ContractError (a
-  ValueError) before anything runs (FORBIDDEN_ENV_NAMES).
+  `extra_env` is an ALLOWLIST: every name must fully match VST_[A-Z0-9_]+
+  (case-sensitive upper case); anything else (PATH, PYTHONPATH, LD_*, DYLD_*,
+  lower-case or mixed-case names, ...) is rejected with ContractError (a
+  ValueError) before anything runs. FORBIDDEN_ENV_NAMES is kept as
+  documentation of the loader/search names that can never match.
 - stdout and stderr are captured through reader threads with a hard cap of
   `max_output_bytes` per stream (default 1 MiB); the excess is drained and
   dropped. A command whose output was truncated is recorded with exit code -3
@@ -46,8 +47,12 @@ Execution (subprocess.Popen, shell=False):
   (the child is started in its own session) is killed with SIGKILL on timeout
   and after a normal exit. Timeout exit code -1.
 - capture completeness: after both pipes were joined, a reader thread that is
-  still alive, or a read error (OSError/ValueError), means the captured output
-  may be incomplete. That command is recorded with exit code -4
+  still alive, a read error of any kind (any Exception in the reader), or a root
+  process that is still running 10 s after the kill, means the captured output
+  may be incomplete. On any exception inside the run (including a failed
+  reader-thread start) the whole tree is killed (POSIX process group, Windows
+  Job Object / taskkill /T) and the pipes are closed after the readers are
+  joined. That command is recorded with exit code -4
   (EXIT_CAPTURE_INCOMPLETE, fail-closed: the derived result is FAIL) and
   report['capture_incomplete'] is True. This takes precedence over -1 and -3.
 - `timeout_sec` is the per-command limit; `deadline_sec` is the overall limit
@@ -68,6 +73,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import signal
 import subprocess
 import threading
@@ -122,6 +128,8 @@ FORBIDDEN_ENV_NAMES = frozenset(
     }
 )
 FORBIDDEN_ENV_PREFIXES = ("DYLD_",)
+# extra_env is an allowlist: only these names reach a child (case-sensitive upper case).
+_EXTRA_ENV_NAME = re.compile(r"VST_[A-Z0-9_]+")
 _CHUNK = 64 * 1024
 _JOIN_SEC = 5.0
 
@@ -233,11 +241,15 @@ class _Capture:
                     self.data += chunk[:room]
                 if len(chunk) > max(room, 0):
                     self.truncated = True
-        except (OSError, ValueError):
+        except Exception:  # noqa: BLE001 - any reader failure means incomplete output
             self.read_error = True
 
     def finish(self) -> None:
         self._thread.join(_JOIN_SEC)
+
+    @property
+    def alive(self) -> bool:
+        return self._thread.is_alive()
 
     @property
     def incomplete(self) -> bool:
@@ -452,13 +464,20 @@ def _run_one(
         # Missing executable, missing/invalid cwd, no permission, or any other
         # OS-level failure to start. Non-OSError exceptions propagate.
         return EXIT_MISSING_EXECUTABLE, "", info
-    # Windows: put the child in a kill-on-close Job Object right away so every
-    # descendant dies on any exit path, even after the root has exited.
-    job = _JobObject.attach(proc) if os.name == "nt" else None
-    info["job_object"] = job is not None
-    out = _Capture(proc.stdout, cap)
-    err = _Capture(proc.stderr, cap)
+    job: _JobObject | None = None
+    out: _Capture | None = None
+    err: _Capture | None = None
+    completed = False
+    kill_failed = False
     try:
+        # Windows: put the child in a kill-on-close Job Object right away so every
+        # descendant dies on any exit path, even after the root has exited. If the
+        # attachment fails the run continues (taskkill fallback, job_object=False
+        # in the report).
+        job = _JobObject.attach(proc) if os.name == "nt" else None
+        info["job_object"] = job is not None
+        out = _Capture(proc.stdout, cap)
+        err = _Capture(proc.stderr, cap)
         try:
             proc.wait(timeout=limit_sec)
         except subprocess.TimeoutExpired:
@@ -469,7 +488,7 @@ def _run_one(
             try:
                 proc.wait(timeout=10)
             except subprocess.TimeoutExpired:
-                pass
+                kill_failed = True  # the root survived the kill: output is unreliable
         else:
             if job is not None:
                 job.terminate_and_close()
@@ -480,14 +499,28 @@ def _run_one(
                     os.killpg(proc.pid, signal.SIGKILL)
                 except OSError:
                     pass
+        completed = True
     finally:
         if job is not None:
             job.terminate_and_close()  # idempotent; covers unexpected exceptions
-    out.finish()
-    err.finish()
+        if not completed:
+            # ANY exception (including a failed reader-thread start): kill the
+            # whole tree (process group on POSIX, taskkill /T on Windows).
+            _kill_tree(proc)
+        for capture in (out, err):
+            if capture is not None:
+                capture.finish()
+        for capture, stream in ((out, proc.stdout), (err, proc.stderr)):
+            # Close the pipe only when its reader is gone (never under a live read).
+            if stream is not None and (capture is None or not capture.alive):
+                try:
+                    stream.close()
+                except Exception:  # noqa: BLE001
+                    pass
+    assert out is not None and err is not None
     info["stdout_truncated"] = out.truncated
     info["stderr_truncated"] = err.truncated
-    info["capture_incomplete"] = out.incomplete or err.incomplete
+    info["capture_incomplete"] = out.incomplete or err.incomplete or kill_failed
     if info["capture_incomplete"]:
         code = EXIT_CAPTURE_INCOMPLETE
     elif info["timed_out"]:
@@ -529,10 +562,10 @@ def _check_env(extra_env: object) -> dict[str, str]:
             or "\0" in value
         ):
             raise ContractError("extra_env: names and values must be valid str")
-        upper = name.upper()
-        if upper in FORBIDDEN_ENV_NAMES or upper.startswith(FORBIDDEN_ENV_PREFIXES):
+        if _EXTRA_ENV_NAME.fullmatch(name) is None:
             raise ContractError(
-                f"extra_env: {name!r} shadows an allowlisted or loader/search variable"
+                f"extra_env: name {name!r} is not allowed; only names matching "
+                "VST_[A-Z0-9_]+ (upper case) are passed to a child"
             )
     return dict(extra_env)
 
@@ -577,8 +610,9 @@ def _prepare(
         raise ContractError(f"slot: {slot!r} is not a TestRun slot of the manifest")
     _req_int(attempt, "attempt", 1, MAX_COUNTER)
     _req_int(epoch, "epoch", 1, MAX_COUNTER)
-    if attempt > valid["retry_cap"] + 1:
-        raise ContractError(f"attempt: {attempt} exceeds retry_cap {valid['retry_cap']} + 1")
+    # No retry_cap bound here: attempt numbers are global across epochs, so the
+    # per-epoch bound (retry_cap + 1 attempts per slot in the current epoch) is
+    # enforced by Store.append_receipt, which knows the epoch history.
     _req_hex(candidate_head, "candidate_head", 40)
     if attempt == 1:
         if prev_receipt_sha256 is not None:

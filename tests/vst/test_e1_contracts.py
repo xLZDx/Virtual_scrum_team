@@ -1103,7 +1103,7 @@ def test_normalize_principal_rejects_empty_or_non_string(bad):
     ],
 )
 def test_normalize_principal_rejects_control_and_format_characters(bad):
-    with pytest.raises(ContractError, match="control or format"):
+    with pytest.raises(ContractError, match="control, format, invisible or filler"):
         c.normalize_principal(bad)
 
 
@@ -1120,13 +1120,56 @@ def test_normalize_principal_zero_width_variant_is_not_silently_equal_to_the_rea
 def test_review_receipt_principal_with_control_or_format_char_fails_validate_receipt(field, bad):
     r = receipt("IndependentReview")
     r[field] = bad
-    with pytest.raises(ContractError, match="control or format"):
+    with pytest.raises(ContractError, match="control, format, invisible or filler"):
         c.validate_receipt(r)
 
 
 @pytest.mark.parametrize("bad", ["author​-y", "author-y\n", "﻿author-y", "author\x00y"])
 def test_manifest_author_principal_with_control_or_format_char_is_rejected(bad):
-    with pytest.raises(ContractError, match="control or format"):
+    with pytest.raises(ContractError, match="control, format, invisible or filler"):
+        c.validate_task_manifest(manifest(author_principal=bad))
+
+
+_INVISIBLE_PRINCIPALS = [
+    pytest.param("alice️", "FE0F", id="variation-selector-16"),
+    pytest.param("al︀ice", "FE00", id="variation-selector-1-inner"),
+    pytest.param("alice\U000e0100", "E0100", id="variation-selector-supplement"),
+    pytest.param("alice͏", "034F", id="combining-grapheme-joiner"),
+    pytest.param("aliceㅤ", "1160", id="hangul-filler"),  # NFKC maps U+3164 -> U+1160; message reports the composed code point
+    pytest.param("ﾠalice", "1160", id="halfwidth-hangul-filler"),
+    pytest.param("ali឴ce", "17B4", id="khmer-inviting-vowel"),
+    pytest.param("alice឵", "17B5", id="khmer-inherent-vowel"),
+    pytest.param("aliceᅟ", "115F", id="hangul-choseong-filler"),
+    pytest.param("aliceᅠ", "1160", id="hangul-jungseong-filler"),
+    pytest.param("alice͸", "0378", id="unassigned-code-point"),
+]
+
+
+@pytest.mark.parametrize("bad,hexcode", _INVISIBLE_PRINCIPALS)
+def test_normalize_principal_rejects_invisible_and_filler_characters(bad, hexcode):
+    with pytest.raises(ContractError, match="control, format, invisible or filler") as info:
+        c.normalize_principal(bad)
+    assert f"U+{hexcode}" in str(info.value)
+
+
+def test_normalize_principal_variation_selector_is_not_silently_equal_to_plain_name():
+    assert c.normalize_principal("alice") == "alice"
+    with pytest.raises(ContractError):
+        c.normalize_principal("alice️")
+
+
+@pytest.mark.parametrize("field", ["reviewer_principal", "author_principal"])
+@pytest.mark.parametrize("bad,hexcode", _INVISIBLE_PRINCIPALS)
+def test_review_receipt_principal_with_invisible_char_fails_validate_receipt(field, bad, hexcode):
+    r = receipt("IndependentReview")
+    r[field] = bad
+    with pytest.raises(ContractError, match="control, format, invisible or filler"):
+        c.validate_receipt(r)
+
+
+@pytest.mark.parametrize("bad,hexcode", _INVISIBLE_PRINCIPALS)
+def test_manifest_author_principal_with_invisible_char_is_rejected(bad, hexcode):
+    with pytest.raises(ContractError, match="control, format, invisible or filler"):
         c.validate_task_manifest(manifest(author_principal=bad))
 
 

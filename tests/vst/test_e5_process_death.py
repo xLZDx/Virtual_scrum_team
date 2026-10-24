@@ -284,20 +284,48 @@ class ProcessDeathTests(ProcessDeathBase):
         self.assertEqual(len(self._leases()), 2)
         self.assertTrue(store.verify_event_chain())
 
-    def test_takeover_by_a_new_owner_fences_the_dead_lease_and_marker_uses_new_epoch(self) -> None:
+    def test_takeover_reaps_the_expired_dead_lease_and_marker_uses_new_epoch(self) -> None:
+        # Third round: acquire_epoch reaps expired leases first, so a lease that has
+        # already expired becomes EXPIRED (not FENCED) and is still markable.
         old_epoch = self._kill_child()
         store = self._open()
         self.clock.advance(OWNER_TTL + 1)  # both the lease and the first owner have expired
         new_epoch = self._open().acquire_epoch(STORY, "supervisor-2", OWNER_TTL)
         self.assertEqual(new_epoch, old_epoch + 1)
-        self.assertEqual(self._leases(), [(1, "FENCED", 0, 0)])
+        self.assertEqual(self._leases(), [(1, "EXPIRED", 0, 0)])
         self.assertEqual(self._held_slots(), 0)
+        kinds = [r[0] for r in self._raw().execute("SELECT kind FROM events ORDER BY seq")]
+        self.assertEqual(kinds.count("LEASE_EXPIRED"), 1)
+        self.assertNotIn("LEASE_FENCED", kinds)
         written = self._mark(store)
         self.assertEqual(len(written), 1)
         self.assertEqual(written[0]["check_description"], "WORKER_LOST")
         self.assertEqual(written[0]["epoch"], new_epoch)  # marker is written at the CURRENT epoch
+        self.assertEqual(self._leases(), [(1, "EXPIRED", 0, 1)])
+        decision = self._gate(store)
+        self.assertEqual(decision["verdict"], "MODIFY")
+        self.assertIn("worker lost: attempt 1", decision["unresolved_findings"])
+        self.assertEqual(store.failed_attempts(TASK), 1)  # an expired lease that wrote nothing counts
+
+    def test_takeover_of_a_still_live_lease_fences_it_and_marker_uses_new_epoch(self) -> None:
+        old_epoch = self._kill_child()
+        store = self._open()
+        # The owner steps down while the worker lease (60 s) is still live: it is fenced.
+        store.release_epoch(STORY, vst_slice.OWNER)
+        new_epoch = self._open().acquire_epoch(STORY, "supervisor-2", OWNER_TTL)
+        self.assertEqual(new_epoch, old_epoch + 1)
+        self.assertEqual(self._leases(), [(1, "FENCED", 0, 0)])
+        self.assertEqual(self._held_slots(), 0)
+        kinds = [r[0] for r in self._raw().execute("SELECT kind FROM events ORDER BY seq")]
+        self.assertEqual(kinds.count("LEASE_FENCED"), 1)
+        self.assertNotIn("LEASE_EXPIRED", kinds)
+        written = self._mark(store)
+        self.assertEqual(len(written), 1)
+        self.assertEqual(written[0]["check_description"], "WORKER_LOST")
+        self.assertEqual(written[0]["epoch"], new_epoch)
         self.assertEqual(self._leases(), [(1, "FENCED", 0, 1)])
         self.assertEqual(self._gate(store)["verdict"], "MODIFY")
+        self.assertEqual(store.failed_attempts(TASK), 0)  # a fenced lease never counts
 
     def test_dead_workers_old_epoch_cannot_write_after_new_owner(self) -> None:
         old_epoch = self._kill_child()
@@ -458,16 +486,19 @@ class SecondRoundStoreTests(ProcessDeathBase):
 
     def test_fenced_takeover_leases_do_not_count_toward_the_retry_cap(self) -> None:
         # retry_cap is 1, so the cap trips at 2 worker failures. Fence more leases than that.
+        # The lease must still be LIVE at takeover (an expired one is reaped to EXPIRED
+        # and does count), so the owner steps down instead of waiting for its TTL.
         self._kill_child()
         store = self._open()
-        owner_ttl = OWNER_TTL
+        owner = vst_slice.OWNER
         epoch = store.current_epoch(STORY)
         for round_no in range(1, 4):
             if round_no > 1:
                 store.acquire_lease(TASK, STORY, vst_slice.WORKER_ID, epoch, round_no, LEASE_TTL,
                                     supervisor_key=vst_slice.SUPERVISOR_KEY)
-            self.clock.advance(owner_ttl + 1)
-            epoch = store.acquire_epoch(STORY, f"supervisor-{round_no + 1}", owner_ttl)
+            store.release_epoch(STORY, owner)
+            owner = f"supervisor-{round_no + 1}"
+            epoch = store.acquire_epoch(STORY, owner, OWNER_TTL)
             written = self._mark(store)
             self.assertEqual([r["check_description"] for r in written], ["WORKER_LOST"])
             self.assertEqual(store.failed_attempts(TASK), 0, round_no)
@@ -520,6 +551,168 @@ class SecondRoundStoreTests(ProcessDeathBase):
         store.acquire_lease(TASK, STORY, vst_slice.WORKER_ID, store.current_epoch(STORY), 2,
                             LEASE_TTL, supervisor_key=vst_slice.SUPERVISOR_KEY)
         self.assertEqual(self._leases(), [(1, "EXPIRED", 1, 1), (2, "LIVE", 0, 0)])
+
+    # ---- third round: failed_attempts rules (every non-PASS worker result + lost leases)
+
+    def _world(self, name: str, retry_cap: int = 4) -> vst_slice.SliceFixture:
+        """A fresh fixture with a roomy retry_cap, so only the counter is observed."""
+        fx = vst_slice.SliceFixture(
+            os.path.join(self._tmp.name, name), vst_slice.WORKER_KEY, self.clock,
+            retry_cap=retry_cap,
+        )
+        self.addCleanup(fx.close)
+        return fx
+
+    def test_failed_attempts_counts_a_released_lease_that_wrote_nothing(self) -> None:
+        fx = self._world("released-empty")
+        self.assertEqual(fx.store.failed_attempts(TASK), 0)
+        fx.begin(1)
+        self.assertEqual(fx.store.failed_attempts(TASK), 0)  # a LIVE lease is not a failure
+        fx.end()
+        self.assertEqual(fx.store.failed_attempts(TASK), 1)
+        fx.begin(2)
+        fx.end()
+        self.assertEqual(fx.store.failed_attempts(TASK), 2)
+        leases = self._lease_rows(fx)
+        self.assertEqual(leases, [(1, "RELEASED", 0), (2, "RELEASED", 0)])
+
+    def test_failed_attempts_does_not_count_a_released_lease_that_wrote_a_pass(self) -> None:
+        fx = self._world("released-pass")
+        fx.begin(1)
+        fx.append_good_set()
+        fx.end()
+        self.assertEqual(self._lease_rows(fx), [(1, "RELEASED", 1)])
+        self.assertEqual(fx.store.failed_attempts(TASK), 0)
+
+    def test_failed_attempts_counts_every_non_pass_worker_result(self) -> None:
+        # One world per result, so each count stands alone: exactly 1 for a non-PASS
+        # result, 0 for PASS.
+        cases = {
+            "FAIL": dict(exit_code=1),
+            "INCONCLUSIVE": dict(result="INCONCLUSIVE"),
+            "NOT_RUN": dict(result="NOT_RUN"),
+            "BLOCKED": dict(result="BLOCKED"),
+            "PASS": dict(),
+        }
+        counts = {}
+        for label, kwargs in cases.items():
+            fx = self._world(f"result-{label.lower()}")
+            fx.begin(1)
+            executed = () if kwargs.get("result") == "NOT_RUN" else vst_slice.EXPECTED_TEST_IDS
+            receipt = fx.make_test_receipt(1, executed, **kwargs)
+            self.assertEqual(receipt["result"], label)
+            fx.append(receipt)
+            fx.end()
+            counts[label] = fx.store.failed_attempts(TASK)
+        self.assertEqual(
+            counts, {"FAIL": 1, "INCONCLUSIVE": 1, "NOT_RUN": 1, "BLOCKED": 1, "PASS": 0}
+        )
+
+    def test_failed_attempts_is_the_maximum_over_slots_not_the_sum(self) -> None:
+        fx = self._world("per-slot")
+        fx.begin(1)
+        tests1 = fx.make_test_receipt(1, (), result="NOT_RUN")
+        fx.append(tests1)
+        fx.append(fx.make_static_receipt(result="NOT_RUN"))
+        fx.end()
+        # Two slots failed once each: the counter is 1, not 2.
+        self.assertEqual(fx.store.failed_attempts(TASK), 1)
+        fx.begin(2)
+        fx.append(fx.make_test_receipt(
+            2, vst_slice.EXPECTED_TEST_IDS, exit_code=1, prev=receipt_sha256(tests1)
+        ))
+        fx.end()
+        self.assertEqual(fx.store.failed_attempts(TASK), 2)  # tests twice, static once
+        self.assertEqual(self._lease_rows(fx), [(1, "RELEASED", 1), (2, "RELEASED", 1)])
+
+    def test_failed_attempts_adds_lost_leases_to_the_worker_receipt_failures(self) -> None:
+        # A FAIL receipt (attempt 1) plus an expired lease that wrote nothing (attempt 2).
+        self._kill_child("die_after_receipt")
+        store = self._open()
+        self.assertEqual(store.failed_attempts(TASK), 1)
+        self.clock.advance(LEASE_TTL + 1)
+        self.assertEqual(self._mark(store), [])
+        self._kill_child("next_attempt", 2)
+        self.clock.advance(LEASE_TTL + 1)
+        self.assertEqual(len(self._mark(store)), 1)
+        self.assertEqual(self._leases(), [(1, "EXPIRED", 1, 1), (2, "EXPIRED", 0, 1)])
+        self.assertEqual(store.failed_attempts(TASK), 2)  # 1 receipt failure + 1 lost lease
+
+    def _lease_rows(self, fx: vst_slice.SliceFixture) -> list[tuple]:
+        conn = sqlite3.connect(os.path.join(fx.workdir, "state.db"))
+        self.addCleanup(conn.close)
+        return [
+            (attempt, status, wrote)
+            for attempt, status, wrote in conn.execute(
+                "SELECT attempt, status, wrote FROM leases WHERE task_id = ? ORDER BY attempt",
+                (TASK,),
+            )
+        ]
+
+    # ---- third round: heartbeat after a terminal marker or an exceeded budget
+
+    def _lease_expiry(self) -> tuple[float, float]:
+        row = self._raw().execute(
+            "SELECT l.expires_at AS lease_exp, s.expires_at AS slot_exp FROM leases l "
+            "JOIN slots s ON s.lease_id = l.lease_id WHERE l.task_id = ?", (TASK,)
+        ).fetchone()
+        return row["lease_exp"], row["slot_exp"]
+
+    def test_heartbeat_extends_a_healthy_lease_baseline(self) -> None:
+        self._kill_child()
+        store = self._open()
+        before = self._lease_expiry()
+        self.clock.advance(10)
+        store.heartbeat(TASK, vst_slice.WORKER_ID, store.current_epoch(STORY), 600)
+        after = self._lease_expiry()
+        self.assertEqual(after, (self.clock.now + 600, self.clock.now + 600))
+        self.assertGreater(after[0], before[0])
+
+    def test_heartbeat_is_refused_after_budget_exceeded_and_does_not_extend(self) -> None:
+        self._kill_child()
+        store = self._open()
+        epoch = store.current_epoch(STORY)
+        store.set_budget(TASK, 5)
+        with self.assertRaises(StoreError) as ctx:
+            store.charge(TASK, 6, supervisor_key=vst_slice.SUPERVISOR_KEY)
+        self.assertEqual(ctx.exception.kind, "budget")
+        before = self._lease_expiry()
+        self.clock.advance(10)
+        with self.assertRaises(StoreError) as ctx:
+            store.heartbeat(TASK, vst_slice.WORKER_ID, epoch, 600)
+        self.assertEqual(ctx.exception.kind, "budget")
+        self.assertEqual(self._lease_expiry(), before)  # nothing was extended
+        # The refused lease runs out at its original deadline and is reaped.
+        self.clock.advance(LEASE_TTL)
+        self.assertEqual(store.reap_expired(), [TASK])
+        self.assertEqual(self._leases(), [(1, "EXPIRED", 0, 0)])
+        self.assertTrue(store.verify_event_chain())
+
+    def test_heartbeat_is_refused_after_a_retry_exhausted_marker(self) -> None:
+        self._kill_child()
+        store = self._open()
+        epoch = store.current_epoch(STORY)
+        marker = self._builder().make_supervisor_receipt("RETRY_EXHAUSTED")
+        store.append_supervisor_receipt(marker, STORY, supervisor_key=vst_slice.SUPERVISOR_KEY)
+        before = self._lease_expiry()
+        self.clock.advance(10)
+        with self.assertRaises(StoreError) as ctx:
+            store.heartbeat(TASK, vst_slice.WORKER_ID, epoch, 600)
+        self.assertEqual(ctx.exception.kind, "terminal")
+        self.assertEqual(self._lease_expiry(), before)
+
+    def test_heartbeat_at_exactly_the_cap_is_still_allowed(self) -> None:
+        self._kill_child()
+        store = self._open()
+        epoch = store.current_epoch(STORY)
+        store.set_budget(TASK, 5)
+        self.assertEqual(store.charge(TASK, 5, supervisor_key=vst_slice.SUPERVISOR_KEY), 0)
+        self.clock.advance(10)
+        store.heartbeat(TASK, vst_slice.WORKER_ID, epoch, 600)  # spent == cap: finishing work
+        self.assertEqual(self._lease_expiry(), (self.clock.now + 600,) * 2)
+        self.assertEqual(
+            [r for r in store.receipts_for_task(TASK) if r["slot"] == SUPERVISOR_SLOT], []
+        )
 
     def test_charge_set_budget_and_record_event_signatures_on_a_real_file(self) -> None:
         self._kill_child()

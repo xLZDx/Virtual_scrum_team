@@ -29,4 +29,4 @@ separate explicit operator command.
 
 ## SDLC workflow (virtual scrum team)
 
-For sprint or feature work in this project use the global skill `sdlc-orchestrator`. It keeps the phase state in `docs/sdlc/STATE.md` and launches the role agents of each phase; artifacts live in `docs/sdlc/`. The global Development Rules v4 still apply (one PR per sprint, tests only after sprint coding, final GPT-PM review before push/PR).
+For sprint or feature work in this project use the global skill `sdlc-orchestrator`. Until the S1 state store (`tools/vst/store.py`) is in use for a project, `docs/sdlc/STATE.md` is the phase authority; once it is in use, the store is the authority and `STATE.md` is its generated read-only view (baseline decision BD-1). It launches the role agents of each phase; artifacts live in `docs/sdlc/`. The global Development Rules v4 still apply (one PR per sprint, tests only after sprint coding, final GPT-PM review before push/PR).
