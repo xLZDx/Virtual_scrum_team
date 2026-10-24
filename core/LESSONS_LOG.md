@@ -485,3 +485,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — Provenance validation must establish a relationship, not just object existence. For QA category source revisions, require Git ancestry into the candidate head so a reachable but unrelated or stale commit cannot supply current acceptance IDs. See change record 0097; execution evidence remains pending.
 
+2026-10-25 — A seeded-failure test result alone does not retain which controlled input produced which rejection. Bind each fixture's canonical input digest and expected rejection to one pytest node, record the observed rejection while that node is executing, and compare the entire set before allowing a passing QA report. Keep unpopulated fixture coverage `NOT_RUN`; do not claim mutation coverage. See change record 0098.
+

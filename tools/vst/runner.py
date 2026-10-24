@@ -964,8 +964,11 @@ QA_REPORT_METADATA_FIELDS = frozenset({
     "category_registry_path", "category_registry_sha256",
     "category_source_head", "coverage_state",
     "stdout_artifact_path", "stderr_artifact_path",
+    "seeded_catalog_path", "seeded_catalog_sha256", "seeded_failure_fixtures",
 })
 QA_CATEGORIES = frozenset({"functional", "integration", "api", "e2e", "seeded-failure"})
+_FIXTURE_ID_RE = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
+_REJECTION_CODE_RE = re.compile(r"[A-Z][A-Z0-9_]{0,63}")
 
 
 def _validate_qa_report_request(
@@ -1030,6 +1033,62 @@ def _validate_qa_report_request(
     if (lock_full_path is None or not os.path.isfile(lock_full_path) or
             file_sha256(lock_full_path) != expected_hash):
         raise ContractError("dependency lock is missing, unsafe, or has a different hash")
+    seeded_catalog_path = _req_str(metadata["seeded_catalog_path"], "report_metadata.seeded_catalog_path")
+    _validate_repo_path(seeded_catalog_path, "report_metadata.seeded_catalog_path")
+    if seeded_catalog_path not in paths:
+        raise ContractError("seeded-failure catalog must be a predeclared artifact")
+    seeded_catalog_hash = _req_hex(metadata["seeded_catalog_sha256"], "report_metadata.seeded_catalog_sha256", 64)
+    seeded_catalog_full_path = contained_artifact_path(cwd, seeded_catalog_path)
+    if (seeded_catalog_full_path is None or not os.path.isfile(seeded_catalog_full_path) or
+            file_sha256(seeded_catalog_full_path) != seeded_catalog_hash):
+        raise ContractError("seeded-failure catalog is missing, unsafe, or has a different hash")
+    try:
+        tracked_catalog = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", "--", seeded_catalog_path], cwd=cwd,
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, timeout=5, check=False,
+        )
+        with open(seeded_catalog_full_path, "rb") as handle:
+            catalog_raw = handle.read(128 * 1024 + 1)
+        catalog_value = json.loads(catalog_raw.decode("utf-8"))
+    except (OSError, subprocess.TimeoutExpired, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ContractError(f"seeded-failure catalog cannot be validated: {exc}") from exc
+    if (tracked_catalog.returncode != 0 or len(catalog_raw) > 128 * 1024 or
+            not isinstance(catalog_value, dict) or catalog_value.get("schema_version") != 1):
+        raise ContractError("seeded-failure catalog must be bounded, tracked schema version 1")
+    if category == "seeded-failure":
+        if catalog_value.get("state") != "SUPPORTED" or catalog_value.get("fixtures") != metadata["seeded_failure_fixtures"]:
+            raise ContractError("seeded-failure report fixtures differ from the tracked catalog")
+    elif metadata["seeded_failure_fixtures"]:
+        raise ContractError("non-seeded QA category cannot include seeded-failure observations")
+    fixture_rows = metadata["seeded_failure_fixtures"]
+    if not isinstance(fixture_rows, list) or len(fixture_rows) > 256:
+        raise ContractError("seeded_failure_fixtures must be a bounded list")
+    if (category == "seeded-failure") != bool(fixture_rows):
+        raise ContractError("seeded-failure report fixtures must match the seeded-failure category")
+    fixture_ids: set[str] = set()
+    fixture_test_ids: set[str] = set()
+    for fixture in fixture_rows:
+        if not isinstance(fixture, dict) or set(fixture) != {
+            "fixture_id", "input", "input_sha256", "expected_rejection", "test_id",
+        }:
+            raise ContractError("seeded-failure report fixture has missing or unexpected fields")
+        fixture_id = fixture["fixture_id"]
+        if not isinstance(fixture_id, str) or not _FIXTURE_ID_RE.fullmatch(fixture_id) or fixture_id in fixture_ids:
+            raise ContractError("seeded-failure report fixture ID is invalid or duplicated")
+        fixture_ids.add(fixture_id)
+        if not isinstance(fixture["input"], dict):
+            raise ContractError("seeded-failure fixture input must be a JSON object")
+        input_hash = _req_hex(fixture["input_sha256"], "seeded_failure_fixture.input_sha256", 64)
+        if hashlib.sha256(canonical_bytes(fixture["input"])).hexdigest() != input_hash:
+            raise ContractError("seeded-failure fixture input hash does not match canonical input")
+        if (not isinstance(fixture["expected_rejection"], str) or
+                not _REJECTION_CODE_RE.fullmatch(fixture["expected_rejection"])):
+            raise ContractError("seeded-failure expected rejection code is invalid")
+        test_id = _req_str(fixture["test_id"], "seeded_failure_fixture.test_id")
+        if "::" not in test_id or len(test_id) > 1024 or test_id in fixture_test_ids:
+            raise ContractError("seeded-failure test ID is invalid or duplicated")
+        fixture_test_ids.add(test_id)
     registry_path = _req_str(metadata["category_registry_path"], "report_metadata.category_registry_path")
     _validate_repo_path(registry_path, "report_metadata.category_registry_path")
     if registry_path not in paths:
@@ -1060,7 +1119,8 @@ def _validate_qa_report_request(
         if not os.path.isdir(os.path.dirname(full_log_path)):
             raise ContractError(f"{name} parent directory must exist before the command starts")
     qa_paths = [report_path, events_path, metadata["dependency_lock_path"],
-                metadata["category_registry_path"], metadata["stdout_artifact_path"],
+                metadata["category_registry_path"], metadata["seeded_catalog_path"],
+                metadata["stdout_artifact_path"],
                 metadata["stderr_artifact_path"]]
     if len(qa_paths) != len(set(qa_paths)):
         raise ContractError("QA report, events, registry, lock, and stream artifacts must be distinct")
@@ -1152,8 +1212,9 @@ def _read_qa_test_events(
     expected_keys = {
         "schema_version", "collected_ids", "passed_ids", "skipped_ids",
         "xfail_ids", "failed_ids", "collection_errors", "exit_status",
+        "seeded_failure_observations",
     }
-    if not isinstance(events, dict) or set(events) != expected_keys or events.get("schema_version") != 1:
+    if not isinstance(events, dict) or set(events) != expected_keys or events.get("schema_version") != 2:
         return None, "EVENT_SCHEMA_INVALID"
     id_fields = ("collected_ids", "passed_ids", "skipped_ids", "xfail_ids", "failed_ids")
     ids: dict[str, list[str]] = {}
@@ -1168,6 +1229,29 @@ def _read_qa_test_events(
     if (not isinstance(errors, list) or len(errors) > 256 or
             any(not isinstance(item, str) or len(item) > 1024 for item in errors)):
         return None, "EVENT_COLLECTION_ERRORS_INVALID"
+    observations = events["seeded_failure_observations"]
+    if not isinstance(observations, list) or len(observations) > 256:
+        return None, "EVENT_SEEDED_FAILURE_OBSERVATIONS_INVALID"
+    seen_fixture_ids: set[str] = set()
+    for observation in observations:
+        if not isinstance(observation, dict) or set(observation) != {
+            "fixture_id", "input_sha256", "expected_rejection",
+            "observed_rejection", "test_id",
+        }:
+            return None, "EVENT_SEEDED_FAILURE_OBSERVATION_SCHEMA_INVALID"
+        fixture_id = observation["fixture_id"]
+        input_hash = observation["input_sha256"]
+        expected = observation["expected_rejection"]
+        observed = observation["observed_rejection"]
+        test_id = observation["test_id"]
+        if (not isinstance(fixture_id, str) or not _FIXTURE_ID_RE.fullmatch(fixture_id) or
+                fixture_id in seen_fixture_ids or not isinstance(input_hash, str) or
+                not re.fullmatch(r"[0-9a-f]{64}", input_hash) or
+                not isinstance(expected, str) or not _REJECTION_CODE_RE.fullmatch(expected) or
+                not isinstance(observed, str) or not _REJECTION_CODE_RE.fullmatch(observed) or
+                not isinstance(test_id, str) or len(test_id) > 1024 or "::" not in test_id):
+            return None, "EVENT_SEEDED_FAILURE_OBSERVATION_INVALID"
+        seen_fixture_ids.add(fixture_id)
     status = events["exit_status"]
     if not isinstance(status, int) or isinstance(status, bool) or status < 0:
         return None, "EVENT_EXIT_STATUS_INVALID"
@@ -1199,6 +1283,24 @@ def _build_qa_report(
     event_xfail = [] if events is None else events["xfail_ids"]
     event_failed = [] if events is None else events["failed_ids"]
     event_errors = [] if events is None else events["collection_errors"]
+    observed_fixtures = [] if events is None else events["seeded_failure_observations"]
+    expected_fixtures = metadata["seeded_failure_fixtures"]
+    if metadata["category"] != "seeded-failure":
+        expected_fixtures = []
+    expected_by_id = {fixture["fixture_id"]: fixture for fixture in expected_fixtures}
+    observed_by_id = {fixture["fixture_id"]: fixture for fixture in observed_fixtures}
+    fixture_mismatches = []
+    if set(expected_by_id) != set(observed_by_id):
+        fixture_mismatches.extend(sorted(set(expected_by_id) ^ set(observed_by_id)))
+    for fixture_id in sorted(set(expected_by_id) & set(observed_by_id)):
+        expected = expected_by_id[fixture_id]
+        observed = observed_by_id[fixture_id]
+        if (observed["input_sha256"] != expected["input_sha256"] or
+                observed["expected_rejection"] != expected["expected_rejection"] or
+                observed["observed_rejection"] != expected["expected_rejection"] or
+                observed["test_id"] != expected["test_id"]):
+            fixture_mismatches.append(fixture_id)
+    seeded_failures_valid = not fixture_mismatches
     expected_set = set(expected_ids)
     collected_set = set(event_collected)
     unexpected = sorted(collected_set - expected_set)
@@ -1212,13 +1314,15 @@ def _build_qa_report(
         initial_head == candidate_head and not event_errors and
         external_digests.get(metadata["dependency_lock_path"]) == metadata["dependency_lock_sha256"] and
         external_digests.get(metadata["category_registry_path"]) == metadata["category_registry_sha256"] and
+        external_digests.get(metadata["seeded_catalog_path"]) == metadata["seeded_catalog_sha256"] and
         not event_skipped and not event_xfail and not event_failed and
         not unexpected and not uncollected and set(executed_ids) == expected_set and
-        not skipped_ids and not xfail_ids
+        not skipped_ids and not xfail_ids and seeded_failures_valid
     )
     observed_acceptance_failure = bool(
         (commands and not command_ok) or event_failed or event_skipped or event_xfail or
         unexpected or uncollected or skipped_ids or xfail_ids or event_errors
+        or not seeded_failures_valid
     )
     # v2 intentionally derives INCONCLUSIVE when no test ID executed at all,
     # even if collection/outcome evidence explains that zero-run condition.
@@ -1252,6 +1356,10 @@ def _build_qa_report(
             "path": metadata["category_registry_path"],
             "sha256": metadata["category_registry_sha256"],
         },
+        "seeded_failure_catalog": {
+            "path": metadata["seeded_catalog_path"],
+            "sha256": metadata["seeded_catalog_sha256"],
+        },
         "execution": {
             "argv_and_exit_codes": commands,
             "capture": infos,
@@ -1271,6 +1379,11 @@ def _build_qa_report(
             "unexpected_ids": unexpected,
             "uncollected_ids": uncollected,
             "collection_errors": event_errors,
+        },
+        "seeded_failures": {
+            "fixtures": expected_fixtures,
+            "observations": observed_fixtures,
+            "mismatched_fixture_ids": sorted(set(fixture_mismatches)),
         },
         "test_events_path": test_events_path,
         "test_events_error": event_error,

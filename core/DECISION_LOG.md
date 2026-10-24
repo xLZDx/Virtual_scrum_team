@@ -292,3 +292,7 @@ The report-bound QA worker writes its bounded event record inside a runner-owned
 
 The category registry's top-level provenance head and every supported category source head must be ancestors of the candidate's current Git HEAD. Existence alone is insufficient because an unreachable or side-branch commit can name stale test IDs. A bounded `git merge-base --is-ancestor` refusal or timeout fails closed. The v2 receipt and authoritative gate still bind the run to its exact candidate HEAD. See change record 0097; no runtime verification is claimed.
 
+## 2026-10-25 -- Bind seeded-failure observations to the committed fixture catalog
+
+Seeded-failure fixtures live in a bounded tracked catalog with canonical input hashes, expected rejection codes, and one-to-one test IDs. The QA plugin records observed rejection codes only while the linked pytest node is executing. The report runner compares the complete observation set with the catalog and binds the catalog as a signed artifact; an absent or mismatched observation cannot yield a passing report. Keep the catalog `NOT_RUN` and empty until designated test owners supply real unchanged-product input records and tests. See change record 0098; no tests or runtime proof are claimed.
+

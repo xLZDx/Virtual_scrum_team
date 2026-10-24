@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -16,6 +17,10 @@ from tools.vst.contracts import ContractError, manifest_sha256, validate_task_ma
 PRIMARY_CATEGORIES = ("functional", "integration", "api", "e2e", "seeded-failure")
 REGRESSION_CATEGORIES = ("functional", "integration", "api", "e2e")
 MAX_REGISTRY_BYTES = 512 * 1024
+SEEDED_CATALOG_PATH = "docs/qa/seeded_failures.json"
+MAX_SEEDED_CATALOG_BYTES = 128 * 1024
+_FIXTURE_ID = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
+_REJECTION_CODE = re.compile(r"[A-Z][A-Z0-9_]{0,63}")
 
 
 def _read_repo_json(root: Path, relative_path: str, *, max_bytes: int) -> tuple[dict, bytes]:
@@ -180,6 +185,77 @@ def load_registry(root: Path, relative_path: str = "docs/qa/categories.json") ->
             regression["primary_categories"] != list(REGRESSION_CATEGORIES)):
         raise ContractError("regression must be the ordered functional/integration/api/e2e aggregate")
     return registry, hashlib.sha256(raw).hexdigest()
+
+
+def load_seeded_failure_catalog(root: Path, registry: dict) -> tuple[dict, str]:
+    """Load the bounded fixture inventory and bind each fixture to one test ID."""
+    if not _git_file_is_tracked(root, SEEDED_CATALOG_PATH):
+        raise ContractError("seeded-failure catalog must be a tracked repository file")
+    catalog, raw = _read_repo_json(
+        root, SEEDED_CATALOG_PATH, max_bytes=MAX_SEEDED_CATALOG_BYTES
+    )
+    if set(catalog) != {"schema_version", "state", "fixtures", "reason", "next_step"}:
+        raise ContractError("seeded-failure catalog has missing or unexpected fields")
+    if (catalog["schema_version"] != 1 or not isinstance(catalog["fixtures"], list) or
+            len(catalog["fixtures"]) > 256):
+        raise ContractError("seeded-failure catalog schema is invalid")
+    seeded_category = registry["categories"]["seeded-failure"]
+    state = catalog["state"]
+    if state == "NOT_RUN":
+        if (catalog["fixtures"] or not isinstance(catalog["reason"], str) or
+                not catalog["reason"] or not isinstance(catalog["next_step"], str) or
+                not catalog["next_step"] or seeded_category["state"] != "NOT_RUN"):
+            raise ContractError("NOT_RUN seeded-failure catalog must be empty and match its category state")
+        return catalog, hashlib.sha256(raw).hexdigest()
+    if state != "SUPPORTED" or seeded_category["state"] != "SUPPORTED":
+        raise ContractError("seeded-failure catalog and category support states disagree")
+    if catalog["reason"] is not None or catalog["next_step"] is not None:
+        raise ContractError("supported seeded-failure catalog cannot declare a NOT_RUN reason")
+    fixture_ids: set[str] = set()
+    fixture_test_ids: set[str] = set()
+    for fixture in catalog["fixtures"]:
+        expected_fields = {
+            "fixture_id", "input", "input_sha256", "expected_rejection", "test_id",
+        }
+        if not isinstance(fixture, dict) or set(fixture) != expected_fields:
+            raise ContractError("seeded-failure fixture has missing or unexpected fields")
+        fixture_id = fixture["fixture_id"]
+        if not isinstance(fixture_id, str) or not _FIXTURE_ID.fullmatch(fixture_id):
+            raise ContractError("seeded-failure fixture_id is invalid")
+        if fixture_id in fixture_ids:
+            raise ContractError("seeded-failure catalog has duplicate fixture IDs")
+        fixture_ids.add(fixture_id)
+        input_record = fixture["input"]
+        if not isinstance(input_record, dict):
+            raise ContractError("seeded-failure fixture input must be a JSON object")
+        try:
+            input_bytes = json.dumps(
+                input_record, sort_keys=True, separators=(",", ":"),
+                ensure_ascii=True, allow_nan=False,
+            ).encode("utf-8")
+        except (TypeError, ValueError, RecursionError) as exc:
+            raise ContractError("seeded-failure fixture input is not canonical JSON") from exc
+        if len(input_bytes) > 16 * 1024:
+            raise ContractError("seeded-failure fixture input exceeds 16 KiB")
+        input_hash = fixture["input_sha256"]
+        if (not isinstance(input_hash, str) or len(input_hash) != 64 or
+                any(char not in "0123456789abcdef" for char in input_hash) or
+                hashlib.sha256(input_bytes).hexdigest() != input_hash):
+            raise ContractError("seeded-failure fixture input hash is invalid")
+        expected_rejection = fixture["expected_rejection"]
+        if (not isinstance(expected_rejection, str) or
+                not _REJECTION_CODE.fullmatch(expected_rejection)):
+            raise ContractError("seeded-failure expected rejection code is invalid")
+        test_id = fixture["test_id"]
+        if not isinstance(test_id, str) or "::" not in test_id:
+            raise ContractError("seeded-failure fixture must link a pytest node ID")
+        if test_id in fixture_test_ids:
+            raise ContractError("a seeded-failure test ID cannot represent multiple fixtures")
+        fixture_test_ids.add(test_id)
+    required_test_ids = set(seeded_category["test_ids"])
+    if not fixture_ids or fixture_test_ids != required_test_ids:
+        raise ContractError("seeded-failure fixtures must map exactly to registered test IDs")
+    return catalog, hashlib.sha256(raw).hexdigest()
 
 
 def load_manifest(root: Path, relative_path: str) -> tuple[dict, str]:

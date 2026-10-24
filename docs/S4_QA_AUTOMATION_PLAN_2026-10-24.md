@@ -1,6 +1,6 @@
 # Sprint S4 plan: reproducible QA automation
 
-Status: **S4.1/E1 AND S4.2/E2 SOURCE SLICE IMPLEMENTED LOCALLY; ACCEPTANCE PARTIAL; TESTS NOT RUN**. The category registry, pinned lock, POSIX native runner and report-to-v2-receipt seam are implemented on `s4-native-qa-runner`; change record 0095 fixes worker-to-runner event readability and disables ambient pytest plugin autoload in the QA path. No test, build, install, CI, migration, external service call, or sandbox execution was performed for this code slice. Full category coverage, report tests, signer runtime, and source transfer remain open.
+Status: **S4.1/E1, S4.2/E2, AND S4.5/E5 SOURCE PLUMBING IMPLEMENTED LOCALLY; ACCEPTANCE PARTIAL; TESTS NOT RUN**. The category registry, pinned lock, POSIX native runner, report-to-v2-receipt seam, and seeded-failure fixture catalog/event/report contract are implemented on `s4-native-qa-runner`; change record 0095 fixes worker-to-runner event readability and disables ambient pytest plugin autoload in the QA path. The seeded-failure catalog remains explicitly `NOT_RUN` and empty pending test-owner fixture inputs and IDs. No test, build, install, CI, migration, external service call, or sandbox execution was performed for this code slice. Full category coverage, report tests, signer runtime, and source transfer remain open.
 
 Sources: `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` section 1; `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`; `governance/DEFINITION_OF_DONE.md`; S2 and S3 plans; current `tests/vst/`, `tools/vst/runner.py`, `tools/vst/slice.py`, and `tools/vst/{contracts,gate,store}.py`.
 
@@ -68,7 +68,7 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 
 **S4.5.1** Define regression as an aggregate manifest containing the explicit union of accepted functional, integration, API and E2E IDs for the current HEAD, with each ID retaining its unique `primary_category` and source-commit provenance. The aggregate does not reassign IDs to a second primary category.
 
-**S4.5.2** Add a bounded synthetic fixture catalog for known failure classes (for example stale HEAD, missing required receipt, invalid signature, out-of-scope diff, skipped required ID, artifact digest mismatch). Each fixture supplies a controlled input record to the unchanged product interface and the expected non-approving outcome; it does not patch, monkeypatch, or rewrite product source.
+**S4.5.2** Add a bounded synthetic fixture catalog for known failure classes (for example stale HEAD, missing required receipt, invalid signature, out-of-scope diff, skipped required ID, artifact digest mismatch). Each fixture supplies a controlled input record to the unchanged product interface and the expected non-approving outcome; it does not patch, monkeypatch, or rewrite product source. The catalog binds the canonical input hash, expected rejection, observed rejection, and exactly one committed test ID into the QA report and signed artifact set.
 
 **AC-11:** Regression reports every required ID and fails on any missing, duplicate, skipped, xfailed, unexpected, or uncollected ID.
 

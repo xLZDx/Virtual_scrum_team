@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "state": "NOT_RUN",
+  "fixtures": [],
+  "reason": "Fixture inputs and linked test IDs have not yet been authored by the designated functional/E2E test owners.",
+  "next_step": "After S4 source coding closes, define bounded unchanged-product negative inputs, expected rejection codes, and exact test IDs."
+}

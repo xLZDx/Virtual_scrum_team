@@ -24,7 +24,9 @@ from .registry import (
     REGRESSION_CATEGORIES,
     load_manifest,
     load_registry,
+    load_seeded_failure_catalog,
     validate_projection,
+    SEEDED_CATALOG_PATH,
 )
 
 
@@ -305,6 +307,7 @@ def _category_receipt(
     registry_path: str, manifest: dict, manifest_hash: str,
     lock_path: str, lock_hash: str, python_version: str,
     pytest_version: str, runtime_id: str, signer_socket: str,
+    seeded_catalog: dict, seeded_catalog_hash: str,
     runner_id: str, worker_uid: int, worker_gid: int,
     attempt: int, epoch: int, resolved_model: str,
 ) -> dict:
@@ -330,7 +333,7 @@ def _category_receipt(
     invocation_id = uuid.uuid4().hex
     stdout_ref_relative = f"{relative_run_dir}/{category}-stdout-ref.json"
     stderr_ref_relative = f"{relative_run_dir}/{category}-stderr-ref.json"
-    artifacts = [registry_path, lock_path, events_relative, report_relative,
+    artifacts = [registry_path, SEEDED_CATALOG_PATH, lock_path, events_relative, report_relative,
                  stdout_ref_relative, stderr_ref_relative]
     receipt = run_manifest_commands(
         manifest=manifest, slot=category, attempt=attempt, epoch=epoch,
@@ -346,6 +349,11 @@ def _category_receipt(
             "category_source_head": entry["source_head"],
             "category_registry_path": registry_path,
             "category_registry_sha256": registry_hash,
+            "seeded_catalog_path": SEEDED_CATALOG_PATH,
+            "seeded_catalog_sha256": seeded_catalog_hash,
+            "seeded_failure_fixtures": (
+                seeded_catalog["fixtures"] if category == "seeded-failure" else []
+            ),
             "stdout_artifact_path": stdout_ref_relative,
             "stderr_artifact_path": stderr_ref_relative,
             "dependency_lock_path": lock_path,
@@ -380,6 +388,7 @@ def main(argv: list[str] | None = None) -> int:
         python_version, pytest_version, lock_hash = _check_runtime(root, args.lock)
         runtime_id = _os_release_id()
         registry, registry_hash = load_registry(root, args.registry)
+        seeded_catalog, seeded_catalog_hash = load_seeded_failure_catalog(root, registry)
         manifest, manifest_hash = load_manifest(root, args.manifest)
         results = []
         categories = (
@@ -393,6 +402,7 @@ def main(argv: list[str] | None = None) -> int:
                 lock_path=args.lock, lock_hash=lock_hash,
                 python_version=python_version, pytest_version=pytest_version,
                 runtime_id=runtime_id, signer_socket=args.signer_socket,
+                seeded_catalog=seeded_catalog, seeded_catalog_hash=seeded_catalog_hash,
                 runner_id=args.runner_id, worker_uid=args.worker_uid,
                 worker_gid=args.worker_gid, attempt=args.attempt, epoch=args.epoch,
                 resolved_model=args.resolved_model,
