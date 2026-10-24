@@ -7,13 +7,18 @@ import hmac
 import json
 import os
 import threading
-from typing import Protocol
+from contextlib import contextmanager
+from typing import Any, Protocol
 
 from .contracts import canonical_bytes
 from .signing import MIN_KEY_BYTES
 
 CHECKPOINT_LABEL = b"vst-external-checkpoint-v1\0"
+_GENESIS_HEAD = "0" * 64
 _anchor_lock = threading.Lock()
+_anchor_path_locks_guard = threading.Lock()
+_anchor_path_locks: dict[str, Any] = {}
+_anchor_path_lock_state = threading.local()
 
 
 class AnchorError(Exception):
@@ -54,6 +59,70 @@ class FileExternalAnchor:
         self.path = os.path.abspath(path)
         self._key = bytes(event_key)
 
+    @contextmanager
+    def transaction_lock(self):
+        """Serialize a store transaction and its external-anchor sync across processes.
+
+        Callers hold this lock across the SQLite commit and all checkpoint appends,
+        or across an authoritative read and its external-anchor comparison. A
+        separate lock file avoids recursively locking the JSONL file used by CAS.
+        Nested use by the same thread and path is reentrant.
+        """
+        lock_path = os.path.realpath(self.path) + ".coord.lock"
+        states = getattr(_anchor_path_lock_state, "states", None)
+        if states is None:
+            states = {}
+            _anchor_path_lock_state.states = states
+        state = states.get(lock_path)
+        if state is not None:
+            state["depth"] += 1
+            try:
+                yield
+            finally:
+                state["depth"] -= 1
+            return
+
+        with _anchor_path_locks_guard:
+            path_lock = _anchor_path_locks.setdefault(lock_path, threading.RLock())
+        path_lock.acquire()
+        stream = None
+        unlock = None
+        try:
+            os.makedirs(os.path.dirname(lock_path), exist_ok=True)
+            stream = open(lock_path, "a+b")
+            os.chmod(lock_path, 0o600)
+            stream.seek(0, os.SEEK_END)
+            if stream.tell() == 0:
+                stream.write(b"\0")
+                stream.flush()
+            if os.name == "nt":
+                import msvcrt
+
+                stream.seek(0)
+                msvcrt.locking(stream.fileno(), msvcrt.LK_LOCK, 1)
+                unlock = lambda: msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+                unlock = lambda: fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+            state = {
+                "depth": 1,
+                "stream": stream,
+                "unlock": unlock,
+                "path_lock": path_lock,
+            }
+            states[lock_path] = state
+            try:
+                yield
+            finally:
+                states.pop(lock_path, None)
+                unlock()
+        finally:
+            if stream is not None:
+                stream.close()
+            path_lock.release()
+
     def read_latest(self) -> dict | None:
         try:
             with open(self.path, "rb") as stream:
@@ -70,6 +139,8 @@ class FileExternalAnchor:
                 raise AnchorError(f"malformed external checkpoint at line {index}") from exc
             if not verify_checkpoint(item, self._key):
                 raise AnchorError(f"invalid external checkpoint at line {index}")
+            if latest is None and (item["count"] != 0 or item["head"] != _GENESIS_HEAD):
+                raise AnchorError("external checkpoint history must begin at genesis")
             if latest is not None and item["count"] != latest["count"] + 1:
                 raise AnchorError("external checkpoint count is not strictly consecutive")
             latest = item

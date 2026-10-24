@@ -70,3 +70,23 @@ The probe can observe configured conditions; it does not prove that a host
 firewall or hypervisor is correctly configured. Provisioning and enforcement
 of the OS/network/resource boundary are operator-verified acceptance items.
 Record the exact distribution/VM identity and policy evidence with the run.
+
+## External event anchor coordination
+
+The external event anchor and its `.coord.lock` sidecar must both be outside
+the worker mount. Every store process that can write events or make an
+authoritative gate decision must use the same coordinator lock path. The lock
+is held across the SQLite write transaction and all external checkpoint
+appends; an authoritative read holds it from before opening the database
+snapshot through comparison with the external anchor. This prevents a reader
+from interpreting a concurrent valid checkpoint advance as tampering and
+prevents concurrent store writers from appending out of order.
+
+After a crash, startup may advance the external anchor across more than one
+event only when the full database event HMAC chain verifies and the latest
+external checkpoint exactly matches the event at its recorded count. The
+store then compare-and-appends each missing checkpoint in order before
+permitting a lease or gate decision. It never creates a missing anchor for a
+non-empty database, never accepts an anchor ahead of the database, and never
+repairs a fork, malformed event chain, invalid checkpoint, or mismatching
+prefix. Any such condition stays write-locked for operator recovery.

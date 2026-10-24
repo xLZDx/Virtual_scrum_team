@@ -6,7 +6,7 @@ transaction with an explicit COMMIT or ROLLBACK; SQLite "busy"/"locked"
 errors become the distinct StoreBusyError (a StoreError with kind 'busy').
 journal_mode is WAL, foreign_keys and recursive_triggers are ON.
 
-Schema versioning: PRAGMA user_version is SCHEMA_VERSION (3). A new file is
+Schema versioning: PRAGMA user_version is SCHEMA_VERSION (4). A new file is
 initialised inside one transaction; a legacy un-versioned database that already
 has tables, or any other version, is refused with StoreError(kind='schema').
 The database file (and its -wal/-shm files) get mode 0o600 on a best-effort
@@ -521,6 +521,17 @@ class Store:
 
     @contextlib.contextmanager
     def _tx(self) -> Iterator[sqlite3.Connection]:
+        """Serialize anchored writes across SQLite commit and anchor synchronization."""
+        if self._external_anchor is None:
+            with self._tx_locked() as conn:
+                yield conn
+            return
+        with self._external_anchor.transaction_lock():
+            with self._tx_locked() as conn:
+                yield conn
+
+    @contextlib.contextmanager
+    def _tx_locked(self) -> Iterator[sqlite3.Connection]:
         """BEGIN IMMEDIATE ... explicit COMMIT, or ROLLBACK on any exception."""
         try:
             if self._integrity_locked:
@@ -561,6 +572,17 @@ class Store:
 
     @contextlib.contextmanager
     def _read_tx(self) -> Iterator[sqlite3.Connection]:
+        """Read under the external-anchor coordinator when anchoring is enabled."""
+        if self._external_anchor is None:
+            with self._read_tx_locked() as conn:
+                yield conn
+            return
+        with self._external_anchor.transaction_lock():
+            with self._read_tx_locked() as conn:
+                yield conn
+
+    @contextlib.contextmanager
+    def _read_tx_locked(self) -> Iterator[sqlite3.Connection]:
         """One explicit read transaction (a consistent snapshot), always ended."""
         try:
             self._conn.execute("BEGIN")
@@ -1604,38 +1626,44 @@ class Store:
         """
         with self._read_tx() as conn:
             value = self._anchor_state(conn)
-        if self._external_anchor is not None:
-            try:
-                latest = self._external_anchor.read_latest()
-            except AnchorError as exc:
-                self._integrity_locked = True
-                raise StoreError(str(exc), kind="integrity") from exc
-            if latest != signed_checkpoint(value[0], value[1], self._event_key):
-                self._integrity_locked = True
-                raise StoreError("database head differs from external checkpoint", kind="integrity")
+            if self._external_anchor is not None:
+                try:
+                    latest = self._external_anchor.read_latest()
+                except AnchorError as exc:
+                    self._integrity_locked = True
+                    raise StoreError(str(exc), kind="integrity") from exc
+                if latest != signed_checkpoint(value[0], value[1], self._event_key):
+                    self._integrity_locked = True
+                    raise StoreError("database head differs from external checkpoint", kind="integrity")
         return value
 
     @property
     def reconciliation_complete(self) -> bool:
         return self._reconciliation_complete and not self._integrity_locked
 
-    def _verified_database_head(self) -> tuple[int, str]:
+    def _verified_database_history(self) -> list[tuple[int, str]]:
+        """Return every verified `(event_count, head)` prefix in the DB chain."""
         with self._read_tx() as conn:
             rows = conn.execute(
                 "SELECT ts, task_id, actor, kind, payload, prev_hash, hash FROM events ORDER BY seq"
             ).fetchall()
             previous = GENESIS_HASH
+            history = [(0, GENESIS_HASH)]
             for row in rows:
                 fields = {name: row[name] for name in ("ts", "task_id", "actor", "kind", "payload")}
                 expected = self._event_mac(previous, fields)
                 if row["prev_hash"] != previous or not hmac.compare_digest(row["hash"], expected):
                     raise StoreError("event chain does not verify", kind="integrity")
                 previous = row["hash"]
+                history.append((len(history), previous))
             count, head = self._anchor_state(conn)
             if count != len(rows) or head != previous:
                 raise StoreError("database event head is inconsistent", kind="integrity")
             self._verify_supervisor_records(conn)
-            return count, head
+            return history
+
+    def _verified_database_head(self) -> tuple[int, str]:
+        return self._verified_database_history()[-1]
 
     def _verify_supervisor_records(self, conn: sqlite3.Connection) -> None:
         """Cross-check supervisor side tables against their append-only events."""
@@ -1679,23 +1707,46 @@ class Store:
         if self._external_anchor is None:
             return
         try:
-            count, head = self._verified_database_head()
+            history = self._verified_database_history()
+            count, head = history[-1]
             latest = self._external_anchor.read_latest()
-            checkpoint = signed_checkpoint(count, head, self._event_key)
-            if latest == checkpoint:
-                return
-            self._external_anchor.compare_and_append(latest, checkpoint)
+            latest_count = -1 if latest is None else latest["count"]
+            if latest_count >= len(history):
+                raise StoreError("external anchor is ahead of the verified database", kind="integrity")
+            if latest is not None and history[latest_count][1] != latest["head"]:
+                raise StoreError("database does not extend the external checkpoint", kind="integrity")
+            if latest is None:
+                if count != 0:
+                    raise StoreError("external anchor missing for non-empty database", kind="integrity")
+                latest = self._external_anchor.compare_and_append(
+                    None, signed_checkpoint(0, GENESIS_HASH, self._event_key)
+                )
+                latest_count = 0
+            for checkpoint_count in range(latest_count + 1, count + 1):
+                checkpoint = signed_checkpoint(
+                    checkpoint_count, history[checkpoint_count][1], self._event_key
+                )
+                latest = self._external_anchor.compare_and_append(latest, checkpoint)
         except AnchorError as exc:
             raise StoreError(str(exc), kind="integrity") from exc
 
     def startup_reconcile(self) -> None:
+        """Reconcile DB and external anchor while excluding concurrent operations."""
+        if self._external_anchor is None:
+            self._startup_reconcile_locked()
+            return
+        with self._external_anchor.transaction_lock():
+            self._startup_reconcile_locked()
+
+    def _startup_reconcile_locked(self) -> None:
         """Verify the DB and external checkpoint before any lease or gate action.
 
-        A database exactly one valid event ahead is the only auto-recovery case.
-        A missing anchor with existing events is never reconstructed.
+        Any valid contiguous event suffix may be re-anchored after a crash. A
+        missing anchor with existing events is never reconstructed.
         """
         try:
-            count, head = self._verified_database_head()
+            history = self._verified_database_history()
+            count, head = history[-1]
             if self._external_anchor is None:
                 self._reconciliation_complete = True
                 self._integrity_locked = False
@@ -1704,17 +1755,16 @@ class Store:
             if latest is None:
                 if count != 0 or head != GENESIS_HASH:
                     raise StoreError("external anchor missing for non-empty database", kind="integrity")
-                self._external_anchor.compare_and_append(None, signed_checkpoint(0, GENESIS_HASH, self._event_key))
-            elif latest["count"] == count and latest["head"] == head:
-                pass
-            elif count == latest["count"] + 1:
-                with self._read_tx() as conn:
-                    row = conn.execute("SELECT prev_hash FROM events ORDER BY seq DESC LIMIT 1").fetchone()
-                if row is None or row["prev_hash"] != latest["head"]:
-                    raise StoreError("database does not extend the external checkpoint", kind="integrity")
-                self._external_anchor.compare_and_append(latest, signed_checkpoint(count, head, self._event_key))
-            else:
-                raise StoreError("database and external checkpoint differ by more than one event", kind="integrity")
+                latest = self._external_anchor.compare_and_append(
+                    None, signed_checkpoint(0, GENESIS_HASH, self._event_key)
+                )
+            if latest["count"] >= len(history) or history[latest["count"]][1] != latest["head"]:
+                raise StoreError("database does not extend the external checkpoint", kind="integrity")
+            for checkpoint_count in range(latest["count"] + 1, count + 1):
+                checkpoint = signed_checkpoint(
+                    checkpoint_count, history[checkpoint_count][1], self._event_key
+                )
+                latest = self._external_anchor.compare_and_append(latest, checkpoint)
             self._reconciliation_complete = True
             self._integrity_locked = False
             if self._startup_supervisor_key is not None:

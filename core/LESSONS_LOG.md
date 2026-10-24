@@ -259,3 +259,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: the v2 signature verification was added to a helper without updating its parameter contract and only call site.
 - Layer: integration between gate entry-point trust configuration and per-receipt validation; E2E coverage caught the missing data dependency.
 - Rule: after adding a trust-root-dependent validation branch, trace the authority value from the public gate API through every helper boundary and exercise a valid signature case, not only invalid-key cases.
+
+## 2026-10-24 -- External anchor needs transaction-level coordination
+
+- Kind: FAILURE (anchor consistency design; found by database and reliability review).
+- Facts: external checkpoints advanced once per event, but a SQLite transaction could commit multiple event rows and only one final checkpoint sync occurred. Independent Store processes could also commit before either synchronized, and gate/anchor reads compared the external head after opening a potentially older DB snapshot. These paths could strand a valid DB suffix or permanently integrity-lock a healthy store.
+- Root cause: the DB transaction and external append were not coordinated as one cross-process operation, and recovery assumed one event per committed transaction.
+- Layer: persistence/reliability contract, not a schema migration.
+- Rule: serialize DB commit through anchor append and authoritative DB snapshot through anchor comparison; after a crash, recover only a fully verified chain suffix whose starting checkpoint matches the external anchor exactly.
