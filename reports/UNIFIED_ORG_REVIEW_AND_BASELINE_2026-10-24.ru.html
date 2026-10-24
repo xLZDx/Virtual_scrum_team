@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ревью единой инженерной организации и baseline дизайна</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--fg:#1c1c1c;--mut:#666;--line:#ccc;--bad:#b00020;--warn:#a15c00;--ok:#1b7a3a}
+@media(prefers-color-scheme:dark){:root{--bg:#161616;--fg:#e8e8e8;--mut:#9a9a9a;--line:#444;--bad:#ff6b81;--warn:#e0a040;--ok:#5fcf80}}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max-width:960px;margin:0 auto;padding:16px}
+table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.bad{color:var(--bad)}.warn{color:var(--warn)}.ok{color:var(--ok)}.mut{color:var(--mut)}
+</style>
+</head>
+<body>
+<header>
+<h1>Ревью единой инженерной организации и baseline дизайна</h1>
+<p class="mut">Период: 2026-10-23 — 2026-10-24. Статус: дизайн MODIFY, baseline принят оператором для пилота S1, разработка S1 начата.</p>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>Virtual_scrum_team</dd>
+    <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s1-control-plane-core @ 9b5b597</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+
+<h2>1. Итог в одной строке</h2>
+<p>Шесть агентов-ревьюеров, самопроверка и внешняя проверка единогласно вынесли <b>MODIFY DESIGN</b>: архитектурные границы верны, но ключевые свойства (подпись квитанций, вердикт шлюза, единое состояние, лимиты) были только описаны словами. Ни один критический блокер не закрыт. Оператор принял baseline и приказал начать разработку S1, где блокеры превращены в рабочие пункты.</p>
+
+<h2>2. Что проверялось</h2>
+<table>
+<tr><th>Раунд</th><th>Кто</th><th>Вердикт</th></tr>
+<tr><td>1</td><td>architect, security-reviewer, reliability-reviewer, functional-test-reviewer, code-reviewer, silent-failure-hunter (Sonnet 5.5, medium, только чтение)</td><td>MODIFY DESIGN у всех шести</td></tr>
+<tr><td>2</td><td>Внешняя проверка поправок на коммите da22d2a</td><td>MODIFY DESIGN; блокеры R-1…R-4, R-6 открыты, R-5 частично</td></tr>
+<tr><td>3</td><td>Самопроверка автора правок (модель Opus 5.5, вне списка разрешённых) и внешняя проверка e4be280</td><td>MODIFY DESIGN; не независимое ревью</td></tr>
+</table>
+
+<h2>3. Блокеры: состояние на момент отчёта</h2>
+<table>
+<tr><th>Код</th><th>Суть простыми словами</th><th>Состояние</th></tr>
+<tr><td>R-1</td><td>Квитанции о выполнении не подписаны: воркер мог подделать результат</td><td class="bad">Открыт. План: подпись раннера, эпик E4</td></tr>
+<tr><td>R-2</td><td>У шлюза нет чёткой функции вердикта: частичные доказательства могли дать одобрение</td><td class="bad">Открыт. План: эпик E2 (код пишется)</td></tr>
+<tr><td>R-3</td><td>Состояние хранится в markdown-файле, который правит LLM, без защиты от двух писателей</td><td class="bad">Открыт. План: SQLite с эпохой, эпик E3</td></tr>
+<tr><td>R-4</td><td>Провал мог исчезнуть: воркер умер до записи или повтор перезаписал FAIL</td><td class="bad">Открыт. План: журнал только на дозапись, E3/E5</td></tr>
+<tr><td>R-5</td><td>Red/green, mutation и CI противоречили правилам процесса</td><td class="warn">Частично: решено в ADR-0001, кода нет</td></tr>
+<tr><td>R-6</td><td>Лимиты «5 AI + 5 CI» и бюджеты ничем не исполняются</td><td class="bad">Открыт. План: таблица слотов в хранилище, E3</td></tr>
+<tr><td>B01</td><td>Два документа называют разные источники истины о фазе</td><td class="bad">Открыт. Решение BD-1, правка SKILL.md в E6</td></tr>
+<tr><td>B02</td><td>Обязательный тест со статусом NOT_RUN мог пройти приёмку</td><td class="warn">Частично: правило в DoD и отдельный вердикт APPROVED_WITH_WAIVER; схема шлюза пишется</td></tr>
+<tr><td>N-1</td><td>Источники расходились: кто пишет тесты (2, 3 или 4 агента)</td><td class="warn">Частично: ADR-0001 (два агента); внешние файлы не выровнены</td></tr>
+</table>
+
+<h2>4. Решения оператора (ADR-0001, 2026-10-24)</h2>
+<ul>
+<li>Тесты пишут и запускают только <code>functional-test-reviewer</code> и <code>e2e-runner</code>; <code>tdd-guide</code> и <code>performance-optimizer</code> — консультанты.</li>
+<li>Модели ревью: Sonnet 5.5 medium или GPT-5.6 Luna low/medium; главный источник — ваш глобальный контракт.</li>
+<li>CI не используется; mutation и red/green не разрешены.</li>
+<li>NOT_RUN никогда не даёт обычного APPROVE; отдельный вердикт APPROVED_WITH_WAIVER требует вашей именной записи.</li>
+</ul>
+
+<h2>5. Что сделано в репозитории</h2>
+<table>
+<tr><th>Коммит</th><th>Содержание</th></tr>
+<tr><td>da22d2a</td><td>Blueprint, досье решений, план 39 ролей, поправки по первому ревью</td></tr>
+<tr><td>514eef3</td><td>Исправлены записи: STATE.md и атрибуция автоответа</td></tr>
+<tr><td>e4be280</td><td>ADR-0001 и выравнивание roster, README, DoD</td></tr>
+<tr><td>20ae344</td><td>Четыре несогласованности после ADR: вердикт со waiver, устаревшие фразы, CI</td></tr>
+<tr><td>9b5b597</td><td>Baseline 1.0 (BD-1…BD-7) и план S1; URL четырёх приватных репозиториев убраны перед публикацией</td></tr>
+</table>
+<p>Все пять коммитов отправлены в <code>origin/main</code> (теперь 9b5b597) по вашему прямому указанию. Это разовое исключение из правила «push только после независимого одобрения»; оно записано в журнале решений и не распространяется на pull request спринта.</p>
+
+<h2>6. Разработка S1 (начата)</h2>
+<p>Ветка <code>s1-control-plane-core</code>. План: E1 контракты, E2 шлюз (пишется сейчас), E3 хранилище состояния, E4 раннер и подпись, E5 сквозной прогон с инъекциями отказов, E6 выравнивание процесса. Тесты напишут и запустят два тестовых агента после готового кода, затем специалисты-ревьюеры на точном head, затем финальное независимое ревью и один pull request.</p>
+
+<h2>7. Что не проверено и остаётся за вами</h2>
+<ul>
+<li>Независимое ревью на разрешённой модели не проводилось ни для дизайна, ни для baseline.</li>
+<li>Не выровнены внешние файлы: workspace <code>AGENTS.md</code> (модель по умолчанию GPT-6 Luna) и глобальный контракт (четыре автора тестов); установленная копия roster устарела.</li>
+<li>Приватный локальный путь остался в публичной истории (коммит 0a5821b); вы решили историю не переписывать.</li>
+<li>Названия приватных репозиториев (PDCC, ERP, AEVE, PM_Bridge) остаются в публичном blueprint; решение за вами.</li>
+</ul>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

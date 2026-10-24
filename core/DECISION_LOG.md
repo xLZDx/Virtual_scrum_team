@@ -60,3 +60,7 @@ An external verification of `e4be280` reported four inconsistencies; all four we
 ## 2026-10-24 -- Design baseline 1.0, S1 plan, push ordered by the operator
 
 The operator instructed: assemble the final design and plan, commit, push, start development. Done: baseline decisions BD-1..BD-7 and the S1 plan in `docs/DESIGN_BASELINE_AND_IMPLEMENTATION_PLAN_2026-10-24.md`; GitHub URLs of four private repositories (checked with `gh repo view`) removed from the public blueprint before the push. Limit: the baseline is explicitly not independently reviewed and does not close the review blockers; they are S1 work items. The push of the documentation commits to `main` was ordered by the operator and made without a final independent approval; this is a single named waiver of that gate and does not extend to the S1 sprint pull request, which still needs the final independent approval on its exact head.
+
+## 2026-10-24 -- Report committed on the sprint branch
+
+The report-due hook required a report for the review and baseline commits. It was written and committed on `s1-control-plane-core` (not `main`) because switching branches would disturb the running S1 implementation work in the same checkout. Record: `docs/changes/0010-review-and-baseline-report.md`.

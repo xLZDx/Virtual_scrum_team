@@ -53,3 +53,10 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Facts: before pushing, a visibility check showed four of the eight repositories named in the public blueprint were private and their URLs were withheld; this had been an open "keep or generalise" question for two days.
 - Why it worked: the irreversible step (publishing) triggered a concrete check (`gh repo view`) instead of a general worry.
 - Rule: before any push to a public remote, list every external identifier in the outbound diff and check its visibility.
+
+## 2026-10-24 -- Report committed on the sprint branch
+
+- Kind: SHORTCOMING (coordinator).
+- Facts: the house report was due after the review gates but was written only after the hook fired; the bare `py -3` launcher resolved to a missing interpreter (`D:\Repo\ERP\Python\...`) and the report tool had to be run with `C:\Python314\python.exe`.
+- Root cause: the report was not planned as part of closing the review gate; interpreter was assumed from PATH.
+- Rule: write the report when a review gate closes; call Python tools with the explicit `C:\Python314\python.exe`.
