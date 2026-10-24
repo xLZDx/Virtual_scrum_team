@@ -1750,6 +1750,14 @@ class Store:
             prior_action = statuses.get(action_id)
             if prior_action and prior_action["action"] != action:
                 raise StoreError("lifecycle action id reused for a different action", kind="integrity")
+            if (prior_action and action == "manual_override"
+                    and prior_action["status"] in {"completed", "reconciled"}
+                    and canonical_bytes(prior_action.get("override_record"))
+                    != canonical_bytes(payload.get("override_record"))):
+                raise StoreError(
+                    "completed manual override action id reused with a different record",
+                    kind="duplicate",
+                )
             if prior_action and prior_action["status"] == "completed":
                 return prior_action
             if prior_action and prior_action["status"] == "reconciled" and prior_action.get("completed") is True:
@@ -2144,7 +2152,11 @@ class Store:
     def execute_idempotent(
         self, operation_key: str, operation: str, payload: Any, effect: Callable[[], Any]
     ) -> Any:
-        """Execute a supervisor-only operation once per key and canonical payload."""
+        """Run an internal Store effect atomically with its idempotency record.
+
+        The callback executes under the SQLite transaction and anchor lock. Do not
+        pass a backend, process, network, or other external side effect here.
+        """
         _need_str(operation_key, "operation_key")
         _need_str(operation, "operation")
         payload_digest = hashlib.sha256(canonical_bytes(payload)).hexdigest()
@@ -2175,6 +2187,127 @@ class Store:
                 },
             )
             return result
+
+    def execute_external_idempotent(
+        self, operation_key: str, operation: str, payload: Any, effect: Callable[[], Any]
+    ) -> Any:
+        """Run a retry-safe external effect outside the Store transaction.
+
+        The append-only operation row is the durable intent. Completion is a
+        separate hash-chained event, so a crash leaves an observable pending
+        operation. Retrying the same key/payload is safe only when the backend
+        also durably enforces that idempotency key.
+        """
+        _need_str(operation_key, "operation_key")
+        _need_str(operation, "operation")
+        if not callable(effect):
+            raise StoreError("external operation effect must be callable", kind="argument")
+        payload_digest = hashlib.sha256(canonical_bytes(payload)).hexdigest()
+        intent_event = "SUPERVISOR_EXTERNAL_OPERATION_INTENT"
+        completion_event = "SUPERVISOR_EXTERNAL_OPERATION_COMPLETED"
+        pending = {"_vst_state": "PENDING"}
+        no_completion = object()
+
+        def completion_locked(conn: sqlite3.Connection) -> Any:
+            rows = conn.execute(
+                "SELECT payload FROM events WHERE task_id = ? AND actor = 'supervisor' AND kind = 'NOTE' ORDER BY seq",
+                (operation_key,),
+            ).fetchall()
+            completed = no_completion
+            for row in rows:
+                try:
+                    event = json.loads(row["payload"])
+                except (TypeError, ValueError):
+                    continue
+                if event.get("event") != completion_event:
+                    continue
+                if (event.get("operation") != operation
+                        or event.get("payload_sha256") != payload_digest
+                        or event.get("operation_key") != operation_key):
+                    raise StoreError("external operation completion binding is invalid", kind="integrity")
+                result = event.get("result")
+                encoded = canonical_bytes(result).decode("utf-8")
+                if hashlib.sha256(encoded.encode("utf-8")).hexdigest() != event.get("result_sha256"):
+                    raise StoreError("external operation result digest is invalid", kind="integrity")
+                if completed is not no_completion and canonical_bytes(completed) != canonical_bytes(result):
+                    raise StoreError("external operation produced conflicting completed results", kind="integrity")
+                completed = result
+            return completed
+
+        with self._tx() as conn:
+            row = conn.execute(
+                "SELECT operation, payload_sha256, result FROM supervisor_operations WHERE operation_key = ?",
+                (operation_key,),
+            ).fetchone()
+            if row is not None:
+                if row["operation"] != operation or row["payload_sha256"] != payload_digest:
+                    raise StoreError("idempotency key reused with different operation or payload", kind="duplicate")
+                if row["result"] != canonical_bytes(pending).decode("utf-8"):
+                    # Results committed by the pre-intent implementation remain
+                    # readable and idempotent across the transition.
+                    return json.loads(row["result"])
+                result = completion_locked(conn)
+                if result is not no_completion:
+                    return result
+            else:
+                conn.execute(
+                    "INSERT INTO supervisor_operations(operation_key, operation, payload_sha256, result) VALUES (?, ?, ?, ?)",
+                    (operation_key, operation, payload_digest, canonical_bytes(pending).decode("utf-8")),
+                )
+            attempts = 1
+            for row in conn.execute(
+                "SELECT payload FROM events WHERE task_id = ? AND actor = 'supervisor' AND kind = 'NOTE'",
+                (operation_key,),
+            ).fetchall():
+                try:
+                    prior = json.loads(row["payload"])
+                except (TypeError, ValueError):
+                    continue
+                if prior.get("event") == intent_event:
+                    attempts = max(attempts, int(prior.get("attempt", 0)) + 1)
+            self._record_event_locked(
+                conn, operation_key, "supervisor", "NOTE",
+                {"event": intent_event, "operation_key": operation_key,
+                 "operation": operation, "payload_sha256": payload_digest,
+                 "state": "PENDING", "attempt": attempts},
+            )
+
+        try:
+            result = effect()
+            encoded = canonical_bytes(result).decode("utf-8")
+        except BaseException as exc:
+            with self._tx() as conn:
+                self._record_event_locked(
+                    conn, operation_key, "supervisor", "NOTE",
+                    {"event": "SUPERVISOR_EXTERNAL_OPERATION_UNKNOWN",
+                     "operation_key": operation_key, "operation": operation,
+                     "payload_sha256": payload_digest, "attempt": attempts,
+                     "error_type": type(exc).__name__},
+                )
+            raise
+
+        result_digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+        with self._tx() as conn:
+            row = conn.execute(
+                "SELECT operation, payload_sha256 FROM supervisor_operations WHERE operation_key = ?",
+                (operation_key,),
+            ).fetchone()
+            if (row is None or row["operation"] != operation
+                    or row["payload_sha256"] != payload_digest):
+                raise StoreError("external operation intent changed before completion", kind="integrity")
+            prior_result = completion_locked(conn)
+            if prior_result is not no_completion:
+                if canonical_bytes(prior_result) != canonical_bytes(result):
+                    raise StoreError("external operation retry returned a conflicting result", kind="integrity")
+                return prior_result
+            self._record_event_locked(
+                conn, operation_key, "supervisor", "NOTE",
+                {"event": completion_event, "operation_key": operation_key,
+                 "operation": operation, "payload_sha256": payload_digest,
+                 "result": result, "result_sha256": result_digest,
+                 "attempt": attempts},
+            )
+        return result
 
     def append_receipt_idempotent(
         self, operation_key: str, receipt: dict, story_id: str, worker_key: bytes

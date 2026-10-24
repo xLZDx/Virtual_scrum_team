@@ -421,4 +421,4 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Facts: a simulated push or pull-request callback ran inside a SQLite write transaction and external-anchor coordinator lock; a hung Git subprocess could block unrelated store operations. Completed manual-override retry also did not bind replay to the original signed payload.
 - Root cause: transactional idempotency was reused for an external side effect, and action completion was treated as equivalent to payload equality.
 - Rule: commit a durable intent before external effects, execute them outside the global store lock with a finite bound and backend idempotency key, then commit completion. On replay, compare the exact canonical payload before returning a prior completion.
-- Fix status: design recorded in change record 0065; implementation and designated-agent verification follow in separate change records.
+- Fix status: design recorded in change record 0065; implementation is in change record 0066. Designated-agent runtime verification and exact-head post-fix review remain pending.

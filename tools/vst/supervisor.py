@@ -343,6 +343,13 @@ class Supervisor:
             raise StoreError("manual override operator signature is invalid", kind="provider")
         if self.manual_override_recorder is None:
             raise StoreError("manual override record sink is unavailable", kind="provider")
+        prior = self._action_status.get(override_id)
+        if (prior and prior.get("status") in {"completed", "reconciled"}
+                and canonical_bytes(prior.get("override_record")) != canonical_bytes(record)):
+            raise StoreError(
+                "completed manual override action id reused with a different record",
+                kind="duplicate",
+            )
         self._perform(
             "manual_override",
             lambda: self.manual_override_recorder(dict(record)),
@@ -401,25 +408,25 @@ class Supervisor:
 
     def _simulate(
         self, kind: str, idempotency_key: str, payload: dict,
-        effect: Callable[[Any], Any],
+        effect: Callable[[], Any],
     ) -> Any:
         if kind not in {"push", "pull_request", "receipt"}:
             raise StoreError("unsupported supervisor operation", kind="argument")
         # Bind the operation payload to both caller intent and the repository
         # object identity; no corresponding method exists on a worker object.
         binding = {"kind": kind, "payload": payload, "payload_sha256": hashlib.sha256(canonical_bytes(payload)).hexdigest()}
-        return self.store.execute_idempotent(idempotency_key, kind, binding, effect)
+        return self.store.execute_external_idempotent(idempotency_key, kind, binding, effect)
 
     def simulate_push(self, idempotency_key: str, payload: dict) -> Any:
         return self._simulate(
             "push", idempotency_key, payload,
-            lambda _conn: self.backend.push(payload, operation_key=idempotency_key),
+            lambda: self.backend.push(payload, operation_key=idempotency_key),
         )
 
     def simulate_pull_request(self, idempotency_key: str, payload: dict) -> Any:
         return self._simulate(
             "pull_request", idempotency_key, payload,
-            lambda _conn: self.backend.open_pull_request(payload, operation_key=idempotency_key),
+            lambda: self.backend.open_pull_request(payload, operation_key=idempotency_key),
         )
 
     def create_receipt(

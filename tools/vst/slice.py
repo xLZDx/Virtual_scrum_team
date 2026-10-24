@@ -1101,15 +1101,18 @@ def run_scenarios(workdir: str) -> dict[str, dict]:
 class SyntheticOperationBackend:
     """Supervisor-only adapter for a local bare Git remote."""
 
-    def __init__(self, bare_path: str) -> None:
+    def __init__(self, bare_path: str, *, command_timeout_sec: int = 10) -> None:
+        if isinstance(command_timeout_sec, bool) or not isinstance(command_timeout_sec, int) or command_timeout_sec < 1:
+            raise ValueError("command_timeout_sec must be a positive integer")
         self.bare_path = bare_path
+        self.command_timeout_sec = command_timeout_sec
 
     def _git(self, *args: str, input_bytes: bytes | None = None) -> str:
         completed = subprocess.run(
             ["git", "--git-dir", self.bare_path, *args],
             input=input_bytes, stdin=None if input_bytes is not None else subprocess.DEVNULL,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            check=False,
+            check=False, timeout=self.command_timeout_sec,
         )
         if completed.returncode:
             raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
@@ -1129,7 +1132,8 @@ class SyntheticOperationBackend:
         if existing_oid is not None:
             existing = subprocess.run(
                 ["git", "--git-dir", self.bare_path, "cat-file", "blob", existing_oid],
-                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,
+                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                check=True, timeout=self.command_timeout_sec,
             ).stdout
             if existing != record:
                 raise StoreError("remote idempotency key reused with different payload", kind="duplicate")
@@ -1142,7 +1146,8 @@ class SyntheticOperationBackend:
             raced_oid = self._git("rev-parse", "--verify", ref)
             raced = subprocess.run(
                 ["git", "--git-dir", self.bare_path, "cat-file", "blob", raced_oid],
-                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,
+                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                check=True, timeout=self.command_timeout_sec,
             ).stdout
             if raced != record:
                 raise StoreError("remote idempotency key reused with different payload", kind="duplicate")
