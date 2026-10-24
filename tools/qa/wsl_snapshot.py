@@ -319,13 +319,44 @@ def transfer_snapshot(
         source.wait(timeout=TRANSFER_TIMEOUT_SEC)
         receiver.wait(timeout=TRANSFER_TIMEOUT_SEC)
     except (BrokenPipeError, OSError, subprocess.TimeoutExpired, ValueError) as exc:
-        terminate_transfer()
-        receiver.wait(timeout=5)
-        source.wait(timeout=5)
-        if isinstance(exc, subprocess.TimeoutExpired):
-            reason = "WSL snapshot transfer timed out"
+        if isinstance(exc, BrokenPipeError):
+            # Preserve the receiver's bounded diagnostic before deciding whether
+            # the transport itself or receiver validation closed the pipe.
+            try:
+                receiver.stdin.close()
+            except OSError:
+                pass
+            try:
+                source.kill()
+            except OSError:
+                pass
+            if source.stdout is not None:
+                source.stdout.close()
+            source.wait(timeout=5)
+            try:
+                receiver.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                receiver.kill()
+                receiver.wait(timeout=5)
+            for thread in drain_threads:
+                thread.join(timeout=5)
+            if any(thread.is_alive() for thread in drain_threads):
+                reason = "WSL receiver closed the stream; diagnostic capture timed out"
+            else:
+                reason = receiver_err.decode("utf-8", errors="replace").strip()
+                reason = reason.replace(snapshot_root, "[snapshot-root]")
+                reason = reason.replace(wsl_user, "[runner]")
+                reason = reason.replace(str(worker_gid), "[worker-gid]")
+                reason = reason or "WSL receiver closed the bundle stream"
         else:
-            reason = str(exc) or "WSL snapshot receiver closed the transfer stream"
+            terminate_transfer()
+            receiver.wait(timeout=5)
+            source.wait(timeout=5)
+            reason = (
+                "WSL snapshot transfer timed out"
+                if isinstance(exc, subprocess.TimeoutExpired)
+                else str(exc) or "WSL snapshot receiver closed the transfer stream"
+            )
         raise ValueError(reason) from exc
     finally:
         timeout_timer.cancel()

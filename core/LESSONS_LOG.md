@@ -493,7 +493,7 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — A bounded WSL transfer depends on both WSL's initial directory and Linux setgid inheritance. The first attempt exposed these at runtime but returned no run identity; do not inspect an unknown partial destination. Pin the WSL start directory and preserve setgid before clone creation, then verify on a fresh identified run. Cause of the original owner/group rejection remains unconfirmed. See change record 0116.
 
-2026-10-25 — A second bounded transfer returned `Broken pipe` before returning run metadata. Without a run ID, any receiver-side partial state is not safely addressable; preserve the exact error and do not inspect, delete, or retry that destination. Resolve the receiver/transport cause before a new attempt on a clean candidate. See change record 0117.
+2026-10-25 — A second bounded transfer returned `Broken pipe` before returning run metadata. Without a run ID, any receiver-side partial state is not safely addressable; do not inspect, delete, or retry that destination. Preserve bounded receiver diagnostics on future broken-pipe failures, with private provisioning values redacted, to distinguish receiver validation from transport startup. See change records 0117–0118.
 
 2026-10-25 — A cross-OS source snapshot must preserve both Git identity and the worker's read-only boundary. Stream a self-contained Git bundle through the WSL process boundary, verify exact HEAD and digest on both sides, and provision directory permissions for runner ownership plus worker traversal/read without write. Implemented behavior remains `NOT_RUN` until the exact isolated destination is exercised. See change record 0101.
 
