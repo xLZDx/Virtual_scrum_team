@@ -40,9 +40,7 @@ marker at spent equal to cap); both are fixed (change record 0031) and re-tested
 passed, 1 skipped; E4 289 passed, 1 skipped; E5 72 passed. The GPT-PM final gate returned APPROVE for
 the exact head `abc0d50`; pull request 1 (S0 + S1) was merged into `origin/main` as `d5cd7f5` on
 2026-10-24 on the operator's authorization. The S0 inventory documents are in `docs/sdlc/s0/`
-(change record 0028). The next sprint is planned in `docs/S2_SANDBOX_WORKER_PLAN_2026-10-24.md` (not started). Until the state store (`tools/vst/store.py`) is in use for a
-project, `docs/sdlc/STATE.md` is the phase authority; once it is in use, the store is the authority
-and `STATE.md` is its generated read-only view (baseline decision BD-1).
+(change record 0028). S2 is in Build on branch `s2-isolated-worker-sandbox`; the S2 plan, interface design and one local-agent review/fix pass are recorded in `docs/S2_SANDBOX_WORKER_PLAN_2026-10-24.md` and `docs/sdlc/STATE.md`. The base `6117ba24` was verified against `origin/main` before the branch was created. Until a VST store instance is initialized as this repository's phase-state authority, `docs/sdlc/STATE.md` is the phase record; at that cutover the store becomes authoritative and `STATE.md` becomes a generated read-only view (baseline decision BD-1).
 
 ## Open items
 
@@ -50,7 +48,6 @@ See `core/BACKLOG.md`.
 
 ## Remote
 
-`origin` = `https://github.com/xLZDx/Virtual_scrum_team.git` (public). `origin/main` is at `d5cd7f5`
-(verified with `git ls-remote` on 2026-10-24 after the merge of pull request 1; branch
-`s1-control-plane-core` is kept on the remote). The first commit `0a5821b` on `origin/main` contains a local
+`origin` = `https://github.com/xLZDx/Virtual_scrum_team.git` (public). `git ls-remote origin refs/heads/main`
+reported `6117ba24b08a260b42402db6da0bf767864e1c04` on 2026-10-24; local `main` matched it before the S2 branch was created. Merge `d5cd7f5` and follow-ups are present; branch `s1-control-plane-core` is kept on the remote. The first commit `0a5821b` on `origin/main` contains a local
 absolute path in this file; the operator decided on 2026-10-23 to keep history unrewritten.
