@@ -176,7 +176,7 @@ def test_s4_seeded_failure_rejects_invalid_manifest_and_records_observation(monk
     loaded_catalog, _ = registry.load_seeded_failure_catalog(ROOT, candidate)
     assert loaded_catalog["fixtures"][0]["test_id"] == test_id
 
-    with pytest.raises(ContractError):
+    with pytest.raises(ContractError, match=r"task_manifest_v2: missing field\(s\):"):
         validate_task_manifest(invalid_input)
 
     record_seeded_failure_observation(
