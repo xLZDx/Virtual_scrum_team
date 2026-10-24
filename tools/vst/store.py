@@ -153,6 +153,14 @@ STORY_STATES = frozenset({"OPEN", "OWNED"})
 # Events written by the store itself, plus the one kind callers may record.
 CALLER_EVENT_KINDS = frozenset({"NOTE"})
 CONTROL_EVENT_KINDS = frozenset({"CONTROL_BREAKER_CONFIG", "CONTROL_PROVIDER_FAILURE", "CONTROL_PROVIDER_SUCCESS", "CONTROL_BREAKER_OVERRIDE", "CONTROL_ACTION_INTENT", "CONTROL_ACTION_COMPLETED", "CONTROL_ACTION_UNKNOWN", "CONTROL_ACTION_RECONCILED"})
+LIFECYCLE_ACTION_STATES = {
+    "start": ("READY", "RUNNING"),
+    "stop_terminate": ("RUNNING", "STOPPING"),
+    "stop_cleanup": ("STOPPING", "STOPPED"),
+    "rollback_effect": ("RUNNING", "ROLLING_BACK"),
+    "rollback_cleanup": ("ROLLING_BACK", "STOPPED"),
+    "resume": ("STOPPED", "READY"),
+}
 EVENT_KINDS = frozenset(
     {
         "EPOCH_ACQUIRED",
@@ -1582,20 +1590,134 @@ class Store:
         envelope = {**payload, "_vst_control_type": kind, "event_id": event_id}
         canonical = canonical_bytes(envelope).decode("utf-8")
         with self._tx() as conn:
-            prior = conn.execute(
-                "SELECT payload FROM events WHERE actor='supervisor' AND kind='NOTE' ORDER BY seq"
-            ).fetchall()
-            for row in prior:
-                parsed = json.loads(row["payload"])
-                if parsed.get("event_id") == event_id and parsed.get("_vst_control_type") != kind:
-                    if kind.startswith("CONTROL_PROVIDER_") or kind == "CONTROL_BREAKER_OVERRIDE":
-                        raise StoreError("provider outcome id reused for a different outcome", kind="integrity")
-                if parsed.get("_vst_control_type") == kind and parsed.get("event_id") == event_id:
-                    if canonical_bytes(parsed).decode("utf-8") != canonical:
-                        raise StoreError("control event id reused with different payload", kind="integrity")
-                    return parsed
-            self._record_event_locked(conn, "__control__", "supervisor", "NOTE", envelope)
+            return self._append_control_event_locked(conn, kind, event_id, payload, envelope, canonical)
         return envelope
+
+    def _append_control_event_locked(
+        self, conn: sqlite3.Connection, kind: str, event_id: str, payload: dict,
+        envelope: dict | None = None, canonical: str | None = None,
+    ) -> dict:
+        envelope = envelope or {**payload, "_vst_control_type": kind, "event_id": event_id}
+        canonical = canonical or canonical_bytes(envelope).decode("utf-8")
+        prior = conn.execute(
+            "SELECT payload FROM events WHERE actor='supervisor' AND kind='NOTE' ORDER BY seq"
+        ).fetchall()
+        for row in prior:
+            parsed = json.loads(row["payload"])
+            if parsed.get("event_id") == event_id and parsed.get("_vst_control_type") != kind:
+                if kind.startswith("CONTROL_PROVIDER_") or kind == "CONTROL_BREAKER_OVERRIDE":
+                    raise StoreError("provider outcome id reused for a different outcome", kind="integrity")
+            if parsed.get("_vst_control_type") == kind and parsed.get("event_id") == event_id:
+                if canonical_bytes(parsed).decode("utf-8") != canonical:
+                    raise StoreError("control event id reused with different payload", kind="integrity")
+                return parsed
+        self._record_event_locked(conn, "__control__", "supervisor", "NOTE", envelope)
+        return envelope
+
+    def begin_action(self, action_id: str, payload: dict) -> dict:
+        """Atomically validate lifecycle transition and append its intent."""
+        _need_str(action_id, "action_id")
+        if not isinstance(payload, dict) or payload.get("action") not in LIFECYCLE_ACTION_STATES:
+            raise StoreError("known lifecycle action required", kind="argument")
+        if payload.get("action_id") != action_id:
+            raise StoreError("intent action_id must match its transaction key", kind="argument")
+        action = payload["action"]
+        with self._tx() as conn:
+            self._verify_control_history_locked(conn)
+            controls = self._control_events_locked(conn)
+            statuses: dict[str, dict] = {}
+            for event in controls:
+                if event["kind"] not in {
+                    "CONTROL_ACTION_INTENT", "CONTROL_ACTION_COMPLETED",
+                    "CONTROL_ACTION_UNKNOWN", "CONTROL_ACTION_RECONCILED",
+                }:
+                    continue
+                root_id = event.get("action_id", event["event_id"])
+                statuses[root_id] = {"status": event["kind"].rsplit("_", 1)[-1].lower(), **event}
+
+            prior_action = statuses.get(action_id)
+            if prior_action and prior_action["action"] != action:
+                raise StoreError("lifecycle action id reused for a different action", kind="integrity")
+            if prior_action and prior_action["status"] == "completed":
+                return prior_action
+            if prior_action and prior_action["status"] == "reconciled" and prior_action.get("completed") is True:
+                return prior_action
+            if prior_action and prior_action["status"] == "reconciled" and prior_action.get("completed") is False:
+                attempt = int(prior_action.get("attempt", 1)) + 1
+            elif prior_action:
+                raise StoreError("another lifecycle outcome is unresolved", kind="lifecycle")
+            else:
+                attempt = 1
+
+            unresolved = [
+                row for row in statuses.values()
+                if row.get("action") in LIFECYCLE_ACTION_STATES
+                and row["status"] in {"intent", "unknown"}
+            ]
+            if unresolved:
+                raise StoreError("an unresolved lifecycle action blocks new actions", kind="lifecycle")
+
+            state = "READY"
+            for event in controls:
+                if event["kind"] == "CONTROL_ACTION_COMPLETED":
+                    action_state = LIFECYCLE_ACTION_STATES.get(event.get("action"))
+                    if action_state:
+                        state = action_state[1]
+                elif event["kind"] == "CONTROL_ACTION_RECONCILED" and event.get("action") in LIFECYCLE_ACTION_STATES:
+                    before, after = LIFECYCLE_ACTION_STATES[event["action"]]
+                    state = after if event.get("completed") is True else before
+
+            expected, _ = LIFECYCLE_ACTION_STATES[action]
+            if state != expected:
+                raise StoreError(
+                    f"lifecycle action {action!r} requires {expected}, stored state is {state}",
+                    kind="lifecycle",
+                )
+            intent_payload = {**payload, "action_id": action_id, "attempt": attempt}
+            result = self._append_control_event_locked(
+                conn, "CONTROL_ACTION_INTENT", f"{action_id}:intent:{attempt}", intent_payload
+            )
+            return {"status": "intent", **result}
+
+    def _control_events_locked(self, conn: sqlite3.Connection) -> list[dict]:
+        rows = conn.execute(
+            "SELECT payload FROM events WHERE actor='supervisor' AND kind='NOTE' ORDER BY seq"
+        ).fetchall()
+        result = []
+        for row in rows:
+            try:
+                payload = json.loads(row["payload"])
+            except (ValueError, TypeError) as exc:
+                raise StoreError("control NOTE payload is malformed", kind="integrity") from exc
+            if isinstance(payload, dict) and payload.get("_vst_control_type") in CONTROL_EVENT_KINDS:
+                result.append({"kind": payload["_vst_control_type"], **payload})
+        return result
+
+    def _verify_control_history_locked(self, conn: sqlite3.Connection) -> None:
+        rows = conn.execute(
+            "SELECT ts, task_id, actor, kind, payload, prev_hash, hash FROM events ORDER BY seq"
+        ).fetchall()
+        previous = GENESIS_HASH
+        for row in rows:
+            fields = {name: row[name] for name in ("ts", "task_id", "actor", "kind", "payload")}
+            expected = self._event_mac(previous, fields)
+            if row["prev_hash"] != previous or not hmac.compare_digest(row["hash"], expected):
+                self._integrity_locked = True
+                raise StoreError("event chain does not verify before lifecycle transition", kind="integrity")
+            previous = row["hash"]
+        count, head = self._anchor_state(conn)
+        if count != len(rows) or head != previous:
+            self._integrity_locked = True
+            raise StoreError("event anchor mismatch before lifecycle transition", kind="integrity")
+        if self._external_anchor is not None:
+            try:
+                latest = self._external_anchor.read_latest()
+            except AnchorError as exc:
+                self._integrity_locked = True
+                raise StoreError(str(exc), kind="integrity") from exc
+            if latest != signed_checkpoint(count, head, self._event_key):
+                self._integrity_locked = True
+                raise StoreError("external checkpoint mismatch before lifecycle transition", kind="integrity")
 
     def control_events(self) -> list[dict]:
         """Return verified supervisor control records in append order."""

@@ -134,9 +134,17 @@ class Supervisor:
         event_data = {"action": action, "action_id": action_id, "attempt": attempt}
         if group_id is not None:
             event_data["group_id"] = group_id
-        self.store._append_control_event("CONTROL_ACTION_INTENT", f"{action_id}:intent:{attempt}", event_data)
+        begin = self.store.begin_action(action_id, event_data)
         self._control_history = self.store.control_events()
         self._replay_controls()
+        attempt = int(begin.get("attempt", attempt))
+        event_data["attempt"] = attempt
+        if begin["status"] in {"completed", "reconciled"}:
+            if begin.get("status") == "reconciled" and begin.get("completed") is False:
+                raise StoreError("reconciled action was not completed; continuation did not begin", kind="lifecycle")
+            if begin.get("result_omitted"):
+                raise StoreError("action completed but its return value cannot be replayed", kind="lifecycle")
+            return begin.get("result")
         try:
             result = callback()
             completion = dict(event_data)
@@ -176,7 +184,7 @@ class Supervisor:
                 action_id = current["action_id"]
         if not current or current["status"] not in {"intent", "unknown"}:
             raise StoreError("action is not awaiting reconciliation", kind="lifecycle")
-        self.store._append_control_event("CONTROL_ACTION_RECONCILED", f"{action_id}:reconciled:{current.get('attempt', 1)}", {"action": current["action"], "action_id": action_id, "attempt": current.get("attempt", 1), "completed": completed, "resolution_id": resolution_id})
+        self.store._append_control_event("CONTROL_ACTION_RECONCILED", f"{action_id}:reconciled:{current.get('attempt', 1)}", {"action": current["action"], "action_id": action_id, "attempt": current.get("attempt", 1), "group_id": current.get("group_id"), "completed": completed, "resolution_id": resolution_id})
         self._control_history = self.store.control_events()
         self._replay_controls()
         if current["action"] in _LIFECYCLE_ACTIONS:
@@ -282,9 +290,15 @@ class Supervisor:
         if self.lifecycle_state == "BLOCKED_RECOVERY": raise StoreError("unresolved lifecycle action requires reconciliation", kind="lifecycle")
         base = action_id or (self.lifecycle_action_id if self.lifecycle_state == "STOPPING" else None) or str(uuid.uuid4())
         if self.lifecycle_state == "RUNNING":
+            previous_state = self.lifecycle_state
             next_state, _ = transition(self.lifecycle_state, "STOP")
             self.lifecycle_state = next_state
-            self._perform("stop_terminate", terminate, base + ":terminate", group_id=base)
+            try:
+                self._perform("stop_terminate", terminate, base + ":terminate", group_id=base)
+            except BaseException:
+                if self.lifecycle_state != "BLOCKED_RECOVERY":
+                    self.lifecycle_state = previous_state
+                raise
         elif self.lifecycle_state != "STOPPING":
             raise StoreError("stop can continue only from RUNNING or STOPPING", kind="lifecycle")
         final_state, _ = transition(self.lifecycle_state, "CLEANUP_COMPLETE")
@@ -296,9 +310,15 @@ class Supervisor:
         if self.lifecycle_state == "BLOCKED_RECOVERY": raise StoreError("unresolved lifecycle action requires reconciliation", kind="lifecycle")
         base = action_id or (self.lifecycle_action_id if self.lifecycle_state == "ROLLING_BACK" else None) or str(uuid.uuid4())
         if self.lifecycle_state == "RUNNING":
+            previous_state = self.lifecycle_state
             next_state, _ = transition(self.lifecycle_state, "ROLLBACK")
             self.lifecycle_state = next_state
-            self._perform("rollback_effect", rollback_effect, base + ":effect", group_id=base)
+            try:
+                self._perform("rollback_effect", rollback_effect, base + ":effect", group_id=base)
+            except BaseException:
+                if self.lifecycle_state != "BLOCKED_RECOVERY":
+                    self.lifecycle_state = previous_state
+                raise
         elif self.lifecycle_state != "ROLLING_BACK":
             raise StoreError("rollback can continue only from RUNNING or ROLLING_BACK", kind="lifecycle")
         final_state, _ = transition(self.lifecycle_state, "CLEANUP_COMPLETE")

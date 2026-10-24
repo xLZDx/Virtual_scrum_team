@@ -302,3 +302,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: control state was treated as a cache rather than reconstructed from the trusted append-only event stream.
 - Rule: persist stable-ID intent before invoking a callback and a confirmed outcome after it; on uncertainty block new work until an auditable reconciliation resolves the original action ID. Persist breaker policy and provider outcomes, and replay them from the verified event chain on restart.
 - Fix status: implemented in change record 0047; tests and runtime evidence remain NOT_RUN for the designated test agents.
+
+## 2026-10-24 -- Validate lifecycle transitions in the writer transaction
+
+- Kind: FAILURE (two supervisors could both act from stale cached state).
+- Facts: appending distinct action intents did not serialize lifecycle admission; callbacks ran after their separate appends.
+- Root cause: current lifecycle state was validated in Supervisor memory rather than at the Store write boundary.
+- Rule: derive state and unresolved actions under the same transaction that appends intent; reject a transition before invoking its callback if another instance already advanced or locked the lifecycle.
+- Fix status: implemented in change record 0048; two-instance concurrency evidence remains NOT_RUN for the E2E agent.
