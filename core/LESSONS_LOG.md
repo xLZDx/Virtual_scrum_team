@@ -211,3 +211,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: the coordinator treated a whitespace-only Git check as part of commit review without applying the sprint-wide phase restriction to all checks.
 - Layer: coordinator missed the phase gate; this log entry catches and records the violation.
 - Rule: before S2 code completion, do not run any command described as a check, even if it only inspects staged text; use source review and explicit diff inspection only.
+
+## 2026-10-24 -- Agent ran a premature diff check during S2 coding
+
+- Kind: FAILURE (implementation-agent phase control).
+- Facts: the Store implementation agent reported that it ran `git diff --check` while S2 coding was still in progress. The agent reported no output. No test/build/lint/CI command was run; the diff-check result is not acceptance evidence.
+- Root cause: the agent treated a whitespace diff command as exempt despite the sprint-wide ban on checks during coding.
+- Layer: implementation-agent execution; the coordinator recorded the report immediately.
+- Rule: every S2 implementation brief must repeat that all checks, including `git diff --check`, are prohibited until all sprint coding is complete; report accidental invocations immediately and do not rerun.

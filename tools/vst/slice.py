@@ -24,6 +24,7 @@ import hashlib
 import json
 import os
 import sqlite3
+import subprocess
 import sys
 from typing import Any, Callable
 
@@ -31,13 +32,16 @@ from . import gate as gate_module
 from .contracts import (
     SUPERVISOR_SLOT,
     ContractError,
+    canonical_bytes,
     derive_result,
     manifest_sha256,
     receipt_sha256,
     validate_task_manifest,
 )
-from .runner import run_and_sign
+from .runner import build_environment, run_and_sign
+from .lifecycle import STOP_TRANSITIONS
 from .signing import WAIVER_LABEL, sign
+from .supervisor import Supervisor
 from .store import MARKER_RESULTS, SUPERVISOR_RECEIPT_PREFIX, Store, StoreError
 
 SYNTHETIC_HEAD = "1234567890abcdef1234567890abcdef12345678"
@@ -145,6 +149,8 @@ class SliceFixture:
         operator_key: bytes = OPERATOR_KEY,
         event_key: bytes = EVENT_KEY,
         retry_cap: int = 1,
+        anchor_path: str | None = None,
+        sandbox_mode: bool = False,
     ) -> None:
         if len({bytes(key), bytes(supervisor_key), bytes(operator_key), bytes(event_key)}) != 4:
             raise ValueError("worker, supervisor, operator and event keys must be distinct")
@@ -161,7 +167,11 @@ class SliceFixture:
         self.runner_id = WORKER_ID
         self.manifest = build_synthetic_manifest(self.task_id, self.current_head, retry_cap)
         self.manifest_hash = manifest_sha256(self.manifest)
-        self.store = Store(os.path.join(workdir, "state.db"), clock, event_key=event_key)
+        self.store = Store(
+            os.path.join(workdir, "state.db"), clock, event_key=event_key,
+            anchor_path=anchor_path, sandbox_mode=sandbox_mode,
+            supervisor_key=supervisor_key if sandbox_mode else None,
+        )
         self.store.init_slots(2)
         self.store.open_story(self.story_id, self.manifest["project_id"], 1)
         self.store.register_task(self.manifest)
@@ -1086,6 +1096,326 @@ def run_scenarios(workdir: str) -> dict[str, dict]:
         finally:
             fixture.close()
     return report
+
+
+class SyntheticOperationBackend:
+    """Supervisor-only adapter for a local bare Git remote."""
+
+    def __init__(self, bare_path: str) -> None:
+        self.bare_path = bare_path
+
+    def _git(self, *args: str, input_bytes: bytes | None = None) -> str:
+        completed = subprocess.run(
+            ["git", "--git-dir", self.bare_path, *args],
+            input=input_bytes, stdin=None if input_bytes is not None else subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            check=False,
+        )
+        if completed.returncode:
+            raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
+        return completed.stdout.decode("utf-8", "replace").strip()
+
+    def ref_head(self, ref: str) -> str:
+        return self._git("rev-parse", "--verify", ref)
+
+    def _bind_operation(self, kind: str, operation_key: str, payload: dict) -> None:
+        key_hash = hashlib.sha256(f"{kind}\0{operation_key}".encode("utf-8")).hexdigest()
+        ref = f"refs/vst/idempotency/{key_hash}"
+        record = canonical_bytes({"kind": kind, "payload": payload})
+        try:
+            existing_oid = self._git("rev-parse", "--verify", ref)
+        except RuntimeError:
+            existing_oid = None
+        if existing_oid is not None:
+            existing = subprocess.run(
+                ["git", "--git-dir", self.bare_path, "cat-file", "blob", existing_oid],
+                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,
+            ).stdout
+            if existing != record:
+                raise StoreError("remote idempotency key reused with different payload", kind="duplicate")
+            return
+        new_oid = self._git("hash-object", "-w", "--stdin", input_bytes=record)
+        try:
+            self._git("update-ref", ref, new_oid, "0" * 40)
+        except RuntimeError:
+            # Another supervisor process may have won the create-only ref race.
+            raced_oid = self._git("rev-parse", "--verify", ref)
+            raced = subprocess.run(
+                ["git", "--git-dir", self.bare_path, "cat-file", "blob", raced_oid],
+                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,
+            ).stdout
+            if raced != record:
+                raise StoreError("remote idempotency key reused with different payload", kind="duplicate")
+
+    def push(self, payload: dict, *, operation_key: str) -> dict:
+        branch, head = payload["branch"], payload["head"]
+        if not isinstance(branch, str) or not branch.replace("-", "").replace("_", "").isalnum():
+            raise ValueError("invalid synthetic branch")
+        if not isinstance(head, str) or len(head) != 40 or any(ch not in "0123456789abcdef" for ch in head):
+            raise ValueError("candidate head must be a 40-character git id")
+        self._bind_operation("push", operation_key, payload)
+        ref = f"refs/heads/{branch}"
+        try:
+            current = self._git("rev-parse", "--verify", ref)
+        except RuntimeError:
+            current = None
+        if current != head:
+            # A retry after a process crash is harmless: the same ref/head
+            # update is already present and git reports it as up to date.
+            self._git("push", self.bare_path, f"{head}:{ref}")
+        return {"operation_key": operation_key, "ref": ref, "head": head}
+
+    def open_pull_request(self, payload: dict, *, operation_key: str) -> dict:
+        head = payload["head"]
+        if not isinstance(head, str) or len(head) != 40 or any(ch not in "0123456789abcdef" for ch in head):
+            raise ValueError("pull-request head must be a 40-character git id")
+        self._bind_operation("pull_request", operation_key, payload)
+        pr_key = hashlib.sha256(operation_key.encode("utf-8")).hexdigest()[:20]
+        ref = f"refs/pull-requests/{pr_key}/head"
+        try:
+            current = self._git("rev-parse", "--verify", ref)
+        except RuntimeError:
+            current = None
+        if current is not None and current != head:
+            raise StoreError("pull-request key already points at a different head", kind="duplicate")
+        if current is None:
+            self._git("update-ref", ref, head)
+        return {"operation_key": operation_key, "ref": ref, "head": head}
+
+
+class HandWrittenWorker:
+    """Minimal synthetic worker with scoped edits and no remote/push API."""
+
+    def __init__(self, repository: str, allowed_paths: tuple[str, ...] = ("src/synthetic.py",)):
+        self.repository = os.path.realpath(repository)
+        self.allowed_paths = frozenset(allowed_paths)
+
+    def _run(self, action: str, path: str, content: str = "") -> subprocess.CompletedProcess:
+        worker_code = r'''import os, subprocess, sys
+repo, action, rel, content = sys.argv[1:5]
+if rel.startswith(("/", "\\")) or ".." in rel.replace("\\", "/").split("/"):
+    raise SystemExit(30)
+root = os.path.realpath(repo)
+target = os.path.realpath(os.path.join(root, rel))
+if os.path.commonpath((root, target)) != root:
+    raise SystemExit(31)
+if action in ("edit", "crash"):
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    with open(target, "w", encoding="utf-8", newline="\n") as stream:
+        stream.write(content if action == "edit" else "# partial synthetic edit\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+    if action == "crash":
+        os._exit(97)
+elif action == "commit":
+    subprocess.run(["git", "add", "--", rel], cwd=root, check=True, stdin=subprocess.DEVNULL)
+    subprocess.run(["git", "commit", "-m", content], cwd=root, check=True, stdin=subprocess.DEVNULL)
+    print(subprocess.check_output(["git", "rev-parse", "--verify", "HEAD"], cwd=root, text=True).strip())
+else:
+    raise SystemExit(32)
+'''
+        return subprocess.run(
+            [sys.executable, "-I", "-c", worker_code, self.repository, action, path, content],
+            cwd=self.repository, env=build_environment(), stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+        )
+
+    def edit(self, path: str, content: str) -> None:
+        if path not in self.allowed_paths or path.startswith(("/", "\\")) or ".." in path.split("/"):
+            raise ValueError("worker edit is outside the declared synthetic scope")
+        completed = self._run("edit", path, content)
+        if completed.returncode:
+            raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
+
+    def crash_mid_edit(self, path: str = "src/synthetic.py") -> None:
+        if path not in self.allowed_paths:
+            raise ValueError("worker edit is outside the declared synthetic scope")
+        completed = self._run("crash", path)
+        if completed.returncode != 97:
+            raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
+        raise RuntimeError("synthetic worker killed during edit")
+
+    def commit_candidate(self, message: str = "synthetic candidate") -> str:
+        heads = []
+        for path in sorted(self.allowed_paths):
+            completed = self._run("commit", path, message)
+            if completed.returncode:
+                raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
+            heads.append(completed.stdout.decode("ascii").strip())
+        return heads[-1]
+
+
+def run_lifecycle_scenarios(
+    workdir: str,
+    *,
+    probe_key: bytes,
+    probe_provider: Callable[[str, str], dict],
+) -> dict[str, dict]:
+    """Drive E8's synthetic fixture using a caller-provided real sandbox probe."""
+    os.makedirs(workdir, exist_ok=True)
+    remote = os.path.join(workdir, "local-bare.git")
+    repository = os.path.join(workdir, "worker-repository")
+    control = os.path.join(workdir, "control")
+    anchor_path = os.path.join(workdir, "control-anchor", "events.jsonl")
+
+    def git(cwd: str, *args: str) -> str:
+        completed = subprocess.run(
+            ["git", "-C", cwd, *args], stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+        )
+        if completed.returncode:
+            raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
+        return completed.stdout.decode("utf-8", "replace").strip()
+
+    subprocess.run(["git", "init", "--bare", remote], check=True, stdout=subprocess.DEVNULL)
+    os.makedirs(repository, exist_ok=True)
+    subprocess.run(["git", "init", repository], check=True, stdout=subprocess.DEVNULL)
+    git(repository, "config", "user.name", "Synthetic Worker")
+    git(repository, "config", "user.email", "synthetic-worker@example.invalid")
+    initial_file = os.path.join(repository, "src", "synthetic.py")
+    os.makedirs(os.path.dirname(initial_file), exist_ok=True)
+    with open(initial_file, "w", encoding="utf-8", newline="\n") as stream:
+        stream.write("value = 'base'\n")
+    git(repository, "add", "--", "src/synthetic.py")
+    git(repository, "commit", "-m", "synthetic base")
+    backend = SyntheticOperationBackend(remote)
+    base_head = git(repository, "rev-parse", "--verify", "HEAD")
+    backend.push({"branch": "main", "head": base_head}, operation_key="bootstrap")
+
+    clock = FakeClock()
+    fixture = SliceFixture(
+        control, SLICE_KEY, clock, supervisor_key=SUPERVISOR_KEY,
+        operator_key=OPERATOR_KEY, event_key=EVENT_KEY, anchor_path=anchor_path,
+        sandbox_mode=True,
+    )
+    worker = HandWrittenWorker(repository)
+    run_id = "synthetic-crash-run"
+    nonce = "synthetic-crash-nonce"
+
+    def make_probe(run: str, run_nonce: str) -> dict:
+        return probe_provider(run, run_nonce)
+
+    supervisor = Supervisor(
+        fixture.store, operation_backend=backend, failure_threshold=2,
+        run_id=run_id, probe_nonce=nonce, probe_key=probe_key,
+    )
+    report: dict[str, dict] = {}
+    try:
+        fixture.begin(1, ttl_sec=600)
+        supervisor.start_worker(lambda: worker, probe=make_probe(run_id, nonce))
+        crash_injected = False
+        try:
+            worker.crash_mid_edit()
+        except RuntimeError:
+            crash_injected = True
+        clock.advance(601)
+        lost = fixture.store.supervisor_reap_and_mark(SUPERVISOR_KEY, SUPERVISOR_RUNNER)
+        supervisor.stop(lambda: None, lambda: None)
+
+        def next_epoch() -> int:
+            fixture.store.release_epoch(fixture.story_id, fixture.owner)
+            fixture.epoch = fixture.store.acquire_epoch(fixture.story_id, fixture.owner, 3600)
+            return fixture.epoch
+
+        resumed_epoch = supervisor.resume(next_epoch)
+        run_id, nonce = "synthetic-resume-run", "synthetic-resume-nonce"
+        supervisor.prepare_run(run_id, nonce)
+        fixture.begin(2, ttl_sec=600)
+        supervisor.start_worker(lambda: worker, probe=make_probe(run_id, nonce))
+        worker.edit("src/synthetic.py", "value = 'resumed candidate'\n")
+        candidate_head = worker.commit_candidate()
+        fixture.current_head = candidate_head
+
+        test_receipt = fixture.make_test_receipt(1, EXPECTED_TEST_IDS)
+        receipt_first = supervisor.create_receipt(
+            "worker-test-receipt-1", test_receipt, fixture.story_id, SLICE_KEY,
+        )
+        receipt_retry = supervisor.create_receipt(
+            "worker-test-receipt-1", test_receipt, fixture.story_id, SLICE_KEY,
+        )
+        fixture.store.append_receipt(
+            fixture.make_static_receipt(), fixture.story_id, SLICE_KEY,
+        )
+        fixture.store.append_receipt(
+            fixture.make_review_receipt(REVIEWER, AUTHOR), fixture.story_id, SLICE_KEY,
+        )
+        fixture.end()
+        decision = supervisor.evaluate_gate(
+            fixture.task_id, candidate_head, fixture.epoch, SLICE_KEY,
+            supervisor_key=SUPERVISOR_KEY, operator_key=OPERATOR_KEY,
+        )
+        push_payload = {"branch": "main", "head": candidate_head}
+        pushed = supervisor.simulate_push("candidate-push-1", push_payload)
+        pr = supervisor.simulate_pull_request(
+            "candidate-pr-1", {"head": candidate_head, "title": "Synthetic candidate"},
+        )
+
+        # Crash-window simulation: remote state and immutable operation binding
+        # are persisted, while the SQLite operation result has not been written.
+        crash_key = "push-crash-window"
+        crash_payload = {"branch": "crash-recovery", "head": candidate_head}
+        crash_result = backend.push(crash_payload, operation_key=crash_key)
+        remote_before_restart_retry = backend.ref_head("refs/heads/crash-recovery")
+        fixture.store.close()
+        restarted_store = Store(
+            os.path.join(control, "state.db"), event_key=EVENT_KEY,
+            anchor_path=anchor_path, sandbox_mode=True, supervisor_key=SUPERVISOR_KEY,
+        )
+        restarted_supervisor = Supervisor(
+            restarted_store, operation_backend=SyntheticOperationBackend(remote),
+            run_id="synthetic-restart-context", probe_nonce="synthetic-restart-nonce",
+            probe_key=probe_key,
+        )
+        retried = restarted_supervisor.simulate_push(crash_key, crash_payload)
+        remote_after_restart_retry = restarted_supervisor.backend.ref_head("refs/heads/crash-recovery")
+        fixture.store = restarted_store
+
+        exact_budget = fixture.store.charge(
+            fixture.task_id, 100, supervisor_key=SUPERVISOR_KEY,
+            runner_id=SUPERVISOR_RUNNER,
+        )
+        budget_exhausted = False
+        try:
+            fixture.store.charge(
+                fixture.task_id, 1, supervisor_key=SUPERVISOR_KEY,
+                runner_id=SUPERVISOR_RUNNER,
+            )
+        except StoreError as exc:
+            budget_exhausted = exc.kind == "budget"
+        lease_blocked = False
+        try:
+            fixture.store.acquire_lease(
+                fixture.task_id, fixture.story_id, fixture.runner_id, fixture.epoch,
+                3, 600, supervisor_key=SUPERVISOR_KEY,
+            )
+        except StoreError:
+            lease_blocked = True
+
+        report["crash_stop_resume"] = {
+            "crash_injected_mid_edit": crash_injected,
+            "worker_lost_markers": [item["check_description"] for item in lost],
+            "resumed_epoch": resumed_epoch,
+            "candidate_head": candidate_head,
+            "worker_has_remote_config": bool(git(repository, "remote")),
+            "gate_verdict": decision["verdict"],
+            "receipt_retry_returned_same_result": receipt_first == receipt_retry,
+            "supervisor_push": pushed,
+            "supervisor_pull_request": pr,
+        }
+        report["restart_idempotency"] = {
+            "effect_recorded_before_store_commit": crash_result,
+            "retry_result_after_store_restart": retried,
+            "same_result": crash_result == retried,
+            "remote_ref_unchanged_on_retry": remote_before_restart_retry == remote_after_restart_retry,
+        }
+        report["budget_exhaustion"] = {
+            "remaining_at_exact_cap": exact_budget,
+            "overflow_rejected": budget_exhausted,
+            "new_lease_rejected": lease_blocked,
+        }
+        return report
+    finally:
+        fixture.close()
 
 
 def main(argv: list[str]) -> int:

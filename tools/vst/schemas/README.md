@@ -26,6 +26,32 @@ Closed enums: `RESULT` = PASS, FAIL, BLOCKED, NOT_RUN, INCONCLUSIVE. `COVERAGE` 
 
 `manifest_sha256(manifest)` = sha256 hex of `canonical_bytes` of the validated manifest. Receipts and waivers bind to it.
 
+### Explicit v2 manifest additions
+
+V1 manifests keep their original exact field set and canonical bytes. V2 is selected only by
+`contract_version: 2`; its exact field set is the v1 fields plus `contract_version`,
+`reviewer_registry: {version, sha256}`, `mandatory_commands`, and
+`change_scope: {allowed_paths}`. `mandatory_commands` is a non-empty list of exact
+`{slot, argv, parser_id, parser_version, parser_sha256}` objects, with at least one entry
+for every TestRun slot. Parser selection is by the exact triple in the built-in
+`TRUSTED_PARSER_CATALOG`; the caller cannot add implementations. `change_scope.allowed_paths`
+is a unique non-empty repo-relative path list.
+
+V2 TestRun receipts add exact `contract_version: 2`, `parser_results`, signed `diff_gate`
+evidence, and `runner_attestation`. Parser results bind each argv and parser triple to exact
+executed/skipped/xfail test id lists. Diff evidence binds `manifest_sha256` and
+`candidate_head`, includes its digest/path/verdict/reason, and has a distinct domain-separated
+signature. Runner attestation contains the exact signer request and its signature; the gate
+checks its fields against the receipt and manifest. V2 IndependentReview receipts add
+`reviewer_key_id` and are verified with the mapped reviewer key under a separate signature
+domain. The operator-signed reviewer registry contains `{version, entries, signature}`;
+each entry is `{principal, key_id}` and the manifest binds its version and canonical content
+digest. V1 evidence cannot satisfy a v2 manifest.
+
+V2 waivers add `waived_results`; its non-empty list may contain only `NOT_RUN`,
+`INCONCLUSIVE`, or `BLOCKED`. Missing evidence, `FAIL`, reviewer `MODIFY`, and `NO_GO` are
+not waivable. The gate rejects a waiver unless each unmet result is explicitly in that list.
+
 ## Receipt (`validate_receipt`)
 
 Common fields: `manifest_sha256` (64 hex, REQUIRED, must equal `manifest_sha256(manifest)` at the gate); a receipt whose `slot` is `SUPERVISOR_SLOT` must be a Documentation receipt; `receipt_id`, `task_id`, `slot` (matches a manifest slot or `SUPERVISOR_SLOT`), `runner_id`, `resolved_model`, `invocation_id`, `created_at` are non-empty str; `receipt_type` in RECEIPT_TYPES; `attempt` int >= 1; `prev_receipt_sha256` is null iff attempt == 1, else 64 hex; `candidate_head` 40 hex; `epoch` int >= 1; `role_sha256` 64 hex; `result` in RESULT; `signature` 64 hex.

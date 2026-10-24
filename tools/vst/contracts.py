@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import inspect
 import json
 import re
 import unicodedata
@@ -41,6 +42,18 @@ _HEX64 = re.compile(r"[0-9a-f]{64}")
 
 # Digest recorded for an artifact that does not exist after the commands ran.
 MISSING_ARTIFACT_DIGEST = "0" * 64
+
+
+def _parse_pass_lines(stdout: str) -> tuple[list[str], list[str], list[str]]:
+    """Built-in parser for synthetic fixtures; callers cannot register parsers."""
+    executed = [line[5:].strip() for line in stdout.splitlines() if line.startswith("PASS ")]
+    return executed, [], []
+
+
+_PASS_LINES_SHA256 = hashlib.sha256(inspect.getsource(_parse_pass_lines).encode("utf-8")).hexdigest()
+TRUSTED_PARSER_CATALOG = {
+    ("vst.pass-lines", "1", _PASS_LINES_SHA256): _parse_pass_lines,
+}
 
 MANIFEST_FIELDS = (
     "task_id",
@@ -64,6 +77,9 @@ MANIFEST_FIELDS = (
     "timeout_sec",
     "cost_cap",
     "retry_cap",
+)
+MANIFEST_V2_FIELDS = MANIFEST_FIELDS + (
+    "contract_version", "reviewer_registry", "mandatory_commands", "change_scope",
 )
 
 # Reserved slot name for supervisor-written receipts (WORKER_LOST,
@@ -114,6 +130,11 @@ RECEIPT_TYPE_FIELDS = {
         "signed_verdict",
     ),
     "Documentation": ("check_description", "covered_acceptance"),
+}
+RECEIPT_V2_EXTRA_FIELDS = ("contract_version",)
+RECEIPT_V2_TYPE_FIELDS = {
+    "TestRun": ("parser_results", "diff_gate", "runner_attestation"),
+    "IndependentReview": ("reviewer_key_id",),
 }
 
 GATE_DECISION_FIELDS = (
@@ -280,7 +301,18 @@ def normalize_principal(value: Any) -> str:
 
 
 def validate_task_manifest(obj: Any) -> dict:
-    """Validate a TaskManifest and return a deep copy."""
+    """Validate an explicit v1 or v2 TaskManifest and return a deep copy.
+
+    The v1 branch is intentionally unchanged: its canonical bytes and digest
+    remain stable. V2 fields are never silently defaulted into a v1 manifest.
+    """
+    if isinstance(obj, dict) and "contract_version" in obj:
+        return validate_task_manifest_v2(obj)
+    return _validate_task_manifest_v1(obj)
+
+
+def _validate_task_manifest_v1(obj: Any) -> dict:
+    """Validate the immutable v1 TaskManifest shape."""
     _check_keys(obj, MANIFEST_FIELDS, "task_manifest")
     _req_str(obj["task_id"], "task_id")
     _req_str(obj["project_id"], "project_id")
@@ -312,6 +344,48 @@ def validate_task_manifest(obj: Any) -> dict:
     _req_int(obj["timeout_sec"], "timeout_sec", 1)
     _req_int(obj["cost_cap"], "cost_cap", 0)
     _req_int(obj["retry_cap"], "retry_cap", 0)
+    return copy.deepcopy(obj)
+
+
+def validate_task_manifest_v2(obj: Any) -> dict:
+    """Validate an explicit v2 manifest; no unknown fields or defaults."""
+    _check_keys(obj, MANIFEST_V2_FIELDS, "task_manifest_v2")
+    _req_int(obj["contract_version"], "contract_version", 2, 2)
+    core = {k: obj[k] for k in MANIFEST_FIELDS}
+    _validate_task_manifest_v1(core)
+    registry = obj["reviewer_registry"]
+    _check_keys(registry, ("version", "sha256"), "reviewer_registry")
+    _req_str(registry["version"], "reviewer_registry.version")
+    _req_hex(registry["sha256"], "reviewer_registry.sha256", 64)
+    commands = obj["mandatory_commands"]
+    if not isinstance(commands, list) or not commands:
+        raise ContractError("mandatory_commands: must be a non-empty list")
+    seen: set[tuple[str, tuple[str, ...]]] = set()
+    slot_types = {s["slot"]: s["receipt_type"] for s in obj["required_receipts"]}
+    for i, item in enumerate(commands):
+        ctx = f"mandatory_commands[{i}]"
+        _check_keys(item, ("slot", "argv", "parser_id", "parser_version", "parser_sha256"), ctx)
+        slot = _slot_of_type(item["slot"], slot_types, "TestRun", ctx)
+        argv = tuple(_req_str_list(item["argv"], f"{ctx}.argv", nonempty=True))
+        _req_str(item["parser_id"], f"{ctx}.parser_id")
+        _req_str(item["parser_version"], f"{ctx}.parser_version")
+        _req_hex(item["parser_sha256"], f"{ctx}.parser_sha256", 64)
+        pair = (slot, argv)
+        if pair in seen:
+            raise ContractError(f"{ctx}: duplicate mandatory command")
+        seen.add(pair)
+    for slot, rtype in slot_types.items():
+        if rtype == "TestRun" and not any(name == slot for name, _ in seen):
+            raise ContractError(f"mandatory_commands: TestRun slot {slot!r} has no command")
+    scope = obj["change_scope"]
+    _check_keys(scope, ("allowed_paths",), "change_scope")
+    paths = scope["allowed_paths"]
+    if not isinstance(paths, list) or not paths:
+        raise ContractError("change_scope.allowed_paths: must be a non-empty list")
+    for i, path in enumerate(paths):
+        _validate_repo_path(path, f"change_scope.allowed_paths[{i}]")
+    if len(paths) != len(set(paths)):
+        raise ContractError("change_scope.allowed_paths: must not contain duplicates")
     return copy.deepcopy(obj)
 
 
@@ -434,15 +508,74 @@ def validate_receipt(obj: Any) -> dict:
     receipt_type = obj.get("receipt_type")
     if not isinstance(receipt_type, str) or receipt_type not in RECEIPT_TYPES:
         raise ContractError(f"receipt_type: must be one of {sorted(RECEIPT_TYPES)}")
+    is_v2 = obj.get("contract_version") == 2
     fields = RECEIPT_COMMON_FIELDS + RECEIPT_TYPE_FIELDS[receipt_type]
+    if is_v2:
+        fields += RECEIPT_V2_EXTRA_FIELDS + RECEIPT_V2_TYPE_FIELDS.get(receipt_type, ())
     _check_keys(obj, fields, f"receipt({receipt_type})")
+    if is_v2:
+        _req_int(obj["contract_version"], "contract_version", 2, 2)
     _validate_common(obj)
     _TYPE_VALIDATORS[receipt_type](obj)
+    if is_v2:
+        _validate_receipt_v2(obj)
     if obj["slot"] == SUPERVISOR_SLOT and receipt_type != "Documentation":
         raise ContractError(
             f"slot: {SUPERVISOR_SLOT!r} is reserved for Documentation receipts"
         )
     return copy.deepcopy(obj)
+
+
+def _validate_receipt_v2(obj: dict) -> None:
+    if obj["receipt_type"] == "IndependentReview":
+        _req_str(obj["reviewer_key_id"], "reviewer_key_id")
+    if obj["receipt_type"] != "TestRun":
+        return
+    results = obj["parser_results"]
+    if not isinstance(results, list) or not results:
+        raise ContractError("parser_results: must be a non-empty list")
+    seen: set[tuple[str, ...]] = set()
+    for i, item in enumerate(results):
+        ctx = f"parser_results[{i}]"
+        _check_keys(item, ("argv", "parser_id", "parser_version", "parser_sha256", "parser_result"), ctx)
+        argv = tuple(_req_str_list(item["argv"], f"{ctx}.argv", nonempty=True))
+        if argv in seen:
+            raise ContractError(f"{ctx}.argv: duplicate parser result")
+        seen.add(argv)
+        _req_str(item["parser_id"], f"{ctx}.parser_id")
+        _req_str(item["parser_version"], f"{ctx}.parser_version")
+        _req_hex(item["parser_sha256"], f"{ctx}.parser_sha256", 64)
+        parsed = item["parser_result"]
+        _check_keys(parsed, ("executed_test_ids", "skipped_test_ids", "xfail_test_ids"), f"{ctx}.parser_result")
+        for name in ("executed_test_ids", "skipped_test_ids", "xfail_test_ids"):
+            _req_str_list(parsed[name], f"{ctx}.parser_result.{name}", unique=True)
+    diff = obj["diff_gate"]
+    _check_keys(diff, ("manifest_sha256", "candidate_head", "diff_sha256", "changed_paths", "verdict", "reason", "signature"), "diff_gate")
+    _req_hex(diff["manifest_sha256"], "diff_gate.manifest_sha256", 64)
+    _req_hex(diff["candidate_head"], "diff_gate.candidate_head", 40)
+    _req_hex(diff["diff_sha256"], "diff_gate.diff_sha256", 64)
+    _req_str_list(diff["changed_paths"], "diff_gate.changed_paths", unique=True)
+    for i, path in enumerate(diff["changed_paths"]):
+        _validate_repo_path(path, f"diff_gate.changed_paths[{i}]")
+    _req_enum(diff["verdict"], frozenset({"PASS", "FAIL"}), "diff_gate.verdict")
+    if diff["reason"] is not None:
+        _req_str(diff["reason"], "diff_gate.reason")
+    _req_hex(diff["signature"], "diff_gate.signature", 64)
+    attestation = obj["runner_attestation"]
+    _check_keys(attestation, ("request", "signature"), "runner_attestation")
+    request = attestation["request"]
+    _check_keys(request, ("request_id", "task_id", "slot", "attempt", "epoch", "manifest_sha256", "candidate_head", "commands", "parser_results", "artifact_digests"), "runner_attestation.request")
+    _req_str(request["request_id"], "runner_attestation.request.request_id")
+    for name in ("task_id", "slot"):
+        _req_str(request[name], f"runner_attestation.request.{name}")
+    for name in ("attempt", "epoch"):
+        _req_int(request[name], f"runner_attestation.request.{name}", 1)
+    _req_hex(request["manifest_sha256"], "runner_attestation.request.manifest_sha256", 64)
+    _req_hex(request["candidate_head"], "runner_attestation.request.candidate_head", 40)
+    _validate_commands(request["commands"])
+    if not isinstance(request["parser_results"], list) or not isinstance(request["artifact_digests"], dict):
+        raise ContractError("runner_attestation.request parser_results/artifact_digests have invalid types")
+    _req_hex(attestation["signature"], "runner_attestation.signature", 64)
 
 
 def _validate_common(obj: dict) -> None:

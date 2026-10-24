@@ -130,9 +130,10 @@ from .contracts import (
     validate_receipt,
     validate_task_manifest,
 )
-from .signing import MIN_KEY_BYTES, sign, verify
+from .signing import MIN_KEY_BYTES, RECEIPT_V2_LABEL, sign, verify
+from .lifecycle import AnchorError, FileExternalAnchor, signed_checkpoint
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 GENESIS_HASH = "0" * 64
 DEFAULT_OWNER_TTL_SEC = 3600.0
 SUPERVISOR_RUNNER_ID = "store-supervisor"
@@ -256,6 +257,26 @@ def _schema_statements() -> tuple[str, ...]:
             spent INT NOT NULL DEFAULT 0 CHECK (spent >= 0)
         )""",
         "CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
+        """CREATE TABLE supervisor_operations (
+            operation_key TEXT PRIMARY KEY,
+            operation TEXT NOT NULL,
+            payload_sha256 TEXT NOT NULL,
+            result TEXT NOT NULL
+        )""",
+        """CREATE TRIGGER supervisor_operations_no_update BEFORE UPDATE ON supervisor_operations
+        BEGIN SELECT RAISE(ABORT, 'supervisor operations are append-only'); END""",
+        """CREATE TABLE supervisor_probes (
+            run_id TEXT PRIMARY KEY,
+            nonce TEXT NOT NULL UNIQUE,
+            spec_sha256 TEXT NOT NULL,
+            probe_sha256 TEXT NOT NULL
+        )""",
+        """CREATE TRIGGER supervisor_probes_no_update BEFORE UPDATE ON supervisor_probes
+        BEGIN SELECT RAISE(ABORT, 'supervisor probes are append-only'); END""",
+        """CREATE TRIGGER supervisor_probes_no_delete BEFORE DELETE ON supervisor_probes
+        BEGIN SELECT RAISE(ABORT, 'supervisor probes are append-only'); END""",
+        """CREATE TRIGGER supervisor_operations_no_delete BEFORE DELETE ON supervisor_operations
+        BEGIN SELECT RAISE(ABORT, 'supervisor operations are append-only'); END""",
         """CREATE TRIGGER receipts_no_update BEFORE UPDATE ON receipts
         BEGIN SELECT RAISE(ABORT, 'receipts are append-only'); END""",
         """CREATE TRIGGER receipts_no_delete BEFORE DELETE ON receipts
@@ -378,12 +399,30 @@ class Store:
         *,
         event_key: bytes,
         busy_timeout_sec: float = 30.0,
+        anchor_path: str | None = None,
+        sandbox_mode: bool = False,
+        supervisor_key: bytes | None = None,
+        supervisor_runner_id: str = "store-startup-supervisor",
     ) -> None:
         self._event_key = _need_key(event_key, "event_key")
         if not isinstance(path, str) or not path:
             raise StoreError("path: must be a non-empty string", kind="argument")
         self._clock = clock
         self._path = path
+        self.sandbox_mode = bool(sandbox_mode)
+        if sandbox_mode and not anchor_path:
+            raise StoreError("sandbox mode requires an external anchor path", kind="integrity")
+        if sandbox_mode and supervisor_key is None:
+            raise StoreError("sandbox mode requires a supervisor key for startup reconciliation", kind="key")
+        self._startup_supervisor_key = None if supervisor_key is None else self._need_supervisor_key(supervisor_key)
+        self._startup_supervisor_runner_id = _need_str(supervisor_runner_id, "supervisor_runner_id")
+        self._external_anchor = (
+            FileExternalAnchor(anchor_path, self._event_key) if anchor_path else None
+        )
+        if self._external_anchor is not None and os.path.realpath(self._external_anchor.path) == os.path.realpath(path):
+            raise StoreError("external anchor must not be the database file", kind="integrity")
+        self._reconciliation_complete = False
+        self._integrity_locked = False
         self._conn = sqlite3.connect(
             path, isolation_level=None, timeout=float(busy_timeout_sec)
         )
@@ -403,6 +442,12 @@ class Store:
             self._conn.close()
             raise
         _restrict_permissions(path)
+        try:
+            self.startup_reconcile()
+        except StoreError:
+            # Keep the handle available for diagnostics, but all acceptance and
+            # mutation entry points remain locked until explicit recovery.
+            self._integrity_locked = True
 
     def _init_schema(self) -> None:
         with self._tx() as conn:
@@ -419,6 +464,35 @@ class Store:
                     )
                 for statement in _schema_statements():
                     conn.execute(statement)
+                conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+            elif version == 3:
+                # Additive migration only: historical event and receipt bytes,
+                # hashes, sequence numbers and triggers are not rewritten.
+                conn.execute(
+                    "CREATE TABLE supervisor_operations ("
+                    "operation_key TEXT PRIMARY KEY, operation TEXT NOT NULL, "
+                    "payload_sha256 TEXT NOT NULL, result TEXT NOT NULL)"
+                )
+                conn.execute(
+                    "CREATE TRIGGER supervisor_operations_no_update BEFORE UPDATE ON supervisor_operations "
+                    "BEGIN SELECT RAISE(ABORT, 'supervisor operations are append-only'); END"
+                )
+                conn.execute(
+                    "CREATE TRIGGER supervisor_operations_no_delete BEFORE DELETE ON supervisor_operations "
+                    "BEGIN SELECT RAISE(ABORT, 'supervisor operations are append-only'); END"
+                )
+                conn.execute(
+                    "CREATE TABLE supervisor_probes (run_id TEXT PRIMARY KEY, nonce TEXT NOT NULL UNIQUE, "
+                    "spec_sha256 TEXT NOT NULL, probe_sha256 TEXT NOT NULL)"
+                )
+                conn.execute(
+                    "CREATE TRIGGER supervisor_probes_no_update BEFORE UPDATE ON supervisor_probes "
+                    "BEGIN SELECT RAISE(ABORT, 'supervisor probes are append-only'); END"
+                )
+                conn.execute(
+                    "CREATE TRIGGER supervisor_probes_no_delete BEFORE DELETE ON supervisor_probes "
+                    "BEGIN SELECT RAISE(ABORT, 'supervisor probes are append-only'); END"
+                )
                 conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
             elif version != SCHEMA_VERSION:
                 raise StoreError(
@@ -449,6 +523,8 @@ class Store:
     def _tx(self) -> Iterator[sqlite3.Connection]:
         """BEGIN IMMEDIATE ... explicit COMMIT, or ROLLBACK on any exception."""
         try:
+            if self._integrity_locked:
+                raise StoreError("store is integrity-locked pending startup reconciliation", kind="integrity")
             self._conn.execute("BEGIN IMMEDIATE")
         except sqlite3.OperationalError as exc:
             busy = _busy_error(exc)
@@ -476,6 +552,12 @@ class Store:
             if busy is not None:
                 raise busy from exc
             raise
+        if self._external_anchor is not None and self._reconciliation_complete:
+            try:
+                self._sync_external_anchor()
+            except StoreError:
+                self._integrity_locked = True
+                raise
 
     @contextlib.contextmanager
     def _read_tx(self) -> Iterator[sqlite3.Connection]:
@@ -1208,8 +1290,17 @@ class Store:
                     f"slot {valid['slot']!r} is not a declared {valid['receipt_type']} slot",
                     kind="slot",
                 )
-        if not verify(valid, key):
+        is_v2 = valid.get("contract_version") == 2
+        if not is_v2 and not verify(valid, key):
             raise StoreError("invalid receipt signature", kind="signature")
+        if is_v2 and valid["receipt_type"] == "TestRun":
+            # The runner key is deliberately not available to the store. The
+            # authoritative gate verifies the attestation with its trust input.
+            if valid["signature"] != valid["runner_attestation"]["signature"]:
+                raise StoreError("TestRun signature does not match runner attestation", kind="signature")
+        elif is_v2 and valid["receipt_type"] != "IndependentReview":
+            if not verify(valid, key, RECEIPT_V2_LABEL):
+                raise StoreError("invalid v2 receipt signature", kind="signature")
         if derive_result(valid) != valid["result"]:
             raise StoreError("receipt result does not match the derived result", kind="signature")
         story = self._story_row(conn, story_id)
@@ -1344,6 +1435,8 @@ class Store:
         receipt digests of the task's rows; any mismatch (a deleted or injected
         receipt row, a truncated event tail) raises StoreError(kind='integrity').
         """
+        if self._external_anchor is not None and not self.verify_event_chain():
+            raise StoreError("event chain or external checkpoint does not verify", kind="integrity")
         with self._read_tx() as conn:
             self._anchor_state(conn)
             rows = conn.execute(
@@ -1368,6 +1461,78 @@ class Store:
                     kind="integrity",
                 )
             return bodies
+
+    def evaluate_gate(
+        self,
+        task_id: str,
+        current_head: str,
+        current_epoch: int,
+        worker_key: bytes,
+        **gate_options: Any,
+    ) -> Any:
+        """Run the pure gate over a verified, single-snapshot store decision set.
+
+        The evaluator gets no integrity flag from the caller. The store verifies
+        its full chain and external checkpoint, then supplies the exact stored
+        receipts while the read snapshot remains open.
+        """
+        from .gate import evaluate as gate_evaluator
+
+        _need_str(task_id, "task_id")
+        if not self._reconciliation_complete or self._integrity_locked:
+            raise StoreError("startup reconciliation is incomplete or integrity-locked", kind="integrity")
+        with self._read_tx() as conn:
+            rows = conn.execute(
+                "SELECT ts, task_id, actor, kind, payload, prev_hash, hash FROM events ORDER BY seq"
+            ).fetchall()
+            previous = GENESIS_HASH
+            for row in rows:
+                fields = {name: row[name] for name in ("ts", "task_id", "actor", "kind", "payload")}
+                expected = self._event_mac(previous, fields)
+                if row["prev_hash"] != previous or not hmac.compare_digest(row["hash"], expected):
+                    self._integrity_locked = True
+                    raise StoreError("event chain does not verify", kind="integrity")
+                previous = row["hash"]
+            count, stored_head = self._anchor_state(conn)
+            if count != len(rows) or stored_head != previous:
+                self._integrity_locked = True
+                raise StoreError("database event head does not verify", kind="integrity")
+            self._verify_supervisor_records(conn)
+            if self._external_anchor is not None:
+                try:
+                    latest = self._external_anchor.read_latest()
+                except AnchorError as exc:
+                    self._integrity_locked = True
+                    raise StoreError(str(exc), kind="integrity") from exc
+                if latest != signed_checkpoint(count, stored_head, self._event_key):
+                    self._integrity_locked = True
+                    raise StoreError("database head differs from external checkpoint", kind="integrity")
+            task_row = conn.execute(
+                "SELECT manifest FROM tasks WHERE task_id = ?", (task_id,)
+            ).fetchone()
+            if task_row is None:
+                raise StoreError(f"unknown task {task_id!r}", kind="task")
+            manifest = json.loads(task_row["manifest"])
+            body_rows = conn.execute(
+                "SELECT body, receipt_sha256 FROM receipts WHERE task_id = ? ORDER BY seq", (task_id,)
+            ).fetchall()
+            receipts = [json.loads(row["body"]) for row in body_rows]
+            row_shas = {row["receipt_sha256"] for row in body_rows}
+            event_shas: set[str] = set()
+            for event in conn.execute(
+                "SELECT payload FROM events WHERE task_id = ? AND kind = 'RECEIPT_APPENDED'", (task_id,)
+            ).fetchall():
+                try:
+                    event_shas.add(json.loads(event["payload"])["sha256"])
+                except (ValueError, KeyError, TypeError) as exc:
+                    self._integrity_locked = True
+                    raise StoreError("receipt event payload is malformed", kind="integrity") from exc
+            if row_shas != event_shas or len(row_shas) != len(receipts):
+                self._integrity_locked = True
+                raise StoreError("receipt rows do not match the event chain", kind="integrity")
+            return gate_evaluator(
+                manifest, receipts, current_head, current_epoch, worker_key, **gate_options
+            )
 
     # --------------------------------------------------------------- events
 
@@ -1408,14 +1573,27 @@ class Store:
                 if row["prev_hash"] != prev_hash or not hmac.compare_digest(
                     row["hash"].encode("utf-8"), expected.encode("utf-8")
                 ):
+                    self._integrity_locked = True
                     return False
                 prev_hash = row["hash"]
             try:
                 self._anchor_state(conn)
             except StoreError as exc:
                 if exc.kind == "integrity":
+                    self._integrity_locked = True
                     return False
                 raise
+            count = len(rows)
+            if self._external_anchor is not None:
+                try:
+                    latest = self._external_anchor.read_latest()
+                except AnchorError:
+                    self._integrity_locked = True
+                    return False
+                expected = signed_checkpoint(count, prev_hash, self._event_key)
+                if latest != expected:
+                    self._integrity_locked = True
+                    return False
             return True
 
     def event_anchor(self) -> tuple[int, str]:
@@ -1425,7 +1603,205 @@ class Store:
         the anchor does not verify against the stored events.
         """
         with self._read_tx() as conn:
-            return self._anchor_state(conn)
+            value = self._anchor_state(conn)
+        if self._external_anchor is not None:
+            try:
+                latest = self._external_anchor.read_latest()
+            except AnchorError as exc:
+                self._integrity_locked = True
+                raise StoreError(str(exc), kind="integrity") from exc
+            if latest != signed_checkpoint(value[0], value[1], self._event_key):
+                self._integrity_locked = True
+                raise StoreError("database head differs from external checkpoint", kind="integrity")
+        return value
+
+    @property
+    def reconciliation_complete(self) -> bool:
+        return self._reconciliation_complete and not self._integrity_locked
+
+    def _verified_database_head(self) -> tuple[int, str]:
+        with self._read_tx() as conn:
+            rows = conn.execute(
+                "SELECT ts, task_id, actor, kind, payload, prev_hash, hash FROM events ORDER BY seq"
+            ).fetchall()
+            previous = GENESIS_HASH
+            for row in rows:
+                fields = {name: row[name] for name in ("ts", "task_id", "actor", "kind", "payload")}
+                expected = self._event_mac(previous, fields)
+                if row["prev_hash"] != previous or not hmac.compare_digest(row["hash"], expected):
+                    raise StoreError("event chain does not verify", kind="integrity")
+                previous = row["hash"]
+            count, head = self._anchor_state(conn)
+            if count != len(rows) or head != previous:
+                raise StoreError("database event head is inconsistent", kind="integrity")
+            self._verify_supervisor_records(conn)
+            return count, head
+
+    def _verify_supervisor_records(self, conn: sqlite3.Connection) -> None:
+        """Cross-check supervisor side tables against their append-only events."""
+        operations = {
+            row["operation_key"]: row
+            for row in conn.execute("SELECT * FROM supervisor_operations").fetchall()
+        }
+        probes = {row["run_id"]: row for row in conn.execute("SELECT * FROM supervisor_probes").fetchall()}
+        event_operations: dict[str, dict] = {}
+        event_probes: dict[str, dict] = {}
+        for row in conn.execute("SELECT task_id, payload FROM events WHERE kind = 'NOTE'").fetchall():
+            try:
+                payload = json.loads(row["payload"])
+            except (ValueError, TypeError) as exc:
+                raise StoreError("supervisor note event is malformed", kind="integrity") from exc
+            if payload.get("event") == "SUPERVISOR_OPERATION":
+                event_operations[row["task_id"]] = payload
+            elif payload.get("event") == "PREFLIGHT_CONSUMED":
+                event_probes[row["task_id"]] = payload
+        if set(operations) != set(event_operations) or set(probes) != set(event_probes):
+            raise StoreError("supervisor records differ from their append-only events", kind="integrity")
+        for operation_key, row in operations.items():
+            try:
+                result_digest = hashlib.sha256(row["result"].encode("utf-8")).hexdigest()
+                json.loads(row["result"])
+                event = event_operations[operation_key]
+            except (KeyError, ValueError, TypeError) as exc:
+                raise StoreError("supervisor operation record is malformed", kind="integrity") from exc
+            if (event.get("operation") != row["operation"]
+                    or event.get("payload_sha256") != row["payload_sha256"]
+                    or event.get("result_sha256") != result_digest):
+                raise StoreError("supervisor operation record does not match its event", kind="integrity")
+        for run_id, row in probes.items():
+            event = event_probes[run_id]
+            if (event.get("nonce") != row["nonce"]
+                    or event.get("spec_sha256") != row["spec_sha256"]
+                    or event.get("probe_sha256") != row["probe_sha256"]):
+                raise StoreError("supervisor probe record does not match its event", kind="integrity")
+
+    def _sync_external_anchor(self) -> None:
+        if self._external_anchor is None:
+            return
+        try:
+            count, head = self._verified_database_head()
+            latest = self._external_anchor.read_latest()
+            checkpoint = signed_checkpoint(count, head, self._event_key)
+            if latest == checkpoint:
+                return
+            self._external_anchor.compare_and_append(latest, checkpoint)
+        except AnchorError as exc:
+            raise StoreError(str(exc), kind="integrity") from exc
+
+    def startup_reconcile(self) -> None:
+        """Verify the DB and external checkpoint before any lease or gate action.
+
+        A database exactly one valid event ahead is the only auto-recovery case.
+        A missing anchor with existing events is never reconstructed.
+        """
+        try:
+            count, head = self._verified_database_head()
+            if self._external_anchor is None:
+                self._reconciliation_complete = True
+                self._integrity_locked = False
+                return
+            latest = self._external_anchor.read_latest()
+            if latest is None:
+                if count != 0 or head != GENESIS_HASH:
+                    raise StoreError("external anchor missing for non-empty database", kind="integrity")
+                self._external_anchor.compare_and_append(None, signed_checkpoint(0, GENESIS_HASH, self._event_key))
+            elif latest["count"] == count and latest["head"] == head:
+                pass
+            elif count == latest["count"] + 1:
+                with self._read_tx() as conn:
+                    row = conn.execute("SELECT prev_hash FROM events ORDER BY seq DESC LIMIT 1").fetchone()
+                if row is None or row["prev_hash"] != latest["head"]:
+                    raise StoreError("database does not extend the external checkpoint", kind="integrity")
+                self._external_anchor.compare_and_append(latest, signed_checkpoint(count, head, self._event_key))
+            else:
+                raise StoreError("database and external checkpoint differ by more than one event", kind="integrity")
+            self._reconciliation_complete = True
+            self._integrity_locked = False
+            if self._startup_supervisor_key is not None:
+                self.supervisor_reap_and_mark(
+                    self._startup_supervisor_key, self._startup_supervisor_runner_id
+                )
+        except AnchorError as exc:
+            self._integrity_locked = True
+            self._reconciliation_complete = False
+            raise StoreError(str(exc), kind="integrity") from exc
+        except StoreError:
+            self._integrity_locked = True
+            self._reconciliation_complete = False
+            raise
+
+    def execute_idempotent(
+        self, operation_key: str, operation: str, payload: Any, effect: Callable[[], Any]
+    ) -> Any:
+        """Execute a supervisor-only operation once per key and canonical payload."""
+        _need_str(operation_key, "operation_key")
+        _need_str(operation, "operation")
+        payload_digest = hashlib.sha256(canonical_bytes(payload)).hexdigest()
+        with self._tx() as conn:
+            row = conn.execute(
+                "SELECT operation, payload_sha256, result FROM supervisor_operations WHERE operation_key = ?",
+                (operation_key,),
+            ).fetchone()
+            if row is not None:
+                if row["operation"] != operation or row["payload_sha256"] != payload_digest:
+                    raise StoreError("idempotency key reused with different operation or payload", kind="duplicate")
+                return json.loads(row["result"])
+            result = effect(conn)
+            try:
+                encoded = canonical_bytes(result).decode("utf-8")
+            except (TypeError, ValueError) as exc:
+                raise StoreError("supervisor operation result is not canonical JSON", kind="argument") from exc
+            conn.execute(
+                "INSERT INTO supervisor_operations(operation_key, operation, payload_sha256, result) VALUES (?, ?, ?, ?)",
+                (operation_key, operation, payload_digest, encoded),
+            )
+            self._record_event_locked(
+                conn, operation_key, "supervisor", "NOTE",
+                {
+                    "event": "SUPERVISOR_OPERATION", "operation": operation,
+                    "payload_sha256": payload_digest,
+                    "result_sha256": hashlib.sha256(encoded.encode("utf-8")).hexdigest(),
+                },
+            )
+            return result
+
+    def append_receipt_idempotent(
+        self, operation_key: str, receipt: dict, story_id: str, worker_key: bytes
+    ) -> dict:
+        """Atomically append one worker receipt and its supervisor idempotency result."""
+        key = _need_key(worker_key, "worker_key")
+        if hmac.compare_digest(key, self._event_key):
+            raise StoreError("worker key must differ from the event_key", kind="key")
+        payload = {"receipt": receipt, "story_id": story_id}
+
+        def append(conn: sqlite3.Connection) -> dict:
+            digest = self._append_locked(conn, receipt, story_id, key, supervisor=False)
+            return {"receipt_id": receipt.get("receipt_id"), "receipt_sha256": digest}
+
+        return self.execute_idempotent(operation_key, "receipt", payload, append)
+
+    def consume_preflight(self, run_id: str, nonce: str, spec_sha256: str, probe_sha256: str) -> None:
+        """Persist one-time probe use before the supervisor launches a worker."""
+        for value, name in ((run_id, "run_id"), (nonce, "nonce")):
+            _need_str(value, name)
+        for value, name in ((spec_sha256, "spec_sha256"), (probe_sha256, "probe_sha256")):
+            if not isinstance(value, str) or len(value) != 64 or any(ch not in "0123456789abcdef" for ch in value):
+                raise StoreError(f"{name}: must be a lowercase SHA-256 digest", kind="argument")
+        with self._tx() as conn:
+            try:
+                conn.execute(
+                    "INSERT INTO supervisor_probes(run_id, nonce, spec_sha256, probe_sha256) VALUES (?, ?, ?, ?)",
+                    (run_id, nonce, spec_sha256, probe_sha256),
+                )
+            except sqlite3.IntegrityError as exc:
+                raise StoreError("preflight run id or nonce was already consumed", kind="duplicate") from exc
+            self._record_event_locked(
+                conn, run_id, "supervisor", "NOTE",
+                {
+                    "event": "PREFLIGHT_CONSUMED", "nonce": nonce,
+                    "spec_sha256": spec_sha256, "probe_sha256": probe_sha256,
+                },
+            )
 
     # --------------------------------------------------------------- budget
 
@@ -1585,7 +1961,11 @@ class Store:
             "check_description": reason,
             "covered_acceptance": [],
         }
-        body["signature"] = sign(dict(body), supervisor_key)
+        if manifest.get("contract_version") == 2:
+            body["contract_version"] = 2
+            body["signature"] = sign(dict(body), supervisor_key, RECEIPT_V2_LABEL)
+        else:
+            body["signature"] = sign(dict(body), supervisor_key)
         self._append_locked(conn, body, task["story_id"], supervisor_key, supervisor=True)
         return body, True
 

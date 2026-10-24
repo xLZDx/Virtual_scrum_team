@@ -78,6 +78,7 @@ import signal
 import subprocess
 import threading
 import time
+import uuid
 from typing import Callable
 
 from .contracts import (
@@ -92,6 +93,7 @@ from .contracts import (
     manifest_sha256,
     validate_receipt,
     validate_task_manifest,
+    TRUSTED_PARSER_CATALOG,
 )
 from .signing import MIN_KEY_BYTES, sign
 
@@ -365,9 +367,10 @@ class _JobObject:
     member are members too, and membership survives the exit of the root, which
     is what taskkill /T cannot do after the root has exited. Known tiny race:
     the child is assigned right after Popen (no CREATE_SUSPENDED), so a
-    grandchild spawned in that window would not be a member. If assignment
-    fails (for example the process already belongs to a non-nestable job) the
-    caller falls back to taskkill and reports job_object=False.
+    grandchild spawned in that window would not be a member. Strict callers
+    terminate and refuse the command when assignment fails (including when a
+    parent job does not support nesting); compatibility callers may use the
+    legacy taskkill fallback.
     """
 
     def __init__(self, api, handle) -> None:
@@ -438,7 +441,9 @@ def _kill_tree(proc: subprocess.Popen) -> None:
 
 
 def _run_one(
-    argv: list[str], cwd: str, limit_sec: float, env: dict[str, str], cap: int
+    argv: list[str], cwd: str, limit_sec: float, env: dict[str, str], cap: int,
+    *, require_job_object: bool = False, worker_uid: int | None = None,
+    worker_gid: int | None = None,
 ) -> tuple[int, str, dict]:
     """Run one argv without a shell; return (exit_code, stdout_text, info)."""
     info = {
@@ -458,6 +463,8 @@ def _run_one(
             cwd=cwd,
             env=env,
             bufsize=0,
+            **({"user": worker_uid, "group": worker_gid, "extra_groups": ()}
+               if worker_uid is not None and worker_gid is not None else {}),
             **_spawn_kwargs(),
         )
     except OSError:
@@ -471,11 +478,25 @@ def _run_one(
     kill_failed = False
     try:
         # Windows: put the child in a kill-on-close Job Object right away so every
-        # descendant dies on any exit path, even after the root has exited. If the
-        # attachment fails the run continues (taskkill fallback, job_object=False
-        # in the report).
+        # descendant dies on any exit path, even after the root has exited. Strict
+        # callers refuse to run when assignment fails; compatibility callers retain
+        # taskkill fallback and report job_object=False.
         job = _JobObject.attach(proc) if os.name == "nt" else None
         info["job_object"] = job is not None
+        if os.name == "nt" and require_job_object and job is None:
+            info["job_object_refused"] = True
+            _kill_tree(proc)
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                kill_failed = True
+            completed = True
+            # Do not run the requested command without confirmed job containment.
+            if proc.stdout is not None:
+                proc.stdout.close()
+            if proc.stderr is not None:
+                proc.stderr.close()
+            return EXIT_CAPTURE_INCOMPLETE, "", {**info, "capture_incomplete": True}
         out = _Capture(proc.stdout, cap)
         err = _Capture(proc.stderr, cap)
         try:
@@ -722,7 +743,8 @@ def run_and_sign(
             )
             continue
         exit_code, stdout, info = _run_one(
-            list(argv), cwd, min(float(per_command), remaining), env, max_output_bytes
+            list(argv), cwd, min(float(per_command), remaining), env, max_output_bytes,
+            require_job_object=True,
         )
         info["skipped_by_deadline"] = False
         recorded.append({"argv": list(argv), "exit_code": exit_code})
@@ -762,4 +784,227 @@ def run_and_sign(
     }
     receipt["result"] = derive_result(receipt)
     receipt["signature"] = sign(receipt_without_signature(receipt), key)
+    return validate_receipt(receipt)
+
+
+def _git_bytes(cwd: str, *args: str) -> bytes:
+    try:
+        result = subprocess.run(
+            ["git", *args], cwd=cwd, stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
+            timeout=10, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ContractError(f"cannot derive repository evidence: {exc}") from exc
+    if result.returncode != 0:
+        raise ContractError("git evidence command failed")
+    return result.stdout
+
+
+def _derive_head(cwd: str) -> str:
+    head = _git_bytes(cwd, "rev-parse", "--verify", "HEAD").decode("ascii", "strict").strip()
+    _req_hex(head, "repository HEAD", 40)
+    return head
+
+
+def _diff_paths(cwd: str, base_head: str) -> tuple[bytes, list[str], list[tuple[str, str]], list[str]]:
+    raw = _git_bytes(cwd, "diff", "--binary", "--find-renames", base_head, "--")
+    untracked_raw = _git_bytes(cwd, "ls-files", "--others", "--ignored", "--exclude-standard", "-z")
+    untracked = sorted(path for path in untracked_raw.decode("utf-8", "surrogateescape").split("\0") if path)
+    for path in untracked:
+        full_path = os.path.join(cwd, path)
+        if os.path.islink(full_path):
+            continue
+        if not os.path.isfile(full_path):
+            raise ContractError("untracked candidate contains a non-regular filesystem object")
+        mode = os.stat(full_path, follow_symlinks=False).st_mode & 0o777
+        raw += b"\0VST-UNTRACKED\0" + path.encode("utf-8", "surrogateescape") + b"\0"
+        raw += mode.to_bytes(2, "big")
+        with open(full_path, "rb") as handle:
+            data = handle.read()
+        raw += hashlib.sha256(data).digest() + len(data).to_bytes(8, "big") + data
+    names = _git_bytes(cwd, "diff", "--name-status", "-z", "--find-renames", base_head, "--")
+    fields = names.decode("utf-8", "surrogateescape").split("\0")
+    changed: list[str] = list(untracked)
+    renames: list[tuple[str, str]] = []
+    i = 0
+    while i < len(fields) and fields[i]:
+        status = fields[i]
+        i += 1
+        if status.startswith("R") or status.startswith("C"):
+            if i + 1 >= len(fields):
+                raise ContractError("malformed git rename evidence")
+            source, target = fields[i], fields[i + 1]
+            i += 2
+            changed.append(target)
+            renames.append((source, target))
+        else:
+            if i >= len(fields):
+                raise ContractError("malformed git path evidence")
+            changed.append(fields[i])
+            i += 1
+    raw_names = _git_bytes(cwd, "diff", "--raw", "-z", "--find-renames", base_head, "--")
+    raw_fields = raw_names.decode("utf-8", "surrogateescape").split("\0")
+    symlinks: set[str] = set()
+    i = 0
+    while i < len(raw_fields) and raw_fields[i]:
+        metadata = raw_fields[i].split()
+        i += 1
+        if len(metadata) < 5 or i >= len(raw_fields):
+            raise ContractError("malformed raw git mode evidence")
+        first = raw_fields[i]
+        i += 1
+        second = None
+        if metadata[4].startswith(("R", "C")):
+            if i >= len(raw_fields):
+                raise ContractError("malformed raw git rename evidence")
+            second = raw_fields[i]
+            i += 1
+        if metadata[0].lstrip(":") == "120000" or metadata[1] == "120000":
+            symlinks.add(first)
+            if second is not None:
+                symlinks.add(second)
+    symlinks.update(path for path in changed if os.path.islink(os.path.join(cwd, path)))
+    return raw, changed, renames, sorted(symlinks)
+
+
+def run_manifest_commands(
+    *, manifest: dict, slot: str, attempt: int, epoch: int, resolved_model: str,
+    invocation_id: str, runner_id: str, signer_socket: str, cwd: str,
+    worker_uid: int, worker_gid: int,
+    created_at: str, prev_receipt_sha256: str | None = None,
+    artifact_paths: list[str] | None = None, timeout_sec: int | None = None,
+    deadline_sec: int | None = None, max_output_bytes: int = DEFAULT_MAX_OUTPUT_BYTES,
+    extra_env: dict[str, str] | None = None, report: dict | None = None,
+) -> dict:
+    """Run every manifest-pinned v2 command, derive HEAD, and request signatures.
+
+    The worker does not supply a candidate head, commands, parser callable, or
+    signing key. The authenticated signer signs the exact evidence request and
+    the separate deterministic diff-gate body.
+    """
+    from .diffgate import git_diff_evidence
+    from .sandbox import (require_distinct_worker_identity,
+                          require_runner_can_access_signer,
+                          require_worker_cannot_access_signer)
+    from .signer import authorize_runner_over_socket, sign_diff_over_socket, sign_over_socket
+
+    valid = validate_task_manifest(manifest)
+    if valid.get("contract_version") != 2:
+        raise ContractError("run_manifest_commands requires manifest contract v2")
+    for name, value in (("slot", slot), ("resolved_model", resolved_model),
+                        ("invocation_id", invocation_id), ("runner_id", runner_id),
+                        ("created_at", created_at), ("cwd", cwd), ("signer_socket", signer_socket)):
+        _req_str(value, name)
+    if not os.path.isdir(cwd):
+        raise ContractError("cwd must be an existing repository directory")
+    if os.name != "posix":
+        raise ContractError("v2 worker execution requires a POSIX identity boundary")
+    if (not isinstance(worker_uid, int) or isinstance(worker_uid, bool) or worker_uid < 1 or
+            not isinstance(worker_gid, int) or isinstance(worker_gid, bool) or worker_gid < 1):
+        raise ContractError("worker_uid and worker_gid must be positive POSIX ids")
+    require_distinct_worker_identity(worker_uid)
+    require_runner_can_access_signer(signer_socket)
+    require_worker_cannot_access_signer(signer_socket, worker_uid=worker_uid, worker_gid=worker_gid)
+    authorize_runner_over_socket(signer_socket)
+    _req_int(attempt, "attempt", 1, MAX_COUNTER)
+    _req_int(epoch, "epoch", 1, MAX_COUNTER)
+    if prev_receipt_sha256 is not None:
+        _req_hex(prev_receipt_sha256, "prev_receipt_sha256", 64)
+    if attempt == 1 and prev_receipt_sha256 is not None:
+        raise ContractError("prev_receipt_sha256 must be null when attempt == 1")
+    slot_types = {entry["slot"]: entry["receipt_type"] for entry in valid["required_receipts"]}
+    if slot_types.get(slot) != "TestRun":
+        raise ContractError("slot is not a TestRun slot in the manifest")
+    manifest_hash = manifest_sha256(valid)
+    pinned = [item for item in valid["mandatory_commands"] if item["slot"] == slot]
+    if not pinned:
+        raise ContractError("manifest has no mandatory commands for this slot")
+    argvs = [item["argv"] for item in pinned]
+    required_ids = sorted(item["test_id"] for item in valid["required_tests"] if item["slot"] == slot)
+    acceptance = sorted({a for item in valid["required_tests"] if item["slot"] == slot for a in item["acceptance"]})
+    limit = valid["timeout_sec"]
+    per_command = limit if timeout_sec is None else _req_int(timeout_sec, "timeout_sec", 1, limit)
+    deadline = limit if deadline_sec is None else _req_int(deadline_sec, "deadline_sec", 1, limit)
+    _req_int(max_output_bytes, "max_output_bytes", 1, MAX_OUTPUT_BYTES_LIMIT)
+    paths = [] if artifact_paths is None else artifact_paths
+    _req_str_list(paths, "artifact_paths", unique=True)
+    for path in paths:
+        _validate_repo_path(path, f"artifact_paths[{path!r}]")
+        if contained_artifact_path(cwd, path) is None:
+            raise ContractError(f"artifact path escapes run directory: {path!r}")
+    env = build_environment(_check_env(extra_env))
+    deadline_at = time.monotonic() + deadline
+    commands: list[dict] = []
+    parser_results: list[dict] = []
+    infos: list[dict] = []
+    for item in pinned:
+        parser_key = (item["parser_id"], item["parser_version"], item["parser_sha256"])
+        parser = TRUSTED_PARSER_CATALOG.get(parser_key)
+        if parser is None:
+            raise ContractError("manifest parser is not present in trusted built-in catalog")
+        remaining = deadline_at - time.monotonic()
+        if remaining <= 0:
+            exit_code, stdout = EXIT_TIMEOUT, ""
+            info = {"stdout_truncated": False, "stderr_truncated": False, "timed_out": False,
+                    "capture_incomplete": False, "job_object": False, "skipped_by_deadline": True}
+        else:
+            exit_code, stdout, info = _run_one(
+                item["argv"], cwd, min(float(per_command), remaining), env,
+                max_output_bytes, require_job_object=True,
+                worker_uid=worker_uid, worker_gid=worker_gid,
+            )
+            info["skipped_by_deadline"] = False
+        parsed = parser(stdout)
+        if (not isinstance(parsed, tuple) or len(parsed) != 3 or
+                any(not isinstance(group, list) or any(not isinstance(x, str) for x in group) for group in parsed)):
+            raise ContractError("trusted parser returned invalid typed results")
+        executed, skipped, xfail = parsed
+        commands.append({"argv": list(item["argv"]), "exit_code": exit_code})
+        parser_results.append({
+            "argv": list(item["argv"]), "parser_id": item["parser_id"],
+            "parser_version": item["parser_version"], "parser_sha256": item["parser_sha256"],
+            "parser_result": {"executed_test_ids": executed, "skipped_test_ids": skipped,
+                              "xfail_test_ids": xfail},
+        })
+        infos.append(info)
+    candidate_head = _derive_head(cwd)
+    executed_all = [test_id for result in parser_results for test_id in result["parser_result"]["executed_test_ids"]]
+    skipped_all = [test_id for result in parser_results for test_id in result["parser_result"]["skipped_test_ids"]]
+    xfail_all = [test_id for result in parser_results for test_id in result["parser_result"]["xfail_test_ids"]]
+    digests = _hash_artifacts(paths, cwd)
+    diff_bytes, changed, renames, symlinks = _diff_paths(cwd, valid["base_head"])
+    diff = git_diff_evidence(cwd, valid, candidate_head, diff_bytes, changed,
+                             symlink_paths=symlinks, rename_pairs=renames)
+    request_id = uuid.uuid4().hex
+    diff["signature"] = sign_diff_over_socket(signer_socket, f"{request_id}:diff", {k: v for k, v in diff.items()})
+    request = {
+        "request_id": request_id, "task_id": valid["task_id"], "slot": slot,
+        "attempt": attempt, "epoch": epoch, "manifest_sha256": manifest_hash,
+        "candidate_head": candidate_head, "commands": commands,
+        "parser_results": parser_results, "artifact_digests": digests,
+    }
+    request_sig = sign_over_socket(signer_socket, request)
+    receipt = {
+        "contract_version": 2,
+        "receipt_id": f"{valid['task_id']}:{slot}:{attempt}:{invocation_id}",
+        "receipt_type": "TestRun", "task_id": valid["task_id"],
+        "manifest_sha256": manifest_hash, "slot": slot, "attempt": attempt,
+        "prev_receipt_sha256": prev_receipt_sha256, "candidate_head": candidate_head,
+        "epoch": epoch, "runner_id": runner_id, "role_sha256": valid["role_sha256"],
+        "resolved_model": resolved_model, "invocation_id": invocation_id,
+        "result": "FAIL", "created_at": created_at, "expected_test_ids": required_ids,
+        "executed_test_ids": executed_all, "skipped_test_ids": skipped_all,
+        "xfail_test_ids": xfail_all, "commands": commands,
+        "covered_acceptance": acceptance, "artifact_digests": digests,
+        "parser_results": parser_results, "diff_gate": diff,
+        "runner_attestation": {"request": request, "signature": request_sig},
+        "signature": request_sig,
+    }
+    receipt["result"] = derive_result(receipt)
+    if report is not None:
+        report["commands"] = infos
+        report["capture_incomplete"] = any(info["capture_incomplete"] for info in infos)
+        report["candidate_head"] = candidate_head
+        report["diff_gate"] = diff
     return validate_receipt(receipt)

@@ -105,6 +105,8 @@ soft reasons are the unmet slots and unmet acceptance ids.
 
 from __future__ import annotations
 
+import hashlib
+
 from typing import Any, Callable
 
 from .contracts import (
@@ -113,14 +115,18 @@ from .contracts import (
     derive_result,
     manifest_sha256,
     normalize_principal,
+    TRUSTED_PARSER_CATALOG,
     receipt_sha256,
     validate_gate_decision,
     validate_receipt,
     validate_task_manifest,
+    canonical_bytes,
+    normalize_principal,
 )
-from .signing import MIN_KEY_BYTES, RECEIPT_LABEL, WAIVER_LABEL, verify
+from .signing import (MIN_KEY_BYTES, RECEIPT_LABEL, RECEIPT_V2_LABEL, WAIVER_LABEL, REVIEWER_LABEL,
+    REVIEWER_REGISTRY_LABEL, DIFF_GATE_LABEL, SIGNING_REQUEST_LABEL, verify)
 
-_WAIVER_FIELDS = (
+_WAIVER_V1_FIELDS = (
     "record_id",
     "operator",
     "task_id",
@@ -132,6 +138,8 @@ _WAIVER_FIELDS = (
     "expires_epoch",
     "signature",
 )
+_WAIVER_V2_FIELDS = _WAIVER_V1_FIELDS[:-2] + ("waived_results",) + _WAIVER_V1_FIELDS[-2:]
+_WAIVABLE_RESULTS = frozenset({"NOT_RUN", "INCONCLUSIVE", "BLOCKED"})
 
 _NO_RESOLVER_REASON = "artifact digests present but no artifact_resolver"
 _TERMINAL_MARKERS = ("BUDGET_EXCEEDED", "RETRY_EXHAUSTED")
@@ -151,6 +159,55 @@ def _is_int(value: Any) -> bool:
 
 def _key_ok(key: Any) -> bool:
     return isinstance(key, (bytes, bytearray)) and len(key) >= MIN_KEY_BYTES
+
+
+def _reviewer_registry_ok(registry: Any, manifest: dict, operator_key: Any,
+                          reviewer_keys: Any, hard: list[str]) -> dict[str, str]:
+    """Validate signed registry and return normalized principal -> key id."""
+    if not isinstance(registry, dict) or set(registry) != {"version", "entries", "signature"}:
+        hard.append("reviewer registry missing or has invalid fields")
+        return {}
+    if not isinstance(registry["version"], str) or registry["version"] != manifest["reviewer_registry"]["version"]:
+        hard.append("reviewer registry version does not match manifest")
+        return {}
+    entries = registry["entries"]
+    if not isinstance(entries, list):
+        hard.append("reviewer registry entries must be a list")
+        return {}
+    if not _key_ok(operator_key) or not verify(registry, operator_key, REVIEWER_REGISTRY_LABEL):
+        hard.append("reviewer registry signature invalid")
+        return {}
+    digest = hashlib.sha256(canonical_bytes({"version": registry["version"], "entries": entries})).hexdigest()
+    if digest != manifest["reviewer_registry"]["sha256"]:
+        hard.append("reviewer registry digest does not match manifest")
+    result: dict[str, str] = {}
+    key_ids: set[str] = set()
+    for i, entry in enumerate(entries):
+        if not isinstance(entry, dict) or set(entry) != {"principal", "key_id"}:
+            hard.append(f"reviewer registry entry {i} has invalid fields")
+            continue
+        try:
+            principal = normalize_principal(entry["principal"])
+            key_id = entry["key_id"]
+            if not isinstance(key_id, str) or not key_id.strip():
+                raise ValueError("key_id must be non-empty")
+            if principal in result or key_id in key_ids:
+                hard.append("reviewer registry contains duplicate principal or key id")
+                continue
+            result[principal] = key_id
+            key_ids.add(key_id)
+        except Exception as exc:
+            hard.append(f"reviewer registry entry {i} invalid: {type(exc).__name__}")
+    author = normalize_principal(manifest["author_principal"])
+    if author in result:
+        hard.append("manifest author principal is registered as a reviewer")
+    if not isinstance(reviewer_keys, dict):
+        hard.append("reviewer_keys must map key ids to trusted key bytes")
+    else:
+        for key_id in key_ids:
+            if not _key_ok(reviewer_keys.get(key_id)):
+                hard.append(f"reviewer key {key_id!r} is not trusted")
+    return result
 
 
 def _build_decision(
@@ -189,6 +246,9 @@ def _check_receipt(
     epoch: int,
     key: bytes,
     supervisor_key: bytes,
+    reviewer_keys: dict[str, bytes],
+    v2: bool,
+    signer_key: bytes | None,
     hard: list[str],
 ) -> tuple[dict | None, bool, bool]:
     """Return (good_receipt_or_None, belongs_to_task, is_future_epoch).
@@ -213,6 +273,9 @@ def _check_receipt(
     if receipt["manifest_sha256"] != manifest_hash:
         hard.append(f"{label} manifest_sha256 does not match the manifest")
         return None, True, False
+    if (receipt.get("contract_version") == 2) != v2:
+        hard.append(f"{label} contract version does not match manifest")
+        return None, True, False
     if receipt["role_sha256"] != manifest["role_sha256"]:
         hard.append(f"{label} role_sha256 does not match the manifest")
         return None, True, False
@@ -223,8 +286,25 @@ def _check_receipt(
         future = True
         if not is_supervisor:
             return None, True, True
-    signing_key = supervisor_key if is_supervisor else key
-    if not verify(receipt, signing_key, RECEIPT_LABEL):
+    if receipt["receipt_type"] == "IndependentReview" and v2:
+        signing_key = reviewer_keys.get(receipt["reviewer_key_id"])
+        signature_label = REVIEWER_LABEL
+    elif receipt["receipt_type"] == "TestRun" and v2:
+        signing_key = signer_key
+        signature_label = None
+    else:
+        signing_key = supervisor_key if is_supervisor else key
+        signature_label = RECEIPT_V2_LABEL if v2 else RECEIPT_LABEL
+    if receipt["receipt_type"] == "TestRun" and v2:
+        att = receipt["runner_attestation"]
+        signed_request = {**att["request"], "signature": att["signature"]}
+        signature_ok = (
+            receipt["signature"] == att["signature"] and _key_ok(signing_key)
+            and verify(signed_request, signing_key, SIGNING_REQUEST_LABEL)
+        )
+    else:
+        signature_ok = bool(_key_ok(signing_key) and verify(receipt, signing_key, signature_label))
+    if not signature_ok:
         hard.append(f"{label} invalid signature")
         return None, True, False
     derived = derive_result(receipt)
@@ -336,6 +416,7 @@ def _check_latest(
     findings: list[str],
     hard: list[str],
     soft: list[str],
+    parser_catalog: Any,
 ) -> tuple[bool, set[str]]:
     """Per-type checks on the latest current-epoch attempt.
 
@@ -358,6 +439,51 @@ def _check_latest(
         for command in latest["commands"]:
             if command["argv"] not in allowed:
                 hard.append(f"{label}: command {command['argv']!r} is not in allowed_commands")
+                ok = False
+        if "contract_version" in latest:
+            required_commands = [c for c in manifest["mandatory_commands"] if c["slot"] == slot]
+            actual = {(tuple(r["argv"]), r["parser_id"], r["parser_version"], r["parser_sha256"])
+                      for r in latest["parser_results"]}
+            expected = {(tuple(c["argv"]), c["parser_id"], c["parser_version"], c["parser_sha256"])
+                        for c in required_commands}
+            ran = {tuple(c["argv"]) for c in latest["commands"]}
+            if (actual != expected or ran != {tuple(c["argv"]) for c in required_commands}
+                    or len(latest["commands"]) != len(required_commands)):
+                hard.append(f"{label}: mandatory command/parser set does not match manifest")
+                ok = False
+            parser_results = latest["parser_results"]
+            executed = {test_id for item in parser_results for test_id in item["parser_result"]["executed_test_ids"]}
+            skipped = {test_id for item in parser_results for test_id in item["parser_result"]["skipped_test_ids"]}
+            xfailed = {test_id for item in parser_results for test_id in item["parser_result"]["xfail_test_ids"]}
+            if (executed != set(latest["executed_test_ids"]) or
+                    skipped != set(latest["skipped_test_ids"]) or
+                    xfailed != set(latest["xfail_test_ids"])):
+                hard.append(f"{label}: parser outcomes do not match TestRun test ids")
+                ok = False
+            for entry in required_commands:
+                parser_key = (entry["parser_id"], entry["parser_version"], entry["parser_sha256"])
+                if parser_key not in parser_catalog:
+                    hard.append(f"{label}: parser {parser_key!r} is not in the trusted built-in catalog")
+                    ok = False
+            dg = latest["diff_gate"]
+            if (dg["manifest_sha256"] != latest["manifest_sha256"] or
+                    dg["candidate_head"] != latest["candidate_head"] or
+                    dg["verdict"] != "PASS" or not verify(dg, signer_key or b"", DIFF_GATE_LABEL)):
+                hard.append(f"{label}: diff gate evidence is absent, stale, failing, or unsigned")
+                ok = False
+            att = latest["runner_attestation"]
+            req = att["request"]
+            body = {k: v for k, v in req.items() if k != "signature"}
+            if (att["signature"] != latest["signature"] or
+                req["task_id"] != latest["task_id"] or req["slot"] != slot or
+                req["attempt"] != latest["attempt"] or req["epoch"] != latest["epoch"] or
+                req["manifest_sha256"] != latest["manifest_sha256"] or
+                req["candidate_head"] != latest["candidate_head"] or
+                req["commands"] != latest["commands"] or
+                req["parser_results"] != latest["parser_results"] or
+                req["artifact_digests"] != latest["artifact_digests"] or
+                not verify({**body, "signature": att["signature"]}, signer_key or b"", SIGNING_REQUEST_LABEL)):
+                hard.append(f"{label}: runner signing attestation does not bind receipt evidence")
                 ok = False
         if not set(latest["covered_acceptance"]) <= manifest_acceptance:
             hard.append(f"{label}: covered_acceptance contains ids outside the manifest")
@@ -389,6 +515,8 @@ def _check_latest(
             if reviewer == author:
                 hard.append(f"{label}: reviewer_principal equals author_principal")
                 ok = False
+            if "contract_version" in latest and reviewer == normalize_principal(manifest["author_principal"]):
+                ok = False
         except ContractError as exc:
             hard.append(f"{label}: principal invalid: {exc}")
             ok = False
@@ -405,6 +533,8 @@ def _evaluate_waiver(
     epoch: int,
     unmet_slots: list[str],
     unmet_acceptance: list[str],
+    unmet_results: list[str | None],
+    v2: bool,
 ) -> tuple[bool, str | None, str | None, list[str]]:
     """Return (covers, record_id, operator, problems)."""
     if not isinstance(waiver, dict):
@@ -412,8 +542,9 @@ def _evaluate_waiver(
     problems: list[str] = []
     if not all(isinstance(k, str) for k in waiver):
         return False, None, None, ["waiver rejected: non-string key"]
-    missing = sorted(set(_WAIVER_FIELDS) - set(waiver))
-    unknown = sorted(set(waiver) - set(_WAIVER_FIELDS))
+    expected_fields = _WAIVER_V2_FIELDS if v2 else _WAIVER_V1_FIELDS
+    missing = sorted(set(expected_fields) - set(waiver))
+    unknown = sorted(set(waiver) - set(expected_fields))
     if missing:
         problems.append(f"waiver rejected: missing field(s): {', '.join(missing)}")
     if unknown:
@@ -431,6 +562,17 @@ def _evaluate_waiver(
         value = waiver[name]
         if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
             problems.append(f"waiver rejected: {name} must be a list of strings")
+    if not unmet_results or any(
+        result is None or result not in _WAIVABLE_RESULTS for result in unmet_results
+    ):
+        problems.append("waiver rejected: missing, failed, or rejected evidence cannot be waived")
+    if v2:
+        value = waiver["waived_results"]
+        if (not isinstance(value, list) or not value or
+                not all(isinstance(v, str) and v in _WAIVABLE_RESULTS for v in value)):
+            problems.append("waiver rejected: waived_results must contain only NOT_RUN, INCONCLUSIVE, or BLOCKED")
+        if isinstance(value, list) and not set(unmet_results) <= set(value):
+            problems.append("waiver rejected: waived_results does not cover every unmet result")
     if not _is_hex(waiver["signature"], 64):
         problems.append("waiver rejected: signature must be 64 lowercase hex characters")
     if problems:
@@ -471,6 +613,11 @@ def evaluate(
     operator_key: bytes | None = None,
     waiver: dict | None = None,
     artifact_resolver: Callable[[str], str | None] | None = None,
+    reviewer_registry: dict | None = None,
+    reviewer_keys: dict[str, bytes] | None = None,
+    parser_catalog: dict | None = None,
+    signer_key: bytes | None = None,
+    event_key: bytes | None = None,
 ) -> dict:
     """Compute the GateDecision for one task candidate. See module docstring.
 
@@ -483,6 +630,8 @@ def evaluate(
     findings: list[str] = []
     hashes: list[str] = []
     fatal = False
+    if parser_catalog is not None and parser_catalog != TRUSTED_PARSER_CATALOG:
+        hard.append("parser_catalog must be the trusted built-in catalog")
 
     task_id = manifest.get("task_id") if isinstance(manifest, dict) else None
 
@@ -498,12 +647,22 @@ def evaluate(
     if not _key_ok(supervisor_key):
         hard.append(f"supervisor_key: must be bytes of length >= {MIN_KEY_BYTES}")
         fatal = True
+    if signer_key is not None and not _key_ok(signer_key):
+        hard.append(f"signer_key: must be bytes of length >= {MIN_KEY_BYTES}")
+        fatal = True
+    if event_key is not None and not _key_ok(event_key):
+        hard.append(f"event_key: must be bytes of length >= {MIN_KEY_BYTES}")
+        fatal = True
     if not isinstance(receipts, list):
         hard.append("receipts: must be a list")
         fatal = True
     supplied = [("key", key), ("supervisor_key", supervisor_key)]
     if operator_key is not None:
         supplied.append(("operator_key", operator_key))
+    if signer_key is not None:
+        supplied.append(("signer_key", signer_key))
+    if event_key is not None:
+        supplied.append(("event_key", event_key))
     for i, (name_a, value_a) in enumerate(supplied):
         for name_b, value_b in supplied[i + 1:]:
             if (
@@ -532,13 +691,30 @@ def evaluate(
         )
 
     manifest_hash = manifest_sha256(valid_manifest)
+    is_v2 = valid_manifest.get("contract_version") == 2
+    registry_map: dict[str, str] = {}
+    trusted_reviewers = reviewer_keys or {}
+    if is_v2:
+        if not _key_ok(event_key):
+            hard.append("v2 gate requires event_key to enforce trust-root distinctness")
+        if not _key_ok(signer_key):
+            hard.append("v2 gate requires a trusted signer_key")
+        elif bytes(signer_key) in (bytes(v) for v in trusted_reviewers.values() if _key_ok(v)):
+            hard.append("signer key must differ from reviewer keys")
+        registry_map = _reviewer_registry_ok(reviewer_registry, valid_manifest, operator_key, trusted_reviewers, hard)
+        all_reviewer_keys = [bytes(v) for v in trusted_reviewers.values() if _key_ok(v)]
+        if len(set(all_reviewer_keys)) != len(all_reviewer_keys):
+            hard.append("reviewer keys must be pairwise distinct")
+        if any(bytes(k) in all_reviewer_keys for k in (key, supervisor_key, operator_key, signer_key, event_key) if _key_ok(k)):
+            hard.append("reviewer keys must differ from worker, supervisor, operator, signer, and event keys")
     good: list[dict] = []
     own_count = 0
     stale_count = 0
     for index, raw in enumerate(receipts):
         receipt, own, future = _check_receipt(
             index, raw, valid_manifest, manifest_hash, current_epoch,
-            bytes(key), bytes(supervisor_key), hard,
+            bytes(key), bytes(supervisor_key), trusted_reviewers, is_v2,
+            bytes(signer_key) if _key_ok(signer_key) else None, hard,
         )
         own_count += 1 if own else 0
         stale_count += 1 if future else 0
@@ -549,6 +725,16 @@ def evaluate(
         s["slot"]: s["receipt_type"] for s in valid_manifest["required_receipts"]
     }
     grouped, supervisor = _group_by_slot(good, slot_types, hard)
+    if is_v2:
+        for recs in grouped.values():
+            for rec in recs:
+                if rec["receipt_type"] == "IndependentReview":
+                    try:
+                        principal = normalize_principal(rec["reviewer_principal"])
+                    except ContractError:
+                        continue
+                    if registry_map.get(principal) != rec["reviewer_key_id"]:
+                        hard.append(f"receipt {rec['receipt_id']} reviewer principal/key does not match signed registry")
     _check_supervisor_chain(supervisor, findings, hard)
     # Supervisor markers and older attempts are history, not deciding receipts:
     # they never count toward the "all receipts stale" test below.
@@ -556,11 +742,13 @@ def evaluate(
 
     covered: set[str] = set()
     unmet_slots: list[str] = []
+    unmet_results: list[str | None] = []
     for slot in slot_types:
         chain = sorted(grouped[slot], key=lambda r: r["attempt"])
         if not chain:
             soft.append(f"missing receipt for slot {slot!r}")
             unmet_slots.append(slot)
+            unmet_results.append(None)
             continue
         own_count -= len(chain) - 1
         for earlier in chain[:-1]:
@@ -588,6 +776,7 @@ def evaluate(
                 f"attempt {latest['attempt']} is at another head)"
             )
             unmet_slots.append(slot)
+            unmet_results.append(latest["result"])
             continue
         if not _check_artifacts(latest, hard, artifact_resolver):
             soft.append(
@@ -595,6 +784,7 @@ def evaluate(
                 f"artifact check failed"
             )
             unmet_slots.append(slot)
+            unmet_results.append(latest["result"])
             continue
         hashes.append(receipt_sha256(latest))
         if latest["epoch"] != current_epoch:
@@ -603,9 +793,10 @@ def evaluate(
                 f"{latest['attempt']} is from epoch {latest['epoch']})"
             )
             unmet_slots.append(slot)
+            unmet_results.append(latest["result"])
             continue
         slot_ok, contribution = _check_latest(
-            slot, latest, valid_manifest, findings, hard, soft
+            slot, latest, valid_manifest, findings, hard, soft, TRUSTED_PARSER_CATALOG
         )
         if latest["result"] != "PASS":
             soft.append(
@@ -613,9 +804,11 @@ def evaluate(
                 f"result {latest['result']}"
             )
             unmet_slots.append(slot)
+            unmet_results.append(latest["result"])
             continue
         if not slot_ok:
             unmet_slots.append(slot)
+            unmet_results.append(latest["result"])
             continue
         covered.update(contribution)
 
@@ -641,7 +834,7 @@ def evaluate(
     else:
         ok, record_id, operator, problems = _evaluate_waiver(
             waiver, operator_key, valid_manifest, manifest_hash, current_head,
-            current_epoch, unmet_slots, acceptance_unmet,
+            current_epoch, unmet_slots, acceptance_unmet, unmet_results, is_v2,
         )
         if ok and record_id is not None and operator is not None:
             verdict = "APPROVED_WITH_WAIVER"
