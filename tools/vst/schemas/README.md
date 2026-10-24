@@ -134,8 +134,10 @@ Synthetic vertical slice: no real project, no network; exactly one scenario (`re
 
 ## Known limits
 
-- Event-chain edit, deletion and tail truncation are detected through the keyed HMAC chain and the keyed anchor row (event count and head hash signed with `event_key`). Rolling the whole database back to an older internally consistent copy, or an attacker holding `event_key`, is not detected unless the anchor is stored outside the database.
+- Event-chain edit, deletion and tail truncation are detected through the keyed HMAC chain and keyed anchor row. A per-run external anchor is supported, but rollback to an older internally consistent database copy is not detected when the matching external checkpoint is also unavailable or rolled back; compromise of `event_key` defeats the local authenticity boundary.
 - The HMAC proves origin within the machine trust boundary (the holder of the key signed the receipt); it does not prove that the test run was honest or that recorded stdout, test ids or digests are true.
-- `candidate_head` and the signing key are not yet isolated from the process that runs the commands; this isolation is deferred to the S2 sandbox.
-- Reviewer identity is a normalized string (NFKC + strip + casefold) tied to the manifest `author_principal`, not a verified principal registry.
+- S2 per-run WSL evidence demonstrates runner/signer separation for the recorded `run_manifest_commands` execution. It is not a persistent production deployment or a claim that every host/runtime is qualified. The operator attestation and sanitized runtime evidence are in `docs/sdlc/evidence/s2-e5-operator-attestation.json` and `s2-e5-runmanifest-wsl-280e2d0.md`.
+- Reviewer receipts are authenticated with keys in the operator-signed registry and bound to the manifest, but the registry maps normalized principal strings to keys; it does not independently establish a human's real-world identity.
 - After an epoch takeover, receipts from earlier epochs remain as history only; they never satisfy a slot in the new epoch.
+- POSIX file/socket boundaries and selected WSL unit limits were exercised in the recorded WSL run. Windows Job Object nesting and prohibited process-kill/kill-table scenarios remain unverified (`NOT_RUN`). Full E8 crash/resume bake-off is also `NOT_RUN`; the current lifecycle fixture terminates a child process.
+- The store's database/WAL/SHM permission hardening uses best-effort `chmod`; Windows ACL behavior was not established by the recorded WSL evidence.

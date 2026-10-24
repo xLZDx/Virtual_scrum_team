@@ -2,6 +2,10 @@
 
 Last updated: 2026-10-24. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
 
+## Active sprint: S2 isolated worker sandbox
+
+Current branch: `s2-isolated-worker-sandbox`. Source head: `280e2d0a613a0b70252c13ce7afe85f22734f7d1`; latest repository head before the current documentation update: `0f69d16ce2c67cb5c7114b61119ea62be785f1cb`. Focused test and selected WSL per-run evidence exists; S2 is still partial because process-kill/kill-table, Windows Job Object nesting and full E8 crash/resume remain `NOT_RUN`. Specialist consensus and GPT-PM exact-head approval are pending, so no push/PR is ready. See [`docs/sdlc/STATE.md`](../docs/sdlc/STATE.md) and [`core/BACKLOG.md`](BACKLOG.md) for the acceptance queue.
+
 ## What exists
 
 - 5 new agents (`business-analyst`, `product-owner`, `ui-designer`, `technical-writer`,
@@ -40,7 +44,7 @@ marker at spent equal to cap); both are fixed (change record 0031) and re-tested
 passed, 1 skipped; E4 289 passed, 1 skipped; E5 72 passed. The GPT-PM final gate returned APPROVE for
 the exact head `abc0d50`; pull request 1 (S0 + S1) was merged into `origin/main` as `d5cd7f5` on
 2026-10-24 on the operator's authorization. The S0 inventory documents are in `docs/sdlc/s0/`
-(change record 0028). S2 implementation is committed on `s2-isolated-worker-sandbox` with change record 0036. Test-agent verification is the current phase; no runtime evidence is recorded yet. The S2 plan, interface design and documentation review are in `docs/S2_SANDBOX_WORKER_PLAN_2026-10-24.md` and `docs/sdlc/STATE.md`. The base `6117ba24` was verified against `origin/main` before the branch was created. Until a VST store instance is initialized as this repository's phase-state authority, `docs/sdlc/STATE.md` is the phase record; at that cutover the store becomes authoritative and `STATE.md` becomes a generated read-only view (baseline decision BD-1).
+(change record 0028). The earlier S2 execution entry is historical: current test and runtime evidence is recorded in `docs/sdlc/STATE.md` and `docs/sdlc/evidence/`, with implementation records 0036-0054 and verification/evidence records 0056-0063. The base `6117ba24` was verified against `origin/main` before the branch was created. Until a VST store instance is initialized as this repository's phase-state authority, `docs/sdlc/STATE.md` is the phase record; at that cutover the store becomes authoritative and `STATE.md` becomes a generated read-only view (baseline decision BD-1).
 
 ## Open items
 

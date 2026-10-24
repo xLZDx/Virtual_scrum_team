@@ -1,12 +1,12 @@
 # Operator guide: provision the S2 worker sandbox
 
-Status: operator action required. A sandbox is not accepted until the target host is provisioned and a fresh signed probe inventory passes. This guide does not claim that any sandbox exists.
+Status: dedicated Ubuntu-24.04 WSL2 provisioned and accepted for the recorded per-run E5 correlation; persistent production deployment is not claimed. The operator selected WSL2 and delegated autonomous execution to Codex. The final signed inventory and attestation passed for one fresh run, but this does not waive remaining E4/E8 limits or qualify other environments. See `docs/sdlc/evidence/s2-e5-operator-attestation.json` and `docs/sdlc/evidence/s2-e5-runmanifest-wsl-280e2d0.md`.
 
 ## Recommended setup
 
 Use a dedicated WSL2 distribution only when its network, filesystem, and identity boundaries can be enforced and evidenced. Otherwise use a dedicated VM with equivalent or stronger isolation. Do not repurpose the interactive development distribution or mount the repository's parent directory.
 
-The operator owns host provisioning. The repository does not identify a named infrastructure service owner; that technical ownership remains unknown. Codex can review the resulting evidence and run the repository probe after the operator provides the environment.
+For this delegated run, the operator is the accountable task owner and Codex is the executor. The repository does not identify a named infrastructure service owner; that technical ownership remains unknown. Evidence records distinguish Codex's execution/signing from independent human approval; no independent human review is claimed.
 
 ## Provisioning sequence
 
@@ -35,7 +35,7 @@ The handoff must contain:
 - Operator-root-signed network-policy attestation bound to the same run ID, nonce and spec digest; policy and evidence hashes are retained, while sensitive evidence remains private.
 - Explicit result for process containment and reviewer read-only enforcement.
 
-No worker execution or E5-E8 sandbox-dependent acceptance is approved by this document alone. An unavailable property remains `NOT_RUN` with its exact reason.
+The recorded E5 per-run acceptance is documented above; this guide alone does not approve persistent deployment or all E5-E8 criteria. Windows Job Object nesting, process-kill/kill-table scenarios, and full E8 crash/resume remain `NOT_RUN` with their exact constraints in the S2 state and evidence records.
 
 ## References
 

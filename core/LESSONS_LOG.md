@@ -397,7 +397,7 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Facts: `/run/user` was mode `0755`; its numeric UID entry was owned by UID/GID 0 with mode `0700`. The unmasked runner inventory returned `container_socket_inventory_complete=false`. A transient systemd unit with `TemporaryFileSystem=/run/user:ro` returned a complete inventory and zero socket basenames.
 - Root cause: fail-closed enumeration requires traversal into every numeric runtime UID entry, including the root-owned private directory.
 - Rule: do not widen traversal into root's private runtime directory to force a green probe; mask host runtime paths in a scoped namespace and verify the actual worker inherits that namespace.
-- Fix status: no ACL or directory mode was changed. Scoped inventory was complete, but no application service config proves worker inheritance; the unsigned preflight remained `FAIL`, and final signing/host-isolation proof remain `NOT_RUN` pending deployment and mount-policy approval. Evidence: `docs/sdlc/evidence/s2-e2e-acceptance-280e2d0.md`; change record 0057.
+- Fix status: the unsigned diagnostic remains historical, but later evidence supersedes this provisional status for one recorded per-run transient systemd scope. A fresh runner inventory and operator-root-attested network policy passed; the actual `run_manifest_commands` runner and worker used the scoped unit, signer IPC was denied to the worker, and mount/policy evidence is in `docs/sdlc/evidence/s2-e5-runmanifest-wsl-280e2d0.md` and `s2-e5-operator-attestation.json` (records 0060-0063). This does not prove persistent production deployment or other hosts.
 
 ## 2026-10-24 -- Attribute autonomous signing and review to the executor, not a human
 
@@ -406,3 +406,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: the operator-root trust-root label describes the key authority, not the identity of a human reviewer or signer.
 - Rule: record accountable task owner, Codex executor, trust-root authority, and independent human review as distinct facts. Never infer human approval from a root-key signature.
 - Fix status: public attestation and sanitized PASS evidence are recorded in `docs/sdlc/evidence/s2-e5-operator-attestation.json`, `docs/sdlc/evidence/s2-e5-runmanifest-wsl-280e2d0.md`, and change record 0063. The raw inventory remains private and uncommitted.
+
+## 2026-10-24 -- Reconcile stale phase docs after runtime evidence
+
+- Kind: PROCESS CORRECTION.
+- Facts: phase state and schema limits still described S2 as pre-test and pre-provisioning after focused test runs and a signed per-run WSL E5 result had been committed.
+- Root cause: evidence was added in small follow-up commits without updating the central status and backlog in the same documentation pass.
+- Rule: after a verification/evidence batch closes, reconcile state, backlog, known limits and provisioning status before specialist review; retain `NOT_RUN` for unexecuted criteria and limit runtime acceptance to its exact correlation.
+- Fix status: reconciled in change record 0064.
