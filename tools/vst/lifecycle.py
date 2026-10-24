@@ -87,6 +87,7 @@ class FileExternalAnchor:
         path_lock.acquire()
         stream = None
         unlock = None
+        primary_error = None
         try:
             try:
                 os.makedirs(os.path.dirname(lock_path), exist_ok=True)
@@ -117,15 +118,33 @@ class FileExternalAnchor:
                 "path_lock": path_lock,
             }
             states[lock_path] = state
-            try:
-                yield
-            finally:
-                states.pop(lock_path, None)
-                unlock()
+            yield
+        except BaseException as exc:
+            primary_error = exc
+            raise
         finally:
-            if stream is not None:
-                stream.close()
-            path_lock.release()
+            states.pop(lock_path, None)
+            teardown_error = None
+            try:
+                if unlock is not None:
+                    unlock()
+            except OSError as exc:
+                teardown_error = AnchorError(
+                    f"external anchor coordinator unlock failed: {exc}"
+                )
+            finally:
+                try:
+                    if stream is not None and not stream.closed:
+                        stream.close()
+                except OSError as exc:
+                    if teardown_error is None:
+                        teardown_error = AnchorError(
+                            f"external anchor coordinator close failed: {exc}"
+                        )
+                finally:
+                    path_lock.release()
+            if teardown_error is not None and primary_error is None:
+                raise teardown_error
 
     def read_latest(self) -> dict | None:
         try:

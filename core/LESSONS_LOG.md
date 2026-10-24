@@ -334,3 +334,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: error normalization covered open and lock calls but not the full resource acquisition sequence.
 - Rule: include directory creation, open, initialization write/flush and OS lock acquisition in one typed failure boundary, with stream close and local mutex release guaranteed by `finally`.
 - Fix status: implemented in change record 0051; no tests/checks were run and E2E evidence remains pending.
+
+## 2026-10-24 -- Always release coordinator resources during teardown
+
+- Kind: SHORTCOMING (unlock or close errors could prevent the local path mutex from being released).
+- Facts: two independent reliability reviews on `8eed294` identified linear teardown as a possible permanent local lockout.
+- Root cause: cleanup operations were sequential without nested guarantees.
+- Rule: attempt OS unlock, stream close and local mutex release in nested `finally` blocks; preserve the protected operation's exception if teardown also fails.
+- Fix status: implemented in change record 0052; no tests/checks were run and E2E evidence remains pending.
