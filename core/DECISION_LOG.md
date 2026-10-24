@@ -320,6 +320,10 @@ The first bounded S4 transfer at `ea008c9ecfdf93dc689614ace957d6dfb7693627` retu
 
 Use a self-contained Git bundle over the Windows-to-WSL stdin boundary; do not depend on drive automount, host path mounts, network access, or an archive without Git provenance. Require a clean named branch, exact SHA equality after clone, sender/receiver bundle-digest equality, a pre-provisioned runner-owned mode-2710 root shared only for worker traversal, and a runner-owned, worker-readable/nonwritable clone. The transfer command does not provision the distro or signer and has not been executed. See change record 0101; source-transfer acceptance remains `NOT_RUN`.
 
+## 2026-10-25 -- Verify corrected S4 native E2E on an identified read-only snapshot
+
+At clean source HEAD `452c8ea8da5545bdce0f584a6b51662b93a33abf`, one bounded transfer returned run `e8b68c59c17a449eb2e30803021a37ae`, with exact HEAD, bundle digest and size. Run-scoped ownership/mode checks and worker read/write-denial checks passed. The corrected seven mapped E2E selectors passed under the read-only worker; a first invocation from `/` failed during plugin import before test collection and was rerun from the identified snapshot repository. Post-run status was empty at the exact same HEAD. Signer, report, receipt, gate and full sandbox acceptance remain `NOT_RUN`. See separate transfer/native evidence and change record 0134.
+
 ## 2026-10-25 -- Resolve registry test IDs against source definitions
 
 Every supported QA registry test ID must resolve to a statically named pytest function or a method on a top-level `Test*` class in its tracked source file. A tracked file by itself does not prove that a declared node exists. Reject runtime-generated parametrized selectors until a deterministic source-level mapping is designed; do not import test modules or run collection from the registry trust boundary. See change record 0104; runtime regression acceptance is pending the designated test owner's rerun.

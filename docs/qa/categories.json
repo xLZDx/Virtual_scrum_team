@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_head": "4913425c9327b2416ac7cc1e421268223ee43ae1",
+  "source_head": "452c8ea8da5545bdce0f584a6b51662b93a33abf",
   "categories": {
     "functional": {
       "state": "SUPPORTED",
@@ -54,9 +54,9 @@
     "e2e": {
       "state": "SUPPORTED",
       "coverage_state": "PARTIAL",
-      "coverage_reason": "Coverage includes the S3 worker pilot and local S4 synthetic slice/snapshot refusal journeys; native S4 snapshot transfer, signer/report path, and sandbox acceptance remain NOT_RUN.",
+      "coverage_reason": "Coverage includes the S3 worker pilot, local S4 synthetic slice/snapshot refusal journeys, and the mapped native E2E selectors on a transferred read-only snapshot; signer/report/gate and sandbox acceptance remain NOT_RUN.",
       "owner_role": "e2e-runner",
-      "source_head": "4913425c9327b2416ac7cc1e421268223ee43ae1",
+      "source_head": "452c8ea8da5545bdce0f584a6b51662b93a33abf",
       "test_ids": [
         "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_pilot_commits_only_the_manifest_scoped_synthetic_change",
         "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_pilot_rejects_out_of_scope_edit_before_worker_invocation",
