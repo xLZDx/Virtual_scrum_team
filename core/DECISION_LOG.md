@@ -280,3 +280,7 @@ The functional adapter tests reported 8 passed and synthetic pilot E2E reported 
 
 Use validated VST task-manifest TestRun slots as the canonical category registry and require the trusted QA runner to produce an ordinary v2 `TestRun` receipt with the canonical QA report included among signed artifact digests. The exact-head gate and artifact resolver remain authoritative. Do not add fields to v1/v2 or repurpose S5's planned v3. The gate verifies receipt/artifact integrity; the runner/parser remains trusted to construct report content. See technical design and change record 0093.
 
+## 2026-10-25 -- Use the observed named WSL runtime for S4 QA
+
+The v2 signer runner is POSIX-only, and the approved named environment inventory reports Ubuntu-24.04, CPython 3.12.3, pytest 7.4.4, and runtime dependencies iniconfig 1.1.1, packaging 24.0, and pluggy 1.4.0. Pin that observed runtime and required dependency set; do not install packages or silently fall back to Windows. The static category inventory is `docs/qa/categories.json`; each tracked run-specific v2 task manifest must project its supported slots, exact IDs, and selectors. See S4 technical design and change record 0094.
+

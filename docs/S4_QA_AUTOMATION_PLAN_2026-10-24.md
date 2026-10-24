@@ -1,6 +1,6 @@
 # Sprint S4 plan: reproducible QA automation
 
-Status: **PREPARED; NOT STARTED**. This document defines the next sprint and authorizes no tests, builds, CI, installs, mutations, seeded product-code defects, or external service calls during preparation.
+Status: **S4.1/E1 AND S4.2/E2 SOURCE SLICE IMPLEMENTED LOCALLY; ACCEPTANCE PARTIAL; TESTS NOT RUN**. The category registry, pinned lock, POSIX native runner and report-to-v2-receipt seam are implemented on `s4-native-qa-runner`. No test, build, install, CI, migration, external service call, or sandbox execution was performed for this code slice. Full category coverage, report tests, signer runtime, and source transfer remain open.
 
 Sources: `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` section 1; `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`; `governance/DEFINITION_OF_DONE.md`; S2 and S3 plans; current `tests/vst/`, `tools/vst/runner.py`, `tools/vst/slice.py`, and `tools/vst/{contracts,gate,store}.py`.
 
@@ -34,13 +34,13 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 
 ### E2 — Reproducible environment and native runner
 
-**S4.2.1** Establish a repository-owned, hash-pinned QA dependency input compatible with the required pinned interpreter `C:\Python314\python.exe`, and record relevant OS/runtime/tool versions for each category.
+**S4.2.1** Establish a repository-owned, hash-pinned QA dependency input compatible with the verified named `Ubuntu-24.04` WSL interpreter CPython 3.12.3; record relevant OS/runtime/tool versions for each category. This supersedes the plan's stale Windows interpreter pin because the v2 signer runner refuses non-POSIX execution.
 
 **S4.2.2** Implement one bounded runner entry point that launches pytest's native discovery/execution for the requested category, preserving existing unittest discovery. It records argv, exit code, duration, stdout/stderr references, environment identity, expected and collected IDs, and output artifact digests.
 
 **AC-4:** Running the same committed category manifest with the same interpreter and dependency lock yields the same selected test-ID set; artifact timestamps may differ but are excluded from normalized content hashes.
 
-**AC-5:** A missing interpreter, dependency, category selector, artifact, or test ID produces a typed non-approving result with a cause; no fallback interpreter or empty-success result is allowed.
+**AC-5:** A missing/wrong WSL interpreter, dependency, category selector, artifact, or test ID produces a typed non-approving result with a cause; no fallback interpreter or empty-success result is allowed.
 
 **AC-6:** The runner does not install or download dependencies during a test run. Dependency installation, if needed, is an explicit environment-preparation step from the exact lock and isolated target.
 
@@ -84,7 +84,7 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 
 **AC-15:** Evidence artifacts are reproducible and contain no secrets, user-specific absolute paths, tokens, or unrestricted environment values. Environment variable names may be reported only under the existing privacy contract.
 
-**Evidence-to-gate design resolved:** The validated VST task manifest is the canonical category registry. Each primary category maps to one `TestRun` slot; required test IDs and allowed pytest selectors come from that manifest. The QA report is a canonical artifact bound by an ordinary v2 `TestRun` receipt and the existing exact-head gate. No new v1/v2 fields are added; the trusted runner/parser remains responsible for truthful report content. See `docs/S4_QA_RUNNER_TECHNICAL_DESIGN.md` and change record 0093.
+**Evidence-to-gate design resolved:** Committed `docs/qa/categories.json` is the canonical static category/test-ID/selector registry. A run-specific v2 VST task manifest must match its supported projection exactly. The registry, canonical QA report, event record, and bounded stdout/stderr integrity references are predeclared artifacts bound by an ordinary v2 `TestRun` receipt and the exact-head gate. No v1/v2 fields are added; the trusted runner/parser remains responsible for truthful report content. The registry's source HEAD is provenance; each receipt/report separately records the actual candidate HEAD. A valid observed failure remains `FAIL` where v2 derivation supports it; malformed/inconsistent evidence aborts before signing, while zero executed IDs remain `INCONCLUSIVE` under the existing contract. See `docs/S4_QA_RUNNER_TECHNICAL_DESIGN.md` and change records 0093–0094.
 
 ## Requirements-to-test map and denominator
 
@@ -117,16 +117,16 @@ Each run emits an immutable JSON envelope and referenced artifacts containing:
 Exact commands are formed from committed category selectors; proposed interface:
 
 ```text
-C:\Python314\python.exe -m tools.qa.run --category <category> --manifest docs/qa/categories.json --output <run-dir>
+/usr/bin/python3 -m tools.qa.run --category <category> --manifest <run-specific-vst-v2-manifest> --registry docs/qa/categories.json --signer-socket <trusted-local-socket> ...
 ```
 
-This command and its module are **new paths**, not currently runnable. The runner delegates to pytest's native CLI and captures collection and runtime output without claiming that collection alone is a test pass. The exact pytest flags and artifact format are resolved during E2 design and then pinned in the committed manifest.
+The command is implemented but has not been executed. It is POSIX-only and verifies WSL Ubuntu 24.04, Python 3.12.3 and pytest 7.4.4; it does not install packages or fall back to Windows. The registry and runtime lock are committed. The v2 signer path still requires the in-scope source snapshot and trusted signer socket to exist inside the named WSL environment.
 
 ## Definition of Ready
 
 - S2 exact-head acceptance and S3 worker adapter scope are reconciled; all dependent or unavailable capabilities are explicit.
 - Category owners, source paths, selectors, test-ID inventory and denominator are agreed from repository artifacts.
-- Existing pinned interpreter and test dependency inventory are recorded; the lock format is selected based on reproducibility and approved repository constraints.
+- Named WSL runtime inventory is recorded and the SHA-256 dependency lock is committed. The runner verifies versions and lock identity without installation.
 - Evidence schema and gate-binding interface are specified in the S4 technical design; report artifacts are not treated as receipts without existing VST v2 signature, exact-head and digest validation.
 - Functional and E2E test agents own the required test map; only those roles will author or execute required QA tests.
 - New expected-failure fixtures use controlled synthetic input records, have a stable version/hash and invoke unchanged product code.
@@ -159,17 +159,18 @@ Identifiers VST-032–037 are proposals only and must be reconciled with the can
 
 ## Ordered work and safe stopping points
 
-1. Reconcile the S3 accepted adapter interfaces and enumerate the S4 denominator; stop safely after E1 if an interface or test ID remains unavailable, with unknowns recorded rather than guessed.
+1. Reconcile S3 accepted adapter interfaces and complete the denominator: current functional, integration, Python API and E2E inventory is only `PARTIAL`; seeded-failure is `NOT_RUN` pending tests authored by the authorized test owner.
 2. Implement and commit environment lock, runner and evidence schema; verify each new seam with its own focused local contract proof after all S4 coding is complete.
 3. Add category manifests and synthetic fixtures; connect all six category selectors to native execution.
 4. Complete all S4 code before test phase; only then test agents author/run the per-epic and final exact-head suites.
 5. Run relevant reviewers, resolve valid findings, request the exact-head GPT-PM gate, then push and merge one S4 PR only after approval.
 
-The first independently safe stopping point is after E1, with the S3 dependency map and denominator frozen. Total gates: **6**, one per epic above. No active S4 implementation or test execution is authorized by this prepared plan.
+The first independently safe stopping point is after E1, with the S3 dependency map and denominator frozen. Total gates: **6**, one per epic above. Source transfer from the Windows checkout to an isolated repository snapshot inside `Ubuntu-24.04` has no implementation in this slice; actual v2 execution is `NOT_RUN` until that exact integration and signer socket are available. No package installation or test execution is authorized during coding.
 
 ## Unknowns to resolve at S4 start
 
-- Exact pytest version, full transitive QA dependency set, and supported lock-with-hashes format: establish from the pinned interpreter's authorized environment and repository constraints before coding; do not infer from cached bytecode.
+- Runtime inventory: the named distro reported Python 3.12.3, pytest 7.4.4, iniconfig 1.1.1, packaging 24.0 and pluggy 1.4.0. pytest-asyncio is absent, and no current test source has async tests/markers. The lock pins pytest and its required runtime dependencies; no plugin is added absent a concrete need.
+- Source transfer: no in-scope mechanism yet places this Windows checkout into the named WSL repository snapshot while preserving the v2 signer boundary. Owner service is `UNKNOWN`; next step is to implement/use an approved snapshot transfer and then run the v2 runner from that snapshot. Operator remains accountable under delegated continuation.
 - Whether S3 adds a transport API, more test categories, or sandbox-bound E2E paths: inspect the accepted S3 plan and implementation; absent evidence, report Python API only and mark transport API unsupported.
 - The canonical service owner for category registry, runner, and evidence gate: no owner is established in the inspected repository sources; preserve `UNKNOWN` and proceed with role-based execution.
 - Which S3 test IDs belong in the regression denominator: derive from committed test files and exact-head test records when S3 is accepted.

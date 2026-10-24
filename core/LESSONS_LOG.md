@@ -479,3 +479,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — A report schema alone does not identify who authenticates it or how the gate rejects replay. S4 resolves the boundary through manifest-declared v2 TestRun slots and signed artifact digests while preserving existing schemas; report-content truth remains the trusted parser's responsibility. See change record 0093.
 
+2026-10-25 — Preserve observed pytest outcomes when binding reports to signed receipts: malformed/missing/inconsistent events must abort signing, while valid failures (including skipped, xfailed, uncollected, and XPASS tests) should remain typed FAIL rather than being erased into BLOCKED or INCONCLUSIVE. Derive the v2 outcome before signer calls and require exact report/evidence agreement. See change record 0094.
+

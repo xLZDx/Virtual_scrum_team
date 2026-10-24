@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "source_head": "58088c804ee3d444919ec433b656c80ec3106f37",
+  "categories": {
+    "functional": {
+      "state": "SUPPORTED",
+      "coverage_state": "PARTIAL",
+      "coverage_reason": "Current functional denominator covers only the focused S3 adapter contract tests.",
+      "owner_role": "functional-test-reviewer",
+      "source_head": "58088c804ee3d444919ec433b656c80ec3106f37",
+      "test_ids": [
+        "tests/vst/test_s3_worker_adapter.py::test_ac1_request_contract_enforces_identity_fence_and_payload_bounds",
+        "tests/vst/test_s3_worker_adapter.py::test_ac1_response_contract_rejects_untyped_or_oversized_worker_claims",
+        "tests/vst/test_s3_worker_adapter.py::test_ac2_resume_and_stop_requests_require_new_fence_and_bound_keys",
+        "tests/vst/test_s3_worker_adapter.py::test_ac3_idempotency_replay_returns_original_and_rejects_changed_payload",
+        "tests/vst/test_s3_worker_adapter.py::test_ac3_budget_exact_cap_replay_over_cap_and_stale_snapshot",
+        "tests/vst/test_s3_worker_adapter.py::test_ac3_zero_budget_allows_zero_charge_but_blocks_positive_charge",
+        "tests/vst/test_s3_worker_adapter.py::test_ac4_resume_accepts_only_returned_named_app_checkpoint_and_is_idempotent",
+        "tests/vst/test_s3_worker_adapter.py::test_ac4_worker_state_alone_never_creates_verification_receipts"
+      ]
+    },
+    "integration": {
+      "state": "SUPPORTED",
+      "coverage_state": "PARTIAL",
+      "coverage_reason": "Current integration denominator contains one runner receipt path only.",
+      "owner_role": "functional-test-reviewer",
+      "source_head": "58088c804ee3d444919ec433b656c80ec3106f37",
+      "test_ids": [
+        "tests/vst/test_e4_runner.py::test_harmless_command_produces_signed_passing_testrun"
+      ]
+    },
+    "api": {
+      "state": "SUPPORTED",
+      "coverage_state": "PARTIAL",
+      "coverage_reason": "Current Python API denominator contains one gate parser-authority case only.",
+      "owner_role": "functional-test-reviewer",
+      "source_head": "58088c804ee3d444919ec433b656c80ec3106f37",
+      "test_ids": [
+        "tests/vst/test_s2_contract_gate.py::test_gate_refuses_caller_supplied_parser_implementation"
+      ],
+      "network_api": {
+        "state": "UNSUPPORTED",
+        "reason": "The in-scope repository exposes Python APIs; no HTTP route contract is present."
+      }
+    },
+    "e2e": {
+      "state": "SUPPORTED",
+      "coverage_state": "PARTIAL",
+      "coverage_reason": "Current E2E denominator covers the synthetic S3 pilot, not all S4 stories.",
+      "owner_role": "e2e-runner",
+      "source_head": "58088c804ee3d444919ec433b656c80ec3106f37",
+      "test_ids": [
+        "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_pilot_commits_only_the_manifest_scoped_synthetic_change",
+        "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_pilot_rejects_out_of_scope_edit_before_worker_invocation",
+        "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_app_checkpoint_can_resume_same_effect_under_new_store_epoch",
+        "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_stop_fences_interrupted_attempt_idempotently_and_rejects_stale_start",
+        "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_candidate_identity_cannot_be_self_selected"
+      ]
+    },
+    "seeded-failure": {
+      "state": "NOT_RUN",
+      "owner_role": "functional-test-reviewer",
+      "reason": "A committed synthetic fixture catalog and mapped test IDs have not been authored yet.",
+      "next_step": "Add bounded unchanged-product fixtures with stable IDs and input hashes before enabling this lane."
+    }
+  },
+  "regression": {
+    "state": "SUPPORTED_AGGREGATE",
+    "coverage_state": "PARTIAL",
+    "reason": "One or more primary category denominators remain partial or NOT_RUN.",
+    "primary_categories": ["functional", "integration", "api", "e2e"]
+  }
+}

@@ -67,13 +67,16 @@ Standard library only; no network.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
 import signal
+import stat
 import subprocess
 import threading
 import time
 import uuid
+from datetime import datetime, timezone
 from typing import Callable
 
 from .contracts import (
@@ -84,6 +87,7 @@ from .contracts import (
     _req_str,
     _req_str_list,
     _validate_repo_path,
+    canonical_bytes,
     derive_result,
     manifest_sha256,
     validate_receipt,
@@ -499,7 +503,7 @@ def _resume_suspended_primary_thread(pid: int) -> bool:
 def _run_one(
     argv: list[str], cwd: str, limit_sec: float, env: dict[str, str], cap: int,
     *, require_job_object: bool = False, worker_uid: int | None = None,
-    worker_gid: int | None = None,
+    worker_gid: int | None = None, capture_stream_digests: bool = False,
 ) -> tuple[int, str, dict]:
     """Run one argv without a shell; return (exit_code, stdout_text, info)."""
     info = {
@@ -614,6 +618,11 @@ def _run_one(
     info["stdout_truncated"] = out.truncated
     info["stderr_truncated"] = err.truncated
     info["capture_incomplete"] = out.incomplete or err.incomplete or kill_failed
+    if capture_stream_digests:
+        info["stdout_bytes"] = len(out.data)
+        info["stdout_sha256"] = hashlib.sha256(out.data).hexdigest()
+        info["stderr_bytes"] = len(err.data)
+        info["stderr_sha256"] = hashlib.sha256(err.data).hexdigest()
     if info["capture_incomplete"]:
         code = EXIT_CAPTURE_INCOMPLETE
     elif info["timed_out"]:
@@ -879,10 +888,17 @@ def _derive_head(cwd: str) -> str:
     return head
 
 
-def _diff_paths(cwd: str, base_head: str) -> tuple[bytes, list[str], list[tuple[str, str]], list[str]]:
+def _diff_paths(
+    cwd: str, base_head: str, *, exclude_untracked: set[str] | None = None,
+) -> tuple[bytes, list[str], list[tuple[str, str]], list[str]]:
+    excluded = set(exclude_untracked or ())
     raw = _git_bytes(cwd, "diff", "--binary", "--find-renames", base_head, "--")
     untracked_raw = _git_bytes(cwd, "ls-files", "--others", "--ignored", "--exclude-standard", "-z")
-    untracked = sorted(path for path in untracked_raw.decode("utf-8", "surrogateescape").split("\0") if path)
+    all_untracked = sorted(path for path in untracked_raw.decode("utf-8", "surrogateescape").split("\0") if path)
+    if any(not isinstance(path, str) or not path or os.path.isabs(path) or
+           ".." in path.replace("\\", "/").split("/") for path in excluded):
+        raise ContractError("excluded QA artifact path is invalid")
+    untracked = [path for path in all_untracked if path not in excluded]
     for path in untracked:
         full_path = os.path.join(cwd, path)
         if os.path.islink(full_path):
@@ -940,6 +956,369 @@ def _diff_paths(cwd: str, base_head: str) -> tuple[bytes, list[str], list[tuple[
     return raw, changed, renames, sorted(symlinks)
 
 
+QA_REPORT_MAX_BYTES = 1024 * 1024
+QA_EVENTS_MAX_BYTES = 256 * 1024
+QA_REPORT_METADATA_FIELDS = frozenset({
+    "category", "dependency_lock_path", "dependency_lock_sha256",
+    "interpreter_version", "pytest_version", "runtime_id",
+    "category_registry_path", "category_registry_sha256",
+    "category_source_head", "coverage_state",
+    "stdout_artifact_path", "stderr_artifact_path",
+})
+QA_CATEGORIES = frozenset({"functional", "integration", "api", "e2e", "seeded-failure"})
+
+
+def _validate_qa_report_request(
+    paths: list[str], cwd: str, slot: str, report_path: str | None,
+    events_path: str | None, metadata: dict | None,
+) -> None:
+    """Validate report inputs before the first manifest command starts."""
+    requested = (report_path is not None, events_path is not None, metadata is not None)
+    if not any(requested):
+        return
+    if not all(requested):
+        raise ContractError("QA report path, test events path, and metadata must be supplied together")
+    for name, path in (("report_artifact_path", report_path), ("test_events_path", events_path)):
+        _req_str(path, name)
+        _validate_repo_path(path, name)
+        if path not in paths:
+            raise ContractError(f"{name} must be predeclared in artifact_paths")
+        if contained_artifact_path(cwd, path) is None:
+            raise ContractError(f"{name} escapes the run directory or crosses a link")
+        full_path = os.path.join(cwd, path)
+        if os.path.lexists(full_path):
+            raise ContractError(f"{name} must not exist before the command starts")
+        try:
+            tracked = subprocess.run(
+                ["git", "ls-files", "--", path], cwd=cwd,
+                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL, timeout=5, check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise ContractError(f"cannot verify generated QA artifact is untracked: {exc}") from exc
+        if tracked.returncode != 0 or tracked.stdout:
+            raise ContractError(f"generated QA artifact path must not be tracked: {path}")
+        if not os.path.isdir(os.path.dirname(full_path)):
+            raise ContractError(f"{name} parent directory must exist before the command starts")
+    assert report_path is not None and events_path is not None and metadata is not None
+    if not isinstance(metadata, dict) or set(metadata) != QA_REPORT_METADATA_FIELDS:
+        raise ContractError("report_metadata has missing or unexpected fields")
+    if report_path == events_path:
+        raise ContractError("QA report and pytest events paths must be distinct")
+    category = _req_str(metadata["category"], "report_metadata.category")
+    if category not in QA_CATEGORIES:
+        raise ContractError("report_metadata.category is not a primary QA category")
+    if category != slot:
+        raise ContractError("QA report category must match the manifest TestRun slot")
+    if metadata["coverage_state"] not in ("PARTIAL", "COMPLETE"):
+        raise ContractError("report_metadata.coverage_state must be PARTIAL or COMPLETE")
+    _req_hex(metadata["category_source_head"], "report_metadata.category_source_head", 40)
+    for field in ("interpreter_version", "pytest_version", "runtime_id"):
+        value = _req_str(metadata[field], f"report_metadata.{field}")
+        if len(value) > 128 or any(ord(char) < 32 for char in value):
+            raise ContractError(f"report_metadata.{field} is invalid or too long")
+    if (metadata["runtime_id"] != "Ubuntu-24.04" or
+            metadata["interpreter_version"] != "3.12.3" or
+            metadata["pytest_version"] != "7.4.4"):
+        raise ContractError("QA report runtime metadata does not match the pinned environment")
+    lock_path = _req_str(metadata["dependency_lock_path"], "report_metadata.dependency_lock_path")
+    _validate_repo_path(lock_path, "report_metadata.dependency_lock_path")
+    if lock_path not in paths:
+        raise ContractError("dependency lock must be a predeclared artifact")
+    expected_hash = _req_hex(metadata["dependency_lock_sha256"], "report_metadata.dependency_lock_sha256", 64)
+    lock_full_path = contained_artifact_path(cwd, lock_path)
+    if (lock_full_path is None or not os.path.isfile(lock_full_path) or
+            file_sha256(lock_full_path) != expected_hash):
+        raise ContractError("dependency lock is missing, unsafe, or has a different hash")
+    registry_path = _req_str(metadata["category_registry_path"], "report_metadata.category_registry_path")
+    _validate_repo_path(registry_path, "report_metadata.category_registry_path")
+    if registry_path not in paths:
+        raise ContractError("category registry must be a predeclared artifact")
+    registry_hash = _req_hex(metadata["category_registry_sha256"], "report_metadata.category_registry_sha256", 64)
+    registry_full_path = contained_artifact_path(cwd, registry_path)
+    if (registry_full_path is None or not os.path.isfile(registry_full_path) or
+            file_sha256(registry_full_path) != registry_hash):
+        raise ContractError("category registry is missing, unsafe, or has a different hash")
+    for name in ("stdout_artifact_path", "stderr_artifact_path"):
+        log_path = _req_str(metadata[name], f"report_metadata.{name}")
+        _validate_repo_path(log_path, f"report_metadata.{name}")
+        if log_path not in paths or log_path in (report_path, events_path):
+            raise ContractError(f"{name} must be a distinct predeclared artifact")
+        full_log_path = os.path.join(cwd, log_path)
+        if contained_artifact_path(cwd, log_path) is None or os.path.lexists(full_log_path):
+            raise ContractError(f"{name} is unsafe or already exists")
+        try:
+            tracked = subprocess.run(
+                ["git", "ls-files", "--", log_path], cwd=cwd,
+                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL, timeout=5, check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise ContractError(f"cannot verify generated QA artifact is untracked: {exc}") from exc
+        if tracked.returncode != 0 or tracked.stdout:
+            raise ContractError(f"generated QA artifact path must not be tracked: {log_path}")
+        if not os.path.isdir(os.path.dirname(full_log_path)):
+            raise ContractError(f"{name} parent directory must exist before the command starts")
+    qa_paths = [report_path, events_path, metadata["dependency_lock_path"],
+                metadata["category_registry_path"], metadata["stdout_artifact_path"],
+                metadata["stderr_artifact_path"]]
+    if len(qa_paths) != len(set(qa_paths)):
+        raise ContractError("QA report, events, registry, lock, and stream artifacts must be distinct")
+
+
+def _git_changed_paths(cwd: str) -> list[str]:
+    """Return bounded repository-relative status paths, never environment values."""
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"], cwd=cwd,
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            timeout=5, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ContractError(f"cannot derive pre-run dirty state: {exc}") from exc
+    if result.returncode != 0:
+        raise ContractError("cannot derive pre-run dirty state")
+    records = result.stdout.split(b"\0")
+    if records and records[-1] == b"":
+        records.pop()
+    if len(records) > 2000:
+        raise ContractError("pre-run dirty state exceeds the bounded path count")
+    paths = []
+    index = 0
+    while index < len(records):
+        record = records[index]
+        index += 1
+        if len(record) < 4 or record[2:3] != b" ":
+            raise ContractError("Git returned malformed pre-run dirty state")
+        raw_path = record[3:]
+        if not raw_path or len(raw_path) > 1024:
+            raise ContractError("pre-run dirty path is empty or exceeds the size limit")
+        try:
+            path = raw_path.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ContractError("pre-run dirty path is not UTF-8") from exc
+        if os.path.isabs(path) or ".." in path.replace("\\", "/").split("/"):
+            raise ContractError("pre-run dirty path is not repository-relative")
+        path = "".join(char if char.isprintable() else "?" for char in path)
+        if record[:2] in (b"R ", b" C", b"RC", b"R") or b"R" in record[:2] or b"C" in record[:2]:
+            if index >= len(records):
+                raise ContractError("Git rename/copy status is missing its source path")
+            source = records[index]
+            index += 1
+            if not source or len(source) > 1024:
+                raise ContractError("Git rename/copy source path is invalid")
+            try:
+                source_path = source.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                raise ContractError("Git rename/copy source path is not UTF-8") from exc
+            if os.path.isabs(source_path) or ".." in source_path.replace("\\", "/").split("/"):
+                raise ContractError("Git rename/copy source path is not repository-relative")
+            source_path = "".join(char if char.isprintable() else "?" for char in source_path)
+            paths.append(source_path.replace("\\", "/"))
+        paths.append(path.replace("\\", "/"))
+    if len(paths) > 1000:
+        raise ContractError("pre-run dirty state exceeds the bounded path count")
+    return sorted(set(paths))
+
+
+def _read_qa_test_events(
+    cwd: str, events_path: str | None, artifact_paths: list[str],
+    parsed_passed: list[str], parsed_skipped: list[str], parsed_xfail: list[str],
+    expected_exit_status: int,
+) -> tuple[dict | None, str | None]:
+    if events_path is None:
+        return None, None
+    if events_path not in artifact_paths:
+        return None, "EVENT_PATH_NOT_DECLARED"
+    full_path = contained_artifact_path(cwd, events_path)
+    if full_path is None:
+        return None, "EVENT_PATH_INVALID"
+    try:
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(full_path, flags)
+        with os.fdopen(descriptor, "rb") as handle:
+            file_stat = os.fstat(handle.fileno())
+            if not stat.S_ISREG(file_stat.st_mode) or file_stat.st_size > QA_EVENTS_MAX_BYTES:
+                return None, "EVENT_FILE_SIZE_OR_TYPE_INVALID"
+            raw = handle.read(QA_EVENTS_MAX_BYTES + 1)
+    except OSError:
+        return None, "EVENT_FILE_MISSING_OR_UNREADABLE"
+    if len(raw) > QA_EVENTS_MAX_BYTES:
+        return None, "EVENT_FILE_TOO_LARGE"
+    try:
+        events = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None, "EVENT_FILE_MALFORMED"
+    expected_keys = {
+        "schema_version", "collected_ids", "passed_ids", "skipped_ids",
+        "xfail_ids", "failed_ids", "collection_errors", "exit_status",
+    }
+    if not isinstance(events, dict) or set(events) != expected_keys or events.get("schema_version") != 1:
+        return None, "EVENT_SCHEMA_INVALID"
+    id_fields = ("collected_ids", "passed_ids", "skipped_ids", "xfail_ids", "failed_ids")
+    ids: dict[str, list[str]] = {}
+    for field in id_fields:
+        value = events[field]
+        if (not isinstance(value, list) or len(value) > 10000 or
+                any(not isinstance(item, str) or not item or len(item) > 1024 for item in value) or
+                len(value) != len(set(value))):
+            return None, "EVENT_TEST_IDS_INVALID"
+        ids[field] = value
+    errors = events["collection_errors"]
+    if (not isinstance(errors, list) or len(errors) > 256 or
+            any(not isinstance(item, str) or len(item) > 1024 for item in errors)):
+        return None, "EVENT_COLLECTION_ERRORS_INVALID"
+    status = events["exit_status"]
+    if not isinstance(status, int) or isinstance(status, bool) or status < 0:
+        return None, "EVENT_EXIT_STATUS_INVALID"
+    if status != expected_exit_status:
+        return None, "EVENT_AND_COMMAND_EXIT_STATUS_MISMATCH"
+    outcome_sets = [set(ids[field]) for field in id_fields[1:]]
+    if any(outcome_sets[i] & outcome_sets[j] for i in range(len(outcome_sets)) for j in range(i + 1, len(outcome_sets))):
+        return None, "EVENT_OUTCOMES_OVERLAP"
+    if set(ids["collected_ids"]) != set().union(*outcome_sets):
+        return None, "EVENT_COLLECTION_OUTCOMES_MISMATCH"
+    if set(parsed_passed) != set(ids["passed_ids"]):
+        return None, "PARSER_AND_EVENT_PASS_IDS_MISMATCH"
+    if parsed_skipped or parsed_xfail:
+        return None, "PARSER_AND_EVENT_SKIP_IDS_MISMATCH"
+    return events, None
+
+
+def _build_qa_report(
+    *, metadata: dict, task_id: str, slot: str, manifest_hash: str,
+    candidate_head: str, initial_head: str, changed_paths: list[str],
+    commands: list[dict], infos: list[dict], expected_ids: list[str],
+    executed_ids: list[str], skipped_ids: list[str], xfail_ids: list[str],
+    events: dict | None, event_error: str | None, artifact_paths: list[str],
+    report_artifact_path: str, test_events_path: str | None, cwd: str,
+    started_at: str, ended_at: str, duration_ms: int,
+) -> dict:
+    event_collected = [] if events is None else events["collected_ids"]
+    event_skipped = [] if events is None else events["skipped_ids"]
+    event_xfail = [] if events is None else events["xfail_ids"]
+    event_failed = [] if events is None else events["failed_ids"]
+    event_errors = [] if events is None else events["collection_errors"]
+    expected_set = set(expected_ids)
+    collected_set = set(event_collected)
+    unexpected = sorted(collected_set - expected_set)
+    uncollected = sorted(expected_set - collected_set)
+    non_report_paths = [path for path in artifact_paths if path != report_artifact_path]
+    external_digests = _hash_artifacts(non_report_paths, cwd)
+    command_ok = bool(commands) and all(item["exit_code"] == 0 for item in commands)
+    complete = (
+        metadata["coverage_state"] == "COMPLETE" and
+        events is not None and event_error is None and command_ok and
+        initial_head == candidate_head and not event_errors and
+        external_digests.get(metadata["dependency_lock_path"]) == metadata["dependency_lock_sha256"] and
+        external_digests.get(metadata["category_registry_path"]) == metadata["category_registry_sha256"] and
+        not event_skipped and not event_xfail and not event_failed and
+        not unexpected and not uncollected and set(executed_ids) == expected_set and
+        not skipped_ids and not xfail_ids
+    )
+    observed_acceptance_failure = bool(
+        (commands and not command_ok) or event_failed or event_skipped or event_xfail or
+        unexpected or uncollected or skipped_ids or xfail_ids or event_errors
+    )
+    # v2 intentionally derives INCONCLUSIVE when no test ID executed at all,
+    # even if collection/outcome evidence explains that zero-run condition.
+    result = "PASS" if complete else (
+        "FAIL" if observed_acceptance_failure and executed_ids else "INCONCLUSIVE"
+    )
+    report = {
+        "schema_version": 1,
+        "task_id": task_id,
+        "slot": slot,
+        "category": metadata["category"],
+        "category_coverage_state": metadata["coverage_state"],
+        "category_source_head": metadata["category_source_head"],
+        "manifest_sha256": manifest_hash,
+        "candidate_head": candidate_head,
+        "source_head_before": initial_head,
+        "dirty_paths_before": changed_paths,
+        "environment": {
+            "runtime_id": metadata["runtime_id"],
+            "interpreter_version": metadata["interpreter_version"],
+            "pytest_version": metadata["pytest_version"],
+            "dependency_lock_path": metadata["dependency_lock_path"],
+            "dependency_lock_sha256": metadata["dependency_lock_sha256"],
+            "environment_variable_names": sorted(
+                set(build_environment().keys()) | {"VST_QA_EVENTS_PATH"}
+            ),
+        },
+        "category_registry": {
+            "path": metadata["category_registry_path"],
+            "sha256": metadata["category_registry_sha256"],
+        },
+        "execution": {
+            "argv_and_exit_codes": commands,
+            "capture": infos,
+            "stdout_reference": metadata["stdout_artifact_path"],
+            "stderr_reference": metadata["stderr_artifact_path"],
+            "started_at": started_at,
+            "ended_at": ended_at,
+            "duration_ms": duration_ms,
+        },
+        "tests": {
+            "expected_ids": expected_ids,
+            "collected_ids": event_collected,
+            "executed_ids": executed_ids,
+            "skipped_ids": event_skipped,
+            "xfail_ids": event_xfail,
+            "failed_ids": event_failed,
+            "unexpected_ids": unexpected,
+            "uncollected_ids": uncollected,
+            "collection_errors": event_errors,
+        },
+        "test_events_path": test_events_path,
+        "test_events_error": event_error,
+        "artifact_digests": external_digests,
+        "result": result,
+    }
+    normalized = dict(report)
+    normalized_execution = dict(report["execution"])
+    normalized_execution.pop("started_at")
+    normalized_execution.pop("ended_at")
+    normalized_execution.pop("duration_ms")
+    normalized["execution"] = normalized_execution
+    report["normalized_sha256"] = hashlib.sha256(canonical_bytes(normalized)).hexdigest()
+    return report
+
+
+def _write_qa_report(cwd: str, relative_path: str, report: dict) -> None:
+    full_path = contained_artifact_path(cwd, relative_path)
+    if full_path is None:
+        raise ContractError("QA report path became unsafe before writing")
+    payload = canonical_bytes(report)
+    if len(payload) > QA_REPORT_MAX_BYTES:
+        raise ContractError("QA report exceeds the bounded report size")
+    try:
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(full_path, flags, 0o600)
+    except OSError as exc:
+        raise ContractError(f"QA report cannot be created exclusively: {exc}") from exc
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except OSError as exc:
+        raise ContractError(f"QA report could not be written completely: {exc}") from exc
+
+
+def _write_stream_reference(cwd: str, relative_path: str, stream: str, infos: list[dict]) -> None:
+    if stream not in ("stdout", "stderr"):
+        raise ContractError("invalid QA stream reference")
+    empty_digest = hashlib.sha256(b"").hexdigest()
+    records = [{
+        "sha256": info.get(f"{stream}_sha256", empty_digest),
+        "captured_bytes": info.get(f"{stream}_bytes", 0),
+        "truncated": bool(info.get(f"{stream}_truncated", False)),
+        "capture_incomplete": bool(info.get("capture_incomplete", False)),
+    } for info in infos]
+    _write_qa_report(cwd, relative_path, {"schema_version": 1, "stream": stream, "commands": records})
+
+
 def run_manifest_commands(
     *, manifest: dict, slot: str, attempt: int, epoch: int, resolved_model: str,
     invocation_id: str, runner_id: str, signer_socket: str, cwd: str,
@@ -948,6 +1327,9 @@ def run_manifest_commands(
     artifact_paths: list[str] | None = None, timeout_sec: int | None = None,
     deadline_sec: int | None = None, max_output_bytes: int = DEFAULT_MAX_OUTPUT_BYTES,
     extra_env: dict[str, str] | None = None, report: dict | None = None,
+    report_artifact_path: str | None = None,
+    test_events_path: str | None = None,
+    report_metadata: dict | None = None,
 ) -> dict:
     """Run every manifest-pinned v2 command, derive HEAD, and request signatures.
 
@@ -992,6 +1374,8 @@ def run_manifest_commands(
     pinned = [item for item in valid["mandatory_commands"] if item["slot"] == slot]
     if not pinned:
         raise ContractError("manifest has no mandatory commands for this slot")
+    if report_artifact_path is not None and len(pinned) != 1:
+        raise ContractError("QA event evidence currently requires exactly one pinned pytest command")
     argvs = [item["argv"] for item in pinned]
     required_ids = sorted(item["test_id"] for item in valid["required_tests"] if item["slot"] == slot)
     acceptance = sorted({a for item in valid["required_tests"] if item["slot"] == slot for a in item["acceptance"]})
@@ -1005,6 +1389,13 @@ def run_manifest_commands(
         _validate_repo_path(path, f"artifact_paths[{path!r}]")
         if contained_artifact_path(cwd, path) is None:
             raise ContractError(f"artifact path escapes run directory: {path!r}")
+    _validate_qa_report_request(
+        paths, cwd, slot, report_artifact_path, test_events_path, report_metadata
+    )
+    started_at = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+    started_monotonic = time.monotonic()
+    initial_head = _derive_head(cwd)
+    initial_changed_paths = _git_changed_paths(cwd)
     env = build_environment(_check_env(extra_env))
     deadline_at = time.monotonic() + deadline
     commands: list[dict] = []
@@ -1025,6 +1416,7 @@ def run_manifest_commands(
                 item["argv"], cwd, min(float(per_command), remaining), env,
                 max_output_bytes, require_job_object=True,
                 worker_uid=worker_uid, worker_gid=worker_gid,
+                capture_stream_digests=report_artifact_path is not None,
             )
             info["skipped_by_deadline"] = False
         parsed = parser(stdout)
@@ -1044,8 +1436,60 @@ def run_manifest_commands(
     executed_all = [test_id for result in parser_results for test_id in result["parser_result"]["executed_test_ids"]]
     skipped_all = [test_id for result in parser_results for test_id in result["parser_result"]["skipped_test_ids"]]
     xfail_all = [test_id for result in parser_results for test_id in result["parser_result"]["xfail_test_ids"]]
+    ended_at = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+    duration_ms = max(0, int((time.monotonic() - started_monotonic) * 1000))
+    events, event_error = _read_qa_test_events(
+        cwd, test_events_path, paths, executed_all, skipped_all, xfail_all,
+        commands[-1]["exit_code"] if commands else EXIT_MISSING_EXECUTABLE,
+    )
+    if report_artifact_path is not None:
+        _write_stream_reference(
+            cwd, report_metadata["stdout_artifact_path"], "stdout", infos
+        )
+        _write_stream_reference(
+            cwd, report_metadata["stderr_artifact_path"], "stderr", infos
+        )
+        qa_report = _build_qa_report(
+            metadata=report_metadata or {}, task_id=valid["task_id"], slot=slot,
+            manifest_hash=manifest_hash, candidate_head=candidate_head,
+            initial_head=initial_head, changed_paths=initial_changed_paths,
+            commands=commands, infos=infos, expected_ids=required_ids,
+            executed_ids=executed_all, skipped_ids=skipped_all,
+            xfail_ids=xfail_all, events=events, event_error=event_error,
+            artifact_paths=paths, report_artifact_path=report_artifact_path,
+            test_events_path=test_events_path, cwd=cwd, started_at=started_at,
+            ended_at=ended_at, duration_ms=duration_ms,
+        )
+        _write_qa_report(cwd, report_artifact_path, qa_report)
+        if event_error is not None or events is None:
+            raise ContractError(
+                f"QA test events are missing or inconsistent ({event_error}); no receipt signed"
+            )
     digests = _hash_artifacts(paths, cwd)
-    diff_bytes, changed, renames, symlinks = _diff_paths(cwd, valid["base_head"])
+    if report_artifact_path is not None:
+        if MISSING_ARTIFACT_DIGEST in digests.values():
+            raise ContractError("a predeclared QA artifact is missing or unsafe; no signer request was sent")
+        preflight_result = derive_result({
+            "receipt_type": "TestRun", "result": "PASS",
+            "artifact_digests": digests, "executed_test_ids": executed_all,
+            "expected_test_ids": required_ids, "commands": commands,
+            "skipped_test_ids": skipped_all, "xfail_test_ids": xfail_all,
+        })
+        if qa_report["result"] != preflight_result:
+            raise ContractError(
+                f"QA report result {qa_report['result']} disagrees with v2 evidence result "
+                f"{preflight_result}; no signer request was sent"
+            )
+    generated_qa_artifacts = set()
+    if report_artifact_path is not None:
+        generated_qa_artifacts = {
+            report_artifact_path, test_events_path,
+            report_metadata["stdout_artifact_path"],
+            report_metadata["stderr_artifact_path"],
+        }
+    diff_bytes, changed, renames, symlinks = _diff_paths(
+        cwd, valid["base_head"], exclude_untracked=generated_qa_artifacts
+    )
     diff = git_diff_evidence(cwd, valid, candidate_head, diff_bytes, changed,
                              symlink_paths=symlinks, rename_pairs=renames)
     request_id = uuid.uuid4().hex
