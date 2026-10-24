@@ -68,3 +68,7 @@ The report-due hook required a report for the review and baseline commits. It wa
 ## 2026-10-24 -- S1 E1/E2 code: contracts, signing and gate (written, untested)
 
 Implementation agent wrote `tools/vst/contracts.py`, `signing.py`, `gate.py` and the schema README under the S1 plan; no tests have run by design (build phase). Known design gap found in its report: `derive_result` makes a supervisor-written BLOCKED/INCONCLUSIVE receipt (needed for WORKER_LOST, decision BD-5) invalid for non-Documentation types; to be fixed together with E3 by accepting non-approving results (BLOCKED, INCONCLUSIVE, NOT_RUN) as given, since they can never produce an approval. Record: `docs/changes/0009-s1-e1-e2-contracts-and-gate.md`.
+
+## 2026-10-24 -- S1 E6: single state authority with a transitional rule
+
+Resolves review finding VEO-R2-B01 at documentation level: `sdlc-orchestrator/SKILL.md` and the Definition of Done now say the state store becomes the only authority once accepted and `STATE.md` its generated view; until then `STATE.md` stays authoritative, so there is never more than one authority. Record: `docs/changes/0012-s1-e6-state-authority-alignment.md`. Installed skill copy not re-installed.

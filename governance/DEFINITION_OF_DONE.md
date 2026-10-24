@@ -9,7 +9,7 @@
 
 ## A sprint delivered by the team (applied through the `sdlc-orchestrator` skill)
 
-1. Every phase has its exit artifact linked from the project's `docs/sdlc/STATE.md`.
+1. Every phase has its exit artifact recorded in the phase state: the state store once it is in use (then `docs/sdlc/STATE.md` is its generated view), otherwise the project's `docs/sdlc/STATE.md`.
 2. All sprint code is committed, each commit with its change record.
 3. Per-epic functional tests were authored and run in full by `functional-test-reviewer` and `e2e-runner`; results recorded with exact commands. A mandatory test recorded as NOT_RUN blocks an ordinary approval; only the separate verdict APPROVED_WITH_WAIVER with a named operator record may proceed (ADR-0001).
 4. Relevant specialist reviewers reached consensus on the exact head; all valid BLOCKER/MAJOR findings are fixed.

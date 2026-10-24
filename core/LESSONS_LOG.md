@@ -67,3 +67,10 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Facts: the strict result-derivation rule written from the baseline text conflicts with the WORKER_LOST receipt the same baseline requires.
 - Root cause: BD-3 (derived results) and BD-5 (supervisor failure receipts) were specified separately and never cross-checked.
 - Rule: when two baseline decisions touch the same field, state the interaction explicitly before coding; fix recorded for E3.
+
+## 2026-10-24 -- S1 E6 state authority alignment
+
+- Kind: SUCCESS.
+- Facts: a transitional rule ("store once accepted, otherwise STATE.md") closed a two-authority conflict without making the skill refer to code that does not exist yet.
+- Why it worked: the rule names exactly one authority for each state of the project.
+- Rule: when moving an authority, write the switch condition into the same sentence.
