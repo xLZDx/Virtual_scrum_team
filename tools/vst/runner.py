@@ -1108,8 +1108,11 @@ def _validate_qa_report_request(
         fixture_ids.add(fixture_id)
         if not isinstance(fixture["input"], dict):
             raise ContractError("seeded-failure fixture input must be a JSON object")
+        fixture_input_bytes = canonical_bytes(fixture["input"])
+        if len(fixture_input_bytes) > 16 * 1024:
+            raise ContractError("seeded-failure fixture input exceeds 16 KiB")
         input_hash = _req_hex(fixture["input_sha256"], "seeded_failure_fixture.input_sha256", 64)
-        if hashlib.sha256(canonical_bytes(fixture["input"])).hexdigest() != input_hash:
+        if hashlib.sha256(fixture_input_bytes).hexdigest() != input_hash:
             raise ContractError("seeded-failure fixture input hash does not match canonical input")
         if (not isinstance(fixture["expected_rejection"], str) or
                 not _REJECTION_CODE_RE.fullmatch(fixture["expected_rejection"])):
@@ -1523,16 +1526,6 @@ def run_manifest_commands(
         raise ContractError("QA event evidence currently requires exactly one pinned pytest command")
     argvs = [item["argv"] for item in pinned]
     required_ids = sorted(item["test_id"] for item in valid["required_tests"] if item["slot"] == slot)
-    if report_artifact_path is not None and slot == "seeded-failure":
-        assert report_metadata is not None
-        fixture_test_ids = [
-            fixture["test_id"] for fixture in report_metadata["seeded_failure_fixtures"]
-        ]
-        if (len(fixture_test_ids) != len(set(fixture_test_ids)) or
-                set(fixture_test_ids) != set(required_ids)):
-            raise ContractError(
-                "seeded-failure fixture test IDs must exactly match the manifest slot before execution"
-            )
     acceptance = sorted({a for item in valid["required_tests"] if item["slot"] == slot for a in item["acceptance"]})
     limit = valid["timeout_sec"]
     per_command = limit if timeout_sec is None else _req_int(timeout_sec, "timeout_sec", 1, limit)
@@ -1547,6 +1540,16 @@ def run_manifest_commands(
     _validate_qa_report_request(
         paths, cwd, slot, report_artifact_path, test_events_path, report_metadata
     )
+    if report_artifact_path is not None and slot == "seeded-failure":
+        assert report_metadata is not None
+        fixture_test_ids = [
+            fixture["test_id"] for fixture in report_metadata["seeded_failure_fixtures"]
+        ]
+        if (len(fixture_test_ids) != len(set(fixture_test_ids)) or
+                set(fixture_test_ids) != set(required_ids)):
+            raise ContractError(
+                "seeded-failure fixture test IDs must exactly match the manifest slot before execution"
+            )
     started_at = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
     started_monotonic = time.monotonic()
     initial_head = _derive_head(cwd)

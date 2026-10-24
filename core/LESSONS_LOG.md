@@ -489,3 +489,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — Validate contracts again at the trust boundary that can sign evidence. A strict CLI loader does not protect direct report-bound runner calls; validate catalog shape/state there and compare linked seeded-fixture IDs to the manifest before launching commands. Reject duplicate JSON keys so parsers cannot disagree about signed input meaning. Also disable runtime caches/bytecode output when worker source is read-only. See change record 0099.
 
+2026-10-25 — Validate direct-call metadata types before indexing nested fixture records; otherwise malformed input leaks `KeyError` or `TypeError` from a signing boundary. Repeat all CLI bounds, including canonical fixture input size, at the signer-facing layer. See change record 0100.
+

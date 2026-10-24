@@ -300,3 +300,7 @@ Seeded-failure fixtures live in a bounded tracked catalog with canonical input h
 
 The report-bound runner independently validates the catalog's exact root fields and coherent `NOT_RUN`/`SUPPORTED` state; it does not rely only on the higher-level CLI loader. Duplicate JSON object keys are rejected by both catalog loading paths. Before any category command starts, seeded-fixture test IDs must equal the complete required-ID set for that manifest slot. Exact pytest argv disables the cache provider, and report-bound child processes suppress `.pyc` writes so the worker respects the read-only source snapshot. See change record 0099; no runtime proof is claimed.
 
+## 2026-10-25 -- Validate fixture metadata before direct-runner comparisons
+
+Perform seeded fixture-to-manifest ID comparison only after report metadata has passed schema/type validation, so malformed direct calls yield `ContractError`. Enforce the same 16 KiB canonical input ceiling at the signing boundary as in the CLI loader. See change record 0100; no tests or runtime proof are claimed.
+
