@@ -23,6 +23,7 @@ class Supervisor:
         run_id: str | None = None,
         probe_nonce: str | None = None,
         probe_key: bytes | None = None,
+        operator_key: bytes | None = None,
     ):
         if isinstance(failure_threshold, bool) or not isinstance(failure_threshold, int) or failure_threshold < 1:
             raise ValueError("failure_threshold must be a positive integer")
@@ -33,6 +34,7 @@ class Supervisor:
         self.run_id = run_id
         self.probe_nonce = probe_nonce
         self.probe_key = probe_key
+        self.operator_key = operator_key
         self._seen_run_ids = {run_id} if isinstance(run_id, str) else set()
         self._seen_probe_nonces = {probe_nonce} if isinstance(probe_nonce, str) else set()
         self._probe_consumed = False
@@ -40,6 +42,8 @@ class Supervisor:
             not isinstance(run_id, str) or not run_id.strip()
             or not isinstance(probe_nonce, str) or not probe_nonce.strip()
             or not isinstance(probe_key, (bytes, bytearray)) or len(probe_key) < 32
+            or not isinstance(operator_key, (bytes, bytearray)) or len(operator_key) < 32
+            or bytes(operator_key) == bytes(probe_key)
         ):
             raise ValueError("sandbox supervisor requires trusted run id, nonce and probe verification key")
         self.provider_failures = 0
@@ -52,7 +56,7 @@ class Supervisor:
         if self.breaker_state != "CLOSED":
             raise StoreError("provider breaker is open; worker start refused", kind="provider")
         if self.store.sandbox_mode:
-            from .preflight import SPEC_PATH, verify_fresh_probe
+            from .preflight import SPEC_PATH, verify_fresh_probe, verify_network_policy_attestation
 
             if self._probe_consumed:
                 raise StoreError("preflight probe has already authorized a worker start", kind="probe")
@@ -62,6 +66,12 @@ class Supervisor:
                 nonce=self.probe_nonce, key=bytes(self.probe_key),
             ):
                 raise StoreError("fresh passing signed preflight is required for this run", kind="probe")
+            attestation = probe["inventory"].get("network_policy_attestation")
+            if not verify_network_policy_attestation(
+                attestation, run_id=self.run_id, spec_sha256=spec_sha256,
+                nonce=self.probe_nonce, key=bytes(self.operator_key),
+            ):
+                raise StoreError("operator-root-signed network policy attestation is required", kind="probe")
             probe_digest = hashlib.sha256(canonical_bytes(probe)).hexdigest()
             self.store.consume_preflight(self.run_id, self.probe_nonce, spec_sha256, probe_digest)
         next_state, _ = transition(self.lifecycle_state, "START")

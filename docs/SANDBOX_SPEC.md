@@ -37,9 +37,13 @@ Egress is default-deny at the sandbox network boundary. The external egress
 allowlist is empty by default; adding an endpoint requires a separately
 recorded task-specific policy. DNS and indirect routes are also denied unless
 explicitly allowed. The local pre-flight loopback canary binds an ephemeral
-127.0.0.1 port inside the sandbox and is not a public-network exception. The
-probe separately attempts a connection to a reserved documentation address;
-that connection must fail. A successful external connection fails pre-flight.
+127.0.0.1 port inside the sandbox and is not a public-network exception. An
+operator-root-signed, run/spec/nonce-bound network-policy attestation identifies
+the environment, SHA-256 digests of the enforced policy and private evidence,
+an empty external allowlist, no container socket, and no unapproved host paths.
+The supervisor verifies this attestation independently. A connection attempt
+to one reserved documentation address is only a limited smoke probe; failure
+does not prove default-deny egress and success fails pre-flight.
 
 ## Resource and filesystem limits
 
@@ -56,10 +60,16 @@ best-effort success.
 ## Required pre-flight evidence
 
 Before each worker run, the standard-library-only probe records the mount
-table, Windows interop state, user and group identity, known container socket
-paths, blocked external-egress result, sandbox-local loopback result, and
+table, Windows interop state, user and group identity, container socket paths,
+blocked-target smoke-probe result, sandbox-local loopback result, and
 environment variable names. It binds the inventory to the run ID, a fresh
-nonce, and this file's SHA-256 digest. The trusted runner signs the inventory.
+nonce, and this file's SHA-256 digest. The trusted runner signs the inventory;
+the operator separately signs the network-policy attestation with a distinct
+operator-only key. The operator key is never copied to the runner, worker, or
+analyzer. All six trust roots (worker, supervisor, operator, event, reviewer,
+runner-signer) remain pairwise distinct. Socket discovery spans known engine
+endpoints, numeric per-user runtime directories, and `/proc/net/unix`; inability
+to enumerate a required source fails closed.
 The supervisor may start a worker only when the signature verifies, the probe
 is fresh and bound to the same run and spec digest, and every check passes.
 An enabled automount or interop setting, present container socket, root UID,

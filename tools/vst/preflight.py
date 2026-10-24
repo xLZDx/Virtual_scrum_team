@@ -17,8 +17,36 @@ SPEC_PATH = Path(__file__).resolve().parents[2] / "docs" / "SANDBOX_SPEC.md"
 BLOCKED_EGRESS_TARGET = ("198.51.100.1", 9)
 CONTAINER_SOCKETS = (
     "/run/docker.sock", "/var/run/docker.sock", "/run/containerd/containerd.sock",
-    "/run/podman/podman.sock", "/run/user/1000/podman/podman.sock",
+    "/run/podman/podman.sock",
 )
+
+def _container_socket_inventory() -> tuple[list[str], bool]:
+    """Enumerate known engine sockets across all runtime UIDs; unknown is unsafe."""
+    paths = list(CONTAINER_SOCKETS)
+    observed_proc_sockets: list[str] = []
+    complete = True
+    for parent in (Path("/run/user"), Path("/var/run/user")):
+        try:
+            users = list(parent.iterdir()) if parent.exists() else []
+        except OSError:
+            complete = False
+            continue
+        for user_dir in users:
+            if not user_dir.name.isdigit():
+                complete = False
+                continue
+            paths.extend(str(user_dir / name) for name in (
+                "podman/podman.sock", "docker.sock", "containerd/containerd.sock",
+            ))
+    try:
+        unix_sockets = Path("/proc/net/unix").read_text(encoding="utf-8").splitlines()
+        observed_proc_sockets.extend(line.split()[-1] for line in unix_sockets[1:]
+                                     if line.split() and any(token in line.split()[-1].lower()
+                                     for token in ("docker.sock", "podman.sock", "containerd.sock")))
+    except OSError:
+        complete = False
+    found = [path for path in paths if os.path.exists(path)]
+    return sorted(set(found + observed_proc_sockets)), complete
 
 
 def _loopback_canary() -> bool:
@@ -52,11 +80,13 @@ def _blocked_egress() -> bool:
     return False
 
 
-def collect_inventory(run_id: str, nonce: str | None = None) -> dict[str, Any]:
+def collect_inventory(run_id: str, nonce: str | None = None, *,
+                      network_policy_attestation: dict[str, Any] | None = None) -> dict[str, Any]:
     if not isinstance(run_id, str) or not run_id.strip():
         raise ContractError("run_id must be non-empty")
     if os.name != "posix" or not hasattr(os, "geteuid"):
         raise ContractError("sandbox probe requires a POSIX sandbox")
+    nonce = nonce or uuid.uuid4().hex
     mounts = Path("/proc/self/mounts").read_text(encoding="utf-8", errors="replace")
     interop_path = Path("/proc/sys/fs/binfmt_misc/WSLInterop")
     interop_present = interop_path.exists()
@@ -67,22 +97,31 @@ def collect_inventory(run_id: str, nonce: str | None = None) -> dict[str, Any]:
         except OSError:
             interop_enabled = True  # unknown is unsafe
     automount_lines = [line for line in mounts.splitlines() if "/mnt/" in line and len(line.split()) >= 2]
-    sockets = sorted(path for path in CONTAINER_SOCKETS if os.path.exists(path))
+    sockets, socket_inventory_complete = _container_socket_inventory()
+    attestation = network_policy_attestation
+    attestation_valid_shape = isinstance(attestation, dict) and set(attestation) == {
+        "run_id", "spec_sha256", "nonce", "environment_id", "policy_sha256",
+        "evidence_sha256", "empty_external_allowlist", "no_container_socket",
+        "no_unapproved_host_paths", "signature",
+    } and attestation.get("run_id") == run_id and attestation.get("spec_sha256") == hashlib.sha256(
+        SPEC_PATH.read_bytes()
+    ).hexdigest() and attestation.get("nonce") == nonce
     uid = os.geteuid()
     checks = {
         "automount_disabled": not automount_lines,
         "interop_disabled": not interop_enabled,
-        "no_container_socket": not sockets,
+        "no_container_socket": socket_inventory_complete and not sockets and attestation_valid_shape
+            and attestation.get("no_container_socket") is True,
         "non_root": uid != 0,
-        "external_egress_blocked": _blocked_egress(),
+        "external_egress_blocked": _blocked_egress(),  # limited smoke probe only
         "loopback_canary": _loopback_canary(),
-        "empty_external_allowlist": True,
+        "empty_external_allowlist": attestation_valid_shape and attestation.get("empty_external_allowlist") is True,
     }
     spec_bytes = SPEC_PATH.read_bytes()
     return {
         "run_id": run_id,
         "spec_sha256": hashlib.sha256(spec_bytes).hexdigest(),
-        "nonce": nonce or uuid.uuid4().hex,
+        "nonce": nonce,
         "checked_properties": checks,
         "result": "PASS" if all(checks.values()) else "FAIL",
         "inventory": {
@@ -92,7 +131,10 @@ def collect_inventory(run_id: str, nonce: str | None = None) -> dict[str, Any]:
             "uid": uid,
             "gid": os.getegid(),
             "container_socket_paths_present": sockets,
+            "container_socket_inventory_complete": socket_inventory_complete,
             "blocked_egress_target": list(BLOCKED_EGRESS_TARGET),
+            "blocked_egress_probe_scope": "single reserved-target smoke probe; does not prove egress policy",
+            "network_policy_attestation": attestation,
             "environment_variable_names": sorted(os.environ.keys()),
             "observed_at_monotonic_ns": time.monotonic_ns(),
         },
@@ -105,6 +147,19 @@ def sign_inventory(inventory: dict[str, Any], runner_key: bytes) -> dict[str, An
         raise ContractError("probe inventory fields do not match contract")
     signed = dict(inventory)
     signed["signature"] = sign(inventory, runner_key, PROBE_LABEL)
+    return signed
+
+
+def sign_network_policy_attestation(attestation: dict[str, Any], operator_key: bytes) -> dict[str, Any]:
+    """Operator-side helper; keep the operator root outside runner/worker processes."""
+    from .signing import OPERATOR_NETWORK_POLICY_LABEL, sign
+    required = {"run_id", "spec_sha256", "nonce", "environment_id", "policy_sha256",
+                "evidence_sha256", "empty_external_allowlist", "no_container_socket",
+                "no_unapproved_host_paths"}
+    if not isinstance(attestation, dict) or set(attestation) != required:
+        raise ContractError("network policy attestation fields do not match contract")
+    signed = dict(attestation)
+    signed["signature"] = sign(attestation, operator_key, OPERATOR_NETWORK_POLICY_LABEL)
     return signed
 
 
@@ -133,5 +188,27 @@ def verify_fresh_probe(probe: dict[str, Any], *, run_id: str, spec_sha256: str, 
         and probe.get("nonce") == nonce and probe.get("result") == "PASS"
         and isinstance(checks, dict) and set(checks) == expected_checks
         and all(value is True for value in checks.values())
+        and isinstance(probe.get("inventory"), dict)
+        and probe["inventory"].get("container_socket_inventory_complete") is True
+        and isinstance(probe["inventory"].get("network_policy_attestation"), dict)
         and verify(probe, key, PROBE_LABEL)
     )
+
+
+def verify_network_policy_attestation(attestation: object, *, run_id: str, spec_sha256: str,
+                                      nonce: str, key: bytes) -> bool:
+    from .signing import OPERATOR_NETWORK_POLICY_LABEL, verify
+    fields = {"run_id", "spec_sha256", "nonce", "environment_id", "policy_sha256",
+              "evidence_sha256", "empty_external_allowlist", "no_container_socket",
+              "no_unapproved_host_paths", "signature"}
+    if not isinstance(attestation, dict) or set(attestation) != fields:
+        return False
+    import re
+    return (attestation.get("run_id") == run_id and attestation.get("spec_sha256") == spec_sha256
+            and attestation.get("nonce") == nonce
+            and isinstance(attestation.get("environment_id"), str) and bool(attestation["environment_id"].strip())
+            and all(isinstance(attestation.get(k), str) and re.fullmatch(r"[0-9a-f]{64}", attestation[k])
+                    for k in ("policy_sha256", "evidence_sha256"))
+            and all(attestation.get(k) is True for k in
+                    ("empty_external_allowlist", "no_container_socket", "no_unapproved_host_paths"))
+            and verify(attestation, key, OPERATOR_NETWORK_POLICY_LABEL))

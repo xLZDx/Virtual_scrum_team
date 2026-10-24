@@ -267,3 +267,12 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: the DB transaction and external append were not coordinated as one cross-process operation, and recovery assumed one event per committed transaction.
 - Layer: persistence/reliability contract, not a schema migration.
 - Rule: serialize DB commit through anchor append and authoritative DB snapshot through anchor comparison; after a crash, recover only a fully verified chain suffix whose starting checkpoint matches the external anchor exactly.
+
+## 2026-10-24 -- A failed connection to one reserved address is not an egress policy proof
+
+- Kind: FAILURE (security evidence; found by security review).
+- Facts: preflight probed only `198.51.100.1:9` and asserted `empty_external_allowlist=true` without reading or verifying an enforced network policy. The container socket scan also hard-coded the per-user Podman socket under UID 1000.
+- Root cause: an observed connectivity result and one known path were treated as complete policy and environment evidence.
+- Layer: sandbox trust boundary and provisioning evidence contract; security review caught it before launch acceptance.
+- Rule: require independently verified, operator-root-signed policy/evidence bound to the exact run/spec/nonce; label point probes as smoke checks; enumerate all supported runtime identities and fail closed when inventory is incomplete.
+- Fix status: implementation in change record 0044; tests and host provisioning evidence are still pending and were not run by this implementation task.
