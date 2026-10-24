@@ -2237,22 +2237,34 @@ def event_payloads(path, kind, task=TASK):
     ]
 
 
-def test_acquire_lease_at_a_zero_cap_commits_the_signed_marker_and_then_raises(env):
+def test_acquire_lease_at_a_zero_cap_with_nothing_spent_succeeds_without_a_marker(env):
     store, _, path, epoch = env
-    reg(store, "TZ", cost_cap=0)  # spent 0 >= cap 0
-    err = raises_kind("budget", lease, store, epoch, task="TZ")
-    assert "TZ" in str(err)
-    assert leases(path) == []
-    assert slot_map(path) == {1: None, 2: None}
-    (m,) = marker_rows(path, "TZ")  # committed although the call raised
-    assert (m["check_description"], m["result"], m["slot"]) == ("BUDGET_EXCEEDED", "BLOCKED", SUPERVISOR_SLOT)
-    assert m["runner_id"] == "store-supervisor"
-    assert signing.verify(m, SUPERVISOR_KEY) and not signing.verify(m, KEY)
-    assert event_payloads(path, "BUDGET_EXCEEDED", "TZ") == [{"amount": 0, "cap": 0, "spent": 0}]
-    assert len(event_payloads(path, "BUDGET_BLOCKED", "TZ")) == 1
+    m = reg(store, "TZ", cost_cap=0)  # spent 0, cap 0: the task may start
+    lease(store, epoch, task="TZ")
+    assert len(leases(path)) == 1
+    r = bound(m, epoch=epoch, task_id="TZ")
+    assert r["result"] == "PASS"
+    store.append_receipt(r, STORY, KEY)  # a worker PASS receipt is accepted
+    assert len(rows(path, "SELECT 1 FROM receipts WHERE task_id = 'TZ'")) == 1
+    assert marker_rows(path, "TZ") == []
+    assert kinds(path).count("BUDGET_EXCEEDED") == 0 and kinds(path).count("BUDGET_BLOCKED") == 0
     assert store.verify_event_chain()
     assert_no_dangling_transaction(path)
-    lease(store, epoch)  # another task with budget left is unaffected
+
+
+def test_charge_on_a_zero_cap_task_raises_budget_writes_the_marker_then_blocks_new_leases(env):
+    store, _, path, epoch = env
+    reg(store, "TZ", cost_cap=0)
+    err = raises_kind("budget", store.charge, "TZ", 1, supervisor_key=SUPERVISOR_KEY)
+    assert "TZ" in str(err)
+    (m,) = marker_rows(path, "TZ")
+    assert (m["check_description"], m["result"]) == ("BUDGET_EXCEEDED", "BLOCKED")
+    assert signing.verify(m, SUPERVISOR_KEY)
+    assert event_payloads(path, "BUDGET_EXCEEDED", "TZ") == [{"amount": 1, "cap": 0, "spent": 0}]
+    assert _budget_row(path, "TZ") == (0, 0)  # nothing was charged
+    raises_kind("budget", lease, store, epoch, task="TZ", worker="w2", attempt=2)
+    assert len(marker_rows(path, "TZ")) == 1  # the marker is not duplicated
+    assert store.verify_event_chain()
 
 
 def test_acquire_lease_at_spent_equal_to_cap_commits_the_signed_marker_and_then_raises(env):
@@ -2428,7 +2440,7 @@ def test_zero_cap_rejects_any_positive_charge(env):
     store, _, _, epoch = env
     store.set_budget(TASK, 0)
     assert store.charge(TASK, 0, supervisor_key=SUPERVISOR_KEY) == 0
-    raises_kind("budget", lease, store, epoch)  # spent 0 >= cap 0: no lease either
+    lease(store, epoch)  # nothing spent: a zero cap does not forbid starting
     raises_kind("budget", store.charge, TASK, 1, supervisor_key=SUPERVISOR_KEY)
     assert supervisor_receipts(store)[0]["check_description"] == "BUDGET_EXCEEDED"
 

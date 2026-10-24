@@ -264,7 +264,7 @@ def normalize_principal(value: Any) -> str:
             unicodedata.category(char) in ("Cc", "Cf", "Cs", "Co", "Cn")
             or 0xFE00 <= code <= 0xFE0F
             or 0xE0100 <= code <= 0xE01EF
-            or code in (0x034F, 0x17B4, 0x17B5, 0x115F, 0x1160, 0x3164, 0xFFA0)
+            or code in (0x034F, 0x17B4, 0x17B5, 0x115F, 0x1160, 0x2800, 0x3164, 0xFFA0)
         ):
             raise ContractError(
                 f"principal: must not contain control, format, invisible or "

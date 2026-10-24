@@ -14,8 +14,8 @@ table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid v
 </head>
 <body>
 <header>
-<h1>S1 status: remediation after the specialist review</h1>
-<p class="mut">Date: 2026-10-24. State: code fixed and committed locally (3e27720), tests green on the working tree, re-review in progress.</p>
+<h1>S1 status: remediation after the specialist reviews</h1>
+<p class="mut">Date: 2026-10-24. State: the code of three remediation rounds and the fourth-check fixes is committed locally on branch s1-control-plane-core; the specialist reviewers have no open serious findings; the operator's independent review is pending.</p>
 </header>
 
 <!-- report-conform:begin -->
@@ -43,7 +43,7 @@ table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid v
   <dl>
     <dt>Project</dt><dd>Virtual_scrum_team</dd>
     <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s1-control-plane-core @ 3e27720</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s1-control-plane-core @ 176a095</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
@@ -52,35 +52,34 @@ table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid v
 <!-- report-conform:end -->
 
 <h2>1. Summary</h2>
-<p>Four specialist reviewers unanimously returned MODIFY on the first S1 code (63e0e35). The remediation package was implemented by two implementers and checked by the test agents. A re-review of the exact head 3e27720 has been launched; the sprint is not closed until it returns.</p>
+<p>Four specialists unanimously rejected the first S1 code (MODIFY). Three remediation rounds and four review rounds followed. The last check found one serious defect (a task with a zero cost cap could never start); it is fixed and covered by tests. The specialists have no other open BLOCKER or MAJOR. The sprint is not closed: it needs the independent review of the final commit on an allowed model, then the push and pull request decision.</p>
 
-<h2>2. What was fixed</h2>
+<h2>2. Rounds</h2>
 <table>
-<tr><th>Review finding</th><th>Change</th><th>State</th></tr>
-<tr><td>Gate and store disagreed on the receipt chain</td><td>One model: per-slot chain across epochs, the latest attempt of the current epoch decides; supervisor markers live in a reserved slot</td><td class="warn">Code and tests exist; awaiting re-review</td></tr>
-<tr><td>Success conditions came from the receipt itself</td><td>The manifest defines tests, commands, rules and author; receipts carry the manifest hash</td><td class="warn">Same</td></tr>
-<tr><td>Unsigned, unbound waiver; optional artifact check</td><td>Waiver signed with the operator key and bound to task, epoch, head, manifest and expiry; default-deny artifacts without a resolver; terminal markers cannot be waived</td><td class="warn">Same</td></tr>
-<tr><td>Store did not verify signatures, leases were overwritten, retry cap unenforced</td><td>Signature and lease checks on append, lease history, retry cap, supervisor isolation, keyed event chain with an anchor</td><td class="warn">Same</td></tr>
-<tr><td>Runner: unbounded output, orphan processes, inherited environment, path escape</td><td>Output cap, process-tree kill, overall deadline, minimal environment, artifact path containment</td><td class="warn">Same</td></tr>
+<tr><th>Round</th><th>Review result</th><th>What was fixed</th></tr>
+<tr><td>1 (63e0e35)</td><td class="bad">MODIFY from four</td><td>One chain model, manifest-bound success conditions, signed waiver, signature and lease checks in the store, runner limits</td></tr>
+<tr><td>2 (3e27720)</td><td class="bad">MODIFY from four; one shared MAJOR: the head check broke retries</td><td>Head check on the deciding attempt only, retry cap by worker failures, budget from the manifest cap, verified event anchor, distinct keys, Windows Job Object</td></tr>
+<tr><td>3 (f1956e2)</td><td class="bad">MODIFY from four; two MAJOR: budget boundary and slot bound after takeover</td><td>Receipts allowed when spending exactly the cap, slot bound counted per epoch, environment-variable allowlist, event log cross-check, worker key differs from the event key</td></tr>
+<tr><td>4 (176a095)</td><td class="warn">MODIFY from one: zero-cap task could not start</td><td>Fixed, tests replaced. The rest was minor documentation</td></tr>
 </table>
 
 <h2>3. Verified and unverified</h2>
 <ul>
-<li class="ok">Tests written by the agents, run on the working tree over 63e0e35: E1-E4 1105 passed, 2 skipped, 0 failed; E5 38 passed. The tests found no product bug.</li>
-<li class="warn">Commit 3e27720 holds the same files, but the tests were not run on the commit itself.</li>
-<li class="warn">Not verified: POSIX permission bits and process-group kill (Windows host), a symlink created by a child command (<code>os.symlink</code> not permitted). No mutation runs, by operator decision.</li>
-<li class="bad">The specialist re-review is in progress; there is no independent review of the final head on an allowed model.</li>
-<li class="mut">Deferred to S2: runner-derived candidate_head and isolating the signing key from the process that runs commands.</li>
+<li class="ok">Tests written by the agents, run on the working tree before the commits: E1 and E2 863 passed; E3 and E4 593 passed, 2 skipped; E5 64 passed; after the last fixes E1, E2, E3 and E5 together 1205 passed, 1 skipped. The tests found no product bug in rounds three and four.</li>
+<li class="warn">Tests ran on the working tree, not on the commit itself; the content matched before each commit. The coordinator ran no tests.</li>
+<li class="warn">Not verified: POSIX permission bits and process-group kill (Windows host), Job Object nesting under a parent job, genuinely unkillable processes (failure was injected), mutation runs (by operator decision).</li>
+<li class="bad">There is no independent review of the final commit on an allowed model.</li>
+<li class="mut">Deferred to S2: an authenticated reviewer key (reviewer independence is a self-asserted label, APPROVE does not prove it), runner-derived candidate_head, isolating the signing key from the process running commands, detecting a rollback of the whole database.</li>
 </ul>
 
 <h2>4. Needed from the operator</h2>
 <ul>
-<li>Independent review of the final head on Sonnet 5.5 or GPT-5.6 Luna; then the push and pull request decision.</li>
+<li>Independent review of the final commit on Sonnet 5.5 or GPT-5.6 Luna; then the push and pull request decision. Suggested scope: tools/vst and change records docs/changes/0015-0025.</li>
 <li>Align external files: workspace <code>AGENTS.md</code> (default model), the global contract (number of test authors), reinstall roster and skill into <code>~/.claude</code> with a snapshot and lint.</li>
 <li>Decide on private repository names in the public blueprint.</li>
 </ul>
 
-<p class="mut">Change records: docs/changes/0015, 0016, 0017. Test evidence: docs/sdlc/evidence/s1-remediation-e1-e4-test-run.md and s1-remediation-e5-test-run.md.</p>
+<p class="mut">Change records: docs/changes/0015-0025. Test evidence: docs/sdlc/evidence/s1-remediation-*.md, s1-second-round-*, s1-third-round-*.</p>
 
 <!-- report-conform:script:begin -->
 <script>

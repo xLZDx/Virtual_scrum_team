@@ -88,8 +88,9 @@ Authority rules:
   tampered.
 - Budget: register_task seeds the budget row from the manifest cost_cap;
   set_budget can only lower it (a cap above the manifest cost_cap is refused,
-  kind 'budget'). acquire_lease refuses when spent >= cap or a BUDGET_EXCEEDED
-  event or marker exists, committing the signed marker first (kind 'budget');
+  kind 'budget'). acquire_lease refuses when something has been spent and
+  spent >= cap (a cost_cap 0 task with nothing spent may run), or when a
+  BUDGET_EXCEEDED event or marker exists, committing the signed marker first (kind 'budget');
   append_receipt refuses only when spent > cap or the event or marker exists
   (kind 'budget', or 'terminal' after the marker), so a worker that spent
   exactly its cap can still record its results. charge never lets spent exceed cap; when it
@@ -1019,15 +1020,19 @@ class Store:
     ) -> str | None:
         """Reason the budget blocks the task, or None.
 
-        strict (new work: acquire_lease) blocks at spent >= cap; non-strict
-        (finishing work: append_receipt, heartbeat) blocks only at spent > cap.
-        Either way an existing BUDGET_EXCEEDED event blocks.
+        strict (new work: acquire_lease) blocks at spent >= cap once something
+        has been spent (a task with cost_cap 0 and nothing spent is a task
+        without metered cost and may run); non-strict (finishing work:
+        append_receipt, heartbeat) blocks only at spent > cap. Either way an
+        existing BUDGET_EXCEEDED event blocks.
         """
         row = conn.execute(
             "SELECT cap, spent FROM budget WHERE task_id = ?", (task_id,)
         ).fetchone()
         if row is not None and (
-            row["spent"] >= row["cap"] if strict else row["spent"] > row["cap"]
+            (row["spent"] > 0 and row["spent"] >= row["cap"])
+            if strict
+            else row["spent"] > row["cap"]
         ):
             return f"budget exhausted for task {task_id!r} (spent {row['spent']} of {row['cap']})"
         if conn.execute(

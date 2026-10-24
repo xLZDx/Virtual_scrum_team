@@ -134,3 +134,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: the same boundary was expressed in two places with two comparison operators; the retry bound was written for one epoch and the history model for many; tests exercised each rule alone, never the spend-exactly-the-cap or takeover-after-full-set paths.
 - Layer: author missed; tests green but vacuous for both paths; reviewers caught (this time through a documented risk plus an independent second finding).
 - Rule: a risk written into the decision log is a work item, not a note - resolve it before the next gate; define a limit once (one helper) and test both sides of the boundary (cap-1, cap, cap+1); any bound that mixes counters from different epochs needs a scenario with a takeover after success.
+
+## 2026-10-24 -- S1 fourth check: regression from the boundary fix
+
+- Kind: FAILURE (coordinator and tests) / SUCCESS (reviewer).
+- Facts: the fix the coordinator specified for the budget boundary (`acquire_lease` refuses at `spent >= cap` and commits a terminal marker) made every task with `cost_cap` 0 unstartable; the E3 test agent even pinned the new behaviour as correct ("acquire_lease at cap 0 commits one marker"). A fourth reviewer found it; the coordinator confirmed it at `tools/vst/store.py:1030`.
+- Root cause: the decision text listed only the exact-cap case and said nothing about the zero-cap case that the manifest contract allows (`cost_cap` int >= 0); the test agent derived its expectation from the new code rather than from the manifest contract.
+- Layer: coordinator (decision) missed; tests encoded the defect; the fourth reviewer caught it before any independent review.
+- Rule: when a rule is changed, enumerate the manifest-contract boundaries (zero, one, max) before specifying the fix; a test that pins a terminal side effect (a marker, a blocked state) needs the contract sentence it proves, not just the current code.

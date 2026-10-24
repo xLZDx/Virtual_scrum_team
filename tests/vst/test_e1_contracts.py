@@ -1142,6 +1142,7 @@ _INVISIBLE_PRINCIPALS = [
     pytest.param("aliceᅟ", "115F", id="hangul-choseong-filler"),
     pytest.param("aliceᅠ", "1160", id="hangul-jungseong-filler"),
     pytest.param("alice͸", "0378", id="unassigned-code-point"),
+    pytest.param("alice⠀", "2800", id="braille-pattern-blank"),
 ]
 
 

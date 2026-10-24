@@ -31,10 +31,11 @@ public-repository inventory question (blueprint section 13.6).
 ## S1 control-plane core (in progress)
 
 Implemented in `tools/vst` on branch `s1-control-plane-core`: contracts, signing, gate, store, runner
-and slice. The second remediation round is implemented and retested (E1+E2 813 passed, E3+E4 506
-passed with 2 skipped, E5 52 passed on the working tree) and committed locally as f1956e2. The third
-specialist review returned MODIFY and a third remediation package is being applied. Independent
-review and the pull request are pending. Nothing is pushed. Until the state store (`tools/vst/store.py`) is in use for a
+and slice. Three remediation rounds followed specialist reviews. The third round is implemented,
+retested (E1+E2 863 passed, E3+E4 593 passed with 2 skipped, E5 64 passed on the working tree) and
+committed locally as 176a095; a fourth specialist check found one regression (a task with
+`cost_cap` 0 could never start) that is fixed in the next local commit and still needs focused
+tests. Independent review and the pull request are pending. Nothing is pushed. Until the state store (`tools/vst/store.py`) is in use for a
 project, `docs/sdlc/STATE.md` is the phase authority; once it is in use, the store is the authority
 and `STATE.md` is its generated read-only view (baseline decision BD-1).
 

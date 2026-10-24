@@ -20,3 +20,9 @@ None found in `tools/vst`. Observation only: the `tools/vst/store.py` module doc
 
 ## Not verified
 POSIX behaviour; mutation checks (NOT_RUN by operator decision); the root-survives-kill and reader-exception tests use monkeypatched seams (real child process, injected failure), not a naturally unkillable process; real thread exhaustion; Job Object nesting.
+
+## Fourth-check fixes
+Command: `C:\Python314\python.exe -m pytest -q -p no:cacheprovider tests/vst/test_e3_store.py tests/vst/test_e1_contracts.py tests/vst/test_e2_gate.py tests/vst/test_e5_slice.py`
+Counts: 1205 passed, 1 skipped, 0 failed (first run: 1 failed, 1204 passed; the failure was a defect in my new test, which kept a live lease before asserting a budget refusal; fixed).
+Last line: `1205 passed, 1 skipped, 1 warning in 46.15s`
+Changes: E3 replaced the cap-0 acquire_lease marker test with a success test (lease, worker PASS receipt, no marker, no BUDGET_EXCEEDED/BUDGET_BLOCKED event), added a charge(1)-on-cap-0 test (kind 'budget', one signed marker, payload amount 1/cap 0/spent 0, nothing charged, later acquire_lease raises with the marker not duplicated), and updated test_zero_cap_rejects_any_positive_charge. E1 added U+2800 to the invisible principals list. Existing tests keep covering spent == cap at acquire_lease with exactly one marker.
