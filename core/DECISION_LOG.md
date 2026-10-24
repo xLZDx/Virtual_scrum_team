@@ -308,3 +308,7 @@ Perform seeded fixture-to-manifest ID comparison only after report metadata has 
 
 Use a self-contained Git bundle over the Windows-to-WSL stdin boundary; do not depend on drive automount, host path mounts, network access, or an archive without Git provenance. Require a clean named branch, exact SHA equality after clone, sender/receiver bundle-digest equality, a pre-provisioned runner-owned mode-2710 root shared only for worker traversal, and a runner-owned, worker-readable/nonwritable clone. The transfer command does not provision the distro or signer and has not been executed. See change record 0101; source-transfer acceptance remains `NOT_RUN`.
 
+## 2026-10-25 -- Resolve registry test IDs against source definitions
+
+Every supported QA registry test ID must resolve to a statically named pytest function or a method on a top-level `Test*` class in its tracked source file. A tracked file by itself does not prove that a declared node exists. Reject runtime-generated parametrized selectors until a deterministic source-level mapping is designed; do not import test modules or run collection from the registry trust boundary. See change record 0104; runtime regression acceptance is pending the designated test owner's rerun.
+

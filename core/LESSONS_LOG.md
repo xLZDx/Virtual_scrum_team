@@ -493,3 +493,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — A cross-OS source snapshot must preserve both Git identity and the worker's read-only boundary. Stream a self-contained bundle through the WSL process boundary, verify exact HEAD and digest on both sides, and provision directory permissions for runner ownership plus worker traversal/read without write. Implemented behavior remains `NOT_RUN` until the exact isolated destination is exercised. See change record 0101.
 
+2026-10-25 — A registry entry can reference an existing tracked test file but a nonexistent pytest node. The functional regression exposed the gap; validate source-resolvable function/class selectors, not just the file path. Runtime-generated parameter IDs remain unsupported until their exact IDs can be established without executing collection code. The failing test and rerun belong to the functional-test-reviewer; Codex changed the registry implementation. See change record 0104; remediation result pending.
+
