@@ -1,24 +1,51 @@
-"""E4 runner and signing: run_and_sign, HMAC signing, key hygiene, file digests."""
+"""E4 runner and signing (remediation A+B): manifest-bound run_and_sign.
+
+Real subprocesses run real (tiny) python commands. Covered contract:
+- the manifest drives everything: allowed_commands equality, expected test ids
+  equality, manifest_sha256 binding, retry_cap / timeout bounds;
+- execution safety: per-stream output cap (exit -3), process-tree kill on
+  timeout, overall deadline, minimal child environment, stdin closed;
+- artifact containment (no traversal / absolute / symlink or junction);
+- label-scoped HMAC (receipt label), keys >= 32 bytes;
+- the gate accepts exactly what the runner produced and rejects replay/forgery.
+"""
 
 from __future__ import annotations
 
+import base64
 import copy
 import hashlib
+import hmac
+import inspect
+import json
 import os
+import subprocess
 import sys
+import time
 
 import pytest
 
 from tools.vst import contracts as c
 from tools.vst import gate, runner, signing
 
-from .e1e4_helpers import EPOCH, HEAD, HEAD2, KEY, ROLE, TASK, manifest, receipt
+from .e1e4_helpers import (
+    EPOCH,
+    HEAD,
+    HEAD2,
+    KEY,
+    OPERATOR_KEY,
+    SUPERVISOR_KEY,
+    TASK,
+    WRONG_KEY,
+    bound,
+    manifest,
+    mhash,
+    receipt,
+)
 
 PY = sys.executable
-SECRET = b"TOP-SECRET-KEY-MATERIAL-9f3a"
-ONE_SLOT = manifest(
-    required_receipts=[{"slot": "tests", "receipt_type": "TestRun"}], acceptance=["AC-1"]
-)
+SECRET = b"TOP-SECRET-KEY-MATERIAL-9f3a-0123456789-abcdef"
+assert len(SECRET) >= 32
 
 
 def line_parser(stdout):
@@ -42,6 +69,20 @@ def printer(*lines, exit_code=0):
     return [PY, "-c", code]
 
 
+def pycmd(code):
+    return [PY, "-c", code]
+
+
+PASS_CMD = printer("PASSED t1", "PASSED t2")
+ALL_IDS = lambda s: (["t1", "t2"], [], [])  # noqa: E731 - parser that reports both ids
+
+
+def mf(commands, **kw):
+    """Manifest whose slot 'tests' allows exactly `commands` (argv lists)."""
+    kw.setdefault("allowed_commands", [{"slot": "tests", "argv": list(a)} for a in commands])
+    return manifest(**kw)
+
+
 @pytest.fixture
 def work(tmp_path):
     d = tmp_path / "work"
@@ -49,19 +90,22 @@ def work(tmp_path):
     return str(d)
 
 
-def run(work, **over):
+_UNSET = object()
+
+
+def run(work, *, m=_UNSET, allowed=None, **over):
+    """run_and_sign with valid defaults; `allowed` (default: commands) feeds the manifest."""
+    commands = over.get("commands", [PASS_CMD])
     kw = dict(
-        task_id=TASK,
         slot="tests",
         attempt=1,
         epoch=EPOCH,
         candidate_head=HEAD,
-        role_sha256=ROLE,
         resolved_model="sonnet-5.5",
         invocation_id="inv-1",
         runner_id="runner-1",
         key=KEY,
-        commands=[printer("PASSED t1", "PASSED t2")],
+        commands=commands,
         expected_test_ids=["t1", "t2"],
         test_result_parser=line_parser,
         covered_acceptance=["AC-1"],
@@ -72,6 +116,9 @@ def run(work, **over):
         created_at="2026-10-24T00:00:00Z",
     )
     kw.update(over)
+    if m is _UNSET:
+        m = mf(allowed if allowed is not None else (commands if isinstance(commands, list) else [PASS_CMD]))
+    kw["manifest"] = m
     return runner.run_and_sign(**kw)
 
 
@@ -85,14 +132,56 @@ def tree_bytes(root):
     return out
 
 
+def marker_cmd(path):
+    return pycmd(f"open({path!r}, 'w').write('x')")
+
+
+def captured(work, code, **over):
+    """Run `code` once and return (receipt, stdout_seen_by_the_parser)."""
+    seen = []
+
+    def parser(stdout):
+        seen.append(stdout)
+        return ["t1", "t2"], [], []
+
+    r = run(work, commands=[pycmd(code)], test_result_parser=parser, **over)
+    return r, seen[0]
+
+
+def _try_dir_link(link, target):
+    """Create a directory symlink (or a Windows junction); False when impossible."""
+    try:
+        os.symlink(target, link, target_is_directory=True)
+        return True
+    except (OSError, NotImplementedError):
+        pass
+    if os.name == "nt":
+        res = subprocess.run(["cmd", "/c", "mklink", "/J", link, target], capture_output=True)
+        return res.returncode == 0 and os.path.exists(link)
+    return False
+
+
+def _can_symlink(tmp_path):
+    probe = tmp_path / "probe-link"
+    target = tmp_path / "probe-target"
+    target.mkdir()
+    try:
+        os.symlink(str(target), str(probe), target_is_directory=True)
+    except (OSError, NotImplementedError):
+        return False
+    return True
+
+
 # ------------------------------------------------------------ happy / failure
 
 
 def test_harmless_command_produces_signed_passing_testrun(work):
-    r = run(work, commands=[[PY, "-c", "print(1)"]], test_result_parser=lambda s: (["t1", "t2"], [], []))
+    cmd = pycmd("print(1)")
+    m = mf([cmd])
+    r = run(work, m=m, commands=[cmd], test_result_parser=ALL_IDS)
     assert r["result"] == "PASS"
     assert r["receipt_type"] == "TestRun"
-    assert r["commands"] == [{"argv": [PY, "-c", "print(1)"], "exit_code": 0}]
+    assert r["commands"] == [{"argv": cmd, "exit_code": 0}]
     assert r["executed_test_ids"] == ["t1", "t2"] and r["expected_test_ids"] == ["t1", "t2"]
     assert r["receipt_id"] == f"{TASK}:tests:1:inv-1"
     assert r["prev_receipt_sha256"] is None
@@ -101,14 +190,33 @@ def test_harmless_command_produces_signed_passing_testrun(work):
     assert c.derive_result(r) == r["result"]
 
 
+def test_receipt_is_bound_to_the_manifest_not_to_caller_supplied_ids(work):
+    m = mf([PASS_CMD], task_id="TASK-X", role_sha256="9" * 64)
+    r = run(work, m=m)
+    assert r["task_id"] == "TASK-X"
+    assert r["role_sha256"] == "9" * 64
+    assert r["manifest_sha256"] == mhash(m) == c.manifest_sha256(m)
+    sig = inspect.signature(runner.run_and_sign).parameters
+    assert "manifest" in sig and "task_id" not in sig and "role_sha256" not in sig
+
+
+def test_manifest_hash_changes_when_the_manifest_changes(work):
+    a = run(work, m=mf([PASS_CMD], scope=["src/a.py"]))
+    b = run(work, m=mf([PASS_CMD], scope=["src/b.py"]))
+    assert a["manifest_sha256"] != b["manifest_sha256"]
+    assert a["signature"] != b["signature"]
+
+
 def test_receipt_carries_every_caller_supplied_field(work):
-    r = run(work, attempt=2, prev_receipt_sha256="e" * 64, epoch=7, candidate_head=HEAD2,
-            runner_id="rr", resolved_model="mm", invocation_id="ii", covered_acceptance=["AC-1", "AC-2"],
-            created_at="2030-01-01T00:00:00Z")
+    r = run(
+        work, attempt=2, prev_receipt_sha256="e" * 64, epoch=7, candidate_head=HEAD2,
+        runner_id="rr", resolved_model="mm", invocation_id="ii",
+        covered_acceptance=["AC-1", "AC-2"], created_at="2030-01-01T00:00:00Z",
+    )
     assert (r["attempt"], r["prev_receipt_sha256"], r["epoch"], r["candidate_head"]) == (2, "e" * 64, 7, HEAD2)
     assert (r["runner_id"], r["resolved_model"], r["invocation_id"]) == ("rr", "mm", "ii")
     assert r["covered_acceptance"] == ["AC-1", "AC-2"] and r["created_at"] == "2030-01-01T00:00:00Z"
-    assert r["role_sha256"] == ROLE and r["task_id"] == TASK and r["slot"] == "tests"
+    assert r["task_id"] == TASK and r["slot"] == "tests"
 
 
 def test_failing_command_nonzero_exit_gives_fail(work):
@@ -134,82 +242,445 @@ def test_parser_receives_joined_stdout_in_order(work):
 
     run(work, commands=[printer("FIRST"), printer("SECOND")], test_result_parser=parser)
     assert len(seen) == 1
-    assert seen[0] == "FIRST\n\nSECOND\n"  # each command's stdout joined with a newline, in order
+    # each command's stdout joined with a newline, in order (a child may emit CRLF on Windows)
+    assert seen[0].replace("\r\n", "\n") == "FIRST\n\nSECOND\n"
 
 
 def test_timeout_records_exit_minus_one_and_fails(work):
-    r = run(work, commands=[[PY, "-c", "import time; time.sleep(60)"]], timeout_sec=1,
-            test_result_parser=lambda s: (["t1", "t2"], [], []))
+    sleeper = pycmd("import time; time.sleep(60)")
+    started = time.monotonic()
+    r = run(work, commands=[sleeper], timeout_sec=1, test_result_parser=ALL_IDS)
+    assert time.monotonic() - started < 30  # killed, not waited out
     assert r["commands"][0]["exit_code"] == runner.EXIT_TIMEOUT == -1
     assert r["result"] == "FAIL"  # all ids reported executed, only the exit code can fail it
     assert signing.verify(r, KEY)
 
 
 def test_missing_executable_records_exit_minus_two(work):
-    r = run(work, commands=[["definitely-not-an-installed-program-xyz"]],
-            test_result_parser=lambda s: (["t1", "t2"], [], []))
+    cmd = ["definitely-not-an-installed-program-xyz"]
+    r = run(work, commands=[cmd], test_result_parser=ALL_IDS)
     assert r["commands"][0]["exit_code"] == runner.EXIT_MISSING_EXECUTABLE == -2
     assert r["result"] == "FAIL"
 
 
 def test_missing_cwd_records_exit_minus_two(work):
-    r = run(work, cwd=os.path.join(work, "no-such-dir"), commands=[[PY, "-c", "print(1)"]])
+    r = run(work, cwd=os.path.join(work, "no-such-dir"), commands=[pycmd("print(1)")])
     assert r["commands"][0]["exit_code"] == -2
 
 
+def test_cwd_that_is_a_file_maps_to_exit_minus_two(work):
+    f = os.path.join(work, "a-file")
+    with open(f, "wb") as fh:
+        fh.write(b"x")
+    r = run(work, cwd=f, test_result_parser=ALL_IDS)
+    assert r["commands"][0]["exit_code"] == -2 and r["result"] == "FAIL"
+
+
 def test_no_shell_metacharacters_are_not_interpreted(work):
+    payload = "a && echo INJECTED; $(x) | y"
+    cmd = pycmd("import sys; print(sys.argv[1])") + [payload]
     seen = []
-    run(work, commands=[[PY, "-c", "import sys; print(sys.argv[1])", "a && echo INJECTED; $(x) | y"]],
-        test_result_parser=lambda s: (seen.append(s) or ["t1", "t2"], [], []))
-    assert seen[0].strip() == "a && echo INJECTED; $(x) | y"
+    run(work, commands=[cmd], test_result_parser=lambda s: (seen.append(s) or ["t1", "t2"], [], []))
+    assert seen[0].strip() == payload
 
 
 def test_command_runs_in_the_given_cwd(work):
-    seen = []
-    run(work, commands=[[PY, "-c", "import os; print(os.getcwd())"]],
-        test_result_parser=lambda s: (seen.append(s) or ["t1", "t2"], [], []))
-    assert os.path.realpath(seen[0].strip()) == os.path.realpath(work)
+    r, out = captured(work, "import os; print(os.getcwd())")
+    assert os.path.realpath(out.strip()) == os.path.realpath(work)
 
 
-# --------------------------------------------------------- invalid arguments
+def test_stdin_is_closed_so_a_reading_command_cannot_hang(work):
+    r, out = captured(work, "import sys; print(repr(sys.stdin.read()))")
+    assert out.strip() == "''"
+    assert r["commands"][0]["exit_code"] == 0
 
 
-@pytest.mark.parametrize("bad", [[], None, "python", [[]], [["python", ""]], [[1]], [["a"], []], "x", (("a",),)])
-def test_empty_or_malformed_commands_rejected(work, bad):
-    with pytest.raises(c.ContractError):
-        run(work, commands=bad)
+def test_non_utf8_output_does_not_crash_the_runner(work):
+    r, out = captured(work, "import sys; sys.stdout.buffer.write(b'\\xff\\xfe bad bytes\\n')")
+    assert r["commands"][0]["exit_code"] == 0 and "bad bytes" in out
 
 
-def test_rejected_commands_do_not_execute_anything(work):
+def test_report_dict_describes_each_command(work):
+    report = {}
+    run(work, commands=[PASS_CMD, printer("PASSED t1")], report=report,
+        allowed=[PASS_CMD, printer("PASSED t1")])
+    assert len(report["commands"]) == 2
+    for info in report["commands"]:
+        assert info == {
+            "stdout_truncated": False, "stderr_truncated": False,
+            "timed_out": False, "skipped_by_deadline": False,
+        }
+
+
+# ---------------------------------------------------- allowed_commands equality
+
+
+def test_command_must_equal_an_allowed_command_exactly(work):
     marker = os.path.join(work, "ran.txt")
-    code = f"open({marker!r}, 'w').write('x')"
+    allowed = marker_cmd(marker)
+    variants = [
+        allowed + ["--extra"],
+        allowed[:-1],  # prefix
+        allowed[:-1] + [allowed[-1] + " "],  # trailing whitespace
+        [allowed[0].upper() if allowed[0].lower() != allowed[0].upper() else allowed[0] + "x"] + allowed[1:],
+        list(reversed(allowed)),
+        [PY, "-c", "print(1)"],
+    ]
+    for bad in variants:
+        with pytest.raises(c.ContractError, match="allowed_commands"):
+            run(work, m=mf([allowed]), commands=[bad])
+    assert not os.path.exists(marker)  # nothing was executed
+    run(work, m=mf([allowed]), commands=[allowed], test_result_parser=ALL_IDS)
+    assert os.path.exists(marker)  # the exactly-equal argv does run
+
+
+def test_one_disallowed_command_blocks_the_whole_run_before_any_starts(work):
+    marker = os.path.join(work, "first-ran.txt")
+    first = marker_cmd(marker)
+    with pytest.raises(c.ContractError, match="allowed_commands"):
+        run(work, m=mf([first]), commands=[first, pycmd("print('not allowed')")])
+    assert not os.path.exists(marker)
+
+
+def test_command_allowed_for_another_slot_is_refused(work):
+    other = pycmd("print('only for tests2')")
+    m = manifest(
+        required_receipts=[
+            {"slot": "tests", "receipt_type": "TestRun"},
+            {"slot": "tests2", "receipt_type": "TestRun"},
+            {"slot": "review", "receipt_type": "IndependentReview"},
+        ],
+        allowed_commands=[
+            {"slot": "tests", "argv": PASS_CMD},
+            {"slot": "tests2", "argv": other},
+        ],
+    )
+    with pytest.raises(c.ContractError, match="allowed_commands"):
+        run(work, m=m, commands=[other])
+    r = run(work, m=m, commands=[PASS_CMD])
+    assert r["result"] == "PASS"
+
+
+def test_several_allowed_commands_may_all_run_and_repeat(work):
+    a, b = printer("PASSED t1"), printer("PASSED t2")
+    r = run(work, m=mf([a, b]), commands=[a, b, a])
+    assert [x["argv"] for x in r["commands"]] == [a, b, a]
+    assert r["result"] == "PASS"
+
+
+def test_runner_never_executes_a_command_missing_from_the_manifest_even_if_receipt_would_fail(work):
+    marker = os.path.join(work, "should-not-exist.txt")
     with pytest.raises(c.ContractError):
-        run(work, commands=[[PY, "-c", code], []])
-    assert not os.path.exists(marker)  # validation precedes any execution
+        run(work, m=mf([PASS_CMD]), commands=[marker_cmd(marker)])
+    assert not os.path.exists(marker)
+
+
+# ------------------------------------------------------ expected ids / slot / acceptance
 
 
 @pytest.mark.parametrize(
-    "over",
-    [
-        {"attempt": 0},
-        {"attempt": True},
-        {"epoch": 0},
-        {"candidate_head": "xyz"},
-        {"role_sha256": "short"},
-        {"attempt": 2, "prev_receipt_sha256": None},
-        {"attempt": 1, "prev_receipt_sha256": "e" * 64},
-        {"task_id": ""},
-    ],
+    "ids",
+    [["t1"], ["t1", "t2", "t3"], ["t1", "other"], [], ["t1", "t1", "t2"], ["T1", "T2"], "t1,t2"],
 )
-def test_invalid_receipt_fields_rejected(work, over):
-    with pytest.raises(c.ContractError):
-        run(work, **over)
+def test_expected_test_ids_must_equal_the_manifest_required_tests(work, ids):
+    marker = os.path.join(work, "ran.txt")
+    with pytest.raises(c.ContractError, match="expected_test_ids"):
+        run(work, m=mf([marker_cmd(marker)]), commands=[marker_cmd(marker)], expected_test_ids=ids)
+    assert not os.path.exists(marker)
 
 
-@pytest.mark.parametrize("key", [b"", "string-key", None])
-def test_invalid_key_rejected(work, key):
+def test_expected_test_ids_are_compared_as_a_set_not_by_order(work):
+    r = run(work, expected_test_ids=["t2", "t1"])
+    assert r["expected_test_ids"] == ["t2", "t1"] and r["result"] == "PASS"
+
+
+def test_expected_ids_come_from_the_slot_of_the_manifest(work):
+    m = manifest(
+        required_receipts=[
+            {"slot": "tests", "receipt_type": "TestRun"},
+            {"slot": "tests2", "receipt_type": "TestRun"},
+            {"slot": "review", "receipt_type": "IndependentReview"},
+        ],
+        required_tests=[
+            {"slot": "tests", "test_id": "t1", "acceptance": ["AC-1"]},
+            {"slot": "tests", "test_id": "t2", "acceptance": ["AC-1"]},
+            {"slot": "tests2", "test_id": "u1", "acceptance": ["AC-2"]},
+        ],
+        allowed_commands=[
+            {"slot": "tests", "argv": PASS_CMD},
+            {"slot": "tests2", "argv": PASS_CMD},
+        ],
+    )
+    with pytest.raises(c.ContractError, match="expected_test_ids"):
+        run(work, m=m, slot="tests2", expected_test_ids=["t1", "t2"])
+    r = run(work, m=m, slot="tests2", expected_test_ids=["u1"], test_result_parser=lambda s: (["u1"], [], []))
+    assert r["slot"] == "tests2" and r["result"] == "PASS"
+
+
+@pytest.mark.parametrize("slot", ["static", "review", "unknown", "__supervisor__", "", " "])
+def test_slot_must_be_a_testrun_slot_of_the_manifest(work, slot):
     with pytest.raises(c.ContractError):
-        run(work, key=key)
+        run(work, slot=slot)
+
+
+def test_covered_acceptance_must_be_a_subset_of_manifest_acceptance(work):
+    with pytest.raises(c.ContractError, match="acceptance"):
+        run(work, covered_acceptance=["AC-1", "AC-404"])
+    assert run(work, covered_acceptance=[])["covered_acceptance"] == []
+    assert run(work, covered_acceptance=["AC-2", "AC-1"])["result"] == "PASS"
+
+
+def test_attempt_is_bounded_by_the_manifest_retry_cap(work):
+    m = mf([PASS_CMD], retry_cap=1)
+    run(work, m=m, attempt=2, prev_receipt_sha256="e" * 64)  # cap + 1 is the last allowed attempt
+    with pytest.raises(c.ContractError, match="retry_cap"):
+        run(work, m=m, attempt=3, prev_receipt_sha256="e" * 64)
+    m0 = mf([PASS_CMD], retry_cap=0)
+    with pytest.raises(c.ContractError, match="retry_cap"):
+        run(work, m=m0, attempt=2, prev_receipt_sha256="e" * 64)
+    assert run(work, m=m0)["attempt"] == 1
+
+
+def test_timeouts_are_bounded_by_the_manifest(work):
+    m = mf([PASS_CMD], timeout_sec=5)
+    assert run(work, m=m, timeout_sec=5)["result"] == "PASS"  # equal to the limit is fine
+    assert run(work, m=m, timeout_sec=None)["result"] == "PASS"  # defaults to the manifest value
+    for bad in (6, 0, -1, True, "5", 1.5):
+        with pytest.raises(c.ContractError, match="timeout_sec"):
+            run(work, m=m, timeout_sec=bad)
+    for bad in (6, 0, True, "5"):
+        with pytest.raises(c.ContractError, match="deadline_sec"):
+            run(work, m=m, timeout_sec=None, deadline_sec=bad)
+    assert run(work, m=m, timeout_sec=None, deadline_sec=5)["result"] == "PASS"
+
+
+def test_invalid_or_foreign_manifests_are_rejected_before_running(work):
+    marker = os.path.join(work, "ran.txt")
+    good = mf([marker_cmd(marker)])
+    broken = copy.deepcopy(good)
+    del broken["allowed_commands"]
+    extra = dict(good, surprise=1)
+    no_review = copy.deepcopy(good)
+    no_review["required_receipts"] = [{"slot": "tests", "receipt_type": "TestRun"}]
+    for bad in (broken, extra, no_review, {}, None, "manifest", [good]):
+        with pytest.raises(c.ContractError):
+            run(work, m=bad, commands=[marker_cmd(marker)])
+    assert not os.path.exists(marker)
+
+
+def test_runner_does_not_mutate_the_manifest(work):
+    m = mf([PASS_CMD])
+    before = copy.deepcopy(m)
+    run(work, m=m)
+    assert m == before
+
+
+# ---------------------------------------------------- invalid arguments (matrix)
+
+
+INVALID_OVERRIDES = [
+    {"slot": ""}, {"slot": " "}, {"slot": "nope"}, {"slot": "review"},
+    {"resolved_model": ""}, {"invocation_id": None}, {"runner_id": 3}, {"created_at": ""},
+    {"attempt": 0}, {"attempt": True}, {"attempt": "1"}, {"attempt": 3, "prev_receipt_sha256": "e" * 64},
+    {"epoch": 0}, {"epoch": True}, {"epoch": 2**31},
+    {"candidate_head": "xyz"}, {"candidate_head": "A" * 40},
+    {"attempt": 2, "prev_receipt_sha256": None}, {"attempt": 2, "prev_receipt_sha256": "zz"},
+    {"attempt": 1, "prev_receipt_sha256": "e" * 64},
+    {"key": b""}, {"key": b"short"}, {"key": b"k" * 31}, {"key": "text" * 20}, {"key": None},
+    {"commands": []}, {"commands": [[]]}, {"commands": [["x", ""]]}, {"commands": None},
+    {"commands": "python"}, {"commands": [[1]]},
+    {"expected_test_ids": "t1"}, {"expected_test_ids": [""]}, {"expected_test_ids": ["t1"]},
+    {"covered_acceptance": [1]}, {"covered_acceptance": ["AC-9"]}, {"covered_acceptance": "AC-1"},
+    {"artifact_paths": "a.txt"}, {"artifact_paths": [1]}, {"artifact_paths": [""]},
+    {"artifact_paths": None}, {"artifact_paths": ["../x"]}, {"artifact_paths": ["a/../../x"]},
+    {"artifact_paths": ["/abs.txt"]}, {"artifact_paths": ["\\abs.txt"]}, {"artifact_paths": ["C:/x.txt"]},
+    {"artifact_paths": ["a", "a"]}, {"artifact_paths": ["a/./b"]}, {"artifact_paths": ["a//b"]},
+    {"timeout_sec": 0}, {"timeout_sec": True}, {"timeout_sec": "5"}, {"timeout_sec": 10**6},
+    {"deadline_sec": 0}, {"deadline_sec": True}, {"deadline_sec": 10**6},
+    {"max_output_bytes": 0}, {"max_output_bytes": True}, {"max_output_bytes": runner.MAX_OUTPUT_BYTES_LIMIT + 1},
+    {"cwd": None}, {"cwd": 5}, {"cwd": ""},
+    {"test_result_parser": None}, {"test_result_parser": "x"},
+    {"extra_env": "A=B"}, {"extra_env": {"A=B": "1"}}, {"extra_env": {"A": 1}}, {"extra_env": {"A": "x\0"}},
+    {"extra_env": {"": "1"}},
+]
+
+
+@pytest.mark.parametrize(
+    "over", INVALID_OVERRIDES, ids=[f"{i}-{next(iter(o))}" for i, o in enumerate(INVALID_OVERRIDES)]
+)
+def test_invalid_inputs_raise_before_any_subprocess_starts(work, over):
+    marker = os.path.join(work, "ran.marker")
+    cmd = marker_cmd(marker)
+    kw = {"commands": [cmd], "allowed": [cmd], **over}
+    with pytest.raises(c.ContractError):
+        run(work, **kw)
+    assert not os.path.exists(marker)
+
+
+# ------------------------------------------------------ output cap (exit -3)
+
+
+def test_output_over_the_cap_gives_exit_minus_three_and_fail(work):
+    report = {}
+    r, seen = captured(work, "import sys; sys.stdout.write('x' * 1001)", max_output_bytes=1000, report=report)
+    assert r["commands"][0]["exit_code"] == runner.EXIT_OUTPUT_TRUNCATED == -3
+    assert r["result"] == "FAIL"  # the parser reported both ids; only the truncation can fail it
+    assert len(seen) == 1000  # the parser saw at most the cap
+    assert report["commands"][0]["stdout_truncated"] is True
+    assert report["commands"][0]["stderr_truncated"] is False
+    assert signing.verify(r, KEY)
+
+
+def test_output_exactly_at_the_cap_is_not_truncated(work):
+    report = {}
+    r, seen = captured(work, "import sys; sys.stdout.write('x' * 1000)", max_output_bytes=1000, report=report)
+    assert r["commands"][0]["exit_code"] == 0 and r["result"] == "PASS"
+    assert len(seen) == 1000 and report["commands"][0]["stdout_truncated"] is False
+
+
+def test_stderr_has_its_own_cap(work):
+    report = {}
+    r, _ = captured(work, "import sys; sys.stderr.write('e' * 5000)", max_output_bytes=1000, report=report)
+    assert r["commands"][0]["exit_code"] == -3 and r["result"] == "FAIL"
+    assert report["commands"][0]["stderr_truncated"] is True
+    assert report["commands"][0]["stdout_truncated"] is False
+
+
+def test_stderr_within_cap_does_not_fail_a_passing_run(work):
+    r, _ = captured(work, "import sys; sys.stderr.write('warning\\n')", max_output_bytes=1000)
+    assert r["commands"][0]["exit_code"] == 0 and r["result"] == "PASS"
+
+
+def test_truncated_exit_code_wins_over_a_failing_exit_code(work):
+    r, _ = captured(work, "import sys; sys.stdout.write('x' * 5000); sys.exit(4)", max_output_bytes=1000)
+    assert r["commands"][0]["exit_code"] == -3  # never trust a verdict derived from partial output
+
+
+def test_default_cap_is_one_mebibyte(work):
+    assert runner.DEFAULT_MAX_OUTPUT_BYTES == 1024 * 1024
+    ok, seen = captured(work, f"import sys; sys.stdout.write('x' * {1024 * 1024})")
+    assert ok["commands"][0]["exit_code"] == 0 and len(seen) == 1024 * 1024
+    over, seen2 = captured(work, f"import sys; sys.stdout.write('x' * {1024 * 1024 + 1})")
+    assert over["commands"][0]["exit_code"] == -3 and len(seen2) == 1024 * 1024
+
+
+def test_output_flood_is_drained_without_deadlock_and_memory_is_bounded(work):
+    started = time.monotonic()
+    r, seen = captured(
+        work,
+        "import sys\nchunk = 'y' * 65536\nfor _ in range(80): sys.stdout.write(chunk); sys.stderr.write(chunk)",
+        max_output_bytes=100,
+    )
+    assert time.monotonic() - started < 60
+    assert r["commands"][0]["exit_code"] == -3 and len(seen) == 100
+
+
+def test_ids_hidden_beyond_the_cap_cannot_produce_a_pass(work):
+    code = "import sys; sys.stdout.write('z' * 2000); print('PASSED t1'); print('PASSED t2')"
+    r = run(work, commands=[pycmd(code)], max_output_bytes=1000)
+    assert r["commands"][0]["exit_code"] == -3
+    assert r["executed_test_ids"] == [] and r["result"] == "INCONCLUSIVE"  # never PASS
+
+
+# ------------------------------------------------- process tree kill / deadline
+
+
+def test_timeout_kills_the_whole_process_tree(work, tmp_path):
+    beat = str(tmp_path / "beat.txt")
+    grandchild = (
+        "import time\n"
+        "while True:\n"
+        f"    open({beat!r}, 'a').write('.')\n"
+        "    time.sleep(0.2)\n"
+    )
+    parent = (
+        "import subprocess, sys, time\n"
+        f"subprocess.Popen([sys.executable, '-c', {grandchild!r}],"
+        " stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
+        "time.sleep(60)\n"
+    )
+    started = time.monotonic()
+    r = run(work, commands=[pycmd(parent)], timeout_sec=3, test_result_parser=ALL_IDS)
+    assert time.monotonic() - started < 40
+    assert r["commands"][0]["exit_code"] == -1
+    assert os.path.exists(beat) and os.path.getsize(beat) > 0, "grandchild never started; test proves nothing"
+    time.sleep(1.0)  # five heartbeat periods: a surviving grandchild would keep writing
+    size = os.path.getsize(beat)
+    time.sleep(1.0)
+    assert os.path.getsize(beat) == size, "grandchild survived the timeout kill"
+
+
+def test_overall_deadline_stops_later_commands_without_running_them(work):
+    marker = os.path.join(work, "second-ran.txt")
+    slow = pycmd("import time; time.sleep(60)")
+    second = marker_cmd(marker)
+    m = mf([slow, second], timeout_sec=30)
+    report = {}
+    started = time.monotonic()
+    r = run(work, m=m, commands=[slow, second], timeout_sec=30, deadline_sec=1, report=report,
+            test_result_parser=ALL_IDS)
+    assert time.monotonic() - started < 40
+    assert [x["exit_code"] for x in r["commands"]] == [-1, -1]
+    assert report["commands"][0]["timed_out"] is True
+    assert report["commands"][1]["skipped_by_deadline"] is True
+    assert not os.path.exists(marker)  # the second command never started
+    assert r["result"] == "FAIL"
+
+
+def test_deadline_limits_a_command_below_its_own_timeout(work):
+    slow = pycmd("import time; time.sleep(60)")
+    started = time.monotonic()
+    r = run(work, m=mf([slow], timeout_sec=60), commands=[slow], timeout_sec=60, deadline_sec=1,
+            test_result_parser=ALL_IDS)
+    assert time.monotonic() - started < 40
+    assert r["commands"][0]["exit_code"] == -1
+
+
+def test_timeout_does_not_prevent_following_commands_within_the_deadline(work):
+    slow = pycmd("import time; time.sleep(60)")
+    ok = printer("PASSED t1", "PASSED t2")
+    r = run(work, m=mf([slow, ok], timeout_sec=20), commands=[slow, ok], timeout_sec=1, deadline_sec=20)
+    assert [x["exit_code"] for x in r["commands"]] == [-1, 0]
+    assert r["result"] == "FAIL"  # but the failed command is on record
+
+
+# ------------------------------------------------------------ minimal environment
+
+
+def test_child_environment_is_minimal_and_secrets_do_not_leak(work, monkeypatch):
+    monkeypatch.setenv("VST_FAKE_TOKEN", "leak-token-123")
+    monkeypatch.setenv("GITHUB_TOKEN", "leak-github-456")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "leak-anthropic-789")
+    monkeypatch.setenv("VST_WORKER_KEY", SECRET.decode())
+    r, out = captured(work, "import os, json; print(json.dumps(sorted(os.environ)))")
+    names = {n.upper() for n in json.loads(out.strip())}
+    allowed = {n.upper() for n in runner.ENV_ALLOWLIST} | {"PYTHONIOENCODING"}
+    assert names <= allowed | {"SYSTEMROOT"}, sorted(names - allowed)
+    for secret in ("VST_FAKE_TOKEN", "GITHUB_TOKEN", "ANTHROPIC_API_KEY", "VST_WORKER_KEY"):
+        assert secret not in names
+    assert "PYTHONIOENCODING" in names
+    r2, out2 = captured(work, "import os; print(dict(os.environ))")
+    for leaked in ("leak-token-123", "leak-github-456", "leak-anthropic-789", SECRET.decode()):
+        assert leaked not in out2
+
+
+def test_extra_env_is_passed_explicitly_and_only_that(work, monkeypatch):
+    monkeypatch.setenv("VST_NOT_PASSED", "no")
+    r, out = captured(
+        work, "import os; print(os.environ.get('VST_EXTRA'), os.environ.get('VST_NOT_PASSED'))",
+        extra_env={"VST_EXTRA": "yes"},
+    )
+    assert out.strip() == "yes None"
+
+
+def test_build_environment_unit(monkeypatch):
+    monkeypatch.setenv("PATH", "/some/path")
+    monkeypatch.setenv("VST_SECRET", "s")
+    env = runner.build_environment({"EXTRA": "1"})
+    assert env["PATH"] == "/some/path" and env["EXTRA"] == "1" and env["PYTHONIOENCODING"] == "utf-8"
+    assert "VST_SECRET" not in env
+    assert set(env) <= set(runner.ENV_ALLOWLIST) | {"PYTHONIOENCODING", "EXTRA"}
+    assert runner.build_environment() == runner.build_environment(None) == runner.build_environment({})
 
 
 # ---------------------------------------------------- parser / test-id honesty
@@ -222,15 +693,13 @@ def test_mismatched_executed_vs_expected_is_not_pass(work):
 
 
 def test_output_injection_of_extra_test_ids_does_not_make_pass(work):
-    # The command prints a forged extra line; a line parser reports it as executed.
     r = run(work, commands=[printer("PASSED t1", "PASSED t2", "PASSED t-forged")])
     assert "t-forged" in r["executed_test_ids"]
     assert r["result"] == "FAIL"
 
 
 def test_output_injection_of_missing_ids_cannot_be_hidden(work):
-    r = run(work, commands=[printer("PASSED t1")])
-    assert r["result"] == "FAIL"
+    assert run(work, commands=[printer("PASSED t1")])["result"] == "FAIL"
 
 
 def test_skipped_or_xfail_ids_prevent_pass(work):
@@ -244,11 +713,6 @@ def test_zero_executed_is_inconclusive_not_pass(work):
     r = run(work, test_result_parser=lambda s: ([], [], []))
     assert r["result"] == "INCONCLUSIVE"
     assert signing.verify(r, KEY)
-
-
-def test_empty_expected_never_passes(work):
-    r = run(work, expected_test_ids=[], test_result_parser=lambda s: (["t1"], [], []))
-    assert r["result"] == "FAIL"
 
 
 def test_parser_returning_blank_ids_is_rejected(work):
@@ -265,8 +729,6 @@ def test_parser_exception_propagates_instead_of_silent_pass(work):
 
 
 def test_result_is_computed_not_caller_controlled(work):
-    import inspect
-
     assert "result" not in inspect.signature(runner.run_and_sign).parameters
     r = run(work, commands=[printer("PASSED t1", "PASSED t2", exit_code=9)])
     assert r["result"] == "FAIL" and c.derive_result(r) == "FAIL"
@@ -280,8 +742,6 @@ def test_key_never_appears_in_receipt(work):
     blob = c.canonical_bytes(r)
     assert SECRET not in blob
     assert SECRET.hex().encode() not in blob
-    import base64
-
     assert base64.b64encode(SECRET) not in blob
     assert signing.verify(r, SECRET) and not signing.verify(r, KEY)
 
@@ -289,32 +749,42 @@ def test_key_never_appears_in_receipt(work):
 def test_runner_writes_nothing_under_cwd_and_key_not_on_disk(work):
     before = tree_bytes(work)
     run(work, key=SECRET)
-    after = tree_bytes(work)
-    assert after == before == {}
+    assert tree_bytes(work) == before == {}
 
 
 def test_key_does_not_leak_into_cwd_even_with_preexisting_files(work):
     decoy = os.path.join(work, "key.txt")
     with open(decoy, "wb") as fh:
-        fh.write(b"WRONG-KEY-FROM-WORKER-DIR")
+        fh.write(b"WRONG-KEY-FROM-WORKER-DIR-0123456789")
     before = tree_bytes(work)
     r = run(work, key=SECRET)
     after = tree_bytes(work)
     assert after == before
     assert all(SECRET not in blob for blob in after.values())
-    # The runner signs with the key argument; it never looks the key up in cwd.
     assert signing.verify(r, SECRET)
-    assert not signing.verify(r, b"WRONG-KEY-FROM-WORKER-DIR")
+    assert not signing.verify(r, b"WRONG-KEY-FROM-WORKER-DIR-0123456789")
 
 
 def test_key_is_not_visible_to_the_child_process(work):
-    seen = []
-    run(work, key=SECRET, commands=[[PY, "-c", "import os,sys; print(os.environ); print(sys.argv)"]],
-        test_result_parser=lambda s: (seen.append(s) or ["t1", "t2"], [], []))
-    assert "TOP-SECRET" not in seen[0]
+    r, out = captured(work, "import os,sys; print(os.environ); print(sys.argv)", key=SECRET)
+    assert "TOP-SECRET" not in out
 
 
-# --------------------------------------------------------- signing semantics
+@pytest.mark.parametrize("key", [b"", b"short", b"k" * 31, "string-key" * 10, None, 12345])
+def test_weak_or_non_bytes_keys_are_rejected_before_running(work, key):
+    marker = os.path.join(work, "ran.txt")
+    with pytest.raises(c.ContractError):
+        run(work, key=key, commands=[marker_cmd(marker)])
+    assert not os.path.exists(marker)
+
+
+def test_exactly_32_byte_key_and_bytearray_are_accepted(work):
+    k = b"k" * 32
+    assert signing.verify(run(work, key=k), k)
+    assert signing.verify(run(work, key=bytearray(k)), k)
+
+
+# --------------------------------------------- signing semantics (label-scoped)
 
 
 def _mutate(v):
@@ -345,6 +815,7 @@ def test_signature_is_deterministic_for_same_inputs(work):
 
 def test_every_field_tamper_breaks_verification(work):
     r = run(work, attempt=2, prev_receipt_sha256="e" * 64)
+    assert "manifest_sha256" in r
     for field in r:
         t = copy.deepcopy(r)
         t[field] = _mutate(t[field])
@@ -360,22 +831,63 @@ def test_nested_command_tamper_breaks_verification(work):
     assert not signing.verify(t1, KEY) and not signing.verify(t2, KEY)
 
 
+def test_signature_is_scoped_to_the_receipt_label(work):
+    r = run(work)
+    body = runner.receipt_without_signature(r)
+    expected = hmac.new(KEY, signing.RECEIPT_LABEL + c.canonical_bytes(body), hashlib.sha256).hexdigest()
+    assert r["signature"] == expected
+    unlabeled = hmac.new(KEY, c.canonical_bytes(body), hashlib.sha256).hexdigest()
+    assert r["signature"] != unlabeled
+    assert signing.verify(r, KEY, signing.RECEIPT_LABEL)
+    assert not signing.verify(r, KEY, signing.WAIVER_LABEL)  # a receipt is never a waiver
+    # a receipt body signed under the waiver label does not verify as a receipt
+    cross = dict(body, signature=signing.sign(body, KEY, signing.WAIVER_LABEL))
+    assert not signing.verify(cross, KEY)
+    # and the old unlabeled scheme is dead
+    assert not signing.verify(dict(body, signature=unlabeled), KEY)
+
+
+def test_labels_are_distinct_domain_separators():
+    assert signing.RECEIPT_LABEL != signing.WAIVER_LABEL
+    assert signing.RECEIPT_LABEL and signing.WAIVER_LABEL
+    body = runner.receipt_without_signature(receipt())
+    assert len({signing.sign(body, KEY), signing.sign(body, KEY, signing.WAIVER_LABEL),
+                signing.sign(body, KEY, b"custom-label\0")}) == 3
+
+
 def test_wrong_key_fails_and_bad_key_raises(work):
     r = run(work)
-    assert not signing.verify(r, b"other-key")
-    for bad in (b"", "text", None):
+    assert not signing.verify(r, WRONG_KEY)
+    assert not signing.verify(r, OPERATOR_KEY) and not signing.verify(r, SUPERVISOR_KEY)
+    for bad in (b"", b"short", b"k" * 31, "text", None):
         with pytest.raises(c.ContractError):
             signing.verify(r, bad)
         with pytest.raises(c.ContractError):
             signing.sign(runner.receipt_without_signature(r), bad)
 
 
+def test_bad_label_raises():
+    body = runner.receipt_without_signature(receipt())
+    for bad in (b"", "text", None):
+        with pytest.raises(c.ContractError):
+            signing.sign(body, KEY, bad)
+        with pytest.raises(c.ContractError):
+            signing.verify(receipt(), KEY, bad)
+
+
+def test_min_key_bytes_boundary():
+    assert signing.MIN_KEY_BYTES == 32
+    body = runner.receipt_without_signature(receipt())
+    with pytest.raises(c.ContractError):
+        signing.sign(body, b"k" * 31)
+    assert len(signing.sign(body, b"k" * 32)) == 64
+
+
 def test_verify_non_dict_or_bad_signature_is_false_not_error():
     assert signing.verify("x", KEY) is False
     r = receipt()
     for bad in (None, 5, ["a"]):
-        t = dict(r, signature=bad)
-        assert signing.verify(t, KEY) is False
+        assert signing.verify(dict(r, signature=bad), KEY) is False
     no_sig = {k: v for k, v in r.items() if k != "signature"}
     assert signing.verify(no_sig, KEY) is False
 
@@ -387,11 +899,9 @@ def test_sign_refuses_receipt_that_already_has_signature():
         signing.sign("not-a-dict", KEY)
 
 
-def test_sign_matches_independent_hmac_over_canonical_bytes():
-    import hmac
-
+def test_sign_matches_independent_hmac_over_label_and_canonical_bytes():
     body = runner.receipt_without_signature(receipt())
-    expected = hmac.new(KEY, c.canonical_bytes(body), hashlib.sha256).hexdigest()
+    expected = hmac.new(KEY, b"vst-receipt-v1\0" + c.canonical_bytes(body), hashlib.sha256).hexdigest()
     assert signing.sign(body, KEY) == expected
     assert signing.sign(body, bytearray(KEY)) == expected
 
@@ -405,72 +915,118 @@ def test_receipt_without_signature_helper_does_not_mutate():
 # ------------------------------------- gate integration (replay, forgery, chain)
 
 
-def gate_eval(receipts, *, head=HEAD, epoch=EPOCH, key=KEY, m=None):
-    return gate.evaluate(ONE_SLOT if m is None else m, receipts, head, epoch, key)
+def gate_eval(m, receipts, *, head=HEAD, epoch=EPOCH, key=KEY, **kw):
+    return gate.evaluate(m, receipts, head, epoch, key, supervisor_key=SUPERVISOR_KEY, **kw)
+
+
+def full_set(m, run_receipt):
+    """The runner's TestRun receipt plus the other slots of manifest m (bound to m)."""
+    return [run_receipt, bound(m, "StaticAnalysis"), bound(m, "IndependentReview")]
 
 
 def test_runner_receipt_is_approved_by_gate_at_its_head_and_epoch(work):
-    r = run(work)
-    d = gate_eval([r])
-    assert d["verdict"] == "APPROVE"
-    assert d["required_receipt_hashes"] == [c.receipt_sha256(r)]
+    m = mf([PASS_CMD])
+    r = run(work, m=m)
+    d = gate_eval(m, full_set(m, r))
+    assert d["verdict"] == "APPROVE", d["reasons"]
+    assert c.receipt_sha256(r) in d["required_receipt_hashes"]
 
 
 def test_replay_against_another_head_is_rejected(work):
-    d = gate_eval([run(work)], head=HEAD2)
+    m = mf([PASS_CMD])
+    d = gate_eval(m, full_set(m, run(work, m=m)), head=HEAD2)
     assert d["verdict"] == "NO_GO" and "stale head" in " ".join(d["reasons"])
 
 
 def test_replay_against_another_epoch_is_rejected(work):
-    d = gate_eval([run(work)], epoch=EPOCH + 1)
-    assert d["verdict"] == "NO_GO" and "stale epoch" in " ".join(d["reasons"])
+    m = mf([PASS_CMD])
+    d = gate_eval(m, full_set(m, run(work, m=m)), epoch=EPOCH - 1)
+    assert d["verdict"] != "APPROVE" and "future epoch" in " ".join(d["reasons"])
 
 
 def test_replay_against_another_task_is_rejected(work):
-    d = gate_eval([run(work)], m=manifest(task_id="OTHER", required_receipts=ONE_SLOT["required_receipts"],
-                                          acceptance=["AC-1"]))
+    m = mf([PASS_CMD])
+    other = mf([PASS_CMD], task_id="OTHER")
+    d = gate_eval(other, full_set(m, run(work, m=m)))
     assert d["verdict"] != "APPROVE"
     assert "belongs to another task" in " ".join(d["reasons"])
 
 
+def test_replay_against_a_changed_manifest_is_rejected(work):
+    m = mf([PASS_CMD])
+    r = run(work, m=m)
+    changed = mf([PASS_CMD], scope=["src/changed.py"])  # same task, different manifest
+    d = gate_eval(changed, [r, bound(changed, "StaticAnalysis"), bound(changed, "IndependentReview")])
+    assert d["verdict"] != "APPROVE"
+    assert "manifest_sha256 does not match" in " ".join(d["reasons"])
+
+
+def test_manifest_swapped_to_widen_allowed_commands_is_rejected_by_hash(work):
+    m = mf([PASS_CMD])
+    r = run(work, m=m)
+    widened = mf([PASS_CMD, pycmd("print('extra power')")])
+    d = gate_eval(widened, [r, bound(widened, "StaticAnalysis"), bound(widened, "IndependentReview")])
+    assert d["verdict"] != "APPROVE"
+    assert "manifest_sha256 does not match" in " ".join(d["reasons"])
+
+
 def test_forged_unsigned_and_wrong_key_receipts_are_rejected(work):
-    r = run(work)
+    m = mf([PASS_CMD])
+    r = run(work, m=m)
     forged = dict(r, signature="0" * 64)
-    other_key = run(work, key=b"attacker-key")
+    other_key = run(work, m=m, key=b"attacker-key-0123456789-abcdefghijk")
     for bad in (forged, other_key):
-        d = gate_eval([bad])
+        d = gate_eval(m, full_set(m, bad))
         assert d["verdict"] == "MODIFY"
         assert "invalid signature" in " ".join(d["reasons"])
 
 
+def test_worker_receipt_cannot_masquerade_as_supervisor_or_waiver_signed(work):
+    m = mf([PASS_CMD])
+    r = run(work, m=m)
+    body = runner.receipt_without_signature(r)
+    relabeled = dict(body, signature=signing.sign(body, KEY, signing.WAIVER_LABEL))
+    d = gate_eval(m, full_set(m, relabeled))
+    assert d["verdict"] == "MODIFY" and "invalid signature" in " ".join(d["reasons"])
+    d2 = gate_eval(m, full_set(m, r), key=SUPERVISOR_KEY)  # gate holding the wrong worker key
+    assert "invalid signature" in " ".join(d2["reasons"])
+
+
 def test_edited_exit_code_after_signing_is_rejected(work):
-    r = run(work, commands=[printer("PASSED t1", "PASSED t2", exit_code=1)])
+    failing = printer("PASSED t1", "PASSED t2", exit_code=1)
+    m = mf([failing])
+    r = run(work, m=m, commands=[failing])
     assert r["result"] == "FAIL"
     t = copy.deepcopy(r)
     t["commands"][0]["exit_code"] = 0
     t["result"] = "PASS"
-    d = gate_eval([t])
+    d = gate_eval(m, full_set(m, t))
     assert d["verdict"] == "MODIFY" and "invalid signature" in " ".join(d["reasons"])
 
 
 def test_retry_after_fail_through_runner_is_approved_with_retained_failure(work):
-    first = run(work, commands=[printer("PASSED t1", exit_code=1)], invocation_id="i1")
+    bad_cmd = printer("PASSED t1", exit_code=1)
+    m = mf([bad_cmd, PASS_CMD], retry_cap=1)
+    first = run(work, m=m, commands=[bad_cmd], invocation_id="i1")
     assert first["result"] == "FAIL"
-    second = run(work, attempt=2, prev_receipt_sha256=c.receipt_sha256(first), invocation_id="i2")
-    d = gate_eval([first, second])
-    assert d["verdict"] == "APPROVE"
-    assert d["unresolved_findings"] == ["earlier failure retained: slot 'tests' attempt 1 result FAIL"]
+    second = run(work, m=m, attempt=2, prev_receipt_sha256=c.receipt_sha256(first), invocation_id="i2")
+    d = gate_eval(m, [first, second, bound(m, "StaticAnalysis"), bound(m, "IndependentReview")])
+    assert d["verdict"] == "APPROVE", d["reasons"]
+    assert d["unresolved_findings"] == ["earlier failure retained: tests attempt 1 FAIL"]
 
 
 def test_retry_with_wrong_prev_hash_is_rejected(work):
-    first = run(work, commands=[printer("PASSED t1", exit_code=1)], invocation_id="i1")
-    second = run(work, attempt=2, prev_receipt_sha256="e" * 64, invocation_id="i2")
-    d = gate_eval([first, second])
+    bad_cmd = printer("PASSED t1", exit_code=1)
+    m = mf([bad_cmd, PASS_CMD])
+    first = run(work, m=m, commands=[bad_cmd], invocation_id="i1")
+    second = run(work, m=m, attempt=2, prev_receipt_sha256="e" * 64, invocation_id="i2")
+    d = gate_eval(m, [first, second, bound(m, "StaticAnalysis"), bound(m, "IndependentReview")])
     assert d["verdict"] == "MODIFY" and "attempt chain broken" in " ".join(d["reasons"])
 
 
 def test_zero_executed_receipt_never_satisfies_gate(work):
-    d = gate_eval([run(work, test_result_parser=lambda s: ([], [], []))])
+    m = mf([PASS_CMD])
+    d = gate_eval(m, full_set(m, run(work, m=m, test_result_parser=lambda s: ([], [], []))))
     assert d["verdict"] == "MODIFY"
     assert "slot 'tests' latest attempt 1 result INCONCLUSIVE" in d["reasons"]
 
@@ -521,21 +1077,20 @@ def test_artifact_digests_maps_each_path(tmp_path):
     assert runner.artifact_digests([str(a), str(b)])[str(a)] == out[str(a)]
 
 
-# ------------------------------------------------- artifacts and validation
+# --------------------------------------------------- artifacts and containment
 
 
 def test_artifacts_are_hashed_after_the_commands_ran(work):
-    code = "open('out.txt','wb').write(b'built-by-command')"
-    r = run(work, commands=[[PY, "-c", code], printer("PASSED t1", "PASSED t2")], artifact_paths=["out.txt"])
+    build = pycmd("open('out.txt','wb').write(b'built-by-command')")
+    r = run(work, m=mf([build, PASS_CMD]), commands=[build, PASS_CMD], artifact_paths=["out.txt"])
     assert r["artifact_digests"] == {"out.txt": hashlib.sha256(b"built-by-command").hexdigest()}
     assert r["result"] == "PASS" and signing.verify(r, KEY)
 
 
-def test_absolute_artifact_path_is_hashed(work, tmp_path):
-    p = tmp_path / "abs.bin"
-    p.write_bytes(b"abs")
-    r = run(work, artifact_paths=[str(p)])
-    assert r["artifact_digests"] == {str(p): hashlib.sha256(b"abs").hexdigest()}
+def test_nested_relative_artifact_is_hashed(work):
+    build = pycmd("import os; os.makedirs('sub/dir'); open('sub/dir/o.bin','wb').write(b'nested')")
+    r = run(work, m=mf([build, PASS_CMD]), commands=[build, PASS_CMD], artifact_paths=["sub/dir/o.bin"])
+    assert r["artifact_digests"] == {"sub/dir/o.bin": hashlib.sha256(b"nested").hexdigest()}
 
 
 def test_empty_artifact_paths_gives_empty_digests(work):
@@ -554,30 +1109,107 @@ def test_artifact_in_missing_directory_is_zero_digest(work):
     assert r["artifact_digests"]["no/such/dir/x.bin"] == "0" * 64 and r["result"] == "FAIL"
 
 
-def _write(path, data):
-    with open(path, "wb") as fh:
-        fh.write(data)
+def test_directory_is_not_an_artifact_and_gets_zero_digest(work):
+    os.mkdir(os.path.join(work, "adir"))
+    r = run(work, artifact_paths=["adir"])
+    assert r["artifact_digests"] == {"adir": "0" * 64} and r["result"] == "FAIL"
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["../escape.txt", "a/../../escape.txt", "/etc/passwd", "\\windows\\win.ini", "C:/Windows/win.ini",
+     "C:rel.txt", "a/./b", "a//b", " lead.txt", "trail.txt "],
+)
+def test_traversal_absolute_and_malformed_artifact_paths_are_refused_before_running(work, path):
+    marker = os.path.join(work, "ran.txt")
+    cmd = marker_cmd(marker)
+    with pytest.raises(c.ContractError):
+        run(work, m=mf([cmd]), commands=[cmd], artifact_paths=[path])
+    assert not os.path.exists(marker)
+
+
+def test_absolute_path_inside_the_run_directory_is_still_refused(work):
+    inside = os.path.join(work, "inside.bin")
+    with open(inside, "wb") as fh:
+        fh.write(b"abs")
+    with pytest.raises(c.ContractError):
+        run(work, artifact_paths=[inside])
+
+
+def test_artifact_through_a_symlink_or_junction_to_outside_is_refused(work, tmp_path):
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "secret.txt").write_bytes(b"outside secret")
+    link = os.path.join(work, "linkdir")
+    if not _try_dir_link(link, str(outside)):
+        pytest.skip("cannot create a symlink or junction on this machine")
+    marker = os.path.join(work, "ran.txt")
+    cmd = marker_cmd(marker)
+    with pytest.raises(c.ContractError, match="symlink|escapes"):
+        run(work, m=mf([cmd]), commands=[cmd], artifact_paths=["linkdir/secret.txt"])
+    assert not os.path.exists(marker)  # refused before any command ran
+    assert runner.contained_artifact_path(work, "linkdir/secret.txt") is None
+    assert runner.contained_artifact_path(work, "linkdir") is None
+
+
+def test_artifact_through_an_internal_symlink_is_also_refused(work):
+    real = os.path.join(work, "real")
+    os.mkdir(real)
+    with open(os.path.join(real, "f.txt"), "wb") as fh:
+        fh.write(b"inside")
+    link = os.path.join(work, "inner-link")
+    if not _try_dir_link(link, real):
+        pytest.skip("cannot create a symlink or junction on this machine")
+    with pytest.raises(c.ContractError):
+        run(work, artifact_paths=["inner-link/f.txt"])  # links are refused even if they stay inside
+    r = run(work, artifact_paths=["real/f.txt"])
+    assert r["artifact_digests"] == {"real/f.txt": hashlib.sha256(b"inside").hexdigest()}
+
+
+def test_link_created_by_the_command_itself_gets_a_zero_digest(work, tmp_path):
+    if not _can_symlink(tmp_path):
+        pytest.skip("os.symlink is not permitted on this machine")
+    outside = tmp_path / "outside2"
+    outside.mkdir()
+    (outside / "secret.txt").write_bytes(b"outside secret")
+    code = f"import os; os.symlink({str(outside)!r}, 'late-link', target_is_directory=True)"
+    cmd = pycmd(code)
+    r = run(work, m=mf([cmd, PASS_CMD]), commands=[cmd, PASS_CMD], artifact_paths=["late-link/secret.txt"])
+    assert r["artifact_digests"] == {"late-link/secret.txt": "0" * 64}
+    assert r["result"] == "FAIL"
+
+
+def test_contained_artifact_path_unit(work):
+    assert runner.contained_artifact_path(work, "new.bin") == os.path.join(os.path.realpath(work), "new.bin")
+    assert runner.contained_artifact_path(work, "a/b/c.bin") is not None  # not yet existing is fine
+    open(os.path.join(work, "f"), "wb").close()
+    assert runner.contained_artifact_path(work, "f") is not None
 
 
 def test_modified_artifact_is_rejected_by_gate_resolver(work):
+    m = mf([PASS_CMD])
     art = os.path.join(work, "art.bin")
-    _write(art, b"v1")
-    r = run(work, artifact_paths=["art.bin"])
+    with open(art, "wb") as fh:
+        fh.write(b"v1")
+    r = run(work, m=m, artifact_paths=["art.bin"])
 
     def resolver(p):
         return runner.file_sha256(os.path.join(work, p))
 
-    ok = gate.evaluate(ONE_SLOT, [r], HEAD, EPOCH, KEY, artifact_resolver=resolver)
-    assert ok["verdict"] == "APPROVE"
-    _write(art, b"v2-tampered")
-    bad = gate.evaluate(ONE_SLOT, [r], HEAD, EPOCH, KEY, artifact_resolver=resolver)
+    ok = gate_eval(m, full_set(m, r), artifact_resolver=resolver)
+    assert ok["verdict"] == "APPROVE", ok["reasons"]
+    with open(art, "wb") as fh:
+        fh.write(b"v2-tampered")
+    bad = gate_eval(m, full_set(m, r), artifact_resolver=resolver)
     assert bad["verdict"] == "MODIFY" and "digest mismatch" in " ".join(bad["reasons"])
 
 
 def test_deleted_artifact_is_rejected_by_gate_resolver(work):
+    m = mf([PASS_CMD])
     art = os.path.join(work, "art.bin")
-    _write(art, b"v1")
-    r = run(work, artifact_paths=["art.bin"])
+    with open(art, "wb") as fh:
+        fh.write(b"v1")
+    r = run(work, m=m, artifact_paths=["art.bin"])
     os.remove(art)
 
     def resolver(p):
@@ -586,42 +1218,33 @@ def test_deleted_artifact_is_rejected_by_gate_resolver(work):
         except OSError:
             return None
 
-    assert gate.evaluate(ONE_SLOT, [r], HEAD, EPOCH, KEY, artifact_resolver=resolver)["verdict"] == "MODIFY"
+    assert gate_eval(m, full_set(m, r), artifact_resolver=resolver)["verdict"] == "MODIFY"
+
+
+def test_artifact_digest_receipt_is_denied_without_a_resolver(work):
+    m = mf([PASS_CMD])
+    art = os.path.join(work, "art.bin")
+    with open(art, "wb") as fh:
+        fh.write(b"v1")
+    r = run(work, m=m, artifact_paths=["art.bin"])
+    d = gate_eval(m, full_set(m, r))  # no artifact_resolver
+    assert d["verdict"] != "APPROVE"
+    assert "artifact digests present but no artifact_resolver" in d["reasons"]
 
 
 def test_artifact_digest_tamper_after_signing_is_rejected(work):
-    _write(os.path.join(work, "art.bin"), b"v1")
-    r = run(work, artifact_paths=["art.bin"])
+    m = mf([PASS_CMD])
+    with open(os.path.join(work, "art.bin"), "wb") as fh:
+        fh.write(b"v1")
+    r = run(work, m=m, artifact_paths=["art.bin"])
     t = copy.deepcopy(r)
     t["artifact_digests"]["art.bin"] = hashlib.sha256(b"forged").hexdigest()
     assert not signing.verify(t, KEY)
-    d = gate_eval([t])
+    d = gate_eval(m, full_set(m, t), artifact_resolver=lambda p: hashlib.sha256(b"forged").hexdigest())
     assert d["verdict"] == "MODIFY" and "invalid signature" in " ".join(d["reasons"])
 
 
-INVALID_OVERRIDES = [
-    {"task_id": ""}, {"slot": " "}, {"resolved_model": ""}, {"invocation_id": None},
-    {"runner_id": 3}, {"created_at": ""},
-    {"attempt": 0}, {"attempt": True}, {"epoch": 0}, {"epoch": True},
-    {"candidate_head": "xyz"}, {"role_sha256": "short"},
-    {"attempt": 2, "prev_receipt_sha256": None}, {"attempt": 1, "prev_receipt_sha256": "e" * 64},
-    {"key": b""}, {"key": "text"}, {"key": None},
-    {"commands": []}, {"commands": [[]]}, {"commands": [["x", ""]]},
-    {"expected_test_ids": "t1"}, {"expected_test_ids": [""]},
-    {"covered_acceptance": [1]}, {"artifact_paths": "a.txt"}, {"artifact_paths": [1]},
-    {"artifact_paths": [""]}, {"artifact_paths": None},
-    {"timeout_sec": 0}, {"timeout_sec": True}, {"timeout_sec": "5"},
-    {"cwd": None}, {"cwd": 5}, {"test_result_parser": None}, {"test_result_parser": "x"},
-]
-
-
-@pytest.mark.parametrize("over", INVALID_OVERRIDES, ids=[str(i) + "-" + next(iter(o)) for i, o in enumerate(INVALID_OVERRIDES)])
-def test_invalid_inputs_raise_before_any_subprocess_starts(work, over):
-    marker = os.path.join(work, "ran.marker")
-    code = f"open({marker!r}, 'w').write('x')"
-    with pytest.raises(c.ContractError):
-        run(work, **{"commands": [[PY, "-c", code]], **over})
-    assert not os.path.exists(marker)
+# --------------------------------------------------------------- OS errors
 
 
 @pytest.mark.parametrize(
@@ -630,26 +1253,19 @@ def test_invalid_inputs_raise_before_any_subprocess_starts(work, over):
     ids=["FileNotFound", "NotADirectory", "Permission", "OSError", "OSError22"],
 )
 def test_os_errors_starting_a_process_map_to_exit_minus_two(work, monkeypatch, exc):
-    def fake_run(*a, **k):
+    def fake_popen(*a, **k):
         raise exc
 
-    monkeypatch.setattr(runner.subprocess, "run", fake_run)
-    r = run(work, test_result_parser=lambda s: (["t1", "t2"], [], []))
+    monkeypatch.setattr(runner.subprocess, "Popen", fake_popen)
+    r = run(work, test_result_parser=ALL_IDS)
     assert r["commands"][0]["exit_code"] == -2
     assert r["result"] == "FAIL" and signing.verify(r, KEY)
 
 
 def test_non_os_errors_from_subprocess_propagate(work, monkeypatch):
-    def fake_run(*a, **k):
+    def fake_popen(*a, **k):
         raise RuntimeError("not an OS error")
 
-    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+    monkeypatch.setattr(runner.subprocess, "Popen", fake_popen)
     with pytest.raises(RuntimeError):
         run(work)
-
-
-def test_cwd_that_is_a_file_maps_to_exit_minus_two(work):
-    f = os.path.join(work, "a-file")
-    _write(f, b"x")
-    r = run(work, cwd=f, test_result_parser=lambda s: (["t1", "t2"], [], []))
-    assert r["commands"][0]["exit_code"] == -2 and r["result"] == "FAIL"

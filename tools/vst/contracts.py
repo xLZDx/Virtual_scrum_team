@@ -56,15 +56,25 @@ MANIFEST_FIELDS = (
     "tools",
     "acceptance",
     "required_receipts",
+    "author_principal",
+    "required_tests",
+    "allowed_commands",
+    "required_rules",
     "timeout_sec",
     "cost_cap",
     "retry_cap",
 )
 
+# Reserved slot name for supervisor-written receipts (WORKER_LOST,
+# RETRY_EXHAUSTED, BUDGET_EXCEEDED). Never a manifest slot; receipts in it are
+# always Documentation receipts signed with the supervisor key.
+SUPERVISOR_SLOT = "__supervisor__"
+
 RECEIPT_COMMON_FIELDS = (
     "receipt_id",
     "receipt_type",
     "task_id",
+    "manifest_sha256",
     "slot",
     "attempt",
     "prev_receipt_sha256",
@@ -228,6 +238,24 @@ def receipt_sha256(receipt: dict) -> str:
     return hashlib.sha256(canonical_bytes(receipt)).hexdigest()
 
 
+def manifest_sha256(manifest: dict) -> str:
+    """sha256 hex over canonical bytes of the VALIDATED manifest.
+
+    Raises ContractError when the manifest is invalid.
+    """
+    return hashlib.sha256(canonical_bytes(validate_task_manifest(manifest))).hexdigest()
+
+
+def normalize_principal(value: Any) -> str:
+    """Strip + casefold a principal name; empty after normalization is an error."""
+    if not isinstance(value, str):
+        raise ContractError("principal: must be a string")
+    normalized = value.strip().casefold()
+    if not normalized:
+        raise ContractError("principal: must not be empty after normalization")
+    return normalized
+
+
 # ------------------------------------------------------------------ manifest
 
 
@@ -255,7 +283,12 @@ def validate_task_manifest(obj: Any) -> dict:
     _req_str(obj["model_policy"], "model_policy")
     _req_str_list(obj["tools"], "tools", unique=True)
     _req_str_list(obj["acceptance"], "acceptance", nonempty=True, unique=True)
-    _validate_required_receipts(obj["required_receipts"])
+    slot_types = _validate_required_receipts(obj["required_receipts"])
+    normalize_principal(_req_str(obj["author_principal"], "author_principal"))
+    _validate_required_tests(obj["required_tests"], slot_types, obj["acceptance"])
+    _validate_allowed_commands(obj["allowed_commands"], slot_types)
+    _validate_required_rules(obj["required_rules"], slot_types)
+    _validate_slot_coverage(obj, slot_types)
     _req_int(obj["timeout_sec"], "timeout_sec", 1)
     _req_int(obj["cost_cap"], "cost_cap", 0)
     _req_int(obj["retry_cap"], "retry_cap", 0)
@@ -276,18 +309,99 @@ def _validate_skills(skills: Any) -> None:
         seen.add(skill_id)
 
 
-def _validate_required_receipts(slots: Any) -> None:
+def _validate_required_receipts(slots: Any) -> dict[str, str]:
+    """Validate required_receipts; return {slot name: receipt_type}."""
     if not isinstance(slots, list) or not slots:
         raise ContractError("required_receipts: must be a non-empty list")
-    seen: set[str] = set()
+    seen: dict[str, str] = {}
     for index, slot in enumerate(slots):
         ctx = f"required_receipts[{index}]"
         _check_keys(slot, ("slot", "receipt_type"), ctx)
         name = _req_str(slot["slot"], f"{ctx}.slot")
-        _req_enum(slot["receipt_type"], RECEIPT_TYPES, f"{ctx}.receipt_type")
+        rtype = _req_enum(slot["receipt_type"], RECEIPT_TYPES, f"{ctx}.receipt_type")
+        if name == SUPERVISOR_SLOT:
+            raise ContractError(f"{ctx}.slot: {SUPERVISOR_SLOT!r} is a reserved slot name")
         if name in seen:
             raise ContractError(f"{ctx}.slot: duplicate slot {name!r}")
-        seen.add(name)
+        seen[name] = rtype
+    types = set(seen.values())
+    if "TestRun" not in types:
+        raise ContractError("required_receipts: must contain at least one TestRun slot")
+    if "IndependentReview" not in types:
+        raise ContractError(
+            "required_receipts: must contain at least one IndependentReview slot"
+        )
+    return seen
+
+
+def _slot_of_type(value: Any, slot_types: dict[str, str], rtype: str, ctx: str) -> str:
+    slot = _req_str(value, f"{ctx}.slot")
+    if slot_types.get(slot) != rtype:
+        raise ContractError(f"{ctx}.slot: {slot!r} is not a {rtype} slot of required_receipts")
+    return slot
+
+
+def _validate_required_tests(
+    tests: Any, slot_types: dict[str, str], acceptance: list[str]
+) -> None:
+    if not isinstance(tests, list):
+        raise ContractError("required_tests: must be a list")
+    seen: set[tuple[str, str]] = set()
+    for index, item in enumerate(tests):
+        ctx = f"required_tests[{index}]"
+        _check_keys(item, ("slot", "test_id", "acceptance"), ctx)
+        slot = _slot_of_type(item["slot"], slot_types, "TestRun", ctx)
+        test_id = _req_str(item["test_id"], f"{ctx}.test_id")
+        _req_str_list(item["acceptance"], f"{ctx}.acceptance", nonempty=True)
+        for acc in item["acceptance"]:
+            if acc not in acceptance:
+                raise ContractError(
+                    f"{ctx}.acceptance: {acc!r} is not in manifest acceptance"
+                )
+        if (slot, test_id) in seen:
+            raise ContractError(f"{ctx}.test_id: duplicate test id {test_id!r} for slot {slot!r}")
+        seen.add((slot, test_id))
+
+
+def _validate_allowed_commands(commands: Any, slot_types: dict[str, str]) -> None:
+    if not isinstance(commands, list):
+        raise ContractError("allowed_commands: must be a list")
+    for index, item in enumerate(commands):
+        ctx = f"allowed_commands[{index}]"
+        _check_keys(item, ("slot", "argv"), ctx)
+        _slot_of_type(item["slot"], slot_types, "TestRun", ctx)
+        _req_str_list(item["argv"], f"{ctx}.argv", nonempty=True)
+
+
+def _validate_required_rules(rules: Any, slot_types: dict[str, str]) -> None:
+    if not isinstance(rules, list):
+        raise ContractError("required_rules: must be a list")
+    seen: set[tuple[str, str]] = set()
+    for index, item in enumerate(rules):
+        ctx = f"required_rules[{index}]"
+        _check_keys(item, ("slot", "rule_id"), ctx)
+        slot = _slot_of_type(item["slot"], slot_types, "StaticAnalysis", ctx)
+        rule_id = _req_str(item["rule_id"], f"{ctx}.rule_id")
+        if (slot, rule_id) in seen:
+            raise ContractError(f"{ctx}.rule_id: duplicate rule {rule_id!r} for slot {slot!r}")
+        seen.add((slot, rule_id))
+
+
+def _validate_slot_coverage(obj: dict, slot_types: dict[str, str]) -> None:
+    """Every TestRun slot needs tests and commands; every StaticAnalysis slot rules."""
+    test_slots = {t["slot"] for t in obj["required_tests"]}
+    command_slots = {c["slot"] for c in obj["allowed_commands"]}
+    rule_slots = {r["slot"] for r in obj["required_rules"]}
+    for slot, rtype in slot_types.items():
+        if rtype == "TestRun":
+            if slot not in test_slots:
+                raise ContractError(f"required_tests: TestRun slot {slot!r} has no test")
+            if slot not in command_slots:
+                raise ContractError(
+                    f"allowed_commands: TestRun slot {slot!r} has no allowed command"
+                )
+        elif rtype == "StaticAnalysis" and slot not in rule_slots:
+            raise ContractError(f"required_rules: StaticAnalysis slot {slot!r} has no rule")
 
 
 # ------------------------------------------------------------------- receipts
@@ -304,12 +418,17 @@ def validate_receipt(obj: Any) -> dict:
     _check_keys(obj, fields, f"receipt({receipt_type})")
     _validate_common(obj)
     _TYPE_VALIDATORS[receipt_type](obj)
+    if obj["slot"] == SUPERVISOR_SLOT and receipt_type != "Documentation":
+        raise ContractError(
+            f"slot: {SUPERVISOR_SLOT!r} is reserved for Documentation receipts"
+        )
     return copy.deepcopy(obj)
 
 
 def _validate_common(obj: dict) -> None:
     _req_str(obj["receipt_id"], "receipt_id")
     _req_str(obj["task_id"], "task_id")
+    _req_hex(obj["manifest_sha256"], "manifest_sha256", 64)
     _req_str(obj["slot"], "slot")
     attempt = _req_int(obj["attempt"], "attempt", 1)
     prev = obj["prev_receipt_sha256"]
@@ -369,8 +488,8 @@ def _validate_static_analysis(obj: dict) -> None:
 
 
 def _validate_independent_review(obj: dict) -> None:
-    _req_str(obj["reviewer_principal"], "reviewer_principal")
-    _req_str(obj["author_principal"], "author_principal")
+    normalize_principal(_req_str(obj["reviewer_principal"], "reviewer_principal"))
+    normalize_principal(_req_str(obj["author_principal"], "author_principal"))
     _req_str_list(obj["covered_acceptance"], "covered_acceptance")
     _req_str_list(obj["findings"], "findings")
     _req_enum(obj["signed_verdict"], REVIEW_SIGNED_VERDICTS, "signed_verdict")
@@ -438,7 +557,11 @@ def _derive_test_run(receipt: dict) -> str:
 
 
 def _derive_static_analysis(receipt: dict) -> str:
-    if receipt["coverage"] == "FULL" and not receipt["unsupported_rules"]:
+    if (
+        receipt["coverage"] == "FULL"
+        and not receipt["unsupported_rules"]
+        and receipt["covered_rules"]
+    ):
         return "PASS"
     return "INCONCLUSIVE"
 
@@ -446,7 +569,8 @@ def _derive_static_analysis(receipt: dict) -> str:
 def _derive_independent_review(receipt: dict) -> str:
     if (
         receipt["signed_verdict"] == "APPROVE"
-        and receipt["reviewer_principal"] != receipt["author_principal"]
+        and normalize_principal(receipt["reviewer_principal"])
+        != normalize_principal(receipt["author_principal"])
     ):
         return "PASS"
     return "FAIL"

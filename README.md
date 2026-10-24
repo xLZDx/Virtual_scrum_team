@@ -27,7 +27,7 @@ Full roster, aliases and phase mapping: `team/skills/sdlc-orchestrator/reference
 
 Ten phases, each with a role and an exit artifact: Discovery, Backlog, Design, Docs and test plan,
 Doc review, Build, Verify, Gate, Accept and release, Report and retro. See `docs/SDLC_PROCESS.md`.
-Project state lives in `docs/sdlc/STATE.md` of the project being delivered.
+Project state lives in `docs/sdlc/STATE.md` of the project being delivered. Once the S1 state store (`tools/vst/store.py`) is in use, the store is the authority and `STATE.md` is its generated read-only view (baseline decision BD-1).
 
 ## Layout
 

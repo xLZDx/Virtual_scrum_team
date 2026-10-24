@@ -10,7 +10,7 @@
 
 Build **one SDLC control plane** around the existing `Virtual_scrum_team`. Do not replace it with MetaGPT, BMad, OpenHands or AEVE. Treat the other projects as independent layers with sharply separated state ownership:
 
-1. **Virtual Scrum Team** — canonical ten-phase workflow, assignments, DoR/DoD, decisions, operator approvals and project-specific `docs/sdlc/STATE.md`.
+1. **Virtual Scrum Team** — canonical ten-phase workflow, assignments, DoR/DoD, decisions, operator approvals and project-specific state (authoritative SQLite store per baseline decision BD-1; `docs/sdlc/STATE.md` is its generated view).
 2. **agents-skills-repo** — versioned, reusable definitions of specialist roles and focused skills; published/installable copies are a separate inventory.
 3. **Execution adapters** — isolated worktrees and bounded AI code workers. Pilot BMad Loop; selectively compare OpenHands or Aider. The execution tool does not approve its own output.
 4. **Native CI and test runners** — actual test execution, environments, exit codes and artifacts. Do not confuse a test-writing prompt with a working runner.
@@ -59,7 +59,7 @@ flowchart TB
 
 Enforce **one writer per domain**:
 
-- Scrum workflow and story states: Virtual Scrum Team (per-project `docs/sdlc/STATE.md`).
+- Scrum workflow and story states: Virtual Scrum Team (per-project state store; `docs/sdlc/STATE.md` is the generated view).
 - Global role/skill source: agents-skills-repo; team-specific workflow roles in Virtual Scrum Team, with a manifest referencing source hashes rather than silent duplication.
 - Branch files: single implementation worker per worktree. Other reviewers see immutable snapshots.
 - Runner result: native test process only. Agent summaries cannot set `PASSED` by fiat.

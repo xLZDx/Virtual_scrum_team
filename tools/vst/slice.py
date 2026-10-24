@@ -1,8 +1,15 @@
 """Synthetic vertical-slice harness (S1 epic E5).
 
-Drives a synthetic story through the real Store, signing, contracts and gate
-with NO real project, NO external service and NO process spawning. Receipts are
-built directly (the runner is not used), so every scenario is deterministic.
+Drives a synthetic story through the real Store, signing, contracts, gate and
+(in one scenario) the real runner, with NO real project and NO external
+service. Receipts are built directly by the fixture, except in the scenario
+`real_run_and_sign` which runs one tiny allowed command (the current Python
+interpreter printing two lines) through runner.run_and_sign. Everything else is
+deterministic.
+
+Keys (all bytes >= 32, pairwise distinct, enforced by SliceFixture): worker key
+(signs worker receipts), supervisor key (signs SUPERVISOR_SLOT markers),
+operator key (signs waivers) and the store event key.
 
 Public API: build_synthetic_manifest, SliceFixture, FakeClock, run_scenarios.
 CLI: python -m tools.vst.slice <empty-or-new-directory>  (prints a JSON report).
@@ -20,21 +27,44 @@ import sys
 from typing import Any, Callable
 
 from . import gate as gate_module
-from .contracts import derive_result, receipt_sha256, validate_task_manifest
-from .signing import sign
-from .store import Store, StoreError
+from .contracts import (
+    SUPERVISOR_SLOT,
+    ContractError,
+    derive_result,
+    manifest_sha256,
+    receipt_sha256,
+    validate_task_manifest,
+)
+from .runner import run_and_sign
+from .signing import WAIVER_LABEL, sign
+from .store import MARKER_RESULTS, Store, StoreError
 
 SYNTHETIC_HEAD = "1234567890abcdef1234567890abcdef12345678"
 OTHER_HEAD = "b" * 40
 WAIVER_WRONG_HEAD = "c" * 40
-SLICE_KEY = b"synthetic-slice-key"
-WRONG_KEY = b"synthetic-wrong-key"
+
+
+def _key(name: str) -> bytes:
+    return hashlib.sha256(b"vst-slice-" + name.encode("ascii")).digest()
+
+
+WORKER_KEY = _key("worker")
+SUPERVISOR_KEY = _key("supervisor")
+OPERATOR_KEY = _key("operator")
+EVENT_KEY = _key("event")
+WRONG_KEY = _key("wrong")
+SLICE_KEY = WORKER_KEY  # backwards-compatible name for the worker key
 ROLE_SHA256 = hashlib.sha256(b"synthetic-role").hexdigest()
 STORY_ID = "story-1"
 OWNER = "supervisor-1"
-RUNNER_ID = "runner-1"
-WORKER_ID = "worker-1"
+WORKER_ID = "runner-1"  # lease holder and receipt runner_id must be the same id
+RUNNER_ID = WORKER_ID
+SUPERVISOR_RUNNER = "supervisor-runner"
+AUTHOR = "author-1"
+REVIEWER = "reviewer-1"
 EXPECTED_TEST_IDS = ("t1", "t2")
+SYNTHETIC_ARGV = ["synthetic-test-run"]
+REAL_ARGV = [sys.executable, "-c", "print('PASS t1'); print('PASS t2')"]
 CLOCK_START = 1_000_000.0
 CREATED_AT = "2026-10-24T00:00:00+00:00"
 
@@ -73,6 +103,19 @@ def build_synthetic_manifest(task_id: str, base_head: str) -> dict:
             {"slot": "static", "receipt_type": "StaticAnalysis"},
             {"slot": "review", "receipt_type": "IndependentReview"},
         ],
+        "author_principal": AUTHOR,
+        "required_tests": [
+            {"slot": "tests", "test_id": test_id, "acceptance": ["AC-1"]}
+            for test_id in EXPECTED_TEST_IDS
+        ],
+        "allowed_commands": [
+            {"slot": "tests", "argv": list(SYNTHETIC_ARGV)},
+            {"slot": "tests", "argv": list(REAL_ARGV)},
+        ],
+        "required_rules": [
+            {"slot": "static", "rule_id": "R1"},
+            {"slot": "static", "rule_id": "R2"},
+        ],
         "timeout_sec": 600,
         "cost_cap": 100,
         "retry_cap": 1,
@@ -80,23 +123,45 @@ def build_synthetic_manifest(task_id: str, base_head: str) -> dict:
     return validate_task_manifest(manifest)
 
 
-class SliceFixture:
-    """One synthetic story with a Store, an owned epoch and receipt builders."""
+def _parse_pass_lines(stdout: str) -> tuple[list[str], list[str], list[str]]:
+    executed = [
+        line[len("PASS "):].strip() for line in stdout.splitlines() if line.startswith("PASS ")
+    ]
+    return executed, [], []
 
-    def __init__(self, workdir: str, key: bytes, clock: Callable[[], float]) -> None:
+
+class SliceFixture:
+    """One synthetic story with a Store, a registered task, an owned epoch and builders."""
+
+    def __init__(
+        self,
+        workdir: str,
+        key: bytes,
+        clock: Callable[[], float],
+        *,
+        supervisor_key: bytes = SUPERVISOR_KEY,
+        operator_key: bytes = OPERATOR_KEY,
+        event_key: bytes = EVENT_KEY,
+    ) -> None:
+        if len({bytes(key), bytes(supervisor_key), bytes(operator_key), bytes(event_key)}) != 4:
+            raise ValueError("worker, supervisor, operator and event keys must be distinct")
         os.makedirs(workdir, exist_ok=True)
         self.workdir = workdir
         self.key = key
+        self.supervisor_key = supervisor_key
+        self.operator_key = operator_key
         self.clock = clock
         self.current_head = SYNTHETIC_HEAD
         self.task_id = "task-1"
         self.story_id = STORY_ID
         self.owner = OWNER
-        self.runner_id = RUNNER_ID
+        self.runner_id = WORKER_ID
         self.manifest = build_synthetic_manifest(self.task_id, self.current_head)
-        self.store = Store(os.path.join(workdir, "state.db"), clock)
+        self.manifest_hash = manifest_sha256(self.manifest)
+        self.store = Store(os.path.join(workdir, "state.db"), clock, event_key=event_key)
         self.store.init_slots(2)
         self.store.open_story(self.story_id, self.manifest["project_id"], 1)
+        self.store.register_task(self.manifest)
         self.epoch = self.store.acquire_epoch(self.story_id, self.owner, 3600)
         self._seq = 0
 
@@ -116,12 +181,14 @@ class SliceFixture:
         key: bytes | None,
         result: str | None,
         extra: dict,
+        manifest_hash: str | None = None,
     ) -> dict:
         self._seq += 1
         body: dict[str, Any] = {
             "receipt_id": f"rc-{self.task_id}-{slot}-{attempt}-{self._seq}",
             "receipt_type": receipt_type,
             "task_id": self.task_id,
+            "manifest_sha256": self.manifest_hash if manifest_hash is None else manifest_hash,
             "slot": slot,
             "attempt": attempt,
             "prev_receipt_sha256": prev,
@@ -150,6 +217,7 @@ class SliceFixture:
         prev: str | None = None,
         key: bytes | None = None,
         result: str | None = None,
+        manifest_hash: str | None = None,
     ) -> dict:
         """Signed TestRun receipt for slot 'tests'; expected ids are t1, t2."""
         return self._build(
@@ -159,10 +227,11 @@ class SliceFixture:
                 "executed_test_ids": list(executed_ids),
                 "skipped_test_ids": list(skipped_ids),
                 "xfail_test_ids": [],
-                "commands": [{"argv": ["synthetic-test-run"], "exit_code": exit_code}],
+                "commands": [{"argv": list(SYNTHETIC_ARGV), "exit_code": exit_code}],
                 "covered_acceptance": ["AC-1"],
                 "artifact_digests": {},
             },
+            manifest_hash,
         )
 
     def make_static_receipt(
@@ -211,18 +280,72 @@ class SliceFixture:
             },
         )
 
-    # ----------------------------------------------------------- store / gate
+    def make_supervisor_receipt(
+        self,
+        reason: str,
+        attempt: int = 1,
+        prev: str | None = None,
+        key: bytes | None = None,
+    ) -> dict:
+        """Signed SUPERVISOR_SLOT marker; signed with the SUPERVISOR key unless key is given."""
+        return self._build(
+            "Documentation", SUPERVISOR_SLOT, attempt, None, None, prev,
+            self.supervisor_key if key is None else key, MARKER_RESULTS[reason],
+            {
+                "runner_id": SUPERVISOR_RUNNER,
+                "check_description": reason,
+                "covered_acceptance": [],
+            },
+        )
+
+    def make_waiver(
+        self,
+        waived_slots: Any,
+        waived_acceptance: Any,
+        head: str | None = None,
+        key: bytes | None = None,
+    ) -> dict:
+        """Operator-signed waiver bound to task, epoch, head and manifest hash."""
+        epoch = self.store.current_epoch(self.story_id)
+        body: dict[str, Any] = {
+            "record_id": "WV-1",
+            "operator": "operator-1",
+            "task_id": self.task_id,
+            "epoch": epoch,
+            "head": self.current_head if head is None else head,
+            "manifest_sha256": self.manifest_hash,
+            "waived_slots": list(waived_slots),
+            "waived_acceptance": list(waived_acceptance),
+            "expires_epoch": epoch,
+        }
+        body["signature"] = sign(
+            dict(body), self.operator_key if key is None else key, WAIVER_LABEL
+        )
+        return body
+
+    # --------------------------------------------------------- store / gate
+
+    def begin(self, attempt: int = 1, ttl_sec: float = 600) -> None:
+        """Acquire the worker lease for this task (attempt n) at the fixture epoch."""
+        self.store.acquire_lease(
+            self.task_id, self.story_id, WORKER_ID, self.epoch, attempt, ttl_sec,
+            supervisor_key=self.supervisor_key,
+        )
+
+    def end(self) -> None:
+        """Release the worker lease."""
+        self.store.release_lease(self.task_id, WORKER_ID, self.epoch)
 
     def append(self, receipt: dict) -> None:
-        """Append a receipt to the store for this fixture's story."""
-        self.store.append_receipt(receipt, self.story_id)
+        """Append a worker receipt (needs a live lease from begin())."""
+        self.store.append_receipt(receipt, self.story_id, self.key)
 
     def append_good_set(self, skip: Any = ()) -> list[dict]:
         """Append PASS receipts for tests, static and review (except skipped slots)."""
         built = {
             "tests": self.make_test_receipt(1, EXPECTED_TEST_IDS),
             "static": self.make_static_receipt(),
-            "review": self.make_review_receipt("reviewer-1", "author-1"),
+            "review": self.make_review_receipt(REVIEWER, AUTHOR),
         }
         appended = []
         for slot in ("tests", "static", "review"):
@@ -240,7 +363,9 @@ class SliceFixture:
             self.current_head,
             self.store.current_epoch(self.story_id),
             self.key,
-            waiver,
+            supervisor_key=self.supervisor_key,
+            operator_key=self.operator_key,
+            waiver=waiver,
         )
 
 
@@ -260,10 +385,19 @@ def _brief(decision: dict) -> dict:
     return {"verdict": decision["verdict"], "reasons": list(decision["reasons"])}
 
 
+def _error_kind(call: Callable[[], Any]) -> str | None:
+    """Run call; return the StoreError kind it raised, or None if it succeeded."""
+    try:
+        call()
+    except StoreError as exc:
+        return exc.kind
+    return None
+
+
 def _scenario_happy_path(fx: SliceFixture, clock: FakeClock) -> dict:
-    fx.store.acquire_lease(fx.task_id, fx.story_id, WORKER_ID, fx.epoch, 1, 600)
+    fx.begin(1)
     fx.append_good_set()
-    fx.store.release_lease(fx.task_id, WORKER_ID, fx.epoch)
+    fx.end()
     decision = fx.gate()
     return _observe(decision, {
         "receipt_count": len(fx.store.receipts_for_task(fx.task_id)),
@@ -272,9 +406,9 @@ def _scenario_happy_path(fx: SliceFixture, clock: FakeClock) -> dict:
 
 
 def _scenario_worker_death(fx: SliceFixture, clock: FakeClock) -> dict:
-    fx.store.acquire_lease(fx.task_id, fx.story_id, WORKER_ID, fx.epoch, 1, 60)
+    fx.begin(1, 60)
     clock.advance(120)
-    written = fx.store.supervisor_reap_and_mark(lambda _task: fx.manifest, fx.key, RUNNER_ID)
+    written = fx.store.supervisor_reap_and_mark(fx.supervisor_key, SUPERVISOR_RUNNER)
     stored = fx.store.receipts_for_task(fx.task_id)
     decision = fx.gate()
     return _observe(decision, {
@@ -292,40 +426,40 @@ def _scenario_worker_death(fx: SliceFixture, clock: FakeClock) -> dict:
 
 def _scenario_zombie_late_write(fx: SliceFixture, clock: FakeClock) -> dict:
     old_epoch = fx.epoch
-    fx.store.acquire_lease(fx.task_id, fx.story_id, WORKER_ID, old_epoch, 1, 600)
+    fx.begin(1, 600)
     clock.advance(4000)  # first owner's ownership expires
     new_epoch = fx.store.acquire_epoch(fx.story_id, "supervisor-2", 3600)
     late = fx.make_test_receipt(1, EXPECTED_TEST_IDS, epoch=old_epoch)
     extra: dict[str, Any] = {"old_epoch": old_epoch, "new_epoch": new_epoch}
-    try:
-        fx.append(late)
-        extra["append_error_kind"] = None
-    except StoreError as exc:
-        extra["append_error_kind"] = exc.kind
-    try:
-        fx.store.heartbeat(fx.task_id, WORKER_ID, old_epoch, 600)
-        extra["heartbeat_error_kind"] = None
-    except StoreError as exc:
-        extra["heartbeat_error_kind"] = exc.kind
+    extra["append_error_kind"] = _error_kind(lambda: fx.append(late))
+    extra["heartbeat_error_kind"] = _error_kind(
+        lambda: fx.store.heartbeat(fx.task_id, WORKER_ID, old_epoch, 600)
+    )
     extra["stored_count"] = len(fx.store.receipts_for_task(fx.task_id))
     decision = fx.gate(receipts=[late])
     return _observe(decision, extra)
 
 
 def _scenario_stale_head(fx: SliceFixture, clock: FakeClock) -> dict:
+    fx.begin(1)
     fx.append_good_set()
+    fx.end()
     fx.current_head = OTHER_HEAD
     decision = fx.gate()
     return _observe(decision, {"receipt_head": SYNTHETIC_HEAD, "current_head": OTHER_HEAD})
 
 
 def _scenario_retry_after_fail(fx: SliceFixture, clock: FakeClock) -> dict:
+    fx.begin(1)
     first = fx.make_test_receipt(1, EXPECTED_TEST_IDS, exit_code=1)
     fx.append(first)
+    fx.end()
+    fx.begin(2)
     second = fx.make_test_receipt(2, EXPECTED_TEST_IDS, prev=receipt_sha256(first))
     fx.append(second)
     fx.append(fx.make_static_receipt())
-    fx.append(fx.make_review_receipt("reviewer-1", "author-1"))
+    fx.append(fx.make_review_receipt(REVIEWER, AUTHOR))
+    fx.end()
     decision = fx.gate()
     return _observe(decision, {
         "test_attempts": [
@@ -339,7 +473,7 @@ def _scenario_retry_after_fail(fx: SliceFixture, clock: FakeClock) -> dict:
 def _scenario_forged_receipt(fx: SliceFixture, clock: FakeClock) -> dict:
     others = [
         fx.make_static_receipt(),
-        fx.make_review_receipt("reviewer-1", "author-1"),
+        fx.make_review_receipt(REVIEWER, AUTHOR),
     ]
     wrong_key = fx.make_test_receipt(1, EXPECTED_TEST_IDS, key=WRONG_KEY)
     tampered = copy.deepcopy(fx.make_test_receipt(1, EXPECTED_TEST_IDS))
@@ -350,42 +484,43 @@ def _scenario_forged_receipt(fx: SliceFixture, clock: FakeClock) -> dict:
 
 
 def _scenario_partial_static(fx: SliceFixture, clock: FakeClock) -> dict:
+    fx.begin(1)
     fx.append(fx.make_test_receipt(1, EXPECTED_TEST_IDS))
     fx.append(fx.make_static_receipt(coverage="PARTIAL", unsupported=["R3"]))
-    fx.append(fx.make_review_receipt("reviewer-1", "author-1"))
+    fx.append(fx.make_review_receipt(REVIEWER, AUTHOR))
+    fx.end()
     decision = fx.gate()
     return _observe(decision, {"static_result": fx.store.receipts_for_task(fx.task_id)[1]["result"]})
 
 
 def _scenario_missing_required(fx: SliceFixture, clock: FakeClock) -> dict:
+    fx.begin(1)
     fx.append_good_set(skip=("review",))
+    fx.end()
     decision = fx.gate()
     return _observe(decision, {"missing_slot": "review"})
 
 
 def _scenario_not_run_with_waiver(fx: SliceFixture, clock: FakeClock) -> dict:
+    fx.begin(1)
     fx.append(fx.make_test_receipt(1, (), result="NOT_RUN"))
     fx.append(fx.make_static_receipt())
-    fx.append(fx.make_review_receipt("reviewer-1", "author-1"))
+    fx.append(fx.make_review_receipt(REVIEWER, AUTHOR))
+    fx.end()
     plain = fx.gate()
-
-    def waiver(head: str) -> dict:
-        return {
-            "record_id": "WV-1",
-            "operator": "operator-1",
-            "waived_slots": ["tests"],
-            "waived_acceptance": list(plain["acceptance_unmet"]),
-            "head": head,
-            "expires_epoch_or_date": "2026-12-31",
-        }
-
-    waived = fx.gate(waiver=waiver(fx.current_head))
-    wrong_head = fx.gate(waiver=waiver(WAIVER_WRONG_HEAD))
+    waived = fx.gate(waiver=fx.make_waiver(["tests"], plain["acceptance_unmet"]))
+    wrong_head = fx.gate(
+        waiver=fx.make_waiver(["tests"], plain["acceptance_unmet"], head=WAIVER_WRONG_HEAD)
+    )
+    forged = fx.gate(
+        waiver=fx.make_waiver(["tests"], plain["acceptance_unmet"], key=fx.key)
+    )
     return _observe(plain, {
         "with_waiver": _brief(waived),
         "with_waiver_record": waived["waiver_record"],
         "with_waiver_approvals": list(waived["human_approvals"]),
         "wrong_head_waiver": _brief(wrong_head),
+        "waiver_signed_with_worker_key": _brief(forged),
     })
 
 
@@ -393,21 +528,129 @@ def _scenario_budget_exceeded(fx: SliceFixture, clock: FakeClock) -> dict:
     fx.store.set_budget(fx.task_id, 5)
     remaining = fx.store.charge(fx.task_id, 3)
     extra: dict[str, Any] = {"remaining_after_first_charge": remaining}
-    try:
-        fx.store.charge(fx.task_id, 3)
-        extra["charge_error_kind"] = None
-    except StoreError as exc:
-        extra["charge_error_kind"] = exc.kind
-    receipt = fx.store.mark_budget_exceeded(
-        fx.task_id, fx.story_id, fx.manifest, fx.key, RUNNER_ID
-    )
+    extra["charge_error_kind"] = _error_kind(lambda: fx.store.charge(fx.task_id, 3))
+    receipt = fx.store.mark_budget_exceeded(fx.task_id, fx.supervisor_key, SUPERVISOR_RUNNER)
+    again = fx.store.mark_budget_exceeded(fx.task_id, fx.supervisor_key, SUPERVISOR_RUNNER)
     extra["marker"] = {
         "slot": receipt["slot"],
         "result": receipt["result"],
         "reason": receipt["check_description"],
     }
+    extra["marker_idempotent"] = again["receipt_id"] == receipt["receipt_id"]
+    extra["marker_count"] = sum(
+        1 for r in fx.store.receipts_for_task(fx.task_id) if r["slot"] == SUPERVISOR_SLOT
+    )
     extra["event_chain_ok"] = fx.store.verify_event_chain()
     decision = fx.gate()
+    return _observe(decision, extra)
+
+
+def _scenario_real_run_and_sign(fx: SliceFixture, clock: FakeClock) -> dict:
+    run_dir = os.path.join(fx.workdir, "run")
+    os.makedirs(run_dir, exist_ok=True)
+    common = dict(
+        manifest=fx.manifest, slot="tests", attempt=1, epoch=fx.epoch,
+        candidate_head=fx.current_head, resolved_model="synthetic-model",
+        invocation_id="inv-real-1", runner_id=WORKER_ID, key=fx.key,
+        test_result_parser=_parse_pass_lines, covered_acceptance=["AC-1"],
+        artifact_paths=[], prev_receipt_sha256=None, cwd=run_dir,
+        created_at=CREATED_AT, timeout_sec=60, deadline_sec=120,
+    )
+    extra: dict[str, Any] = {}
+    refused_command = refused_ids = False
+    try:
+        run_and_sign(
+            commands=[[sys.executable, "-c", "print('not allowed')"]],
+            expected_test_ids=list(EXPECTED_TEST_IDS), **common,
+        )
+    except ContractError:
+        refused_command = True
+    try:
+        run_and_sign(commands=[list(REAL_ARGV)], expected_test_ids=["t1"], **common)
+    except ContractError:
+        refused_ids = True
+    extra["refused_unallowed_command"] = refused_command
+    extra["refused_wrong_expected_ids"] = refused_ids
+    report: dict = {}
+    receipt = run_and_sign(
+        commands=[list(REAL_ARGV)], expected_test_ids=list(EXPECTED_TEST_IDS),
+        report=report, **common,
+    )
+    fx.begin(1)
+    fx.append(receipt)
+    fx.append(fx.make_static_receipt())
+    fx.append(fx.make_review_receipt(REVIEWER, AUTHOR))
+    fx.end()
+    extra["receipt_result"] = receipt["result"]
+    extra["exit_code"] = receipt["commands"][0]["exit_code"]
+    extra["executed"] = list(receipt["executed_test_ids"])
+    extra["bound_to_manifest"] = receipt["manifest_sha256"] == fx.manifest_hash
+    extra["stdout_truncated"] = report["commands"][0]["stdout_truncated"]
+    decision = fx.gate()
+    return _observe(decision, extra)
+
+
+def _scenario_retry_exhausted(fx: SliceFixture, clock: FakeClock) -> dict:
+    fx.begin(1)
+    first = fx.make_test_receipt(1, EXPECTED_TEST_IDS, exit_code=1)
+    fx.append(first)
+    fx.end()
+    fx.begin(2)
+    second = fx.make_test_receipt(2, EXPECTED_TEST_IDS, exit_code=1, prev=receipt_sha256(first))
+    fx.append(second)
+    fx.end()
+    kinds = [_error_kind(lambda: fx.begin(3)), _error_kind(lambda: fx.begin(3))]
+    stored = fx.store.receipts_for_task(fx.task_id)
+    markers = [r for r in stored if r["slot"] == SUPERVISOR_SLOT]
+    decision = fx.gate()
+    return _observe(decision, {
+        "retry_cap": fx.manifest["retry_cap"],
+        "third_attempt_error_kinds": kinds,
+        "markers": [r["check_description"] for r in markers],
+        "marker_results": [r["result"] for r in markers],
+    })
+
+
+def _scenario_forged_supervisor(fx: SliceFixture, clock: FakeClock) -> dict:
+    forged = fx.make_supervisor_receipt("WORKER_LOST", key=fx.key)  # worker key, not supervisor
+    genuine = fx.make_supervisor_receipt("WORKER_LOST")
+    good = [
+        fx.make_test_receipt(1, EXPECTED_TEST_IDS),
+        fx.make_static_receipt(),
+        fx.make_review_receipt(REVIEWER, AUTHOR),
+    ]
+    extra: dict[str, Any] = {
+        "store_supervisor_path_kind": _error_kind(
+            lambda: fx.store.append_supervisor_receipt(
+                forged, fx.story_id, supervisor_key=fx.supervisor_key
+            )
+        ),
+        "store_worker_path_kind": _error_kind(lambda: fx.append(forged)),
+        "genuine_via_worker_path_kind": _error_kind(lambda: fx.append(genuine)),
+        "stored_count": len(fx.store.receipts_for_task(fx.task_id)),
+    }
+    decision = fx.gate(receipts=good + [forged])
+    return _observe(decision, extra)
+
+
+def _scenario_manifest_swap(fx: SliceFixture, clock: FakeClock) -> dict:
+    swapped = copy.deepcopy(fx.manifest)
+    swapped["timeout_sec"] += 1  # a different manifest, hence a different hash
+    other_hash = manifest_sha256(swapped)
+    receipt = fx.make_test_receipt(1, EXPECTED_TEST_IDS, manifest_hash=other_hash)
+    fx.begin(1)
+    extra: dict[str, Any] = {
+        "hashes_differ": other_hash != fx.manifest_hash,
+        "store_append_kind": _error_kind(lambda: fx.append(receipt)),
+        "register_other_manifest_kind": _error_kind(lambda: fx.store.register_task(swapped)),
+        "stored_count": len(fx.store.receipts_for_task(fx.task_id)),
+    }
+    fx.end()
+    others = [
+        fx.make_static_receipt(),
+        fx.make_review_receipt(REVIEWER, AUTHOR),
+    ]
+    decision = fx.gate(receipts=[receipt] + others)
     return _observe(decision, extra)
 
 
@@ -422,6 +665,10 @@ SCENARIOS: tuple[tuple[str, Callable[[SliceFixture, FakeClock], dict]], ...] = (
     ("missing_required_receipt", _scenario_missing_required),
     ("not_run_with_waiver", _scenario_not_run_with_waiver),
     ("budget_exceeded", _scenario_budget_exceeded),
+    ("real_run_and_sign", _scenario_real_run_and_sign),
+    ("retry_exhausted", _scenario_retry_exhausted),
+    ("forged_supervisor_receipt", _scenario_forged_supervisor),
+    ("manifest_swap", _scenario_manifest_swap),
 )
 
 

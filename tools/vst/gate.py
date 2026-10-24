@@ -1,61 +1,92 @@
 """Pure, default-deny gate verdict function (BD-4, R-2, R-4).
 
-evaluate(manifest, receipts, current_head, current_epoch, key, waiver=None,
-artifact_resolver=None) returns a GateDecision dict (it always passes
-validate_gate_decision). It never raises for bad data, never mutates its inputs, does no I/O.
+evaluate(manifest, receipts, current_head, current_epoch, key, *,
+supervisor_key, operator_key=None, waiver=None, artifact_resolver=None)
+returns a GateDecision dict (it always passes validate_gate_decision). It
+never raises for bad data, never mutates its inputs, does no I/O, and collects
+ALL reasons instead of stopping at the first problem.
 
-Rules, applied in this order; ALL reasons are collected, evaluation does not
-stop at the first problem:
+Keys: worker receipts are verified with `key`; receipts in the reserved
+SUPERVISOR_SLOT with `supervisor_key`; the waiver with `operator_key` and
+WAIVER_LABEL. Every key must be bytes of length >= 32 (operator_key may be
+None, which makes any waiver unusable).
 
-1. Inputs. current_head must be 40 lowercase hex, current_epoch an int >= 1
-   (not bool), key non-empty bytes, receipts a list, manifest valid per
-   validate_task_manifest. Any failure is a reason and the verdict is NO_GO.
-   An invalid manifest returns immediately (slots are unknown).
-2. Per-receipt checks. A receipt is "good" only if it (a) passes
-   validate_receipt, (b) has task_id == manifest.task_id, (c) has
-   candidate_head == current_head and epoch == current_epoch, (d) has a valid
-   HMAC signature, (e) has result == derive_result(receipt), and (f) only when
-   an artifact_resolver is given, for a TestRun: every (path, digest) of
-   artifact_digests equals artifact_resolver(path). Every receipt
-   failing a check yields a hard reason and is excluded from everything below.
-   If at least one receipt belongs to this task and ALL of them fail (c), the
-   verdict is NO_GO.
-3. Slot matching. Good receipts are grouped by their `slot` field. A good
-   receipt whose slot is not in manifest.required_receipts gives the hard
-   reason 'unlisted receipt'; one whose receipt_type differs from the slot's
-   type gives a hard 'receipt type mismatch'. Both are excluded.
-4. Attempt chains. Per slot, attempts must be exactly 1..n without gaps or
-   duplicates and attempt k>1 must carry prev_receipt_sha256 ==
-   receipt_sha256(attempt k-1). Violation is a hard reason and the slot is
-   unsatisfied. (attempt 1 must have prev null; enforced by validate_receipt.)
-5. Slot satisfaction. The LATEST attempt of a slot decides. A slot with no
-   good receipt ('missing receipt') or whose latest result is not PASS
-   (FAIL, BLOCKED, NOT_RUN, INCONCLUSIVE) is unmet (a soft reason). An
-   IndependentReview slot additionally needs reviewer_principal !=
-   author_principal (hard reason otherwise).
-6. Failures are never erased. Every earlier attempt (all but the latest) of a
-   slot whose result is not PASS is listed in unresolved_findings as
-   'earlier failure retained: ...', even when the latest attempt is PASS. These
-   findings do not by themselves block APPROVE.
-7. Acceptance coverage. covered = union of covered_acceptance over the latest
-   PASS receipt of every satisfied slot. acceptance_unmet = manifest.acceptance
-   ids not in covered (manifest order); each also yields a soft reason.
-8. Verdict.
-   - NO_GO: bad inputs / invalid manifest, or every receipt of this task is
-     stale (wrong head or epoch).
+Rules, in order:
+
+1. Inputs. current_head 40 lowercase hex, current_epoch an int >= 1 (not
+   bool), key and supervisor_key valid keys, receipts a list, manifest valid
+   per validate_task_manifest. Any failure is a hard reason and the verdict is
+   NO_GO. An invalid manifest returns immediately (slots are unknown).
+2. Per-receipt checks (a). A receipt is "good" only if it validates, belongs
+   to manifest.task_id, carries manifest_sha256 == manifest_sha256(manifest)
+   and role_sha256 == manifest.role_sha256, has candidate_head ==
+   current_head, has epoch <= current_epoch (epoch > current_epoch is the hard
+   reason 'future epoch'), has a valid signature and has result ==
+   derive_result(receipt). Otherwise a hard reason is recorded and the receipt
+   is excluded. An OLDER epoch is not a reason: it is history. If at least one
+   receipt belongs to this task and ALL of those fail the head or future-epoch
+   check, the verdict is NO_GO.
+3. Artifacts (f). A good TestRun receipt with non-empty artifact_digests and
+   no artifact_resolver is a hard reason 'artifact digests present but no
+   artifact_resolver' (default deny) and is excluded. With a resolver, every
+   (path, digest) must equal artifact_resolver(path); a mismatch, None or a
+   raising resolver is a hard reason and the receipt is excluded.
+4. Slot matching. A good receipt whose slot is neither in
+   manifest.required_receipts nor SUPERVISOR_SLOT is the hard reason
+   'unlisted receipt'; a receipt type different from the slot's declared type
+   is a hard 'receipt type mismatch'. Both are excluded.
+5. Chains (b). Per real slot the chain is the good receipts of the slot
+   ordered by attempt across ALL epochs. Attempts must be exactly 1..n and
+   each prev_receipt_sha256 must equal receipt_sha256 of the previous attempt
+   (hard reason otherwise). The LATEST attempt decides the slot; it must have
+   epoch == current_epoch, else the slot is unmet (soft 'slot needs a
+   current-epoch attempt'). A latest result other than PASS is an unmet slot
+   (soft). Every earlier attempt with a result other than PASS is listed in
+   unresolved_findings as 'earlier failure retained: ...' (informational,
+   does not block APPROVE).
+6. Supervisor chain (c). Receipts in SUPERVISOR_SLOT form their own chain with
+   the same chain rule. check_description WORKER_LOST adds the informational
+   finding 'worker lost: attempt N'; BUDGET_EXCEEDED and RETRY_EXHAUSTED are
+   hard, never-waivable 'terminal marker ...' reasons; any other description is
+   a hard reason. Markers never count toward acceptance.
+7. Per-type checks on the LATEST attempt of a slot, when it is from the current
+   epoch (d, e):
+   - TestRun: set(expected_test_ids) must equal the manifest's required test
+     ids for the slot, every command argv must equal one of the slot's
+     allowed_commands argv, and the receipt's covered_acceptance must be a
+     subset of manifest.acceptance (all hard). Acceptance contributed by a
+     PASS = union of the `acceptance` lists of the manifest's required tests
+     of that slot, NOT what the receipt claims.
+   - StaticAnalysis: covered_rules must be a superset of the manifest's
+     required rules for the slot (else the slot is unmet, soft). Acceptance =
+     covered_acceptance restricted to manifest.acceptance.
+   - IndependentReview: normalized author_principal must equal the manifest's
+     normalized author_principal (hard) and reviewer must differ from author
+     after normalization (hard). Each entry of `findings` becomes
+     'review finding: <text>' in unresolved_findings. Acceptance =
+     covered_acceptance restricted to manifest.acceptance.
+   - Documentation (only possible in a declared Documentation slot): never
+     contributes acceptance coverage.
+8. Acceptance. acceptance_unmet = manifest.acceptance ids not covered (manifest
+   order); each is a soft reason.
+9. Verdict.
+   - NO_GO: bad inputs / invalid manifest / every receipt of this task stale
+     by head or by future epoch.
    - APPROVE: no reasons at all and acceptance_unmet empty.
-   - APPROVED_WITH_WAIVER: no hard reasons, and a valid waiver
-     {record_id, operator, waived_slots, waived_acceptance, head,
-     expires_epoch_or_date} (exact keys; non-empty strings; lists of str;
-     head == current_head) lists every unmet slot and every unmet acceptance
-     id. Nothing else may be wrong. waiver_record = record_id and
-     human_approvals = [operator]. Expiry is an opaque string, not evaluated.
-     A waiver is ignored when nothing is unmet; an unusable waiver adds a
-     reason and the verdict stays MODIFY.
-   - MODIFY: everything else (missing/invalid/unmet gaps that can be fixed).
+   - APPROVED_WITH_WAIVER: no hard reasons and a valid waiver (g): exact keys
+     record_id, operator, task_id, epoch (int), head, manifest_sha256,
+     waived_slots (list of str), waived_acceptance (list of str),
+     expires_epoch (int), signature (64 hex); signature verifies with
+     operator_key and WAIVER_LABEL; task_id, epoch (== current_epoch), head and
+     manifest_sha256 match; current_epoch <= expires_epoch; waived items cover
+     EVERY unmet slot and acceptance id. waiver_record = record_id and
+     human_approvals = [operator]. A waiver is ignored when nothing is unmet; an
+     unusable waiver adds a reason and the verdict stays MODIFY.
+   - MODIFY: everything else (fixable gaps).
 
-Hard reasons are never waivable; soft reasons are the unmet slots and
-unmet acceptance ids.
+Hard reasons are never waivable (this includes terminal markers, artifact
+digests without a resolver, broken chains and forged or invalid receipts);
+soft reasons are the unmet slots and unmet acceptance ids.
 """
 
 from __future__ import annotations
@@ -63,31 +94,49 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from .contracts import (
+    SUPERVISOR_SLOT,
     ContractError,
     derive_result,
+    manifest_sha256,
+    normalize_principal,
     receipt_sha256,
     validate_gate_decision,
     validate_receipt,
     validate_task_manifest,
 )
-from .signing import verify
+from .signing import MIN_KEY_BYTES, RECEIPT_LABEL, WAIVER_LABEL, verify
 
 _WAIVER_FIELDS = (
     "record_id",
     "operator",
+    "task_id",
+    "epoch",
+    "head",
+    "manifest_sha256",
     "waived_slots",
     "waived_acceptance",
-    "head",
-    "expires_epoch_or_date",
+    "expires_epoch",
+    "signature",
 )
 
+_NO_RESOLVER_REASON = "artifact digests present but no artifact_resolver"
+_TERMINAL_MARKERS = ("BUDGET_EXCEEDED", "RETRY_EXHAUSTED")
 
-def _is_hex40(value: Any) -> bool:
+
+def _is_hex(value: Any, length: int) -> bool:
     return (
         isinstance(value, str)
-        and len(value) == 40
+        and len(value) == length
         and all(c in "0123456789abcdef" for c in value)
     )
+
+
+def _is_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _key_ok(key: Any) -> bool:
+    return isinstance(key, (bytes, bytearray)) and len(key) >= MIN_KEY_BYTES
 
 
 def _build_decision(
@@ -106,7 +155,7 @@ def _build_decision(
     decision = {
         "task_id": task_id if isinstance(task_id, str) else "",
         "candidate_head": head if isinstance(head, str) else "",
-        "epoch": epoch if isinstance(epoch, int) and not isinstance(epoch, bool) and epoch >= 0 else 0,
+        "epoch": epoch if _is_int(epoch) and epoch >= 0 else 0,
         "required_receipt_hashes": list(hashes),
         "unresolved_findings": list(findings),
         "human_approvals": list(approvals),
@@ -121,12 +170,14 @@ def _build_decision(
 def _check_receipt(
     index: int,
     raw: Any,
-    task_id: str,
+    manifest: dict,
+    manifest_hash: str,
     head: str,
     epoch: int,
     key: bytes,
+    supervisor_key: bytes,
     hard: list[str],
-    artifact_resolver: Callable[[str], str | None] | None = None,
+    artifact_resolver: Callable[[str], str | None] | None,
 ) -> tuple[dict | None, bool, bool]:
     """Return (good_receipt_or_None, belongs_to_task, is_stale)."""
     label = f"receipt[{index}]"
@@ -136,19 +187,26 @@ def _check_receipt(
         hard.append(f"{label} invalid: {exc}")
         return None, False, False
     label = f"receipt[{index}] ({receipt['receipt_id']})"
-    if receipt["task_id"] != task_id:
+    if receipt["task_id"] != manifest["task_id"]:
         hard.append(f"{label} belongs to another task {receipt['task_id']!r}")
         return None, False, False
+    if receipt["manifest_sha256"] != manifest_hash:
+        hard.append(f"{label} manifest_sha256 does not match the manifest")
+        return None, True, False
+    if receipt["role_sha256"] != manifest["role_sha256"]:
+        hard.append(f"{label} role_sha256 does not match the manifest")
+        return None, True, False
     stale = False
     if receipt["candidate_head"] != head:
         hard.append(f"{label} stale head: candidate_head != current head")
         stale = True
-    if receipt["epoch"] != epoch:
-        hard.append(f"{label} stale epoch: {receipt['epoch']} != {epoch}")
+    if receipt["epoch"] > epoch:
+        hard.append(f"{label} future epoch: {receipt['epoch']} > {epoch}")
         stale = True
     if stale:
         return None, True, True
-    if not verify(receipt, key):
+    signing_key = supervisor_key if receipt["slot"] == SUPERVISOR_SLOT else key
+    if not verify(receipt, signing_key, RECEIPT_LABEL):
         hard.append(f"{label} invalid signature")
         return None, True, False
     derived = derive_result(receipt)
@@ -157,7 +215,11 @@ def _check_receipt(
             f"{label} result {receipt['result']} does not match derived result {derived}"
         )
         return None, True, False
-    if artifact_resolver is not None and receipt["receipt_type"] == "TestRun":
+    if receipt["receipt_type"] == "TestRun" and receipt["artifact_digests"]:
+        if artifact_resolver is None:
+            if _NO_RESOLVER_REASON not in hard:
+                hard.append(_NO_RESOLVER_REASON)
+            return None, True, False
         for path, digest in receipt["artifact_digests"].items():
             try:
                 current = artifact_resolver(path)
@@ -178,12 +240,16 @@ def _check_receipt(
 
 def _group_by_slot(
     good: list[dict], slot_types: dict[str, str], hard: list[str]
-) -> dict[str, list[dict]]:
+) -> tuple[dict[str, list[dict]], list[dict]]:
+    """Return (real-slot groups, supervisor receipts)."""
     grouped: dict[str, list[dict]] = {name: [] for name in slot_types}
+    supervisor: list[dict] = []
     for receipt in good:
         slot = receipt["slot"]
         label = f"receipt {receipt['receipt_id']}"
-        if slot not in slot_types:
+        if slot == SUPERVISOR_SLOT:
+            supervisor.append(receipt)
+        elif slot not in slot_types:
             hard.append(f"unlisted receipt: {label} has slot {slot!r} not in manifest")
         elif receipt["receipt_type"] != slot_types[slot]:
             hard.append(
@@ -192,7 +258,7 @@ def _group_by_slot(
             )
         else:
             grouped[slot].append(receipt)
-    return grouped
+    return grouped, supervisor
 
 
 def _chain_intact(slot: str, chain: list[dict], hard: list[str]) -> bool:
@@ -214,13 +280,109 @@ def _chain_intact(slot: str, chain: list[dict], hard: list[str]) -> bool:
     return True
 
 
+def _check_supervisor_chain(
+    supervisor: list[dict], findings: list[str], hard: list[str]
+) -> None:
+    chain = sorted(supervisor, key=lambda r: r["attempt"])
+    if not chain:
+        return
+    _chain_intact(SUPERVISOR_SLOT, chain, hard)
+    for marker in chain:
+        text = marker["check_description"]
+        if text == "WORKER_LOST":
+            findings.append(f"worker lost: attempt {marker['attempt']}")
+        elif text in _TERMINAL_MARKERS:
+            hard.append(f"terminal marker {text} (supervisor attempt {marker['attempt']})")
+        else:
+            hard.append(
+                f"unknown supervisor marker {text!r} (supervisor attempt "
+                f"{marker['attempt']})"
+            )
+
+
+def _check_latest(
+    slot: str,
+    latest: dict,
+    manifest: dict,
+    findings: list[str],
+    hard: list[str],
+    soft: list[str],
+) -> tuple[bool, set[str]]:
+    """Per-type checks on the latest current-epoch attempt.
+
+    Returns (slot_ok, acceptance_contribution). slot_ok is False when a hard or
+    soft problem makes the slot unmet; the contribution is only used when the
+    result is PASS and slot_ok.
+    """
+    rtype = latest["receipt_type"]
+    manifest_acceptance = set(manifest["acceptance"])
+    label = f"slot {slot!r}"
+    if rtype == "TestRun":
+        required_ids = {
+            t["test_id"] for t in manifest["required_tests"] if t["slot"] == slot
+        }
+        allowed = [c["argv"] for c in manifest["allowed_commands"] if c["slot"] == slot]
+        ok = True
+        if set(latest["expected_test_ids"]) != required_ids:
+            hard.append(f"{label}: expected_test_ids differ from the manifest required tests")
+            ok = False
+        for command in latest["commands"]:
+            if command["argv"] not in allowed:
+                hard.append(f"{label}: command {command['argv']!r} is not in allowed_commands")
+                ok = False
+        if not set(latest["covered_acceptance"]) <= manifest_acceptance:
+            hard.append(f"{label}: covered_acceptance contains ids outside the manifest")
+            ok = False
+        contribution: set[str] = set()
+        for test in manifest["required_tests"]:
+            if test["slot"] == slot:
+                contribution.update(test["acceptance"])
+        return ok, contribution
+    if rtype == "StaticAnalysis":
+        required_rules = {
+            r["rule_id"] for r in manifest["required_rules"] if r["slot"] == slot
+        }
+        missing = sorted(required_rules - set(latest["covered_rules"]))
+        if missing:
+            soft.append(f"{label}: required rules not covered: {', '.join(missing)}")
+            return False, set()
+        return True, set(latest["covered_acceptance"]) & manifest_acceptance
+    if rtype == "IndependentReview":
+        for finding in latest["findings"]:
+            findings.append(f"review finding: {finding}")
+        ok = True
+        try:
+            author = normalize_principal(latest["author_principal"])
+            reviewer = normalize_principal(latest["reviewer_principal"])
+            if author != normalize_principal(manifest["author_principal"]):
+                hard.append(f"{label}: review author_principal does not match the manifest")
+                ok = False
+            if reviewer == author:
+                hard.append(f"{label}: reviewer_principal equals author_principal")
+                ok = False
+        except ContractError as exc:
+            hard.append(f"{label}: principal invalid: {exc}")
+            ok = False
+        return ok, set(latest["covered_acceptance"]) & manifest_acceptance
+    return True, set()
+
+
 def _evaluate_waiver(
-    waiver: Any, head: str, unmet_slots: list[str], unmet_acceptance: list[str]
+    waiver: Any,
+    operator_key: Any,
+    manifest: dict,
+    manifest_hash: str,
+    head: str,
+    epoch: int,
+    unmet_slots: list[str],
+    unmet_acceptance: list[str],
 ) -> tuple[bool, str | None, str | None, list[str]]:
     """Return (covers, record_id, operator, problems)."""
     if not isinstance(waiver, dict):
         return False, None, None, ["waiver rejected: must be an object (dict)"]
     problems: list[str] = []
+    if not all(isinstance(k, str) for k in waiver):
+        return False, None, None, ["waiver rejected: non-string key"]
     missing = sorted(set(_WAIVER_FIELDS) - set(waiver))
     unknown = sorted(set(waiver) - set(_WAIVER_FIELDS))
     if missing:
@@ -229,18 +391,35 @@ def _evaluate_waiver(
         problems.append(f"waiver rejected: unknown field(s): {', '.join(unknown)}")
     if problems:
         return False, None, None, problems
-    for name in ("record_id", "operator", "expires_epoch_or_date"):
+    for name in ("record_id", "operator", "task_id", "head", "manifest_sha256"):
         value = waiver[name]
         if not isinstance(value, str) or not value.strip():
             problems.append(f"waiver rejected: {name} must be a non-empty string")
+    for name in ("epoch", "expires_epoch"):
+        if not _is_int(waiver[name]):
+            problems.append(f"waiver rejected: {name} must be an integer")
     for name in ("waived_slots", "waived_acceptance"):
         value = waiver[name]
         if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
             problems.append(f"waiver rejected: {name} must be a list of strings")
-    if waiver["head"] != head:
-        problems.append("waiver rejected: waiver head != current head")
+    if not _is_hex(waiver["signature"], 64):
+        problems.append("waiver rejected: signature must be 64 lowercase hex characters")
     if problems:
         return False, None, None, problems
+    if not _key_ok(operator_key):
+        return False, None, None, ["waiver rejected: no valid operator_key"]
+    if not verify(waiver, operator_key, WAIVER_LABEL):
+        return False, None, None, ["waiver rejected: invalid signature"]
+    if waiver["task_id"] != manifest["task_id"]:
+        problems.append("waiver rejected: waiver task_id != manifest task_id")
+    if waiver["epoch"] != epoch:
+        problems.append("waiver rejected: waiver epoch != current epoch")
+    if waiver["head"] != head:
+        problems.append("waiver rejected: waiver head != current head")
+    if waiver["manifest_sha256"] != manifest_hash:
+        problems.append("waiver rejected: waiver manifest_sha256 != manifest")
+    if epoch > waiver["expires_epoch"]:
+        problems.append("waiver rejected: expired (current epoch > expires_epoch)")
     for slot in unmet_slots:
         if slot not in waiver["waived_slots"]:
             problems.append(f"waiver rejected: slot {slot!r} is not waived")
@@ -258,16 +437,17 @@ def evaluate(
     current_head: str,
     current_epoch: int,
     key: bytes,
+    *,
+    supervisor_key: bytes,
+    operator_key: bytes | None = None,
     waiver: dict | None = None,
     artifact_resolver: Callable[[str], str | None] | None = None,
 ) -> dict:
     """Compute the GateDecision for one task candidate. See module docstring.
 
     artifact_resolver(path) returns the CURRENT sha256 hex of the artifact at
-    path (or None when it is missing). When given, every (path, digest) of
-    every otherwise-valid TestRun receipt must satisfy
-    artifact_resolver(path) == digest, else the receipt is invalid. When None,
-    artifacts are NOT re-checked by the gate.
+    path (or None when it is missing). TestRun receipts carrying artifact
+    digests are rejected (hard) when no resolver is given.
     """
     hard: list[str] = []
     soft: list[str] = []
@@ -277,18 +457,17 @@ def evaluate(
 
     task_id = manifest.get("task_id") if isinstance(manifest, dict) else None
 
-    if not _is_hex40(current_head):
+    if not _is_hex(current_head, 40):
         hard.append("current_head: must be 40 lowercase hex characters")
         fatal = True
-    if (
-        not isinstance(current_epoch, int)
-        or isinstance(current_epoch, bool)
-        or current_epoch < 1
-    ):
+    if not _is_int(current_epoch) or current_epoch < 1:
         hard.append("current_epoch: must be an integer >= 1")
         fatal = True
-    if not isinstance(key, (bytes, bytearray)) or len(key) == 0:
-        hard.append("key: must be non-empty bytes")
+    if not _key_ok(key):
+        hard.append(f"key: must be bytes of length >= {MIN_KEY_BYTES}")
+        fatal = True
+    if not _key_ok(supervisor_key):
+        hard.append(f"supervisor_key: must be bytes of length >= {MIN_KEY_BYTES}")
         fatal = True
     if not isinstance(receipts, list):
         hard.append("receipts: must be a list")
@@ -311,13 +490,15 @@ def evaluate(
             acceptance_unmet=list(valid_manifest["acceptance"]), reasons=hard,
         )
 
+    manifest_hash = manifest_sha256(valid_manifest)
     good: list[dict] = []
     own_count = 0
     stale_count = 0
     for index, raw in enumerate(receipts):
         receipt, own, stale = _check_receipt(
-            index, raw, valid_manifest["task_id"], current_head,
-            current_epoch, bytes(key), hard, artifact_resolver,
+            index, raw, valid_manifest, manifest_hash, current_head,
+            current_epoch, bytes(key), bytes(supervisor_key), hard,
+            artifact_resolver,
         )
         own_count += 1 if own else 0
         stale_count += 1 if stale else 0
@@ -325,12 +506,15 @@ def evaluate(
             good.append(receipt)
     if own_count > 0 and stale_count == own_count:
         fatal = True
-        hard.append("all receipts for this task are stale (head or epoch mismatch)")
+        hard.append(
+            "all receipts for this task are stale (head mismatch or future epoch)"
+        )
 
     slot_types = {
         s["slot"]: s["receipt_type"] for s in valid_manifest["required_receipts"]
     }
-    grouped = _group_by_slot(good, slot_types, hard)
+    grouped, supervisor = _group_by_slot(good, slot_types, hard)
+    _check_supervisor_chain(supervisor, findings, hard)
 
     covered: set[str] = set()
     unmet_slots: list[str] = []
@@ -343,13 +527,23 @@ def evaluate(
         for earlier in chain[:-1]:
             if earlier["result"] != "PASS":
                 findings.append(
-                    f"earlier failure retained: slot {slot!r} attempt "
-                    f"{earlier['attempt']} result {earlier['result']}"
+                    f"earlier failure retained: {slot} attempt "
+                    f"{earlier['attempt']} {earlier['result']}"
                 )
         if not _chain_intact(slot, chain, hard):
             continue
         latest = chain[-1]
         hashes.append(receipt_sha256(latest))
+        if latest["epoch"] != current_epoch:
+            soft.append(
+                f"slot {slot!r} needs a current-epoch attempt (latest attempt "
+                f"{latest['attempt']} is from epoch {latest['epoch']})"
+            )
+            unmet_slots.append(slot)
+            continue
+        slot_ok, contribution = _check_latest(
+            slot, latest, valid_manifest, findings, hard, soft
+        )
         if latest["result"] != "PASS":
             soft.append(
                 f"slot {slot!r} latest attempt {latest['attempt']} "
@@ -357,13 +551,10 @@ def evaluate(
             )
             unmet_slots.append(slot)
             continue
-        if (
-            latest["receipt_type"] == "IndependentReview"
-            and latest["reviewer_principal"] == latest["author_principal"]
-        ):
-            hard.append(f"slot {slot!r}: reviewer_principal equals author_principal")
+        if not slot_ok:
+            unmet_slots.append(slot)
             continue
-        covered.update(latest["covered_acceptance"])
+        covered.update(contribution)
 
     acceptance_unmet = [a for a in valid_manifest["acceptance"] if a not in covered]
     for acc in acceptance_unmet:
@@ -379,7 +570,8 @@ def evaluate(
         verdict = "MODIFY"
     else:
         ok, record_id, operator, problems = _evaluate_waiver(
-            waiver, current_head, unmet_slots, acceptance_unmet
+            waiver, operator_key, valid_manifest, manifest_hash, current_head,
+            current_epoch, unmet_slots, acceptance_unmet,
         )
         if ok and record_id is not None and operator is not None:
             verdict = "APPROVED_WITH_WAIVER"

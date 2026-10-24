@@ -96,3 +96,20 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Why it worked: test agents were told to report defects, not fix them, and to compare expected and executed test ids; the acceptance sentences in the plan were each turned into a test.
 - Layer: author missed all three; tests caught them; the coordinator's baseline text had specified the acceptance without the data field it needed.
 - Rule: for each acceptance sentence, name the data field that carries the evidence before coding. Also: an agent that runs out of turns must be resumed with an explicit priority list.
+
+## 2026-10-24 -- S1 specialist review
+
+- Kind: FAILURE (author and tests layers) / SUCCESS (reviewers).
+- Facts: 603 passing tests missed a chain-definition mismatch between store and gate, an optional artifact check, an unauthenticated waiver and self-referential success conditions; four independent reviewers found them, two of them independently of each other.
+- Root cause: tests were written from the plan's acceptance sentences, not from cross-module scenarios (store output fed into the gate); the baseline left the manifest without the fields that define success.
+- Layer: author missed; tests green but vacuous for these paths; reviewers caught.
+- Rule: every E2E scenario must feed real store output into the gate, including retry after loss and after epoch takeover; success conditions must come from the manifest, never from the receipt.
+
+## 2026-10-24 -- S1 remediation applied and retested
+
+- Kind: SUCCESS with one SHORTCOMING.
+- Facts: remediation A (contracts, gate) and B (store, runner, slice) were written by two implementers; test agents then rewrote E1-E5 for the new rules: E1-E4 1105 passed and 2 skipped (POSIX permission bits, os.symlink not permitted), E5 38 passed (evidence `docs/sdlc/evidence/s1-remediation-e1-e4-test-run.md`, `s1-remediation-e5-test-run.md`). The tests found no product bug; their own defects (CRLF on Windows, a manifest bound hit first, a helper that replaced None) were test errors.
+- Shortcoming: the README known-limits bullet on event-chain truncation went stale because part B changed the code while part A owned that README section; the coordinator fixed it after the test phase.
+- Why it worked: the decision package was written down before coding and both implementers received the same binding list; part B started only after part A defined the signatures.
+- Layer: coordinator caught the stale text; reviewers still have to confirm the new code.
+- Rule: when two implementers share one document, give one of them the whole document or list cross-owned statements in the brief. Tests ran on a working tree, so the next reviewers must use the committed head.

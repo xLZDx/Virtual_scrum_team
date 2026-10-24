@@ -4,13 +4,28 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import hmac
 import json
 
 import pytest
 
 from tools.vst import contracts as c
+from tools.vst import signing
 
-from .e1e4_helpers import HEAD, doc_manifest, manifest, receipt, unsigned_receipt
+from .e1e4_helpers import (
+    HEAD,
+    KEY,
+    MANIFEST_SHA,
+    OPERATOR_KEY,
+    SUPERVISOR_KEY,
+    WRONG_KEY,
+    doc_manifest,
+    manifest,
+    mhash,
+    receipt,
+    supervisor_receipt,
+    unsigned_receipt,
+)
 
 ContractError = c.ContractError
 
@@ -24,6 +39,9 @@ def test_manifest_valid_returns_equal_deep_copy():
     assert out == m
     out["scope"].append("x/y")
     out["required_receipts"][0]["slot"] = "changed"
+    out["required_tests"][0]["acceptance"].append("zzz")
+    out["allowed_commands"][0]["argv"].append("--zzz")
+    out["required_rules"][0]["rule_id"] = "changed"
     assert m == manifest()  # input untouched, copy independent
 
 
@@ -253,6 +271,11 @@ def test_receipt_non_dict_rejected():
         ("candidate_head", "a" * 39),
         ("candidate_head", "A" * 40),
         ("role_sha256", "c" * 65),
+        ("manifest_sha256", "a" * 63),
+        ("manifest_sha256", "A" * 64),
+        ("manifest_sha256", "g" * 64),
+        ("manifest_sha256", None),
+        ("manifest_sha256", ""),
         ("signature", "a" * 63),
         ("signature", "A" * 64),
         ("signature", None),
@@ -396,6 +419,15 @@ def test_derive_static_analysis():
     assert c.derive_result(sa(unsupported_rules=["R9"])) == "INCONCLUSIVE"
 
 
+def test_derive_static_analysis_full_coverage_without_covered_rules_is_not_pass():
+    # FULL coverage claimed but no rule was actually covered: vacuous, never PASS.
+    r = unsigned_receipt("StaticAnalysis", result="FAIL", covered_rules=[])
+    assert r["coverage"] == "FULL" and r["unsupported_rules"] == []
+    assert c.derive_result(r) == "INCONCLUSIVE"
+    claimed = unsigned_receipt("StaticAnalysis", result="PASS", covered_rules=[])
+    assert c.derive_result(claimed) == "INCONCLUSIVE" != claimed["result"]
+
+
 def test_derive_independent_review():
     def rv(**kw):
         return unsigned_receipt("IndependentReview", result="PASS", **kw)
@@ -404,6 +436,30 @@ def test_derive_independent_review():
     assert c.derive_result(rv(signed_verdict="MODIFY")) == "FAIL"
     assert c.derive_result(rv(signed_verdict="NO_GO")) == "FAIL"
     assert c.derive_result(rv(reviewer_principal="same", author_principal="same")) == "FAIL"
+
+
+@pytest.mark.parametrize(
+    "reviewer,author",
+    [
+        ("Author-Y ", "author-y"),
+        ("author-y", " AUTHOR-Y"),
+        ("  same\t", "same"),
+        ("SAME", "same"),
+        ("Straße", "STRASSE"),  # casefold, not just lower
+    ],
+)
+def test_derive_review_compares_normalized_principals(reviewer, author):
+    r = unsigned_receipt(
+        "IndependentReview", result="PASS", reviewer_principal=reviewer, author_principal=author
+    )
+    assert c.derive_result(r) == "FAIL"
+
+
+def test_derive_review_distinct_principals_after_normalization_pass():
+    r = unsigned_receipt(
+        "IndependentReview", result="FAIL", reviewer_principal=" Reviewer-X ", author_principal="author-y"
+    )
+    assert c.derive_result(r) == "PASS"
 
 
 def test_derive_documentation_keeps_pass_and_fail_only():
@@ -681,3 +737,396 @@ def test_receipt_sha256_sensitive_to_artifact_digest_value():
     a = receipt("TestRun", artifact_digests={"f": "a" * 64})
     b = receipt("TestRun", artifact_digests={"f": "b" * 64})
     assert c.receipt_sha256(a) != c.receipt_sha256(b)
+
+
+# ============================================================================
+# Remediation A: manifest binding fields, reserved slot, hashes, principals
+# ============================================================================
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["author_principal", "required_tests", "allowed_commands", "required_rules"],
+)
+def test_manifest_new_required_field_missing_is_rejected_by_name(field):
+    m = manifest()
+    del m[field]
+    with pytest.raises(ContractError, match=field):
+        c.validate_task_manifest(m)
+
+
+@pytest.mark.parametrize("value", ["", "   ", "\t\n", None, 5, ["a"]])
+def test_manifest_author_principal_must_be_non_blank_string(value):
+    with pytest.raises(ContractError, match="author_principal"):
+        c.validate_task_manifest(manifest(author_principal=value))
+
+
+def test_manifest_author_principal_is_stored_verbatim_not_normalized():
+    out = c.validate_task_manifest(manifest(author_principal="  Author-Y "))
+    assert out["author_principal"] == "  Author-Y "
+
+
+@pytest.mark.parametrize("bad", [None, "x", {}, 5])
+@pytest.mark.parametrize("field", ["required_tests", "allowed_commands", "required_rules"])
+def test_manifest_new_list_fields_must_be_lists(field, bad):
+    with pytest.raises(ContractError, match=field):
+        c.validate_task_manifest(manifest(**{field: bad}))
+
+
+@pytest.mark.parametrize(
+    "item",
+    [
+        {"slot": "tests", "test_id": "t1"},  # missing acceptance
+        {"slot": "tests", "acceptance": ["AC-1"]},  # missing test_id
+        {"test_id": "t1", "acceptance": ["AC-1"]},  # missing slot
+        {"slot": "tests", "test_id": "t1", "acceptance": ["AC-1"], "extra": 1},
+        {"slot": "tests", "test_id": "", "acceptance": ["AC-1"]},
+        {"slot": "tests", "test_id": "t1", "acceptance": []},  # must cover something
+        {"slot": "tests", "test_id": "t1", "acceptance": ["AC-9"]},  # not in manifest acceptance
+        {"slot": "tests", "test_id": "t1", "acceptance": "AC-1"},
+        {"slot": "ghost", "test_id": "t1", "acceptance": ["AC-1"]},  # unknown slot
+        {"slot": "static", "test_id": "t1", "acceptance": ["AC-1"]},  # not a TestRun slot
+        {"slot": "review", "test_id": "t1", "acceptance": ["AC-1"]},
+        "t1",
+    ],
+)
+def test_manifest_bad_required_test_entry_rejected(item):
+    good = manifest()["required_tests"]
+    with pytest.raises(ContractError, match="required_tests"):
+        c.validate_task_manifest(manifest(required_tests=good + [item]))
+
+
+def test_manifest_duplicate_test_id_in_same_slot_rejected_but_allowed_across_slots():
+    dup = [
+        {"slot": "tests", "test_id": "t1", "acceptance": ["AC-1"]},
+        {"slot": "tests", "test_id": "t1", "acceptance": ["AC-2"]},
+    ]
+    with pytest.raises(ContractError, match="duplicate test id"):
+        c.validate_task_manifest(manifest(required_tests=dup))
+    two_slots = [
+        {"slot": "tests", "test_id": "t1", "acceptance": ["AC-1"]},
+        {"slot": "tests2", "test_id": "t1", "acceptance": ["AC-2"]},
+    ]
+    m = manifest(
+        required_receipts=[
+            {"slot": "tests", "receipt_type": "TestRun"},
+            {"slot": "tests2", "receipt_type": "TestRun"},
+            {"slot": "review", "receipt_type": "IndependentReview"},
+        ],
+        required_tests=two_slots,
+        allowed_commands=[
+            {"slot": "tests", "argv": ["pytest"]},
+            {"slot": "tests2", "argv": ["pytest", "-x"]},
+        ],
+        required_rules=[],
+    )
+    assert c.validate_task_manifest(m) == m
+
+
+@pytest.mark.parametrize(
+    "item",
+    [
+        {"slot": "tests"},  # missing argv
+        {"argv": ["pytest"]},  # missing slot
+        {"slot": "tests", "argv": []},
+        {"slot": "tests", "argv": [""]},
+        {"slot": "tests", "argv": [1]},
+        {"slot": "tests", "argv": "pytest -q"},
+        {"slot": "tests", "argv": ["pytest"], "extra": 1},
+        {"slot": "ghost", "argv": ["pytest"]},
+        {"slot": "static", "argv": ["pytest"]},  # not a TestRun slot
+        ["pytest"],
+    ],
+)
+def test_manifest_bad_allowed_command_rejected(item):
+    good = manifest()["allowed_commands"]
+    with pytest.raises(ContractError, match="allowed_commands"):
+        c.validate_task_manifest(manifest(allowed_commands=good + [item]))
+
+
+@pytest.mark.parametrize(
+    "item",
+    [
+        {"slot": "static"},  # missing rule_id
+        {"rule_id": "R2"},  # missing slot
+        {"slot": "static", "rule_id": ""},
+        {"slot": "static", "rule_id": 3},
+        {"slot": "static", "rule_id": "R2", "extra": 1},
+        {"slot": "ghost", "rule_id": "R2"},
+        {"slot": "tests", "rule_id": "R2"},  # not a StaticAnalysis slot
+        {"slot": "static", "rule_id": "R1"},  # duplicate of the default R1
+        "R2",
+    ],
+)
+def test_manifest_bad_required_rule_rejected(item):
+    good = manifest()["required_rules"]
+    with pytest.raises(ContractError, match="required_rules"):
+        c.validate_task_manifest(manifest(required_rules=good + [item]))
+
+
+def test_manifest_testrun_slot_without_tests_rejected():
+    with pytest.raises(ContractError, match="TestRun slot 'tests' has no test"):
+        c.validate_task_manifest(manifest(required_tests=[]))
+
+
+def test_manifest_testrun_slot_without_allowed_command_rejected():
+    with pytest.raises(ContractError, match="TestRun slot 'tests' has no allowed command"):
+        c.validate_task_manifest(manifest(allowed_commands=[]))
+
+
+def test_manifest_every_testrun_slot_needs_its_own_tests_and_commands():
+    slots = [
+        {"slot": "tests", "receipt_type": "TestRun"},
+        {"slot": "tests2", "receipt_type": "TestRun"},
+        {"slot": "review", "receipt_type": "IndependentReview"},
+    ]
+    only_first_tests = [{"slot": "tests", "test_id": "t1", "acceptance": ["AC-1"]}]
+    cmds = [{"slot": "tests", "argv": ["pytest"]}, {"slot": "tests2", "argv": ["pytest"]}]
+    with pytest.raises(ContractError, match="'tests2' has no test"):
+        c.validate_task_manifest(
+            manifest(required_receipts=slots, required_tests=only_first_tests,
+                     allowed_commands=cmds, required_rules=[])
+        )
+    both_tests = only_first_tests + [{"slot": "tests2", "test_id": "t9", "acceptance": ["AC-2"]}]
+    with pytest.raises(ContractError, match="'tests2' has no allowed command"):
+        c.validate_task_manifest(
+            manifest(required_receipts=slots, required_tests=both_tests,
+                     allowed_commands=cmds[:1], required_rules=[])
+        )
+
+
+def test_manifest_static_slot_without_rules_rejected():
+    with pytest.raises(ContractError, match="StaticAnalysis slot 'static' has no rule"):
+        c.validate_task_manifest(manifest(required_rules=[]))
+
+
+def test_manifest_without_static_slot_may_have_empty_required_rules():
+    m = manifest(
+        required_receipts=[
+            {"slot": "tests", "receipt_type": "TestRun"},
+            {"slot": "review", "receipt_type": "IndependentReview"},
+        ],
+        required_rules=[],
+    )
+    assert c.validate_task_manifest(m)["required_rules"] == []
+
+
+def test_manifest_reserved_supervisor_slot_name_rejected():
+    slots = manifest()["required_receipts"] + [
+        {"slot": c.SUPERVISOR_SLOT, "receipt_type": "Documentation"}
+    ]
+    with pytest.raises(ContractError, match="reserved"):
+        c.validate_task_manifest(manifest(required_receipts=slots))
+    assert c.SUPERVISOR_SLOT == "__supervisor__"
+
+
+def test_manifest_requires_at_least_one_testrun_slot():
+    slots = [
+        {"slot": "static", "receipt_type": "StaticAnalysis"},
+        {"slot": "review", "receipt_type": "IndependentReview"},
+    ]
+    with pytest.raises(ContractError, match="TestRun"):
+        c.validate_task_manifest(
+            manifest(required_receipts=slots, required_tests=[], allowed_commands=[])
+        )
+
+
+def test_manifest_requires_at_least_one_independent_review_slot():
+    slots = [
+        {"slot": "tests", "receipt_type": "TestRun"},
+        {"slot": "static", "receipt_type": "StaticAnalysis"},
+    ]
+    with pytest.raises(ContractError, match="IndependentReview"):
+        c.validate_task_manifest(manifest(required_receipts=slots))
+
+
+def test_doc_manifest_has_review_slot_and_dropping_it_is_rejected():
+    dm = doc_manifest()
+    assert {s["receipt_type"] for s in dm["required_receipts"]} >= {"TestRun", "IndependentReview"}
+    no_review = [s for s in dm["required_receipts"] if s["receipt_type"] != "IndependentReview"]
+    with pytest.raises(ContractError, match="IndependentReview"):
+        c.validate_task_manifest(doc_manifest(required_receipts=no_review))
+
+
+# ------------------------------------------------------------ manifest hash
+
+
+def test_manifest_sha256_matches_independent_computation_and_is_stable():
+    m = manifest()
+    expected = hashlib.sha256(
+        json.dumps(m, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+    ).hexdigest()
+    assert c.manifest_sha256(m) == expected == MANIFEST_SHA == mhash(m)
+    assert c.manifest_sha256(copy.deepcopy(m)) == expected
+    assert c.manifest_sha256(dict(reversed(list(m.items())))) == expected
+    assert len(expected) == 64 and expected == expected.lower()
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda m: m.update(author_principal="someone-else"),
+        lambda m: m["required_tests"].append(
+            {"slot": "tests", "test_id": "t3", "acceptance": ["AC-1"]}
+        ),
+        lambda m: m["required_tests"][0].update(acceptance=["AC-2"]),
+        lambda m: m["allowed_commands"].append({"slot": "tests", "argv": ["pytest", "-x"]}),
+        lambda m: m["allowed_commands"][0]["argv"].append("--extra"),
+        lambda m: m["required_rules"].append({"slot": "static", "rule_id": "R2"}),
+        lambda m: m.update(acceptance=["AC-1", "AC-2", "AC-3"]),
+        lambda m: m.update(role_sha256="e" * 64),
+        lambda m: m.update(retry_cap=5),
+        lambda m: m.update(task_id="T2"),
+    ],
+)
+def test_manifest_sha256_changes_when_any_binding_field_changes(mutate):
+    m = manifest()
+    changed = copy.deepcopy(m)
+    mutate(changed)
+    c.validate_task_manifest(changed)  # still a valid manifest
+    assert c.manifest_sha256(changed) != c.manifest_sha256(m)
+
+
+def test_manifest_sha256_raises_for_invalid_manifest():
+    for bad in (manifest(extra=1), {"task_id": "T"}, None, []):
+        with pytest.raises(ContractError):
+            c.manifest_sha256(bad)
+
+
+def test_manifest_sha256_does_not_mutate_input():
+    m = manifest()
+    snap = copy.deepcopy(m)
+    c.manifest_sha256(m)
+    assert m == snap
+
+
+# ------------------------------------------------------------- principals
+
+
+@pytest.mark.parametrize(
+    "raw,norm",
+    [
+        ("author-y", "author-y"),
+        ("  Author-Y ", "author-y"),
+        ("AUTHOR-Y\t", "author-y"),
+        ("Straße", "strasse"),
+    ],
+)
+def test_normalize_principal(raw, norm):
+    assert c.normalize_principal(raw) == norm
+
+
+@pytest.mark.parametrize("bad", ["", "   ", "\t\n", None, 5, b"x", ["a"]])
+def test_normalize_principal_rejects_empty_or_non_string(bad):
+    with pytest.raises(ContractError):
+        c.normalize_principal(bad)
+
+
+@pytest.mark.parametrize("field", ["reviewer_principal", "author_principal"])
+def test_review_principal_whitespace_only_rejected(field):
+    r = receipt("IndependentReview")
+    r[field] = "   "
+    with pytest.raises(ContractError, match=field):
+        c.validate_receipt(r)
+
+
+# ------------------------------------------------- receipts: reserved slot
+
+
+def test_supervisor_slot_accepts_documentation_receipt():
+    r = supervisor_receipt("WORKER_LOST")
+    assert r["slot"] == c.SUPERVISOR_SLOT
+    assert c.validate_receipt(r) == r
+
+
+@pytest.mark.parametrize("rtype", ["TestRun", "StaticAnalysis", "IndependentReview"])
+def test_supervisor_slot_rejects_non_documentation_receipts(rtype):
+    r = receipt(rtype, slot=c.SUPERVISOR_SLOT)
+    with pytest.raises(ContractError, match="reserved"):
+        c.validate_receipt(r)
+
+
+def test_receipt_missing_manifest_sha256_rejected_by_name():
+    r = receipt()
+    del r["manifest_sha256"]
+    with pytest.raises(ContractError, match="manifest_sha256"):
+        c.validate_receipt(r)
+
+
+# ===================================================================== signing
+
+
+def test_test_keys_are_long_enough_and_pairwise_distinct():
+    keys = [KEY, SUPERVISOR_KEY, OPERATOR_KEY, WRONG_KEY]
+    assert all(isinstance(k, bytes) and len(k) >= signing.MIN_KEY_BYTES for k in keys)
+    assert len(set(keys)) == len(keys)
+    assert signing.MIN_KEY_BYTES == 32
+
+
+@pytest.mark.parametrize("key", [b"", b"k" * 31, "k" * 40, None, 5, [b"k" * 32]])
+def test_sign_and_verify_reject_invalid_keys(key):
+    body = {"a": 1}
+    with pytest.raises(ContractError, match="key"):
+        signing.sign(body, key)
+    with pytest.raises(ContractError, match="key"):
+        signing.verify(dict(body, signature="a" * 64), key)
+
+
+def test_sign_accepts_exactly_32_bytes_and_bytearray():
+    body = {"a": 1}
+    sig = signing.sign(body, b"k" * 32)
+    assert len(sig) == 64
+    assert signing.sign(body, bytearray(b"k" * 32)) == sig
+    assert signing.verify(dict(body, signature=sig), b"k" * 32) is True
+
+
+def test_sign_default_label_is_receipt_label_and_matches_independent_hmac():
+    body = {"b": 2, "a": [1]}
+    expected = hmac.new(
+        KEY, signing.RECEIPT_LABEL + c.canonical_bytes(body), hashlib.sha256
+    ).hexdigest()
+    assert signing.sign(body, KEY) == expected == signing.sign(body, KEY, signing.RECEIPT_LABEL)
+
+
+def test_labels_are_distinct_non_empty_bytes():
+    assert signing.RECEIPT_LABEL != signing.WAIVER_LABEL
+    assert signing.RECEIPT_LABEL and signing.WAIVER_LABEL
+
+
+def test_signature_under_one_label_does_not_verify_under_the_other():
+    body = {"x": 1}
+    as_receipt = dict(body, signature=signing.sign(body, OPERATOR_KEY, signing.RECEIPT_LABEL))
+    as_waiver = dict(body, signature=signing.sign(body, OPERATOR_KEY, signing.WAIVER_LABEL))
+    assert as_receipt["signature"] != as_waiver["signature"]
+    assert signing.verify(as_receipt, OPERATOR_KEY, signing.RECEIPT_LABEL)
+    assert not signing.verify(as_receipt, OPERATOR_KEY, signing.WAIVER_LABEL)
+    assert signing.verify(as_waiver, OPERATOR_KEY, signing.WAIVER_LABEL)
+    assert not signing.verify(as_waiver, OPERATOR_KEY, signing.RECEIPT_LABEL)
+    assert not signing.verify(as_waiver, OPERATOR_KEY)  # default label = receipt
+
+
+@pytest.mark.parametrize("label", [b"", "text", None, 5])
+def test_sign_and_verify_reject_invalid_labels(label):
+    with pytest.raises(ContractError, match="label"):
+        signing.sign({"a": 1}, KEY, label)
+    with pytest.raises(ContractError, match="label"):
+        signing.verify({"a": 1, "signature": "a" * 64}, KEY, label)
+
+
+def test_verify_wrong_key_and_tamper_are_false_not_exceptions():
+    r = receipt()
+    assert signing.verify(r, KEY)
+    assert not signing.verify(r, WRONG_KEY)
+    assert not signing.verify(r, SUPERVISOR_KEY)
+    tampered = dict(r, runner_id="attacker")
+    assert not signing.verify(tampered, KEY)
+    for bad in ("x", None, [], 5):
+        assert signing.verify(bad, KEY) is False
+    no_sig = {k: v for k, v in r.items() if k != "signature"}
+    assert signing.verify(no_sig, KEY) is False
+    assert signing.verify(dict(r, signature=123), KEY) is False
+
+
+def test_sign_refuses_object_that_already_has_signature():
+    with pytest.raises(ContractError, match="signature"):
+        signing.sign(receipt(), KEY)
