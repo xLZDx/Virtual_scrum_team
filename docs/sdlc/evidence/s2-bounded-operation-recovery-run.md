@@ -55,3 +55,13 @@ These are `NOT_RUN`, not passes; they remain dependencies for the complete S2 ru
 - The callback regression checks that an independent Store write can finish while the backend callback is active. Its independent Store is created and closed in the writer thread to respect SQLite thread affinity.
 - Skips (all explicitly platform/prohibition gated): 9 POSIX-only anchor permission/recovery/failure-state cases; 1 POSIX worker-account and Unix-socket access case; 4 E4 process-containment cases (POSIX process group, post-exit descendants, worker key permissions, Windows parent Job Object nesting). The E4 cases remain `NOT_RUN`; no process-kill or kill-table test was run.
 - Historical red runs above remain diagnostic records. They are not reclassified as flakes and are not part of the final green result.
+
+## Functional-owned follow-up on hook-free object-transfer source HEAD `202e068`
+
+- Full source revision: `202e0680e8e1b4fb30dcbe9659bf550d06443d90` (`fix(s2): import candidate before ancestry check`).
+- E2E test author confirmed code authoring was complete before this run. The E2E-owned runner test file was not executed by this focused command.
+- Exact command: `C:\Python314\python.exe -m pytest -q -rs -p no:cacheprovider tests/vst/test_s2_operation_recovery.py`.
+- Result: exit 0; 4 passed, 0 skipped, 1 pytest-asyncio deprecation warning in 0.52 seconds.
+- Environment: Python 3.14.3, pytest 8.4.2, Windows NT 10.0.26300.0, PowerShell 7.6.7.
+- Passed IDs: `test_completed_override_action_id_with_changed_valid_signed_record_rejected_after_restart`, `test_external_operation_intent_and_completion_are_committed_around_callback`, `test_external_operation_timeout_stays_pending_and_same_key_payload_recovers`, `test_completed_legacy_idempotent_operation_remains_replayable`.
+- This verifies the four Store-level recovery and override cases against the new source head. The new hook-free pack-transfer, source-only object, ref-conflict and timeout-process boundary behavior is owned by the E2E module and is not covered by this command; retain its separate exact-head evidence.
