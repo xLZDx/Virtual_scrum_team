@@ -499,7 +499,7 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — A successful source-transfer response binds one run ID to the exact candidate HEAD and sender/receiver bundle digest and byte count. Verify the clone ownership/modes and worker read/write boundary only under that returned run ID; keep this scoped transfer acceptance separate from native QA, signer, report, and gate acceptance. See change record 0123.
 
-2026-10-25 — A Windows-host-only CLI can short-circuit a later wrong-distro guard on POSIX. The E2E oracle must assert the POSIX host guard when run on POSIX and preserve the distro-specific guard assertion for Windows; do not classify the product's correct platform refusal as a bug or call the test a flake. See change record 0122.
+2026-10-25 — A Windows-host-only CLI can short-circuit a later wrong-distro guard on POSIX. The E2E oracle must assert the POSIX host guard on POSIX and preserve the distro-specific guard on Windows. The old `e43329f` snapshot keeps its original test defect evidence; the corrected oracle was locally verified after commit `630c5cf`, and a new snapshot is required for native confirmation. See change records 0122, 0126, and 0127.
 
 2026-10-25 — A cross-OS source snapshot must preserve both Git identity and the worker's read-only boundary. Stream a self-contained Git bundle through the WSL process boundary, verify exact HEAD and digest on both sides, and provision directory permissions for runner ownership plus worker traversal/read without write. Implemented behavior remains `NOT_RUN` until the exact isolated destination is exercised. See change record 0101.
 
