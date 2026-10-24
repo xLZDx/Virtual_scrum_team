@@ -315,3 +315,6 @@ Keep v1/v2 signed bodies unchanged. A v3 manifest pins one StaticAnalysis slot, 
 ## 2026-10-25 -- Pin focused S5 v3 contract behavior before exact-head rerun
 
 Added the functional reviewer’s focused S5 tests for v1/v2 canonical compatibility, v3 manifest/receipt partitions, analyzer trust/signature domain, exact gate binding, resolver failures, and deterministic source hashing. Preliminary run at source HEAD `8961ea0cc5a1fc3baba75aaa25cedc7e5cb070d2`: 39 passed, one symlink test skipped (Windows WinError 1314 / errno 22), one pytest-asyncio deprecation warning. This was before the test source commit; exact clean-head evidence is pending. See change record 0124.
+## 2026-10-25 -- Record exact-head S5 v3 functional evidence
+
+At clean HEAD `0dbb66293fbf9df946b1b1cb5cc9b841d7b9d1ed`, the focused S5 functional module completed with 39 passed, one skipped and no failures. The skipped symlink case records Windows WinError 1314 / errno 22; a global pytest-asyncio deprecation warning is non-failing. AEVE runtime and sandbox behavior remain NOT_RUN. See evidence `docs/sdlc/evidence/s5-v3-functional-0dbb662.md` and change record 0125.
