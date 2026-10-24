@@ -1,10 +1,10 @@
 # Virtual Scrum Team - current state (read first)
 
-Last updated: 2026-10-24. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
+Last updated: 2026-10-25. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
 
 ## Active sprint: S2 isolated worker sandbox
 
-Current branch: `s2-isolated-worker-sandbox`. Source head: `280e2d0a613a0b70252c13ce7afe85f22734f7d1`; latest repository head before the current documentation update: `0f69d16ce2c67cb5c7114b61119ea62be785f1cb`. Focused test and selected WSL per-run evidence exists; S2 is still partial because process-kill/kill-table, Windows Job Object nesting and full E8 crash/resume remain `NOT_RUN`. Specialist consensus and GPT-PM exact-head approval are pending, so no push/PR is ready. See [`docs/sdlc/STATE.md`](../docs/sdlc/STATE.md) and [`core/BACKLOG.md`](BACKLOG.md) for the acceptance queue.
+Current branch: `s2-isolated-worker-sandbox`. Source head: `dc95915018b80f498d5cf775363712fb915fe04e`; repository head before this reconciliation: `648012236a783e36c88573b34cf3a0c302413958`. Phase 7 functional/E2E evidence and fresh specialist reviews are complete for this source. Process-kill/kill-table, post-start overflow cleanup, Windows Job Object nesting, full POSIX containment, and complete E8 crash/resume remain `NOT_RUN`; OS memory/temp-storage quotas and workspace binding remain `NOT_VERIFIED`. Phase 8 GPT-PM exact-head approval is pending, so no push/PR is ready. See [`docs/sdlc/STATE.md`](../docs/sdlc/STATE.md) and [`core/BACKLOG.md`](BACKLOG.md) for evidence and next steps.
 
 ## What exists
 
