@@ -72,3 +72,7 @@ Implementation agent wrote `tools/vst/contracts.py`, `signing.py`, `gate.py` and
 ## 2026-10-24 -- S1 E6: single state authority with a transitional rule
 
 Resolves review finding VEO-R2-B01 at documentation level: `sdlc-orchestrator/SKILL.md` and the Definition of Done now say the state store becomes the only authority once accepted and `STATE.md` its generated view; until then `STATE.md` stays authoritative, so there is never more than one authority. Record: `docs/changes/0012-s1-e6-state-authority-alignment.md`. Installed skill copy not re-installed.
+
+## 2026-10-24 -- S1 E3/E4 code: state store and runner (written, untested)
+
+Implementation agent wrote `tools/vst/store.py` (SQLite, epoch compare-and-swap, leases and slots in one transaction, append-only receipts and hash-chained events via triggers, budget ledger, supervisor receipts for lost workers, generated STATE view) and `tools/vst/runner.py` (no-shell command execution, signed TestRun receipt, artifact hashes), and fixed `derive_result` so non-approving results (BLOCKED, INCONCLUSIVE, NOT_RUN) are accepted as given. Resolved ambiguities are listed in `docs/changes/0011-s1-e3-e4-store-and-runner.md` and the agent report: story ownership has a TTL (`stories.owner_expires_at`), the supervisor uses the first Documentation slot, and a new attempt is refused while a reaped attempt has no supervisor receipt. Known gaps to close before tests: no BLOCKED(budget) receipt writer, trigger violations surface as raw `sqlite3.IntegrityError`, no owner renewal (not needed for S1 drills). No tests have run.

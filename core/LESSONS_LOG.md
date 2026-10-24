@@ -74,3 +74,10 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Facts: a transitional rule ("store once accepted, otherwise STATE.md") closed a two-authority conflict without making the skill refer to code that does not exist yet.
 - Why it worked: the rule names exactly one authority for each state of the project.
 - Rule: when moving an authority, write the switch condition into the same sentence.
+
+## 2026-10-24 -- S1 E3/E4 store and runner (written, untested)
+
+- Kind: SHORTCOMING (specification gaps found by the implementer).
+- Facts: the plan's table had no notion of a live story owner, no budget-exceeded receipt writer and no error type for trigger violations; the implementer had to invent `owner_expires_at`.
+- Root cause: BD-1/BD-5/BD-6 were written without a state-transition table, which the Round 1 reliability review had asked for.
+- Rule: write the state-transition table (event, writer, precondition) before implementing a store; the gaps are fixed in the next sub-step.

@@ -25,6 +25,7 @@ import re
 from typing import Any
 
 RESULT = frozenset({"PASS", "FAIL", "BLOCKED", "NOT_RUN", "INCONCLUSIVE"})
+NON_APPROVING_RESULTS = frozenset({"BLOCKED", "INCONCLUSIVE", "NOT_RUN"})
 COVERAGE = frozenset({"FULL", "PARTIAL", "NOT_COVERED"})
 VERDICT = frozenset({"APPROVE", "APPROVED_WITH_WAIVER", "MODIFY", "NO_GO"})
 RECEIPT_TYPES = frozenset(
@@ -381,8 +382,16 @@ def derive_result(receipt: dict) -> str:
     """Return what receipt['result'] MUST be, computed from the evidence fields.
 
     Expects a receipt that already passed validate_receipt.
+
+    A given result of BLOCKED, INCONCLUSIVE or NOT_RUN is accepted as given for
+    every receipt type: these results can never produce an approval, and the
+    supervisor must be able to record WORKER_LOST / RETRY_EXHAUSTED / budget
+    outcomes. A given PASS or FAIL is compared with the computed value.
     """
     receipt_type = receipt.get("receipt_type")
+    given = receipt.get("result")
+    if given in NON_APPROVING_RESULTS:
+        return given
     if receipt_type == "TestRun":
         return _derive_test_run(receipt)
     if receipt_type == "StaticAnalysis":
@@ -390,7 +399,6 @@ def derive_result(receipt: dict) -> str:
     if receipt_type == "IndependentReview":
         return _derive_independent_review(receipt)
     if receipt_type == "Documentation":
-        given = receipt.get("result")
         return given if given in ("PASS", "FAIL") else "INCONCLUSIVE"
     raise ContractError(f"derive_result: unknown receipt_type {receipt_type!r}")
 

@@ -37,6 +37,8 @@ Per type (lists contain non-empty str unless stated):
 - StaticAnalysis: PASS only if `coverage == FULL` and `unsupported_rules` is empty; otherwise INCONCLUSIVE.
 - IndependentReview: PASS only if `signed_verdict == APPROVE` and `reviewer_principal != author_principal`; otherwise FAIL.
 - Documentation: the given `result` if it is PASS or FAIL; otherwise INCONCLUSIVE.
+- Rule for every receipt type, applied first: a given `result` of BLOCKED, INCONCLUSIVE or NOT_RUN is accepted as given (`NON_APPROVING_RESULTS`). These results can never produce an approval (the gate treats any non-PASS latest attempt as an unmet slot), and the supervisor must be able to write INCONCLUSIVE(WORKER_LOST), BLOCKED(RETRY_EXHAUSTED) and BLOCKED(budget) receipts. A given PASS or FAIL is still compared with the computed value.
+- Reason codes: receipts have closed fields, so there is no `reason` field. Supervisor receipts are of type Documentation and carry the reason code in `check_description` (`WORKER_LOST`, `RETRY_EXHAUSTED`, `BUDGET_EXCEEDED`).
 
 The gate treats a receipt whose `result != derive_result(receipt)` as invalid.
 
@@ -47,6 +49,25 @@ The gate treats a receipt whose `result != derive_result(receipt)` as invalid.
 ## GateDecision (`validate_gate_decision`)
 
 `task_id` str, `candidate_head` str (echoes of gate inputs, so that NO_GO can be emitted for malformed inputs), `epoch` int >= 0, `required_receipt_hashes` list of 64 hex, `unresolved_findings` / `human_approvals` / `acceptance_unmet` / `reasons` lists of non-empty str, `verdict` in VERDICT, `waiver_record` non-empty str iff verdict is APPROVED_WITH_WAIVER, else null. APPROVE additionally requires empty `reasons` and `acceptance_unmet`.
+
+## Store (`tools/vst/store.py`)
+
+`Store(path, clock=time.time)`: one sqlite3 connection per instance, WAL, foreign keys on, autocommit with an explicit `BEGIN IMMEDIATE` per mutating method (each public method is atomic). Context manager closes the connection. `StoreError(message, kind)`; kinds: story, epoch, lease, slot, chain, duplicate, budget, argument.
+
+Tables: `stories(story_id, project_id, phase, epoch, owner, state, owner_expires_at)`, `leases(task_id, story_id, attempt, worker_id, epoch, expires_at, released, marked)`, `slots(slot_no, task_id, worker_id, expires_at)`, `receipts(seq, receipt_id UNIQUE, story_id, task_id, slot, attempt, epoch, receipt_sha256, prev_receipt_sha256, body, UNIQUE(task_id, slot, attempt))`, `events(seq, ts, task_id, actor, kind, payload, prev_hash, hash)`, `budget(task_id, cap, spent)`. Columns beyond the minimal design: `owner_expires_at` (owner liveness), `marked` (supervisor receipt already written), `receipts.story_id` (story view).
+
+- Append-only: triggers `RAISE(ABORT)` on UPDATE and DELETE of `receipts` and `events`.
+- Epoch: `open_story` starts at epoch 1 with no owner. `acquire_epoch(story_id, owner, ttl_sec=3600)` is a compare-and-swap: it bumps the epoch and returns it only when no live owner (`owner_expires_at` in the future) holds the story, otherwise `StoreError(kind='epoch')`. Winning fences the previous epoch's live leases (`released = 2`, slots freed). Lease operations and `append_receipt` must carry the current epoch.
+- Lease and slot: `acquire_lease` takes a free `slots` row in the same transaction; it fails for a stale epoch, no free slot, a live lease, a non-increasing attempt, or a previous attempt that was lost and not yet marked by the supervisor. `leases.released`: 0 live, 1 released by the worker, 2 reaped on expiry or fenced. `heartbeat` rejects expired, foreign or stale-epoch callers.
+- Receipts: `append_receipt` validates, requires `epoch` == current story epoch, attempt == last attempt + 1 per `(task_id, slot)` and `prev_receipt_sha256` == previous receipt hash; body is stored as canonical JSON.
+- Events: `hash = sha256(prev_hash + canonical JSON of {ts, task_id, actor, kind, payload})`, first `prev_hash` is 64 zeros; `verify_event_chain` recomputes the chain.
+- Budget: `charge` never lets `spent` exceed `cap`; on overflow it commits a `BUDGET_EXCEEDED` event and raises `StoreError(kind='budget')` without charging.
+- Supervisor receipts: `supervisor_reap_and_mark(manifest_lookup, key, runner_id)` writes, for each reaped lease with no receipt for its `(task_id, attempt)`, a signed Documentation receipt with result INCONCLUSIVE and `check_description` `WORKER_LOST`; when the lease attempt exceeds `retry_cap + 1` the result is BLOCKED and the description `RETRY_EXHAUSTED`. Slot rule: the first `required_receipts` entry of type Documentation, else the first entry. Attempt = next in that slot's chain; epoch = current story epoch; `candidate_head` = head of the task's latest receipt, else manifest `base_head`.
+- `render_state_md(story_id)`: deterministic markdown view, first line states it is a generated view that must not be edited.
+
+## Runner (`tools/vst/runner.py`)
+
+`run_and_sign(...)` runs each argv with `subprocess.run` (no shell, captured text output, timeout, cwd), records `argv` and `exit_code` (-1 timeout, -2 missing executable), joins stdout, calls the injected parser to get `(executed, skipped, xfail)`, builds a TestRun receipt, sets `result = derive_result(receipt)`, signs it with `signing.sign`, validates it and returns it. An empty commands list raises `ContractError`. The key is a plain argument: never written, logged or read from the worker cwd. Helpers: `file_sha256(path)` (64 KiB chunks) and `artifact_digests(paths)`.
 
 ## Gate rules
 
