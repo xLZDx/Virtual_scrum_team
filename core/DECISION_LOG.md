@@ -316,3 +316,7 @@ Every supported QA registry test ID must resolve to a statically named pytest fu
 
 Resolve tracked-file, commit-existence, and ancestry facts once per unique path/revision while validating one registry. The initial real-registry run exposed a tracked-file false negative under repeated Git subprocess checks; this was consistent with the helper's bounded timeout collapsing to `False`, and the repository independently confirmed the file was tracked. Keep errors fail-closed, but avoid repeating the same query for each test ID. Pin category provenance to the S4 ancestor containing the committed node definitions. See change record 0111; final clean-head test rerun remains pending.
 
+## 2026-10-25 -- Provision an S4-private snapshot destination in named WSL2
+
+Following the operator's WSL2 selection, prepare a separate S4 snapshot root in the named `Ubuntu-24.04` distribution, owned by the non-root runner and worker group with mode 2710; keep the older protected S2 root untouched and do not publish private POSIX identity/path values. The observed distro configuration has automount and interop disabled and nftables input/output default-drop with loopback allowed, but this inventory is not a fresh signed probe or proof of resource limits. Source transfer and signer acceptance are still `NOT_RUN`. See change record 0114.
+

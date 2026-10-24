@@ -497,3 +497,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — Repeating bounded Git subprocesses for every test ID can turn temporary contention into a false missing-source result. Cache each unique path/revision fact within one registry load, retain fail-closed timeout handling, and do not cache across loads where repository state may have changed. The functional-test-reviewer reported 9/9 against the in-worktree fix; exact clean-head evidence is still pending. See change record 0111.
 
+2026-10-25 — A local firewall/configuration inspection is not equivalent to a run-bound signed sandbox probe. Keep those claims separate, provision only the exact S4 root needed by the transfer boundary, and leave source-transfer, signer and runtime acceptance `NOT_RUN` until their own evidence exists. See change record 0114.
+
