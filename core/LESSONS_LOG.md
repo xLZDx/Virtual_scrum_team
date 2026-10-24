@@ -244,6 +244,14 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Layer: test oracle; it did not reveal an accepting product outcome.
 - Rule: assert the required acceptance property (rejection/non-approval and the reason where contractually specific), not an unrequired exact verdict label.
 
+## 2026-10-24 -- Review version boundaries and trust-root inventories in plans
+
+- Kind: SUCCESS (documentation review caught ambiguity before implementation).
+- Facts: a read-only review found that the S5 plan simultaneously promised immutable v2 signed bodies and proposed adding optional v2 fields, and that the S2 operator guide omitted the supervisor and runner-signer from its trust-root list. Both findings were corrected before commit.
+- Root cause: the initial S5 design did not distinguish an additive contract version from an immutable prior signed body; the setup guide shortened the S2 key list while describing signer IPC.
+- Layer: design/documentation; no product code or runtime evidence was involved.
+- Rule: name the new contract version and backward-compatibility behavior explicitly, and derive operational trust-root inventories from the accepted source contract rather than summaries.
+
 ## 2026-10-24 -- S2 gate referenced an unbound signer key
 
 - Kind: FAILURE (gate implementation; caught by E2E acceptance scenario).
