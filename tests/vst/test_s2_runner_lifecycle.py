@@ -469,6 +469,134 @@ def test_idempotent_push_and_pull_request_use_local_bare_remote(tmp_path):
             supervisor.simulate_push("push-1", {"branch": "other", "head": head})
 
 
+def test_external_backend_callback_runs_outside_store_anchor_transaction(tmp_path):
+    db, anchor_path = tmp_path / "external-callback.db", tmp_path / "external-callback.anchor"
+    primary = Store(str(db), event_key=EVENT, anchor_path=str(anchor_path), busy_timeout_sec=1)
+    callback_write_finished = threading.Event()
+    callback_errors = []
+
+    class ConcurrentBackend:
+        def push(self, payload, *, operation_key):
+            def write_from_other_store():
+                independent = None
+                try:
+                    independent = Store(str(db), event_key=EVENT, anchor_path=str(anchor_path), busy_timeout_sec=1)
+                    independent.record_event("concurrent", "observer", "NOTE", {"operation": operation_key})
+                except BaseException as exc:
+                    callback_errors.append(exc)
+                finally:
+                    if independent is not None:
+                        independent.close()
+                    callback_write_finished.set()
+
+            writer = threading.Thread(target=write_from_other_store, daemon=True)
+            writer.start()
+            assert callback_write_finished.wait(timeout=5), "independent Store write waited behind backend transaction"
+            writer.join(timeout=1)
+            assert not writer.is_alive()
+            return {"operation_key": operation_key, "head": payload["head"]}
+
+    try:
+        supervisor = Supervisor(primary, operation_backend=ConcurrentBackend())
+        result = supervisor.simulate_push("outside-tx-push", {"head": "a" * 40})
+        assert result["operation_key"] == "outside-tx-push"
+        assert callback_errors == []
+        assert primary.verify_event_chain()
+    finally:
+        primary.close()
+
+
+def test_local_git_timeout_leaves_pending_then_restart_retry_completes_same_key(tmp_path, monkeypatch):
+    from tools.vst import slice as slice_module
+
+    remote, repo = tmp_path / "timeout-remote.git", tmp_path / "timeout-repo"
+    subprocess.run(["git", "init", "--bare", str(remote)], check=True, capture_output=True)
+    repo.mkdir()
+    git("init", cwd=str(repo))
+    git("config", "user.name", "Synthetic", cwd=str(repo))
+    git("config", "user.email", "synthetic@example.invalid", cwd=str(repo))
+    (repo / "note.txt").write_text("timeout retry\n", encoding="utf-8")
+    git("add", "note.txt", cwd=str(repo))
+    git("commit", "-m", "timeout retry", cwd=str(repo))
+    head = git("rev-parse", "HEAD", cwd=str(repo))
+    git("remote", "add", "seed", str(remote), cwd=str(repo))
+    git("push", "seed", "HEAD:refs/heads/seed", cwd=str(repo))
+
+    db = tmp_path / "timeout-operation.db"
+    store = Store(str(db), event_key=EVENT)
+    backend = slice_module.SyntheticOperationBackend(
+        str(remote), source_repo=str(repo), command_timeout_sec=10,
+    )
+    supervisor = Supervisor(store, operation_backend=backend)
+    real_run = slice_module.subprocess.run
+    injected = {"done": False}
+    observed_timeout = []
+
+    def timeout_once(command, *args, **kwargs):
+        if (not injected["done"] and len(command) >= 4
+                and command[:3] == ["git", "-C", str(repo)]
+                and command[3] == "push"):
+            injected["done"] = True
+            observed_timeout.append(kwargs.get("timeout"))
+            raise subprocess.TimeoutExpired(command, kwargs.get("timeout"))
+        return real_run(command, *args, **kwargs)
+
+    monkeypatch.setattr(slice_module.subprocess, "run", timeout_once)
+    payload = {"branch": "timeout-candidate", "head": head}
+    try:
+        with pytest.raises(subprocess.TimeoutExpired):
+            supervisor.simulate_push("timeout-retry-key", payload)
+        assert injected["done"] and observed_timeout == [10]
+        row = store._conn.execute(
+            "SELECT operation, payload_sha256, result FROM supervisor_operations WHERE operation_key = ?",
+            ("timeout-retry-key",),
+        ).fetchone()
+        assert row["operation"] == "push"
+        assert json.loads(row["result"]) == {"_vst_state": "PENDING"}
+        intent_count = store._conn.execute(
+            "SELECT COUNT(*) FROM events WHERE task_id = ? AND actor = 'supervisor'",
+            ("timeout-retry-key",),
+        ).fetchone()[0]
+        assert intent_count >= 2  # durable intent and UNKNOWN timeout outcome
+        store.close()
+
+        restarted_store = Store(str(db), event_key=EVENT)
+        restarted = Supervisor(restarted_store, operation_backend=backend)
+        result = restarted.simulate_push("timeout-retry-key", payload)
+        assert result == {
+            "operation_key": "timeout-retry-key",
+            "ref": "refs/heads/timeout-candidate",
+            "head": head,
+        }
+        assert git("--git-dir", str(remote), "rev-parse", "refs/heads/timeout-candidate") == head
+        completed = restarted.simulate_push("timeout-retry-key", payload)
+        assert completed == result
+        assert backend.push(payload, operation_key="timeout-retry-key") == result
+        with pytest.raises(StoreError, match="remote idempotency key reused with different payload"):
+            backend.push(
+                {"branch": "conflicting-candidate", "head": head},
+                operation_key="timeout-retry-key",
+            )
+        assert restarted_store._conn.execute(
+            "SELECT result FROM supervisor_operations WHERE operation_key = ?",
+            ("timeout-retry-key",),
+        ).fetchone()[0] == json.dumps({"_vst_state": "PENDING"}, sort_keys=True, separators=(",", ":"))
+        completion_count = restarted_store._conn.execute(
+            "SELECT COUNT(*) FROM events WHERE task_id = ? AND payload LIKE '%SUPERVISOR_EXTERNAL_OPERATION_COMPLETED%'",
+            ("timeout-retry-key",),
+        ).fetchone()[0]
+        assert completion_count == 1
+        completion_payload = json.loads(restarted_store._conn.execute(
+            "SELECT payload FROM events WHERE task_id = ? AND payload LIKE '%SUPERVISOR_EXTERNAL_OPERATION_COMPLETED%'",
+            ("timeout-retry-key",),
+        ).fetchone()[0])
+        assert completion_payload["result"] == result
+        restarted_store.close()
+    finally:
+        if store._conn is not None:
+            store.close()
+
+
 def test_runner_derives_three_distinct_heads_and_has_no_caller_evidence_overrides(tmp_path):
     repo = tmp_path / "synthetic-repo"
     repo.mkdir()

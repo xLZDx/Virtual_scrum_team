@@ -95,6 +95,7 @@ Markdown documents: **132**
 | `docs/changes/0068-s2-e8-source-repository-backend-design.md` | Change record | 0068 S2 E8 source repository backend design |
 | `docs/changes/0069-s2-source-backed-synthetic-publishing.md` | Change record | 0069 S2 source-backed synthetic publishing |
 | `docs/changes/0070-s2-idempotent-operation-regressions.md` | Change record | 0070 S2 idempotent operation and breaker replay regressions |
+| `docs/changes/0071-s2-e2e-backend-operation-recovery.md` | Change record | 0071 S2 E2E backend operation recovery |
 | `docs/DESIGN_BASELINE_AND_IMPLEMENTATION_PLAN_2026-10-24.md` | Documentation | Design baseline 1.0 and implementation plan |
 | `docs/FULL_TEAM_EXPANSION_PLAN_2026-10-23.md` | Documentation | Full Virtual Engineering Team — Expansion Plan |
 | `docs/INDEPENDENT_REVIEW_DECISION_PROVENANCE_2026-10-23.md` | Documentation | Independent Review Dossier — Unified Virtual Engineering Organization |
@@ -117,6 +118,7 @@ Markdown documents: **132**
 | `docs/sdlc/evidence/s1-third-round-e3-e4-test-run.md` | Documentation | S1 third round: E3 store and E4 runner test run |
 | `docs/sdlc/evidence/s1-third-round-e5-test-run.md` | Documentation | S1 third round: E5 test run (slice and process death) |
 | `docs/sdlc/evidence/s2-bounded-operation-recovery-run.md` | Documentation | S2 bounded idempotent backend operation regressions |
+| `docs/sdlc/evidence/s2-e2e-operation-recovery-0071.md` | Documentation | S2 E2E callback lock release and backend timeout/restart recovery |
 | `docs/sdlc/evidence/s2-contract-diffgate-run-280e2d0.md` | Documentation | S2 contract, gate and diff-gate functional test run |
 | `docs/sdlc/evidence/s2-e2e-acceptance-280e2d0.md` | Documentation | S2 E2E lifecycle and WSL diagnostic evidence |
 | `docs/sdlc/evidence/s2-e2e-platform-run.md` | Documentation | S2 E2E and platform test evidence |
