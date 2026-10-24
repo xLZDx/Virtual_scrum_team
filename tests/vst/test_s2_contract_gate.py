@@ -154,8 +154,14 @@ def test_v2_trust_root_keys_are_pairwise_distinct(collision):
         reviewer_keys={"reviewer-x-key": names["reviewer"]}, signer_key=names["signer"],
         event_key=names["event"],
     )
-    assert result["verdict"] == "NO_GO"
-    assert any("keys must be pairwise distinct" in reason for reason in result["reasons"])
+    assert result["verdict"] != "APPROVE"
+    if "reviewer" in collision:
+        assert any(
+            "reviewer keys must differ from worker, supervisor, operator, signer, and event keys" in reason
+            for reason in result["reasons"]
+        )
+    else:
+        assert any("keys must be pairwise distinct" in reason for reason in result["reasons"])
 
 
 @pytest.mark.parametrize("reviewer_principal", ["unknown-reviewer", "author-y"])

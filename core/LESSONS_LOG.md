@@ -236,6 +236,14 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Layer: acceptance design; corrected before the final committed-head runtime suite.
 - Rule: derive signature test matrices from the public authority decision path and include both valid routes and wrong-root negative cases; schema validation alone does not prove gate authority.
 
+## 2026-10-24 -- S2 key-collision oracle must match the verdict contract
+
+- Kind: SHORTCOMING (test expectation).
+- Facts: on committed S2 HEAD `d7d2e02`, five tests expected `NO_GO` for reviewer-key collisions. The gate returned non-approving `MODIFY` and an explicit collision reason. The other ten pairwise collision cases passed. The test agent corrected the assertion to check the named rejection and non-approval.
+- Root cause: the test over-constrained which non-approving verdict represented a fail-closed key rejection.
+- Layer: test oracle; it did not reveal an accepting product outcome.
+- Rule: assert the required acceptance property (rejection/non-approval and the reason where contractually specific), not an unrequired exact verdict label.
+
 ## 2026-10-24 -- S2 gate referenced an unbound signer key
 
 - Kind: FAILURE (gate implementation; caught by E2E acceptance scenario).
