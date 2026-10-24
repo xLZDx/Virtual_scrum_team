@@ -417,6 +417,7 @@ def _check_latest(
     hard: list[str],
     soft: list[str],
     parser_catalog: Any,
+    signer_key: bytes | None,
 ) -> tuple[bool, set[str]]:
     """Per-type checks on the latest current-epoch attempt.
 
@@ -796,7 +797,8 @@ def evaluate(
             unmet_results.append(latest["result"])
             continue
         slot_ok, contribution = _check_latest(
-            slot, latest, valid_manifest, findings, hard, soft, TRUSTED_PARSER_CATALOG
+            slot, latest, valid_manifest, findings, hard, soft,
+            TRUSTED_PARSER_CATALOG, signer_key,
         )
         if latest["result"] != "PASS":
             soft.append(

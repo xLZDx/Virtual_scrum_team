@@ -235,3 +235,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: an earlier test-design draft treated all receipt/key combinations as interchangeable and its denominator did not reflect the gate's actual trust routing.
 - Layer: acceptance design; corrected before the final committed-head runtime suite.
 - Rule: derive signature test matrices from the public authority decision path and include both valid routes and wrong-root negative cases; schema validation alone does not prove gate authority.
+
+## 2026-10-24 -- S2 gate referenced an unbound signer key
+
+- Kind: FAILURE (gate implementation; caught by E2E acceptance scenario).
+- Facts: on committed HEAD `d7d2e02de56d2388c6bba4160959a432e7f4a43d`, the valid signer/TestRun matrix case raised `NameError` in `_check_latest` because the helper referenced `signer_key` without receiving it. The helper has been wired to the already validated key from `evaluate`; verification is pending.
+- Root cause: the v2 signature verification was added to a helper without updating its parameter contract and only call site.
+- Layer: integration between gate entry-point trust configuration and per-receipt validation; E2E coverage caught the missing data dependency.
+- Rule: after adding a trust-root-dependent validation branch, trace the authority value from the public gate API through every helper boundary and exercise a valid signature case, not only invalid-key cases.
