@@ -36,3 +36,11 @@ No Playwright/Cypress dependency was introduced. No CI, build, migration, packag
 - Result: **2 passed, 0 failed** in 7.97 seconds; one `pytest-asyncio` deprecation warning.
 - Environment: Windows host, Python 3.14.3, pytest 8.4.2.
 - Worktree limitation: concurrent modifications to `docs/qa/categories.json` and `docs/qa/seeded_failures.json`, plus another agent's untracked registry test, remained outside this commit. Native snapshot transfer requires a clean worktree, so it remains `NOT_RUN`.
+
+## Placeholder-hardening commit rerun
+
+- Revision: `b8128461ec20c0b05f8172f5599e5be80ed626f9`.
+- Command: `python -m pytest -q tests/qa/test_s4_qa_e2e.py`.
+- Result: **2 passed, 0 failed** in 6.61 seconds; one `pytest-asyncio` deprecation warning.
+- Environment: Windows host, Python 3.14.3, pytest 8.4.2.
+- The snapshot refusal test supplied only visibly inert placeholders for arguments that are never consumed because the wrong-distribution guard runs first. The worktree still had concurrent category and generated-registry changes; native transfer remains `NOT_RUN`.
