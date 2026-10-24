@@ -477,3 +477,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — When a test runner cannot capture its start revision, rerun after committing the test artifact and record HEAD both before and after execution. The S3 exact-head reruns on `58088c804ee3d444919ec433b656c80ec3106f37` are the acceptance evidence; prior runs with missing checkout identity remain diagnostic only. See change record 0092.
 
+2026-10-25 — Store fencing and local synthetic recovery can be reviewed independently of process cleanup, but they do not prove it. Specialist review kept OS cleanup and untrusted STOP authentication as explicit externalization gates; a non-blocking cleanup-cause diagnostic issue remains in VST-029. See change record 0094.
+
