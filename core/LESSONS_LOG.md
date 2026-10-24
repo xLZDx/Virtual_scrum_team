@@ -2,6 +2,14 @@
 
 Entry fields: date and commit title; kind; facts with evidence pointer; root cause; layer that missed or caught it; rule for next time.
 
+## 2026-10-24 -- Use only the named WSL distribution for environment checks
+
+- Kind: SHORTCOMING (scope discipline).
+- Facts: while verifying the explicitly provisioned `Ubuntu-24.04` environment, I ran `wsl --list --verbose`; its output enumerated distribution names beyond the requested project environment. I did not access or modify any other distribution and stopped that branch immediately.
+- Root cause: I used a broad inventory command where the named-distribution query was sufficient.
+- Rule: for project-scoped WSL work, call `wsl --distribution Ubuntu-24.04 ...` directly; do not enumerate or inspect unrelated distributions.
+- Fix status: no further access to the unrelated distribution; this process lesson is recorded in change record 0061.
+
 ## 2026-10-24 -- Separate registry identity from aggregate run membership
 
 - Kind: SHORTCOMING (the prepared S4 plan made a regression ID belong to its original category and to regression as if both were exclusive categories).
