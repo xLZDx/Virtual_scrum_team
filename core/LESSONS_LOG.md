@@ -495,7 +495,7 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — A second bounded transfer returned `Broken pipe` before returning run metadata. Without a run ID, any receiver-side partial state is not safely addressable; do not inspect, delete, or retry that destination. Preserve bounded receiver diagnostics on future broken-pipe failures, with private provisioning values redacted, to distinguish receiver validation from transport startup. See change records 0117–0118.
 
-2026-10-25 — After the receiver correction, the transfer stopped at `snapshot run directory did not receive mode 2710` and returned no run ID. Preserve the exact mode failure and do not inspect or retry an unidentified run; correct the receiver mode check before another fresh attempt. See change record 0119.
+2026-10-25 — After the receiver correction, the transfer stopped at `snapshot run directory did not receive mode 2710` and returned no run ID. A post-creation chmod may clear SGID for an owner outside the worker group; request the desired mode during creation beneath the setgid root and verify without chmod. The precise cause remains unconfirmed until a fresh run returns metadata. See change records 0119 and 0121.
 
 2026-10-25 — A cross-OS source snapshot must preserve both Git identity and the worker's read-only boundary. Stream a self-contained Git bundle through the WSL process boundary, verify exact HEAD and digest on both sides, and provision directory permissions for runner ownership plus worker traversal/read without write. Implemented behavior remains `NOT_RUN` until the exact isolated destination is exercised. See change record 0101.
 

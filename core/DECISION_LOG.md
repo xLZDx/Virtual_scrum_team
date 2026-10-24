@@ -304,6 +304,10 @@ The report-bound runner independently validates the catalog's exact root fields 
 
 Perform seeded fixture-to-manifest ID comparison only after report metadata has passed schema/type validation, so malformed direct calls yield `ContractError`. Enforce the same 16 KiB canonical input ceiling at the signing boundary as in the CLI loader. See change record 0100; no tests or runtime proof are claimed.
 
+## 2026-10-25 -- Create the WSL run root with its inherited worker-group mode
+
+The transfer at clean HEAD `3ba2f35b724da8f2ea5429d781710bbed6612af3` returned before metadata with `snapshot run directory did not receive mode 2710`. Source inspection found that post-creation `chmod` requested the SGID bit from an unprivileged runner outside the worker group; Linux may clear that bit. Set the process umask before creation, request mode 2710 in `mkdir` beneath the already validated SGID root, and verify the resulting mode without changing it afterward. The exact runtime cause is not independently observed. See change record 0121; fresh transfer remains required.
+
 ## 2026-10-25 -- Preserve bounded WSL receiver diagnostics on a broken pipe
 
 A second transfer returned `Broken pipe` without a receiver reason or run metadata. On a bounded broken-pipe path, stop only the bundle producer, close receiver stdin, wait for the receiver to exit, and retain its capped stderr diagnostic after redacting the private snapshot root, runner account, and worker GID. Keep timeout handling fail-closed. Do not inspect or clean an unidentified partial destination. See change record 0118; the enhanced failure path needs one fresh exact-head transfer to verify.

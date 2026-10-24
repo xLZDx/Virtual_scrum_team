@@ -57,12 +57,12 @@ root_info = root_path.stat(follow_symlinks=False)
 if (root_info.st_uid != os.geteuid() or root_info.st_gid != worker_gid or
         stat.S_IMODE(root_info.st_mode) != 0o2710):
     raise SystemExit("snapshot root must be runner-owned, worker-group mode 2710")
+os.umask(0o027)
 run_path = root_path / run_id
-run_path.mkdir(mode=0o710)
+run_path.mkdir(mode=0o2710)
 run_info = run_path.stat(follow_symlinks=False)
 if run_info.st_uid != os.geteuid() or run_info.st_gid != worker_gid:
     raise SystemExit("snapshot run directory did not inherit the worker group")
-os.chmod(run_path, 0o2710)
 if stat.S_IMODE(run_path.stat(follow_symlinks=False).st_mode) != 0o2710:
     raise SystemExit("snapshot run directory did not receive mode 2710")
 bundle_part = run_path / "source.bundle.part"
@@ -95,7 +95,6 @@ try:
         "GIT_TERMINAL_PROMPT": "0",
         "LC_ALL": "C",
     }
-    os.umask(0o027)
     clone = subprocess.run(
         ["git", "-c", "init.templateDir=/dev/null", "clone", "--quiet", "--branch", branch,
          "--single-branch", str(bundle_path), str(repo_path)],
