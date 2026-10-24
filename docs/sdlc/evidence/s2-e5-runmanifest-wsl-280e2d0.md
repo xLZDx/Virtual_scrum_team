@@ -45,7 +45,7 @@ TMPDIR=/tmp
 
 AF_INET was available only within the private network namespace so the inventory's egress smoke check could run. The signer service remained AF_UNIX-only. The actual worker reported `/tmp` as tmpfs of 1 GiB, mode `1777`, with `TMPDIR=/tmp`; `/dev/shm` as tmpfs of 64 MiB, mode `1777`; and `/var/tmp`, `/run/lock`, `/run/shm`, and `/dev/mqueue` inaccessible. The worker found zero other writable mount targets after these masks. The worker also found its home absent, could not traverse `/var/lib/vst`, could not write the source tree, could not write `/run/user`, and could not list `/usr/lib/modules`.
 
-Host mount inventory classification observed in the real probe: Windows-drive mounts `0`; `/mnt/wslg` `1`; `/usr/lib/wsl*` `1`; `/usr/lib/modules` `1`; `/run/user` runtime mask `1`. Other filesystem counts: `binfmt_misc=1`, `cgroup2=1`, `configfs=1`, `debugfs=1`, `devpts=1`, `devtmpfs=1`, `ext4=1`, `fusectl=1`, `hugetlbfs=1`, `proc=1`, `rootfs=1`, `sysfs=1`, `tmpfs=10`, `tracefs=1`. The host view classified `/usr/lib/modules` as an overlay mount; the runner/worker namespace masked it and the worker confirmed it was inaccessible. These counts are sanitized; no personal mount paths are recorded.
+Host mount inventory classification observed in the real probe: Windows-drive mounts `0`; `/mnt/wslg` `1`; `/usr/lib/wsl*` `1`; `/usr/lib/modules` `1`; `/run/user` runtime mask `1`. Other filesystem counts: `binfmt_misc=1`, `cgroup2=1`, `configfs=1`, `debugfs=1`, `devpts=1`, `devtmpfs=1`, `ext4=1`, `fusectl=1`, `hugetlbfs=1`, `proc=1`, `rootfs=1`, `sysfs=1`, `tmpfs=10`, `tracefs=1`. **Correction:** fresh host mount metadata shows `/usr/lib/modules` is not a distinct host mount and resolves through the distro root `/` (`ext4`). The runner/worker namespace creates a tmpfs mask at `/usr/lib/modules`, and the worker confirmed it was inaccessible. These counts are sanitized; no personal mount paths are recorded.
 
 ## Probe and policy correlation
 
@@ -70,7 +70,7 @@ Sanitized nftables summary from the dedicated distro: input and output policies 
 | Runner signer access and worker denial | `PASS` | Signer peer IDs were all `997:988`; worker `999:989` got errno 13. | Signer trust-root path/ACL must remain provisioned as recorded in change 0059. |
 | Resource and scratch limits | `PASS` for this transient unit | Effective tmpfs, runtime, memory, CPU, task and mask properties were observed by the child worker. | Deployment owner must apply the reviewed properties to the actual production worker parent unit before claiming deployment acceptance. |
 | WSL mount and socket inventory | `PASS` for enumeration only | Inventory reported enumeration complete and zero sockets; Windows-drive count was 0. `/usr/lib/modules` was masked in the runner unit. | Operator/security owner must review the sanitized host/system mount classes. |
-| E5 signed environment policy | `NOT_RUN` / diagnostic `FAIL` | No operator attestation exists; `no_unapproved_host_paths` is false/unestablished. The run ID/spec/nonce inventory was signed only by the runner signer. | Operator-controlled signer must attest only after approving environment identity and host/system mounts. This agent did not access the operator key. |
+| E5 signed environment policy | `NOT_RUN` / diagnostic `FAIL` | The earlier diagnostic inventory predates the fresh mount review and remains `FAIL`; the fresh evidence supports the bounded host-path/socket assessment but does not provide an operator signature. | Operator-controlled signer may attest the reserved correlation after reviewing this evidence. This agent did not access the operator key. |
 | POSIX store anchor and startup recovery scenarios | `NOT_RUN` | This command exercised runner lifecycle and sandbox/resource boundaries, not the store-anchor acceptance set. | Run the owned safe POSIX anchor scenarios separately; process-kill/crash paths remain prohibited. |
 | Process-kill, kill-table and mutation scenarios | `NOT_RUN` | Explicitly prohibited; none were invoked. | No action unless the operator changes that prohibition. |
 
@@ -83,3 +83,42 @@ This fresh correlation was generated but not collected or signed, and is distinc
 - Spec SHA-256: `7a0bcaa3eb7ca76b9771e0b7f49892eaa0cfa744ce4e523f5f94b997fed61997`.
 
 The operator must generate a new run ID/nonce if this correlation is consumed or changed. No attestation was signed by this test owner.
+
+## Fresh pre-probe environment and mount review (2026-10-24 19:55 UTC)
+
+This read-only inspection did not collect a new inventory, call the signer, or consume the reserved correlation above. It used only the named `Ubuntu-24.04` WSL distribution and transient unit `s2-preprobe-live-9ca127a2.service` with the same namespace/resource properties listed above.
+
+- Environment identity evidence: `wsl -d Ubuntu-24.04`; `/etc/os-release` reported Ubuntu 24.04.5 LTS; systemd reported 255.4; Python reported 3.12.3. `/etc/wsl.conf` contained `systemd=true`, `[automount] enabled=false`, `[interop] enabled=false`, and `appendWindowsPath=false`. No other distribution was listed or accessed.
+- nftables was active. At this snapshot, raw `nft -j list ruleset` SHA-256 was `9aa0d3519e0f49fe76eb5b0675dbb3204c065a51aee1800b8e784c193f6efa1f`. Recursively removing `handle` fields and hashing canonical JSON produced `c88c93ba40791971895a4c6c719c8ae37d2b2b676d499fb5f5b7f8f0875cc8b0`. The normalized snapshot had one table, input/output chains with `drop` policy, and two rules. Raw hashes vary between observations; raw snapshots were not retained, so a handle-only explanation is not verified. Recompute both hashes together at final-probe time.
+- The effective scoped inspection unit reported `CPUQuotaPerSecUSec=1s`, `MemoryMax=2147483648`, `TasksMax=64`, `RuntimeMaxUSec=45s`, `PrivateNetwork=yes`, `RestrictAddressFamilies=AF_INET AF_UNIX`, `NoNewPrivileges=yes`, and only `CAP_SETUID`/`CAP_SETGID` in its capability bounding and ambient sets. It used `/run/user:ro`, `/tmp:size=1G,mode=1777`, `/dev/shm:size=64M,mode=1777`, and the masks listed above. In-unit checks denied access to `/usr/lib/modules`, `/var/tmp`, `/run/lock`, `/run/shm`, and `/dev/mqueue`; `/tmp` was tmpfs, 1 GiB, mode `1777`, and `TMPDIR=/tmp`.
+
+### Sanitized mount inventory
+
+The host view contained 31 mount rows. Exhaustive category/type counts were:
+
+| Category | Mount types and counts |
+|---|---|
+| Distro root | `/` on `ext4` ×1 |
+| OS pseudo-filesystems | `rootfs` ×1, `devtmpfs` ×1, `sysfs` ×1, `proc` ×1, `devpts` ×1, `binfmt_misc` ×1, `cgroup2` ×1, `hugetlbfs` ×1, `mqueue` ×1, `debugfs` ×1, `tracefs` ×1, `fusectl` ×1, `configfs` ×1 |
+| Private runtime and memory | `tmpfs` ×7 |
+| WSL host bridge | `tmpfs` ×2, `9p` ×1, `overlay` ×1 |
+| Other system or redacted targets | `overlay` ×1 on a system target; `ext4` ×1 on a redacted `/mnt` target (device-backed); `overlay` ×2 on redacted `/mnt` targets; `tmpfs` ×1 on a redacted subtree target; `tmpfs` ×1 on a redacted `/mnt` target |
+
+The two redacted `/mnt` overlay rows are overlay filesystems, not path-source binds. The redacted `/mnt` ext4 row is device-backed with filesystem root `/`, not a subtree bind. No source names or personal mount paths are retained. The host view had zero Windows-drive sources under the contract rule (`drvfs`, or `9p` with `aname=drvfs` and a drive-letter source).
+
+The same scoped unit contained 27 rows:
+
+| Category | Mount types and counts |
+|---|---|
+| Distro root | `/` on `ext4` ×1 |
+| OS pseudo-filesystems | `rootfs` ×1, `devtmpfs` ×1, `devpts` ×1, `hugetlbfs` ×1, `proc` ×1, `binfmt_misc` ×1, `tmpfs` ×1 at an OS pseudo-filesystem subtree, `sysfs` ×1, `cgroup2` ×1, `fusectl` ×1, `configfs` ×1, `debugfs` ×1, `tracefs` ×1 |
+| Private runtime and memory | `tmpfs` ×8 |
+| WSL host bridge masks | `tmpfs` ×3 |
+| System-path mask | `/usr/lib/modules` as `tmpfs` ×1 |
+| Other system target | `tmpfs` ×1; exact target was redacted and is not independently verified |
+
+The scoped unit had zero Windows-drive sources and no visible `9p`, `overlay`, or non-root `ext4` mounts. Its only device-backed filesystem was the distro root. The other rows were pseudo-filesystems, private tmpfs paths, or systemd masks. Thus the scoped worker view exposed no host/user-data bind mount; WSL bridge filesystems observed in the host view were masked from the worker.
+
+### Coordinator rationale for bounded mount acceptance
+
+The primary coordinator's bounded rationale for the library-level acceptance is that a real `run_manifest_commands` child and a complete socket inventory were exercised inside the same scoped namespace; no persistent product service is needed for this acceptance. The observed host mount classes are the dedicated distro root, OS pseudo-filesystems, private runtime/memory filesystems, and WSL support bridges. Windows-drive sources were absent. The WSL bridge mounts and `/usr/lib/modules` were masked from the worker, and the child view had no host/user-data bind mount. This supports the bounded `no_container_socket` and `no_unapproved_host_paths` assessment for this run. This rationale is recorded for operator review; it is not itself an operator signature.
