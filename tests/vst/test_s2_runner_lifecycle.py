@@ -9,6 +9,7 @@ import json
 import sqlite3
 import struct
 import subprocess
+import sys
 import threading
 from types import SimpleNamespace
 
@@ -506,45 +507,252 @@ def test_external_backend_callback_runs_outside_store_anchor_transaction(tmp_pat
         primary.close()
 
 
-def test_local_git_timeout_leaves_pending_then_restart_retry_completes_same_key(tmp_path, monkeypatch):
-    from tools.vst import slice as slice_module
+def _synthetic_git_source(tmp_path, *, filename="candidate.txt"):
+    from tools.vst.slice import SyntheticOperationBackend
 
-    remote, repo = tmp_path / "timeout-remote.git", tmp_path / "timeout-repo"
+    remote, repo = tmp_path / "target.git", tmp_path / "source"
     subprocess.run(["git", "init", "--bare", str(remote)], check=True, capture_output=True)
     repo.mkdir()
     git("init", cwd=str(repo))
     git("config", "user.name", "Synthetic", cwd=str(repo))
     git("config", "user.email", "synthetic@example.invalid", cwd=str(repo))
-    (repo / "note.txt").write_text("timeout retry\n", encoding="utf-8")
-    git("add", "note.txt", cwd=str(repo))
-    git("commit", "-m", "timeout retry", cwd=str(repo))
+    (repo / filename).write_text("base commit\n", encoding="utf-8")
+    git("add", filename, cwd=str(repo))
+    git("commit", "-m", "base", cwd=str(repo))
+    return remote, repo, SyntheticOperationBackend(
+        str(remote), source_repo=str(repo), command_timeout_sec=10,
+    )
+
+
+def test_hook_free_publication_transfers_source_only_commit_without_running_pre_push(tmp_path, monkeypatch):
+    from tools.vst import slice as slice_module
+
+    remote, repo, backend = _synthetic_git_source(tmp_path)
     head = git("rev-parse", "HEAD", cwd=str(repo))
-    git("remote", "add", "seed", str(remote), cwd=str(repo))
-    git("push", "seed", "HEAD:refs/heads/seed", cwd=str(repo))
+    source_only = subprocess.run(
+        ["git", "--git-dir", str(remote), "cat-file", "-e", f"{head}^{{commit}}"],
+        capture_output=True, check=False,
+    )
+    assert source_only.returncode != 0
+
+    hook = repo / ".git" / "hooks" / "pre-push"
+    marker = repo / "pre-push-marker"
+    hook.write_text("#!/bin/sh\nprintf invoked > pre-push-marker\n", encoding="utf-8")
+    os.chmod(hook, 0o755)
+
+    hook_validation_remote = tmp_path / "hook-validation.git"
+    subprocess.run(["git", "init", "--bare", str(hook_validation_remote)], check=True, capture_output=True)
+    git("remote", "add", "hook-validation", str(hook_validation_remote), cwd=str(repo))
+    git("push", "hook-validation", "HEAD:refs/heads/validation", cwd=str(repo))
+    assert marker.read_text(encoding="utf-8").strip() == "invoked"
+    marker.unlink()
+
+    for name, value in {
+        "pack.threads": "64",
+        "pack.windowMemory": "1g",
+        "pack.window": "999",
+        "pack.deltaCacheSize": "1073741824",
+        "pack.deltaCacheLimit": "1073741824",
+    }.items():
+        git("config", name, value, cwd=str(repo))
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+    monkeypatch.setenv("GIT_CONFIG_KEY_0", "pack.threads")
+    monkeypatch.setenv("GIT_CONFIG_VALUE_0", "64")
+    real_popen = slice_module.subprocess.Popen
+    captured_source = {}
+
+    def capture_source_pack(command, *args, **kwargs):
+        if "pack-objects" in command:
+            captured_source["command"] = list(command)
+            captured_source["env"] = dict(kwargs["env"])
+        return real_popen(command, *args, **kwargs)
+
+    monkeypatch.setattr(slice_module.subprocess, "Popen", capture_source_pack)
+
+    result = backend.push({"branch": "candidate", "head": head}, operation_key="publish-source-only")
+
+    assert result == {
+        "operation_key": "publish-source-only",
+        "ref": "refs/heads/candidate",
+        "head": head,
+    }
+    assert git("--git-dir", str(remote), "rev-parse", "refs/heads/candidate") == head
+    assert git("--git-dir", str(remote), "cat-file", "-t", head) == "commit"
+    assert not marker.exists(), "source-controlled pre-push hook executed during publication"
+    source_command = captured_source["command"]
+    for option in (
+        ("-c", "pack.threads=1"), ("-c", "pack.windowMemory=16m"),
+        ("-c", "pack.window=10"), ("-c", "pack.deltaCacheSize=16777216"),
+        ("-c", "pack.deltaCacheLimit=32768"),
+    ):
+        assert any(source_command[index:index + 2] == list(option) for index in range(len(source_command) - 1))
+    source_env = captured_source["env"]
+    assert source_env["GIT_CONFIG_NOSYSTEM"] == "1"
+    assert source_env["GIT_CONFIG_GLOBAL"] == os.devnull
+    assert "GIT_CONFIG_COUNT" not in source_env
+    assert "GIT_CONFIG_KEY_0" not in source_env
+    assert "GIT_CONFIG_VALUE_0" not in source_env
+
+
+def test_synthetic_backend_fast_forward_and_conflicting_branch_and_pr_refs(tmp_path):
+    remote, repo, backend = _synthetic_git_source(tmp_path)
+    base_head = git("rev-parse", "HEAD", cwd=str(repo))
+    first = backend.push({"branch": "candidate", "head": base_head}, operation_key="branch-base")
+    assert git("--git-dir", str(remote), "rev-parse", first["ref"]) == base_head
+
+    (repo / "candidate.txt").write_text("fast-forward commit\n", encoding="utf-8")
+    git("add", "candidate.txt", cwd=str(repo))
+    git("commit", "-m", "fast-forward", cwd=str(repo))
+    fast_forward_head = git("rev-parse", "HEAD", cwd=str(repo))
+    fast_forward = backend.push(
+        {"branch": "candidate", "head": fast_forward_head}, operation_key="branch-fast-forward",
+    )
+    assert fast_forward["head"] == fast_forward_head
+    assert git("--git-dir", str(remote), "rev-parse", fast_forward["ref"]) == fast_forward_head
+
+    git("branch", "divergent", base_head, cwd=str(repo))
+    git("checkout", "divergent", cwd=str(repo))
+    (repo / "divergent.txt").write_text("divergent commit\n", encoding="utf-8")
+    git("add", "divergent.txt", cwd=str(repo))
+    git("commit", "-m", "divergent", cwd=str(repo))
+    divergent_head = git("rev-parse", "HEAD", cwd=str(repo))
+    with pytest.raises(StoreError, match="not a fast-forward"):
+        backend.push({"branch": "candidate", "head": divergent_head}, operation_key="branch-divergent")
+    assert git("--git-dir", str(remote), "rev-parse", "refs/heads/candidate") == fast_forward_head
+
+    pr_payload = {"head": base_head, "title": "Synthetic PR"}
+    pr_result = backend.open_pull_request(pr_payload, operation_key="pr-stable-key")
+    assert git("--git-dir", str(remote), "rev-parse", pr_result["ref"]) == base_head
+    assert backend.open_pull_request(pr_payload, operation_key="pr-stable-key") == pr_result
+    with pytest.raises(StoreError, match="remote idempotency key reused with different payload"):
+        backend.open_pull_request(
+            {"head": fast_forward_head, "title": "Changed PR"}, operation_key="pr-stable-key",
+        )
+    assert git("--git-dir", str(remote), "rev-parse", pr_result["ref"]) == base_head
+
+    conflicting_pr_key = "pr-ref-conflict"
+    conflicting_pr_ref = (
+        "refs/pull-requests/"
+        + hashlib.sha256(conflicting_pr_key.encode("utf-8")).hexdigest()[:20]
+        + "/head"
+    )
+    git("--git-dir", str(remote), "update-ref", conflicting_pr_ref, fast_forward_head)
+    with pytest.raises(StoreError, match="pull-request key already points at a different head"):
+        backend.open_pull_request(
+            {"head": base_head, "title": "Conflicting existing ref"},
+            operation_key=conflicting_pr_key,
+        )
+    assert git("--git-dir", str(remote), "rev-parse", conflicting_pr_ref) == fast_forward_head
+
+
+def test_cumulative_target_storage_cap_rejects_before_pack_process_starts(tmp_path, monkeypatch):
+    from tools.vst import slice as slice_module
+
+    remote, repo, backend = _synthetic_git_source(tmp_path, filename="cap.txt")
+    head = git("rev-parse", "HEAD", cwd=str(repo))
+    payload = {"branch": "capped", "head": head}
+    # Persist the operation binding first so publication reaches the pack preflight.
+    backend._bind_operation("push", "cap-operation", payload)
+    current_bytes = backend._target_object_storage_bytes()
+    backend._MAX_PACK_BYTES = 64
+    backend._MAX_PACK_INDEX_BYTES = 64
+    backend._MAX_TARGET_OBJECT_STORAGE_BYTES = current_bytes + 127
+    real_popen = slice_module.subprocess.Popen
+    pack_processes = []
+
+    def forbid_pack_process(command, *args, **kwargs):
+        if "pack-objects" in command or "index-pack" in command:
+            pack_processes.append(list(command))
+            raise AssertionError("pack process started despite cumulative-storage preflight rejection")
+        return real_popen(command, *args, **kwargs)
+
+    monkeypatch.setattr(slice_module.subprocess, "Popen", forbid_pack_process)
+    with pytest.raises(StoreError, match="synthetic target object storage cap would be exceeded"):
+        backend.push(payload, operation_key="cap-operation")
+    assert pack_processes == []
+    assert backend._target_object_storage_bytes() == current_bytes
+    with pytest.raises(RuntimeError):
+        backend.ref_head("refs/heads/capped")
+
+
+def test_target_storage_lock_times_out_on_another_process_then_releases_normally(tmp_path):
+    from tools.vst.slice import SyntheticOperationBackend
+
+    remote = tmp_path / "storage-lock.git"
+    subprocess.run(["git", "init", "--bare", str(remote)], check=True, capture_output=True)
+    backend = SyntheticOperationBackend(
+        str(remote), source_repo=str(remote), command_timeout_sec=1,
+    )
+    lock_path = remote / ".vst-object-storage.lock"
+    with backend._target_storage_lock():
+        pass
+
+    child_code = r'''import os, sys
+path = sys.argv[1]
+stream = open(path, "a+b")
+if os.fstat(stream.fileno()).st_size == 0:
+    stream.write(b"\0")
+    stream.flush()
+stream.seek(0)
+if os.name == "nt":
+    import msvcrt
+    msvcrt.locking(stream.fileno(), msvcrt.LK_LOCK, 1)
+else:
+    import fcntl
+    fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+print("LOCKED", flush=True)
+sys.stdin.readline()
+stream.seek(0)
+if os.name == "nt":
+    msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+else:
+    fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+stream.close()
+'''
+    child = subprocess.Popen(
+        [sys.executable, "-c", child_code, str(lock_path)],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        assert child.stdout.readline().strip() == "LOCKED"
+        with pytest.raises(TimeoutError, match="timed out waiting for synthetic target storage lock"):
+            with backend._target_storage_lock():
+                pass
+    finally:
+        if child.stdin is not None and not child.stdin.closed:
+            child.stdin.write("release\n")
+            child.stdin.flush()
+            child.stdin.close()
+        assert child.wait(timeout=10) == 0, "lock-holder child did not release and exit normally"
+
+
+def test_local_git_timeout_leaves_pending_then_restart_retry_completes_same_key(tmp_path, monkeypatch):
+    from tools.vst import slice as slice_module
+
+    remote, repo, backend = _synthetic_git_source(tmp_path, filename="timeout.txt")
+    head = git("rev-parse", "HEAD", cwd=str(repo))
 
     db = tmp_path / "timeout-operation.db"
     store = Store(str(db), event_key=EVENT)
-    backend = slice_module.SyntheticOperationBackend(
-        str(remote), source_repo=str(repo), command_timeout_sec=10,
-    )
     supervisor = Supervisor(store, operation_backend=backend)
-    real_run = slice_module.subprocess.run
+    real_popen = slice_module.subprocess.Popen
     injected = {"done": False}
     observed_timeout = []
 
     def timeout_once(command, *args, **kwargs):
-        if (not injected["done"] and len(command) >= 4
-                and command[:3] == ["git", "-C", str(repo)]
-                and command[3] == "push"):
+        if (not injected["done"] and command[0] == "git"
+                and "-C" in command and str(repo) in command
+                and "pack-objects" in command):
             injected["done"] = True
-            observed_timeout.append(kwargs.get("timeout"))
-            raise subprocess.TimeoutExpired(command, kwargs.get("timeout"))
-        return real_run(command, *args, **kwargs)
+            observed_timeout.append(backend.command_timeout_sec)
+            raise subprocess.TimeoutExpired(command, backend.command_timeout_sec)
+        return real_popen(command, *args, **kwargs)
 
-    monkeypatch.setattr(slice_module.subprocess, "run", timeout_once)
+    monkeypatch.setattr(slice_module.subprocess, "Popen", timeout_once)
     payload = {"branch": "timeout-candidate", "head": head}
     try:
-        with pytest.raises(subprocess.TimeoutExpired):
+        with pytest.raises(TimeoutError, match="Git source pack import exceeded its time limit"):
             supervisor.simulate_push("timeout-retry-key", payload)
         assert injected["done"] and observed_timeout == [10]
         row = store._conn.execute(

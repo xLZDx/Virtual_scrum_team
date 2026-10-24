@@ -103,6 +103,7 @@ Markdown documents: **141**
 | `docs/changes/0076-s2-bounded-pack-resources.md` | Change record | 0076 S2 bounded Git pack resources |
 | `docs/changes/0077-s2-cumulative-object-storage-cap.md` | Change record | 0077 S2 cumulative synthetic target object-storage cap |
 | `docs/changes/0078-s2-resource-cap-functional-rerun.md` | Change record | 0078 S2 functional recovery rerun after pack resource limits |
+| `docs/changes/0079-s2-e2e-hook-free-pack-publication.md` | Change record | 0079 S2 E2E hook-free Git pack publication |
 | `docs/DESIGN_BASELINE_AND_IMPLEMENTATION_PLAN_2026-10-24.md` | Documentation | Design baseline 1.0 and implementation plan |
 | `docs/FULL_TEAM_EXPANSION_PLAN_2026-10-23.md` | Documentation | Full Virtual Engineering Team — Expansion Plan |
 | `docs/INDEPENDENT_REVIEW_DECISION_PROVENANCE_2026-10-23.md` | Documentation | Independent Review Dossier — Unified Virtual Engineering Organization |
@@ -128,6 +129,7 @@ Markdown documents: **141**
 | `docs/sdlc/evidence/s2-contract-diffgate-run-280e2d0.md` | Documentation | S2 contract, gate and diff-gate functional test run |
 | `docs/sdlc/evidence/s2-e2e-acceptance-280e2d0.md` | Documentation | S2 E2E lifecycle and WSL diagnostic evidence |
 | `docs/sdlc/evidence/s2-e2e-operation-recovery-0071.md` | Documentation | S2 E2E backend operation recovery evidence (0071) |
+| `docs/sdlc/evidence/s2-e2e-hook-free-pack-1ef3fee.md` | Documentation | S2 E2E hook-free pack publication, storage cap, and POSIX lock evidence |
 | `docs/sdlc/evidence/s2-e2e-platform-run.md` | Documentation | S2 E2E and platform test evidence |
 | `docs/sdlc/evidence/s2-e2e-wsl-diagnostic-c470542.md` | Documentation | S2 E2E Windows and WSL diagnostic evidence |
 | `docs/sdlc/evidence/s2-e5-runmanifest-wsl-280e2d0.md` | Documentation | S2 E5 real runner integration and scoped WSL evidence |
