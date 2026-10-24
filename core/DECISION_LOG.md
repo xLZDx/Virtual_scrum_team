@@ -241,4 +241,6 @@ The next S2 E2E run found a separate E8 harness defect: the synthetic backend re
 
 Implemented in change record 0069. Initial E2E evidence and the post-fix source/test heads will remain distinct; no result from the initial failing run is upgraded to a pass.
 
+Fresh security review of source head `c0e7e9ce15958b6c6de7811bcaf1020119ba169d` found the source-repository `git push` could execute a worker-controlled pre-push hook with runner identity and signer-socket access (S2 S7.2/VST-017, MAJOR). Decision: supersede the direct push design with bounded `pack-objects`/`index-pack` plus target-side guarded `update-ref`, avoiding push hooks and remote helpers. Full design is change record 0072; no new source code has been tested yet.
+
 The E2E-owned lifecycle/store modules passed on source HEAD `c0e7e9ce15958b6c6de7811bcaf1020119ba169d`: 72 passed, 14 platform/prohibition skips, one pytest-asyncio deprecation warning. The callback regression verified an independent Store write during the backend callback; the bounded timeout regression verified durable PENDING, restart retry, same-key backend idempotency, and conflicting payload rejection. Evidence and detailed test change record: 0071. The real-child timeout termination path and four E4 process-containment scenarios remain `NOT_RUN` under the process-kill prohibition/platform dependency.
