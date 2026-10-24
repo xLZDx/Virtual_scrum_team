@@ -6,7 +6,7 @@
 
 ## Why
 
-Change record 0107 left its post-commit verification open. The rerun confirms the input cleanup preserves the observable refusal behavior at the committed test revision.
+E2E change record 0107 left its post-commit verification open. The rerun confirms the input cleanup preserves the observable refusal behavior at the committed test revision.
 
 ## Affected contracts and paths
 

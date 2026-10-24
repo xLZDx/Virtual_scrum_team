@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "source_head": "58088c804ee3d444919ec433b656c80ec3106f37",
+  "source_head": "4913425c9327b2416ac7cc1e421268223ee43ae1",
   "categories": {
     "functional": {
       "state": "SUPPORTED",
       "coverage_state": "PARTIAL",
       "coverage_reason": "Current functional denominator covers only the focused S3 adapter contract tests.",
       "owner_role": "functional-test-reviewer",
-      "source_head": "58088c804ee3d444919ec433b656c80ec3106f37",
+      "source_head": "4913425c9327b2416ac7cc1e421268223ee43ae1",
       "test_ids": [
         "tests/vst/test_s3_worker_adapter.py::test_ac1_request_contract_enforces_identity_fence_and_payload_bounds",
         "tests/vst/test_s3_worker_adapter.py::test_ac1_response_contract_rejects_untyped_or_oversized_worker_claims",
@@ -24,7 +24,7 @@
       "coverage_state": "PARTIAL",
       "coverage_reason": "Current integration denominator contains one runner receipt path only.",
       "owner_role": "functional-test-reviewer",
-      "source_head": "58088c804ee3d444919ec433b656c80ec3106f37",
+      "source_head": "4913425c9327b2416ac7cc1e421268223ee43ae1",
       "test_ids": [
         "tests/vst/test_e4_runner.py::test_harmless_command_produces_signed_passing_testrun"
       ]
@@ -32,11 +32,19 @@
     "api": {
       "state": "SUPPORTED",
       "coverage_state": "PARTIAL",
-      "coverage_reason": "Current Python API denominator contains one gate parser-authority case only.",
+      "coverage_reason": "The Python API denominator covers gate parser authority plus S4 category registry, provenance, selector projection, and seeded catalog validation contracts; broader VST APIs remain partial.",
       "owner_role": "functional-test-reviewer",
-      "source_head": "58088c804ee3d444919ec433b656c80ec3106f37",
+      "source_head": "4913425c9327b2416ac7cc1e421268223ee43ae1",
       "test_ids": [
-        "tests/vst/test_s2_contract_gate.py::test_gate_refuses_caller_supplied_parser_implementation"
+        "tests/vst/test_s2_contract_gate.py::test_gate_refuses_caller_supplied_parser_implementation",
+        "tests/qa/test_s4_registry_contracts.py::test_s4_registry_accepts_single_primary_category_per_test_id",
+        "tests/qa/test_s4_registry_contracts.py::test_s4_registry_rejects_duplicate_primary_category_assignment",
+        "tests/qa/test_s4_registry_contracts.py::test_s4_registry_rejects_provenance_outside_candidate_history",
+        "tests/qa/test_s4_registry_contracts.py::test_s4_registry_rejects_unknown_pytest_node_id",
+        "tests/qa/test_s4_registry_contracts.py::test_s4_registry_rejects_supported_category_without_required_ids",
+        "tests/qa/test_s4_registry_contracts.py::test_s4_registry_manifest_projection_requires_exact_ids_and_commands",
+        "tests/qa/test_s4_registry_contracts.py::test_s4_seeded_failure_catalog_rejects_hash_mismatch",
+        "tests/qa/test_s4_registry_contracts.py::test_s4_committed_registry_loads_with_resolved_nodes"
       ],
       "network_api": {
         "state": "UNSUPPORTED",
@@ -46,28 +54,39 @@
     "e2e": {
       "state": "SUPPORTED",
       "coverage_state": "PARTIAL",
-      "coverage_reason": "Current E2E denominator covers the synthetic S3 pilot, not all S4 stories.",
+      "coverage_reason": "Coverage includes the S3 worker pilot and local S4 synthetic slice/snapshot refusal journeys; native S4 snapshot transfer, signer/report path, and sandbox acceptance remain NOT_RUN.",
       "owner_role": "e2e-runner",
-      "source_head": "58088c804ee3d444919ec433b656c80ec3106f37",
+      "source_head": "4913425c9327b2416ac7cc1e421268223ee43ae1",
       "test_ids": [
         "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_pilot_commits_only_the_manifest_scoped_synthetic_change",
         "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_pilot_rejects_out_of_scope_edit_before_worker_invocation",
         "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_app_checkpoint_can_resume_same_effect_under_new_store_epoch",
         "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_stop_fences_interrupted_attempt_idempotently_and_rejects_stale_start",
-        "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_candidate_identity_cannot_be_self_selected"
+        "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_candidate_identity_cannot_be_self_selected",
+        "tests/qa/test_s4_qa_e2e.py::test_s4_e5_synthetic_slice_cli_journey_preserves_gate_and_restart_evidence",
+        "tests/qa/test_s4_qa_e2e.py::test_s4_e6_qa_snapshot_cli_refuses_an_unapproved_distribution"
       ]
     },
     "seeded-failure": {
-      "state": "NOT_RUN",
+      "state": "SUPPORTED",
+      "coverage_state": "PARTIAL",
+      "coverage_reason": "One committed unchanged-product invalid-manifest fixture is hash-bound and records an observed typed rejection; broader failure fixtures remain uncovered.",
       "owner_role": "functional-test-reviewer",
-      "reason": "A committed synthetic fixture catalog and mapped test IDs have not been authored yet.",
-      "next_step": "Add bounded unchanged-product fixtures with stable IDs and input hashes before enabling this lane."
+      "source_head": "4913425c9327b2416ac7cc1e421268223ee43ae1",
+      "test_ids": [
+        "tests/qa/test_s4_registry_contracts.py::test_s4_seeded_failure_rejects_invalid_manifest_and_records_observation"
+      ]
     }
   },
   "regression": {
     "state": "SUPPORTED_AGGREGATE",
     "coverage_state": "PARTIAL",
-    "reason": "One or more primary category denominators remain partial or NOT_RUN.",
-    "primary_categories": ["functional", "integration", "api", "e2e"]
+    "reason": "The regression aggregate remains partial until all required categories and the pinned native report path pass exact-head acceptance.",
+    "primary_categories": [
+      "functional",
+      "integration",
+      "api",
+      "e2e"
+    ]
   }
 }

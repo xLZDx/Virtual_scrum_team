@@ -158,6 +158,26 @@ def _current_candidate_head(root: Path) -> str:
 def load_registry(root: Path, relative_path: str = "docs/qa/categories.json") -> tuple[dict, str]:
     """Validate committed registry syntax, unique IDs, categories, and source paths."""
     registry, raw = _read_repo_json(root, relative_path, max_bytes=MAX_REGISTRY_BYTES)
+    tracked_cache: dict[str, bool] = {}
+    commit_cache: dict[str, bool] = {}
+    ancestry_cache: dict[tuple[str, str], bool] = {}
+
+    def is_tracked(path: str) -> bool:
+        if path not in tracked_cache:
+            tracked_cache[path] = _git_file_is_tracked(root, path)
+        return tracked_cache[path]
+
+    def commit_exists(revision: str) -> bool:
+        if revision not in commit_cache:
+            commit_cache[revision] = _git_commit_exists(root, revision)
+        return commit_cache[revision]
+
+    def is_ancestor(revision: str, candidate: str) -> bool:
+        pair = (revision, candidate)
+        if pair not in ancestry_cache:
+            ancestry_cache[pair] = _git_commit_is_ancestor(root, revision, candidate)
+        return ancestry_cache[pair]
+
     if set(registry) != {"schema_version", "source_head", "categories", "regression"}:
         raise ContractError("QA registry has missing or unexpected top-level fields")
     if registry["schema_version"] != 1:
@@ -165,10 +185,10 @@ def load_registry(root: Path, relative_path: str = "docs/qa/categories.json") ->
     source_head = registry["source_head"]
     if (not isinstance(source_head, str) or len(source_head) != 40 or
             any(char not in "0123456789abcdef" for char in source_head) or
-            not _git_commit_exists(root, source_head)):
+            not commit_exists(source_head)):
         raise ContractError("QA registry source_head must be a full lowercase Git SHA")
     candidate_head = _current_candidate_head(root)
-    if not _git_commit_is_ancestor(root, source_head, candidate_head):
+    if not is_ancestor(source_head, candidate_head):
         raise ContractError("QA registry source_head is stale or outside the candidate history")
     categories = registry["categories"]
     if not isinstance(categories, dict) or set(categories) != set(PRIMARY_CATEGORIES):
@@ -208,9 +228,9 @@ def load_registry(root: Path, relative_path: str = "docs/qa/categories.json") ->
         head = entry.get("source_head")
         if (not isinstance(head, str) or len(head) != 40 or
                 any(char not in "0123456789abcdef" for char in head) or
-                not _git_commit_exists(root, head)):
+                not commit_exists(head)):
             raise ContractError(f"QA category {category!r} needs a full source_head")
-        if not _git_commit_is_ancestor(root, head, candidate_head):
+        if not is_ancestor(head, candidate_head):
             raise ContractError(f"QA category {category!r} source_head is stale or outside candidate history")
         test_ids = entry.get("test_ids")
         if not isinstance(test_ids, list) or not test_ids:
@@ -223,7 +243,7 @@ def load_registry(root: Path, relative_path: str = "docs/qa/categories.json") ->
             if not isinstance(test_id, str) or "::" not in test_id:
                 raise ContractError(f"QA test ID is not a pytest node ID: {test_id!r}")
             path = test_id.split("::", 1)[0].replace("\\", "/")
-            if path.startswith("tests/") is False or not _git_file_is_tracked(root, path):
+            if path.startswith("tests/") is False or not is_tracked(path):
                 raise ContractError(f"QA test ID source is not a tracked tests path: {test_id!r}")
             if not _pytest_node_id_exists(root, test_id):
                 raise ContractError(

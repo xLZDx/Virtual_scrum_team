@@ -312,3 +312,7 @@ Use a self-contained Git bundle over the Windows-to-WSL stdin boundary; do not d
 
 Every supported QA registry test ID must resolve to a statically named pytest function or a method on a top-level `Test*` class in its tracked source file. A tracked file by itself does not prove that a declared node exists. Reject runtime-generated parametrized selectors until a deterministic source-level mapping is designed; do not import test modules or run collection from the registry trust boundary. See change record 0104; runtime regression acceptance is pending the designated test owner's rerun.
 
+## 2026-10-25 -- Cache registry provenance queries per load
+
+Resolve tracked-file, commit-existence, and ancestry facts once per unique path/revision while validating one registry. The initial real-registry run exposed a tracked-file false negative under repeated Git subprocess checks; this was consistent with the helper's bounded timeout collapsing to `False`, and the repository independently confirmed the file was tracked. Keep errors fail-closed, but avoid repeating the same query for each test ID. Pin category provenance to the S4 ancestor containing the committed node definitions. See change record 0111; final clean-head test rerun remains pending.
+

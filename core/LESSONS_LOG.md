@@ -495,3 +495,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — A registry entry can reference an existing tracked test file but a nonexistent pytest node. The functional regression exposed the gap; validate source-resolvable function/class selectors, not just the file path. Runtime-generated parameter IDs remain unsupported until their exact IDs can be established without executing collection code. The failing test and rerun belong to the functional-test-reviewer; Codex changed the registry implementation. See change record 0104; remediation result pending.
 
+2026-10-25 — Repeating bounded Git subprocesses for every test ID can turn temporary contention into a false missing-source result. Cache each unique path/revision fact within one registry load, retain fail-closed timeout handling, and do not cache across loads where repository state may have changed. The functional-test-reviewer reported 9/9 against the in-worktree fix; exact clean-head evidence is still pending. See change record 0111.
+
