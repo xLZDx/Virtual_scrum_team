@@ -10,20 +10,23 @@ import copy
 import hashlib
 import json
 
-from tests.vst.e1e4_helpers import FakeClock, HEAD, SUPERVISOR_KEY
+from tests.vst.e1e4_helpers import (
+    EPOCH,
+    HEAD,
+    KEY,
+    OPERATOR_KEY,
+    STORY,
+    SUPERVISOR_KEY,
+    TASK,
+    FakeClock,
+)
 from tests.vst.test_s5_v3_evidence import (
     ANALYZER_KEY,
     ANALYZER_KEY_ID,
     EVENT_KEY,
-    KEY,
-    OPERATOR_KEY,
     REVIEWER_KEY,
     SIGNER_KEY,
-    SOURCE_DIGEST,
     EVIDENCE_DIGEST,
-    STORY,
-    TASK,
-    EPOCH,
     analyzer_receipt,
     gate_inputs,
     resign_analyzer,
