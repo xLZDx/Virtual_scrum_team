@@ -3,7 +3,7 @@
 ## Scope and provenance
 
 - Current product/source baseline HEAD: `b0c61a1ec96b6152157bf9e681f1f5d86f1c1771` on branch `s4-native-qa-runner`; this includes coordinator commit 0104, which added static pytest node resolution.
-- The first two executions used source HEAD `1cd868b776a50147b951c9282cc73e2868c6bad6`; the third used `b0c61a1ec96b6152157bf9e681f1f5d86f1c1771`. The E2E test source was untracked during all three executions, so this is local synthetic evidence rather than an exact committed-candidate acceptance record.
+- The first two executions used source HEAD `1cd868b776a50147b951c9282cc73e2868c6bad6`; the third used `b0c61a1ec96b6152157bf9e681f1f5d86f1c1771`. The fourth execution used exact test commit `0c8232e237477328d3dd5b9a658288d977360073`; the test module was tracked at that HEAD. The worktree still contained concurrent uncommitted registry/catalog changes and another agent's untracked test, so the candidate worktree was dirty and this does not establish native runner acceptance.
 - E2E test IDs are `tests/qa/test_s4_qa_e2e.py::test_s4_e5_synthetic_slice_cli_journey_preserves_gate_and_restart_evidence` and `tests/qa/test_s4_qa_e2e.py::test_s4_e6_qa_snapshot_cli_refuses_an_unapproved_distribution`. The coordinator will add them to the E2E registry with valid source provenance after the test commit.
 - Local environment: Windows host, Python 3.14.3, pytest 8.4.2. The named `Ubuntu-24.04` WSL runtime reports Python 3.12.3 and pytest 7.4.4, but the repository source was not transferred there and no S4 native test was run.
 
@@ -17,7 +17,7 @@ python -m pytest -q tests/qa/test_s4_qa_e2e.py
 
 The first execution produced one pass and one failure. The synthetic VST slice CLI returned its established 23-scenario report; my new assertion incorrectly expected the shape of a different runner report. This was a **test defect**. I inspected `tools/vst/slice.py` and the existing S1 slice assertions, corrected the test to assert the CLI's actual scenario report, and did not change product code or weaken a product assertion.
 
-The second execution passed both scenarios: **2 passed, 0 failed** in 10.52 seconds. After coordinator commit 0104, a third execution at source HEAD `b0c61a1ec96b6152157bf9e681f1f5d86f1c1771` also passed both scenarios: **2 passed, 0 failed** in 5.79 seconds. Each passing output showed one existing `pytest-asyncio` deprecation warning. The slice journey verified the `APPROVE` happy path, retained earlier failed-attempt evidence after retry, a budget-overrun `MODIFY`, and per-scenario SQLite artifacts. The snapshot CLI journey verified that an unapproved WSL distribution is rejected with exit code 2 before launching WSL or creating a Git bundle.
+The second execution passed both scenarios: **2 passed, 0 failed** in 10.52 seconds. After coordinator commit 0104, a third execution at source HEAD `b0c61a1ec96b6152157bf9e681f1f5d86f1c1771` also passed both scenarios: **2 passed, 0 failed** in 5.79 seconds. After committing the test source, a fourth execution at exact HEAD `0c8232e237477328d3dd5b9a658288d977360073` passed both scenarios: **2 passed, 0 failed** in 7.97 seconds. Each passing output showed one existing `pytest-asyncio` deprecation warning. The slice journey verified the `APPROVE` happy path, retained earlier failed-attempt evidence after retry, a budget-overrun `MODIFY`, and per-scenario SQLite artifacts. The snapshot CLI journey verified that an unapproved WSL distribution is rejected with exit code 2 before launching WSL or creating a Git bundle.
 
 The first failure and single corrected rerun do not establish flakiness; no test was quarantined. The output contained no trace, screenshot, or network response because these are local CLI journeys; pytest assertion output is the failure evidence.
 
@@ -28,3 +28,11 @@ The first failure and single corrected rerun do not establish flakiness; no test
 - Technical service owner for the S4 private provisioning values is `UNKNOWN` in the in-scope repository records. Accountable task owner is the operator under delegation; Codex is executor. Next step: use the designated S4 provisioning evidence to identify the exact runner account, worker GID, private root, and signer socket, then transfer the committed candidate and run the mapped native E2E category in `Ubuntu-24.04` without installing packages.
 
 No Playwright/Cypress dependency was introduced. No CI, build, migration, package installation, or source transfer was run.
+
+## Exact test-commit rerun
+
+- Revision: `0c8232e237477328d3dd5b9a658288d977360073`.
+- Command: `python -m pytest -q tests/qa/test_s4_qa_e2e.py`.
+- Result: **2 passed, 0 failed** in 7.97 seconds; one `pytest-asyncio` deprecation warning.
+- Environment: Windows host, Python 3.14.3, pytest 8.4.2.
+- Worktree limitation: concurrent modifications to `docs/qa/categories.json` and `docs/qa/seeded_failures.json`, plus another agent's untracked registry test, remained outside this commit. Native snapshot transfer requires a clean worktree, so it remains `NOT_RUN`.
