@@ -422,3 +422,4 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: transactional idempotency was reused for an external side effect, and action completion was treated as equivalent to payload equality.
 - Rule: commit a durable intent before external effects, execute them outside the global store lock with a finite bound and backend idempotency key, then commit completion. On replay, compare the exact canonical payload before returning a prior completion.
 - Fix status: design recorded in change record 0065; implementation is in change record 0066. Designated-agent runtime verification and exact-head post-fix review remain pending.
+- Follow-up: first exact-head regression run showed that an append-only side table also needs its external-intent event included in the startup/anchor consistency invariant. The check is repaired in change record 0067; designated-agent rerun is pending.

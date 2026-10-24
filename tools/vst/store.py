@@ -2040,29 +2040,84 @@ class Store:
         }
         probes = {row["run_id"]: row for row in conn.execute("SELECT * FROM supervisor_probes").fetchall()}
         event_operations: dict[str, dict] = {}
+        external_intents: dict[str, list[dict]] = {}
+        external_completions: dict[str, list[dict]] = {}
+        external_unknown: dict[str, list[dict]] = {}
         event_probes: dict[str, dict] = {}
         for row in conn.execute("SELECT task_id, payload FROM events WHERE kind = 'NOTE'").fetchall():
             try:
                 payload = json.loads(row["payload"])
             except (ValueError, TypeError) as exc:
                 raise StoreError("supervisor note event is malformed", kind="integrity") from exc
+            if not isinstance(payload, dict):
+                raise StoreError("supervisor note event is not an object", kind="integrity")
             if payload.get("event") == "SUPERVISOR_OPERATION":
                 event_operations[row["task_id"]] = payload
+            elif payload.get("event") == "SUPERVISOR_EXTERNAL_OPERATION_INTENT":
+                external_intents.setdefault(row["task_id"], []).append(payload)
+            elif payload.get("event") == "SUPERVISOR_EXTERNAL_OPERATION_COMPLETED":
+                external_completions.setdefault(row["task_id"], []).append(payload)
+            elif payload.get("event") == "SUPERVISOR_EXTERNAL_OPERATION_UNKNOWN":
+                external_unknown.setdefault(row["task_id"], []).append(payload)
             elif payload.get("event") == "PREFLIGHT_CONSUMED":
                 event_probes[row["task_id"]] = payload
-        if set(operations) != set(event_operations) or set(probes) != set(event_probes):
+        external_keys = set(external_intents)
+        if (set(operations) != set(event_operations) | external_keys
+                or external_keys & set(event_operations)
+                or (set(external_completions) | set(external_unknown)) - external_keys
+                or set(probes) != set(event_probes)):
             raise StoreError("supervisor records differ from their append-only events", kind="integrity")
         for operation_key, row in operations.items():
             try:
-                result_digest = hashlib.sha256(row["result"].encode("utf-8")).hexdigest()
-                json.loads(row["result"])
-                event = event_operations[operation_key]
+                result = json.loads(row["result"])
             except (KeyError, ValueError, TypeError) as exc:
                 raise StoreError("supervisor operation record is malformed", kind="integrity") from exc
-            if (event.get("operation") != row["operation"]
-                    or event.get("payload_sha256") != row["payload_sha256"]
-                    or event.get("result_sha256") != result_digest):
-                raise StoreError("supervisor operation record does not match its event", kind="integrity")
+            event = event_operations.get(operation_key)
+            if event is not None:
+                result_digest = hashlib.sha256(row["result"].encode("utf-8")).hexdigest()
+                if (event.get("operation") != row["operation"]
+                        or event.get("payload_sha256") != row["payload_sha256"]
+                        or event.get("result_sha256") != result_digest):
+                    raise StoreError("supervisor operation record does not match its event", kind="integrity")
+                continue
+
+            intents = external_intents.get(operation_key, [])
+            if not intents or result != {"_vst_state": "PENDING"}:
+                raise StoreError("external operation intent row is malformed", kind="integrity")
+            for intent in intents:
+                attempt = intent.get("attempt")
+                if (intent.get("operation_key") != operation_key
+                        or intent.get("operation") != row["operation"]
+                        or intent.get("payload_sha256") != row["payload_sha256"]
+                        or intent.get("state") != "PENDING"
+                        or isinstance(attempt, bool) or not isinstance(attempt, int) or attempt < 1):
+                    raise StoreError("external operation intent does not match its row", kind="integrity")
+            completion_results: list[Any] = []
+            for completion in external_completions.get(operation_key, []):
+                attempt = completion.get("attempt")
+                result_value = completion.get("result")
+                try:
+                    encoded = canonical_bytes(result_value).decode("utf-8")
+                except (TypeError, ValueError) as exc:
+                    raise StoreError("external operation completion result is malformed", kind="integrity") from exc
+                if (completion.get("operation_key") != operation_key
+                        or completion.get("operation") != row["operation"]
+                        or completion.get("payload_sha256") != row["payload_sha256"]
+                        or isinstance(attempt, bool) or not isinstance(attempt, int) or attempt < 1
+                        or hashlib.sha256(encoded.encode("utf-8")).hexdigest() != completion.get("result_sha256")):
+                    raise StoreError("external operation completion does not match its intent", kind="integrity")
+                completion_results.append(result_value)
+            if completion_results and any(
+                    canonical_bytes(value) != canonical_bytes(completion_results[0])
+                    for value in completion_results[1:]):
+                raise StoreError("external operation has conflicting completion results", kind="integrity")
+            for unknown in external_unknown.get(operation_key, []):
+                attempt = unknown.get("attempt")
+                if (unknown.get("operation_key") != operation_key
+                        or unknown.get("operation") != row["operation"]
+                        or unknown.get("payload_sha256") != row["payload_sha256"]
+                        or isinstance(attempt, bool) or not isinstance(attempt, int) or attempt < 1):
+                    raise StoreError("external operation outcome does not match its intent", kind="integrity")
         for run_id, row in probes.items():
             event = event_probes[run_id]
             if (event.get("nonce") != row["nonce"]
