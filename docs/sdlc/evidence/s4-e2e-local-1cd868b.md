@@ -2,9 +2,9 @@
 
 ## Scope and provenance
 
-- Current product/source baseline HEAD: `b0c61a1ec96b6152157bf9e681f1f5d86f1c1771` on branch `s4-native-qa-runner`; this includes coordinator commit 0104, which added static pytest node resolution.
+- Initial product/source baseline: `1cd868b776a50147b951c9282cc73e2868c6bad6` on branch `s4-native-qa-runner`. Later reruns used the subsequent revisions recorded below, up to the final clean validation HEAD `594eeddcd1f6409928e7eebb1e9f8581c8eba75c`.
 - The first two executions used source HEAD `1cd868b776a50147b951c9282cc73e2868c6bad6`; the third used `b0c61a1ec96b6152157bf9e681f1f5d86f1c1771`. The fourth execution used exact test commit `0c8232e237477328d3dd5b9a658288d977360073`; the test module was tracked at that HEAD. The worktree still contained concurrent uncommitted registry/catalog changes and another agent's untracked test, so the candidate worktree was dirty and this does not establish native runner acceptance.
-- E2E test IDs are `tests/qa/test_s4_qa_e2e.py::test_s4_e5_synthetic_slice_cli_journey_preserves_gate_and_restart_evidence` and `tests/qa/test_s4_qa_e2e.py::test_s4_e6_qa_snapshot_cli_refuses_an_unapproved_distribution`. The coordinator will add them to the E2E registry with valid source provenance after the test commit.
+- E2E test IDs are `tests/qa/test_s4_qa_e2e.py::test_s4_e5_synthetic_slice_cli_journey_preserves_gate_and_restart_evidence` and `tests/qa/test_s4_qa_e2e.py::test_s4_e6_qa_snapshot_cli_refuses_an_unapproved_distribution`. The final registry records both IDs with source head `4913425c9327b2416ac7cc1e421268223ee43ae1`, which contains the committed test nodes and is an ancestor of final validation HEAD `594eeddcd1f6409928e7eebb1e9f8581c8eba75c`.
 - Local environment: Windows host, Python 3.14.3, pytest 8.4.2. The named `Ubuntu-24.04` WSL runtime reports Python 3.12.3 and pytest 7.4.4, but the repository source was not transferred there and no S4 native test was run.
 
 ## Executed journeys
@@ -44,3 +44,11 @@ No Playwright/Cypress dependency was introduced. No CI, build, migration, packag
 - Result: **2 passed, 0 failed** in 6.61 seconds; one `pytest-asyncio` deprecation warning.
 - Environment: Windows host, Python 3.14.3, pytest 8.4.2.
 - The snapshot refusal test supplied only visibly inert placeholders for arguments that are never consumed because the wrong-distribution guard runs first. The worktree still had concurrent category and generated-registry changes; native transfer remains `NOT_RUN`.
+
+## Final clean-head rerun
+
+- Revision: `594eeddcd1f6409928e7eebb1e9f8581c8eba75c`; the worktree was clean before execution.
+- Commands: `python --version`; `python -m pytest --version`; `python -m pytest -q tests/qa/test_s4_qa_e2e.py`.
+- Environment: Windows host, Python 3.14.3, pytest 8.4.2.
+- Result: **2 passed, 0 failed** in 5.28 seconds. One warning: `pytest-asyncio` emitted `DeprecationWarning` for `asyncio.get_event_loop_policy`, with a reference to removal in Python 3.16.
+- This is exact clean-head local synthetic evidence. It does not run native WSL transfer, the S4 signer socket, report-bound native QA, or the exact-head VST gate.
