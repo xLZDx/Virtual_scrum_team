@@ -446,3 +446,12 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 - Facts: on Windows source HEAD `ed531264d0344c67e948e126c420e60f5272226c`, three unrelated publication journeys failed at one shared source-snapshot identity comparison before pack execution. On source HEAD `dc95915018b80f498d5cf775363712fb915fe04e`, all focused lifecycle/store tests passed; the POSIX lock case also passed in selected WSL under `vst-runner`.
 - Rule: retain the first red run with its exact code revision and trace, then record the remediation run separately. Do not convert earlier failure history to PASS, and do not infer process cleanup behavior from preflight-only tests.
 - Evidence: change record 0083 and `docs/sdlc/evidence/s2-e2e-bounded-snapshot-ed531.md`. Live process termination, kill-table, and post-start overflow cleanup remain `NOT_RUN` under the active prohibition.
+
+## 2026-10-25 -- Do not run even a diff check before sprint code is complete
+
+- Kind: FAILURE (the coordinator ran `git diff --check` while still in S3 documentation/code preparation, contrary to the project's code-before-tests-and-checks gate).
+- Facts: the exact command was `git diff --check`; it printed no diagnostics and the shell returned exit code 0. It was run against documentation changes before S3 code completion. This result is explicitly not verification evidence.
+- Root cause: the coordinator used a routine diff hygiene check without reconciling the active sprint prohibition first.
+- Rule: during the coding phase, use read-only status, diffs, and source inspection only; defer all checks and tests until all in-scope code is complete and to their authorized owners.
+- Fix status: logged immediately; no claim of S3 verification is made. The implementation agent was instructed not to run tests, checks, builds, CI, or migrations.
+

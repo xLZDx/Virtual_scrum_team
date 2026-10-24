@@ -1,6 +1,6 @@
 # Sprint S3 plan: vendor-neutral worker pilot
 
-Status: **PREPARED; NOT STARTED**. This document is a next-sprint plan only. It authorizes no candidate acquisition, installation, cloning, additional sandbox provisioning, production use, or S3 test execution.
+Status: **CODE PREPARATION IN PROGRESS; WORKER EXECUTION NOT STARTED**. S3.1.1 adapter contract work has started on branch `s3-vendor-neutral-worker-pilot`; the S2 source baseline is reconciled to `dc95915018b80f498d5cf775363712fb915fe04e`. `docs/sdlc/STATE.md` remains the phase authority for S2 Phase 8 GPT-PM gate, which is pending. This local S3 preparation does not authorize candidate acquisition, installation, cloning, additional sandbox provisioning, production use, or S3 test/worker execution.
 
 Baseline reference: S2 source head `dc95915018b80f498d5cf775363712fb915fe04e` on branch `s2-isolated-worker-sandbox`. The functional recovery-module rerun at source `dc959` recorded 4 passed / 0 skipped (record 0085). The focused Windows runner/store E2E run recorded 80 passed / 14 skipped and the POSIX flock test recorded 1 passed under `vst-runner` in the selected Ubuntu-24.04 WSL2 (record 0083). Earlier E2E results at `ed531` include 3 Windows snapshot-identity failures; the following source fix `dc959` passed the focused suite. Fresh security and reliability reviews found no source blocker; the database review likewise found no MAJOR, while confirming that abrupt-crash child cleanup and filesystem quotas remain unverified. Earlier S2 Windows/WSL evidence is recorded at source head `280e2d0a613a0b70252c13ce7afe85f22734f7d1`; it is evidence for that head only. The selected dedicated Ubuntu-24.04 WSL2 environment has per-run E5 evidence, not persistent deployment proof. S2 retains explicit `NOT_RUN` criteria for process-kill/kill-table, post-start overflow cleanup, Windows Job Object nesting, full POSIX containment, and complete E8 crash/resume. OS memory and per-run filesystem quotas, source-workspace binding, and external-writer exclusion are `NOT_VERIFIED`; production qualification requires those environmental limits. Reconcile the final S2 state before S3 worker execution; no S2 result is inherited as an S3 acceptance pass.
 
@@ -148,12 +148,12 @@ The durable engine is Temporal for this plan, provisionally. If the pin, license
 
 ## 7. Definition of Ready
 
-- S2 exact-head acceptance evidence has been reviewed and reconciled; code presence alone is insufficient.
-- Operator has provisioned the dedicated sandbox and a fresh probe passes on the intended environment.
-- Candidate identity, immutable commit, license, compatibility, dependency and security audit records exist for BMad Loop, the hand-written loop implementation, and Temporal. Candidate acquisition has explicit authorization; no unpinned upstream is introduced.
-- One synthetic story and deterministic crash/resume fixture are specified, including checkpoints, inputs, expected state transitions, idempotency keys, and allowed paths.
-- Adapter contract, S2 state/gate integration points, test ownership, budget semantics, STOP table and evidence format are reviewed.
-- Test scenarios map to every S3 AC and have valid and invalid fixtures. Test agents confirm the focused command set without running it before coding is complete.
+- **Vendor-neutral contract/code preparation:** the S2 control-plane interfaces are inspected; candidate state cannot authorize a lease, receipt, or verdict. This slice may be implemented without acquiring a candidate or running a worker.
+- **In-repository synthetic integration:** one story and deterministic application-level checkpoints are specified, including inputs, expected state transitions, idempotency keys, and allowed paths. This may use only the hand-written in-repository worker and does not imply sandbox runtime acceptance.
+- **Candidate adapters and comparison:** S2 exact-head acceptance is reviewed and reconciled; immutable candidate identity, license, compatibility, dependency and security audit records are complete; operator acquisition authorization is explicit. No unpinned upstream is introduced.
+- **Sandbox-bound worker execution:** the operator-provisioned dedicated sandbox is available and a fresh signed probe passes for the intended run. Earlier probes are not reused.
+- Adapter contract, S2 state/gate integration points, test ownership, budget semantics, STOP table and evidence format are reviewed for the relevant slice.
+- Test scenarios map to every applicable S3 AC and have valid and invalid fixtures. Test agents confirm the focused command set without running it before coding is complete.
 
 ## 8. Definition of Done
 
@@ -169,17 +169,17 @@ The durable engine is Temporal for this plan, provisionally. If the pin, license
 
 ## 9. Backlog and ownership
 
-Proposed S3 backlog grouping; add these items to the canonical backlog when S3 is formally started, after confirming the S2 state:
+Canonical S3 backlog grouping. These items are registered while local contract code is prepared; candidate and sandbox gates still govern dependent execution:
 
 | Proposed item | Scope | Accountable / technical ownership | Entry/dependency |
 |---|---|---|---|
-| S3-A / VST-027 | Vendor-neutral single-story adapter and idempotent operations | Operator is accountable for the delegated sprint; implementation-engineer role executes. Canonical service owner is not identified in current backlog and remains UNKNOWN. | Verified S2 control-plane contracts |
-| S3-B / VST-028 | Candidate identity, immutable revision, license, dependency and compatibility audits | Operator owns candidate acquisition authorization; technical audit owner is UNKNOWN in canonical records. | Must complete before acquisition |
-| S3-C / VST-029 | Shared deterministic crash/resume, STOP, retry and budget fixture | Functional-test-reviewer and e2e-runner own required test authorship/execution; implementation-engineer owns product changes. These are roles, not named people. | Accepted requirements and code completion |
-| S3-D / VST-030 | Sandbox-bound worktree, credentials, diff and egress proof | Operator owns sandbox provisioning and external candidate acquisition authorization; exact platform/service owner is UNKNOWN. | Verified S2 sandbox and fresh probe |
-| S3-E / VST-031 | Candidate comparison, residual risk and operator choice | Operator owns the final choice; reviewers supply evidence, not the decision. | Complete denominator and exact-head review |
+| S3-A / VST-027 | Vendor-neutral single-story adapter, in-repository synthetic integration, and idempotent operations | Operator is accountable for the delegated sprint; Codex executes. Canonical service owner is UNKNOWN. | S2 control-plane contract inspection; code preparation does not start worker execution |
+| S3-B / VST-028 | Candidate identity, immutable revision, license, dependency, compatibility, and security audits | Operator owns explicit acquisition authorization; Codex performs the read-only audit; technical audit service owner is UNKNOWN. | Complete before any candidate acquisition |
+| S3-C / VST-029 | Shared deterministic crash/resume, STOP, retry, and budget fixture | Operator is accountable; Codex implements product fixture; functional-test-reviewer and e2e-runner own required test authorship/execution. These are roles, not named people. | Accepted requirements and code completion; process-kill scenarios remain separately gated |
+| S3-D / VST-030 | Sandbox-bound worktree, credentials, diff, and egress proof | Operator is accountable for sandbox provisioning; Codex binds a fresh probe to each authorized run; exact platform/service owner is UNKNOWN. | Verified sandbox and fresh signed probe for each run |
+| S3-E / VST-031 | Candidate comparison, residual risk, and operator choice | Operator owns the final choice; reviewers supply evidence, not the decision. | Complete denominator, candidate gates, and exact-head review |
 
-These are proposed identifiers, not current backlog entries. The operator is the accountable task owner under delegated work; Codex prepares this document. No named human/service technical owner is asserted where project records do not identify one.
+The matching IDs are tracked in `core/BACKLOG.md`. The operator is the accountable task owner under delegated work; Codex is the executor. No named human/service technical owner is asserted where project records do not identify one.
 
 ## 10. Open dependencies and decisions
 
@@ -198,7 +198,7 @@ These are proposed identifiers, not current backlog entries. The operator is the
 1. Finish the S2 reliability-fix functional/E2E run and exact-head specialist review; reconcile its evidence while retaining each prohibited/unavailable case as `NOT_RUN`.
 2. Before each S3 worker run, collect a fresh signed probe in the selected dedicated WSL2 environment and bind it to the run. The previously recorded E5 probe is not reused for S3.
 3. Complete candidate identity, immutable SHA, license, dependency, compatibility and security audits before any candidate acquisition.
-4. On formal S3 start, register the proposed backlog stories, confirm ownership/dependencies, and implement the adapter and fixture before starting tests.
+4. Complete VST-027 contract code and in-repository synthetic integration before starting S3 tests; preserve candidate, comparison, sandbox-run, and prohibited-crash criteria as gated or `NOT_RUN` until their dependencies are met.
 5. After all S3 code is complete, let the authorized test agents run the mapped focused suite by epic and on the exact final head; then run specialist reviews and the final approval gate.
 6. Record the comparison and operator's worker choice. Publish no “TOP” label without complete evidence and that decision.
 
