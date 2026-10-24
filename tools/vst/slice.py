@@ -1101,10 +1101,17 @@ def run_scenarios(workdir: str) -> dict[str, dict]:
 class SyntheticOperationBackend:
     """Supervisor-only adapter for a local bare Git remote."""
 
-    def __init__(self, bare_path: str, *, command_timeout_sec: int = 10) -> None:
+    def __init__(
+        self, bare_path: str, *, source_repo: str, command_timeout_sec: int = 10,
+    ) -> None:
         if isinstance(command_timeout_sec, bool) or not isinstance(command_timeout_sec, int) or command_timeout_sec < 1:
             raise ValueError("command_timeout_sec must be a positive integer")
+        if not isinstance(bare_path, str) or not bare_path.strip():
+            raise ValueError("bare_path must be a non-empty path")
+        if not isinstance(source_repo, str) or not source_repo.strip():
+            raise ValueError("source_repo must be a non-empty path")
         self.bare_path = bare_path
+        self.source_repo = source_repo
         self.command_timeout_sec = command_timeout_sec
 
     def _git(self, *args: str, input_bytes: bytes | None = None) -> str:
@@ -1113,6 +1120,16 @@ class SyntheticOperationBackend:
             input=input_bytes, stdin=None if input_bytes is not None else subprocess.DEVNULL,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             check=False, timeout=self.command_timeout_sec,
+        )
+        if completed.returncode:
+            raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
+        return completed.stdout.decode("utf-8", "replace").strip()
+
+    def _source_git(self, *args: str) -> str:
+        completed = subprocess.run(
+            ["git", "-C", self.source_repo, *args],
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, check=False, timeout=self.command_timeout_sec,
         )
         if completed.returncode:
             raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
@@ -1165,9 +1182,9 @@ class SyntheticOperationBackend:
         except RuntimeError:
             current = None
         if current != head:
-            # A retry after a process crash is harmless: the same ref/head
-            # update is already present and git reports it as up to date.
-            self._git("push", self.bare_path, f"{head}:{ref}")
+            # The candidate object lives in the worker source repository; only
+            # the trusted supervisor backend performs this local push.
+            self._source_git("push", self.bare_path, f"{head}:{ref}")
         return {"operation_key": operation_key, "ref": ref, "head": head}
 
     def open_pull_request(self, payload: dict, *, operation_key: str) -> dict:
@@ -1184,7 +1201,7 @@ class SyntheticOperationBackend:
         if current is not None and current != head:
             raise StoreError("pull-request key already points at a different head", kind="duplicate")
         if current is None:
-            self._git("update-ref", ref, head)
+            self._source_git("push", self.bare_path, f"{head}:{ref}")
         return {"operation_key": operation_key, "ref": ref, "head": head}
 
 
@@ -1283,7 +1300,7 @@ def run_lifecycle_scenarios(
         stream.write("value = 'base'\n")
     git(repository, "add", "--", "src/synthetic.py")
     git(repository, "commit", "-m", "synthetic base")
-    backend = SyntheticOperationBackend(remote)
+    backend = SyntheticOperationBackend(remote, source_repo=repository)
     base_head = git(repository, "rev-parse", "--verify", "HEAD")
     backend.push({"branch": "main", "head": base_head}, operation_key="bootstrap")
 
@@ -1367,7 +1384,9 @@ def run_lifecycle_scenarios(
             anchor_path=anchor_path, sandbox_mode=True, supervisor_key=SUPERVISOR_KEY,
         )
         restarted_supervisor = Supervisor(
-            restarted_store, operation_backend=SyntheticOperationBackend(remote),
+            restarted_store, operation_backend=SyntheticOperationBackend(
+                remote, source_repo=repository,
+            ),
             run_id="synthetic-restart-context", probe_nonce="synthetic-restart-nonce",
             probe_key=probe_key,
         )
