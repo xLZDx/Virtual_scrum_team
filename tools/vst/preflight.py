@@ -24,20 +24,70 @@ def _container_socket_inventory() -> tuple[list[str], bool]:
     """Enumerate known engine sockets across all runtime UIDs; unknown is unsafe."""
     paths = list(CONTAINER_SOCKETS)
     observed_proc_sockets: list[str] = []
+    found: list[str] = []
     complete = True
-    for parent in (Path("/run/user"), Path("/var/run/user")):
+    def observe(path: str) -> None:
+        """Record present paths; permission/metadata errors make the scan incomplete."""
+        nonlocal complete
         try:
-            users = list(parent.iterdir()) if parent.exists() else []
+            os.lstat(path)
+        except FileNotFoundError:
+            return
         except OSError:
             complete = False
-            continue
-        for user_dir in users:
-            if not user_dir.name.isdigit():
+            return
+        found.append(path)
+
+    # /run/user is the canonical runtime root. Do not follow it or UID entries
+    # when symlinked: they are part of the host boundary being inventoried.
+    runtime_root = "/run/user"
+    try:
+        root_stat = os.lstat(runtime_root)
+    except FileNotFoundError:
+        root_stat = None
+    except OSError:
+        root_stat = None
+        complete = False
+    if root_stat is not None:
+        if os.path.islink(runtime_root) or not os.path.isdir(runtime_root):
+            complete = False
+        else:
+            try:
+                with os.scandir(runtime_root) as entries:
+                    user_entries = list(entries)
+            except OSError:
+                user_entries = []
                 complete = False
-                continue
-            paths.extend(str(user_dir / name) for name in (
-                "podman/podman.sock", "docker.sock", "containerd/containerd.sock",
-            ))
+            for entry in user_entries:
+                if not entry.name.isdigit():
+                    complete = False
+                    continue
+                try:
+                    if entry.is_symlink() or not entry.is_dir(follow_symlinks=False):
+                        complete = False
+                        continue
+                except OSError:
+                    complete = False
+                    continue
+                user_dir = entry.path
+                for relative in ("docker.sock", "containerd/containerd.sock", "podman/podman.sock"):
+                    candidate = os.path.join(user_dir, relative)
+                    parent = os.path.dirname(candidate)
+                    if parent != user_dir:
+                        try:
+                            parent_stat = os.lstat(parent)
+                        except FileNotFoundError:
+                            continue
+                        except OSError:
+                            complete = False
+                            continue
+                        if os.path.islink(parent) or not os.path.isdir(parent):
+                            complete = False
+                            continue
+                    observe(candidate)
+
+    for path in paths:
+        observe(path)
     try:
         unix_sockets = Path("/proc/net/unix").read_text(encoding="utf-8").splitlines()
         observed_proc_sockets.extend(line.split()[-1] for line in unix_sockets[1:]
@@ -45,7 +95,6 @@ def _container_socket_inventory() -> tuple[list[str], bool]:
                                      for token in ("docker.sock", "podman.sock", "containerd.sock")))
     except OSError:
         complete = False
-    found = [path for path in paths if os.path.exists(path)]
     return sorted(set(found + observed_proc_sockets)), complete
 
 

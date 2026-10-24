@@ -276,3 +276,12 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Layer: sandbox trust boundary and provisioning evidence contract; security review caught it before launch acceptance.
 - Rule: require independently verified, operator-root-signed policy/evidence bound to the exact run/spec/nonce; label point probes as smoke checks; enumerate all supported runtime identities and fail closed when inventory is incomplete.
 - Fix status: implementation in change record 0044; tests and host provisioning evidence are still pending and were not run by this implementation task.
+
+## 2026-10-24 -- Existence helpers are insufficient for security inventory
+
+- Kind: SHORTCOMING (inventory false-success risk found in follow-up review).
+- Facts: `Path.exists()` and `os.path.exists()` may return false when metadata lookup raises an OS/permission error; per-user runtime paths also require symlink-aware traversal.
+- Root cause: boolean existence helpers erased the distinction between missing and uninspectable paths.
+- Layer: preflight inventory completeness reporting.
+- Rule: use `lstat`/explicit enumeration; missing is absent, while access or metadata errors are incomplete; do not follow untrusted runtime directory symlinks.
+- Fix status: implementation in change record 0045; test-agent cases and execution remain pending.

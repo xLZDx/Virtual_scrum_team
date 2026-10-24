@@ -178,3 +178,7 @@ The database review on code HEAD `d779d55ea0cbb5f391a1f028cbab0345cab7e155` foun
 ## 2026-10-24 -- S2 egress policy proof requires operator attestation
 
 The reserved-address connection probe is only a smoke probe and cannot establish that outbound traffic is denied. Worker start now requires an operator-root-signed network-policy attestation bound to run ID, spec digest, and fresh nonce, with environment identity, policy/evidence digests, empty external allowlist, no-container-socket, and no-unapproved-host-path evidence. The supervisor verifies this independently of the runner's inventory signature. Container socket discovery spans system endpoints, numeric per-user runtime directories, and `/proc/net/unix`; incomplete enumeration fails closed. All six trust roots remain distinct, and the operator key is not exposed to the worker/analyzer. Implemented without tests/checks/runtime probing under task restriction; record 0044.
+
+## 2026-10-24 -- S2 socket inventory metadata errors fail closed
+
+Follow-up review of `tools/vst/preflight.py` found that `Path.exists()`/`os.path.exists()` could suppress permission errors and turn an inaccessible socket candidate into apparent absence. The inventory now uses `lstat`, refuses symlinked runtime roots/UID directories/engine directories, and clears its completeness flag on access or enumeration errors. The operator attestation contract is unchanged. No tests/checks were run; record 0045.
