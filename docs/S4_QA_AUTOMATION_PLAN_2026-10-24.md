@@ -1,6 +1,6 @@
 # Sprint S4 plan: reproducible QA automation
 
-Status: **S4.1/E1, S4.2/E2, AND S4.5/E5 SOURCE PLUMBING IMPLEMENTED LOCALLY; ACCEPTANCE PARTIAL; TESTS NOT RUN**. The category registry, pinned lock, POSIX native runner, report-to-v2-receipt seam, and seeded-failure fixture catalog/event/report contract are implemented on `s4-native-qa-runner`; change record 0095 fixes worker-to-runner event readability and disables ambient pytest plugin autoload in the QA path. The seeded-failure catalog remains explicitly `NOT_RUN` and empty pending test-owner fixture inputs and IDs. No test, build, install, CI, migration, external service call, or sandbox execution was performed for this code slice. Full category coverage, report tests, signer runtime, and source transfer remain open.
+Status: **S4.1/E1, S4.2/E2, AND S4.5/E5 SOURCE PLUMBING IMPLEMENTED LOCALLY; ACCEPTANCE PARTIAL; TESTS NOT RUN**. The category registry, pinned lock, POSIX native runner, report-to-v2-receipt seam, and seeded-failure fixture catalog/event/report contract are implemented on `s4-native-qa-runner`; change records 0095 and 0099 cover event readability, ambient pytest plugin isolation, and direct report-bound catalog/manifest-ID validation. The seeded-failure catalog remains explicitly `NOT_RUN` and empty pending test-owner fixture inputs and IDs. No test, build, install, CI, migration, external service call, or sandbox execution was performed for this code slice. Full category coverage, report tests, signer runtime, and source transfer remain open.
 
 Sources: `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` section 1; `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`; `governance/DEFINITION_OF_DONE.md`; S2 and S3 plans; current `tests/vst/`, `tools/vst/runner.py`, `tools/vst/slice.py`, and `tools/vst/{contracts,gate,store}.py`.
 
@@ -36,7 +36,7 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 
 **S4.2.1** Establish a repository-owned, hash-pinned QA dependency input compatible with the verified named `Ubuntu-24.04` WSL interpreter CPython 3.12.3; record relevant OS/runtime/tool versions for each category. This supersedes the plan's stale Windows interpreter pin because the v2 signer runner refuses non-POSIX execution.
 
-**S4.2.2** Implement one bounded runner entry point that launches pytest's native discovery/execution for the requested category, preserving existing unittest discovery. It records argv, exit code, duration, stdout/stderr references, environment identity, expected and collected IDs, and output artifact digests.
+**S4.2.2** Implement one bounded runner entry point that launches pytest's native discovery/execution for the requested category, preserving existing unittest discovery. It records argv, exit code, duration, stdout/stderr references, environment identity, expected and collected IDs, and output artifact digests. Disable pytest's cache provider and Python bytecode writes in report-bound runs so the isolated worker does not mutate the read-only source snapshot.
 
 **AC-4:** Running the same committed category manifest with the same interpreter and dependency lock yields the same selected test-ID set; artifact timestamps may differ but are excluded from normalized content hashes.
 

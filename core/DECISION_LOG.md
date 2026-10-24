@@ -296,3 +296,7 @@ The category registry's top-level provenance head and every supported category s
 
 Seeded-failure fixtures live in a bounded tracked catalog with canonical input hashes, expected rejection codes, and one-to-one test IDs. The QA plugin records observed rejection codes only while the linked pytest node is executing. The report runner compares the complete observation set with the catalog and binds the catalog as a signed artifact; an absent or mismatched observation cannot yield a passing report. Keep the catalog `NOT_RUN` and empty until designated test owners supply real unchanged-product input records and tests. See change record 0098; no tests or runtime proof are claimed.
 
+## 2026-10-25 -- Validate seeded-failure catalog at the report-bound runner boundary
+
+The report-bound runner independently validates the catalog's exact root fields and coherent `NOT_RUN`/`SUPPORTED` state; it does not rely only on the higher-level CLI loader. Duplicate JSON object keys are rejected by both catalog loading paths. Before any category command starts, seeded-fixture test IDs must equal the complete required-ID set for that manifest slot. Exact pytest argv disables the cache provider, and report-bound child processes suppress `.pyc` writes so the worker respects the read-only source snapshot. See change record 0099; no runtime proof is claimed.
+

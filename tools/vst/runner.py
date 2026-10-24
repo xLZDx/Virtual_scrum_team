@@ -971,6 +971,15 @@ _FIXTURE_ID_RE = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
 _REJECTION_CODE_RE = re.compile(r"[A-Z][A-Z0-9_]{0,63}")
 
 
+def _reject_duplicate_json_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON object key: {key}")
+        result[key] = value
+    return result
+
+
 def _validate_qa_report_request(
     paths: list[str], cwd: str, slot: str, report_path: str | None,
     events_path: str | None, metadata: dict | None,
@@ -1050,14 +1059,34 @@ def _validate_qa_report_request(
         )
         with open(seeded_catalog_full_path, "rb") as handle:
             catalog_raw = handle.read(128 * 1024 + 1)
-        catalog_value = json.loads(catalog_raw.decode("utf-8"))
-    except (OSError, subprocess.TimeoutExpired, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        catalog_value = json.loads(
+            catalog_raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_json_keys
+        )
+    except (OSError, subprocess.TimeoutExpired, UnicodeDecodeError, ValueError) as exc:
         raise ContractError(f"seeded-failure catalog cannot be validated: {exc}") from exc
+    catalog_fields = {"schema_version", "state", "fixtures", "reason", "next_step"}
     if (tracked_catalog.returncode != 0 or len(catalog_raw) > 128 * 1024 or
-            not isinstance(catalog_value, dict) or catalog_value.get("schema_version") != 1):
-        raise ContractError("seeded-failure catalog must be bounded, tracked schema version 1")
+            not isinstance(catalog_value, dict) or set(catalog_value) != catalog_fields or
+            type(catalog_value["schema_version"]) is not int or
+            catalog_value["schema_version"] != 1 or
+            not isinstance(catalog_value["fixtures"], list) or
+            len(catalog_value["fixtures"]) > 256):
+        raise ContractError("seeded-failure catalog must be bounded and have the exact version 1 schema")
+    catalog_state = catalog_value["state"]
+    catalog_fixtures = catalog_value["fixtures"]
+    if catalog_state == "NOT_RUN":
+        if (catalog_fixtures or not isinstance(catalog_value["reason"], str) or
+                not catalog_value["reason"] or not isinstance(catalog_value["next_step"], str) or
+                not catalog_value["next_step"]):
+            raise ContractError("NOT_RUN seeded-failure catalog must be empty and explain its next step")
+    elif catalog_state == "SUPPORTED":
+        if (not catalog_fixtures or catalog_value["reason"] is not None or
+                catalog_value["next_step"] is not None):
+            raise ContractError("SUPPORTED seeded-failure catalog must contain fixtures and no NOT_RUN reason")
+    else:
+        raise ContractError("seeded-failure catalog state must be NOT_RUN or SUPPORTED")
     if category == "seeded-failure":
-        if catalog_value.get("state") != "SUPPORTED" or catalog_value.get("fixtures") != metadata["seeded_failure_fixtures"]:
+        if catalog_state != "SUPPORTED" or catalog_fixtures != metadata["seeded_failure_fixtures"]:
             raise ContractError("seeded-failure report fixtures differ from the tracked catalog")
     elif metadata["seeded_failure_fixtures"]:
         raise ContractError("non-seeded QA category cannot include seeded-failure observations")
@@ -1349,6 +1378,7 @@ def _build_qa_report(
             "environment_variable_names": sorted(
                 set(build_environment().keys()) | {
                     "VST_QA_EVENTS_PATH", "PYTEST_DISABLE_PLUGIN_AUTOLOAD",
+                    "PYTHONDONTWRITEBYTECODE",
                 }
             ),
         },
@@ -1493,6 +1523,16 @@ def run_manifest_commands(
         raise ContractError("QA event evidence currently requires exactly one pinned pytest command")
     argvs = [item["argv"] for item in pinned]
     required_ids = sorted(item["test_id"] for item in valid["required_tests"] if item["slot"] == slot)
+    if report_artifact_path is not None and slot == "seeded-failure":
+        assert report_metadata is not None
+        fixture_test_ids = [
+            fixture["test_id"] for fixture in report_metadata["seeded_failure_fixtures"]
+        ]
+        if (len(fixture_test_ids) != len(set(fixture_test_ids)) or
+                set(fixture_test_ids) != set(required_ids)):
+            raise ContractError(
+                "seeded-failure fixture test IDs must exactly match the manifest slot before execution"
+            )
     acceptance = sorted({a for item in valid["required_tests"] if item["slot"] == slot for a in item["acceptance"]})
     limit = valid["timeout_sec"]
     per_command = limit if timeout_sec is None else _req_int(timeout_sec, "timeout_sec", 1, limit)
@@ -1517,6 +1557,7 @@ def run_manifest_commands(
         # Prevent ambient site-installed pytest entry points from changing
         # discovery or execution outside that manifest.
         env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
     deadline_at = time.monotonic() + deadline
     commands: list[dict] = []
     parser_results: list[dict] = []

@@ -23,6 +23,15 @@ _FIXTURE_ID = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
 _REJECTION_CODE = re.compile(r"[A-Z][A-Z0-9_]{0,63}")
 
 
+def _reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON object key: {key}")
+        result[key] = value
+    return result
+
+
 def _read_repo_json(root: Path, relative_path: str, *, max_bytes: int) -> tuple[dict, bytes]:
     if os.path.isabs(relative_path) or ".." in Path(relative_path).parts:
         raise ContractError("registry and manifest paths must be repository-relative")
@@ -37,8 +46,8 @@ def _read_repo_json(root: Path, relative_path: str, *, max_bytes: int) -> tuple[
     if len(raw) > max_bytes:
         raise ContractError(f"repository JSON file exceeds {max_bytes} bytes")
     try:
-        parsed = json.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        parsed = json.loads(raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_json_keys)
+    except (UnicodeDecodeError, ValueError) as exc:
         raise ContractError(f"repository JSON file is malformed: {relative_path}") from exc
     if not isinstance(parsed, dict):
         raise ContractError(f"repository JSON root must be an object: {relative_path}")
@@ -196,7 +205,8 @@ def load_seeded_failure_catalog(root: Path, registry: dict) -> tuple[dict, str]:
     )
     if set(catalog) != {"schema_version", "state", "fixtures", "reason", "next_step"}:
         raise ContractError("seeded-failure catalog has missing or unexpected fields")
-    if (catalog["schema_version"] != 1 or not isinstance(catalog["fixtures"], list) or
+    if (type(catalog["schema_version"]) is not int or catalog["schema_version"] != 1 or
+            not isinstance(catalog["fixtures"], list) or
             len(catalog["fixtures"]) > 256):
         raise ContractError("seeded-failure catalog schema is invalid")
     seeded_category = registry["categories"]["seeded-failure"]
@@ -297,7 +307,7 @@ def validate_projection(registry: dict, manifest: dict) -> None:
         if len(commands) != 1:
             raise ContractError(f"category {category!r} needs exactly one pinned pytest command")
         expected_argv = [
-            sys.executable, "-m", "pytest", "-q", "-p",
+            sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-p",
             "tools.qa.pytest_pass_plugin", *sorted(expected),
         ]
         if commands[0] != expected_argv:
