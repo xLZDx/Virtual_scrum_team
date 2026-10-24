@@ -113,3 +113,8 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Why it worked: the decision package was written down before coding and both implementers received the same binding list; part B started only after part A defined the signatures.
 - Layer: coordinator caught the stale text; reviewers still have to confirm the new code.
 - Rule: when two implementers share one document, give one of them the whole document or list cross-owned statements in the brief. Tests ran on a working tree, so the next reviewers must use the committed head.
+
+## 2026-10-24 -- S1 remediation status report
+
+- Kind: NEUTRAL (routine report commit; the report-due hook fired after six code commits without a report, so the report is a checkpoint written while the specialist re-review is still running).
+- Rule: write the status report in the same step as the commit that closes a code phase, not after the hook.

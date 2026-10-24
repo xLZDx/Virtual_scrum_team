@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Статус S1: исправления после ревью</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--fg:#1c1c1c;--mut:#666;--line:#ccc;--bad:#b00020;--warn:#a15c00;--ok:#1b7a3a}
+@media(prefers-color-scheme:dark){:root{--bg:#161616;--fg:#e8e8e8;--mut:#9a9a9a;--line:#444;--bad:#ff6b81;--warn:#e0a040;--ok:#5fcf80}}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max-width:960px;margin:0 auto;padding:16px}
+table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.bad{color:var(--bad)}.warn{color:var(--warn)}.ok{color:var(--ok)}.mut{color:var(--mut)}
+</style>
+</head>
+<body>
+<header>
+<h1>Статус S1: исправления после ревью специалистов</h1>
+<p class="mut">Дата: 2026-10-24. Состояние: код исправлен и закоммичен локально (3e27720), тесты зелёные на рабочем дереве, повторное ревью идёт.</p>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>Virtual_scrum_team</dd>
+    <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s1-control-plane-core @ 3e27720</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+
+<h2>1. Итог</h2>
+<p>Четыре специалиста-ревьюера единогласно вынесли MODIFY по первой версии кода S1 (63e0e35). Пакет исправлений реализован двумя исполнителями и проверен тестовыми агентами. Повторное ревью на точном head 3e27720 запущено; до его результата спринт не считается закрытым.</p>
+
+<h2>2. Что исправлено</h2>
+<table>
+<tr><th>Проблема из ревью</th><th>Что сделано</th><th>Состояние</th></tr>
+<tr><td>Шлюз и хранилище по-разному понимали цепочку квитанций</td><td>Одна модель: цепочка по слоту через все эпохи, решает последняя попытка текущей эпохи; метки супервизора живут в отдельном слоте</td><td class="warn">Код и тесты есть; ждёт повторного ревью</td></tr>
+<tr><td>Условия успеха брались из самой квитанции</td><td>Манифест задаёт тесты, команды, правила и автора; квитанции несут хеш манифеста</td><td class="warn">То же</td></tr>
+<tr><td>Waiver без подписи и привязки; проверка артефактов необязательна</td><td>Waiver подписан ключом оператора и привязан к задаче, эпохе, head, манифесту и сроку; без resolver артефактов отказ по умолчанию; терминальные метки не обходятся</td><td class="warn">То же</td></tr>
+<tr><td>Хранилище не проверяло подписи, аренды стирались, лимит повторов не действовал</td><td>Проверка подписи и аренды при записи, история аренд, лимит повторов, изоляция супервизора, ключевая цепочка событий с якорем</td><td class="warn">То же</td></tr>
+<tr><td>Раннер: неограниченный вывод, осиротевшие процессы, чужое окружение, выход за каталог</td><td>Лимит вывода, убийство дерева процессов, общий дедлайн, минимальное окружение, контроль путей артефактов</td><td class="warn">То же</td></tr>
+</table>
+
+<h2>3. Проверено и не проверено</h2>
+<ul>
+<li class="ok">Тесты, написанные агентами, на рабочем дереве поверх 63e0e35: E1–E4 1105 прошли, 2 пропущены, 0 упали; E5 38 прошли. Продуктовых багов тесты не нашли.</li>
+<li class="warn">Коммит 3e27720 содержит те же файлы, но тесты на самом коммите отдельно не запускались.</li>
+<li class="warn">Не проверено: биты прав POSIX и убийство группы процессов (машина Windows), символьная ссылка, созданная дочерней командой (<code>os.symlink</code> не разрешён). Mutation-прогонов нет по решению оператора.</li>
+<li class="bad">Повторное ревью специалистов идёт; независимого ревью финального head на разрешённой модели нет.</li>
+<li class="mut">Отложено в S2: вычисление candidate_head самим раннером и изоляция ключа подписи от процесса, который выполняет команды.</li>
+</ul>
+
+<h2>4. Что нужно от оператора</h2>
+<ul>
+<li>Независимое ревью финального head на Sonnet 5.5 или GPT-5.6 Luna; затем решение о push и pull request.</li>
+<li>Выравнивание внешних файлов: workspace <code>AGENTS.md</code> (модель по умолчанию), глобальный контракт (число авторов тестов), переустановка roster и skill в <code>~/.claude</code> со снимком и линтом.</li>
+<li>Решение об именах приватных репозиториев в публичном blueprint.</li>
+</ul>
+
+<p class="mut">Записи изменений: docs/changes/0015, 0016, 0017. Доказательства тестов: docs/sdlc/evidence/s1-remediation-e1-e4-test-run.md и s1-remediation-e5-test-run.md.</p>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>
