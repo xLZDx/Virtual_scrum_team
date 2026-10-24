@@ -48,7 +48,7 @@ def test_s4_e5_synthetic_slice_cli_journey_preserves_gate_and_restart_evidence(t
 
 
 def test_s4_e6_qa_snapshot_cli_refuses_an_unapproved_distribution(tmp_path, capsys):
-    """S4 E6: wrong distro is rejected before WSL, Git bundle, or signer access."""
+    """S4 E6: platform or distro guard rejects before WSL, bundle, or signer access."""
     exit_code = snapshot_main([
         "--cwd", str(tmp_path),
         "--distribution", "Unapproved-Distro",
@@ -61,5 +61,9 @@ def test_s4_e6_qa_snapshot_cli_refuses_an_unapproved_distribution(tmp_path, caps
     assert exit_code == 2
     payload = json.loads(captured.out)
     assert payload["state"] == "BLOCKED"
-    assert payload["reason"] == "distribution must be the named Ubuntu-24.04 WSL distro"
+    if os.name == "nt":
+        expected_reason = "distribution must be the named Ubuntu-24.04 WSL distro"
+    else:
+        expected_reason = "snapshot transfer must be invoked from the Windows host"
+    assert payload["reason"] == expected_reason
     assert captured.err == ""
