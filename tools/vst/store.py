@@ -47,10 +47,12 @@ Authority rules:
   the task/story link, the slot (must be a declared slot of the receipt type),
   result == derive_result, epoch == current epoch, a live unexpired lease held
   by runner_id at the same epoch, the per-epoch slot bound (at most
-  retry_cap + 1 receipts of the slot in the CURRENT epoch) and the chain
+  retry_cap + 1 NON-PASS receipts of the slot in the CURRENT epoch) and the chain
   position (attempt = previous + 1, prev_receipt_sha256 = previous hash), and
   that the budget is not exceeded (spent <= cap and no BUDGET_EXCEEDED event
   or marker; spending exactly the cap still lets the worker record results).
+  Worker receipt ids must not start with the reserved prefix 'sup-' (kind
+  'validation'; supervisor markers use it).
   Receipts for SUPERVISOR_SLOT are refused there: only append_supervisor_receipt
   and the supervisor methods write them (supervisor isolation: a worker lease
   never writes supervisor receipts and the supervisor path never writes worker
@@ -69,8 +71,9 @@ Authority rules:
   'retry'); repeated attempts do not add markers. Lease attempts stay
   consecutive per task (previous + 1) and receipt attempts stay consecutive per
   (task, slot) chain across epochs; append_receipt additionally refuses a slot
-  receipt once the slot already holds retry_cap + 1 receipts in the current
-  epoch, which bounds a worker that keeps writing receipts inside one epoch
+  receipt once the slot already holds retry_cap + 1 NON-PASS receipts in the
+  current epoch (PASS receipts never count, so re-attesting at a new head is
+  never refused), which bounds a worker that keeps writing receipts inside one epoch
   while a takeover after a full PASS set can still re-run every slot.
 - Events and receipts are append-only (triggers). The event log is a hash
   chain keyed with HMAC: hash = HMAC(event_key, label + prev_hash + canonical
@@ -88,12 +91,11 @@ Authority rules:
   tampered.
 - Budget: register_task seeds the budget row from the manifest cost_cap;
   set_budget can only lower it (a cap above the manifest cost_cap is refused,
-  kind 'budget'). acquire_lease refuses when something has been spent and
-  spent >= cap (a cost_cap 0 task with nothing spent may run), or when a
-  BUDGET_EXCEEDED event or marker exists, committing the signed marker first (kind 'budget');
-  append_receipt refuses only when spent > cap or the event or marker exists
-  (kind 'budget', or 'terminal' after the marker), so a worker that spent
-  exactly its cap can still record its results. charge never lets spent exceed cap; when it
+  kind 'budget'). acquire_lease and append_receipt refuse only when spent > cap or a
+  BUDGET_EXCEEDED event or marker exists (acquire_lease commits the signed
+  marker first, kind 'budget'; append_receipt raises 'budget', or 'terminal'
+  after the marker). Spending exactly the cap never blocks, and a cost_cap 0
+  task with nothing spent may run. charge never lets spent exceed cap; when it
   would, it commits the BUDGET_EXCEEDED event and the supervisor marker itself
   (supervisor_key required) and then raises kind 'budget'. mark_budget_exceeded
   is idempotent (a single BUDGET_EXCEEDED marker per task).
@@ -175,6 +177,8 @@ MARKER_RESULTS = {
     "RETRY_EXHAUSTED": "BLOCKED",
 }
 TERMINAL_MARKERS = ("BUDGET_EXCEEDED", "RETRY_EXHAUSTED")
+# Receipt ids starting with this prefix are reserved for supervisor markers.
+SUPERVISOR_RECEIPT_PREFIX = "sup-"
 
 _EVENT_LABEL = b"vst-event-v1\0"
 _ANCHOR_LABEL = b"vst-anchor-v1\0"
@@ -876,14 +880,14 @@ class Store:
         live lease, a previous lease lost and not yet marked by
         supervisor_reap_and_mark, or an attempt other than previous + 1
         (lease); no free slot (slot); a terminal marker already present, the
-        budget exhausted (spent >= cap or a BUDGET_EXCEEDED event; kind
+        budget exceeded (spent > cap or a BUDGET_EXCEEDED event; kind
         'budget'), or the retry cap reached (kind 'retry'; only worker-attributed
         failures count, see failed_attempts). supervisor_key signs the
         RETRY_EXHAUSTED / BUDGET_EXCEEDED marker that is committed before kind
         'retry' / 'budget' is raised (a BUDGET_EXCEEDED event is recorded once)
         and must differ from the event_key (kind 'key'). A worker that spent
-        exactly its cap can still append its final receipts (append_receipt
-        refuses only at spent > cap) but cannot take a new lease.
+        exactly its cap is not blocked: neither new leases nor receipts are
+        refused until spent > cap.
         """
         _need_str(task_id, "task_id")
         _need_str(story_id, "story_id")
@@ -919,7 +923,7 @@ class Store:
                     f"task {task_id!r} is blocked by terminal marker {terminal}",
                     kind="retry" if terminal == "RETRY_EXHAUSTED" else "budget",
                 )
-            budget_reason = self._budget_block_locked(conn, task_id, strict=True)
+            budget_reason = self._budget_block_locked(conn, task_id)
             if budget_reason is not None:
                 # Commit the signed marker, then raise after the commit (as RETRY_EXHAUSTED).
                 self._budget_exceeded_locked(conn, task, sup_key, SUPERVISOR_RUNNER_ID, 0)
@@ -1015,25 +1019,18 @@ class Store:
             return self._failed_attempts_locked(conn, task_id)
 
     @staticmethod
-    def _budget_block_locked(
-        conn: sqlite3.Connection, task_id: str, *, strict: bool
-    ) -> str | None:
+    def _budget_block_locked(conn: sqlite3.Connection, task_id: str) -> str | None:
         """Reason the budget blocks the task, or None.
 
-        strict (new work: acquire_lease) blocks at spent >= cap once something
-        has been spent (a task with cost_cap 0 and nothing spent is a task
-        without metered cost and may run); non-strict (finishing work:
-        append_receipt, heartbeat) blocks only at spent > cap. Either way an
-        existing BUDGET_EXCEEDED event blocks.
+        Blocks only when spent > cap or a BUDGET_EXCEEDED event exists. Spending
+        exactly the cap never blocks (charge refuses to go beyond the cap and
+        commits the marker itself), so a lease attempt can never invalidate a
+        complete PASS set unless spent really exceeded the cap.
         """
         row = conn.execute(
             "SELECT cap, spent FROM budget WHERE task_id = ?", (task_id,)
         ).fetchone()
-        if row is not None and (
-            (row["spent"] > 0 and row["spent"] >= row["cap"])
-            if strict
-            else row["spent"] > row["cap"]
-        ):
+        if row is not None and row["spent"] > row["cap"]:
             return f"budget exhausted for task {task_id!r} (spent {row['spent']} of {row['cap']})"
         if conn.execute(
             "SELECT 1 FROM events WHERE task_id = ? AND kind = 'BUDGET_EXCEEDED' LIMIT 1",
@@ -1044,7 +1041,7 @@ class Store:
 
     def _check_budget_locked(self, conn: sqlite3.Connection, task_id: str) -> None:
         """Refuse (kind 'budget') when spent > cap or a BUDGET_EXCEEDED event exists."""
-        reason = self._budget_block_locked(conn, task_id, strict=False)
+        reason = self._budget_block_locked(conn, task_id)
         if reason is not None:
             raise StoreError(reason, kind="budget")
 
@@ -1148,8 +1145,9 @@ class Store:
         present), budget (spent > cap or a BUDGET_EXCEEDED event; spent == cap
         still allows the final receipts), key (worker key equals the event_key),
         lease (no live unexpired lease held by runner_id at this
-        epoch), retry (the slot already has retry_cap + 1 attempts in the
-        CURRENT epoch; attempt numbers stay globally consecutive), chain (attempt != last + 1 or
+        epoch), validation (receipt_id starts with the reserved 'sup-'), retry
+        (the slot already has retry_cap + 1 NON-PASS attempts in the CURRENT
+        epoch; attempt numbers stay globally consecutive), chain (attempt != last + 1 or
         wrong prev_receipt_sha256), duplicate (receipt_id reused).
         """
         worker_key = _need_key(key, "key")
@@ -1230,17 +1228,27 @@ class Store:
                 raise StoreError(f"task is blocked by terminal marker {terminal}", kind="terminal")
             self._check_budget_locked(conn, task["task_id"])
             lease = self._receipt_lease(conn, valid)
+            # Reserved supervisor receipt-id namespace (markers use sup-{task}-{n}).
+            if valid["receipt_id"].startswith(SUPERVISOR_RECEIPT_PREFIX):
+                raise StoreError(
+                    f"receipt_id must not start with the reserved prefix "
+                    f"{SUPERVISOR_RECEIPT_PREFIX!r}",
+                    kind="validation",
+                )
             # Bound per epoch: attempt numbers stay globally consecutive, but only
-            # the attempts of the current epoch count against retry_cap + 1.
-            in_epoch = int(
-                conn.execute(
-                    "SELECT COUNT(*) FROM receipts WHERE task_id = ? AND slot = ? AND epoch = ?",
+            # NON-PASS attempts of the slot in the current epoch count against
+            # retry_cap + 1, so re-attesting with PASS at a new head is never refused.
+            in_epoch = sum(
+                1
+                for row in conn.execute(
+                    "SELECT body FROM receipts WHERE task_id = ? AND slot = ? AND epoch = ?",
                     (valid["task_id"], valid["slot"], valid["epoch"]),
-                ).fetchone()[0]
+                ).fetchall()
+                if json.loads(row["body"])["result"] != "PASS"
             )
             if in_epoch >= int(task["retry_cap"]) + 1:
                 raise StoreError(
-                    f"slot {valid['slot']!r} already has {in_epoch} attempts in epoch "
+                    f"slot {valid['slot']!r} already has {in_epoch} non-PASS attempts in epoch "
                     f"{valid['epoch']}; retry_cap {task['retry_cap']} + 1 reached",
                     kind="retry",
                 )
@@ -1559,7 +1567,7 @@ class Store:
         head = json.loads(newest["body"])["candidate_head"] if newest else manifest["base_head"]
         attempt = 1 if last is None else last["attempt"] + 1
         body = {
-            "receipt_id": f"sup-{task_id}-{attempt}",
+            "receipt_id": f"{SUPERVISOR_RECEIPT_PREFIX}{task_id}-{attempt}",
             "receipt_type": "Documentation",
             "task_id": task_id,
             "manifest_sha256": task["manifest_sha256"],

@@ -155,3 +155,19 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: status text was maintained per round in the decision log and the reports but not reconciled against the backlog and STATE.md at each commit.
 - Layer: coordinator missed; no gate checks backlog or STATE freshness.
 - Rule: at each sprint-closing commit reconcile BACKLOG.md and STATE.md with the log, and start the next sprint's documentation when testing of the current one starts.
+
+## 2026-10-24 -- S1 independent review fixes (store bounds)
+
+- Kind: FAILURE (author, tests, specialist reviewers) / SUCCESS (fresh independent reviewer).
+- Facts: the independent review returned MODIFY with two MAJOR defects in `tools/vst/store.py`: the per-epoch slot bound counted PASS receipts too (re-attestation at a third head could be refused with 'retry', stranding the story), and strict budget equality in `acquire_lease` committed a terminal BUDGET_EXCEEDED marker for a worker that had spent exactly its cap. Four specialist rounds had missed both.
+- Root cause: scenario `retry_across_head_change` used only two heads and `takeover_after_full_pass_set` used retry_cap 0 with cost below the cap, so neither boundary was reached; the earlier boundary fixes were each tested in isolation.
+- Layer: author, tests and four specialist rounds missed; a fresh independent reviewer caught it.
+- Rule: scenarios must cover at least three heads and exact-cap spend followed by re-attestation and a repeated lease call; a bound must be stated per outcome class (PASS never consumes a retry), and a terminal marker may only be written when a limit was actually exceeded.
+
+## 2026-10-24 -- S0 inventory, S2 plan and retrospective committed
+
+- Kind: SUCCESS / SHORTCOMING (coordinator process).
+- Facts: S0 ground-truth inventory found 29 unresolved agent/skill names, model-allowlist drift in the agent source repository (2 opus, 5 haiku) and a stale workspace default reviewer model, none of which blocked S1 code. The S1 gate stayed open for a long time because the S0 inventory and the next-sprint documentation were postponed until the operator asked for status.
+- Root cause: S0 was treated as a prerequisite on paper but S1 code started first; process rule v4 item 7 was not scheduled when S1 testing started.
+- Layer: coordinator missed; no gate links S1 closure to S0 documents.
+- Rule: start the inventory and next-sprint documentation agents at the moment testing of the current sprint begins, and close S0 before S1 code starts.

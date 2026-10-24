@@ -28,14 +28,19 @@ decisions: test-authoring authority (workspace `AGENTS.md`, `team-roster.md` and
 disagree), model-allowlist precedence, CI ownership, a distinct verdict for NOT_RUN waivers, and the
 public-repository inventory question (blueprint section 13.6).
 
-## S1 control-plane core (in progress)
+## S1 control-plane core (code complete, in review)
 
-Implemented in `tools/vst` on branch `s1-control-plane-core`: contracts, signing, gate, store, runner
-and slice. Three remediation rounds followed specialist reviews. The third round is implemented,
-retested (E1+E2 863 passed, E3+E4 593 passed with 2 skipped, E5 64 passed on the working tree) and
-committed locally as 176a095; a fourth specialist check found one regression (a task with
-`cost_cap` 0 could never start) that is fixed in the next local commit and still needs focused
-tests. Independent review and the pull request are pending. Nothing is pushed. Until the state store (`tools/vst/store.py`) is in use for a
+Code is complete in `tools/vst` on branch `s1-control-plane-core`: contracts, signing, gate, store,
+runner and slice. Four specialist review rounds are closed with no open BLOCKER or MAJOR. Focused
+tests are green: E1+E2 863 passed; E3+E4 593 passed with 2 skipped; E5 64 passed; E1, E2, E3 and E5
+together 1205 passed and 1 skipped after the zero-cost-cap fix (a task with `cost_cap` 0 could never
+start; the fix is committed). A fresh independent review then returned MODIFY with two MAJOR store
+defects (the per-epoch slot bound counted PASS receipts; `acquire_lease` committed a terminal budget
+marker at spent equal to cap); both are fixed (change record 0031) and re-tested: E1+E2+E3 1193
+passed, 1 skipped; E4 289 passed, 1 skipped; E5 72 passed. The GPT-PM gate, the push and the merge
+are being run by the coordinator on the operator's authorization of 2026-10-24. The S0 inventory
+documents are in `docs/sdlc/s0/` (change record 0028). `origin/main` is still `9b5b597` until the merge.
+The next sprint is planned in `docs/S2_SANDBOX_WORKER_PLAN_2026-10-24.md` (not started). Until the state store (`tools/vst/store.py`) is in use for a
 project, `docs/sdlc/STATE.md` is the phase authority; once it is in use, the store is the authority
 and `STATE.md` is its generated read-only view (baseline decision BD-1).
 

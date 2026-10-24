@@ -2267,12 +2267,29 @@ def test_charge_on_a_zero_cap_task_raises_budget_writes_the_marker_then_blocks_n
     assert store.verify_event_chain()
 
 
-def test_acquire_lease_at_spent_equal_to_cap_commits_the_signed_marker_and_then_raises(env):
+def test_acquire_lease_at_spent_equal_to_cap_starts_without_a_marker(env):
     store, _, path, epoch = env
     store.set_budget(TASK, 5)
     assert store.charge(TASK, 5, supervisor_key=SUPERVISOR_KEY) == 0  # exactly the cap: no overspend
     assert marker_rows(path) == [] and kinds(path).count("BUDGET_EXCEEDED") == 0
-    err = raises_kind("budget", lease, store, epoch)  # spent 5 >= cap 5 for NEW work
+    lease(store, epoch)  # spent == cap does NOT block a lease (only spent > cap does)
+    assert len(leases(path)) == 1 and leases(path)[0]["status"] == "LIVE"
+    assert marker_rows(path) == []  # no signed marker was committed by the lease attempt
+    assert kinds(path).count("BUDGET_EXCEEDED") == 0 and kinds(path).count("BUDGET_BLOCKED") == 0
+    assert _budget_row(path) == (5, 5)  # the lease charged nothing
+    assert store.verify_event_chain()
+    assert_no_dangling_transaction(path)
+
+
+def test_acquire_lease_above_the_cap_commits_the_signed_marker_and_then_raises(env):
+    store, _, path, epoch = env
+    store.set_budget(TASK, 5)
+    store.charge(TASK, 5, supervisor_key=SUPERVISOR_KEY)
+    conn = raw(path)
+    conn.execute("UPDATE budget SET spent = cap + 1 WHERE task_id = ?", (TASK,))  # real overspend (6 of 5)
+    conn.commit()
+    conn.close()
+    err = raises_kind("budget", lease, store, epoch)
     assert "budget" in str(err)
     assert leases(path) == [] and slot_map(path) == {1: None, 2: None}
     (m,) = marker_rows(path)
@@ -2280,8 +2297,8 @@ def test_acquire_lease_at_spent_equal_to_cap_commits_the_signed_marker_and_then_
         "BUDGET_EXCEEDED", "BLOCKED", "store-supervisor")
     assert signing.verify(m, SUPERVISOR_KEY) and not signing.verify(m, KEY)
     assert m["epoch"] == epoch and m["manifest_sha256"] == c.manifest_sha256(manifest())
-    assert event_payloads(path, "BUDGET_EXCEEDED") == [{"amount": 0, "cap": 5, "spent": 5}]
-    assert _budget_row(path) == (5, 5)  # nothing was charged by the refusal
+    assert event_payloads(path, "BUDGET_EXCEEDED") == [{"amount": 0, "cap": 5, "spent": 6}]
+    assert _budget_row(path) == (5, 6)  # nothing was charged by the refusal
     d = gate.evaluate(
         manifest(), store.receipts_for_task(TASK), HEAD, epoch, KEY, supervisor_key=SUPERVISOR_KEY
     )
@@ -2289,10 +2306,13 @@ def test_acquire_lease_at_spent_equal_to_cap_commits_the_signed_marker_and_then_
     assert store.verify_event_chain()
 
 
-def test_repeated_acquire_lease_at_the_cap_adds_exactly_one_marker_and_one_event(env):
+def test_repeated_acquire_lease_above_the_cap_adds_exactly_one_marker_and_one_event(env):
     store, _, path, epoch = env
     store.set_budget(TASK, 5)
-    store.charge(TASK, 5, supervisor_key=SUPERVISOR_KEY)
+    conn = raw(path)
+    conn.execute("UPDATE budget SET spent = 6 WHERE task_id = ?", (TASK,))  # spent > cap
+    conn.commit()
+    conn.close()
     for attempt in (1, 1, 2, 7):
         raises_kind("budget", lease, store, epoch, attempt=attempt)
     assert len(marker_rows(path)) == 1
@@ -2305,6 +2325,23 @@ def test_repeated_acquire_lease_at_the_cap_adds_exactly_one_marker_and_one_event
     assert kinds(path).count("BUDGET_EXCEEDED") == 1 and kinds(path).count("BUDGET_BLOCKED") == 1
     assert [x["attempt"] for x in marker_rows(path)] == [1]  # gap-free supervisor chain
     assert store.verify_event_chain()
+
+
+def test_repeated_acquire_lease_at_exactly_the_cap_never_creates_a_marker(env):
+    store, _, path, epoch = env
+    store.set_budget(TASK, 5)
+    store.charge(TASK, 5, supervisor_key=SUPERVISOR_KEY)
+    lease(store, epoch)
+    n_events = len(kinds(path))
+    for attempt in (1, 2, 3):  # live lease / wrong attempt: refused for OTHER reasons, never 'budget'
+        err = pytest.raises(StoreError, lease, store, epoch, attempt=attempt)
+        assert err.value.kind != "budget", str(err.value)
+    store.release_lease(TASK, WORKER, epoch)
+    lease(store, epoch, attempt=2)  # a fresh lease at spent == cap is still fine
+    assert marker_rows(path) == []
+    assert kinds(path).count("BUDGET_EXCEEDED") == 0 and kinds(path).count("BUDGET_BLOCKED") == 0
+    assert _budget_row(path) == (5, 5)
+    assert len(kinds(path)) >= n_events and store.verify_event_chain()
 
 
 def test_budget_exceeded_event_is_written_once_when_charge_comes_first(env):
@@ -2332,7 +2369,12 @@ def test_append_receipt_at_exactly_the_cap_is_allowed_and_finishes_the_task(env)
     )
     assert d["verdict"] == "APPROVE", d["reasons"]
     store.release_lease(TASK, WORKER, epoch)
-    raises_kind("budget", lease, store, epoch, attempt=2)  # but no NEW lease at spent == cap
+    lease(store, epoch, attempt=2)  # a new lease at spent == cap is allowed too
+    assert marker_rows(path) == [] and kinds(path).count("BUDGET_EXCEEDED") == 0
+    d2 = gate.evaluate(
+        manifest(), store.receipts_for_task(TASK), HEAD, epoch, KEY, supervisor_key=SUPERVISOR_KEY
+    )
+    assert d2["verdict"] == "APPROVE", d2["reasons"]  # the lease did not invalidate the PASS set
 
 
 def test_append_receipt_refuses_only_above_the_cap(env):
@@ -2856,8 +2898,8 @@ def test_takeover_after_a_full_pass_set_lets_the_new_epoch_write_its_receipts(en
     for rtype in ALL_SLOT_TYPES:
         first[rtype] = slot_run(epoch, 1, task="T0", m=m, rtype=rtype)
         store.append_receipt(first[rtype], STORY, KEY)
-    extra = slot_run(epoch, 2, c.receipt_sha256(first["TestRun"]), task="T0", m=m, receipt_id="e1-extra")
-    raises_kind("retry", store.append_receipt, extra, STORY, KEY)  # still capped inside the epoch
+    # PASS receipts never count against the per-epoch bound (retry_cap 0 -> 1 non-PASS allowed)
+    assert store.failed_attempts("T0") == 0
     clock.advance(OWNER_TTL)
     epoch2 = store.acquire_epoch(STORY, "owner-b", OWNER_TTL)
     assert epoch2 == epoch + 1
@@ -2873,9 +2915,7 @@ def test_takeover_after_a_full_pass_set_lets_the_new_epoch_write_its_receipts(en
             receipt_id=f"e2-{rtype}",
         )
         store.append_receipt(second[rtype], STORY, KEY)
-    again = slot_run(
-        epoch2, 3, c.receipt_sha256(second["TestRun"]), task="T0", m=m, receipt_id="e2-extra")
-    raises_kind("retry", store.append_receipt, again, STORY, KEY)  # one per epoch still holds
+    assert store.failed_attempts("T0") == 0
     stored = store.receipts_for_task("T0")
     assert sorted((r["slot"], r["attempt"], r["epoch"]) for r in stored) == sorted(
         [(sl, a, e) for sl in ("tests", "static", "review") for a, e in ((1, epoch), (2, epoch2))]
@@ -2884,35 +2924,40 @@ def test_takeover_after_a_full_pass_set_lets_the_new_epoch_write_its_receipts(en
     assert d["verdict"] == "APPROVE", d["reasons"]
 
 
-def test_slot_chain_bound_counts_only_the_current_epoch_receipts(env):
-    store, clock, path, epoch = env  # retry_cap 1 -> two receipts per slot per epoch
+def test_slot_chain_bound_counts_only_non_pass_receipts_of_the_current_epoch(env):
+    store, clock, path, epoch = env  # retry_cap 1 -> two NON-PASS receipts per slot per epoch
     lease(store, epoch, ttl=5000)
-    a1 = tr(epoch, attempt=1)
-    a2 = tr(epoch, attempt=2, prev_receipt_sha256=c.receipt_sha256(a1), receipt_id="a2")
+    a1 = tr(epoch, attempt=1, result="BLOCKED")  # epoch 1: one non-PASS ...
+    a2 = tr(epoch, attempt=2, prev_receipt_sha256=c.receipt_sha256(a1), receipt_id="a2")  # ... one PASS
     store.append_receipt(a1, STORY, KEY)
     store.append_receipt(a2, STORY, KEY)
-    a3 = tr(epoch, attempt=3, prev_receipt_sha256=c.receipt_sha256(a2), receipt_id="a3")
-    raises_kind("retry", store.append_receipt, a3, STORY, KEY)
+    assert store.failed_attempts(TASK) == 1
     clock.advance(OWNER_TTL)
     epoch2 = store.acquire_epoch(STORY, "owner-b", OWNER_TTL)
     lease(store, epoch2, attempt=2)
-    b3 = tr(epoch2, attempt=3, prev_receipt_sha256=c.receipt_sha256(a2), receipt_id="b3")
-    b4 = tr(epoch2, attempt=4, prev_receipt_sha256=c.receipt_sha256(b3), receipt_id="b4")
-    store.append_receipt(b3, STORY, KEY)  # 3 > retry_cap + 1, yet it is the first of epoch2
-    store.append_receipt(b4, STORY, KEY)
-    b5 = tr(epoch2, attempt=5, prev_receipt_sha256=c.receipt_sha256(b4), receipt_id="b5")
+    prev = a2
+    for n in (3, 4):  # attempts 3 and 4 are the first two non-PASS of epoch 2: both allowed
+        prev = tr(epoch2, attempt=n, prev_receipt_sha256=c.receipt_sha256(prev), receipt_id=f"b{n}",
+                  result="BLOCKED")
+        store.append_receipt(prev, STORY, KEY)  # if epoch-1 receipts were counted, b4 would be refused
+    b5 = tr(epoch2, attempt=5, prev_receipt_sha256=c.receipt_sha256(prev), receipt_id="b5",
+            result="BLOCKED")
     err = raises_kind("retry", store.append_receipt, b5, STORY, KEY)
-    assert "epoch" in str(err)
+    assert "epoch" in str(err) and "non-PASS" in str(err)
+    pass5 = tr(epoch2, attempt=5, prev_receipt_sha256=c.receipt_sha256(prev), receipt_id="b5p")
+    raises_kind("retry", store.append_receipt, pass5, STORY, KEY)  # the bound refuses any NEW receipt once full
     assert [r["attempt"] for r in store.receipts_for_task(TASK)] == [1, 2, 3, 4]
 
 
 def test_per_epoch_bound_is_per_slot(env):
     store, clock, _, epoch = env  # retry_cap 1
     lease(store, epoch)
-    a1 = tr(epoch, attempt=1)
-    a2 = tr(epoch, attempt=2, prev_receipt_sha256=c.receipt_sha256(a1), receipt_id="a2")
+    a1 = tr(epoch, attempt=1, result="BLOCKED")
+    a2 = tr(epoch, attempt=2, prev_receipt_sha256=c.receipt_sha256(a1), receipt_id="a2", result="BLOCKED")
     store.append_receipt(a1, STORY, KEY)
-    store.append_receipt(a2, STORY, KEY)  # slot tests is full in this epoch
+    store.append_receipt(a2, STORY, KEY)  # slot tests is full in this epoch (2 non-PASS)
+    a3 = tr(epoch, attempt=3, prev_receipt_sha256=c.receipt_sha256(a2), receipt_id="a3", result="BLOCKED")
+    raises_kind("retry", store.append_receipt, a3, STORY, KEY)
     for rtype in ("StaticAnalysis", "IndependentReview"):
         store.append_receipt(receipt(rtype, epoch=epoch), STORY, KEY)  # other slots are untouched
 
@@ -3176,3 +3221,293 @@ def test_tampering_with_one_task_does_not_break_another_task_reads(env, tmp_path
     with open_store(copy_path) as t:
         assert len(t.receipts_for_task(TASK)) == 1
         raises_kind("integrity", t.receipts_for_task, "T2")
+
+
+# ============================================================================
+# Review fixes 0031: (1) per-epoch slot bound counts NON-PASS receipts only,
+# (2) budget blocks only at spent > cap / marker, (3) reserved 'sup-' prefix.
+# ============================================================================
+
+H1 = "1" * 40
+H2 = "2" * 40
+H3 = "3" * 40
+H4 = "4" * 40
+SLOT_TYPES = {"tests": "TestRun", "static": "StaticAnalysis", "review": "IndependentReview"}
+
+
+class Chains:
+    """Appends one receipt per call and keeps each slot's attempt/prev chain consistent.
+
+    The per-slot attempt number is global (consecutive across heads and epochs);
+    the store's per-epoch bound is the thing under test, not the chain.
+    """
+
+    def __init__(self, store, epoch, *, task=TASK, m=None):
+        self.store, self.epoch, self.task, self.m = store, epoch, task, m
+        self.last = {}
+
+    def add(self, slot, head, result="PASS", epoch=None, **extra):
+        prev = self.last.get(slot)
+        attempt = 1 if prev is None else prev["attempt"] + 1
+        kw = dict(
+            epoch=self.epoch if epoch is None else epoch,
+            attempt=attempt,
+            candidate_head=head,
+            prev_receipt_sha256=None if prev is None else c.receipt_sha256(prev),
+            task_id=self.task,
+            receipt_id=f"{self.task}-{slot}-{attempt}",
+        )
+        rtype = SLOT_TYPES[slot]
+        if result == "FAIL":  # a TestRun that really derives FAIL
+            kw["commands"] = [{"argv": ["pytest", "-q"], "exit_code": 1}]
+            kw["result"] = "FAIL"
+        elif result != "PASS":
+            kw["result"] = result
+        kw.update(extra)
+        r = receipt(rtype, **kw) if self.m is None else bound(self.m, rtype, KEY, **kw)
+        self.store.append_receipt(r, STORY, KEY)
+        self.last[slot] = r
+        return r
+
+    def decide(self, head, epoch=None):
+        m = self.m if self.m is not None else manifest()
+        return gate.evaluate(
+            m, self.store.receipts_for_task(self.task), head,
+            self.epoch if epoch is None else epoch, KEY, supervisor_key=SUPERVISOR_KEY,
+        )
+
+
+def _receipt_count(path, task=TASK):
+    return len(rows(path, "SELECT 1 FROM receipts WHERE task_id = ?", (task,)))
+
+
+def test_three_heads_with_retry_cap_one_can_always_re_attest_every_slot(env):
+    """Regression for MAJOR-1: retry_cap 1, three heads, every slot must accept a PASS at h3."""
+    store, _, path, epoch = env  # default manifest: retry_cap 1 -> two NON-PASS per slot per epoch
+    lease(store, epoch, ttl=5000)
+    ch = Chains(store, epoch)
+    # h1: tests FAIL, static PASS, review PASS
+    ch.add("tests", H1, "FAIL")
+    ch.add("static", H1)
+    ch.add("review", H1)
+    assert ch.decide(H1)["verdict"] != "APPROVE"  # the failing tests slot blocks the head
+    # h2: tests PASS, static not PASS (BLOCKED), review PASS
+    ch.add("tests", H2)
+    ch.add("static", H2, "BLOCKED")
+    ch.add("review", H2)
+    assert ch.decide(H2)["verdict"] != "APPROVE"  # static is unmet at h2
+    # h3: every slot already has 2 receipts in this epoch; only 1 non-PASS each -> all accepted
+    ch.add("tests", H3)
+    ch.add("static", H3)
+    ch.add("review", H3)
+    assert _receipt_count(path) == 9
+    assert sorted((r["slot"], r["attempt"]) for r in store.receipts_for_task(TASK)) == sorted(
+        (s, n) for s in SLOT_TYPES for n in (1, 2, 3)
+    )
+    assert store.failed_attempts(TASK) == 1  # max over slots: one non-PASS each, no exhaustion
+    assert marker_rows(path) == []
+    decision = ch.decide(H3)
+    assert decision["verdict"] == "APPROVE", decision["reasons"]
+    assert store.verify_event_chain()
+
+
+def test_one_failure_then_all_pass_then_a_new_head_is_never_refused_by_the_bound(env):
+    store, _, path, epoch = env  # retry_cap 1
+    lease(store, epoch, ttl=5000)
+    ch = Chains(store, epoch)
+    ch.add("tests", H1, "FAIL")
+    ch.add("static", H1)
+    ch.add("review", H1)
+    for slot in SLOT_TYPES:  # h2: the whole set passes (attempt 2 of every slot)
+        ch.add(slot, H2)
+    assert ch.decide(H2)["verdict"] == "APPROVE"
+    for slot in SLOT_TYPES:  # h3: a new head, attempt 3 for every slot in the same epoch
+        ch.add(slot, H3)
+    assert ch.decide(H3)["verdict"] == "APPROVE"
+    for slot in SLOT_TYPES:  # PASS-only history keeps accepting more attestations
+        ch.add(slot, H4)
+    assert _receipt_count(path) == 12
+    assert ch.decide(H4)["verdict"] == "APPROVE"
+
+
+def test_all_pass_slots_are_never_bounded_even_far_beyond_retry_cap_plus_one(env):
+    store, _, path, epoch = env  # retry_cap 1 -> the old bound stopped a slot at 2 receipts
+    lease(store, epoch, ttl=5000)
+    ch = Chains(store, epoch)
+    for n in range(6):
+        ch.add("tests", f"{n + 1}" * 40)
+    assert _receipt_count(path) == 6
+    assert store.failed_attempts(TASK) == 0
+
+
+def test_non_pass_receipts_still_bound_the_slot_at_retry_cap_plus_one(env):
+    store, _, path, epoch = env  # retry_cap 1 -> two non-PASS fill the slot for this epoch
+    lease(store, epoch, ttl=5000)
+    ch = Chains(store, epoch)
+    ch.add("tests", H1, "BLOCKED")
+    ch.add("tests", H1, "FAIL")
+    assert _receipt_count(path) == 2
+    before = len(kinds(path))
+    third = tr(epoch, attempt=3, prev_receipt_sha256=c.receipt_sha256(ch.last["tests"]),
+               receipt_id="third", result="BLOCKED")
+    err = raises_kind("retry", store.append_receipt, third, STORY, KEY)
+    assert "non-PASS" in str(err) and "epoch" in str(err)
+    third_pass = tr(epoch, attempt=3, prev_receipt_sha256=c.receipt_sha256(ch.last["tests"]),
+                    receipt_id="third-pass")
+    raises_kind("retry", store.append_receipt, third_pass, STORY, KEY)  # a full slot refuses any new receipt
+    assert _receipt_count(path) == 2 and len(kinds(path)) == before  # nothing written
+    ch.add("static", H1)  # other slots are unaffected (bound is per slot)
+    ch.add("review", H1)
+    assert store.failed_attempts(TASK) == 2
+    assert_no_dangling_transaction(path)
+
+
+def test_non_pass_pass_non_pass_fills_the_slot_and_the_pass_in_between_did_not_count(env):
+    store, _, path, epoch = env  # retry_cap 1
+    lease(store, epoch, ttl=5000)
+    ch = Chains(store, epoch)
+    ch.add("tests", H1, "BLOCKED")  # non-PASS #1
+    ch.add("tests", H2)  # PASS: does not count, so non-PASS #2 below is still allowed
+    ch.add("tests", H3, "FAIL")  # non-PASS #2 -> slot now full
+    nxt = tr(epoch, attempt=4, prev_receipt_sha256=c.receipt_sha256(ch.last["tests"]),
+             receipt_id="n4", candidate_head=H4)
+    raises_kind("retry", store.append_receipt, nxt, STORY, KEY)
+    assert [r["result"] for r in store.receipts_for_task(TASK)] == ["BLOCKED", "PASS", "FAIL"]
+
+
+def test_retry_cap_zero_allows_unlimited_pass_but_exactly_one_non_pass_per_epoch(env):
+    store, _, path, epoch = env
+    m = reg(store, "T0", retry_cap=0)
+    lease(store, epoch, task="T0", ttl=5000)
+    ch = Chains(store, epoch, task="T0", m=m)
+    for head in (H1, H2, H3):  # retry_cap 0 used to allow a single receipt per slot per epoch
+        ch.add("tests", head)
+    ch.add("tests", H3, "BLOCKED")  # the single permitted non-PASS
+    again = bound(m, "TestRun", KEY, epoch=epoch, task_id="T0", attempt=5, receipt_id="z5",
+                  prev_receipt_sha256=c.receipt_sha256(ch.last["tests"]), result="BLOCKED")
+    raises_kind("retry", store.append_receipt, again, STORY, KEY)
+    assert _receipt_count(path, "T0") == 4
+
+
+def test_exact_cap_spend_full_pass_set_repeated_leases_and_takeover_never_create_a_marker(env):
+    store, clock, path, epoch = env
+    store.set_budget(TASK, 5)
+    lease(store, epoch, ttl=5000)
+    assert store.charge(TASK, 5, supervisor_key=SUPERVISOR_KEY) == 0  # spent == cap
+    ch = Chains(store, epoch)
+    for slot in SLOT_TYPES:
+        ch.add(slot, HEAD)
+    assert ch.decide(HEAD)["verdict"] == "APPROVE"
+
+    def no_marker():
+        assert marker_rows(path) == []
+        assert kinds(path).count("BUDGET_EXCEEDED") == 0 and kinds(path).count("BUDGET_BLOCKED") == 0
+        assert _budget_row(path) == (5, 5)
+
+    no_marker()
+    for attempt in (1, 2, 3):  # repeated acquire while the lease is live: refused, but never 'budget'
+        with pytest.raises(StoreError) as exc:
+            lease(store, epoch, attempt=attempt)
+        assert exc.value.kind != "budget"
+    no_marker()
+    assert ch.decide(HEAD)["verdict"] == "APPROVE"  # lease attempts did not invalidate the PASS set
+    store.release_lease(TASK, WORKER, epoch)
+    lease(store, epoch, attempt=2)  # a lease at spent == cap is allowed
+    no_marker()
+    assert ch.decide(HEAD)["verdict"] == "APPROVE"
+    store.release_lease(TASK, WORKER, epoch)
+    clock.advance(OWNER_TTL)
+    epoch2 = store.acquire_epoch(STORY, "owner-b", OWNER_TTL)  # takeover (begin(2))
+    assert epoch2 == epoch + 1
+    lease(store, epoch2, attempt=3)
+    no_marker()
+    ch2 = Chains(store, epoch2)
+    ch2.last = dict(ch.last)
+    for slot in SLOT_TYPES:  # the new epoch re-attests the same head; the chain continues
+        ch2.add(slot, HEAD)
+    no_marker()
+    decision = ch2.decide(HEAD)
+    assert decision["verdict"] == "APPROVE", decision["reasons"]
+    assert store.verify_event_chain()
+
+
+def test_overspend_after_an_exact_cap_spend_still_commits_the_marker_and_refuses(env):
+    store, _, path, epoch = env
+    store.set_budget(TASK, 5)
+    lease(store, epoch, ttl=5000)
+    ch = Chains(store, epoch)
+    for slot in SLOT_TYPES:
+        ch.add(slot, HEAD)
+    assert store.charge(TASK, 5, supervisor_key=SUPERVISOR_KEY) == 0
+    assert marker_rows(path) == []
+    raises_kind("budget", store.charge, TASK, 1, supervisor_key=SUPERVISOR_KEY)  # 6 > cap 5
+    (m,) = marker_rows(path)
+    assert (m["check_description"], m["result"]) == ("BUDGET_EXCEEDED", "BLOCKED")
+    assert signing.verify(m, SUPERVISOR_KEY)
+    assert _budget_row(path) == (5, 5)  # the refused amount was not charged
+    assert kinds(path).count("BUDGET_EXCEEDED") == 1
+    late = tr(epoch, attempt=2, receipt_id="late", prev_receipt_sha256=c.receipt_sha256(ch.last["tests"]))
+    raises_kind("terminal", store.append_receipt, late, STORY, KEY)
+    store.release_lease(TASK, WORKER, epoch)
+    raises_kind("budget", lease, store, epoch, attempt=2)
+    d = ch.decide(HEAD)
+    assert d["verdict"] == "MODIFY" and any("BUDGET_EXCEEDED" in x for x in d["reasons"])
+
+
+def test_zero_cap_task_with_nothing_spent_runs_to_approval_and_any_charge_marks(env):
+    store, _, path, epoch = env
+    m = reg(store, "TZ", cost_cap=0)
+    lease(store, epoch, task="TZ", ttl=5000)
+    ch = Chains(store, epoch, task="TZ", m=m)
+    for slot in SLOT_TYPES:
+        ch.add(slot, HEAD)
+    store.release_lease("TZ", WORKER, epoch)
+    lease(store, epoch, task="TZ", attempt=2)  # repeated lease at spent 0 == cap 0: no marker
+    assert marker_rows(path, "TZ") == []
+    d = ch.decide(HEAD)
+    assert d["verdict"] == "APPROVE", d["reasons"]
+    raises_kind("budget", store.charge, "TZ", 1, supervisor_key=SUPERVISOR_KEY)  # any spend overspends
+    assert len(marker_rows(path, "TZ")) == 1
+    assert _budget_row(path, "TZ") == (0, 0)
+
+
+@pytest.mark.parametrize("rid", ["sup-T1-1", "sup-", "sup-anything", "sup-1"])
+def test_worker_receipt_id_with_the_reserved_sup_prefix_is_rejected(env, rid):
+    store, _, path, epoch = env
+    lease(store, epoch)
+    before_events = kinds(path)
+    err = raises_kind("validation", store.append_receipt, tr(epoch, receipt_id=rid), STORY, KEY)
+    assert "sup-" in str(err)
+    assert rows(path, "SELECT 1 FROM receipts") == []  # nothing stored
+    assert kinds(path) == before_events  # no event
+    assert leases(path)[0]["wrote"] == 0  # the lease did not become a writer
+    assert_no_dangling_transaction(path)
+    store.append_receipt(tr(epoch, receipt_id="ok-1"), STORY, KEY)  # the same lease still works
+
+
+@pytest.mark.parametrize("rid", ["sup", "sup_1", "xsup-1", "s-up-1", "sup1"])
+def test_receipt_ids_that_merely_resemble_the_reserved_prefix_are_accepted(env, rid):
+    store, _, path, epoch = env
+    lease(store, epoch)
+    store.append_receipt(tr(epoch, receipt_id=rid), STORY, KEY)
+    assert [r["receipt_id"] for r in store.receipts_for_task(TASK)] == [rid]
+
+
+def test_supervisor_marker_with_the_sup_prefix_succeeds_after_a_rejected_worker_attempt(env):
+    store, clock, path, epoch = env
+    lease(store, epoch, ttl=10)
+    # a worker tries to pre-claim the id the supervisor will use for the first marker
+    raises_kind("validation", store.append_receipt, tr(epoch, receipt_id=f"sup-{TASK}-1"), STORY, KEY)
+    assert rows(path, "SELECT 1 FROM receipts") == []
+    clock.advance(10)  # the worker is lost
+    written = store.supervisor_reap_and_mark(SUPERVISOR_KEY, "sup")
+    assert len(written) == 1
+    assert written[0]["receipt_id"] == f"sup-{TASK}-1"
+    assert written[0]["slot"] == SUPERVISOR_SLOT
+    assert written[0]["check_description"] == "WORKER_LOST"
+    assert signing.verify(written[0], SUPERVISOR_KEY)
+    assert [r["receipt_id"] for r in supervisor_receipts(store)] == [f"sup-{TASK}-1"]
+    # terminal markers use the same prefix and still succeed
+    store.mark_budget_exceeded(TASK, SUPERVISOR_KEY, "sup")
+    assert [r["receipt_id"] for r in supervisor_receipts(store)] == [f"sup-{TASK}-1", f"sup-{TASK}-2"]
+    assert store.verify_event_chain()

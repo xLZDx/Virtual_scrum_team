@@ -795,6 +795,135 @@ class SecondRoundStoreTests(ProcessDeathBase):
         self.assertEqual(ctx.exception.kind, "integrity")
 
 
+class IndependentReviewFixTests(ProcessDeathBase):
+    """Store fixes of the independent review observed across a real process death."""
+
+    def _count_markers(self, store: Store, reason: str) -> int:
+        return sum(
+            1 for r in store.receipts_for_task(TASK)
+            if r["slot"] == SUPERVISOR_SLOT and r["check_description"] == reason
+        )
+
+    def test_exact_cap_spend_does_not_block_the_next_lease_after_a_real_death(self) -> None:
+        epoch = self._kill_child()
+        store = self._open()
+        store.set_budget(TASK, 5)
+        self.assertEqual(store.charge(TASK, 5, supervisor_key=vst_slice.SUPERVISOR_KEY), 0)
+        self.clock.advance(LEASE_TTL + 1)
+        self.assertEqual(len(self._mark(store)), 1)  # WORKER_LOST for the dead lease
+        # spent == cap: the next lease is granted and no terminal marker is committed.
+        store.acquire_lease(TASK, STORY, vst_slice.WORKER_ID, epoch, 2, LEASE_TTL,
+                            supervisor_key=vst_slice.SUPERVISOR_KEY)
+        self.assertEqual(self._leases(), [(1, "EXPIRED", 0, 1), (2, "LIVE", 0, 0)])
+        self.assertEqual(self._count_markers(store, "BUDGET_EXCEEDED"), 0)
+        kinds = [r[0] for r in self._raw().execute("SELECT kind FROM events")]
+        self.assertNotIn("BUDGET_EXCEEDED", kinds)
+        row = self._raw().execute("SELECT cap, spent FROM budget WHERE task_id=?", (TASK,)).fetchone()
+        self.assertEqual((row["cap"], row["spent"]), (5, 5))
+        # One unit more is still refused through charge and then blocks for good.
+        with self.assertRaises(StoreError) as ctx:
+            store.charge(TASK, 1, supervisor_key=vst_slice.SUPERVISOR_KEY)
+        self.assertEqual(ctx.exception.kind, "budget")
+        self.assertEqual(self._count_markers(store, "BUDGET_EXCEEDED"), 1)
+        with self.assertRaises(StoreError) as ctx:
+            store.heartbeat(TASK, vst_slice.WORKER_ID, epoch, 600)
+        self.assertEqual(ctx.exception.kind, "budget")
+
+    def test_worker_cannot_preclaim_the_marker_id_of_a_dead_lease_and_marker_lands(self) -> None:
+        epoch = self._kill_child()
+        store = self._open()
+        builder = self._builder()
+        marker_id = f"sup-{TASK}-1"
+        claim = builder.make_test_receipt(1, vst_slice.EXPECTED_TEST_IDS, epoch=epoch)
+        claim = vst_slice._resign_with_id(builder, claim, marker_id)
+        # The dead worker's lease is still live (TTL not passed): the lease check passes and the
+        # reserved prefix is what refuses the receipt.
+        with self.assertRaises(StoreError) as ctx:
+            store.append_receipt(claim, STORY, vst_slice.WORKER_KEY)
+        self.assertEqual(ctx.exception.kind, "validation")
+        self.assertEqual(store.receipts_for_task(TASK), [])
+        self.assertEqual(self._leases(), [(1, "LIVE", 0, 0)])
+        self.clock.advance(LEASE_TTL + 1)
+        written = self._mark(store)
+        self.assertEqual([r["receipt_id"] for r in written], [marker_id])
+        self.assertEqual([r["check_description"] for r in written], ["WORKER_LOST"])
+        self.assertEqual(self._leases(), [(1, "EXPIRED", 0, 1)])
+        self.assertTrue(store.verify_event_chain())
+
+    def test_retry_across_three_heads_after_a_real_death_in_one_epoch(self) -> None:
+        # Attempt 1 (real child, then dead): tests FAIL at h1. Attempt 2 at h2: tests PASS,
+        # static INCONCLUSIVE, review PASS. Attempt 3 at h3: everything PASS. In one epoch
+        # the tests slot then holds three receipts with a single non-PASS one.
+        epoch = self._kill_child("die_after_receipt")
+        store = self._open()
+        self.clock.advance(LEASE_TTL + 1)
+        self.assertEqual(self._mark(store), [])
+        first = store.receipts_for_task(TASK)[0]
+        self.assertEqual((first["slot"], first["result"], first["epoch"]), ("tests", "FAIL", epoch))
+        builder = self._builder()
+        h2, h3 = vst_slice.OTHER_HEAD, vst_slice.THIRD_HEAD
+
+        store.acquire_lease(TASK, STORY, vst_slice.WORKER_ID, epoch, 2, 600,
+                            supervisor_key=vst_slice.SUPERVISOR_KEY)
+        builder.current_head = h2
+        tests2 = builder.make_test_receipt(2, vst_slice.EXPECTED_TEST_IDS, epoch=epoch,
+                                           prev=receipt_sha256(first))
+        static2 = builder.make_static_receipt(coverage="PARTIAL", unsupported=["R3"], epoch=epoch)
+        review2 = builder.make_review_receipt(vst_slice.REVIEWER, vst_slice.AUTHOR, epoch=epoch)
+        for receipt in (tests2, static2, review2):
+            store.append_receipt(receipt, STORY, vst_slice.WORKER_KEY)
+        store.release_lease(TASK, vst_slice.WORKER_ID, epoch)
+        self.assertEqual(static2["result"], "INCONCLUSIVE")
+        self.assertEqual(store.failed_attempts(TASK), 1)  # below retry_cap + 1 = 2
+
+        store.acquire_lease(TASK, STORY, vst_slice.WORKER_ID, epoch, 3, 600,
+                            supervisor_key=vst_slice.SUPERVISOR_KEY)
+        builder.current_head = h3
+        tests3 = builder.make_test_receipt(3, vst_slice.EXPECTED_TEST_IDS, epoch=epoch,
+                                           prev=receipt_sha256(tests2))
+        static3 = builder.make_static_receipt(attempt=2, epoch=epoch, prev=receipt_sha256(static2))
+        review3 = builder.make_review_receipt(vst_slice.REVIEWER, vst_slice.AUTHOR, attempt=2,
+                                              epoch=epoch, prev=receipt_sha256(review2))
+        for receipt in (tests3, static3, review3):
+            store.append_receipt(receipt, STORY, vst_slice.WORKER_KEY)  # none refused as 'retry'
+        store.release_lease(TASK, vst_slice.WORKER_ID, epoch)
+
+        stored = store.receipts_for_task(TASK)
+        per_slot = {}
+        for r in stored:
+            per_slot.setdefault(r["slot"], []).append(r["result"])
+        self.assertEqual(per_slot["tests"], ["FAIL", "PASS", "PASS"])
+        self.assertEqual(per_slot["static"], ["INCONCLUSIVE", "PASS"])
+        self.assertEqual(per_slot["review"], ["PASS", "PASS"])
+        decision = vst_slice.gate_module.evaluate(
+            self.manifest, stored, h3, store.current_epoch(STORY), vst_slice.WORKER_KEY,
+            supervisor_key=vst_slice.SUPERVISOR_KEY, operator_key=vst_slice.OPERATOR_KEY,
+        )
+        self.assertEqual(decision["verdict"], "APPROVE", decision["reasons"])
+        self.assertEqual(self._leases(), [(1, "EXPIRED", 1, 1), (2, "RELEASED", 1, 0),
+                                          (3, "RELEASED", 1, 0)])
+        self.assertTrue(store.verify_event_chain())
+
+    def test_non_pass_receipts_still_bound_a_slot_in_one_epoch(self) -> None:
+        epoch = self._kill_child("die_after_receipt")  # tests attempt 1 FAIL (non-PASS 1 of 2)
+        store = self._open()
+        first = store.receipts_for_task(TASK)[0]
+        builder = self._builder()
+        self.clock.advance(LEASE_TTL + 1)
+        self._mark(store)
+        store.acquire_lease(TASK, STORY, vst_slice.WORKER_ID, epoch, 2, 600,
+                            supervisor_key=vst_slice.SUPERVISOR_KEY)
+        second = builder.make_test_receipt(2, vst_slice.EXPECTED_TEST_IDS, exit_code=1,
+                                           epoch=epoch, prev=receipt_sha256(first))
+        store.append_receipt(second, STORY, vst_slice.WORKER_KEY)  # non-PASS 2 of 2
+        third = builder.make_test_receipt(3, vst_slice.EXPECTED_TEST_IDS, epoch=epoch,
+                                          prev=receipt_sha256(second))
+        with self.assertRaises(StoreError) as ctx:  # even a PASS is refused: bound reached
+            store.append_receipt(third, STORY, vst_slice.WORKER_KEY)
+        self.assertEqual(ctx.exception.kind, "retry")
+        self.assertEqual(len(store.receipts_for_task(TASK)), 2)
+
+
 class ConcurrentSerialisationTests(unittest.TestCase):
     ROUNDS = 25
 

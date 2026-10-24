@@ -23,6 +23,7 @@ import copy
 import hashlib
 import json
 import os
+import sqlite3
 import sys
 from typing import Any, Callable
 
@@ -37,10 +38,11 @@ from .contracts import (
 )
 from .runner import run_and_sign
 from .signing import WAIVER_LABEL, sign
-from .store import MARKER_RESULTS, Store, StoreError
+from .store import MARKER_RESULTS, SUPERVISOR_RECEIPT_PREFIX, Store, StoreError
 
 SYNTHETIC_HEAD = "1234567890abcdef1234567890abcdef12345678"
 OTHER_HEAD = "b" * 40
+THIRD_HEAD = "d" * 40
 WAIVER_WRONG_HEAD = "c" * 40
 
 
@@ -715,20 +717,27 @@ def _scenario_budget_exact_cap(fx: SliceFixture, clock: FakeClock) -> dict:
     extra: dict[str, Any] = {"remaining_after_exact_charge": remaining}
     extra["final_receipts_error_kind"] = _error_kind(fx.append_good_set)
     fx.end()
-    decision = fx.gate()  # evaluated before any marker exists
+    decision = fx.gate()  # evaluated before any further lease call
     extra["stored_receipts"] = len(fx.store.receipts_for_task(fx.task_id))
+    # Spent == cap does not block: the first lease call is granted, the repeat is refused
+    # only because that lease is live (kind 'lease'), never as a budget block.
     extra["acquire_lease_error_kinds"] = [
         _error_kind(lambda: fx.begin(2)),
         _error_kind(lambda: fx.begin(2)),
     ]
-    extra["budget_markers"] = sum(
+    fx.end()
+    extra["budget_markers"] = _budget_marker_count(fx)
+    extra["event_chain_ok"] = fx.store.verify_event_chain()
+    extra["gate_after_lease_calls"] = _brief(fx.gate())
+    return _observe(decision, extra)
+
+
+def _budget_marker_count(fx: SliceFixture) -> int:
+    return sum(
         1
         for r in fx.store.receipts_for_task(fx.task_id)
         if r["slot"] == SUPERVISOR_SLOT and r["check_description"] == "BUDGET_EXCEEDED"
     )
-    extra["event_chain_ok"] = fx.store.verify_event_chain()
-    extra["gate_after_marker"] = _brief(fx.gate())
-    return _observe(decision, extra)
 
 
 def _next_pass_set(fx: SliceFixture, attempt: int) -> None:
@@ -790,6 +799,248 @@ def _scenario_takeover_does_not_exhaust_cap(fx: SliceFixture, clock: FakeClock) 
     return _observe(decision, extra)
 
 
+def _chain_tail(fx: SliceFixture) -> dict[str, str]:
+    """Hash of the newest stored worker receipt per slot (the next prev link)."""
+    tails: dict[str, str] = {}
+    for r in fx.store.receipts_for_task(fx.task_id):
+        if r["slot"] != SUPERVISOR_SLOT:
+            tails[r["slot"]] = receipt_sha256(r)
+    return tails
+
+
+def _scenario_retry_across_three_heads(fx: SliceFixture, clock: FakeClock) -> dict:
+    # retry_cap 1 (so retry_cap + 1 = 2 non-PASS receipts per slot per epoch) in ONE epoch:
+    #   h1: tests FAIL, static PASS, review PASS
+    #   h2: tests PASS, static INCONCLUSIVE (partial coverage), review PASS
+    #   h3: tests PASS, static PASS, review PASS
+    # At h3 every slot already holds two receipts of the epoch, but at most one is non-PASS,
+    # so the per-epoch bound (non-PASS receipts only) must not refuse any of them.
+    extra: dict[str, Any] = {"retry_cap": fx.manifest["retry_cap"]}
+    fx.current_head = SYNTHETIC_HEAD
+    fx.begin(1)
+    tests1 = fx.make_test_receipt(1, EXPECTED_TEST_IDS, exit_code=1)
+    static1 = fx.make_static_receipt()
+    review1 = fx.make_review_receipt(REVIEWER, AUTHOR)
+    extra["h1_append_error_kinds"] = [_error_kind(lambda r=r: fx.append(r)) for r in (tests1, static1, review1)]
+    fx.end()
+    extra["h1_verdict"] = _brief(fx.gate())["verdict"]
+
+    fx.current_head = OTHER_HEAD
+    fx.begin(2)
+    tests2 = fx.make_test_receipt(2, EXPECTED_TEST_IDS, prev=receipt_sha256(tests1))
+    static2 = fx.make_static_receipt(
+        coverage="PARTIAL", unsupported=["R3"], attempt=2, prev=receipt_sha256(static1)
+    )
+    review2 = fx.make_review_receipt(REVIEWER, AUTHOR, attempt=2, prev=receipt_sha256(review1))
+    extra["h2_append_error_kinds"] = [_error_kind(lambda r=r: fx.append(r)) for r in (tests2, static2, review2)]
+    fx.end()
+    extra["h2_results"] = [tests2["result"], static2["result"], review2["result"]]
+    extra["h2_verdict"] = _brief(fx.gate())["verdict"]
+    extra["failed_attempts_after_h2"] = fx.store.failed_attempts(fx.task_id)
+
+    fx.current_head = THIRD_HEAD
+    extra["h3_lease_error_kind"] = _error_kind(lambda: fx.begin(3))
+    tails = _chain_tail(fx)
+    tests3 = fx.make_test_receipt(3, EXPECTED_TEST_IDS, prev=tails["tests"])
+    static3 = fx.make_static_receipt(attempt=3, prev=tails["static"])
+    review3 = fx.make_review_receipt(REVIEWER, AUTHOR, attempt=3, prev=tails["review"])
+    extra["h3_append_error_kinds"] = [_error_kind(lambda r=r: fx.append(r)) for r in (tests3, static3, review3)]
+    fx.end()
+    extra["receipts_per_slot"] = {
+        slot: [
+            {"attempt": r["attempt"], "result": r["result"], "head": r["candidate_head"]}
+            for r in fx.store.receipts_for_task(fx.task_id)
+            if r["slot"] == slot
+        ]
+        for slot in ("tests", "static", "review")
+    }
+    extra["failed_attempts"] = fx.store.failed_attempts(fx.task_id)
+    extra["terminal_markers"] = sum(
+        1 for r in fx.store.receipts_for_task(fx.task_id) if r["slot"] == SUPERVISOR_SLOT
+    )
+    return _observe(fx.gate(), extra)
+
+
+def _scenario_exact_cap_reattest_keeps_approve(fx: SliceFixture, clock: FakeClock) -> dict:
+    # The worker spends EXACTLY its cap and records a full PASS set. No later lease call,
+    # repeated or after an epoch takeover, may commit a terminal marker or turn the APPROVE
+    # into a block; a fresh PASS set at the new head and epoch approves again.
+    extra: dict[str, Any] = {}
+    fx.begin(1)
+    fx.store.set_budget(fx.task_id, 5)
+    extra["remaining_after_exact_charge"] = fx.store.charge(
+        fx.task_id, 5, supervisor_key=fx.supervisor_key
+    )
+    fx.append_good_set()
+    fx.end()
+    extra["verdict_at_exact_cap"] = _brief(fx.gate())["verdict"]
+
+    # Repeated lease calls at spent == cap: the first is granted, the second is refused
+    # because that lease is live (kind 'lease'), never as a budget block.
+    extra["repeated_acquire_error_kinds"] = [
+        _error_kind(lambda: fx.begin(2)),
+        _error_kind(lambda: fx.begin(2)),
+    ]
+    extra["markers_after_repeated_acquire"] = _budget_marker_count(fx)
+    extra["verdict_with_live_lease"] = _brief(fx.gate())["verdict"]
+
+    # Epoch takeover while that lease is live: it is fenced and marked WORKER_LOST.
+    fx.store.release_epoch(fx.story_id, fx.owner)
+    fx.owner = "supervisor-2"
+    fx.epoch = fx.store.acquire_epoch(fx.story_id, fx.owner, 3600)
+    marked = fx.store.supervisor_reap_and_mark(fx.supervisor_key, SUPERVISOR_RUNNER)
+    extra["takeover_markers"] = [r["check_description"] for r in marked]
+    takeover = _brief(fx.gate())
+    extra["verdict_after_takeover_before_reattest"] = takeover["verdict"]
+    extra["reasons_after_takeover_before_reattest"] = takeover["reasons"]
+
+    # begin(3) at the new epoch, fresh PASS set (attempt 2 of every slot) at the new head.
+    fx.current_head = OTHER_HEAD
+    extra["takeover_lease_error_kind"] = _error_kind(lambda: fx.begin(3))
+    extra["reattest_error_kind"] = _error_kind(lambda: _next_pass_set(fx, 2))
+    fx.end()
+    extra["verdict_after_reattest"] = _brief(fx.gate())["verdict"]
+
+    # More lease calls after the re-attestation: still granted, still no marker.
+    extra["post_reattest_acquire_error_kinds"] = [
+        _error_kind(lambda: fx.begin(4)),
+        _error_kind(lambda: fx.begin(4)),
+    ]
+    fx.end()
+    extra["final_epoch"] = fx.epoch
+    extra["budget_markers"] = _budget_marker_count(fx)
+    extra["terminal_markers"] = sum(
+        1
+        for r in fx.store.receipts_for_task(fx.task_id)
+        if r["slot"] == SUPERVISOR_SLOT and r["check_description"] in ("BUDGET_EXCEEDED", "RETRY_EXHAUSTED")
+    )
+    extra["failed_attempts"] = fx.store.failed_attempts(fx.task_id)
+    extra["event_chain_ok"] = fx.store.verify_event_chain()
+    return _observe(fx.gate(), extra)
+
+
+def _tamper_spent(fx: SliceFixture, spent: int) -> None:
+    """Write budget.spent behind the Store's back (a metering bug or an outside writer)."""
+    conn = sqlite3.connect(os.path.join(fx.workdir, "state.db"), timeout=30)
+    try:
+        conn.execute("UPDATE budget SET spent = ? WHERE task_id = ?", (spent, fx.task_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _scenario_overspend_still_blocks(fx: SliceFixture, clock: FakeClock) -> dict:
+    # Only spent == cap is tolerated. Genuine overspend (spent > cap) and a charge beyond
+    # the cap must still block, commit exactly one signed marker and refuse every later call.
+    extra: dict[str, Any] = {}
+    # Path A: spent > cap written outside the Store API, while a worker holds a lease.
+    fx.begin(1)
+    fx.store.set_budget(fx.task_id, 5)
+    extra["remaining_after_exact_charge"] = fx.store.charge(
+        fx.task_id, 5, supervisor_key=fx.supervisor_key
+    )
+    extra["receipt_at_exact_cap_error_kind"] = _error_kind(
+        lambda: fx.append(fx.make_test_receipt(1, EXPECTED_TEST_IDS))
+    )
+    _tamper_spent(fx, 6)
+    extra["receipt_after_overspend_error_kind"] = _error_kind(
+        lambda: fx.append(fx.make_static_receipt())
+    )
+    extra["heartbeat_after_overspend_error_kind"] = _error_kind(
+        lambda: fx.store.heartbeat(fx.task_id, WORKER_ID, fx.epoch, 600)
+    )
+    extra["markers_before_lease_call"] = _budget_marker_count(fx)
+    fx.end()
+    extra["acquire_after_overspend_error_kinds"] = [
+        _error_kind(lambda: fx.begin(2)),
+        _error_kind(lambda: fx.begin(2)),
+    ]
+    extra["markers_after_lease_calls"] = _budget_marker_count(fx)
+    extra["stored_worker_receipts"] = sum(
+        1 for r in fx.store.receipts_for_task(fx.task_id) if r["slot"] != SUPERVISOR_SLOT
+    )
+    extra["event_chain_ok"] = fx.store.verify_event_chain()
+
+    # Path B (independent database): a complete PASS set at exactly the cap approves; the
+    # first unit beyond the cap blocks through the public charge path and withdraws the approval.
+    other = SliceFixture(
+        os.path.join(fx.workdir, "charge_path"), fx.key, clock, retry_cap=fx.manifest["retry_cap"]
+    )
+    try:
+        other.begin(1)
+        other.store.set_budget(other.task_id, 5)
+        other.store.charge(other.task_id, 5, supervisor_key=other.supervisor_key)
+        other.append_good_set()
+        other.end()
+        extra["charge_path_verdict_at_cap"] = _brief(other.gate())["verdict"]
+        extra["charge_beyond_cap_error_kind"] = _error_kind(
+            lambda: other.store.charge(other.task_id, 1, supervisor_key=other.supervisor_key)
+        )
+        after = _brief(other.gate())
+        extra["charge_path_verdict_after_overspend"] = after["verdict"]
+        extra["charge_path_reasons_after_overspend"] = after["reasons"]
+        extra["charge_path_acquire_error_kind"] = _error_kind(lambda: other.begin(2))
+        extra["charge_path_markers"] = _budget_marker_count(other)
+    finally:
+        other.close()
+    return _observe(fx.gate(), extra)
+
+
+def _resign_with_id(fx: SliceFixture, receipt: dict, receipt_id: str) -> dict:
+    """The same receipt content under another receipt_id, signed with the worker key."""
+    body = copy.deepcopy(receipt)
+    body.pop("signature")
+    body["receipt_id"] = receipt_id
+    body["signature"] = sign(dict(body), fx.key)
+    return body
+
+
+def _scenario_worker_cannot_claim_supervisor_receipt_id(fx: SliceFixture, clock: FakeClock) -> dict:
+    # A worker tries to pre-claim the receipt id the first supervisor marker will use
+    # (sup-{task}-1), which would make the marker collide on the receipt_id key. The claim is
+    # refused, nothing is consumed, and the supervisor marker still lands under that exact id.
+    marker_id = f"{SUPERVISOR_RECEIPT_PREFIX}{fx.task_id}-1"
+    extra: dict[str, Any] = {"marker_id": marker_id}
+    fx.begin(1, 60)
+    claims = {
+        "tests_marker_id": _resign_with_id(
+            fx, fx.make_test_receipt(1, EXPECTED_TEST_IDS), marker_id
+        ),
+        "static_marker_id": _resign_with_id(fx, fx.make_static_receipt(), marker_id),
+        "review_marker_id": _resign_with_id(
+            fx, fx.make_review_receipt(REVIEWER, AUTHOR), marker_id
+        ),
+        "tests_prefix_x": _resign_with_id(
+            fx, fx.make_test_receipt(1, EXPECTED_TEST_IDS), SUPERVISOR_RECEIPT_PREFIX + "x"
+        ),
+        "tests_prefix_only": _resign_with_id(
+            fx, fx.make_test_receipt(1, EXPECTED_TEST_IDS), SUPERVISOR_RECEIPT_PREFIX
+        ),
+    }
+    extra["claim_error_kinds"] = {
+        name: _error_kind(lambda r=r: fx.append(r)) for name, r in claims.items()
+    }
+    extra["stored_after_claims"] = len(fx.store.receipts_for_task(fx.task_id))
+    clock.advance(120)  # the worker dies without a single stored receipt
+    written = fx.store.supervisor_reap_and_mark(fx.supervisor_key, SUPERVISOR_RUNNER)
+    extra["marker_ids_written"] = [r["receipt_id"] for r in written]
+    extra["marker_reasons_written"] = [r["check_description"] for r in written]
+    extra["verdict_after_marker"] = _brief(fx.gate())["verdict"]
+
+    # The refused claims consumed no attempt number: attempt 1 of every slot is still free.
+    # An id that merely resembles the prefix ('support-...') is an ordinary id.
+    fx.begin(2)
+    near_miss = _resign_with_id(fx, fx.make_test_receipt(1, EXPECTED_TEST_IDS), "support-tests-1")
+    extra["near_miss_id"] = near_miss["receipt_id"]
+    extra["near_miss_error_kind"] = _error_kind(lambda: fx.append(near_miss))
+    extra["rest_of_set_error_kinds"] = [
+        _error_kind(lambda: fx.append(fx.make_static_receipt())),
+        _error_kind(lambda: fx.append(fx.make_review_receipt(REVIEWER, AUTHOR))),
+    ]
+    fx.end()
+    return _observe(fx.gate(), extra)
+
+
 SCENARIOS: tuple[tuple[str, Callable[[SliceFixture, FakeClock], dict]], ...] = (
     ("happy_path", _scenario_happy_path),
     ("worker_death_before_receipt", _scenario_worker_death),
@@ -810,6 +1061,10 @@ SCENARIOS: tuple[tuple[str, Callable[[SliceFixture, FakeClock], dict]], ...] = (
     ("takeover_does_not_exhaust_retry_cap", _scenario_takeover_does_not_exhaust_cap),
     ("budget_exact_cap_allows_final_receipts", _scenario_budget_exact_cap),
     ("takeover_after_full_pass_set", _scenario_takeover_after_full_pass_set),
+    ("retry_across_three_heads", _scenario_retry_across_three_heads),
+    ("exact_cap_reattest_keeps_approve", _scenario_exact_cap_reattest_keeps_approve),
+    ("overspend_still_blocks", _scenario_overspend_still_blocks),
+    ("worker_cannot_claim_supervisor_receipt_id", _scenario_worker_cannot_claim_supervisor_receipt_id),
 )
 
 # Scenarios that need a manifest retry_cap other than the default 1.
