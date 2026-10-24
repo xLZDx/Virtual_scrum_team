@@ -38,6 +38,9 @@ REVIEW_SIGNED_VERDICTS = frozenset({"MODIFY", "NO_GO", "APPROVE"})
 _HEX40 = re.compile(r"[0-9a-f]{40}")
 _HEX64 = re.compile(r"[0-9a-f]{64}")
 
+# Digest recorded for an artifact that does not exist after the commands ran.
+MISSING_ARTIFACT_DIGEST = "0" * 64
+
 MANIFEST_FIELDS = (
     "task_id",
     "project_id",
@@ -84,6 +87,7 @@ RECEIPT_TYPE_FIELDS = {
         "xfail_test_ids",
         "commands",
         "covered_acceptance",
+        "artifact_digests",
     ),
     "StaticAnalysis": (
         "coverage",
@@ -346,6 +350,16 @@ def _validate_test_run(obj: dict) -> None:
     ):
         _req_str_list(obj[name], name)
     _validate_commands(obj["commands"])
+    _validate_artifact_digests(obj["artifact_digests"])
+
+
+def _validate_artifact_digests(digests: Any) -> None:
+    if not isinstance(digests, dict):
+        raise ContractError("artifact_digests: must be an object (dict)")
+    for path, digest in digests.items():
+        if not isinstance(path, str) or not path.strip():
+            raise ContractError("artifact_digests: keys must be non-empty strings")
+        _req_hex(digest, f"artifact_digests[{path!r}]", 64)
 
 
 def _validate_static_analysis(obj: dict) -> None:
@@ -404,6 +418,9 @@ def derive_result(receipt: dict) -> str:
 
 
 def _derive_test_run(receipt: dict) -> str:
+    # A missing artifact after the run is recorded as the all-zero digest.
+    if MISSING_ARTIFACT_DIGEST in receipt["artifact_digests"].values():
+        return "FAIL"
     executed = set(receipt["executed_test_ids"])
     expected = set(receipt["expected_test_ids"])
     if not executed:

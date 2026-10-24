@@ -26,14 +26,14 @@ Common fields: `receipt_id`, `task_id`, `slot` (matches a manifest slot), `runne
 
 Per type (lists contain non-empty str unless stated):
 
-- TestRun: `expected_test_ids`, `executed_test_ids`, `skipped_test_ids`, `xfail_test_ids`, `covered_acceptance`; `commands` = non-empty list of `{argv: non-empty list of str, exit_code: int}`.
+- TestRun: `expected_test_ids`, `executed_test_ids`, `skipped_test_ids`, `xfail_test_ids`, `covered_acceptance`; `commands` = non-empty list of `{argv: non-empty list of str, exit_code: int}`; `artifact_digests` (REQUIRED, may be empty) = dict mapping a non-empty path str to a 64-hex sha256 of that artifact as it was after the commands ran. The all-zero digest (`MISSING_ARTIFACT_DIGEST`, 64 zeros) means "artifact missing after the run".
 - StaticAnalysis: `coverage` in COVERAGE; `covered_rules`, `unsupported_rules`, `covered_acceptance`.
 - IndependentReview: `reviewer_principal`, `author_principal` (non-empty str); `covered_acceptance`, `findings`; `signed_verdict` in {MODIFY, NO_GO, APPROVE}.
 - Documentation: `check_description` non-empty str; `covered_acceptance`.
 
 ## derive_result (what `result` MUST be)
 
-- TestRun: INCONCLUSIVE if `executed_test_ids` is empty; PASS only if every `exit_code == 0`, `expected_test_ids` non-empty, set(executed) == set(expected), and `skipped_test_ids` and `xfail_test_ids` are empty; otherwise FAIL.
+- TestRun: FAIL if `artifact_digests` contains the all-zero digest (checked first); otherwise INCONCLUSIVE if `executed_test_ids` is empty; PASS only if every `exit_code == 0`, `expected_test_ids` non-empty, set(executed) == set(expected), and `skipped_test_ids` and `xfail_test_ids` are empty; otherwise FAIL.
 - StaticAnalysis: PASS only if `coverage == FULL` and `unsupported_rules` is empty; otherwise INCONCLUSIVE.
 - IndependentReview: PASS only if `signed_verdict == APPROVE` and `reviewer_principal != author_principal`; otherwise FAIL.
 - Documentation: the given `result` if it is PASS or FAIL; otherwise INCONCLUSIVE.
@@ -71,7 +71,7 @@ Tables: `stories(story_id, project_id, phase, epoch, owner, state, owner_expires
 
 ## Runner (`tools/vst/runner.py`)
 
-`run_and_sign(...)` runs each argv with `subprocess.run` (no shell, captured text output, timeout, cwd), records `argv` and `exit_code` (-1 timeout, -2 missing executable), joins stdout, calls the injected parser to get `(executed, skipped, xfail)`, builds a TestRun receipt, sets `result = derive_result(receipt)`, signs it with `signing.sign`, validates it and returns it. An empty commands list raises `ContractError`. The key is a plain argument: never written, logged or read from the worker cwd. Helpers: `file_sha256(path)` (64 KiB chunks) and `artifact_digests(paths)`.
+`run_and_sign(...)` first validates EVERY receipt-level input (non-empty str ids, attempt >= 1, epoch >= 1, hex lengths of `candidate_head` / `role_sha256` / `prev_receipt_sha256` (null iff attempt == 1), non-empty bytes key, non-empty commands, list `expected_test_ids` / `covered_acceptance` / `artifact_paths`, `timeout_sec` > 0, str `cwd`, callable parser) and raises `ContractError` before any subprocess starts. A cwd that does not exist is not a validation error. It then runs each argv with `subprocess.run` (no shell, captured text output, timeout, cwd), records `argv` and `exit_code` (-1 timeout; -2 for a missing executable, a missing or invalid cwd, a permission error or any other `OSError` starting the process; non-OSError exceptions propagate), joins stdout, calls the injected parser to get `(executed, skipped, xfail)`, builds a TestRun receipt, sets `result = derive_result(receipt)`, signs it with `signing.sign`, validates it and returns it. The new required keyword `artifact_paths: list[str]` (may be empty) lists artifacts produced by the commands; they are hashed AFTER the commands ran (relative paths resolve against `cwd`, the path string as given is the key in `artifact_digests`). An artifact that cannot be read after the run is recorded with the all-zero digest and the derived result is FAIL. An empty commands list raises `ContractError`. The key is a plain argument: never written, logged or read from the worker cwd. Helpers: `file_sha256(path)` (64 KiB chunks) and `artifact_digests(paths)`.
 
 ## Slice harness (`tools/vst/slice.py`)
 
@@ -79,4 +79,12 @@ Synthetic vertical slice: no real project, no process spawning, no network. `bui
 
 ## Gate rules
 
-`gate.evaluate(manifest, receipts, current_head, current_epoch, key, waiver=None)` is pure and default-deny; the rule order and the verdict logic are specified in the `tools/vst/gate.py` module docstring. Summary: receipts must be valid, for this task, at the current head and epoch, correctly signed and with a derived-consistent result; the latest attempt per slot decides; earlier failures stay in `unresolved_findings`; unlisted receipts, broken attempt chains and unmet acceptance ids prevent APPROVE; a waiver can only cover unmet slots and acceptance ids and only for the current head.
+`gate.evaluate(manifest, receipts, current_head, current_epoch, key, waiver=None, artifact_resolver=None)` is pure and default-deny; the rule order and the verdict logic are specified in the `tools/vst/gate.py` module docstring. Summary: receipts must be valid, for this task, at the current head and epoch, correctly signed and with a derived-consistent result; the latest attempt per slot decides; earlier failures stay in `unresolved_findings`; unlisted receipts, broken attempt chains and unmet acceptance ids prevent APPROVE; a waiver can only cover unmet slots and acceptance ids and only for the current head.
+
+Artifact binding: `artifact_resolver: Callable[[str], str | None] | None`. When given, for every otherwise-valid TestRun receipt each `(path, digest)` in `artifact_digests` must satisfy `artifact_resolver(path) == digest` (the resolver returns the CURRENT sha256 hex, or None when the artifact is missing); a mismatch, or a resolver that raises, adds a hard reason naming the receipt id and the path and the receipt is treated as invalid (excluded, so its slot is missing). When `artifact_resolver` is None (the default) the gate does NOT re-check artifacts at all: artifact binding is then only as strong as the signature over the receipt. All other gate rules are unchanged.
+
+## Known limits
+
+- Event-chain tail truncation is not detectable: `Store.verify_event_chain` recomputes the hash chain from the first event, so deleting the newest events leaves a valid prefix. Detecting it needs an externally anchored head hash or event count.
+- The reviewer == author check inside `gate.evaluate` is defence in depth: `derive_result` already rejects such an IndependentReview as a result mismatch before the slot rule is reached.
+- The HMAC proves origin within the machine trust boundary (the holder of the key signed the receipt); it does not prove that the test run was honest or that the recorded stdout, test ids or digests are true.

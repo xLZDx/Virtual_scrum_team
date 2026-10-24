@@ -6,7 +6,9 @@ the receipt, and never looked up in the worker's cwd.
 
 Commands run with subprocess.run(argv, shell=False): no shell is involved.
 Exit code conventions recorded in the receipt: the process exit code, -1 when
-the command timed out, -2 when the executable (or cwd) does not exist.
+the command timed out, -2 when the executable (or cwd) does not exist or the
+process cannot be started (any OSError). Inputs are validated before any command
+runs; artifacts are hashed after the commands and bound into the receipt.
 
 Standard library only; no network.
 """
@@ -14,10 +16,20 @@ Standard library only; no network.
 from __future__ import annotations
 
 import hashlib
+import os
 import subprocess
 from typing import Callable
 
-from .contracts import ContractError, derive_result, validate_receipt
+from .contracts import (
+    MISSING_ARTIFACT_DIGEST,
+    ContractError,
+    _req_hex,
+    _req_int,
+    _req_str,
+    _req_str_list,
+    derive_result,
+    validate_receipt,
+)
 from .signing import sign
 
 EXIT_TIMEOUT = -1
@@ -77,9 +89,88 @@ def _run_one(argv: list[str], cwd: str, timeout_sec: int) -> tuple[int, str]:
         )
     except subprocess.TimeoutExpired as exc:
         return EXIT_TIMEOUT, _as_text(exc.stdout)
-    except FileNotFoundError:
+    except (FileNotFoundError, NotADirectoryError, PermissionError):
+        # Missing executable, missing/invalid cwd (Windows raises
+        # NotADirectoryError for a missing cwd), or no permission to execute.
+        return EXIT_MISSING_EXECUTABLE, ""
+    except OSError:
+        # Any other OS-level failure to start the process. Non-OSError
+        # exceptions are deliberately not caught.
         return EXIT_MISSING_EXECUTABLE, ""
     return done.returncode, _as_text(done.stdout)
+
+
+def _validate_inputs(
+    *,
+    task_id: object,
+    slot: object,
+    attempt: object,
+    epoch: object,
+    candidate_head: object,
+    role_sha256: object,
+    resolved_model: object,
+    invocation_id: object,
+    runner_id: object,
+    key: object,
+    commands: object,
+    expected_test_ids: object,
+    test_result_parser: object,
+    covered_acceptance: object,
+    artifact_paths: object,
+    prev_receipt_sha256: object,
+    cwd: object,
+    timeout_sec: object,
+    created_at: object,
+) -> list[list[str]]:
+    """Validate every receipt-level input; raise ContractError before any run.
+
+    A cwd that does not exist is NOT an error here (it yields exit_code -2).
+    """
+    for name, value in (
+        ("task_id", task_id),
+        ("slot", slot),
+        ("resolved_model", resolved_model),
+        ("invocation_id", invocation_id),
+        ("runner_id", runner_id),
+        ("created_at", created_at),
+    ):
+        _req_str(value, name)
+    _req_int(attempt, "attempt", 1)
+    _req_int(epoch, "epoch", 1)
+    _req_hex(candidate_head, "candidate_head", 40)
+    _req_hex(role_sha256, "role_sha256", 64)
+    if attempt == 1:
+        if prev_receipt_sha256 is not None:
+            raise ContractError("prev_receipt_sha256: must be null when attempt == 1")
+    else:
+        _req_hex(prev_receipt_sha256, "prev_receipt_sha256", 64)
+    if not isinstance(key, (bytes, bytearray)) or len(key) == 0:
+        raise ContractError("key: must be non-empty bytes")
+    argvs = _check_commands(commands)
+    _req_str_list(expected_test_ids, "expected_test_ids")
+    _req_str_list(covered_acceptance, "covered_acceptance")
+    _req_str_list(artifact_paths, "artifact_paths")
+    _req_int(timeout_sec, "timeout_sec", 1)
+    if not isinstance(cwd, str):
+        raise ContractError("cwd: must be a str")
+    if not callable(test_result_parser):
+        raise ContractError("test_result_parser: must be callable")
+    return argvs
+
+
+def _hash_artifacts(paths: list[str], cwd: str) -> dict[str, str]:
+    """sha256 of each artifact (relative paths resolve against cwd).
+
+    A path that cannot be read after the run is recorded with the all-zero
+    digest; derive_result turns that into FAIL.
+    """
+    digests: dict[str, str] = {}
+    for path in paths:
+        try:
+            digests[path] = file_sha256(os.path.join(cwd, path))
+        except OSError:
+            digests[path] = MISSING_ARTIFACT_DIGEST
+    return digests
 
 
 def run_and_sign(
@@ -98,6 +189,7 @@ def run_and_sign(
     expected_test_ids: list[str],
     test_result_parser: Callable[[str], tuple[list[str], list[str], list[str]]],
     covered_acceptance: list[str],
+    artifact_paths: list[str],
     prev_receipt_sha256: str | None,
     cwd: str,
     timeout_sec: int,
@@ -108,8 +200,24 @@ def run_and_sign(
     The parser receives the joined stdout of all commands and returns
     (executed, skipped, xfail) test ids. The result is always computed with
     contracts.derive_result, never taken from the caller.
+
+    All inputs are validated before any command starts (ContractError). A
+    missing cwd or executable is not a validation error: it is recorded as
+    exit_code -2. artifact_paths (required, may be empty) are hashed AFTER the
+    commands ran, relative paths resolved against cwd; an unreadable artifact
+    gets the all-zero digest, which makes the derived result FAIL.
     """
-    argvs = _check_commands(commands)
+    argvs = _validate_inputs(
+        task_id=task_id, slot=slot, attempt=attempt, epoch=epoch,
+        candidate_head=candidate_head, role_sha256=role_sha256,
+        resolved_model=resolved_model, invocation_id=invocation_id,
+        runner_id=runner_id, key=key, commands=commands,
+        expected_test_ids=expected_test_ids,
+        test_result_parser=test_result_parser,
+        covered_acceptance=covered_acceptance, artifact_paths=artifact_paths,
+        prev_receipt_sha256=prev_receipt_sha256, cwd=cwd,
+        timeout_sec=timeout_sec, created_at=created_at,
+    )
     recorded: list[dict] = []
     outputs: list[str] = []
     for argv in argvs:
@@ -142,6 +250,7 @@ def run_and_sign(
         "xfail_test_ids": list(xfail),
         "commands": recorded,
         "covered_acceptance": list(covered_acceptance),
+        "artifact_digests": _hash_artifacts(list(artifact_paths), cwd),
     }
     receipt["result"] = derive_result(receipt)
     receipt["signature"] = sign(receipt_without_signature(receipt), key)

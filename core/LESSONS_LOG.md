@@ -88,3 +88,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Facts: the three gaps found in E3/E4 (raw trigger errors, no budget receipt, no owner renewal) were closed in the very next sub-step because they were written down in the decision log and lessons log first.
 - Why it worked: gaps recorded at the moment of discovery became a concrete task list for the next implementer.
 - Rule: list known gaps in the log at the commit that finds them and put them verbatim in the next implementer's brief.
+
+## 2026-10-24 -- S1 test phase
+
+- Kind: SUCCESS (tests found a real defect and two design gaps).
+- Facts: 523 focused tests found one real defect (cwd error class on Windows) and showed that the plan's 'modified artifact rejected' acceptance had no code path; the implementer also ran commands before validating inputs.
+- Why it worked: test agents were told to report defects, not fix them, and to compare expected and executed test ids; the acceptance sentences in the plan were each turned into a test.
+- Layer: author missed all three; tests caught them; the coordinator's baseline text had specified the acceptance without the data field it needed.
+- Rule: for each acceptance sentence, name the data field that carries the evidence before coding. Also: an agent that runs out of turns must be resumed with an explicit priority list.

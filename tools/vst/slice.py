@@ -161,6 +161,7 @@ class SliceFixture:
                 "xfail_test_ids": [],
                 "commands": [{"argv": ["synthetic-test-run"], "exit_code": exit_code}],
                 "covered_acceptance": ["AC-1"],
+                "artifact_digests": {},
             },
         )
 

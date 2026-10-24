@@ -1,8 +1,8 @@
 """Pure, default-deny gate verdict function (BD-4, R-2, R-4).
 
-evaluate(manifest, receipts, current_head, current_epoch, key, waiver=None)
-returns a GateDecision dict (it always passes validate_gate_decision). It
-never raises for bad data, never mutates its inputs, does no I/O.
+evaluate(manifest, receipts, current_head, current_epoch, key, waiver=None,
+artifact_resolver=None) returns a GateDecision dict (it always passes
+validate_gate_decision). It never raises for bad data, never mutates its inputs, does no I/O.
 
 Rules, applied in this order; ALL reasons are collected, evaluation does not
 stop at the first problem:
@@ -14,7 +14,9 @@ stop at the first problem:
 2. Per-receipt checks. A receipt is "good" only if it (a) passes
    validate_receipt, (b) has task_id == manifest.task_id, (c) has
    candidate_head == current_head and epoch == current_epoch, (d) has a valid
-   HMAC signature, (e) has result == derive_result(receipt). Every receipt
+   HMAC signature, (e) has result == derive_result(receipt), and (f) only when
+   an artifact_resolver is given, for a TestRun: every (path, digest) of
+   artifact_digests equals artifact_resolver(path). Every receipt
    failing a check yields a hard reason and is excluded from everything below.
    If at least one receipt belongs to this task and ALL of them fail (c), the
    verdict is NO_GO.
@@ -58,7 +60,7 @@ unmet acceptance ids.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 from .contracts import (
     ContractError,
@@ -124,6 +126,7 @@ def _check_receipt(
     epoch: int,
     key: bytes,
     hard: list[str],
+    artifact_resolver: Callable[[str], str | None] | None = None,
 ) -> tuple[dict | None, bool, bool]:
     """Return (good_receipt_or_None, belongs_to_task, is_stale)."""
     label = f"receipt[{index}]"
@@ -154,6 +157,22 @@ def _check_receipt(
             f"{label} result {receipt['result']} does not match derived result {derived}"
         )
         return None, True, False
+    if artifact_resolver is not None and receipt["receipt_type"] == "TestRun":
+        for path, digest in receipt["artifact_digests"].items():
+            try:
+                current = artifact_resolver(path)
+            except Exception as exc:  # resolver is caller code: default-deny
+                hard.append(
+                    f"{label} artifact {path!r} cannot be resolved: "
+                    f"{type(exc).__name__}"
+                )
+                return None, True, False
+            if current != digest:
+                hard.append(
+                    f"{label} artifact {path!r} digest mismatch: "
+                    f"artifact changed or missing"
+                )
+                return None, True, False
     return receipt, True, False
 
 
@@ -240,8 +259,16 @@ def evaluate(
     current_epoch: int,
     key: bytes,
     waiver: dict | None = None,
+    artifact_resolver: Callable[[str], str | None] | None = None,
 ) -> dict:
-    """Compute the GateDecision for one task candidate. See module docstring."""
+    """Compute the GateDecision for one task candidate. See module docstring.
+
+    artifact_resolver(path) returns the CURRENT sha256 hex of the artifact at
+    path (or None when it is missing). When given, every (path, digest) of
+    every otherwise-valid TestRun receipt must satisfy
+    artifact_resolver(path) == digest, else the receipt is invalid. When None,
+    artifacts are NOT re-checked by the gate.
+    """
     hard: list[str] = []
     soft: list[str] = []
     findings: list[str] = []
@@ -290,7 +317,7 @@ def evaluate(
     for index, raw in enumerate(receipts):
         receipt, own, stale = _check_receipt(
             index, raw, valid_manifest["task_id"], current_head,
-            current_epoch, bytes(key), hard,
+            current_epoch, bytes(key), hard, artifact_resolver,
         )
         own_count += 1 if own else 0
         stale_count += 1 if stale else 0
