@@ -26,6 +26,8 @@ import os
 import sqlite3
 import subprocess
 import sys
+import threading
+import time
 from typing import Any, Callable
 
 from . import gate as gate_module
@@ -1101,6 +1103,10 @@ def run_scenarios(workdir: str) -> dict[str, dict]:
 class SyntheticOperationBackend:
     """Supervisor-only adapter for a local bare Git remote."""
 
+    _MAX_PACK_BYTES = 64 * 1024 * 1024
+    _MAX_PACK_OBJECTS = 250_000
+    _MAX_GIT_DIAGNOSTIC_BYTES = 8 * 1024
+
     def __init__(
         self, bare_path: str, *, source_repo: str, command_timeout_sec: int = 10,
     ) -> None:
@@ -1125,7 +1131,7 @@ class SyntheticOperationBackend:
             raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
         return completed.stdout.decode("utf-8", "replace").strip()
 
-    def _source_pack(self, head: str) -> bytes:
+    def _import_head(self, head: str) -> None:
         env = {
             name: os.environ[name]
             for name in (
@@ -1143,21 +1149,127 @@ class SyntheticOperationBackend:
             "GIT_NO_LAZY_FETCH": "1",
             "GIT_NO_REPLACE_OBJECTS": "1",
         })
-        completed = subprocess.run(
-            ["git", "-C", self.source_repo, "pack-objects", "--stdout", "--revs"],
-            input=(head + "\n").encode("ascii"), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, check=False, timeout=self.command_timeout_sec,
-            env=env,
-        )
-        if completed.returncode:
-            raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
-        if not completed.stdout:
-            raise RuntimeError("Git source repository produced an empty object pack")
-        return completed.stdout
+        source_command = [
+            "git", "-c", "pack.threads=1", "-c", "pack.windowMemory=16m",
+            "-c", "pack.window=10", "-c", "pack.deltaCacheSize=16777216",
+            "-c", "pack.deltaCacheLimit=32768", "-C", self.source_repo,
+            "pack-objects", "--stdout", "--revs",
+        ]
+        target_command = [
+            "git", "--git-dir", self.bare_path, "index-pack", "--strict", "--stdin",
+        ]
+        source = target = None
+        source_diagnostic = bytearray()
+        target_diagnostic = bytearray()
+        expired = threading.Event()
+        finished = threading.Event()
 
-    def _import_head(self, head: str) -> None:
-        pack = self._source_pack(head)
-        self._git("index-pack", "--strict", "--stdin", input_bytes=pack)
+        def drain(stream, output: bytearray) -> None:
+            while True:
+                chunk = stream.read(4096)
+                if not chunk:
+                    return
+                remaining = self._MAX_GIT_DIAGNOSTIC_BYTES - len(output)
+                if remaining > 0:
+                    output.extend(chunk[:remaining])
+
+        def kill_after_timeout() -> None:
+            if finished.is_set():
+                return
+            expired.set()
+            for process in (source, target):
+                if process is not None and process.poll() is None:
+                    try:
+                        process.kill()
+                    except OSError:
+                        pass
+
+        timer = threading.Timer(self.command_timeout_sec, kill_after_timeout)
+        source_stderr_thread = target_stderr_thread = None
+        try:
+            source = subprocess.Popen(
+                source_command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, env=env, bufsize=0,
+            )
+            target = subprocess.Popen(
+                target_command, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE, bufsize=0,
+            )
+            source_stderr_thread = threading.Thread(
+                target=drain, args=(source.stderr, source_diagnostic), daemon=True,
+            )
+            target_stderr_thread = threading.Thread(
+                target=drain, args=(target.stderr, target_diagnostic), daemon=True,
+            )
+            source_stderr_thread.start()
+            target_stderr_thread.start()
+            timer_start = time.monotonic()
+            timer.start()
+            source.stdin.write((head + "\n").encode("ascii"))
+            source.stdin.close()
+
+            total_bytes = 0
+            pack_header = bytearray()
+            while True:
+                chunk = source.stdout.read(64 * 1024)
+                if not chunk:
+                    break
+                total_bytes += len(chunk)
+                if total_bytes > self._MAX_PACK_BYTES:
+                    raise RuntimeError("Git source object pack exceeds the 64 MiB limit")
+                if len(pack_header) < 12:
+                    pack_header.extend(chunk[:12 - len(pack_header)])
+                    if len(pack_header) == 12:
+                        if pack_header[:4] != b"PACK":
+                            raise RuntimeError("Git source did not produce a valid pack header")
+                        object_count = int.from_bytes(pack_header[8:12], "big")
+                        if object_count > self._MAX_PACK_OBJECTS:
+                            raise RuntimeError("Git source object pack exceeds the object-count limit")
+                target.stdin.write(chunk)
+            if expired.is_set():
+                raise TimeoutError("Git source pack import exceeded its time limit")
+            if total_bytes == 0 or len(pack_header) < 12:
+                raise RuntimeError("Git source repository produced an empty or truncated object pack")
+            target.stdin.close()
+            deadline = timer_start + self.command_timeout_sec
+            source.wait(timeout=max(0.001, deadline - time.monotonic()))
+            target.wait(timeout=max(0.001, deadline - time.monotonic()))
+            if expired.is_set():
+                raise TimeoutError("Git source pack import exceeded its time limit")
+            if source.returncode:
+                raise RuntimeError(source_diagnostic.decode("utf-8", "replace"))
+            if target.returncode:
+                raise RuntimeError(target_diagnostic.decode("utf-8", "replace"))
+        except subprocess.TimeoutExpired as exc:
+            raise TimeoutError("Git source pack import exceeded its time limit") from exc
+        finally:
+            finished.set()
+            timer.cancel()
+            for process in (source, target):
+                if process is not None and process.poll() is None:
+                    try:
+                        process.kill()
+                    except OSError:
+                        pass
+            for process in (source, target):
+                if process is not None:
+                    try:
+                        process.wait(timeout=1)
+                    except (subprocess.TimeoutExpired, OSError):
+                        pass
+            for worker in (source_stderr_thread, target_stderr_thread):
+                if worker is not None:
+                    worker.join(timeout=1)
+            for stream in (
+                source.stdin if source else None, source.stdout if source else None,
+                source.stderr if source else None, target.stdin if target else None,
+                target.stderr if target else None,
+            ):
+                if stream is not None:
+                    try:
+                        stream.close()
+                    except OSError:
+                        pass
         self._git("cat-file", "-e", f"{head}^{{commit}}")
 
     def _is_ancestor(self, ancestor: str, descendant: str) -> bool:
