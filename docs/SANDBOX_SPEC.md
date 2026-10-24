@@ -60,7 +60,12 @@ best-effort success.
 ## Required pre-flight evidence
 
 Before each worker run, the standard-library-only probe records the mount
-table, Windows interop state, user and group identity, container socket paths,
+table and an explicit `windows_drive_mounts` list. It classifies a mount as a
+Windows drive only when the mount source is a drive root (`C:` or `C:\\`) and
+the filesystem is `drvfs` directly or WSL's `9p` with `aname=drvfs`; unrelated
+mount targets such as `/mnt/wslg` do not count as Windows-drive automount. It
+also records Windows interop state,
+user and group identity, container socket paths,
 blocked-target smoke-probe result, sandbox-local loopback result, and
 environment variable names. It binds the inventory to the run ID, a fresh
 nonce, and this file's SHA-256 digest. The trusted runner signs the inventory;

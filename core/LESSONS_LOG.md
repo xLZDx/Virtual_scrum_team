@@ -342,3 +342,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: cleanup operations were sequential without nested guarantees.
 - Rule: attempt OS unlock, stream close and local mutex release in nested `finally` blocks; preserve the protected operation's exception if teardown also fails.
 - Fix status: implemented in change record 0052; no tests/checks were run and E2E evidence remains pending.
+
+## 2026-10-24 -- Identify Windows drives by mount identity, not target prefix
+
+- Kind: FAILURE (WSLg's `/mnt/wslg` was treated as Windows-drive automount despite Windows drives being absent).
+- Facts: WSL diagnostic on `c470542dbedf992b785804e421b1ff52e142003c` localized the false positive to the preflight predicate matching any mount target containing `/mnt/`.
+- Root cause: host integration classification relied on a broad path prefix rather than mount source and filesystem identity.
+- Rule: identify Windows drive automount using a Windows drive-root source and either `drvfs` or WSL `9p` with `aname=drvfs`; keep the exact distinction in probe inventory and acceptance criteria.
+- Fix status: implemented in change record 0053; E2E regression and signed WSL proof remain pending.

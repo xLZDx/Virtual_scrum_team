@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import socket
 import time
 import uuid
@@ -145,7 +146,23 @@ def collect_inventory(run_id: str, nonce: str | None = None, *,
             interop_enabled = "enabled" in interop_path.read_text(encoding="ascii", errors="ignore").lower()
         except OSError:
             interop_enabled = True  # unknown is unsafe
-    automount_lines = [line for line in mounts.splitlines() if "/mnt/" in line and len(line.split()) >= 2]
+    windows_drive_mounts = []
+    for line in mounts.splitlines():
+        fields = line.split()
+        if len(fields) < 3:
+            continue
+        source, _target, filesystem = fields[:3]
+        options = fields[3] if len(fields) >= 4 else ""
+        wsl_drvfs_9p = filesystem.lower() == "9p" and re.search(
+            r"(?:^|[;,])aname=drvfs(?:$|[;,])", options
+        ) is not None
+        # WSL exposes automounted Windows volumes as drvfs mounts, either
+        # directly or through 9p with aname=drvfs. Other /mnt mounts such as
+        # WSLg are not evidence of Windows-drive automount.
+        if (filesystem.lower() == "drvfs" or wsl_drvfs_9p) and re.fullmatch(
+            r"[A-Za-z]:\\?", source
+        ):
+            windows_drive_mounts.append(line)
     sockets, socket_inventory_complete = _container_socket_inventory()
     attestation = network_policy_attestation
     attestation_valid_shape = isinstance(attestation, dict) and set(attestation) == {
@@ -157,7 +174,7 @@ def collect_inventory(run_id: str, nonce: str | None = None, *,
     ).hexdigest() and attestation.get("nonce") == nonce
     uid = os.geteuid()
     checks = {
-        "automount_disabled": not automount_lines,
+        "automount_disabled": not windows_drive_mounts,
         "interop_disabled": not interop_enabled,
         "no_container_socket": socket_inventory_complete and not sockets and attestation_valid_shape
             and attestation.get("no_container_socket") is True,
@@ -175,6 +192,7 @@ def collect_inventory(run_id: str, nonce: str | None = None, *,
         "result": "PASS" if all(checks.values()) else "FAIL",
         "inventory": {
             "mount_table": mounts.splitlines(),
+            "windows_drive_mounts": windows_drive_mounts,
             "wsl_interop_present": interop_present,
             "wsl_interop_enabled": interop_enabled,
             "uid": uid,
