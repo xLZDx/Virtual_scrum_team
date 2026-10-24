@@ -475,3 +475,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — Test output without an exact checkout HEAD cannot close exact-head acceptance. The S3 E2E run identified the committed product code but failed to capture the full HEAD during its corrected rerun. Record that evidence as provisional and rerun both focused files after the test artifacts are committed; never infer an exact revision from a later status query. See change record 0090.
 
+2026-10-25 — When a test runner cannot capture its start revision, rerun after committing the test artifact and record HEAD both before and after execution. The S3 exact-head reruns on `58088c804ee3d444919ec433b656c80ec3106f37` are the acceptance evidence; prior runs with missing checkout identity remain diagnostic only. See change record 0092.
+

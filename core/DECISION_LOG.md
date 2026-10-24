@@ -272,3 +272,7 @@ Updated VST-028 from the historical BMad Loop v0.10.0 reference to latest audite
 
 Added functional-owned and E2E-owned tests for the locally implementable S3 adapter contract, Store recovery, synthetic pilot scope, checkpoint resume, and STOP fencing. Reported runs are not yet accepted as exact-head evidence: the E2E rerun did not capture its precise checkout HEAD, so both files must be rerun after this test commit. Sandbox/WSL-boundary and OS process cleanup remain `NOT_RUN`. See change record 0090.
 
+## 2026-10-25 -- Accept only exact-head S3 synthetic test evidence
+
+The functional adapter tests reported 8 passed and synthetic pilot E2E reported 5 passed on exact HEAD `58088c804ee3d444919ec433b656c80ec3106f37`; each runner captured the same HEAD immediately before and after its command. This verifies only locally implemented synthetic paths. Sandbox probe/WSL boundary and OS cleanup remain `NOT_RUN`; see evidence `docs/sdlc/evidence/s3-focused-tests-58088.md` and change record 0092.
+
