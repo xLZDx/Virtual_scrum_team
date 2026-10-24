@@ -326,3 +326,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: standalone/public checkpoint CAS opened and byte-locked the JSONL file in addition to the already-established cross-process sidecar coordinator, creating a second Windows lock/open boundary.
 - Rule: every public CAS call must hold the same reentrant sidecar coordination lock as Store synchronization, and Store construction must close its connection when lock setup prevents safe initialization.
 - Fix status: implemented in change record 0050; focused E2E rerun remains pending and no runtime proof is claimed.
+
+## 2026-10-24 -- Normalize every coordinator setup failure
+
+- Kind: SHORTCOMING (coordinator directory creation and file initialization could still raise raw `OSError`).
+- Facts: reliability re-review on `bf58c1b` identified setup operations outside the `AnchorError` boundary; Store constructor cleanup handles typed coordinator errors.
+- Root cause: error normalization covered open and lock calls but not the full resource acquisition sequence.
+- Rule: include directory creation, open, initialization write/flush and OS lock acquisition in one typed failure boundary, with stream close and local mutex release guaranteed by `finally`.
+- Fix status: implemented in change record 0051; no tests/checks were run and E2E evidence remains pending.

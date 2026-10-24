@@ -88,31 +88,28 @@ class FileExternalAnchor:
         stream = None
         unlock = None
         try:
-            os.makedirs(os.path.dirname(lock_path), exist_ok=True)
             try:
+                os.makedirs(os.path.dirname(lock_path), exist_ok=True)
                 stream = open(lock_path, "a+b")
                 if os.name != "nt":
                     os.chmod(lock_path, 0o600)
-            except OSError as exc:
-                raise AnchorError(f"external anchor coordinator unavailable: {exc}") from exc
-            stream.seek(0, os.SEEK_END)
-            if stream.tell() == 0:
-                stream.write(b"\0")
-                stream.flush()
-            if os.name == "nt":
-                import msvcrt
+                stream.seek(0, os.SEEK_END)
+                if stream.tell() == 0:
+                    stream.write(b"\0")
+                    stream.flush()
+                if os.name == "nt":
+                    import msvcrt
 
-                stream.seek(0)
-                try:
+                    stream.seek(0)
                     msvcrt.locking(stream.fileno(), msvcrt.LK_LOCK, 1)
-                except OSError as exc:
-                    raise AnchorError(f"external anchor coordinator lock failed: {exc}") from exc
-                unlock = lambda: msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
-            else:
-                import fcntl
+                    unlock = lambda: msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    import fcntl
 
-                fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
-                unlock = lambda: fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+                    fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+                    unlock = lambda: fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+            except OSError as exc:
+                raise AnchorError(f"external anchor coordinator setup failed: {exc}") from exc
             state = {
                 "depth": 1,
                 "stream": stream,
