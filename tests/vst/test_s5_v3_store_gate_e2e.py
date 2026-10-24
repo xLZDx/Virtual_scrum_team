@@ -65,9 +65,9 @@ def _stored_v3_receipt(tmp_path, *, candidate_head=HEAD, findings=None):
     receipt = analyzer_receipt(
         manifest,
         findings=copy.deepcopy(findings),
-        candidate_head=candidate_head,
     )
     unsigned = {key: value for key, value in receipt.items() if key != "signature"}
+    unsigned["candidate_head"] = candidate_head
     unsigned["manifest_sha256"] = manifest_digest
     unsigned["source_tree_sha256"] = source_digest
     unsigned["report_sha256"] = report_digest
