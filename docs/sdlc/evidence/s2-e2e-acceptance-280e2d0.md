@@ -171,3 +171,28 @@ The provisioned signer identity was not running as a system service. A transient
 - The WSL checkout used the committed product source, then received the current owned Store and sandbox test files from the Windows working tree so Linux ran the corrected tests. Test files were dirty and not yet committed.
 - The earlier unsigned diagnostic at HEAD `c470542dbedf992b785804e421b1ff52e142003c` remains a historical `FAIL`; it was not changed into a passing result.
 - No operator key, private key contents, full host mount paths, or private inventory output is included in this record.
+
+## Final five-file Windows S2 run
+
+- Tested repository HEAD: `d70b6b7530eabc25097b9e43f0aeebf2dab2cc10`.
+- Product source remains `280e2d0a613a0b70252c13ce7afe85f22734f7d1`; this final run is on the committed E2E tests/evidence commit.
+- Environment: Windows 11 build `10.0.26300-SP0`; Python 3.14.3 from `C:\Python314\python.exe`; pytest 8.4.2.
+- Exact command:
+
+```powershell
+C:\Python314\python.exe -m pytest -q -rs -p no:cacheprovider tests/vst/test_s2_contract_gate.py tests/vst/test_s2_diffgate.py tests/vst/test_s2_runner_lifecycle.py tests/vst/test_s2_store_lifecycle.py tests/vst/test_s2_sandbox_probe.py
+```
+
+- Result: exit 0; **144 passed, 22 skipped, 1 warning** in 7.95 seconds. The warning is pytest-asyncio's deprecation warning for `asyncio.get_event_loop_policy`.
+- The 22 skips are explicit `NOT_RUN` cases, not passing acceptance evidence:
+  - `test_posix_worker_cannot_read_signer_or_key_file`: Windows lacks the POSIX account and Unix-socket permission boundary.
+  - `test_e4_platform_containment_scenarios_not_run[posix_process_group_cleanup]`, `[post_exit_descendant_cleanup]`, `[key_file_permissions_for_worker_identity]`, and `[windows_parent_job_nesting]`: platform containment needs the provisioned POSIX sandbox or authorized nested Windows Job Object host; process-kill/kill-table execution is prohibited.
+  - `test_anchor_compare_append_is_idempotent_and_rejects_same_count_fork`, `test_external_anchor_detects_restored_older_database_and_locks_writes`, `test_exactly_one_event_ahead_is_recovered_before_mutation`, and `test_multi_event_transaction_recovers_suffix_after_one_checkpoint_append`: POSIX external-anchor acceptance is platform-gated.
+  - `test_invalid_external_anchor_suffix_fails_closed[external_anchor_ahead_of_database]`, `[external_anchor_missing_for_nonempty_database]`, `[forked_checkpoint_suffix]`, `[malformed_checkpoint_suffix]`, and `[tampered_checkpoint_suffix]`: POSIX external-anchor failure-state acceptance is platform-gated.
+  - `test_posix_read_only_reviewer_cannot_write_worktree_or_store_fixture`: Windows lacks the POSIX reviewer credential boundary.
+  - `test_real_sandbox_inventory_has_all_required_properties`: actual WSL/VM inventory and egress proof requires an operator-provisioned POSIX sandbox.
+  - `test_e8_sandbox_bakeoff_scenarios_not_run[worker_crash_mid_edit]`, `[STOP_injection_and_cleanup]`, `[budget_exhaustion]`, `[resume_with_fresh_epoch_and_receipt]`, `[unauthorized_write_outside_scope]`, and `[blocked_egress_attempt]`: full E8 acceptance requires the sandbox; process-kill and mutation runs are prohibited, and synthetic results cannot prove isolation.
+
+## Bounded real signer setup retry
+
+A transient service launch was attempted with an explicit `sys.path` entry for the committed source checkout, the `vst-signer` identity and runner group, `PrivateNetwork=yes`, `RestrictAddressFamilies=AF_UNIX`, and the configured per-run systemd namespace boundaries. The process started but failed before opening the socket. Exact exception from the service journal: `PermissionError: [Errno 13] Permission denied` raised by `os.open` inside `tools.vst.signer._key_is_private` while opening the dedicated runner-signer key. The parent directories above that key are root-owned mode `0700`; the signer process could not traverse them in this unit. The transient unit exited with status 1 and systemd collected it. No client request or signature was made, no operator key was read or invoked, and no key bytes were printed. Therefore real signer IPC, `run_manifest_commands`, and worker denial against the real signer socket remain `NOT_RUN`; the exact dependency is a least-privilege credential delivery or path-access configuration for the dedicated signer service.
