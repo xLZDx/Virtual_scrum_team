@@ -171,3 +171,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: S0 was treated as a prerequisite on paper but S1 code started first; process rule v4 item 7 was not scheduled when S1 testing started.
 - Layer: coordinator missed; no gate links S1 closure to S0 documents.
 - Rule: start the inventory and next-sprint documentation agents at the moment testing of the current sprint begins, and close S0 before S1 code starts.
+
+## 2026-10-24 -- S0 and S1 merged
+
+- Kind: SUCCESS / SHORTCOMING.
+- Facts: GPT-PM APPROVE on the exact head, merge d5cd7f5. The first GPT-PM chat creation timed out twice and the first review send failed because the shared PM Bridge daemon restarted; the operator saw no browser window because the daemon browser is not the operator's visible one.
+- Root cause: shared orchestrator daemon with a hidden browser; MCP reconnect restarted it. The operator was not told that the attempts were invisible.
+- Layer: coordinator (communication gap), platform (daemon restart).
+- Rule: when an external transport fails, check receipts and health before resending, and tell the operator what is and is not visible to them.
