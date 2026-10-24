@@ -455,3 +455,19 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 - Rule: during the coding phase, use read-only status, diffs, and source inspection only; defer all checks and tests until all in-scope code is complete and to their authorized owners.
 - Fix status: logged immediately; no claim of S3 verification is made. The implementation agent was instructed not to run tests, checks, builds, CI, or migrations.
 
+## 2026-10-25 -- Keep worker progress and VST acceptance as separate authorities
+
+- Kind: SUCCESS (the S3 pilot contract keeps adapter execution state separate from VST receipts and verdicts).
+- Facts: the in-repository adapter returns typed execution states; the pilot stores attempt and idempotency outcomes and calls the Supervisor gate, but does not create verification receipts. STOP advances the Store epoch fence while reporting process cleanup `NOT_VERIFIED`; resume accepts only a durable named application checkpoint with a released prior lease.
+- Root cause: worker backends can have their own task state and retries, but those do not establish VST acceptance evidence or prove process cleanup.
+- Rule: make backend state descriptive only; bind every operation to the Store attempt/epoch and let only the Store/Supervisor validate receipts and produce the gate result.
+- Fix status: implemented in change record 0088; tests, timeout cleanup, prohibited process-kill paths, and cross-platform runtime behavior remain `NOT_RUN` or `NOT_VERIFIED`.
+
+## 2026-10-25 -- Do not treat a STOP actor label as authentication
+
+- Kind: SHORTCOMING (the S3 STOP contract carries an `authorized_actor` string for audit, but this repository module has no authenticated caller context to prove the label).
+- Facts: `StopRequest` persists the actor label with the exact attempt binding; the pilot does not verify a signature or caller credential for that field. The operator delegated local synthetic implementation, but that does not create an external service authentication boundary.
+- Root cause: the vendor-neutral worker API models a trusted supervisor call seam, while the repository slice does not define its caller authentication transport.
+- Rule: callers must authenticate before invoking STOP; never claim an actor label is proof. Add an authenticated boundary before exposing this API to an untrusted caller or candidate process.
+- Fix status: limitation explicitly recorded in change record 0088; current worker is local synthetic only, and production/external candidate execution is not authorized.
+

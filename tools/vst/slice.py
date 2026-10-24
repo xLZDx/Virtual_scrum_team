@@ -2016,9 +2016,12 @@ class HandWrittenWorker:
         self.repository = os.path.realpath(repository)
         self.allowed_paths = frozenset(allowed_paths)
 
-    def _run(self, action: str, path: str, content: str = "") -> subprocess.CompletedProcess:
+    def _run(
+        self, action: str, path: str, content: str = "", timeout_sec: float | None = None,
+    ) -> subprocess.CompletedProcess:
         worker_code = r'''import os, subprocess, sys
-repo, action, rel, content = sys.argv[1:5]
+repo, action, rel, content, timeout_text = sys.argv[1:6]
+timeout = float(timeout_text) if timeout_text else None
 if rel.startswith(("/", "\\")) or ".." in rel.replace("\\", "/").split("/"):
     raise SystemExit(30)
 root = os.path.realpath(repo)
@@ -2034,22 +2037,23 @@ if action in ("edit", "crash"):
     if action == "crash":
         os._exit(97)
 elif action == "commit":
-    subprocess.run(["git", "add", "--", rel], cwd=root, check=True, stdin=subprocess.DEVNULL)
-    subprocess.run(["git", "commit", "-m", content], cwd=root, check=True, stdin=subprocess.DEVNULL)
-    print(subprocess.check_output(["git", "rev-parse", "--verify", "HEAD"], cwd=root, text=True).strip())
+    subprocess.run(["git", "add", "--", rel], cwd=root, check=True, stdin=subprocess.DEVNULL, timeout=timeout)
+    subprocess.run(["git", "commit", "-m", content], cwd=root, check=True, stdin=subprocess.DEVNULL, timeout=timeout)
+    print(subprocess.check_output(["git", "rev-parse", "--verify", "HEAD"], cwd=root, text=True, timeout=timeout).strip())
 else:
     raise SystemExit(32)
 '''
         return subprocess.run(
-            [sys.executable, "-I", "-c", worker_code, self.repository, action, path, content],
+            [sys.executable, "-I", "-c", worker_code, self.repository, action, path, content,
+             "" if timeout_sec is None else str(timeout_sec)],
             cwd=self.repository, env=build_environment(), stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, timeout=timeout_sec,
         )
 
-    def edit(self, path: str, content: str) -> None:
+    def edit(self, path: str, content: str, *, timeout_sec: float | None = None) -> None:
         if path not in self.allowed_paths or path.startswith(("/", "\\")) or ".." in path.split("/"):
             raise ValueError("worker edit is outside the declared synthetic scope")
-        completed = self._run("edit", path, content)
+        completed = self._run("edit", path, content, timeout_sec)
         if completed.returncode:
             raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
 
@@ -2061,10 +2065,12 @@ else:
             raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
         raise RuntimeError("synthetic worker killed during edit")
 
-    def commit_candidate(self, message: str = "synthetic candidate") -> str:
+    def commit_candidate(
+        self, message: str = "synthetic candidate", *, timeout_sec: float | None = None,
+    ) -> str:
         heads = []
         for path in sorted(self.allowed_paths):
-            completed = self._run("commit", path, message)
+            completed = self._run("commit", path, message, timeout_sec)
             if completed.returncode:
                 raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
             heads.append(completed.stdout.decode("ascii").strip())
