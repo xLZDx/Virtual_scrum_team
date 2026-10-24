@@ -1479,7 +1479,7 @@ def run_manifest_commands(
     test_events_path: str | None = None,
     report_metadata: dict | None = None,
 ) -> dict:
-    """Run every manifest-pinned v2 command, derive HEAD, and request signatures.
+    """Run manifest-pinned v2 commands, derive HEAD, and request signatures.
 
     The worker does not supply a candidate head, commands, parser callable, or
     signing key. The authenticated signer signs the exact evidence request and
@@ -1492,8 +1492,10 @@ def run_manifest_commands(
     from .signer import authorize_runner_over_socket, sign_diff_over_socket, sign_over_socket
 
     valid = validate_task_manifest(manifest)
-    if valid.get("contract_version") != 2:
-        raise ContractError("run_manifest_commands requires manifest contract v2")
+    if valid.get("contract_version") not in (2, 3):
+        raise ContractError(
+            "run_manifest_commands requires a v2 or v3 manifest with v2 TestRun evidence"
+        )
     for name, value in (("slot", slot), ("resolved_model", resolved_model),
                         ("invocation_id", invocation_id), ("runner_id", runner_id),
                         ("created_at", created_at), ("cwd", cwd), ("signer_socket", signer_socket)):

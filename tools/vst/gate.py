@@ -1,17 +1,18 @@
 """Pure, default-deny gate verdict function (BD-4, R-2, R-4).
 
 evaluate(manifest, receipts, current_head, current_epoch, key, *,
-supervisor_key, operator_key=None, waiver=None, artifact_resolver=None)
+supervisor_key, operator_key=None, waiver=None, artifact_resolver=None,
+analyzer_keys=None, source_tree_resolver=None)
 returns a GateDecision dict (it always passes validate_gate_decision). It
 never raises for bad data, never mutates its inputs, does no I/O, and collects
 ALL reasons instead of stopping at the first problem.
 
 Keys: worker receipts are verified with `key`; receipts in the reserved
-SUPERVISOR_SLOT with `supervisor_key`; the waiver with `operator_key` and
-WAIVER_LABEL. Every key must be bytes of length >= 32 (operator_key may be
-None, which makes any waiver unusable). `key`, `supervisor_key` and
-`operator_key` (when given) must be pairwise distinct (bytes comparison),
-otherwise the verdict is NO_GO.
+SUPERVISOR_SLOT with `supervisor_key`; v3 StaticAnalysis receipts with the
+manifest-pinned key in `analyzer_keys` and `ANALYZER_V3_LABEL`; the waiver with
+`operator_key` and `WAIVER_LABEL`. Every signing key must be bytes of length
+>= 32 (operator_key may be None, which makes any waiver unusable). Trust roots
+must be pairwise distinct (bytes comparison), otherwise the verdict is NO_GO.
 
 Rules, in order:
 
@@ -41,7 +42,9 @@ Rules, in order:
    its slot unmet. Older attempts are history: no head or artifact reason; an
    older attempt whose head differs from current_head is listed in
    unresolved_findings as 'history attempt at other head: <slot> attempt <n>'.
-   SUPERVISOR_SLOT markers are exempt from the head check entirely.
+   SUPERVISOR_SLOT markers are exempt from the head check entirely. A v3
+   StaticAnalysis receipt also requires report/finding artifact resolution and
+   a trusted source-tree resolver for the exact candidate head and scope.
 4. Slot matching. A good receipt whose slot is neither in
    manifest.required_receipts nor SUPERVISOR_SLOT is the hard reason
    'unlisted receipt'; a receipt type different from the slot's declared type
@@ -121,10 +124,19 @@ from .contracts import (
     validate_receipt,
     validate_task_manifest,
     canonical_bytes,
-    normalize_principal,
 )
-from .signing import (MIN_KEY_BYTES, RECEIPT_LABEL, RECEIPT_V2_LABEL, WAIVER_LABEL, REVIEWER_LABEL,
-    REVIEWER_REGISTRY_LABEL, DIFF_GATE_LABEL, SIGNING_REQUEST_LABEL, verify)
+from .signing import (
+    ANALYZER_V3_LABEL,
+    DIFF_GATE_LABEL,
+    MIN_KEY_BYTES,
+    RECEIPT_LABEL,
+    RECEIPT_V2_LABEL,
+    REVIEWER_LABEL,
+    REVIEWER_REGISTRY_LABEL,
+    SIGNING_REQUEST_LABEL,
+    WAIVER_LABEL,
+    verify,
+)
 
 _WAIVER_V1_FIELDS = (
     "record_id",
@@ -247,8 +259,9 @@ def _check_receipt(
     key: bytes,
     supervisor_key: bytes,
     reviewer_keys: dict[str, bytes],
-    v2: bool,
+    manifest_version: int,
     signer_key: bytes | None,
+    analyzer_keys: dict[str, bytes],
     hard: list[str],
 ) -> tuple[dict | None, bool, bool]:
     """Return (good_receipt_or_None, belongs_to_task, is_future_epoch).
@@ -273,7 +286,14 @@ def _check_receipt(
     if receipt["manifest_sha256"] != manifest_hash:
         hard.append(f"{label} manifest_sha256 does not match the manifest")
         return None, True, False
-    if (receipt.get("contract_version") == 2) != v2:
+    is_v2 = receipt.get("contract_version") == 2
+    is_v3 = receipt.get("contract_version") == 3
+    expected_version = (
+        3 if manifest_version == 3 and receipt["receipt_type"] == "StaticAnalysis"
+        else 2 if manifest_version >= 2 else 1
+    )
+    actual_version = receipt.get("contract_version", 1)
+    if actual_version != expected_version:
         hard.append(f"{label} contract version does not match manifest")
         return None, True, False
     if receipt["role_sha256"] != manifest["role_sha256"]:
@@ -286,16 +306,19 @@ def _check_receipt(
         future = True
         if not is_supervisor:
             return None, True, True
-    if receipt["receipt_type"] == "IndependentReview" and v2:
+    if is_v3:
+        signing_key = analyzer_keys.get(receipt["analyzer_key_id"])
+        signature_label = ANALYZER_V3_LABEL
+    elif receipt["receipt_type"] == "IndependentReview" and is_v2:
         signing_key = reviewer_keys.get(receipt["reviewer_key_id"])
         signature_label = REVIEWER_LABEL
-    elif receipt["receipt_type"] == "TestRun" and v2:
+    elif receipt["receipt_type"] == "TestRun" and is_v2:
         signing_key = signer_key
         signature_label = None
     else:
         signing_key = supervisor_key if is_supervisor else key
-        signature_label = RECEIPT_V2_LABEL if v2 else RECEIPT_LABEL
-    if receipt["receipt_type"] == "TestRun" and v2:
+        signature_label = RECEIPT_V2_LABEL if is_v2 else RECEIPT_LABEL
+    if receipt["receipt_type"] == "TestRun" and is_v2:
         att = receipt["runner_attestation"]
         signed_request = {**att["request"], "signature": att["signature"]}
         signature_ok = (
@@ -307,6 +330,27 @@ def _check_receipt(
     if not signature_ok:
         hard.append(f"{label} invalid signature")
         return None, True, False
+    if is_v3:
+        policy = manifest["analysis_policy"]
+        expected_rules = {
+            item["rule_id"] for item in manifest["required_rules"]
+            if item["slot"] == policy["slot"]
+        }
+        policy_fields = (
+            "analyzer_key_id", "analyzer_id", "analyzer_version", "analyzer_sha256",
+            "profile_id", "profile_sha256", "analysis_scope", "source_tree_scheme",
+        )
+        if receipt["slot"] != policy["slot"] or any(
+            receipt[field] != policy[field] for field in policy_fields
+        ):
+            hard.append(f"{label} analyzer provenance does not match manifest policy")
+            return None, True, False
+        if set(receipt["required_rule_ids"]) != expected_rules:
+            hard.append(f"{label} required rule IDs do not match manifest")
+            return None, True, False
+        if not set(receipt["covered_acceptance"]) <= set(policy["acceptance_ids"]):
+            hard.append(f"{label} covered acceptance exceeds the analysis policy")
+            return None, True, False
     derived = derive_result(receipt)
     if derived != receipt["result"]:
         hard.append(
@@ -344,6 +388,54 @@ def _check_artifacts(
                 f"artifact changed or missing"
             )
             return False
+    return True
+
+
+def _check_v3_analysis_artifacts(
+    receipt: dict,
+    hard: list[str],
+    artifact_resolver: Callable[[str], str | None] | None,
+    source_tree_resolver: Callable[[str, list[str]], str | None] | None,
+) -> bool:
+    """Resolve the signed report and trusted immutable source snapshot digests."""
+    if receipt.get("contract_version") != 3:
+        return True
+    label = f"receipt {receipt['receipt_id']}"
+    if artifact_resolver is None:
+        hard.append(f"{label} report digest present but no artifact_resolver")
+        return False
+    try:
+        report_digest = artifact_resolver(receipt["report_path"])
+    except Exception as exc:  # resolver is caller code: default-deny
+        hard.append(f"{label} report artifact resolver failed: {type(exc).__name__}")
+        return False
+    if report_digest != receipt["report_sha256"]:
+        hard.append(f"{label} report artifact digest does not match")
+        return False
+    for finding in receipt["findings"]:
+        try:
+            evidence_digest = artifact_resolver(finding["evidence_path"])
+        except Exception as exc:  # resolver is caller code: default-deny
+            hard.append(
+                f"{label} finding evidence resolver failed: {type(exc).__name__}"
+            )
+            return False
+        if evidence_digest != finding["evidence_sha256"]:
+            hard.append(f"{label} finding evidence digest does not match")
+            return False
+    if source_tree_resolver is None:
+        hard.append(f"{label} source-tree digest present but no source_tree_resolver")
+        return False
+    try:
+        source_digest = source_tree_resolver(
+            receipt["candidate_head"], list(receipt["analysis_scope"])
+        )
+    except Exception as exc:  # resolver is caller code: default-deny
+        hard.append(f"{label} source-tree resolver failed: {type(exc).__name__}")
+        return False
+    if source_digest != receipt["source_tree_sha256"]:
+        hard.append(f"{label} source-tree digest does not match the trusted snapshot")
+        return False
     return True
 
 
@@ -498,6 +590,31 @@ def _check_latest(
         required_rules = {
             r["rule_id"] for r in manifest["required_rules"] if r["slot"] == slot
         }
+        if latest.get("contract_version") == 3:
+            policy = manifest["analysis_policy"]
+            for finding in latest["findings"]:
+                findings.append(
+                    "analysis finding: "
+                    f"{finding['finding_id']} {finding['rule_id']} "
+                    f"{finding['severity']} {finding['path']}:{finding['line']}"
+                )
+            if set(latest["required_rule_ids"]) != required_rules:
+                hard.append(f"{label}: v3 required rules differ from the manifest")
+                return False, set()
+            allowed_acceptance = set(policy["acceptance_ids"])
+            receipt_acceptance = set(latest["covered_acceptance"])
+            if not receipt_acceptance <= allowed_acceptance:
+                hard.append(f"{label}: v3 acceptance IDs exceed the analysis policy")
+                return False, set()
+            if latest["result"] == "PASS" and receipt_acceptance != allowed_acceptance:
+                hard.append(f"{label}: passing v3 evidence must cover every policy acceptance ID")
+                return False, set()
+            if latest["coverage"] != "FULL":
+                soft.append(f"{label}: required analyzer coverage is {latest['coverage']}")
+                return False, set()
+            if latest["findings"]:
+                return False, set()
+            return True, allowed_acceptance
         missing = sorted(required_rules - set(latest["covered_rules"]))
         if missing:
             soft.append(f"{label}: required rules not covered: {', '.join(missing)}")
@@ -619,12 +736,16 @@ def evaluate(
     parser_catalog: dict | None = None,
     signer_key: bytes | None = None,
     event_key: bytes | None = None,
+    analyzer_keys: dict[str, bytes] | None = None,
+    source_tree_resolver: Callable[[str, list[str]], str | None] | None = None,
 ) -> dict:
     """Compute the GateDecision for one task candidate. See module docstring.
 
     artifact_resolver(path) returns the CURRENT sha256 hex of the artifact at
     path (or None when it is missing). TestRun receipts carrying artifact
-    digests are rejected (hard) when no resolver is given.
+    digests are rejected (hard) when no resolver is given. V3 analyzer evidence
+    also requires source_tree_resolver(candidate_head, analysis_scope) to return
+    the independently computed digest for the trusted immutable snapshot.
     """
     hard: list[str] = []
     soft: list[str] = []
@@ -654,6 +775,18 @@ def evaluate(
     if event_key is not None and not _key_ok(event_key):
         hard.append(f"event_key: must be bytes of length >= {MIN_KEY_BYTES}")
         fatal = True
+    trusted_analyzers: dict[str, bytes] = {}
+    if analyzer_keys is not None:
+        if not isinstance(analyzer_keys, dict):
+            hard.append("analyzer_keys must be a key-id to key mapping")
+            fatal = True
+        else:
+            for key_id, analyzer_key in analyzer_keys.items():
+                if not isinstance(key_id, str) or not key_id.strip() or not _key_ok(analyzer_key):
+                    hard.append("analyzer_keys contains an invalid key ID or key")
+                    fatal = True
+                    continue
+                trusted_analyzers[key_id] = bytes(analyzer_key)
     if not isinstance(receipts, list):
         hard.append("receipts: must be a list")
         fatal = True
@@ -664,6 +797,7 @@ def evaluate(
         supplied.append(("signer_key", signer_key))
     if event_key is not None:
         supplied.append(("event_key", event_key))
+    supplied.extend((f"analyzer_keys[{key_id}]", value) for key_id, value in trusted_analyzers.items())
     for i, (name_a, value_a) in enumerate(supplied):
         for name_b, value_b in supplied[i + 1:]:
             if (
@@ -692,7 +826,14 @@ def evaluate(
         )
 
     manifest_hash = manifest_sha256(valid_manifest)
-    is_v2 = valid_manifest.get("contract_version") == 2
+    manifest_version = valid_manifest.get("contract_version", 1)
+    is_v2 = manifest_version >= 2
+    if manifest_version == 3:
+        pinned_analyzer = valid_manifest["analysis_policy"]["analyzer_key_id"]
+        if pinned_analyzer not in trusted_analyzers:
+            hard.append("v3 gate requires the manifest-pinned analyzer key")
+        if not callable(source_tree_resolver):
+            hard.append("v3 gate requires a trusted source_tree_resolver")
     registry_map: dict[str, str] = {}
     trusted_reviewers = reviewer_keys or {}
     if is_v2:
@@ -706,6 +847,11 @@ def evaluate(
         all_reviewer_keys = [bytes(v) for v in trusted_reviewers.values() if _key_ok(v)]
         if len(set(all_reviewer_keys)) != len(all_reviewer_keys):
             hard.append("reviewer keys must be pairwise distinct")
+        all_analyzer_keys = list(trusted_analyzers.values())
+        if len(set(all_analyzer_keys)) != len(all_analyzer_keys):
+            hard.append("analyzer keys must be pairwise distinct")
+        if set(all_analyzer_keys) & set(all_reviewer_keys):
+            hard.append("analyzer keys must differ from reviewer keys")
         if any(bytes(k) in all_reviewer_keys for k in (key, supervisor_key, operator_key, signer_key, event_key) if _key_ok(k)):
             hard.append("reviewer keys must differ from worker, supervisor, operator, signer, and event keys")
     good: list[dict] = []
@@ -714,8 +860,9 @@ def evaluate(
     for index, raw in enumerate(receipts):
         receipt, own, future = _check_receipt(
             index, raw, valid_manifest, manifest_hash, current_epoch,
-            bytes(key), bytes(supervisor_key), trusted_reviewers, is_v2,
-            bytes(signer_key) if _key_ok(signer_key) else None, hard,
+            bytes(key), bytes(supervisor_key), trusted_reviewers, manifest_version,
+            bytes(signer_key) if _key_ok(signer_key) else None,
+            trusted_analyzers, hard,
         )
         own_count += 1 if own else 0
         stale_count += 1 if future else 0
@@ -783,6 +930,16 @@ def evaluate(
             soft.append(
                 f"slot {slot!r} latest attempt {latest['attempt']} rejected: "
                 f"artifact check failed"
+            )
+            unmet_slots.append(slot)
+            unmet_results.append(latest["result"])
+            continue
+        if not _check_v3_analysis_artifacts(
+            latest, hard, artifact_resolver, source_tree_resolver
+        ):
+            soft.append(
+                f"slot {slot!r} latest attempt {latest['attempt']} rejected: "
+                "analysis artifact check failed"
             )
             unmet_slots.append(slot)
             unmet_results.append(latest["result"])

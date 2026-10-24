@@ -81,6 +81,7 @@ MANIFEST_FIELDS = (
 MANIFEST_V2_FIELDS = MANIFEST_FIELDS + (
     "contract_version", "reviewer_registry", "mandatory_commands", "change_scope",
 )
+MANIFEST_V3_FIELDS = MANIFEST_V2_FIELDS + ("analysis_policy",)
 
 # Reserved slot name for supervisor-written receipts (WORKER_LOST,
 # RETRY_EXHAUSTED, BUDGET_EXCEEDED). Never a manifest slot; receipts in it are
@@ -136,6 +137,18 @@ RECEIPT_V2_TYPE_FIELDS = {
     "TestRun": ("parser_results", "diff_gate", "runner_attestation"),
     "IndependentReview": ("reviewer_key_id",),
 }
+RECEIPT_V3_TYPE_FIELDS = {
+    "StaticAnalysis": (
+        "analyzer_key_id", "analyzer_id", "analyzer_version", "analyzer_sha256",
+        "profile_id", "profile_sha256", "source_tree_sha256",
+        "analysis_scope", "source_tree_scheme", "report_path", "report_sha256",
+        "analysis_run_id",
+        "analysis_rule_ids", "required_rule_ids", "rule_statuses", "findings",
+    ),
+}
+RULE_STATUS = frozenset({"SUPPORTED_AND_CHECKED", "UNSUPPORTED"})
+FINDING_SEVERITY = frozenset({"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"})
+SOURCE_TREE_SCHEME = "vst-source-tree-c14n-sha256-v1"
 
 GATE_DECISION_FIELDS = (
     "task_id",
@@ -237,6 +250,16 @@ def _validate_repo_path(value: Any, name: str) -> str:
     return value
 
 
+def _validate_analysis_scope(value: Any, name: str) -> list[str]:
+    """Require exact repository paths; glob metacharacters are not selectors."""
+    paths = _req_str_list(value, name, nonempty=True, unique=True)
+    for index, path in enumerate(paths):
+        _validate_repo_path(path, f"{name}[{index}]")
+        if any(char in path for char in "*?[]"):
+            raise ContractError(f"{name}[{index}]: glob patterns are not allowed")
+    return paths
+
+
 # ------------------------------------------------------------- canonical form
 
 
@@ -301,12 +324,15 @@ def normalize_principal(value: Any) -> str:
 
 
 def validate_task_manifest(obj: Any) -> dict:
-    """Validate an explicit v1 or v2 TaskManifest and return a deep copy.
+    """Validate an explicit v1, v2 or v3 TaskManifest and return a deep copy.
 
     The v1 branch is intentionally unchanged: its canonical bytes and digest
-    remain stable. V2 fields are never silently defaulted into a v1 manifest.
+    remain stable. Versioned fields are never silently defaulted into older
+    manifests.
     """
     if isinstance(obj, dict) and "contract_version" in obj:
+        if obj.get("contract_version") == 3:
+            return validate_task_manifest_v3(obj)
         return validate_task_manifest_v2(obj)
     return _validate_task_manifest_v1(obj)
 
@@ -388,6 +414,53 @@ def validate_task_manifest_v2(obj: Any) -> dict:
         _validate_repo_path(path, f"change_scope.allowed_paths[{i}]")
     if len(paths) != len(set(paths)):
         raise ContractError("change_scope.allowed_paths: must not contain duplicates")
+    return copy.deepcopy(obj)
+
+
+def validate_task_manifest_v3(obj: Any) -> dict:
+    """Validate v3 analyzer policy while leaving v1/v2 schemas immutable."""
+    _check_keys(obj, MANIFEST_V3_FIELDS, "task_manifest_v3")
+    _req_int(obj["contract_version"], "contract_version", 3, 3)
+
+    # Reuse the complete v2 validation without changing the caller's v3 body.
+    v2_projection = {key: value for key, value in obj.items() if key != "analysis_policy"}
+    v2_projection["contract_version"] = 2
+    validate_task_manifest_v2(v2_projection)
+
+    policy = obj["analysis_policy"]
+    _check_keys(
+        policy,
+        (
+            "slot", "analyzer_key_id", "analyzer_id", "analyzer_version", "analyzer_sha256",
+            "profile_id", "profile_sha256", "analysis_scope", "acceptance_ids",
+            "source_tree_scheme",
+        ),
+        "analysis_policy",
+    )
+    slots = {item["slot"]: item["receipt_type"] for item in obj["required_receipts"]}
+    slot = _slot_of_type(policy["slot"], slots, "StaticAnalysis", "analysis_policy")
+    static_slots = [name for name, receipt_type in slots.items() if receipt_type == "StaticAnalysis"]
+    if static_slots != [slot]:
+        raise ContractError("analysis_policy.slot: v3 requires exactly one StaticAnalysis slot")
+    _req_str(policy["analyzer_key_id"], "analysis_policy.analyzer_key_id")
+    _req_str(policy["analyzer_id"], "analysis_policy.analyzer_id")
+    _req_str(policy["analyzer_version"], "analysis_policy.analyzer_version")
+    _req_hex(policy["analyzer_sha256"], "analysis_policy.analyzer_sha256", 64)
+    _req_str(policy["profile_id"], "analysis_policy.profile_id")
+    _req_hex(policy["profile_sha256"], "analysis_policy.profile_sha256", 64)
+    _validate_analysis_scope(policy["analysis_scope"], "analysis_policy.analysis_scope")
+    acceptance_ids = _req_str_list(
+        policy["acceptance_ids"], "analysis_policy.acceptance_ids", nonempty=True, unique=True
+    )
+    if not set(acceptance_ids) <= set(obj["acceptance"]):
+        raise ContractError("analysis_policy.acceptance_ids: IDs must be in manifest acceptance")
+    if _req_str(policy["source_tree_scheme"], "analysis_policy.source_tree_scheme") != SOURCE_TREE_SCHEME:
+        raise ContractError("analysis_policy.source_tree_scheme: unsupported digest scheme")
+    required_rules = {
+        item["rule_id"] for item in obj["required_rules"] if item["slot"] == slot
+    }
+    if not required_rules:
+        raise ContractError("analysis_policy.slot: requires at least one manifest rule")
     return copy.deepcopy(obj)
 
 
@@ -511,21 +584,120 @@ def validate_receipt(obj: Any) -> dict:
     if not isinstance(receipt_type, str) or receipt_type not in RECEIPT_TYPES:
         raise ContractError(f"receipt_type: must be one of {sorted(RECEIPT_TYPES)}")
     is_v2 = obj.get("contract_version") == 2
+    is_v3 = obj.get("contract_version") == 3
     fields = RECEIPT_COMMON_FIELDS + RECEIPT_TYPE_FIELDS[receipt_type]
     if is_v2:
         fields += RECEIPT_V2_EXTRA_FIELDS + RECEIPT_V2_TYPE_FIELDS.get(receipt_type, ())
+    elif is_v3:
+        if receipt_type != "StaticAnalysis":
+            raise ContractError("contract_version 3 is reserved for StaticAnalysis receipts")
+        fields += RECEIPT_V2_EXTRA_FIELDS + RECEIPT_V3_TYPE_FIELDS[receipt_type]
     _check_keys(obj, fields, f"receipt({receipt_type})")
     if is_v2:
         _req_int(obj["contract_version"], "contract_version", 2, 2)
+    elif is_v3:
+        _req_int(obj["contract_version"], "contract_version", 3, 3)
     _validate_common(obj)
     _TYPE_VALIDATORS[receipt_type](obj)
     if is_v2:
         _validate_receipt_v2(obj)
+    elif is_v3:
+        _validate_receipt_v3(obj)
     if obj["slot"] == SUPERVISOR_SLOT and receipt_type != "Documentation":
         raise ContractError(
             f"slot: {SUPERVISOR_SLOT!r} is reserved for Documentation receipts"
         )
     return copy.deepcopy(obj)
+
+
+def _validate_receipt_v3(obj: dict) -> None:
+    _validate_static_analysis_v3(obj)
+
+
+def _validate_static_analysis_v3(obj: dict) -> None:
+    _req_str_list(obj["covered_acceptance"], "covered_acceptance", unique=True)
+    _req_str_list(obj["covered_rules"], "covered_rules", unique=True)
+    _req_str_list(obj["unsupported_rules"], "unsupported_rules", unique=True)
+    _req_str(obj["analyzer_key_id"], "analyzer_key_id")
+    _req_str(obj["analyzer_id"], "analyzer_id")
+    _req_str(obj["analyzer_version"], "analyzer_version")
+    _req_hex(obj["analyzer_sha256"], "analyzer_sha256", 64)
+    _req_str(obj["profile_id"], "profile_id")
+    _req_hex(obj["profile_sha256"], "profile_sha256", 64)
+    _req_hex(obj["source_tree_sha256"], "source_tree_sha256", 64)
+    if _req_str(obj["source_tree_scheme"], "source_tree_scheme") != SOURCE_TREE_SCHEME:
+        raise ContractError("source_tree_scheme: unsupported digest scheme")
+    _req_hex(obj["report_sha256"], "report_sha256", 64)
+    _req_str(obj["analysis_run_id"], "analysis_run_id")
+    if obj["analysis_run_id"] != obj["invocation_id"]:
+        raise ContractError("analysis_run_id: must equal the signed invocation_id")
+
+    for name in ("analysis_rule_ids", "required_rule_ids"):
+        _req_str_list(obj[name], name, nonempty=True, unique=True)
+    analysis_rules = set(obj["analysis_rule_ids"])
+    required_rules = set(obj["required_rule_ids"])
+    if not required_rules <= analysis_rules:
+        raise ContractError("required_rule_ids: must be present in analysis_rule_ids")
+
+    scope = _validate_analysis_scope(obj["analysis_scope"], "analysis_scope")
+    _validate_repo_path(obj["report_path"], "report_path")
+
+    statuses = obj["rule_statuses"]
+    if not isinstance(statuses, list):
+        raise ContractError("rule_statuses: must be a list")
+    status_map: dict[str, str] = {}
+    for index, item in enumerate(statuses):
+        ctx = f"rule_statuses[{index}]"
+        _check_keys(item, ("rule_id", "status"), ctx)
+        rule_id = _req_str(item["rule_id"], f"{ctx}.rule_id")
+        status = _req_enum(item["status"], RULE_STATUS, f"{ctx}.status")
+        if rule_id in status_map:
+            raise ContractError(f"{ctx}.rule_id: duplicate rule status {rule_id!r}")
+        status_map[rule_id] = status
+    if set(status_map) != analysis_rules:
+        raise ContractError("rule_statuses: IDs must exactly match analysis_rule_ids")
+
+    checked = {rule_id for rule_id, status in status_map.items() if status == "SUPPORTED_AND_CHECKED"}
+    unsupported = set(status_map) - checked
+    if set(obj["covered_rules"]) != checked or set(obj["unsupported_rules"]) != unsupported:
+        raise ContractError("covered_rules and unsupported_rules must match rule_statuses")
+    required_checked = required_rules & checked
+    required_unsupported = required_rules & unsupported
+    expected_coverage = (
+        "FULL" if not required_unsupported
+        else "PARTIAL" if required_checked
+        else "NOT_COVERED"
+    )
+    if obj["coverage"] != expected_coverage:
+        raise ContractError(
+            f"coverage: must be {expected_coverage} from required rule statuses"
+        )
+
+    findings = obj["findings"]
+    if not isinstance(findings, list):
+        raise ContractError("findings: must be a list")
+    finding_ids: set[str] = set()
+    for index, finding in enumerate(findings):
+        ctx = f"findings[{index}]"
+        _check_keys(
+            finding,
+            ("finding_id", "rule_id", "severity", "evidence_path", "evidence_sha256", "path", "line"),
+            ctx,
+        )
+        finding_id = _req_str(finding["finding_id"], f"{ctx}.finding_id")
+        if finding_id in finding_ids:
+            raise ContractError(f"{ctx}.finding_id: duplicate finding ID {finding_id!r}")
+        finding_ids.add(finding_id)
+        rule_id = _req_str(finding["rule_id"], f"{ctx}.rule_id")
+        if rule_id not in checked:
+            raise ContractError(f"{ctx}.rule_id: findings require a checked rule")
+        _req_enum(finding["severity"], FINDING_SEVERITY, f"{ctx}.severity")
+        _validate_repo_path(finding["evidence_path"], f"{ctx}.evidence_path")
+        _req_hex(finding["evidence_sha256"], f"{ctx}.evidence_sha256", 64)
+        source_path = _validate_repo_path(finding["path"], f"{ctx}.path")
+        if source_path not in set(scope):
+            raise ContractError(f"{ctx}.path: must be included in analysis_scope")
+        _req_int(finding["line"], f"{ctx}.line", 1)
 
 
 def _validate_receipt_v2(obj: dict) -> None:
@@ -684,6 +856,8 @@ def derive_result(receipt: dict) -> str:
     if receipt_type == "TestRun":
         return _derive_test_run(receipt)
     if receipt_type == "StaticAnalysis":
+        if receipt.get("contract_version") == 3:
+            return _derive_static_analysis_v3(receipt)
         return _derive_static_analysis(receipt)
     if receipt_type == "IndependentReview":
         return _derive_independent_review(receipt)
@@ -720,6 +894,13 @@ def _derive_static_analysis(receipt: dict) -> str:
     ):
         return "PASS"
     return "INCONCLUSIVE"
+
+
+def _derive_static_analysis_v3(receipt: dict) -> str:
+    """V3 coverage is derived from the required-rule partition, not optional rules."""
+    if receipt["findings"]:
+        return "FAIL"
+    return "PASS" if receipt["coverage"] == "FULL" else "INCONCLUSIVE"
 
 
 def _derive_independent_review(receipt: dict) -> str:

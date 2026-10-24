@@ -52,6 +52,40 @@ V2 waivers add `waived_results`; its non-empty list may contain only `NOT_RUN`,
 `INCONCLUSIVE`, or `BLOCKED`. Missing evidence, `FAIL`, reviewer `MODIFY`, and `NO_GO` are
 not waivable. The gate rejects a waiver unless each unmet result is explicitly in that list.
 
+### Explicit v3 bounded analyzer additions
+
+V3 is selected only by `contract_version: 3` and has the exact v2 manifest fields plus
+`analysis_policy`. The policy pins one StaticAnalysis slot, `analyzer_key_id`, analyzer ID,
+version and executable digest, profile ID and digest, a unique exact repository-relative
+`analysis_scope`, `acceptance_ids` limited to manifest acceptance, and the closed
+`source_tree_scheme` value `vst-source-tree-c14n-sha256-v1`. The analysis scope is independent
+of `change_scope.allowed_paths`: the former describes source inputs; the latter limits candidate
+changes.
+
+Only the v3 StaticAnalysis receipt uses `contract_version: 3`; other receipt types under a v3
+manifest retain their existing v2 schemas and signature domains. The analyzer receipt pins the
+same analyzer/profile/scope/scheme, includes the source-tree digest, exact report path and digest,
+`analysis_run_id` equal to the signed `invocation_id`, a complete checked/unsupported partition
+for its declared rule IDs, the manifest's exact required rule IDs, unique covered acceptance IDs,
+and typed findings with evidence-path digest plus source path/line. V1 and v2 field sets and canonical signed bodies do
+not change.
+
+The gate verifies analyzer receipts only with the manifest-pinned key in the separate
+`analyzer_keys` mapping and `ANALYZER_V3_LABEL`; analyzer keys must be distinct from every other
+trust root. It requires `artifact_resolver` to recompute report and finding evidence file hashes,
+and a trusted `source_tree_resolver(candidate_head, analysis_scope)` to reproduce the source
+tree digest. Missing or mismatched resolvers fail closed. Coverage is FULL only when every
+required rule is checked; a finding derives FAIL and yields no acceptance. With no findings,
+FULL derives PASS, while PARTIAL/NOT_COVERED derives INCONCLUSIVE. Static acceptance comes only
+from the manifest's `analysis_policy.acceptance_ids`.
+
+`tools/vst/source_tree.py::source_tree_sha256` defines the `vst-source-tree-c14n-sha256-v1`
+scheme: sort exact normalized scope paths, hash each regular file's raw bytes with SHA-256, then
+hash canonical JSON `{scheme, files:[{path,size,sha256},...]}`. It rejects symbolic links,
+non-regular files, traversal, files changed during hashing, more than 4,096 files, and more than
+64 MiB by default. It hashes a supplied snapshot only; it does not create or enforce the
+snapshot's read-only boundary.
+
 ## Receipt (`validate_receipt`)
 
 Common fields: `manifest_sha256` (64 hex, REQUIRED, must equal `manifest_sha256(manifest)` at the gate); a receipt whose `slot` is `SUPERVISOR_SLOT` must be a Documentation receipt; `receipt_id`, `task_id`, `slot` (matches a manifest slot or `SUPERVISOR_SLOT`), `runner_id`, `resolved_model`, `invocation_id`, `created_at` are non-empty str; `receipt_type` in RECEIPT_TYPES; `attempt` int >= 1; `prev_receipt_sha256` is null iff attempt == 1, else 64 hex; `candidate_head` 40 hex; `epoch` int >= 1; `role_sha256` 64 hex; `result` in RESULT; `signature` 64 hex.

@@ -1502,7 +1502,11 @@ class Store:
                     kind="slot",
                 )
         is_v2 = valid.get("contract_version") == 2
-        if not is_v2 and not verify(valid, key):
+        is_v3_analysis = (
+            valid.get("contract_version") == 3
+            and valid["receipt_type"] == "StaticAnalysis"
+        )
+        if not is_v2 and not is_v3_analysis and not verify(valid, key):
             raise StoreError("invalid receipt signature", kind="signature")
         if is_v2 and valid["receipt_type"] == "TestRun":
             # The runner key is deliberately not available to the store. The
@@ -1512,6 +1516,9 @@ class Store:
         elif is_v2 and valid["receipt_type"] != "IndependentReview":
             if not verify(valid, key, RECEIPT_V2_LABEL):
                 raise StoreError("invalid v2 receipt signature", kind="signature")
+        # V3 analyzer signatures use a separate trust root supplied only to the
+        # authoritative gate. The store retains the structurally valid receipt;
+        # gate evaluation performs the signature verification.
         if derive_result(valid) != valid["result"]:
             raise StoreError("receipt result does not match the derived result", kind="signature")
         story = self._story_row(conn, story_id)
@@ -2966,7 +2973,7 @@ class Store:
             "check_description": reason,
             "covered_acceptance": [],
         }
-        if manifest.get("contract_version") == 2:
+        if manifest.get("contract_version", 1) >= 2:
             body["contract_version"] = 2
             body["signature"] = sign(dict(body), supervisor_key, RECEIPT_V2_LABEL)
         else:

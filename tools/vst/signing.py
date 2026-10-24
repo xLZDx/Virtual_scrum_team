@@ -19,6 +19,7 @@ from .contracts import ContractError, canonical_bytes
 
 RECEIPT_LABEL = b"vst-receipt-v1\0"
 RECEIPT_V2_LABEL = b"vst-receipt-v2\0"
+ANALYZER_V3_LABEL = b"vst-static-analysis-analyzer-v3\0"
 WAIVER_LABEL = b"vst-waiver-v1\0"
 REVIEWER_LABEL = b"vst-independent-review-v2\0"
 REVIEWER_REGISTRY_LABEL = b"vst-reviewer-registry-v2\0"

@@ -308,3 +308,7 @@ Perform seeded fixture-to-manifest ID comparison only after report metadata has 
 
 Use a self-contained Git bundle over the Windows-to-WSL stdin boundary; do not depend on drive automount, host path mounts, network access, or an archive without Git provenance. Require a clean named branch, exact SHA equality after clone, sender/receiver bundle-digest equality, a pre-provisioned runner-owned mode-2710 root shared only for worker traversal, and a runner-owned, worker-readable/nonwritable clone. The transfer command does not provision the distro or signer and has not been executed. See change record 0101; source-transfer acceptance remains `NOT_RUN`.
 
+# 2026-10-25 -- Add a separate v3 bounded analyzer evidence contract
+
+Keep v1/v2 signed bodies unchanged. A v3 manifest pins one StaticAnalysis slot, analyzer authority, executable/profile identities, scope, digest scheme and acceptance IDs; only its StaticAnalysis receipt uses v3, while other receipt types retain their existing v2 contracts. The gate verifies the analyzer key under `ANALYZER_V3_LABEL`, requires pairwise-distinct trust roots, recomputes report/finding artifacts and source-tree digest, and grants acceptance only to the manifest policy. Any finding derives FAIL. The source-tree helper hashes a caller-supplied snapshot but does not provision or enforce the runtime boundary. The real AEVE executable/attestor remains unavailable and unverified. See change record 0120; no runtime or test pass is claimed.
+
