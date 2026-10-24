@@ -3,14 +3,19 @@ from __future__ import annotations
 
 import shutil
 import os
+import threading
+import json
+import sqlite3
 
 import pytest
 
-from tools.vst.lifecycle import AnchorError, FileExternalAnchor
+from tools.vst import lifecycle as lifecycle_module, store as store_module
+from tools.vst.lifecycle import AnchorError, FileExternalAnchor, signed_checkpoint
 from tools.vst.supervisor import Supervisor
-from tools.vst.store import Store, StoreError
+from tools.vst.store import GENESIS_HASH, Store, StoreError
 from tests.vst.e1e4_helpers import (
-    EVENT_KEY, HEAD, HEAD2, KEY, STORY, SUPERVISOR_KEY, TASK, new_env, receipt,
+    EVENT_KEY, HEAD, HEAD2, KEY, OPERATOR_KEY, STORY, SUPERVISOR_KEY, TASK, new_env, receipt,
+    manifest as base_manifest,
 )
 
 EVENT = b"s2-store-event-key-0123456789-abcdef"
@@ -28,7 +33,7 @@ def test_anchor_compare_append_is_idempotent_and_rejects_same_count_fork(tmp_pat
     assert anchor.compare_and_append(None, signed) == signed
     assert anchor.compare_and_append(None, signed) == signed
     fork = signed_checkpoint(1, "b" * 64, EVENT)
-    with pytest.raises(AnchorError, match="different head|conflict"):
+    with pytest.raises(AnchorError, match="different head|conflict|immediate successor"):
         anchor.compare_and_append(signed, fork)
 
 
@@ -54,6 +59,91 @@ def test_sandbox_mode_requires_anchor_and_supervisor_reconciliation_key(tmp_path
         Store(str(tmp_path / "missing-key.db"), event_key=EVENT, sandbox_mode=True, anchor_path=str(tmp_path / "anchor"))
 
 
+@pytest.mark.parametrize("failure_stage", ["setup", "acquire"])
+def test_coordinator_oserror_is_normalized_and_store_connection_is_closed(tmp_path, monkeypatch, failure_stage):
+    """Inject coordinator failures without changing host paths or permissions."""
+    real_connect = store_module.sqlite3.connect
+    connections = []
+
+    def track_connection(*args, **kwargs):
+        connection = real_connect(*args, **kwargs)
+        connections.append(connection)
+        return connection
+
+    monkeypatch.setattr(store_module.sqlite3, "connect", track_connection)
+
+    def fail(*args, **kwargs):
+        raise OSError("injected coordinator failure")
+
+    if failure_stage == "setup":
+        monkeypatch.setattr(lifecycle_module.os, "makedirs", fail)
+    elif os.name == "nt":
+        import msvcrt
+        monkeypatch.setattr(msvcrt, "locking", fail)
+    else:
+        import fcntl
+        monkeypatch.setattr(fcntl, "flock", fail)
+
+    with pytest.raises(StoreError, match="coordinator setup failed: injected coordinator failure"):
+        Store(
+            str(tmp_path / f"coordinator-{failure_stage}.db"),
+            event_key=EVENT,
+            anchor_path=str(tmp_path / f"coordinator-{failure_stage}.anchor"),
+        )
+
+    assert len(connections) == 1
+    with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+        connections[0].execute("SELECT 1")
+
+
+def test_coordinator_unlock_oserror_is_typed_and_releases_path_mutex(tmp_path, monkeypatch):
+    anchor = FileExternalAnchor(str(tmp_path / "unlock-failure" / "anchor.jsonl"), EVENT)
+    failed_once = False
+
+    def fail_first_unlock(real_lock, unlock_mode):
+        def injected(fd, mode, *extra):
+            nonlocal failed_once
+            if mode == unlock_mode and not failed_once:
+                failed_once = True
+                raise OSError("injected coordinator unlock failure")
+            return real_lock(fd, mode, *extra)
+        return injected
+
+    if os.name == "nt":
+        import msvcrt
+        monkeypatch.setattr(
+            msvcrt, "locking",
+            fail_first_unlock(msvcrt.locking, msvcrt.LK_UNLCK),
+        )
+    else:
+        import fcntl
+        monkeypatch.setattr(
+            fcntl, "flock",
+            fail_first_unlock(fcntl.flock, fcntl.LOCK_UN),
+        )
+
+    with pytest.raises(AnchorError, match="coordinator unlock failed: injected coordinator unlock failure"):
+        with anchor.transaction_lock():
+            pass
+
+    entered = threading.Event()
+    failures = []
+
+    def acquire_after_failure():
+        try:
+            with anchor.transaction_lock():
+                entered.set()
+        except BaseException as exc:
+            failures.append(exc)
+
+    retry = threading.Thread(target=acquire_after_failure, daemon=True)
+    retry.start()
+    assert entered.wait(timeout=5), "coordinator path mutex remained held after unlock failure"
+    retry.join(timeout=5)
+    assert not retry.is_alive()
+    assert failures == []
+
+
 @pytest.mark.skipif(os.name != "posix", reason="NOT_RUN: interrupted anchor recovery requires POSIX sandbox")
 def test_exactly_one_event_ahead_is_recovered_before_mutation(tmp_path):
     db, anchor = tmp_path / "recovery.db", tmp_path / "anchor.jsonl"
@@ -67,16 +157,187 @@ def test_exactly_one_event_ahead_is_recovered_before_mutation(tmp_path):
         assert recovered.event_anchor()[0] == 1
 
 
+@pytest.mark.skipif(os.name != "posix", reason="NOT_RUN: interrupted external-anchor suffix recovery requires the provisioned POSIX sandbox")
+def test_multi_event_transaction_recovers_suffix_after_one_checkpoint_append(tmp_path, monkeypatch):
+    db, anchor_path = tmp_path / "multi-event-recovery.db", tmp_path / "multi-event-anchor.jsonl"
+    store = Store(str(db), event_key=EVENT, anchor_path=str(anchor_path))
+    original_append = store._external_anchor.compare_and_append
+    appended = 0
+
+    def interrupt_after_first_append(expected, checkpoint):
+        nonlocal appended
+        result = original_append(expected, checkpoint)
+        appended += 1
+        if appended == 1:
+            raise AnchorError("injected interruption after first checkpoint append")
+        return result
+
+    monkeypatch.setattr(store._external_anchor, "compare_and_append", interrupt_after_first_append)
+    try:
+        with pytest.raises(StoreError, match="injected interruption"):
+            with store._tx() as conn:
+                store._record_event_locked(conn, "task", "actor", "NOTE", {"n": 1})
+                store._record_event_locked(conn, "task", "actor", "NOTE", {"n": 2})
+        assert appended == 1
+    finally:
+        store.close()
+
+    with Store(str(db), event_key=EVENT, anchor_path=str(anchor_path)) as recovered:
+        assert recovered.reconciliation_complete
+        assert recovered.verify_event_chain()
+        count, head = recovered.event_anchor()
+        assert count == 2
+        assert recovered._external_anchor.read_latest() == signed_checkpoint(count, head, EVENT)
+
+
+def test_two_store_instances_serialize_concurrent_write_and_anchor_sync(tmp_path):
+    db, anchor_path = tmp_path / "concurrent-writes.db", tmp_path / "concurrent-anchor.jsonl"
+    with Store(str(db), event_key=EVENT, anchor_path=str(anchor_path)):
+        pass
+
+    barrier = threading.Barrier(2)
+    results = []
+    failures = []
+
+    def write_from_instance(index):
+        store = None
+        try:
+            store = Store(str(db), event_key=EVENT, anchor_path=str(anchor_path))
+            barrier.wait(timeout=10)
+            store.record_event("task", f"actor-{index}", "NOTE", {"writer": index})
+            barrier.wait(timeout=10)
+            results.append((store.event_anchor(), store.reconciliation_complete, store._integrity_locked))
+        except BaseException as exc:
+            failures.append(exc)
+        finally:
+            if store is not None:
+                store.close()
+
+    threads = [threading.Thread(target=write_from_instance, args=(index,)) for index in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=20)
+
+    assert all(not thread.is_alive() for thread in threads)
+    assert not failures
+    assert len(results) == 2
+    assert all(complete and not locked for _, complete, locked in results)
+    assert results[0][0] == results[1][0]
+    assert results[0][0][0] == 2
+    anchor = FileExternalAnchor(str(anchor_path), EVENT)
+    final_count, final_head = results[0][0]
+    assert anchor.read_latest() == signed_checkpoint(final_count, final_head, EVENT)
+
+
+def test_gate_and_anchor_readers_racing_writer_do_not_permanently_lock_store(tmp_path):
+    db, anchor_path = tmp_path / "reader-writer-race.db", tmp_path / "reader-writer-anchor.jsonl"
+    with Store(str(db), event_key=EVENT, anchor_path=str(anchor_path)) as initial:
+        initial.init_slots(2)
+        initial.open_story(STORY, "proj", 4)
+        epoch = initial.acquire_epoch(STORY, "owner-a", 600)
+        initial.register_task(base_manifest())
+
+    barrier = threading.Barrier(2)
+    failures = []
+    statuses = []
+
+    def read_repeatedly():
+        store = None
+        try:
+            store = Store(str(db), event_key=EVENT, anchor_path=str(anchor_path))
+            for index in range(8):
+                barrier.wait(timeout=10)
+                if index % 2:
+                    store.event_anchor()
+                else:
+                    store.evaluate_gate(
+                        TASK, HEAD, epoch, KEY,
+                        supervisor_key=SUPERVISOR_KEY,
+                        operator_key=OPERATOR_KEY,
+                        event_key=EVENT_KEY,
+                    )
+                statuses.append((store.reconciliation_complete, store._integrity_locked))
+                barrier.wait(timeout=10)
+            store.verify_event_chain()
+        except BaseException as exc:
+            failures.append(exc)
+        finally:
+            if store is not None:
+                store.close()
+
+    def write_repeatedly():
+        store = None
+        try:
+            store = Store(str(db), event_key=EVENT, anchor_path=str(anchor_path))
+            for index in range(8):
+                barrier.wait(timeout=10)
+                store.record_event("task", "writer", "NOTE", {"index": index})
+                barrier.wait(timeout=10)
+            statuses.append((store.reconciliation_complete, store._integrity_locked))
+        except BaseException as exc:
+            failures.append(exc)
+        finally:
+            if store is not None:
+                store.close()
+
+    threads = [threading.Thread(target=read_repeatedly), threading.Thread(target=write_repeatedly)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=30)
+
+    assert all(not thread.is_alive() for thread in threads)
+    assert not failures
+    assert len(statuses) == 9
+    assert all(complete and not locked for complete, locked in statuses)
+    with Store(str(db), event_key=EVENT, anchor_path=str(anchor_path)) as verified:
+        assert verified.reconciliation_complete
+        assert verified.verify_event_chain()
+        count, head = verified.event_anchor()
+        assert count >= 8
+        assert verified._external_anchor.read_latest() == signed_checkpoint(count, head, EVENT)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="NOT_RUN: POSIX external-anchor failure states require the provisioned POSIX sandbox")
 @pytest.mark.parametrize("anchor_state", [
-    "database_more_than_one_event_ahead",
-    "anchor_missing_for_nonempty_database",
-    "anchor_tampered_or_malformed",
-    "interruption_during_anchor_append",
-    "restart_during_interrupted_recovery",
+    "external_anchor_ahead_of_database",
+    "external_anchor_missing_for_nonempty_database",
+    "forked_checkpoint_suffix",
+    "malformed_checkpoint_suffix",
+    "tampered_checkpoint_suffix",
 ])
-@pytest.mark.skip(reason="NOT_RUN: POSIX external-anchor failure state requires the provisioned sandbox and safe interruption injection; no synthetic anchor result is accepted")
-def test_unavailable_posix_anchor_failure_states_not_run(anchor_state):
-    pytest.skip(anchor_state)
+def test_invalid_external_anchor_suffix_fails_closed(tmp_path, anchor_state):
+    db, anchor_path = tmp_path / f"{anchor_state}.db", tmp_path / f"{anchor_state}.jsonl"
+    with Store(str(db), event_key=EVENT, anchor_path=str(anchor_path)) as initial:
+        initial.record_event("task", "actor", "NOTE", {"valid": 1})
+        initial.record_event("task", "actor", "NOTE", {"valid": 2})
+        expected_latest = initial._external_anchor.read_latest()
+
+    anchor = FileExternalAnchor(str(anchor_path), EVENT)
+    if anchor_state == "external_anchor_ahead_of_database":
+        anchor.compare_and_append(
+            expected_latest, signed_checkpoint(3, "f" * 64, EVENT)
+        )
+    elif anchor_state == "external_anchor_missing_for_nonempty_database":
+        os.unlink(anchor_path)
+    elif anchor_state == "forked_checkpoint_suffix":
+        anchor_path.write_bytes(
+            (json.dumps(signed_checkpoint(0, GENESIS_HASH, EVENT)) + "\n"
+             + json.dumps(signed_checkpoint(1, "e" * 64, EVENT)) + "\n").encode()
+        )
+    elif anchor_state == "malformed_checkpoint_suffix":
+        with open(anchor_path, "ab") as stream:
+            stream.write(b"{malformed checkpoint}\n")
+    else:
+        with open(anchor_path, "ab") as stream:
+            stream.write(b'{"count":3,"head":"' + b"f" * 64 + b'","signature":"bad"}\n')
+
+    with Store(str(db), event_key=EVENT, anchor_path=str(anchor_path)) as rejected:
+        assert not rejected.reconciliation_complete
+        assert rejected._integrity_locked
+        with pytest.raises(StoreError, match="integrity-locked|anchor|checkpoint|database"):
+            rejected.record_event("task", "actor", "NOTE", {"must_fail": True})
 
 
 def test_store_and_supervisor_refuse_lease_start_or_decision_before_reconciliation(tmp_path):
@@ -103,6 +364,22 @@ def test_store_and_supervisor_refuse_lease_start_or_decision_before_reconciliati
         store.close()
 
 
+def test_record_event_rejects_caller_forged_reserved_control_note(tmp_path):
+    store = Store(str(tmp_path / "forged-control-note.db"), event_key=EVENT)
+    try:
+        before = store._conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+        with pytest.raises(StoreError, match="reserved supervisor control payload"):
+            store.record_event(
+                "__control__", "supervisor", "NOTE",
+                {"_vst_control_type": "CONTROL_BREAKER_OVERRIDE", "event_id": "forged-1"},
+            )
+        after = store._conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+        assert after == before
+        assert store.control_events() == []
+    finally:
+        store.close()
+
+
 def test_supervisor_consumes_a_synthetic_probe_once_for_one_run(tmp_path):
     """Protocol fixture only; these booleans do not claim a real sandbox result."""
     import hashlib
@@ -110,7 +387,16 @@ def test_supervisor_consumes_a_synthetic_probe_once_for_one_run(tmp_path):
     from tools.vst.signing import sign
 
     probe_key = b"s2-probe-once-key-0123456789-abcdef"
+    operator_key = b"s2-operator-once-key-0123456789-abcdef"
     spec_sha = hashlib.sha256(SPEC_PATH.read_bytes()).hexdigest()
+    from tools.vst.preflight import sign_network_policy_attestation
+    attestation_body = {
+        "run_id": "unit-run-1", "spec_sha256": spec_sha, "nonce": "unit-nonce-1",
+        "environment_id": "synthetic-fixture-only", "policy_sha256": "a" * 64,
+        "evidence_sha256": "b" * 64, "empty_external_allowlist": True,
+        "no_container_socket": True, "no_unapproved_host_paths": True,
+    }
+    attestation = sign_network_policy_attestation(attestation_body, operator_key)
     checks = {
         "automount_disabled": True, "interop_disabled": True, "no_container_socket": True,
         "non_root": True, "external_egress_blocked": True, "loopback_canary": True,
@@ -118,14 +404,18 @@ def test_supervisor_consumes_a_synthetic_probe_once_for_one_run(tmp_path):
     }
     body = {
         "run_id": "unit-run-1", "spec_sha256": spec_sha, "nonce": "unit-nonce-1",
-        "checked_properties": checks, "result": "PASS", "inventory": {"fixture": True},
+        "checked_properties": checks, "result": "PASS",
+        "inventory": {
+            "fixture": True, "container_socket_inventory_complete": True,
+            "network_policy_attestation": attestation,
+        },
     }
     probe = {**body, "signature": sign(body, probe_key, PROBE_LABEL)}
     with Store(str(tmp_path / "probe-once.db"), event_key=EVENT_KEY) as store:
         store.sandbox_mode = True  # exercise run-bound supervisor logic, not host isolation
         supervisor = Supervisor(
             store, operation_backend=object(), run_id="unit-run-1",
-            probe_nonce="unit-nonce-1", probe_key=probe_key,
+            probe_nonce="unit-nonce-1", probe_key=probe_key, operator_key=operator_key,
         )
         starts = []
         assert supervisor.start_worker(lambda: starts.append("first"), probe=probe) is None
@@ -138,7 +428,7 @@ def test_supervisor_consumes_a_synthetic_probe_once_for_one_run(tmp_path):
         assert starts == ["first"]
         restarted = Supervisor(
             store, operation_backend=object(), run_id="unit-run-1",
-            probe_nonce="unit-nonce-1", probe_key=probe_key,
+            probe_nonce="unit-nonce-1", probe_key=probe_key, operator_key=operator_key,
         )
         with pytest.raises(StoreError, match="already consumed"):
             restarted.start_worker(lambda: starts.append("restart-reuse"), probe=probe)

@@ -4,24 +4,27 @@ from __future__ import annotations
 import os
 import hashlib
 import inspect
+import io
 import json
 import sqlite3
 import struct
 import subprocess
 import threading
+from types import SimpleNamespace
 
 import pytest
 
 from tools.vst import contracts
+from tools.vst import runner
 from tools.vst.lifecycle import STOP_TRANSITIONS, transition
 from tools.vst.runner import _derive_head, run_manifest_commands
 from tools.vst.signer import AuthenticatedSigner, validate_signing_request
 from tools.vst.signing import (
     DIFF_GATE_LABEL, RECEIPT_V2_LABEL, REVIEWER_LABEL, REVIEWER_REGISTRY_LABEL,
-    SIGNING_REQUEST_LABEL, sign, verify,
+    OPERATOR_MANUAL_OVERRIDE_LABEL, SIGNING_REQUEST_LABEL, sign, verify,
 )
 from tools.vst.supervisor import Supervisor
-from tools.vst.store import Store, StoreError
+from tools.vst.store import ACTION_RESOLUTION_LABEL, Store, StoreError
 from tests.vst.e1e4_helpers import (
     EVENT_KEY, KEY, OPERATOR_KEY, SUPERVISOR_KEY, TASK,
     manifest as base_manifest, unsigned_receipt,
@@ -31,6 +34,18 @@ from tests.vst.e1e4_helpers import (
 KEY = b"s2-test-runner-key-0123456789-abcdef"
 EVENT = b"s2-test-event-key-0123456789-abcdef"
 SIGNER_KEY = b"s2-test-isolated-signer-key-0123456789"
+
+
+def signed_action_resolution(action_id, action, attempt, completed, resolution_id, *, key=OPERATOR_KEY):
+    body = {
+        "action_id": action_id,
+        "action": action,
+        "attempt": attempt,
+        "completed": completed,
+        "resolution_id": resolution_id,
+        "evidence_sha256": "e" * 64,
+    }
+    return {**body, "signature": sign(body, key, ACTION_RESOLUTION_LABEL)}
 
 
 class Backend:
@@ -71,24 +86,362 @@ def test_lifecycle_transition_table_rejects_unlisted_pairs():
         transition("READY", "STOP")
 
 
-def test_breaker_blocks_start_until_distinct_manual_override(tmp_path):
+def _manual_override_record(
+    episode_id, config_id="breaker-config-v1", *, record_id="override-1",
+    verdict="REVIEW_REQUIRED",
+):
+    body = {
+        "id": record_id,
+        "action": "manual_override",
+        "breaker_state": "PAUSED_PROVIDER",
+        "breaker_episode_id": episode_id,
+        "breaker_config_id": config_id,
+        "verdict": verdict,
+        "evidence_sha256": "d" * 64,
+    }
+    return {**body, "signature": sign(body, OPERATOR_KEY, OPERATOR_MANUAL_OVERRIDE_LABEL)}
+
+
+def _paused_supervisor(tmp_path, *, record_sink=None):
     db = tmp_path / "state.db"
-    with Store(str(db), event_key=EVENT) as store:
-        backend = Backend(str(tmp_path / "remote.git"))
-        recorded = []
-        supervisor = Supervisor(store, operation_backend=backend, failure_threshold=2,
-                                manual_override_recorder=recorded.append)
-        supervisor.provider_failed()
-        supervisor.provider_failed()
+    store = Store(str(db), event_key=EVENT)
+    supervisor = Supervisor(
+        store, operation_backend=object(), failure_threshold=2,
+        manual_override_recorder=record_sink or (lambda record: None),
+        operator_key=OPERATOR_KEY,
+    )
+    supervisor.provider_failed("override-episode-failure-1")
+    supervisor.provider_failed("override-episode-failure-2")
+    return store, supervisor
+
+
+def test_breaker_requires_operator_signed_override_bound_to_active_episode(tmp_path):
+    recorded = []
+    store, supervisor = _paused_supervisor(tmp_path, record_sink=recorded.append)
+    try:
         started = []
         with pytest.raises(StoreError, match="breaker is open"):
             supervisor.start_worker(lambda: started.append(True))
-        assert not started
-        with pytest.raises(StoreError, match="plain APPROVE"):
-            supervisor.manual_override({"record_id": "override-1", "verdict": "APPROVE"})
-        supervisor.manual_override({"record_id": "override-1", "verdict": "REVIEW_REQUIRED"})
-        assert recorded == [{"record_id": "override-1", "verdict": "REVIEW_REQUIRED"}]
+        assert started == []
+
+        valid = _manual_override_record("override-episode-failure-2")
+        unsigned = {key: value for key, value in valid.items() if key != "signature"}
+        with pytest.raises(StoreError, match="signature must bind|signature is invalid"):
+            supervisor.manual_override(unsigned)
+
+        tampered = {**valid, "verdict": "REVIEW_DEFERRED"}
+        with pytest.raises(StoreError, match="signature is invalid"):
+            supervisor.manual_override(tampered)
+        plain_approve = _manual_override_record(
+            "override-episode-failure-2", record_id="override-approve", verdict="APPROVE",
+        )
+        with pytest.raises(StoreError, match="cannot be represented as plain APPROVE"):
+            supervisor.manual_override(plain_approve)
+
+        for wrong_episode, wrong_config in (
+            ("some-other-episode", "breaker-config-v1"),
+            ("override-episode-failure-2", "some-other-config"),
+        ):
+            wrong = _manual_override_record(wrong_episode, wrong_config)
+            with pytest.raises(StoreError, match="stale for the current breaker episode"):
+                supervisor.manual_override(wrong)
+        assert recorded == []
+
+        supervisor.manual_override(valid)
+        assert recorded == [valid]
+        assert supervisor.breaker_state == "CLOSED"
         assert supervisor.start_worker(lambda: "started") == "started"
+    finally:
+        store.close()
+
+
+def test_manual_override_replay_is_stale_after_a_later_breaker_episode(tmp_path):
+    store, supervisor = _paused_supervisor(tmp_path)
+    try:
+        original = _manual_override_record("override-episode-failure-2")
+        supervisor.manual_override(original)
+        supervisor.provider_failed("override-episode-failure-3")
+        supervisor.provider_failed("override-episode-failure-4")
+        assert supervisor.breaker_state == "PAUSED_PROVIDER"
+        with pytest.raises(StoreError, match="prior override cannot clear a later breaker episode"):
+            supervisor.manual_override(original)
+    finally:
+        store.close()
+
+
+def test_breaker_pause_replays_after_store_restart_and_provider_success_does_not_close_it(tmp_path):
+    db = tmp_path / "durable-breaker.db"
+    store = Store(str(db), event_key=EVENT)
+    supervisor = Supervisor(store, operation_backend=object(), failure_threshold=2)
+    supervisor.provider_failed("provider-failure-1")
+    supervisor.provider_failed("provider-failure-2")
+    assert supervisor.breaker_state == "PAUSED_PROVIDER"
+    store.close()
+
+    restarted_store = Store(str(db), event_key=EVENT)
+    restarted = Supervisor(restarted_store, operation_backend=object(), failure_threshold=2)
+    assert restarted.breaker_state == "PAUSED_PROVIDER"
+    assert restarted.provider_failures == 2
+    started = []
+    with pytest.raises(StoreError, match="breaker is open"):
+        restarted.start_worker(lambda: started.append(True))
+    assert not started
+
+    before = restarted_store.control_events()
+    restarted.provider_succeeded("provider-success-after-pause")
+    assert restarted.breaker_state == "PAUSED_PROVIDER"
+    assert restarted_store.control_events() == before
+    restarted_store.close()
+
+    final_store = Store(str(db), event_key=EVENT)
+    try:
+        final = Supervisor(final_store, operation_backend=object(), failure_threshold=2)
+        assert final.breaker_state == "PAUSED_PROVIDER"
+        assert final.provider_failures == 2
+    finally:
+        final_store.close()
+
+
+def test_stale_second_supervisor_cannot_start_after_peer_opens_persisted_breaker(tmp_path):
+    db = tmp_path / "stale-breaker-start.db"
+    store_a = Store(str(db), event_key=EVENT)
+    store_b = Store(str(db), event_key=EVENT)
+    try:
+        first = Supervisor(store_a, operation_backend=object(), failure_threshold=2)
+        stale = Supervisor(store_b, operation_backend=object(), failure_threshold=2)
+        assert stale.breaker_state == "CLOSED"
+        first.provider_failed("stale-test-failure-1")
+        first.provider_failed("stale-test-failure-2")
+        assert first.breaker_state == "PAUSED_PROVIDER"
+        assert stale.breaker_state == "CLOSED"  # Cached view is intentionally stale.
+
+        started = []
+        with pytest.raises(StoreError, match="breaker is open"):
+            stale.start_worker(lambda: started.append(True), action_id="stale-breaker-start")
+        assert started == []
+    finally:
+        store_b.close()
+        store_a.close()
+
+
+def test_failed_start_side_effect_blocks_restart_until_verified_reconciliation(tmp_path):
+    db = tmp_path / "unresolved-start.db"
+    store = Store(str(db), event_key=EVENT)
+    supervisor = Supervisor(store, operation_backend=object(), operator_key=OPERATOR_KEY)
+    side_effects = []
+
+    def start_then_raise():
+        side_effects.append("started")
+        raise RuntimeError("callback failed after side effect")
+
+    with pytest.raises(RuntimeError, match="after side effect"):
+        supervisor.start_worker(start_then_raise, action_id="start-uncertain-1")
+    assert side_effects == ["started"]
+    assert supervisor.lifecycle_state == "BLOCKED_RECOVERY"
+    store.close()
+
+    restarted_store = Store(str(db), event_key=EVENT)
+    try:
+        restarted = Supervisor(restarted_store, operation_backend=object(), operator_key=OPERATOR_KEY)
+        assert restarted.lifecycle_state == "BLOCKED_RECOVERY"
+        attempted = []
+        with pytest.raises(StoreError, match="requires reconciliation"):
+            restarted.start_worker(lambda: attempted.append("must-not-run"), action_id="start-new")
+        assert attempted == []
+
+        restarted.reconcile_action(
+            "start-uncertain-1", completed=True, resolution_id="verified-worker-start-1",
+            resolution_record=signed_action_resolution(
+                "start-uncertain-1", "start", 1, True, "verified-worker-start-1",
+            ),
+        )
+        assert restarted.lifecycle_state == "RUNNING"
+        assert side_effects == ["started"]
+    finally:
+        restarted_store.close()
+
+
+def test_reconciliation_rejects_unsigned_false_and_accepts_signed_operator_resolution(tmp_path):
+    db = tmp_path / "signed-reconciliation.db"
+    store = Store(str(db), event_key=EVENT)
+    supervisor = Supervisor(store, operation_backend=object(), operator_key=OPERATOR_KEY)
+
+    def no_effect_failure():
+        raise RuntimeError("confirmed no start effect")
+
+    with pytest.raises(RuntimeError, match="no start effect"):
+        supervisor.start_worker(no_effect_failure, action_id="reconcile-false-start")
+    assert supervisor.lifecycle_state == "BLOCKED_RECOVERY"
+
+    with pytest.raises(StoreError, match="operator-signed reconciliation record is required"):
+        supervisor.reconcile_action(
+            "reconcile-false-start", completed=False, resolution_id="unsigned-no-effect",
+        )
+
+    forged = signed_action_resolution(
+        "reconcile-false-start", "start", 1, False, "forged-no-effect", key=b"wrong-operator-key-0123456789-abcdef",
+    )
+    with pytest.raises(StoreError, match="signature is invalid"):
+        supervisor.reconcile_action(
+            "reconcile-false-start", completed=False, resolution_id="forged-no-effect",
+            resolution_record=forged,
+        )
+    assert supervisor.lifecycle_state == "BLOCKED_RECOVERY"
+
+    resolution_id = "operator-confirmed-no-effect"
+    supervisor.reconcile_action(
+        "reconcile-false-start", completed=False, resolution_id=resolution_id,
+        resolution_record=signed_action_resolution(
+            "reconcile-false-start", "start", 1, False, resolution_id,
+        ),
+    )
+    assert supervisor.lifecycle_state == "READY"
+    callback_calls = []
+    assert supervisor.start_worker(
+        lambda: callback_calls.append("retry") or "started",
+        action_id="reconcile-false-start",
+    ) == "started"
+    assert callback_calls == ["retry"]
+    store.close()
+
+
+def test_replay_keeps_invalid_legacy_reconciliation_unresolved(tmp_path):
+    db = tmp_path / "legacy-reconciliation.db"
+    store = Store(str(db), event_key=EVENT)
+    supervisor = Supervisor(store, operation_backend=object(), operator_key=OPERATOR_KEY)
+    with pytest.raises(RuntimeError, match="legacy simulated failure"):
+        supervisor.start_worker(
+            lambda: (_ for _ in ()).throw(RuntimeError("legacy simulated failure")),
+            action_id="legacy-start-action",
+        )
+
+    store._append_control_event(
+        "CONTROL_ACTION_RECONCILED", "legacy-unverified-resolution",
+        {
+            "action_id": "legacy-start-action", "action": "start", "attempt": 1,
+            "completed": False, "resolution_id": "arbitrary-legacy-claim",
+            "group_id": "legacy-start-action",
+        },
+    )
+    store.close()
+
+    restarted_store = Store(str(db), event_key=EVENT)
+    try:
+        restarted = Supervisor(restarted_store, operation_backend=object(), operator_key=OPERATOR_KEY)
+        assert restarted.lifecycle_state == "BLOCKED_RECOVERY"
+        assert restarted._action_status["legacy-start-action"]["status"] == "unknown"
+        callback_calls = []
+        with pytest.raises(StoreError, match="requires reconciliation"):
+            restarted.start_worker(lambda: callback_calls.append(True), action_id="new-start-after-legacy")
+        assert callback_calls == []
+    finally:
+        restarted_store.close()
+
+
+@pytest.mark.parametrize("flow", ["stop", "rollback"])
+def test_restart_resumes_the_correct_cleanup_phase_after_reconciliation(tmp_path, flow):
+    db = tmp_path / f"{flow}-cleanup-recovery.db"
+    store = Store(str(db), event_key=EVENT)
+    supervisor = Supervisor(store, operation_backend=object(), operator_key=OPERATOR_KEY)
+    supervisor.start_worker(lambda: "started", action_id=f"{flow}-initial-start")
+    primary_calls = []
+    cleanup_calls = []
+
+    def primary_action():
+        primary_calls.append(flow)
+
+    def cleanup_action():
+        cleanup_calls.append(flow)
+        if len(cleanup_calls) == 1:
+            raise RuntimeError("cleanup did not complete")
+
+    with pytest.raises(RuntimeError, match="cleanup did not complete"):
+        if flow == "stop":
+            supervisor.stop(primary_action, cleanup_action, action_id=f"{flow}-action-1")
+        else:
+            supervisor.rollback(primary_action, cleanup_action, action_id=f"{flow}-action-1")
+    assert primary_calls == [flow]
+    assert cleanup_calls == [flow]
+    store.close()
+
+    restarted_store = Store(str(db), event_key=EVENT)
+    try:
+        restarted = Supervisor(restarted_store, operation_backend=object(), operator_key=OPERATOR_KEY)
+        assert restarted.lifecycle_state == "BLOCKED_RECOVERY"
+        restarted.reconcile_action(
+            f"{flow}-action-1", completed=False, resolution_id=f"verified-{flow}-cleanup-not-complete",
+            resolution_record=signed_action_resolution(
+                f"{flow}-action-1:cleanup",
+                "stop_cleanup" if flow == "stop" else "rollback_cleanup",
+                1, False, f"verified-{flow}-cleanup-not-complete",
+            ),
+        )
+        expected_phase = "STOPPING" if flow == "stop" else "ROLLING_BACK"
+        assert restarted.lifecycle_state == expected_phase
+
+        if flow == "stop":
+            restarted.stop(primary_action, cleanup_action)
+        else:
+            restarted.rollback(primary_action, cleanup_action)
+        assert restarted.lifecycle_state == "STOPPED"
+        assert primary_calls == [flow]
+        assert cleanup_calls == [flow, flow]
+    finally:
+        restarted_store.close()
+
+
+def test_two_cached_ready_supervisors_allow_only_one_concurrent_start_callback(tmp_path):
+    db = tmp_path / "concurrent-supervisor-start.db"
+    store_a = Store(str(db), event_key=EVENT)
+    supervisor_a = Supervisor(store_a, operation_backend=object())
+    ready_b = threading.Event()
+    first_callback_entered = threading.Event()
+    second_attempt_done = threading.Event()
+    callbacks = []
+    second_results = []
+
+    def run_supervisor_b():
+        store_b = Store(str(db), event_key=EVENT)
+        try:
+            supervisor_b = Supervisor(store_b, operation_backend=object())
+            assert supervisor_b.lifecycle_state == "READY"
+            ready_b.set()
+            assert first_callback_entered.wait(timeout=10)
+            try:
+                supervisor_b.start_worker(
+                    lambda: callbacks.append("b"), action_id="concurrent-start-b",
+                )
+            except BaseException as exc:
+                second_results.append(exc)
+            else:
+                second_results.append("started")
+        finally:
+            second_attempt_done.set()
+            store_b.close()
+
+    thread_b = threading.Thread(target=run_supervisor_b)
+    thread_b.start()
+    assert ready_b.wait(timeout=10)
+    assert supervisor_a.lifecycle_state == "READY"
+
+    def first_start_callback():
+        callbacks.append("a")
+        first_callback_entered.set()
+        assert second_attempt_done.wait(timeout=10)
+        return "started-a"
+
+    try:
+        assert supervisor_a.start_worker(
+            first_start_callback, action_id="concurrent-start-a",
+        ) == "started-a"
+    finally:
+        thread_b.join(timeout=15)
+        store_a.close()
+
+    assert not thread_b.is_alive()
+    assert callbacks == ["a"]
+    assert len(second_results) == 1
+    assert isinstance(second_results[0], StoreError)
 
 
 def test_idempotent_push_and_pull_request_use_local_bare_remote(tmp_path):
@@ -356,9 +709,299 @@ def test_gate_routes_each_v2_receipt_to_its_designated_authority(receipt_type, s
     assert invalid_signature is (key_kind != allowed_key)
 
 
-@pytest.mark.skip(reason="NOT_RUN: real worker identity/key-file/signer-IPC boundary requires the operator-provisioned POSIX sandbox; OS identity must not be synthesized")
+class _MockChild:
+    def __init__(self, pid, events):
+        self.pid = pid
+        self.stdout = io.BytesIO(b"synthetic stdout")
+        self.stderr = io.BytesIO(b"")
+        self.returncode = 0
+        self._events = events
+
+    def wait(self, timeout=None):
+        self._events.append("wait")
+        return self.returncode
+
+
+def _install_mock_windows_run(monkeypatch, *, failure=None):
+    events = []
+    command_callbacks = []
+    jobs = []
+    monkeypatch.setattr(runner, "os", SimpleNamespace(name="nt"))
+
+    def popen(argv, **kwargs):
+        flags = kwargs.get("creationflags", 0)
+        suspended = bool(flags & runner._CREATE_SUSPENDED)
+        events.append("create_suspended" if suspended else "create_running")
+        child = _MockChild(4242, events)
+        if not suspended:
+            events.append("command_callback")
+            command_callbacks.append(argv)
+        return child
+
+    class MockJob:
+        def __init__(self):
+            self.closed = False
+
+        def terminate_and_close(self):
+            if not self.closed:
+                self.closed = True
+                events.append("job_cleanup")
+
+    class Pointer:
+        def __init__(self, value):
+            self.value = (1 << 64) - 1 if value == -1 else value
+
+    class ThreadEntry:
+        def __init__(self):
+            self.dwSize = 0
+            self.th32OwnerProcessID = 0
+            self.th32ThreadID = 0
+
+    class FakeKernel32:
+        @staticmethod
+        def CreateToolhelp32Snapshot(flags, process_id):
+            events.append("thread_snapshot")
+            return 900
+
+        @staticmethod
+        def Thread32First(snapshot, entry):
+            events.append("thread_discovery")
+            if failure == "thread_discovery":
+                return False
+            entry.th32OwnerProcessID = 4242
+            entry.th32ThreadID = 77
+            return True
+
+        @staticmethod
+        def Thread32Next(snapshot, entry):
+            return False
+
+        @staticmethod
+        def OpenThread(access, inherit, thread_id):
+            events.append("open_primary_thread")
+            return 901
+
+        @staticmethod
+        def ResumeThread(thread):
+            events.append("resume_primary_thread")
+            return 0 if failure == "resume" else 1
+
+        @staticmethod
+        def CloseHandle(handle):
+            events.append("close_win32_handle")
+            return True
+
+    api = SimpleNamespace(
+        ctypes=SimpleNamespace(c_void_p=Pointer, sizeof=lambda value: 1, byref=lambda value: value),
+        k32=FakeKernel32,
+        ThreadEntry32=ThreadEntry,
+    )
+    resume_real = runner._resume_suspended_primary_thread
+
+    def attach_job(child):
+        events.append("assign_job" if failure != "assignment" else "assign_job_failed")
+        if failure == "assignment":
+            return None
+        job = MockJob()
+        jobs.append(job)
+        return job
+
+    def resume_primary_thread(pid):
+        resumed = resume_real(pid)
+        if resumed:
+            events.append("command_callback")
+            command_callbacks.append(["synthetic-command"])
+        return resumed
+
+    monkeypatch.setattr(runner.subprocess, "Popen", popen)
+    monkeypatch.setattr(runner, "_JobObject", SimpleNamespace(attach=attach_job))
+    monkeypatch.setattr(runner, "_win_api", lambda: api)
+    monkeypatch.setattr(runner, "_resume_suspended_primary_thread", resume_primary_thread)
+    monkeypatch.setattr(runner, "_kill_tree", lambda child: events.append("process_cleanup"))
+    monkeypatch.setattr(runner, "_taskkill_tree", lambda pid: events.append("legacy_tree_cleanup"))
+    return events, command_callbacks, jobs
+
+
+def test_strict_windows_launch_suspends_assigns_job_then_resumes_before_command(monkeypatch):
+    events, callbacks, jobs = _install_mock_windows_run(monkeypatch)
+    code, output, info = runner._run_one(
+        ["synthetic-command"], ".", 1, {}, 1024, require_job_object=True,
+    )
+    assert code == 0
+    assert output == "synthetic stdout"
+    assert info["job_object"] is True
+    assert events[0] == "create_suspended"
+    assert events.index("create_suspended") < events.index("assign_job")
+    assert events.index("assign_job") < events.index("thread_snapshot")
+    assert events.index("thread_snapshot") < events.index("thread_discovery")
+    assert events.index("thread_discovery") < events.index("resume_primary_thread")
+    assert events.index("resume_primary_thread") < events.index("command_callback")
+    assert callbacks == [["synthetic-command"]]
+    assert jobs[0].closed
+
+
+@pytest.mark.parametrize("failure", ["assignment", "thread_discovery", "resume"])
+def test_strict_windows_launch_failure_cleans_up_without_running_command(monkeypatch, failure):
+    events, callbacks, jobs = _install_mock_windows_run(
+        monkeypatch, failure=failure,
+    )
+    code, output, info = runner._run_one(
+        ["synthetic-command"], ".", 1, {}, 1024, require_job_object=True,
+    )
+    assert code == runner.EXIT_CAPTURE_INCOMPLETE
+    assert output == ""
+    assert info["job_object_refused"] is True
+    assert callbacks == []
+    assert "process_cleanup" in events
+    assert "wait" in events
+    if failure == "assignment":
+        assert "thread_discovery" not in events
+        assert jobs == []
+    else:
+        assert jobs and jobs[0].closed
+
+
+def test_nonstrict_windows_launch_keeps_unsuspended_compatibility_path(monkeypatch):
+    events, callbacks, _jobs = _install_mock_windows_run(monkeypatch)
+    code, _output, info = runner._run_one(
+        ["synthetic-command"], ".", 1, {}, 1024, require_job_object=False,
+    )
+    assert code == 0
+    assert info["job_object"] is True
+    assert callbacks == [["synthetic-command"]]
+    assert events[0] == "create_running"
+    assert events.index("command_callback") < events.index("assign_job")
+    assert "resume_primary_thread" not in events
+
+
+def test_posix_launch_keeps_session_based_compatibility_path(monkeypatch):
+    events = []
+    callbacks = []
+
+    def popen(argv, **kwargs):
+        assert kwargs.get("start_new_session") is True
+        assert "creationflags" not in kwargs
+        events.append("create_running")
+        callbacks.append(argv)
+        return _MockChild(4243, events)
+
+    monkeypatch.setattr(
+        runner, "os", SimpleNamespace(name="posix", killpg=lambda pid, sig: events.append("posix_group_cleanup")),
+    )
+    monkeypatch.setattr(runner, "signal", SimpleNamespace(SIGKILL=9))
+    monkeypatch.setattr(runner.subprocess, "Popen", popen)
+    code, output, info = runner._run_one(
+        ["synthetic-command"], ".", 1, {}, 1024, require_job_object=False,
+    )
+    assert code == 0
+    assert output == "synthetic stdout"
+    assert info["job_object"] is False
+    assert callbacks == [["synthetic-command"]]
+    assert "posix_group_cleanup" in events
+
+
+@pytest.mark.skipif(os.name == "nt", reason="NOT_RUN: POSIX account and Unix-socket permissions are unavailable on Windows")
 def test_posix_worker_cannot_read_signer_or_key_file():
-    pytest.fail("A POSIX sandbox must be provisioned before this boundary test can run")
+    """Drop a child to the provisioned worker identity; all key/socket data is disposable."""
+    import grp
+    import json
+    import pwd
+    import shutil
+    import socket
+    import sys
+    import tempfile
+
+    from tools.vst.sandbox import require_private_key, require_worker_cannot_access_signer
+
+    assert os.geteuid() == 0, "run this identity-boundary test in the root test harness"
+    worker = pwd.getpwnam("vst-worker")
+    runner = pwd.getpwnam("vst-runner")
+    signer = pwd.getpwnam("vst-signer")
+    runner_gid = grp.getgrnam("vst-runner").gr_gid
+    signer_gid = grp.getgrnam("vst-signer").gr_gid
+    worker_groups = set(os.getgrouplist(worker.pw_name, worker.pw_gid))
+    assert worker.pw_uid not in {runner.pw_uid, signer.pw_uid}
+    assert worker.pw_gid not in {runner_gid, signer_gid}
+    assert worker_groups.isdisjoint({runner_gid, signer_gid})
+
+    fixture_root = tempfile.mkdtemp(prefix="vst-worker-boundary-", dir="/tmp")
+    os.chmod(fixture_root, 0o755)
+    listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        keys_dir = os.path.join(fixture_root, "synthetic-trust-roots")
+        os.mkdir(keys_dir)
+        os.chown(keys_dir, signer.pw_uid, signer.pw_gid)
+        os.chmod(keys_dir, 0o700)
+        key_paths = []
+        for role in ("worker", "supervisor", "operator", "event", "reviewer", "probe-signer"):
+            key_path = os.path.join(keys_dir, role + ".key")
+            with open(key_path, "wb") as stream:
+                stream.write(b"synthetic-only-key-fixture")
+            os.chown(key_path, signer.pw_uid, signer.pw_gid)
+            os.chmod(key_path, 0o600)
+            require_private_key(key_path, owner_uid=signer.pw_uid)
+            key_paths.append(key_path)
+
+        ipc_dir = os.path.join(fixture_root, "synthetic-signer-ipc")
+        os.mkdir(ipc_dir)
+        socket_path = os.path.join(ipc_dir, "fixture.sock")
+        listener.bind(socket_path)
+        listener.listen(1)
+        os.chown(ipc_dir, signer.pw_uid, runner_gid)
+        os.chmod(ipc_dir, 0o710)
+        os.chown(socket_path, signer.pw_uid, runner_gid)
+        os.chmod(socket_path, 0o660)
+        require_worker_cannot_access_signer(
+            socket_path, worker_uid=worker.pw_uid, worker_gid=worker.pw_gid,
+        )
+
+        child = r'''import json, os, socket, sys
+paths, socket_path = sys.argv[1:-1], sys.argv[-1]
+denied = 0
+for path in paths:
+    try:
+        with open(path, "rb") as stream:
+            stream.read(1)
+    except PermissionError:
+        denied += 1
+client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+try:
+    try:
+        client.connect(socket_path)
+        socket_denied = False
+    except PermissionError:
+        socket_denied = True
+finally:
+    client.close()
+print(json.dumps({"uid": os.getuid(), "gid": os.getgid(), "groups": os.getgroups(),
+                  "key_files_denied": denied, "socket_connect_denied": socket_denied}))
+if denied != len(paths) or not socket_denied:
+    raise SystemExit(2)
+'''
+
+        def drop_to_worker():
+            os.setgroups(os.getgrouplist(worker.pw_name, worker.pw_gid))
+            os.setgid(worker.pw_gid)
+            os.setuid(worker.pw_uid)
+
+        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        completed = subprocess.run(
+            [sys.executable, "-c", child, *key_paths, socket_path],
+            cwd=repo_root,
+            env={"PATH": os.environ.get("PATH", ""), "PYTHONIOENCODING": "utf-8"},
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, check=False, preexec_fn=drop_to_worker,
+        )
+        assert completed.returncode == 0, "worker identity probe failed"
+        observed = json.loads(completed.stdout)
+        assert observed["uid"] == worker.pw_uid
+        assert observed["gid"] == worker.pw_gid
+        assert set(observed["groups"]).isdisjoint({runner_gid, signer_gid})
+        assert observed["key_files_denied"] == len(key_paths)
+        assert observed["socket_connect_denied"] is True
+    finally:
+        listener.close()
+        shutil.rmtree(fixture_root)
 
 
 @pytest.mark.parametrize("scenario", [

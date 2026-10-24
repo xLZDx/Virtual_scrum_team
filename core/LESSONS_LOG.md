@@ -374,3 +374,19 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: the assertion modeled only the gate's later evidence check and ignored its earlier closed-schema validation.
 - Rule: bind negative assertions to the earliest correct contract boundary for each input shape; record the returned rejection reason rather than assuming execution reached a deeper layer.
 - Fix status: assertion corrected; final command passed 60 tests with 0 skipped and one deprecation warning. Evidence is in `docs/sdlc/evidence/s2-contract-diffgate-run-280e2d0.md`; change record 0056.
+
+## 2026-10-24 -- Keep replay assertions aligned with durable rejection order
+
+- Kind: TEST DEFECT (manual override replay was rejected at the persisted event-ID boundary before reaching the stale-episode validator).
+- Facts: the Windows run returned `a prior override cannot clear a later breaker episode`; the test expected a later stale-episode diagnostic. The persisted store correctly refused the replay.
+- Root cause: the test assumed the validation layer that would reject an input rather than asserting the observed earliest durable rejection.
+- Rule: protocol replay tests should assert the earliest enforced boundary while still proving non-approval and callback non-execution.
+- Fix status: assertion now checks the replay rejection; the final owned Windows focused suite passed 84 tests with 22 explicit `NOT_RUN` skips. Evidence: `docs/sdlc/evidence/s2-e2e-acceptance-280e2d0.md`; change record 0057.
+
+## 2026-10-24 -- Treat root runtime enumeration as incomplete when untraversable
+
+- Kind: SHORTCOMING (a non-root WSL inventory cannot verify sockets below root's private runtime directory).
+- Facts: `/run/user` was mode `0755`; its numeric UID entry was owned by UID/GID 0 with mode `0700`. The unmasked runner inventory returned `container_socket_inventory_complete=false`. A transient systemd unit with `TemporaryFileSystem=/run/user:ro` returned a complete inventory and zero socket basenames.
+- Root cause: fail-closed enumeration requires traversal into every numeric runtime UID entry, including the root-owned private directory.
+- Rule: do not widen traversal into root's private runtime directory to force a green probe; mask host runtime paths in a scoped namespace and verify the actual worker inherits that namespace.
+- Fix status: no ACL or directory mode was changed. Scoped inventory was complete, but no application service config proves worker inheritance; the unsigned preflight remained `FAIL`, and final signing/host-isolation proof remain `NOT_RUN` pending deployment and mount-policy approval. Evidence: `docs/sdlc/evidence/s2-e2e-acceptance-280e2d0.md`; change record 0057.
