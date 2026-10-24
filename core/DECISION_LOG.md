@@ -56,3 +56,7 @@ Four operator answers (given directly, not auto-accepted): (1) only `functional-
 ## 2026-10-24 -- Blueprint consistency after ADR-0001
 
 An external verification of `e4be280` reported four inconsistencies; all four were confirmed in the file and fixed (waiver verdict in the gate contract, stale tdd-guide sentence, contradictory C-1 line, CI wording). Record: `docs/changes/0007-blueprint-consistency-after-adr-0001.md`. Design verdict remains MODIFY DESIGN; independent review of the new head is still required.
+
+## 2026-10-24 -- Design baseline 1.0, S1 plan, push ordered by the operator
+
+The operator instructed: assemble the final design and plan, commit, push, start development. Done: baseline decisions BD-1..BD-7 and the S1 plan in `docs/DESIGN_BASELINE_AND_IMPLEMENTATION_PLAN_2026-10-24.md`; GitHub URLs of four private repositories (checked with `gh repo view`) removed from the public blueprint before the push. Limit: the baseline is explicitly not independently reviewed and does not close the review blockers; they are S1 work items. The push of the documentation commits to `main` was ordered by the operator and made without a final independent approval; this is a single named waiver of that gate and does not extend to the S1 sprint pull request, which still needs the final independent approval on its exact head.

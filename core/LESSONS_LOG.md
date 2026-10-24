@@ -46,3 +46,10 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: the ADR was applied by searching for the obvious terms, not by grepping every document for each decision's dependent terms (verdict, tdd-guide, CI, precedence).
 - Caught by: external reviewer; missed by the author and no automated check.
 - Rule: after an ADR, grep every tracked document for each affected term and list the hits in the change record before committing.
+
+## 2026-10-24 -- Design baseline 1.0 and S1 plan
+
+- Kind: SUCCESS.
+- Facts: before pushing, a visibility check showed four of the eight repositories named in the public blueprint were private and their URLs were withheld; this had been an open "keep or generalise" question for two days.
+- Why it worked: the irreversible step (publishing) triggered a concrete check (`gh repo view`) instead of a general worry.
+- Rule: before any push to a public remote, list every external identifier in the outbound diff and check its visibility.
