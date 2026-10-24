@@ -53,6 +53,18 @@ def test_s4_registry_accepts_single_primary_category_per_test_id(monkeypatch):
     assert digest == hashlib.sha256(json.dumps(candidate, separators=(",", ":")).encode()).hexdigest()
 
 
+def test_s4_committed_registry_loads_with_resolved_nodes():
+    loaded, digest = registry.load_registry(ROOT)
+    registry_bytes = (ROOT / "docs/qa/categories.json").read_bytes()
+    test_ids = [
+        test_id for entry in loaded["categories"].values()
+        if entry["state"] == "SUPPORTED" for test_id in entry["test_ids"]
+    ]
+
+    assert digest == hashlib.sha256(registry_bytes).hexdigest()
+    assert len(test_ids) == len(set(test_ids))
+
+
 def test_s4_registry_rejects_duplicate_primary_category_assignment(monkeypatch):
     candidate = _registry_fixture()
     candidate["categories"]["integration"]["test_ids"] = list(
