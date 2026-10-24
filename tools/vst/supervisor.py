@@ -8,9 +8,15 @@ from typing import Any, Callable
 
 from .contracts import canonical_bytes
 from .lifecycle import STOP_TRANSITIONS, transition
-from .store import Store, StoreError
+from .signing import verify
+from .store import ACTION_RESOLUTION_LABEL, Store, StoreError
 
 _LIFECYCLE_ACTIONS = {"start", "stop_terminate", "stop_cleanup", "rollback_effect", "rollback_cleanup", "resume"}
+
+
+def _valid_sha256(value: Any) -> bool:
+    return (isinstance(value, str) and len(value) == 64
+            and all(character in "0123456789abcdef" for character in value))
 
 
 class Supervisor:
@@ -49,6 +55,8 @@ class Supervisor:
             or bytes(operator_key) == bytes(probe_key)
         ):
             raise ValueError("sandbox supervisor requires trusted run id, nonce and probe verification key")
+        if operator_key is not None and bytes(operator_key) == store._event_key:
+            raise ValueError("operator_key must differ from the event key")
         self._action_status: dict[str, dict] = {}
         self._control_history = store.control_events()
         configs = [row for row in self._control_history if row["kind"] == "CONTROL_BREAKER_CONFIG"]
@@ -80,7 +88,7 @@ class Supervisor:
                     self.lifecycle_state = "BLOCKED_RECOVERY"
                     self.lifecycle_action_id = status.get("group_id")
             if event["kind"] == "CONTROL_ACTION_RECONCILED":
-                if event.get("action") in _LIFECYCLE_ACTIONS:
+                if event.get("action") in _LIFECYCLE_ACTIONS and self._valid_resolution_event(event):
                     self._apply_reconciled_state(event["action"], event["completed"])
                     self.lifecycle_action_id = event.get("group_id") if self.lifecycle_state in {"STOPPING", "ROLLING_BACK"} else None
 
@@ -111,7 +119,26 @@ class Supervisor:
                 self.breaker_state = "CLOSED"
             elif kind in {"CONTROL_ACTION_INTENT", "CONTROL_ACTION_COMPLETED", "CONTROL_ACTION_UNKNOWN", "CONTROL_ACTION_RECONCILED"}:
                 root_id = event.get("action_id", event["event_id"])
-                self._action_status[root_id] = {"status": kind.rsplit("_", 1)[-1].lower(), **event}
+                status = kind.rsplit("_", 1)[-1].lower()
+                if kind == "CONTROL_ACTION_RECONCILED" and not self._valid_resolution_event(event):
+                    status = "unknown"
+                self._action_status[root_id] = {"status": status, **event}
+
+    def _valid_resolution_event(self, event: dict) -> bool:
+        record = event.get("resolution_record")
+        if not isinstance(self.operator_key, (bytes, bytearray)) or len(self.operator_key) < 32 or not isinstance(record, dict):
+            return False
+        expected_fields = {"action_id", "action", "attempt", "completed", "resolution_id", "evidence_sha256", "signature"}
+        if set(record) != expected_fields or type(event.get("completed")) is not bool:
+            return False
+        if isinstance(record.get("attempt"), bool) or not isinstance(record.get("attempt"), int):
+            return False
+        if not verify(record, bytes(self.operator_key), ACTION_RESOLUTION_LABEL):
+            return False
+        for field in ("action_id", "action", "attempt", "completed", "resolution_id"):
+            if record.get(field) != event.get(field):
+                return False
+        return _valid_sha256(record.get("evidence_sha256"))
 
     def _perform(self, action: str, callback: Callable[[], Any], action_id: str | None = None, *, group_id: str | None = None) -> Any:
         action_id = action_id or str(uuid.uuid4())
@@ -134,7 +161,10 @@ class Supervisor:
         event_data = {"action": action, "action_id": action_id, "attempt": attempt}
         if group_id is not None:
             event_data["group_id"] = group_id
-        begin = self.store.begin_action(action_id, event_data)
+        begin = self.store.begin_action(
+            action_id, event_data,
+            resolution_key=None if self.operator_key is None else bytes(self.operator_key),
+        )
         self._control_history = self.store.control_events()
         self._replay_controls()
         attempt = int(begin.get("attempt", attempt))
@@ -167,12 +197,17 @@ class Supervisor:
             self._replay_controls()
             raise
 
-    def reconcile_action(self, action_id: str, *, completed: bool, resolution_id: str) -> None:
-        """Record an externally verified resolution; never replays an uncertain callback."""
+    def reconcile_action(
+        self, action_id: str, *, completed: bool, resolution_id: str,
+        resolution_record: dict | None = None,
+    ) -> None:
+        """Record an operator-signed resolution; never replays an uncertain callback."""
         if type(completed) is not bool:
             raise StoreError("completed must be an explicit boolean", kind="argument")
         if not isinstance(resolution_id, str) or not resolution_id.strip():
             raise StoreError("reconciliation requires an auditable resolution id", kind="argument")
+        if not isinstance(self.operator_key, (bytes, bytearray)) or len(self.operator_key) < 32:
+            raise StoreError("trusted operator key is required for lifecycle reconciliation", kind="authorization")
         current = self._action_status.get(action_id)
         if current is None:
             matches = [
@@ -184,7 +219,23 @@ class Supervisor:
                 action_id = current["action_id"]
         if not current or current["status"] not in {"intent", "unknown"}:
             raise StoreError("action is not awaiting reconciliation", kind="lifecycle")
-        self.store._append_control_event("CONTROL_ACTION_RECONCILED", f"{action_id}:reconciled:{current.get('attempt', 1)}", {"action": current["action"], "action_id": action_id, "attempt": current.get("attempt", 1), "group_id": current.get("group_id"), "completed": completed, "resolution_id": resolution_id})
+        expected_fields = {"action_id", "action", "attempt", "completed", "resolution_id", "evidence_sha256", "signature"}
+        if not isinstance(resolution_record, dict) or set(resolution_record) != expected_fields:
+            raise StoreError("operator-signed reconciliation record is required", kind="authorization")
+        resolution_event = {
+            "action_id": action_id, "action": current["action"],
+            "attempt": current.get("attempt", 1), "completed": completed,
+            "resolution_id": resolution_id, "resolution_record": resolution_record,
+            "group_id": current.get("group_id"),
+        }
+        if not verify(resolution_record, bytes(self.operator_key), ACTION_RESOLUTION_LABEL):
+            raise StoreError("operator reconciliation signature is invalid", kind="authorization")
+        for field in ("action_id", "action", "attempt", "completed", "resolution_id"):
+            if resolution_record.get(field) != resolution_event.get(field):
+                raise StoreError("signed reconciliation record does not match the pending action", kind="authorization")
+        if not _valid_sha256(resolution_record.get("evidence_sha256")):
+            raise StoreError("reconciliation evidence digest must be a lowercase SHA-256", kind="argument")
+        self.store.reconcile_action(action_id, resolution_event, resolution_key=bytes(self.operator_key))
         self._control_history = self.store.control_events()
         self._replay_controls()
         if current["action"] in _LIFECYCLE_ACTIONS:

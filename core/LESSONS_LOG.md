@@ -310,3 +310,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: current lifecycle state was validated in Supervisor memory rather than at the Store write boundary.
 - Rule: derive state and unresolved actions under the same transaction that appends intent; reject a transition before invoking its callback if another instance already advanced or locked the lifecycle.
 - Fix status: implemented in change record 0048; two-instance concurrency evidence remains NOT_RUN for the E2E agent.
+
+## 2026-10-24 -- Recheck trust state at action admission and authenticate recovery
+
+- Kind: FAILURE (stale breaker cache, unsigned recovery, and Windows lock release at EOF).
+- Facts: a supervisor action could outlive the breaker snapshot it read; a caller boolean could clear ambiguous side effects; Windows `msvcrt` locks must be released at the byte offset where acquired.
+- Root cause: trust decisions were partly outside the serialized Store boundary, and recovery authority was represented as an unauthenticated assertion.
+- Rule: check breaker state in the same writer transaction as worker-start intent; require an operator-signed resolution bound to action and evidence before a retry; seek to the acquired lock region before releasing it after file writes.
+- Fix status: implemented in change record 0049; E2E rerun and runtime proof remain NOT_RUN.

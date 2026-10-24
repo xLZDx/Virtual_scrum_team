@@ -169,7 +169,9 @@ class FileExternalAnchor:
 
                         stream.seek(0)
                         msvcrt.locking(stream.fileno(), msvcrt.LK_LOCK, 1)
-                        unlock = lambda: msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+                        def unlock() -> None:
+                            stream.seek(0)
+                            msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
                     else:
                         import fcntl
 

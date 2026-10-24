@@ -161,6 +161,8 @@ LIFECYCLE_ACTION_STATES = {
     "rollback_cleanup": ("ROLLING_BACK", "STOPPED"),
     "resume": ("STOPPED", "READY"),
 }
+SUPERVISOR_ACTIONS = frozenset({"manual_override"})
+ACTION_RESOLUTION_LABEL = b"vst-lifecycle-resolution-v1\0"
 EVENT_KINDS = frozenset(
     {
         "EPOCH_ACQUIRED",
@@ -379,6 +381,28 @@ def _need_key(value: Any, name: str) -> bytes:
     return bytes(value)
 
 
+def _valid_action_resolution(event: dict, key: bytes | None) -> bool:
+    record = event.get("resolution_record")
+    if not isinstance(key, (bytes, bytearray)) or len(key) < MIN_KEY_BYTES or not isinstance(record, dict):
+        return False
+    expected_fields = {"action_id", "action", "attempt", "completed", "resolution_id", "evidence_sha256", "signature"}
+    if set(record) != expected_fields:
+        return False
+    digest = record.get("evidence_sha256")
+    if (not isinstance(digest, str) or len(digest) != 64
+            or any(char not in "0123456789abcdef" for char in digest)):
+        return False
+    for name in ("action_id", "action", "attempt", "completed", "resolution_id"):
+        if record.get(name) != event.get(name):
+            return False
+    if (type(record.get("completed")) is not bool or type(event.get("completed")) is not bool
+            or not _is_int(record.get("attempt")) or not _is_int(event.get("attempt"))
+            or not isinstance(record.get("resolution_id"), str)
+            or not record.get("resolution_id").strip()):
+        return False
+    return verify(record, bytes(key), ACTION_RESOLUTION_LABEL)
+
+
 def _iso(now: float) -> str:
     return datetime.fromtimestamp(now, timezone.utc).isoformat()
 
@@ -432,6 +456,7 @@ class Store:
             raise StoreError("external anchor must not be the database file", kind="integrity")
         self._reconciliation_complete = False
         self._integrity_locked = False
+        self._integrity_lock_reason: str | None = None
         self._conn = sqlite3.connect(
             path, isolation_level=None, timeout=float(busy_timeout_sec)
         )
@@ -453,10 +478,11 @@ class Store:
         _restrict_permissions(path)
         try:
             self.startup_reconcile()
-        except StoreError:
+        except StoreError as exc:
             # Keep the handle available for diagnostics, but all acceptance and
             # mutation entry points remain locked until explicit recovery.
             self._integrity_locked = True
+            self._integrity_lock_reason = str(exc)
 
     def _init_schema(self) -> None:
         with self._tx() as conn:
@@ -544,7 +570,8 @@ class Store:
         """BEGIN IMMEDIATE ... explicit COMMIT, or ROLLBACK on any exception."""
         try:
             if self._integrity_locked:
-                raise StoreError("store is integrity-locked pending startup reconciliation", kind="integrity")
+                detail = "" if not self._integrity_lock_reason else f": {self._integrity_lock_reason}"
+                raise StoreError(f"store is integrity-locked pending startup reconciliation{detail}", kind="integrity")
             self._conn.execute("BEGIN IMMEDIATE")
         except sqlite3.OperationalError as exc:
             busy = _busy_error(exc)
@@ -575,8 +602,9 @@ class Store:
         if self._external_anchor is not None and self._reconciliation_complete:
             try:
                 self._sync_external_anchor()
-            except StoreError:
+            except StoreError as exc:
                 self._integrity_locked = True
+                self._integrity_lock_reason = str(exc)
                 raise
 
     @contextlib.contextmanager
@@ -1604,6 +1632,8 @@ class Store:
         ).fetchall()
         for row in prior:
             parsed = json.loads(row["payload"])
+            if not isinstance(parsed, dict):
+                continue
             if parsed.get("event_id") == event_id and parsed.get("_vst_control_type") != kind:
                 if kind.startswith("CONTROL_PROVIDER_") or kind == "CONTROL_BREAKER_OVERRIDE":
                     raise StoreError("provider outcome id reused for a different outcome", kind="integrity")
@@ -1611,14 +1641,20 @@ class Store:
                 if canonical_bytes(parsed).decode("utf-8") != canonical:
                     raise StoreError("control event id reused with different payload", kind="integrity")
                 return parsed
+        if kind == "CONTROL_PROVIDER_SUCCESS":
+            controls = self._control_events_locked(conn)
+            if self._breaker_state_locked(controls) != "CLOSED":
+                raise StoreError("provider success cannot close a paused breaker", kind="provider")
         self._record_event_locked(conn, "__control__", "supervisor", "NOTE", envelope)
         return envelope
 
-    def begin_action(self, action_id: str, payload: dict) -> dict:
+    def begin_action(
+        self, action_id: str, payload: dict, *, resolution_key: bytes | None = None
+    ) -> dict:
         """Atomically validate lifecycle transition and append its intent."""
         _need_str(action_id, "action_id")
-        if not isinstance(payload, dict) or payload.get("action") not in LIFECYCLE_ACTION_STATES:
-            raise StoreError("known lifecycle action required", kind="argument")
+        if not isinstance(payload, dict) or payload.get("action") not in (set(LIFECYCLE_ACTION_STATES) | SUPERVISOR_ACTIONS):
+            raise StoreError("known supervisor action required", kind="argument")
         if payload.get("action_id") != action_id:
             raise StoreError("intent action_id must match its transaction key", kind="argument")
         action = payload["action"]
@@ -1633,7 +1669,10 @@ class Store:
                 }:
                     continue
                 root_id = event.get("action_id", event["event_id"])
-                statuses[root_id] = {"status": event["kind"].rsplit("_", 1)[-1].lower(), **event}
+                status = event["kind"].rsplit("_", 1)[-1].lower()
+                if event["kind"] == "CONTROL_ACTION_RECONCILED" and not _valid_action_resolution(event, resolution_key):
+                    status = "unknown"
+                statuses[root_id] = {"status": status, **event}
 
             prior_action = statuses.get(action_id)
             if prior_action and prior_action["action"] != action:
@@ -1657,13 +1696,30 @@ class Store:
             if unresolved:
                 raise StoreError("an unresolved lifecycle action blocks new actions", kind="lifecycle")
 
+            if action in SUPERVISOR_ACTIONS:
+                if any(row.get("action") == action and row["status"] in {"intent", "unknown"} for row in statuses.values()):
+                    raise StoreError("an unresolved supervisor action blocks retry", kind="lifecycle")
+                if action == "manual_override":
+                    if self._breaker_state_locked(controls) != "PAUSED_PROVIDER":
+                        raise StoreError("manual override requires a paused provider", kind="provider")
+                intent_payload = {**payload, "action_id": action_id, "attempt": attempt}
+                result = self._append_control_event_locked(
+                    conn, "CONTROL_ACTION_INTENT", f"{action_id}:intent:{attempt}", intent_payload
+                )
+                return {"status": "intent", **result}
+
+            if action == "start" and self._breaker_state_locked(controls) != "CLOSED":
+                raise StoreError("provider breaker is open; worker start refused", kind="provider")
+
             state = "READY"
             for event in controls:
                 if event["kind"] == "CONTROL_ACTION_COMPLETED":
                     action_state = LIFECYCLE_ACTION_STATES.get(event.get("action"))
                     if action_state:
                         state = action_state[1]
-                elif event["kind"] == "CONTROL_ACTION_RECONCILED" and event.get("action") in LIFECYCLE_ACTION_STATES:
+                elif (event["kind"] == "CONTROL_ACTION_RECONCILED"
+                      and event.get("action") in LIFECYCLE_ACTION_STATES
+                      and _valid_action_resolution(event, resolution_key)):
                     before, after = LIFECYCLE_ACTION_STATES[event["action"]]
                     state = after if event.get("completed") is True else before
 
@@ -1678,6 +1734,64 @@ class Store:
                 conn, "CONTROL_ACTION_INTENT", f"{action_id}:intent:{attempt}", intent_payload
             )
             return {"status": "intent", **result}
+
+    @staticmethod
+    def _breaker_state_locked(controls: list[dict]) -> str:
+        threshold = 3
+        failures = 0
+        state = "CLOSED"
+        for event in controls:
+            if event["kind"] == "CONTROL_BREAKER_CONFIG":
+                config = event.get("config")
+                if isinstance(config, dict) and isinstance(config.get("threshold"), int) and not isinstance(config.get("threshold"), bool):
+                    threshold = config["threshold"]
+            elif event["kind"] == "CONTROL_PROVIDER_FAILURE":
+                failures += 1
+                if failures >= threshold:
+                    state = "PAUSED_PROVIDER"
+            elif event["kind"] == "CONTROL_PROVIDER_SUCCESS":
+                failures = 0
+                state = "CLOSED"
+            elif event["kind"] == "CONTROL_BREAKER_OVERRIDE":
+                failures = 0
+                state = "CLOSED"
+        return state
+
+    def reconcile_action(
+        self, action_id: str, payload: dict, *, resolution_key: bytes
+    ) -> dict:
+        """Atomically verify signed resolution for the latest unresolved action."""
+        _need_str(action_id, "action_id")
+        if not isinstance(payload, dict) or payload.get("action_id") != action_id:
+            raise StoreError("reconciliation action_id mismatch", kind="argument")
+        with self._tx() as conn:
+            self._verify_control_history_locked(conn)
+            controls = self._control_events_locked(conn)
+            statuses: dict[str, dict] = {}
+            for event in controls:
+                if event["kind"] not in {
+                    "CONTROL_ACTION_INTENT", "CONTROL_ACTION_COMPLETED",
+                    "CONTROL_ACTION_UNKNOWN", "CONTROL_ACTION_RECONCILED",
+                }:
+                    continue
+                root_id = event.get("action_id", event["event_id"])
+                status = event["kind"].rsplit("_", 1)[-1].lower()
+                if event["kind"] == "CONTROL_ACTION_RECONCILED" and not _valid_action_resolution(event, resolution_key):
+                    status = "unknown"
+                statuses[root_id] = {"status": status, **event}
+            current = statuses.get(action_id)
+            if not current or current["status"] not in {"intent", "unknown"}:
+                raise StoreError("action is no longer awaiting reconciliation", kind="lifecycle")
+            if (payload.get("action") != current.get("action")
+                    or payload.get("attempt") != current.get("attempt")
+                    or payload.get("group_id") != current.get("group_id")):
+                raise StoreError("reconciliation does not match the current action", kind="integrity")
+            event_id = f"{action_id}:reconciled:{current.get('attempt', 1)}:{payload.get('resolution_id')}"
+            if not _valid_action_resolution(payload, resolution_key):
+                raise StoreError("operator-signed reconciliation record is required", kind="authorization")
+            return self._append_control_event_locked(
+                conn, "CONTROL_ACTION_RECONCILED", event_id, payload
+            )
 
     def _control_events_locked(self, conn: sqlite3.Connection) -> list[dict]:
         rows = conn.execute(
@@ -1730,7 +1844,7 @@ class Store:
         result = []
         for row in rows:
             payload = json.loads(row["payload"])
-            if payload.get("_vst_control_type") in CONTROL_EVENT_KINDS:
+            if isinstance(payload, dict) and payload.get("_vst_control_type") in CONTROL_EVENT_KINDS:
                 result.append({"kind": payload["_vst_control_type"], **payload})
         return result
 
@@ -1915,6 +2029,7 @@ class Store:
             if self._external_anchor is None:
                 self._reconciliation_complete = True
                 self._integrity_locked = False
+                self._integrity_lock_reason = None
                 return
             latest = self._external_anchor.read_latest()
             if latest is None:
@@ -1932,6 +2047,7 @@ class Store:
                 latest = self._external_anchor.compare_and_append(latest, checkpoint)
             self._reconciliation_complete = True
             self._integrity_locked = False
+            self._integrity_lock_reason = None
             if self._startup_supervisor_key is not None:
                 self.supervisor_reap_and_mark(
                     self._startup_supervisor_key, self._startup_supervisor_runner_id
