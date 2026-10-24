@@ -473,3 +473,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — Candidate release pins can become stale while a sprint is being prepared. Re-resolve official tags before acquisition decisions, and do not carry behavior or security conclusions across versions without reviewing the new pinned source. The v0.11.0 metadata refresh is recorded in change record 0089; deeper review and acquisition remain open.
 
+2026-10-25 — Test output without an exact checkout HEAD cannot close exact-head acceptance. The S3 E2E run identified the committed product code but failed to capture the full HEAD during its corrected rerun. Record that evidence as provisional and rerun both focused files after the test artifacts are committed; never infer an exact revision from a later status query. See change record 0090.
+

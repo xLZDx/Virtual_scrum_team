@@ -268,3 +268,7 @@ Register S3 work under unique canonical backlog IDs VST-027 through VST-031, pre
 
 Updated VST-028 from the historical BMad Loop v0.10.0 reference to latest audited release v0.11.0, exact tag SHA `3e8f1e2ba7be39d99a3e88a00cd63c8cb2c7899d`. This metadata refresh does not transfer the v0.10 behavior review to v0.11, approve security/compatibility, or authorize acquisition. Complete the pinned source audit and retain the operator acquisition gate. See change record 0089.
 
+## 2026-10-25 -- Add S3 focused adapter and pilot coverage
+
+Added functional-owned and E2E-owned tests for the locally implementable S3 adapter contract, Store recovery, synthetic pilot scope, checkpoint resume, and STOP fencing. Reported runs are not yet accepted as exact-head evidence: the E2E rerun did not capture its precise checkout HEAD, so both files must be rerun after this test commit. Sandbox/WSL-boundary and OS process cleanup remain `NOT_RUN`. See change record 0090.
+
