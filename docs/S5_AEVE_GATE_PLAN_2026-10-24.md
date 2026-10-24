@@ -1,6 +1,6 @@
 # Sprint S5 plan: bounded AEVE evidence gate
 
-Status: **VST-SIDE V3 CONTRACT/GATE CODE COMPLETE; TESTS NOT STARTED**. S2 exact-head approval/merge remains pending. This work does not access, acquire, or execute a separate AEVE repository and does not claim the analyzer is available in this checkout.
+Status: **LOCAL VST V3 SLICE IMPLEMENTED; FUNCTIONAL/E2E TESTS AND SPECIALIST REVIEWS COMPLETE; FINAL GPT APPROVAL PENDING**. The contract/gate and Store→Gate integration have exact-head local evidence. Real AEVE adapter/runtime, immutable-snapshot enforcement, analyzer attestor provisioning, and signed report/gate execution remain `NOT_RUN` or `UNKNOWN`; S5 is partial against those requirements. S2 exact-head approval/merge also remains pending. No separate AEVE repository was accessed, acquired, or executed.
 
 Sources: continuation scope and exit rule in `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` section 1; AEVE bounded-evidence role and unsupported-capability caveat in `docs/UNIFIED_ENGINEERING_ORGANIZATION_MASTER_BLUEPRINT_2026-10-23.md` sections 1, 8, 10, 11, 13.1 and 13.2; existing VST receipt contract in `tools/vst/contracts.py`; gate behavior in `tools/vst/gate.py`; S2 authority and exact-head boundaries in `docs/S2_SANDBOX_WORKER_PLAN_2026-10-24.md`; and `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`. This plan follows the later S2–S5 continuation rather than stale blueprint roadmap labels.
 
