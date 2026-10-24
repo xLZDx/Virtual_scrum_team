@@ -2,6 +2,14 @@
 
 Entry fields: date and commit title; kind; facts with evidence pointer; root cause; layer that missed or caught it; rule for next time.
 
+## 2026-10-24 -- Separate registry identity from aggregate run membership
+
+- Kind: SHORTCOMING (the prepared S4 plan made a regression ID belong to its original category and to regression as if both were exclusive categories).
+- Facts: review compared S4 AC-1 with S4.5.1; the former required exactly one category while the latter defined a union across functional, integration, API and E2E IDs. S5 review compared its required-rule wording with blueprint section 13.3, which makes AEVE mandatory only for rules with seeded-defect evidence.
+- Root cause: one term, “category”, was used for both a test's primary classification and an aggregate execution set; the S5 plan did not limit required rules to evidence-backed IDs.
+- Rule: distinguish a test's single primary category from aggregate manifest membership; derive mandatory analyzer rules only from a committed seeded-evidence mapping. Verify every review claim against the current in-scope file before editing; S2 provisioning guide step 5 already listed the six trust roots.
+- Fix status: S4/S5 plans clarified in change record 0055; no tests or runtime checks were run.
+
 ## 2026-10-23 -- Unified organization blueprint and review amendments
 
 - Kind: FAILURE (author layer).

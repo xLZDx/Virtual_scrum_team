@@ -2,6 +2,10 @@
 
 Append-only. One dated entry per decision, piece of evidence or refusal.
 
+## 2026-10-24 -- Keep S4 primary-category and regression membership separate
+
+Documentation review of `docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md` found AC-1 assigned each test ID to exactly one category while S4.5.1 defined regression as a union of IDs from four other categories. Decision: each test ID has exactly one `primary_category`; regression is a separate aggregate manifest that references the category IDs without reassigning them. This preserves one primary denominator and an explicit regression denominator. S5 plan review also found a broader mandatory-rule interpretation than blueprint section 13.3 allows. Decision: only rule IDs linked to committed seeded-defect evidence are required for S5; S4's fixture catalog is a prerequisite. The S2 provisioning guide's current step 5 already lists all six trust roots, so no edit was needed for that review note. Implemented in documentation change record 0055.
+
 ## 2026-10-15 -- Team created from the operator's request
 
 Operator asked for a virtual scrum team (BA, product owner, architect, UI designer, tester, developer,

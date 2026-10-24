@@ -26,7 +26,7 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 
 **S4.1.1** Define the supported categories (`functional`, `integration`, `api`, `e2e`, `regression`, `seeded-failure`), their test-owner roles, exact source paths/selectors, required test-ID inventory, applicable environment, and category-level denominator.
 
-**AC-1:** Every required test ID resolves to a committed test and exactly one category; duplicate, missing, unknown, or unassigned IDs are rejected before a run can produce an accepting result.
+**AC-1:** Every required test ID resolves to a committed test and exactly one `primary_category` among `functional`, `integration`, `api`, `e2e`, or `seeded-failure`; duplicate, missing, unknown, or unassigned IDs are rejected before a run can produce an accepting result. `regression` is an aggregate run manifest, not a primary category: it references the union of the accepted functional, integration, API, and E2E test IDs while preserving each ID's single primary category and source-commit provenance.
 
 **AC-2:** Each category has a real native invocation. `api` covers the documented Python API of `tools.vst`; a network API is marked unsupported unless the product adds one and records its route contract.
 
@@ -66,7 +66,7 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 
 ### E5 — Regression and seeded-failure evidence
 
-**S4.5.1** Define regression as the explicit union of accepted functional, integration, API and E2E IDs for the current HEAD, with category and source commit provenance.
+**S4.5.1** Define regression as an aggregate manifest containing the explicit union of accepted functional, integration, API and E2E IDs for the current HEAD, with each ID retaining its unique `primary_category` and source-commit provenance. The aggregate does not reassign IDs to a second primary category.
 
 **S4.5.2** Add a bounded synthetic fixture catalog for known failure classes (for example stale HEAD, missing required receipt, invalid signature, out-of-scope diff, skipped required ID, artifact digest mismatch). Each fixture supplies a controlled input record to the unchanged product interface and the expected non-approving outcome; it does not patch, monkeypatch, or rewrite product source.
 
@@ -95,11 +95,11 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 | Python API | AC-2, AC-8 | Public API accepts valid request and rejects malformed/stale request; nonexistent HTTP route is explicitly unsupported | API contract | Python API exists; transport API UNKNOWN/absent in current paths |
 | Integration boundaries | AC-9 | Real local store/gate/runner flow with temp state; corrupted signature/chain/receipt fails closed | Integration | S2 modules exist; S3 dependency only for worker adapter |
 | E2E journey | AC-9, AC-10 | Synthetic story run through control plane and adapter; missing sandbox/adapter remains NOT_RUN | E2E | S3 and operator sandbox evidence may be required |
-| Regression denominator | AC-11 | Delete, duplicate, skip or xfail one registered test ID -> non-approving report | Regression | Depends on all prior category IDs |
+| Regression denominator | AC-11 | Delete, duplicate, skip or xfail one registered test ID -> non-approving report | Aggregate regression run over primary-category IDs | Depends on all prior category IDs |
 | Seeded failure | AC-12, AC-13 | Each unchanged-product synthetic negative fixture triggers its documented rejection; fixture mismatch cannot pass | Seeded-failure | Fixture catalog is new; no mutation or source patch |
 | Evidence integrity | AC-3, AC-14, AC-15 | Alter report/hash or replay against another HEAD -> gate rejects; reports contain no secret values | Evidence/gate integration | Requires report schema and authoritative gate binding |
 
-**Denominator rule:** At sprint start, freeze a committed registry containing every test ID in each category, including `UNSUPPORTED` and `NOT_RUN` rows with reasons. Per-category and regression reports must account for 100% of the applicable registry. No percentage or category-level PASS can hide an unaccounted ID. Recompute and review the inventory when tests are added or removed; bind it to the exact source HEAD and registry hash.
+**Denominator rule:** At sprint start, freeze a committed registry containing every test ID and one `primary_category`, including `UNSUPPORTED` and `NOT_RUN` rows with reasons. The regression manifest is a separate aggregate reference to the required functional, integration, API, and E2E IDs; it does not create duplicate primary-category assignments. Per-primary-category and regression reports must account for 100% of their applicable registry or aggregate manifest. No percentage or category-level PASS can hide an unaccounted ID. Recompute and review the inventory when tests are added or removed; bind it to the exact source HEAD and registry hash.
 
 ## Evidence record
 
