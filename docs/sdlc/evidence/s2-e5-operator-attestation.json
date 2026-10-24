@@ -1,0 +1,12 @@
+{
+  "empty_external_allowlist": true,
+  "environment_id": "Ubuntu-24.04",
+  "evidence_sha256": "44df5c3cfd6752cdc69e7b61aca5d77cf533e5c8b7d5991ac2f5ac6f85d4e265",
+  "no_container_socket": true,
+  "no_unapproved_host_paths": true,
+  "nonce": "8024493e38ba44df96ee5f127a24b338",
+  "policy_sha256": "c88c93ba40791971895a4c6c719c8ae37d2b2b676d499fb5f5b7f8f0875cc8b0",
+  "run_id": "s2-280e2d0a613a0b70252c13ce7afe85f22734f7d1-e5-final-0681fa0a871c4e40a2746c5c1c1d2eb4",
+  "signature": "8171f6e7e9f773b038986f7b73ab8b62b5621f5d9fedc01e3c10dce79c297af7",
+  "spec_sha256": "7a0bcaa3eb7ca76b9771e0b7f49892eaa0cfa744ce4e523f5f94b997fed61997"
+}

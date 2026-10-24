@@ -398,3 +398,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: fail-closed enumeration requires traversal into every numeric runtime UID entry, including the root-owned private directory.
 - Rule: do not widen traversal into root's private runtime directory to force a green probe; mask host runtime paths in a scoped namespace and verify the actual worker inherits that namespace.
 - Fix status: no ACL or directory mode was changed. Scoped inventory was complete, but no application service config proves worker inheritance; the unsigned preflight remained `FAIL`, and final signing/host-isolation proof remain `NOT_RUN` pending deployment and mount-policy approval. Evidence: `docs/sdlc/evidence/s2-e2e-acceptance-280e2d0.md`; change record 0057.
+
+## 2026-10-24 -- Attribute autonomous signing and review to the executor, not a human
+
+- Kind: PROVENANCE CLARIFICATION (an operator-root signature could be mistaken for an independent human approval).
+- Facts: the user delegated autonomous WSL execution; Codex reviewed the bounded host-mount evidence and used operator-root signing authority for the exact E5 run/spec/nonce correlation. The primary coordinator verified the resulting probe and attestation. No independent human approval was involved.
+- Root cause: the operator-root trust-root label describes the key authority, not the identity of a human reviewer or signer.
+- Rule: record accountable task owner, Codex executor, trust-root authority, and independent human review as distinct facts. Never infer human approval from a root-key signature.
+- Fix status: public attestation and sanitized PASS evidence are recorded in `docs/sdlc/evidence/s2-e5-operator-attestation.json`, `docs/sdlc/evidence/s2-e5-runmanifest-wsl-280e2d0.md`, and change record 0063. The raw inventory remains private and uncommitted.
