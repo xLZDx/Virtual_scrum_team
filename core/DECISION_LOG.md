@@ -64,3 +64,7 @@ The operator instructed: assemble the final design and plan, commit, push, start
 ## 2026-10-24 -- Report committed on the sprint branch
 
 The report-due hook required a report for the review and baseline commits. It was written and committed on `s1-control-plane-core` (not `main`) because switching branches would disturb the running S1 implementation work in the same checkout. Record: `docs/changes/0010-review-and-baseline-report.md`.
+
+## 2026-10-24 -- S1 E1/E2 code: contracts, signing and gate (written, untested)
+
+Implementation agent wrote `tools/vst/contracts.py`, `signing.py`, `gate.py` and the schema README under the S1 plan; no tests have run by design (build phase). Known design gap found in its report: `derive_result` makes a supervisor-written BLOCKED/INCONCLUSIVE receipt (needed for WORKER_LOST, decision BD-5) invalid for non-Documentation types; to be fixed together with E3 by accepting non-approving results (BLOCKED, INCONCLUSIVE, NOT_RUN) as given, since they can never produce an approval. Record: `docs/changes/0009-s1-e1-e2-contracts-and-gate.md`.

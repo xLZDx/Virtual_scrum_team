@@ -60,3 +60,10 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Facts: the house report was due after the review gates but was written only after the hook fired; the bare `py -3` launcher resolved to a missing interpreter (`D:\Repo\ERP\Python\...`) and the report tool had to be run with `C:\Python314\python.exe`.
 - Root cause: the report was not planned as part of closing the review gate; interpreter was assumed from PATH.
 - Rule: write the report when a review gate closes; call Python tools with the explicit `C:\Python314\python.exe`.
+
+## 2026-10-24 -- S1 E1/E2 contracts and gate (written, untested)
+
+- Kind: SHORTCOMING (design gap caught early by reading the implementer's report).
+- Facts: the strict result-derivation rule written from the baseline text conflicts with the WORKER_LOST receipt the same baseline requires.
+- Root cause: BD-3 (derived results) and BD-5 (supervisor failure receipts) were specified separately and never cross-checked.
+- Rule: when two baseline decisions touch the same field, state the interaction explicitly before coding; fix recorded for E3.
