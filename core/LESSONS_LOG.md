@@ -294,3 +294,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Layer: strict sandbox process lifecycle in `tools/vst/runner.py`.
 - Rule: create strict commands suspended, establish Job Object membership, and only then resume the primary thread; any inability to prove that sequence must refuse execution. Inspect pinned interpreter source before relying on process APIs, and avoid private-runtime handles.
 - Fix status: implemented in change record 0046; tests and Windows runtime execution remain pending.
+
+## 2026-10-24 -- Persist callback intent before external effects
+
+- Kind: FAILURE (restart could forget a paused provider and repeat an ambiguous lifecycle effect).
+- Facts: breaker counters and lifecycle state were initialized only in memory; callback exceptions did not establish whether an external effect had partially happened.
+- Root cause: control state was treated as a cache rather than reconstructed from the trusted append-only event stream.
+- Rule: persist stable-ID intent before invoking a callback and a confirmed outcome after it; on uncertainty block new work until an auditable reconciliation resolves the original action ID. Persist breaker policy and provider outcomes, and replay them from the verified event chain on restart.
+- Fix status: implemented in change record 0047; tests and runtime evidence remain NOT_RUN for the designated test agents.

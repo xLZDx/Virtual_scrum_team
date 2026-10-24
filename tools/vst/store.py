@@ -152,6 +152,7 @@ STORY_STATES = frozenset({"OPEN", "OWNED"})
 
 # Events written by the store itself, plus the one kind callers may record.
 CALLER_EVENT_KINDS = frozenset({"NOTE"})
+CONTROL_EVENT_KINDS = frozenset({"CONTROL_BREAKER_CONFIG", "CONTROL_PROVIDER_FAILURE", "CONTROL_PROVIDER_SUCCESS", "CONTROL_BREAKER_OVERRIDE", "CONTROL_ACTION_INTENT", "CONTROL_ACTION_COMPLETED", "CONTROL_ACTION_UNKNOWN", "CONTROL_ACTION_RECONCILED"})
 EVENT_KINDS = frozenset(
     {
         "EPOCH_ACQUIRED",
@@ -1566,8 +1567,50 @@ class Store:
             raise StoreError(
                 f"event kind must be one of {sorted(CALLER_EVENT_KINDS)}", kind="argument"
             )
+        if isinstance(payload, dict) and "_vst_control_type" in payload:
+            raise StoreError("reserved supervisor control payload", kind="argument")
         with self._tx() as conn:
             self._record_event_locked(conn, task_id, actor, kind, payload)
+
+    def _append_control_event(self, kind: str, event_id: str, payload: dict) -> dict:
+        """Append a supervisor-only NOTE control record, idempotent by event_id."""
+        if kind not in CONTROL_EVENT_KINDS:
+            raise StoreError("reserved control event kind required", kind="argument")
+        _need_str(event_id, "event_id")
+        if not isinstance(payload, dict):
+            raise StoreError("control payload must be an object", kind="argument")
+        envelope = {**payload, "_vst_control_type": kind, "event_id": event_id}
+        canonical = canonical_bytes(envelope).decode("utf-8")
+        with self._tx() as conn:
+            prior = conn.execute(
+                "SELECT payload FROM events WHERE actor='supervisor' AND kind='NOTE' ORDER BY seq"
+            ).fetchall()
+            for row in prior:
+                parsed = json.loads(row["payload"])
+                if parsed.get("event_id") == event_id and parsed.get("_vst_control_type") != kind:
+                    if kind.startswith("CONTROL_PROVIDER_") or kind == "CONTROL_BREAKER_OVERRIDE":
+                        raise StoreError("provider outcome id reused for a different outcome", kind="integrity")
+                if parsed.get("_vst_control_type") == kind and parsed.get("event_id") == event_id:
+                    if canonical_bytes(parsed).decode("utf-8") != canonical:
+                        raise StoreError("control event id reused with different payload", kind="integrity")
+                    return parsed
+            self._record_event_locked(conn, "__control__", "supervisor", "NOTE", envelope)
+        return envelope
+
+    def control_events(self) -> list[dict]:
+        """Return verified supervisor control records in append order."""
+        if not self.verify_event_chain():
+            raise StoreError("control event chain failed verification", kind="integrity")
+        with self._read_tx() as conn:
+            rows = conn.execute(
+                "SELECT payload FROM events WHERE actor='supervisor' AND kind='NOTE' ORDER BY seq"
+            ).fetchall()
+        result = []
+        for row in rows:
+            payload = json.loads(row["payload"])
+            if payload.get("_vst_control_type") in CONTROL_EVENT_KINDS:
+                result.append({"kind": payload["_vst_control_type"], **payload})
+        return result
 
     def verify_event_chain(self) -> bool:
         """True iff the keyed chain is intact AND matches the keyed anchor.

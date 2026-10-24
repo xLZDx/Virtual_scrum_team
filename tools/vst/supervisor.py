@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import hashlib
+import uuid
 from typing import Any, Callable
 
 from .contracts import canonical_bytes
 from .lifecycle import STOP_TRANSITIONS, transition
 from .store import Store, StoreError
+
+_LIFECYCLE_ACTIONS = {"start", "stop_terminate", "stop_cleanup", "rollback_effect", "rollback_cleanup", "resume"}
 
 
 class Supervisor:
@@ -46,13 +49,145 @@ class Supervisor:
             or bytes(operator_key) == bytes(probe_key)
         ):
             raise ValueError("sandbox supervisor requires trusted run id, nonce and probe verification key")
+        self._action_status: dict[str, dict] = {}
+        self._control_history = store.control_events()
+        configs = [row for row in self._control_history if row["kind"] == "CONTROL_BREAKER_CONFIG"]
+        config = {"threshold": failure_threshold, "policy": "consecutive_failures_v1"}
+        if configs and configs[0].get("config") != config:
+            raise StoreError("provider breaker policy differs from persisted configuration", kind="provider")
+        if not configs:
+            store._append_control_event("CONTROL_BREAKER_CONFIG", "breaker-config-v1", {"config": config})
+            self._control_history = store.control_events()
+        self._replay_controls()
+        self.lifecycle_state = "READY"
+        self.lifecycle_action_id: str | None = None
+        for event in self._control_history:
+            if event["kind"] == "CONTROL_ACTION_COMPLETED":
+                action = event.get("action")
+                if action == "start": self.lifecycle_state = "RUNNING"
+                elif action == "stop_terminate": self.lifecycle_state = "STOPPING"
+                elif action == "rollback_effect": self.lifecycle_state = "ROLLING_BACK"
+                elif action in {"stop_cleanup", "rollback_cleanup"}: self.lifecycle_state = "STOPPED"
+                elif action == "resume": self.lifecycle_state = "READY"
+                if self.lifecycle_state in {"STOPPING", "ROLLING_BACK"}:
+                    self.lifecycle_action_id = event.get("group_id")
+                elif self.lifecycle_state == "STOPPED":
+                    self.lifecycle_action_id = None
+            if event["kind"] == "CONTROL_ACTION_INTENT":
+                action_id = event.get("action_id", event["event_id"])
+                status = self._action_status.get(action_id, {})
+                if status.get("action") in _LIFECYCLE_ACTIONS and status.get("status") not in {"completed", "reconciled"}:
+                    self.lifecycle_state = "BLOCKED_RECOVERY"
+                    self.lifecycle_action_id = status.get("group_id")
+            if event["kind"] == "CONTROL_ACTION_RECONCILED":
+                if event.get("action") in _LIFECYCLE_ACTIONS:
+                    self._apply_reconciled_state(event["action"], event["completed"])
+                    self.lifecycle_action_id = event.get("group_id") if self.lifecycle_state in {"STOPPING", "ROLLING_BACK"} else None
+
+    def _apply_reconciled_state(self, action: str, completed: bool) -> None:
+        states = {
+            ("start", True): "RUNNING", ("start", False): "READY",
+            ("stop_terminate", True): "STOPPING", ("stop_terminate", False): "RUNNING",
+            ("stop_cleanup", True): "STOPPED", ("stop_cleanup", False): "STOPPING",
+            ("rollback_effect", True): "ROLLING_BACK", ("rollback_effect", False): "RUNNING",
+            ("rollback_cleanup", True): "STOPPED", ("rollback_cleanup", False): "ROLLING_BACK",
+            ("resume", True): "READY", ("resume", False): "STOPPED",
+        }
+        self.lifecycle_state = states[(action, completed)]
+
+    def _replay_controls(self) -> None:
         self.provider_failures = 0
         self.breaker_state = "CLOSED"
-        self.lifecycle_state = "READY"
+        self._action_status = {}
+        for event in self._control_history:
+            kind = event["kind"]
+            if kind == "CONTROL_PROVIDER_FAILURE":
+                self.provider_failures += 1
+                if self.provider_failures >= self.failure_threshold: self.breaker_state = "PAUSED_PROVIDER"
+            elif kind == "CONTROL_PROVIDER_SUCCESS":
+                self.provider_failures = 0
+            elif kind == "CONTROL_BREAKER_OVERRIDE":
+                self.provider_failures = 0
+                self.breaker_state = "CLOSED"
+            elif kind in {"CONTROL_ACTION_INTENT", "CONTROL_ACTION_COMPLETED", "CONTROL_ACTION_UNKNOWN", "CONTROL_ACTION_RECONCILED"}:
+                root_id = event.get("action_id", event["event_id"])
+                self._action_status[root_id] = {"status": kind.rsplit("_", 1)[-1].lower(), **event}
 
-    def start_worker(self, start: Callable[[], Any], *, probe: dict | None = None) -> Any:
+    def _perform(self, action: str, callback: Callable[[], Any], action_id: str | None = None, *, group_id: str | None = None) -> Any:
+        action_id = action_id or str(uuid.uuid4())
+        group_id = group_id or action_id
+        status = self._action_status.get(action_id)
+        if status:
+            if status.get("action") != action:
+                raise StoreError("lifecycle action id reused for a different action", kind="integrity")
+            if status["status"] == "completed":
+                if status.get("result_omitted"):
+                    raise StoreError("action completed but its return value cannot be replayed", kind="lifecycle")
+                return status.get("result")
+            if status["status"] == "reconciled" and status.get("completed") is False:
+                # A recorded resolution established that the effect did not occur;
+                # continue under the exact same id, never mint a replacement id.
+                pass
+            else:
+                raise StoreError("lifecycle action has an unresolved outcome; reconcile before continuing", kind="lifecycle")
+        attempt = (status.get("attempt", 0) + 1) if status else 1
+        event_data = {"action": action, "action_id": action_id, "attempt": attempt}
+        if group_id is not None:
+            event_data["group_id"] = group_id
+        self.store._append_control_event("CONTROL_ACTION_INTENT", f"{action_id}:intent:{attempt}", event_data)
+        self._control_history = self.store.control_events()
+        self._replay_controls()
+        try:
+            result = callback()
+            completion = dict(event_data)
+            try:
+                canonical_bytes(result)
+            except (TypeError, ValueError):
+                completion["result_omitted"] = True
+            else:
+                completion["result"] = result
+            self.store._append_control_event("CONTROL_ACTION_COMPLETED", f"{action_id}:completed:{attempt}", completion)
+            self._control_history = self.store.control_events()
+            self._replay_controls()
+            return result
+        except BaseException as exc:
+            if action in _LIFECYCLE_ACTIONS:
+                self.lifecycle_state = "BLOCKED_RECOVERY"
+                self.lifecycle_action_id = group_id
+            self.store._append_control_event("CONTROL_ACTION_UNKNOWN", f"{action_id}:unknown:{attempt}", {**event_data, "error_type": type(exc).__name__})
+            self._control_history = self.store.control_events()
+            self._replay_controls()
+            raise
+
+    def reconcile_action(self, action_id: str, *, completed: bool, resolution_id: str) -> None:
+        """Record an externally verified resolution; never replays an uncertain callback."""
+        if type(completed) is not bool:
+            raise StoreError("completed must be an explicit boolean", kind="argument")
+        if not isinstance(resolution_id, str) or not resolution_id.strip():
+            raise StoreError("reconciliation requires an auditable resolution id", kind="argument")
+        current = self._action_status.get(action_id)
+        if current is None:
+            matches = [
+                row for row in self._action_status.values()
+                if row.get("group_id") == action_id and row.get("status") in {"intent", "unknown"}
+            ]
+            if len(matches) == 1:
+                current = matches[0]
+                action_id = current["action_id"]
+        if not current or current["status"] not in {"intent", "unknown"}:
+            raise StoreError("action is not awaiting reconciliation", kind="lifecycle")
+        self.store._append_control_event("CONTROL_ACTION_RECONCILED", f"{action_id}:reconciled:{current.get('attempt', 1)}", {"action": current["action"], "action_id": action_id, "attempt": current.get("attempt", 1), "completed": completed, "resolution_id": resolution_id})
+        self._control_history = self.store.control_events()
+        self._replay_controls()
+        if current["action"] in _LIFECYCLE_ACTIONS:
+            self._apply_reconciled_state(current["action"], completed)
+            self.lifecycle_action_id = current.get("group_id") if self.lifecycle_state in {"STOPPING", "ROLLING_BACK"} else None
+
+    def start_worker(self, start: Callable[[], Any], *, probe: dict | None = None, action_id: str | None = None) -> Any:
         if not self.store.reconciliation_complete:
             raise StoreError("startup reconciliation must complete before worker start", kind="integrity")
+        if self.lifecycle_state == "BLOCKED_RECOVERY":
+            raise StoreError("unresolved lifecycle action requires reconciliation", kind="lifecycle")
         if self.breaker_state != "CLOSED":
             raise StoreError("provider breaker is open; worker start refused", kind="provider")
         if self.store.sandbox_mode:
@@ -77,7 +212,7 @@ class Supervisor:
         next_state, _ = transition(self.lifecycle_state, "START")
         if self.store.sandbox_mode:
             self._probe_consumed = True
-        result = start()
+        result = self._perform("start", start, action_id, group_id=action_id)
         self.lifecycle_state = next_state
         return result
 
@@ -113,14 +248,14 @@ class Supervisor:
             task_id, current_head, current_epoch, worker_key, **gate_options
         )
 
-    def provider_succeeded(self) -> None:
+    def provider_succeeded(self, outcome_id: str | None = None) -> None:
         if self.breaker_state == "CLOSED":
-            self.provider_failures = 0
+            self.store._append_control_event("CONTROL_PROVIDER_SUCCESS", outcome_id or str(uuid.uuid4()), {})
+            self._control_history = self.store.control_events(); self._replay_controls()
 
-    def provider_failed(self) -> None:
-        self.provider_failures += 1
-        if self.provider_failures >= self.failure_threshold:
-            self.breaker_state = "PAUSED_PROVIDER"
+    def provider_failed(self, outcome_id: str | None = None) -> None:
+        self.store._append_control_event("CONTROL_PROVIDER_FAILURE", outcome_id or str(uuid.uuid4()), {})
+        self._control_history = self.store.control_events(); self._replay_controls()
 
     def manual_override(self, record: dict) -> None:
         """Resume the paused provider only with a distinct operator record."""
@@ -128,33 +263,53 @@ class Supervisor:
             raise StoreError("manual override is only valid for a paused provider", kind="provider")
         if not isinstance(record, dict) or not record or "verdict" not in record:
             raise StoreError("manual override requires a distinct signed/identified record", kind="provider")
+        try:
+            canonical_bytes(record)
+        except (TypeError, ValueError) as exc:
+            raise StoreError("manual override record must be canonical JSON", kind="provider") from exc
         if record.get("verdict") == "APPROVE":
             raise StoreError("manual override cannot be represented as plain APPROVE", kind="provider")
         if self.manual_override_recorder is None:
             raise StoreError("manual override record sink is unavailable", kind="provider")
-        self.manual_override_recorder(dict(record))
-        self.breaker_state = "CLOSED"
-        self.provider_failures = 0
+        override_id = record.get("id")
+        if not isinstance(override_id, str) or not override_id:
+            raise StoreError("manual override requires a stable record id", kind="provider")
+        self._perform("manual_override", lambda: self.manual_override_recorder(dict(record)), override_id)
+        self.store._append_control_event("CONTROL_BREAKER_OVERRIDE", override_id, {"record": record})
+        self._control_history = self.store.control_events(); self._replay_controls()
 
-    def stop(self, terminate: Callable[[], None], cleanup: Callable[[], None]) -> None:
-        next_state, _ = transition(self.lifecycle_state, "STOP")
-        self.lifecycle_state = next_state
-        terminate()
+    def stop(self, terminate: Callable[[], None], cleanup: Callable[[], None], *, action_id: str | None = None) -> None:
+        if self.lifecycle_state == "BLOCKED_RECOVERY": raise StoreError("unresolved lifecycle action requires reconciliation", kind="lifecycle")
+        base = action_id or (self.lifecycle_action_id if self.lifecycle_state == "STOPPING" else None) or str(uuid.uuid4())
+        if self.lifecycle_state == "RUNNING":
+            next_state, _ = transition(self.lifecycle_state, "STOP")
+            self.lifecycle_state = next_state
+            self._perform("stop_terminate", terminate, base + ":terminate", group_id=base)
+        elif self.lifecycle_state != "STOPPING":
+            raise StoreError("stop can continue only from RUNNING or STOPPING", kind="lifecycle")
         final_state, _ = transition(self.lifecycle_state, "CLEANUP_COMPLETE")
-        cleanup()
+        self._perform("stop_cleanup", cleanup, base + ":cleanup", group_id=base)
         self.lifecycle_state = final_state
+        self.lifecycle_action_id = None
 
-    def rollback(self, rollback_effect: Callable[[], None], cleanup: Callable[[], None]) -> None:
-        next_state, _ = transition(self.lifecycle_state, "ROLLBACK")
-        self.lifecycle_state = next_state
-        rollback_effect()
+    def rollback(self, rollback_effect: Callable[[], None], cleanup: Callable[[], None], *, action_id: str | None = None) -> None:
+        if self.lifecycle_state == "BLOCKED_RECOVERY": raise StoreError("unresolved lifecycle action requires reconciliation", kind="lifecycle")
+        base = action_id or (self.lifecycle_action_id if self.lifecycle_state == "ROLLING_BACK" else None) or str(uuid.uuid4())
+        if self.lifecycle_state == "RUNNING":
+            next_state, _ = transition(self.lifecycle_state, "ROLLBACK")
+            self.lifecycle_state = next_state
+            self._perform("rollback_effect", rollback_effect, base + ":effect", group_id=base)
+        elif self.lifecycle_state != "ROLLING_BACK":
+            raise StoreError("rollback can continue only from RUNNING or ROLLING_BACK", kind="lifecycle")
         final_state, _ = transition(self.lifecycle_state, "CLEANUP_COMPLETE")
-        cleanup()
+        self._perform("rollback_cleanup", cleanup, base + ":cleanup", group_id=base)
         self.lifecycle_state = final_state
+        self.lifecycle_action_id = None
 
-    def resume(self, increment_epoch: Callable[[], Any]) -> Any:
+    def resume(self, increment_epoch: Callable[[], Any], *, action_id: str | None = None) -> Any:
+        if self.lifecycle_state == "BLOCKED_RECOVERY": raise StoreError("unresolved lifecycle action requires reconciliation", kind="lifecycle")
         next_state, _ = transition(self.lifecycle_state, "RESUME")
-        epoch = increment_epoch()
+        epoch = self._perform("resume", increment_epoch, action_id)
         self.lifecycle_state = next_state
         return epoch
 
