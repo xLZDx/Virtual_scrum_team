@@ -2,7 +2,7 @@
 
 ## What changed
 
-- Recorded independent code, security, and reliability reviews of the S3 adapter implementation and focused test evidence.
+- Recorded independent code, security, reliability, and database reviews of the S3 adapter implementation and focused test evidence.
 - No BLOCKER or MAJOR finding was reported. One MINOR diagnostic issue was retained in VST-029: `SyntheticStoryPilot.stop` suppresses the exception from adapter cleanup and returns a generic `NOT_VERIFIED` response, losing the underlying bounded cause.
 
 ## Why
@@ -17,7 +17,7 @@ S3 requires specialist review after focused functional/E2E evidence and before p
 
 ## Decisions and ownership
 
-- Reviewers: `code-reviewer`, `security-reviewer`, and `reliability-reviewer`, each GPT-6 Luna at medium effort.
+- Reviewers: `code-reviewer`, `security-reviewer`, `reliability-reviewer`, and `database-reviewer`; all were launched using the configured GPT-6 Luna default. Code/security/reliability used medium effort. The database reviewer did not report its resolved model/effort in its final response; launch configuration is the available model evidence.
 - The MINOR cleanup-cause improvement is non-blocking and retained in backlog. The authenticated STOP caller remains a precondition for any external exposure; this repository slice contains no untrusted transport boundary.
 - Accountable task owner: operator under delegated continuation. Codex coordinates. Reviewer roles are not service owners.
 
@@ -26,4 +26,5 @@ S3 requires specialist review after focused functional/E2E evidence and before p
 - Code reviewer: no BLOCKER/MAJOR.
 - Security reviewer: no reachable blocker in the in-repository synthetic path; `authorized_actor` is an audit label, not authentication.
 - Reliability reviewer: no BLOCKER/MAJOR; one MINOR cleanup-cause diagnostic finding.
+- Database reviewer at code commit `bf7c34b8f2369da6c2bbc64b10678e616f97053b`: no database BLOCKER/MAJOR/MINOR in uniqueness, budget, resume, or STOP transactions. It identified the general external-callback replay boundary; no defect was established for S3 internal Store paths. Runtime concurrency evidence remains `NOT_RUN`.
 - Reviewers ran no tests, checks, builds, CI, or migrations. Runtime sandbox, external candidate, OS cleanup, and prohibited process-kill behavior remain `NOT_RUN`/`NOT_VERIFIED`.
