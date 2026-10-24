@@ -414,3 +414,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: evidence was added in small follow-up commits without updating the central status and backlog in the same documentation pass.
 - Rule: after a verification/evidence batch closes, reconcile state, backlog, known limits and provisioning status before specialist review; retain `NOT_RUN` for unexecuted criteria and limit runtime acceptance to its exact correlation.
 - Fix status: reconciled in change record 0064.
+
+## 2026-10-24 -- Do not hold durable-store locks across backend effects
+
+- Kind: MAJOR RELIABILITY FINDING.
+- Facts: a simulated push or pull-request callback ran inside a SQLite write transaction and external-anchor coordinator lock; a hung Git subprocess could block unrelated store operations. Completed manual-override retry also did not bind replay to the original signed payload.
+- Root cause: transactional idempotency was reused for an external side effect, and action completion was treated as equivalent to payload equality.
+- Rule: commit a durable intent before external effects, execute them outside the global store lock with a finite bound and backend idempotency key, then commit completion. On replay, compare the exact canonical payload before returning a prior completion.
+- Fix status: design recorded in change record 0065; implementation and designated-agent verification follow in separate change records.
