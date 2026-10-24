@@ -1125,15 +1125,64 @@ class SyntheticOperationBackend:
             raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
         return completed.stdout.decode("utf-8", "replace").strip()
 
-    def _source_git(self, *args: str) -> str:
+    def _source_pack(self, head: str) -> bytes:
+        env = {
+            name: os.environ[name]
+            for name in (
+                "PATH", "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "TEMP", "TMP",
+                "TMPDIR", "LANG", "LC_ALL",
+            )
+            if name in os.environ
+        }
+        env.update({
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_OPTIONAL_LOCKS": "0",
+            "GIT_PAGER": "cat",
+            "GIT_NO_LAZY_FETCH": "1",
+            "GIT_NO_REPLACE_OBJECTS": "1",
+        })
         completed = subprocess.run(
-            ["git", "-C", self.source_repo, *args],
-            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            ["git", "-C", self.source_repo, "pack-objects", "--stdout", "--revs"],
+            input=(head + "\n").encode("ascii"), stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, check=False, timeout=self.command_timeout_sec,
+            env=env,
         )
         if completed.returncode:
             raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
-        return completed.stdout.decode("utf-8", "replace").strip()
+        if not completed.stdout:
+            raise RuntimeError("Git source repository produced an empty object pack")
+        return completed.stdout
+
+    def _import_head(self, head: str) -> None:
+        pack = self._source_pack(head)
+        self._git("index-pack", "--strict", "--stdin", input_bytes=pack)
+        self._git("cat-file", "-e", f"{head}^{{commit}}")
+
+    def _is_ancestor(self, ancestor: str, descendant: str) -> bool:
+        completed = subprocess.run(
+            ["git", "--git-dir", self.bare_path, "merge-base", "--is-ancestor", ancestor, descendant],
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            check=False, timeout=self.command_timeout_sec,
+        )
+        if completed.returncode == 0:
+            return True
+        if completed.returncode == 1:
+            return False
+        raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
+
+    def _update_ref(self, ref: str, head: str, expected: str | None) -> None:
+        old_value = expected or ("0" * 40)
+        try:
+            self._git("update-ref", ref, head, old_value)
+        except RuntimeError:
+            try:
+                if self.ref_head(ref) == head:
+                    return
+            except RuntimeError:
+                pass
+            raise StoreError("bare target ref changed during synthetic publication", kind="duplicate")
 
     def ref_head(self, ref: str) -> str:
         return self._git("rev-parse", "--verify", ref)
@@ -1182,9 +1231,10 @@ class SyntheticOperationBackend:
         except RuntimeError:
             current = None
         if current != head:
-            # The candidate object lives in the worker source repository; only
-            # the trusted supervisor backend performs this local push.
-            self._source_git("push", self.bare_path, f"{head}:{ref}")
+            if current is not None and not self._is_ancestor(current, head):
+                raise StoreError("synthetic branch update is not a fast-forward", kind="duplicate")
+            self._import_head(head)
+            self._update_ref(ref, head, current)
         return {"operation_key": operation_key, "ref": ref, "head": head}
 
     def open_pull_request(self, payload: dict, *, operation_key: str) -> dict:
@@ -1201,7 +1251,8 @@ class SyntheticOperationBackend:
         if current is not None and current != head:
             raise StoreError("pull-request key already points at a different head", kind="duplicate")
         if current is None:
-            self._source_git("push", self.bare_path, f"{head}:{ref}")
+            self._import_head(head)
+            self._update_ref(ref, head, None)
         return {"operation_key": operation_key, "ref": ref, "head": head}
 
 
