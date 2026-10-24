@@ -140,3 +140,7 @@ GPT-PM returned APPROVE for the exact head abc0d50 (request 50828a0d-f780-405b-b
 ## 2026-10-24 -- S0 and S1 closure report written
 
 Closure report added (change record 0033). It states that the tests were run by agents on the working tree before the final commit and not re-run on the approved head, and lists the deferred S2 items and the open operator decisions (waiver scope, model-default drift).
+
+## 2026-10-24 -- Autonomous continuation prompt for S2 to S5
+
+Added `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` (change record 0034) on the operator's request. Decisions encoded in it: sprint names follow the baseline plan (S2 isolated worker sandbox) over the stale blueprint table; one pull request per sprint with a GPT-PM gate on the exact head; the sandbox provisioning step stays operator-only and independent work continues while it is pending; the prompt is committed in English as repository text.

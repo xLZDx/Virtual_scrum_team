@@ -187,3 +187,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: PATH launcher points at a sibling project's Python (see the PATH-resolves-to-sibling-venv memory note).
 - Layer: coordinator (used the skill's command verbatim without checking the interpreter).
 - Rule: use the pinned interpreter for tooling commands on this machine.
+
+## 2026-10-24 -- Continuation prompt
+
+- Kind: SUCCESS.
+- Facts: the prompt reuses the S1 retrospective rules (three-head and exact-cap scenarios, per-outcome bounds), the PM Bridge resend rules and the hard stops learned in this program, so a new agent does not repeat them.
+- Root cause: lessons were already recorded in the logs and retrospective, which made a short, evidence-backed prompt possible.
+- Layer: n/a.
+- Rule: keep the lessons log current so handover prompts can cite it instead of restating history.
