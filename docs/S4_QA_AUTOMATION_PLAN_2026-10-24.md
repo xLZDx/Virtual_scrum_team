@@ -30,7 +30,7 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 
 **AC-2:** Each category has a real native invocation. `api` covers the documented Python API of `tools.vst`; a network API is marked unsupported unless the product adds one and records its route contract.
 
-**AC-3:** The category registry is bound to its content hash and candidate HEAD; stale registry or candidate HEAD cannot produce current evidence.
+**AC-3:** The category registry is bound to its content hash and candidate HEAD; stale registry or candidate HEAD cannot produce current evidence. Registry and supported-category provenance heads must be ancestors of the candidate, and the v2 receipt binds the actual candidate HEAD.
 
 ### E2 — Reproducible environment and native runner
 

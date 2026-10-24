@@ -483,3 +483,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — When a test worker and evidence runner use different POSIX identities, validate both sides of every artifact permission. A worker-owned `0600` event file cannot be consumed by the runner; keep the parent run directory private and grant only the bounded event file the read mode needed by the runner. Also disable ambient pytest entry-point autoload when the manifest pins the allowed plugin set. See change record 0095.
 
+2026-10-25 — Provenance validation must establish a relationship, not just object existence. For QA category source revisions, require Git ancestry into the candidate head so a reachable but unrelated or stale commit cannot supply current acceptance IDs. See change record 0097; execution evidence remains pending.
+

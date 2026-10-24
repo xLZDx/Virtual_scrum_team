@@ -288,3 +288,7 @@ The v2 signer runner is POSIX-only, and the approved named environment inventory
 
 The report-bound QA worker writes its bounded event record inside a runner-owned mode-0730 directory. Set only the event file to mode 0644 so the distinct runner identity can read it after worker exit; users outside the runner owner and worker group cannot traverse the parent. Set `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1` only for report-bound QA commands so installed entry-point plugins cannot alter a manifest-pinned run. Record and reconcile the source commits 217bd2b and a914213 without rewriting history; their change records exist, while this record and regenerated document registry are added in follow-up change 0096. No runtime verification is claimed.
 
+## 2026-10-25 -- Reject QA category provenance outside candidate history
+
+The category registry's top-level provenance head and every supported category source head must be ancestors of the candidate's current Git HEAD. Existence alone is insufficient because an unreachable or side-branch commit can name stale test IDs. A bounded `git merge-base --is-ancestor` refusal or timeout fails closed. The v2 receipt and authoritative gate still bind the run to its exact candidate HEAD. See change record 0097; no runtime verification is claimed.
+

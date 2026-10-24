@@ -64,6 +64,34 @@ def _git_commit_exists(root: Path, revision: str) -> bool:
     return result.returncode == 0
 
 
+def _git_commit_is_ancestor(root: Path, revision: str, candidate_head: str) -> bool:
+    """Require registry provenance to be part of the candidate's history."""
+    try:
+        result = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", revision, candidate_head], cwd=root,
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, timeout=5, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0
+
+
+def _current_candidate_head(root: Path) -> str:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--verify", "HEAD"], cwd=root,
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL, timeout=5, check=False, text=True,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ContractError(f"cannot identify the QA candidate HEAD: {exc}") from exc
+    head = result.stdout.strip()
+    if result.returncode != 0 or len(head) != 40 or any(c not in "0123456789abcdef" for c in head):
+        raise ContractError("cannot identify a full QA candidate HEAD")
+    return head
+
+
 def load_registry(root: Path, relative_path: str = "docs/qa/categories.json") -> tuple[dict, str]:
     """Validate committed registry syntax, unique IDs, categories, and source paths."""
     registry, raw = _read_repo_json(root, relative_path, max_bytes=MAX_REGISTRY_BYTES)
@@ -76,6 +104,9 @@ def load_registry(root: Path, relative_path: str = "docs/qa/categories.json") ->
             any(char not in "0123456789abcdef" for char in source_head) or
             not _git_commit_exists(root, source_head)):
         raise ContractError("QA registry source_head must be a full lowercase Git SHA")
+    candidate_head = _current_candidate_head(root)
+    if not _git_commit_is_ancestor(root, source_head, candidate_head):
+        raise ContractError("QA registry source_head is stale or outside the candidate history")
     categories = registry["categories"]
     if not isinstance(categories, dict) or set(categories) != set(PRIMARY_CATEGORIES):
         raise ContractError("QA registry must account for every primary category")
@@ -116,6 +147,8 @@ def load_registry(root: Path, relative_path: str = "docs/qa/categories.json") ->
                 any(char not in "0123456789abcdef" for char in head) or
                 not _git_commit_exists(root, head)):
             raise ContractError(f"QA category {category!r} needs a full source_head")
+        if not _git_commit_is_ancestor(root, head, candidate_head):
+            raise ContractError(f"QA category {category!r} source_head is stale or outside candidate history")
         test_ids = entry.get("test_ids")
         if not isinstance(test_ids, list) or not test_ids:
             raise ContractError(f"supported QA category {category!r} needs test IDs")
