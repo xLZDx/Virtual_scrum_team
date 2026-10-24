@@ -28,7 +28,7 @@ S4 acceptance requires exact primary-category assignment and manifest projection
 - Source HEAD before this test commit: `0c8232e237477328d3dd5b9a658288d977360073`.
 - Command: `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest -q -p no:cacheprovider -p tools.qa.pytest_pass_plugin tests/qa/test_s4_registry_contracts.py`.
 - Result: **8 passed**, with one deprecation warning from the globally installed `pytest-asyncio` plugin. Environment: Windows, Python `3.14.15`, pytest `8.4.2`.
-- This run occurred before the catalog file was committed, so the seeded-catalog test temporarily stubbed only the Git tracked-file predicate while reading and validating the real catalog bytes. An exact post-commit rerun without that seam remains required.
+- The first run occurred before the catalog file was committed and temporarily stubbed only the Git tracked-file predicate. That run was superseded by an exact post-commit rerun at `d56ef7994bcee6c8a9f7a2359105bc1eb1e4fdc9` with the stub removed: **8 passed**, using the same command and environment.
 - The pinned `Ubuntu-24.04` / CPython `3.12.3` run is `NOT_RUN`: `/mnt/d` is empty in the available WSL distribution, and the S4 snapshot command requires a pre-provisioned private destination root plus runner account and worker group. No package was installed.
 
 ## Follow-up

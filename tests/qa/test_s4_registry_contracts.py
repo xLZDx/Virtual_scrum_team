@@ -161,9 +161,6 @@ def test_s4_seeded_failure_rejects_invalid_manifest_and_records_observation(monk
     candidate = _registry_fixture()
     candidate["categories"]["seeded-failure"]["test_ids"] = [test_id]
     # The committed fixture catalog is the real input boundary for this lane.
-    # During authoring this file is not tracked yet; the post-commit exact-head
-    # rerun exercises the Git-tracked check without this seam override.
-    monkeypatch.setattr(registry, "_git_file_is_tracked", lambda *args: True)
     loaded_catalog, _ = registry.load_seeded_failure_catalog(ROOT, candidate)
     assert loaded_catalog["fixtures"][0]["test_id"] == test_id
 
