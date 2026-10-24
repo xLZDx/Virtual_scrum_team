@@ -89,8 +89,12 @@ class FileExternalAnchor:
         unlock = None
         try:
             os.makedirs(os.path.dirname(lock_path), exist_ok=True)
-            stream = open(lock_path, "a+b")
-            os.chmod(lock_path, 0o600)
+            try:
+                stream = open(lock_path, "a+b")
+                if os.name != "nt":
+                    os.chmod(lock_path, 0o600)
+            except OSError as exc:
+                raise AnchorError(f"external anchor coordinator unavailable: {exc}") from exc
             stream.seek(0, os.SEEK_END)
             if stream.tell() == 0:
                 stream.write(b"\0")
@@ -99,7 +103,10 @@ class FileExternalAnchor:
                 import msvcrt
 
                 stream.seek(0)
-                msvcrt.locking(stream.fileno(), msvcrt.LK_LOCK, 1)
+                try:
+                    msvcrt.locking(stream.fileno(), msvcrt.LK_LOCK, 1)
+                except OSError as exc:
+                    raise AnchorError(f"external anchor coordinator lock failed: {exc}") from exc
                 unlock = lambda: msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
             else:
                 import fcntl
@@ -149,7 +156,10 @@ class FileExternalAnchor:
     def compare_and_append(self, expected: dict | None, checkpoint: dict) -> dict:
         if not verify_checkpoint(checkpoint, self._key):
             raise AnchorError("refusing unsigned or invalid checkpoint")
-        with _anchor_lock:
+        # The sidecar lock coordinates both Store transactions and standalone
+        # CAS calls. Locking this JSONL file separately with msvcrt is fragile
+        # across Windows append handles and is unnecessary under that lock.
+        with self.transaction_lock(), _anchor_lock:
             latest = self.read_latest()
             if latest == checkpoint:
                 return latest
@@ -163,34 +173,19 @@ class FileExternalAnchor:
             os.makedirs(os.path.dirname(self.path), exist_ok=True)
             try:
                 with open(self.path, "a+b") as stream:
-                    os.chmod(self.path, 0o600)
-                    if os.name == "nt":
-                        import msvcrt
-
-                        stream.seek(0)
-                        msvcrt.locking(stream.fileno(), msvcrt.LK_LOCK, 1)
-                        def unlock() -> None:
-                            stream.seek(0)
-                            msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
-                    else:
-                        import fcntl
-
-                        fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
-                        unlock = lambda: fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
-                    try:
-                        latest = self.read_latest()
-                        if latest == checkpoint:
-                            return latest
-                        if latest != expected:
-                            if latest is not None and latest["count"] == checkpoint["count"]:
-                                raise AnchorError("same checkpoint count has a different head")
-                            raise AnchorError("external checkpoint compare-and-append conflict")
-                        stream.seek(0, os.SEEK_END)
-                        stream.write(canonical_bytes(checkpoint) + b"\n")
-                        stream.flush()
-                        os.fsync(stream.fileno())
-                    finally:
-                        unlock()
+                    if os.name != "nt":
+                        os.chmod(self.path, 0o600)
+                    latest = self.read_latest()
+                    if latest == checkpoint:
+                        return latest
+                    if latest != expected:
+                        if latest is not None and latest["count"] == checkpoint["count"]:
+                            raise AnchorError("same checkpoint count has a different head")
+                        raise AnchorError("external checkpoint compare-and-append conflict")
+                    stream.seek(0, os.SEEK_END)
+                    stream.write(canonical_bytes(checkpoint) + b"\n")
+                    stream.flush()
+                    os.fsync(stream.fileno())
             except OSError as exc:
                 raise AnchorError(f"external checkpoint append failed: {exc}") from exc
             return checkpoint

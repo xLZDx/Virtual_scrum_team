@@ -318,3 +318,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: trust decisions were partly outside the serialized Store boundary, and recovery authority was represented as an unauthenticated assertion.
 - Rule: check breaker state in the same writer transaction as worker-start intent; require an operator-signed resolution bound to action and evidence before a retry; seek to the acquired lock region before releasing it after file writes.
 - Fix status: implemented in change record 0049; E2E rerun and runtime proof remain NOT_RUN.
+
+## 2026-10-24 -- Use one Windows lock boundary for external-anchor CAS
+
+- Kind: FAILURE (the prior anchor-file byte-lock correction still produced Windows `Permission denied` during genesis and concurrent synchronization).
+- Facts: the E2E agent reported 75 passed, 2 failed, and 21 skipped on HEAD `8df8db70649f3f45e75f34c9f717b060d292497b`; both failures were external-anchor access errors. Specialist review also found a coordinator `msvcrt` acquisition error could escape Store construction without closing SQLite.
+- Root cause: standalone/public checkpoint CAS opened and byte-locked the JSONL file in addition to the already-established cross-process sidecar coordinator, creating a second Windows lock/open boundary.
+- Rule: every public CAS call must hold the same reentrant sidecar coordination lock as Store synchronization, and Store construction must close its connection when lock setup prevents safe initialization.
+- Fix status: implemented in change record 0050; focused E2E rerun remains pending and no runtime proof is claimed.

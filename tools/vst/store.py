@@ -472,12 +472,20 @@ class Store:
             if busy is not None:
                 raise busy from exc
             raise
+        except AnchorError as exc:
+            self._conn.close()
+            raise StoreError(str(exc), kind="integrity") from exc
         except BaseException:
             self._conn.close()
             raise
         _restrict_permissions(path)
         try:
             self.startup_reconcile()
+        except AnchorError as exc:
+            # Lock acquisition failed before reconciliation could establish a
+            # safe diagnostic state. Do not leak a live SQLite handle.
+            self._conn.close()
+            raise StoreError(str(exc), kind="integrity") from exc
         except StoreError as exc:
             # Keep the handle available for diagnostics, but all acceptance and
             # mutation entry points remain locked until explicit recovery.
