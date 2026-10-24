@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Полный статус проекта Virtual Scrum Team</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--fg:#1c1c1c;--mut:#666;--line:#ccc;--bad:#b00020;--warn:#a15c00;--ok:#1b7a3a;--chip:#eee}
+@media(prefers-color-scheme:dark){:root{--bg:#161616;--fg:#e8e8e8;--mut:#9a9a9a;--line:#444;--bad:#ff6b81;--warn:#e0a040;--ok:#5fcf80;--chip:#2a2a2a}}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max-width:1040px;margin:0 auto;padding:16px}
+h2{margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:15px}th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:var(--chip)}
+.bad{color:var(--bad);font-weight:600}.warn{color:var(--warn);font-weight:600}.ok{color:var(--ok);font-weight:600}.mut{color:var(--mut)}
+.bar{display:flex;height:18px;border:1px solid var(--line);border-radius:3px;overflow:hidden;margin:6px 0}
+.bar span{display:block;height:100%}.b-ok{background:var(--ok)}.b-warn{background:var(--warn)}.b-bad{background:var(--bad)}.b-no{background:var(--chip)}
+.box{border:1px solid var(--line);border-left:4px solid var(--warn);padding:8px 12px;margin:12px 0;background:var(--chip)}
+code{background:var(--chip);padding:0 4px;border-radius:3px}
+@media(max-width:700px){table{font-size:13px}}
+</style>
+</head>
+<body>
+<header>
+<h1>Полный статус проекта Virtual Scrum Team</h1>
+<p class="mut">Дата: 2026-10-24. Источники: репозиторий <code>D:\Repo\Virtual_scrum_team</code> (журнал коммитов, core/STATE.md, core/BACKLOG.md, дорожная карта blueprint, DoD, evidence). Все цифры взяты из файлов репозитория на момент отчёта; чего нет в файлах, помечено «не проверено».</p>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>Virtual_scrum_team</dd>
+    <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s1-control-plane-core @ 45653fc</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+
+<h2>1. Что происходит прямо сейчас</h2>
+<div class="box">
+<ul>
+<li><b>Фоновых агентов нет:</b> все исполнители, тестовые агенты и ревьюеры завершили работу, ничего не запущено и не пишется.</li>
+<li><b>Работа остановлена на вашем решении.</b> Код спринта S1 закончен, протестирован агентами и четыре раза проверен специалистами. Следующий шаг — независимое ревью финального коммита на разрешённой модели (Sonnet 5.5 или GPT-5.6 Luna) и ваше решение о push и pull request. Без этого спринт не закрыт.</li>
+<li><b>Ветка:</b> <code>s1-control-plane-core</code>, 12 коммитов впереди <code>main</code>, последний 45653fc. <code>origin/main</code> = 9b5b597, на GitHub ничего из кода S1 не отправлено.</li>
+<li><b>Посторонний коммит.</b> Коммит 45653fc («Add S1 independent review request to the repository») я в этой сессии не делал. Он под вашей git-личностью и меняет только документы: файл запроса на ревью <code>docs/sdlc/INDEPENDENT_REVIEW_REQUEST_S1.md</code>, запись 0026 и строки в журналах. Содержимое я прочитал, код не затронут. Похоже на параллельную сессию в той же папке; если это не вы, проверьте.</li>
+<li><b>Что я не сделал по своим правилам:</b> правило процесса v4, пункт 7 («когда у текущего спринта начинается тестирование, подготовить документацию следующего спринта параллельно») не выполнено — документов S2 нет. Также <code>core/BACKLOG.md</code> устарел (VST-007 и VST-008 по факту закрыты кодом и evidence, но записаны как open), а <code>core/STATE.md</code> ещё говорит про «следующий локальный коммит» для исправления нулевого лимита, хотя он уже сделан.</li>
+</ul>
+</div>
+
+<h2>2. Как устроен проект и где мы на карте</h2>
+<p>Проект — единая виртуальная инженерная организация: Virtual Scrum Team как единственный источник процесса SDLC (десять фаз), изолированные воркеры, которые не одобряют собственный результат, независимые ревьюеры, шлюз с подписанными квитанциями и конечный автомат состояния. Дорожная карта в blueprint: спринты S0–S9. Базовый дизайн 1.0 (2026-10-24) заменяет S0–S9 только для планирования ближайших спринтов, остальное по blueprint.</p>
+<div class="bar" title="Готовность по спринтам">
+<span class="b-warn" style="width:5%"></span><span class="b-ok" style="width:5%"></span><span class="b-no" style="width:90%"></span>
+</div>
+<p class="mut">Условная шкала: 10 спринтов в карте; S0 частично, S1 по коду закончен, S2–S9 не начаты. Это счёт этапов, а не оценка трудозатрат.</p>
+
+<h2>3. Спринты S0–S9: состояние</h2>
+<table>
+<tr><th>Спринт</th><th>Что должен дать (выход по blueprint)</th><th>Состояние</th><th>Факты</th></tr>
+<tr><td>S0 Ground truth</td><td>REPO_REGISTRY, PROFILE_RESOLUTION, TOOLS_CAPABILITY_MATRIX; ADR по спорным решениям; нет перезаписанных файлов</td><td class="warn">Частично</td><td>Готов только ADR-0001 (решения оператора) и разрешение конфликта моделей внутри репозитория. Инвентаризации репозиториев, профилей и инструментов в docs/ нет; несоответствие AEVE в Personal DC не исправлено; <code>AGENTS.md</code> рабочей области и глобальный контракт не выровнены</td></tr>
+<tr><td>S1 Контракты и ядро (по baseline: ядро плоскости управления)</td><td>Схемы, шлюз-функция, хранилище состояния с эпохами, подписанные квитанции, сквозной прогон с инъекцией отказов</td><td class="warn">Код закончен, ждёт независимого ревью и PR</td><td>Подробно в разделе 4</td></tr>
+<tr><td>S2 Router планирования (по baseline: изолированный воркер в песочнице)</td><td>baseline: спецификация песочницы (WSL или VM, запрет сети по умолчанию, секреты на запуск), сравнение кандидатов на одном сценарии «сбой и возобновление»; blueprint: роутер рисков, 39 ролей классифицированы</td><td class="bad">Не начат</td><td>Документации S2 нет; начинать после приёмки S1. В S2 отложены: проверяемый ключ ревьюера, <code>candidate_head</code> от раннера, изоляция ключа подписи</td></tr>
+<tr><td>S3 Пилот воркера</td><td>Один изолированный адаптер BMad Loop; сравнение с OpenHands/Aider на контролируемых сценариях</td><td class="bad">Не начат</td><td>Заблокирован требованиями R-1…R-6, которые закрыты кодом S1 лишь частично (см. раздел 6)</td></tr>
+<tr><td>S4 QA-автоматизация</td><td>Настоящие тестовые раннеры, воспроизводимые артефакты</td><td class="bad">Не начат</td><td>—</td></tr>
+<tr><td>S5 Шлюз AEVE</td><td>Ограниченный статический обзор с хешами</td><td class="bad">Не начат</td><td>—</td></tr>
+<tr><td>S6 Pull request</td><td>Доказательства на точном head от двух тестовых агентов (без CI), английские PR</td><td class="bad">Не начат</td><td>—</td></tr>
+<tr><td>S7 Надёжность</td><td>Гонки, истечение воркера, сеть, наблюдаемость</td><td class="warn">Частично вперёд</td><td>Хранилище, аренды, повторы, бюджет по плану перенесены в S1 и реализованы там; остальное (сетевые сбои, ручной режим, наблюдаемость) не начато</td></tr>
+<tr><td>S8 Сквозной пилот</td><td>Синтетический спринт, затем одобренный реальный</td><td class="bad">Не начат</td><td>—</td></tr>
+<tr><td>S9 Масштаб</td><td>Широкие адаптеры, 13 гейтов</td><td class="bad">Не начат</td><td>—</td></tr>
+</table>
+<p class="mut">Параллельный план расширения команды (FULL_TEAM_EXPANSION_PLAN) имеет этапы P0–P4: P0 (корректность основы: схема результатов PASS/FAIL/BLOCKED/NOT_RUN/INCONCLUSIVE, evidence, привязка к head) закрыт по сути кодом S1; P1–P4 (дописать роли из 39, адаптеры, состязательная проверка, пилот) не начаты. Из 39 логических ролей в репозитории определены 6 агентов команды (business-analyst, product-owner, ui-designer, technical-writer, reporting-analyst, функциональный тестировщик) и 7 навыков; остальные роли — предложение.</p>
+
+<h2>4. Спринт S1 подробно</h2>
+<h3>4.1 Эпики</h3>
+<table>
+<tr><th>Эпик</th><th>Содержание</th><th>Код</th><th>Тесты (агенты)</th></tr>
+<tr><td>E1 Контракты</td><td>Манифест, четыре типа квитанций, закрытые перечисления, строгая проверка</td><td class="ok">Готов (contracts.py, 633 строки)</td><td class="ok">Зелёные</td></tr>
+<tr><td>E2 Шлюз</td><td>Чистая функция вердикта по умолчанию «запретить»: APPROVE, APPROVED_WITH_WAIVER, MODIFY, NO_GO</td><td class="ok">Готов (gate.py, 659 строк)</td><td class="ok">Зелёные</td></tr>
+<tr><td>E3 Хранилище</td><td>SQLite: эпоха с проверкой, аренды, слоты, бюджет, журнал событий с подписью, вид STATE.md</td><td class="ok">Готов (store.py, 1670 строк)</td><td class="ok">Зелёные</td></tr>
+<tr><td>E4 Раннер и подпись</td><td>Запуск разрешённых команд, подписанная квитанция, ограничения вывода и окружения, Job Object на Windows</td><td class="ok">Готов (runner.py 765, signing.py 63)</td><td class="ok">Зелёные</td></tr>
+<tr><td>E5 Сквозной прогон</td><td>19 сценариев: смерть воркера, зомби-запись, устаревший head, повтор после FAIL, повтор на новом head, бюджет впритык, смена эпохи и другие</td><td class="ok">Готов (slice.py, 846 строк)</td><td class="ok">Зелёные</td></tr>
+<tr><td>E6 Выравнивание процесса</td><td>Единый источник состояния: хранилище, STATE.md как вид; формулировки в SKILL.md, DoD, README, blueprint</td><td class="ok">Готов</td><td class="mut">Проверено ревью документов</td></tr>
+</table>
+<p>Размер: код 4637 строк в <code>tools/vst/</code>, тесты 10 461 строка в <code>tests/vst/</code> (6 файлов тестов и общий файл помощников).</p>
+
+<h3>4.2 Хронология S1 (все коммиты — 2026-10-24)</h3>
+<table>
+<tr><th>Коммит</th><th>Событие</th></tr>
+<tr><td>768dff9, e0ea991, c786755, f664888</td><td>Код E1…E6 (без тестов, по правилу «сначала весь код»)</td></tr>
+<tr><td>63e0e35</td><td>Тесты первого прогона: 603 + 18 зелёных, найден и исправлен дефект Windows (рабочая папка), добавлена привязка артефактов</td></tr>
+<tr><td>3e27720</td><td>Исправления по первому ревью четырёх специалистов (все: MODIFY)</td></tr>
+<tr><td>f1956e2</td><td>Исправления по второму ревью (общий серьёзный дефект: проверка head ломала повторы)</td></tr>
+<tr><td>176a095</td><td>Исправления по третьему ревью (бюджет впритык, граница слота после смены эпохи)</td></tr>
+<tr><td>4ce6f8a</td><td>Исправления по четвёртой проверке (нулевой лимит стоимости), отчёт</td></tr>
+<tr><td>45653fc</td><td>Запрос на независимое ревью положен в репозиторий (не мной, см. раздел 1)</td></tr>
+</table>
+
+<h3>4.3 Раунды ревью кода S1</h3>
+<table>
+<tr><th>Раунд</th><th>Head</th><th>Результат</th><th>Главное найденное</th></tr>
+<tr><td>1</td><td>63e0e35</td><td class="bad">MODIFY у четырёх</td><td>Разные модели цепочки в шлюзе и хранилище, условия успеха из самой квитанции, waiver без подписи, хранилище не проверяло подписи, аренды перезаписывались</td></tr>
+<tr><td>2</td><td>3e27720</td><td class="bad">MODIFY у четырёх</td><td>Общий серьёзный дефект: проверка head к старым попыткам и меткам, исправленный повтор нельзя одобрить; лимит повторов тратили смены эпохи; якорь журнала можно пере-подписать</td></tr>
+<tr><td>3</td><td>f1956e2</td><td class="bad">MODIFY у четырёх</td><td>Бюджет впритык терял результат; граница слота считала прошлые эпохи; переменные окружения раннера через список запретов</td></tr>
+<tr><td>4</td><td>176a095</td><td class="warn">MODIFY у одного</td><td>Регрессия: задача с нулевым лимитом стоимости не стартовала (исправлено)</td></tr>
+</table>
+
+<h3>4.4 Тесты</h3>
+<table>
+<tr><th>Набор</th><th>Результат на рабочем дереве</th></tr>
+<tr><td>E1 + E2 (контракты, шлюз)</td><td class="ok">863 прошли</td></tr>
+<tr><td>E3 + E4 (хранилище, раннер)</td><td class="ok">593 прошли, 2 пропущены (биты прав POSIX; один случай, зависящий от POSIX/символьных ссылок)</td></tr>
+<tr><td>E5 (сквозной, смерть процесса)</td><td class="ok">64 прошли</td></tr>
+<tr><td>E1, E2, E3, E5 вместе после правки нулевого лимита</td><td class="ok">1205 прошли, 1 пропущен</td></tr>
+</table>
+<p class="warn">Оговорка: тесты гонялись на рабочем дереве, не на закоммиченном head. Правка нулевого лимита проверена тестами, но четвёртый ревьюер её не перепроверял. Я сам тесты не запускал (правило процесса). Mutation-прогонов нет — по вашему решению.</p>
+
+<h2>5. Гейты</h2>
+<h3>5.1 Definition of Done спринта (governance/DEFINITION_OF_DONE.md)</h3>
+<table>
+<tr><th>№</th><th>Требование</th><th>Состояние</th></tr>
+<tr><td>1</td><td>У каждой фазы записан выходной артефакт в состоянии</td><td class="mut">Для S1 не применимо: это инструменты; переход состояния на хранилище ещё не выполнен ни в одном проекте</td></tr>
+<tr><td>2</td><td>Весь код закоммичен, к каждому коммиту запись об изменениях</td><td class="ok">Выполнено: записи 0009–0026</td></tr>
+<tr><td>3</td><td>Тесты по эпикам написаны и полностью прогнаны двумя тестовыми агентами, команды записаны</td><td class="ok">Выполнено на рабочем дереве; evidence в <code>docs/sdlc/evidence/</code> (10 файлов)</td></tr>
+<tr><td>4</td><td>Специалисты пришли к консенсусу на точном head, валидные BLOCKER/MAJOR исправлены</td><td class="warn">Почти: на 176a095 открытых серьёзных нет; последнюю правку (нулевой лимит) ревьюер не перепроверял</td></tr>
+<tr><td>5</td><td>GPT-PM одобрил точный финальный head; один PR на спринт; push только по вашей команде</td><td class="bad">Не выполнено: ни GPT-PM, ни независимое ревью разрешённой моделью; PR не создан</td></tr>
+<tr><td>6</td><td>product-owner принял истории по evidence; reporting-analyst выпустил отчёт спринта</td><td class="warn">Отчёты состояния есть; формальной приёмки историй product-owner нет</td></tr>
+</table>
+
+<h3>5.2 Гейты более высокого уровня</h3>
+<table>
+<tr><th>Гейт</th><th>Состояние</th></tr>
+<tr><td>Документация дизайна: ревью шестью агентами</td><td class="warn">Пройден с вердиктом MODIFY; baseline принят оператором для пилота S1 без независимого ревью</td></tr>
+<tr><td>Независимое ревью baseline на разрешённой модели</td><td class="bad">Не проводилось</td></tr>
+<tr><td>Код S1: тесты</td><td class="ok">Зелёные (рабочее дерево)</td></tr>
+<tr><td>Код S1: специалисты</td><td class="ok">Нет открытых серьёзных замечаний (кроме непроверенной последней правки)</td></tr>
+<tr><td>Код S1: независимое ревью</td><td class="bad">Ждёт вас</td></tr>
+<tr><td>Push и pull request S1</td><td class="bad">Ждёт вас</td></tr>
+<tr><td>Рантайм, автономный пилот, production, релиз</td><td class="bad">NO-GO до доказательств S0–S8 (решение blueprint)</td></tr>
+</table>
+
+<h2>6. Требования ревью R-1…R-6 из blueprint (нужны до S3)</h2>
+<table>
+<tr><th>Код</th><th>Простыми словами</th><th>Состояние</th></tr>
+<tr><td>R-1</td><td>Квитанции подписывает раннер вне доверия воркера, результат вычисляет шлюз</td><td class="warn">Частично: подпись и вычисление результата в коде; но ключ подписи пока доступен процессу, запускающему команды, а «ревьюер» — самозаявленная строка (оба отложены в S2)</td></tr>
+<tr><td>R-2</td><td>У шлюза есть полная функция вердикта по умолчанию «запретить»</td><td class="ok">Реализовано и протестировано</td></tr>
+<tr><td>R-3</td><td>Единое хранилище состояния с проверкой эпохи, STATE.md как вид</td><td class="ok">Реализовано в коде; фактический переход проектов на хранилище не выполнен</td></tr>
+<tr><td>R-4</td><td>Сбои не исчезают: добавление только в конец, метка потери воркера, предел повторов</td><td class="ok">Реализовано и протестировано</td></tr>
+<tr><td>R-5</td><td>Один ADR по порядку тестов, владельцу проверки, CI, отсутствию mutation</td><td class="ok">ADR-0001 принят вами; в коде нет принудительной проверки «mutation запрещён» (только соглашение)</td></tr>
+<tr><td>R-6</td><td>Лимит 5 одновременных и бюджеты исполняет инфраструктура, не поля манифеста</td><td class="ok">Таблица слотов и книга бюджета в хранилище реализованы и протестированы</td></tr>
+</table>
+
+<h2>7. Задачи и бэклог</h2>
+<table>
+<tr><th>ID</th><th>Задача</th><th>Записано в бэклоге</th><th>Реально</th></tr>
+<tr><td>VST-001</td><td>Лимиты ходов агентов</td><td>done</td><td class="ok">Закрыто (замечание: агенты всё равно упирались в лимит при больших задачах — резать задачи по эпикам)</td></tr>
+<tr><td>VST-002</td><td>Разрешить дизайн-агентам сохранять документ</td><td>open</td><td class="warn">Открыто</td></tr>
+<tr><td>VST-003</td><td>Лицензия</td><td>done</td><td class="ok">MIT</td></tr>
+<tr><td>VST-004</td><td>Security-reviewer в каждом спринте пилота</td><td>open</td><td class="warn">Открыто; в S1 он запускался в каждом раунде</td></tr>
+<tr><td>VST-005</td><td>Шаблон проекта docs/sdlc со STATE.md</td><td>open</td><td class="warn">Открыто</td></tr>
+<tr><td>VST-006</td><td>Агент для SQL-тюнинга</td><td>open</td><td class="warn">Открыто</td></tr>
+<tr><td>VST-007</td><td>Хранить точную запись финального прогона тестов</td><td>open</td><td class="ok">По факту закрыто: 10 файлов evidence с командой, head и счётчиками — бэклог надо обновить</td></tr>
+<tr><td>VST-008</td><td>Правило точного head</td><td>open</td><td class="warn">Закрыто в коде шлюза (проверка head); в навыке оркестратора формулировки правила нет — бэклог надо обновить</td></tr>
+</table>
+
+<h3>Открытые решения и работа вне репозитория (за вами)</h3>
+<ul>
+<li>Независимое ревью финального коммита (разрешённые модели: Sonnet 5.5 medium или GPT-5.6 Luna low/medium).</li>
+<li>Решение о push ветки и pull request спринта S1.</li>
+<li>Выравнивание <code>D:\Repo\AGENTS.md</code> (модель по умолчанию GPT-6 Luna вместо разрешённого списка) и глобального контракта (там четыре автора тестов вместо двух).</li>
+<li>Переустановка изменённых roster и навыков в <code>~/.claude</code> со снимком и линтом агентов.</li>
+<li>O-1: оставить ли названия приватных репозиториев (PDCC, ERP, AEVE, PM_Bridge) в публичном blueprint.</li>
+<li>В публичной истории остался локальный путь (коммит 0a5821b); вы решили историю не переписывать.</li>
+</ul>
+
+<h2>8. Что отложено в S2 и риски</h2>
+<table>
+<tr><th>Отложено</th><th>Почему важно</th></tr>
+<tr><td>Проверяемый ключ ревьюера</td><td>Сейчас «независимость» ревью — строка в квитанции, подписанной ключом воркера; APPROVE не доказывает, что ревью независимо</td></tr>
+<tr><td><code>candidate_head</code> вычисляет раннер</td><td>Сейчас head заявляет вызывающий</td></tr>
+<tr><td>Изоляция ключа подписи от процесса с командами</td><td>Команда теоретически может добраться до ключа; нужна песочница</td></tr>
+<tr><td>Обнаружение отката всей базы к старой копии</td><td>Ключевой якорь ловит правку и усечение, но не замену базы целиком</td></tr>
+<tr><td>POSIX, вложенность Job Object, неубиваемые процессы</td><td>Проверено только на Windows; сбой убийства имитировался</td></tr>
+</table>
+<p><b>Процессный риск:</b> четыре раунда ревью подряд находили новые серьёзные дефекты на стыках правил, и один дефект (нулевой лимит) был внесён моим же исправлением. Причины и правила занесены в <code>core/LESSONS_LOG.md</code> (20 записей). Вывод для S2: перечислять граничные значения контракта до формулировки исправления.</p>
+
+<h2>9. Варианты дальнейших шагов (выбор за вами)</h2>
+<table>
+<tr><th>Вариант</th><th>Что произойдёт</th><th>Последствие</th></tr>
+<tr><td><b>A. Независимое ревью S1, затем push и PR (рекомендую)</b></td><td>Вы запускаете ревью по подготовленному запросу; при APPROVE/без серьёзных замечаний — push ветки и один PR</td><td>Закрывает S1 по DoD; после этого можно идти в S2. Дольше всего по времени, но это обязательный гейт</td></tr>
+<tr><td>B. Параллельно подготовить документацию S2</td><td>Я (по вашей команде) разберу baseline S2: спецификация песочницы, перечень отложенного, план эпиков; заодно обновлю бэклог и STATE.md</td><td>Выполняет пропущенное правило v4 п.7; не задерживает ревью S1; не затрагивает код</td></tr>
+<tr><td>C. Финальный гейт через GPT-PM вместо независимого ревью</td><td>Отправка точного head в PM Bridge</td><td>Согласуется с DoD п.5, но ваше решение заменило его на независимое ревью разрешённой моделью; нужно ваше явное подтверждение</td></tr>
+<tr><td>D. Остановить и пересмотреть подход</td><td>Пауза в разработке, разбор причин многократных MODIFY</td><td>Снижает риск повторов в S2, но откладывает приёмку S1</td></tr>
+</table>
+
+<p class="mut">Источники: core/STATE.md, core/BACKLOG.md, core/DECISION_LOG.md (25 записей), core/LESSONS_LOG.md (20 записей), docs/UNIFIED_ENGINEERING_ORGANIZATION_MASTER_BLUEPRINT_2026-10-23.md (разделы 10, 12, 13), docs/DESIGN_BASELINE_AND_IMPLEMENTATION_PLAN_2026-10-24.md, docs/FULL_TEAM_EXPANSION_PLAN_2026-10-23.md, governance/DEFINITION_OF_DONE.md, docs/changes/0001–0026, docs/sdlc/evidence/.</p>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

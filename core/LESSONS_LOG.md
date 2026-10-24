@@ -147,3 +147,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 
 - Kind: NEUTRAL (documentation only).
 - Rule: any artifact the operator must act on lives in the repository or a stated stable path, never only in a temporary session folder.
+
+## 2026-10-24 -- Full project status report
+
+- Kind: SHORTCOMING (coordinator process).
+- Facts: writing the report exposed three own gaps: next-sprint documentation (v4 item 7) was never prepared, `core/BACKLOG.md` still lists VST-007 and VST-008 as open although evidence files and the head check exist, and `core/STATE.md` still describes the zero-cap fix as pending.
+- Root cause: status text was maintained per round in the decision log and the reports but not reconciled against the backlog and STATE.md at each commit.
+- Layer: coordinator missed; no gate checks backlog or STATE freshness.
+- Rule: at each sprint-closing commit reconcile BACKLOG.md and STATE.md with the log, and start the next sprint's documentation when testing of the current one starts.
