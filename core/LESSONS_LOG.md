@@ -285,3 +285,12 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Layer: preflight inventory completeness reporting.
 - Rule: use `lstat`/explicit enumeration; missing is absent, while access or metadata errors are incomplete; do not follow untrusted runtime directory symlinks.
 - Fix status: implementation in change record 0045; test-agent cases and execution remain pending.
+
+## 2026-10-24 -- Assign Windows process containment before resuming command code
+
+- Kind: FAILURE (process-tree escape window found by reliability review).
+- Facts: Windows Job Object assignment after ordinary process creation left a window in which command code could create an uncontained descendant.
+- Root cause: containment was attached after process start rather than established before user code ran.
+- Layer: strict sandbox process lifecycle in `tools/vst/runner.py`.
+- Rule: create strict commands suspended, establish Job Object membership, and only then resume the primary thread; any inability to prove that sequence must refuse execution. Inspect pinned interpreter source before relying on process APIs, and avoid private-runtime handles.
+- Fix status: implemented in change record 0046; tests and Windows runtime execution remain pending.

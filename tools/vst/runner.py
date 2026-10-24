@@ -33,17 +33,12 @@ Execution (subprocess.Popen, shell=False):
   (EXIT_OUTPUT_TRUNCATED), which makes the derived result FAIL (the parser saw
   partial output). The truncated flag is also available in the optional
   `report` dict.
-- process-tree containment. Windows: right after Popen the child is assigned to
-  a Job Object created with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE (ctypes, stdlib
-  only). On EVERY exit path (normal exit, timeout/deadline, output cap, any
-  exception) the runner calls TerminateJobObject and then CloseHandle, so all
-  descendants die even after the root process has exited (taskkill /T cannot do
-  that: the root pid is gone). Known tiny race: the child is not created
-  suspended, so a grandchild spawned before the assignment is not a member. If
-  the assignment fails (e.g. the process already belongs to a non-nestable job)
-  the runner falls back to taskkill /PID <pid> /T /F (failures ignored; best
-  effort once the root exited) and reports job_object=False. On timeout
-  taskkill /T /F is always run as an extra fallback. POSIX: the process group
+- process-tree containment. Strict Windows mode creates the process suspended,
+  assigns it to a Job Object created with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+  then resumes its primary thread. Assignment or resume failure terminates and
+  refuses the command before it executes. On EVERY exit path the runner calls
+  TerminateJobObject and then CloseHandle. Non-strict Windows callers retain the
+  legacy best-effort taskkill fallback. POSIX: the process group
   (the child is started in its own session) is killed with SIGKILL on timeout
   and after a normal exit. Timeout exit code -1.
 - capture completeness: after both pipes were joined, a reader thread that is
@@ -262,10 +257,15 @@ class _Capture:
         return bytes(self.data).decode("utf-8", errors="replace")
 
 
-def _spawn_kwargs() -> dict:
+_CREATE_SUSPENDED = 0x00000004
+
+
+def _spawn_kwargs(*, suspended: bool = False) -> dict:
     if os.name == "nt":
         flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         flags |= getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        if suspended:
+            flags |= _CREATE_SUSPENDED  # documented Win32 creation flag
         return {"creationflags": flags}
     return {"start_new_session": True}
 
@@ -351,8 +351,27 @@ def _win_api():
         k32.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
         k32.CloseHandle.restype = wintypes.BOOL
         k32.CloseHandle.argtypes = [wintypes.HANDLE]
+        class _ThreadEntry32(ctypes.Structure):
+            _fields_ = [
+                ("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD),
+                ("th32ThreadID", wintypes.DWORD), ("th32OwnerProcessID", wintypes.DWORD),
+                ("tpBasePri", wintypes.LONG), ("tpDeltaPri", wintypes.LONG),
+                ("dwFlags", wintypes.DWORD),
+            ]
+
+        k32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+        k32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+        k32.Thread32First.restype = wintypes.BOOL
+        k32.Thread32First.argtypes = [wintypes.HANDLE, ctypes.POINTER(_ThreadEntry32)]
+        k32.Thread32Next.restype = wintypes.BOOL
+        k32.Thread32Next.argtypes = [wintypes.HANDLE, ctypes.POINTER(_ThreadEntry32)]
+        k32.OpenThread.restype = wintypes.HANDLE
+        k32.OpenThread.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        k32.ResumeThread.restype = wintypes.DWORD
+        k32.ResumeThread.argtypes = [wintypes.HANDLE]
         _WIN_API = type("_WinApi", (), {
-            "ctypes": ctypes, "k32": k32, "ExtendedLimits": _ExtendedLimits})
+            "ctypes": ctypes, "k32": k32, "ExtendedLimits": _ExtendedLimits,
+            "ThreadEntry32": _ThreadEntry32})
         return _WIN_API
     except Exception:  # noqa: BLE001 - any binding failure means "no job object"
         _WIN_API = False
@@ -365,12 +384,9 @@ class _JobObject:
     Created with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, so even if the runner dies
     the OS kills the whole tree when the last handle closes. Descendants of a
     member are members too, and membership survives the exit of the root, which
-    is what taskkill /T cannot do after the root has exited. Known tiny race:
-    the child is assigned right after Popen (no CREATE_SUSPENDED), so a
-    grandchild spawned in that window would not be a member. Strict callers
-    terminate and refuse the command when assignment fails (including when a
-    parent job does not support nesting); compatibility callers may use the
-    legacy taskkill fallback.
+    is what taskkill /T cannot do after the root has exited. Strict callers
+    create the process suspended, assign it, and resume it only after successful
+    assignment. Compatibility callers retain the legacy taskkill fallback.
     """
 
     def __init__(self, api, handle) -> None:
@@ -440,6 +456,46 @@ def _kill_tree(proc: subprocess.Popen) -> None:
         pass
 
 
+def _resume_suspended_primary_thread(pid: int) -> bool:
+    """Resume a CREATE_SUSPENDED process using documented Win32 APIs.
+
+    The process has not executed user code and cannot create threads yet, so
+    its Toolhelp thread snapshot identifies the primary thread without using
+    CPython's private Popen handles or undocumented Windows APIs. The pinned
+    Python 3.14 subprocess implementation closes the CreateProcess thread
+    handle, so public Popen methods cannot resume it directly.
+    """
+    api = _win_api()
+    if api is None:
+        return False
+    k32 = api.k32
+    invalid_handle = api.ctypes.c_void_p(-1).value
+    snapshot = k32.CreateToolhelp32Snapshot(0x00000004, 0)  # TH32CS_SNAPTHREAD
+    if not snapshot or snapshot == invalid_handle:
+        return False
+    thread = None
+    try:
+        entry = api.ThreadEntry32()
+        entry.dwSize = api.ctypes.sizeof(entry)
+        more = bool(k32.Thread32First(snapshot, api.ctypes.byref(entry)))
+        while more:
+            if entry.th32OwnerProcessID == pid:
+                thread = k32.OpenThread(0x0002, False, entry.th32ThreadID)  # THREAD_SUSPEND_RESUME
+                break
+            more = bool(k32.Thread32Next(snapshot, api.ctypes.byref(entry)))
+        if not thread:
+            return False
+        # The process was created with exactly one suspend count. Any other
+        # result means it did not enter the expected state; fail closed.
+        return k32.ResumeThread(thread) == 1
+    except Exception:  # noqa: BLE001 - strict callers refuse on API failure
+        return False
+    finally:
+        if thread:
+            k32.CloseHandle(thread)
+        k32.CloseHandle(snapshot)
+
+
 def _run_one(
     argv: list[str], cwd: str, limit_sec: float, env: dict[str, str], cap: int,
     *, require_job_object: bool = False, worker_uid: int | None = None,
@@ -465,7 +521,7 @@ def _run_one(
             bufsize=0,
             **({"user": worker_uid, "group": worker_gid, "extra_groups": ()}
                if worker_uid is not None and worker_gid is not None else {}),
-            **_spawn_kwargs(),
+            **_spawn_kwargs(suspended=os.name == "nt" and require_job_object),
         )
     except OSError:
         # Missing executable, missing/invalid cwd, no permission, or any other
@@ -492,6 +548,22 @@ def _run_one(
                 kill_failed = True
             completed = True
             # Do not run the requested command without confirmed job containment.
+            if proc.stdout is not None:
+                proc.stdout.close()
+            if proc.stderr is not None:
+                proc.stderr.close()
+            return EXIT_CAPTURE_INCOMPLETE, "", {**info, "capture_incomplete": True}
+        if os.name == "nt" and require_job_object and not _resume_suspended_primary_thread(proc.pid):
+            info["job_object_refused"] = True
+            if job is not None:
+                job.terminate_and_close()
+                job = None
+            _kill_tree(proc)
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                kill_failed = True
+            completed = True
             if proc.stdout is not None:
                 proc.stdout.close()
             if proc.stderr is not None:

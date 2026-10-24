@@ -182,3 +182,7 @@ The reserved-address connection probe is only a smoke probe and cannot establish
 ## 2026-10-24 -- S2 socket inventory metadata errors fail closed
 
 Follow-up review of `tools/vst/preflight.py` found that `Path.exists()`/`os.path.exists()` could suppress permission errors and turn an inaccessible socket candidate into apparent absence. The inventory now uses `lstat`, refuses symlinked runtime roots/UID directories/engine directories, and clears its completeness flag on access or enumeration errors. The operator attestation contract is unchanged. No tests/checks were run; record 0045.
+
+## 2026-10-24 -- S2 strict Windows process starts inside its Job Object
+
+Reliability review found the strict runner's Popen-then-assign ordering allowed command code to spawn a descendant before Job Object membership. Strict Windows launches now use documented `CREATE_SUSPENDED`, assign the process to the configured kill-on-close Job Object, and resume the primary thread through documented Toolhelp/OpenThread/ResumeThread APIs. Any setup, assignment, discovery, or resume failure terminates/refuses the command; there is no unsuspended fallback in strict mode. Non-strict behavior remains compatible. Pinned Python 3.14 source inspection confirmed Popen accepts creation flags but closes its primary-thread handle, which is why the implementation uses documented OS APIs instead of CPython private handles. No tests/checks or Windows runtime proof were performed; change record 0046.
