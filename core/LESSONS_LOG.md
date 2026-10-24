@@ -491,3 +491,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — Validate direct-call metadata types before indexing nested fixture records; otherwise malformed input leaks `KeyError` or `TypeError` from a signing boundary. Repeat all CLI bounds, including canonical fixture input size, at the signer-facing layer. See change record 0100.
 
+2026-10-25 — A cross-OS source snapshot must preserve both Git identity and the worker's read-only boundary. Stream a self-contained bundle through the WSL process boundary, verify exact HEAD and digest on both sides, and provision directory permissions for runner ownership plus worker traversal/read without write. Implemented behavior remains `NOT_RUN` until the exact isolated destination is exercised. See change record 0101.
+

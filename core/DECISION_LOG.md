@@ -304,3 +304,7 @@ The report-bound runner independently validates the catalog's exact root fields 
 
 Perform seeded fixture-to-manifest ID comparison only after report metadata has passed schema/type validation, so malformed direct calls yield `ContractError`. Enforce the same 16 KiB canonical input ceiling at the signing boundary as in the CLI loader. See change record 0100; no tests or runtime proof are claimed.
 
+## 2026-10-25 -- Stream exact S4 source snapshots into the isolated WSL destination
+
+Use a self-contained Git bundle over the Windows-to-WSL stdin boundary; do not depend on drive automount, host path mounts, network access, or an archive without Git provenance. Require a clean named branch, exact SHA equality after clone, sender/receiver bundle-digest equality, a pre-provisioned runner-owned mode-2710 root shared only for worker traversal, and a runner-owned, worker-readable/nonwritable clone. The transfer command does not provision the distro or signer and has not been executed. See change record 0101; source-transfer acceptance remains `NOT_RUN`.
+
