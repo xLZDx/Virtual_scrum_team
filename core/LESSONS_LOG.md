@@ -366,3 +366,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: override authorization was represented by caller-supplied shape/state rather than a signed record bound to the current durable breaker episode.
 - Rule: verify a distinct-domain operator signature bound to action, state, stable ID, pause event ID, config event ID, verdict and evidence digest atomically before callback; recheck at durable clear.
 - Fix status: implemented in change record 0054; unsigned/tampered/stale-replay and valid-signature E2E coverage remains pending.
+
+## 2026-10-24 -- Assert the gate's actual rejection boundary
+
+- Kind: SHORTCOMING (a newly added missing-diff case expected a downstream diff-gate diagnostic even though contract validation correctly rejected the receipt first).
+- Facts: the first focused run had 59 passes and one failed test assertion; the returned reason was `missing field(s): diff_gate`. No product defect was present.
+- Root cause: the assertion modeled only the gate's later evidence check and ignored its earlier closed-schema validation.
+- Rule: bind negative assertions to the earliest correct contract boundary for each input shape; record the returned rejection reason rather than assuming execution reached a deeper layer.
+- Fix status: assertion corrected; final command passed 60 tests with 0 skipped and one deprecation warning. Evidence is in `docs/sdlc/evidence/s2-contract-diffgate-run-280e2d0.md`; change record 0056.

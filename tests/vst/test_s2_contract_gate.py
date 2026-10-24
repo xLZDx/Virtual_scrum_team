@@ -10,6 +10,9 @@ from tests.vst.e1e4_helpers import (
     EPOCH, HEAD, KEY, OPERATOR_KEY, SUPERVISOR_KEY, happy_receipts,
     manifest, unsigned_receipt,
 )
+from tests.vst.test_s2_runner_lifecycle import (
+    SIGNER_KEY, _authority_fixture, _authority_receipt,
+)
 
 
 def _v2_manifest():
@@ -227,4 +230,45 @@ def test_v2_waiver_allows_only_named_non_execution_results(result):
         ["tests"], ["AC-1"], [result], True,
     )
     assert (ok, record_id, operator, problems) == (True, "W-S2", "operator-1", [])
+
+
+@pytest.mark.parametrize("corruption", [
+    "missing", "wrong_manifest", "wrong_head", "fail_verdict", "bad_signature",
+])
+def test_gate_rejects_missing_stale_or_inconsistent_diff_gate_evidence(corruption):
+    m, registry, reviewer_key, keys = _authority_fixture()
+    receipt = _authority_receipt("TestRun", "tests", keys["signer"], m)
+
+    if corruption == "missing":
+        receipt.pop("diff_gate")
+    else:
+        diff = dict(receipt["diff_gate"])
+        diff.pop("signature")
+        if corruption == "wrong_manifest":
+            diff["manifest_sha256"] = "f" * 64
+        elif corruption == "wrong_head":
+            diff["candidate_head"] = "b" * 40
+        elif corruption == "fail_verdict":
+            diff["verdict"] = "FAIL"
+            diff["reason"] = "OUT_OF_SCOPE_PATH"
+        elif corruption == "bad_signature":
+            diff["changed_paths"] = ["src/changed.py"]
+        if corruption == "bad_signature":
+            diff["signature"] = "0" * 64
+        else:
+            diff["signature"] = signing.sign(diff, keys["signer"], signing.DIFF_GATE_LABEL)
+        receipt["diff_gate"] = diff
+
+    decision = gate.evaluate(
+        m, [receipt], HEAD, EPOCH, KEY,
+        supervisor_key=SUPERVISOR_KEY, operator_key=OPERATOR_KEY,
+        reviewer_registry=registry, reviewer_keys={"reviewer-key-1": reviewer_key},
+        signer_key=SIGNER_KEY, event_key=keys["event"],
+    )
+    assert decision["verdict"] != "APPROVE"
+    expected_reason = (
+        "missing field(s): diff_gate" if corruption == "missing"
+        else "diff gate evidence is absent, stale, failing, or unsigned"
+    )
+    assert any(expected_reason in reason for reason in decision["reasons"]), decision["reasons"]
 
