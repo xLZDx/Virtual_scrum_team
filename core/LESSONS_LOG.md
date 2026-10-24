@@ -437,3 +437,10 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Follow-up verification: four Store-level recovery and signed breaker-replay regressions passed on source HEAD `202e0680e8e1b4fb30dcbe9659bf550d06443d90` after the hook-free publishing remediation (change record 0075). This focused module does not verify the E8 pack-transfer implementation; retain its distinct E2E acceptance evidence.
 - The same four Store-level regressions passed again on source HEAD `1ef3fee07d5743dc8e42c632e1dc3100601116a7` after bounded object-storage changes (change record 0078). Do not treat this as evidence for E2E Git pack handling, hook denial, or concurrency; retain distinct exact-head coverage for those surfaces.
 - E2E record 0079 closes those distinct surfaces at source HEAD `1ef3fee`: ordinary Git push triggers a temporary source hook in the positive control, while backend pack transfer does not; source and target pack config/storage boundaries are exercised without entering prohibited overflow-cleanup/process-kill paths. Windows lock behavior and POSIX `flock` behavior are recorded separately.
+
+## 2026-10-25 -- Preserve platform-specific file identity evidence
+
+- Kind: E2E / PLATFORM COMPATIBILITY.
+- Facts: on Windows source HEAD `ed531264d0344c67e948e126c420e60f5272226c`, three unrelated publication journeys failed at one shared source-snapshot identity comparison before pack execution. On source HEAD `dc95915018b80f498d5cf775363712fb915fe04e`, all focused lifecycle/store tests passed; the POSIX lock case also passed in selected WSL under `vst-runner`.
+- Rule: retain the first red run with its exact code revision and trace, then record the remediation run separately. Do not convert earlier failure history to PASS, and do not infer process cleanup behavior from preflight-only tests.
+- Evidence: change record 0083 and `docs/sdlc/evidence/s2-e2e-bounded-snapshot-ed531.md`. Live process termination, kill-table, and post-start overflow cleanup remain `NOT_RUN` under the active prohibition.

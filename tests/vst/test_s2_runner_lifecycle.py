@@ -589,9 +589,92 @@ def test_hook_free_publication_transfers_source_only_commit_without_running_pre_
     source_env = captured_source["env"]
     assert source_env["GIT_CONFIG_NOSYSTEM"] == "1"
     assert source_env["GIT_CONFIG_GLOBAL"] == os.devnull
+    snapshot_objects = source_env["GIT_OBJECT_DIRECTORY"]
+    assert ".vst-source-snapshot-" in snapshot_objects
+    assert os.path.realpath(snapshot_objects) != os.path.realpath(repo / ".git" / "objects")
+    assert source_env["GIT_NO_REPLACE_OBJECTS"] == "1"
+    assert source_env["GIT_NO_LAZY_FETCH"] == "1"
     assert "GIT_CONFIG_COUNT" not in source_env
     assert "GIT_CONFIG_KEY_0" not in source_env
     assert "GIT_CONFIG_VALUE_0" not in source_env
+
+
+def test_source_object_alternates_are_rejected_before_pack_or_index_writer(tmp_path, monkeypatch):
+    from tools.vst import slice as slice_module
+
+    remote, repo, backend = _synthetic_git_source(tmp_path, filename="alternate.txt")
+    head = git("rev-parse", "HEAD", cwd=str(repo))
+    foreign = tmp_path / "foreign-objects.git"
+    subprocess.run(["git", "init", "--bare", str(foreign)], check=True, capture_output=True)
+    alternates = repo / ".git" / "objects" / "info" / "alternates"
+    alternates.parent.mkdir(exist_ok=True)
+    alternates.write_text(str(foreign / "objects") + "\n", encoding="utf-8")
+    real_popen = slice_module.subprocess.Popen
+    writers = []
+
+    def reject_if_writer(command, *args, **kwargs):
+        if "pack-objects" in command or "index-pack" in command:
+            writers.append(list(command))
+            raise AssertionError("object writer started before alternate rejection")
+        return real_popen(command, *args, **kwargs)
+
+    monkeypatch.setattr(slice_module.subprocess, "Popen", reject_if_writer)
+    with pytest.raises(RuntimeError, match="synthetic source object alternates are unsupported"):
+        backend.push({"branch": "alternate", "head": head}, operation_key="alternate-source")
+    assert writers == []
+
+
+def test_bounded_source_preflight_rejects_before_pack_or_index_writer(tmp_path, monkeypatch):
+    from tools.vst import slice as slice_module
+
+    _, repo, backend = _synthetic_git_source(tmp_path, filename="preflight.txt")
+    head = git("rev-parse", "HEAD", cwd=str(repo))
+    backend._MAX_SOURCE_OBJECT_COUNT = 0
+    real_popen = slice_module.subprocess.Popen
+    writers = []
+
+    def reject_if_writer(command, *args, **kwargs):
+        if "pack-objects" in command or "index-pack" in command:
+            writers.append(list(command))
+            raise AssertionError("object writer started before source preflight rejection")
+        return real_popen(command, *args, **kwargs)
+
+    monkeypatch.setattr(slice_module.subprocess, "Popen", reject_if_writer)
+    with pytest.raises(RuntimeError, match="source repository exceeds the 250,000 object limit"):
+        backend.push({"branch": "too-many", "head": head}, operation_key="source-count-cap")
+    assert writers == []
+
+
+@pytest.mark.parametrize("state", [b"I", b"P"], ids=["in-progress-promotes-to-poisoned", "already-poisoned"])
+def test_poisoned_or_interrupted_target_refuses_before_object_writer(tmp_path, monkeypatch, state):
+    from tools.vst import slice as slice_module
+
+    remote, repo, backend = _synthetic_git_source(tmp_path, filename="poison.txt")
+    head = git("rev-parse", "HEAD", cwd=str(repo))
+    lock_path = remote / ".vst-object-storage.lock"
+    lock_path.write_bytes(b"\0" + state)
+    real_run = slice_module.subprocess.run
+    real_popen = slice_module.subprocess.Popen
+    commands = []
+    writers = []
+
+    def capture_run(command, *args, **kwargs):
+        commands.append(list(command))
+        return real_run(command, *args, **kwargs)
+
+    def reject_writer(command, *args, **kwargs):
+        if "pack-objects" in command or "index-pack" in command:
+            writers.append(list(command))
+            raise AssertionError("object writer started on poisoned target")
+        return real_popen(command, *args, **kwargs)
+
+    monkeypatch.setattr(slice_module.subprocess, "run", capture_run)
+    monkeypatch.setattr(slice_module.subprocess, "Popen", reject_writer)
+    with pytest.raises(StoreError, match="synthetic target.*poisoned|interrupted object write"):
+        backend.push({"branch": "blocked", "head": head}, operation_key="poison-refusal")
+    assert not any("hash-object" in command for command in commands)
+    assert writers == []
+    assert lock_path.read_bytes()[1:2] == b"P"
 
 
 def test_synthetic_backend_fast_forward_and_conflicting_branch_and_pr_refs(tmp_path):
@@ -741,9 +824,7 @@ def test_local_git_timeout_leaves_pending_then_restart_retry_completes_same_key(
     observed_timeout = []
 
     def timeout_once(command, *args, **kwargs):
-        if (not injected["done"] and command[0] == "git"
-                and "-C" in command and str(repo) in command
-                and "pack-objects" in command):
+        if not injected["done"] and command[0] == "git" and "pack-objects" in command:
             injected["done"] = True
             observed_timeout.append(backend.command_timeout_sec)
             raise subprocess.TimeoutExpired(command, backend.command_timeout_sec)
