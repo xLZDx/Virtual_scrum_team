@@ -1463,15 +1463,32 @@ class SyntheticOperationBackend:
         if not stat.S_ISREG(before.st_mode) or self._is_link_or_junction(source_path):
             raise RuntimeError("synthetic source object entry changed type during snapshot")
         os.makedirs(os.path.dirname(destination), exist_ok=True)
-        flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
-        fd = os.open(source_path, flags)
+        if os.name == "nt":
+            fd = self._open_windows_source_object_file(source_path)
+            try:
+                opened = self._windows_source_object_file_identity(fd)
+                if opened[2] != 1:
+                    raise RuntimeError("synthetic source object file has an external hard-link alias")
+                initial_identity = opened
+                remaining = opened[1]
+            except BaseException:
+                os.close(fd)
+                raise
+        else:
+            flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+            fd = os.open(source_path, flags)
+            try:
+                opened = os.fstat(fd)
+                if (not stat.S_ISREG(opened.st_mode) or opened.st_dev != before.st_dev
+                        or opened.st_ino != before.st_ino or opened.st_size != before.st_size
+                        or opened.st_nlink != 1 or self._is_link_or_junction(source_path)):
+                    raise RuntimeError("synthetic source object file changed or is hard-linked during snapshot")
+                initial_identity = (opened.st_dev, opened.st_ino, opened.st_size, opened.st_nlink)
+                remaining = opened.st_size
+            except BaseException:
+                os.close(fd)
+                raise
         try:
-            opened = os.fstat(fd)
-            if (not stat.S_ISREG(opened.st_mode) or opened.st_dev != before.st_dev
-                    or opened.st_ino != before.st_ino or opened.st_size != before.st_size
-                    or self._is_link_or_junction(source_path)):
-                raise RuntimeError("synthetic source object file changed during snapshot")
-            remaining = opened.st_size
             with os.fdopen(fd, "rb", closefd=False) as source, open(destination, "xb") as target:
                 while remaining:
                     if time.monotonic() >= deadline:
@@ -1486,8 +1503,116 @@ class SyntheticOperationBackend:
                     remaining -= len(chunk)
                 if source.read(1):
                     raise RuntimeError("synthetic source object file grew during snapshot")
+            if os.name == "nt":
+                final_identity = self._windows_source_object_file_identity(fd)
+            else:
+                final_stat = os.fstat(fd)
+                final_identity = (
+                    final_stat.st_dev, final_stat.st_ino, final_stat.st_size, final_stat.st_nlink,
+                )
+            if final_identity != initial_identity or self._is_link_or_junction(source_path):
+                raise RuntimeError("synthetic source object file changed during snapshot")
         finally:
             os.close(fd)
+
+    @staticmethod
+    def _open_windows_source_object_file(path: str) -> int:
+        """Open a source object without following reparse points or allowing replacement."""
+        import ctypes
+        from ctypes import wintypes
+        import msvcrt
+
+        class FileAttributeTagInfo(ctypes.Structure):
+            _fields_ = [("FileAttributes", wintypes.DWORD), ("ReparseTag", wintypes.DWORD)]
+
+        class FileStandardInfo(ctypes.Structure):
+            _fields_ = [
+                ("AllocationSize", ctypes.c_longlong), ("EndOfFile", ctypes.c_longlong),
+                ("NumberOfLinks", wintypes.DWORD), ("DeletePending", wintypes.BOOLEAN),
+                ("Directory", wintypes.BOOLEAN),
+            ]
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        create_file = kernel32.CreateFileW
+        create_file.argtypes = [
+            wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID,
+            wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE,
+        ]
+        create_file.restype = wintypes.HANDLE
+        get_info = kernel32.GetFileInformationByHandleEx
+        get_info.argtypes = [wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD]
+        get_info.restype = wintypes.BOOL
+        close_handle = kernel32.CloseHandle
+        close_handle.argtypes = [wintypes.HANDLE]
+        close_handle.restype = wintypes.BOOL
+
+        generic_read = 0x80000000
+        share_read = 0x00000001
+        open_existing = 3
+        open_reparse_point = 0x00200000
+        handle = create_file(
+            path, generic_read, share_read, None, open_existing, open_reparse_point, None,
+        )
+        invalid_handle = ctypes.c_void_p(-1).value
+        if not handle or handle == invalid_handle:
+            raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            attributes = FileAttributeTagInfo()
+            standard = FileStandardInfo()
+            if not get_info(handle, 9, ctypes.byref(attributes), ctypes.sizeof(attributes)):
+                raise ctypes.WinError(ctypes.get_last_error())
+            if not get_info(handle, 1, ctypes.byref(standard), ctypes.sizeof(standard)):
+                raise ctypes.WinError(ctypes.get_last_error())
+            if attributes.FileAttributes & 0x400 or standard.Directory:
+                raise RuntimeError("synthetic source object entry is a reparse point or directory")
+            if standard.NumberOfLinks != 1:
+                raise RuntimeError("synthetic source object file has an external hard-link alias")
+            if standard.EndOfFile < 0:
+                raise RuntimeError("synthetic source object file has an invalid size")
+            fd = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+            handle = None
+            return fd
+        finally:
+            if handle is not None:
+                close_handle(handle)
+
+    @staticmethod
+    def _windows_source_object_file_identity(fd: int) -> tuple[int, int, int, bytes]:
+        """Return volume/file ID, size and link count from the opened Windows handle."""
+        import ctypes
+        from ctypes import wintypes
+        import msvcrt
+
+        class FileStandardInfo(ctypes.Structure):
+            _fields_ = [
+                ("AllocationSize", ctypes.c_longlong), ("EndOfFile", ctypes.c_longlong),
+                ("NumberOfLinks", wintypes.DWORD), ("DeletePending", wintypes.BOOLEAN),
+                ("Directory", wintypes.BOOLEAN),
+            ]
+
+        class FileId128(ctypes.Structure):
+            _fields_ = [("Identifier", ctypes.c_ubyte * 16)]
+
+        class FileIdInfo(ctypes.Structure):
+            _fields_ = [("VolumeSerialNumber", ctypes.c_ulonglong), ("FileId", FileId128)]
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        get_info = kernel32.GetFileInformationByHandleEx
+        get_info.argtypes = [wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD]
+        get_info.restype = wintypes.BOOL
+        handle = msvcrt.get_osfhandle(fd)
+        standard = FileStandardInfo()
+        identity = FileIdInfo()
+        if not get_info(handle, 1, ctypes.byref(standard), ctypes.sizeof(standard)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        if not get_info(handle, 18, ctypes.byref(identity), ctypes.sizeof(identity)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        return (
+            identity.VolumeSerialNumber,
+            standard.EndOfFile,
+            standard.NumberOfLinks,
+            bytes(identity.FileId.Identifier),
+        )
 
     def _copy_source_object_store(self, source_objects: str, snapshot_objects: str) -> int:
         copied = [0]
