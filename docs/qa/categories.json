@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_head": "58088c804ee3d444919ec433b656c80ec3106f37",
+  "source_head": "7cd83eac005e318dca5ae8784b25d2c443cdccc0",
   "categories": {
     "functional": {
       "state": "SUPPORTED",
@@ -46,15 +46,18 @@
     "e2e": {
       "state": "SUPPORTED",
       "coverage_state": "PARTIAL",
-      "coverage_reason": "Current E2E denominator covers the synthetic S3 pilot, not all S4 stories.",
+      "coverage_reason": "Denominator includes the synthetic S3 pilot and three local S5 Store-to-Gate v3 journeys; it does not cover all S4/S5 acceptance or the unavailable AEVE runtime.",
       "owner_role": "e2e-runner",
-      "source_head": "58088c804ee3d444919ec433b656c80ec3106f37",
+      "source_head": "7cd83eac005e318dca5ae8784b25d2c443cdccc0",
       "test_ids": [
         "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_pilot_commits_only_the_manifest_scoped_synthetic_change",
         "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_pilot_rejects_out_of_scope_edit_before_worker_invocation",
         "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_app_checkpoint_can_resume_same_effect_under_new_store_epoch",
         "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_stop_fences_interrupted_attempt_idempotently_and_rejects_stale_start",
-        "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_candidate_identity_cannot_be_self_selected"
+        "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_candidate_identity_cannot_be_self_selected",
+        "tests/vst/test_s5_v3_store_gate_e2e.py::test_s5_store_round_trips_v3_receipt_and_gate_accepts_only_static_acceptance",
+        "tests/vst/test_s5_v3_store_gate_e2e.py::test_s5_store_persisted_stale_v3_receipt_does_not_satisfy_current_head",
+        "tests/vst/test_s5_v3_store_gate_e2e.py::test_s5_store_persisted_finding_remains_failure_at_authoritative_gate"
       ]
     },
     "seeded-failure": {

@@ -318,3 +318,7 @@ Added the functional reviewer’s focused S5 tests for v1/v2 canonical compatibi
 ## 2026-10-25 -- Record exact-head S5 v3 functional evidence
 
 At clean HEAD `0dbb66293fbf9df946b1b1cb5cc9b841d7b9d1ed`, the focused S5 functional module completed with 39 passed, one skipped and no failures. The skipped symlink case records Windows WinError 1314 / errno 22; a global pytest-asyncio deprecation warning is non-failing. AEVE runtime and sandbox behavior remain NOT_RUN. See evidence `docs/sdlc/evidence/s5-v3-functional-0dbb662.md` and change record 0125.
+
+## 2026-10-25 -- Verify S5 v3 receipt persistence and authoritative gate locally
+
+At clean HEAD `7cd83eac005e318dca5ae8784b25d2c443cdccc0`, three focused E2E journeys passed across temporary SQLite Store and Gate boundaries: exact-head static acceptance credit only, stale-head rejection, and finding-derived FAIL. The report, finding evidence, and source snapshot were temporary local artifacts resolved by digest callbacks. This proves the VST integration contract only; real AEVE execution, attestor provisioning, and sandbox controls remain NOT_RUN. Two pre-boundary failures were test-authoring defects and are preserved in evidence. See `docs/sdlc/evidence/s5-v3-store-gate-e2e-7cd83ea.md` and change record 0133.
