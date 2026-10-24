@@ -8,7 +8,7 @@ from typing import Any, Callable
 
 from .contracts import canonical_bytes
 from .lifecycle import STOP_TRANSITIONS, transition
-from .signing import verify
+from .signing import OPERATOR_MANUAL_OVERRIDE_LABEL, verify
 from .store import ACTION_RESOLUTION_LABEL, Store, StoreError
 
 _LIFECYCLE_ACTIONS = {"start", "stop_terminate", "stop_cleanup", "rollback_effect", "rollback_cleanup", "resume"}
@@ -140,7 +140,7 @@ class Supervisor:
                 return False
         return _valid_sha256(record.get("evidence_sha256"))
 
-    def _perform(self, action: str, callback: Callable[[], Any], action_id: str | None = None, *, group_id: str | None = None) -> Any:
+    def _perform(self, action: str, callback: Callable[[], Any], action_id: str | None = None, *, group_id: str | None = None, control_data: dict | None = None) -> Any:
         action_id = action_id or str(uuid.uuid4())
         group_id = group_id or action_id
         status = self._action_status.get(action_id)
@@ -158,7 +158,7 @@ class Supervisor:
             else:
                 raise StoreError("lifecycle action has an unresolved outcome; reconcile before continuing", kind="lifecycle")
         attempt = (status.get("attempt", 0) + 1) if status else 1
-        event_data = {"action": action, "action_id": action_id, "attempt": attempt}
+        event_data = {**(control_data or {}), "action": action, "action_id": action_id, "attempt": attempt}
         if group_id is not None:
             event_data["group_id"] = group_id
         begin = self.store.begin_action(
@@ -318,23 +318,38 @@ class Supervisor:
 
     def manual_override(self, record: dict) -> None:
         """Resume the paused provider only with a distinct operator record."""
-        if self.breaker_state != "PAUSED_PROVIDER":
-            raise StoreError("manual override is only valid for a paused provider", kind="provider")
         if not isinstance(record, dict) or not record or "verdict" not in record:
             raise StoreError("manual override requires a distinct signed/identified record", kind="provider")
         try:
             canonical_bytes(record)
         except (TypeError, ValueError) as exc:
             raise StoreError("manual override record must be canonical JSON", kind="provider") from exc
-        if record.get("verdict") == "APPROVE":
+        required = {
+            "id", "action", "breaker_state", "breaker_episode_id",
+            "breaker_config_id", "verdict", "evidence_sha256", "signature",
+        }
+        if set(record) != required or record.get("action") != "manual_override" or record.get("breaker_state") != "PAUSED_PROVIDER":
+            raise StoreError("manual override signature must bind action and paused breaker state", kind="provider")
+        if not isinstance(record.get("verdict"), str) or record.get("verdict").upper() == "APPROVE":
             raise StoreError("manual override cannot be represented as plain APPROVE", kind="provider")
+        override_id = record.get("id")
+        if not isinstance(override_id, str) or not override_id.strip():
+            raise StoreError("manual override requires a stable record id", kind="provider")
+        if not _valid_sha256(record.get("evidence_sha256")):
+            raise StoreError("manual override requires lowercase evidence SHA-256", kind="provider")
+        if not isinstance(self.operator_key, (bytes, bytearray)) or len(self.operator_key) < 32:
+            raise StoreError("trusted operator key is unavailable for manual override", kind="provider")
+        if not verify(record, bytes(self.operator_key), OPERATOR_MANUAL_OVERRIDE_LABEL):
+            raise StoreError("manual override operator signature is invalid", kind="provider")
         if self.manual_override_recorder is None:
             raise StoreError("manual override record sink is unavailable", kind="provider")
-        override_id = record.get("id")
-        if not isinstance(override_id, str) or not override_id:
-            raise StoreError("manual override requires a stable record id", kind="provider")
-        self._perform("manual_override", lambda: self.manual_override_recorder(dict(record)), override_id)
-        self.store._append_control_event("CONTROL_BREAKER_OVERRIDE", override_id, {"record": record})
+        self._perform(
+            "manual_override",
+            lambda: self.manual_override_recorder(dict(record)),
+            override_id,
+            control_data={"override_record": record},
+        )
+        self.store.append_manual_override(record, operator_key=bytes(self.operator_key))
         self._control_history = self.store.control_events(); self._replay_controls()
 
     def stop(self, terminate: Callable[[], None], cleanup: Callable[[], None], *, action_id: str | None = None) -> None:

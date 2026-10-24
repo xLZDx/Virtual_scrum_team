@@ -350,3 +350,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: host integration classification relied on a broad path prefix rather than mount source and filesystem identity.
 - Rule: identify Windows drive automount using a Windows drive-root source and either `drvfs` or WSL `9p` with `aname=drvfs`; keep the exact distinction in probe inventory and acceptance criteria.
 - Fix status: implemented in change record 0053; E2E regression and signed WSL proof remain pending.
+
+## 2026-10-24 -- Bind provider override authority to one breaker episode
+
+- Kind: FAILURE (manual override did not authenticate operator intent and a paused-state signature alone could be replayed after a later trip).
+- Facts: security review on `19fb0088e2d4b237de6f0c7beb7aab2c648b66aa` found no operator signature check; follow-up traced replay risk to missing threshold-crossing event identity.
+- Root cause: override authorization was represented by caller-supplied shape/state rather than a signed record bound to the current durable breaker episode.
+- Rule: verify a distinct-domain operator signature bound to action, state, stable ID, pause event ID, config event ID, verdict and evidence digest atomically before callback; recheck at durable clear.
+- Fix status: implemented in change record 0054; unsigned/tampered/stale-replay and valid-signature E2E coverage remains pending.

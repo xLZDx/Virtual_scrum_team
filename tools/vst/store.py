@@ -130,7 +130,7 @@ from .contracts import (
     validate_receipt,
     validate_task_manifest,
 )
-from .signing import MIN_KEY_BYTES, RECEIPT_V2_LABEL, sign, verify
+from .signing import MIN_KEY_BYTES, OPERATOR_MANUAL_OVERRIDE_LABEL, RECEIPT_V2_LABEL, sign, verify
 from .lifecycle import AnchorError, FileExternalAnchor, signed_checkpoint
 
 SCHEMA_VERSION = 4
@@ -1620,6 +1620,8 @@ class Store:
         """Append a supervisor-only NOTE control record, idempotent by event_id."""
         if kind not in CONTROL_EVENT_KINDS:
             raise StoreError("reserved control event kind required", kind="argument")
+        if kind == "CONTROL_BREAKER_OVERRIDE":
+            raise StoreError("breaker override requires signed atomic admission", kind="provider")
         _need_str(event_id, "event_id")
         if not isinstance(payload, dict):
             raise StoreError("control payload must be an object", kind="argument")
@@ -1632,6 +1634,7 @@ class Store:
     def _append_control_event_locked(
         self, conn: sqlite3.Connection, kind: str, event_id: str, payload: dict,
         envelope: dict | None = None, canonical: str | None = None,
+        *, override_key: bytes | None = None,
     ) -> dict:
         envelope = envelope or {**payload, "_vst_control_type": kind, "event_id": event_id}
         canonical = canonical or canonical_bytes(envelope).decode("utf-8")
@@ -1648,13 +1651,69 @@ class Store:
             if parsed.get("_vst_control_type") == kind and parsed.get("event_id") == event_id:
                 if canonical_bytes(parsed).decode("utf-8") != canonical:
                     raise StoreError("control event id reused with different payload", kind="integrity")
+                if kind == "CONTROL_BREAKER_OVERRIDE":
+                    controls = self._control_events_locked(conn)
+                    if self._breaker_state_locked(controls) == "PAUSED_PROVIDER":
+                        raise StoreError(
+                            "a prior override cannot clear a later breaker episode",
+                            kind="provider",
+                        )
                 return parsed
         if kind == "CONTROL_PROVIDER_SUCCESS":
             controls = self._control_events_locked(conn)
             if self._breaker_state_locked(controls) != "CLOSED":
                 raise StoreError("provider success cannot close a paused breaker", kind="provider")
+        if kind == "CONTROL_BREAKER_OVERRIDE":
+            controls = self._control_events_locked(conn)
+            record = payload.get("record")
+            self._validate_manual_override_locked(event_id, record, override_key, controls)
         self._record_event_locked(conn, "__control__", "supervisor", "NOTE", envelope)
         return envelope
+
+    def append_manual_override(self, record: dict, *, operator_key: bytes) -> dict:
+        """Append a signed override only if its pause episode is still current."""
+        if not isinstance(record, dict):
+            raise StoreError("manual override record must be an object", kind="provider")
+        event_id = _need_str(record.get("id"), "manual override id")
+        with self._tx() as conn:
+            self._verify_control_history_locked(conn)
+            return self._append_control_event_locked(
+                conn,
+                "CONTROL_BREAKER_OVERRIDE",
+                event_id,
+                {"record": record},
+                override_key=operator_key,
+            )
+
+    def _validate_manual_override_locked(
+        self, action_id: str, record: Any, operator_key: bytes | None,
+        controls: list[dict],
+    ) -> None:
+        required = {
+            "id", "action", "breaker_state", "breaker_episode_id",
+            "breaker_config_id", "verdict", "evidence_sha256", "signature",
+        }
+        if (not isinstance(operator_key, (bytes, bytearray))
+                or len(operator_key) < MIN_KEY_BYTES
+                or not isinstance(record, dict) or set(record) != required
+                or not verify(record, bytes(operator_key), OPERATOR_MANUAL_OVERRIDE_LABEL)):
+            raise StoreError("manual override operator signature is invalid", kind="provider")
+        if (record.get("id") != action_id
+                or record.get("action") != "manual_override"
+                or record.get("breaker_state") != "PAUSED_PROVIDER"
+                or not isinstance(record.get("verdict"), str)
+                or not record.get("verdict").strip()
+                or record.get("verdict").upper() == "APPROVE"):
+            raise StoreError("manual override signature fields are invalid", kind="provider")
+        digest = record.get("evidence_sha256")
+        if (not isinstance(digest, str) or len(digest) != 64
+                or any(char not in "0123456789abcdef" for char in digest)):
+            raise StoreError("manual override evidence digest is invalid", kind="provider")
+        state, episode_id, config_id = self._breaker_episode_locked(controls)
+        if (state != "PAUSED_PROVIDER"
+                or record.get("breaker_episode_id") != episode_id
+                or record.get("breaker_config_id") != config_id):
+            raise StoreError("manual override is stale for the current breaker episode", kind="provider")
 
     def begin_action(
         self, action_id: str, payload: dict, *, resolution_key: bytes | None = None
@@ -1669,6 +1728,12 @@ class Store:
         with self._tx() as conn:
             self._verify_control_history_locked(conn)
             controls = self._control_events_locked(conn)
+            if action == "manual_override":
+                # Validate even when this action ID already completed: a
+                # replay must never carry authority from an earlier pause.
+                self._validate_manual_override_locked(
+                    action_id, payload.get("override_record"), resolution_key, controls
+                )
             statuses: dict[str, dict] = {}
             for event in controls:
                 if event["kind"] not in {
@@ -1707,9 +1772,6 @@ class Store:
             if action in SUPERVISOR_ACTIONS:
                 if any(row.get("action") == action and row["status"] in {"intent", "unknown"} for row in statuses.values()):
                     raise StoreError("an unresolved supervisor action blocks retry", kind="lifecycle")
-                if action == "manual_override":
-                    if self._breaker_state_locked(controls) != "PAUSED_PROVIDER":
-                        raise StoreError("manual override requires a paused provider", kind="provider")
                 intent_payload = {**payload, "action_id": action_id, "attempt": attempt}
                 result = self._append_control_event_locked(
                     conn, "CONTROL_ACTION_INTENT", f"{action_id}:intent:{attempt}", intent_payload
@@ -1745,25 +1807,35 @@ class Store:
 
     @staticmethod
     def _breaker_state_locked(controls: list[dict]) -> str:
+        return Store._breaker_episode_locked(controls)[0]
+
+    @staticmethod
+    def _breaker_episode_locked(controls: list[dict]) -> tuple[str, str | None, str | None]:
         threshold = 3
         failures = 0
         state = "CLOSED"
+        episode_id = None
+        config_id = None
         for event in controls:
             if event["kind"] == "CONTROL_BREAKER_CONFIG":
                 config = event.get("config")
                 if isinstance(config, dict) and isinstance(config.get("threshold"), int) and not isinstance(config.get("threshold"), bool):
                     threshold = config["threshold"]
+                    config_id = event.get("event_id")
             elif event["kind"] == "CONTROL_PROVIDER_FAILURE":
                 failures += 1
-                if failures >= threshold:
+                if state != "PAUSED_PROVIDER" and failures >= threshold:
                     state = "PAUSED_PROVIDER"
+                    episode_id = event.get("event_id")
             elif event["kind"] == "CONTROL_PROVIDER_SUCCESS":
                 failures = 0
                 state = "CLOSED"
+                episode_id = None
             elif event["kind"] == "CONTROL_BREAKER_OVERRIDE":
                 failures = 0
                 state = "CLOSED"
-        return state
+                episode_id = None
+        return state, episode_id, config_id
 
     def reconcile_action(
         self, action_id: str, payload: dict, *, resolution_key: bytes
