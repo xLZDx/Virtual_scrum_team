@@ -245,4 +245,6 @@ Fresh security review of source head `c0e7e9ce15958b6c6de7811bcaf1020119ba169d` 
 
 Implemented in change record 0073. A hostile source-hook regression and exact-head security re-review are pending; earlier green test results at `c0e7e9c` do not verify this change.
 
+Source review before runtime verification found that target-side fast-forward ancestry was checked before importing a source-only candidate commit. Change record 0074 moves object import before ancestry validation; no runtime result is claimed for the superseded order.
+
 The E2E-owned lifecycle/store modules passed on source HEAD `c0e7e9ce15958b6c6de7811bcaf1020119ba169d`: 72 passed, 14 platform/prohibition skips, one pytest-asyncio deprecation warning. The callback regression verified an independent Store write during the backend callback; the bounded timeout regression verified durable PENDING, restart retry, same-key backend idempotency, and conflicting payload rejection. Evidence and detailed test change record: 0071. The real-child timeout termination path and four E4 process-containment scenarios remain `NOT_RUN` under the process-kill prohibition/platform dependency.

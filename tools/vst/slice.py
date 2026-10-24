@@ -1231,9 +1231,9 @@ class SyntheticOperationBackend:
         except RuntimeError:
             current = None
         if current != head:
+            self._import_head(head)
             if current is not None and not self._is_ancestor(current, head):
                 raise StoreError("synthetic branch update is not a fast-forward", kind="duplicate")
-            self._import_head(head)
             self._update_ref(ref, head, current)
         return {"operation_key": operation_key, "ref": ref, "head": head}
 
