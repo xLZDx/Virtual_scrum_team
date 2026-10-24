@@ -477,3 +477,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — When a test runner cannot capture its start revision, rerun after committing the test artifact and record HEAD both before and after execution. The S3 exact-head reruns on `58088c804ee3d444919ec433b656c80ec3106f37` are the acceptance evidence; prior runs with missing checkout identity remain diagnostic only. See change record 0092.
 
+2026-10-25 — A report schema alone does not identify who authenticates it or how the gate rejects replay. S4 resolves the boundary through manifest-declared v2 TestRun slots and signed artifact digests while preserving existing schemas; report-content truth remains the trusted parser's responsibility. See change record 0093.
+

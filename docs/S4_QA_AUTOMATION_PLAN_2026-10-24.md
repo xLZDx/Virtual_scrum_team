@@ -84,6 +84,8 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 
 **AC-15:** Evidence artifacts are reproducible and contain no secrets, user-specific absolute paths, tokens, or unrestricted environment values. Environment variable names may be reported only under the existing privacy contract.
 
+**Evidence-to-gate design resolved:** The validated VST task manifest is the canonical category registry. Each primary category maps to one `TestRun` slot; required test IDs and allowed pytest selectors come from that manifest. The QA report is a canonical artifact bound by an ordinary v2 `TestRun` receipt and the existing exact-head gate. No new v1/v2 fields are added; the trusted runner/parser remains responsible for truthful report content. See `docs/S4_QA_RUNNER_TECHNICAL_DESIGN.md` and change record 0093.
+
 ## Requirements-to-test map and denominator
 
 | Requirement | ACs | Required falsifying scenario / oracle | Layer | State/dependency |
@@ -125,7 +127,7 @@ This command and its module are **new paths**, not currently runnable. The runne
 - S2 exact-head acceptance and S3 worker adapter scope are reconciled; all dependent or unavailable capabilities are explicit.
 - Category owners, source paths, selectors, test-ID inventory and denominator are agreed from repository artifacts.
 - Existing pinned interpreter and test dependency inventory are recorded; the lock format is selected based on reproducibility and approved repository constraints.
-- Evidence schema and gate-binding interface are specified; a report cannot be treated as a receipt until the authoritative gate validates it.
+- Evidence schema and gate-binding interface are specified in the S4 technical design; report artifacts are not treated as receipts without existing VST v2 signature, exact-head and digest validation.
 - Functional and E2E test agents own the required test map; only those roles will author or execute required QA tests.
 - New expected-failure fixtures use controlled synthetic input records, have a stable version/hash and invoke unchanged product code.
 

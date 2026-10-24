@@ -276,3 +276,7 @@ Added functional-owned and E2E-owned tests for the locally implementable S3 adap
 
 The functional adapter tests reported 8 passed and synthetic pilot E2E reported 5 passed on exact HEAD `58088c804ee3d444919ec433b656c80ec3106f37`; each runner captured the same HEAD immediately before and after its command. This verifies only locally implemented synthetic paths. Sandbox probe/WSL boundary and OS cleanup remain `NOT_RUN`; see evidence `docs/sdlc/evidence/s3-focused-tests-58088.md` and change record 0092.
 
+## 2026-10-25 -- Bind S4 QA reports through existing TestRun v2
+
+Use validated VST task-manifest TestRun slots as the canonical category registry and require the trusted QA runner to produce an ordinary v2 `TestRun` receipt with the canonical QA report included among signed artifact digests. The exact-head gate and artifact resolver remain authoritative. Do not add fields to v1/v2 or repurpose S5's planned v3. The gate verifies receipt/artifact integrity; the runner/parser remains trusted to construct report content. See technical design and change record 0093.
+
