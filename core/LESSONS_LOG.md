@@ -38,3 +38,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Facts: the Round 3 check surfaced that three binding sources disagreed on test authority and two on models; asking the operator four closed questions with consequences produced decisions that could be applied to the repository in one commit.
 - Why it worked: contradictions were located by reading each controlling file with line numbers, then turned into options with concrete consequences instead of being resolved silently.
 - Rule: when sources disagree, list file:line per source, ask the operator, then record the answer as an ADR and align all sources in the same commit; list the sources outside the repository that still disagree.
+
+## 2026-10-24 -- Blueprint consistency after ADR-0001
+
+- Kind: SHORTCOMING (author layer).
+- Facts: the previous commit applied ADR-0001 to the roster, README and DoD but left the gate verdict enum, a stale tdd-guide sentence, a contradictory C-1 line and CI wording in the blueprint; an external reviewer found all four.
+- Root cause: the ADR was applied by searching for the obvious terms, not by grepping every document for each decision's dependent terms (verdict, tdd-guide, CI, precedence).
+- Caught by: external reviewer; missed by the author and no automated check.
+- Rule: after an ADR, grep every tracked document for each affected term and list the hits in the change record before committing.

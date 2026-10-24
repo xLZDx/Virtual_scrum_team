@@ -52,3 +52,7 @@ Evidence: Round 3 read-only verification of `da22d2a` (self-check by the authori
 ## 2026-10-24 -- ADR-0001: test authority, reviewer models, CI, NOT_RUN
 
 Four operator answers (given directly, not auto-accepted): (1) only `functional-test-reviewer` and `e2e-runner` author and run required tests; `tdd-guide` and `performance-optimizer` are advisory; (2) the operator's global contract governs reviewer models (Sonnet 5.5 medium or GPT-5.6 Luna low/medium); (3) no CI; (4) `NOT_RUN` never yields an ordinary APPROVE, the separate verdict `APPROVED_WITH_WAIVER` needs a named operator record. Record: `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`, change record `docs/changes/0006-adr-0001-operator-policy-decisions.md`. Not changed: workspace `AGENTS.md` model default, the operator's global contract (four test writers), installed copy of the roster. Design verdict remains MODIFY DESIGN.
+
+## 2026-10-24 -- Blueprint consistency after ADR-0001
+
+An external verification of `e4be280` reported four inconsistencies; all four were confirmed in the file and fixed (waiver verdict in the gate contract, stale tdd-guide sentence, contradictory C-1 line, CI wording). Record: `docs/changes/0007-blueprint-consistency-after-adr-0001.md`. Design verdict remains MODIFY DESIGN; independent review of the new head is still required.
