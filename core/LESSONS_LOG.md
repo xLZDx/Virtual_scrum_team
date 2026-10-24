@@ -219,3 +219,11 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Root cause: the agent treated a whitespace diff command as exempt despite the sprint-wide ban on checks during coding.
 - Layer: implementation-agent execution; the coordinator recorded the report immediately.
 - Rule: every S2 implementation brief must repeat that all checks, including `git diff --check`, are prohibited until all sprint coding is complete; report accidental invocations immediately and do not rerun.
+
+## 2026-10-24 -- S2 tests caught an untrusted parser pin
+
+- Kind: FAILURE (contract author) / SUCCESS (test layer).
+- Facts: at code HEAD `b2b168e`, the test agent's focused run reported 30 passed and 3 failed. `validate_task_manifest_v2` accepted parser id/version/digest triples absent from `TRUSTED_PARSER_CATALOG`; the test cases expected `ContractError`. The implementer added a trusted-catalog membership check in `contracts.py`; rerun is pending.
+- Root cause: manifest syntax was checked but the parser identity was not resolved against the trusted implementation catalog at contract validation time.
+- Layer: contract implementation missed; functional tests caught it before release review.
+- Rule: validate all security-relevant external identifiers against the trusted registry at the earliest contract boundary, then repeat the consistency check at the authoritative gate.

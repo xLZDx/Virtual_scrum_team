@@ -367,9 +367,11 @@ def validate_task_manifest_v2(obj: Any) -> dict:
         _check_keys(item, ("slot", "argv", "parser_id", "parser_version", "parser_sha256"), ctx)
         slot = _slot_of_type(item["slot"], slot_types, "TestRun", ctx)
         argv = tuple(_req_str_list(item["argv"], f"{ctx}.argv", nonempty=True))
-        _req_str(item["parser_id"], f"{ctx}.parser_id")
-        _req_str(item["parser_version"], f"{ctx}.parser_version")
-        _req_hex(item["parser_sha256"], f"{ctx}.parser_sha256", 64)
+        parser_id = _req_str(item["parser_id"], f"{ctx}.parser_id")
+        parser_version = _req_str(item["parser_version"], f"{ctx}.parser_version")
+        parser_sha256 = _req_hex(item["parser_sha256"], f"{ctx}.parser_sha256", 64)
+        if (parser_id, parser_version, parser_sha256) not in TRUSTED_PARSER_CATALOG:
+            raise ContractError(f"{ctx}: parser is not in TRUSTED_PARSER_CATALOG")
         pair = (slot, argv)
         if pair in seen:
             raise ContractError(f"{ctx}: duplicate mandatory command")

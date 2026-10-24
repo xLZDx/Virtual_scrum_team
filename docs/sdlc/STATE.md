@@ -13,7 +13,7 @@ The S2 branch is `s2-isolated-worker-sandbox`. The base HEAD `6117ba24` was veri
 | 4 - Docs and test plan | `docs/S2_SANDBOX_WORKER_PLAN_2026-10-24.md` sections 4-10 | Coordinator / Codex | `6117ba24` | Requirements-derived acceptance and negative-input denominators present; detailed test scripts await code completion and test-agent authorship |
 | 5 - Documentation review | S2 design review and code map in current execution record | `code-architect`, `code-explorer` / `gpt-6-luna` | `6117ba24` | One review/fix pass completed; findings were reconciled in the plan; no tests or checks run |
 | 6 - Build | `tools/vst/` and `docs/SANDBOX_SPEC.md` | Three `implementation-engineer` agents / `gpt-6-luna` | Code commit with change record 0036 | Code reported complete across E1-E8 support; no tests/checks or runtime evidence; two accidental `git diff --check` invocations are recorded in change records 0035 and 0036 |
-| 7 - Verify | `tests/vst/` and `docs/sdlc/evidence/` | `functional-test-reviewer`, `e2e-runner` / `gpt-6-luna` | Code commit with change record 0036 | Not started; test agents must author and execute focused scenarios after code commit; mutation, process-kill/kill-table and CI runs are prohibited by the S2 continuation instructions |
+| 7 - Verify | `tests/vst/` and `docs/sdlc/evidence/` | `functional-test-reviewer`, `e2e-runner` / `gpt-6-luna` | Initial code commit `b2b168e`; parser fix follows in record 0037 | In progress. First functional run reported 30 passed / 3 failed for untrusted parser pins; fix is committed separately and must be rerun. E2E runs are underway. Mutation, process-kill/kill-table and CI runs are prohibited by the S2 continuation instructions |
 
 ## Open questions / backlog items (owner)
 
