@@ -471,3 +471,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 - Rule: callers must authenticate before invoking STOP; never claim an actor label is proof. Add an authenticated boundary before exposing this API to an untrusted caller or candidate process.
 - Fix status: limitation explicitly recorded in change record 0088; current worker is local synthetic only, and production/external candidate execution is not authorized.
 
+2026-10-25 — Candidate release pins can become stale while a sprint is being prepared. Re-resolve official tags before acquisition decisions, and do not carry behavior or security conclusions across versions without reviewing the new pinned source. The v0.11.0 metadata refresh is recorded in change record 0089; deeper review and acquisition remain open.
+

@@ -264,3 +264,7 @@ The E2E-owned lifecycle/store modules passed on source HEAD `c0e7e9ce15958b6c6de
 
 Register S3 work under unique canonical backlog IDs VST-027 through VST-031, preserving existing unrelated VST-021 through VST-024 items. Split Definition of Ready by work boundary: contract and in-repository synthetic code preparation may proceed without acquiring or executing a candidate; candidate comparison remains gated on audit plus operator authorization; sandbox worker execution requires a fresh run-bound signed probe. This resolves the inconsistency found by the read-only S3 document review (GPT-6 Luna, low effort). Process correction: the coordinator inadvertently ran `git diff --check` before S3 code completion; its empty output/exit 0 is not verification evidence and is recorded as a FAILURE in `core/LESSONS_LOG.md`.
 
+## 2026-10-25 -- Refresh BMad Loop public release pin
+
+Updated VST-028 from the historical BMad Loop v0.10.0 reference to latest audited release v0.11.0, exact tag SHA `3e8f1e2ba7be39d99a3e88a00cd63c8cb2c7899d`. This metadata refresh does not transfer the v0.10 behavior review to v0.11, approve security/compatibility, or authorize acquisition. Complete the pinned source audit and retain the operator acquisition gate. See change record 0089.
+
