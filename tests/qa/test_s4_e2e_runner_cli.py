@@ -29,7 +29,7 @@ from tools.qa.registry import (
 )
 
 
-BASELINE_HEAD = "08252020f24d47f1d23ffb15e15080193400bb9b"
+BASELINE_HEAD = "fc20c9e31e1d4bb9bd9356921add66e14e5e230a"
 FIXTURE_TEST_PATH = "tests/qa/test_native_fixture.py"
 FIXTURE_TEST_ID = f"{FIXTURE_TEST_PATH}::test_native_fixture"
 NOT_RUN_TEST_ID = f"{FIXTURE_TEST_PATH}::test_sandbox_dependent_fixture"

@@ -22,4 +22,4 @@ The registry is derived from selector metadata and test source. Refreshing it af
 
 ## Next
 
-Commit this registry refresh with its decision and lessons entries. Then designated functional/E2E agents should run focused, policy-compliant exact-head scenarios before the complete assigned S4 matrix. Keep the matrix non-approving while policy exclusions remain.
+This registry refresh and its decision/lessons entries were committed in `d2c5dd2`. Designated functional/E2E agents should run focused, policy-compliant exact-head scenarios before the complete assigned S4 matrix. Keep the matrix non-approving while policy exclusions remain.

@@ -690,6 +690,10 @@ The exact-head S4 run at `980d878` found two independent issues. First, `tools/q
 
 After source commit `fc20c9e31e1d4bb9bd9356921add66e14e5e230a`, regenerate the selector inventory so its source identity includes the category-wide runner/matrix policy correction and root IPC fixture change. Change 0305 records the successful generation, 935 primary regression selectors (883 assigned runnable, 52 policy `NOT_RUN`), and 3 separate seeded-failure selectors. Generation is not runtime evidence; compliant focused and exact-head matrix runs remain next.
 
+## 2026-10-25 — Align the synthetic NOT_RUN contract fixture with the corrected runner
+
+The safe WSL E2E case at exact candidate `d2c5dd2` exposed a stale fixture: it archived runner source from `08252020`, before change 0304 made policy `NOT_RUN` category-wide. The child therefore reported `PASS` despite the declared exclusion. Update only the fixture baseline to the committed corrected source at `fc20c9e`; preserve the assertion and do not execute the underlying sandbox-dependent selector. Change 0306 records the failed diagnostic and the pending rerun. Refresh the selector registry after this committed test-source change.
+
 ## 2026-10-25 — Refresh the selector registry after the Linux flag fixture
 
 After test-source commit `c4f9cb9`, regenerate the category registry before rerunning. It now binds to exact source HEAD `c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209` and records 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN`, and 90 functional selectors. Preserve the policy rows and use exact-head evidence. See change 0290.
