@@ -42,7 +42,7 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
   <dl>
     <dt>Project</dt><dd>Virtual_scrum_team</dd>
     <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team-s4</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 27b0bd7</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 0aa7a53</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
@@ -65,9 +65,11 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 
 
 
+
+
 <section>
 <h2>Decision</h2>
-<p>S4 remains <strong>IN PROGRESS</strong>. The ancestry validator at source commit <code>7b8200c0180a904f048acb93b7d04201d2d8c58c</code> distinguishes valid non-ancestry (Git status 1) from verification errors; its five outcome selectors passed within the 32/32 functional/integration/seeded run at exact test HEAD <code>20fa7bb5759d8c35159a942043a78ec93f3c79a1</code>. At that same head, API produced 92 passed/1 skipped/0 failed from 73 selectors, and all 12 mapped E2E selectors passed (0198). At exact S4 HEAD <code>1c97ee968e6c9f8ab133a3b6d7452e17a17ee600</code>, three focused POSIX symlink selectors passed 3/3 on Ubuntu-24.04 WSL2 after staging tracked content from a clean detached worktree and matching the test-file SHA-256 (0201). This does not cover the report-bound runner path. A read-only WSL feasibility audit found runner UID 997, worker UID 999, and signer UID 995; Python/pytest are available, but the unprivileged runner has no sudo or file capabilities to transition to the worker. <code>tools/vst/runner.py</code> passes <code>user=worker_uid</code> and <code>group=worker_gid</code> to subprocess creation, so a disposable signer socket alone does not unblock execution. Also, <code>tools.qa.run</code> refuses to sign for a PARTIAL category; a COMPLETE functional category could be selected for report-serialization testing. Fresh code/reliability reviews (GPT-6 Luna, low) found no BLOCKER/MAJOR/MINOR; reliability INFO: Git stderr is suppressed, so fatal-exit diagnostics expose only the status code. E2E denominator remains PARTIAL because no E2E selector covers the report-serialization/v2 signed-artifact path. Trusted deployed signer, run-specific manifest, approved runner-to-worker privilege mechanism, report-bound execution, report, receipt, and authoritative gate remain <code>NOT_RUN</code>; the earlier WSL run at <code>56dce67</code> does not establish current-head acceptance.</p>
+<p>S4 remains <strong>IN PROGRESS</strong>. The ancestry validator at source commit <code>7b8200c0180a904f048acb93b7d04201d2d8c58c</code> distinguishes valid non-ancestry (Git status 1) from verification errors; its five outcome selectors passed within the 32/32 functional/integration/seeded run at exact test HEAD <code>20fa7bb5759d8c35159a942043a78ec93f3c79a1</code>. At that same head, API produced 92 passed/1 skipped/0 failed from 73 selectors, and all 12 mapped E2E selectors passed (0198). At exact S4 HEAD <code>1c97ee968e6c9f8ab133a3b6d7452e17a17ee600</code>, three focused POSIX symlink selectors passed 3/3 on Ubuntu-24.04 WSL2 after staging tracked content from a clean detached worktree and matching the test-file SHA-256 (0201). This does not cover the report-bound runner path. The operator separately authorized a narrow S4 transient-unit helper. A probe at base HEAD <code>0aa7a53</code> showed that worker UID 999 retained all five capability sets at <code>0xc0</code> and could return to UID 997 through <code>os.setuid(997)</code>; the report-bound CLI was stopped before signer/manifest use. A trampoline in <code>tools/vst/worker_exec.py</code> was added to clear capabilities and enable <code>no_new_privs</code> before the manifest command; a test agent has not yet runtime-verified the source fix. A fresh post-fix snapshot is required. A disposable signer alone does not close this boundary. Also, <code>tools.qa.run</code> refuses to sign for a PARTIAL category; a COMPLETE functional category could be selected for report-serialization testing. Fresh code/reliability reviews (GPT-6 Luna, low) found no BLOCKER/MAJOR/MINOR; reliability INFO: Git stderr is suppressed, so fatal-exit diagnostics expose only the status code. E2E denominator remains PARTIAL because no E2E selector covers the report-serialization/v2 signed-artifact path. Trusted deployed signer, run-specific manifest, capability-drop runtime verification, report-bound execution, report, receipt, and authoritative gate remain <code>NOT_RUN</code>; the earlier WSL run at <code>56dce67</code> does not establish current-head acceptance.</p>
 </section>
 <section>
 <h2>Acceptance against the S4 plan</h2>
@@ -108,7 +110,7 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <section>
 <h2>Open dependencies and order</h2>
 <ol>
-<li>Establish a project-approved runner-to-worker privilege mechanism for the WSL identities (runner UID 997, worker UID 999). The read-only audit found no sudo or file capabilities for the runner; technical owner is UNKNOWN. The operator remains accountable task owner; Codex executes.</li>
+<li>Verify on a fresh exact-head WSL snapshot that <code>worker_exec.py</code> drops capabilities before pytest starts, UID 999 cannot regain UID 997, and the worker cannot open the signer socket. QA infrastructure technical owner is UNKNOWN; the operator remains accountable task owner; Codex executes.</li>
 <li>Once that mechanism is available, exercise <code>tools.qa.run</code> report serialization with a COMPLETE functional category and disposable signer socket. The E2E category is PARTIAL and the CLI refuses to sign its results.</li>
 <li>Add a report-bound E2E selector under an accepted category/run contract, then obtain trusted deployed signer and run-specific manifest. Do not equate the disposable socket with deployed signer acceptance.</li>
 <li>Obtain report-bound current-head evidence: approved runner-to-worker transition, trusted signer and run manifest, report/receipt/authoritative gate, and aggregate regression.</li>
@@ -119,6 +121,8 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <footer class="mut">
 <p>Decision and criteria source: <a href="../docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md">S4 plan</a>. Verifiable sources: change records 0195–0201 (ancestry fix/tests, exact-head runs, focused POSIX symlink evidence, reviews, and report reconciliation), earlier WSL evidence 0159 for source HEAD <code>56dce67</code>, and branch <code>s4-native-qa-runner</code>. This checkpoint is derived from local Git/evidence records; it is not PM approval, merge evidence, or proof of full acceptance.</p>
 </footer>
+
+
 
 
 

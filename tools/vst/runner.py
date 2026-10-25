@@ -73,6 +73,7 @@ import re
 import signal
 import stat
 import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -513,9 +514,25 @@ def _run_one(
         "capture_incomplete": False,
         "job_object": False,
     }
+    spawn_argv = argv
+    spawn_identity = {}
+    if worker_uid is not None and worker_gid is not None:
+        if os.name == "posix":
+            # Ambient capabilities needed for Popen's setuid/setgid calls must
+            # not survive into the manifest-authorized worker command. Start an
+            # isolated trusted trampoline after Popen applies the worker identity;
+            # it clears capabilities and NNP-locks the process before execing argv.
+            helper = os.path.join(os.path.dirname(__file__), "worker_exec.py")
+            spawn_argv = [
+                sys.executable, "-I", "-S", helper,
+                str(worker_uid), str(worker_gid), "--", *argv,
+            ]
+        spawn_identity = {
+            "user": worker_uid, "group": worker_gid, "extra_groups": (),
+        }
     try:
         proc = subprocess.Popen(
-            argv,
+            spawn_argv,
             shell=False,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
@@ -523,8 +540,7 @@ def _run_one(
             cwd=cwd,
             env=env,
             bufsize=0,
-            **({"user": worker_uid, "group": worker_gid, "extra_groups": ()}
-               if worker_uid is not None and worker_gid is not None else {}),
+            **spawn_identity,
             **_spawn_kwargs(suspended=os.name == "nt" and require_job_object),
         )
     except OSError:

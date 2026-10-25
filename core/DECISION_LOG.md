@@ -550,3 +550,7 @@ The local coordinator commits `27b0bd7` (change 0225) and `a478d6e` (change 0227
 ## 2026-10-25 -- Reconcile explicit Git hook-path overrides in S4 commits
 
 S4 commits `27b0bd7`, `a478d6e`, and `31f797a` were created in this session with `git -c core.hooksPath=NUL commit`, explicitly overriding normal hook discovery. The shared repository hook directory had no configured `core.hooksPath` and only `.sample` files at read-only inspection; no active hook was present there at that time. This does not justify the override. Preserve history and the pre-existing patch; record the discrepancy in reconciliation change 0237.
+
+## 2026-10-25 -- Record S4 worker capability leak and remediation
+
+The operator explicitly authorized a narrow S4 runner-to-worker helper. A transient systemd unit on exact base HEAD `0aa7a53cdf7c4ad160ee40af00dd9743646a0b08` demonstrated UID 997→999 transition but did not clear capabilities. A follow-up probe found `CapInh`, `CapPrm`, `CapEff`, `CapBnd`, and `CapAmb` all `0xc0`; the UID 999 process successfully called `os.setuid(997)`. The report-bound CLI was stopped before any signer or manifest use. Implemented a trusted POSIX trampoline in `tools/vst/worker_exec.py` to check worker identity, set `PR_SET_NO_NEW_PRIVS`, clear ambient and effective/permitted/inheritable capabilities, verify the result, then execute the manifest argv. Runtime verification is pending. See change 0240 and `docs/sdlc/evidence/s4-worker-capability-drop-probe-0aa7a53.md`.
