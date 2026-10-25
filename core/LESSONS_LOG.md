@@ -650,4 +650,6 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — SUCCESS: after the S4 fixture-source commit, the selector registry was regenerated from exact source HEAD `a318f11`; counts remain 935 total, 884 assigned and 51 policy `NOT_RUN`. The refresh is not test evidence; the next run must bind to a commit containing the registry. See change 0294.
 
+2026-10-25 — SUCCESS: the focused S4 runner, runtime-matrix, and root-harness contract modules passed 108/108 at exact committed HEAD `af424b5` on Windows Python 3.14.3. One pytest-asyncio deprecation warning remains; this focused pass is not full runtime-matrix evidence. See change 0295.
+
 2026-10-25 — SUCCESS: after the Linux close-on-exec test fixture was committed, the selector registry was regenerated against the exact committed test source. The denominator remains 935 regression selectors, 884 assigned, and 51 policy `NOT_RUN`; refresh is not execution evidence. See change 0290.

@@ -646,6 +646,10 @@ The focused test run at exact candidate `e75e0fe` passed 108 tests with one pyte
 
 After test-only source commit `a318f11`, regenerate the selector registry before focused rerun. Change 0294 records the exact source HEAD and unchanged denominator: 935 selectors, 884 assigned runnable, 51 policy `NOT_RUN`; 90 functional and 56 E2E selectors. This is inventory generation only. Preserve policy `NOT_RUN` as non-approving and bind all runtime reports to one exact candidate.
 
+## 2026-10-25 — Record focused S4 contract rerun after fixture repair
+
+At exact registry HEAD `af424b51592646dc5dd918bd571f47110bd82cc9`, the designated functional-test reviewer ran the three focused S4 contract modules on Windows Python 3.14.3: 108 passed, 0 failed, 0 skipped, exit 0, with one pytest-asyncio deprecation warning. This closes only focused contract coverage; no full Windows/WSL/root matrix acceptance is implied. See change 0295. Next, run the complete assigned matrix at one exact committed head.
+
 ## 2026-10-25 — Refresh the selector registry after the Linux flag fixture
 
 After test-source commit `c4f9cb9`, regenerate the category registry before rerunning. It now binds to exact source HEAD `c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209` and records 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN`, and 90 functional selectors. Preserve the policy rows and use exact-head evidence. See change 0290.
