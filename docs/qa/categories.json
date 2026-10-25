@@ -32,11 +32,16 @@
     "api": {
       "state": "SUPPORTED",
       "coverage_state": "PARTIAL",
-      "coverage_reason": "The Python API denominator covers gate parser authority plus S4 registry, provenance, selector projection, seeded catalog validation, canonical path confinement, bounded source reads and parser recursion rejection; broader VST APIs remain partial.",
+      "coverage_reason": "The Python API denominator covers representative tools.vst contracts, gate, store, runner and supervisor behavior plus S4 registry, provenance, selector projection, seeded catalog validation, canonical path confinement, bounded source reads and parser recursion rejection. It remains partial because the full public VST API surface is not inventoried or mapped.",
       "owner_role": "functional-test-reviewer",
-      "source_head": "921886d7f26126695adfc26d264e772052f8ac09",
+      "source_head": "11cdba225a7eaa4a9c89c16cd990b74a5bda4a47",
       "test_ids": [
         "tests/vst/test_s2_contract_gate.py::test_gate_refuses_caller_supplied_parser_implementation",
+        "tests/vst/test_e1_contracts.py::test_manifest_valid_returns_equal_deep_copy",
+        "tests/vst/test_e2_gate.py::test_stale_head_one_receipt_is_a_hard_reason_and_the_slot_is_unmet",
+        "tests/vst/test_e3_store.py::test_reopen_of_a_version_three_database_keeps_data",
+        "tests/vst/test_e4_runner.py::test_harmless_command_produces_signed_passing_testrun",
+        "tests/vst/test_s2_runner_lifecycle.py::test_breaker_pause_replays_after_store_restart_and_provider_success_does_not_close_it",
         "tests/qa/test_s4_registry_contracts.py::test_s4_registry_accepts_single_primary_category_per_test_id",
         "tests/qa/test_s4_registry_contracts.py::test_s4_registry_rejects_duplicate_primary_category_assignment",
         "tests/qa/test_s4_registry_contracts.py::test_s4_registry_rejects_provenance_outside_candidate_history",
