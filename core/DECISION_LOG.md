@@ -682,6 +682,10 @@ After test-source commit `5cb61b2`, the category registry was regenerated from e
 
 Review against the source request found changes 0301 and 0302 had dedicated change records and decision-log entries but omitted the separately required `core/LESSONS_LOG.md` entry. The root cause was an incomplete pre-commit checklist while continuing the established registry sequence. Add the omission, cause and preventive rule in change 0303 without rewriting prior commits; before every later sprint commit, stage the decision and lessons logs in separate commands before the commit. No tests or checks ran for this documentation correction.
 
+## 2026-10-25 — Keep category policy NOT_RUN explicit and root fixture traversable
+
+The exact-head S4 run at `980d878` found two independent issues. First, `tools/qa/run.py` used the profile-scoped NOT_RUN map to decide approval, so category policy selectors with no runtime profile could be ignored and a synthetic report returned `PASS`; `tools/qa/matrix.py` also expected profile-scoped report fields. The runner and matrix now use the same category-wide policy map while keeping genuinely profile-unassigned selectors distinct. Second, the restricted-root signer-isolation test used a signer-owned mode-0710 parent which UID0/GID0 with no supplementary groups and no `CAP_DAC_OVERRIDE` could not traverse to stat the socket. The fixture parent is now root-owned and runner-group-owned; socket permissions and worker denial checks stay fixed. A reviewer caught the report/matrix mismatch before tests. Both changes are unverified until refreshed-registry exact-head tests. See change 0304.
+
 ## 2026-10-25 — Refresh the selector registry after the Linux flag fixture
 
 After test-source commit `c4f9cb9`, regenerate the category registry before rerunning. It now binds to exact source HEAD `c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209` and records 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN`, and 90 functional selectors. Preserve the policy rows and use exact-head evidence. See change 0290.

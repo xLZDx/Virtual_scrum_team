@@ -249,8 +249,13 @@ def _validate_run(
     report_path = root / f"docs/sdlc/evidence/qa/{category}.report.jsonl"
     report, line = _read_report(report_path, run_id)
     expected = registry.category_profile_test_ids[category][profile]
-    expected_unassigned = registry.category_profile_unassigned_ids[category][profile]
-    expected_not_run = registry.category_profile_not_run[category][profile]
+    category_not_run = registry.category_not_run[category]
+    expected_unassigned = [
+        test_id
+        for test_id in registry.category_profile_unassigned_ids[category][profile]
+        if test_id not in category_not_run
+    ]
+    expected_not_run = category_not_run
     expected_inventory = registry.category_inventory_ids[category]
     reasons: list[str] = []
     if report.get("schema_version") != 2:
@@ -332,7 +337,7 @@ def _validate_run(
     accounting_reasons, node_ids = _verify_case_accounting(expected, report)
     reasons.extend(accounting_reasons)
     if expected_not_run:
-        reasons.append(f"profile has {len(expected_not_run)} policy NOT_RUN assigned selectors")
+        reasons.append(f"category includes {len(expected_not_run)} policy NOT_RUN selectors")
     if profile == WSL_ROOT_PROFILE:
         proof = report.get("privileged_harness_preflight")
         if (

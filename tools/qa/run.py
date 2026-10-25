@@ -796,14 +796,17 @@ def _report_base(
 ) -> dict[str, Any]:
     runtime_profile = getattr(args, "_runtime_profile", None)
     runtime_fields = _runtime_report_identity(runtime_profile)
+    not_run_reasons = registry.category_not_run.get(args.category, {}) if registry else {}
     if registry is not None and runtime_profile in RUNTIME_PROFILES:
         expected_ids = registry.category_profile_test_ids.get(args.category, {}).get(runtime_profile, [])
-        not_run_reasons = registry.category_profile_not_run.get(args.category, {}).get(runtime_profile, {})
         unassigned_ids = registry.category_profile_unassigned_ids.get(args.category, {}).get(runtime_profile, [])
+        unassigned_ids = [test_id for test_id in unassigned_ids if test_id not in not_run_reasons]
     else:
         expected_ids = []
-        not_run_reasons = {}
-        unassigned_ids = registry.category_inventory_ids.get(args.category, []) if registry else []
+        unassigned_ids = [
+            test_id for test_id in registry.category_inventory_ids.get(args.category, [])
+            if test_id not in not_run_reasons
+        ] if registry else []
     return {
         "schema_version": 2,
         "sprint": "S4",
@@ -1140,7 +1143,7 @@ def main() -> int:
         if args.category not in registry.category_test_ids:
             reasons.append(f"unknown category: {args.category}")
         profile = args._runtime_profile
-        policy_not_run = registry.category_profile_not_run.get(args.category, {}).get(profile, {})
+        policy_not_run = registry.category_not_run.get(args.category, {})
 
         category_status = registry.data["categories"].get(args.category, {}).get("status")
         category_reason = registry.data["categories"].get(args.category, {}).get("reason")

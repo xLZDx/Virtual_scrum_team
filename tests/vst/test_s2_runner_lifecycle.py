@@ -1369,7 +1369,7 @@ def test_posix_worker_cannot_read_signer_or_key_file():
         os.chmod(ipc_dir, 0o710)
         os.chmod(socket_path, 0o660)
         os.chown(socket_path, signer.pw_uid, runner_gid)
-        os.chown(ipc_dir, signer.pw_uid, runner_gid)
+        os.chown(ipc_dir, 0, runner_gid)
         require_worker_cannot_access_signer(
             socket_path, worker_uid=worker.pw_uid, worker_gid=worker.pw_gid,
         )
