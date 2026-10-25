@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_head": "ad6ddb075b2a9f2beefcf2595bd47c9bbcd1650a",
+  "source_head": "921886d7f26126695adfc26d264e772052f8ac09",
   "categories": {
     "functional": {
       "state": "SUPPORTED",
@@ -34,7 +34,7 @@
       "coverage_state": "PARTIAL",
       "coverage_reason": "The Python API denominator covers gate parser authority plus S4 registry, provenance, selector projection, seeded catalog validation, canonical path confinement, bounded source reads and parser recursion rejection; broader VST APIs remain partial.",
       "owner_role": "functional-test-reviewer",
-      "source_head": "ad6ddb075b2a9f2beefcf2595bd47c9bbcd1650a",
+      "source_head": "921886d7f26126695adfc26d264e772052f8ac09",
       "test_ids": [
         "tests/vst/test_s2_contract_gate.py::test_gate_refuses_caller_supplied_parser_implementation",
         "tests/qa/test_s4_registry_contracts.py::test_s4_registry_accepts_single_primary_category_per_test_id",
