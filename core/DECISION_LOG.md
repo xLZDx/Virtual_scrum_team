@@ -356,3 +356,7 @@ The exact-head functional module at `64b8bb1` failed twice because a separate `g
 ## 2026-10-25 -- Verify ancestry-only QA provenance validation
 
 At clean exact HEAD `56a58a72c337c7c712ce2efb72e99efc179552bd`, the focused registry module passed 15 cases with one Windows symlink-privilege skip and no failures. The committed-registry loader now accepts the valid provenance sources after removal of the duplicate Git existence query. A stale expected-message assertion was corrected in test-only change 0147 without weakening the negative provenance check. Symlink runtime remains `NOT_RUN` on this host. See change 0149 and evidence `docs/sdlc/evidence/s4-provenance-rerun-56a58a7.md`.
+
+## 2026-10-25 -- Re-run the seven mapped S4 selectors at current HEAD
+
+At clean `s4-native-qa-runner` HEAD `cbdce020fbd8030e7518285526831c2932f879a2`, the seven registered mapped selectors passed on the Windows host: 7 passed, 0 failed, 0 skipped. HEAD and worktree status were unchanged before and after. This result is Windows-only; the earlier WSL transfer remains `RESULT_NOT_CAPTURED`, and no WSL destination was inspected or retried. See change 0150.
