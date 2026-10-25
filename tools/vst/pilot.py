@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import hashlib
 import subprocess
+import tempfile
+import threading
 import time
 from dataclasses import asdict, replace
 from typing import Callable
@@ -88,6 +90,9 @@ class HandWrittenWorkerAdapter:
         self.timeout_sec = timeout_sec
         self._active: set[tuple[str, str]] = set()
         self.fence_check: Callable[[WorkerRequest], bool] | None = None
+        # SyntheticStoryPilot replaces this with its own lock so its durable
+        # STOP transition and this adapter's filesystem publication serialize.
+        self.publication_lock = threading.Lock()
 
     def _checkpoint(self, checkpoint: Checkpoint) -> None:
         if self.checkpoint_hook is not None:
@@ -151,42 +156,51 @@ class HandWrittenWorkerAdapter:
                     changed_paths=(request.change_path,), progress="replayed durable Git effect marker",
                 )
             self._checkpoint(Checkpoint.BEFORE_EDIT)
-            self._check_fence(request)
-            self.worker.edit(
-                request.change_path, request.change_content,
-                timeout_sec=remaining(),
-            )
-            self._checkpoint(Checkpoint.AFTER_EDIT_BEFORE_COMMIT)
-            self._check_fence(request)
-            marker = f"vst-worker-effect {request.effect_key}"
-            staged = subprocess.run(
-                ["git", "add", "--", request.change_path],
-                cwd=self.worker.repository, env=build_environment(),
-                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                check=False, timeout=remaining(),
-            )
-            if staged.returncode:
-                raise RuntimeError("could not stage the declared synthetic path")
-            self._check_fence(request)
-            committed = subprocess.run(
-                ["git", "commit", "--only", "-m", marker, "--", request.change_path],
-                cwd=self.worker.repository, env=build_environment(),
-                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                check=False, timeout=remaining(),
-            )
-            if committed.returncode:
-                raise RuntimeError("could not commit the declared synthetic path")
-            head_result = subprocess.run(
-                ["git", "rev-parse", "--verify", "HEAD"],
-                cwd=self.worker.repository, env=build_environment(),
-                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                check=False, timeout=remaining(),
-            )
-            if head_result.returncode:
-                raise RuntimeError("could not resolve the synthetic candidate head")
-            head = head_result.stdout.decode("ascii", "replace").strip()
-            self._check_fence(request)
-            self._checkpoint(Checkpoint.AFTER_COMMIT_BEFORE_RESPONSE)
+            # This in-process lock orders all mutations made by this adapter
+            # against STOP calls routed through its SyntheticStoryPilot. It
+            # does not coordinate separate processes or pilot instances.
+            with self.publication_lock:
+                self._check_fence(request)
+                self.worker.edit(
+                    request.change_path, request.change_content,
+                    timeout_sec=remaining(),
+                )
+                self._checkpoint(Checkpoint.AFTER_EDIT_BEFORE_COMMIT)
+                self._check_fence(request)
+                marker = f"vst-worker-effect {request.effect_key}"
+                staged = subprocess.run(
+                    ["git", "add", "--", request.change_path],
+                    cwd=self.worker.repository, env=build_environment(),
+                    stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    check=False, timeout=remaining(),
+                )
+                if staged.returncode:
+                    raise RuntimeError("could not stage the declared synthetic path")
+                self._check_fence(request)
+                # Command-scoped configuration overrides repository-local
+                # core.hooksPath without changing candidate configuration.
+                # An empty directory disables pre-commit and post-commit hooks.
+                with tempfile.TemporaryDirectory(prefix="vst-empty-hooks-") as hooks_path:
+                    committed = subprocess.run(
+                        ["git", "-c", f"core.hooksPath={hooks_path}", "commit",
+                         "--only", "-m", marker, "--", request.change_path],
+                        cwd=self.worker.repository, env=build_environment(),
+                        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                        check=False, timeout=remaining(),
+                    )
+                if committed.returncode:
+                    raise RuntimeError("could not commit the declared synthetic path")
+                head_result = subprocess.run(
+                    ["git", "rev-parse", "--verify", "HEAD"],
+                    cwd=self.worker.repository, env=build_environment(),
+                    stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    check=False, timeout=remaining(),
+                )
+                if head_result.returncode:
+                    raise RuntimeError("could not resolve the synthetic candidate head")
+                head = head_result.stdout.decode("ascii", "replace").strip()
+                self._check_fence(request)
+                self._checkpoint(Checkpoint.AFTER_COMMIT_BEFORE_RESPONSE)
             return _response(
                 request, WorkerState.SUCCEEDED, candidate_head=head,
                 changed_paths=(request.change_path,), progress="synthetic change committed",
@@ -255,6 +269,10 @@ class SyntheticStoryPilot:
         self.adapter = adapter
         self.lease_ttl_sec = float(lease_ttl_sec)
         if isinstance(adapter, HandWrittenWorkerAdapter):
+            # All starts and STOPs through this pilot use one local ordering
+            # point. This does not serialize other processes or pilot objects.
+            self._publication_lock = threading.Lock()
+            adapter.publication_lock = self._publication_lock
             adapter.fence_check = lambda request: (
                 fixture.store.reconciliation_complete
                 and fixture.store.current_epoch(request.story_id) == request.fence
@@ -706,24 +724,34 @@ class SyntheticStoryPilot:
         if self.fixture.store.sandbox_mode and request.sandbox_run_id != self.supervisor.run_id:
             return _stop_response(request, WorkerState.BLOCKED, WorkerError(
                 WorkerErrorCode.INVALID_REQUEST, "STOP sandbox run differs from the active supervisor run"))
-        result = self.fixture.store.stop_attempt_fenced(
-            request.operation_key, request.task_id, request.story_id,
-            request.attempt, request.epoch,
-            self._owner_for_attempt(request.run_id, request.attempt_id, request.attempt),
-            request.reason, request.authorized_actor,
-            binding={
-                "candidate_id": request.candidate_id,
-                "candidate_revision": request.candidate_revision,
-                "manifest_sha256": request.manifest_sha256,
-                "effect_key": request.effect_key,
-                "sandbox_run_id": request.sandbox_run_id,
-                "allowed_paths": list(request.allowed_paths),
-                "budget_cap": request.budget_cap,
-                "budget_units": request.budget_units,
-                "budget_remaining": request.budget_remaining,
-                "invocation_id": request.invocation_id,
-            },
-        )
+        def fence_attempt() -> dict:
+            return self.fixture.store.stop_attempt_fenced(
+                request.operation_key, request.task_id, request.story_id,
+                request.attempt, request.epoch,
+                self._owner_for_attempt(request.run_id, request.attempt_id, request.attempt),
+                request.reason, request.authorized_actor,
+                binding={
+                    "candidate_id": request.candidate_id,
+                    "candidate_revision": request.candidate_revision,
+                    "manifest_sha256": request.manifest_sha256,
+                    "effect_key": request.effect_key,
+                    "sandbox_run_id": request.sandbox_run_id,
+                    "allowed_paths": list(request.allowed_paths),
+                    "budget_cap": request.budget_cap,
+                    "budget_units": request.budget_units,
+                    "budget_remaining": request.budget_remaining,
+                    "invocation_id": request.invocation_id,
+                },
+            )
+
+        if isinstance(self.adapter, HandWrittenWorkerAdapter):
+            # STOP's durable epoch advance and adapter worktree publication are
+            # ordered in this pilot process. Release before adapter.stop so
+            # cleanup diagnostics cannot hold up future fenced work.
+            with self._publication_lock:
+                result = fence_attempt()
+        else:
+            result = fence_attempt()
         # The synchronous worker adapter cannot prove OS-level termination.
         # Store epoch fencing is durable; process cleanup remains INCONCLUSIVE.
         cleanup_error_type: str | None = None

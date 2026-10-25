@@ -351,3 +351,7 @@ The 11 pkg.go.dev 404 rows were checked at each pinned pseudo-version's commit s
 ## 2026-10-25 -- Preserve UNKNOWN for the Nexus annotation v0.1.0 license
 
 The exact GitHub v0.1.0 tree resolved to commit `e558d6edaf84e280dddfc87b5b8ce1662f66ac8b` and was complete, but had no LICENSE/LICENSE.md/LICENCE/COPYING/NOTICE/COPYRIGHT path. The exact pkg.go.dev page says `License: None detected`, and the root LICENSE path is 404. Keep the version UNKNOWN; do not infer current-main or sibling-package metadata. No technical license maintainer is named in project records. See change 0214.
+
+## 2026-10-25 -- Address exact-head S3 GPT-PM findings M01/M02
+
+GPT-PM reviewed S3 code HEAD `1dab3b31ad4504a3a56a4a3c41df8d2f001cbda6` and returned correlated `MAJOR — MODIFY` (request `a1618f66-88dc-4630-a510-d76770523148`, reply `c89cf38c-0f64-4b62-8e23-b5ae77334cf6`, input hash `7c4930409c54d1eef786690b0fca6f912879699513cdb9f662da3dc444c94ae7`). Source inspection confirmed M01: repository `core.hooksPath` could run code during commit; and M02: Store STOP could durably advance the epoch while an in-flight commit still changed HEAD. Change 0215 adds command-scoped empty hooks and a shared local-pilot lock ordering mutations against STOP. This lock is limited to one process and one pilot instance. Test-agent regression runs and fresh specialist/PM reviews remain pending; earlier green runs do not cover the fix.
