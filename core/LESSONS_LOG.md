@@ -645,3 +645,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — Keep Unix-domain socket test fixture paths below the platform pathname limit. A test setup error before the guard runs is not product evidence; preserve the intermediate-ancestor shape while shortening only fixture names. See change 0253.
 
 2026-10-25 — Reconcile each newer exact-head run against older report text. The 10-selector pass and 28/28 synthetic functional CLI run close only exercised functional contracts; explicitly keep trusted signer, authoritative task gate, aggregate, and E2E denominator separate. See change 0254 and `docs/sdlc/evidence/s4-reportbound-functional-7b0fe23.md`.
+
+2026-10-25 — FAILURE: A fresh security review found that the QA source/Git read-only preflight checked mode bits but did not inspect named POSIX ACLs. A worker-specific ACL could grant write while owner/group/other checks passed. The review caught it; implementation adds fail-closed ACL inspection on each candidate and default ACLs on directories. Add mapped named-ACL regressions and re-review before treating exact-head acceptance as current. See change 0255.

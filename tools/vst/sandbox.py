@@ -19,13 +19,13 @@ _UNSUPPORTED_XATTR = frozenset(
 )
 
 
-def _require_no_extended_acl(
+def require_no_extended_acl(
     path: Path, *, include_default_acl: bool = False, follow_symlinks: bool = True
 ) -> None:
-    """Reject POSIX ACL xattrs; ignore only absent ACLs or unsupported ACL xattrs."""
+    """Reject extended POSIX ACLs; inspection failures fail closed."""
     getxattr = getattr(os, "getxattr", None)
     if getxattr is None:
-        raise ContractError("signer IPC ACL inspection is unavailable")
+        raise ContractError("POSIX ACL inspection is unavailable")
     attributes = ["system.posix_acl_access"]
     if include_default_acl:
         attributes.append("system.posix_acl_default")
@@ -35,10 +35,10 @@ def _require_no_extended_acl(
         except OSError as exc:
             if exc.errno in _NO_XATTR or exc.errno in _UNSUPPORTED_XATTR:
                 continue
-            raise ContractError("signer IPC ACL inspection failed") from exc
+            raise ContractError("POSIX ACL inspection failed") from exc
         except (NotImplementedError, TypeError) as exc:
-            raise ContractError("signer IPC ACL inspection is unavailable") from exc
-        raise ContractError("signer IPC has an extended ACL")
+            raise ContractError("POSIX ACL inspection is unavailable") from exc
+        raise ContractError("path has an extended POSIX ACL")
 
 
 def _require_worker_cannot_replace_entry(
@@ -102,14 +102,14 @@ def require_worker_cannot_access_signer(socket_path: str, *, worker_uid: int, wo
                     directory_st, child_st, worker_uid=worker_uid,
                     worker_gid=worker_gid, runner_uid=os.geteuid(),
                 )
-                _require_no_extended_acl(directory)
-        _require_no_extended_acl(parent, include_default_acl=True)
+                require_no_extended_acl(directory)
+        require_no_extended_acl(parent, include_default_acl=True)
         parent_st = parent.stat()
     except OSError as exc:
         raise ContractError(f"signer IPC is unavailable: {exc}") from exc
     if not stat.S_ISSOCK(socket_st.st_mode):
         raise ContractError("signer IPC endpoint is not a Unix socket")
-    _require_no_extended_acl(socket_file, follow_symlinks=False)
+    require_no_extended_acl(socket_file, follow_symlinks=False)
     if socket_st.st_mode & (stat.S_IROTH | stat.S_IWOTH):
         raise ContractError("signer IPC grants access to other identities")
     if worker_uid in (parent_st.st_uid, socket_st.st_uid):

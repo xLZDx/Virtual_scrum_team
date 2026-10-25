@@ -18,6 +18,7 @@ from pathlib import Path
 
 from tools.vst.contracts import ContractError
 from tools.vst.runner import run_manifest_commands
+from tools.vst.sandbox import require_no_extended_acl
 
 from .registry import (
     PRIMARY_CATEGORIES,
@@ -283,8 +284,17 @@ def _require_worker_source_read_only(root: Path, worker_uid: int, worker_gid: in
             continue
         if not path.exists() and not path.is_symlink():
             raise ContractError(f"tracked QA source path is missing: {path.relative_to(root) if root in path.parents else '.git'}")
+        info = path.lstat()
+        label = path.relative_to(root).as_posix() if root in path.parents else ".git"
+        try:
+            require_no_extended_acl(
+                path,
+                include_default_acl=stat.S_ISDIR(info.st_mode),
+                follow_symlinks=False,
+            )
+        except ContractError as exc:
+            raise ContractError(f"cannot verify QA source ACL at {label}: {exc}") from exc
         if _worker_writable(path, worker_uid, worker_gid):
-            label = path.relative_to(root).as_posix() if root in path.parents else ".git"
             raise ContractError(f"QA worker identity can write source or Git state: {label}")
 
 

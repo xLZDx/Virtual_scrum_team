@@ -6,6 +6,10 @@ Last updated: 2026-10-25. Re-verify volatile facts (`git log --oneline -1`, `git
 
 Current branch: `s2-isolated-worker-sandbox`. Source head: `dc95915018b80f498d5cf775363712fb915fe04e`; repository head before this reconciliation: `648012236a783e36c88573b34cf3a0c302413958`. Phase 7 functional/E2E evidence and fresh specialist reviews are complete for this source. Process-kill/kill-table, post-start overflow cleanup, Windows Job Object nesting, full POSIX containment, and complete E8 crash/resume remain `NOT_RUN`; OS memory/temp-storage quotas and workspace binding remain `NOT_VERIFIED`. Phase 8 GPT-PM exact-head approval is pending, so no push/PR is ready. See [`docs/sdlc/STATE.md`](../docs/sdlc/STATE.md) and [`core/BACKLOG.md`](BACKLOG.md) for evidence and next steps.
 
+## S4 continuation checkpoint in the current checkout
+
+The active working checkout for this continuation is branch `s4-native-qa-runner`, source/test HEAD `7b0fe2339980b6b5d7278c0aeaaa58cc5fab8b71` (runtime evidence) with documentation reconciliation commit `18a800d4a4aa7af6e6e2312f14de145b75305d2d`. The e2e-runner (GPT-6 Luna, medium) passed 10 focused selectors and a synthetic functional `tools.qa.run` run accounted for 28/28 IDs with QA report, TestRun receipt, and diff gate PASS. Trusted signer, authoritative task gate, aggregate regression, full E2E denominator, and current exact-head GPT-PM approval remain open. Evidence is `docs/sdlc/evidence/s4-reportbound-functional-7b0fe23.md`; backlog row VST-032–037 is current. Do not interpret this branch checkpoint as S2 branch status or as a merge to main.
+
 ## What exists
 
 - 5 new agents (`business-analyst`, `product-owner`, `ui-designer`, `technical-writer`,

@@ -609,3 +609,7 @@ At `e7f857f`, the unsafe-ancestor selector failed before entering product code b
 ## 2026-10-25 — Reconcile S4 exact-head functional evidence without closing E2E
 
 At source/test HEAD `7b0fe23`, ten focused selectors passed and the synthetic functional `tools.qa.run` category accounted for 28/28 IDs with PASS QA report, TestRun receipt, and diff gate. This is functional evidence only: the signer is synthetic, no authoritative task gate or aggregate run was evaluated, and the E2E denominator remains PARTIAL because nested runner execution is incompatible with the worker identity contract. Record complete evidence and limitations in `docs/sdlc/evidence/s4-reportbound-functional-7b0fe23.md`; retain the remaining gates as open. See change 0254.
+
+## 2026-10-25 — Fail closed on QA source and Git ACLs
+
+A fresh security sweep found that the S4 read-only source/Git preflight could miss a named POSIX ACL granting worker UID write access while owner/group/other mode checks passed. Reject extended access ACLs on every candidate and default ACLs on directories using the shared fail-closed inspector. The fix is implemented but not yet tested; required mapped ACL regressions and fresh security review remain open. See change 0255.
