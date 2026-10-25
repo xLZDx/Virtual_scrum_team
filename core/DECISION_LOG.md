@@ -658,6 +658,10 @@ The test selector `tests/vst/test_s2_runner_lifecycle.py::test_local_git_timeout
 
 At corrected candidate `0825202`, four WSL E2E selectors (seven concrete cases) were blocked before child collection because their synthetic repository extracted the runner from `f0c91163`, which required the Windows Python 3.14 interpreter. The current candidate contains the WSL Python 3.12.3 runtime profile. Keep test assertions and the isolated synthetic repository, but pin its runner baseline to the committed WSL-capable implementation. This is a test-fixture correction only; re-run focused tests and the full assigned matrix at an exact committed head before acceptance. See change 0297.
 
+## 2026-10-25 — Refresh S4 selector registry after WSL fixture baseline update
+
+After test-source commit `dc85357`, regenerate the registry so the exact committed WSL-capable fixture is represented in the test-source inventory. Change 0298 binds the manifest to the full source HEAD, keeps 935 total regression selectors (883 assigned runnable and 52 policy `NOT_RUN`), and leaves the prohibited timeout selector excluded. This is generation only. Next run the focused contracts and complete assigned matrix at an exact committed candidate.
+
 ## 2026-10-25 — Refresh the selector registry after the Linux flag fixture
 
 After test-source commit `c4f9cb9`, regenerate the category registry before rerunning. It now binds to exact source HEAD `c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209` and records 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN`, and 90 functional selectors. Preserve the policy rows and use exact-head evidence. See change 0290.
