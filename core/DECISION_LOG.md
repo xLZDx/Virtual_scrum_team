@@ -472,3 +472,7 @@ The ancestry helper now uses the existing one-retry wrapper, with five seconds p
 ## 2026-10-25 -- Pass S4 mapped functional, integration, and seeded denominator
 
 At candidate HEAD `97c39000331c96b0184b1fb18d9ac2ba65c5658d`, both targeted registry-ancestry regressions passed (2/2), then the complete mapped denominator passed (27/27: functional 14, integration 6, seeded-failure 7) on Windows PowerShell with Python 3.14.3. The prior E2E source ancestry rejection did not recur. This exact-head evidence does not cover API/E2E selectors or trusted signer/report/sandbox/POSIX runtime. See change record 0187.
+
+## 2026-10-25 -- Bound local S4 E2E evidence to existing runner and gate fixtures
+
+Add E2E-primary selectors for committed native pytest discovery and local `run_and_sign` → artifact resolver → authoritative gate journeys. The category remains partial until a selector exercises the separate `tools.qa.run` report serialization and v2 authenticated signer path. The local HMAC fixtures are not evidence of the deployed S4 signer, WSL source transfer, or sandbox runtime. See change record 0189; exact-head execution is pending.

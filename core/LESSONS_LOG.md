@@ -575,3 +575,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 
 2026-10-25 — After a bounded registry ancestry anomaly, first rerun the exact focused source-head and seeded path regressions, then the full mapped denominator only if both pass. Preserve platform and category scope: a green Windows functional/integration/seeded run does not establish API, E2E, POSIX, trusted signer, report-bound or sandbox runtime. At `97c3900`, both focused regressions and all 27 mapped selectors passed. See change 0187.
+
+2026-10-25 — Local `run_and_sign` plus the authoritative gate can prove exact-head HMAC receipt/artifact behavior without provisioning the S4 v2 signer. Keep that fixture evidence separate from `tools.qa.run`, trusted signer, source-transfer and sandbox acceptance. See S4 change 0189; exact-head execution is pending.
