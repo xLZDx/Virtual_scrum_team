@@ -567,3 +567,6 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 
 2026-10-25 — When expanding a seeded catalog, update old seeded tests to load the complete committed category/catalog contract; do not manufacture a narrower category projection for one fixture. For stale-head tests, keep receipt epoch valid so the intended stale-head check is the first meaningful rejection. A provenance failure must be tied to candidate ancestry evidence; direct `git merge-base --is-ancestor` returned true for the recorded E2E head at `126b67f`, so its test-local failure remains unclassified pending reproduction. See change 0184.
+
+
+2026-10-25 — Preserve exact mixed-run outcomes as NOT_PASS even when most mapped selectors pass. Separate the reproducible test/catalog mismatches from an unexplained registry provenance result; a direct ancestry check is evidence of conflict, not proof of the registry root cause. Hold the rerun only for the coordinator-assigned bounded ancestry investigation and retain the exact failing candidate HEAD. See change 0185.

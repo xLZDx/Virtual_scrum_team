@@ -458,3 +458,8 @@ The test-owner follow-up added six AC-7 functional selectors without reassigning
 ## 2026-10-25 -- Correct S4 mapped-selector fixtures after exact-head run
 
 The focused run at `126b67f3a969a067ac1643bebab2ac669a821eaa` produced 24 passed and 3 failed. Two failures were authored-test contract mismatches: the prior invalid-manifest seeded test narrowed the category list while the committed catalog now contains seven fixtures, and the stale-head seed used epoch 1 while its signed receipts were at epoch 2, causing an epoch rejection before the intended stale-head rejection. The third reported failure attempted a registry load for the out-of-scope fixture and reported E2E provenance outside candidate history; a direct ancestry check at the same HEAD found the recorded E2E source commit is an ancestor, so this transient discrepancy is retained for rerun rather than attributed to a product defect. The corrections use the committed category/catalog and align current epoch with signed fixture receipts. No product code changed. See change record 0184; exact rerun pending.
+
+
+## 2026-10-25 -- Preserve S4 mapped-run NOT_PASS evidence
+
+The 27-selector functional/integration/seeded run at `126b67f3a969a067ac1643bebab2ac669a821eaa` returned 24 passed and 3 failed in 82.62 seconds. Two test/catalog mismatches were corrected in commit `8b5178b`; the third failure is a registry E2E-source ancestry rejection conflicting with a direct `git merge-base --is-ancestor` exit 0. Its root cause is unverified. Per coordinator direction, do not rerun the affected denominator until implementation engineering investigates the bounded ancestry path. See change record 0185.
