@@ -581,3 +581,11 @@ reaches the digest-mismatch branch rather than the earlier range-bounds branch. 
 that exposed the assertion mismatch remains 25 passed / 4 failed at exact HEAD `3916101`; the
 fixture correction has not been rerun. The three implementation NameErrors are tracked separately
 under change 0278.
+
+## 2026-10-25 — Refresh S4 manifest after remediation test-source commit
+
+After test-source remediation commit `ce9624c`, regenerated `docs/qa/categories.json` so its hashes
+match the committed equal-length corruption fixture. The denominator remains 919 total selectors,
+868 assigned runnable and 51 policy `NOT_RUN`. Generator exited 0. The 25/29 focused run at prior
+HEAD `3916101` remains the only execution evidence for the new suite; rerun at the refreshed exact
+HEAD is pending. See change 0280.
