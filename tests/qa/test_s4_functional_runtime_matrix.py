@@ -94,6 +94,7 @@ def _write_category_report(
             "run_nonce_sha256": "e" * 64,
             "candidate_root": WSL_ROOT + ("/mismatch" if root_proof_mismatch else ""),
             "mountinfo_sha256": MOUNT_HASH,
+            "parent_network_namespace_inode": 4321,
             "helper_sha256": "f" * 64 if root_helper_mismatch else helper_sha256,
         }
     identity = {

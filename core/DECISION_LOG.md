@@ -601,3 +601,7 @@ Static review found that a root-owned helper path and a run-bound candidate HEAD
 ## 2026-10-25 — Refresh the S4 selector registry after committing test contracts
 
 After test source commit `d77d7cc`, regenerate the schema-v2 category registry from committed sources before any test execution. The generator recorded 935 regression selectors, 884 assigned runnable and 51 policy `NOT_RUN`, including all 16 new functional contracts. Keep policy `NOT_RUN` rows non-approving and bind all subsequent evidence to an exact candidate HEAD. See change 0282.
+
+## 2026-10-25 — Repair test fixtures found by the first exact-head S4 focused run
+
+The focused run at `7cc903b17bb651710ee1a91c5c1fb61949353eb3` returned 87 passed, 21 failed and one warning on Windows CPython 3.14.3. The failures were stale `ValidatedRegistry` and runner-argument fixtures, an incomplete schema-v4 root proof fixture, and POSIX-only root-helper mocks that did not account for Windows Python. Decision: preserve product assertions and update only the three designated test modules to provide current contract fields and host-portable POSIX doubles. No product implementation failure was established by these tracebacks. The corrections require commit, registry refresh and a fresh exact-head run before acceptance. See change 0283.

@@ -49,7 +49,11 @@ def _args(repo: Path, **overrides) -> Namespace:
 
 
 def _enable_isolated_mode(monkeypatch):
-    monkeypatch.setattr(root_harness.sys, "flags", SimpleNamespace(isolated=True))
+    monkeypatch.setattr(
+        root_harness.sys,
+        "flags",
+        SimpleNamespace(isolated=True, ignore_environment=False),
+    )
 
 
 def test_s4_root_harness_requires_trusted_installed_root_owned_helper(monkeypatch):
@@ -111,7 +115,7 @@ def test_s4_root_harness_outer_preflights_candidate_then_reexecs_fixed_installed
     monkeypatch.setattr(root_harness, "_trusted_installed_helper", lambda: True)
     monkeypatch.setattr(root_harness, "_git_head", lambda path: events.append("git") or args.expected_head)
     monkeypatch.setenv("PATH", "/untrusted/path")
-    monkeypatch.setattr(root_harness.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(root_harness.os, "geteuid", lambda: 0, raising=False)
     monkeypatch.setattr(root_harness.os, "open", lambda path, flags: 41)
     monkeypatch.setattr(root_harness.os, "close", closed.append)
     monkeypatch.setattr(
@@ -148,7 +152,7 @@ def test_s4_root_harness_rejects_candidate_helper_mismatch_before_unshare(
     _enable_isolated_mode(monkeypatch)
     monkeypatch.setattr(root_harness, "_distribution", lambda: True)
     monkeypatch.setattr(root_harness, "_trusted_installed_helper", lambda: True)
-    monkeypatch.setattr(root_harness.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(root_harness.os, "geteuid", lambda: 0, raising=False)
     monkeypatch.setattr(root_harness, "_git_head", lambda _repo: args.expected_head)
     monkeypatch.setattr(root_harness.subprocess, "run", lambda *a, **kw: launched.append(a))
 
@@ -172,7 +176,7 @@ def _prepare_child(monkeypatch, tmp_path: Path, *, parent_inode=111, current_ino
     monkeypatch.setattr(root_harness, "_distribution", lambda: True)
     monkeypatch.setattr(root_harness, "_trusted_installed_helper", lambda: True)
     monkeypatch.setenv("PATH", "/untrusted/path")
-    monkeypatch.setattr(root_harness.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(root_harness.os, "geteuid", lambda: 0, raising=False)
     monkeypatch.setattr(root_harness.os, "fstat", lambda fd: SimpleNamespace(st_ino=parent_inode))
     monkeypatch.setattr(root_harness.os, "readlink", lambda path: f"net:[{parent_inode}]")
     monkeypatch.setattr(root_harness.os, "close", lambda fd: None)
@@ -337,9 +341,10 @@ def test_s4_root_harness_git_preflight_uses_fixed_absolute_executable(monkeypatc
     assert root_harness._git_head(Path("/tmp/candidate")) == "a" * 40
 
     command, options = calls[0]
+    candidate = Path("/tmp/candidate")
     assert command == [
-        "/usr/bin/git", "-c", "safe.directory=", "-c", "safe.directory=/tmp/candidate",
-        "-C", "/tmp/candidate", "rev-parse", "--verify", "HEAD",
+        "/usr/bin/git", "-c", "safe.directory=", "-c", f"safe.directory={candidate}",
+        "-C", str(candidate), "rev-parse", "--verify", "HEAD",
     ]
     assert options["shell"] is False
     assert root_harness.MINIMAL_ENV == EXPECTED_MINIMAL_ENV
@@ -357,9 +362,16 @@ def test_s4_root_harness_candidate_mount_boundary_rejects_windows_backing(
     repo = candidate_root / "checkout"
     repo.mkdir(parents=True)
     monkeypatch.setattr(root_harness, "WSL_CANDIDATE_ROOT", candidate_root)
-    mountpoint = str(candidate_root).encode().replace(b" ", b"\\040")
+    mountpoint = candidate_root.as_posix().encode().replace(b" ", b"\\040")
     mountinfo = b"36 25 8:1 / " + mountpoint + b" rw,relatime - " + filesystem + b" " + source + b" rw\n"
-    monkeypatch.setattr(Path, "read_bytes", lambda self: mountinfo if str(self) == "/proc/self/mountinfo" else b"")
+    original_read_bytes = Path.read_bytes
+
+    def read_mountinfo(path: Path):
+        if path.as_posix() == "/proc/self/mountinfo":
+            return mountinfo
+        return original_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", read_mountinfo)
 
     if allowed:
         result = root_harness._candidate_boundary(repo)

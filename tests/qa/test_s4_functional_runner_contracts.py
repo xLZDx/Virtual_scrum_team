@@ -533,6 +533,9 @@ def test_s4_fixture_observation_is_bound_to_exact_seed_test_node():
         category_test_ids={"seeded-failure": [test_id]},
         category_inventory_ids={"seeded-failure": [test_id]},
         category_not_run={"seeded-failure": {}},
+        category_profile_test_ids={"seeded-failure": {}},
+        category_profile_not_run={"seeded-failure": {}},
+        category_profile_unassigned_ids={"seeded-failure": {}},
     )
     events = {
         "collected": [{"node_id": node_id, "selector": test_id, "outcome": "passed"}],
@@ -566,6 +569,9 @@ def test_s4_fixture_observation_rejects_wrong_node_binding():
         category_test_ids={"seeded-failure": [test_id]},
         category_inventory_ids={"seeded-failure": [test_id]},
         category_not_run={"seeded-failure": {}},
+        category_profile_test_ids={"seeded-failure": {}},
+        category_profile_not_run={"seeded-failure": {}},
+        category_profile_unassigned_ids={"seeded-failure": {}},
     )
     catalog = {"fixtures": [{
         "fixture_id": fixture_id, "input_sha256": "a" * 64,
@@ -596,6 +602,9 @@ def test_s4_fixture_observation_rejects_duplicate_observation():
         category_test_ids={"seeded-failure": [test_id]},
         category_inventory_ids={"seeded-failure": [test_id]},
         category_not_run={"seeded-failure": {}},
+        category_profile_test_ids={"seeded-failure": {}},
+        category_profile_not_run={"seeded-failure": {}},
+        category_profile_unassigned_ids={"seeded-failure": {}},
     )
     catalog = {"fixtures": [{
         "fixture_id": fixture_id, "input_sha256": "a" * 64,
@@ -624,6 +633,9 @@ def test_s4_fixture_observation_rejects_a_different_nonapproving_outcome():
         category_test_ids={"seeded-failure": [test_id]},
         category_inventory_ids={"seeded-failure": [test_id]},
         category_not_run={"seeded-failure": {}},
+        category_profile_test_ids={"seeded-failure": {}},
+        category_profile_not_run={"seeded-failure": {}},
+        category_profile_unassigned_ids={"seeded-failure": {}},
     )
     catalog = {"fixtures": [{
         "fixture_id": fixture_id, "input_sha256": "a" * 64,
@@ -737,7 +749,7 @@ def test_s4_runner_identifies_missing_locked_distribution(tmp_path: Path):
 def test_s4_runner_refuses_an_unapproved_interpreter(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(run.sys, "executable", str(tmp_path / "python.exe"))
 
-    assert run._canonical_interpreter_matches() is False
+    assert run._canonical_interpreter_matches(registry.WINDOWS_PROFILE) is False
 
 
 def test_s4_runner_rejects_artifacts_outside_fixed_category_paths(tmp_path: Path):
@@ -798,6 +810,8 @@ def test_s4_main_reports_wrong_interpreter_as_blocked_without_spawning_pytest(
         report_path="docs/sdlc/evidence/qa/functional.report.jsonl",
         stdout_path="docs/sdlc/evidence/qa/functional.stdout.txt",
         stderr_path="docs/sdlc/evidence/qa/functional.stderr.txt",
+        privileged_harness_proof=None,
+        run_nonce=None,
     )
     spawn_attempts = []
 
@@ -861,6 +875,8 @@ def test_s4_main_persists_blocked_when_final_git_status_fails_after_pytest_passe
         report_path="docs/sdlc/evidence/qa/functional.report.jsonl",
         stdout_path="docs/sdlc/evidence/qa/functional.stdout.txt",
         stderr_path="docs/sdlc/evidence/qa/functional.stderr.txt",
+        privileged_harness_proof=None,
+        run_nonce=None,
     )
     _git(root, "add", "docs/qa/fixtures.json", "tools/qa/requirements.lock")
     _git(root, "commit", "-m", "add synthetic QA dependency lock")
