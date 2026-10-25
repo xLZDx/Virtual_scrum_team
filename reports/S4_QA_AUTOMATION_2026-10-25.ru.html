@@ -42,16 +42,18 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
   <dl>
     <dt>Проект</dt><dd>Virtual_scrum_team</dd>
     <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team-s4</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 2687af2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 56dce67</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
           data-fail="Выделите вручную">Копировать страницу</button>
 </div>
 <!-- report-conform:end -->
+
+
 <section>
 <h2>Решение</h2>
-<p>S4 остаётся <strong>IN PROGRESS</strong>. Реестр QA, проверка статических test ID и ограничения ресурсов реализованы. На точном кодовом HEAD <code>6903b7bf3e3dd4fc1281412c173fb82db9924d11</code> полный функциональный модуль прошёл: 19 тестов успешно, 1 пропущен, 0 ошибок; семь mapped Windows E2E селекторов прошли без пропусков и ошибок. Свежие code, security и reliability ревью на HEAD <code>2dc6947e416b61103548285ec279d787c1027d8b</code> не выявили открытых BLOCKER/MAJOR. Это локальное evidence, а не полное подтверждение всех категорий или sandbox acceptance.</p>
+<p>S4 остаётся <strong>IN PROGRESS</strong>. Реестр QA, проверка статических test ID и ограничения ресурсов реализованы. На точном кодовом HEAD <code>6903b7bf3e3dd4fc1281412c173fb82db9924d11</code> полный функциональный модуль прошёл: 19 тестов успешно, 1 пропущен, 0 ошибок. Семь mapped Windows E2E селекторов прошли 7/7. На HEAD <code>56dce67e508ccf452b2b7b39ed7f33c863081269</code> новый WSL2 transfer и read-only worker boundary прошли; затем те же семь mapped selectors прошли 7/7 на POSIX worker. Свежие code, security и reliability ревью на кодовом HEAD <code>2dc6947e416b61103548285ec279d787c1027d8b</code> не выявили открытых BLOCKER/MAJOR. Это локальное evidence, а не полное подтверждение всех категорий, signer/report/gate или полного sandbox acceptance.</p>
 </section>
 <section>
 <h2>Приёмка по плану S4</h2>
@@ -61,13 +63,13 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <tr><td>AC-1 — единый реестр категорий и test ID</td><td>Частично</td><td>Статические ID проверяются на точный узел, уникальную категорию, tracked source и provenance; полный знаменатель всех категорий ещё не доказан.</td><td>Ответственный за задачу: оператор; исполнитель: Codex. Продолжить полную проверку категорий.</td></tr>
 <tr><td>AC-2 — нативный запуск каждой категории</td><td>Частично</td><td>Windows селекторы прошли; полный нативный запуск функциональной, интеграционной, API, E2E, regression и seeded-failure категорий не доказан. Сетевой API явно unsupported.</td><td>Оператор / Codex; завершить недостающие категориями runtime evidence.</td></tr>
 <tr><td>AC-3 — hash и HEAD provenance</td><td>Локально проверено</td><td>Registry и source heads проверяются на полный SHA и ancestry; invalid provenance fail-closed. Функциональные регрессии включены в полный модуль.</td><td>Оператор / Codex; включить exact-head артефакты в финальный GPT-PM sweep.</td></tr>
-<tr><td>AC-4 — воспроизводимый набор ID</td><td>Не проверено полностью</td><td>Текущий Windows запуск подтверждает только выбранные selectors. Повторяемость всех категорий в закреплённой WSL среде не подтверждена.</td><td>Технический владелец среды в проекте не указан; оператор отвечает за задачу. Нужен воспроизводимый run в выделенной WSL2.</td></tr>
+<tr><td>AC-4 — воспроизводимый набор ID</td><td>Частично</td><td>Семь mapped selectors прошли на Windows и на точном WSL snapshot; повторяемость всех категорий в закреплённой среде не подтверждена.</td><td>Технический владелец среды в проекте не указан; оператор отвечает за задачу. Завершить полный категорийный run.</td></tr>
 <tr><td>AC-5 — typed fail-closed ошибки</td><td>Частично</td><td>Registry budget, path, ID и provenance ошибки закрываются отказом; end-to-end проверка всех отсутствующих зависимостей/артефактов не завершена.</td><td>Оператор / Codex; завершить отрицательные сценарии на каждой категории.</td></tr>
 <tr><td>AC-6 — отсутствие установки зависимостей во время run</td><td>Не проверено</td><td>В этом проходе не получено runtime evidence для полной report-bound категории.</td><td>Оператор / Codex; подтвердить это в изолированном нативном run.</td></tr>
 <tr><td>AC-7 — функциональные и Python API сценарии</td><td>Частично</td><td>Registry module: 19 passed, 1 skipped, 0 failed; skip — Windows не разрешил создать symlink (WinError 1314). Полный API знаменатель не выполнен.</td><td>Роль тестирования: functional-test-reviewer; расширить категорийное покрытие.</td></tr>
 <tr><td>AC-8 — честная граница API</td><td>Частично</td><td>Сетевой API отмечен unsupported; полное подтверждение Python API категории остаётся незавершённым.</td><td>Оператор / Codex; сохранить unsupported статус без ложного runtime покрытия.</td></tr>
-<tr><td>AC-9 — локальные изолированные интеграции/E2E</td><td>Частично</td><td>Семь mapped Windows селекторов прошли 7/7, 0 skipped; это не доказывает полную POSIX sandbox границу.</td><td>Роль тестирования: e2e-runner; завершить разрешённые sandbox сценарии.</td></tr>
-<tr><td>AC-10 — S3 и sandbox зависимости</td><td>NOT_RUN / частично</td><td>Текущий WSL transfer результат остаётся RESULT_NOT_CAPTURED; signer socket и sandbox-bound сценарии не запускались. Старый WSL pass на HEAD <code>452c8ea</code> не переносится на новый HEAD.</td><td>Технический сервис-владелец не установлен. Не инспектировать и не повторять неидентифицированный transfer; подготовить свежий коррелированный run.</td></tr>
+<tr><td>AC-9 — локальные изолированные интеграции/E2E</td><td>Частично</td><td>Семь mapped selectors прошли 7/7 на Windows и на идентифицированном WSL run; полная POSIX sandbox граница не доказана.</td><td>Роль тестирования: e2e-runner; завершить оставшиеся разрешённые sandbox сценарии.</td></tr>
+<tr><td>AC-10 — S3 и sandbox зависимости</td><td>Частично</td><td>Новый transfer run <code>f3ad62c94bc0429987bc24277103d5b4</code> и worker boundary прошли на точном HEAD. Signer socket и sandbox-bound acceptance не запускались. Более ранний transfer без run ID остаётся RESULT_NOT_CAPTURED; его не инспектировали и не повторяли.</td><td>Технический сервис-владелец не установлен. Следующий шаг — signer/report/receipt/gate интеграция в выделенной POSIX среде.</td></tr>
 <tr><td>AC-11 — regression знаменатель</td><td>Частично</td><td>Реестр проверяет ID и состояния; полный aggregate запуск всего принятого знаменателя не подтверждён.</td><td>Functional-test-reviewer и e2e-runner; выполнить полный точный знаменатель.</td></tr>
 <tr><td>AC-12 — seeded-failure fixture каталог</td><td>Не закрыто</td><td>Полный runtime каталога и связанного отчёта не проверен в этом evidence наборе.</td><td>Оператор / Codex; исполнить разрешённые фикстуры и сохранить observed rejection.</td></tr>
 <tr><td>AC-13 — mutation/red-green</td><td>NOT_RUN по ADR-0001</td><td>Mutation runs запрещены действующим проектным ограничением; seeded fixtures не заменяют mutation score.</td><td>Оператор владеет waiver/изменением ограничения. Без такого решения оставить NOT_RUN.</td></tr>
@@ -88,7 +90,6 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <section>
 <h2>Открытые зависимости и очередность</h2>
 <ol>
-<li>Получить свежий, коррелированный WSL2 transfer и run на актуальном source snapshot; точный владелец платформенного сервиса в канонических документах UNKNOWN.</li>
 <li>Запустить signer socket, report, receipt и authoritative gate интеграцию в разрешённой POSIX среде; владелец технической службы UNKNOWN.</li>
 <li>Закрыть недостающие native category и seeded-failure критерии тест-агентами; пропущенный тест не засчитывать как выполненный.</li>
 <li>После закрытия кода и тестов выполнить один GPT-PM final review точного итогового HEAD; до APPROVE push/PR не делать.</li>
@@ -96,8 +97,10 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <p>Accountable task owner: оператор. Executor: Codex. Технический владелец QA runner/gate в канонических записях не определён.</p>
 </section>
 <footer class="mut">
-<p>Источник решения и критериев: <a href="../docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md">S4 plan</a>. Проверяемые источники: change records 0151–0157, evidence 0156 и 0157, ветка <code>s4-native-qa-runner</code>. Этот checkpoint создан из локальных Git/evidence записей; он не является PM approval, merge доказательством или подтверждением полного acceptance.</p>
+<p>Источник решения и критериев: <a href="../docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md">S4 plan</a>. Проверяемые источники: change records 0151–0159, evidence 0156, 0157 и 0159, ветка <code>s4-native-qa-runner</code>. Этот checkpoint создан из локальных Git/evidence записей; он не является PM approval, merge доказательством или подтверждением полного acceptance.</p>
 </footer>
+
+
 
 <!-- report-conform:script:begin -->
 <script>
