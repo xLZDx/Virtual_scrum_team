@@ -52,7 +52,7 @@ def _enable_isolated_mode(monkeypatch):
     monkeypatch.setattr(
         root_harness.sys,
         "flags",
-        SimpleNamespace(isolated=True, ignore_environment=False),
+        SimpleNamespace(isolated=True, ignore_environment=False, verbose=0),
     )
 
 

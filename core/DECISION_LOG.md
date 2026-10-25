@@ -617,3 +617,7 @@ The exact-head focused rerun at `0b28d1f8ec56fe4b4e4e7c870596d781fe149636` retur
 ## 2026-10-25 — Refresh the S4 selector registry after the final fixture corrections
 
 After test-source commit `13dd6e1`, the category registry was regenerated from exact committed sources before the next focused run. It records source HEAD `13dd6e1b2fb761e574d98c6658c80b0ac248ecfa`, 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN`, and 90 functional selectors. Preserve all policy `NOT_RUN` rows and bind the rerun to a commit containing this registry. See change 0286.
+
+## 2026-10-25 — Prevent Python 3.14 traceback formatting from masking focused-test failures
+
+The focused run at `85f8a9d9fbef8f6377500bfcd8aec5b7594039a0` printed 93 passed and two warnings, then pytest raised `INTERNALERROR` while formatting a failed assertion. The test double replaced `sys.flags` with a `SimpleNamespace` lacking `verbose`, which Python 3.14 traceback suggestion code accesses. Add `verbose=0` to the test-only mock so the next run can expose the underlying failure. The failure remains unknown; do not count the run as pass or a clean test total. See change 0287.
