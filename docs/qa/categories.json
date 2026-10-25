@@ -39,6 +39,7 @@
         "tests/vst/test_s2_contract_gate.py::test_gate_refuses_caller_supplied_parser_implementation",
         "tests/vst/test_e1_contracts.py::test_manifest_valid_returns_equal_deep_copy",
         "tests/vst/test_e2_gate.py::test_stale_head_one_receipt_is_a_hard_reason_and_the_slot_is_unmet",
+        "tests/vst/test_e2_gate.py::test_forged_unsigned_receipt_rejected",
         "tests/vst/test_e3_store.py::test_reopen_of_a_version_three_database_keeps_data",
         "tests/vst/test_e4_runner.py::test_failing_command_nonzero_exit_gives_fail",
         "tests/vst/test_s2_runner_lifecycle.py::test_breaker_pause_replays_after_store_restart_and_provider_success_does_not_close_it",
