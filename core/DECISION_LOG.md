@@ -319,3 +319,7 @@ Observed S2 commits `f683a37` (change 0222), `eb6c2fc` (change 0223) and `94f43c
 ## 2026-10-25 -- Reconcile S2 preflight commit metadata
 
 The last-15 S2 history audit found commits `7acb30d`, `f1eef32`, `2785528`, `deed6ab`, and `6ee97cb` each contain one or more detailed `docs/changes/` files but their commit messages neither link those files nor end with the required `Executor: Codex` footer. The commit creators and omission causes are not independently established by this checkout. Preserve all history and add explicit reconciliation commit 0233; do not infer authorship or rewrite commits.
+
+## 2026-10-25 -- Reconcile explicit Git hook-path override in S2 commits
+
+This session's S2 commits `a2a5d5a`, `198604f`, and `16d9054` were created with `git -c core.hooksPath=NUL commit`, which explicitly overrides normal hook discovery. A read-only inspection of the shared repository hooks path found no configured `core.hooksPath` and only `.sample` files, so no active hook was present in that directory at inspection time; this does not justify the override. Preserve all history. The cause was failure to inspect hook configuration before copying the override into commit commands. See reconciliation change 0235.
