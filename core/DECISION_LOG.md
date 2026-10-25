@@ -444,3 +444,7 @@ Using a newly provisioned, unique snapshot root, a clean S4 source HEAD `56dce67
 
 Fresh S4 reviews found two resource risks in sequence: repeated same-file AST parsing, then aggregate CPU/memory use across distinct files. Changes 0151 and 0155 cache one compact node index per path and cap each source at 1 MiB, aggregate unique source bytes at 4 MiB, and IDs at 2,048. Change 0153 retries one transient timeout for tracked-file and candidate-HEAD lookups, bounded to 10 seconds per call and fail-closed afterward. Functional evidence 0156 passed 19 tests with one Windows symlink-privilege skip; mapped Windows E2E evidence 0157 passed seven selectors. Fresh code/security/reliability reviews at `2dc6947e416b61103548285ec279d787c1027d8b` found no open BLOCKER/MAJOR. Full WSL/signer/report/receipt/gate and complete category acceptance remain incomplete; see report change 0158.
 
+
+### 2026-10-25 — S4 local acceptance lanes and seeded failure observations
+
+For the test-owner follow-up, keep category IDs primary-unique and derive functional selectors from AC-7 without reusing API IDs. Integration selections may compose existing local store, runner/gate, and synthetic repository selectors, but trusted signer socket/report runtime must remain `NOT_RUN` unless exercised. Seeded fixtures are accepted only when their canonical input is loaded, unchanged product behavior is invoked, the exact rejection is asserted, and one current pytest node records the observation. See change records 0182 and 0183.

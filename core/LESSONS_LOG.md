@@ -559,3 +559,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 - Layer missed/caught: missed at agent commit preparation and coordinator pre-commit review; caught by the primary coordinator's post-commit commit-range audit.
 - Rule: before any future S4 commit, inspect the exact staged paths and message, ensure the change record and both canonical logs are included, and use the project attribution footer. If this is missed, preserve history and add an explicit reconciliation commit immediately; never silently claim the original commit complied.
 - Fix status: this entry and matching per-commit decision entries reconcile the audit trail in change record 0181; the ten historical commits are preserved unchanged.
+
+2026-10-25 — For seeded failure evidence, assert the product-derived outcome before calling the observation plugin, and bind the canonical input digest and exact executing node ID. Keep fixtures in separate tests and never use actual failing tests as seeds. For category expansion, check primary-ID ownership before adding any selector; an API ID cannot also be functional or integration evidence. See S4 changes 0182–0183.
