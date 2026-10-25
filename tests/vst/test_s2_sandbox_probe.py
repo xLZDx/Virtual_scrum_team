@@ -179,6 +179,31 @@ def test_collect_inventory_cannot_claim_empty_allowlist_without_operator_attesta
     assert result["inventory"]["network_policy_attestation"] is None
 
 
+def test_collect_inventory_generates_nonce_only_when_omitted(monkeypatch):
+    _patch_collect_inventory(monkeypatch, sockets=[], complete=True)
+    result = preflight.collect_inventory("run-1")
+    assert isinstance(result["nonce"], str)
+    assert result["nonce"].strip()
+
+
+def test_collect_inventory_preserves_explicit_nonce(monkeypatch):
+    _patch_collect_inventory(monkeypatch, sockets=[], complete=True)
+    result = preflight.collect_inventory("run-1", "provided-nonce")
+    assert result["nonce"] == "provided-nonce"
+
+
+@pytest.mark.parametrize("nonce", ["", 0])
+def test_collect_inventory_rejects_invalid_explicit_nonce_before_probing(monkeypatch, nonce):
+    class NoProbe:
+        def __getattr__(self, name):
+            raise AssertionError(f"platform probe accessed before nonce validation: {name}")
+
+    monkeypatch.setattr(preflight, "os", NoProbe())
+    monkeypatch.setattr(preflight, "Path", NoProbe())
+    with pytest.raises(preflight.ContractError, match="nonce must be non-empty"):
+        preflight.collect_inventory("run-1", nonce)
+
+
 def test_collect_inventory_fails_closed_when_socket_enumeration_is_incomplete(monkeypatch):
     _patch_collect_inventory(monkeypatch, sockets=[], complete=False)
     attestation = operator_attestation()
