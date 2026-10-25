@@ -339,3 +339,6 @@ The pinned Temporal bridge manifest/lock resolve 11 direct Rust registry crate v
 ## 2026-10-25 — Reconcile Temporal lock-version license metadata
 
 Follow-up exact-version registry lookups supersede the UNKNOWN direct-license statements in change 0207: all 362 registry package/version entries in the pinned Temporal bridge Cargo.lock had crates.io license metadata and matching checksums; all 15 illustrative direct Go modules have pkg.go.dev license pages. A wider 223-entry Go module scan remains incomplete (116 pages with license sections, one without, 106 lookup errors after HTTP 429). Full Go closure and selected runtime/build profile remain open. No candidate was acquired or run. See change 0208.
+## 2026-10-25 -- Preserve exact-version Go license uncertainty
+
+The exact pkg.go.dev page for `github.com/nexus-rpc/nexus-proto-annotations@v0.1.0` is retrievable and explicitly reports `License: None detected`. The exact tag's upstream LICENSE path returns 404. Although current upstream main is MIT, neither that nor a third-party inference from sibling modules proves this tag's license. Keep the version `UNKNOWN`/`NOT_VERIFIED`; 106 other Go lookups remain unresolved. See change 0211.
