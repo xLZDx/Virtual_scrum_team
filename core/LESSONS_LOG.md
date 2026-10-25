@@ -545,6 +545,8 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — S4 now has focused registry and mapped Windows selector evidence plus fresh code/security/reliability review, but those results do not establish POSIX, signer, report, receipt, authoritative gate, full category, or sandbox acceptance. Preserve each platform and category boundary in the status report and backlog. See change 0158.
 
+2026-10-25 — Every declared category can have mapped-selector evidence while the aggregate regression/report-bound acceptance remains incomplete. Record both facts distinctly: 8 functional and 1 integration ID passed at `b741dc2`; the aggregate regression and signed report/gate path remain partial. See change 0160 and report reconciliation 0161.
+
 2026-10-25 — A transfer with no run ID cannot be safely probed, but it need not block a separately authorized new run. Provision a distinct empty root, retain the transfer session through correlated metadata, and inspect only the returned run ID. The fresh S4 transfer and seven mapped POSIX selectors passed at exact HEAD `56dce67`; one malformed inline preflight failed before execution and was corrected. See change 0159.
 
 2026-10-25 — S4 category acceptance must retain per-category denominators: the eight mapped functional selectors, one integration selector, and seven mapped E2E selectors are separate evidence sets. All eight functional and the integration selector passed at exact clean HEAD `b741dc2`; broader category completeness still requires its own denominator. See change 0160.

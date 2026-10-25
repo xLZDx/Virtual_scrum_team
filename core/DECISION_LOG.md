@@ -392,6 +392,10 @@ At clean exact HEAD `b741dc205a111e56bb984c59a63af2801870e4fc`, all eight curren
 
 At clean exact code/test HEAD `2dc6947e416b61103548285ec279d787c1027d8b`, the seven accepted mapped E2E selectors passed on Windows: 7 passed, 0 failed, 0 skipped, in 25.47 seconds with one pytest-asyncio deprecation warning. CPython was 3.14.3. HEAD and status were unchanged before and after. This does not exercise WSL/POSIX, signer, report, receipt, or authoritative gate behavior. The prior WSL transfer remains `RESULT_NOT_CAPTURED` and was not inspected or retried. See change 0157 and its evidence file.
 
+## 2026-10-25 -- Verify current mapped functional and integration categories
+
+At clean code HEAD `b741dc205a111e56bb984c59a63af2801870e4fc`, the designated functional test owner ran exactly the eight functional IDs and one integration ID in `docs/qa/categories.json`. Functional: 8 passed, 0 skipped/failures. Integration: 1 passed, 0 skipped/failures. Runtime was Windows, Python 3.14.3, pytest 8.4.2; each command emitted one pytest-asyncio deprecation warning. This is exact mapped-selector evidence, not full category breadth or the aggregate report-bound runner. See change 0160 and its evidence file.
+
 ## 2026-10-25 -- Correlate a fresh S4 WSL snapshot and native run
 
 Using a newly provisioned, unique snapshot root, a clean S4 source HEAD `56dce67e508ccf452b2b7b39ed7f33c863081269` transferred successfully as run `f3ad62c94bc0429987bc24277103d5b4` with exact bundle hash and size. The runner-side permission audit passed; the read-only worker ran seven mapped selectors with 7 passed, 0 skipped/failures and left the snapshot at the same HEAD with zero porcelain bytes. The earlier unknown transfer destination remains uninspected and unmodified. Evidence, S4 plan/backlog, and bilingual report updates are in change 0159. Signer/report/receipt/gate and broader category acceptance remain separate.

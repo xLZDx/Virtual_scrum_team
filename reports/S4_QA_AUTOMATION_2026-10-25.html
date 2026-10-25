@@ -42,7 +42,7 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
   <dl>
     <dt>Project</dt><dd>Virtual_scrum_team</dd>
     <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team-s4</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 56dce67</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 63cadd5</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
@@ -51,9 +51,11 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <!-- report-conform:end -->
 
 
+
+
 <section>
 <h2>Decision</h2>
-<p>S4 remains <strong>IN PROGRESS</strong>. The QA registry, static test-ID resolution, and resource limits are implemented. At exact code HEAD <code>6903b7bf3e3dd4fc1281412c173fb82db9924d11</code>, the full functional module passed: 19 passed, 1 skipped, 0 failed. Seven mapped Windows E2E selectors passed 7/7. At HEAD <code>56dce67e508ccf452b2b7b39ed7f33c863081269</code>, a fresh WSL2 transfer and read-only worker boundary passed, followed by the same seven mapped selectors passing 7/7 on the POSIX worker. Fresh code, security, and reliability reviews at code HEAD <code>2dc6947e416b61103548285ec279d787c1027d8b</code> found no open BLOCKER/MAJOR. This is local evidence, not proof of every category, signer/report/gate, or full sandbox acceptance.</p>
+<p>S4 remains <strong>IN PROGRESS</strong>. The QA registry, static test-ID resolution, and resource limits are implemented. At exact code HEAD <code>6903b7bf3e3dd4fc1281412c173fb82db9924d11</code>, the full functional module passed: 19 passed, 1 skipped, 0 failed. At HEAD <code>b741dc205a111e56bb984c59a63af2801870e4fc</code>, mapped functional selectors passed 8/8 and integration selectors passed 1/1. Seven mapped Windows E2E selectors passed 7/7. At HEAD <code>56dce67e508ccf452b2b7b39ed7f33c863081269</code>, a fresh WSL2 transfer and read-only worker boundary passed, followed by the same seven mapped selectors passing 7/7 on the POSIX worker. Fresh code, security, and reliability reviews at code HEAD <code>2dc6947e416b61103548285ec279d787c1027d8b</code> found no open BLOCKER/MAJOR. This is local evidence, not proof of every category, signer/report/gate, or full sandbox acceptance.</p>
 </section>
 <section>
 <h2>Acceptance against the S4 plan</h2>
@@ -61,16 +63,16 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <thead><tr><th>Criterion</th><th>State</th><th>Evidence and remaining acceptance</th><th>Owner and next action</th></tr></thead>
 <tbody>
 <tr><td>AC-1 — category and test-ID registry</td><td>Partial</td><td>Static IDs resolve to exact nodes, unique categories, tracked sources, and provenance; the full denominator for all categories is not proven.</td><td>Accountable task owner: operator; executor: Codex. Continue full category verification.</td></tr>
-<tr><td>AC-2 — native invocation for each category</td><td>Partial</td><td>Windows selectors passed; complete native runs for functional, integration, API, E2E, regression, and seeded-failure categories are not established. Network API is explicitly unsupported.</td><td>Operator / Codex; finish missing category runtime evidence.</td></tr>
+<tr><td>AC-2 — native invocation for each category</td><td>Partial</td><td>Windows mapped functional passed 8/8 and integration passed 1/1 at <code>b741dc2</code>; E2E passed 7/7 at <code>2dc6947</code>. The registry module at <code>6903b7b</code> passed 19, skipped one Windows symlink case, and failed zero. POSIX E2E passed 7/7 in WSL run <code>f3ad62c94bc0429987bc24277103d5b4</code>. Each declared mapped primary selector has separate run evidence, but aggregate/report-bound regression and the full API denominator are incomplete. Network API is unsupported.</td><td>Operator accountable; Codex executes. Functional-test-reviewer/e2e-runner: aggregate regression; Codex: signer/report/gate.</td></tr>
 <tr><td>AC-3 — hash and HEAD provenance</td><td>Locally verified</td><td>Registry and source heads require full SHAs and ancestry; invalid provenance fails closed. Functional regressions are in the full module.</td><td>Operator / Codex; include exact-head artifacts in the final GPT-PM sweep.</td></tr>
-<tr><td>AC-4 — reproducible test-ID set</td><td>Partial</td><td>Seven mapped selectors passed on Windows and on the exact WSL snapshot; repeatability across all categories in the pinned environment is unverified.</td><td>The platform service owner is not identified in project records; operator remains accountable. Complete the full category run.</td></tr>
+<tr><td>AC-4 — reproducible test-ID set</td><td>Partial</td><td>Functional passed 8/8 and integration 1/1 on Windows; E2E passed 7/7 on Windows and WSL. Repeatability across the complete category set in the pinned environment is unverified.</td><td>The platform service owner is not identified; operator remains accountable. Complete the full category run.</td></tr>
 <tr><td>AC-5 — typed fail-closed errors</td><td>Partial</td><td>Registry budget, path, ID, and provenance errors fail closed; end-to-end evidence for all missing dependencies/artifacts is incomplete.</td><td>Operator / Codex; complete negative scenarios for every category.</td></tr>
 <tr><td>AC-6 — no dependency installation during a run</td><td>Not verified</td><td>No runtime evidence for a complete report-bound category run was obtained in this pass.</td><td>Operator / Codex; confirm in an isolated native run.</td></tr>
-<tr><td>AC-7 — functional and Python API scenarios</td><td>Partial</td><td>Registry module: 19 passed, 1 skipped, 0 failed. The skip was due to Windows symlink privilege (`WinError 1314`). The complete API denominator is not covered.</td><td>Test role: functional-test-reviewer; extend category coverage.</td></tr>
+<tr><td>AC-7 — functional and Python API scenarios</td><td>Partial</td><td>Registry module: 19 passed, 1 skipped, 0 failed. The skip was due to Windows symlink privilege (<code>WinError 1314</code>). Mapped functional passed 8/8 and integration 1/1 at <code>b741dc2</code>; the full Python API denominator remains incomplete.</td><td>Test role: functional-test-reviewer; extend the API denominator.</td></tr>
 <tr><td>AC-8 — truthful API boundary</td><td>Partial</td><td>Network API is marked unsupported; full Python API category acceptance remains incomplete.</td><td>Operator / Codex; keep unsupported status without claiming runtime coverage.</td></tr>
 <tr><td>AC-9 — isolated local integration/E2E</td><td>Partial</td><td>Seven mapped selectors passed 7/7 on Windows and on the identified WSL run; this does not prove the full POSIX sandbox boundary.</td><td>Test role: e2e-runner; finish remaining permitted sandbox scenarios.</td></tr>
 <tr><td>AC-10 — S3 and sandbox dependencies</td><td>Partial</td><td>New transfer run <code>f3ad62c94bc0429987bc24277103d5b4</code> and worker boundary passed at the exact HEAD. Signer socket and broader sandbox acceptance were not run. The earlier transfer without a run ID remains RESULT_NOT_CAPTURED; it was not inspected or retried.</td><td>Technical service owner is not established. Next: signer/report/receipt/gate integration in the dedicated POSIX environment.</td></tr>
-<tr><td>AC-11 — regression denominator</td><td>Partial</td><td>The registry validates IDs and states; a complete aggregate run for the accepted denominator is not proven.</td><td>Functional-test-reviewer and e2e-runner; run the complete exact denominator.</td></tr>
+<tr><td>AC-11 — regression denominator</td><td>Partial</td><td>Every declared mapped primary-category selector has separate run evidence: registry/API+seeded module 19 passed/1 Windows symlink skip, functional 8/8, integration 1/1, and E2E 7/7 on Windows and WSL. The complete accepted-denominator run with report-bound artifacts has not run.</td><td>Functional-test-reviewer and e2e-runner; run aggregate regression.</td></tr>
 <tr><td>AC-12 — seeded-failure catalog</td><td>Open</td><td>Full runtime coverage of the catalog and linked report is not established by this evidence set.</td><td>Operator / Codex; execute permitted fixtures and retain observed rejections.</td></tr>
 <tr><td>AC-13 — mutation/red-green</td><td>NOT_RUN under ADR-0001</td><td>Mutation runs are prohibited by the active project constraint; seeded fixtures do not replace a mutation score.</td><td>Operator owns any waiver or constraint change. Otherwise retain NOT_RUN.</td></tr>
 <tr><td>AC-14 — evidence envelope and gate</td><td>Open</td><td>A signed report-bound run, receipt, and authoritative gate result were not obtained.</td><td>Canonical gate service owner is UNKNOWN; operator is accountable. A valid POSIX signer/report/receipt run is needed before GPT-PM.</td></tr>
@@ -82,6 +84,7 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <h2>Exact checks and reviews</h2>
 <ul>
 <li>Functional owner: Python 3.14.3, pytest 8.4.2, focused command for <code>tests/qa/test_s4_registry_contracts.py</code>; code HEAD <code>6903b7b</code>: 19 passed, 1 skipped, 0 failed. Separate 0152, 0154, and 0156 records preserve earlier attempts; 0156 is the final exact full-module result.</li>
+<li>Separate functional run on clean code HEAD <code>b741dc2</code>: mapped functional 8/8 and integration 1/1, 0 skips/failures; Python 3.14.3, pytest 8.4.2. Evidence and command are in record 0160.</li>
 <li>E2E owner: seven mapped Windows selectors at code/test HEAD <code>2dc6947</code>: 7 passed, 0 skipped, 0 failed, 25.47 seconds. Command and selectors are in evidence 0157.</li>
 <li>Code reviewer, security reviewer, and reliability reviewer: GPT-6 Luna, medium effort; exact HEAD <code>2dc6947</code>. Code — no material findings; Security — both prior resource MAJOR findings addressed; Reliability — no MAJOR/BLOCKER.</li>
 <li>Both functional sessions recorded one pytest-asyncio deprecation warning. Windows symlink runtime was skipped because of WinError 1314; POSIX symlink behavior remains NOT_RUN.</li>
@@ -91,14 +94,16 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <h2>Open dependencies and order</h2>
 <ol>
 <li>Run signer socket, report, receipt, and authoritative gate integration in the permitted POSIX environment; technical service owner is UNKNOWN.</li>
-<li>Complete missing native category and seeded-failure criteria with test-owner agents; a skipped test does not count as complete.</li>
+<li>Run aggregate/report-bound regression and extend the API/seeded-failure denominator with test-owner agents; the symlink skip does not count as complete.</li>
 <li>After code and tests are complete, request one GPT-PM final review on the exact final HEAD; do not push/open a PR before APPROVE.</li>
 </ol>
 <p>Accountable task owner: operator. Executor: Codex. The canonical records do not identify the QA runner/gate technical service owner.</p>
 </section>
 <footer class="mut">
-<p>Decision and criteria source: <a href="../docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md">S4 plan</a>. Verifiable sources: change records 0151–0159, evidence 0156, 0157, and 0159, branch <code>s4-native-qa-runner</code>. This checkpoint is derived from local Git/evidence records; it is not PM approval, merge evidence, or proof of full acceptance.</p>
+<p>Decision and criteria source: <a href="../docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md">S4 plan</a>. Verifiable sources: change records 0151–0161, evidence 0156, 0157, 0159, and 0160, branch <code>s4-native-qa-runner</code>. This checkpoint is derived from local Git/evidence records; it is not PM approval, merge evidence, or proof of full acceptance.</p>
 </footer>
+
+
 
 
 
