@@ -585,3 +585,7 @@ Add a functional selector for the parser's exact accepted form and malformed loo
 ## 2026-10-25 — Narrow the S4 parser to the observed quiet-mode prefix
 
 The fresh security review identified a MINOR concern that arbitrary counts of leading dots were accepted although WSL output showed exactly one. Keep plain synthetic `PASS ` and exact pytest `.PASS ` forms; reject repeated dots. Re-run the mapped parser test, report-bound functional CLI and security review on the new exact head. See change 0248.
+
+## 2026-10-25 — Map the exact one-dot parser contract
+
+The functional parser selector now accepts only plain `PASS ` and one-dot `.PASS ` forms and explicitly rejects `..PASS` and other lookalikes. Source provenance points to the narrowed parser code `ced6432`; fresh exact-head execution remains pending. See change 0249.

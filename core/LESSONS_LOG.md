@@ -633,3 +633,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — Map a falsifiable regression selector for every parser format correction before the runtime retry. Keep its code provenance at the source commit and record it unverified until a fresh exact-head run completes. See change 0247.
 
 2026-10-25 — When a parser is broadened to match observed output, limit accepted prefixes to the exact runtime form and test both the supported form and lookalikes. Review identified that unbounded leading dots were broader than the `.PASS` evidence. See change 0248.
+
+2026-10-25 — After narrowing a parser contract from review feedback, update its selector and category source provenance before rerunning. The regression rejects repeated dots as well as unrelated prefixes. See change 0249.

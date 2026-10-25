@@ -3,14 +3,13 @@
 from tools.vst.contracts import _parse_pass_lines
 
 
-def test_s4_pass_line_parser_accepts_quiet_dots_and_rejects_lookalikes():
+def test_s4_pass_line_parser_accepts_one_quiet_dot_and_rejects_lookalikes():
     valid_plain = "tests/example.py::test_plain"
     valid_quiet = "tests/example.py::test_quiet"
-    valid_multiple_dots = "tests/example.py::test_multiple_progress_dots"
     stdout = "\n".join((
         f"PASS {valid_plain}",
         f".PASS {valid_quiet}",
-        f"...PASS {valid_multiple_dots}",
+        "..PASS tests/example.py::test_multiple_progress_dots",
         "xPASS tests/example.py::test_arbitrary_prefix",
         "prefix .PASS tests/example.py::test_embedded_pass",
         ". PASS tests/example.py::test_space_after_progress",
@@ -21,6 +20,6 @@ def test_s4_pass_line_parser_accepts_quiet_dots_and_rejects_lookalikes():
 
     executed, skipped, xfailed = _parse_pass_lines(stdout)
 
-    assert executed == [valid_plain, valid_quiet, valid_multiple_dots]
+    assert executed == [valid_plain, valid_quiet]
     assert skipped == []
     assert xfailed == []
