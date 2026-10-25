@@ -590,3 +590,6 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — Keep status reports synchronized with the latest per-category exact-head evidence, and distinguish selector execution from aggregate report-bound acceptance. A green Windows category run does not imply a fresh POSIX transfer, trusted signer, v2 report, receipt, authoritative gate, or sandbox result. See change 0194.
 
 2026-10-25 — Do not collapse a Git verification failure into a valid negative domain answer. For `merge-base --is-ancestor`, exit 1 means non-ancestor; timeout exhaustion, invocation errors, and other nonzero statuses mean verification failed and should remain fail-closed with a distinct diagnostic. Preserve the bounded retry. See change 0195.
+
+
+2026-10-25 — Keep ancestry exit code 1 (a valid non-ancestor) distinct from higher exit codes and from timeout/invocation failures. Tests for bounded retries should assert both typed failure and the finite retry count; deterministic subprocess stubs avoid depending on local Git/OS state. See change 0196; selector execution follows mapping in 0197.

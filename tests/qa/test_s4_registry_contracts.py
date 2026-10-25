@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -238,6 +239,86 @@ def test_s4_committed_registry_loads_with_resolved_nodes():
 
     assert digest == hashlib.sha256(registry_bytes).hexdigest()
     assert len(test_ids) == len(set(test_ids))
+
+
+def _stub_merge_base(monkeypatch, responses):
+    calls = []
+    remaining = list(responses)
+
+    def fake_run(command, **kwargs):
+        calls.append((command, kwargs))
+        response = remaining.pop(0)
+        if isinstance(response, BaseException):
+            raise response
+        return subprocess.CompletedProcess(command, returncode=response)
+
+    monkeypatch.setattr(registry.subprocess, "run", fake_run)
+    return calls
+
+
+def _assert_merge_base_calls(calls, root, expected_count):
+    expected_command = ["git", "merge-base", "--is-ancestor", "a" * 40, "b" * 40]
+    assert len(calls) == expected_count
+    assert [command for command, _ in calls] == [expected_command] * expected_count
+    for _, kwargs in calls:
+        assert kwargs["cwd"] == root
+        assert kwargs["stdin"] == subprocess.DEVNULL
+        assert kwargs["stdout"] == subprocess.DEVNULL
+        assert kwargs["stderr"] == subprocess.DEVNULL
+        assert kwargs["check"] is False
+
+
+def test_s4_git_ancestry_returncode_zero_is_true(monkeypatch, tmp_path):
+    calls = _stub_merge_base(monkeypatch, [0])
+
+    result = registry._git_commit_is_ancestor(tmp_path, "a" * 40, "b" * 40)
+
+    assert result is True
+    _assert_merge_base_calls(calls, tmp_path, expected_count=1)
+
+
+def test_s4_git_ancestry_returncode_one_is_false(monkeypatch, tmp_path):
+    calls = _stub_merge_base(monkeypatch, [1])
+
+    result = registry._git_commit_is_ancestor(tmp_path, "a" * 40, "b" * 40)
+
+    assert result is False
+    _assert_merge_base_calls(calls, tmp_path, expected_count=1)
+
+
+def test_s4_git_ancestry_other_returncode_is_contract_error(monkeypatch, tmp_path):
+    calls = _stub_merge_base(monkeypatch, [2])
+
+    with pytest.raises(ContractError, match="git merge-base exited with status 2"):
+        registry._git_commit_is_ancestor(tmp_path, "a" * 40, "b" * 40)
+
+    _assert_merge_base_calls(calls, tmp_path, expected_count=1)
+
+
+def test_s4_git_ancestry_second_timeout_is_contract_error(monkeypatch, tmp_path):
+    timeout = subprocess.TimeoutExpired("git merge-base", timeout=registry.GIT_COMMAND_TIMEOUT_SECONDS)
+    calls = _stub_merge_base(monkeypatch, [timeout, timeout])
+
+    with pytest.raises(
+        ContractError,
+        match="git merge-base timed out after 2 attempts of 5 seconds",
+    ) as raised:
+        registry._git_commit_is_ancestor(tmp_path, "a" * 40, "b" * 40)
+
+    assert isinstance(raised.value.__cause__, subprocess.TimeoutExpired)
+    _assert_merge_base_calls(calls, tmp_path, expected_count=2)
+    assert all(kwargs["timeout"] == 5 for _, kwargs in calls)
+
+
+def test_s4_git_ancestry_oserror_is_contract_error(monkeypatch, tmp_path):
+    invocation_error = OSError("git executable unavailable")
+    calls = _stub_merge_base(monkeypatch, [invocation_error])
+
+    with pytest.raises(ContractError, match="cannot invoke git to verify QA registry ancestry") as raised:
+        registry._git_commit_is_ancestor(tmp_path, "a" * 40, "b" * 40)
+
+    assert raised.value.__cause__ is invocation_error
+    _assert_merge_base_calls(calls, tmp_path, expected_count=1)
 
 
 def test_s4_registry_rejects_duplicate_primary_category_assignment(monkeypatch):

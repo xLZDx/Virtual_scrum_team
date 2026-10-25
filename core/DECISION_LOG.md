@@ -501,3 +501,8 @@ Refresh the bilingual S4 report, plan status, and VST-032–037 backlog against 
 ## 2026-10-25 -- Distinguish ancestry negatives from verification errors
 
 Registry ancestry validation now interprets Git status 1 as a genuine non-ancestor answer, status 0 as ancestor, and all other statuses as inability to verify. Retry exhaustion and invocation errors raise `ContractError` with diagnostics while preserving the two-attempt, five-second-per-attempt bound and fail-closed behavior. See change 0195; runtime evidence is pending the designated test owner.
+
+
+## 2026-10-25 -- Add deterministic S4 ancestry outcome tests
+
+Five static-ID functional tests exercise the Git ancestry query's defined outcomes: return code 0/1, unexpected nonzero, exhausted bounded timeout retry, and invocation `OSError`. Tests use deterministic subprocess monkeypatches and assert typed failures. This source-test commit intentionally precedes category registration; no tests were run. See change record 0196.
