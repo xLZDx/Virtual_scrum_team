@@ -147,8 +147,8 @@
     },
     "e2e": {
       "state": "SUPPORTED",
-      "coverage_state": "PARTIAL",
-      "coverage_reason": "Twelve selectors cover the S3 worker pilot, local S4 synthetic journeys, native pytest collection, and local signed runner-to-gate artifact cases. Coverage remains PARTIAL because no selector exercises tools.qa.run report serialization with v2 signed artifacts; deployed signer, WSL transfer, and sandbox execution remain separate NOT_RUN runtime gates.",
+      "coverage_state": "COMPLETE",
+      "coverage_reason": "All 12 registered selectors cover the S3 worker pilot, local S4 synthetic journeys, native pytest collection, and local signed runner-to-gate artifact cases. Under AC-2 and AC-9–11/14, the outer `tools.qa.run --category e2e` invocation is the report-bound layer: it runs every mapped selector under the worker identity, then binds exact ID/event accounting, the v2 QA report, stream references, manifest diff gate, and TestRun receipt. Selectors test their local journey and must not recursively invoke `tools.qa.run`. COMPLETE describes the committed selector denominator; exact-head outer-run results are recorded separately. Trusted signer deployment, authoritative VST gate consumption, and sandbox deployment remain distinct NOT_RUN runtime gates.",
       "owner_role": "e2e-runner",
       "source_head": "598d22ddf4db6a64c61db3f6441855e2f143bc30",
       "test_ids": [
@@ -185,8 +185,8 @@
   },
   "regression": {
     "state": "SUPPORTED_AGGREGATE",
-    "coverage_state": "PARTIAL",
-    "reason": "The E2E selector denominator remains partial until an E2E selector exercises the report-bound tools.qa.run/v2 artifact path. Exact-head execution, trusted signer deployment, and sandbox acceptance remain separate runtime gates.",
+    "coverage_state": "COMPLETE",
+    "reason": "The aggregate is the explicit union of the four regression primary categories (functional, integration, API, and E2E), whose committed selector denominators are all COMPLETE: 33 + 6 + 73 + 12 = 124 IDs. The outer `tools.qa.run --category regression` invocation runs those category commands under worker identity and binds their reports, event accounting, diff gates, and TestRun receipts; mapped selectors do not invoke the CLI recursively. Seeded-failure remains its own COMPLETE primary category and is not part of the regression union under S4.5.1. This records denominator completeness; exact-head outer regression results, trusted signer deployment, and authoritative VST gate consumption remain separate runtime evidence.",
     "primary_categories": [
       "functional",
       "integration",
