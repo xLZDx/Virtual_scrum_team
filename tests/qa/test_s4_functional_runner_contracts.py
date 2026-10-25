@@ -834,7 +834,10 @@ def test_s4_main_reports_wrong_interpreter_as_blocked_without_spawning_pytest(
     assert "QA_RESULT BLOCKED" in stdout
     assert report["result"] == "BLOCKED"
     assert report["exit_code"] is None
-    assert any("runner executable is not the approved" in reason for reason in report["reasons"])
+    assert any(
+        "runner process does not match an approved runtime profile and identity" in reason
+        for reason in report["reasons"]
+    )
     assert any("locked QA dependencies are missing or mismatched" in reason for reason in report["reasons"])
     assert report["command"] == []
     assert spawn_attempts == []

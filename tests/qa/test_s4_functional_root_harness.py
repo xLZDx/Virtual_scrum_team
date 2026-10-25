@@ -105,6 +105,9 @@ def test_s4_root_harness_outer_preflights_candidate_then_reexecs_fixed_installed
 ):
     repo = tmp_path / "candidate"
     repo.mkdir()
+    candidate_helper = repo / "tools" / "qa" / "root_harness.py"
+    candidate_helper.parent.mkdir(parents=True)
+    candidate_helper.write_bytes(Path(root_harness.__file__).read_bytes())
     args = _args(repo)
     _enable_isolated_mode(monkeypatch)
     calls = []
@@ -223,7 +226,7 @@ def test_s4_root_harness_child_binds_mount_and_parent_proof_then_launches_qa_thr
     assert calls[0][0] == ["/usr/sbin/ip", "link", "set", "dev", "lo", "up"]
     assert calls[0][1]["env"] == EXPECTED_MINIMAL_ENV
     restricted, options = calls[1]
-    assert restricted[0] == "/usr/sbin/setpriv"
+    assert restricted[0] == "/usr/bin/setpriv"
     launcher = restricted[restricted.index("--") + 1 :]
     assert launcher[:3] == ["/usr/bin/python3.12", "-I", "-c"]
     insertion = launcher[3].find("sys.path.insert(0,sys.argv.pop(1))")
