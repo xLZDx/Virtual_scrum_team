@@ -627,3 +627,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — A runner outside the worker group cannot necessarily set that group's setgid bit later with `chmod`. Establish the ownership/mode boundary by creating the directory beneath the pre-provisioned setgid parent, and verify it before and after population. Do not broaden capabilities to repair a mode inheritance mistake. The first 415916e snapshot was blocked before tests, not a test failure. See change 0244.
 
 2026-10-25 — When source code advances after test mapping, update category provenance to the code head being tested; then create a fresh exact-head snapshot after the mapping commit. A successful transfer is setup evidence, not test execution. See change 0245.
+
+2026-10-25 — Keep the pytest pass-line parser aligned with the exact pinned command's quiet-mode reporter format. On S4 head `5b5e6c7`, pytest emitted `.PASS <nodeid>` for each successful case; the independent parser/event check correctly refused a receipt when the parser found none. Adapt the strict line parser rather than weakening the reconciliation gate. See change 0246.

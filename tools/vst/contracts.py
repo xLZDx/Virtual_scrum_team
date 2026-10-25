@@ -46,7 +46,16 @@ MISSING_ARTIFACT_DIGEST = "0" * 64
 
 def _parse_pass_lines(stdout: str) -> tuple[list[str], list[str], list[str]]:
     """Built-in parser for synthetic fixtures; callers cannot register parsers."""
-    executed = [line[5:].strip() for line in stdout.splitlines() if line.startswith("PASS ")]
+    executed = []
+    for line in stdout.splitlines():
+        # Pytest -q prefixes this reporter's PASS line with its progress dots.
+        # Match the whole line shape: arbitrary leading text is never ignored.
+        pass_line = line.lstrip(".")
+        if not pass_line.startswith("PASS "):
+            continue
+        test_id = pass_line[5:]
+        if test_id and test_id == test_id.strip():
+            executed.append(test_id)
     return executed, [], []
 
 
