@@ -528,3 +528,7 @@ A read-only WSL feasibility audit found runner UID 997, worker UID 999, signer U
 ## 2026-10-25 -- Record focused current-head POSIX symlink evidence
 
 At exact S4 HEAD `1c97ee968e6c9f8ab133a3b6d7452e17a17ee600`, the three focused POSIX symlink selectors passed 3/3 on Ubuntu-24.04 WSL2 after staging tracked source from a clean detached worktree and matching the test-file SHA-256. This closes those selector outcomes only; report-bound runner, signer, identity transition, receipt, gate and aggregate evidence remain open. See change 0201.
+
+## 2026-10-25 -- Clarify POSIX selector evidence versus report-bound execution
+
+The bilingual AC-10 report now states that the three focused current-head POSIX symlink selectors passed while report-bound WSL execution remains `NOT_RUN`. This preserves the distinction between a narrow test result and the independent runner identity, trusted signer, receipt, and gate requirements. See change 0202.

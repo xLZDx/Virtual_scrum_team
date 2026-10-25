@@ -42,13 +42,15 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
   <dl>
     <dt>Проект</dt><dd>Virtual_scrum_team</dd>
     <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team-s4</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 1c97ee9</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 5e9c566</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
           data-fail="Выделите вручную">Копировать страницу</button>
 </div>
 <!-- report-conform:end -->
+
+
 
 
 
@@ -73,7 +75,7 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <tr><td>AC-7 — функциональные и Python API сценарии</td><td>Частично</td><td>Functional/integration/seeded: 32 passed, 0 skipped, 0 failed. API: 73 mapped selectors раскрылись в 93 cases, 92 passed и 1 skipped; symlink creation blocked Windows <code>WinError 1314</code> (0198). Затем три focused POSIX symlink selectors прошли 3/3 на WSL2 при exact S4 HEAD <code>1c97ee9</code> (0201).</td><td>Оператор — accountable owner; Codex — executor. Закрыть оставшееся report-bound acceptance; focused POSIX selectors закрыты.</td></tr>
 <tr><td>AC-8 — честная граница API</td><td>Частично</td><td>Mapped 73 Python API selectors; 92 cases прошли, один Windows symlink case пропущен. Три focused POSIX symlink selectors прошли 3/3 при exact S4 HEAD (0201). Network/HTTP API не подтверждён в репозитории и остаётся <code>UNSUPPORTED</code>.</td><td>Оператор — accountable owner; Codex — executor. Сохранить Python API scope; report-bound path остаётся открытым.</td></tr>
 <tr><td>AC-9 — локальные изолированные интеграции/E2E</td><td>Частично</td><td>Integration 6/6 внутри набора 32/32; все 12 mapped E2E selectors прошли на <code>20fa7bb</code>. Fixture E2E не покрывает <code>tools.qa.run</code> report serialization/v2 signed artifacts или sandbox deployment.</td><td>Оператор — accountable owner; Codex — executor. E2E owner: добавить report-bound selector; technical service owner UNKNOWN.</td></tr>
-<tr><td>AC-10 — S3 и sandbox зависимости</td><td>Частично</td><td>Более ранний WSL transfer и 7 POSIX selectors на source <code>56dce67</code> записаны в 0159 и не подтверждают текущий HEAD. Read-only WSL audit выявил UIDs runner/worker/signer 997/999/995; Python/pytest доступны, но runner не имеет sudo/file capabilities для перехода <code>user=worker_uid, group=worker_gid</code>, который использует <code>tools/vst/runner.py</code>. Fresh current-head WSL/POSIX запуск и одобренный identity-transition mechanism остаются <code>NOT_RUN</code>. Disposable signer socket сам по себе не решает проблему.</td><td>Оператор accountable; Codex executor. Технический QA runner/gate owner UNKNOWN. Следующий шаг: утвердить project-approved runner-to-worker privilege mechanism.</td></tr>
+<tr><td>AC-10 — S3 и sandbox зависимости</td><td>Частично</td><td>Более ранний WSL transfer и 7 POSIX selectors на source <code>56dce67</code> записаны в 0159 и не подтверждают текущий HEAD. Три focused POSIX symlink selectors прошли на current S4 HEAD (0201), но report-bound WSL запуск остаётся NOT_RUN. Read-only WSL audit выявил UIDs runner/worker/signer 997/999/995; runner не имеет sudo/file capabilities для перехода <code>user=worker_uid, group=worker_gid</code> в <code>tools/vst/runner.py</code>. Disposable signer socket сам по себе не решает проблему.</td><td>Оператор accountable; Codex executor. Технический QA runner/gate owner UNKNOWN. Следующий шаг: утвердить project-approved runner-to-worker privilege mechanism.</td></tr>
 <tr><td>AC-11 — regression знаменатель</td><td>Частично</td><td>На exact source/test HEAD <code>20fa7bb</code> functional/integration/seeded прошли 32/32, API — 92 passed/1 skipped, E2E — 12/12 отдельными runs. Full aggregate regression с report-bound artifacts не запускался.</td><td>Оператор — accountable owner; Codex — executor. Test owners: выполнить aggregate после готовности report-bound coverage.</td></tr>
 <tr><td>AC-12 — seeded-failure fixture каталог</td><td>Частично</td><td>Все 7 catalogued seeded-failure selectors прошли в составе набора 32/32 на <code>20fa7bb</code>. Run-specific v2 report и signed-artifact linkage не проверены.</td><td>Оператор — accountable owner; Codex — executor. Связать каталог с v2 report при доступности runner/gate path.</td></tr>
 <tr><td>AC-13 — mutation/red-green</td><td>NOT_RUN по ADR-0001</td><td>Mutation runs остаются NOT_RUN по ADR-0001; seeded fixtures не дают mutation score.</td><td>Оператор владеет waiver или изменением ограничения; иначе оставить NOT_RUN.</td></tr>
@@ -105,6 +107,8 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <footer class="mut">
 <p>Источник решения и критериев: <a href="../docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md">S4 plan</a>. Проверяемые источники: change records 0195–0201 (ancestry fix/tests, exact-head runs, POSIX symlink evidence, ревью и reconciliation отчёта), более раннее WSL evidence 0159 для source HEAD <code>56dce67</code> и ветка <code>s4-native-qa-runner</code>. Этот checkpoint создан из локальных Git/evidence записей; он не является PM approval, merge доказательством или подтверждением полного acceptance.</p>
 </footer>
+
+
 
 
 
