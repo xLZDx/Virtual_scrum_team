@@ -94,6 +94,55 @@ def test_s4_registry_rejects_unknown_pytest_node_id(monkeypatch):
         _load_registry_with(monkeypatch, candidate)
 
 
+@pytest.mark.parametrize("test_path", [
+    "tests/../outside.py",
+    "tests//valid.py",
+    r"tests\valid.py",
+])
+def test_s4_registry_rejects_noncanonical_source_paths_before_ast_acceptance(tmp_path, test_path):
+    """A valid test function outside canonical spelling cannot pass source resolution."""
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "valid.py").write_text("def test_contract():\n    pass\n", encoding="utf-8")
+    (tmp_path / "outside.py").write_text("def test_contract():\n    pass\n", encoding="utf-8")
+
+    assert not registry._pytest_node_id_exists(tmp_path, f"{test_path}::test_contract")
+
+
+def test_s4_registry_rejects_symlinked_source_components_before_ast_acceptance(tmp_path):
+    """Valid AST reachable through a symlink must not count as a repository tests node."""
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    outside_dir = tmp_path / "outside"
+    outside_dir.mkdir()
+    (outside_dir / "valid.py").write_text("def test_contract():\n    pass\n", encoding="utf-8")
+    try:
+        (tests_dir / "linked.py").symlink_to(outside_dir / "valid.py")
+        (tests_dir / "linked_dir").symlink_to(outside_dir, target_is_directory=True)
+    except (OSError, NotImplementedError) as exc:
+        pytest.skip(f"symlink creation unavailable: {type(exc).__name__}: {exc}")
+
+    assert not registry._pytest_node_id_exists(tmp_path, "tests/linked.py::test_contract")
+    assert not registry._pytest_node_id_exists(tmp_path, "tests/linked_dir/valid.py::test_contract")
+
+
+def test_s4_registry_loader_rejects_noncanonical_path_even_when_ast_target_exists(monkeypatch, tmp_path):
+    candidate = _registry_fixture()
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tmp_path / "outside.py").write_text("def test_contract():\n    pass\n", encoding="utf-8")
+    candidate["categories"]["api"]["test_ids"] = ["tests/../outside.py::test_contract"]
+    raw = json.dumps(candidate, separators=(",", ":")).encode()
+    monkeypatch.setattr(registry, "_read_repo_json", lambda *args, **kwargs: (candidate, raw))
+    monkeypatch.setattr(registry, "_git_commit_exists", lambda *args: True)
+    monkeypatch.setattr(registry, "_current_candidate_head", lambda *args: "a" * 40)
+    monkeypatch.setattr(registry, "_git_commit_is_ancestor", lambda *args: True)
+    monkeypatch.setattr(registry, "_git_file_is_tracked", lambda *args: True)
+
+    with pytest.raises(ContractError, match="does not resolve"):
+        registry.load_registry(tmp_path)
+
+
 def test_s4_registry_rejects_supported_category_without_required_ids(monkeypatch):
     candidate = _registry_fixture()
     candidate["categories"]["functional"]["test_ids"] = []
