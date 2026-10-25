@@ -476,3 +476,7 @@ At candidate HEAD `97c39000331c96b0184b1fb18d9ac2ba65c5658d`, both targeted regi
 ## 2026-10-25 -- Bound local S4 E2E evidence to existing runner and gate fixtures
 
 Add E2E-primary selectors for committed native pytest discovery and local `run_and_sign` → artifact resolver → authoritative gate journeys. The category remains partial until a selector exercises the separate `tools.qa.run` report serialization and v2 authenticated signer path. The local HMAC fixtures are not evidence of the deployed S4 signer, WSL source transfer, or sandbox runtime. See change record 0189; exact-head execution is pending.
+
+## 2026-10-25 — Keep report-bound E2E gap visible after fixture selector mapping
+
+Map the five selectors from change 0189 while keeping E2E and aggregate regression coverage PARTIAL: no selector drives tools.qa.run report serialization with v2 signed artifacts. Treat exact-head local selector execution, trusted signer deployment, WSL transfer, and sandbox runtime as separate evidence. Selector mapping completeness does not imply runtime PASS. See change 0190; selector execution is pending.

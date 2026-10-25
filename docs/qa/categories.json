@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_head": "126b67f3a969a067ac1643bebab2ac669a821eaa",
+  "source_head": "598d22ddf4db6a64c61db3f6441855e2f143bc30",
   "categories": {
     "functional": {
       "state": "SUPPORTED",
@@ -129,9 +129,9 @@
     "e2e": {
       "state": "SUPPORTED",
       "coverage_state": "PARTIAL",
-      "coverage_reason": "Coverage includes the S3 worker pilot, local S4 synthetic slice/snapshot refusal journeys, and the mapped native E2E selectors on a transferred read-only snapshot; signer/report/gate and sandbox acceptance remain NOT_RUN.",
+      "coverage_reason": "Twelve selectors cover the S3 worker pilot, local S4 synthetic journeys, native pytest collection, and local signed runner-to-gate artifact cases. Coverage remains PARTIAL because no selector exercises tools.qa.run report serialization with v2 signed artifacts; deployed signer, WSL transfer, and sandbox execution remain separate NOT_RUN runtime gates.",
       "owner_role": "e2e-runner",
-      "source_head": "452c8ea8da5545bdce0f584a6b51662b93a33abf",
+      "source_head": "598d22ddf4db6a64c61db3f6441855e2f143bc30",
       "test_ids": [
         "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_pilot_commits_only_the_manifest_scoped_synthetic_change",
         "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_pilot_rejects_out_of_scope_edit_before_worker_invocation",
@@ -139,7 +139,12 @@
         "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_stop_fences_interrupted_attempt_idempotently_and_rejects_stale_start",
         "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_candidate_identity_cannot_be_self_selected",
         "tests/qa/test_s4_qa_e2e.py::test_s4_e5_synthetic_slice_cli_journey_preserves_gate_and_restart_evidence",
-        "tests/qa/test_s4_qa_e2e.py::test_s4_e6_qa_snapshot_cli_refuses_an_unapproved_distribution"
+        "tests/qa/test_s4_qa_e2e.py::test_s4_e6_qa_snapshot_cli_refuses_an_unapproved_distribution",
+        "tests/qa/test_s4_report_bound_e2e.py::test_s4_native_pytest_discovery_accounts_exact_required_ids",
+        "tests/qa/test_s4_report_bound_e2e.py::test_s4_signed_runner_receipt_and_artifact_gate_approve_at_exact_head",
+        "tests/qa/test_s4_report_bound_e2e.py::test_s4_gate_rejects_stale_signed_runner_receipt",
+        "tests/qa/test_s4_report_bound_e2e.py::test_s4_gate_rejects_missing_signed_artifact",
+        "tests/qa/test_s4_report_bound_e2e.py::test_s4_gate_rejects_corrupt_signed_artifact"
       ]
     },
     "seeded-failure": {
@@ -162,7 +167,7 @@
   "regression": {
     "state": "SUPPORTED_AGGREGATE",
     "coverage_state": "PARTIAL",
-    "reason": "The regression aggregate remains partial until all required categories and the pinned native report path pass exact-head acceptance.",
+    "reason": "The E2E selector denominator remains partial until an E2E selector exercises the report-bound tools.qa.run/v2 artifact path. Exact-head execution, trusted signer deployment, and sandbox acceptance remain separate runtime gates.",
     "primary_categories": [
       "functional",
       "integration",
