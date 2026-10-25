@@ -546,3 +546,7 @@ At exact S4 HEAD `de8c6f8afaf34b9566e21a56c24b145b639f6cfd`, `e2e-runner` (GPT-6
 ## 2026-10-25 -- Preserve attribution-footer reconciliation for S4 commits
 
 The local coordinator commits `27b0bd7` (change 0225) and `a478d6e` (change 0227) omitted the project attribution footer `Executor: Codex`. Project lesson 0179 says preserve existing history and add an explicit reconciliation commit; no history rewrite was performed. This record is the reconciliation, not a claim that the original messages contained the footer. The new commit message ends with the required footer. See change 0228.
+
+## 2026-10-25 -- Reconcile explicit Git hook-path overrides in S4 commits
+
+S4 commits `27b0bd7`, `a478d6e`, and `31f797a` were created in this session with `git -c core.hooksPath=NUL commit`, explicitly overriding normal hook discovery. The shared repository hook directory had no configured `core.hooksPath` and only `.sample` files at read-only inspection; no active hook was present there at that time. This does not justify the override. Preserve history and the pre-existing patch; record the discrepancy in reconciliation change 0237.
