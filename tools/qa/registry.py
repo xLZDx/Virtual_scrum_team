@@ -17,6 +17,26 @@ PRIMARY_CATEGORIES = frozenset(
     {"functional", "integration", "api", "e2e", "seeded-failure"}
 )
 ALL_CATEGORIES = PRIMARY_CATEGORIES | {"regression"}
+WINDOWS_PROFILE = "windows-cpython-3.14.3"
+WSL_PROFILE = "wsl-ubuntu-24.04-cpython-3.12.3"
+WSL_ROOT_PROFILE = "wsl-ubuntu-24.04-root-harness"
+RUNTIME_PROFILES = (WINDOWS_PROFILE, WSL_PROFILE, WSL_ROOT_PROFILE)
+POSIX_ONLY_SELECTORS = frozenset({
+    "tests/vst/test_e3_store.py::test_database_file_is_owner_only_on_posix",
+    "tests/vst/test_e4_runner.py::test_link_created_by_the_command_itself_gets_a_zero_digest",
+    "tests/vst/test_s2_store_lifecycle.py::test_anchor_compare_append_is_idempotent_and_rejects_same_count_fork",
+    "tests/vst/test_s2_store_lifecycle.py::test_external_anchor_detects_restored_older_database_and_locks_writes",
+    "tests/vst/test_s2_store_lifecycle.py::test_exactly_one_event_ahead_is_recovered_before_mutation",
+    "tests/vst/test_s2_store_lifecycle.py::test_invalid_external_anchor_suffix_fails_closed",
+    "tests/vst/test_s2_store_lifecycle.py::test_multi_event_transaction_recovers_suffix_after_one_checkpoint_append",
+})
+WSL_ROOT_ONLY_SELECTORS = frozenset({
+    "tests/vst/test_s2_runner_lifecycle.py::test_posix_worker_cannot_read_signer_or_key_file",
+    "tests/vst/test_s2_sandbox_probe.py::test_posix_read_only_reviewer_cannot_write_worktree_or_store_fixture",
+})
+WINDOWS_ONLY_SELECTORS = frozenset({
+    "tests/vst/test_e4_runner.py::test_job_is_closed_when_thread_start_fails",
+})
 _HEX40 = re.compile(r"[0-9a-f]{40}\Z")
 _HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 _SELECTOR = re.compile(
@@ -24,6 +44,17 @@ _SELECTOR = re.compile(
     r"(?:(?P<class>[A-Za-z_][A-Za-z0-9_]*)::)?(?P<function>test_[A-Za-z0-9_]+)\Z"
 )
 _TEST_FILE = re.compile(r"test_[A-Za-z0-9_]+\.py\Z")
+
+
+def required_runtime_profiles(selector: str) -> list[str]:
+    """Return the committed S4 profile assignment contract for one selector."""
+    if selector in WSL_ROOT_ONLY_SELECTORS:
+        return [WSL_ROOT_PROFILE]
+    if selector in POSIX_ONLY_SELECTORS:
+        return [WSL_PROFILE]
+    if selector in WINDOWS_ONLY_SELECTORS:
+        return [WINDOWS_PROFILE]
+    return [WINDOWS_PROFILE, WSL_PROFILE]
 
 
 class RegistryError(ValueError):
@@ -35,10 +66,13 @@ class ValidatedRegistry:
     data: dict[str, Any]
     sha256: str
     candidate_head: str
-    selectors_by_id: dict[str, dict[str, str]]
+    selectors_by_id: dict[str, dict[str, Any]]
     category_test_ids: dict[str, list[str]]
     category_inventory_ids: dict[str, list[str]]
     category_not_run: dict[str, dict[str, str]]
+    category_profile_test_ids: dict[str, dict[str, list[str]]]
+    category_profile_not_run: dict[str, dict[str, dict[str, str]]]
+    category_profile_unassigned_ids: dict[str, dict[str, list[str]]]
 
 
 def _exact_keys(value: object, keys: set[str], context: str) -> dict[str, Any]:
@@ -228,6 +262,7 @@ def validate_registry(
         {
             "schema_version",
             "registry_version",
+            "runtime_profiles",
             "artifacts",
             "source_head",
             "source_inventory",
@@ -238,8 +273,11 @@ def validate_registry(
         },
         "manifest",
     )
-    if data["schema_version"] != 1 or data["registry_version"] != "1":
+    if data["schema_version"] != 2 or data["registry_version"] != "2":
         raise RegistryError("manifest schema or registry version is unsupported")
+    profiles = data["runtime_profiles"]
+    if profiles != list(RUNTIME_PROFILES):
+        raise RegistryError("manifest runtime profiles do not match the supported profile matrix")
     artifacts = data["artifacts"]
     expected_artifacts = {
         category: {
@@ -295,13 +333,20 @@ def validate_registry(
     tests = data["tests"]
     if not isinstance(tests, list):
         raise RegistryError("tests must be a list")
-    selectors_by_id: dict[str, dict[str, str]] = {}
+    selectors_by_id: dict[str, dict[str, Any]] = {}
     selectors: set[str] = set()
     categorized_ids: dict[str, list[str]] = {name: [] for name in PRIMARY_CATEGORIES}
+    categorized_profiles: dict[str, dict[str, list[str]]] = {
+        category: {profile: [] for profile in RUNTIME_PROFILES}
+        for category in PRIMARY_CATEGORIES
+    }
     for index, raw_test in enumerate(tests):
         item = _exact_keys(
             raw_test,
-            {"test_id", "selector", "source_path", "source_commit", "primary_category"},
+            {
+                "test_id", "selector", "source_path", "source_commit",
+                "primary_category", "runtime_profiles",
+            },
             f"tests[{index}]",
         )
         test_id = item["test_id"]
@@ -309,6 +354,7 @@ def validate_registry(
         source_path = item["source_path"]
         source_commit = item["source_commit"]
         category = item["primary_category"]
+        runtime_profiles = item["runtime_profiles"]
         match = _SELECTOR.fullmatch(selector) if isinstance(selector, str) else None
         if match is None or test_id != selector:
             raise RegistryError(f"tests[{index}] selector or test_id is not canonical")
@@ -320,9 +366,23 @@ def validate_registry(
             raise RegistryError(f"tests[{index}] source_commit is stale")
         if category not in PRIMARY_CATEGORIES:
             raise RegistryError(f"tests[{index}] primary category is invalid")
+        if (
+            not isinstance(runtime_profiles, list)
+            or runtime_profiles != sorted(set(runtime_profiles))
+            or any(profile not in RUNTIME_PROFILES for profile in runtime_profiles)
+        ):
+            raise RegistryError(f"tests[{index}] runtime_profiles is invalid")
+        if runtime_profiles and runtime_profiles != sorted(required_runtime_profiles(selector)):
+            raise RegistryError(f"tests[{index}] runtime_profiles violates the selector platform contract")
         selectors.add(selector)
-        selectors_by_id[test_id] = {"selector": selector, "primary_category": category}
+        selectors_by_id[test_id] = {
+            "selector": selector,
+            "primary_category": category,
+            "runtime_profiles": runtime_profiles,
+        }
         categorized_ids[category].append(test_id)
+        for profile in runtime_profiles:
+            categorized_profiles[category][profile].append(test_id)
 
     if selectors != actual_selectors:
         missing = sorted(actual_selectors - selectors)
@@ -334,6 +394,9 @@ def validate_registry(
     category_test_ids: dict[str, list[str]] = {}
     category_inventory_ids: dict[str, list[str]] = {}
     category_not_run: dict[str, dict[str, str]] = {}
+    category_profile_test_ids: dict[str, dict[str, list[str]]] = {}
+    category_profile_not_run: dict[str, dict[str, dict[str, str]]] = {}
+    category_profile_unassigned_ids: dict[str, dict[str, list[str]]] = {}
     for category in sorted(PRIMARY_CATEGORIES):
         entry = _exact_keys(
             categories[category],
@@ -361,6 +424,32 @@ def validate_registry(
         category_inventory_ids[category] = list(ids)
         category_not_run[category] = dict(not_run_reasons)
         category_test_ids[category] = sorted(set(ids) - set(not_run_reasons))
+        category_profile_test_ids[category] = {}
+        category_profile_not_run[category] = {}
+        category_profile_unassigned_ids[category] = {}
+        for profile in RUNTIME_PROFILES:
+            profile_inventory = sorted(categorized_profiles[category][profile])
+            profile_not_run = {
+                test_id: not_run_reasons[test_id]
+                for test_id in profile_inventory
+                if test_id in not_run_reasons
+            }
+            category_profile_test_ids[category][profile] = sorted(
+                set(profile_inventory) - set(profile_not_run)
+            )
+            category_profile_not_run[category][profile] = profile_not_run
+            category_profile_unassigned_ids[category][profile] = sorted(
+                set(ids) - set(profile_inventory)
+            )
+
+    for test_id, selector in selectors_by_id.items():
+        category = selector["primary_category"]
+        unassigned = not selector["runtime_profiles"]
+        policy_not_run = test_id in category_not_run[category]
+        if unassigned != policy_not_run:
+            raise RegistryError(
+                f"selector assignment and category NOT_RUN policy disagree: {test_id}"
+            )
 
     regression = _exact_keys(
         categories["regression"],
@@ -391,6 +480,30 @@ def validate_registry(
         for test_id in category_inventory_ids[category]
     )
     category_not_run["regression"] = expected_regression_not_run
+    category_profile_test_ids["regression"] = {
+        profile: sorted(
+            test_id
+            for category in ("functional", "integration", "api", "e2e")
+            for test_id in category_profile_test_ids[category][profile]
+        )
+        for profile in RUNTIME_PROFILES
+    }
+    category_profile_not_run["regression"] = {
+        profile: {
+            test_id: reason
+            for category in ("functional", "integration", "api", "e2e")
+            for test_id, reason in category_profile_not_run[category][profile].items()
+        }
+        for profile in RUNTIME_PROFILES
+    }
+    category_profile_unassigned_ids["regression"] = {
+        profile: sorted(
+            test_id
+            for category in ("functional", "integration", "api", "e2e")
+            for test_id in category_profile_unassigned_ids[category][profile]
+        )
+        for profile in RUNTIME_PROFILES
+    }
 
     aggregates = _exact_keys(data["aggregates"], {"regression_members"}, "aggregates")
     if aggregates["regression_members"] != ["functional", "integration", "api", "e2e"]:
@@ -414,4 +527,7 @@ def validate_registry(
         category_test_ids=category_test_ids,
         category_inventory_ids=category_inventory_ids,
         category_not_run=category_not_run,
+        category_profile_test_ids=category_profile_test_ids,
+        category_profile_not_run=category_profile_not_run,
+        category_profile_unassigned_ids=category_profile_unassigned_ids,
     )

@@ -7,8 +7,17 @@ import hashlib
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
-from .registry import _function_selectors, _latest_path_commit, git_head, git_root, inventory_test_files
+from .registry import (
+    RUNTIME_PROFILES,
+    _function_selectors,
+    _latest_path_commit,
+    git_head,
+    git_root,
+    inventory_test_files,
+    required_runtime_profiles,
+)
 
 
 TEST_FILE_CATEGORIES = {
@@ -55,9 +64,17 @@ POLICY_NOT_RUN = {
         "NOT_RUN: this scenario invokes process-kill cleanup; process-kill execution is prohibited for this S4 run.",
     "tests/vst/test_s2_runner_lifecycle.py::test_e4_platform_containment_scenarios_not_run":
         "NOT_RUN: process-kill/kill-table containment scenarios are explicitly prohibited for this S4 run.",
+    "tests/vst/test_s2_sandbox_probe.py::test_real_sandbox_inventory_has_all_required_properties":
+        "NOT_RUN: the test placeholder is unconditionally skipped and requires run-bound sandbox attestation.",
+    "tests/vst/test_s2_sandbox_probe.py::test_e8_sandbox_bakeoff_scenarios_not_run":
+        "NOT_RUN: full E8 acceptance requires process-death/STOP execution and a run-bound sandbox; prohibited for this S4 run.",
     "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_timeout_is_nonapproving_without_install_or_fallback":
         "NOT_RUN: this scenario invokes process-tree termination; process-kill execution is prohibited for this S4 run.",
 }
+def _runtime_profiles_for_selector(selector: str) -> list[str]:
+    if selector in POLICY_NOT_RUN or selector.startswith("tests/vst/test_e5_process_death.py::"):
+        return []
+    return required_runtime_profiles(selector)
 
 
 def _category_for_test_file(source_path: str) -> str:
@@ -84,7 +101,7 @@ def build_registry(root_path: str | Path) -> dict:
     root = git_root(root_path)
     source_head = git_head(root)
     inventory: list[dict[str, str]] = []
-    tests: list[dict[str, str]] = []
+    tests: list[dict[str, Any]] = []
     category_ids: dict[str, list[str]] = {category: [] for category in PRIMARY_CATEGORIES}
 
     for source_path in inventory_test_files(root):
@@ -108,6 +125,7 @@ def build_registry(root_path: str | Path) -> dict:
                     "source_path": source_path,
                     "source_commit": commit,
                     "primary_category": category,
+                    "runtime_profiles": _runtime_profiles_for_selector(selector),
                 }
             )
             category_ids[category].append(selector)
@@ -163,8 +181,9 @@ def build_registry(root_path: str | Path) -> dict:
         "reason": None,
     }
     return {
-        "schema_version": 1,
-        "registry_version": "1",
+        "schema_version": 2,
+        "registry_version": "2",
+        "runtime_profiles": list(RUNTIME_PROFILES),
         "artifacts": {
             category: {
                 "report": f"docs/sdlc/evidence/qa/{category}.report.jsonl",

@@ -1,6 +1,6 @@
 # Sprint S4 plan: reproducible QA automation
 
-Status: **WINDOWS PROFILE RUN COMPLETE / POSIX MATRIX DESIGN READY / S4 ACCEPTANCE INCOMPLETE** under the operator's S2-S5 continuation request. Candidate `fd49fad2bac249f329f4020ca5c1d55e38aa9bd7` has current six-category evidence in change 0271: functional and seeded-failure PASS; integration, API, and regression FAIL; E2E INCONCLUSIVE. Platform skips and policy `NOT_RUN` remain non-approving. One selector failed in the initial regression run and passed in three isolated reruns plus a same-head category rerun; its original assertion remains unknown. The Windows runner, exact-head evidence and remaining limits are summarized in change 0271. A delegated POSIX runtime matrix design is recorded in [`S4_POSIX_RUNTIME_MATRIX_DESIGN.md`](sdlc/S4_POSIX_RUNTIME_MATRIX_DESIGN.md); it is not yet implemented or runtime-proven. CI, mutations, seeded product-code defects, and external service calls remain prohibited.
+Status: **WINDOWS PROFILE RUN COMPLETE / POSIX MATRIX IMPLEMENTED IN WORKING TREE / S4 ACCEPTANCE INCOMPLETE** under the operator's S2-S5 continuation request. Candidate `fd49fad2bac249f329f4020ca5c1d55e38aa9bd7` has current six-category evidence in change 0271: functional and seeded-failure PASS; integration, API, and regression FAIL; E2E INCONCLUSIVE. Platform skips and policy `NOT_RUN` remain non-approving. One selector failed in the initial regression run and passed in three isolated reruns plus a same-head category rerun; its original assertion remains unknown. The Windows runner, exact-head evidence and remaining limits are summarized in change 0271. The POSIX runtime matrix is implemented in the current working tree but is not yet committed, tested, installed, or runtime-proven; the S4 acceptance criteria remain open. CI, mutations, seeded product-code defects, and external service calls remain prohibited.
 
 Sources: `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` section 1; `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`; `governance/DEFINITION_OF_DONE.md`; S2 and S3 plans; current `tests/vst/`, `tools/vst/runner.py`, `tools/vst/slice.py`, and `tools/vst/{contracts,gate,store}.py`.
 
@@ -164,8 +164,17 @@ and use the dedicated Ubuntu-24.04 WSL2 environment, the runtime contract is ext
 explicit POSIX CPython 3.12.3 profile. This is a platform-coverage clarification, not a skip waiver:
 selectors must pass on each profile assigned to them, and all assigned profile reports must agree
 on the same candidate, registry and lock. See `docs/sdlc/S4_POSIX_RUNTIME_MATRIX_DESIGN.md` and
-change 0272. The POSIX profile is not accepted until implementation, pinned dependency preparation,
-exact-head execution, and matrix verification are complete.
+change 0272. The POSIX profiles are not accepted until the matrix code is committed and tested, the
+pinned dependency target is prepared, exact-head execution completes, and matrix verification
+succeeds. The implementation adds an unprivileged UID-997 profile and a separate restricted root
+harness for two identity-isolation selectors. The candidate must be copied beneath WSL's
+distro-local `/tmp/vst-s4-candidate`; Windows-drive `drvfs` sources and `drvfs`/`9p` mounts covering
+the candidate are rejected, while unrelated WSL `9p` mounts are allowed. The runner records the
+candidate path and mount-table hash. The root proof is local QA evidence only and does not replace
+the S2 sandbox receipt. The runner also requires a private root-profile namespace with no
+non-loopback interface and a passing local loopback canary. Current registry accounting retains 51
+selectors as policy `NOT_RUN`, so passing every runnable profile row alone cannot approve full S4
+acceptance.
 
 ## Ordered work and safe stopping points
 
@@ -175,7 +184,7 @@ exact-head execution, and matrix verification are complete.
 4. Complete all S4 code before test phase; only then test agents author/run the per-epic and final exact-head suites.
 5. Run relevant reviewers, resolve valid findings, request the exact-head GPT-PM gate, then push and merge one S4 PR only after approval.
 
-The first independently safe implementation point was after E1, with the S3 dependency map and denominator frozen. Total gates: **6**, one per epic above. S4 product coding and test authorship are committed; the category registry has been regenerated from committed test sources. Functional and E2E execution is next. E2E rows that require incomplete S2/S3 external acceptance stay in the denominator as `NOT_RUN` and cannot satisfy DoD.
+The first independently safe implementation point was after E1, with the S3 dependency map and denominator frozen. Total gates: **6**, one per epic above. The new POSIX matrix code and regenerated category registry are currently uncommitted. Focused contract tests and exact-head runtime execution remain next after coding is complete. E2E rows that require incomplete S2/S3 external acceptance stay in the denominator as `NOT_RUN` and cannot satisfy DoD.
 
 ## Unknowns to resolve at S4 start
 

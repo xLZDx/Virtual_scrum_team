@@ -46,8 +46,11 @@ only a test input and must not be used for source changes.
 
 ## Design
 
-- Define strict runtime profiles for Windows CPython 3.14.3 and POSIX CPython 3.12.3. Resolve each
-  profile from the running interpreter and OS; accept no caller-supplied interpreter fallback.
+- Define strict runtime profiles for Windows CPython 3.14.3, unprivileged Ubuntu-24.04 WSL CPython
+  3.12.3, and a narrowly bounded Ubuntu-24.04 root harness for the two identity-isolation selectors.
+  Resolve each profile from the running interpreter and OS; accept no caller-supplied interpreter
+  fallback. The root harness is local QA evidence only, not an S2 worker receipt or independent
+  approval.
   Keep the current hash lock and verify the exact packages/versions in an external dependency
   target for each profile. Report the profile ID and privacy-safe interpreter identity.
 - Add explicit selector platform assignments to the committed registry. Selectors without an
@@ -59,14 +62,24 @@ only a test input and must not be used for source changes.
   stale, corrupt, duplicate, skipped, failed, or policy `NOT_RUN` assigned selectors. It may pass
   only when each registry selector has exactly one passing outcome on every assigned profile.
 - Transfer the candidate to WSL as a Git bundle created from the canonical checkout, then clone
-  into a disposable WSL `/tmp` test directory and verify full HEAD equality before execution.
-  Transfer and artifact-return paths must preserve bundle/report hashes. No source edits occur in
-  the disposable clone.
-- Launch the WSL runner through a root-owned `setpriv` command that drops to UID 997/GID 988 and
-  clears supplementary groups before Python starts. Do not run tests as root or as UID 997 with the
-  signer supplementary group.
+  beneath the fixed distro-local `/tmp/vst-s4-candidate` test root and verify full HEAD equality
+  before execution. The runner must verify that the candidate resolves under that root and inspect
+  `/proc/self/mountinfo` to reject Windows-drive `drvfs`/`9p` mounts, including any mount covering
+  the candidate; unrelated WSL `9p` mounts are allowed. Bind the candidate path and mount-table hash
+  into the run report and the root-harness proof. Transfer and artifact-return paths must preserve
+  bundle/report hashes. No source edits occur in the disposable clone.
+- Launch ordinary WSL selectors through a root-owned `setpriv` command that drops to UID 997/GID
+  988 and clears supplementary groups before Python starts. Two identity-isolation selectors need
+  a separate root harness restricted to exactly `CAP_CHOWN`, `CAP_SETGID`, and `CAP_SETUID`, a
+  private network namespace with only the loopback interface, and a passing ephemeral loopback
+  socket canary. The absence of any non-loopback interface plus the lack of `CAP_NET_ADMIN` proves
+  external egress is unavailable without making an external network request. Its proof is
+  run-nonce and candidate-head bound. Do not run other tests as root or as UID 997 with the signer
+  supplementary group.
 - Keep prohibited process-termination selectors in the registry as policy `NOT_RUN`; a matrix
-  containing any such required selector remains non-approving.
+  containing any such required selector remains non-approving. The current generated inventory
+  assigns 51 selectors to policy `NOT_RUN` (49 previously identified selectors plus two
+  source-documented exclusions), so passing all runnable rows cannot by itself approve S4.
 
 ## Failure modes and rollback
 
@@ -77,11 +90,12 @@ matrix, and runner commits while preserving the prior Windows reports as histori
 
 ## Test plan and unknowns
 
-`functional-test-reviewer` owns profile detection, selector assignment, and matrix negative tests.
-`e2e-runner` owns exact-head Windows and WSL matrix execution after all S4 coding and registry
-refresh are complete. First verify the candidate-bundle transfer and UID-997 launch with harmless
-preflight commands; then prepare the pinned external WSL dependency target separately. No tests,
-checks, or dependency installs have been performed for this design. The technical owner for QA
-runtime/lock maintenance is not established in canonical records; the operator remains accountable
-for the delegated sprint and Codex executes it. Transfer integrity and the exact WSL interpreter
-path still need an implementation-level preflight.
+`functional-test-reviewer` owns profile detection, selector assignment, root-proof validation, and
+matrix negative tests. `e2e-runner` owns exact-head Windows and WSL matrix execution after all S4
+coding and registry refresh are complete. First verify candidate-bundle transfer, the distro-local
+candidate/mount boundary, and UID-997 launch with harmless preflight commands; then prepare the
+pinned external WSL dependency target separately. No tests, checks, or dependency installs have
+been performed for this design. The technical owner for QA runtime/lock maintenance is not
+established in canonical records; the operator remains accountable for the delegated sprint and
+Codex executes it. Transfer integrity and the exact WSL interpreter path still need an
+implementation-level preflight.

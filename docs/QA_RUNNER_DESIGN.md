@@ -81,11 +81,23 @@ registry generation rather than silently receiving a category.
 
 ### Platform acceptance matrix
 
-The committed selector registry assigns each selector to Windows, POSIX, or both runtime profiles.
-The runner executes only the selectors assigned to its exact profile and reports its profile ID.
-Selectors assigned elsewhere are not treated as passes or as skipped tests in the current profile.
-The matrix validator combines per-profile reports only when candidate HEAD, registry hash, lock
-hash, artifact integrity, and runtime identity agree. It rejects missing profile reports, stale or
+The committed selector registry assigns each selector to Windows, unprivileged Ubuntu-24.04 WSL,
+the restricted Ubuntu-24.04 root harness, or more than one of those runtime profiles. The runner
+executes only selectors assigned to its exact profile. Selectors assigned elsewhere are not treated
+as passes or skips in the current profile. The root harness can run only its two explicitly assigned
+identity-isolation selectors; its run-nonce-bound proof verifies a private network namespace with
+only loopback and a working ephemeral loopback socket. With no non-loopback interface and no
+`CAP_NET_ADMIN`, external egress is structurally unavailable without an external canary request.
+This is local QA evidence, not an S2 worker receipt or independent approval.
+
+Every WSL candidate must resolve beneath the distro-local `/tmp/vst-s4-candidate` root. The runner
+scans `/proc/self/mountinfo`, rejects Windows-drive `drvfs` or `9p` sources and any `drvfs`/`9p`
+mount covering the candidate, and permits unrelated WSL `9p` mounts. Reports bind the canonical
+candidate path and mount-table SHA-256. The matrix requires all WSL reports to share the same
+candidate path and checks that the root proof agrees with its report.
+
+The matrix combines per-profile reports only when candidate HEAD, registry hash, lock hash,
+artifact integrity, and runtime identity agree. It rejects missing profile reports, stale or
 duplicate selector outcomes, any assigned selector that is failed/skipped/`NOT_RUN`, incomplete
 capture, or unexpected nodes. Matrix approval requires every committed selector to pass on every
 profile assigned to it. The full design and WSL transfer/preflight constraints are in

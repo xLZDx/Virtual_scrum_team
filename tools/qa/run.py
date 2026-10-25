@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import configparser
 import hashlib
 import importlib.metadata
 import ntpath
@@ -10,6 +11,7 @@ import json
 import os
 import platform
 import re
+import socket
 import subprocess
 import sys
 import time
@@ -33,6 +35,10 @@ from tools.vst.runner import (
 from .fixtures import FixtureCatalogError, load_fixture_catalog
 from .registry import (
     RegistryError,
+    RUNTIME_PROFILES,
+    WINDOWS_PROFILE,
+    WSL_PROFILE,
+    WSL_ROOT_PROFILE,
     ValidatedRegistry,
     git_head,
     git_root,
@@ -45,6 +51,22 @@ MAX_TIMEOUT_SECONDS = 3600
 DEFAULT_TIMEOUT_SECONDS = 900
 MAX_CAPTURE_BYTES = 4 * 1024 * 1024
 EXPECTED_PYTHON_EXE = r"C:\Python314\python.exe"
+EXPECTED_WSL_PYTHON_EXE = "/usr/bin/python3.12"
+ROOT_HARNESS_CAP_MASK = (1 << 0) | (1 << 6) | (1 << 7)  # CHOWN, SETGID, SETUID only.
+ROOT_HARNESS_PROOF_AUTHORITY = "local-qa-preflight-non-authoritative"
+ROOT_HARNESS_REPORT_SCOPE = (
+    "local QA preflight only; not an S2 worker receipt or independent approval"
+)
+WSL_CANDIDATE_ROOT = Path("/tmp/vst-s4-candidate")
+MAX_MOUNTINFO_BYTES = 4 * 1024 * 1024
+ROOT_HARNESS_PROOF_FIELDS = {
+    "schema_version", "authority", "run_id", "run_nonce", "candidate_head",
+    "runtime_profile", "distribution_id", "distribution_version_id", "kernel_release", "uid", "gid",
+    "supplementary_groups", "capability_mask", "automount_enabled",
+    "interop_enabled", "private_network", "default_deny_egress",
+    "external_canary_blocked", "loopback_canary_passed", "candidate_root",
+    "mountinfo_sha256",
+}
 _RUN_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z")
 _SAFE_RELATIVE = re.compile(r"[A-Za-z0-9_./-]+\Z")
 _LOCK_LINE = re.compile(
@@ -75,6 +97,8 @@ def _args() -> argparse.Namespace:
     parser.add_argument("--expected-head")
     parser.add_argument("--timeout-seconds", type=int, default=DEFAULT_TIMEOUT_SECONDS)
     parser.add_argument("--output-cap-bytes", type=int, default=1024 * 1024)
+    parser.add_argument("--privileged-harness-proof")
+    parser.add_argument("--run-nonce")
     parser.add_argument("--report-path", required=True)
     parser.add_argument("--stdout-path", required=True)
     parser.add_argument("--stderr-path", required=True)
@@ -192,7 +216,7 @@ def _known_artifact_paths() -> set[str]:
         f"docs/sdlc/evidence/qa/{category}.{kind}"
         for category in ("functional", "integration", "api", "e2e", "regression", "seeded-failure")
         for kind in ("report.jsonl", "stdout.txt", "stderr.txt")
-    }
+    } | {"docs/sdlc/evidence/qa/matrix.report.jsonl"}
 
 
 def _unexpected_candidate_paths(paths: list[str]) -> list[str]:
@@ -236,10 +260,309 @@ def _append_run_outputs(
     }
 
 
-def _canonical_interpreter_matches() -> bool:
-    actual = ntpath.normcase(ntpath.normpath(os.path.realpath(sys.executable)))
-    expected = ntpath.normcase(ntpath.normpath(EXPECTED_PYTHON_EXE))
-    return actual == expected
+def _wsl_distro_identity() -> tuple[bool, str, str]:
+    if platform.system() != "Linux":
+        return False, "", ""
+    try:
+        release = platform.freedesktop_os_release()
+        kernel = platform.release()
+        config = configparser.ConfigParser()
+        with Path("/etc/wsl.conf").open(encoding="utf-8") as handle:
+            config.read_file(handle)
+        valid = (
+            release.get("ID") == "ubuntu"
+            and release.get("VERSION_ID") == "24.04"
+            and "microsoft" in kernel.lower()
+            and config.getboolean("automount", "enabled") is False
+            and config.getboolean("interop", "enabled") is False
+        )
+        return valid, release.get("PRETTY_NAME", ""), kernel
+    except (OSError, configparser.Error, ValueError):
+        return False, "", ""
+
+
+def _linux_capability_masks() -> tuple[int | None, int | None]:
+    try:
+        status = Path("/proc/self/status").read_text(encoding="ascii")
+    except (OSError, UnicodeError):
+        return None, None
+    values: dict[str, int] = {}
+    for line in status.splitlines():
+        key, separator, raw = line.partition(":")
+        if separator and key in {"CapEff", "CapBnd"}:
+            try:
+                values[key] = int(raw.strip(), 16)
+            except ValueError:
+                return None, None
+    return values.get("CapEff"), values.get("CapBnd")
+
+
+def _private_network_namespace() -> bool:
+    try:
+        current = os.stat("/proc/self/ns/net").st_ino
+        init = os.stat("/proc/1/ns/net").st_ino
+    except OSError:
+        return False
+    return current != init
+
+
+def _loopback_only_network() -> bool:
+    """Prove that a root harness has no non-loopback interface to reach external networks."""
+    try:
+        interfaces = socket.if_nameindex()
+    except OSError:
+        return False
+    return len(interfaces) == 1 and interfaces[0][1] == "lo"
+
+
+def _loopback_canary_passed() -> bool:
+    """Exercise an ephemeral in-process loopback listener without external network access."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+            listener.settimeout(1.0)
+            listener.bind(("127.0.0.1", 0))
+            listener.listen(1)
+            with socket.create_connection(listener.getsockname(), timeout=1.0):
+                connection, _ = listener.accept()
+                connection.close()
+        return True
+    except OSError:
+        return False
+
+
+def _wsl_candidate_boundary(root: Path, profile: str | None) -> dict[str, Any] | None:
+    if profile not in {WSL_PROFILE, WSL_ROOT_PROFILE}:
+        return None
+    candidate = root.resolve(strict=True)
+    if WSL_CANDIDATE_ROOT.is_symlink():
+        raise QARunError("WSL candidate test root cannot be a symbolic link")
+    local_root = WSL_CANDIDATE_ROOT.resolve(strict=True)
+    if local_root != WSL_CANDIDATE_ROOT:
+        raise QARunError("WSL candidate test root must be the canonical distro-local path")
+    if not candidate.is_relative_to(local_root):
+        raise QARunError("WSL candidate root must resolve beneath /tmp/vst-s4-candidate")
+    try:
+        raw = Path("/proc/self/mountinfo").read_bytes()
+    except OSError as exc:
+        raise QARunError(f"WSL mount table is unavailable ({type(exc).__name__})") from None
+    if not raw or len(raw) > MAX_MOUNTINFO_BYTES:
+        raise QARunError("WSL mount table is empty or exceeds the inspection bound")
+    def decode_mount_path(value: bytes) -> str:
+        return (
+            value.replace(b"\\134", b"\\")
+            .replace(b"\\040", b" ")
+            .replace(b"\\011", b"\t")
+            .replace(b"\\012", b"\n")
+            .decode("utf-8", errors="strict")
+        )
+
+    for line in raw.splitlines():
+        left, separator, right = line.partition(b" - ")
+        left_fields = left.split()
+        right_fields = right.split()
+        if not separator or len(left_fields) < 6 or len(right_fields) < 3:
+            raise QARunError("WSL mount table contains a malformed entry")
+        filesystem = right_fields[0].lower()
+        source = right_fields[1].lower()
+        windows_drive_source = bool(re.match(rb"^[a-z]:", source))
+        try:
+            mountpoint = decode_mount_path(left_fields[4])
+        except UnicodeError:
+            raise QARunError("WSL mount table contains an invalid mount path") from None
+        candidate_path = candidate.as_posix()
+        mount_intersects_candidate = (
+            mountpoint == "/"
+            or candidate_path == mountpoint.rstrip("/")
+            or candidate_path.startswith(mountpoint.rstrip("/") + "/")
+            or mountpoint == candidate_path
+            or mountpoint.startswith(candidate_path.rstrip("/") + "/")
+        )
+        if (
+            filesystem == b"drvfs"
+            or b"drvfs" in source
+            or windows_drive_source
+            or (
+                mount_intersects_candidate
+                and (filesystem == b"9p" or b"9p" in source)
+            )
+        ):
+            raise QARunError("WSL mount table contains a Windows-drive drvfs/9p mount")
+    return {
+        "candidate_root": candidate.as_posix(),
+        "candidate_root_prefix": WSL_CANDIDATE_ROOT.as_posix(),
+        "mountinfo_sha256": hashlib.sha256(raw).hexdigest(),
+        "windows_drive_mounts_present": False,
+    }
+
+
+def _runtime_profile() -> str | None:
+    if (
+        os.name == "nt"
+        and platform.system() == "Windows"
+        and platform.python_implementation() == "CPython"
+        and platform.python_version() == "3.14.3"
+        and _canonical_interpreter_matches(WINDOWS_PROFILE)
+    ):
+        return WINDOWS_PROFILE
+    wsl, _, _ = _wsl_distro_identity()
+    if (
+        not wsl
+        or platform.python_implementation() != "CPython"
+        or platform.python_version() != "3.12.3"
+        or not _canonical_interpreter_matches(WSL_PROFILE)
+    ):
+        return None
+    try:
+        uid = os.geteuid()
+        gid = os.getegid()
+        groups = sorted(os.getgroups())
+    except AttributeError:
+        return None
+    if uid == 997 and gid == 988 and groups == [988]:
+        return WSL_PROFILE
+    effective, bounding = _linux_capability_masks()
+    if (
+        uid == 0
+        and gid == 0
+        and groups == []
+        and effective == ROOT_HARNESS_CAP_MASK
+        and bounding == ROOT_HARNESS_CAP_MASK
+    ):
+        return WSL_ROOT_PROFILE
+    return None
+
+
+def _canonical_interpreter_matches(profile: str) -> bool:
+    if profile == WINDOWS_PROFILE:
+        actual = ntpath.normcase(ntpath.normpath(os.path.realpath(sys.executable)))
+        expected = ntpath.normcase(ntpath.normpath(EXPECTED_PYTHON_EXE))
+        return actual == expected
+    if profile in {WSL_PROFILE, WSL_ROOT_PROFILE}:
+        return os.path.realpath(sys.executable) == EXPECTED_WSL_PYTHON_EXE
+    return False
+
+
+def _runtime_report_identity(profile: str | None) -> dict[str, Any]:
+    if profile == WINDOWS_PROFILE:
+        return {
+            "runtime_profile": profile,
+            "interpreter": {
+                "id": "CPython-3.14.3",
+                "executable": "C:/Python314/python.exe",
+                "version": "3.14.3",
+            },
+            "runtime_identity": {"uid": None, "gid": None, "supplementary_groups": []},
+        }
+    if profile in {WSL_PROFILE, WSL_ROOT_PROFILE}:
+        groups = sorted(os.getgroups())
+        return {
+            "runtime_profile": profile,
+            "interpreter": {
+                "id": "CPython-3.12.3",
+                "executable": EXPECTED_WSL_PYTHON_EXE,
+                "version": "3.12.3",
+            },
+            "runtime_identity": {
+                "uid": os.geteuid(),
+                "gid": os.getegid(),
+                "supplementary_groups": groups,
+            },
+        }
+    return {
+        "runtime_profile": None,
+        "interpreter": {
+            "id": f"{platform.python_implementation()}-{platform.python_version()}",
+            "executable": None,
+            "version": platform.python_version(),
+        },
+        "runtime_identity": {"uid": None, "gid": None, "supplementary_groups": []},
+    }
+
+
+def _validate_privileged_harness_proof(
+    args: argparse.Namespace,
+    root: Path,
+    head: str,
+    profile: str | None,
+    boundary: dict[str, Any] | None,
+) -> dict[str, str] | None:
+    proof_arg = args.privileged_harness_proof
+    nonce = args.run_nonce
+    if profile != WSL_ROOT_PROFILE:
+        if proof_arg is not None or nonce is not None:
+            raise QARunError("privileged harness proof is valid only for the WSL root profile")
+        return None
+    if boundary is None:
+        raise QARunError("WSL root profile lacks a validated distro-local candidate boundary")
+    if proof_arg is None or nonce is None or _HEX64.fullmatch(nonce) is None:
+        raise QARunError("WSL root profile requires a run nonce and privileged harness proof")
+    if args.expected_head != head:
+        raise QARunError("WSL root profile requires --expected-head bound to the current candidate")
+    proof_path = Path(proof_arg)
+    if not proof_path.is_absolute():
+        raise QARunError("privileged harness proof must use an absolute external path")
+    try:
+        if proof_path.is_symlink():
+            raise QARunError("privileged harness proof cannot be a symbolic link")
+        resolved = proof_path.resolve(strict=True)
+        if resolved.is_relative_to(root):
+            raise QARunError("privileged harness proof must be outside the candidate repository")
+        info = resolved.stat()
+        if not resolved.is_file() or info.st_nlink != 1 or info.st_size > 16 * 1024:
+            raise QARunError("privileged harness proof must be a small regular external file")
+        proof_bytes = resolved.read_bytes()
+        proof = json.loads(proof_bytes.decode("utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise QARunError(f"privileged harness proof is unavailable or invalid ({type(exc).__name__})") from None
+    if not isinstance(proof, dict) or set(proof) != ROOT_HARNESS_PROOF_FIELDS:
+        raise QARunError("privileged harness proof has an invalid exact schema")
+    distribution_ok, _, kernel = _wsl_distro_identity()
+    effective, bounding = _linux_capability_masks()
+    isolated_network = _private_network_namespace() and _loopback_only_network()
+    loopback_canary_passed = _loopback_canary_passed()
+    expected_values = {
+        "schema_version": 2,
+        "authority": ROOT_HARNESS_PROOF_AUTHORITY,
+        "run_id": args.run_id,
+        "run_nonce": nonce,
+        "candidate_head": head,
+        "runtime_profile": WSL_ROOT_PROFILE,
+        "distribution_id": "ubuntu",
+        "distribution_version_id": "24.04",
+        "kernel_release": kernel,
+        "uid": 0,
+        "gid": 0,
+        "supplementary_groups": [],
+        "capability_mask": f"0x{ROOT_HARNESS_CAP_MASK:x}",
+        "automount_enabled": False,
+        "interop_enabled": False,
+        "private_network": isolated_network,
+        "default_deny_egress": isolated_network,
+        "external_canary_blocked": isolated_network,
+        "loopback_canary_passed": loopback_canary_passed,
+        "candidate_root": boundary["candidate_root"] if boundary else None,
+        "mountinfo_sha256": boundary["mountinfo_sha256"] if boundary else None,
+    }
+    if (
+        not distribution_ok
+        or os.geteuid() != 0
+        or os.getegid() != 0
+        or sorted(os.getgroups()) != []
+        or effective != ROOT_HARNESS_CAP_MASK
+        or bounding != ROOT_HARNESS_CAP_MASK
+        or not isolated_network
+        or not loopback_canary_passed
+        or proof != expected_values
+    ):
+        raise QARunError("privileged harness proof does not match this process, candidate, or WSL boundary")
+    return {
+        "authority": ROOT_HARNESS_PROOF_AUTHORITY,
+        "scope": ROOT_HARNESS_REPORT_SCOPE,
+        "sha256": hashlib.sha256(proof_bytes).hexdigest(),
+        "run_nonce_sha256": hashlib.sha256(nonce.encode("ascii")).hexdigest(),
+        "candidate_root": boundary["candidate_root"],
+        "mountinfo_sha256": boundary["mountinfo_sha256"],
+    }
 
 
 def _lock_versions(root: Path) -> tuple[str, dict[str, str]]:
@@ -452,8 +775,18 @@ def _report_base(
     candidate_head: str | None,
     before_paths: list[str],
 ) -> dict[str, Any]:
+    runtime_profile = getattr(args, "_runtime_profile", None)
+    runtime_fields = _runtime_report_identity(runtime_profile)
+    if registry is not None and runtime_profile in RUNTIME_PROFILES:
+        expected_ids = registry.category_profile_test_ids.get(args.category, {}).get(runtime_profile, [])
+        not_run_reasons = registry.category_profile_not_run.get(args.category, {}).get(runtime_profile, {})
+        unassigned_ids = registry.category_profile_unassigned_ids.get(args.category, {}).get(runtime_profile, [])
+    else:
+        expected_ids = []
+        not_run_reasons = {}
+        unassigned_ids = registry.category_inventory_ids.get(args.category, []) if registry else []
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "sprint": "S4",
         "run_id": args.run_id,
         "category": args.category,
@@ -469,9 +802,10 @@ def _report_base(
         "source_head": registry.data["source_head"] if registry else None,
         "lock_sha256": None,
         "manifest_path": args.manifest,
-        "expected_test_ids": registry.category_test_ids.get(args.category, []) if registry else [],
+        "expected_test_ids": expected_ids,
         "inventory_test_ids": registry.category_inventory_ids.get(args.category, []) if registry else [],
-        "not_run_test_reasons": registry.category_not_run.get(args.category, {}) if registry else {},
+        "unassigned_test_ids": unassigned_ids,
+        "not_run_test_reasons": not_run_reasons,
         "collected_node_ids": [],
         "executed_node_ids": [],
         "passed_test_ids": [],
@@ -485,12 +819,11 @@ def _report_base(
         "command": [],
         "exit_code": None,
         "duration_seconds": None,
-        "interpreter": {
-            "id": f"{platform.python_implementation()}-{sys.version_info.major}.{sys.version_info.minor}",
-            "executable": "C:/Python314/python.exe",
-            "base": "C:/Python314",
-            "version": platform.python_version(),
-        },
+        "runtime_profile": runtime_fields["runtime_profile"],
+        "interpreter": runtime_fields["interpreter"],
+        "runtime_identity": runtime_fields["runtime_identity"],
+        "runtime_boundary": getattr(args, "_runtime_boundary", None),
+        "privileged_harness_preflight": getattr(args, "_privileged_harness_preflight", None),
         "environment": {
             "os": platform.system(),
             "os_release": platform.release(),
@@ -633,7 +966,7 @@ def _resolve_cases(
 def _pytest_command(
     *,
     expected_ids: list[str],
-    selectors: dict[str, dict[str, str]],
+    selectors: dict[str, dict[str, Any]],
     scratch_run: Path,
     repo_root: Path,
     dependency_target: Path,
@@ -685,9 +1018,14 @@ def _pytest_command(
 
 def _normalized_command(argv: list[str], scratch_run: Path) -> list[str]:
     result: list[str] = []
+    python_token = (
+        "<approved-python-base>/python.exe"
+        if os.name == "nt"
+        else "<approved-python-base>/python3.12"
+    )
     for argument in argv:
         if argument == sys.executable:
-            result.append("<approved-python-base>/python.exe")
+            result.append(python_token)
         elif os.fspath(scratch_run) in argument:
             result.append(argument.replace(os.fspath(scratch_run), "<scratch>").replace(os.fspath(scratch_run).replace("\\", "/"), "<scratch>"))
         elif argument.startswith("--qa-repo-root="):
@@ -715,6 +1053,7 @@ def _append_report(path: Path, report: dict[str, Any]) -> None:
 
 def main() -> int:
     args = _args()
+    args._runtime_profile = _runtime_profile()
     root: Path | None = None
     scratch_root: Path | None = None
     output_paths: dict[str, Path] | None = None
@@ -729,8 +1068,12 @@ def main() -> int:
         root, scratch_root, output_paths = _repo_paths(args)
         args._output_paths = output_paths
         head = git_head(root)
+        args._runtime_boundary = _wsl_candidate_boundary(root, args._runtime_profile)
         if args.expected_head is not None and args.expected_head != head:
             raise QARunError("candidate HEAD does not match --expected-head")
+        args._privileged_harness_preflight = _validate_privileged_harness_proof(
+            args, root, head, args._runtime_profile, args._runtime_boundary
+        )
         before_paths = _git_status_paths(root)
         registry = validate_registry(root, args.manifest)
         report = _report_base(
@@ -769,17 +1112,16 @@ def main() -> int:
         if report["pytest_version"] is None:
             missing_versions.append("pytest")
         reasons: list[str] = []
-        if platform.python_implementation() != "CPython" or sys.version_info[:2] != (3, 14):
-            reasons.append("runner requires the pinned CPython 3.14 interpreter")
-        if not _canonical_interpreter_matches():
-            reasons.append("runner executable is not the approved C:/Python314/python.exe")
+        if args._runtime_profile is None:
+            reasons.append("runner process does not match an approved runtime profile and identity")
         if missing_versions:
             reasons.append("locked QA dependencies are missing or mismatched: " + ", ".join(sorted(missing_versions)))
         if _unexpected_candidate_paths(before_paths):
             reasons.append("candidate worktree has unrelated changes before execution")
         if args.category not in registry.category_test_ids:
             reasons.append(f"unknown category: {args.category}")
-        policy_not_run = registry.category_not_run.get(args.category, {})
+        profile = args._runtime_profile
+        policy_not_run = registry.category_profile_not_run.get(args.category, {}).get(profile, {})
 
         category_status = registry.data["categories"].get(args.category, {}).get("status")
         category_reason = registry.data["categories"].get(args.category, {}).get("reason")
@@ -814,7 +1156,9 @@ def main() -> int:
             print("QA_RESULT BLOCKED")
             return 2
 
-        expected_ids = registry.category_test_ids[args.category]
+        expected_ids = registry.category_profile_test_ids[args.category].get(profile, [])
+        if not expected_ids:
+            raise QARunError("category has no runnable selectors assigned to this runtime profile")
         selectors = registry.selectors_by_id
         scratch_run = _run_id_dir(scratch_root, args.run_id)
         argv, child_env = _pytest_command(
@@ -824,6 +1168,8 @@ def main() -> int:
             repo_root=root,
             dependency_target=dependency_target,
         )
+        if _wsl_candidate_boundary(root, profile) != args._runtime_boundary:
+            raise QARunError("WSL candidate mount boundary changed before test execution")
         # Command evidence uses normalized temporary-root tokens to avoid writing
         # absolute host paths into a public repository report.
         report["command"] = _normalized_command(argv, scratch_run)
@@ -836,6 +1182,14 @@ def main() -> int:
             env=child_env,
         )
         duration = round(time.monotonic() - started, 3)
+        if profile in {WSL_PROFILE, WSL_ROOT_PROFILE}:
+            try:
+                boundary_after = _wsl_candidate_boundary(root, profile)
+            except (QARunError, OSError):
+                reasons.append("WSL candidate mount boundary became invalid during test execution")
+            else:
+                if boundary_after != args._runtime_boundary:
+                    reasons.append("WSL candidate mount boundary changed during test execution")
         stdout = _redact(stdout_raw, repo_root=root, scratch_root=scratch_root)
         stderr = _redact(stderr_raw, repo_root=root, scratch_root=scratch_root)
         _append_run_outputs(report, output_paths["stdout"], stdout, output_paths["stderr"], stderr)

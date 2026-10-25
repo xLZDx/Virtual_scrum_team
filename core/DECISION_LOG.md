@@ -524,4 +524,18 @@ Change 0271 records the six-category candidate run at `fd49fad` and the same-hea
 
 ## 2026-10-25 — Extend S4 coverage with strict POSIX runtime matrix
 
-Change 0272 records the design decision to add a POSIX profile alongside the pinned Windows profile because required POSIX selectors cannot satisfy the S4 no-skip acceptance on Windows. The matrix must bind all reports to the same candidate, registry and dependency lock, and every selector must pass on its assigned profile. This is not a waiver for skipped or prohibited tests. User authorization for the dedicated Ubuntu-24.04 WSL2 environment is recorded in the conversation; the runtime profile remains unimplemented and unverified.
+Change 0272 records the design decision to add a POSIX profile alongside the pinned Windows profile because required POSIX selectors cannot satisfy the S4 no-skip acceptance on Windows. The matrix must bind all reports to the same candidate, registry and dependency lock, and every selector must pass on its assigned profile. This is not a waiver for skipped or prohibited tests. User authorization for the dedicated Ubuntu-24.04 WSL2 environment is recorded in the conversation; at the time change 0272 was recorded, the runtime profile was not implemented or verified.
+
+## 2026-10-25 — Implement S4 platform runtime matrix
+
+Change 0274 adds schema-v2 Windows, unprivileged Ubuntu-24.04 WSL, and restricted root-harness
+profiles; exact selector assignments; profile-aware report accounting; and a fail-closed matrix
+validator. The WSL candidate must reside under `/tmp/vst-s4-candidate`, with Windows-drive mount
+checks bound into reports and the root proof. A read-only mount listing showed an unrelated `9p
+drivers` mount, so unrelated `9p` mounts are allowed while candidate-covering `9p` and Windows-drive
+mounts are rejected. Root preflight requires a private namespace with only loopback and runs an
+ephemeral local socket canary; it makes no external request. The generated inventory retains 51
+policy `NOT_RUN` selectors; no waiver is introduced. No tests, builds, WSL runner execution,
+dependency installation, matrix execution, or CI were performed. One out-of-sequence `git diff
+--check` occurred during coding and is documented in the change record and lessons log. See change
+0274.
