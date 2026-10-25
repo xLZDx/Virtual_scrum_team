@@ -16,7 +16,7 @@ S2 E5/VST-014 binds preflight inventory to a caller-selected run and nonce. The 
 
 ## Verification state
 
-- Test cases authored and exact committed-head verification passed; see change record 0164 and `docs/sdlc/evidence/s2-preflight-nonce-functional-run.md`.
+- Test cases authored and exact committed-head verification passed; see change record 0165 and `docs/sdlc/evidence/s2-preflight-nonce-functional-run.md`.
 - No product source was changed by this test-owner commit.
 
 ## Ownership and next step

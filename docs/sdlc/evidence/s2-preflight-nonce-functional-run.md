@@ -16,4 +16,4 @@ C:\Python314\python.exe -m pytest -q tests/vst/test_s2_sandbox_probe.py -k "coll
 - Limitations: focused Windows functional evidence only. It does not replace the existing fresh WSL probe acceptance or prove production deployment, OS quotas, process cleanup, or full sandbox acceptance.
 - Worktree was clean after the exact-head run.
 
-See detailed change records 0162 (implementation), 0163 (tests), and 0164 (exact-head evidence).
+See detailed change records 0162 (implementation), 0163 (tests), and 0165 (exact-head evidence).
