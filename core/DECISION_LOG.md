@@ -642,6 +642,10 @@ After test source commit `d1416dc`, the registry was regenerated from that exact
 
 The focused test run at exact candidate `e75e0fe` passed 108 tests with one pytest-asyncio deprecation warning. The subsequent full matrix failed on a Windows-specific final-status test running under the WSL profile, synthetic WSL E2E candidates placed outside the runner's required `/tmp/vst-s4-candidate` root, and two root-profile fixtures that changed ownership after removing permissions needed by the capability-bounded process. Keep the production boundary unchanged: explicitly model Windows in its unit test, put only WSL candidate fixtures below a verified UID-997/mode-0700 parent, set fixture modes before `chown`, and restore only fixture directories before cleanup. These are test-only changes by the designated functional-test reviewer; they remain unverified until exact-head reruns. Change 0293 records them. Do not create per-sprint worktrees.
 
+## 2026-10-25 — Bind S4 selector registry to POSIX fixture repair commit
+
+After test-only source commit `a318f11`, regenerate the selector registry before focused rerun. Change 0294 records the exact source HEAD and unchanged denominator: 935 selectors, 884 assigned runnable, 51 policy `NOT_RUN`; 90 functional and 56 E2E selectors. This is inventory generation only. Preserve policy `NOT_RUN` as non-approving and bind all runtime reports to one exact candidate.
+
 ## 2026-10-25 — Refresh the selector registry after the Linux flag fixture
 
 After test-source commit `c4f9cb9`, regenerate the category registry before rerunning. It now binds to exact source HEAD `c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209` and records 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN`, and 90 functional selectors. Preserve the policy rows and use exact-head evidence. See change 0290.
