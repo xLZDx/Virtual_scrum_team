@@ -290,3 +290,7 @@ The designated E2E agent inspected and ran the full `tests/vst/test_s2_diffgate.
 ## 2026-10-25 -- Triage S2 E4 WSL containment skips
 
 At triage repository HEAD `50647fb`, the four E4 skips were confirmed as parameter values in an unconditional `NOT_RUN` placeholder, not standalone runnable selectors. Process-group and descendant cleanup remain prohibited, worker key-file denial has a separate real passing WSL selector, and parent Job Object nesting requires Windows. No additional tests were run. See change 0211.
+
+## 2026-10-25 -- Record correlated S2 GPT-PM MAJOR findings
+
+The exact-head review of S2 HEAD `12758c9410276e58591f879b34a2a5b0b39c8b30` returned `MAJOR — MODIFY`, correlated request `460d72c5-e4a7-4b92-b5e4-9f6a16221a9d`, reply `2c5bfa37-3502-46e6-8092-dcd77904f5e4`, input hash `b51609ec03d37bf0b45961d1ac794894ac37ecec99e8cc6ea2f31575b19397a6`. The three findings are incomplete E8 crash/resume evidence, E4 platform containment proof, and E5 worker/environment/workspace/resource binding. GPT-PM found no newly demonstrated source exploit/defect. Full response is preserved in `docs/sdlc/evidence/s2-gptpm-final-review-12758c9.json` (change 0212). No push/PR is authorized.

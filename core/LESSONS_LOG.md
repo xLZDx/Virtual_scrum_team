@@ -458,3 +458,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — If an E2E subset omits a requirements-mapped module, close that safe coverage gap separately at a new exact committed head. Inspect the module for prohibited actions before running it and keep the recorded denominator specific to that module. See change 0210.
 
 2026-10-25 — Triage skipped scenarios by inspecting the concrete test nodes before scheduling more execution. Four S2 E4 values sat inside an unconditional skip placeholder; two require prohibited cleanup, one already had a runnable passing key-file selector, and one requires Windows. Do not rerun the placeholder or count it as coverage. See change 0211.
+
+2026-10-25 — Preserve exact GPT-PM request/reply IDs and review input hash, then verify each objection against source and test evidence. A correlated MAJOR can identify missing runtime acceptance without proving a source vulnerability; retain that distinction and do not invent a code fix for absent deployment evidence. S2 M01/M02/M03 were verified as E8/E4/E5 acceptance gaps. See change 0212.
