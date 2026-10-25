@@ -113,13 +113,20 @@ def test_s4_root_harness_outer_preflights_candidate_then_reexecs_fixed_installed
     calls = []
     events = []
     closed = []
+    opened = []
     monkeypatch.setattr(root_harness, "_args", lambda: args)
     monkeypatch.setattr(root_harness, "_distribution", lambda: True)
     monkeypatch.setattr(root_harness, "_trusted_installed_helper", lambda: True)
     monkeypatch.setattr(root_harness, "_git_head", lambda path: events.append("git") or args.expected_head)
     monkeypatch.setenv("PATH", "/untrusted/path")
     monkeypatch.setattr(root_harness.os, "geteuid", lambda: 0, raising=False)
-    monkeypatch.setattr(root_harness.os, "open", lambda path, flags: 41)
+    close_on_exec = 0x80000
+    monkeypatch.setattr(root_harness.os, "O_CLOEXEC", close_on_exec, raising=False)
+    monkeypatch.setattr(
+        root_harness.os,
+        "open",
+        lambda path, flags: opened.append((path, flags)) or 41,
+    )
     monkeypatch.setattr(root_harness.os, "close", closed.append)
     monkeypatch.setattr(
         root_harness.subprocess,
@@ -138,6 +145,9 @@ def test_s4_root_harness_outer_preflights_candidate_then_reexecs_fixed_installed
     assert options["shell"] is False
     assert options["pass_fds"] == (41,)
     assert options["cwd"] == repo.resolve()
+    assert opened == [
+        ("/proc/self/ns/net", root_harness.os.O_RDONLY | close_on_exec)
+    ]
     assert root_harness.MINIMAL_ENV == EXPECTED_MINIMAL_ENV
     assert options["env"] == EXPECTED_MINIMAL_ENV
     assert closed == [41]

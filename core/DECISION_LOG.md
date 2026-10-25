@@ -625,3 +625,7 @@ The focused run at `85f8a9d9fbef8f6377500bfcd8aec5b7594039a0` printed 93 passed 
 ## 2026-10-25 — Refresh the test-selector registry after traceback-mock correction
 
 After test-source commit `24ba10d`, regenerate the category registry before retrying the focused modules. The generator bound `docs/qa/categories.json` to source HEAD `24ba10dd341f8bc9a99dd8f303f760f83fb8aef6` and retained 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN` and 90 functional selectors. Preserve policy `NOT_RUN` and require exact-head test evidence. See change 0288.
+
+## 2026-10-25 — Model Linux close-on-exec in the Windows root-helper contract test
+
+The focused run at `17096c74d0b9a71ca26298aa47d785949b51f4ce` returned 107 passed, 1 failed and one warning. The sole failure was a Windows-host test double invoking a Linux-only root-helper path without `os.O_CLOEXEC`, producing `AttributeError` before the assertion. Add a test-local Linux flag constant and assert the namespace descriptor uses `O_RDONLY | O_CLOEXEC`; do not add a Windows fallback to the WSL-only helper implementation. Refresh the test registry and rerun. See change 0289.
