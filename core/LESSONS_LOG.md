@@ -555,3 +555,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — SHORTCOMING: the first S4 native CLI run falsely rejected the pinned CPython interpreter because a lowercase implementation identifier was compared with a display label. The E2E agent caught this before child execution; seven cases were blocked, not failed in pytest. Rule: use the canonical Python implementation display API for human-readable environment checks and keep it distinct from the executable-path/version constraints. Fix recorded in 0245; exact-head rerun remains pending.
 
 2026-10-25 — S4 negative-test fixture rule: use a real but unreachable Git commit to test non-ancestry; a fabricated hash tests Git's invalid-object path instead. Seeded observations are emitted only under the QA plugin and direct pytest cannot certify that category. See change 0246.
+
+2026-10-25 — S4 registry freshness rule: the runner correctly blocked before pytest when a committed test source digest no longer matched the category registry. Regenerate and commit the registry after every test-source correction; record preflight blocks as `BLOCKED`, not test failures. See change 0247.

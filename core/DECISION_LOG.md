@@ -421,3 +421,7 @@ The S4 exact-head runtime report recorded CPython 3.14.3 at the approved executa
 ## 2026-10-25 — Keep S4 failure fixtures inside valid Git and QA-plugin contexts
 
 The source-head negative test now uses an existing but unreachable commit object so Git can distinguish non-ancestry from an invalid object query. E2E synthetic candidates now archive the committed CPython fix. Seeded fixture observations remain runner-only and must be exercised through the QA plugin; direct pytest is not evidence for that category. See change 0246.
+
+## 2026-10-25 — Refresh the QA registry after every test-source commit
+
+At exact HEAD `d99be24`, the native functional category was blocked before collection because the committed source digest for the E2E test file was stale. Regenerate the category registry after committed test edits before launching any category. See change 0247.
