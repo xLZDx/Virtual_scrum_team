@@ -309,3 +309,7 @@ A full adversarial S2 GPT-PM follow-up was prepared for exact HEAD `f683a371d3cd
 ## 2026-10-25 — Reconcile S2 E3 POSIX anchor scenarios from exact WSL module evidence
 
 The E2E runner's complete `tests/vst/test_s2_store_lifecycle.py` run at exact commit `c2771b5968afcdd2b027f1c008fc8023fd0e0f12` reported 19 passed and 0 skipped in Ubuntu/WSL. The test module blob matched that commit, and the POSIX-only skip decorators were inactive in WSL. The run therefore included nine E3/VST-012 anchor scenarios: idempotency/fork rejection, older database restore detection, one/multi-event interrupted recovery, and five invalid suffix states. The aggregate output did not retain per-node lines; preserve that limitation. These local fixture results supersede earlier NOT_RUN labels for those nine cases only; they do not close production mount/workspace binding. See exact evidence and change 0224.
+
+## 2026-10-25 -- Reconcile S2 attribution footer omissions
+
+Observed S2 commits `f683a37` (change 0222), `eb6c2fc` (change 0223) and `94f43cb` (change 0224) include their linked change records but their commit messages do not end with the required `Executor: Codex` footer. Their commit creators and reason for omission are not independently established by this checkout. Preserve history and record the discrepancy in reconciliation commit 0231; do not infer authorship or rewrite commits.
