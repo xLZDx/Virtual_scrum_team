@@ -70,6 +70,7 @@ def _args() -> argparse.Namespace:
         choices=("functional", "integration", "api", "e2e", "regression", "seeded-failure"),
     )
     parser.add_argument("--dependency-target", required=True)
+    parser.add_argument("--dependency-wheelhouse", required=True)
     parser.add_argument("--scratch-root", required=True)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--expected-head", required=True)
@@ -266,6 +267,7 @@ def _main() -> int:
     )
     qa_args = [PYTHON, "-I", "-c", qa_launcher, str(repo), "--category", args.category,
                "--repo-root", str(repo), "--dependency-target", args.dependency_target,
+               "--dependency-wheelhouse", args.dependency_wheelhouse,
                "--scratch-root", args.scratch_root, "--run-id", args.run_id,
                "--expected-head", args.expected_head, "--privileged-harness-proof", str(proof_path),
                "--run-nonce", nonce, "--report-path", args.report_path,

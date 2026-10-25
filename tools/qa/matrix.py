@@ -13,6 +13,7 @@ from typing import Any
 from .registry import (
     ALL_CATEGORIES,
     RUNTIME_PROFILES,
+    WINDOWS_PROFILE,
     WSL_ROOT_PROFILE,
     RegistryError,
     ValidatedRegistry,
@@ -20,9 +21,10 @@ from .registry import (
     validate_registry,
 )
 from .report import canonical_json, canonical_lock_bytes, normalized_report, sha256_bytes
+from .dependencies import locked_wheel_manifest
 
 
-MATRIX_SCHEMA_VERSION = 1
+MATRIX_SCHEMA_VERSION = 2
 MATRIX_PATH = "docs/sdlc/evidence/qa/matrix.report.jsonl"
 MAX_REPORT_FILE_BYTES = 32 * 1024 * 1024
 MAX_ARTIFACT_CHUNK_BYTES = 4 * 1024 * 1024
@@ -258,7 +260,7 @@ def _validate_run(
     expected_not_run = category_not_run
     expected_inventory = registry.category_inventory_ids[category]
     reasons: list[str] = []
-    if report.get("schema_version") != 2:
+    if report.get("schema_version") != 3:
         reasons.append("category report schema version is stale or unsupported")
     if report.get("category") != category or report.get("runtime_profile") != profile:
         reasons.append("category report category/runtime profile does not match its reference")
@@ -271,6 +273,43 @@ def _validate_run(
     lock_bytes = canonical_lock_bytes((root / "tools/qa/requirements.lock").read_bytes())
     if b"\r" in lock_bytes or report.get("lock_sha256") != hashlib.sha256(lock_bytes).hexdigest():
         reasons.append("category report dependency-lock hash is stale")
+    target_digest = report.get("dependency_target_sha256")
+    target_digest_after = report.get("dependency_target_sha256_after")
+    wheel_rows = report.get("dependency_wheels")
+    expected_wheels = locked_wheel_manifest(
+        root / "tools/qa/requirements.lock",
+        "win32" if profile == WINDOWS_PROFILE else "linux",
+    )
+    if (
+        not isinstance(target_digest, str)
+        or _HEX64.fullmatch(target_digest) is None
+        or target_digest_after != target_digest
+        or report.get("dependency_content_verified_before") is not True
+        or report.get("dependency_content_verified_after") is not True
+        or report.get("dependency_execution_integrity") != "NOT_VERIFIED"
+    ):
+        reasons.append("category report lacks stable verified dependency target content evidence")
+    if (
+        not isinstance(wheel_rows, list)
+        or not wheel_rows
+        or any(
+            not isinstance(row, dict)
+            or set(row) != {"name", "version", "sha256"}
+            or not isinstance(row.get("name"), str)
+            or not isinstance(row.get("version"), str)
+            or not isinstance(row.get("sha256"), str)
+            or _HEX64.fullmatch(row.get("sha256", "")) is None
+            for row in wheel_rows
+        )
+        or len({row.get("name") for row in wheel_rows if isinstance(row, dict)}) != len(wheel_rows)
+        or wheel_rows != expected_wheels
+    ):
+        reasons.append("category report locked wheel digest inventory is invalid")
+    expected_versions = {row["name"]: row["version"] for row in expected_wheels}
+    if report.get("dependency_versions") != expected_versions:
+        reasons.append("category report dependency versions do not match its profile's locked wheels")
+    if report.get("pytest_version") != expected_versions.get("pytest"):
+        reasons.append("category report pytest version does not match its locked wheel")
     if report.get("expected_test_ids") != expected:
         reasons.append("category report expected selectors do not match profile assignment")
     if report.get("inventory_test_ids") != expected_inventory:

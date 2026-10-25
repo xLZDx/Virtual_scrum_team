@@ -21,7 +21,7 @@ The exact-head review found that the runner checked dependency names and version
 
 ## Verification state
 
-Documentation/design only. No test, build, dependency installation, or runtime command was run for this change. During the documentation review, `git diff --check` was inadvertently invoked once; it emitted no text, and the wrapper did not retain the exit status. Treat it as a recorded process deviation, not acceptance evidence. The implementation and designated test evidence remain pending.
+Documentation/design only. No test, build, dependency installation, or runtime command was run for this change. During the documentation review, `git diff --check` was inadvertently invoked once; it emitted no text, and the wrapper did not retain the exit status. Treat it as a recorded process deviation, not acceptance evidence. Implementation details are in change 0313; designated test evidence remains pending.
 
 ## Ownership and next action
 

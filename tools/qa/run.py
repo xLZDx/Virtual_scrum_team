@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import configparser
 import hashlib
-import importlib.metadata
 import ntpath
 import json
 import os
@@ -33,6 +32,11 @@ from tools.vst.runner import (
 )
 
 from .fixtures import FixtureCatalogError, load_fixture_catalog
+from .dependencies import (
+    DependencyProvenanceError,
+    locked_wheel_manifest,
+    verify_dependency_environment,
+)
 from .registry import (
     RegistryError,
     RUNTIME_PROFILES,
@@ -71,10 +75,6 @@ ROOT_HARNESS_PROOF_FIELDS = {
 _RUN_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z")
 _HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 _SAFE_RELATIVE = re.compile(r"[A-Za-z0-9_./-]+\Z")
-_LOCK_LINE = re.compile(
-    r"^(?P<name>[A-Za-z0-9_.-]+)==(?P<version>[A-Za-z0-9_.+-]+)(?:;\s*sys_platform\s*==\s*\"(?P<platform>[A-Za-z0-9_]+)\")?\s+\\$"
-)
-_HASH_LINE = re.compile(r"^\s+--hash=sha256:([0-9a-f]{64})\s*$")
 _SENSITIVE = re.compile(
     r"(?i)\b(api[_-]?key|access[_-]?token|refresh[_-]?token|secret|password|authorization)"
     r"\s*[:=]\s*[^\s,;]{4,}"
@@ -94,6 +94,7 @@ def _args() -> argparse.Namespace:
     parser.add_argument("--manifest", default="docs/qa/categories.json")
     parser.add_argument("--fixtures", default="docs/qa/fixtures.json")
     parser.add_argument("--dependency-target", required=True)
+    parser.add_argument("--dependency-wheelhouse", required=True)
     parser.add_argument("--scratch-root", required=True)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--expected-head")
@@ -175,6 +176,7 @@ def _repo_paths(args: argparse.Namespace) -> tuple[Path, Path, dict[str, Path]]:
     if output_paths["report"].suffixes[-2:] != [".report", ".jsonl"]:
         raise QARunError("report artifact must use the JSON Lines suffix")
     args._dependency_target = Path(args.dependency_target).resolve(strict=False)
+    args._dependency_wheelhouse = Path(args.dependency_wheelhouse).resolve(strict=False)
     return repo_root, scratch, output_paths
 
 
@@ -585,67 +587,20 @@ def _lock_versions(root: Path) -> tuple[str, dict[str, str]]:
     lock_path = root / "tools" / "qa" / "requirements.lock"
     try:
         raw = lock_path.read_bytes()
-        lines = raw.decode("utf-8").splitlines()
     except OSError as exc:
         raise QARunError(f"QA dependency lock is missing ({type(exc).__name__})") from None
-    if not lines or not lines[0].startswith("# Wheel-only, exact hashes"):
-        raise QARunError("QA dependency lock header is invalid")
-    versions: dict[str, str] = {}
-    pending: tuple[str, str, str | None] | None = None
-    saw_hash = False
-    for line in lines:
-        if not line or line.lstrip().startswith("#"):
-            continue
-        if pending is None:
-            match = _LOCK_LINE.fullmatch(line)
-            if match is None:
-                raise QARunError("QA dependency lock syntax is invalid")
-            pending = (match.group("name").lower().replace("_", "-"), match.group("version"), match.group("platform"))
-            saw_hash = False
-        else:
-            hash_match = _HASH_LINE.fullmatch(line)
-            if hash_match is None:
-                raise QARunError("every locked wheel must have a SHA-256 pin")
-            saw_hash = True
-            name, version, platform_name = pending
-            if platform_name is None or (platform_name == "win32" and os.name == "nt"):
-                if name in versions:
-                    raise QARunError(f"duplicate locked package: {name}")
-                versions[name] = version
-            pending = None
-    if pending is not None or not saw_hash:
-        raise QARunError("QA dependency lock ends without a wheel hash")
-    if "pytest" not in versions:
-        raise QARunError("pytest is absent from the QA lock")
     canonical_lock = canonical_lock_bytes(raw)
     if b"\r" in canonical_lock:
         raise QARunError("QA dependency lock contains unsupported bare carriage returns")
+    try:
+        platform_name = "win32" if os.name == "nt" else "linux"
+        versions = {
+            row["name"]: row["version"]
+            for row in locked_wheel_manifest(lock_path, platform_name)
+        }
+    except DependencyProvenanceError as exc:
+        raise QARunError(str(exc)) from None
     return hashlib.sha256(canonical_lock).hexdigest(), versions
-
-
-def _installed_versions(expected: dict[str, str], target: Path) -> tuple[dict[str, str], list[str]]:
-    actual: dict[str, str] = {}
-    missing: list[str] = []
-    for distribution in importlib.metadata.distributions(path=[os.fspath(target)]):
-        name = distribution.metadata.get("Name")
-        if not isinstance(name, str) or not name:
-            missing.append("unnamed distribution in dependency target")
-            continue
-        normalized = name.lower().replace("_", "-").replace(".", "-")
-        if normalized in actual:
-            missing.append(f"duplicate distribution in dependency target: {normalized}")
-            continue
-        actual[normalized] = distribution.version
-    for package, required in sorted(expected.items()):
-        installed = actual.get(package)
-        if installed is None:
-            missing.append(package)
-        elif installed != required:
-            missing.append(f"{package} (expected {required}, found {installed})")
-    extras = sorted(set(actual) - set(expected))
-    if extras:
-        missing.append("unexpected distributions in dependency target: " + ", ".join(extras))
-    return actual, missing
 
 
 def _run_bounded(
@@ -808,7 +763,7 @@ def _report_base(
             if test_id not in not_run_reasons
         ] if registry else []
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "sprint": "S4",
         "run_id": args.run_id,
         "category": args.category,
@@ -854,6 +809,12 @@ def _report_base(
         },
         "pytest_version": None,
         "dependency_versions": {},
+        "dependency_wheels": [],
+        "dependency_target_sha256": None,
+        "dependency_target_sha256_after": None,
+        "dependency_content_verified_before": False,
+        "dependency_content_verified_after": False,
+        "dependency_execution_integrity": "NOT_VERIFIED",
         "artifact_paths": {
             key: path.relative_to(root).as_posix() for key, path in (getattr(args, "_output_paths", {}) or {}).items()
         },
@@ -1030,6 +991,7 @@ def _pytest_command(
     env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
     env["PYTHONUTF8"] = "1"
     env["PYTHONNOUSERSITE"] = "1"
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
     env["PYTHONPATH"] = os.fspath(dependency_target)
     temp_root = os.fspath(scratch_run)
     env["TEMP"] = temp_root
@@ -1106,8 +1068,24 @@ def main() -> int:
             before_paths=before_paths,
         )
         dependency_target: Path = args._dependency_target
-        if not dependency_target.is_dir() or dependency_target.is_relative_to(root):
+        if (
+            Path(args.dependency_target).is_symlink()
+            or getattr(Path(args.dependency_target), "is_junction", lambda: False)()
+            or not dependency_target.is_dir()
+            or dependency_target.is_relative_to(root)
+        ):
             raise QARunError("dependency-target must be an existing directory outside the candidate repository")
+        wheelhouse: Path = args._dependency_wheelhouse
+        if (
+            Path(args.dependency_wheelhouse).is_symlink()
+            or getattr(Path(args.dependency_wheelhouse), "is_junction", lambda: False)()
+            or not wheelhouse.is_dir()
+            or wheelhouse.is_relative_to(root)
+            or wheelhouse == dependency_target
+            or wheelhouse.is_relative_to(dependency_target)
+            or dependency_target.is_relative_to(wheelhouse)
+        ):
+            raise QARunError("dependency-wheelhouse must be an existing directory outside the candidate and target")
         try:
             catalog, catalog_hash = load_fixture_catalog(root, registry, args.fixtures)
         except FixtureCatalogError as exc:
@@ -1125,10 +1103,19 @@ def main() -> int:
                 shell=False,
             ).stdout
         ).strip()
-        lock_hash, locked_versions = _lock_versions(root)
-        report["lock_sha256"] = lock_hash
+        try:
+            dependency_evidence = verify_dependency_environment(
+                root / "tools" / "qa" / "requirements.lock", dependency_target, wheelhouse
+            )
+        except DependencyProvenanceError as exc:
+            raise QARunError(f"locked QA dependency content verification failed: {exc}") from None
+        report["lock_sha256"] = dependency_evidence["lock_sha256"]
+        report["dependency_wheels"] = dependency_evidence["wheels"]
+        report["dependency_target_sha256"] = dependency_evidence["target_sha256"]
+        report["dependency_content_verified_before"] = True
         sys.path.insert(0, os.fspath(dependency_target))
-        actual_versions, missing_versions = _installed_versions(locked_versions, dependency_target)
+        actual_versions = dependency_evidence["versions"]
+        missing_versions: list[str] = []
         report["dependency_versions"] = actual_versions
         report["pytest_version"] = actual_versions.get("pytest")
         if report["pytest_version"] is None:
@@ -1150,6 +1137,8 @@ def main() -> int:
         base_result, base_reasons = _base_status(category_status, args.category, category_reason)
         if base_result != "PASS":
             report["result"] = base_result
+            report["dependency_target_sha256_after"] = dependency_evidence["target_sha256"]
+            report["dependency_content_verified_after"] = True
             report["reasons"] = base_reasons
             report["exit_code"] = None
             report["dirty_tree"]["after_paths"] = _unexpected_candidate_paths(before_paths)
@@ -1195,6 +1184,19 @@ def main() -> int:
         # Command evidence uses normalized temporary-root tokens to avoid writing
         # absolute host paths into a public repository report.
         report["command"] = _normalized_command(argv, scratch_run)
+        try:
+            final_preflight = verify_dependency_environment(
+                root / "tools" / "qa" / "requirements.lock", dependency_target, wheelhouse
+            )
+        except DependencyProvenanceError as exc:
+            raise QARunError(f"locked QA dependency changed while preparing pytest ({type(exc).__name__})") from None
+        if (
+            final_preflight["lock_sha256"] != dependency_evidence["lock_sha256"]
+            or final_preflight["wheels"] != dependency_evidence["wheels"]
+            or final_preflight["target_sha256"] != dependency_evidence["target_sha256"]
+        ):
+            raise QARunError("QA dependency provenance changed while preparing pytest")
+        dependency_evidence = final_preflight
         started = time.monotonic()
         exit_code, stdout_raw, stderr_raw, capture = _run_bounded(
             argv,
@@ -1224,6 +1226,22 @@ def main() -> int:
             reasons.append("pytest exceeded the bounded runtime")
         if capture.get("stdout_truncated") or capture.get("stderr_truncated"):
             reasons.append("pytest output exceeded the configured cap")
+
+        try:
+            dependency_after = verify_dependency_environment(
+                root / "tools" / "qa" / "requirements.lock", dependency_target, wheelhouse
+            )
+        except DependencyProvenanceError:
+            reasons.append("QA dependency target or wheelhouse changed during test execution")
+        else:
+            report["dependency_target_sha256_after"] = dependency_after["target_sha256"]
+            report["dependency_content_verified_after"] = True
+            if (
+                dependency_after["lock_sha256"] != dependency_evidence["lock_sha256"]
+                or dependency_after["wheels"] != dependency_evidence["wheels"]
+                or dependency_after["target_sha256"] != dependency_evidence["target_sha256"]
+            ):
+                reasons.append("QA dependency provenance changed during test execution")
 
         events_path = scratch_run / "events.json"
         events: dict[str, Any] | None = None
@@ -1320,6 +1338,7 @@ def main() -> int:
         QARunError,
         RegistryError,
         FixtureCatalogError,
+        DependencyProvenanceError,
         OSError,
         subprocess.SubprocessError,
         TypeError,

@@ -1,6 +1,6 @@
 # Sprint S4 plan: reproducible QA automation
 
-Status: **S4 IMPLEMENTED; PLATFORM MATRIX INCONCLUSIVE/FAIL; ACCEPTANCE OPEN.** At candidate `05b18450176109aafc108020bc2fafb7136a43d6`, exact-head Windows and WSL reports and the 15-reference matrix are recorded in change 0308. The matrix is non-approving because 52 explicit policy selectors remain `NOT_RUN`. The operator additionally authorized one narrow WSL runner-to-worker identity-boundary helper and one report-bound test. Helper source and installer are present in the canonical checkout and documented in pending change 0310; they are not installed or runtime-proven and the selector is pending. A correlated GPT-PM review at `3b8d80ff5456192c2419d9515b47fb843939ee16` rejected the candidate with two MAJOR findings; the valid dependency-content integrity finding is tracked in change 0311. This authorization does not lift existing process-kill, timeout, process-death, mutation, or E8 policy exclusions. CI, mutation runs, seeded product-code defects, and external service calls remain prohibited.
+Status: **S4 IMPLEMENTED; PLATFORM MATRIX INCONCLUSIVE/FAIL; ACCEPTANCE OPEN.** At candidate `05b18450176109aafc108020bc2fafb7136a43d6`, exact-head Windows and WSL reports and the 15-reference matrix are recorded in change 0308. The matrix is non-approving because 52 explicit policy selectors remain `NOT_RUN`. The operator additionally authorized one narrow WSL runner-to-worker identity-boundary helper and one report-bound test. Helper source and installer are present in the canonical checkout and documented in pending change 0310; they are not installed or runtime-proven and the selector is pending. A correlated GPT-PM review at `3b8d80ff5456192c2419d9515b47fb843939ee16` rejected the candidate with two MAJOR findings. The dependency-content remediation is implemented in pending change 0313 but is not tested or runtime-proven; see design and finding record 0311. This authorization does not lift existing process-kill, timeout, process-death, mutation, or E8 policy exclusions. CI, mutation runs, seeded product-code defects, and external service calls remain prohibited.
 
 Sources: `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` section 1; `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`; `governance/DEFINITION_OF_DONE.md`; S2 and S3 plans; current `tests/vst/`, `tools/vst/runner.py`, `tools/vst/slice.py`, and `tools/vst/{contracts,gate,store}.py`.
 
@@ -34,7 +34,7 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 
 ### E2 — Reproducible environment and native runner
 
-**S4.2.1** Establish a repository-owned, hash-pinned QA dependency input compatible with the strict Windows CPython 3.14.3 and POSIX CPython 3.12.3 runtime profiles, and record relevant OS/runtime/tool versions for each category and selector assignment.
+**S4.2.1** Establish a repository-owned, hash-pinned QA wheel input compatible with the strict Windows CPython 3.14.3 and POSIX CPython 3.12.3 runtime profiles. Prepare a fresh isolated external target from an already-present wheelhouse and verify the target content against the locked wheel bytes before and after each run.
 
 **S4.2.2** Implement one bounded runner entry point that launches pytest's native discovery/execution for the requested category, preserving existing unittest discovery. It records argv, exit code, duration, stdout/stderr references, environment identity, expected and collected IDs, and output artifact digests.
 
@@ -42,11 +42,11 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 
 **S4.2.4** Before any pytest child starts, bind the isolated dependency target's executable Python files to the exact hash-pinned wheel inputs; report the verified dependency-content digest and recheck the target after execution. The runner must remain offline and must not install, download, or repair dependencies. Contract: `docs/S4_QA_DEPENDENCY_PROVENANCE_DESIGN.md`.
 
-**AC-4:** Running the same committed category manifest under the same platform profile and dependency lock yields the same selected test-ID set; the platform matrix binds each profile report to the exact candidate and registry, and artifact timestamps may differ but are excluded from normalized content hashes.
+**AC-4:** Running the same committed category manifest under the same platform profile and dependency lock yields the same selected test-ID set; the platform matrix binds each profile report to the exact candidate, registry and selected wheel hashes, and artifact timestamps may differ but are excluded from normalized content hashes.
 
-**AC-5:** A missing interpreter, dependency, category selector, artifact, or test ID produces a typed non-approving result with a cause; no fallback interpreter or empty-success result is allowed.
+**AC-5:** A missing interpreter, locked wheel, exact dependency target file, category selector, artifact, or test ID produces a typed non-approving result with a cause; no fallback interpreter or empty-success result is allowed.
 
-**AC-6:** The runner does not install or download dependencies during a test run. Dependency installation, if needed, is an explicit environment-preparation step from the exact lock and isolated target.
+**AC-6:** The runner does not install or download dependencies during a test run. `tools/qa/prepare_dependencies.py` may create a new external target only from an already-present wheelhouse whose exact wheel hashes match the committed lock; it performs no network access and never overlays a target.
 
 ### E3 — Functional and Python API lanes
 
@@ -90,7 +90,7 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 
 **AC-16:** The report-bound identity selector passes on the WSL UID-997 profile using the installed root-owned helper at its fixed path. The helper accepts only caller UID/GID 997:988, drops to UID/GID 999:989, clears supplementary groups and inherited descriptors, enables `no_new_privs`, uses the fixed interpreter without a shell, and fails closed on any mismatch. Its embedded candidate/source hashes match the exact report head. The selector observes the child identity and confirms the worker cannot read the runner-owned sentinel file or connect to its runner-only socket. The restricted-root profile remains separate; existing `NOT_RUN` policy exclusions are unchanged.
 
-**AC-17:** Before execution, every file supplied to Python from the external dependency target matches a package file recorded by a wheel whose SHA-256 is permitted by the committed lock. Extra executable/importable files, missing files, changed contents, unsupported wheel layouts, or changed dependency state after execution produce a typed non-approving result. The report binds the selected wheel and target-content digests without recording absolute external paths. The runner performs no network access or installation.
+**AC-17:** Immediately before pytest starts, every file in the external dependency target matches the exact inventory and bytes of a wheel whose SHA-256 is permitted by the committed lock; immediately after pytest exits, the runner recomputes and compares that inventory. Missing, extra, linked, changed, unsupported-layout, or lock-mismatched content produces a typed non-approving result. The report binds selected wheel and pre/post target-content digests without absolute external paths and explicitly reports in-run immutability as `NOT_VERIFIED`; no claim is made that these snapshots prevent a same-identity change-and-restore while pytest is running. The runner performs no network access or installation.
 
 ## Requirements-to-test map and denominator
 
@@ -115,8 +115,9 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 
 Each run appends one JSON Lines envelope and output chunks to fixed per-category artifacts containing:
 
-- sprint, category, run id, schema version, exact repository HEAD, branch, dirty flag and changed-path list;
+- sprint, category, run id, category report schema version 3, exact repository HEAD, branch, dirty flag and changed-path list;
 - category-registry version/hash, expected, collected, executed, skipped, xfailed, failed, unexpected and uncollected test IDs;
+- normalized selected wheel hashes and pre/post dependency-target content digests with verification state;
 - exact argv, working-directory-relative selector, exit code, start/end/duration, interpreter path/version, OS/runtime identity, pytest version and lockfile hash;
 - output artifact relative paths, exact per-run stdout/stderr byte ranges, byte sizes, and SHA-256 chunk digests; the normalized semantic digest excludes nondeterministic wall-clock fields, raw output size/hash metadata, and prior append-only history, while each exact per-run output hash and size is still verified against its captured byte range;
 - per-fixture seeded-failure ID, input digest, expected/observed verdict and linked test ID, where applicable;
@@ -125,7 +126,7 @@ Each run appends one JSON Lines envelope and output chunks to fixed per-category
 Exact commands are formed from committed category selectors. The implemented interface is:
 
 ```text
-C:\Python314\python.exe -m tools.qa.run --category <category> --repo-root <candidate-repo> --dependency-target <isolated-external-target> --scratch-root <external-scratch-root> --run-id <unique-id> --report-path docs/sdlc/evidence/qa/<category>.report.jsonl --stdout-path docs/sdlc/evidence/qa/<category>.stdout.txt --stderr-path docs/sdlc/evidence/qa/<category>.stderr.txt
+C:\Python314\python.exe -m tools.qa.run --category <category> --repo-root <candidate-repo> --dependency-target <isolated-external-target> --dependency-wheelhouse <external-wheelhouse> --scratch-root <external-scratch-root> --run-id <unique-id> --report-path docs/sdlc/evidence/qa/<category>.report.jsonl --stdout-path docs/sdlc/evidence/qa/<category>.stdout.txt --stderr-path docs/sdlc/evidence/qa/<category>.stderr.txt
 ```
 
 `tools.qa.run` is implemented and delegates to pytest's native CLI. It captures collection and runtime output without claiming that collection alone is a pass. The category arguments and output paths are exact; a VST caller must allowlist the exact three paths for that invocation. Test files and fixtures are authored but require committed registry regeneration before any run. Runtime category evidence remains `NOT_RUN`.
