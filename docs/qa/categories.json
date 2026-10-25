@@ -38,7 +38,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "5cb61b2ba11192241f6c01465895daf22fdd5ef8",
+  "source_head": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
   "source_inventory": [
     {
       "path": "tests/qa/test_s4_e2e_runner_cli.py",
@@ -117,8 +117,8 @@
     },
     {
       "path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
-      "sha256": "3448c495860e61cbc3cd5ddc99e6cc319738f82df3a403a0adbb8612ea2d4d64"
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
+      "sha256": "ba342565e9e7ca3741d67b083366c92dab53cf70f5c005c06ad7f5f6d97e1775"
     },
     {
       "path": "tests/vst/test_s2_sandbox_probe.py",
@@ -9504,7 +9504,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_bounded_source_preflight_rejects_before_pack_or_index_writer",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_bounded_source_preflight_rejects_before_pack_or_index_writer",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9515,7 +9515,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_breaker_pause_replays_after_store_restart_and_provider_success_does_not_close_it",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_breaker_pause_replays_after_store_restart_and_provider_success_does_not_close_it",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9526,7 +9526,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_breaker_requires_operator_signed_override_bound_to_active_episode",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_breaker_requires_operator_signed_override_bound_to_active_episode",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9537,7 +9537,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_cumulative_target_storage_cap_rejects_before_pack_process_starts",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_cumulative_target_storage_cap_rejects_before_pack_process_starts",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9548,7 +9548,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_e4_platform_containment_scenarios_not_run",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_e4_platform_containment_scenarios_not_run",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": []
     },
@@ -9556,7 +9556,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_external_backend_callback_runs_outside_store_anchor_transaction",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_external_backend_callback_runs_outside_store_anchor_transaction",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9567,7 +9567,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_failed_start_side_effect_blocks_restart_until_verified_reconciliation",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_failed_start_side_effect_blocks_restart_until_verified_reconciliation",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9578,7 +9578,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_gate_routes_each_v2_receipt_to_its_designated_authority",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_gate_routes_each_v2_receipt_to_its_designated_authority",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9589,7 +9589,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_hook_free_publication_transfers_source_only_commit_without_running_pre_push",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_hook_free_publication_transfers_source_only_commit_without_running_pre_push",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9600,7 +9600,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_idempotent_push_and_pull_request_use_local_bare_remote",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_idempotent_push_and_pull_request_use_local_bare_remote",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9611,7 +9611,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_lifecycle_transition_table_rejects_unlisted_pairs",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_lifecycle_transition_table_rejects_unlisted_pairs",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9622,7 +9622,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_local_git_timeout_leaves_pending_then_restart_retry_completes_same_key",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_local_git_timeout_leaves_pending_then_restart_retry_completes_same_key",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": []
     },
@@ -9630,7 +9630,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_manual_override_replay_is_stale_after_a_later_breaker_episode",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_manual_override_replay_is_stale_after_a_later_breaker_episode",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9641,7 +9641,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_nonstrict_windows_launch_keeps_unsuspended_compatibility_path",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_nonstrict_windows_launch_keeps_unsuspended_compatibility_path",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9652,7 +9652,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_poisoned_or_interrupted_target_refuses_before_object_writer",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_poisoned_or_interrupted_target_refuses_before_object_writer",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9663,7 +9663,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_posix_launch_keeps_session_based_compatibility_path",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_posix_launch_keeps_session_based_compatibility_path",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9674,7 +9674,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_posix_worker_cannot_read_signer_or_key_file",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_posix_worker_cannot_read_signer_or_key_file",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "wsl-ubuntu-24.04-root-harness"
@@ -9684,7 +9684,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_reconciliation_rejects_unsigned_false_and_accepts_signed_operator_resolution",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_reconciliation_rejects_unsigned_false_and_accepts_signed_operator_resolution",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9695,7 +9695,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_replay_keeps_invalid_legacy_reconciliation_unresolved",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_replay_keeps_invalid_legacy_reconciliation_unresolved",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9706,7 +9706,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_restart_resumes_the_correct_cleanup_phase_after_reconciliation",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_restart_resumes_the_correct_cleanup_phase_after_reconciliation",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9717,7 +9717,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_runner_derives_three_distinct_heads_and_has_no_caller_evidence_overrides",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_runner_derives_three_distinct_heads_and_has_no_caller_evidence_overrides",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9728,7 +9728,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_runner_rejects_caller_supplied_head_parser_key_or_commands",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_runner_rejects_caller_supplied_head_parser_key_or_commands",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9739,7 +9739,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_signer_rejects_malformed_signing_evidence",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_signer_rejects_malformed_signing_evidence",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9750,7 +9750,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_signing_request_exact_schema_and_replay_protocol_without_os_claim",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_signing_request_exact_schema_and_replay_protocol_without_os_claim",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9761,7 +9761,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_source_object_alternates_are_rejected_before_pack_or_index_writer",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_source_object_alternates_are_rejected_before_pack_or_index_writer",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9772,7 +9772,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_stale_second_supervisor_cannot_start_after_peer_opens_persisted_breaker",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_stale_second_supervisor_cannot_start_after_peer_opens_persisted_breaker",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9783,7 +9783,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_strict_windows_launch_failure_cleans_up_without_running_command",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_strict_windows_launch_failure_cleans_up_without_running_command",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9794,7 +9794,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_strict_windows_launch_suspends_assigns_job_then_resumes_before_command",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_strict_windows_launch_suspends_assigns_job_then_resumes_before_command",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9805,7 +9805,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_synthetic_backend_fast_forward_and_conflicting_branch_and_pr_refs",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_synthetic_backend_fast_forward_and_conflicting_branch_and_pr_refs",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9816,7 +9816,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_target_storage_lock_times_out_on_another_process_then_releases_normally",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_target_storage_lock_times_out_on_another_process_then_releases_normally",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9827,7 +9827,7 @@
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_two_cached_ready_supervisors_allow_only_one_concurrent_start_callback",
       "selector": "tests/vst/test_s2_runner_lifecycle.py::test_two_cached_ready_supervisors_allow_only_one_concurrent_start_callback",
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
-      "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+      "source_commit": "fc20c9e31e1d4bb9bd9356921add66e14e5e230a",
       "primary_category": "integration",
       "runtime_profiles": [
         "windows-cpython-3.14.3",

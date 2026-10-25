@@ -686,6 +686,10 @@ Review against the source request found changes 0301 and 0302 had dedicated chan
 
 The exact-head S4 run at `980d878` found two independent issues. First, `tools/qa/run.py` used the profile-scoped NOT_RUN map to decide approval, so category policy selectors with no runtime profile could be ignored and a synthetic report returned `PASS`; `tools/qa/matrix.py` also expected profile-scoped report fields. The runner and matrix now use the same category-wide policy map while keeping genuinely profile-unassigned selectors distinct. Second, the restricted-root signer-isolation test used a signer-owned mode-0710 parent which UID0/GID0 with no supplementary groups and no `CAP_DAC_OVERRIDE` could not traverse to stat the socket. The fixture parent is now root-owned and runner-group-owned; socket permissions and worker denial checks stay fixed. A reviewer caught the report/matrix mismatch before tests. Both changes are unverified until refreshed-registry exact-head tests. See change 0304.
 
+## 2026-10-25 — Refresh S4 selector registry after policy NOT_RUN correction
+
+After source commit `fc20c9e31e1d4bb9bd9356921add66e14e5e230a`, regenerate the selector inventory so its source identity includes the category-wide runner/matrix policy correction and root IPC fixture change. Change 0305 records the successful generation, 935 primary regression selectors (883 assigned runnable, 52 policy `NOT_RUN`), and 3 separate seeded-failure selectors. Generation is not runtime evidence; compliant focused and exact-head matrix runs remain next.
+
 ## 2026-10-25 — Refresh the selector registry after the Linux flag fixture
 
 After test-source commit `c4f9cb9`, regenerate the category registry before rerunning. It now binds to exact source HEAD `c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209` and records 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN`, and 90 functional selectors. Preserve the policy rows and use exact-head evidence. See change 0290.
