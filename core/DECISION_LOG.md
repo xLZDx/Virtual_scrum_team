@@ -304,3 +304,7 @@ At repository HEAD `71169f7e004160f9bc0781de2dce1568bbaa8e49`, the focused `test
 ## 2026-10-25 -- Report S3 local acceptance and external gates separately
 
 S3's local hand-written adapter code, focused functional run (16 passed) and worker-pilot E2E run (8 passed) are reviewed at exact repository HEAD `86f59dc911f9a9ddbef029b2e9f57b6b7052bb92`; fresh code, security and reliability reviews found no open findings. This does not close candidate comparison, fresh sandbox proof, OS cleanup, process-kill, egress runtime, or GPT-PM exact-head approval. Keep those states `NOT_RUN`, `NOT_VERIFIED`, or pending as individually applicable. Russian and English status reports are `reports/S3_WORKER_PILOT_2026-10-25.ru.html` and `.html`; see change record 0100.
+
+## 2026-10-25 -- Refresh BMad Loop candidate pin to v0.13.2
+
+Official upstream release metadata identifies v0.13.2 as latest; read-only `git ls-remote` resolved the tag to `4a5c45390ff46c0fc28d316004ffe0ed7c8eea60`. Pinned `pyproject.toml`, LICENSE, SECURITY.md, and README record MIT/Python/dependency floors and maintainer-described coding-agent execution and security scope. These claims increase the control-plane overlap concern but do not establish implementation behavior or security. No source acquired or executed; operator acquisition authorization remains required. Temporal v1.32.1 remains the official latest pin. See change 0168.
