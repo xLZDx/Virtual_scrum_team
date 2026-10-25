@@ -1344,30 +1344,32 @@ def test_posix_worker_cannot_read_signer_or_key_file():
     fixture_root = tempfile.mkdtemp(prefix="vst-worker-boundary-", dir="/tmp")
     os.chmod(fixture_root, 0o755)
     listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    keys_dir = None
+    ipc_dir = None
     try:
         keys_dir = os.path.join(fixture_root, "synthetic-trust-roots")
         os.mkdir(keys_dir)
-        os.chown(keys_dir, signer.pw_uid, signer.pw_gid)
         os.chmod(keys_dir, 0o700)
         key_paths = []
         for role in ("worker", "supervisor", "operator", "event", "reviewer", "probe-signer"):
             key_path = os.path.join(keys_dir, role + ".key")
             with open(key_path, "wb") as stream:
                 stream.write(b"synthetic-only-key-fixture")
-            os.chown(key_path, signer.pw_uid, signer.pw_gid)
             os.chmod(key_path, 0o600)
+            os.chown(key_path, signer.pw_uid, signer.pw_gid)
             require_private_key(key_path, owner_uid=signer.pw_uid)
             key_paths.append(key_path)
+        os.chown(keys_dir, signer.pw_uid, signer.pw_gid)
 
         ipc_dir = os.path.join(fixture_root, "synthetic-signer-ipc")
         os.mkdir(ipc_dir)
         socket_path = os.path.join(ipc_dir, "fixture.sock")
         listener.bind(socket_path)
         listener.listen(1)
-        os.chown(ipc_dir, signer.pw_uid, runner_gid)
         os.chmod(ipc_dir, 0o710)
-        os.chown(socket_path, signer.pw_uid, runner_gid)
         os.chmod(socket_path, 0o660)
+        os.chown(socket_path, signer.pw_uid, runner_gid)
+        os.chown(ipc_dir, signer.pw_uid, runner_gid)
         require_worker_cannot_access_signer(
             socket_path, worker_uid=worker.pw_uid, worker_gid=worker.pw_gid,
         )
@@ -1418,6 +1420,10 @@ if denied != len(paths) or not socket_denied:
         assert observed["socket_connect_denied"] is True
     finally:
         listener.close()
+        for fixture_dir in (keys_dir, ipc_dir):
+            if fixture_dir is not None and os.path.isdir(fixture_dir):
+                os.chown(fixture_dir, 0, 0)
+                os.chmod(fixture_dir, 0o700)
         shutil.rmtree(fixture_root)
 
 

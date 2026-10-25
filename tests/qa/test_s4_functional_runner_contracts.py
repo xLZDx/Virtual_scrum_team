@@ -925,6 +925,7 @@ def test_s4_main_persists_blocked_when_final_git_status_fails_after_pytest_passe
     monkeypatch.setattr(run, "_args", lambda: args)
     monkeypatch.setattr(run.sys, "executable", "C:/Python314/python.exe")
     monkeypatch.setattr(run.sys, "path", list(run.sys.path))
+    monkeypatch.setattr(run, "_runtime_profile", lambda: registry.WINDOWS_PROFILE)
     monkeypatch.setattr(run, "_git_status_paths", fail_final_status)
     monkeypatch.setattr(run, "_lock_versions", lambda _root: ("a" * 64, {"pytest": "9.0.3"}))
     monkeypatch.setattr(run, "_installed_versions", lambda _versions, _target: ({"pytest": "9.0.3"}, []))

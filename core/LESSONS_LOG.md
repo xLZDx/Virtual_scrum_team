@@ -646,4 +646,6 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — SUCCESS: after committing the POSIX path fixture, the S4 selector registry was refreshed from exact test source commit `d1416dc` before rerun; the denominator remains 935 total regression, 884 assigned and 51 policy `NOT_RUN`. Registry generation is not execution evidence. See change 0292.
 
+2026-10-25 — SHORTCOMING: WSL E2E contract tests created synthetic candidates under the host pytest temporary directory, outside the runtime's enforced distro-local candidate boundary; a Windows-specific runner test also inherited the WSL profile. Rule: make synthetic candidate location and runtime profile explicit in host-independent tests, and assert the WSL fixture parent identity/mode before use. Two root-profile identity tests also attempted `chown` after removing directory permissions; set mode before ownership transfer and restore only fixture directories before cleanup. These are fixture issues, not evidence to relax the product boundary. See change 0293.
+
 2026-10-25 — SUCCESS: after the Linux close-on-exec test fixture was committed, the selector registry was regenerated against the exact committed test source. The denominator remains 935 regression selectors, 884 assigned, and 51 policy `NOT_RUN`; refresh is not execution evidence. See change 0290.

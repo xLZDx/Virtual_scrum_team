@@ -11,10 +11,13 @@ import hashlib
 import io
 import json
 import os
+import platform
 import shutil
+import stat
 import subprocess
 import sys
 import tarfile
+import tempfile
 from pathlib import Path, PurePosixPath
 
 import pytest
@@ -40,6 +43,7 @@ VOLATILE_REPORT_FIELDS = {
     "artifact_digests", "artifact_sizes", "normalized_sha256",
 }
 SYNTHETIC_SECRET = "s4-e2e-private-token-must-not-be-recorded"
+WSL_TEST_FIXTURE_PARENT = Path("/tmp/vst-s4-candidate/test-fixtures")
 
 
 def _git(root: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess:
@@ -267,6 +271,56 @@ def _make_candidate(
     return candidate, head
 
 
+def _is_wsl() -> bool:
+    return platform.system() == "Linux" and "microsoft" in platform.release().lower()
+
+
+@pytest.fixture
+def candidate_tmp_path(tmp_path: Path):
+    """Put WSL candidates on distro-local storage; keep artifacts under pytest tmp_path."""
+    if not _is_wsl():
+        yield tmp_path
+        return
+
+    if os.geteuid() != 997:
+        pytest.fail("WSL E2E candidate fixtures must run as UID 997 (vst-runner)")
+    try:
+        parent_info = WSL_TEST_FIXTURE_PARENT.lstat()
+    except OSError as exc:
+        pytest.fail(
+            "WSL E2E fixture parent is unavailable; provision "
+            "/tmp/vst-s4-candidate/test-fixtures as UID 997 with mode 0700 "
+            f"before running this suite ({type(exc).__name__})"
+        )
+    if (
+        not stat.S_ISDIR(parent_info.st_mode)
+        or parent_info.st_uid != 997
+        or stat.S_IMODE(parent_info.st_mode) != 0o700
+        or not os.access(WSL_TEST_FIXTURE_PARENT, os.W_OK | os.X_OK)
+    ):
+        pytest.fail(
+            "WSL E2E fixture parent must be a real directory owned by UID 997, "
+            "mode 0700, and writable/searchable by the runner; expected "
+            "/tmp/vst-s4-candidate/test-fixtures"
+        )
+
+    fixture_root = Path(
+        tempfile.mkdtemp(prefix="s4-e2e-", dir=WSL_TEST_FIXTURE_PARENT)
+    )
+    try:
+        yield fixture_root
+    finally:
+        # The private 0700 parent limits replacement to this runner identity;
+        # remove only the exact unique child created above, never its parent.
+        if (
+            fixture_root.parent != WSL_TEST_FIXTURE_PARENT
+            or not fixture_root.name.startswith("s4-e2e-")
+            or fixture_root.is_symlink()
+        ):
+            pytest.fail("refusing unsafe cleanup of the WSL E2E candidate fixture")
+        shutil.rmtree(fixture_root)
+
+
 def _write_manifest_variant(candidate: Path, variant: str) -> None:
     path = candidate / "docs" / "qa" / "categories.json"
     manifest = json.loads(path.read_text(encoding="utf-8"))
@@ -393,9 +447,11 @@ def _assert_pytest_module_invocation(report: dict) -> None:
     assert NOT_RUN_TEST_ID not in command
 
 
-def test_s4_e2e_cli_native_collection_binds_candidate_and_repeatable_artifact_chunks(tmp_path):
+def test_s4_e2e_cli_native_collection_binds_candidate_and_repeatable_artifact_chunks(
+    tmp_path, candidate_tmp_path
+):
     target = _dependency_target()
-    candidate, expected_head = _make_candidate(tmp_path)
+    candidate, expected_head = _make_candidate(candidate_tmp_path)
     assert _git(candidate, "status", "--porcelain").stdout == b""
     assert _git(candidate, "remote").stdout == b""
     assert not target.is_relative_to(candidate.resolve())
@@ -427,9 +483,11 @@ def test_s4_e2e_cli_native_collection_binds_candidate_and_repeatable_artifact_ch
     assert report2["normalized_sha256"] == report1["normalized_sha256"]
 
 
-def test_s4_e2e_cli_preserves_sandbox_dependent_selector_as_not_run(tmp_path):
+def test_s4_e2e_cli_preserves_sandbox_dependent_selector_as_not_run(
+    tmp_path, candidate_tmp_path
+):
     target = _dependency_target()
-    candidate, _ = _make_candidate(tmp_path, include_not_run=True)
+    candidate, _ = _make_candidate(candidate_tmp_path, include_not_run=True)
 
     result = _run_cli(candidate, tmp_path, target, run_id="sandbox-not-run")
     report, report_line = _last_report(candidate)
@@ -475,10 +533,12 @@ def test_s4_pytest_argv_size_depends_on_source_files_not_selector_count(tmp_path
     assert not any("::" in argument for argument in many_selectors_argv)
 
 
-def test_s4_e2e_cli_refuses_candidate_head_and_registry_selector_mismatches(tmp_path):
+def test_s4_e2e_cli_refuses_candidate_head_and_registry_selector_mismatches(
+    tmp_path, candidate_tmp_path
+):
     empty_target = tmp_path / "empty-dependencies"
     empty_target.mkdir()
-    candidate, expected_head = _make_candidate(tmp_path)
+    candidate, expected_head = _make_candidate(candidate_tmp_path)
     wrong_head = "f" * 40
 
     mismatch = _run_cli(
@@ -497,10 +557,10 @@ def test_s4_e2e_cli_refuses_candidate_head_and_registry_selector_mismatches(tmp_
     assert duplicate_report["command"] == []
 
 
-def test_s4_e2e_cli_refuses_registry_with_a_missing_selector(tmp_path):
+def test_s4_e2e_cli_refuses_registry_with_a_missing_selector(tmp_path, candidate_tmp_path):
     empty_target = tmp_path / "empty-dependencies"
     empty_target.mkdir()
-    candidate, _ = _make_candidate(tmp_path)
+    candidate, _ = _make_candidate(candidate_tmp_path)
     _write_manifest_variant(candidate, "missing")
 
     result = _run_cli(candidate, tmp_path, empty_target, run_id="missing-selector")
@@ -520,10 +580,10 @@ def test_s4_e2e_cli_refuses_registry_with_a_missing_selector(tmp_path):
     ],
 )
 def test_s4_e2e_cli_rejects_uncollected_duplicate_skipped_or_xfailed_selector(
-    tmp_path, outcome, collector, report_field
+    tmp_path, candidate_tmp_path, outcome, collector, report_field
 ):
     target = _dependency_target()
-    candidate, _ = _make_candidate(tmp_path, outcome=outcome, collector=collector)
+    candidate, _ = _make_candidate(candidate_tmp_path, outcome=outcome, collector=collector)
     result = _run_cli(candidate, tmp_path, target, run_id=f"case-{collector}-{outcome}")
     report, report_line = _last_report(candidate)
     _assert_nonapproving(result, report)
@@ -548,9 +608,9 @@ def test_s4_e2e_cli_rejects_uncollected_duplicate_skipped_or_xfailed_selector(
     assert report["result"] == "FAIL"
 
 
-def test_s4_e2e_cli_fails_closed_on_output_truncation(tmp_path):
+def test_s4_e2e_cli_fails_closed_on_output_truncation(tmp_path, candidate_tmp_path):
     target = _dependency_target()
-    candidate, _ = _make_candidate(tmp_path, outcome="spam")
+    candidate, _ = _make_candidate(candidate_tmp_path, outcome="spam")
     result = _run_cli(
         candidate, tmp_path, target, run_id="truncated-output", output_cap_bytes=128
     )
@@ -569,10 +629,12 @@ def test_s4_e2e_cli_fails_closed_on_output_truncation(tmp_path):
     assert report["result"] == "FAIL"
 
 
-def test_s4_e2e_cli_reports_missing_dependency_without_fallback_or_child_invocation(tmp_path):
+def test_s4_e2e_cli_reports_missing_dependency_without_fallback_or_child_invocation(
+    tmp_path, candidate_tmp_path
+):
     missing_target = tmp_path / "empty-dependency-target"
     missing_target.mkdir()
-    candidate, _ = _make_candidate(tmp_path)
+    candidate, _ = _make_candidate(candidate_tmp_path)
     result = _run_cli(candidate, tmp_path, missing_target, run_id="missing-dependency")
     report, report_line = _last_report(candidate)
     _assert_nonapproving(result, report)
@@ -582,9 +644,11 @@ def test_s4_e2e_cli_reports_missing_dependency_without_fallback_or_child_invocat
     assert report["exit_code"] is None
 
 
-def test_s4_e2e_cli_blocks_dirty_tracked_candidate_before_native_collection(tmp_path):
+def test_s4_e2e_cli_blocks_dirty_tracked_candidate_before_native_collection(
+    tmp_path, candidate_tmp_path
+):
     target = _dependency_target()
-    candidate, _ = _make_candidate(tmp_path)
+    candidate, _ = _make_candidate(candidate_tmp_path)
     tracked_source = candidate / "tools" / "vst" / "runner.py"
     tracked_source.write_bytes(tracked_source.read_bytes() + b"\n# dirty synthetic fixture\n")
 
@@ -601,10 +665,10 @@ def test_s4_e2e_cli_blocks_dirty_tracked_candidate_before_native_collection(tmp_
     assert report["executed_node_ids"] == []
 
 
-def test_s4_e2e_cli_rejects_artifact_path_outside_fixed_contract(tmp_path):
+def test_s4_e2e_cli_rejects_artifact_path_outside_fixed_contract(tmp_path, candidate_tmp_path):
     target = tmp_path / "empty-dependency-target"
     target.mkdir()
-    candidate, _ = _make_candidate(tmp_path)
+    candidate, _ = _make_candidate(candidate_tmp_path)
     outside_path = "docs/sdlc/evidence/qa/../../outside.report.jsonl"
 
     result = _run_cli(
@@ -621,9 +685,11 @@ def test_s4_e2e_cli_rejects_artifact_path_outside_fixed_contract(tmp_path):
         "the S4 execution assignment prohibits process-kill scenarios"
     )
 )
-def test_s4_e2e_cli_timeout_is_nonapproving_without_install_or_fallback(tmp_path):
+def test_s4_e2e_cli_timeout_is_nonapproving_without_install_or_fallback(
+    tmp_path, candidate_tmp_path
+):
     target = _dependency_target()
-    candidate, _ = _make_candidate(tmp_path, outcome="sleep")
+    candidate, _ = _make_candidate(candidate_tmp_path, outcome="sleep")
     result = _run_cli(
         candidate,
         tmp_path,
