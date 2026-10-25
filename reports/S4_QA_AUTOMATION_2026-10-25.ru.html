@@ -13,7 +13,7 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <body>
 <header>
 <h1>S4: автоматизация QA — отчёт о состоянии</h1>
-<p class="mut">Дата: 2026-10-25. Спринт частично реализован; точный GPT-PM review вернул MODIFY для полного принятия, source-level дефект не установлен, report-bound runtime evidence не выполнено.</p>
+<p class="mut">Актуализация: 2026-10-25. Текущий S4 source/test HEAD: <code>7b0fe2339980b6b5d7278c0aeaaa58cc5fab8b71</code>. Report-bound functional runtime теперь подтверждён синтетическим signer; E2E и общий sprint gate остаются открытыми. Предыдущий точный GPT-PM ответ MODIFY относится к старому HEAD <code>4509586</code>, это не одобрение текущего кода.</p>
 <p><a href="S4_QA_AUTOMATION_2026-10-25.html">English report</a></p>
 </header>
 
@@ -42,13 +42,44 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
   <dl>
     <dt>Проект</dt><dd>Virtual_scrum_team</dd>
     <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team-s4</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 45f4bb7</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 7b0fe23</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
           data-fail="Выделите вручную">Копировать страницу</button>
 </div>
 <!-- report-conform:end -->
+
+<main>
+<h2>Актуальная матрица приёмки (15 критериев)</h2>
+<p>Evidence: <code>docs/sdlc/evidence/s4-reportbound-functional-7b0fe23.md</code>, exact source/test HEAD <code>7b0fe23</code>. <code>e2e-runner</code> (GPT-6 Luna, medium) выполнил 10 focused selectors: 10 passed; synthetic functional <code>tools.qa.run</code>: 28/28 IDs, QA report/TestRun receipt/diff gate PASS. Signer был ephemeral и in-process. Static security review на <code>e7f857f</code> не нашёл actionable BLOCKER/MAJOR/MINOR; последующий source change только укоротил test fixture.</p>
+<table><thead><tr><th>ID / смысл</th><th>Состояние и доказательства</th><th>Остаток, зависимость, владелец и следующий шаг</th></tr></thead><tbody>
+<tr><td>AC-1 — категории и registry ID</td><td>Частично. Registry содержит 19 functional, 6 integration, 73 API, 7 seeded-failure и 12 E2E ID; функциональная категория отработала 28/28 на 7b0.</td><td>E2E denominator PARTIAL: нужен безопасный report-bound E2E contract. Владелец сервиса UNKNOWN; оператор accountable, Codex исполняет; определить runner-owned orchestration.</td></tr>
+<tr><td>AC-2 — native invocation по категориям</td><td>Частично. Functional report-bound PASS; прежние category runs остаются привязаны к своим историческим HEAD.</td><td>Нет текущего aggregate и полного набора категорий на одном HEAD. Ответственные test roles: functional-test-reviewer/e2e-runner; запустить exact-head category/regression после закрытия runner contract.</td></tr>
+<tr><td>AC-3 — hash и HEAD provenance</td><td>Реализовано и runtime-подтверждено в synthetic functional CLI; evidence связывает snapshot, source и candidate HEAD, manifest и diff hash.</td><td>Повторить на authoritative final run; QA gate technical owner UNKNOWN. Codex — привязать evidence к final exact head.</td></tr>
+<tr><td>AC-4 — воспроизводимый набор тестовых ID</td><td>Частично. 10 focused selectors и 28/28 functional ID прошли на snapshot 7b0.</td><td>Остальные категории и E2E denominator не закрыты; test agents — выполнить недостающие exact-head выборки после E2E contract.</td></tr>
+<tr><td>AC-5 — типизированный fail-closed режим</td><td>Частично. Строгий parser и signer path boundary прошли mapped functional regressions.</td><td>Отрицательные report-bound/E2E сценарии не покрыты полностью; e2e-runner — дополнить после согласования orchestration contract.</td></tr>
+<tr><td>AC-6 — отсутствие установки зависимостей</td><td>Частично. Зафиксированная команда runtime использовала pinned Ubuntu/Python/pytest; установка пакетов не выполнялась.</td><td>Независимое подтверждение dependency-lock enforcement для полного набора отсутствует; owner UNKNOWN; включить в authoritative runner evidence.</td></tr>
+<tr><td>AC-7 — functional и Python API</td><td>Частично. Functional 28/28 на текущем 7b0; API исторически 92 passed, 1 skipped на 20fa7bb, POSIX symlink выборки 3/3 на 1c97ee9.</td><td>API exact-current-head rerun не зафиксирован; functional-test-reviewer — выполнить на финальном HEAD.</td></tr>
+<tr><td>AC-8 — честная API граница</td><td>Частично. Python API поддержан; HTTP/transport API в репозитории не подтверждён и обозначен UNSUPPORTED.</td><td>Перепроверить только если S3 добавит transport API; технический владелец UNKNOWN; пока сохранить ограничение в registry.</td></tr>
+<tr><td>AC-9 — изолированная local integration/E2E</td><td>Частично. Локальные synthetic functional артефакты PASS; рабочая изоляция runner/worker подтверждена focused evidence.</td><td>Полный report-bound E2E отсутствует из-за worker 999 без caps и доступа к runner-owned signer/output; QA runner owner UNKNOWN; определить orchestration contract.</td></tr>
+<tr><td>AC-10 — зависимости S3 и sandbox</td><td>Частично. Ubuntu 24.04/Python 3.12.3 и worker identity присутствуют; текущий WSL snapshot запущен.</td><td>S3 acceptance и report-bound E2E coupling остаются отдельными; Codex — связать с принятым S3 контрактом, не подменяя отсутствие доказательств.</td></tr>
+<tr><td>AC-11 — regression denominator</td><td>Частично. Категории тестировались отдельно на разных HEAD; текущий functional CLI учёл 28/28.</td><td>Aggregate exact-head regression не запускался; test agents — выполнить после кода и полного registry.</td></tr>
+<tr><td>AC-12 — недопустимые пропуски/сбои</td><td>Функциональный запуск: 0 failed/skipped/xfail/uncollected/unexpected; действуют строгие gate правила.</td><td>Общее принятие ждёт оставшиеся категории и authoritative gate; gate owner UNKNOWN; оценить полный envelope.</td></tr>
+<tr><td>AC-13 — mutation/red-green</td><td>NOT_RUN согласно ADR-0001.</td><td>Запрещённое ADR действие; оператор — владелец возможного изменения ADR, либо оставить NOT_RUN.</td></tr>
+<tr><td>AC-14 — evidence envelope и gate</td><td>Частично. Synthetic report, receipt, manifest и diff gate PASS на functional category.</td><td>Trusted deployed signer, authoritative task gate и E2E acceptance не выполнены. Signer/gate owner UNKNOWN; определить сервис и провести authoritative run.</td></tr>
+<tr><td>AC-15 — воспроизводимость и приватность артефактов</td><td>Частично. Exact-head hashes, stdout/stderr и manifest сохранены; тестовый signer не был deployed key.</td><td>Полная privacy-проверка authoritative report-bound пути не доказана; QA gate owner UNKNOWN; включить проверку в следующий signed run.</td></tr>
+</tbody></table>
+<h3>Следующие шаги по порядку</h3><ol>
+<li>Установить контракт runner-owned orchestration для E2E и определить trusted signer service/owner.</li>
+<li>Выполнить E2E denominator, authoritative gate и aggregate на одном exact final HEAD; сохранить отчёты и хэши.</li>
+<li>Провести свежий specialist consensus и GPT-PM review именно этого HEAD. Предыдущий MODIFY на 4509586 устарел; push/PR не разрешены без нового APPROVE.</li>
+</ol>
+<p>80/20 приоритет соблюдён в этой итерации: основная доля работы пошла в production/test-support code и реальные runtime regressions; текущий документальный проход фиксирует evidence и остаточные acceptance gates. Runtime доказательство — только для перечисленного synthetic functional scope, не для полного спринта.</p>
+<h2>Исторические записи</h2><p>Разделы ниже сохраняют run-specific историю для ранних HEAD; если они расходятся с актуальной матрицей выше, актуальна матрица и evidence 7b0fe23.</p>
+</main>
+
+
 
 
 
@@ -123,6 +154,8 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <footer class="mut">
 <p>Источник решения и критериев: <a href="../docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md">S4 plan</a>. Проверяемые источники: change records 0195–0201 (ancestry fix/tests, exact-head runs, POSIX symlink evidence, ревью и reconciliation отчёта), более раннее WSL evidence 0159 для source HEAD <code>56dce67</code> и ветка <code>s4-native-qa-runner</code>. Этот checkpoint создан из локальных Git/evidence записей; он не является PM approval, merge доказательством или подтверждением полного acceptance.</p>
 </footer>
+
+
 
 
 

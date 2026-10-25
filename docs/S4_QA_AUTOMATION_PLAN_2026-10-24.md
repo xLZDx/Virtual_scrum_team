@@ -4,6 +4,10 @@ Status: **Historical category evidence is recorded in change 0198 at `20fa7bb`: 
 
 The path-confinement MINOR was resolved in 0137 and the source parser was bounded in 0142. The focused registry suite then failed twice at test HEAD `64b8bb1` (14 passed, 1 skipped, 1 failed each run): a separate bounded `git cat-file` query returned false for valid provenance SHAs, which direct Git queries later confirmed existed. Change 0146 removes that redundant live query; full lowercase-SHA syntax remains checked, and the bounded ancestry query now supplies the single existence/history proof. The code reviewer reported the earlier source-read MINOR; the security reviewer reported no finding. The corrected committed-registry module passed at `56a58a7` (15 passed, 1 skipped, 0 failed) in the exact-head functional rerun recorded by change 0149; symlink runtime remains `NOT_RUN` on Windows.
 
+## Current S4 status — 2026-10-25, exact source/test HEAD `7b0fe2339980b6b5d7278c0aeaaa58cc5fab8b71`
+
+This section supersedes older statements below that the report-bound functional path was wholly `NOT_RUN`. The bounded functional category now has synthetic report-bound runtime evidence: 10 focused worker/signer-path/parser selectors passed, and a synthetic `tools.qa.run` run accounted for 28/28 functional IDs with PASS report, TestRun receipt, and diff gate. Evidence is `docs/sdlc/evidence/s4-reportbound-functional-7b0fe23.md`; test agent was `e2e-runner` (GPT-6 Luna, medium). The signer was ephemeral and in-process. This is not trusted deployed-signer acceptance, authoritative task-gate evaluation, aggregate regression, or E2E completion. E2E remains PARTIAL because worker UID 999 cannot safely launch the nested runner-only CLI under the current identity contract. The fresh static security review at `e7f857f` found no actionable BLOCKER/MAJOR/MINOR; the subsequent source change only shortened a test fixture.
+
 Sources: `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` section 1; `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`; `governance/DEFINITION_OF_DONE.md`; S2 and S3 plans; current `tests/vst/`, `tools/vst/runner.py`, `tools/vst/slice.py`, and `tools/vst/{contracts,gate,store}.py`.
 
 ## Goal and scope
@@ -161,13 +165,12 @@ Identifiers VST-032–037 are reconciled to the canonical S4 backlog row in `cor
 
 ## Ordered work and safe stopping points
 
-The current exact-head local category tests remain recorded in change 0198. Report-bound execution was blocked first by a WSL identity-transition dependency; the operator then authorized a bounded helper. A probe exposed a capability leak; the trampoline and two focused selectors now have a narrow passing runtime result at `abc9b41`. The follow-up CLI attempt exposed an artifact-group ownership issue, while a security review found a POSIX ACL validation gap. Change 0242 addresses both source issues but has no runtime evidence yet:
+The current exact-head local category tests remain recorded in change 0198. Report-bound execution was blocked first by a WSL identity-transition dependency; the operator then authorized a bounded helper. A probe exposed a capability leak; the trampoline and focused selectors now have passing runtime evidence at `7b0fe23`. The follow-up CLI exposed an artifact-group ownership issue, while security review found a POSIX ACL validation gap. Changes 0242–0253 address those issues; the current runtime evidence is in the evidence file above:
 
-1. Have the test owner add mapped ACL and worker-group artifact regressions; then run them and the capability/socket selectors on a fresh exact-head snapshot. Verify no signer path ACL is accepted and no `CAP_CHOWN` is needed.
-2. Retry a COMPLETE functional category with a run-specific v2 manifest and synthetic test-only signer to exercise report serialization. The previous attempt stopped at `_safe_output_dir`, so no report or receipt exists. Synthetic signing does not complete trusted deployed-signer acceptance.
-3. Provision the trusted S4 signer service and create a run-specific v2 task manifest. The canonical technical owner is UNKNOWN; the operator remains accountable and Codex executes.
-4. Add and map a contract-safe report-bound E2E selector without recursive runner/worker invocation; then run report, receipt, authoritative-gate, and aggregate-regression evidence on the exact head.
-5. Obtain specialist and GPT-PM review on the exact final HEAD. Do not push or open a PR without the required APPROVE.
+1. Provision/identify the trusted S4 signer service and create a run-specific v2 task manifest; canonical technical owner is UNKNOWN.
+2. Define a contract-safe runner-owned orchestration path for report-bound E2E without recursive runner/worker invocation, then map and run its selector.
+3. Run the authoritative task gate and aggregate regression with complete report-bound evidence on an exact final head; keep any prohibited ADR-0001 scenarios `NOT_RUN`.
+4. Obtain fresh specialist consensus and exact-head GPT-PM approval. Do not push or open a PR without the required APPROVE.
 
 The earlier WSL transfer and seven POSIX selectors in run `f3ad62c94bc0429987bc24277103d5b4` remain valid only for source HEAD `56dce67e508ccf452b2b7b39ed7f33c863081269`. They do not establish current-head S4 acceptance.
 ## Unknowns to resolve at S4 start

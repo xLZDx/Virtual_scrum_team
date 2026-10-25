@@ -13,7 +13,7 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <body>
 <header>
 <h1>S4 QA Automation — status report</h1>
-<p class="mut">Date: 2026-10-25. Sprint is partially implemented; exact-head GPT-PM review returned MODIFY for full acceptance, no source-level defect was established, and report-bound runtime evidence remains unexecuted.</p>
+<p class="mut">Updated 2026-10-25. Current S4 source/test HEAD: <code>7b0fe2339980b6b5d7278c0aeaaa58cc5fab8b71</code>. Synthetic-signer report-bound functional runtime is now evidenced; E2E and overall sprint gates remain open. The prior exact-head GPT-PM MODIFY applies to old HEAD <code>4509586</code> and does not approve current code.</p>
 <p><a href="S4_QA_AUTOMATION_2026-10-25.ru.html">Russian report</a></p>
 </header>
 
@@ -42,13 +42,44 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
   <dl>
     <dt>Project</dt><dd>Virtual_scrum_team</dd>
     <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team-s4</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 45f4bb7</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 7b0fe23</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
           data-fail="Select manually">Copy page</button>
 </div>
 <!-- report-conform:end -->
+
+<main>
+<h2>Current acceptance matrix (15 criteria)</h2>
+<p>Evidence: <code>docs/sdlc/evidence/s4-reportbound-functional-7b0fe23.md</code>, exact source/test HEAD <code>7b0fe23</code>. <code>e2e-runner</code> (GPT-6 Luna, medium) ran 10 focused selectors: 10 passed; synthetic functional <code>tools.qa.run</code>: 28/28 IDs, QA report/TestRun receipt/diff gate PASS. The signer was ephemeral and in-process. Static security review at <code>e7f857f</code> found no actionable BLOCKER/MAJOR/MINOR; the subsequent source change only shortened a test fixture.</p>
+<table><thead><tr><th>ID / meaning</th><th>State and evidence</th><th>Remainder, dependency, owner and next action</th></tr></thead><tbody>
+<tr><td>AC-1 — categories and test-ID registry</td><td>Partial. Registry has 19 functional, 6 integration, 73 API, 7 seeded-failure and 12 E2E IDs; functional category accounted for 28/28 at 7b0.</td><td>E2E denominator PARTIAL: needs a safe report-bound E2E contract. Service owner UNKNOWN; operator accountable, Codex executes; define runner-owned orchestration.</td></tr>
+<tr><td>AC-2 — native invocation for each category</td><td>Partial. Report-bound functional PASS; earlier category runs remain tied to historical HEADs.</td><td>No current aggregate or complete same-HEAD category set. Test roles: functional-test-reviewer/e2e-runner; run missing exact-head categories/regression after the runner contract is fixed.</td></tr>
+<tr><td>AC-3 — hash and HEAD provenance</td><td>Implemented and runtime-evidenced in the synthetic functional CLI; evidence binds snapshot, source and candidate HEAD, manifest, and diff hash.</td><td>Repeat on the authoritative final run; QA gate technical owner UNKNOWN. Codex: bind evidence to the final exact head.</td></tr>
+<tr><td>AC-4 — reproducible test-ID set</td><td>Partial. Ten focused selectors and 28/28 functional IDs passed on snapshot 7b0.</td><td>Other categories and E2E denominator remain open; test agents to run missing exact-head selections after the E2E contract.</td></tr>
+<tr><td>AC-5 — typed fail-closed behavior</td><td>Partial. Strict parser and signer-path boundary passed mapped functional regressions.</td><td>Report-bound/E2E negative paths are not fully covered; e2e-runner to extend after orchestration contract is defined.</td></tr>
+<tr><td>AC-6 — no dependency installation during a run</td><td>Partial. Recorded runtime command used pinned Ubuntu/Python/pytest; no packages were installed.</td><td>Independent dependency-lock enforcement evidence for the full suite is absent; owner UNKNOWN; include in authoritative runner evidence.</td></tr>
+<tr><td>AC-7 — functional and Python API scenarios</td><td>Partial. Functional 28/28 on current 7b0; API historically 92 passed, 1 skipped at 20fa7bb, POSIX symlink selectors 3/3 at 1c97ee9.</td><td>API exact-current-head rerun is not recorded; functional-test-reviewer to run at final HEAD.</td></tr>
+<tr><td>AC-8 — truthful API boundary</td><td>Partial. Python API is supported; no HTTP/transport API is evidenced in the repository and it is marked UNSUPPORTED.</td><td>Revisit only if S3 adds a transport API; technical owner UNKNOWN; preserve current registry scope meanwhile.</td></tr>
+<tr><td>AC-9 — isolated local integration/E2E</td><td>Partial. Local synthetic functional artifacts PASS; focused evidence confirms runner/worker isolation.</td><td>Full report-bound E2E is absent because worker 999 has no caps or access to runner-owned signer/output; QA runner owner UNKNOWN; define orchestration contract.</td></tr>
+<tr><td>AC-10 — S3 and sandbox dependencies</td><td>Partial. Ubuntu 24.04/Python 3.12.3 and worker identity are present; current WSL snapshot ran.</td><td>S3 acceptance and report-bound E2E coupling remain distinct; Codex to reconcile with accepted S3 contract without inferring missing evidence.</td></tr>
+<tr><td>AC-11 — regression denominator</td><td>Partial. Categories were run separately on different HEADs; current functional CLI accounted for 28/28.</td><td>Aggregate exact-head regression was not run; test agents to run after code and registry are complete.</td></tr>
+<tr><td>AC-12 — prohibited skips/failures</td><td>Functional run: 0 failed/skipped/xfail/uncollected/unexpected; strict gate rules are in place.</td><td>Overall acceptance awaits remaining categories and authoritative gate; gate owner UNKNOWN; evaluate full envelope.</td></tr>
+<tr><td>AC-13 — mutation/red-green</td><td>NOT_RUN under ADR-0001.</td><td>Prohibited by ADR; operator owns any ADR change, otherwise retain NOT_RUN.</td></tr>
+<tr><td>AC-14 — evidence envelope and gate</td><td>Partial. Synthetic report, receipt, manifest and diff gate PASS for functional category.</td><td>Trusted deployed signer, authoritative task gate and E2E acceptance remain unrun. Signer/gate owner UNKNOWN; identify service and run authoritative evidence.</td></tr>
+<tr><td>AC-15 — reproducibility and artifact privacy</td><td>Partial. Exact-head hashes, stdout/stderr and manifest are retained; no deployed key used.</td><td>Full privacy validation on authoritative report-bound path is unproven; QA gate owner UNKNOWN; include in next signed run.</td></tr>
+</tbody></table>
+<h3>Ordered next steps</h3><ol>
+<li>Define runner-owned E2E orchestration and identify the trusted signer service/owner.</li>
+<li>Run the E2E denominator, authoritative gate and aggregate on one exact final HEAD; retain reports and hashes.</li>
+<li>Obtain fresh specialist consensus and GPT-PM review for that exact HEAD. The prior MODIFY at 4509586 is stale; no push/PR without a new APPROVE.</li>
+</ol>
+<p>The 80/20 priority was followed in this iteration: most work went to production/test-support code and real runtime regressions; this documentation pass records evidence and residual acceptance gates. Runtime proof is limited to the listed synthetic functional scope, not the full sprint.</p>
+<h2>Historical records</h2><p>Sections below preserve run-specific history for earlier HEADs. If they differ from the current matrix above, the matrix and 7b0fe23 evidence are authoritative.</p>
+</main>
+
+
 
 
 
@@ -123,6 +154,8 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <footer class="mut">
 <p>Decision and criteria source: <a href="../docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md">S4 plan</a>. Verifiable sources: change records 0195–0201 (ancestry fix/tests, exact-head runs, focused POSIX symlink evidence, reviews, and report reconciliation), earlier WSL evidence 0159 for source HEAD <code>56dce67</code>, and branch <code>s4-native-qa-runner</code>. This checkpoint is derived from local Git/evidence records; it is not PM approval, merge evidence, or proof of full acceptance.</p>
 </footer>
+
+
 
 
 

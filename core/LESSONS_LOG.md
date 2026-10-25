@@ -643,3 +643,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — Pair a fail-closed path-component guard with regressions for both the denied writable case and the intended sticky-directory exception. The exception must verify ownership of the next entry, not only the sticky bit. See change 0252.
 
 2026-10-25 — Keep Unix-domain socket test fixture paths below the platform pathname limit. A test setup error before the guard runs is not product evidence; preserve the intermediate-ancestor shape while shortening only fixture names. See change 0253.
+
+2026-10-25 — Reconcile each newer exact-head run against older report text. The 10-selector pass and 28/28 synthetic functional CLI run close only exercised functional contracts; explicitly keep trusted signer, authoritative task gate, aggregate, and E2E denominator separate. See change 0254 and `docs/sdlc/evidence/s4-reportbound-functional-7b0fe23.md`.

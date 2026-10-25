@@ -605,3 +605,7 @@ Add functional selectors that reject a non-sticky world-writable intermediate pa
 ## 2026-10-25 — Correct S4 ancestor-test socket path setup
 
 At `e7f857f`, the unsafe-ancestor selector failed before entering product code because the nested Unix socket pathname exceeded `AF_UNIX` limits (9 focused selectors passed, one fixture setup failure). Keep the unsafe directory as an intermediate ancestor but shorten fixture names to `tmp_path/u/r/s`; rerun all ten selectors on a fresh exact head. See change 0253.
+
+## 2026-10-25 — Reconcile S4 exact-head functional evidence without closing E2E
+
+At source/test HEAD `7b0fe23`, ten focused selectors passed and the synthetic functional `tools.qa.run` category accounted for 28/28 IDs with PASS QA report, TestRun receipt, and diff gate. This is functional evidence only: the signer is synthetic, no authoritative task gate or aggregate run was evaluated, and the E2E denominator remains PARTIAL because nested runner execution is incompatible with the worker identity contract. Record complete evidence and limitations in `docs/sdlc/evidence/s4-reportbound-functional-7b0fe23.md`; retain the remaining gates as open. See change 0254.
