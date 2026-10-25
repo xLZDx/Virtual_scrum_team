@@ -277,7 +277,8 @@ def validate_registry(
         if not isinstance(digest, str) or _HEX64.fullmatch(digest) is None:
             raise RegistryError(f"source_inventory[{index}].sha256 is invalid")
         content = _read_repo_file(root, path)
-        if hashlib.sha256(content).hexdigest() != digest:
+        normalized_content = content.replace(b"\r\n", b"\n")
+        if hashlib.sha256(normalized_content).hexdigest() != digest:
             raise RegistryError(f"test source changed after registry generation: {path}")
         if _latest_path_commit(root, path) != commit:
             raise RegistryError(f"test source provenance is stale: {path}")

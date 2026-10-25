@@ -49,8 +49,8 @@ def _build_candidate_repo(tmp_path: Path, *, include_seeded: bool = True) -> tup
         categories += ("seeded_failure",)
     for category in categories:
         filename = f"test_s4_{category}_fixture.py"
-        (root / "tests" / "qa" / filename).write_text(
-            "def test_fixture_node():\n    return None\n", encoding="utf-8"
+        (root / "tests" / "qa" / filename).write_bytes(
+            "def test_fixture_node():\n    return None\n".encode("utf-8")
         )
     (root / "docs" / "S4_QA_AUTOMATION_PLAN_2026-10-24.md").write_text(
         "# Python API scope\n", encoding="utf-8"
@@ -142,6 +142,20 @@ def test_s4_registry_rejects_source_changed_after_manifest_digest(candidate_repo
 
     with pytest.raises(registry.RegistryError, match="test source changed after registry generation"):
         registry.validate_registry(root)
+
+
+def test_s4_registry_source_digest_is_stable_across_checkout_line_endings(candidate_repo):
+    root, manifest = candidate_repo
+    source = root / "tests" / "qa" / "test_s4_functional_fixture.py"
+    lf_bytes = source.read_bytes()
+    assert b"\n" in lf_bytes
+    assert b"\r\n" not in lf_bytes
+
+    source.write_bytes(lf_bytes.replace(b"\n", b"\r\n"))
+
+    loaded = registry.validate_registry(root)
+
+    assert loaded.data["source_inventory"] == manifest["source_inventory"]
 
 
 def test_s4_registry_rejects_source_head_outside_candidate_history(candidate_repo):

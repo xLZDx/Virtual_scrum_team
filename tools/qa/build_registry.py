@@ -70,12 +70,13 @@ def build_registry(root_path: str | Path) -> dict:
     for source_path in inventory_test_files(root):
         category = _category_for_test_file(source_path)
         content = (root / Path(source_path)).read_bytes()
+        normalized_content = content.replace(b"\r\n", b"\n")
         commit = _latest_path_commit(root, source_path)
         inventory.append(
             {
                 "path": source_path,
                 "source_commit": commit,
-                "sha256": hashlib.sha256(content).hexdigest(),
+                "sha256": hashlib.sha256(normalized_content).hexdigest(),
             }
         )
         selectors = _function_selectors(source_path, content)

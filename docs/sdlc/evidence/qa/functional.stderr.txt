@@ -1,1 +1,2 @@
 RegistryError: test source changed after registry generation: tests/qa/test_s4_e2e_runner_cli.py
+RegistryError: test source changed after registry generation: tests/vst/test_s2_runner_lifecycle.py

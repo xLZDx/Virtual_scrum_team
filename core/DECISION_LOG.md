@@ -425,3 +425,7 @@ The source-head negative test now uses an existing but unreachable commit object
 ## 2026-10-25 — Refresh the QA registry after every test-source commit
 
 At exact HEAD `d99be24`, the native functional category was blocked before collection because the committed source digest for the E2E test file was stale. Regenerate the category registry after committed test edits before launching any category. See change 0247.
+
+## 2026-10-25 — Normalize test-source line endings in registry digests
+
+Six native category attempts at `0122f06` were blocked before collection because the registry had hashed the canonical CRLF working copy while a clean checkout contained the committed LF blob. Normalize CRLF to LF in both registry generation and validation, then regenerate after the fix is committed. See change 0248.
