@@ -493,3 +493,7 @@ The selector manifest now binds all S4 test sources and policy-denominator rows 
 ## 2026-10-25 — Correct E2E synthetic fixture assumptions
 
 The exact `e020823` E2E run exposed a dependency-target lookup tied to the runner's scratch `TEMP`, an uncollected fixture that did not apply to an explicit module path, a non-deterministic text rewrite under autocrlf, and an overly narrow duplicate-event assertion. Focused diagnostics showed no product assertion defect in the first six cases; two remaining failures were confined to test setup/assertion. See change 0264.
+
+## 2026-10-25 — Refresh S4 selector registry after E2E fixture fixes
+
+The category manifest now binds to E2E test source commit `363a4f4`. The exact-head functional, integration, API, E2E, regression, and seeded-failure rerun is still pending; prior results remain historical. See change 0265.
