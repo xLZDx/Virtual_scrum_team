@@ -313,3 +313,5 @@ The E2E runner's complete `tests/vst/test_s2_store_lifecycle.py` run at exact co
 ## 2026-10-25 -- Reconcile S2 attribution footer omissions
 
 Observed S2 commits `f683a37` (change 0222), `eb6c2fc` (change 0223) and `94f43cb` (change 0224) include their linked change records but their commit messages do not end with the required `Executor: Codex` footer. Their commit creators and reason for omission are not independently established by this checkout. Preserve history and record the discrepancy in reconciliation commit 0231; do not infer authorship or rewrite commits.
+
+2026-10-25 — At exact S2 HEAD `a2a5d5a34d45c02c095c993260e313078f75bde9`, `functional-test-reviewer` ran four focused selectors for deferred section 9 items S2.D1/D2: mandatory commands and trusted parser pinning, and waiver scope. Result: 12 passed, 0 skipped/failed, with one pytest-asyncio deprecation warning. This confirms the local contract selectors only and does not provide a new signed environment attestation. See change 0232 and `docs/sdlc/evidence/s2-section9-contract-rerun-a2a5d5.md`.
