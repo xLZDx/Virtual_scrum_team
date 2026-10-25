@@ -331,3 +331,7 @@ The bounded source follow-up at immutable commit `4a5c45390ff46c0fc28d316004ffe0
 ## 2026-10-25 — Partially map licenses for hypothetical S3 Python base profiles
 
 A read-only reviewer mapped public pinned metadata for illustrative Linux/Python 3.12 base profiles: BMad Loop 0.13.2 with PyYAML and regex; Temporal Python SDK 1.34.0 with nexus-rpc, protobuf, typing stubs and typing-extensions. This is not a selected runtime profile or acquisition approval. The Temporal Rust bridge and server Go dependency license/build-notice graphs remain open; source-linked wheel provenance is absent in inspected PyPI metadata. Keep VST-028 partial. The operator owns candidate choice/acquisition; Codex continues the bounded audit. See change 0206.
+
+## 2026-10-25 — Record unresolved license metadata for the Temporal native/server graphs
+
+The pinned Temporal bridge manifest/lock resolve 11 direct Rust registry crate versions for the default `tls-ring` feature; licenses remain `UNKNOWN` because the lock has no license fields and authoritative per-version notices were not retrieved. The pinned server Go files identify 15 illustrative direct module/version entries, but license evidence for all 15 and a runtime-only build graph remain unknown. These are bounded subsets, not total dependency counts. Keep VST-028 partial. Next: identify authoritative version-specific license/notice sources and a feature/target-resolved inventory. See change 0207.
