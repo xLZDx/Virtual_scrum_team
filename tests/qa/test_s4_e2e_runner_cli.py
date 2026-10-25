@@ -535,7 +535,7 @@ def test_s4_e2e_cli_rejects_uncollected_duplicate_skipped_or_xfailed_selector(
         assert "pytest emitted duplicate node IDs" in report["reasons"]
         assert report["collected_node_ids"] == [FIXTURE_TEST_ID]
         assert report["executed_node_ids"] == [FIXTURE_TEST_ID]
-        assert report["passed_test_ids"] == [FIXTURE_TEST_ID]
+        assert report["failed_test_ids"] == [FIXTURE_TEST_ID]
     else:
         assert report[report_field] == [FIXTURE_TEST_ID]
         if collector == "uncollected":

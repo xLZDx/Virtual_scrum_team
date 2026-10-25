@@ -497,3 +497,7 @@ The exact `e020823` E2E run exposed a dependency-target lookup tied to the runne
 ## 2026-10-25 — Refresh S4 selector registry after E2E fixture fixes
 
 The category manifest now binds to E2E test source commit `363a4f4`. The exact-head functional, integration, API, E2E, regression, and seeded-failure rerun is still pending; prior results remain historical. See change 0265.
+
+## 2026-10-25 — Correct duplicate-event expected outcome in E2E test
+
+At exact `6fd26c6`, the runner rejected a duplicate node and recorded the selector as failed; the E2E assertion expected it in the passed list. The negative contract is unchanged; only the expected outcome list is corrected. See change 0266.
