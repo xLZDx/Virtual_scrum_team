@@ -68,7 +68,12 @@ def _git_file_is_tracked(root: Path, relative_path: str) -> bool:
     return result.returncode == 0
 
 
-def _pytest_node_id_exists(root: Path, test_id: str) -> bool:
+def _pytest_node_id_exists(
+    root: Path,
+    test_id: str,
+    *,
+    source_cache: dict[Path, ast.Module | None] | None = None,
+) -> bool:
     """Resolve the statically named pytest function/class node in its source."""
     parts = test_id.split("::")
     if len(parts) not in (2, 3) or any(not part for part in parts):
@@ -97,14 +102,27 @@ def _pytest_node_id_exists(root: Path, test_id: str) -> bool:
         resolved = target.resolve(strict=True)
         if tests_root not in resolved.parents:
             return False
-        with resolved.open("rb") as handle:
-            raw_source = handle.read(MAX_TEST_SOURCE_BYTES + 1)
-        if len(raw_source) > MAX_TEST_SOURCE_BYTES:
-            return False
-        source = raw_source.decode("utf-8")
-        module = ast.parse(source, filename=path)
-    except (OSError, UnicodeError, SyntaxError, RecursionError):
+    except OSError:
         return False
+
+    cache = source_cache if source_cache is not None else {}
+    if resolved in cache:
+        module = cache[resolved]
+        if module is None:
+            return False
+    else:
+        try:
+            with resolved.open("rb") as handle:
+                raw_source = handle.read(MAX_TEST_SOURCE_BYTES + 1)
+            if len(raw_source) > MAX_TEST_SOURCE_BYTES:
+                cache[resolved] = None
+                return False
+            source = raw_source.decode("utf-8")
+            module = ast.parse(source, filename=path)
+        except (OSError, UnicodeError, SyntaxError, RecursionError):
+            cache[resolved] = None
+            return False
+        cache[resolved] = module
 
     if len(selectors) == 1:
         return any(
@@ -180,6 +198,7 @@ def load_registry(root: Path, relative_path: str = "docs/qa/categories.json") ->
     registry, raw = _read_repo_json(root, relative_path, max_bytes=MAX_REGISTRY_BYTES)
     tracked_cache: dict[str, bool] = {}
     ancestry_cache: dict[tuple[str, str], bool] = {}
+    source_cache: dict[Path, ast.Module | None] = {}
 
     def is_tracked(path: str) -> bool:
         if path not in tracked_cache:
@@ -259,7 +278,7 @@ def load_registry(root: Path, relative_path: str = "docs/qa/categories.json") ->
             path = test_id.split("::", 1)[0]
             if "\\" in path or not path.startswith("tests/") or not is_tracked(path):
                 raise ContractError(f"QA test ID source is not a tracked tests path: {test_id!r}")
-            if not _pytest_node_id_exists(root, test_id):
+            if not _pytest_node_id_exists(root, test_id, source_cache=source_cache):
                 raise ContractError(
                     "QA test ID does not resolve to a statically named pytest node: "
                     f"{test_id!r}"
