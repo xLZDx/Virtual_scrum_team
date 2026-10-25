@@ -637,3 +637,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — SUCCESS: after committing the final focused-test fixture corrections, the selector registry was refreshed against exact source HEAD `13dd6e1` before rerunning. Its inventory remains 935 regression selectors, 884 assigned and 51 policy `NOT_RUN`; generation is not runtime evidence. See change 0286.
 
 2026-10-25 — SHORTCOMING: a Python 3.14 test run can fail during traceback rendering if a test replaces `sys.flags` with an incomplete fake object; the resulting `INTERNALERROR` hides the original assertion. Rule: include fields read by the active interpreter's traceback/argparse paths in mocks, and treat the output as unverified until a clean rerun exposes the test result. See change 0287.
+
+2026-10-25 — SUCCESS: after correcting a Python 3.14 `sys.flags` test double, the selector registry was regenerated against the exact committed test source before rerun. The inventory remains 935 regression selectors, 884 assigned and 51 policy `NOT_RUN`; registry generation is not a pass. See change 0288.

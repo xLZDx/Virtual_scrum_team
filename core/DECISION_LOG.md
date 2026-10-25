@@ -621,3 +621,7 @@ After test-source commit `13dd6e1`, the category registry was regenerated from e
 ## 2026-10-25 — Prevent Python 3.14 traceback formatting from masking focused-test failures
 
 The focused run at `85f8a9d9fbef8f6377500bfcd8aec5b7594039a0` printed 93 passed and two warnings, then pytest raised `INTERNALERROR` while formatting a failed assertion. The test double replaced `sys.flags` with a `SimpleNamespace` lacking `verbose`, which Python 3.14 traceback suggestion code accesses. Add `verbose=0` to the test-only mock so the next run can expose the underlying failure. The failure remains unknown; do not count the run as pass or a clean test total. See change 0287.
+
+## 2026-10-25 — Refresh the test-selector registry after traceback-mock correction
+
+After test-source commit `24ba10d`, regenerate the category registry before retrying the focused modules. The generator bound `docs/qa/categories.json` to source HEAD `24ba10dd341f8bc9a99dd8f303f760f83fb8aef6` and retained 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN` and 90 functional selectors. Preserve policy `NOT_RUN` and require exact-head test evidence. See change 0288.
