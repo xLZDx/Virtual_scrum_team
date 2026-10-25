@@ -418,7 +418,7 @@ def _runtime_profile() -> str | None:
         groups = sorted(os.getgroups())
     except AttributeError:
         return None
-    if uid == 997 and gid == 988 and groups == [988]:
+    if uid == 997 and gid == 988 and groups == []:
         return WSL_PROFILE
     effective, bounding = _linux_capability_masks()
     if (

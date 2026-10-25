@@ -556,3 +556,11 @@ UID 997, primary GID 988, and `os.getgroups() == []`. GID 988's group membership
 updates the test fixture to require empty supplementary groups and reject `[988]`. Implementation
 and manifest updates follow separately; registry inventory at current test-source HEAD `e21f6c1`
 is 919 selectors, including 51 policy `NOT_RUN`. No tests have been run.
+
+## 2026-10-25 — Align WSL runner and matrix with cleared groups
+
+Change 0277 changes the WSL runtime and report contract to UID 997, primary GID 988 and an empty
+supplementary-group list. The manifest was regenerated at source HEAD `1727776` and covers 919
+selectors, with 868 assigned runnable and 51 policy `NOT_RUN`. The locked Linux wheel target is
+prepared outside the repository; `/tmp/vst-s4-candidate` must be recreated immediately before use
+because WSL may clean `/tmp` after idle. No product tests or runtime acceptance have run.

@@ -38,7 +38,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "95989989a483135a06729dfb533f9028318344e1",
+  "source_head": "1727776fab006e6bd994e231b49dbf88e73e7752",
   "source_inventory": [
     {
       "path": "tests/qa/test_s4_e2e_runner_cli.py",
@@ -54,6 +54,11 @@
       "path": "tests/qa/test_s4_functional_runner_contracts.py",
       "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
       "sha256": "6eebd8bc4933a41adcbe0178c2181e777a7d3d88a9dc55d9bb455e8bf2db4c12"
+    },
+    {
+      "path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "1727776fab006e6bd994e231b49dbf88e73e7752",
+      "sha256": "83f64418b228828a06d5f11e9ba734e7ed4feb2f2b4d7a8f5fd4d8d5c19e53b3"
     },
     {
       "path": "tests/qa/test_s4_seeded_failure_contracts.py",
@@ -695,6 +700,171 @@
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_source_parser_maps_functions_unittest_classes_and_inherited_methods",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
       "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_committed_registry_binds_profiles_and_preserves_policy_not_run",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_committed_registry_binds_profiles_and_preserves_policy_not_run",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "1727776fab006e6bd994e231b49dbf88e73e7752",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_accepts_report_with_matching_candidate_and_profile_bindings",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_accepts_report_with_matching_candidate_and_profile_bindings",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "1727776fab006e6bd994e231b49dbf88e73e7752",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_never_promotes_a_policy_not_run_selector",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_never_promotes_a_policy_not_run_selector",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "1727776fab006e6bd994e231b49dbf88e73e7752",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_refuses_root_proof_bound_to_another_candidate",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_refuses_root_proof_bound_to_another_candidate",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "1727776fab006e6bd994e231b49dbf88e73e7752",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_missing_profile_report_references",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_missing_profile_report_references",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "1727776fab006e6bd994e231b49dbf88e73e7752",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_skipped_required_concrete_cases",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_skipped_required_concrete_cases",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "1727776fab006e6bd994e231b49dbf88e73e7752",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_stale_candidate_and_corrupt_artifact_range",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_stale_candidate_and_corrupt_artifact_range",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "1727776fab006e6bd994e231b49dbf88e73e7752",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_harness_requires_observed_private_loopback_network",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_harness_requires_observed_private_loopback_network",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "1727776fab006e6bd994e231b49dbf88e73e7752",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_proves_only_ephemeral_loopback_connectivity",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_proves_only_ephemeral_loopback_connectivity",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "1727776fab006e6bd994e231b49dbf88e73e7752",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_requires_loopback_only_interface_set",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_requires_loopback_only_interface_set",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "1727776fab006e6bd994e231b49dbf88e73e7752",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_runtime_profile_rejects_identity_and_capability_drift",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_runtime_profile_rejects_identity_and_capability_drift",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "1727776fab006e6bd994e231b49dbf88e73e7752",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_runtime_registry_assigns_each_selector_to_its_supported_profile",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_runtime_registry_assigns_each_selector_to_its_supported_profile",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "1727776fab006e6bd994e231b49dbf88e73e7752",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_wsl_boundary_allows_unrelated_wslg_9p_mount",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_wsl_boundary_allows_unrelated_wslg_9p_mount",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "1727776fab006e6bd994e231b49dbf88e73e7752",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_wsl_boundary_rejects_nine_p_mount_covering_candidate",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_wsl_boundary_rejects_nine_p_mount_covering_candidate",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "1727776fab006e6bd994e231b49dbf88e73e7752",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_wsl_boundary_rejects_windows_drive_mounts",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_wsl_boundary_rejects_windows_drive_mounts",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "1727776fab006e6bd994e231b49dbf88e73e7752",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9993,6 +10163,21 @@
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_rejects_noncanonical_artifact_paths",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_reports_missing_dependency_lock_as_typed_failure",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_source_parser_maps_functions_unittest_classes_and_inherited_methods",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_committed_registry_binds_profiles_and_preserves_policy_not_run",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_accepts_report_with_matching_candidate_and_profile_bindings",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_never_promotes_a_policy_not_run_selector",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_refuses_root_proof_bound_to_another_candidate",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_missing_profile_report_references",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_skipped_required_concrete_cases",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_stale_candidate_and_corrupt_artifact_range",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_harness_requires_observed_private_loopback_network",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_proves_only_ephemeral_loopback_connectivity",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_requires_loopback_only_interface_set",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_runtime_profile_rejects_identity_and_capability_drift",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_runtime_registry_assigns_each_selector_to_its_supported_profile",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_wsl_boundary_allows_unrelated_wslg_9p_mount",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_wsl_boundary_rejects_nine_p_mount_covering_candidate",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_wsl_boundary_rejects_windows_drive_mounts",
         "tests/vst/test_s2_contract_gate.py::test_gate_refuses_caller_supplied_parser_implementation",
         "tests/vst/test_s2_contract_gate.py::test_gate_rejects_missing_stale_or_inconsistent_diff_gate_evidence",
         "tests/vst/test_s2_contract_gate.py::test_reviewer_registry_failures_do_not_produce_a_trusted_mapping",
@@ -10999,6 +11184,21 @@
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_rejects_noncanonical_artifact_paths",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_reports_missing_dependency_lock_as_typed_failure",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_source_parser_maps_functions_unittest_classes_and_inherited_methods",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_committed_registry_binds_profiles_and_preserves_policy_not_run",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_accepts_report_with_matching_candidate_and_profile_bindings",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_never_promotes_a_policy_not_run_selector",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_refuses_root_proof_bound_to_another_candidate",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_missing_profile_report_references",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_skipped_required_concrete_cases",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_stale_candidate_and_corrupt_artifact_range",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_harness_requires_observed_private_loopback_network",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_proves_only_ephemeral_loopback_connectivity",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_requires_loopback_only_interface_set",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_runtime_profile_rejects_identity_and_capability_drift",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_runtime_registry_assigns_each_selector_to_its_supported_profile",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_wsl_boundary_allows_unrelated_wslg_9p_mount",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_wsl_boundary_rejects_nine_p_mount_covering_candidate",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_wsl_boundary_rejects_windows_drive_mounts",
         "tests/vst/test_e1_contracts.py::test_artifact_digests_empty_key_rejected",
         "tests/vst/test_e1_contracts.py::test_artifact_digests_key_must_be_a_repo_relative_path",
         "tests/vst/test_e1_contracts.py::test_artifact_digests_missing_field_rejected_by_name",

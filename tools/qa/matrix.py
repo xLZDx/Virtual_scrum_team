@@ -286,7 +286,7 @@ def _validate_run(
         if runtime_identity != {"uid": None, "gid": None, "supplementary_groups": []}:
             reasons.append("Windows profile runtime identity fields are invalid")
     elif profile == "wsl-ubuntu-24.04-cpython-3.12.3":
-        if runtime_identity != {"uid": 997, "gid": 988, "supplementary_groups": [988]}:
+        if runtime_identity != {"uid": 997, "gid": 988, "supplementary_groups": []}:
             reasons.append("unprivileged WSL profile identity is not UID 997/GID 988 with cleared groups")
     elif runtime_identity != {"uid": 0, "gid": 0, "supplementary_groups": []}:
         reasons.append("privileged WSL profile identity is not the bounded root harness identity")
