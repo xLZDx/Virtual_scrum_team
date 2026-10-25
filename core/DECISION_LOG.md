@@ -384,3 +384,6 @@ At clean exact code HEAD `08b82e07bceb1bd928a5a02ac6ee9479854caf16`, Python 3.14
 ## 2026-10-25 -- Verify compact registry indexes and aggregate resource limits
 
 At clean code HEAD `6903b7bf3e3dd4fc1281412c173fb82db9924d11`, the designated focused tests passed: 3 targeted cases; full registry module 19 passed, 1 Windows symlink skip, 0 failed. Tests prove one read/parse for three nodes in one source, explicit rejection after five controlled 900 KiB sources cross the 4 MiB aggregate budget, and rejection of 2,049 IDs before node resolution. See change 0156 and evidence `docs/sdlc/evidence/s4-registry-resource-budgets-6903b7b.md`.
+## 2026-10-25 -- Re-run S4 mapped Windows selectors after registry source changes
+
+At clean exact code/test HEAD `2dc6947e416b61103548285ec279d787c1027d8b`, the seven accepted mapped E2E selectors passed on Windows: 7 passed, 0 failed, 0 skipped, in 25.47 seconds with one pytest-asyncio deprecation warning. CPython was 3.14.3. HEAD and status were unchanged before and after. This does not exercise WSL/POSIX, signer, report, receipt, or authoritative gate behavior. The prior WSL transfer remains `RESULT_NOT_CAPTURED` and was not inspected or retried. See change 0157 and its evidence file.
