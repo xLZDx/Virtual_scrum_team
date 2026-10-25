@@ -1,6 +1,6 @@
 # Sprint S4 plan: reproducible QA automation
 
-Status: **IMPLEMENTATION IN PROGRESS** under the operator's S2-S5 continuation request. Documentation review is complete; the accepted S3 adapter and test paths are present in this repository. Coding is authorized. Tests remain deferred until all S4 code is committed; CI, mutations, seeded product-code defects, and external service calls remain prohibited.
+Status: **TEST CODE AUTHORED / NOT RUN** under the operator's S2-S5 continuation request. The runner and category registry are committed, and `functional-test-reviewer`/`e2e-runner` have authored focused tests and seeded fixtures. The shared category registry still needs regeneration from the committed test files before execution. CI, mutations, seeded product-code defects, and external service calls remain prohibited.
 
 Sources: `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` section 1; `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`; `governance/DEFINITION_OF_DONE.md`; S2 and S3 plans; current `tests/vst/`, `tools/vst/runner.py`, `tools/vst/slice.py`, and `tools/vst/{contracts,gate,store}.py`.
 
@@ -17,7 +17,7 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 - `tests/vst/` contains the S1 contract, gate, store, runner, process-death, and slice tests, plus the five S2 acceptance modules. The current discovery evidence is source-path inspection only; this plan makes no runtime claim.
 - `tools/vst/slice.py` provides a synthetic, local vertical-slice harness. `tools/vst/runner.py` executes allowlisted local commands and captures bounded command evidence. They are possible integration points, not yet QA category runners.
 - ADR-0001 forbids CI and mutation runs and requires exact-head agent-run evidence. Its permitted synthetic known-defect fixtures may demonstrate a falsifying oracle without mutating product code.
-- A stable category/test-ID registry does not currently appear in the inspected paths. The registry contract is specified in `docs/QA_RUNNER_DESIGN.md`. The environment reports CPython 3.14.3; the existing pytest 8.4.2 is not selected because the official PyPI record documents a UNIX temporary-directory vulnerability fixed in 9.0.3. S4 pins pytest 9.0.3 and its runtime dependencies with wheel hashes in `tools/qa/requirements.lock`; dependency installation is an explicit isolated preparation step, never part of a test run.
+- The committed category/test-ID registry is `docs/qa/categories.json`; its generator is `tools/qa/build_registry.py`. The runner and lock are committed under `tools/qa/`. The environment reports CPython 3.14.3; the existing pytest 8.4.2 is not selected because the official PyPI record documents a UNIX temporary-directory vulnerability fixed in 9.0.3. S4 pins pytest 9.0.3 and its runtime dependencies with wheel hashes in `tools/qa/requirements.lock`; an isolated external target is prepared, and dependency installation remains separate from test execution.
 - S3 adapter artifacts and test paths now exist in `tools/vst/worker_adapter.py`, `tools/vst/pilot.py`, `tests/vst/test_s3_worker_adapter.py`, and `tests/vst/test_s3_worker_pilot_e2e.py`. Full S3 candidate/sandbox acceptance is still incomplete. S4 includes committed S3 test selectors in its regression denominator, but sandbox/candidate-dependent claims remain `NOT_RUN` until their dependencies pass.
 
 ## Stories and acceptance criteria
@@ -103,22 +103,22 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 
 ## Evidence record
 
-Each run emits an immutable JSON envelope and referenced artifacts containing:
+Each run appends one JSON Lines envelope and output chunks to fixed per-category artifacts containing:
 
 - sprint, category, run id, schema version, exact repository HEAD, branch, dirty flag and changed-path list;
 - category-registry version/hash, expected, collected, executed, skipped, xfailed, failed, unexpected and uncollected test IDs;
 - exact argv, working-directory-relative selector, exit code, start/end/duration, interpreter path/version, OS/runtime identity, pytest version and lockfile hash;
-- output artifact relative paths and SHA-256 digests; normalized summary digest excludes nondeterministic wall-clock fields;
+- output artifact relative paths, exact per-run stdout/stderr byte ranges and SHA-256 chunk digests; normalized summary digest excludes nondeterministic wall-clock fields and prior append-only history;
 - per-fixture seeded-failure ID, input digest, expected/observed verdict and linked test ID, where applicable;
 - result: `PASS`, `FAIL`, `NOT_RUN`, `UNSUPPORTED`, `INCONCLUSIVE` or `BLOCKED`, with reason and dependency; no implicit conversion between states.
 
-Exact commands are formed from committed category selectors; proposed interface:
+Exact commands are formed from committed category selectors. The implemented interface is:
 
 ```text
-C:\Python314\python.exe -m tools.qa.run --category <category> --manifest docs/qa/categories.json --output <run-dir>
+C:\Python314\python.exe -m tools.qa.run --category <category> --repo-root <candidate-repo> --dependency-target <isolated-external-target> --scratch-root <external-scratch-root> --run-id <unique-id> --report-path docs/sdlc/evidence/qa/<category>.report.jsonl --stdout-path docs/sdlc/evidence/qa/<category>.stdout.txt --stderr-path docs/sdlc/evidence/qa/<category>.stderr.txt
 ```
 
-This command and its module are **new paths**, not currently runnable. The runner delegates to pytest's native CLI and captures collection and runtime output without claiming that collection alone is a test pass. The exact pytest flags and artifact format are resolved during E2 design and then pinned in the committed manifest.
+`tools.qa.run` is implemented and delegates to pytest's native CLI. It captures collection and runtime output without claiming that collection alone is a pass. The category arguments and output paths are exact; a VST caller must allowlist the exact three paths for that invocation. Test files and fixtures are authored but require committed registry regeneration before any run. Runtime category evidence remains `NOT_RUN`.
 
 ## Definition of Ready
 
@@ -163,7 +163,7 @@ VST-032–037 are registered in the canonical backlog as the six S4 implementati
 4. Complete all S4 code before test phase; only then test agents author/run the per-epic and final exact-head suites.
 5. Run relevant reviewers, resolve valid findings, request the exact-head GPT-PM gate, then push and merge one S4 PR only after approval.
 
-The first independently safe implementation point is after E1, with the S3 dependency map and denominator frozen. Total gates: **6**, one per epic above. S4 implementation is active; test execution remains deferred until all coding is committed. E2E rows that require incomplete S2/S3 external acceptance stay in the denominator as `NOT_RUN` and cannot satisfy DoD.
+The first independently safe implementation point was after E1, with the S3 dependency map and denominator frozen. Total gates: **6**, one per epic above. S4 product coding is committed; test authorship is complete, and execution is next after the registry is regenerated from the committed test sources. E2E rows that require incomplete S2/S3 external acceptance stay in the denominator as `NOT_RUN` and cannot satisfy DoD.
 
 ## Unknowns to resolve at S4 start
 

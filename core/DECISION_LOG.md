@@ -397,3 +397,7 @@ The S4 runner now requires `--dependency-target` naming an existing directory ou
 ## 2026-10-25 — Reconcile S4 backlog progress and S5 readiness
 
 S4 category, selector, runner and report implementation is committed (`c814443`, with runner isolation fix `f4ef8e7`); functional and E2E test authorship is now active. Runtime category evidence, seeded fixture closure, exact-head reviews and the S4 final gate remain pending. S5 remains prepared, not active: its required S2 signer/gate evidence and S4 seeded-fixture catalog are not yet closed. S5 synthetic VST contract preparation may follow those local dependencies; trust-boundary changes and actual AEVE analysis require separate authorized source identity/interface evidence. Keep the canonical development checkout at `D:\Repo\Virtual_scrum_team`; an immutable analyzer snapshot is data, not a sprint worktree. The proposed VST-038..042 remain unregistered until S5 formally starts. See change 0240.
+
+## 2026-10-25 — Commit S4 test authorship before registry generation
+
+The required functional and E2E agents authored the S4 runner, report, seeded-failure, and CLI test sources using GPT-6 Luna at medium effort. Commit test source provenance before regenerating `docs/qa/categories.json`; otherwise selectors cannot be bound to committed source revisions. The process-tree termination selector remains policy `NOT_RUN`. Authorship does not imply runtime acceptance. See change 0241.

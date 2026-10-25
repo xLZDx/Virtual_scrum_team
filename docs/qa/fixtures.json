@@ -1,6 +1,86 @@
 {
   "schema_version": 1,
-  "status": "NOT_RUN",
-  "reason": "Fixture inputs and consuming tests must be authored by the test roles after S4 coding is committed.",
-  "fixtures": []
+  "status": "SUPPORTED",
+  "reason": null,
+  "fixtures": [
+    {
+      "fixture_id": "QA-SEED-INVALID-TASK-MANIFEST",
+      "source_interface": "tools.vst.contracts.validate_task_manifest",
+      "input": {
+        "contract_version": 2
+      },
+      "input_sha256": "eeed0bf7ca96a320d4262965fb2667ce528eab6eed7c4805b9720117e1b8510e",
+      "expected_rejection": "FAIL",
+      "test_id": "tests/qa/test_s4_seeded_failure_contracts.py::test_s4_seeded_invalid_task_manifest_is_rejected_and_observed"
+    },
+    {
+      "fixture_id": "QA-SEED-APPROVE-WITH-UNMET-REASONS",
+      "source_interface": "tools.vst.contracts.validate_gate_decision",
+      "input": {
+        "task_id": "synthetic-task",
+        "candidate_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "epoch": 1,
+        "required_receipt_hashes": [],
+        "unresolved_findings": [],
+        "human_approvals": [],
+        "verdict": "APPROVE",
+        "waiver_record": null,
+        "acceptance_unmet": [],
+        "reasons": [
+          "one required test was skipped"
+        ]
+      },
+      "input_sha256": "c91ae86b67c31a528358e1b606567458440709e15fc9914afb81a36f1123a904",
+      "expected_rejection": "FAIL",
+      "test_id": "tests/qa/test_s4_seeded_failure_contracts.py::test_s4_seeded_invalid_approve_decision_is_rejected_and_observed"
+    },
+    {
+      "fixture_id": "QA-SEED-SKIPPED-REQUIRED-TEST",
+      "source_interface": "tools.vst.contracts.derive_result",
+      "input": {
+        "receipt_id": "seed-skipped-test",
+        "receipt_type": "TestRun",
+        "task_id": "synthetic-task",
+        "manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "slot": "tests",
+        "attempt": 1,
+        "prev_receipt_sha256": null,
+        "candidate_head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "epoch": 1,
+        "runner_id": "synthetic-runner",
+        "role_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "resolved_model": "synthetic-model",
+        "invocation_id": "seed-invocation",
+        "result": "FAIL",
+        "created_at": "2026-10-25T00:00:00Z",
+        "signature": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "expected_test_ids": [
+          "tests/qa/test_required.py::test_required"
+        ],
+        "executed_test_ids": [
+          "tests/qa/test_required.py::test_required"
+        ],
+        "skipped_test_ids": [
+          "tests/qa/test_required.py::test_required"
+        ],
+        "xfail_test_ids": [],
+        "commands": [
+          {
+            "argv": [
+              "pytest",
+              "tests/qa/test_required.py::test_required"
+            ],
+            "exit_code": 0
+          }
+        ],
+        "covered_acceptance": [],
+        "artifact_digests": {
+          "docs/evidence.txt": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        }
+      },
+      "input_sha256": "ae3d8548d3cece070f8607a1088c32d17b7eb5035816f4d84ec3ecd5e5126902",
+      "expected_rejection": "FAIL",
+      "test_id": "tests/qa/test_s4_seeded_failure_contracts.py::test_s4_seeded_skipped_required_test_derives_fail_and_is_observed"
+    }
+  ]
 }
