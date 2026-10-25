@@ -547,3 +547,12 @@ addresses profile assignment and identity, the distro-local WSL mount boundary, 
 network conditions, report/proof binding, and fail-closed matrix evidence. The test author did not
 execute tests or checks. Refresh the category registry after the test source commit before any test
 execution; keep policy `NOT_RUN` rows non-approving. See change 0275.
+
+## 2026-10-25 — Correct the WSL identity test fixture
+
+The WSL setup agent observed that `setpriv --reuid=997 --regid=988 --clear-groups` produces
+UID 997, primary GID 988, and `os.getgroups() == []`. GID 988's group membership includes
+`vst-signer`; using `--groups=988` would add that group as supplementary membership. Change 0276
+updates the test fixture to require empty supplementary groups and reject `[988]`. Implementation
+and manifest updates follow separately; registry inventory at current test-source HEAD `e21f6c1`
+is 919 selectors, including 51 policy `NOT_RUN`. No tests have been run.

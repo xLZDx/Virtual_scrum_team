@@ -93,7 +93,7 @@ def _write_category_report(tmp_path: Path, profile: str, *, root_proof_mismatch:
         },
         registry.WSL_PROFILE: {
             "interpreter": {"id": "CPython-3.12.3", "executable": "/usr/bin/python3.12", "version": "3.12.3"},
-            "runtime_identity": {"uid": 997, "gid": 988, "supplementary_groups": [988]},
+            "runtime_identity": {"uid": 997, "gid": 988, "supplementary_groups": []},
         },
         registry.WSL_ROOT_PROFILE: {
             "interpreter": {"id": "CPython-3.12.3", "executable": "/usr/bin/python3.12", "version": "3.12.3"},
@@ -190,7 +190,8 @@ def test_s4_committed_registry_binds_profiles_and_preserves_policy_not_run():
 @pytest.mark.parametrize(
     ("uid", "gid", "groups", "caps", "expected"),
     [
-        (997, 988, [988], None, registry.WSL_PROFILE),
+        (997, 988, [], None, registry.WSL_PROFILE),
+        (997, 988, [988], None, None),
         (0, 0, [], run.ROOT_HARNESS_CAP_MASK, registry.WSL_ROOT_PROFILE),
         (997, 988, [988, 1001], None, None),
         (0, 0, [], run.ROOT_HARNESS_CAP_MASK | (1 << 13), None),
