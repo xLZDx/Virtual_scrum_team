@@ -20,7 +20,7 @@ from pathlib import Path, PurePosixPath
 import pytest
 
 
-BASELINE_HEAD = "f32c6e33b0289438a79f88328975c712b07aa881"
+BASELINE_HEAD = "7a0c8d4e33e8db3ddb141e66fb93becf2fb0a5e1"
 FIXTURE_TEST_PATH = "tests/qa/test_native_fixture.py"
 FIXTURE_TEST_ID = f"{FIXTURE_TEST_PATH}::test_native_fixture"
 NOT_RUN_TEST_ID = f"{FIXTURE_TEST_PATH}::test_sandbox_dependent_fixture"
@@ -432,10 +432,41 @@ def test_s4_e2e_cli_preserves_sandbox_dependent_selector_as_not_run(tmp_path):
     assert report["not_run_test_reasons"] == {
         NOT_RUN_TEST_ID: "Sandbox-dependent S3 acceptance lacks a run-bound platform proof."
     }
-    command_text = " ".join(report["command"])
-    assert FIXTURE_TEST_ID in command_text
-    assert NOT_RUN_TEST_ID not in command_text
+    assert report["command"][:3] == ["<approved-python-base>/python.exe", "-m", "pytest"]
+    assert report["command"][-1] == FIXTURE_TEST_PATH
+    assert FIXTURE_TEST_ID not in report["command"]
+    assert NOT_RUN_TEST_ID not in report["command"]
+    assert report["collected_node_ids"] == [FIXTURE_TEST_ID]
     assert report["executed_node_ids"] == [FIXTURE_TEST_ID]
+    assert NOT_RUN_TEST_ID not in report["collected_node_ids"]
+    assert NOT_RUN_TEST_ID not in report["executed_node_ids"]
+
+
+def test_s4_pytest_argv_size_depends_on_source_files_not_selector_count(tmp_path):
+    from tools.qa.run import _pytest_command
+
+    source_path = "tests/qa/test_many_registered_selectors.py"
+
+    def command_for(selector_count: int) -> list[str]:
+        expected_ids = [f"{source_path}::test_registered_{index:04d}" for index in range(selector_count)]
+        selectors = {test_id: {"selector": test_id} for test_id in expected_ids}
+        scratch_run = tmp_path / f"scratch-{selector_count}"
+        scratch_run.mkdir()
+        argv, _ = _pytest_command(
+            expected_ids=expected_ids,
+            selectors=selectors,
+            scratch_run=scratch_run,
+            repo_root=tmp_path,
+            dependency_target=tmp_path,
+        )
+        return argv
+
+    one_selector_argv = command_for(1)
+    many_selectors_argv = command_for(1000)
+
+    assert len(many_selectors_argv) == len(one_selector_argv)
+    assert many_selectors_argv[-1] == source_path
+    assert not any("::" in argument for argument in many_selectors_argv)
 
 
 def test_s4_e2e_cli_refuses_candidate_head_and_registry_selector_mismatches(tmp_path):

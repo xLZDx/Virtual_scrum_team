@@ -573,3 +573,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — S4 registry sequencing: after committing an E2E source baseline update, regenerate the manifest before testing; otherwise a correct product fix can still be blocked as stale test provenance. See change 0254.
 
 2026-10-25 — SHORTCOMING: an implementation agent ran `git diff --check` before coding was complete despite the test/check phase restriction. It returned 0 and made no changes. Rule: agents must treat the no-check instruction as applying to all check commands, including diff hygiene; review diffs by reading until coding is complete. See change 0255.
+
+2026-10-25 — S4 selector test provenance rule: bind synthetic E2E fixtures to the exact committed product implementation and verify the baseline object exists before execution; a mistyped SHA leaves the fixture unable to archive its source. Corrected before testing. See change 0256.

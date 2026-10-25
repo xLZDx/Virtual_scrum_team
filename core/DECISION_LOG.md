@@ -457,3 +457,7 @@ The E2E source baseline changed in `653d10c`; the committed category manifest no
 ## 2026-10-25 — Bound pytest selection arguments and preserve policy exclusions
 
 At exact candidate HEAD `ba43fd6`, the API category failed before pytest startup because hundreds of selectors exceeded the Windows process argument limit. Pass unique source modules and an invocation-local exact selector map; deselect known non-category selectors and preserve unknown selectors for fail-closed accounting. Keep every process-termination selector explicitly `NOT_RUN`. See change 0255.
+
+## 2026-10-25 — Test category filtering and bounded selector invocation
+
+Added designated-agent tests for bounded argv, exact selector-file maps, category/policy filtering, unknown-selector fail-closed behavior, and all audited E4 termination selectors. The E2E fixture is pinned to product commit `7a0c8d4`. Test execution remains pending until the selector registry is regenerated. See change 0256.

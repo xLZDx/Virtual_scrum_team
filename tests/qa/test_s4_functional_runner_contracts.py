@@ -307,6 +307,95 @@ def test_s4_plugin_maps_unittest_concrete_method_to_class_selector(tmp_path: Pat
     assert plugin.collected[item.nodeid]["selector"] == selector
 
 
+def test_s4_pytest_command_bounds_argv_for_hundreds_of_selectors(tmp_path: Path):
+    scratch_run = tmp_path / "scratch"
+    scratch_run.mkdir()
+    dependency_target = tmp_path / "dependencies"
+    dependency_target.mkdir()
+    expected_ids = []
+    selectors = {}
+    for file_index in range(24):
+        source_path = f"tests/qa/test_large_{file_index:02d}.py"
+        for test_index in range(20):
+            test_id = f"{source_path}::test_case_{test_index:02d}"
+            expected_ids.append(test_id)
+            selectors[test_id] = {"selector": test_id}
+    known_only = "tests/qa/test_policy.py::test_not_run"
+    selectors[known_only] = {"selector": known_only}
+
+    argv, _ = run._pytest_command(
+        expected_ids=expected_ids,
+        selectors=selectors,
+        scratch_run=scratch_run,
+        repo_root=tmp_path,
+        dependency_target=dependency_target,
+    )
+
+    selection = json.loads((scratch_run / "selection.json").read_text(encoding="utf-8"))
+    source_paths = sorted({test_id.split("::", 1)[0] for test_id in expected_ids})
+    assert len(expected_ids) == 480
+    assert selection == {
+        "schema_version": 2,
+        "expected_selectors": {test_id: test_id for test_id in expected_ids},
+        "known_selectors": {test_id: row["selector"] for test_id, row in selectors.items()},
+    }
+    assert argv[-len(source_paths):] == source_paths
+    assert len(argv) <= 80
+    assert not set(expected_ids).intersection(argv)
+
+
+def test_s4_plugin_filters_known_other_category_and_policy_but_keeps_unknown(tmp_path: Path):
+    repo_root = tmp_path / "repo"
+    expected_path = repo_root / "tests" / "qa" / "test_expected.py"
+    other_path = repo_root / "tests" / "qa" / "test_other.py"
+    policy_path = repo_root / "tests" / "vst" / "test_e4_runner.py"
+    unknown_path = repo_root / "tests" / "qa" / "test_unknown.py"
+    for path in (expected_path, other_path, policy_path, unknown_path):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"# synthetic test source\n")
+
+    expected = "tests/qa/test_expected.py::test_expected"
+    other_category = "tests/qa/test_other.py::test_other"
+    policy_not_run = "tests/vst/test_e4_runner.py::test_timeout_kills_the_whole_process_tree"
+    selection_path = tmp_path / "selection.json"
+    selection_path.write_text(
+        json.dumps({
+            "schema_version": 2,
+            "expected_selectors": {expected: expected},
+            "known_selectors": {
+                expected: expected,
+                other_category: other_category,
+                policy_not_run: policy_not_run,
+            },
+        }),
+        encoding="utf-8",
+    )
+    options = {
+        "--qa-selection-file": str(selection_path),
+        "--qa-events-file": str(tmp_path / "events.json"),
+        "--qa-repo-root": str(repo_root),
+    }
+    plugin = pytest_plugin._QAPlugin(SimpleNamespace(getoption=options.__getitem__))
+
+    def item(path: Path, name: str) -> SimpleNamespace:
+        return SimpleNamespace(
+            path=path, originalname=name, name=name, cls=None,
+            nodeid=f"{path.relative_to(repo_root).as_posix()}::{name}",
+        )
+
+    expected_item = item(expected_path, "test_expected")
+    other_item = item(other_path, "test_other")
+    policy_item = item(policy_path, "test_timeout_kills_the_whole_process_tree")
+    unknown_item = item(unknown_path, "test_unregistered")
+
+    selected, deselected = plugin.select_items(
+        [expected_item, other_item, policy_item, unknown_item]
+    )
+
+    assert selected == [expected_item, unknown_item]
+    assert deselected == [other_item, policy_item]
+
+
 def test_s4_resolve_cases_classifies_skipped_xfail_xpass_missing_and_unexpected():
     selectors = {
         "tests/qa/test_runner.py::test_pass": {},
@@ -592,6 +681,34 @@ def test_s4_process_death_selectors_are_declared_not_run_by_policy():
     assert declared_not_run[e2e_timeout_selector].startswith("NOT_RUN:")
     assert set(POLICY_NOT_RUN) <= declared_not_run.keys()
     assert all(declared_not_run[selector].startswith("NOT_RUN:") for selector in death_selectors | set(POLICY_NOT_RUN))
+
+
+def test_s4_audited_e4_terminating_selectors_remain_not_run():
+    from tools.qa.build_registry import POLICY_NOT_RUN
+
+    audited_terminating_selectors = {
+        "tests/vst/test_e4_runner.py::test_timeout_records_exit_minus_one_and_fails",
+        "tests/vst/test_e4_runner.py::test_timeout_kills_the_whole_process_tree",
+        "tests/vst/test_e4_runner.py::test_overall_deadline_stops_later_commands_without_running_them",
+        "tests/vst/test_e4_runner.py::test_deadline_limits_a_command_below_its_own_timeout",
+        "tests/vst/test_e4_runner.py::test_timeout_does_not_prevent_following_commands_within_the_deadline",
+        "tests/vst/test_e4_runner.py::test_report_capture_incomplete_is_false_for_every_normal_outcome",
+        "tests/vst/test_e4_runner.py::test_stray_descendant_is_killed_after_the_root_command_exited_normally",
+        "tests/vst/test_e4_runner.py::test_thread_start_failure_kills_the_child_and_cleans_up",
+        "tests/vst/test_e4_runner.py::test_thread_start_failure_for_the_first_reader_also_cleans_up",
+        "tests/vst/test_e4_runner.py::test_job_is_closed_when_thread_start_fails",
+        "tests/vst/test_e4_runner.py::test_background_process_holding_the_pipe_gives_exit_minus_four_and_capture_incomplete",
+        "tests/vst/test_e4_runner.py::test_capture_incomplete_takes_precedence_over_output_truncation",
+    }
+    generated = build_registry.build_registry(ROOT)
+    api_not_run = generated["categories"]["api"]["not_run_reasons"]
+
+    assert audited_terminating_selectors <= POLICY_NOT_RUN.keys()
+    assert audited_terminating_selectors <= api_not_run.keys()
+    assert all(
+        api_not_run[selector].startswith("NOT_RUN:")
+        for selector in audited_terminating_selectors
+    )
 
 
 @pytest.mark.parametrize(
