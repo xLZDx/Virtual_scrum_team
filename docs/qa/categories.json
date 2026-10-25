@@ -34,7 +34,7 @@
       "coverage_state": "COMPLETE",
       "coverage_reason": "The source-derived inventory at docs/qa/python_api_inventory.md contains 79 non-private entrypoints across the five S4.3.2 modules; each maps to an API-primary falsifying selector. The mapped selector set also retains registry provenance, projection, path-confinement, and seeded-catalog contract coverage. Network API remains explicitly UNSUPPORTED.",
       "owner_role": "functional-test-reviewer",
-      "source_head": "1a8d61aa3455b4e202a2d18b753063f362d85b24",
+      "source_head": "d06e92b1d5460ee892754aa08916abb2179874e0",
       "test_ids": [
         "tests/qa/test_s4_registry_contracts.py::test_s4_committed_registry_loads_with_resolved_nodes",
         "tests/qa/test_s4_registry_contracts.py::test_s4_registry_accepts_single_primary_category_per_test_id",
