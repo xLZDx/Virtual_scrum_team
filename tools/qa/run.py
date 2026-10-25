@@ -68,6 +68,7 @@ ROOT_HARNESS_PROOF_FIELDS = {
     "mountinfo_sha256",
 }
 _RUN_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z")
+_HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 _SAFE_RELATIVE = re.compile(r"[A-Za-z0-9_./-]+\Z")
 _LOCK_LINE = re.compile(
     r"^(?P<name>[A-Za-z0-9_.-]+)==(?P<version>[A-Za-z0-9_.+-]+)(?:;\s*sys_platform\s*==\s*\"(?P<platform>[A-Za-z0-9_]+)\")?\s+\\$"

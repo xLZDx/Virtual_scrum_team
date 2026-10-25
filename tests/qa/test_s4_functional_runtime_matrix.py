@@ -495,7 +495,9 @@ def test_s4_matrix_rejects_stale_candidate_and_corrupt_artifact_range(tmp_path: 
     assert any("candidate HEAD is stale" in reason for reason in stale_reasons)
 
     root, registry_view, run_id = _write_category_report(tmp_path / "corrupt", registry.WINDOWS_PROFILE)
-    (root / "docs" / "sdlc" / "evidence" / "qa" / "functional.stdout.txt").write_bytes(b"tampered\n")
+    (root / "docs" / "sdlc" / "evidence" / "qa" / "functional.stdout.txt").write_bytes(
+        b"FAIL selector\n"
+    )
     _, corrupt_reasons = matrix._validate_run(
         root, registry_view, registry.WINDOWS_PROFILE, "functional", run_id
     )

@@ -564,3 +564,20 @@ supplementary-group list. The manifest was regenerated at source HEAD `1727776` 
 selectors, with 868 assigned runnable and 51 policy `NOT_RUN`. The locked Linux wheel target is
 prepared outside the repository; `/tmp/vst-s4-candidate` must be recreated immediately before use
 because WSL may clean `/tmp` after idle. No product tests or runtime acceptance have run.
+
+## 2026-10-25 — Fix root-proof nonce validation after focused test failure
+
+At exact HEAD `3916101c`, the functional reviewer ran the 29-case focused module: 25 passed and 4
+failed. Three parametrizations exposed an undefined `_HEX64` regex in the root-proof path; one test
+oracle expected a digest mismatch after writing a shorter artifact, while the validator correctly
+rejected the out-of-bounds range. Change 0278 defines the missing regex. The test author is
+correcting the fixture to preserve length and specifically exercise digest mismatch. No broader
+suite or WSL matrix run starts until the focused suite passes.
+
+## 2026-10-25 — Preserve artifact length in S4 matrix corruption fixture
+
+Change 0279 replaces the stdout fixture with different bytes of the same length, so validation
+reaches the digest-mismatch branch rather than the earlier range-bounds branch. The focused run
+that exposed the assertion mismatch remains 25 passed / 4 failed at exact HEAD `3916101`; the
+fixture correction has not been rerun. The three implementation NameErrors are tracked separately
+under change 0278.
