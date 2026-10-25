@@ -516,3 +516,7 @@ The five deterministic ancestry outcome tests from source commit `173a7f2` are m
 ## 2026-10-25 -- Verify S4 ancestry and all mapped local selectors
 
 At exact source/test HEAD `20fa7bb5759d8c35159a942043a78ec93f3c79a1`, the API denominator had 73 mapped selectors (92 passed, one symlink selector skipped by Windows WinError 1314, zero failed); functional/integration/seeded had 32/32 passed; and the E2E runner reported 12/12 passed. Python was 3.14.3 and pytest 8.4.2 on Windows NT 10.0.26300.0. External signer/report/sandbox runtime remains unverified. See change record 0198.
+
+## 2026-10-25 -- Reconcile S4 reports to ancestry diagnostic fix and exact-head evidence
+
+Refresh the S4 reports, plan status/evidence, and VST-032–037 backlog from source fix 7b8200c, selector mapping 20fa7bb, and exact-head results in 0198. Keep E2E coverage PARTIAL without a `tools.qa.run` v2 report-serialization selector; trusted signer, run manifest, current-head WSL/POSIX, report, receipt, and authoritative gate remain NOT_RUN. Record the reliability INFO that stderr suppression leaves only the fatal Git status code in diagnostics. See change 0199.

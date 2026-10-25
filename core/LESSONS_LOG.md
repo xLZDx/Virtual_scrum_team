@@ -599,3 +599,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 
 2026-10-25 — After adding registry behavior tests, rerun API because registry validation is shared, then functional/integration/seeded and coordinate E2E on the same final source/test HEAD. Record primary selector counts separately from pytest's expanded parametrized case count. A Windows symlink privilege skip remains explicit and does not invalidate other API evidence or establish POSIX behavior. At `20fa7bb`, API was 92 passed/1 skipped, local categories 32/32, and E2E 12/12. See change 0198.
+
+2026-10-25 — Keep ancestry verification failure distinct from valid non-ancestry: exit 1 is a domain result, while Git fatal statuses and suppressed stderr constrain diagnostics to the status code. Preserve the reliability INFO when summarizing an otherwise green exact-head test run; report-bound v2 and WSL/sandbox gates remain separate. See change 0199.
