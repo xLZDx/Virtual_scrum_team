@@ -501,3 +501,7 @@ The category manifest now binds to E2E test source commit `363a4f4`. The exact-h
 ## 2026-10-25 — Correct duplicate-event expected outcome in E2E test
 
 At exact `6fd26c6`, the runner rejected a duplicate node and recorded the selector as failed; the E2E assertion expected it in the passed list. The negative contract is unchanged; only the expected outcome list is corrected. See change 0266.
+
+## 2026-10-25 — Refresh S4 selector registry after duplicate assertion fix
+
+The category manifest now binds to source commit `28e7c50`. The complete supported exact-head rerun is required before closing S4; skips and policy `NOT_RUN` rows remain explicit. See change 0267.
