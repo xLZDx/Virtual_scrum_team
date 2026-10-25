@@ -1572,9 +1572,17 @@ def test_a_healthy_capture_is_not_flagged_when_nothing_raises(work):
 def test_root_that_survives_the_kill_gives_exit_minus_four(work, monkeypatch):
     # The kill is neutralised and the root ignores the timeout: wait(10) after the kill
     # also times out, so the output cannot be trusted.
+    class _NoOpJob:
+        def terminate_and_close(self):
+            pass
+
     monkeypatch.setattr(runner, "_kill_tree", lambda proc: None)
     monkeypatch.setattr(runner, "_JOIN_SEC", 0.5)
-    monkeypatch.setattr(runner._JobObject, "attach", classmethod(lambda cls, proc: None))
+    monkeypatch.setattr(
+        runner._JobObject,
+        "attach",
+        classmethod(lambda cls, proc: _NoOpJob()),
+    )
     real_wait = subprocess.Popen.wait
     calls = []
 

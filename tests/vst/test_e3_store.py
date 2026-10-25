@@ -228,7 +228,7 @@ def test_legacy_database_with_tables_but_no_version_is_refused(tmp_path):
     assert [r[0] for r in rows(path, "SELECT story_id FROM stories")] == ["keep-me"]
 
 
-@pytest.mark.parametrize("version", [1, 2, 3, 99])
+@pytest.mark.parametrize("version", [1, 2, 99])
 def test_foreign_schema_version_is_refused(tmp_path, version):
     path = str(tmp_path / "v.db")
     conn = sqlite3.connect(path)

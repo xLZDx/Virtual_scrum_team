@@ -481,3 +481,7 @@ The first complete exact-head suite showed failures caused by old test contracts
 ## 2026-10-25 — Regenerate S4 selector inventory after corrected test commit
 
 The category manifest was regenerated from the corrected test sources committed at `b0beca3`. This updates source commit/hash bindings and the selector denominator, but does not establish test behavior. The exact six-category rerun remains pending. See change 0261.
+
+## 2026-10-25 — Correct two stale API test assumptions
+
+The exact `3558b14a` API run exposed one test treating the supported schema-v3-to-v4 migration as foreign and one synthetic timeout test whose `None` Job Object caused the runner's deliberate fail-closed refusal before reaching the intended timeout branch. The two test setups are being corrected; no product defect is established by these failures. See change 0262.
