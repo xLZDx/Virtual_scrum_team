@@ -405,3 +405,7 @@ The required functional and E2E agents authored the S4 runner, report, seeded-fa
 ## 2026-10-25 — Regenerate S4 selector registry from committed sources
 
 After test authorship commit `298b9a6`, regenerate `docs/qa/categories.json` so all selectors have committed source provenance. The policy-prohibited process-tree timeout remains in the E2E inventory as explicit `NOT_RUN`. Registry presence is not runtime test evidence. See change 0242.
+
+## 2026-10-25 — Create the E2E synthetic fixture catalog directory
+
+The S4 E2E test fixture archives only committed runner sources and may not contain `docs/qa`. Create that directory before writing its synthetic `fixtures.json`; do not rely on a product archive to provide test-fixture directories. See change 0243.

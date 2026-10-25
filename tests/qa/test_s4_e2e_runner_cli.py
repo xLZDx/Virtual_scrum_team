@@ -239,6 +239,7 @@ def _make_candidate(
         (candidate / "tests" / "conftest.py").write_text(
             collector_text, encoding="utf-8", newline="\n"
         )
+    (candidate / "docs" / "qa").mkdir(parents=True, exist_ok=True)
     (candidate / "docs" / "qa" / "fixtures.json").write_text(
         json.dumps({
             "schema_version": 1,
