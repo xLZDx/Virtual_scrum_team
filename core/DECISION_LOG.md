@@ -344,3 +344,7 @@ GPT-PM reviewed exact S5 HEAD `8cb3ab4167239c0ad3316a9e51d756be3d9520c2` against
 ## 2026-10-25 -- Record exact-head S5 synthetic contract reruns
 
 At exact source/test HEAD `65d725f0101c5e1d0f758cd7850f97313144dc06`, `functional-test-reviewer` reran the synthetic v3 evidence contract: 39 passed, 1 Windows symlink privilege skip, 0 failed. `e2e-runner` reran synthetic Store-to-Gate: 3 passed, 0 skipped/failed. Both used GPT-6 Luna, low effort, Python 3.14.3 and pytest 8.4.2; each reported a pytest-asyncio deprecation warning. These runs confirm local contract behavior only and do not close S5-M01/M02. The authorized analyzer identity/interface, bounded runtime and accepted rule inventory remain unavailable/unknown in this repository. See change 0226 and `docs/sdlc/evidence/s5-exact-head-synthetic-reruns-65d725f.md`.
+
+## 2026-10-25 -- Preserve attribution-footer reconciliation for S5 commit
+
+The local coordinator commit `8a0b426` (change 0226) omitted the required project attribution footer `Executor: Codex`. The project convention requires preserving existing history and adding an explicit reconciliation commit; no history rewrite was performed. This record does not claim the original message contained the footer. The new reconciliation commit message ends with the required footer. See change 0229.
