@@ -613,3 +613,7 @@ After test-only correction commit `05d9935`, regenerate the test-selector regist
 ## 2026-10-25 — Correct three remaining S4 focused-test fixtures
 
 The exact-head focused rerun at `0b28d1f8ec56fe4b4e4e7c870596d781fe149636` returned 105 passed, 3 failed and one warning. The failures were (1) an assertion expecting obsolete blocked-reason text, (2) a synthetic candidate without `tools/qa/root_harness.py`, and (3) a test asserting the obsolete `/usr/sbin/setpriv` path. The functional-test reviewer changed only these test assertions/fixtures; product code did not change. Commit the test corrections, regenerate the selector registry, and rerun before treating the focused gate as green. See change 0285.
+
+## 2026-10-25 — Refresh the S4 selector registry after the final fixture corrections
+
+After test-source commit `13dd6e1`, the category registry was regenerated from exact committed sources before the next focused run. It records source HEAD `13dd6e1b2fb761e574d98c6658c80b0ac248ecfa`, 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN`, and 90 functional selectors. Preserve all policy `NOT_RUN` rows and bind the rerun to a commit containing this registry. See change 0286.
