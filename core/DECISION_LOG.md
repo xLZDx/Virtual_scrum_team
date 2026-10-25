@@ -345,3 +345,6 @@ The exact pkg.go.dev page for `github.com/nexus-rpc/nexus-proto-annotations@v0.1
 ## 2026-10-25 -- Preserve the complete pinned Temporal Go license lookup denominator
 
 A controlled, exact-version rerun queried all 223 module/version rows from Temporal server `go.mod` at `af08a5e5f2dd40f545f2afac7780daaa6987001e`. It returned 211 pkg.go.dev pages with license sections, one `License: None detected`, and 11 exact-version HTTP 404 pages, with no HTTP 429 in the rerun. All 223 rows and their individual statuses/metadata are retained in the TSV evidence. The 12 rows without license values remain UNKNOWN; this is not a selected runtime license closure. No package/source was downloaded. See change 0212.
+## 2026-10-25 -- Resolve exact Go source-license files for pkg.go.dev page misses
+
+The 11 pkg.go.dev 404 rows were checked at each pinned pseudo-version's commit suffix using only raw upstream legal files/tree metadata. Ten classifications are supported by exact-revision LICENSE text; `vtprotobuf` is retained as BSD-3-Clause-like (SPDX unverified), and the cactus module's exact revision uses `LICENSE.md` with MIT text-based inference. The one `nexus-proto-annotations@v0.1.0` version still has no detected license evidence and remains UNKNOWN. No candidate/package/source archive was downloaded. See change 0213.

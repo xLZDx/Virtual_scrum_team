@@ -1,0 +1,12 @@
+module_version	source_revision	raw_license_url	http_status	license_classification	classification_basis
+golang.org/x/exp@v0.0.0-20260611194520-c48552f49976	c48552f49976	https://raw.githubusercontent.com/golang/exp/c48552f49976/LICENSE	200	BSD-3-Clause	Exact revision LICENSE text
+github.com/aclements/go-moremath@v0.0.0-20210112150236-f10218a38794	f10218a38794	https://raw.githubusercontent.com/aclements/go-moremath/f10218a38794/LICENSE	200	BSD-3-Clause	Exact revision LICENSE text
+golang.org/x/perf@v0.0.0-20260709024250-82a0b07e230d	82a0b07e230d	https://raw.githubusercontent.com/golang/perf/82a0b07e230d/LICENSE	200	BSD-3-Clause	Exact revision LICENSE text
+github.com/cactus/go-statsd-client/statsd@v0.0.0-20200423205355-cb0885a1018c	cb0885a1018c	https://raw.githubusercontent.com/cactus/go-statsd-client/cb0885a1018c/LICENSE.md	200	MIT (text-based inference)	Exact revision LICENSE.md matches MIT permission, notice, and disclaimer template
+github.com/planetscale/vtprotobuf@v0.6.1-0.20240319094008-0393e58bdf10	0393e58bdf10	https://raw.githubusercontent.com/planetscale/vtprotobuf/0393e58bdf10/LICENSE	200	BSD-3-Clause-like (SPDX unverified)	Three-condition BSD-style text; differs from canonical BSD-3-Clause text
+github.com/xrash/smetrics@v0.0.0-20250705151800-55b8f293f342	55b8f293f342	https://raw.githubusercontent.com/xrash/smetrics/55b8f293f342/LICENSE	200	MIT	Exact revision LICENSE explicitly labels MIT
+google.golang.org/genproto@v0.0.0-20260420184626-e10c466a9529	e10c466a9529	https://raw.githubusercontent.com/googleapis/go-genproto/e10c466a9529/LICENSE	200	Apache-2.0	Exact revision LICENSE text
+google.golang.org/genproto/googleapis/api@v0.0.0-20260526163538-3dc84a4a5aaa	3dc84a4a5aaa	https://raw.githubusercontent.com/googleapis/go-genproto/3dc84a4a5aaa/LICENSE	200	Apache-2.0	Exact revision LICENSE text
+google.golang.org/genproto/googleapis/rpc@v0.0.0-20260526163538-3dc84a4a5aaa	3dc84a4a5aaa	https://raw.githubusercontent.com/googleapis/go-genproto/3dc84a4a5aaa/LICENSE	200	Apache-2.0	Exact revision LICENSE text
+k8s.io/kube-openapi@v0.0.0-20260414162039-ec9c827d403f	ec9c827d403f	https://raw.githubusercontent.com/kubernetes/kube-openapi/ec9c827d403f/LICENSE	200	Apache-2.0	Exact revision LICENSE text
+k8s.io/utils@v0.0.0-20260319190234-28399d86e0b5	28399d86e0b5	https://raw.githubusercontent.com/kubernetes/utils/28399d86e0b5/LICENSE	200	Apache-2.0	Exact revision LICENSE text
