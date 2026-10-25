@@ -515,3 +515,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — A local firewall/configuration inspection is not equivalent to a run-bound signed sandbox probe. Keep those claims separate, provision only the exact S4 root needed by the transfer boundary, and leave source-transfer, signer and runtime acceptance `NOT_RUN` until their own evidence exists. See change record 0114.
 
+
+2026-10-25 — A nested execution tool can return a live session handle before a long-running test or transfer finishes. Retain that handle and poll it through completion; otherwise preserve `RESULT_NOT_CAPTURED`, do not infer an exit status, and do not inspect or retry an unidentified WSL destination without run metadata. The second local exact-head run was captured successfully; the S4 WSL attempt was not. See change record 0141.

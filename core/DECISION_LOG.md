@@ -340,3 +340,7 @@ Resolve tracked-file, commit-existence, and ancestry facts once per unique path/
 
 Following the operator's WSL2 selection, prepare a separate S4 snapshot root in the named `Ubuntu-24.04` distribution, owned by the non-root runner and worker group with mode 2710; keep the older protected S2 root untouched and do not publish private POSIX identity/path values. The observed distro configuration has automount and interop disabled and nftables input/output default-drop with loopback allowed, but this inventory is not a fresh signed probe or proof of resource limits. Source transfer and signer acceptance are still `NOT_RUN`. See change record 0114.
 
+
+## 2026-10-25 -- Keep current-head Windows E2E separate from WSL acceptance
+
+At clean S4 source HEAD `c5289cae2255b51e165ec8e65a322c752be0e99a`, the seven mapped S4/S3 selectors passed on the Windows host (7 passed, 0 failed, 0 skipped). This does not upgrade the earlier WSL transfer/native run at `452c8ea`. The current-head WSL transfer wrapper returned no correlated result to the test agent because its nested session handle was not retained; keep transfer and POSIX behavior `RESULT_NOT_CAPTURED` / `NOT_RUN` and do not inspect or retry an unidentified destination. See change 0141 and the current-head evidence file.
