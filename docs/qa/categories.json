@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_head": "452c8ea8da5545bdce0f584a6b51662b93a33abf",
+  "source_head": "f7098d145e3af7d6a00eeae78209d973ce077afe",
   "categories": {
     "functional": {
       "state": "SUPPORTED",
@@ -32,9 +32,9 @@
     "api": {
       "state": "SUPPORTED",
       "coverage_state": "PARTIAL",
-      "coverage_reason": "The Python API denominator covers gate parser authority plus S4 category registry, provenance, selector projection, and seeded catalog validation contracts; broader VST APIs remain partial.",
+      "coverage_reason": "The Python API denominator covers gate parser authority plus S4 registry, provenance, selector projection, seeded catalog validation, and canonical source-path confinement; broader VST APIs remain partial.",
       "owner_role": "functional-test-reviewer",
-      "source_head": "4913425c9327b2416ac7cc1e421268223ee43ae1",
+      "source_head": "f7098d145e3af7d6a00eeae78209d973ce077afe",
       "test_ids": [
         "tests/vst/test_s2_contract_gate.py::test_gate_refuses_caller_supplied_parser_implementation",
         "tests/qa/test_s4_registry_contracts.py::test_s4_registry_accepts_single_primary_category_per_test_id",
@@ -44,7 +44,10 @@
         "tests/qa/test_s4_registry_contracts.py::test_s4_registry_rejects_supported_category_without_required_ids",
         "tests/qa/test_s4_registry_contracts.py::test_s4_registry_manifest_projection_requires_exact_ids_and_commands",
         "tests/qa/test_s4_registry_contracts.py::test_s4_seeded_failure_catalog_rejects_hash_mismatch",
-        "tests/qa/test_s4_registry_contracts.py::test_s4_committed_registry_loads_with_resolved_nodes"
+        "tests/qa/test_s4_registry_contracts.py::test_s4_committed_registry_loads_with_resolved_nodes",
+        "tests/qa/test_s4_registry_contracts.py::test_s4_registry_rejects_noncanonical_source_paths_before_ast_acceptance",
+        "tests/qa/test_s4_registry_contracts.py::test_s4_registry_rejects_symlinked_source_components_before_ast_acceptance",
+        "tests/qa/test_s4_registry_contracts.py::test_s4_registry_loader_rejects_noncanonical_path_even_when_ast_target_exists"
       ],
       "network_api": {
         "state": "UNSUPPORTED",
