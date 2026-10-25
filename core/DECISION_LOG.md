@@ -279,4 +279,7 @@ Updated the bilingual S2 status report after the 0162 implementation, 0163 funct
 
 ## 2026-10-25 -- Reconcile S2 state to the nonce fix and its focused evidence
 
-The S2 current-state summaries now distinguish the earlier Phase 7 evidence at source HEAD `dc95915018b80f498d5cf775363712fb915fe04e` from the later E5 explicit-nonce implementation at `6ee97cb06b52900c3c2ab2a9b1b415ae117a7932` and designated focused test run at test HEAD `deed6abe34eeaa8620593442bcdb1413d846f798` (4 passed, 22 deselected, 0 failed). The run-scoped WSL2 acceptance remains limited to run `280e2d0`. Phase 8 exact-final-head GPT-PM approval remains pending; do not push/PR without it. See change 0205.
+
+## 2026-10-25 -- Record the permitted S2 WSL E2E subset without upgrading skipped cases
+
+The designated E2E agent ran the permitted Store and runner/sandbox subset at committed source/test HEAD `ed723a953d51b92827d3977c96e833258a38342c` in a fresh WSL stage. Result: 109 passed and 11 skipped across 120 collected. The 11 skips include prohibited/platform-dependent E4 cases, the actual E5 inventory probe, and prohibited E8 scenarios. Preserve these as `NOT_RUN`; this run does not replace run `280e2d0` or establish deployment qualification. See change 0209.
