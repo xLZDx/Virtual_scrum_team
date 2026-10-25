@@ -396,6 +396,46 @@ At clean exact code/test HEAD `2dc6947e416b61103548285ec279d787c1027d8b`, the se
 
 At clean code HEAD `b741dc205a111e56bb984c59a63af2801870e4fc`, the designated functional test owner ran exactly the eight functional IDs and one integration ID in `docs/qa/categories.json`. Functional: 8 passed, 0 skipped/failures. Integration: 1 passed, 0 skipped/failures. Runtime was Windows, Python 3.14.3, pytest 8.4.2; each command emitted one pytest-asyncio deprecation warning. This is exact mapped-selector evidence, not full category breadth or the aggregate report-bound runner. See change 0160 and its evidence file.
 
+## 2026-10-25 -- Reconcile S4 API-denominator commit 0170
+
+Commit `c310b6098754036eacbe74ea09062cca929163f6` added five existing API selectors and retained `PARTIAL` coverage. Its change record is 0170. The commit omitted the required decision/lesson-log entries; this reconciliation preserves the commit and records its decision here rather than rewriting history.
+
+## 2026-10-25 -- Reconcile S4 API-denominator commit 0171
+
+Commit `f057020c62211b7787de368f300929b7a35b9838` replaced an API selector that duplicated the integration ID. The uniqueness validator correctly rejected the overlap. Its change record is 0171; the required contemporaneous log entries were omitted and are reconciled here.
+
+## 2026-10-25 -- Reconcile S4 API evidence commit 0172
+
+Commit `6300457964e35b80ff86e9edfb73ba9e8c68bb26` recorded the focused API/seeded result of 21 passed, 1 Windows symlink skip, and 0 failures at `f057020c62211b7787de368f300929b7a35b9838`. The change record is 0172; its required decision/lesson entries were omitted and are reconciled here.
+
+## 2026-10-25 -- Reconcile S4 signature-selector commit 0173
+
+Commit `7b1b0027cf07a33a8325017de08dd74c81fb0681` mapped a forged unsigned-receipt selector to cover the API signature-rejection path. Its change record is 0173; required log entries were omitted and are reconciled here.
+
+## 2026-10-25 -- Reconcile S4 API evidence and inventory commit 0174/0175
+
+Commit `b4f44f1f9c1e4a15ed9a7c30cb8ad699fced7d31` recorded evidence and the first finite Python API inventory (change records 0174 and 0175). It retained partial API coverage. The commit omitted the required decision/lesson entries; this single reconciliation entry covers both records in that commit.
+
+## 2026-10-25 -- Reconcile S4 API entrypoint-test commit 0176
+
+Commit `1a8d61aa3455b4e202a2d18b753063f362d85b24` added focused API falsifiers for previously unmapped entrypoints (change record 0176). Required decision/lesson entries were omitted and are reconciled here.
+
+## 2026-10-25 -- Reconcile S4 complete API-mapping commit 0177
+
+Commit `3df219e4b4cd1700e80b282c0d08fba8205006f5` mapped the 79-entry inventory to a unique API category and set its coverage mapping to complete (change record 0177). Runtime acceptance remained pending at that point. Required log entries were omitted and are reconciled here.
+
+## 2026-10-25 -- Reconcile S4 API fixture correction commit 0178
+
+Commit `d06e92b1d5460ee892754aa08916abb2179874e0` corrected a new test's live-owner precondition using the public epoch-release API (change record 0178). This was a test-fixture correction, not a product defect. Required log entries were omitted and are reconciled here.
+
+## 2026-10-25 -- Reconcile S4 API provenance commit 0179
+
+Commit `d00985f52e30342350a420f20ad96317be9227e1` updated API category provenance to the final test mapping (change record 0179). The exact mapped run followed at this code/test head. Required log entries were omitted and are reconciled here.
+
+## 2026-10-25 -- Reconcile S4 API test-evidence commit 0180
+
+Commit `bd0712674c3ba73702064300c0b343818124e766` recorded the exact API and seeded-failure run: 93 passed, 1 skipped, 0 failed, with the Windows symlink privilege limitation (change record 0180). Required log entries were omitted and are reconciled here; the run is not POSIX or signed report/gate evidence.
+
 ## 2026-10-25 -- Correlate a fresh S4 WSL snapshot and native run
 
 Using a newly provisioned, unique snapshot root, a clean S4 source HEAD `56dce67e508ccf452b2b7b39ed7f33c863081269` transferred successfully as run `f3ad62c94bc0429987bc24277103d5b4` with exact bundle hash and size. The runner-side permission audit passed; the read-only worker ran seven mapped selectors with 7 passed, 0 skipped/failures and left the snapshot at the same HEAD with zero porcelain bytes. The earlier unknown transfer destination remains uninspected and unmodified. Evidence, S4 plan/backlog, and bilingual report updates are in change 0159. Signer/report/receipt/gate and broader category acceptance remain separate.

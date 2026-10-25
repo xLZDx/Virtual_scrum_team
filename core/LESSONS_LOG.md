@@ -550,3 +550,12 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — A transfer with no run ID cannot be safely probed, but it need not block a separately authorized new run. Provision a distinct empty root, retain the transfer session through correlated metadata, and inspect only the returned run ID. The fresh S4 transfer and seven mapped POSIX selectors passed at exact HEAD `56dce67`; one malformed inline preflight failed before execution and was corrected. See change 0159.
 
 2026-10-25 — S4 category acceptance must retain per-category denominators: the eight mapped functional selectors, one integration selector, and seven mapped E2E selectors are separate evidence sets. All eight functional and the integration selector passed at exact clean HEAD `b741dc2`; broader category completeness still requires its own denominator. See change 0160.
+
+## 2026-10-25 -- S4 API denominator batch missed required governance files
+
+- Kind: FAILURE (commit preparation and coordinator oversight).
+- Facts: Ten commits spanning change records 0170–0180 (`c310b60`, `f057020`, `6300457`, `7b1b002`, `b4f44f1`, `1a8d61a`, `3df219e`, `d06e92b`, `d00985f`, `bd07126`) each included a change record but omitted contemporaneous entries in `core/DECISION_LOG.md` and `core/LESSONS_LOG.md`. Their commit messages also lacked an attribution footer. The omissions were found by `git log --name-only` and `git show` during coordinator review; the batch produced focused API evidence, not a product-source change.
+- Root cause: the test-owner commit sequence checked for a per-commit change record but did not stage the two canonical logs or verify the required attribution footer; the coordinator did not inspect commit contents before the commits were made.
+- Layer missed/caught: missed at agent commit preparation and coordinator pre-commit review; caught by the primary coordinator's post-commit commit-range audit.
+- Rule: before any future S4 commit, inspect the exact staged paths and message, ensure the change record and both canonical logs are included, and use the project attribution footer. If this is missed, preserve history and add an explicit reconciliation commit immediately; never silently claim the original commit complied.
+- Fix status: this entry and matching per-commit decision entries reconcile the audit trail in change record 0181; the ten historical commits are preserved unchanged.
