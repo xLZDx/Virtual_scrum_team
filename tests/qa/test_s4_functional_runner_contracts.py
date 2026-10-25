@@ -822,3 +822,107 @@ def test_s4_main_reports_wrong_interpreter_as_blocked_without_spawning_pytest(
     assert any("locked QA dependencies are missing or mismatched" in reason for reason in report["reasons"])
     assert report["command"] == []
     assert spawn_attempts == []
+
+
+def test_s4_main_persists_blocked_when_final_git_status_fails_after_pytest_passes(
+    tmp_path: Path, monkeypatch, capsys
+):
+    root, _ = _build_candidate_repo(tmp_path / "final-status-candidate", include_seeded=False)
+    fixtures_catalog = {
+        "schema_version": 1,
+        "status": "NOT_RUN",
+        "reason": "This candidate intentionally has no seeded-failure tests.",
+        "fixtures": [],
+    }
+    (root / "docs" / "qa" / "fixtures.json").write_text(
+        json.dumps(fixtures_catalog), encoding="utf-8"
+    )
+    lock_path = root / "tools" / "qa" / "requirements.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path.write_text(
+        "pytest==9.0.3 \\\n    --hash=sha256:" + "0" * 64 + "\n",
+        encoding="utf-8",
+    )
+    dependency_target = tmp_path / "dependency-target"
+    dependency_target.mkdir()
+    args = Namespace(
+        category="functional",
+        repo_root=str(root),
+        manifest="docs/qa/categories.json",
+        fixtures="docs/qa/fixtures.json",
+        dependency_target=str(dependency_target),
+        scratch_root=str(tmp_path / "scratch"),
+        run_id="final-status-timeout",
+        expected_head=None,
+        timeout_seconds=30,
+        output_cap_bytes=4096,
+        report_path="docs/sdlc/evidence/qa/functional.report.jsonl",
+        stdout_path="docs/sdlc/evidence/qa/functional.stdout.txt",
+        stderr_path="docs/sdlc/evidence/qa/functional.stderr.txt",
+    )
+    _git(root, "add", "docs/qa/fixtures.json", "tools/qa/requirements.lock")
+    _git(root, "commit", "-m", "add synthetic QA dependency lock")
+
+    status_calls = 0
+
+    def fail_final_status(_root: Path) -> list[str]:
+        nonlocal status_calls
+        status_calls += 1
+        if status_calls == 3:
+            raise subprocess.TimeoutExpired(["git", "status"], timeout=10)
+        return []
+
+    def build_passed_pytest_events(*, expected_ids, selectors, scratch_run, **_kwargs):
+        collected = []
+        for test_id in expected_ids:
+            selector = selectors[test_id]["selector"]
+            source_path, function_name = selector.split("::", 1)
+            collected.append({
+                "node_id": f"{source_path}::{function_name}",
+                "selector": selector,
+                "outcome": "passed",
+            })
+        events = {
+            "schema_version": 1,
+            "collected": collected,
+            "duplicates": [],
+            "collection_errors": [],
+            "fixture_observations": [],
+        }
+        scratch_run.mkdir(parents=True, exist_ok=True)
+        (scratch_run / "events.json").write_text(json.dumps(events), encoding="utf-8")
+        return ["pytest", "-q"], {}
+
+    def return_successful_pytest(*_args, **_kwargs):
+        return 0, b"", b"", {
+            "timed_out": False,
+            "stdout_truncated": False,
+            "stderr_truncated": False,
+            "capture_incomplete": False,
+        }
+
+    monkeypatch.setattr(run, "_args", lambda: args)
+    monkeypatch.setattr(run.sys, "executable", "C:/Python314/python.exe")
+    monkeypatch.setattr(run.sys, "path", list(run.sys.path))
+    monkeypatch.setattr(run, "_git_status_paths", fail_final_status)
+    monkeypatch.setattr(run, "_lock_versions", lambda _root: ("a" * 64, {"pytest": "9.0.3"}))
+    monkeypatch.setattr(run, "_installed_versions", lambda _versions, _target: ({"pytest": "9.0.3"}, []))
+    monkeypatch.setattr(run, "_pytest_command", build_passed_pytest_events)
+    monkeypatch.setattr(run, "_run_bounded", return_successful_pytest)
+
+    exit_code = run.main()
+    stdout = capsys.readouterr().out
+    reports = [
+        json.loads(line)
+        for line in (root / args.report_path).read_text(encoding="utf-8").splitlines()
+    ]
+    run_reports = [report for report in reports if report["run_id"] == args.run_id]
+
+    assert status_calls == 3
+    assert exit_code == 2
+    assert "QA_RESULT BLOCKED" in stdout
+    assert len(run_reports) == 1
+    assert run_reports[0]["result"] == "BLOCKED"
+    assert run_reports[0]["passed_test_ids"]
+    assert any("TimeoutExpired" in reason for reason in run_reports[0]["reasons"])
+    assert all(report["result"] != "PASS" for report in run_reports)

@@ -509,3 +509,7 @@ The category manifest now binds to source commit `28e7c50`. The complete support
 ## 2026-10-25 — Record S4 final exact-head category evidence
 
 All six S4 categories now have run records bound to candidate `ac17bde` and registry source `28e7c50`. Functional and seeded-failure report `PASS`; integration/API/regression report `FAIL`, and E2E reports `INCONCLUSIVE`, because required platform skips and prohibited process-termination selectors remain non-approving. All reports show zero failed selectors, but those category statuses do not close the gate. The 18 candidate/canonical evidence files match by SHA-256 and byte size. See change 0268 and `docs/sdlc/evidence/qa/`.
+
+## 2026-10-25 — Defer S4 report approval until final candidate status succeeds
+
+At `ac17bde`, reliability review found that a failed final candidate-state query could leave a previously appended `PASS` report. `tools/qa/run.py` now appends only after final status succeeds, allowing the error path to persist `BLOCKED`. The functional-test reviewer added and ran a fault-injection regression (1 passed at dirty source HEAD `9cceab3`). The exact full-category run and fresh specialist recheck must use the later committed source and refreshed selector registry. Security review also recorded unverified provenance of the external dependency target as a MINOR follow-up; see change 0269.

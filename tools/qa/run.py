@@ -921,11 +921,10 @@ def main() -> int:
         else:
             report["result"] = "PASS" if not reasons and exit_code == 0 else "FAIL"
         report["reasons"] = reasons
-        _append_report(output_paths["report"], report)
-        report_saved = True
 
-        # Verify no concurrent or test-driven mutation occurred while writing the
-        # fixed-path artifacts. Only those exact artifact paths may be dirty.
+        # Do not persist an approving result until the final candidate-state
+        # query has succeeded. If that query fails, the exception handler writes
+        # a durable BLOCKED record instead of leaving a report that says PASS.
         final_paths = _git_status_paths(root)
         if set(final_paths) - allowed_changes:
             report["result"] = "BLOCKED"
@@ -933,8 +932,9 @@ def main() -> int:
             unexpected_final = _unexpected_candidate_paths(final_paths)
             report["dirty_tree"]["after"] = bool(unexpected_final)
             report["dirty_tree"]["after_paths"] = unexpected_final
-            _append_report(output_paths["report"], report)
-            report_saved = True
+
+        _append_report(output_paths["report"], report)
+        report_saved = True
 
         for test_id in report["passed_test_ids"]:
             print(f"PASS {test_id}")
