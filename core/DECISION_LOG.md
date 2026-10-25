@@ -577,3 +577,7 @@ Update the functional category source head to `288e33d`, the committed ACL and w
 ## 2026-10-25 — Preserve S4 parser and event cross-check after quiet-mode failure
 
 The report-bound run at `5b5e6c7` recorded all 25 successful IDs in plugin events but the trusted pass-line parser returned none because pytest quiet progress dots prefixed its output (`.PASS <nodeid>`). Preserve the independent parser/event comparison and teach the parser to recognize only dot-prefixed, exact pass records. Do not count the inconclusive run as accepted and do not sign a receipt for it. See change 0246.
+
+## 2026-10-25 — Map a regression for pytest quiet-mode pass records
+
+Add a functional selector for the parser's exact accepted form and malformed lookalikes. Pin category source provenance to parser code `869cf36`. Test execution remains pending at a fresh exact-head WSL snapshot; authoring and mapping are not runtime proof. See change 0247.

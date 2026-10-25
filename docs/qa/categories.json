@@ -5,9 +5,9 @@
     "functional": {
       "state": "SUPPORTED",
       "coverage_state": "COMPLETE",
-      "coverage_reason": "The accepted local functional denominator covers receipt-order invariance, missing receipts, malformed manifest fields, wrong-key signatures, stale candidate HEAD, skipped/xfail required IDs, and the POSIX worker capability-drop boundary (exact worker identity, empty inheritable/permitted/effective/ambient sets, no-new-privileges, and denied runner UID regain). Signer ACL coverage rejects access/default ACLs and fails closed on denied ACL inspection; the POSIX snapshot/output selector verifies worker-group inheritance without runner chown. The original S3 contract selectors remain included. Network API and report-runtime paths are excluded from this local functional category. Registry ancestry outcomes are additionally mapped for true ancestor, valid non-ancestor, unexpected Git exit, exhausted timeout retry, and invocation failure.",
+      "coverage_reason": "The accepted local functional denominator covers receipt-order invariance, missing receipts, malformed manifest fields, wrong-key signatures, stale candidate HEAD, skipped/xfail required IDs, and the POSIX worker capability-drop boundary (exact worker identity, empty inheritable/permitted/effective/ambient sets, no-new-privileges, and denied runner UID regain). Signer ACL coverage rejects access/default ACLs and fails closed on denied ACL inspection; the POSIX snapshot/output selector verifies worker-group inheritance without runner chown. The trusted PASS-line parser accepts pytest quiet-mode progress dots before PASS records and rejects arbitrary lookalike prefixes. The original S3 contract selectors remain included. Network API and report-runtime paths are excluded from this local functional category. Registry ancestry outcomes are additionally mapped for true ancestor, valid non-ancestor, unexpected Git exit, exhausted timeout retry, and invocation failure.",
       "owner_role": "functional-test-reviewer",
-      "source_head": "288e33d81243a7939972461767a748f4a029ffce",
+      "source_head": "869cf369de4fbd7a3aa523f75660b3d2dba3cb3d",
       "test_ids": [
         "tests/qa/test_s4_worker_exec.py::test_s4_worker_trampoline_drops_capabilities_before_manifest_exec",
         "tests/qa/test_s4_worker_boundary_contracts.py::test_s4_signer_guard_rejects_access_acl_on_socket",
@@ -15,6 +15,7 @@
         "tests/qa/test_s4_worker_boundary_contracts.py::test_s4_signer_guard_rejects_access_acl_on_traversed_ancestor",
         "tests/qa/test_s4_worker_boundary_contracts.py::test_s4_signer_guard_fails_closed_when_acl_inspection_is_denied",
         "tests/qa/test_s4_worker_boundary_contracts.py::test_s4_snapshot_and_qa_output_directories_inherit_worker_group",
+        "tests/qa/test_s4_pass_line_parser.py::test_s4_pass_line_parser_accepts_quiet_dots_and_rejects_lookalikes",
         "tests/vst/test_s3_worker_adapter.py::test_ac1_request_contract_enforces_identity_fence_and_payload_bounds",
         "tests/vst/test_s3_worker_adapter.py::test_ac1_response_contract_rejects_untyped_or_oversized_worker_claims",
         "tests/vst/test_s3_worker_adapter.py::test_ac2_resume_and_stop_requests_require_new_fence_and_bound_keys",

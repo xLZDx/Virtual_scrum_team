@@ -629,3 +629,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — When source code advances after test mapping, update category provenance to the code head being tested; then create a fresh exact-head snapshot after the mapping commit. A successful transfer is setup evidence, not test execution. See change 0245.
 
 2026-10-25 — Keep the pytest pass-line parser aligned with the exact pinned command's quiet-mode reporter format. On S4 head `5b5e6c7`, pytest emitted `.PASS <nodeid>` for each successful case; the independent parser/event check correctly refused a receipt when the parser found none. Adapt the strict line parser rather than weakening the reconciliation gate. See change 0246.
+
+2026-10-25 — Map a falsifiable regression selector for every parser format correction before the runtime retry. Keep its code provenance at the source commit and record it unverified until a fresh exact-head run completes. See change 0247.
