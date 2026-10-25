@@ -511,3 +511,8 @@ Five static-ID functional tests exercise the Git ancestry query's defined outcom
 ## 2026-10-25 -- Map S4 ancestry outcome tests as functional selectors
 
 The five deterministic ancestry outcome tests from source commit `173a7f2` are mapped under the functional primary category. Functional selector count is 19; its registry provenance points to the test-source commit. API, integration, seeded-failure and E2E IDs are unchanged. Category registry SHA-256 is recorded in change record 0197. Runtime evidence is pending the post-mapping exact-head runs.
+
+
+## 2026-10-25 -- Verify S4 ancestry and all mapped local selectors
+
+At exact source/test HEAD `20fa7bb5759d8c35159a942043a78ec93f3c79a1`, the API denominator had 73 mapped selectors (92 passed, one symlink selector skipped by Windows WinError 1314, zero failed); functional/integration/seeded had 32/32 passed; and the E2E runner reported 12/12 passed. Python was 3.14.3 and pytest 8.4.2 on Windows NT 10.0.26300.0. External signer/report/sandbox runtime remains unverified. See change record 0198.
