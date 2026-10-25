@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_head": "f7098d145e3af7d6a00eeae78209d973ce077afe",
+  "source_head": "ad6ddb075b2a9f2beefcf2595bd47c9bbcd1650a",
   "categories": {
     "functional": {
       "state": "SUPPORTED",
@@ -32,9 +32,9 @@
     "api": {
       "state": "SUPPORTED",
       "coverage_state": "PARTIAL",
-      "coverage_reason": "The Python API denominator covers gate parser authority plus S4 registry, provenance, selector projection, seeded catalog validation, and canonical source-path confinement; broader VST APIs remain partial.",
+      "coverage_reason": "The Python API denominator covers gate parser authority plus S4 registry, provenance, selector projection, seeded catalog validation, canonical path confinement, bounded source reads and parser recursion rejection; broader VST APIs remain partial.",
       "owner_role": "functional-test-reviewer",
-      "source_head": "f7098d145e3af7d6a00eeae78209d973ce077afe",
+      "source_head": "ad6ddb075b2a9f2beefcf2595bd47c9bbcd1650a",
       "test_ids": [
         "tests/vst/test_s2_contract_gate.py::test_gate_refuses_caller_supplied_parser_implementation",
         "tests/qa/test_s4_registry_contracts.py::test_s4_registry_accepts_single_primary_category_per_test_id",
@@ -47,7 +47,9 @@
         "tests/qa/test_s4_registry_contracts.py::test_s4_committed_registry_loads_with_resolved_nodes",
         "tests/qa/test_s4_registry_contracts.py::test_s4_registry_rejects_noncanonical_source_paths_before_ast_acceptance",
         "tests/qa/test_s4_registry_contracts.py::test_s4_registry_rejects_symlinked_source_components_before_ast_acceptance",
-        "tests/qa/test_s4_registry_contracts.py::test_s4_registry_loader_rejects_noncanonical_path_even_when_ast_target_exists"
+        "tests/qa/test_s4_registry_contracts.py::test_s4_registry_loader_rejects_noncanonical_path_even_when_ast_target_exists",
+        "tests/qa/test_s4_registry_contracts.py::test_s4_registry_rejects_test_source_over_one_mib_before_ast_parse",
+        "tests/qa/test_s4_registry_contracts.py::test_s4_registry_treats_recursion_error_during_ast_parse_as_unresolved"
       ],
       "network_api": {
         "state": "UNSUPPORTED",
