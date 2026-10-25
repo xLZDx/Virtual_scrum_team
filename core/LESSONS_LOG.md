@@ -635,3 +635,7 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — When a parser is broadened to match observed output, limit accepted prefixes to the exact runtime form and test both the supported form and lookalikes. Review identified that unbounded leading dots were broader than the `.PASS` evidence. See change 0248.
 
 2026-10-25 — After narrowing a parser contract from review feedback, update its selector and category source provenance before rerunning. The regression rejects repeated dots as well as unrelated prefixes. See change 0249.
+
+2026-10-25 — A signed functional `tools.qa.run` receipt with a synthetic signer closes only that functional run. Keep deployed signer trust, E2E denominator, aggregate regression and authoritative gate as separate acceptance items. Preserve report, event, manifest and stream hashes with the exact source and candidate heads. See change 0250.
+
+2026-10-25 — When validating a protected Unix socket path, inspect mode permissions on every resolved and lexical ancestor, not only ACLs; a writable intermediate directory can enable path replacement. Preserve sticky `/tmp` only when its sticky bit protects the runner-owned next entry. See change 0251.

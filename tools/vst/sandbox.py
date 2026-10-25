@@ -41,6 +41,27 @@ def _require_no_extended_acl(
         raise ContractError("signer IPC has an extended ACL")
 
 
+def _require_worker_cannot_replace_entry(
+    directory_st: os.stat_result, child_st: os.stat_result, *,
+    worker_uid: int, worker_gid: int, runner_uid: int,
+) -> None:
+    """Reject worker-controlled path components, allowing protected sticky entries."""
+    if not stat.S_ISDIR(directory_st.st_mode):
+        raise ContractError("signer IPC parent path contains a non-directory")
+    if directory_st.st_uid == worker_uid:
+        raise ContractError("worker identity owns a signer IPC parent directory")
+    mode = stat.S_IMODE(directory_st.st_mode)
+    worker_writable = (
+        (directory_st.st_gid == worker_gid and bool(mode & stat.S_IWGRP))
+        or bool(mode & stat.S_IWOTH)
+    )
+    if not worker_writable:
+        return
+    if mode & stat.S_ISVTX and child_st.st_uid == runner_uid:
+        return
+    raise ContractError("signer IPC path has a worker-writable directory component")
+
+
 def current_identity() -> dict[str, int | str]:
     if os.name != "posix" or not hasattr(os, "geteuid"):
         raise ContractError("identity inspection requires POSIX credentials")
@@ -61,27 +82,35 @@ def require_worker_cannot_access_signer(socket_path: str, *, worker_uid: int, wo
     socket_file = Path(os.path.abspath(socket_path))
     parent = socket_file.parent
     try:
-        traversed_directories = set(parent.parents) | {parent}
+        lexical_directories = [*reversed(parent.parents), parent]
         resolved_parent = parent.resolve(strict=True)
-        traversed_directories.update(resolved_parent.parents)
-        traversed_directories.add(resolved_parent)
-        ordered_directories = sorted(
-            traversed_directories, key=lambda item: (len(item.parts), str(item))
-        )
-        for directory in ordered_directories:
-            directory_st = directory.stat()
-            if not stat.S_ISDIR(directory_st.st_mode):
-                raise ContractError("signer IPC parent path contains a non-directory")
-            _require_no_extended_acl(directory)
+        resolved_directories = [*reversed(resolved_parent.parents), resolved_parent]
+        resolved_socket = resolved_parent / socket_file.name
+        socket_st = socket_file.stat(follow_symlinks=False)
+        resolved_socket_st = resolved_socket.stat(follow_symlinks=False)
+        if (socket_st.st_dev, socket_st.st_ino) != (resolved_socket_st.st_dev, resolved_socket_st.st_ino):
+            raise ContractError("signer IPC path changed during inspection")
+        for directories, endpoint in (
+            (lexical_directories, socket_file),
+            (resolved_directories, resolved_socket),
+        ):
+            for index, directory in enumerate(directories):
+                directory_st = directory.stat()
+                child = directories[index + 1] if index + 1 < len(directories) else endpoint
+                child_st = child.stat(follow_symlinks=False)
+                _require_worker_cannot_replace_entry(
+                    directory_st, child_st, worker_uid=worker_uid,
+                    worker_gid=worker_gid, runner_uid=os.geteuid(),
+                )
+                _require_no_extended_acl(directory)
         _require_no_extended_acl(parent, include_default_acl=True)
         parent_st = parent.stat()
-        socket_st = socket_file.stat(follow_symlinks=False)
     except OSError as exc:
         raise ContractError(f"signer IPC is unavailable: {exc}") from exc
     if not stat.S_ISSOCK(socket_st.st_mode):
         raise ContractError("signer IPC endpoint is not a Unix socket")
     _require_no_extended_acl(socket_file, follow_symlinks=False)
-    if parent_st.st_mode & stat.S_IWOTH or socket_st.st_mode & (stat.S_IROTH | stat.S_IWOTH):
+    if socket_st.st_mode & (stat.S_IROTH | stat.S_IWOTH):
         raise ContractError("signer IPC grants access to other identities")
     if worker_uid in (parent_st.st_uid, socket_st.st_uid):
         raise ContractError("worker identity owns signer IPC path")

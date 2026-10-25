@@ -589,3 +589,11 @@ The fresh security review identified a MINOR concern that arbitrary counts of le
 ## 2026-10-25 — Map the exact one-dot parser contract
 
 The functional parser selector now accepts only plain `PASS ` and one-dot `.PASS ` forms and explicitly rejects `..PASS` and other lookalikes. Source provenance points to the narrowed parser code `ced6432`; fresh exact-head execution remains pending. See change 0249.
+
+## 2026-10-25 — Record S4 report-bound functional runtime acceptance
+
+At exact source/test HEAD `c2eefda`, eight focused worker/ACL/group/parser selectors passed, then the synthetic functional CLI passed all 26 required functional IDs with PASS QA report, TestRun receipt, and diff gate. The signer was ephemeral/test-only. Do not infer trusted signer, E2E category, aggregate, or authoritative gate acceptance. The mapped E2E nested-CLI gap remains incompatible with the worker identity boundary and needs a runner-owned orchestration contract or compatible design. See change 0250 and `docs/sdlc/evidence/s4-reportbound-functional-c2eefda.md`.
+
+## 2026-10-25 — Reject worker-writable signer path ancestors
+
+Security re-review at `c2eefda` found a conditional path-race risk because mode bits were checked only on the immediate parent/socket, although ACLs were checked on every ancestor. Validate all lexical and resolved parent modes; allow a sticky writable ancestor only when it protects the next runner-owned entry. Confirm with mapped tests for unsafe writable parents and safe sticky `/tmp`. See change 0251.
