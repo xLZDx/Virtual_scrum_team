@@ -666,6 +666,10 @@ After test-source commit `dc85357`, regenerate the registry so the exact committ
 
 The WSL-capable runner baseline introduced by change 0297 exposed a stale schema-v1 synthetic manifest: selected Windows and WSL E2E assertions saw `BLOCKED` before child collection. Update the fixture to schema v2 and derive runtime profiles from the registry contract while keeping all assertions unchanged. A test agent accidentally ran `git diff --check` during code work; it emitted no output and is not acceptance evidence. Record the process deviation and resume the correct sequence: finish coding, commit, regenerate registry, then rerun focused/full tests. See change 0299.
 
+## 2026-10-25 — Refresh S4 registry after synthetic manifest v2 update
+
+After test-source commit `2295bf4`, regenerate the selector registry before any run. Change 0300 binds the inventory to the exact source HEAD and retains 935 total regression selectors, 883 assigned runnable and 52 policy `NOT_RUN` (plus 3 separate seeded-failure selectors). This is registry generation only. The timeout selector remains prohibited; focused and complete compliant test runs are next.
+
 ## 2026-10-25 — Refresh the selector registry after the Linux flag fixture
 
 After test-source commit `c4f9cb9`, regenerate the category registry before rerunning. It now binds to exact source HEAD `c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209` and records 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN`, and 90 functional selectors. Preserve the policy rows and use exact-head evidence. See change 0290.
