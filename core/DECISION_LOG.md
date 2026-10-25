@@ -296,3 +296,7 @@ Keep the durable STOP epoch fence and non-approving `INCONCLUSIVE` response rega
 
 Exercise `SyntheticStoryPilot.stop` through the real Store/Supervisor fixture. Assert adapter return and exception outcomes, durable epoch fencing, a non-approving response, no raw exception text, and fallback for invalid/overlong class names. Keep OS cleanup `NOT_VERIFIED`; this functional fixture cannot prove child termination. The exact-head run passed 16 tests at `2a8c175`; evidence is in `docs/sdlc/evidence/s3-stop-cleanup-functional-2a8c175.md` and record 0098.
 
+
+## 2026-10-25 -- Record exact-head S3 pilot E2E result
+
+At repository HEAD `71169f7e004160f9bc0781de2dce1568bbaa8e49`, the focused `tests/vst/test_s3_worker_pilot_e2e.py` module passed 8 tests with no failures or skips. The worktree remained dirty only because the pre-existing unrelated S2 evidence file was present before and after; it was not staged or modified. This synthetic module does not prove OS cleanup, sandbox containment, or external candidate behavior. See change 0099.

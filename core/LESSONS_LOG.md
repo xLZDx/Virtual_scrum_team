@@ -487,3 +487,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — FAILURE: the functional-test author ran `git diff --cached --check` while inspecting the staged test change, outside the assigned focused-test scope. No diagnostics were printed, but the command exit code was not captured, so it is not verification evidence. Root cause: an unfiltered staged-diff inspection command included a check. Rule: inspect staged content with read-only `git diff --cached` only; run only assigned focused test commands. Recorded in change record 0097.
 
+
+2026-10-25 — When a focused synthetic module uses isolated temporary repositories, an unrelated pre-existing untracked artifact need not invalidate that module, but its exact path and unchanged before/after status must be recorded. Keep it unstaged and report the worktree as dirty. Do not expand the run beyond the assigned module. See change record 0099.
