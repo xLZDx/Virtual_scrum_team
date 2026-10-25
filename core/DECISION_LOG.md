@@ -323,3 +323,7 @@ The last-15 S2 history audit found commits `7acb30d`, `f1eef32`, `2785528`, `dee
 ## 2026-10-25 -- Reconcile explicit Git hook-path override in S2 commits
 
 This session's S2 commits `a2a5d5a`, `198604f`, and `16d9054` were created with `git -c core.hooksPath=NUL commit`, which explicitly overrides normal hook discovery. A read-only inspection of the shared repository hooks path found no configured `core.hooksPath` and only `.sample` files, so no active hook was present in that directory at inspection time; this does not justify the override. Preserve all history. The cause was failure to inspect hook configuration before copying the override into commit commands. See reconciliation change 0235.
+
+## 2026-10-25 -- Reconcile S2 phase state with section 9 exact-head evidence
+
+Added the exact-head functional reviewer result for S2.D1/D2 to the phase-authority state after verifying its absence there while the canonical backlog and bilingual report already carried the 12-pass result. The evidence is narrowly scoped to manifest command/parser pinning and waiver scope and does not change E4/E5/E8 blockers. See change 0239.
