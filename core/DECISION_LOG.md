@@ -447,4 +447,9 @@ Fresh S4 reviews found two resource risks in sequence: repeated same-file AST pa
 
 ### 2026-10-25 — S4 local acceptance lanes and seeded failure observations
 
-For the test-owner follow-up, keep category IDs primary-unique and derive functional selectors from AC-7 without reusing API IDs. Integration selections may compose existing local store, runner/gate, and synthetic repository selectors, but trusted signer socket/report runtime must remain `NOT_RUN` unless exercised. Seeded fixtures are accepted only when their canonical input is loaded, unchanged product behavior is invoked, the exact rejection is asserted, and one current pytest node records the observation. See change records 0182 and 0183.
+For the test-owner follow-up, keep category IDs primary-unique and derive functional selectors from AC-7 without reusing API IDs. Integration selections may compose existing local store, runner/gate, and synthetic repository selectors; trusted signer socket/report runtime remains a separate `NOT_RUN` evidence state. Seeded fixtures are accepted only when their canonical input is loaded, unchanged product behavior is invoked, the exact rejection is asserted, and one current pytest node records the observation. See change records 0182 and 0183.
+
+
+## 2026-10-25 -- Map S4 functional, integration, and seeded-failure denominators
+
+The test-owner follow-up added six AC-7 functional selectors without reassigning any API-primary test ID, five local integration selectors to complement the existing signed runner path, and six unchanged-product AC-12 seeded fixtures with canonical input hashes and one exact node ID per fixture. The integration selector denominator is COMPLETE for six accepted local selectors. Trusted OS signer identity and report-bound runner runtime remain a separate NOT_RUN evidence state and do not reduce selector-mapping completeness. The seeded catalog's COMPLETE status is bounded to its seven declared fixtures and does not imply exhaustive failure coverage or a mutation score. Source code is unchanged. See change record 0183; runtime remains pending the mapped exact-head run.

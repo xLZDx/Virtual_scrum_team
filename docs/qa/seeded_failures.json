@@ -10,6 +10,83 @@
       "input_sha256": "eeed0bf7ca96a320d4262965fb2667ce528eab6eed7c4805b9720117e1b8510e",
       "expected_rejection": "INVALID_TASK_MANIFEST",
       "test_id": "tests/qa/test_s4_registry_contracts.py::test_s4_seeded_failure_rejects_invalid_manifest_and_records_observation"
+    },
+    {
+      "fixture_id": "stale-head",
+      "input": {
+        "current_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "current_epoch": 1,
+        "receipt_head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "input_sha256": "636e4874102f5f9b6d4a4ab06aafdacfa61f66aa011f5f0e69acb8cd553d56f4",
+      "expected_rejection": "STALE_HEAD",
+      "test_id": "tests/qa/test_s4_seeded_failures.py::test_seeded_stale_head_rejects_current_gate_decision"
+    },
+    {
+      "fixture_id": "missing-required-receipt",
+      "input": {
+        "missing_slot": "tests"
+      },
+      "input_sha256": "6cefae832e475b22fa158a8fffe624c73d17b78257568bd028ab803f3de7e56a",
+      "expected_rejection": "MISSING_REQUIRED_RECEIPT",
+      "test_id": "tests/qa/test_s4_seeded_failures.py::test_seeded_missing_receipt_is_non_approving"
+    },
+    {
+      "fixture_id": "invalid-signature",
+      "input": {
+        "signature": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "input_sha256": "4d08fea03912179b753571473ded707eafb120461a7f9d1880382cfde8f7ddba",
+      "expected_rejection": "INVALID_SIGNATURE",
+      "test_id": "tests/qa/test_s4_seeded_failures.py::test_seeded_invalid_signature_is_rejected"
+    },
+    {
+      "fixture_id": "out-of-scope-diff",
+      "input": {
+        "manifest_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "base_head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidate_head": "dddddddddddddddddddddddddddddddddddddddd",
+        "changed_paths": [
+          "src/app.py",
+          "docs/outside.md"
+        ],
+        "allowed_paths": [
+          "src/app.py"
+        ]
+      },
+      "input_sha256": "d7636acbc44fd1cc5c2e49791d7404657b925cbd8ab59cc8af3c53b4fe37cf69",
+      "expected_rejection": "OUT_OF_SCOPE_PATH",
+      "test_id": "tests/qa/test_s4_seeded_failures.py::test_seeded_out_of_scope_diff_fails"
+    },
+    {
+      "fixture_id": "skipped-required-id",
+      "input": {
+        "expected_test_ids": [
+          "t1",
+          "t2"
+        ],
+        "executed_test_ids": [
+          "t2"
+        ],
+        "skipped_test_ids": [
+          "t1"
+        ],
+        "xfail_test_ids": []
+      },
+      "input_sha256": "e810945de3154f06b405cd7e5798c1adfe613ee80f7c962fd2948faaf78460ba",
+      "expected_rejection": "SKIPPED_REQUIRED_ID",
+      "test_id": "tests/qa/test_s4_seeded_failures.py::test_seeded_skipped_required_id_derives_failure"
+    },
+    {
+      "fixture_id": "artifact-digest-mismatch",
+      "input": {
+        "artifact_path": "report.json",
+        "claimed_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "observed_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "input_sha256": "8e3f36621c114ea3fe2490758f87d08a5589450e132d9e0a05474eaa0541670a",
+      "expected_rejection": "ARTIFACT_DIGEST_MISMATCH",
+      "test_id": "tests/qa/test_s4_seeded_failures.py::test_seeded_artifact_digest_mismatch_is_non_approving"
     }
   ],
   "reason": null,

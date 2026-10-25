@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "source_head": "1a8d61aa3455b4e202a2d18b753063f362d85b24",
+  "source_head": "a73e87a3c4b414f0c97ac1d09fdedf037ec17dde",
   "categories": {
     "functional": {
       "state": "SUPPORTED",
-      "coverage_state": "PARTIAL",
-      "coverage_reason": "Current functional denominator covers only the focused S3 adapter contract tests.",
+      "coverage_state": "COMPLETE",
+      "coverage_reason": "The accepted local functional denominator covers receipt-order invariance, missing receipts, malformed manifest fields, wrong-key signatures, stale candidate HEAD, and skipped/xfail required IDs; the original S3 contract selectors remain included. Network API and report-runtime paths are excluded from this local functional category.",
       "owner_role": "functional-test-reviewer",
-      "source_head": "4913425c9327b2416ac7cc1e421268223ee43ae1",
+      "source_head": "a73e87a3c4b414f0c97ac1d09fdedf037ec17dde",
       "test_ids": [
         "tests/vst/test_s3_worker_adapter.py::test_ac1_request_contract_enforces_identity_fence_and_payload_bounds",
         "tests/vst/test_s3_worker_adapter.py::test_ac1_response_contract_rejects_untyped_or_oversized_worker_claims",
@@ -16,17 +16,28 @@
         "tests/vst/test_s3_worker_adapter.py::test_ac3_budget_exact_cap_replay_over_cap_and_stale_snapshot",
         "tests/vst/test_s3_worker_adapter.py::test_ac3_zero_budget_allows_zero_charge_but_blocks_positive_charge",
         "tests/vst/test_s3_worker_adapter.py::test_ac4_resume_accepts_only_returned_named_app_checkpoint_and_is_idempotent",
-        "tests/vst/test_s3_worker_adapter.py::test_ac4_worker_state_alone_never_creates_verification_receipts"
+        "tests/vst/test_s3_worker_adapter.py::test_ac4_worker_state_alone_never_creates_verification_receipts",
+        "tests/vst/test_e2_gate.py::test_approve_independent_of_receipt_order",
+        "tests/vst/test_e2_gate.py::test_no_receipts_gives_modify_with_everything_unmet",
+        "tests/vst/test_e1_contracts.py::test_manifest_unknown_field_rejected",
+        "tests/vst/test_e2_gate.py::test_signature_by_wrong_key_rejected",
+        "tests/vst/test_e4_runner.py::test_replay_against_another_head_is_rejected",
+        "tests/vst/test_e4_runner.py::test_skipped_or_xfail_ids_prevent_pass"
       ]
     },
     "integration": {
       "state": "SUPPORTED",
-      "coverage_state": "PARTIAL",
-      "coverage_reason": "Current integration denominator contains one runner receipt path only.",
+      "coverage_state": "COMPLETE",
+      "coverage_reason": "The mapped local integration denominator contains six unique selectors for store→gate, runner→gate, signer request replay, synthetic local repository publication, and store/supervisor receipt idempotency. This records selector coverage only; trusted OS signer identity and report-bound runner runtime remain NOT_RUN on this platform/runtime path.",
       "owner_role": "functional-test-reviewer",
-      "source_head": "4913425c9327b2416ac7cc1e421268223ee43ae1",
+      "source_head": "a73e87a3c4b414f0c97ac1d09fdedf037ec17dde",
       "test_ids": [
-        "tests/vst/test_e4_runner.py::test_harmless_command_produces_signed_passing_testrun"
+        "tests/vst/test_e4_runner.py::test_harmless_command_produces_signed_passing_testrun",
+        "tests/vst/test_e3_store.py::test_store_output_is_approved_by_the_gate",
+        "tests/vst/test_e4_runner.py::test_runner_receipt_is_approved_by_gate_at_its_head_and_epoch",
+        "tests/vst/test_s2_runner_lifecycle.py::test_signing_request_exact_schema_and_replay_protocol_without_os_claim",
+        "tests/vst/test_s2_runner_lifecycle.py::test_hook_free_publication_transfers_source_only_commit_without_running_pre_push",
+        "tests/vst/test_s2_store_lifecycle.py::test_supervisor_receipt_replay_is_idempotent_and_payload_conflict_fails"
       ]
     },
     "api": {
@@ -133,12 +144,18 @@
     },
     "seeded-failure": {
       "state": "SUPPORTED",
-      "coverage_state": "PARTIAL",
-      "coverage_reason": "One committed unchanged-product invalid-manifest fixture is hash-bound and records an observed typed rejection; broader failure fixtures remain uncovered.",
+      "coverage_state": "COMPLETE",
+      "coverage_reason": "All seven currently catalogued unchanged-product fixtures have one unique hash-bound test and an observed rejection: invalid task manifest, stale HEAD, missing required receipt, invalid signature, out-of-scope diff, skipped required ID, and artifact digest mismatch. This is bounded fixture coverage, not a mutation score or claim of exhaustive failure enumeration.",
       "owner_role": "functional-test-reviewer",
-      "source_head": "4913425c9327b2416ac7cc1e421268223ee43ae1",
+      "source_head": "a73e87a3c4b414f0c97ac1d09fdedf037ec17dde",
       "test_ids": [
-        "tests/qa/test_s4_registry_contracts.py::test_s4_seeded_failure_rejects_invalid_manifest_and_records_observation"
+        "tests/qa/test_s4_registry_contracts.py::test_s4_seeded_failure_rejects_invalid_manifest_and_records_observation",
+        "tests/qa/test_s4_seeded_failures.py::test_seeded_stale_head_rejects_current_gate_decision",
+        "tests/qa/test_s4_seeded_failures.py::test_seeded_missing_receipt_is_non_approving",
+        "tests/qa/test_s4_seeded_failures.py::test_seeded_invalid_signature_is_rejected",
+        "tests/qa/test_s4_seeded_failures.py::test_seeded_out_of_scope_diff_fails",
+        "tests/qa/test_s4_seeded_failures.py::test_seeded_skipped_required_id_derives_failure",
+        "tests/qa/test_s4_seeded_failures.py::test_seeded_artifact_digest_mismatch_is_non_approving"
       ]
     }
   },

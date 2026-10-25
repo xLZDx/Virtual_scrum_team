@@ -13,6 +13,7 @@ from tests.vst.e1e4_helpers import (
     EPOCH, HEAD, KEY, SUPERVISOR_KEY, bound, manifest,
 )
 
+pytest_plugins = ("tools.qa.pytest_pass_plugin",)
 ROOT = Path(__file__).resolve().parents[2]
 HERE = "tests/qa/test_s4_seeded_failures.py"
 
@@ -55,7 +56,7 @@ def test_seeded_stale_head_rejects_current_gate_decision():
         bound(task, "IndependentReview"),
     ]
     decision = gate.evaluate(
-        task, receipts, input_data["current_head"], EPOCH, KEY,
+        task, receipts, input_data["current_head"], input_data["current_epoch"], KEY,
         supervisor_key=SUPERVISOR_KEY,
     )
     reasons = " | ".join(decision["reasons"]).lower()

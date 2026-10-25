@@ -561,3 +561,6 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 - Fix status: this entry and matching per-commit decision entries reconcile the audit trail in change record 0181; the ten historical commits are preserved unchanged.
 
 2026-10-25 — For seeded failure evidence, assert the product-derived outcome before calling the observation plugin, and bind the canonical input digest and exact executing node ID. Keep fixtures in separate tests and never use actual failing tests as seeds. For category expansion, check primary-ID ownership before adding any selector; an API ID cannot also be functional or integration evidence. See S4 changes 0182–0183.
+
+
+2026-10-25 — A seeded fixture catalog must match the primary category list exactly, with one unique test ID per fixture; hashes use canonical sorted compact JSON. Functional selectors need static node IDs and should target accepted AC-7 failure modes without duplicating API-primary IDs. Local signer protocol tests do not establish trusted OS peer credentials or report-bound runtime, so integration remains PARTIAL. See change 0183; exact-head execution is pending.
