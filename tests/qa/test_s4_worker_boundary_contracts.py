@@ -149,7 +149,7 @@ def test_s4_signer_guard_rejects_access_acl_on_socket(tmp_path, monkeypatch):
             return _no_acl_xattr(path, attribute, follow_symlinks=follow_symlinks)
 
         monkeypatch.setattr(sandbox.os, "getxattr", getxattr)
-        with pytest.raises(ContractError, match="extended ACL"):
+        with pytest.raises(ContractError, match="extended POSIX ACL"):
             sandbox.require_worker_cannot_access_signer(
                 str(socket_path), worker_uid=_WORKER_UID, worker_gid=_WORKER_GID,
             )
@@ -168,7 +168,7 @@ def test_s4_signer_guard_rejects_default_acl_on_socket_parent(tmp_path, monkeypa
             return _no_acl_xattr(path, attribute, follow_symlinks=follow_symlinks)
 
         monkeypatch.setattr(sandbox.os, "getxattr", getxattr)
-        with pytest.raises(ContractError, match="extended ACL"):
+        with pytest.raises(ContractError, match="extended POSIX ACL"):
             sandbox.require_worker_cannot_access_signer(
                 str(socket_path), worker_uid=_WORKER_UID, worker_gid=_WORKER_GID,
             )
@@ -188,7 +188,7 @@ def test_s4_signer_guard_rejects_access_acl_on_traversed_ancestor(tmp_path, monk
             return _no_acl_xattr(path, attribute, follow_symlinks=follow_symlinks)
 
         monkeypatch.setattr(sandbox.os, "getxattr", getxattr)
-        with pytest.raises(ContractError, match="extended ACL"):
+        with pytest.raises(ContractError, match="extended POSIX ACL"):
             sandbox.require_worker_cannot_access_signer(
                 str(socket_path), worker_uid=_WORKER_UID, worker_gid=_WORKER_GID,
             )
