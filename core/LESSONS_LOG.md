@@ -563,3 +563,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — S4 manifest sequencing rule: commit registry source changes and tests first, then regenerate the category manifest and bind it to committed provenance before launching the next exact-head run. See change 0249.
 
 2026-10-25 — SHORTCOMING: the first real S4 functional category run skipped its required symlink test on Windows, making the lane fail. Rule: use a platform-appropriate junction/symlink for the same path-containment invariant, and keep the exact unsupported reason if neither is available. See change 0250.
+
+2026-10-25 — S4 selector rename rule: refresh the committed category registry after a test function is renamed; stable source hashes alone do not update selector inventory. See change 0251.
