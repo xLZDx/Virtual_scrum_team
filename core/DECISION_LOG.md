@@ -316,6 +316,12 @@ A second exact-head approval request for report HEAD `9886973ce374790026dd6edecd
 
 At S5 product-code HEAD `5b839d0869bd62c7f8d8180d45f3bf68e43b8f6f`, functional evidence is 39 passed/1 skipped, Store→Gate E2E is 3 passed, and independent GPT-6 Luna code/security reviews at medium effort found no valid BLOCKER/MAJOR. These results cover the local VST v3 contract and persistence/gate boundary only. Real AEVE adapter/runtime, source immutability enforcement, Windows symlink behavior, actual mandatory rule catalog, attestor provisioning, and signed sandbox execution remain `NOT_RUN` or `UNKNOWN`. PM Bridge final-approval, health, job-status, and mode-on calls returned `Transport closed`; no correlated approval exists and no push/PR occurred. Preserve request ID `9f927e38-8d34-4f44-9d25-547952447b91` for status recovery; require exact-head approval before any push/PR. See change record 0135.
 
+## 2026-10-25 -- Record focused S5 POSIX symlink selector
+
+At exact S5 HEAD `606bba9a5c3563b195eee7b5dd11f0dd243c44a5`, the source-tree digest symlink-rejection selector passed 1/1 in Ubuntu-24.04 WSL2. This verifies the local digest contract only; AEVE adapter and runtime containment remain `NOT_RUN`. A nonessential `wsl.exe -l -q` was invoked during setup; do not enumerate distributions when the workflow pins one. See change 0137.
+
+The current-turn read-only PM Bridge health and job-status calls for prior S5 request IDs `9f927e38-8d34-4f44-9d25-547952447b91` and `7b71a1be-e2dd-4c15-bc82-7f3bb0c962d1` returned `Transport closed`; the named receipt log had no matching rows. No fresh request was sent and the current exact S5 HEAD has no approval. See change 0137.
+
 # 2026-10-25 -- Add a separate v3 bounded analyzer evidence contract
 
 Keep v1/v2 signed bodies unchanged. A v3 manifest pins one StaticAnalysis slot, analyzer authority, executable/profile identities, scope, digest scheme and acceptance IDs; only its StaticAnalysis receipt uses v3, while other receipt types retain their existing v2 contracts. The gate verifies the analyzer key under `ANALYZER_V3_LABEL`, requires pairwise-distinct trust roots, recomputes report/finding artifacts and source-tree digest, and grants acceptance only to the manifest policy. Any finding derives FAIL. The source-tree helper hashes a caller-supplied snapshot but does not provision or enforce the runtime boundary. The real AEVE executable/attestor remains unavailable and unverified. See change record 0120; no runtime or test pass is claimed.

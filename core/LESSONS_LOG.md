@@ -497,3 +497,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — Exact-head final approval is a distinct gate after focused tests and specialist review. When PM Bridge returns `Transport closed` for send, health, or job status, preserve each request ID, do not infer sent/approved, and do not push/open a PR until a correlated reply is available. See change records 0135–0136.
 
+2026-10-25 — For a WSL workflow pinned to a named distribution, use that name directly and do not run a distribution-list command as an environment probe. One incidental `wsl.exe -l -q` was executed before a focused S5 test; it did not change configuration, but was unnecessary and outside the minimal evidence path. See change 0137.
+

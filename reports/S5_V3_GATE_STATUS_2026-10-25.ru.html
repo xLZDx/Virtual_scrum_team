@@ -43,13 +43,17 @@ code{overflow-wrap:anywhere}
   <dl>
     <dt>Проект</dt><dd>Virtual_scrum_team</dd>
     <dt>Папка</dt><dd>D:\tmp\scratch_worktrees\Virtual_scrum_team-s5</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s5-bounded-aeve-evidence @ 9886973</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s5-bounded-aeve-evidence @ 606bba9</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
           data-fail="Выделите вручную">Копировать страницу</button>
 </div>
 <!-- report-conform:end -->
+
+
+
+
 
 
 
@@ -68,7 +72,7 @@ code{overflow-wrap:anywhere}
 <tr><td>AC-3</td><td>Подпись принимается только от отдельного analyzer trust root и домена.</td><td class="ok">PASS, локально</td><td>Functional rejection для worker/supervisor/operator/event/reviewer/signer keys; Store→Gate round trip. Code/security reviews без valid B/M.</td><td>Реальный analyzer attestor key не provisioned.</td><td>Technical service owner UNKNOWN; оператор accountable за делегированную задачу.</td><td>Определить авторизованную attestor identity и provisioning boundary.</td></tr>
 <tr><td>AC-4</td><td>Analyzer/profile/source/report/run/manifest/head/epoch/scope связаны с подписанной квитанцией.</td><td class="ok">PASS для локального контракта</td><td>Functional digest/policy mutations rejected; E2E проверил persisted receipt с отдельными resolver callbacks.</td><td>Нет real signer/attestor runtime.</td><td>Analyzer service/attestor owner UNKNOWN.</td><td>Подтвердить actual signer integration после получения owner и authority.</td></tr>
 <tr><td>AC-5</td><td>Bounded analyzer не может изменить immutable source snapshot.</td><td class="warn">NOT_RUN</td><td>Source digest helper детектирует изменение файла во время hashing; он только хэширует предоставленный snapshot.</td><td>Не реализованы/не доказаны analyzer write denial и immutable runtime input.</td><td>Нужны authorized AEVE identity и isolated adapter; технический владелец UNKNOWN.</td><td>Получить source/runtime identity и спроектировать реальную read-only boundary.</td></tr>
-<tr><td>AC-6</td><td>Traversal, symlink, size, timeout, subprocess и network attempts отказываются безопасно.</td><td class="warn">PARTIAL / NOT_RUN</td><td>Traversal, missing paths и size limits покрыты functional тестами; symlink case SKIPPED (WinError 1314/errno 22).</td><td>Не проверены POSIX symlink, timeout/output, subprocess и network enforcement у analyzer.</td><td>Нужны symlink-capable runtime и actual adapter; owner UNKNOWN.</td><td>Запустить symlink case в разрешённой POSIX среде; не заявлять sandbox enforcement до adapter.</td></tr>
+<tr><td>AC-6</td><td>Traversal, symlink, size, timeout, subprocess и network attempts отказываются безопасно.</td><td class="warn">PARTIAL / NOT_RUN</td><td>Traversal, missing paths и size limits покрыты functional тестами. Windows symlink case был skipped (WinError 1314/errno 22); source-digest symlink selector прошёл 1/1 на exact HEAD <code>606bba9</code> в Ubuntu-24.04 WSL2 (0137).</td><td>Не проверены analyzer adapter, immutable runtime input, timeout/output, subprocess и network enforcement.</td><td>Analyzer owner UNKNOWN; нужны авторизованный adapter и runtime.</td><td>Получить in-scope AEVE identity/interface; выполнить остальные ограниченные сценарии через designated test owners, не заявлять sandbox enforcement до adapter.</td></tr>
 <tr><td>AC-7</td><td>FULL только при checked всех required rules; seeded known issue даёт finding.</td><td class="warn">PARTIAL</td><td>Контракт тестирует exact partition и finding-derived FAIL; synthetic E2E finding не получил acceptance.</td><td>Seeded failure catalog пуст; реальный analyzer finding не запускался.</td><td>Test owners — functional-test-reviewer/e2e-runner; analyzer technical owner UNKNOWN.</td><td>Сначала сформировать и принять exact fixture-to-rule map, затем проверить analyzer integration.</td></tr>
 <tr><td>AC-8</td><td>Unsupported/missing/duplicate rule и malformed finding не дают PASS.</td><td class="ok">PASS, локально</td><td>Functional негативные случаи и Gate проверки на persisted finding.</td><td>Нет реальной rule inventory.</td><td>Rule catalog dependency; технический владелец UNKNOWN.</td><td>Удерживать только VST contract claim до появления каталога.</td></tr>
 <tr><td>AC-9</td><td>Valid exact-head receipt удовлетворяет только заявленные static acceptance IDs.</td><td class="ok">PASS, локально</td><td>Store→Gate test подтвердил static-only acceptance; test/review receipts отсутствовали, итог не APPROVE.</td><td>Не выполнен signed production gate path.</td><td>Нужны real signer/attestor и complete manifest evidence.</td><td>Сохранить `docs/sdlc/evidence/s5-v3-store-gate-e2e-7cd83ea.md`.</td></tr>
@@ -82,6 +86,7 @@ code{overflow-wrap:anywhere}
 <h2>3. Тесты и reviews</h2>
 <ul>
 <li>Functional exact-head run: 39 passed, 1 skipped, 0 failed на <code>0dbb66293fbf9df946b1b1cb5cc9b841d7b9d1ed</code>; Python 3.14.3, pytest 8.4.2. Skip: symlink creation, Windows WinError 1314 / errno 22. <a href="../docs/sdlc/evidence/s5-v3-functional-0dbb662.md">Подробная карта тестов</a>.</li>
+<li>POSIX symlink selector: 1 passed, 0 skipped/failed на exact HEAD <code>606bba9a5c3563b195eee7b5dd11f0dd243c44a5</code>; Ubuntu-24.04 WSL2, Python 3.12.3, pytest 7.4.4. Это закрывает только symlink rejection в source-digest utility. <a href="../docs/sdlc/evidence/s5-posix-symlink-606bba9.md">Evidence</a>.</li>
 <li>Store→Gate E2E exact-head run: 3 passed, 0 skipped/failed на <code>7cd83eac005e318dca5ae8782b45d2c443cdccc0</code>; temporary SQLite and temporary report/source files. <a href="../docs/sdlc/evidence/s5-v3-store-gate-e2e-7cd83ea.md">E2E evidence</a>.</li>
 <li>Code review: GPT-6 Luna, medium effort, HEAD <code>5b839d0869bd62c7f8d8180d45f3bf68e43b8f6f</code>, no material BLOCKER/MAJOR.</li>
 <li>Security review: GPT-6 Luna, medium effort, same HEAD, no BLOCKER/MAJOR/MINOR.</li>
@@ -89,13 +94,17 @@ code{overflow-wrap:anywhere}
 </ul>
 
 <h2>4. Финальный gate и следующие шаги</h2>
-<p class="bad">Финальный GPT exact-head approval отсутствует. Для product-code HEAD <code>5b839d0</code> и report HEAD <code>9886973ce374790026dd6edecd15e2a8ce1c314b</code> PM Bridge вернул <code>Transport closed</code>; job-status/health недоступны, correlated reply отсутствует. Request IDs: <code>9f927e38-8d34-4f44-9d25-547952447b91</code> и <code>7b71a1be-e2dd-4c15-bc82-7f3bb0c962d1</code>. Push/PR не выполнялись.</p>
+<p class="bad">Финальный GPT exact-head approval отсутствует. Ранее PM Bridge вернул <code>Transport closed</code> для product-code HEAD <code>5b839d0</code> и report HEAD <code>9886973ce374790026dd6edecd15e2a8ce1c314b</code>; request IDs <code>9f927e38-8d34-4f44-9d25-547952447b91</code> и <code>7b71a1be-e2dd-4c15-bc82-7f3bb0c962d1</code> остаются для read-only status recovery. В этом ходе health и job-status повторно вернули <code>Transport closed</code>; в receipt log совпадающих записей нет. На текущем exact S5 HEAD <code>606bba9a5c3563b195eee7b5dd11f0dd243c44a5</code> approval отсутствует, новый запрос не отправлен. Push/PR не выполнялись.</p>
 <ol>
 <li>Рекомендуется восстановить PM Bridge и проверить оба request ID; если correlated reply отсутствует — отправить новый review с точным diff текущего committed HEAD. Без approval push/PR остаётся закрыт.</li>
 <li>Затем получить authorized AEVE source identity/license/capability inventory и attestor/signer owner; это разблокирует AC-5–7 и real-runtime часть AC-3/4/11/12.</li>
-<li>Провести symlink case в разрешённой symlink-capable среде и расширить evidence только по реально запущенным сценариям.</li>
+<li>Получить авторизованную AEVE identity и adapter interface; проверить оставшиеся timeout/output, subprocess и network boundaries только на реальном adapter/runtime.</li>
 </ol>
 <p class="mut">Local code HEAD: <code>5b839d0869bd62c7f8d8180d45f3bf68e43b8f6f</code>. Base: <code>1cd868b776a50147b951c9282cc73e2868c6bad6</code>. Durable evidence and decisions are linked above.</p>
+
+
+
+
 
 
 
