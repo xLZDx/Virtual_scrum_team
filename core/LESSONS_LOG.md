@@ -584,3 +584,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 
 2026-10-25 — Report mapped API selector count separately from pytest's expanded parametrized case count. A green API run with one Windows symlink privilege skip is not POSIX symlink evidence; capture the exact skip reason and keep it scoped. At `c8bb027`, 73 API selector IDs yielded 92 passed/1 skipped, while functional/integration/seeded yielded 27/27. See change 0192.
+
+2026-10-25 — Run the complete currently mapped E2E selector set together when updating exact-head evidence. A 12/12 Windows pass establishes only those local mapped journeys; it does not resolve the report-bound v2 selector gap or the separate trusted signer/WSL/sandbox gates. Preserve the asyncio deprecation warning and platform limit in the evidence. See change 0193.

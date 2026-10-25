@@ -199,6 +199,7 @@ Markdown documents: **265**
 | `docs/changes/0190-s4-e2e-denominator-mapping.md` | Change record | 0190 — Map bounded S4 E2E selectors and preserve report-bound gap |
 | `docs/changes/0191-s4-local-e2e-selector-run.md` | Change record | 0191 — Run bounded local S4 E2E selectors at exact committed head |
 | `docs/changes/0192-s4-combined-exact-head-evidence.md` | Change record | 0192 — S4 API and local category exact-head evidence |
+| `docs/changes/0193-s4-mapped-e2e-exact-head-run.md` | Change record | 0193 — Run all mapped S4 E2E selectors at exact committed head |
 | `docs/DESIGN_BASELINE_AND_IMPLEMENTATION_PLAN_2026-10-24.md` | Documentation | Design baseline 1.0 and implementation plan |
 | `docs/FULL_TEAM_EXPANSION_PLAN_2026-10-23.md` | Documentation | Full Virtual Engineering Team — Expansion Plan |
 | `docs/INDEPENDENT_REVIEW_DECISION_PROVENANCE_2026-10-23.md` | Documentation | Independent Review Dossier — Unified Virtual Engineering Organization |

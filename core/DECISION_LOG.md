@@ -489,3 +489,7 @@ The five local E2E fixture selectors passed 5/5 at exact source HEAD 7d14e43d1e9
 ## 2026-10-25 -- Record S4 API and local category exact-head runs
 
 At source HEAD `c8bb027cf3df93755b17f33b3ddfb129e837d124`, the 73-selector API category expanded to 93 pytest cases: 92 passed, one symlink case skipped because Windows returned WinError 1314, and zero failed. The separate 27-selector functional/integration/seeded run passed 27/27. Both used Windows NT 10.0.26300.0, Python 3.14.3 and pytest 8.4.2. E2E and trusted signer/report/sandbox runtime were not part of these runs. See change record 0192.
+
+## 2026-10-25 — Record all mapped E2E selectors passing at exact S4 head
+
+All twelve currently mapped E2E selectors passed together at exact source HEAD 47918f9c0a229b4dac0ea095763775eb20eb6755 on Windows Python 3.14.3/pytest 8.4.2. One pytest-asyncio deprecation warning was emitted. This is not POSIX/WSL, trusted signer, report-bound v2, or sandbox evidence; report-bound selector coverage remains partial. See change 0193.
