@@ -53,6 +53,100 @@ def test_s4_registry_accepts_single_primary_category_per_test_id(monkeypatch):
     assert digest == hashlib.sha256(json.dumps(candidate, separators=(",", ":")).encode()).hexdigest()
 
 
+def test_s4_registry_parses_shared_test_source_once_per_load(monkeypatch, tmp_path):
+    """Distinct registered nodes in one source reuse one parsed AST per load."""
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    source_path = tests_dir / "shared.py"
+    source_path.write_text(
+        "def test_first():\n    pass\n\ndef test_second():\n    pass\n",
+        encoding="utf-8",
+    )
+    first_id = "tests/shared.py::test_first"
+    second_id = "tests/shared.py::test_second"
+    candidate = _registry_fixture()
+    candidate["categories"]["functional"].update(
+        source_head="a" * 40, test_ids=[first_id]
+    )
+    candidate["categories"]["integration"] = {
+        "state": "NOT_RUN", "owner_role": "functional-test-reviewer",
+        "reason": "not needed for this source-cache contract fixture",
+        "next_step": "none",
+    }
+    candidate["categories"]["api"].update(
+        source_head="a" * 40, test_ids=[second_id]
+    )
+    candidate["categories"]["e2e"] = {
+        "state": "NOT_RUN", "owner_role": "e2e-runner",
+        "reason": "not needed for this source-cache contract fixture",
+        "next_step": "none",
+    }
+    candidate["categories"]["seeded-failure"] = {
+        "state": "NOT_RUN", "owner_role": "functional-test-reviewer",
+        "reason": "not needed for this source-cache contract fixture",
+        "next_step": "none",
+    }
+    raw = json.dumps(candidate, separators=(",", ":")).encode()
+    monkeypatch.setattr(registry, "_read_repo_json", lambda *args, **kwargs: (candidate, raw))
+    monkeypatch.setattr(registry, "_current_candidate_head", lambda *args: "a" * 40)
+    monkeypatch.setattr(registry, "_git_commit_is_ancestor", lambda *args: True)
+    monkeypatch.setattr(registry, "_git_file_is_tracked", lambda *args: True)
+
+    parse_calls = 0
+    original_parse = registry.ast.parse
+
+    def count_parse(*args, **kwargs):
+        nonlocal parse_calls
+        parse_calls += 1
+        return original_parse(*args, **kwargs)
+
+    source_reads = 0
+    original_open = Path.open
+
+    def count_source_open(path, *args, **kwargs):
+        nonlocal source_reads
+        if path == source_path:
+            source_reads += 1
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(registry.ast, "parse", count_parse)
+    monkeypatch.setattr(Path, "open", count_source_open)
+
+    loaded, _ = registry.load_registry(tmp_path)
+
+    assert loaded["categories"]["functional"]["test_ids"] == [first_id]
+    assert loaded["categories"]["api"]["test_ids"] == [second_id]
+    assert parse_calls == 1
+    assert source_reads == 1
+
+
+def test_s4_registry_caches_oversized_source_as_fail_closed(tmp_path, monkeypatch):
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    source_path = tests_dir / "oversized.py"
+    source_path.write_bytes(b"#" + b"x" * registry.MAX_TEST_SOURCE_BYTES)
+    source_cache = {}
+    source_reads = 0
+    original_open = Path.open
+
+    def count_source_open(path, *args, **kwargs):
+        nonlocal source_reads
+        if path == source_path:
+            source_reads += 1
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", count_source_open)
+
+    assert not registry._pytest_node_id_exists(
+        tmp_path, "tests/oversized.py::test_too_large", source_cache=source_cache
+    )
+    assert not registry._pytest_node_id_exists(
+        tmp_path, "tests/oversized.py::test_also_too_large", source_cache=source_cache
+    )
+
+    assert source_reads == 1
+
+
 def test_s4_committed_registry_loads_with_resolved_nodes():
     loaded, digest = registry.load_registry(ROOT)
     registry_bytes = (ROOT / "docs/qa/categories.json").read_bytes()
