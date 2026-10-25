@@ -485,3 +485,7 @@ The category manifest was regenerated from the corrected test sources committed 
 ## 2026-10-25 — Correct two stale API test assumptions
 
 The exact `3558b14a` API run exposed one test treating the supported schema-v3-to-v4 migration as foreign and one synthetic timeout test whose `None` Job Object caused the runner's deliberate fail-closed refusal before reaching the intended timeout branch. The two test setups are being corrected; no product defect is established by these failures. See change 0262.
+
+## 2026-10-25 — Refresh S4 selector registry after API test corrections
+
+The selector manifest now binds all S4 test sources and policy-denominator rows to corrected source commit `05f7ba4`. This updates the exact-head candidate denominator; no behavioral conclusion is drawn until the full supported run completes. See change 0263.

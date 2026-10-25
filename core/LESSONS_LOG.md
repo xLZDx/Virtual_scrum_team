@@ -587,3 +587,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — Use package-module invocation for Python tools that import sibling modules relatively. Directly running `tools/qa/build_registry.py` fails before execution with `ImportError: attempted relative import with no known parent package`; the supported `python -m tools.qa.build_registry --repo-root . --write` invocation succeeds. See change 0261.
 
 2026-10-25 — When a schema version is intentionally migrated, exclude it from foreign-version tests; verify migration branches before labeling a failing assertion a product defect. For fail-closed process-containment paths, unit fixtures must provide a non-terminating fake attached job when they intend to reach the later timeout path; returning `None` correctly tests early refusal instead. See change 0262.
+
+2026-10-25 — Regenerate the hash-bound category registry after every committed test-source correction, then run the full accepted category set only after the registry refresh commit. See change 0263.

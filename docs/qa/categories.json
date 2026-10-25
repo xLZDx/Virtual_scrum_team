@@ -33,7 +33,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+  "source_head": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
   "source_inventory": [
     {
       "path": "tests/qa/test_s4_e2e_runner_cli.py",
@@ -67,13 +67,13 @@
     },
     {
       "path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
-      "sha256": "5bb643b1c3fab59c0f1fac5cb4ddd56b34736abf02352c41cb5508a52cbd542c"
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
+      "sha256": "61255ed7de563494ef1795f4019eaa3bf41341834bc10d29dd35e3d3e8235779"
     },
     {
       "path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
-      "sha256": "244200b49b600c6b5e639f90159c5f6dbb98a7a84612071fee438e02804fbbe8"
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
+      "sha256": "ed596397c06b5289ea7542aec2e3a0ec847d31df558fede50895fff174272d86"
     },
     {
       "path": "tests/vst/test_e5_process_death.py",
@@ -2763,2534 +2763,2534 @@
       "test_id": "tests/vst/test_e3_store.py::test_acquire_after_ttl_fences_live_lease_and_old_epoch_writes",
       "selector": "tests/vst/test_e3_store.py::test_acquire_after_ttl_fences_live_lease_and_old_epoch_writes",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_acquire_epoch_bad_arguments",
       "selector": "tests/vst/test_e3_store.py::test_acquire_epoch_bad_arguments",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_acquire_epoch_bumps_and_returns_new_epoch",
       "selector": "tests/vst/test_e3_store.py::test_acquire_epoch_bumps_and_returns_new_epoch",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_acquire_epoch_exhausted_counter_is_refused",
       "selector": "tests/vst/test_e3_store.py::test_acquire_epoch_exhausted_counter_is_refused",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_acquire_epoch_one_instant_before_expiry_still_fails",
       "selector": "tests/vst/test_e3_store.py::test_acquire_epoch_one_instant_before_expiry_still_fails",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_acquire_epoch_reaps_an_expired_lease_that_wrote_a_receipt_with_the_partial_event",
       "selector": "tests/vst/test_e3_store.py::test_acquire_epoch_reaps_an_expired_lease_that_wrote_a_receipt_with_the_partial_event",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_acquire_epoch_reaps_an_expired_lease_to_expired_and_marks_worker_lost",
       "selector": "tests/vst/test_e3_store.py::test_acquire_epoch_reaps_an_expired_lease_to_expired_and_marks_worker_lost",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_acquire_epoch_reaps_before_fencing_so_a_takeover_loop_cannot_hide_failures",
       "selector": "tests/vst/test_e3_store.py::test_acquire_epoch_reaps_before_fencing_so_a_takeover_loop_cannot_hide_failures",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_acquire_lease_above_the_cap_commits_the_signed_marker_and_then_raises",
       "selector": "tests/vst/test_e3_store.py::test_acquire_lease_above_the_cap_commits_the_signed_marker_and_then_raises",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_acquire_lease_at_a_zero_cap_with_nothing_spent_succeeds_without_a_marker",
       "selector": "tests/vst/test_e3_store.py::test_acquire_lease_at_a_zero_cap_with_nothing_spent_succeeds_without_a_marker",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_acquire_lease_at_spent_equal_to_cap_starts_without_a_marker",
       "selector": "tests/vst/test_e3_store.py::test_acquire_lease_at_spent_equal_to_cap_starts_without_a_marker",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_acquire_lease_bad_arguments",
       "selector": "tests/vst/test_e3_store.py::test_acquire_lease_bad_arguments",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_acquire_lease_requires_a_registered_task",
       "selector": "tests/vst/test_e3_store.py::test_acquire_lease_requires_a_registered_task",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_acquire_lease_takes_lowest_free_slot_and_records_history_row",
       "selector": "tests/vst/test_e3_store.py::test_acquire_lease_takes_lowest_free_slot_and_records_history_row",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_acquire_lease_task_must_belong_to_the_story",
       "selector": "tests/vst/test_e3_store.py::test_acquire_lease_task_must_belong_to_the_story",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_all_declared_slot_types_are_accepted_under_one_lease",
       "selector": "tests/vst/test_e3_store.py::test_all_declared_slot_types_are_accepted_under_one_lease",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_all_pass_slots_are_never_bounded_even_far_beyond_retry_cap_plus_one",
       "selector": "tests/vst/test_e3_store.py::test_all_pass_slots_are_never_bounded_even_far_beyond_retry_cap_plus_one",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_an_empty_log_without_an_anchor_is_fine_and_the_first_event_creates_it",
       "selector": "tests/vst/test_e3_store.py::test_an_empty_log_without_an_anchor_is_fine_and_the_first_event_creates_it",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_anchor_tamper_raises_integrity_on_append_and_is_never_repaired",
       "selector": "tests/vst/test_e3_store.py::test_anchor_tamper_raises_integrity_on_append_and_is_never_repaired",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_append_only_violation_inside_store_transaction_maps_to_store_error",
       "selector": "tests/vst/test_e3_store.py::test_append_only_violation_inside_store_transaction_maps_to_store_error",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_append_receipt_after_the_budget_marker_is_refused_as_terminal",
       "selector": "tests/vst/test_e3_store.py::test_append_receipt_after_the_budget_marker_is_refused_as_terminal",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_append_receipt_at_exactly_the_cap_is_allowed_and_finishes_the_task",
       "selector": "tests/vst/test_e3_store.py::test_append_receipt_at_exactly_the_cap_is_allowed_and_finishes_the_task",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_append_receipt_attempt_gap_rejected",
       "selector": "tests/vst/test_e3_store.py::test_append_receipt_attempt_gap_rejected",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_append_receipt_duplicate_receipt_id_rejected",
       "selector": "tests/vst/test_e3_store.py::test_append_receipt_duplicate_receipt_id_rejected",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_append_receipt_key_must_be_strong_bytes",
       "selector": "tests/vst/test_e3_store.py::test_append_receipt_key_must_be_strong_bytes",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_append_receipt_refuses_only_above_the_cap",
       "selector": "tests/vst/test_e3_store.py::test_append_receipt_refuses_only_above_the_cap",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_append_receipt_rejects_a_worker_key_equal_to_the_event_key",
       "selector": "tests/vst/test_e3_store.py::test_append_receipt_rejects_a_worker_key_equal_to_the_event_key",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_append_receipt_repeated_attempt_rejected",
       "selector": "tests/vst/test_e3_store.py::test_append_receipt_repeated_attempt_rejected",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_append_receipt_roundtrip_preserves_body_and_marks_lease_wrote",
       "selector": "tests/vst/test_e3_store.py::test_append_receipt_roundtrip_preserves_body_and_marks_lease_wrote",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_append_receipt_stale_or_future_epoch_rejected",
       "selector": "tests/vst/test_e3_store.py::test_append_receipt_stale_or_future_epoch_rejected",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_append_receipt_wrong_prev_hash_rejected",
       "selector": "tests/vst/test_e3_store.py::test_append_receipt_wrong_prev_hash_rejected",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_append_requires_a_live_lease_held_by_the_runner",
       "selector": "tests/vst/test_e3_store.py::test_append_requires_a_live_lease_held_by_the_runner",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_append_supervisor_receipt_accepts_a_genuine_marker_without_a_lease",
       "selector": "tests/vst/test_e3_store.py::test_append_supervisor_receipt_accepts_a_genuine_marker_without_a_lease",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_append_supervisor_receipt_checks_link_epoch_and_chain",
       "selector": "tests/vst/test_e3_store.py::test_append_supervisor_receipt_checks_link_epoch_and_chain",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_append_supervisor_receipt_marker_shape_rules",
       "selector": "tests/vst/test_e3_store.py::test_append_supervisor_receipt_marker_shape_rules",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_append_supervisor_receipt_requires_strong_keyword_key",
       "selector": "tests/vst/test_e3_store.py::test_append_supervisor_receipt_requires_strong_keyword_key",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_both_terminal_markers_can_coexist_in_one_gap_free_supervisor_chain",
       "selector": "tests/vst/test_e3_store.py::test_both_terminal_markers_can_coexist_in_one_gap_free_supervisor_chain",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_budget_exceeded_event_is_written_once_when_charge_comes_first",
       "selector": "tests/vst/test_e3_store.py::test_budget_exceeded_event_is_written_once_when_charge_comes_first",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_budget_exceeded_marker_blocks_new_leases_and_worker_receipts",
       "selector": "tests/vst/test_e3_store.py::test_budget_exceeded_marker_blocks_new_leases_and_worker_receipts",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_budget_exceeded_marker_makes_gate_non_approving",
       "selector": "tests/vst/test_e3_store.py::test_budget_exceeded_marker_makes_gate_non_approving",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_budget_row_is_seeded_from_the_manifest_cost_cap",
       "selector": "tests/vst/test_e3_store.py::test_budget_row_is_seeded_from_the_manifest_cost_cap",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_busy_database_on_open_raises_store_busy_error",
       "selector": "tests/vst/test_e3_store.py::test_busy_database_on_open_raises_store_busy_error",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_busy_database_raises_store_busy_error_and_writes_nothing",
       "selector": "tests/vst/test_e3_store.py::test_busy_database_raises_store_busy_error_and_writes_nothing",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_busy_error_is_distinct_from_other_store_errors",
       "selector": "tests/vst/test_e3_store.py::test_busy_error_is_distinct_from_other_store_errors",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_caller_cannot_record_operator_action_events",
       "selector": "tests/vst/test_e3_store.py::test_caller_cannot_record_operator_action_events",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_charge_default_marker_runner_is_the_store_supervisor",
       "selector": "tests/vst/test_e3_store.py::test_charge_default_marker_runner_is_the_store_supervisor",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_charge_on_a_zero_cap_task_raises_budget_writes_the_marker_then_blocks_new_leases",
       "selector": "tests/vst/test_e3_store.py::test_charge_on_a_zero_cap_task_raises_budget_writes_the_marker_then_blocks_new_leases",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_charge_over_cap_charges_nothing_and_keeps_the_log_valid",
       "selector": "tests/vst/test_e3_store.py::test_charge_over_cap_charges_nothing_and_keeps_the_log_valid",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_charge_over_cap_commits_the_marker_and_then_raises",
       "selector": "tests/vst/test_e3_store.py::test_charge_over_cap_commits_the_marker_and_then_raises",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_charge_returns_remaining_and_allows_exact_cap",
       "selector": "tests/vst/test_e3_store.py::test_charge_returns_remaining_and_allows_exact_cap",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_charge_unknown_task_bad_amount_and_key_arguments",
       "selector": "tests/vst/test_e3_store.py::test_charge_unknown_task_bad_amount_and_key_arguments",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_concurrent_acquire_exactly_one_holds_the_epoch",
       "selector": "tests/vst/test_e3_store.py::test_concurrent_acquire_exactly_one_holds_the_epoch",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_concurrent_acquire_for_the_last_slot_has_exact_capacity",
       "selector": "tests/vst/test_e3_store.py::test_concurrent_acquire_for_the_last_slot_has_exact_capacity",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_concurrent_acquire_for_the_same_task_has_one_winner",
       "selector": "tests/vst/test_e3_store.py::test_concurrent_acquire_for_the_same_task_has_one_winner",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_concurrent_charges_never_exceed_the_cap",
       "selector": "tests/vst/test_e3_store.py::test_concurrent_charges_never_exceed_the_cap",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_concurrent_identical_append_has_exactly_one_winner",
       "selector": "tests/vst/test_e3_store.py::test_concurrent_identical_append_has_exactly_one_winner",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_correctly_keyed_anchor_with_wrong_count_or_head_is_still_integrity",
       "selector": "tests/vst/test_e3_store.py::test_correctly_keyed_anchor_with_wrong_count_or_head_is_still_integrity",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_counter_boundaries_are_accepted_exactly_at_the_limit",
       "selector": "tests/vst/test_e3_store.py::test_counter_boundaries_are_accepted_exactly_at_the_limit",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_database_allows_at_most_one_live_lease_per_task",
       "selector": "tests/vst/test_e3_store.py::test_database_allows_at_most_one_live_lease_per_task",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_database_file_is_owner_only_on_posix",
       "selector": "tests/vst/test_e3_store.py::test_database_file_is_owner_only_on_posix",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_empty_event_chain_verifies_and_anchor_is_genesis",
       "selector": "tests/vst/test_e3_store.py::test_empty_event_chain_verifies_and_anchor_is_genesis",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_event_anchor_equals_the_stored_keyed_anchor",
       "selector": "tests/vst/test_e3_store.py::test_event_anchor_equals_the_stored_keyed_anchor",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_event_anchor_reports_count_and_head",
       "selector": "tests/vst/test_e3_store.py::test_event_anchor_reports_count_and_head",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_event_chain_links_to_genesis_and_grows",
       "selector": "tests/vst/test_e3_store.py::test_event_chain_links_to_genesis_and_grows",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_event_chain_verifies_after_a_rich_history_and_reopen",
       "selector": "tests/vst/test_e3_store.py::test_event_chain_verifies_after_a_rich_history_and_reopen",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_event_hashes_are_keyed_not_plain_sha256",
       "selector": "tests/vst/test_e3_store.py::test_event_hashes_are_keyed_not_plain_sha256",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_events_table_rejects_unknown_kind_even_via_raw_sql",
       "selector": "tests/vst/test_e3_store.py::test_events_table_rejects_unknown_kind_even_via_raw_sql",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_every_event_kind_the_store_writes_is_in_the_closed_set",
       "selector": "tests/vst/test_e3_store.py::test_every_event_kind_the_store_writes_is_in_the_closed_set",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_every_non_pass_receipt_counts_as_a_failed_attempt",
       "selector": "tests/vst/test_e3_store.py::test_every_non_pass_receipt_counts_as_a_failed_attempt",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_exact_cap_spend_full_pass_set_repeated_leases_and_takeover_never_create_a_marker",
       "selector": "tests/vst/test_e3_store.py::test_exact_cap_spend_full_pass_set_repeated_leases_and_takeover_never_create_a_marker",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_expired_lease_is_reaped_on_next_acquire_and_slot_reused",
       "selector": "tests/vst/test_e3_store.py::test_expired_lease_is_reaped_on_next_acquire_and_slot_reused",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_expired_lease_without_receipts_has_no_partial_event",
       "selector": "tests/vst/test_e3_store.py::test_expired_lease_without_receipts_has_no_partial_event",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_fail_receipts_count_toward_retry_cap",
       "selector": "tests/vst/test_e3_store.py::test_fail_receipts_count_toward_retry_cap",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_failed_append_leaves_no_event_receipt_or_wrote_flag",
       "selector": "tests/vst/test_e3_store.py::test_failed_append_leaves_no_event_receipt_or_wrote_flag",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_failed_attempts_adds_expired_and_released_leases_that_wrote_nothing",
       "selector": "tests/vst/test_e3_store.py::test_failed_attempts_adds_expired_and_released_leases_that_wrote_nothing",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_failed_attempts_is_the_max_over_slots_for_mixed_non_pass_results",
       "selector": "tests/vst/test_e3_store.py::test_failed_attempts_is_the_max_over_slots_for_mixed_non_pass_results",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_failed_attempts_is_the_max_over_slots_not_the_sum",
       "selector": "tests/vst/test_e3_store.py::test_failed_attempts_is_the_max_over_slots_not_the_sum",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_failed_attempts_validation_and_read_only",
       "selector": "tests/vst/test_e3_store.py::test_failed_attempts_validation_and_read_only",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_failed_schema_init_creates_no_partial_schema",
       "selector": "tests/vst/test_e3_store.py::test_failed_schema_init_creates_no_partial_schema",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_fenced_lease_that_wrote_a_blocked_receipt_counts_through_the_receipt_only",
       "selector": "tests/vst/test_e3_store.py::test_fenced_lease_that_wrote_a_blocked_receipt_counts_through_the_receipt_only",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_fenced_lease_that_wrote_a_pass_receipt_is_not_counted_either",
       "selector": "tests/vst/test_e3_store.py::test_fenced_lease_that_wrote_a_pass_receipt_is_not_counted_either",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_fenced_unwritten_lease_also_needs_a_marker",
       "selector": "tests/vst/test_e3_store.py::test_fenced_unwritten_lease_also_needs_a_marker",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_foreign_keys_are_enforced_by_the_store_connection",
       "selector": "tests/vst/test_e3_store.py::test_foreign_keys_are_enforced_by_the_store_connection",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_foreign_schema_version_is_refused",
       "selector": "tests/vst/test_e3_store.py::test_foreign_schema_version_is_refused",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_forged_pass_result_with_valid_signature_is_rejected",
       "selector": "tests/vst/test_e3_store.py::test_forged_pass_result_with_valid_signature_is_rejected",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_get_manifest_returns_an_independent_copy",
       "selector": "tests/vst/test_e3_store.py::test_get_manifest_returns_an_independent_copy",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_get_manifest_unknown_task",
       "selector": "tests/vst/test_e3_store.py::test_get_manifest_unknown_task",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_heartbeat_extends_lease_beyond_original_expiry",
       "selector": "tests/vst/test_e3_store.py::test_heartbeat_extends_lease_beyond_original_expiry",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_heartbeat_is_refused_above_the_cap_but_not_at_the_cap",
       "selector": "tests/vst/test_e3_store.py::test_heartbeat_is_refused_above_the_cap_but_not_at_the_cap",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_heartbeat_is_refused_after_the_budget_exceeded_marker",
       "selector": "tests/vst/test_e3_store.py::test_heartbeat_is_refused_after_the_budget_exceeded_marker",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_heartbeat_is_refused_after_the_retry_exhausted_marker",
       "selector": "tests/vst/test_e3_store.py::test_heartbeat_is_refused_after_the_retry_exhausted_marker",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_heartbeat_rejections",
       "selector": "tests/vst/test_e3_store.py::test_heartbeat_rejections",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_heartbeat_still_extends_a_lease_with_budget_left_and_no_marker",
       "selector": "tests/vst/test_e3_store.py::test_heartbeat_still_extends_a_lease_with_budget_left_and_no_marker",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_init_slots_boundary_and_idempotence",
       "selector": "tests/vst/test_e3_store.py::test_init_slots_boundary_and_idempotence",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_init_slots_bounds",
       "selector": "tests/vst/test_e3_store.py::test_init_slots_bounds",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_invalid_receipt_and_non_dict_raise_contract_error_without_side_effects",
       "selector": "tests/vst/test_e3_store.py::test_invalid_receipt_and_non_dict_raise_contract_error_without_side_effects",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_lease_attempts_are_consecutive_from_one",
       "selector": "tests/vst/test_e3_store.py::test_lease_attempts_are_consecutive_from_one",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_lease_history_is_never_overwritten",
       "selector": "tests/vst/test_e3_store.py::test_lease_history_is_never_overwritten",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_lease_requires_supervisor_key_keyword_and_validates_it",
       "selector": "tests/vst/test_e3_store.py::test_lease_requires_supervisor_key_keyword_and_validates_it",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_lease_statuses_follow_the_closed_enum",
       "selector": "tests/vst/test_e3_store.py::test_lease_statuses_follow_the_closed_enum",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_lease_that_wrote_a_receipt_and_expired_is_not_a_lost_attempt",
       "selector": "tests/vst/test_e3_store.py::test_lease_that_wrote_a_receipt_and_expired_is_not_a_lost_attempt",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_lease_that_wrote_receipts_and_then_expired_records_a_partial_event",
       "selector": "tests/vst/test_e3_store.py::test_lease_that_wrote_receipts_and_then_expired_records_a_partial_event",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_legacy_database_with_tables_but_no_version_is_refused",
       "selector": "tests/vst/test_e3_store.py::test_legacy_database_with_tables_but_no_version_is_refused",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_live_lease_blocks_second_acquire_for_same_task",
       "selector": "tests/vst/test_e3_store.py::test_live_lease_blocks_second_acquire_for_same_task",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_lost_attempt_must_be_marked_before_retry",
       "selector": "tests/vst/test_e3_store.py::test_lost_attempt_must_be_marked_before_retry",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_lost_attempt_with_receipt_needs_no_marker",
       "selector": "tests/vst/test_e3_store.py::test_lost_attempt_with_receipt_needs_no_marker",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_lost_attempts_count_toward_retry_cap_and_the_next_lease_commits_a_signed_marker",
       "selector": "tests/vst/test_e3_store.py::test_lost_attempts_count_toward_retry_cap_and_the_next_lease_commits_a_signed_marker",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_manifest_hash_mismatch_is_rejected",
       "selector": "tests/vst/test_e3_store.py::test_manifest_hash_mismatch_is_rejected",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_mark_budget_exceeded_directly_writes_the_marker_with_the_given_runner",
       "selector": "tests/vst/test_e3_store.py::test_mark_budget_exceeded_directly_writes_the_marker_with_the_given_runner",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_mark_budget_exceeded_does_not_need_an_exceeded_budget_row",
       "selector": "tests/vst/test_e3_store.py::test_mark_budget_exceeded_does_not_need_an_exceeded_budget_row",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_mark_budget_exceeded_is_idempotent",
       "selector": "tests/vst/test_e3_store.py::test_mark_budget_exceeded_is_idempotent",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_mark_budget_exceeded_validation_and_unknown_task",
       "selector": "tests/vst/test_e3_store.py::test_mark_budget_exceeded_validation_and_unknown_task",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_mark_budget_exceeded_writes_signed_blocked_receipt_and_event",
       "selector": "tests/vst/test_e3_store.py::test_mark_budget_exceeded_writes_signed_blocked_receipt_and_event",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_max_budget_boundary_is_accepted",
       "selector": "tests/vst/test_e3_store.py::test_max_budget_boundary_is_accepted",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_new_database_has_schema_version_four_and_wal",
       "selector": "tests/vst/test_e3_store.py::test_new_database_has_schema_version_four_and_wal",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_no_dangling_transaction_after_success_and_after_error",
       "selector": "tests/vst/test_e3_store.py::test_no_dangling_transaction_after_success_and_after_error",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_no_free_slot_rejected_and_leaves_no_lease_row",
       "selector": "tests/vst/test_e3_store.py::test_no_free_slot_rejected_and_leaves_no_lease_row",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_non_documentation_receipt_in_supervisor_slot_is_a_contract_error",
       "selector": "tests/vst/test_e3_store.py::test_non_documentation_receipt_in_supervisor_slot_is_a_contract_error",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_non_pass_pass_non_pass_fills_the_slot_and_the_pass_in_between_did_not_count",
       "selector": "tests/vst/test_e3_store.py::test_non_pass_pass_non_pass_fills_the_slot_and_the_pass_in_between_did_not_count",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_non_pass_receipts_still_bound_the_slot_at_retry_cap_plus_one",
       "selector": "tests/vst/test_e3_store.py::test_non_pass_receipts_still_bound_the_slot_at_retry_cap_plus_one",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_non_pass_results_exhaust_and_a_final_pass_does_not",
       "selector": "tests/vst/test_e3_store.py::test_non_pass_results_exhaust_and_a_final_pass_does_not",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_one_failure_then_all_pass_then_a_new_head_is_never_refused_by_the_bound",
       "selector": "tests/vst/test_e3_store.py::test_one_failure_then_all_pass_then_a_new_head_is_never_refused_by_the_bound",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_one_lost_attempt_below_the_cap_does_not_exhaust",
       "selector": "tests/vst/test_e3_store.py::test_one_lost_attempt_below_the_cap_does_not_exhaust",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_open_story_bad_arguments",
       "selector": "tests/vst/test_e3_store.py::test_open_story_bad_arguments",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_open_story_duplicate_and_unknown_story_errors",
       "selector": "tests/vst/test_e3_store.py::test_open_story_duplicate_and_unknown_story_errors",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_open_story_starts_at_epoch_one_without_owner",
       "selector": "tests/vst/test_e3_store.py::test_open_story_starts_at_epoch_one_without_owner",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_overspend_after_an_exact_cap_spend_still_commits_the_marker_and_refuses",
       "selector": "tests/vst/test_e3_store.py::test_overspend_after_an_exact_cap_spend_still_commits_the_marker_and_refuses",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_partial_event_counts_receipts_per_lease_and_fires_through_acquire_lease",
       "selector": "tests/vst/test_e3_store.py::test_partial_event_counts_receipts_per_lease_and_fires_through_acquire_lease",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_per_epoch_bound_is_per_slot",
       "selector": "tests/vst/test_e3_store.py::test_per_epoch_bound_is_per_slot",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_raw_update_delete_of_history_tables_fail",
       "selector": "tests/vst/test_e3_store.py::test_raw_update_delete_of_history_tables_fail",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_reap_expired_returns_only_expired_and_is_idempotent",
       "selector": "tests/vst/test_e3_store.py::test_reap_expired_returns_only_expired_and_is_idempotent",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_receipt_chain_within_retry_cap_and_independent_slots",
       "selector": "tests/vst/test_e3_store.py::test_receipt_chain_within_retry_cap_and_independent_slots",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_receipt_failures_and_lost_leases_add_up",
       "selector": "tests/vst/test_e3_store.py::test_receipt_failures_and_lost_leases_add_up",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_receipt_id_is_unique_across_tasks",
       "selector": "tests/vst/test_e3_store.py::test_receipt_id_is_unique_across_tasks",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_receipt_ids_that_merely_resemble_the_reserved_prefix_are_accepted",
       "selector": "tests/vst/test_e3_store.py::test_receipt_ids_that_merely_resemble_the_reserved_prefix_are_accepted",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_receipt_signed_with_wrong_key_or_wrong_label_or_unlabeled_hmac_is_rejected",
       "selector": "tests/vst/test_e3_store.py::test_receipt_signed_with_wrong_key_or_wrong_label_or_unlabeled_hmac_is_rejected",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_receipts_for_task_detects_a_duplicated_receipt_body",
       "selector": "tests/vst/test_e3_store.py::test_receipts_for_task_detects_a_duplicated_receipt_body",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_receipts_for_task_detects_a_malformed_or_wrong_receipt_event",
       "selector": "tests/vst/test_e3_store.py::test_receipts_for_task_detects_a_malformed_or_wrong_receipt_event",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_receipts_for_task_detects_a_missing_receipt_row",
       "selector": "tests/vst/test_e3_store.py::test_receipts_for_task_detects_a_missing_receipt_row",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_receipts_for_task_detects_all_rows_deleted",
       "selector": "tests/vst/test_e3_store.py::test_receipts_for_task_detects_all_rows_deleted",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_receipts_for_task_detects_an_injected_receipt_row",
       "selector": "tests/vst/test_e3_store.py::test_receipts_for_task_detects_an_injected_receipt_row",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_receipts_for_task_of_an_untampered_store_matches_and_is_read_only",
       "selector": "tests/vst/test_e3_store.py::test_receipts_for_task_of_an_untampered_store_matches_and_is_read_only",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_receipts_for_task_verifies_the_anchor",
       "selector": "tests/vst/test_e3_store.py::test_receipts_for_task_verifies_the_anchor",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_receipts_survive_reopen",
       "selector": "tests/vst/test_e3_store.py::test_receipts_survive_reopen",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_record_event_argument_validation",
       "selector": "tests/vst/test_e3_store.py::test_record_event_argument_validation",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_record_event_is_closed_to_store_internal_kinds",
       "selector": "tests/vst/test_e3_store.py::test_record_event_is_closed_to_store_internal_kinds",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_record_event_unserialisable_payload_is_rejected_and_rolled_back",
       "selector": "tests/vst/test_e3_store.py::test_record_event_unserialisable_payload_is_rejected_and_rolled_back",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_register_different_manifest_for_same_task_is_rejected",
       "selector": "tests/vst/test_e3_store.py::test_register_different_manifest_for_same_task_is_rejected",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_register_same_manifest_again_is_idempotent",
       "selector": "tests/vst/test_e3_store.py::test_register_same_manifest_again_is_idempotent",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_register_task_refuses_a_cost_cap_above_the_store_maximum",
       "selector": "tests/vst/test_e3_store.py::test_register_task_refuses_a_cost_cap_above_the_store_maximum",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_register_task_rejects_invalid_manifest",
       "selector": "tests/vst/test_e3_store.py::test_register_task_rejects_invalid_manifest",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_register_task_returns_manifest_hash_and_get_manifest_roundtrips",
       "selector": "tests/vst/test_e3_store.py::test_register_task_returns_manifest_hash_and_get_manifest_roundtrips",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_register_task_unknown_story_and_project_mismatch",
       "selector": "tests/vst/test_e3_store.py::test_register_task_unknown_story_and_project_mismatch",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_release_epoch_owner_only_then_next_acquire_succeeds",
       "selector": "tests/vst/test_e3_store.py::test_release_epoch_owner_only_then_next_acquire_succeeds",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_release_epoch_without_owner_fails",
       "selector": "tests/vst/test_e3_store.py::test_release_epoch_without_owner_fails",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_release_lease_frees_slot_and_second_release_fails",
       "selector": "tests/vst/test_e3_store.py::test_release_lease_frees_slot_and_second_release_fails",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_released_and_fenced_leases_with_receipts_have_no_partial_event",
       "selector": "tests/vst/test_e3_store.py::test_released_and_fenced_leases_with_receipts_have_no_partial_event",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_released_lease_cannot_write_a_late_receipt",
       "selector": "tests/vst/test_e3_store.py::test_released_lease_cannot_write_a_late_receipt",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_released_lease_that_wrote_a_pass_receipt_is_not_a_failed_attempt",
       "selector": "tests/vst/test_e3_store.py::test_released_lease_that_wrote_a_pass_receipt_is_not_a_failed_attempt",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_released_leases_that_wrote_nothing_count_toward_the_retry_cap",
       "selector": "tests/vst/test_e3_store.py::test_released_leases_that_wrote_nothing_count_toward_the_retry_cap",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_render_state_md_identical_for_identical_histories",
       "selector": "tests/vst/test_e3_store.py::test_render_state_md_identical_for_identical_histories",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_render_state_md_is_deterministic_and_marked_generated",
       "selector": "tests/vst/test_e3_store.py::test_render_state_md_is_deterministic_and_marked_generated",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_render_state_md_is_read_only",
       "selector": "tests/vst/test_e3_store.py::test_render_state_md_is_read_only",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_render_state_md_shows_lease_history_and_changes",
       "selector": "tests/vst/test_e3_store.py::test_render_state_md_shows_lease_history_and_changes",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_render_state_md_shows_the_phase",
       "selector": "tests/vst/test_e3_store.py::test_render_state_md_shows_the_phase",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_renew_epoch_extends_liveness_without_changing_epoch",
       "selector": "tests/vst/test_e3_store.py::test_renew_epoch_extends_liveness_without_changing_epoch",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_renew_epoch_rejects_non_owner_and_expired_owner",
       "selector": "tests/vst/test_e3_store.py::test_renew_epoch_rejects_non_owner_and_expired_owner",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_reopen_of_a_version_four_database_keeps_data",
       "selector": "tests/vst/test_e3_store.py::test_reopen_of_a_version_four_database_keeps_data",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_repeated_acquire_lease_above_the_cap_adds_exactly_one_marker_and_one_event",
       "selector": "tests/vst/test_e3_store.py::test_repeated_acquire_lease_above_the_cap_adds_exactly_one_marker_and_one_event",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_repeated_acquire_lease_at_exactly_the_cap_never_creates_a_marker",
       "selector": "tests/vst/test_e3_store.py::test_repeated_acquire_lease_at_exactly_the_cap_never_creates_a_marker",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_retry_cap_boundary_last_allowed_failed_attempt",
       "selector": "tests/vst/test_e3_store.py::test_retry_cap_boundary_last_allowed_failed_attempt",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_retry_cap_bounds_the_receipt_attempt",
       "selector": "tests/vst/test_e3_store.py::test_retry_cap_bounds_the_receipt_attempt",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_retry_cap_zero_allows_only_attempt_one",
       "selector": "tests/vst/test_e3_store.py::test_retry_cap_zero_allows_only_attempt_one",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_retry_cap_zero_allows_unlimited_pass_but_exactly_one_non_pass_per_epoch",
       "selector": "tests/vst/test_e3_store.py::test_retry_cap_zero_allows_unlimited_pass_but_exactly_one_non_pass_per_epoch",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_retry_cap_zero_refuses_the_second_lease_after_one_lost_attempt",
       "selector": "tests/vst/test_e3_store.py::test_retry_cap_zero_refuses_the_second_lease_after_one_lost_attempt",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_retry_exhausted_is_gate_hard_blocked",
       "selector": "tests/vst/test_e3_store.py::test_retry_exhausted_is_gate_hard_blocked",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_retry_exhausted_marker_is_written_once_and_blocks_everything_after",
       "selector": "tests/vst/test_e3_store.py::test_retry_exhausted_marker_is_written_once_and_blocks_everything_after",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_role_hash_mismatch_is_rejected",
       "selector": "tests/vst/test_e3_store.py::test_role_hash_mismatch_is_rejected",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_rollback_to_an_older_consistent_pair_passes_the_chain_but_not_the_external_anchor",
       "selector": "tests/vst/test_e3_store.py::test_rollback_to_an_older_consistent_pair_passes_the_chain_but_not_the_external_anchor",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_same_owner_cannot_reacquire_while_live",
       "selector": "tests/vst/test_e3_store.py::test_same_owner_cannot_reacquire_while_live",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_schema_has_the_receipt_count_column_defaulting_to_zero",
       "selector": "tests/vst/test_e3_store.py::test_schema_has_the_receipt_count_column_defaulting_to_zero",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_second_acquire_while_owner_live_fails_and_keeps_epoch",
       "selector": "tests/vst/test_e3_store.py::test_second_acquire_while_owner_live_fails_and_keeps_epoch",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_set_budget_above_the_manifest_cost_cap_is_refused",
       "selector": "tests/vst/test_e3_store.py::test_set_budget_above_the_manifest_cost_cap_is_refused",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_set_budget_needs_a_registered_task_and_creates_no_row",
       "selector": "tests/vst/test_e3_store.py::test_set_budget_needs_a_registered_task_and_creates_no_row",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_set_budget_preserves_spent_validates_and_refuses_cap_below_spent",
       "selector": "tests/vst/test_e3_store.py::test_set_budget_preserves_spent_validates_and_refuses_cap_below_spent",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_set_phase_bad_epoch_and_unknown_story",
       "selector": "tests/vst/test_e3_store.py::test_set_phase_bad_epoch_and_unknown_story",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_set_phase_boundary_values_one_and_ten_are_accepted",
       "selector": "tests/vst/test_e3_store.py::test_set_phase_boundary_values_one_and_ten_are_accepted",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_set_phase_bounds",
       "selector": "tests/vst/test_e3_store.py::test_set_phase_bounds",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_set_phase_by_live_owner_changes_phase_and_records_event",
       "selector": "tests/vst/test_e3_store.py::test_set_phase_by_live_owner_changes_phase_and_records_event",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_set_phase_is_visible_to_a_second_instance_and_after_reopen",
       "selector": "tests/vst/test_e3_store.py::test_set_phase_is_visible_to_a_second_instance_and_after_reopen",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_set_phase_loses_after_takeover_even_for_the_old_owner",
       "selector": "tests/vst/test_e3_store.py::test_set_phase_loses_after_takeover_even_for_the_old_owner",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_set_phase_rejects_wrong_owner_stale_epoch_and_expired_owner",
       "selector": "tests/vst/test_e3_store.py::test_set_phase_rejects_wrong_owner_stale_epoch_and_expired_owner",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_slot_at_cap_with_pass_does_not_exhaust_retry",
       "selector": "tests/vst/test_e3_store.py::test_slot_at_cap_with_pass_does_not_exhaust_retry",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_slot_chain_bound_counts_only_non_pass_receipts_of_the_current_epoch",
       "selector": "tests/vst/test_e3_store.py::test_slot_chain_bound_counts_only_non_pass_receipts_of_the_current_epoch",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_snapshot_reads_under_a_concurrent_writer_never_report_tamper",
       "selector": "tests/vst/test_e3_store.py::test_snapshot_reads_under_a_concurrent_writer_never_report_tamper",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_stale_epoch_lease_rejected_and_takes_no_slot",
       "selector": "tests/vst/test_e3_store.py::test_stale_epoch_lease_rejected_and_takes_no_slot",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_store_accepts_a_32_byte_event_key_and_bytearray",
       "selector": "tests/vst/test_e3_store.py::test_store_accepts_a_32_byte_event_key_and_bytearray",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_store_output_is_approved_by_the_gate",
       "selector": "tests/vst/test_e3_store.py::test_store_output_is_approved_by_the_gate",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_store_rejects_bad_path",
       "selector": "tests/vst/test_e3_store.py::test_store_rejects_bad_path",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_store_rejects_weak_or_non_bytes_event_key",
       "selector": "tests/vst/test_e3_store.py::test_store_rejects_weak_or_non_bytes_event_key",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_store_requires_event_key_keyword",
       "selector": "tests/vst/test_e3_store.py::test_store_requires_event_key_keyword",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_story_state_and_lease_status_are_closed_enums_in_the_database",
       "selector": "tests/vst/test_e3_store.py::test_story_state_and_lease_status_are_closed_enums_in_the_database",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_supervisor_argument_validation",
       "selector": "tests/vst/test_e3_store.py::test_supervisor_argument_validation",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_supervisor_candidate_head_comes_from_latest_receipt_of_task",
       "selector": "tests/vst/test_e3_store.py::test_supervisor_candidate_head_comes_from_latest_receipt_of_task",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_supervisor_ignores_live_and_released_leases",
       "selector": "tests/vst/test_e3_store.py::test_supervisor_ignores_live_and_released_leases",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_supervisor_key_equal_to_the_event_key_is_refused_everywhere",
       "selector": "tests/vst/test_e3_store.py::test_supervisor_key_equal_to_the_event_key_is_refused_everywhere",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_supervisor_marker_chain_is_gap_free_across_losses_and_exhaustion",
       "selector": "tests/vst/test_e3_store.py::test_supervisor_marker_chain_is_gap_free_across_losses_and_exhaustion",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_supervisor_marker_with_the_sup_prefix_succeeds_after_a_rejected_worker_attempt",
       "selector": "tests/vst/test_e3_store.py::test_supervisor_marker_with_the_sup_prefix_succeeds_after_a_rejected_worker_attempt",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_supervisor_markers_themselves_are_not_failed_attempts",
       "selector": "tests/vst/test_e3_store.py::test_supervisor_markers_themselves_are_not_failed_attempts",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_supervisor_marks_only_lost_attempts_not_ones_that_wrote",
       "selector": "tests/vst/test_e3_store.py::test_supervisor_marks_only_lost_attempts_not_ones_that_wrote",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_supervisor_path_rejects_worker_slot_receipts",
       "selector": "tests/vst/test_e3_store.py::test_supervisor_path_rejects_worker_slot_receipts",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_supervisor_receipt_is_a_non_approval_for_the_gate",
       "selector": "tests/vst/test_e3_store.py::test_supervisor_receipt_is_a_non_approval_for_the_gate",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_supervisor_receipt_must_be_signed_with_the_supervisor_key",
       "selector": "tests/vst/test_e3_store.py::test_supervisor_receipt_must_be_signed_with_the_supervisor_key",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_supervisor_skips_lease_that_already_has_a_receipt_but_marks_it",
       "selector": "tests/vst/test_e3_store.py::test_supervisor_skips_lease_that_already_has_a_receipt_but_marks_it",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_supervisor_writes_worker_lost_receipt_for_reaped_lease",
       "selector": "tests/vst/test_e3_store.py::test_supervisor_writes_worker_lost_receipt_for_reaped_lease",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_takeover_after_a_full_pass_set_lets_the_new_epoch_write_its_receipts",
       "selector": "tests/vst/test_e3_store.py::test_takeover_after_a_full_pass_set_lets_the_new_epoch_write_its_receipts",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_takeover_plus_real_failures_still_exhausts_at_the_cap",
       "selector": "tests/vst/test_e3_store.py::test_takeover_plus_real_failures_still_exhausts_at_the_cap",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_takeovers_do_not_exhaust_the_retry_cap",
       "selector": "tests/vst/test_e3_store.py::test_takeovers_do_not_exhaust_the_retry_cap",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_tampered_event_log_is_detected_on_a_copy",
       "selector": "tests/vst/test_e3_store.py::test_tampered_event_log_is_detected_on_a_copy",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_tampered_receipt_after_signing_is_rejected",
       "selector": "tests/vst/test_e3_store.py::test_tampered_receipt_after_signing_is_rejected",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_tampering_with_one_task_does_not_break_another_task_reads",
       "selector": "tests/vst/test_e3_store.py::test_tampering_with_one_task_does_not_break_another_task_reads",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_tasks_table_is_append_only",
       "selector": "tests/vst/test_e3_store.py::test_tasks_table_is_append_only",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_terminal_marker_through_append_supervisor_receipt_is_accepted_once",
       "selector": "tests/vst/test_e3_store.py::test_terminal_marker_through_append_supervisor_receipt_is_accepted_once",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_three_heads_with_retry_cap_one_can_always_re_attest_every_slot",
       "selector": "tests/vst/test_e3_store.py::test_three_heads_with_retry_cap_one_can_always_re_attest_every_slot",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_truncation_with_a_forged_unkeyed_anchor_is_detected",
       "selector": "tests/vst/test_e3_store.py::test_truncation_with_a_forged_unkeyed_anchor_is_detected",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_ttl_boundary_is_accepted_exactly_at_the_limit",
       "selector": "tests/vst/test_e3_store.py::test_ttl_boundary_is_accepted_exactly_at_the_limit",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_two_store_instances_on_one_file_only_one_wins",
       "selector": "tests/vst/test_e3_store.py::test_two_store_instances_on_one_file_only_one_wins",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_undeclared_slot_and_wrong_type_for_slot_are_rejected",
       "selector": "tests/vst/test_e3_store.py::test_undeclared_slot_and_wrong_type_for_slot_are_rejected",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_unknown_task_and_story_link_are_rejected",
       "selector": "tests/vst/test_e3_store.py::test_unknown_task_and_story_link_are_rejected",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_verification_with_a_different_event_key_fails",
       "selector": "tests/vst/test_e3_store.py::test_verification_with_a_different_event_key_fails",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_worker_path_rejects_supervisor_slot_receipts_even_if_perfectly_signed",
       "selector": "tests/vst/test_e3_store.py::test_worker_path_rejects_supervisor_slot_receipts_even_if_perfectly_signed",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_worker_receipt_id_with_the_reserved_sup_prefix_is_rejected",
       "selector": "tests/vst/test_e3_store.py::test_worker_receipt_id_with_the_reserved_sup_prefix_is_rejected",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_zero_cap_rejects_any_positive_charge",
       "selector": "tests/vst/test_e3_store.py::test_zero_cap_rejects_any_positive_charge",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_zero_cap_task_with_nothing_spent_runs_to_approval_and_any_charge_marks",
       "selector": "tests/vst/test_e3_store.py::test_zero_cap_task_with_nothing_spent_runs_to_approval_and_any_charge_marks",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e3_store.py::test_zombie_late_receipt_after_fencing_is_rejected",
       "selector": "tests/vst/test_e3_store.py::test_zombie_late_receipt_after_fencing_is_rejected",
       "source_path": "tests/vst/test_e3_store.py",
-      "source_commit": "b0beca3580b1e307d2ddc8c80fa9c4ad1d40c552",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_a_healthy_capture_is_not_flagged_when_nothing_raises",
       "selector": "tests/vst/test_e4_runner.py::test_a_healthy_capture_is_not_flagged_when_nothing_raises",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_a_short_lived_background_holder_is_fully_captured_and_not_flagged",
       "selector": "tests/vst/test_e4_runner.py::test_a_short_lived_background_holder_is_fully_captured_and_not_flagged",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_absolute_path_inside_the_run_directory_is_still_refused",
       "selector": "tests/vst/test_e4_runner.py::test_absolute_path_inside_the_run_directory_is_still_refused",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_all_commands_run_and_recorded_even_after_a_failure",
       "selector": "tests/vst/test_e4_runner.py::test_all_commands_run_and_recorded_even_after_a_failure",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_artifact_digest_receipt_is_denied_without_a_resolver",
       "selector": "tests/vst/test_e4_runner.py::test_artifact_digest_receipt_is_denied_without_a_resolver",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_artifact_digest_tamper_after_signing_is_rejected",
       "selector": "tests/vst/test_e4_runner.py::test_artifact_digest_tamper_after_signing_is_rejected",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_artifact_digests_maps_each_path",
       "selector": "tests/vst/test_e4_runner.py::test_artifact_digests_maps_each_path",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_artifact_in_missing_directory_is_zero_digest",
       "selector": "tests/vst/test_e4_runner.py::test_artifact_in_missing_directory_is_zero_digest",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_artifact_through_a_symlink_or_junction_to_outside_is_refused",
       "selector": "tests/vst/test_e4_runner.py::test_artifact_through_a_symlink_or_junction_to_outside_is_refused",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_artifact_through_an_internal_symlink_is_also_refused",
       "selector": "tests/vst/test_e4_runner.py::test_artifact_through_an_internal_symlink_is_also_refused",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_artifacts_are_hashed_after_the_commands_ran",
       "selector": "tests/vst/test_e4_runner.py::test_artifacts_are_hashed_after_the_commands_ran",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_background_process_holding_the_pipe_gives_exit_minus_four_and_capture_incomplete",
       "selector": "tests/vst/test_e4_runner.py::test_background_process_holding_the_pipe_gives_exit_minus_four_and_capture_incomplete",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_bad_label_raises",
       "selector": "tests/vst/test_e4_runner.py::test_bad_label_raises",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_build_environment_unit",
       "selector": "tests/vst/test_e4_runner.py::test_build_environment_unit",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_capture_incomplete_takes_precedence_over_output_truncation",
       "selector": "tests/vst/test_e4_runner.py::test_capture_incomplete_takes_precedence_over_output_truncation",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_child_environment_is_minimal_and_secrets_do_not_leak",
       "selector": "tests/vst/test_e4_runner.py::test_child_environment_is_minimal_and_secrets_do_not_leak",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_command_allowed_for_another_slot_is_refused",
       "selector": "tests/vst/test_e4_runner.py::test_command_allowed_for_another_slot_is_refused",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_command_must_equal_an_allowed_command_exactly",
       "selector": "tests/vst/test_e4_runner.py::test_command_must_equal_an_allowed_command_exactly",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_command_runs_in_the_given_cwd",
       "selector": "tests/vst/test_e4_runner.py::test_command_runs_in_the_given_cwd",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_contained_artifact_path_unit",
       "selector": "tests/vst/test_e4_runner.py::test_contained_artifact_path_unit",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_covered_acceptance_must_be_a_subset_of_manifest_acceptance",
       "selector": "tests/vst/test_e4_runner.py::test_covered_acceptance_must_be_a_subset_of_manifest_acceptance",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_cwd_that_is_a_file_maps_to_exit_minus_two",
       "selector": "tests/vst/test_e4_runner.py::test_cwd_that_is_a_file_maps_to_exit_minus_two",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_deadline_limits_a_command_below_its_own_timeout",
       "selector": "tests/vst/test_e4_runner.py::test_deadline_limits_a_command_below_its_own_timeout",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_default_cap_is_one_mebibyte",
       "selector": "tests/vst/test_e4_runner.py::test_default_cap_is_one_mebibyte",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_deleted_artifact_is_rejected_by_gate_resolver",
       "selector": "tests/vst/test_e4_runner.py::test_deleted_artifact_is_rejected_by_gate_resolver",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_directory_is_not_an_artifact_and_gets_zero_digest",
       "selector": "tests/vst/test_e4_runner.py::test_directory_is_not_an_artifact_and_gets_zero_digest",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_edited_exit_code_after_signing_is_rejected",
       "selector": "tests/vst/test_e4_runner.py::test_edited_exit_code_after_signing_is_rejected",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_empty_artifact_paths_gives_empty_digests",
       "selector": "tests/vst/test_e4_runner.py::test_empty_artifact_paths_gives_empty_digests",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_every_field_tamper_breaks_verification",
       "selector": "tests/vst/test_e4_runner.py::test_every_field_tamper_breaks_verification",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_exactly_32_byte_key_and_bytearray_are_accepted",
       "selector": "tests/vst/test_e4_runner.py::test_exactly_32_byte_key_and_bytearray_are_accepted",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_expected_ids_come_from_the_slot_of_the_manifest",
       "selector": "tests/vst/test_e4_runner.py::test_expected_ids_come_from_the_slot_of_the_manifest",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_expected_test_ids_are_compared_as_a_set_not_by_order",
       "selector": "tests/vst/test_e4_runner.py::test_expected_test_ids_are_compared_as_a_set_not_by_order",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_expected_test_ids_must_equal_the_manifest_required_tests",
       "selector": "tests/vst/test_e4_runner.py::test_expected_test_ids_must_equal_the_manifest_required_tests",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_extra_env_allowlist_is_the_documented_pattern",
       "selector": "tests/vst/test_e4_runner.py::test_extra_env_allowlist_is_the_documented_pattern",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_extra_env_is_passed_explicitly_and_only_that",
       "selector": "tests/vst/test_e4_runner.py::test_extra_env_is_passed_explicitly_and_only_that",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_extra_env_names_outside_the_vst_namespace_are_refused_even_if_harmless",
       "selector": "tests/vst/test_e4_runner.py::test_extra_env_names_outside_the_vst_namespace_are_refused_even_if_harmless",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_extra_env_that_shadows_loader_or_allowlisted_names_is_refused_before_running",
       "selector": "tests/vst/test_e4_runner.py::test_extra_env_that_shadows_loader_or_allowlisted_names_is_refused_before_running",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_extra_env_vst_upper_case_names_are_passed_to_the_child",
       "selector": "tests/vst/test_e4_runner.py::test_extra_env_vst_upper_case_names_are_passed_to_the_child",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_extra_env_with_one_forbidden_key_among_good_ones_is_refused_as_a_whole",
       "selector": "tests/vst/test_e4_runner.py::test_extra_env_with_one_forbidden_key_among_good_ones_is_refused_as_a_whole",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_failing_command_nonzero_exit_gives_fail",
       "selector": "tests/vst/test_e4_runner.py::test_failing_command_nonzero_exit_gives_fail",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_file_sha256_chunk_boundaries_match_hashlib",
       "selector": "tests/vst/test_e4_runner.py::test_file_sha256_chunk_boundaries_match_hashlib",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_file_sha256_detects_one_byte_modification",
       "selector": "tests/vst/test_e4_runner.py::test_file_sha256_detects_one_byte_modification",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_file_sha256_known_vectors",
       "selector": "tests/vst/test_e4_runner.py::test_file_sha256_known_vectors",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_file_sha256_missing_file_raises",
       "selector": "tests/vst/test_e4_runner.py::test_file_sha256_missing_file_raises",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_forbidden_env_name_sets_cover_the_documented_names",
       "selector": "tests/vst/test_e4_runner.py::test_forbidden_env_name_sets_cover_the_documented_names",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_forged_unsigned_and_wrong_key_receipts_are_rejected",
       "selector": "tests/vst/test_e4_runner.py::test_forged_unsigned_and_wrong_key_receipts_are_rejected",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_harmless_command_produces_signed_passing_testrun",
       "selector": "tests/vst/test_e4_runner.py::test_harmless_command_produces_signed_passing_testrun",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_ids_hidden_beyond_the_cap_cannot_produce_a_pass",
       "selector": "tests/vst/test_e4_runner.py::test_ids_hidden_beyond_the_cap_cannot_produce_a_pass",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_invalid_inputs_raise_before_any_subprocess_starts",
       "selector": "tests/vst/test_e4_runner.py::test_invalid_inputs_raise_before_any_subprocess_starts",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_invalid_or_foreign_manifests_are_rejected_before_running",
       "selector": "tests/vst/test_e4_runner.py::test_invalid_or_foreign_manifests_are_rejected_before_running",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_job_is_closed_when_thread_start_fails",
       "selector": "tests/vst/test_e4_runner.py::test_job_is_closed_when_thread_start_fails",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_key_does_not_leak_into_cwd_even_with_preexisting_files",
       "selector": "tests/vst/test_e4_runner.py::test_key_does_not_leak_into_cwd_even_with_preexisting_files",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_key_is_not_visible_to_the_child_process",
       "selector": "tests/vst/test_e4_runner.py::test_key_is_not_visible_to_the_child_process",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_key_never_appears_in_receipt",
       "selector": "tests/vst/test_e4_runner.py::test_key_never_appears_in_receipt",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_labels_are_distinct_domain_separators",
       "selector": "tests/vst/test_e4_runner.py::test_labels_are_distinct_domain_separators",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_link_created_by_the_command_itself_gets_a_zero_digest",
       "selector": "tests/vst/test_e4_runner.py::test_link_created_by_the_command_itself_gets_a_zero_digest",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_malformed_extra_env_is_still_a_contract_error",
       "selector": "tests/vst/test_e4_runner.py::test_malformed_extra_env_is_still_a_contract_error",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_manifest_hash_changes_when_the_manifest_changes",
       "selector": "tests/vst/test_e4_runner.py::test_manifest_hash_changes_when_the_manifest_changes",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_manifest_swapped_to_widen_allowed_commands_is_rejected_by_hash",
       "selector": "tests/vst/test_e4_runner.py::test_manifest_swapped_to_widen_allowed_commands_is_rejected_by_hash",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_min_key_bytes_boundary",
       "selector": "tests/vst/test_e4_runner.py::test_min_key_bytes_boundary",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_mismatched_executed_vs_expected_is_not_pass",
       "selector": "tests/vst/test_e4_runner.py::test_mismatched_executed_vs_expected_is_not_pass",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_missing_artifact_gets_zero_digest_and_fail",
       "selector": "tests/vst/test_e4_runner.py::test_missing_artifact_gets_zero_digest_and_fail",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_missing_cwd_records_exit_minus_two",
       "selector": "tests/vst/test_e4_runner.py::test_missing_cwd_records_exit_minus_two",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_missing_executable_records_exit_minus_two",
       "selector": "tests/vst/test_e4_runner.py::test_missing_executable_records_exit_minus_two",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_modified_artifact_is_rejected_by_gate_resolver",
       "selector": "tests/vst/test_e4_runner.py::test_modified_artifact_is_rejected_by_gate_resolver",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_nested_command_tamper_breaks_verification",
       "selector": "tests/vst/test_e4_runner.py::test_nested_command_tamper_breaks_verification",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_nested_relative_artifact_is_hashed",
       "selector": "tests/vst/test_e4_runner.py::test_nested_relative_artifact_is_hashed",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_no_shell_metacharacters_are_not_interpreted",
       "selector": "tests/vst/test_e4_runner.py::test_no_shell_metacharacters_are_not_interpreted",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_non_os_errors_from_subprocess_propagate",
       "selector": "tests/vst/test_e4_runner.py::test_non_os_errors_from_subprocess_propagate",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_non_utf8_output_does_not_crash_the_runner",
       "selector": "tests/vst/test_e4_runner.py::test_non_utf8_output_does_not_crash_the_runner",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_one_disallowed_command_blocks_the_whole_run_before_any_starts",
       "selector": "tests/vst/test_e4_runner.py::test_one_disallowed_command_blocks_the_whole_run_before_any_starts",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_os_errors_starting_a_process_map_to_exit_minus_two",
       "selector": "tests/vst/test_e4_runner.py::test_os_errors_starting_a_process_map_to_exit_minus_two",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_output_exactly_at_the_cap_is_not_truncated",
       "selector": "tests/vst/test_e4_runner.py::test_output_exactly_at_the_cap_is_not_truncated",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_output_flood_is_drained_without_deadlock_and_memory_is_bounded",
       "selector": "tests/vst/test_e4_runner.py::test_output_flood_is_drained_without_deadlock_and_memory_is_bounded",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_output_injection_of_extra_test_ids_does_not_make_pass",
       "selector": "tests/vst/test_e4_runner.py::test_output_injection_of_extra_test_ids_does_not_make_pass",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_output_injection_of_missing_ids_cannot_be_hidden",
       "selector": "tests/vst/test_e4_runner.py::test_output_injection_of_missing_ids_cannot_be_hidden",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_output_over_the_cap_gives_exit_minus_three_and_fail",
       "selector": "tests/vst/test_e4_runner.py::test_output_over_the_cap_gives_exit_minus_three_and_fail",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_overall_deadline_stops_later_commands_without_running_them",
       "selector": "tests/vst/test_e4_runner.py::test_overall_deadline_stops_later_commands_without_running_them",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_parser_exception_propagates_instead_of_silent_pass",
       "selector": "tests/vst/test_e4_runner.py::test_parser_exception_propagates_instead_of_silent_pass",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_parser_receives_joined_stdout_in_order",
       "selector": "tests/vst/test_e4_runner.py::test_parser_receives_joined_stdout_in_order",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_parser_returning_blank_ids_is_rejected",
       "selector": "tests/vst/test_e4_runner.py::test_parser_returning_blank_ids_is_rejected",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_reader_exception_other_than_oserror_marks_capture_incomplete",
       "selector": "tests/vst/test_e4_runner.py::test_reader_exception_other_than_oserror_marks_capture_incomplete",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_reader_oserror_and_valueerror_also_mark_capture_incomplete",
       "selector": "tests/vst/test_e4_runner.py::test_reader_oserror_and_valueerror_also_mark_capture_incomplete",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_receipt_carries_every_caller_supplied_field",
       "selector": "tests/vst/test_e4_runner.py::test_receipt_carries_every_caller_supplied_field",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_receipt_is_bound_to_the_manifest_not_to_caller_supplied_ids",
       "selector": "tests/vst/test_e4_runner.py::test_receipt_is_bound_to_the_manifest_not_to_caller_supplied_ids",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_receipt_without_signature_helper_does_not_mutate",
       "selector": "tests/vst/test_e4_runner.py::test_receipt_without_signature_helper_does_not_mutate",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_replay_against_a_changed_manifest_is_rejected",
       "selector": "tests/vst/test_e4_runner.py::test_replay_against_a_changed_manifest_is_rejected",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_replay_against_another_epoch_is_rejected",
       "selector": "tests/vst/test_e4_runner.py::test_replay_against_another_epoch_is_rejected",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_replay_against_another_head_is_rejected",
       "selector": "tests/vst/test_e4_runner.py::test_replay_against_another_head_is_rejected",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_replay_against_another_task_is_rejected",
       "selector": "tests/vst/test_e4_runner.py::test_replay_against_another_task_is_rejected",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_report_capture_incomplete_is_false_for_every_normal_outcome",
       "selector": "tests/vst/test_e4_runner.py::test_report_capture_incomplete_is_false_for_every_normal_outcome",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_report_dict_describes_each_command",
       "selector": "tests/vst/test_e4_runner.py::test_report_dict_describes_each_command",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_result_is_computed_not_caller_controlled",
       "selector": "tests/vst/test_e4_runner.py::test_result_is_computed_not_caller_controlled",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_retry_after_fail_through_runner_is_approved_with_retained_failure",
       "selector": "tests/vst/test_e4_runner.py::test_retry_after_fail_through_runner_is_approved_with_retained_failure",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_retry_with_wrong_prev_hash_is_rejected",
       "selector": "tests/vst/test_e4_runner.py::test_retry_with_wrong_prev_hash_is_rejected",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_root_that_survives_the_kill_gives_exit_minus_four",
       "selector": "tests/vst/test_e4_runner.py::test_root_that_survives_the_kill_gives_exit_minus_four",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_runner_does_not_bound_the_attempt_by_retry_cap_the_store_does",
       "selector": "tests/vst/test_e4_runner.py::test_runner_does_not_bound_the_attempt_by_retry_cap_the_store_does",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_runner_does_not_mutate_the_manifest",
       "selector": "tests/vst/test_e4_runner.py::test_runner_does_not_mutate_the_manifest",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_runner_never_executes_a_command_missing_from_the_manifest_even_if_receipt_would_fail",
       "selector": "tests/vst/test_e4_runner.py::test_runner_never_executes_a_command_missing_from_the_manifest_even_if_receipt_would_fail",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_runner_receipt_is_approved_by_gate_at_its_head_and_epoch",
       "selector": "tests/vst/test_e4_runner.py::test_runner_receipt_is_approved_by_gate_at_its_head_and_epoch",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_runner_writes_nothing_under_cwd_and_key_not_on_disk",
       "selector": "tests/vst/test_e4_runner.py::test_runner_writes_nothing_under_cwd_and_key_not_on_disk",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_several_allowed_commands_may_all_run_and_repeat",
       "selector": "tests/vst/test_e4_runner.py::test_several_allowed_commands_may_all_run_and_repeat",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_sign_matches_independent_hmac_over_label_and_canonical_bytes",
       "selector": "tests/vst/test_e4_runner.py::test_sign_matches_independent_hmac_over_label_and_canonical_bytes",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_sign_refuses_receipt_that_already_has_signature",
       "selector": "tests/vst/test_e4_runner.py::test_sign_refuses_receipt_that_already_has_signature",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_signature_is_deterministic_for_same_inputs",
       "selector": "tests/vst/test_e4_runner.py::test_signature_is_deterministic_for_same_inputs",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_signature_is_scoped_to_the_receipt_label",
       "selector": "tests/vst/test_e4_runner.py::test_signature_is_scoped_to_the_receipt_label",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_signature_verifies_and_is_64_hex",
       "selector": "tests/vst/test_e4_runner.py::test_signature_verifies_and_is_64_hex",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_skipped_or_xfail_ids_prevent_pass",
       "selector": "tests/vst/test_e4_runner.py::test_skipped_or_xfail_ids_prevent_pass",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_slot_must_be_a_testrun_slot_of_the_manifest",
       "selector": "tests/vst/test_e4_runner.py::test_slot_must_be_a_testrun_slot_of_the_manifest",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_stderr_has_its_own_cap",
       "selector": "tests/vst/test_e4_runner.py::test_stderr_has_its_own_cap",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_stderr_within_cap_does_not_fail_a_passing_run",
       "selector": "tests/vst/test_e4_runner.py::test_stderr_within_cap_does_not_fail_a_passing_run",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_stdin_is_closed_so_a_reading_command_cannot_hang",
       "selector": "tests/vst/test_e4_runner.py::test_stdin_is_closed_so_a_reading_command_cannot_hang",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_stray_descendant_is_killed_after_the_root_command_exited_normally",
       "selector": "tests/vst/test_e4_runner.py::test_stray_descendant_is_killed_after_the_root_command_exited_normally",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_thread_start_failure_for_the_first_reader_also_cleans_up",
       "selector": "tests/vst/test_e4_runner.py::test_thread_start_failure_for_the_first_reader_also_cleans_up",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_thread_start_failure_kills_the_child_and_cleans_up",
       "selector": "tests/vst/test_e4_runner.py::test_thread_start_failure_kills_the_child_and_cleans_up",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_timeout_does_not_prevent_following_commands_within_the_deadline",
       "selector": "tests/vst/test_e4_runner.py::test_timeout_does_not_prevent_following_commands_within_the_deadline",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_timeout_kills_the_whole_process_tree",
       "selector": "tests/vst/test_e4_runner.py::test_timeout_kills_the_whole_process_tree",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_timeout_records_exit_minus_one_and_fails",
       "selector": "tests/vst/test_e4_runner.py::test_timeout_records_exit_minus_one_and_fails",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_timeouts_are_bounded_by_the_manifest",
       "selector": "tests/vst/test_e4_runner.py::test_timeouts_are_bounded_by_the_manifest",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_traversal_absolute_and_malformed_artifact_paths_are_refused_before_running",
       "selector": "tests/vst/test_e4_runner.py::test_traversal_absolute_and_malformed_artifact_paths_are_refused_before_running",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_truncated_exit_code_wins_over_a_failing_exit_code",
       "selector": "tests/vst/test_e4_runner.py::test_truncated_exit_code_wins_over_a_failing_exit_code",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_verify_non_dict_or_bad_signature_is_false_not_error",
       "selector": "tests/vst/test_e4_runner.py::test_verify_non_dict_or_bad_signature_is_false_not_error",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_weak_or_non_bytes_keys_are_rejected_before_running",
       "selector": "tests/vst/test_e4_runner.py::test_weak_or_non_bytes_keys_are_rejected_before_running",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_worker_receipt_cannot_masquerade_as_supervisor_or_waiver_signed",
       "selector": "tests/vst/test_e4_runner.py::test_worker_receipt_cannot_masquerade_as_supervisor_or_waiver_signed",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_wrong_key_fails_and_bad_key_raises",
       "selector": "tests/vst/test_e4_runner.py::test_wrong_key_fails_and_bad_key_raises",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_zero_executed_is_inconclusive_not_pass",
       "selector": "tests/vst/test_e4_runner.py::test_zero_executed_is_inconclusive_not_pass",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
       "test_id": "tests/vst/test_e4_runner.py::test_zero_executed_receipt_never_satisfies_gate",
       "selector": "tests/vst/test_e4_runner.py::test_zero_executed_receipt_never_satisfies_gate",
       "source_path": "tests/vst/test_e4_runner.py",
-      "source_commit": "176a095ba745d5fbf71b6dce41f48c3e3d6b225a",
+      "source_commit": "05f7ba442fb68afdec4fd17cb01f9e025295ae5f",
       "primary_category": "api"
     },
     {
