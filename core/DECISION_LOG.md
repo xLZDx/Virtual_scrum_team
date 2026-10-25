@@ -365,6 +365,10 @@ At clean `s4-native-qa-runner` HEAD `cbdce020fbd8030e7518285526831c2932f879a2`, 
 
 The fresh S4 security review at `2ffc8f7c59156d882f9d69729bc0337439e3705c` found candidate-controlled repeated parsing of one test source per registry ID. Cache each validated resolved source's AST (including closed failures) for the duration of one `load_registry` call, while repeating path/symlink/containment checks for each ID. This limits same-file parsing amplification without retaining cross-run state. Implemented in change 0151; designated functional regression and fresh security re-review remain pending.
 
+## 2026-10-25 -- Retry intermittent read-only Git lookup timeouts once
+
+Change 0152 records three focused-module runs that intermittently exceeded the five-second bound in `git rev-parse --verify HEAD` and, once, `git ls-files`; calls fail closed and direct lookup outside pytest succeeded. The evidence does not establish the underlying cause. Add one retry only for `TimeoutExpired`, retaining a five-second per-attempt limit and a ten-second maximum per lookup; second timeout, nonzero result, and OS error still fail closed. Implemented in change 0153; full module rerun pending.
+
 ## 2026-10-25 -- Verify registry source AST caching
 
 The designated functional reviewer at code HEAD `93cd3c334c66683a379ca594215eaa3f5507bfd8` added two cases. The targeted AST-cache command passed 2/2. The full focused module returned 16 passed, 1 symlink skip, and 1 failure because the committed-registry integration case's bounded `git rev-parse --verify HEAD` timed out after five seconds; retain this as `NOT_PASS`, not green. See change 0152 and evidence `docs/sdlc/evidence/s4-ast-cache-functional-93cd3c3.md`.

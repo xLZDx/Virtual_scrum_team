@@ -19,6 +19,8 @@ PRIMARY_CATEGORIES = ("functional", "integration", "api", "e2e", "seeded-failure
 REGRESSION_CATEGORIES = ("functional", "integration", "api", "e2e")
 MAX_REGISTRY_BYTES = 512 * 1024
 MAX_TEST_SOURCE_BYTES = 1024 * 1024
+GIT_COMMAND_TIMEOUT_SECONDS = 5
+GIT_TIMEOUT_RETRIES = 1
 SEEDED_CATALOG_PATH = "docs/qa/seeded_failures.json"
 MAX_SEEDED_CATALOG_BYTES = 128 * 1024
 _FIXTURE_ID = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
@@ -58,14 +60,31 @@ def _read_repo_json(root: Path, relative_path: str, *, max_bytes: int) -> tuple[
 
 def _git_file_is_tracked(root: Path, relative_path: str) -> bool:
     try:
-        result = subprocess.run(
-            ["git", "ls-files", "--error-unmatch", "--", relative_path], cwd=root,
-            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL, timeout=5, check=False,
+        result = _run_git_with_timeout_retry(
+            ["git", "ls-files", "--error-unmatch", "--", relative_path],
+            cwd=root,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
     except (OSError, subprocess.TimeoutExpired):
         return False
     return result.returncode == 0
+
+
+def _run_git_with_timeout_retry(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess:
+    """Retry one transient timeout; keep the command bounded and fail closed."""
+    for attempt in range(GIT_TIMEOUT_RETRIES + 1):
+        try:
+            return subprocess.run(
+                command,
+                timeout=GIT_COMMAND_TIMEOUT_SECONDS,
+                check=False,
+                **kwargs,
+            )
+        except subprocess.TimeoutExpired:
+            if attempt == GIT_TIMEOUT_RETRIES:
+                raise
 
 
 def _pytest_node_id_exists(
@@ -180,10 +199,10 @@ def _git_commit_is_ancestor(root: Path, revision: str, candidate_head: str) -> b
 
 def _current_candidate_head(root: Path) -> str:
     try:
-        result = subprocess.run(
+        result = _run_git_with_timeout_retry(
             ["git", "rev-parse", "--verify", "HEAD"], cwd=root,
             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL, timeout=5, check=False, text=True,
+            stderr=subprocess.DEVNULL, text=True,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise ContractError(f"cannot identify the QA candidate HEAD: {exc}") from exc
