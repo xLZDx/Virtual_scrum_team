@@ -59,19 +59,22 @@ def test_s4_registry_parses_shared_test_source_once_per_load(monkeypatch, tmp_pa
     tests_dir.mkdir()
     source_path = tests_dir / "shared.py"
     source_path.write_text(
-        "def test_first():\n    pass\n\ndef test_second():\n    pass\n",
+        "def test_first():\n    pass\n\ndef test_second():\n    pass\n\n"
+        "class TestShared:\n    def test_method(self):\n        pass\n",
         encoding="utf-8",
     )
     first_id = "tests/shared.py::test_first"
     second_id = "tests/shared.py::test_second"
+    class_method_id = "tests/shared.py::TestShared::test_method"
     candidate = _registry_fixture()
     candidate["categories"]["functional"].update(
         source_head="a" * 40, test_ids=[first_id]
     )
     candidate["categories"]["integration"] = {
-        "state": "NOT_RUN", "owner_role": "functional-test-reviewer",
-        "reason": "not needed for this source-cache contract fixture",
-        "next_step": "none",
+        "state": "SUPPORTED", "coverage_state": "PARTIAL",
+        "coverage_reason": "synthetic shared-source index fixture",
+        "owner_role": "functional-test-reviewer", "source_head": "a" * 40,
+        "test_ids": [class_method_id],
     }
     candidate["categories"]["api"].update(
         source_head="a" * 40, test_ids=[second_id]
@@ -116,8 +119,86 @@ def test_s4_registry_parses_shared_test_source_once_per_load(monkeypatch, tmp_pa
 
     assert loaded["categories"]["functional"]["test_ids"] == [first_id]
     assert loaded["categories"]["api"]["test_ids"] == [second_id]
+    assert loaded["categories"]["integration"]["test_ids"] == [class_method_id]
     assert parse_calls == 1
     assert source_reads == 1
+
+
+def test_s4_registry_rejects_aggregate_test_source_budget_overflow(monkeypatch, tmp_path):
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    candidate = _registry_fixture()
+    source_paths = []
+    for index, category in enumerate(registry.PRIMARY_CATEGORIES):
+        source_path = tests_dir / f"budget_{index}.py"
+        prefix = f"def test_budget_{index}():\n    pass\n".encode()
+        target_size = 900 * 1024
+        source_path.write_bytes(prefix + b"#" + b"x" * (target_size - len(prefix) - 1))
+        source_paths.append(source_path)
+        test_id = f"tests/budget_{index}.py::test_budget_{index}"
+        if category == "api":
+            candidate["categories"][category].update(
+                source_head="a" * 40, test_ids=[test_id]
+            )
+        else:
+            candidate["categories"][category] = {
+                "state": "SUPPORTED", "coverage_state": "PARTIAL",
+                "coverage_reason": "synthetic aggregate-source-budget fixture",
+                "owner_role": "functional-test-reviewer", "source_head": "a" * 40,
+                "test_ids": [test_id],
+            }
+    raw = json.dumps(candidate, separators=(",", ":")).encode()
+    monkeypatch.setattr(registry, "_read_repo_json", lambda *args, **kwargs: (candidate, raw))
+    monkeypatch.setattr(registry, "_current_candidate_head", lambda *args: "a" * 40)
+    monkeypatch.setattr(registry, "_git_commit_is_ancestor", lambda *args: True)
+    monkeypatch.setattr(registry, "_git_file_is_tracked", lambda *args: True)
+
+    parse_calls = 0
+    original_parse = registry.ast.parse
+
+    def count_parse(*args, **kwargs):
+        nonlocal parse_calls
+        parse_calls += 1
+        return original_parse(*args, **kwargs)
+
+    source_reads = 0
+    original_open = Path.open
+
+    def count_source_open(path, *args, **kwargs):
+        nonlocal source_reads
+        if path in source_paths:
+            source_reads += 1
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(registry.ast, "parse", count_parse)
+    monkeypatch.setattr(Path, "open", count_source_open)
+
+    with pytest.raises(ContractError, match="exceeds the 4194304-byte aggregate limit"):
+        registry.load_registry(tmp_path)
+
+    assert source_reads == 5
+    assert parse_calls == 4
+
+
+def test_s4_registry_rejects_more_than_2048_ids_before_node_resolution(monkeypatch):
+    candidate = _registry_fixture()
+    candidate["categories"]["functional"]["test_ids"] = [
+        f"tests/bulk.py::test_case_{index}"
+        for index in range(registry.MAX_REGISTRY_TEST_IDS + 1)
+    ]
+    raw = json.dumps(candidate, separators=(",", ":")).encode()
+    monkeypatch.setattr(registry, "_read_repo_json", lambda *args, **kwargs: (candidate, raw))
+    monkeypatch.setattr(registry, "_current_candidate_head", lambda *args: "a" * 40)
+    monkeypatch.setattr(registry, "_git_commit_is_ancestor", lambda *args: True)
+    monkeypatch.setattr(registry, "_git_file_is_tracked", lambda *args: True)
+
+    def unexpected_node_resolution(*args, **kwargs):
+        raise AssertionError("ID limit must reject before any per-ID resolution")
+
+    monkeypatch.setattr(registry, "_pytest_node_id_exists", unexpected_node_resolution)
+
+    with pytest.raises(ContractError, match="exceeds the 2048 test-ID limit"):
+        registry.load_registry(ROOT)
 
 
 def test_s4_registry_caches_oversized_source_as_fail_closed(tmp_path, monkeypatch):

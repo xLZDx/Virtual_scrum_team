@@ -380,3 +380,7 @@ The designated functional reviewer at code HEAD `93cd3c334c66683a379ca594215eaa3
 ## 2026-10-25 -- Re-run S4 registry tests after one bounded timeout retry
 
 At clean exact code HEAD `08b82e07bceb1bd928a5a02ac6ee9479854caf16`, Python 3.14.3 / pytest 8.4.2, the focused registry module passed: 17 passed, 1 skipped, 0 failed. The skip is Windows symlink creation privilege (`WinError 1314`); POSIX symlink execution remains unverified. No Git timeout recurred. See change 0154 and evidence `docs/sdlc/evidence/s4-registry-module-retry-08b82e0.md`.
+
+## 2026-10-25 -- Verify compact registry indexes and aggregate resource limits
+
+At clean code HEAD `6903b7bf3e3dd4fc1281412c173fb82db9924d11`, the designated focused tests passed: 3 targeted cases; full registry module 19 passed, 1 Windows symlink skip, 0 failed. Tests prove one read/parse for three nodes in one source, explicit rejection after five controlled 900 KiB sources cross the 4 MiB aggregate budget, and rejection of 2,049 IDs before node resolution. See change 0156 and evidence `docs/sdlc/evidence/s4-registry-resource-budgets-6903b7b.md`.
