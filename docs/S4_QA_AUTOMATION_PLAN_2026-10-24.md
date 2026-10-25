@@ -1,6 +1,6 @@
 # Sprint S4 plan: reproducible QA automation
 
-Status: **FUNCTIONAL PASS / POLICY FIX COMMITTED / REGISTRY REFRESHED / FULL CATEGORY RERUN PENDING** under the operator's S2-S5 continuation request. The functional category passed at exact candidate HEAD `11e231f`: 54/54 selectors and 109 concrete cases, with no failed or skipped cases. Integration and API attempts at that head were blocked before test launch because policy `NOT_RUN` rows were incorrectly treated as preflight failures; change 0252 moves that limitation to post-execution classification so eligible tests can run. The E2E synthetic baseline points to the policy fix in `f32c6e3`, and the manifest was refreshed in 0254. Final integration, API, E2E, seeded-failure, and regression evidence remains pending. CI, mutations, seeded product-code defects, and external service calls remain prohibited.
+Status: **WINDOWS PROFILE RUN COMPLETE / POSIX MATRIX DESIGN READY / S4 ACCEPTANCE INCOMPLETE** under the operator's S2-S5 continuation request. Candidate `fd49fad2bac249f329f4020ca5c1d55e38aa9bd7` has current six-category evidence in change 0271: functional and seeded-failure PASS; integration, API, and regression FAIL; E2E INCONCLUSIVE. Platform skips and policy `NOT_RUN` remain non-approving. One selector failed in the initial regression run and passed in three isolated reruns plus a same-head category rerun; its original assertion remains unknown. The Windows runner, exact-head evidence and remaining limits are summarized in change 0271. A delegated POSIX runtime matrix design is recorded in [`S4_POSIX_RUNTIME_MATRIX_DESIGN.md`](sdlc/S4_POSIX_RUNTIME_MATRIX_DESIGN.md); it is not yet implemented or runtime-proven. CI, mutations, seeded product-code defects, and external service calls remain prohibited.
 
 Sources: `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` section 1; `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`; `governance/DEFINITION_OF_DONE.md`; S2 and S3 plans; current `tests/vst/`, `tools/vst/runner.py`, `tools/vst/slice.py`, and `tools/vst/{contracts,gate,store}.py`.
 
@@ -34,11 +34,11 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 
 ### E2 — Reproducible environment and native runner
 
-**S4.2.1** Establish a repository-owned, hash-pinned QA dependency input compatible with the required pinned interpreter `C:\Python314\python.exe`, and record relevant OS/runtime/tool versions for each category.
+**S4.2.1** Establish a repository-owned, hash-pinned QA dependency input compatible with the strict Windows CPython 3.14.3 and POSIX CPython 3.12.3 runtime profiles, and record relevant OS/runtime/tool versions for each category and selector assignment.
 
 **S4.2.2** Implement one bounded runner entry point that launches pytest's native discovery/execution for the requested category, preserving existing unittest discovery. It records argv, exit code, duration, stdout/stderr references, environment identity, expected and collected IDs, and output artifact digests.
 
-**AC-4:** Running the same committed category manifest with the same interpreter and dependency lock yields the same selected test-ID set; artifact timestamps may differ but are excluded from normalized content hashes.
+**AC-4:** Running the same committed category manifest under the same platform profile and dependency lock yields the same selected test-ID set; the platform matrix binds each profile report to the exact candidate and registry, and artifact timestamps may differ but are excluded from normalized content hashes.
 
 **AC-5:** A missing interpreter, dependency, category selector, artifact, or test ID produces a typed non-approving result with a cause; no fallback interpreter or empty-success result is allowed.
 
@@ -70,7 +70,7 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 
 **S4.5.2** Add a bounded synthetic fixture catalog for known failure classes (for example stale HEAD, missing required receipt, invalid signature, out-of-scope diff, skipped required ID, artifact digest mismatch). Each fixture supplies a controlled input record to the unchanged product interface and the expected non-approving outcome; it does not patch, monkeypatch, or rewrite product source.
 
-**AC-11:** Regression reports every required ID and fails on any missing, duplicate, skipped, xfailed, unexpected, or uncollected ID.
+**AC-11:** The regression matrix reports every required ID exactly once on each profile assigned to it and fails on any missing, duplicate, skipped, xfailed, unexpected, or uncollected assigned ID. The union of passing assigned IDs must equal the full committed regression denominator; a platform skip is never a pass.
 
 **AC-12:** Each seeded-failure fixture is itself a test with a committed fixture ID, input hash, expected rejection, observed rejection and test ID. No actual failing product test is relabeled as an expected seed; no product code is modified to inject a defect.
 
@@ -80,7 +80,7 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 
 **S4.6.1** Serialize a machine-readable report for each category with schema version, candidate HEAD, dirty-tree state, category-manifest hash, expected/collected/executed/skipped/xfail/unexpected IDs, interpreter and dependency-lock hash, command/exit status, artifact digests, and typed result.
 
-**AC-14:** `APPROVE` is impossible if required IDs are missing or skipped, if evidence is stale or hash-invalid, or if a category is unsupported or `NOT_RUN`; operator waiver behavior remains governed only by ADR-0001 and the authoritative VST gate.
+**AC-14:** `APPROVE` is impossible if any assigned required ID is missing, skipped, or `NOT_RUN`, if evidence is stale or hash-invalid, or if a category is unsupported. Matrix approval requires every ID to pass on every explicitly assigned profile; operator waiver behavior remains governed only by ADR-0001 and the authoritative VST gate.
 
 **AC-15:** Evidence artifacts are reproducible and contain no secrets, user-specific absolute paths, tokens, or unrestricted environment values. Environment variable names may be reported only under the existing privacy contract.
 
@@ -155,10 +155,22 @@ The operator is accountable task owner under the delegated continuation; Codex c
 
 VST-032–037 are registered in the canonical backlog as the six S4 implementation and evidence items.
 
+## POSIX runtime matrix addendum — 2026-10-25
+
+The original S4.2.1 contract named only Windows CPython 3.14.3, while the committed denominator
+contains POSIX-only selectors and acceptance forbids satisfying them by skipping. Windows evidence
+at `fd49fad` cannot execute those selectors. Under the operator's prior authorization to provision
+and use the dedicated Ubuntu-24.04 WSL2 environment, the runtime contract is extended with an
+explicit POSIX CPython 3.12.3 profile. This is a platform-coverage clarification, not a skip waiver:
+selectors must pass on each profile assigned to them, and all assigned profile reports must agree
+on the same candidate, registry and lock. See `docs/sdlc/S4_POSIX_RUNTIME_MATRIX_DESIGN.md` and
+change 0272. The POSIX profile is not accepted until implementation, pinned dependency preparation,
+exact-head execution, and matrix verification are complete.
+
 ## Ordered work and safe stopping points
 
 1. Reconcile the S3 accepted adapter interfaces and enumerate the S4 denominator; stop safely after E1 if an interface or test ID remains unavailable, with unknowns recorded rather than guessed.
-2. Implement and commit environment lock, runner and evidence schema; verify each new seam with its own focused local contract proof after all S4 coding is complete.
+2. Implement and commit the locked Windows/POSIX runtime profiles, runner, platform assignments, matrix validator, and evidence schema; verify each new seam with its own focused local contract proof after all S4 coding is complete.
 3. Add category manifests and synthetic fixtures; connect all six category selectors to native execution.
 4. Complete all S4 code before test phase; only then test agents author/run the per-epic and final exact-head suites.
 5. Run relevant reviewers, resolve valid findings, request the exact-head GPT-PM gate, then push and merge one S4 PR only after approval.

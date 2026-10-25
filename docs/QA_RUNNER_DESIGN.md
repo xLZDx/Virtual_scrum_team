@@ -34,10 +34,12 @@ Python module APIs in `tools/vst/`.
   from those modules remain collected so the runner can report them as unexpected and fail closed.
   This keeps Windows process arguments bounded independently of the selector count while preserving
   expected-selector, unexpected-item, and uncollected-selector accounting.
-- The runner invokes pytest as a child using the approved interpreter `C:\Python314\python.exe`,
-  an explicit isolated dependency target outside the repository, and the repository lock
-  (`tools/qa/requirements.lock`). The environment baseline is CPython 3.14.3. Pytest is pinned
-  to 9.0.3: the official 9.0.3 release supports Python 3.14 and its PyPI advisory record lists no
+- The runner invokes pytest as a child using a strict runtime profile: Windows CPython 3.14.3 at
+  `C:\Python314\python.exe`, or POSIX CPython 3.12.3 in the dedicated WSL2 environment. The
+  profile is derived from the running process; no caller-supplied interpreter fallback is allowed.
+  Each profile uses an explicit isolated dependency target outside the repository and the same
+  repository lock (`tools/qa/requirements.lock`). Pytest is pinned to 9.0.3: the official 9.0.3
+  release supports Python 3.10+ and its PyPI advisory record lists no
   vulnerabilities, while 8.4.2's record identifies a UNIX temporary-directory vulnerability fixed
   in 9.0.3. The transitive test-only packages are pinned and wheel-hash-locked from the official
   PyPI JSON release records (`pytest`, `pluggy`, `packaging`, `iniconfig`, `Pygments`, `colorama`).
@@ -55,7 +57,7 @@ Python module APIs in `tools/vst/`.
   signs the standard receipt and binds the report digest as an artifact. This preserves the current
   receipt contract while retaining concrete pytest outcomes for audit.
 - Reports contain relative artifact paths, exact candidate HEAD, registry hash, lock hash,
-  interpreter/tool versions, command, exit status, expected selectors, concrete collected and
+  runtime profile, interpreter/tool versions, command, exit status, expected selectors, concrete collected and
   executed node IDs, per-case outcomes, and a typed result. Output logs are append-only per
   category. Each report binds to the exact stdout/stderr byte ranges written by that invocation
   and their chunk hashes and sizes. Those exact per-run output metadata remain serialized and
@@ -77,12 +79,26 @@ deterministic registry builder classifies those files into the matching S4 lane;
 tests use `tests/qa/seeded_failure/` or the `test_s4_seeded_failure` prefix. Unknown test paths fail
 registry generation rather than silently receiving a category.
 
+### Platform acceptance matrix
+
+The committed selector registry assigns each selector to Windows, POSIX, or both runtime profiles.
+The runner executes only the selectors assigned to its exact profile and reports its profile ID.
+Selectors assigned elsewhere are not treated as passes or as skipped tests in the current profile.
+The matrix validator combines per-profile reports only when candidate HEAD, registry hash, lock
+hash, artifact integrity, and runtime identity agree. It rejects missing profile reports, stale or
+duplicate selector outcomes, any assigned selector that is failed/skipped/`NOT_RUN`, incomplete
+capture, or unexpected nodes. Matrix approval requires every committed selector to pass on every
+profile assigned to it. The full design and WSL transfer/preflight constraints are in
+`docs/sdlc/S4_POSIX_RUNTIME_MATRIX_DESIGN.md`.
+
 ## Failure modes
 
-Unknown or duplicate selectors, stale candidate/registry provenance, absent interpreter or locked
-dependency, zero-case selectors, unmapped cases, incomplete collection, timeout, truncated output,
-or any non-passing required case produce a typed non-approving report and a non-zero command exit.
-No empty-success fallback or interpreter fallback exists.
+Unknown or duplicate selectors, stale candidate/registry provenance, absent runtime profile or
+locked dependency, zero-case selectors, unmapped cases, incomplete collection, timeout, truncated
+output, or any non-passing required assigned case produce a typed non-approving report and a
+non-zero command exit. The matrix is non-approving if any required profile evidence is absent or
+does not bind to the same candidate/registry/lock. No empty-success fallback or interpreter
+fallback exists.
 
 ## Rollout and rollback
 
