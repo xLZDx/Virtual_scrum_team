@@ -40,13 +40,15 @@
   <dl>
     <dt>Проект</dt><dd>Virtual_scrum_team</dd>
     <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team-s2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-isolated-worker-sandbox @ f683a37</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-isolated-worker-sandbox @ eb6c2fc</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
           data-fail="Выделите вручную">Копировать страницу</button>
 </div>
 <!-- report-conform:end -->
+
+
 
 
 
@@ -90,7 +92,7 @@
     <tbody>
       <tr><td>E1 — ключ рецензента</td><td>Независимый reviewer credential отличается от worker credential; receipt authority проверяется.</td><td>Код и focused контрактные сценарии пройдены.</td><td>Records 0056–0058 и final source test/review records 0083–0085.</td><td>Локальные подписи не доказывают production key custody за пределами записанного run.</td><td>Оператор отвечает за делегированный проект; Codex исполняет. При решении S2-M01/M02/M03 сохранять scope доказательств этого run.</td></tr>
       <tr><td>E2 — runner-derived HEAD и изоляция signer</td><td>Runner самостоятельно связывает evidence с candidate commit; worker не получает ключ и signer IPC.</td><td class="partial">Код и локальные негативные сценарии PASS; один WSL run boundary PASS только для своего run.</td><td>Windows E2E 80 pass/14 skip; run-scoped WSL signer evidence `280e2d0`.</td><td>WSL signer boundary не перепривязан к каждому будущему run; скрытые/production deployment claims не сделаны.</td><td>Оператор — accountable owner; technical service owner неизвестен. Следующий шаг — свежая signed attestation для отдельного production-qualified run.</td></tr>
-      <tr><td>E3 — внешняя якорная голова событий</td><td>Rollback/restore обнаруживается через внешний event head и безопасную recovery.</td><td class="partial">Store реализация и доступные focused cases проверены; полный POSIX failure/recovery набор не закрыт.</td><td>Records 0043, 0056–0058 и focused source run `dc959`.</td><td>POSIX anchor restore/interruption и restart failure scenarios остаются NOT_RUN там, где skipped или запрещены.</td><td>Технический platform owner UNKNOWN. Следующий шаг — разрешённые platform-specific сценарии; сохранить fail-closed при отсутствующей среде.</td></tr>
+      <tr><td>E3 — внешняя якорная голова событий</td><td>Rollback/restore обнаруживается через внешний event head, recovery ограничен.</td><td class="partial">Полный WSL Store lifecycle модуль прошёл 19/19 на exact commit; девять POSIX-only anchor cases выполнены без skipped. Это доказывает локальный fixture contract для данного run, но не production worker/mount binding.</td><td>На `c2771b5` WSL модуль включал idempotency/fork rejection, обнаружение restore старой БД, interrupted recovery для одной/нескольких записей и пять invalid suffix states. Точная mapping и ограничения — evidence 0222; прежнее implementation evidence — records 0043, 0056–0058.</td><td>Run-bound привязка worker/mount и OS quotas остаются NOT_VERIFIED по E5/M03. Aggregate pytest output не сохранил node-level строки.</td><td>Оператор — accountable; technical platform owner UNKNOWN. Следующий шаг — закрыть runtime binding/quotas E5; сохранять E3 результат в границах exact local WSL fixture.</td></tr>
       <tr><td>E4 — process containment</td><td>POSIX identity/permissions/process group и Windows Job Object nesting.</td><td class="partial">Часть WSL identity, file/socket и lock boundary доказана; полная containment не принята.</td><td>Run-scoped WSL evidence, test record 0083 и triage 0211.</td><td>Очистка process group/descendants запрещена; key-file placeholder покрыт реальным прошедшим selector; parent Job Object nesting требует Windows-host. Полная POSIX containment остаётся NOT_RUN.</td><td>Оператор владеет разрешением запрещённых сценариев; технический platform owner UNKNOWN. Следующий шаг: запрещённые кейсы оставить NOT_RUN; Job Object проверить только на авторизованном Windows host.</td></tr>
       <tr><td>E5 — sandbox spec и preflight</td><td>Dedicated WSL2 конфигурация, подписанная инвентаризация, закрытый egress и per-run secret boundary.</td><td class="partial">Для run <code>280e2d0</code> прошли run-scoped inventory и network-policy attestation Ubuntu-24.04 WSL2; exact-commit probe tests прошли, но фактическая inventory остаётся NOT_RUN. Полная operational binding и лимиты ресурсов не проверены.</td><td>Подписанные inventory, network-policy attestation и run manifest для <code>280e2d0</code> (change 0063); exact-commit runner/probe tests — evidence 0222; nonce test evidence 0165; GPT-PM M03 — 0212.</td><td>Подписанный callback не доказанно привязан к фактическому worker environment/workspace; OS memory, temporary-storage, process-count quotas и исключение обходных writer не подтверждены. Run-scoped pass не доказывает постоянный deployment.</td><td>Оператор accountable; технический service owner UNKNOWN. Следующий шаг — предоставить фактическую привязку environment/workspace и enforcement quota, затем назначенные test owners повторяют bound probe.</td></tr>
       <tr><td>E6 — diff gate и read-only reviewer</td><td>Опасные/вне allowlist изменения не проходят; reviewer credential не может писать в snapshot.</td><td class="pass">Код, focused negative tests и один WSL write-denial boundary прошли.</td><td>Record 0056 и `s2-e5-runmanifest-wsl-280e2d0.md`; source review на `dc959` без BLOCKER/MAJOR.</td><td>Доказательство write denial привязано к одной run-конфигурации.</td><td>Codex — executor. Сохранить узкий scope результата; он не закрывает три MODIFY finding.</td></tr>
@@ -111,6 +113,8 @@
     <li>Не выполнять merge, пока exact-head gate не вернёт APPROVE.</li>
   </ol>
 </main>
+
+
 
 
 

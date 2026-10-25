@@ -40,13 +40,15 @@
   <dl>
     <dt>Project</dt><dd>Virtual_scrum_team</dd>
     <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team-s2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-isolated-worker-sandbox @ f683a37</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-isolated-worker-sandbox @ eb6c2fc</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
           data-fail="Select manually">Copy page</button>
 </div>
 <!-- report-conform:end -->
+
+
 
 
 
@@ -90,7 +92,7 @@
     <tbody>
       <tr><td>E1 — reviewer key</td><td>Independent reviewer credentials differ from worker credentials; receipt authority is verified.</td><td>Code and focused contract scenarios passed.</td><td>Records 0056–0058 and final source test/review records 0083–0085.</td><td>Local signatures do not prove production key custody beyond the recorded run.</td><td>The operator is accountable for delegated work; Codex executes. Preserve the recorded run scope when resolving S2-M01/M02/M03.</td></tr>
       <tr><td>E2 — runner-derived HEAD and signer isolation</td><td>The runner binds evidence to the candidate commit; the worker cannot access signing keys or signer IPC.</td><td class="partial">Code and local negative scenarios PASS; one run-scoped WSL boundary PASS applies only to that run.</td><td>Windows E2E 80 pass/14 skip; run-scoped WSL signer evidence `280e2d0`.</td><td>The WSL signer boundary is not a permanent deployment proof and is not automatically transferred to future runs.</td><td>The operator is accountable; technical service owner is unknown. Next: produce fresh signed attestation for each separately qualified run.</td></tr>
-      <tr><td>E3 — externally anchored event head</td><td>Rollback/restore is detected through an external event head and recovery is bounded.</td><td class="partial">Store implementation and available focused cases are covered; the full POSIX failure/recovery set is not closed.</td><td>Records 0043, 0056–0058 and focused source run `dc959`.</td><td>POSIX anchor restore/interruption and restart-failure cases remain NOT_RUN where skipped or prohibited.</td><td>Technical platform owner is UNKNOWN. Next: run permitted platform scenarios; retain fail-closed behavior where the platform is absent.</td></tr>
+      <tr><td>E3 — externally anchored event head</td><td>Rollback/restore is detected through an external event head and recovery is bounded.</td><td class="partial">The complete WSL Store lifecycle module passed 19/19 at exact commit; nine POSIX-only anchor cases ran without skips. This proves the local fixture contract for that run, not production worker/mount binding.</td><td>At `c2771b5`, the WSL module included anchor idempotency/fork rejection, older-database restore detection, one/multi-event interrupted recovery, and five invalid suffix states. Exact mapping and limitation are in evidence 0222; prior implementation evidence is in records 0043, 0056–0058.</td><td>Run-bound worker/mount linkage and OS quotas remain unverified under E5/M03. The aggregate pytest output did not retain per-node lines.</td><td>Operator is accountable; technical platform owner is UNKNOWN. Next: resolve E5 runtime binding/quotas; keep this E3 result scoped to its exact local WSL fixture.</td></tr>
       <tr><td>E4 — process containment</td><td>POSIX identity/permissions/process groups and Windows Job Object nesting.</td><td class="partial">Some WSL identity, file/socket, and lock boundaries are proven; full containment is not accepted.</td><td>Run-scoped WSL evidence and test record 0083; four-skip triage 0211.</td><td>Process-group/descendant cleanup are prohibited; the key-file placeholder is covered by a passing runnable selector; parent Job Object nesting requires a Windows host. Full POSIX containment remains NOT_RUN.</td><td>The operator owns authorization for prohibited scenarios; technical platform owner is UNKNOWN. Next: keep prohibited cases NOT_RUN and run Job Object nesting only on an authorized Windows host.</td></tr>
       <tr><td>E5 — sandbox specification and preflight</td><td>Dedicated WSL2 configuration, signed inventory, denied egress, and per-run secret boundary.</td><td class="partial">One run-scoped Ubuntu-24.04 WSL2 inventory and network-policy attestation passed for run <code>280e2d0</code>; exact-commit probe tests passed, but actual inventory remains NOT_RUN. Full operational binding and resource limits remain unverified.</td><td>Signed inventory, network-policy attestation, and run manifest for <code>280e2d0</code> (change 0063); exact-commit runner/probe tests in evidence 0222; nonce test evidence 0165; GPT-PM finding M03 in 0212.</td><td>The signed callback is not shown bound to the actual worker environment/workspace; OS memory, temporary-storage, and process-count quotas and exclusion of bypass writers are not demonstrated. A run-scoped pass does not prove persistent deployment.</td><td>The operator is accountable; technical service owner is UNKNOWN. Next: provide actual environment/workspace binding and enforced quota evidence, then have designated test owners rerun the bound probe.</td></tr>
       <tr><td>E6 — diff gate and read-only reviewer</td><td>Out-of-scope or prohibited changes cannot pass; reviewer credentials cannot write the snapshot.</td><td class="pass">Code, focused negative tests, and one WSL write-denial boundary passed.</td><td>Record 0056 and `s2-e5-runmanifest-wsl-280e2d0.md`; source review at `dc959` found no BLOCKER/MAJOR.</td><td>Write-denial evidence applies to one run configuration.</td><td>Codex executes. Retain this focused result; it does not resolve the three MODIFY findings.</td></tr>
@@ -111,6 +113,8 @@
     <li>Do not merge until the exact-head gate returns APPROVE.</li>
   </ol>
 </main>
+
+
 
 
 
