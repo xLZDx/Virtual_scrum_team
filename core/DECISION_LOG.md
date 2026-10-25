@@ -520,3 +520,7 @@ At exact source/test HEAD `20fa7bb5759d8c35159a942043a78ec93f3c79a1`, the API de
 ## 2026-10-25 -- Reconcile S4 reports to ancestry diagnostic fix and exact-head evidence
 
 Refresh the S4 reports, plan status/evidence, and VST-032–037 backlog from source fix 7b8200c, selector mapping 20fa7bb, and exact-head results in 0198. Keep E2E coverage PARTIAL without a `tools.qa.run` v2 report-serialization selector; trusted signer, run manifest, current-head WSL/POSIX, report, receipt, and authoritative gate remain NOT_RUN. Record the reliability INFO that stderr suppression leaves only the fatal Git status code in diagnostics. See change 0199.
+
+## 2026-10-25 -- Record WSL runner-to-worker transition dependency
+
+A read-only WSL feasibility audit found runner UID 997, worker UID 999, signer UID 995; Python/pytest are present, but runner lacks sudo and file capabilities for the identity transition required by `tools/vst/runner.py` when passing `user=worker_uid, group=worker_gid` to process creation. A disposable signer socket is feasible but does not solve the transition. `tools.qa.run` also returns `INCONCLUSIVE` before signing when category coverage is PARTIAL; a COMPLETE functional category can be selected for report-serialization testing, but this does not complete the E2E denominator. Keep report-bound selector and trusted deployed signer/sandbox gates NOT_RUN pending a project-approved runner-to-worker mechanism. Technical owner UNKNOWN; operator accountable, Codex executor. See change 0200.
