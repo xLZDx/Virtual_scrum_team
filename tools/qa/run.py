@@ -136,16 +136,15 @@ def _safe_output_dir(root: Path, worker_gid: int) -> tuple[Path, str]:
     if base.is_symlink():
         raise ContractError("QA output directory must not be a symlink")
     if not base.exists():
-        base.mkdir(mode=0o711)
-        os.chmod(base, 0o711)
+        base.mkdir(mode=0o2710)
+        os.chmod(base, 0o2710)
     base_stat = base.stat(follow_symlinks=False)
     if (not stat.S_ISDIR(base_stat.st_mode) or base_stat.st_uid != os.geteuid() or
-            stat.S_IMODE(base_stat.st_mode) != 0o711):
-        raise ContractError("QA output base must be runner-owned mode 0711")
+            base_stat.st_gid != worker_gid or stat.S_IMODE(base_stat.st_mode) != 0o2710):
+        raise ContractError("QA output base must be runner-owned worker-group mode 2710")
     run_path = base / uuid.uuid4().hex
-    run_path.mkdir(mode=0o700)
+    run_path.mkdir(mode=0o730)
     try:
-        os.chown(run_path, -1, worker_gid)
         os.chmod(run_path, 0o730)
     except OSError as exc:
         raise ContractError(f"cannot grant the isolated worker group access to run artifacts: {exc}") from exc

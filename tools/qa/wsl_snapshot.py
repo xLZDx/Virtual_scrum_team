@@ -122,9 +122,13 @@ try:
             child_info = child.stat(follow_symlinks=False)
             if child_info.st_uid != os.geteuid() or child_info.st_gid != worker_gid:
                 raise SystemExit("source snapshot file has an unexpected owner or group")
-    os.chmod(repo_path, 0o750)
+    # The repository root is runner-owned and worker-group-readable, but the
+    # worker must not be able to create files there. setgid carries the worker
+    # group to the private QA output subtree created later by tools.qa.run.
+    os.chmod(repo_path, 0o2750)
     repo_info = repo_path.stat(follow_symlinks=False)
-    if repo_info.st_uid != os.geteuid() or repo_info.st_gid != worker_gid:
+    if (repo_info.st_uid != os.geteuid() or repo_info.st_gid != worker_gid or
+            stat.S_IMODE(repo_info.st_mode) != 0o2750):
         raise SystemExit("source snapshot repository has an unexpected owner or group")
     head = subprocess.run(
         ["git", "rev-parse", "--verify", "HEAD"], cwd=repo_path,

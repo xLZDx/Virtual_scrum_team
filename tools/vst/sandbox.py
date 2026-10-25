@@ -1,11 +1,44 @@
 """OS-boundary helpers used by the isolated runner and read-only reviewer."""
 from __future__ import annotations
 
+import errno
 import os
 import stat
 from pathlib import Path
 
 from .contracts import ContractError
+
+
+_NO_XATTR = frozenset(
+    value for value in (getattr(errno, "ENODATA", None), getattr(errno, "ENOATTR", None))
+    if value is not None
+)
+_UNSUPPORTED_XATTR = frozenset(
+    value for value in (getattr(errno, "ENOTSUP", None), getattr(errno, "EOPNOTSUPP", None))
+    if value is not None
+)
+
+
+def _require_no_extended_acl(
+    path: Path, *, include_default_acl: bool = False, follow_symlinks: bool = True
+) -> None:
+    """Reject POSIX ACL xattrs; ignore only absent ACLs or unsupported ACL xattrs."""
+    getxattr = getattr(os, "getxattr", None)
+    if getxattr is None:
+        raise ContractError("signer IPC ACL inspection is unavailable")
+    attributes = ["system.posix_acl_access"]
+    if include_default_acl:
+        attributes.append("system.posix_acl_default")
+    for attribute in attributes:
+        try:
+            getxattr(path, attribute, follow_symlinks=follow_symlinks)
+        except OSError as exc:
+            if exc.errno in _NO_XATTR or exc.errno in _UNSUPPORTED_XATTR:
+                continue
+            raise ContractError("signer IPC ACL inspection failed") from exc
+        except (NotImplementedError, TypeError) as exc:
+            raise ContractError("signer IPC ACL inspection is unavailable") from exc
+        raise ContractError("signer IPC has an extended ACL")
 
 
 def current_identity() -> dict[str, int | str]:
@@ -22,18 +55,32 @@ def require_distinct_worker_identity(worker_uid: int) -> None:
 
 
 def require_worker_cannot_access_signer(socket_path: str, *, worker_uid: int, worker_gid: int) -> None:
-    """Require parent/socket mode bits to exclude the worker principal."""
+    """Require parent/socket mode bits and POSIX ACLs to exclude the worker."""
     if os.name != "posix":
         raise ContractError("signer IPC ACL verification is unavailable")
-    socket_file = Path(socket_path)
+    socket_file = Path(os.path.abspath(socket_path))
     parent = socket_file.parent
     try:
+        traversed_directories = set(parent.parents) | {parent}
+        resolved_parent = parent.resolve(strict=True)
+        traversed_directories.update(resolved_parent.parents)
+        traversed_directories.add(resolved_parent)
+        ordered_directories = sorted(
+            traversed_directories, key=lambda item: (len(item.parts), str(item))
+        )
+        for directory in ordered_directories:
+            directory_st = directory.stat()
+            if not stat.S_ISDIR(directory_st.st_mode):
+                raise ContractError("signer IPC parent path contains a non-directory")
+            _require_no_extended_acl(directory)
+        _require_no_extended_acl(parent, include_default_acl=True)
         parent_st = parent.stat()
         socket_st = socket_file.stat(follow_symlinks=False)
     except OSError as exc:
         raise ContractError(f"signer IPC is unavailable: {exc}") from exc
     if not stat.S_ISSOCK(socket_st.st_mode):
         raise ContractError("signer IPC endpoint is not a Unix socket")
+    _require_no_extended_acl(socket_file, follow_symlinks=False)
     if parent_st.st_mode & stat.S_IWOTH or socket_st.st_mode & (stat.S_IROTH | stat.S_IWOTH):
         raise ContractError("signer IPC grants access to other identities")
     if worker_uid in (parent_st.st_uid, socket_st.st_uid):

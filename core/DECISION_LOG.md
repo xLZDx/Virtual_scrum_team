@@ -558,3 +558,6 @@ The operator explicitly authorized a narrow S4 runner-to-worker helper. A transi
 ## 2026-10-25 -- Add S4 worker capability regression selector
 
 `e2e-runner` added a Linux-only functional selector mapped to verify the post-transition worker identity, zero effective/permitted/inheritable/ambient capabilities, `no_new_privs`, and denied UID regain after change 0240. It also added an unmapped focused synthetic-socket probe for access denial. The mapped selector must run in pinned Ubuntu-24.04 WSL; a Windows platform skip is `NOT_RUN`, not PASS. Execution remains pending at the test change commit. The selector does not establish trusted signer, report-bound v2, aggregate, or E2E denominator completion. See change 0241.
+## 2026-10-25 — Reject signer-path ACL grants and remove artifact chown
+
+After the S4 worker capability-drop fix, the read-only security review found that POSIX named ACL entries were not covered by signer socket mode checks. The report-bound CLI also demonstrated that runner UID 997 cannot `chown` run artifacts to worker GID 989 under the bounded unit. Reject present/unknown signer-path ACL states fail-closed, and use setgid worker-group inheritance from the snapshot root to the private QA output subtree; do not add `CAP_CHOWN` or broaden runner identity. Fresh exact-head tests and report-bound CLI execution are pending. See change 0242.
