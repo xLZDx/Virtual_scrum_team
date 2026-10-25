@@ -256,3 +256,25 @@ A follow-up read only opened the pinned raw manifests/lockfiles (security-review
 - The pinned Temporal server `go.mod` / `go.sum` provide 15 illustrative direct module/version entries, including `cloud.google.com/go/storage 1.62.1`, AWS SDK v2 core/config/credentials/S3, `go-jose/v4 4.1.4`, MySQL driver `1.9.3`, `gocql 1.7.0`, `pgx/v5 5.10.0`, `lib/pq 1.12.3`, Prometheus client `1.21.0`, Temporal API `1.63.5` and SDK `1.44.0`, gRPC `1.83.2`, and protobuf `1.36.11`. License metadata is `UNKNOWN` for this subset: module versions and hashes are not licenses. The 239-line `go.mod` and 716-line `go.sum` cover a broad graph but do not identify a runtime-only build-tag/profile; no total graph count is asserted.
 
 The minimum follow-up evidence is authoritative version-specific license/notice data for each resolved third-party component plus a feature/target/build-resolved inventory (for example, a pinned SBOM). Candidate selection remains open, and no package source was downloaded or executed. See change 0207.
+
+### Versioned license metadata follow-up — 2026-10-25
+
+Change 0208 supersedes the direct-dependency license `UNKNOWN` statements in change 0207 for the entries below. The audit used the official crates.io version API and pkg.go.dev's exact-version license pages; it did not download package archives.
+
+| Rust crate version | crates.io license field |
+|---|---|
+| `anyhow 1.0.104` | `MIT OR Apache-2.0` |
+| `async-trait 0.1.91` | `MIT OR Apache-2.0` |
+| `futures 0.3.33` | `MIT OR Apache-2.0` |
+| `prost 0.14.4` | `Apache-2.0` |
+| `pyo3 0.29.0` | `MIT OR Apache-2.0` |
+| `pyo3-async-runtimes 0.29.0` | `Apache-2.0` |
+| `pythonize 0.29.0` | `MIT` |
+| `tokio 1.53.1` | `MIT` |
+| `tokio-rustls 0.26.4` | `MIT OR Apache-2.0` |
+| `tokio-stream 0.1.19` | `MIT` |
+| `tonic 0.14.6` | `MIT` |
+
+The full pinned bridge `Cargo.lock` scan resolved 362 registry package/version entries (349 unique crate names). All 362 had a crates.io license value and their API SHA-256 checksum matched the exact lock entry. The count includes optional, target-specific, and build/test dependencies; it is a lock-wide license metadata inventory, not proof of the contents of one selected runtime artifact. Repeated attempts to serialize the full package list were rate-limited, so only the aggregate result and direct package table are retained here; a machine-readable 362-row artifact was not produced.
+
+The 15 illustrative Temporal server Go modules from change 0207 have versioned license pages: cloud storage `Apache-2.0`; AWS SDK v2 core/config/credentials/S3 `Apache-2.0`; go-jose `Apache-2.0`; MySQL driver `MPL-2.0`; gocql `Apache-2.0`; pgx and lib/pq `MIT`; Prometheus client `Apache-2.0`; Temporal API/SDK `MIT`; gRPC `Apache-2.0`; protobuf `BSD-3-Clause`. Full Go `go.mod` scan enumerated 223 module/version rows: 116 pages exposed license sections, 1 (`github.com/nexus-rpc/nexus-proto-annotations@v0.1.0`) did not, and 106 requests failed after pkg.go.dev returned HTTP 429. This remains incomplete; the 223 module rows also include indirect/build/test dependencies and do not identify a selected runtime profile. See change 0208.

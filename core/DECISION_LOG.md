@@ -335,3 +335,7 @@ A read-only reviewer mapped public pinned metadata for illustrative Linux/Python
 ## 2026-10-25 — Record unresolved license metadata for the Temporal native/server graphs
 
 The pinned Temporal bridge manifest/lock resolve 11 direct Rust registry crate versions for the default `tls-ring` feature; licenses remain `UNKNOWN` because the lock has no license fields and authoritative per-version notices were not retrieved. The pinned server Go files identify 15 illustrative direct module/version entries, but license evidence for all 15 and a runtime-only build graph remain unknown. These are bounded subsets, not total dependency counts. Keep VST-028 partial. Next: identify authoritative version-specific license/notice sources and a feature/target-resolved inventory. See change 0207.
+
+## 2026-10-25 — Reconcile Temporal lock-version license metadata
+
+Follow-up exact-version registry lookups supersede the UNKNOWN direct-license statements in change 0207: all 362 registry package/version entries in the pinned Temporal bridge Cargo.lock had crates.io license metadata and matching checksums; all 15 illustrative direct Go modules have pkg.go.dev license pages. A wider 223-entry Go module scan remains incomplete (116 pages with license sections, one without, 106 lookup errors after HTTP 429). Full Go closure and selected runtime/build profile remain open. No candidate was acquired or run. See change 0208.
