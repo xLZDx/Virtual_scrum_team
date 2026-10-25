@@ -1,6 +1,6 @@
 # Sprint S4 plan: reproducible QA automation
 
-Status: **TEST CODE AUTHORED / REGISTRY REGENERATED / NOT RUN** under the operator's S2-S5 continuation request. The runner, test sources, fixture catalog, and category registry are committed. Functional and E2E runtime evidence remains pending. CI, mutations, seeded product-code defects, and external service calls remain prohibited.
+Status: **TEST CODE AUTHORED / FUNCTIONAL RUN FAILS / LINK TEST FIX PENDING** under the operator's S2-S5 continuation request. The runner, test sources, fixture catalog, and category registry are committed. The latest functional category run at exact candidate HEAD `8eb8dbd` reported 108 passed and 1 required selector skipped because Windows file-symlink creation was unavailable; the no-skip gate correctly returned FAIL. The test has been revised to use a Windows directory junction or POSIX symlink and needs commit, registry refresh, and rerun. Integration, API, E2E, seeded-failure, and regression categories have not yet run with the normalized registry. CI, mutations, seeded product-code defects, and external service calls remain prohibited.
 
 Sources: `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` section 1; `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`; `governance/DEFINITION_OF_DONE.md`; S2 and S3 plans; current `tests/vst/`, `tools/vst/runner.py`, `tools/vst/slice.py`, and `tools/vst/{contracts,gate,store}.py`.
 

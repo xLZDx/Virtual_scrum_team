@@ -120,16 +120,34 @@ def test_s4_registry_rejects_noncanonical_source_path(candidate_repo, bad_path):
         registry.validate_registry(root)
 
 
-def test_s4_registry_rejects_symlinked_source_path(candidate_repo, tmp_path: Path):
+def test_s4_registry_rejects_linked_source_path_escape(candidate_repo, tmp_path: Path):
     root, manifest = candidate_repo
-    outside = tmp_path / "outside.py"
-    outside.write_text("def test_external():\n    pass\n", encoding="utf-8")
-    linked = root / "tests" / "qa" / "test_s4_functional_fixture.py"
-    linked.unlink()
-    try:
-        linked.symlink_to(outside)
-    except (OSError, NotImplementedError) as exc:
-        pytest.skip(f"symlink creation unavailable: {type(exc).__name__}: {exc}")
+    qa_dir = root / "tests" / "qa"
+    outside = tmp_path / "outside_qa"
+    qa_dir.rename(outside)
+
+    if sys.platform == "win32":
+        result = subprocess.run(
+            ["cmd.exe", "/c", "mklink", "/J", str(qa_dir), str(outside)],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            shell=False,
+        )
+        if result.returncode != 0:
+            pytest.skip(
+                "directory junction creation unavailable: "
+                f"exit={result.returncode}; stdout={result.stdout!r}; stderr={result.stderr!r}"
+            )
+    else:
+        try:
+            qa_dir.symlink_to(outside, target_is_directory=True)
+        except (OSError, NotImplementedError) as exc:
+            pytest.skip(
+                "directory symlink creation unavailable: "
+                f"{type(exc).__name__}: {exc}"
+            )
 
     with pytest.raises(registry.RegistryError, match="source path escapes the repository"):
         registry.validate_registry(root)

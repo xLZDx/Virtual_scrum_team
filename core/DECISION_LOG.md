@@ -433,3 +433,7 @@ Six native category attempts at `0122f06` were blocked before collection because
 ## 2026-10-25 — Regenerate S4 manifest after normalized-hash test commit
 
 The registry must be regenerated after the new LF/CRLF contract test is committed, and its source inventory hashes use normalized line endings. S4 remains in test execution; prior preflight blocks are not runtime results. See change 0249.
+
+## 2026-10-25 — Exercise linked-path escape without privileged Windows symlinks
+
+The S4 functional run at `8eb8dbd` skipped the required path-escape test because Windows file-symlink creation was unavailable, correctly failing the lane. Use a directory junction on Windows and a directory symlink on POSIX to verify resolution escapes the candidate root; retain exact creation errors if unsupported. See change 0250.
