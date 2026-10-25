@@ -22,7 +22,11 @@ from pathlib import Path, PurePosixPath
 
 import pytest
 
-from tools.qa.registry import RUNTIME_PROFILES, required_runtime_profiles
+from tools.qa.registry import (
+    RUNTIME_PROFILES,
+    WSL_PROFILE,
+    required_runtime_profiles,
+)
 
 
 BASELINE_HEAD = "08252020f24d47f1d23ffb15e15080193400bb9b"
@@ -433,8 +437,22 @@ def _assert_report_hashes(candidate: Path, report: dict, report_line: bytes) -> 
 
 
 def _assert_report_private(report: dict, *, candidate: Path, target: Path, tmp_path: Path) -> None:
-    rendered = json.dumps(report, sort_keys=True)
-    for private_path in (str(candidate), str(target), str(tmp_path)):
+    report_for_privacy_check = dict(report)
+    candidate_root = None
+    if report["runtime_profile"] == WSL_PROFILE:
+        boundary = report["runtime_boundary"]
+        candidate_root = boundary["candidate_root"]
+        candidate_path = candidate.resolve().as_posix()
+        assert candidate_path.startswith("/tmp/vst-s4-candidate/")
+        assert candidate_root == candidate_path
+        report_for_privacy_check["runtime_boundary"] = dict(boundary)
+        report_for_privacy_check["runtime_boundary"]["candidate_root"] = "<approved-wsl-candidate-root>"
+
+    rendered = json.dumps(report_for_privacy_check, sort_keys=True)
+    private_paths = (str(candidate), str(target), str(tmp_path))
+    if candidate_root is not None:
+        private_paths += (candidate_root,)
+    for private_path in private_paths:
         assert private_path not in rendered
     assert "C:/Users/" not in rendered
     assert "C:\\Users\\" not in rendered
@@ -448,7 +466,11 @@ def _assert_nonapproving(result: subprocess.CompletedProcess, report: dict) -> N
 
 def _assert_pytest_module_invocation(report: dict) -> None:
     command = report["command"]
-    assert command[:3] == ["<approved-python-base>/python.exe", "-m", "pytest"]
+    if report["runtime_profile"] == WSL_PROFILE:
+        approved_python = "<approved-python-base>/python3.12"
+    else:
+        approved_python = "<approved-python-base>/python.exe"
+    assert command[:3] == [approved_python, "-m", "pytest"]
     assert command[-1] == FIXTURE_TEST_PATH
     assert FIXTURE_TEST_ID not in command
     assert NOT_RUN_TEST_ID not in command
