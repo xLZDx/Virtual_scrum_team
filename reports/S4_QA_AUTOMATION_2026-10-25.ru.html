@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S4: автоматизация QA — статус</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--fg:#1c1c1c;--mut:#666;--line:#ccc;--bad:#b00020;--warn:#945800;--ok:#176b35}
+@media(prefers-color-scheme:dark){:root{--bg:#161616;--fg:#e8e8e8;--mut:#aaa;--line:#444;--bad:#ff7386;--warn:#e2aa4d;--ok:#70d18c}}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max-width:1100px;margin:0 auto;padding:18px}table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid var(--line);padding:7px;vertical-align:top;text-align:left}.mut{color:var(--mut)}.bad{color:var(--bad)}.warn{color:var(--warn)}.ok{color:var(--ok)}
+</style>
+</head>
+<body>
+<header>
+<h1>S4: автоматизация QA — отчёт о состоянии</h1>
+<p class="mut">Дата: 2026-10-25. Спринт частично реализован и локально проверен; полное принятие, GPT-PM gate и merge не подтверждены.</p>
+<p><a href="S4_QA_AUTOMATION_2026-10-25.html">English report</a></p>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>Virtual_scrum_team</dd>
+    <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team-s4</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 2687af2</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+<section>
+<h2>Решение</h2>
+<p>S4 остаётся <strong>IN PROGRESS</strong>. Реестр QA, проверка статических test ID и ограничения ресурсов реализованы. На точном кодовом HEAD <code>6903b7bf3e3dd4fc1281412c173fb82db9924d11</code> полный функциональный модуль прошёл: 19 тестов успешно, 1 пропущен, 0 ошибок; семь mapped Windows E2E селекторов прошли без пропусков и ошибок. Свежие code, security и reliability ревью на HEAD <code>2dc6947e416b61103548285ec279d787c1027d8b</code> не выявили открытых BLOCKER/MAJOR. Это локальное evidence, а не полное подтверждение всех категорий или sandbox acceptance.</p>
+</section>
+<section>
+<h2>Приёмка по плану S4</h2>
+<table>
+<thead><tr><th>Критерий</th><th>Состояние</th><th>Свидетельство и остаток</th><th>Владелец и следующий шаг</th></tr></thead>
+<tbody>
+<tr><td>AC-1 — единый реестр категорий и test ID</td><td>Частично</td><td>Статические ID проверяются на точный узел, уникальную категорию, tracked source и provenance; полный знаменатель всех категорий ещё не доказан.</td><td>Ответственный за задачу: оператор; исполнитель: Codex. Продолжить полную проверку категорий.</td></tr>
+<tr><td>AC-2 — нативный запуск каждой категории</td><td>Частично</td><td>Windows селекторы прошли; полный нативный запуск функциональной, интеграционной, API, E2E, regression и seeded-failure категорий не доказан. Сетевой API явно unsupported.</td><td>Оператор / Codex; завершить недостающие категориями runtime evidence.</td></tr>
+<tr><td>AC-3 — hash и HEAD provenance</td><td>Локально проверено</td><td>Registry и source heads проверяются на полный SHA и ancestry; invalid provenance fail-closed. Функциональные регрессии включены в полный модуль.</td><td>Оператор / Codex; включить exact-head артефакты в финальный GPT-PM sweep.</td></tr>
+<tr><td>AC-4 — воспроизводимый набор ID</td><td>Не проверено полностью</td><td>Текущий Windows запуск подтверждает только выбранные selectors. Повторяемость всех категорий в закреплённой WSL среде не подтверждена.</td><td>Технический владелец среды в проекте не указан; оператор отвечает за задачу. Нужен воспроизводимый run в выделенной WSL2.</td></tr>
+<tr><td>AC-5 — typed fail-closed ошибки</td><td>Частично</td><td>Registry budget, path, ID и provenance ошибки закрываются отказом; end-to-end проверка всех отсутствующих зависимостей/артефактов не завершена.</td><td>Оператор / Codex; завершить отрицательные сценарии на каждой категории.</td></tr>
+<tr><td>AC-6 — отсутствие установки зависимостей во время run</td><td>Не проверено</td><td>В этом проходе не получено runtime evidence для полной report-bound категории.</td><td>Оператор / Codex; подтвердить это в изолированном нативном run.</td></tr>
+<tr><td>AC-7 — функциональные и Python API сценарии</td><td>Частично</td><td>Registry module: 19 passed, 1 skipped, 0 failed; skip — Windows не разрешил создать symlink (WinError 1314). Полный API знаменатель не выполнен.</td><td>Роль тестирования: functional-test-reviewer; расширить категорийное покрытие.</td></tr>
+<tr><td>AC-8 — честная граница API</td><td>Частично</td><td>Сетевой API отмечен unsupported; полное подтверждение Python API категории остаётся незавершённым.</td><td>Оператор / Codex; сохранить unsupported статус без ложного runtime покрытия.</td></tr>
+<tr><td>AC-9 — локальные изолированные интеграции/E2E</td><td>Частично</td><td>Семь mapped Windows селекторов прошли 7/7, 0 skipped; это не доказывает полную POSIX sandbox границу.</td><td>Роль тестирования: e2e-runner; завершить разрешённые sandbox сценарии.</td></tr>
+<tr><td>AC-10 — S3 и sandbox зависимости</td><td>NOT_RUN / частично</td><td>Текущий WSL transfer результат остаётся RESULT_NOT_CAPTURED; signer socket и sandbox-bound сценарии не запускались. Старый WSL pass на HEAD <code>452c8ea</code> не переносится на новый HEAD.</td><td>Технический сервис-владелец не установлен. Не инспектировать и не повторять неидентифицированный transfer; подготовить свежий коррелированный run.</td></tr>
+<tr><td>AC-11 — regression знаменатель</td><td>Частично</td><td>Реестр проверяет ID и состояния; полный aggregate запуск всего принятого знаменателя не подтверждён.</td><td>Functional-test-reviewer и e2e-runner; выполнить полный точный знаменатель.</td></tr>
+<tr><td>AC-12 — seeded-failure fixture каталог</td><td>Не закрыто</td><td>Полный runtime каталога и связанного отчёта не проверен в этом evidence наборе.</td><td>Оператор / Codex; исполнить разрешённые фикстуры и сохранить observed rejection.</td></tr>
+<tr><td>AC-13 — mutation/red-green</td><td>NOT_RUN по ADR-0001</td><td>Mutation runs запрещены действующим проектным ограничением; seeded fixtures не заменяют mutation score.</td><td>Оператор владеет waiver/изменением ограничения. Без такого решения оставить NOT_RUN.</td></tr>
+<tr><td>AC-14 — evidence envelope и gate</td><td>Не закрыто</td><td>Подписанный report-bound run, receipt и authoritative gate не получены.</td><td>Владелец сервиса gate в канонических данных UNKNOWN; оператор отвечает за задачу. Нужен валидный POSIX signer/report/receipt run и затем GPT-PM.</td></tr>
+<tr><td>AC-15 — воспроизводимость и приватность артефактов</td><td>Не проверено полностью</td><td>Текущий отчётный checkpoint не является подписанным run артефактом; полная проверка полей, digest и отсутствия приватных значений отсутствует.</td><td>Оператор / Codex; проверить на фактическом report-bound run.</td></tr>
+</tbody>
+</table>
+</section>
+<section>
+<h2>Точные проверки и ревью</h2>
+<ul>
+<li>Функциональный владелец: Python 3.14.3, pytest 8.4.2, команда для <code>tests/qa/test_s4_registry_contracts.py</code>; на кодовом HEAD <code>6903b7b</code>: 19 passed, 1 skipped, 0 failed. Два пропуска/прогона по отдельным commits сохранены в records 0152, 0154 и 0156; последняя запись — точная полная функциональная проверка.</li>
+<li>E2E владелец: семь mapped Windows selectors на кодово-тестовом HEAD <code>2dc6947</code>: 7 passed, 0 skipped, 0 failed, 25.47 сек. Команда и selectors записаны в evidence 0157.</li>
+<li>Code reviewer, security reviewer и reliability reviewer: GPT-6 Luna, medium; exact HEAD <code>2dc6947</code>. Code — без material findings; Security — прежние два resource MAJOR закрыты; Reliability — без MAJOR/BLOCKER.</li>
+<li>Обе функциональные сессии записали один pytest-asyncio deprecation warning. Symlink runtime на Windows пропущен из-за WinError 1314; POSIX symlink проверка остаётся NOT_RUN.</li>
+</ul>
+</section>
+<section>
+<h2>Открытые зависимости и очередность</h2>
+<ol>
+<li>Получить свежий, коррелированный WSL2 transfer и run на актуальном source snapshot; точный владелец платформенного сервиса в канонических документах UNKNOWN.</li>
+<li>Запустить signer socket, report, receipt и authoritative gate интеграцию в разрешённой POSIX среде; владелец технической службы UNKNOWN.</li>
+<li>Закрыть недостающие native category и seeded-failure критерии тест-агентами; пропущенный тест не засчитывать как выполненный.</li>
+<li>После закрытия кода и тестов выполнить один GPT-PM final review точного итогового HEAD; до APPROVE push/PR не делать.</li>
+</ol>
+<p>Accountable task owner: оператор. Executor: Codex. Технический владелец QA runner/gate в канонических записях не определён.</p>
+</section>
+<footer class="mut">
+<p>Источник решения и критериев: <a href="../docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md">S4 plan</a>. Проверяемые источники: change records 0151–0157, evidence 0156 и 0157, ветка <code>s4-native-qa-runner</code>. Этот checkpoint создан из локальных Git/evidence записей; он не является PM approval, merge доказательством или подтверждением полного acceptance.</p>
+</footer>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

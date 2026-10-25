@@ -387,3 +387,7 @@ At clean code HEAD `6903b7bf3e3dd4fc1281412c173fb82db9924d11`, the designated fo
 ## 2026-10-25 -- Re-run S4 mapped Windows selectors after registry source changes
 
 At clean exact code/test HEAD `2dc6947e416b61103548285ec279d787c1027d8b`, the seven accepted mapped E2E selectors passed on Windows: 7 passed, 0 failed, 0 skipped, in 25.47 seconds with one pytest-asyncio deprecation warning. CPython was 3.14.3. HEAD and status were unchanged before and after. This does not exercise WSL/POSIX, signer, report, receipt, or authoritative gate behavior. The prior WSL transfer remains `RESULT_NOT_CAPTURED` and was not inspected or retried. See change 0157 and its evidence file.
+
+## 2026-10-25 -- Close S4 review findings and record partial sprint acceptance
+
+Fresh S4 reviews found two resource risks in sequence: repeated same-file AST parsing, then aggregate CPU/memory use across distinct files. Changes 0151 and 0155 cache one compact node index per path and cap each source at 1 MiB, aggregate unique source bytes at 4 MiB, and IDs at 2,048. Change 0153 retries one transient timeout for tracked-file and candidate-HEAD lookups, bounded to 10 seconds per call and fail-closed afterward. Functional evidence 0156 passed 19 tests with one Windows symlink-privilege skip; mapped Windows E2E evidence 0157 passed seven selectors. Fresh code/security/reliability reviews at `2dc6947e416b61103548285ec279d787c1027d8b` found no open BLOCKER/MAJOR. Full WSL/signer/report/receipt/gate and complete category acceptance remain incomplete; see report change 0158.

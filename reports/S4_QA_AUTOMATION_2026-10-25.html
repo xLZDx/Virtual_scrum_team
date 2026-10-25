@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S4 QA Automation — status</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--fg:#1c1c1c;--mut:#666;--line:#ccc;--bad:#b00020;--warn:#945800;--ok:#176b35}
+@media(prefers-color-scheme:dark){:root{--bg:#161616;--fg:#e8e8e8;--mut:#aaa;--line:#444;--bad:#ff7386;--warn:#e2aa4d;--ok:#70d18c}}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max-width:1100px;margin:0 auto;padding:18px}table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid var(--line);padding:7px;vertical-align:top;text-align:left}.mut{color:var(--mut)}.bad{color:var(--bad)}.warn{color:var(--warn)}.ok{color:var(--ok)}
+</style>
+</head>
+<body>
+<header>
+<h1>S4 QA Automation — status report</h1>
+<p class="mut">Date: 2026-10-25. Sprint is partially implemented and locally verified; full acceptance, GPT-PM gate, and merge are not established.</p>
+<p><a href="S4_QA_AUTOMATION_2026-10-25.ru.html">Russian report</a></p>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>Virtual_scrum_team</dd>
+    <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team-s4</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 2687af2</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+<section>
+<h2>Decision</h2>
+<p>S4 remains <strong>IN PROGRESS</strong>. The QA registry, static test-ID resolution, and resource limits are implemented. At exact code HEAD <code>6903b7bf3e3dd4fc1281412c173fb82db9924d11</code>, the full functional module passed: 19 passed, 1 skipped, 0 failed; seven mapped Windows E2E selectors passed with no skips or failures. Fresh code, security, and reliability reviews at HEAD <code>2dc6947e416b61103548285ec279d787c1027d8b</code> found no open BLOCKER/MAJOR. This is local evidence, not proof of every category or full sandbox acceptance.</p>
+</section>
+<section>
+<h2>Acceptance against the S4 plan</h2>
+<table>
+<thead><tr><th>Criterion</th><th>State</th><th>Evidence and remaining acceptance</th><th>Owner and next action</th></tr></thead>
+<tbody>
+<tr><td>AC-1 — category and test-ID registry</td><td>Partial</td><td>Static IDs resolve to exact nodes, unique categories, tracked sources, and provenance; the full denominator for all categories is not proven.</td><td>Accountable task owner: operator; executor: Codex. Continue full category verification.</td></tr>
+<tr><td>AC-2 — native invocation for each category</td><td>Partial</td><td>Windows selectors passed; complete native runs for functional, integration, API, E2E, regression, and seeded-failure categories are not established. Network API is explicitly unsupported.</td><td>Operator / Codex; finish missing category runtime evidence.</td></tr>
+<tr><td>AC-3 — hash and HEAD provenance</td><td>Locally verified</td><td>Registry and source heads require full SHAs and ancestry; invalid provenance fails closed. Functional regressions are in the full module.</td><td>Operator / Codex; include exact-head artifacts in the final GPT-PM sweep.</td></tr>
+<tr><td>AC-4 — reproducible test-ID set</td><td>Not fully verified</td><td>The current Windows run covers selected selectors only. Reproducibility of every category in the pinned WSL environment is unverified.</td><td>The platform service owner is not identified in project records; operator remains accountable. Run reproducibly in the dedicated WSL2 environment.</td></tr>
+<tr><td>AC-5 — typed fail-closed errors</td><td>Partial</td><td>Registry budget, path, ID, and provenance errors fail closed; end-to-end evidence for all missing dependencies/artifacts is incomplete.</td><td>Operator / Codex; complete negative scenarios for every category.</td></tr>
+<tr><td>AC-6 — no dependency installation during a run</td><td>Not verified</td><td>No runtime evidence for a complete report-bound category run was obtained in this pass.</td><td>Operator / Codex; confirm in an isolated native run.</td></tr>
+<tr><td>AC-7 — functional and Python API scenarios</td><td>Partial</td><td>Registry module: 19 passed, 1 skipped, 0 failed. The skip was due to Windows symlink privilege (`WinError 1314`). The complete API denominator is not covered.</td><td>Test role: functional-test-reviewer; extend category coverage.</td></tr>
+<tr><td>AC-8 — truthful API boundary</td><td>Partial</td><td>Network API is marked unsupported; full Python API category acceptance remains incomplete.</td><td>Operator / Codex; keep unsupported status without claiming runtime coverage.</td></tr>
+<tr><td>AC-9 — isolated local integration/E2E</td><td>Partial</td><td>Seven mapped Windows selectors passed 7/7 with no skips; this does not prove the full POSIX sandbox boundary.</td><td>Test role: e2e-runner; finish permitted sandbox scenarios.</td></tr>
+<tr><td>AC-10 — S3 and sandbox dependencies</td><td>NOT_RUN / partial</td><td>Current WSL transfer remains `RESULT_NOT_CAPTURED`; signer socket and sandbox-bound scenarios were not run. The earlier WSL pass at <code>452c8ea</code> does not carry forward to the new HEAD.</td><td>Technical service owner is not established. Do not inspect or retry the unidentified transfer; create a fresh correlated run.</td></tr>
+<tr><td>AC-11 — regression denominator</td><td>Partial</td><td>The registry validates IDs and states; a complete aggregate run for the accepted denominator is not proven.</td><td>Functional-test-reviewer and e2e-runner; run the complete exact denominator.</td></tr>
+<tr><td>AC-12 — seeded-failure catalog</td><td>Open</td><td>Full runtime coverage of the catalog and linked report is not established by this evidence set.</td><td>Operator / Codex; execute permitted fixtures and retain observed rejections.</td></tr>
+<tr><td>AC-13 — mutation/red-green</td><td>NOT_RUN under ADR-0001</td><td>Mutation runs are prohibited by the active project constraint; seeded fixtures do not replace a mutation score.</td><td>Operator owns any waiver or constraint change. Otherwise retain NOT_RUN.</td></tr>
+<tr><td>AC-14 — evidence envelope and gate</td><td>Open</td><td>A signed report-bound run, receipt, and authoritative gate result were not obtained.</td><td>Canonical gate service owner is UNKNOWN; operator is accountable. A valid POSIX signer/report/receipt run is needed before GPT-PM.</td></tr>
+<tr><td>AC-15 — reproducibility and artifact privacy</td><td>Not fully verified</td><td>This status checkpoint is not a signed run artifact; complete validation of fields, digests, and private-value exclusion is missing.</td><td>Operator / Codex; validate on an actual report-bound run.</td></tr>
+</tbody>
+</table>
+</section>
+<section>
+<h2>Exact checks and reviews</h2>
+<ul>
+<li>Functional owner: Python 3.14.3, pytest 8.4.2, focused command for <code>tests/qa/test_s4_registry_contracts.py</code>; code HEAD <code>6903b7b</code>: 19 passed, 1 skipped, 0 failed. Separate 0152, 0154, and 0156 records preserve earlier attempts; 0156 is the final exact full-module result.</li>
+<li>E2E owner: seven mapped Windows selectors at code/test HEAD <code>2dc6947</code>: 7 passed, 0 skipped, 0 failed, 25.47 seconds. Command and selectors are in evidence 0157.</li>
+<li>Code reviewer, security reviewer, and reliability reviewer: GPT-6 Luna, medium effort; exact HEAD <code>2dc6947</code>. Code — no material findings; Security — both prior resource MAJOR findings addressed; Reliability — no MAJOR/BLOCKER.</li>
+<li>Both functional sessions recorded one pytest-asyncio deprecation warning. Windows symlink runtime was skipped because of WinError 1314; POSIX symlink behavior remains NOT_RUN.</li>
+</ul>
+</section>
+<section>
+<h2>Open dependencies and order</h2>
+<ol>
+<li>Obtain a fresh correlated WSL2 transfer and run on the current source snapshot; the exact platform-service owner is UNKNOWN in canonical records.</li>
+<li>Run signer socket, report, receipt, and authoritative gate integration in the permitted POSIX environment; technical service owner is UNKNOWN.</li>
+<li>Complete missing native category and seeded-failure criteria with test-owner agents; a skipped test does not count as complete.</li>
+<li>After code and tests are complete, request one GPT-PM final review on the exact final HEAD; do not push/open a PR before APPROVE.</li>
+</ol>
+<p>Accountable task owner: operator. Executor: Codex. The canonical records do not identify the QA runner/gate technical service owner.</p>
+</section>
+<footer class="mut">
+<p>Decision and criteria source: <a href="../docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md">S4 plan</a>. Verifiable sources: change records 0151–0157, evidence 0156 and 0157, branch <code>s4-native-qa-runner</code>. This checkpoint is derived from local Git/evidence records; it is not PM approval, merge evidence, or proof of full acceptance.</p>
+</footer>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>
