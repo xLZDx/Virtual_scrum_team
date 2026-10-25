@@ -1,4 +1,4 @@
-module_version	source_revision	raw_license_url	http_status	license_classification	classification_basis
+module_version	source_revision	source_url	http_status	license_classification	classification_basis
 golang.org/x/exp@v0.0.0-20260611194520-c48552f49976	c48552f49976	https://raw.githubusercontent.com/golang/exp/c48552f49976/LICENSE	200	BSD-3-Clause	Exact revision LICENSE text
 github.com/aclements/go-moremath@v0.0.0-20210112150236-f10218a38794	f10218a38794	https://raw.githubusercontent.com/aclements/go-moremath/f10218a38794/LICENSE	200	BSD-3-Clause	Exact revision LICENSE text
 golang.org/x/perf@v0.0.0-20260709024250-82a0b07e230d	82a0b07e230d	https://raw.githubusercontent.com/golang/perf/82a0b07e230d/LICENSE	200	BSD-3-Clause	Exact revision LICENSE text
@@ -10,3 +10,4 @@ google.golang.org/genproto/googleapis/api@v0.0.0-20260526163538-3dc84a4a5aaa	3dc
 google.golang.org/genproto/googleapis/rpc@v0.0.0-20260526163538-3dc84a4a5aaa	3dc84a4a5aaa	https://raw.githubusercontent.com/googleapis/go-genproto/3dc84a4a5aaa/LICENSE	200	Apache-2.0	Exact revision LICENSE text
 k8s.io/kube-openapi@v0.0.0-20260414162039-ec9c827d403f	ec9c827d403f	https://raw.githubusercontent.com/kubernetes/kube-openapi/ec9c827d403f/LICENSE	200	Apache-2.0	Exact revision LICENSE text
 k8s.io/utils@v0.0.0-20260319190234-28399d86e0b5	28399d86e0b5	https://raw.githubusercontent.com/kubernetes/utils/28399d86e0b5/LICENSE	200	Apache-2.0	Exact revision LICENSE text
+github.com/nexus-rpc/nexus-proto-annotations@v0.1.0	e558d6edaf84e280dddfc87b5b8ce1662f66ac8b	https://api.github.com/repos/nexus-rpc/nexus-proto-annotations/git/trees/v0.1.0?recursive=1	200	UNKNOWN	Exact v0.1.0 tree complete; no LICENSE, LICENSE.md, LICENCE, COPYING, NOTICE, or COPYRIGHT path; pkg.go.dev says None detected

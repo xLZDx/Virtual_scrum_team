@@ -348,3 +348,6 @@ A controlled, exact-version rerun queried all 223 module/version rows from Tempo
 ## 2026-10-25 -- Resolve exact Go source-license files for pkg.go.dev page misses
 
 The 11 pkg.go.dev 404 rows were checked at each pinned pseudo-version's commit suffix using only raw upstream legal files/tree metadata. Ten classifications are supported by exact-revision LICENSE text; `vtprotobuf` is retained as BSD-3-Clause-like (SPDX unverified), and the cactus module's exact revision uses `LICENSE.md` with MIT text-based inference. The one `nexus-proto-annotations@v0.1.0` version still has no detected license evidence and remains UNKNOWN. No candidate/package/source archive was downloaded. See change 0213.
+## 2026-10-25 -- Preserve UNKNOWN for the Nexus annotation v0.1.0 license
+
+The exact GitHub v0.1.0 tree resolved to commit `e558d6edaf84e280dddfc87b5b8ce1662f66ac8b` and was complete, but had no LICENSE/LICENSE.md/LICENCE/COPYING/NOTICE/COPYRIGHT path. The exact pkg.go.dev page says `License: None detected`, and the root LICENSE path is 404. Keep the version UNKNOWN; do not infer current-main or sibling-package metadata. No technical license maintainer is named in project records. See change 0214.
