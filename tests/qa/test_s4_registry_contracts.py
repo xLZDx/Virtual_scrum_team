@@ -82,7 +82,7 @@ def test_s4_registry_rejects_provenance_outside_candidate_history(monkeypatch):
     monkeypatch.setattr(registry, "_current_candidate_head", lambda *args: "a" * 40)
     monkeypatch.setattr(registry, "_git_commit_is_ancestor", lambda *args: False)
 
-    with pytest.raises(ContractError, match="stale or outside"):
+    with pytest.raises(ContractError, match="missing, stale, or outside"):
         registry.load_registry(ROOT)
 
 
