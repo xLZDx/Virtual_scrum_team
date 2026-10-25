@@ -1,6 +1,6 @@
 # Sprint S4 plan: reproducible QA automation
 
-Status: **PREPARED; NOT STARTED**. This document defines the next sprint and authorizes no tests, builds, CI, installs, mutations, seeded product-code defects, or external service calls during preparation.
+Status: **IMPLEMENTATION IN PROGRESS** under the operator's S2-S5 continuation request. Documentation review is complete; the accepted S3 adapter and test paths are present in this repository. Coding is authorized. Tests remain deferred until all S4 code is committed; CI, mutations, seeded product-code defects, and external service calls remain prohibited.
 
 Sources: `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` section 1; `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`; `governance/DEFINITION_OF_DONE.md`; S2 and S3 plans; current `tests/vst/`, `tools/vst/runner.py`, `tools/vst/slice.py`, and `tools/vst/{contracts,gate,store}.py`.
 
@@ -17,8 +17,8 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 - `tests/vst/` contains the S1 contract, gate, store, runner, process-death, and slice tests, plus the five S2 acceptance modules. The current discovery evidence is source-path inspection only; this plan makes no runtime claim.
 - `tools/vst/slice.py` provides a synthetic, local vertical-slice harness. `tools/vst/runner.py` executes allowlisted local commands and captures bounded command evidence. They are possible integration points, not yet QA category runners.
 - ADR-0001 forbids CI and mutation runs and requires exact-head agent-run evidence. Its permitted synthetic known-defect fixtures may demonstrate a falsifying oracle without mutating product code.
-- A repository-owned QA dependency lock and stable category/test-ID registry do not currently appear in the inspected paths. Their exact formats and dependency resolution are UNKNOWN and must be established in Gate 1.
-- S3 acceptance artifacts and any new S3 test paths do not yet exist. S4's regression denominator must include the accepted S3 tests once their paths and IDs are established.
+- A stable category/test-ID registry does not currently appear in the inspected paths. The registry contract is specified in `docs/QA_RUNNER_DESIGN.md`. The environment reports CPython 3.14.3; the existing pytest 8.4.2 is not selected because the official PyPI record documents a UNIX temporary-directory vulnerability fixed in 9.0.3. S4 pins pytest 9.0.3 and its runtime dependencies with wheel hashes in `tools/qa/requirements.lock`; dependency installation is an explicit isolated preparation step, never part of a test run.
+- S3 adapter artifacts and test paths now exist in `tools/vst/worker_adapter.py`, `tools/vst/pilot.py`, `tests/vst/test_s3_worker_adapter.py`, and `tests/vst/test_s3_worker_pilot_e2e.py`. Full S3 candidate/sandbox acceptance is still incomplete. S4 includes committed S3 test selectors in its regression denominator, but sandbox/candidate-dependent claims remain `NOT_RUN` until their dependencies pass.
 
 ## Stories and acceptance criteria
 
@@ -153,7 +153,7 @@ The operator is accountable task owner under the delegated continuation; Codex c
 | S4-E / VST-036 | Synthetic seeded-failure fixture catalog | Operator accountable; test-agent roles author/run; fixture service owner UNKNOWN | S4-A, ADR-0001 constraints |
 | S4-F / VST-037 | Evidence envelope, hashes and no-skip gate integration | Operator accountable; implementation-engineer executes; technical gate owner UNKNOWN | S4-B through E; current VST gate contract |
 
-Identifiers VST-032–037 are proposals only and must be reconciled with the canonical backlog when S4 formally starts.
+VST-032–037 are registered in the canonical backlog as the six S4 implementation and evidence items.
 
 ## Ordered work and safe stopping points
 
@@ -163,11 +163,16 @@ Identifiers VST-032–037 are proposals only and must be reconciled with the can
 4. Complete all S4 code before test phase; only then test agents author/run the per-epic and final exact-head suites.
 5. Run relevant reviewers, resolve valid findings, request the exact-head GPT-PM gate, then push and merge one S4 PR only after approval.
 
-The first independently safe stopping point is after E1, with the S3 dependency map and denominator frozen. Total gates: **6**, one per epic above. No active S4 implementation or test execution is authorized by this prepared plan.
+The first independently safe implementation point is after E1, with the S3 dependency map and denominator frozen. Total gates: **6**, one per epic above. S4 implementation is active; test execution remains deferred until all coding is committed. E2E rows that require incomplete S2/S3 external acceptance stay in the denominator as `NOT_RUN` and cannot satisfy DoD.
 
 ## Unknowns to resolve at S4 start
 
-- Exact pytest version, full transitive QA dependency set, and supported lock-with-hashes format: establish from the pinned interpreter's authorized environment and repository constraints before coding; do not infer from cached bytecode.
-- Whether S3 adds a transport API, more test categories, or sandbox-bound E2E paths: inspect the accepted S3 plan and implementation; absent evidence, report Python API only and mark transport API unsupported.
+- Pytest 9.0.3 and its runtime dependency set are selected from the pinned interpreter's current inventory and official exact-release metadata. Wheel hashes and the isolated install procedure are recorded in `tools/qa/requirements.lock` and `docs/QA_RUNNER_DESIGN.md`.
+- Whether S3 adds a transport API: current S3 artifacts expose an in-repository Python adapter and no network route is established; report Python API only and mark transport API unsupported.
 - The canonical service owner for category registry, runner, and evidence gate: no owner is established in the inspected repository sources; preserve `UNKNOWN` and proceed with role-based execution.
 - Which S3 test IDs belong in the regression denominator: derive from committed test files and exact-head test records when S3 is accepted.
+
+The selector accounting contract is recorded in `docs/QA_RUNNER_DESIGN.md`: function-level registry
+selectors map to all concrete pytest cases; reports retain case-level outcomes, and a selector-level
+pass is emitted only when every concrete case passes. This preserves VST's current TestRun receipt
+contract and prevents parameterized case fan-out from being mistaken for missing or unexpected tests.

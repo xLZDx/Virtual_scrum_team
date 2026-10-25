@@ -2,6 +2,15 @@
 
 Entry fields: date and commit title; kind; facts with evidence pointer; root cause; layer that missed or caught it; rule for next time.
 
+## 2026-10-25 -- Reconcile prepared sprint docs with repository evidence before execution
+
+- Kind: SHORTCOMING (documentation drift caught before implementation).
+- Facts: S4 plan said S3 acceptance artifacts and test paths did not exist, while this checkout contains `tools/vst/worker_adapter.py`, `tools/vst/pilot.py`, and their committed adapter/E2E test modules. A code-reviewer readiness pass identified the stale statement before S4 coding. S2 gate approval and full S3 candidate/sandbox acceptance are still incomplete and remain blockers for those dependent claims.
+- Root cause: the prepared S4 plan was not reconciled with later S3 commits before marking S4 ready.
+- Layer that caught it: independent read-only S4 readiness review against the canonical checkout.
+- Rule: re-check current in-repository artifacts and exact state before converting a prepared sprint into an active one; separate local coding readiness from external/runtime acceptance.
+- Fix status: S4 plan and design reconciled in change record 0237; no tests were run.
+
 ## 2026-10-24 -- Use only the named WSL distribution for environment checks
 
 - Kind: SHORTCOMING (scope discipline).
