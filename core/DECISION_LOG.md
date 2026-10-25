@@ -674,6 +674,10 @@ After test-source commit `2295bf4`, regenerate the selector registry before any 
 
 The WSL E2E candidate at exact HEAD `6aa5c42` reached the child pytest process but failed fixture assertions that assumed the Windows `python.exe` command and rejected the candidate root in its required WSL runtime-boundary field. The designated functional-test reviewer changed only those assertions: match the interpreter marker to the recorded runtime profile and permit the exact candidate path solely in `runtime_boundary.candidate_root` after verifying it is under `/tmp/vst-s4-candidate/`. The report privacy scan continues to reject candidate-path leaks elsewhere and all target/tmp paths, secrets and Windows user paths. This correction is unverified; commit it, refresh the selector registry, then rerun focused Windows/WSL E2E contracts. Never execute the policy-excluded timeout selector. See change 0301.
 
+## 2026-10-25 — Refresh S4 selector registry after runtime-profile-aware assertions
+
+After test-source commit `5cb61b2`, the category registry was regenerated from exact source HEAD `5cb61b2ba11192241f6c01465895daf22fdd5ef8`. It contains 935 primary regression selectors, 883 assigned runnable and 52 policy `NOT_RUN`; functional, integration, API and E2E categories contain 90, 84, 705 and 56 selectors respectively. The three seeded-failure selectors remain separate. The timeout-recovery selector stays policy-excluded. Registry generation is not execution evidence; focused Windows and WSL E2E reruns are next. See change 0302.
+
 ## 2026-10-25 — Refresh the selector registry after the Linux flag fixture
 
 After test-source commit `c4f9cb9`, regenerate the category registry before rerunning. It now binds to exact source HEAD `c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209` and records 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN`, and 90 functional selectors. Preserve the policy rows and use exact-head evidence. See change 0290.
