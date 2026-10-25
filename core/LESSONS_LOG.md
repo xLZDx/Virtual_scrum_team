@@ -639,3 +639,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — A signed functional `tools.qa.run` receipt with a synthetic signer closes only that functional run. Keep deployed signer trust, E2E denominator, aggregate regression and authoritative gate as separate acceptance items. Preserve report, event, manifest and stream hashes with the exact source and candidate heads. See change 0250.
 
 2026-10-25 — When validating a protected Unix socket path, inspect mode permissions on every resolved and lexical ancestor, not only ACLs; a writable intermediate directory can enable path replacement. Preserve sticky `/tmp` only when its sticky bit protects the runner-owned next entry. See change 0251.
+
+2026-10-25 — Pair a fail-closed path-component guard with regressions for both the denied writable case and the intended sticky-directory exception. The exception must verify ownership of the next entry, not only the sticky bit. See change 0252.

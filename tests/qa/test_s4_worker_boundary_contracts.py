@@ -105,6 +105,43 @@ def test_s4_signer_guard_rejects_access_acl_on_traversed_ancestor(tmp_path, monk
         endpoint.close()
 
 
+@pytest.mark.skipif(not _LINUX, reason="POSIX signer path checks require Linux")
+def test_s4_signer_guard_rejects_nonsticky_world_writable_ancestor(tmp_path, monkeypatch):
+    unsafe_ancestor = tmp_path / "world-writable"
+    unsafe_ancestor.mkdir()
+    os.chmod(unsafe_ancestor, 0o777)
+    socket_parent = unsafe_ancestor / "runner-owned"
+    socket_parent.mkdir(mode=0o750)
+    os.chmod(socket_parent, 0o750)
+    endpoint, socket_path = _signer_socket(socket_parent)
+    try:
+        monkeypatch.setattr(sandbox.os, "getxattr", _no_acl_xattr)
+        with pytest.raises(ContractError, match="worker-writable directory component"):
+            sandbox.require_worker_cannot_access_signer(
+                str(socket_path), worker_uid=_WORKER_UID, worker_gid=_WORKER_GID,
+            )
+    finally:
+        endpoint.close()
+
+
+@pytest.mark.skipif(not _LINUX, reason="POSIX signer path checks require Linux")
+def test_s4_signer_guard_allows_runner_owned_entry_under_sticky_tmp(tmp_path, monkeypatch):
+    endpoint, socket_path = _signer_socket(tmp_path)
+    try:
+        tmp_stat = Path("/tmp").stat()
+        assert tmp_stat.st_mode & stat.S_ISVTX
+        resolved_socket = socket_path.resolve()
+        assert Path("/tmp") in resolved_socket.parents
+        first_tmp_entry = Path("/tmp") / resolved_socket.relative_to("/tmp").parts[0]
+        assert first_tmp_entry.stat().st_uid == os.geteuid()
+        monkeypatch.setattr(sandbox.os, "getxattr", _no_acl_xattr)
+        assert sandbox.require_worker_cannot_access_signer(
+            str(socket_path), worker_uid=_WORKER_UID, worker_gid=_WORKER_GID,
+        ) is None
+    finally:
+        endpoint.close()
+
+
 @pytest.mark.skipif(not _LINUX, reason="POSIX ACL checks require Linux")
 def test_s4_signer_guard_fails_closed_when_acl_inspection_is_denied(tmp_path, monkeypatch):
     endpoint, socket_path = _signer_socket(tmp_path)

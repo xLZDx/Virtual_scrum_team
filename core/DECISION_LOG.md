@@ -597,3 +597,7 @@ At exact source/test HEAD `c2eefda`, eight focused worker/ACL/group/parser selec
 ## 2026-10-25 — Reject worker-writable signer path ancestors
 
 Security re-review at `c2eefda` found a conditional path-race risk because mode bits were checked only on the immediate parent/socket, although ACLs were checked on every ancestor. Validate all lexical and resolved parent modes; allow a sticky writable ancestor only when it protects the next runner-owned entry. Confirm with mapped tests for unsafe writable parents and safe sticky `/tmp`. See change 0251.
+
+## 2026-10-25 — Map S4 signer ancestor mode boundary tests
+
+Add functional selectors that reject a non-sticky world-writable intermediate parent and accept the standard sticky `/tmp` when its next entry belongs to the runner. Pin category provenance to `b96d78b`. Execute both on a fresh exact-head WSL snapshot before closing the security finding. See change 0252.
