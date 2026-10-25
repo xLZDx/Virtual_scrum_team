@@ -641,3 +641,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — When validating a protected Unix socket path, inspect mode permissions on every resolved and lexical ancestor, not only ACLs; a writable intermediate directory can enable path replacement. Preserve sticky `/tmp` only when its sticky bit protects the runner-owned next entry. See change 0251.
 
 2026-10-25 — Pair a fail-closed path-component guard with regressions for both the denied writable case and the intended sticky-directory exception. The exception must verify ownership of the next entry, not only the sticky bit. See change 0252.
+
+2026-10-25 — Keep Unix-domain socket test fixture paths below the platform pathname limit. A test setup error before the guard runs is not product evidence; preserve the intermediate-ancestor shape while shortening only fixture names. See change 0253.

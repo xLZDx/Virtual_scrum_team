@@ -601,3 +601,7 @@ Security re-review at `c2eefda` found a conditional path-race risk because mode 
 ## 2026-10-25 — Map S4 signer ancestor mode boundary tests
 
 Add functional selectors that reject a non-sticky world-writable intermediate parent and accept the standard sticky `/tmp` when its next entry belongs to the runner. Pin category provenance to `b96d78b`. Execute both on a fresh exact-head WSL snapshot before closing the security finding. See change 0252.
+
+## 2026-10-25 — Correct S4 ancestor-test socket path setup
+
+At `e7f857f`, the unsafe-ancestor selector failed before entering product code because the nested Unix socket pathname exceeded `AF_UNIX` limits (9 focused selectors passed, one fixture setup failure). Keep the unsafe directory as an intermediate ancestor but shorten fixture names to `tmp_path/u/r/s`; rerun all ten selectors on a fresh exact head. See change 0253.

@@ -107,13 +107,17 @@ def test_s4_signer_guard_rejects_access_acl_on_traversed_ancestor(tmp_path, monk
 
 @pytest.mark.skipif(not _LINUX, reason="POSIX signer path checks require Linux")
 def test_s4_signer_guard_rejects_nonsticky_world_writable_ancestor(tmp_path, monkeypatch):
-    unsafe_ancestor = tmp_path / "world-writable"
+    unsafe_ancestor = tmp_path / "u"
     unsafe_ancestor.mkdir()
     os.chmod(unsafe_ancestor, 0o777)
-    socket_parent = unsafe_ancestor / "runner-owned"
+    socket_parent = unsafe_ancestor / "r"
     socket_parent.mkdir(mode=0o750)
     os.chmod(socket_parent, 0o750)
-    endpoint, socket_path = _signer_socket(socket_parent)
+    socket_path = socket_parent / "s"
+    endpoint = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    endpoint.bind(str(socket_path))
+    endpoint.listen(1)
+    os.chmod(socket_path, 0o660)
     try:
         monkeypatch.setattr(sandbox.os, "getxattr", _no_acl_xattr)
         with pytest.raises(ContractError, match="worker-writable directory component"):
