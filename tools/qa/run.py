@@ -69,6 +69,7 @@ def _args() -> argparse.Namespace:
     parser.add_argument("--repo-root", required=True)
     parser.add_argument("--manifest", default="docs/qa/categories.json")
     parser.add_argument("--fixtures", default="docs/qa/fixtures.json")
+    parser.add_argument("--dependency-target", required=True)
     parser.add_argument("--scratch-root", required=True)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--expected-head")
@@ -147,6 +148,7 @@ def _repo_paths(args: argparse.Namespace) -> tuple[Path, Path, dict[str, Path]]:
         raise QARunError("report/stdout/stderr artifact paths must be unique")
     if output_paths["report"].suffixes[-2:] != [".report", ".jsonl"]:
         raise QARunError("report artifact must use the JSON Lines suffix")
+    args._dependency_target = Path(args.dependency_target).resolve(strict=False)
     return repo_root, scratch, output_paths
 
 
@@ -279,18 +281,28 @@ def _lock_versions(root: Path) -> tuple[str, dict[str, str]]:
     return hashlib.sha256(raw).hexdigest(), versions
 
 
-def _installed_versions(expected: dict[str, str]) -> tuple[dict[str, str], list[str]]:
+def _installed_versions(expected: dict[str, str], target: Path) -> tuple[dict[str, str], list[str]]:
     actual: dict[str, str] = {}
     missing: list[str] = []
-    for package, required in sorted(expected.items()):
-        try:
-            installed = importlib.metadata.version(package)
-        except importlib.metadata.PackageNotFoundError:
-            missing.append(package)
+    for distribution in importlib.metadata.distributions(path=[os.fspath(target)]):
+        name = distribution.metadata.get("Name")
+        if not isinstance(name, str) or not name:
+            missing.append("unnamed distribution in dependency target")
             continue
-        actual[package] = installed
-        if installed != required:
+        normalized = name.lower().replace("_", "-").replace(".", "-")
+        if normalized in actual:
+            missing.append(f"duplicate distribution in dependency target: {normalized}")
+            continue
+        actual[normalized] = distribution.version
+    for package, required in sorted(expected.items()):
+        installed = actual.get(package)
+        if installed is None:
+            missing.append(package)
+        elif installed != required:
             missing.append(f"{package} (expected {required}, found {installed})")
+    extras = sorted(set(actual) - set(expected))
+    if extras:
+        missing.append("unexpected distributions in dependency target: " + ", ".join(extras))
     return actual, missing
 
 
@@ -483,6 +495,7 @@ def _report_base(
             "os": platform.system(),
             "os_release": platform.release(),
             "architecture": platform.machine(),
+            "dependency_target": "isolated-external-target",
         },
         "pytest_version": None,
         "dependency_versions": {},
@@ -623,6 +636,7 @@ def _pytest_command(
     selectors: dict[str, dict[str, str]],
     scratch_run: Path,
     repo_root: Path,
+    dependency_target: Path,
 ) -> tuple[list[str], dict[str, str]]:
     if not expected_ids:
         raise QARunError("pytest cannot be invoked with an empty registered selector set")
@@ -656,6 +670,8 @@ def _pytest_command(
     env = build_environment()
     env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
     env["PYTHONUTF8"] = "1"
+    env["PYTHONNOUSERSITE"] = "1"
+    env["PYTHONPATH"] = os.fspath(dependency_target)
     temp_root = os.fspath(scratch_run)
     env["TEMP"] = temp_root
     env["TMP"] = temp_root
@@ -720,6 +736,9 @@ def main() -> int:
             candidate_head=head,
             before_paths=before_paths,
         )
+        dependency_target: Path = args._dependency_target
+        if not dependency_target.is_dir() or dependency_target.is_relative_to(root):
+            raise QARunError("dependency-target must be an existing directory outside the candidate repository")
         try:
             catalog, catalog_hash = load_fixture_catalog(root, registry, args.fixtures)
         except FixtureCatalogError as exc:
@@ -739,12 +758,11 @@ def main() -> int:
         ).strip()
         lock_hash, locked_versions = _lock_versions(root)
         report["lock_sha256"] = lock_hash
-        actual_versions, missing_versions = _installed_versions(locked_versions)
+        sys.path.insert(0, os.fspath(dependency_target))
+        actual_versions, missing_versions = _installed_versions(locked_versions, dependency_target)
         report["dependency_versions"] = actual_versions
-        try:
-            report["pytest_version"] = importlib.metadata.version("pytest")
-        except importlib.metadata.PackageNotFoundError:
-            report["pytest_version"] = None
+        report["pytest_version"] = actual_versions.get("pytest")
+        if report["pytest_version"] is None:
             missing_versions.append("pytest")
         reasons: list[str] = []
         if sys.implementation.name != "CPython" or sys.version_info[:2] != (3, 14):
@@ -802,6 +820,7 @@ def main() -> int:
             selectors=selectors,
             scratch_run=scratch_run,
             repo_root=root,
+            dependency_target=dependency_target,
         )
         # Command evidence uses normalized temporary-root tokens to avoid writing
         # absolute host paths into a public repository report.

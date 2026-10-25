@@ -28,15 +28,20 @@ Python module APIs in `tools/vst/`.
   single CLI. `tools/qa/pytest_plugin.py` captures collection and per-case outcomes. Report
   normalization and digest validation live in `tools/qa/report.py`; synthetic negative inputs are
   data fixtures consumed through unchanged VST product interfaces.
-- The runner invokes pytest as a child using the approved interpreter `C:\Python314\python.exe` and
-  repository lock (`tools/qa/requirements.lock`). The environment baseline is CPython 3.14.3. Pytest is pinned
+- The runner invokes pytest as a child using the approved interpreter `C:\Python314\python.exe`,
+  an explicit isolated dependency target outside the repository, and the repository lock
+  (`tools/qa/requirements.lock`). The environment baseline is CPython 3.14.3. Pytest is pinned
   to 9.0.3: the official 9.0.3 release supports Python 3.14 and its PyPI advisory record lists no
   vulnerabilities, while 8.4.2's record identifies a UNIX temporary-directory vulnerability fixed
   in 9.0.3. The transitive test-only packages are pinned and wheel-hash-locked from the official
   PyPI JSON release records (`pytest`, `pluggy`, `packaging`, `iniconfig`, `Pygments`, `colorama`).
   This excludes source distributions and build-time dependencies. The runner never resolves
-  or installs dependencies. It applies a timeout, output cap, minimal
-  environment, repository-relative selectors, and an exact candidate working directory. Git reads
+  or installs dependencies. Environment preparation installs the hash-locked wheels into an
+  external target; each runner call names that target with `--dependency-target` and verifies it
+  contains exactly the locked distributions and versions. The child process receives only that
+  target through `PYTHONPATH`, with user-site loading disabled. The runner applies a timeout,
+  output cap, minimal environment, repository-relative selectors, and an exact candidate working
+  directory. Git reads
   that need a worker-owned checkout use a per-invocation `safe.directory` value scoped to that
   canonical checkout; no global Git configuration is changed.
 - The QA JSON report is an artifact, not a signed VST receipt. When invoked from the existing VST
