@@ -505,6 +505,8 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — A long-running transfer command must retain its nested exec-session handle until final JSON arrives. If the wrapper wait returns without a session/result, mark `RESULT_NOT_CAPTURED`, do not infer success or failure, and never inspect/delete a destination without a run ID. See change record 0128.
 
+2026-10-25 — A string prefix is not a path boundary. When a registry claims files belong to `tests/`, require canonical relative paths and verify the resolved source stays below the resolved tests directory before parsing. Reject traversal and symlink components, then retain separate tracked-file and static-node checks. See change record 0137; regression evidence is pending.
+
 2026-10-25 — A cross-OS source snapshot must preserve both Git identity and the worker's read-only boundary. Stream a self-contained Git bundle through the WSL process boundary, verify exact HEAD and digest on both sides, and provision directory permissions for runner ownership plus worker traversal/read without write. Implemented behavior remains `NOT_RUN` until the exact isolated destination is exercised. See change record 0101.
 
 2026-10-25 — A registry entry can reference an existing tracked test file but a nonexistent pytest node. The functional regression exposed the gap; validate source-resolvable function/class selectors, not just the file path. Runtime-generated parameter IDs remain unsupported until their exact IDs can be established without executing collection code. The failing test and rerun belong to the functional-test-reviewer; Codex changed the registry implementation. See change record 0104; remediation result pending.

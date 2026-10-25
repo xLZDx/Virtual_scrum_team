@@ -1,6 +1,6 @@
 # Sprint S4 plan: reproducible QA automation
 
-Status: **S4 SOURCE SLICE IMPLEMENTED LOCALLY; LOCAL FUNCTIONAL/E2E TESTS PASS; NATIVE TRANSFER AND SIGNER GATES PARTIAL**. Functional-test-reviewer reported 9/9 registry/API cases and e2e-runner reported 2/2 local synthetic journeys on clean HEAD `594eeddcd1f6409928e7eebb1e9f8581c8eba75c`; their durable records are commits 0112 and 0113. The category registry, pinned lock, POSIX native runner, report-to-v2-receipt seam, seeded-failure fixture/event/report contract, and Windows-to-WSL Git-bundle transfer command are implemented locally; see change records 0095 and 0099–0114. A separate S4 snapshot root is prepared privately in the named WSL2 distribution. Native transfer has not yet been executed; signer/report/gate runtime and fresh signed sandbox acceptance remain `NOT_RUN`. No full category coverage or sandbox acceptance is claimed.
+Status: **S4 LOCAL FUNCTIONAL AND MAPPED NATIVE E2E PASS; TRANSFER/WORKER READ-ONLY BOUNDARY PASS; REGISTRY PATH-FIX REGRESSION PENDING; SIGNER/REPORT/GATE PARTIAL**. Functional/API registry cases reported 9/9 at clean HEAD `594eeddcd1f6409928e7eebb1e9f8581c8eba75c`. Seven corrected mapped native selectors passed 7/7 on clean candidate `452c8ea8da5545bdce0f584a6b51662b93a33abf`; transfer hash/head and worker read-only evidence are in change 0134. The final code review found a minor registry path-confinement gap; the fix is in 0137 and awaits regression reruns. Signer/report/gate runtime and broader signed sandbox acceptance remain `NOT_RUN`. No full category coverage or complete sandbox acceptance is claimed.
 
 Sources: `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` section 1; `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`; `governance/DEFINITION_OF_DONE.md`; S2 and S3 plans; current `tests/vst/`, `tools/vst/runner.py`, `tools/vst/slice.py`, and `tools/vst/{contracts,gate,store}.py`.
 
@@ -120,7 +120,7 @@ Exact commands are formed from committed category selectors; proposed interface:
 /usr/bin/python3 -m tools.qa.run --category <category> --manifest <run-specific-vst-v2-manifest> --registry docs/qa/categories.json --signer-socket <trusted-local-socket> ...
 ```
 
-The command is implemented but has not been executed. It is POSIX-only and verifies WSL Ubuntu 24.04, Python 3.12.3 and pytest 7.4.4; it does not install packages or fall back to Windows. The registry and runtime lock are committed. The v2 signer path still requires the in-scope source snapshot and trusted signer socket to exist inside the named WSL environment.
+The bounded source transfer and mapped native pytest selectors have been executed on the identified WSL snapshot described in change 0134. The report-bound `tools.qa.run` v2 signer path remains `NOT_RUN`; it is POSIX-only and requires the trusted signer socket inside the named WSL environment. No packages were installed and no Windows fallback was used.
 
 ## Definition of Ready
 
