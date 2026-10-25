@@ -320,3 +320,7 @@ VST-028 now records Temporal as a two-component candidate: server `v1.32.1` (`af
 ## 2026-10-25 -- Correct S3 GPT-PM request correlation
 
 A S3 report update copied a GPT-PM request ID from other sprint context into S3's gate row. That identifier cannot establish S3 request/reply state. Removed the cross-sprint ID and corrected the report/change record: the S3 exact-head GPT-PM gate remains unconfirmed; current PM Bridge mode/health/job queries returned `Transport closed`. Do not infer a gate verdict across sprint/project bindings. Before any future S3 send, resolve the S3-specific request state and exact HEAD. See change 0202.
+
+## 2026-10-25 -- Record Temporal SDK Core pin and artifact provenance limits
+
+The pinned Temporal Python SDK 1.34.0 gitlink resolves `temporalio/bridge/sdk-core` to SDK Rust commit `e163abd6dc19040064986a63c8b8cf4756ffd320`; the pinned SDK Rust workspace and license declare MIT. The Python SDK repository's `uv.lock` and `temporalio/bridge/Cargo.lock`, plus the server's `go.mod`/`go.sum`, resolve package versions but do not themselves establish complete third-party license inventories or a minimal runtime profile. PyPI 1.34.0 JSON lists wheel SHA-256 hashes but marks inspected artifacts `provenance=false`; source-linked provenance is not verified. No source was acquired, built, or executed. Keep VST-028 partial. See change 0203.

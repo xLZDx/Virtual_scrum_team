@@ -40,13 +40,17 @@
   <dl>
     <dt>Project</dt><dd>Virtual_scrum_team</dd>
     <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s3-vendor-neutral-worker-pilot @ 597259b</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s3-vendor-neutral-worker-pilot @ 674c225</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
           data-fail="Select manually">Copy page</button>
 </div>
 <!-- report-conform:end -->
+
+
+
+
 
 
 
@@ -71,7 +75,7 @@
     <li>Final documentation HEAD: <code>86f59dc911f9a9ddbef029b2e9f57b6b7052bb92</code>. Separate code-reviewer, reliability-reviewer, and security-reviewer agents (GPT-6 Luna, medium effort) found no open findings. Reviewers ran no tests.</li>
     <li>Run details: <code>docs/sdlc/evidence/s3-stop-cleanup-functional-2a8c175.md</code> and <code>docs/sdlc/evidence/s3-e2e-exact-head-71169f7.md</code>; change records 0096–0099.</li>
     <li>Candidate-pin refresh and bounded BMad Loop source review: latest tag <code>v0.13.2</code> / <code>4a5c45390ff46c0fc28d316004ffe0ed7c8eea60</code>; GPT-6 Luna security-reviewer, medium. Review identified control-plane/Git mutation, configured commands/hooks/plugins, and a process-harvest residual; plugin trust flow and sandbox runtime remain NOT_VERIFIED. No candidate acquisition/execution. See changes 0168–0169 and the S3 plan.</li>
-    <li>Temporal server + worker SDK source review: server <code>v1.32.1</code> / <code>af08a5e5f2dd40f545f2afac7780daaa6987001e</code>; Python SDK <code>1.34.0</code> / <code>a4c2bb38c3bad43498dfa6bd849e8d85bb684e94</code>. Security-reviewer, GPT-6 Luna, medium. MIT and a separate worker API are verified; one release feature's server minimum is 1.32.0+, not a general compatibility matrix. Full license/dependency closure, effective server policy, OS containment and replay reproduction remain unverified/not run. No clone/install/build/run. See change 0201.</li>
+    <li>Temporal source/dependency audit: server <code>v1.32.1</code> / <code>af08a5e5f2dd40f545f2afac7780daaa6987001e</code>; Python SDK <code>1.34.0</code> / <code>a4c2bb38c3bad43498dfa6bd849e8d85bb684e94</code>; SDK Core Rust <code>e163abd6dc19040064986a63c8b8cf4756ffd320</code>. GPT-6 Luna security-reviewer, medium. All three roots declare MIT; lockfiles pin package versions but do not close third-party licenses. PyPI wheel hashes exist, but inspected metadata has <code>provenance=false</code>. Full license closure, source-linked build provenance, effective server policy, OS containment and replay reproduction remain unverified/not run. No clone/install/build/run. See changes 0201 and 0203.</li>
   </ul>
 
   <h2>Acceptance matrix</h2>
@@ -80,7 +84,7 @@
     <tbody>
       <tr><td>AC-1–4</td><td>One worker-adapter contract, VST as the sole verdict authority, idempotent requests, and diagnosable errors.</td><td class="partial">Partial — the local hand-written adapter is verified.</td><td>Functional run 16/16 and E2E run 8/8; change 0096 keeps STOP non-approving and exposes only safe diagnostics.</td><td>Comparison across all three worker implementations is not proven: external candidates were not acquired or executed.</td><td>The operator owns acquisition authorization and the final choice; Codex executes. Next: complete the pinned candidate audit and obtain explicit authorization before acquisition.</td></tr>
       <tr><td>AC-5–8</td><td>Immutable candidate identity, sandbox isolation, secrets protection, and denied external egress.</td><td class="partial">NOT_RUN / NOT_VERIFIED.</td><td>Public candidate pin is refreshed; BMad v0.13.2 received a limited read-only source review, which does not establish the worker boundary or containment.</td><td>No fresh run-bound signed sandbox probe exists for S3; BMad Loop and Temporal remain acquisition-gated; no runtime egress test ran.</td><td>The operator owns candidate authorization and selection; the technical sandbox owner is unknown. Next: complete source review, obtain authorization, then run a fresh signed probe and permitted isolated run.</td></tr>
-      <tr><td>S3.2.1 / VST-028</td><td>Immutable candidate identity, license, dependencies, compatibility, and security before acquisition.</td><td class="partial">Partial source audit; acquisition and runtime remain gated.</td><td>Temporal server+SDK pins, MIT, and a separate worker API are recorded in the plan; GPT-6 Luna security-reviewer, medium. The SDK workflow sandbox is not OS isolation.</td><td>Full license/dependency closure, general server/SDK compatibility, listener/auth/egress configuration, SDK Core boundary, and replay reproduction remain open; BMad trust flow is also partial. No candidate was cloned, installed or run.</td><td>Codex is audit executor; operator owns acquisition authorization and selection. Next: finish residual source/dependency audit; then operator explicitly authorizes a candidate, and runtime agents use it only after a fresh S2 probe.</td></tr>
+      <tr><td>S3.2.1 / VST-028</td><td>Immutable candidate identity, license, dependencies, compatibility, and security before acquisition.</td><td class="partial">Partial source audit; acquisition and runtime remain gated.</td><td>Temporal server+Python SDK and SDK Core pins are recorded, all declare MIT; SDK Core SHA is <code>e163abd6…</code>. <code>uv.lock</code>/<code>Cargo.lock</code> do not close transitive package licenses; PyPI wheel metadata has <code>provenance=false</code>. GPT-6 Luna security review, medium.</td><td>Full license/dependency closure, source-linked wheel provenance, general server/SDK compatibility, listener/auth/egress configuration, and replay reproduction remain open; BMad trust flow is also partial. No candidate was cloned, installed or run.</td><td>Codex is audit executor; operator owns acquisition authorization and selection. Next: finish license/provenance residuals; then operator explicitly authorizes a candidate, and runtime agents use it only after a fresh S2 probe.</td></tr>
       <tr><td>AC-9, AC-11–12</td><td>Application checkpoint, attempts/retries, and exact budget limits without false PASS.</td><td class="pass">PASS for the synthetic Store/adapter path.</td><td>Functional coverage verifies exact-cap, replay, fencing, and named application checkpoints; the E2E module passed 8/8.</td><td>Actual abrupt process termination and operating-system cleanup were not exercised.</td><td>Codex executed local acceptance scenarios. Next: keep process-kill/cleanup as NOT_RUN until an allowed platform run exists.</td></tr>
       <tr><td>AC-10</td><td>STOP is idempotent; the new epoch fences stale writes and late outcomes.</td><td class="pass">PASS for Store fencing; process cleanup is unverified.</td><td>Functional regression proves one durable fence, stale-start rejection, and an INCONCLUSIVE response after a cleanup exception.</td><td>Process termination and cleanup after timeout remain NOT_VERIFIED.</td><td>The operator is accountable for delegated work; no operating-system sandbox owner is identified. Next: obtain a separate permitted platform-runtime proof.</td></tr>
       <tr><td>AC-13–14</td><td>Changes stay inside the synthetic worktree and allowlist; an out-of-scope diff cannot pass the gate.</td><td class="partial">Local synthetic journeys pass; sandbox-bound confinement is unproven.</td><td>The E2E module covers manifest-scoped changes and out-of-scope rejection.</td><td>There is no equivalent proof on the S2 sandbox or for an external candidate.</td><td>Codex executes; the technical sandbox owner is UNKNOWN. Next: bind these same cases to a fresh sandbox run when a probe is available.</td></tr>
@@ -91,12 +95,16 @@
 
   <h2>Ordered next steps</h2>
   <ol>
-    <li>Complete the remaining BMad and Temporal source/dependency audit, including trust/configuration, runtime license closure, and the SDK Core pin; Codex executes the audit, while the operator owns separate acquisition authorization and selection. Do not acquire or execute either candidate before authorization.</li>
+    <li>Complete the remaining BMad and Temporal source/dependency audit, including trust/configuration, transitive license inventories, and source-linked wheel provenance; Codex executes the audit, while the operator owns separate acquisition authorization and selection. Do not acquire or execute either candidate before authorization.</li>
     <li>Once the environment is available, run a fresh run-bound signed sandbox probe and egress check; do not treat synthetic local tests as platform evidence.</li>
     <li>If platform scenarios are permitted, verify process crash/cleanup and worktree isolation; until then keep them NOT_RUN/NOT_VERIFIED.</li>
     <li>When PM Bridge recovers, send the S3 final gate for the exact current HEAD with the complete residual matrix; push/PR remains gated on a correlated APPROVE.</li>
   </ol>
 </main>
+
+
+
+
 
 
 
