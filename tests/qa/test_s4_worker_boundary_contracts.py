@@ -20,6 +20,7 @@ from pathlib import Path
 
 import pytest
 
+from tools.qa import run as qa_run
 from tools.qa.run import _safe_output_dir
 from tools.qa.wsl_snapshot import _WSL_RECEIVER
 from tools.vst import sandbox
@@ -29,6 +30,91 @@ from tools.vst.contracts import ContractError
 _LINUX = sys.platform.startswith("linux")
 _WORKER_UID = 998
 _WORKER_GID = 987
+
+
+def _source_tree(tmp_path: Path) -> tuple[Path, Path]:
+    root = tmp_path / "qa-source"
+    root.mkdir()
+    tracked = root / "tracked.txt"
+    tracked.write_text("source remains immutable\n", encoding="utf-8")
+    env = os.environ.copy()
+    env.update({"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull})
+    initialized = subprocess.run(
+        ["git", "init", "--quiet", "-b", "acl-fixture"], cwd=root, env=env,
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        timeout=15, check=False,
+    )
+    assert initialized.returncode == 0, initialized.stderr.decode("utf-8", errors="replace")
+    added = subprocess.run(
+        ["git", "add", "tracked.txt"], cwd=root, env=env,
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        timeout=15, check=False,
+    )
+    assert added.returncode == 0, added.stderr.decode("utf-8", errors="replace")
+    return root, tracked
+
+
+def _no_acl(path, _attribute, *, follow_symlinks=True):
+    raise OSError(errno.ENODATA, "no ACL xattr", os.fspath(path))
+
+
+def _isolate_mode_bits(monkeypatch):
+    # These selectors falsify the ACL guard independently of the mode-bit
+    # fallback; dedicated sandbox runs exercise real POSIX permissions.
+    monkeypatch.setattr(qa_run, "_worker_writable", lambda *_args: False)
+
+
+@pytest.mark.parametrize("acl_kind", ["named-user", "named-group"])
+def test_s4_qa_preflight_rejects_named_worker_acl_on_tracked_source(
+    tmp_path, monkeypatch, acl_kind
+):
+    root, tracked = _source_tree(tmp_path)
+    _isolate_mode_bits(monkeypatch)
+
+    def getxattr(path, attribute, *, follow_symlinks=True):
+        if Path(path) == tracked and attribute == "system.posix_acl_access":
+            return f"synthetic-{acl_kind}-acl-grants-worker-write".encode()
+        return _no_acl(path, attribute, follow_symlinks=follow_symlinks)
+
+    monkeypatch.setattr(sandbox.os, "getxattr", getxattr)
+    with pytest.raises(ContractError, match="extended POSIX ACL"):
+        qa_run._require_worker_source_read_only(root, _WORKER_UID, _WORKER_GID)
+
+
+def test_s4_qa_preflight_rejects_directory_default_acl(tmp_path, monkeypatch):
+    root, _tracked = _source_tree(tmp_path)
+    _isolate_mode_bits(monkeypatch)
+
+    def getxattr(path, attribute, *, follow_symlinks=True):
+        if Path(path) == root and attribute == "system.posix_acl_default":
+            return b"synthetic-default-acl-grants-worker-write-to-children"
+        return _no_acl(path, attribute, follow_symlinks=follow_symlinks)
+
+    monkeypatch.setattr(sandbox.os, "getxattr", getxattr)
+    with pytest.raises(ContractError, match="extended POSIX ACL"):
+        qa_run._require_worker_source_read_only(root, _WORKER_UID, _WORKER_GID)
+
+
+def test_s4_qa_preflight_fails_closed_when_acl_inspection_is_denied(tmp_path, monkeypatch):
+    root, _tracked = _source_tree(tmp_path)
+    _isolate_mode_bits(monkeypatch)
+
+    def denied(path, _attribute, *, follow_symlinks=True):
+        raise OSError(errno.EPERM, "ACL inspection denied", os.fspath(path))
+
+    monkeypatch.setattr(sandbox.os, "getxattr", denied)
+    with pytest.raises(ContractError, match="ACL inspection failed"):
+        qa_run._require_worker_source_read_only(root, _WORKER_UID, _WORKER_GID)
+
+
+def test_s4_qa_preflight_accepts_source_without_extended_acls(tmp_path, monkeypatch):
+    root, _tracked = _source_tree(tmp_path)
+    _isolate_mode_bits(monkeypatch)
+    monkeypatch.setattr(sandbox.os, "getxattr", _no_acl)
+
+    assert qa_run._require_worker_source_read_only(
+        root, _WORKER_UID, _WORKER_GID,
+    ) is None
 
 
 def _signer_socket(tmp_path: Path) -> tuple[socket.socket, Path]:

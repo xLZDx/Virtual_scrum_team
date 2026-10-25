@@ -5,9 +5,9 @@
     "functional": {
       "state": "SUPPORTED",
       "coverage_state": "COMPLETE",
-      "coverage_reason": "The accepted local functional denominator covers receipt-order invariance, missing receipts, malformed manifest fields, wrong-key signatures, stale candidate HEAD, skipped/xfail required IDs, and the POSIX worker capability-drop boundary (exact worker identity, empty inheritable/permitted/effective/ambient sets, no-new-privileges, and denied runner UID regain). Signer ACL coverage rejects access/default ACLs, rejects non-sticky world-writable ancestors, permits a runner-owned next entry below sticky /tmp, and fails closed on denied ACL inspection; the POSIX snapshot/output selector verifies worker-group inheritance without runner chown. The trusted PASS-line parser accepts only plain PASS and one-dot .PASS records and rejects arbitrary lookalike prefixes. The original S3 contract selectors remain included. Network API and report-runtime paths are excluded from this local functional category. Registry ancestry outcomes are additionally mapped for true ancestor, valid non-ancestor, unexpected Git exit, exhausted timeout retry, and invocation failure.",
+      "coverage_reason": "The accepted local functional denominator covers receipt-order invariance, missing receipts, malformed manifest fields, wrong-key signatures, stale candidate HEAD, skipped/xfail required IDs, and the POSIX worker capability-drop boundary (exact worker identity, empty inheritable/permitted/effective/ambient sets, no-new-privileges, and denied runner UID regain). Signer ACL coverage rejects access/default ACLs, rejects non-sticky world-writable ancestors, permits a runner-owned next entry below sticky /tmp, and fails closed on denied ACL inspection. QA source/Git preflight ACL selectors reject named access ACLs granting worker write, directory default ACLs, and denied ACL inspection, while allowing source trees without extended ACLs. The POSIX snapshot/output selector verifies worker-group inheritance without runner chown. The trusted PASS-line parser accepts only plain PASS and one-dot .PASS records and rejects arbitrary lookalike prefixes. The original S3 contract selectors remain included. Network API and report-runtime paths are excluded from this local functional category. Registry ancestry outcomes are additionally mapped for true ancestor, valid non-ancestor, unexpected Git exit, exhausted timeout retry, and invocation failure.",
       "owner_role": "functional-test-reviewer",
-      "source_head": "b96d78b682e7f8eb12d4dfddeb2ee20f8b26b42a",
+      "source_head": "c51105abfef72aceb295633bbdf637666ad843a2",
       "test_ids": [
         "tests/qa/test_s4_worker_exec.py::test_s4_worker_trampoline_drops_capabilities_before_manifest_exec",
         "tests/qa/test_s4_worker_boundary_contracts.py::test_s4_signer_guard_rejects_access_acl_on_socket",
@@ -16,6 +16,11 @@
         "tests/qa/test_s4_worker_boundary_contracts.py::test_s4_signer_guard_rejects_nonsticky_world_writable_ancestor",
         "tests/qa/test_s4_worker_boundary_contracts.py::test_s4_signer_guard_allows_runner_owned_entry_under_sticky_tmp",
         "tests/qa/test_s4_worker_boundary_contracts.py::test_s4_signer_guard_fails_closed_when_acl_inspection_is_denied",
+        "tests/qa/test_s4_worker_boundary_contracts.py::test_s4_qa_preflight_rejects_named_worker_acl_on_tracked_source[named-user]",
+        "tests/qa/test_s4_worker_boundary_contracts.py::test_s4_qa_preflight_rejects_named_worker_acl_on_tracked_source[named-group]",
+        "tests/qa/test_s4_worker_boundary_contracts.py::test_s4_qa_preflight_rejects_directory_default_acl",
+        "tests/qa/test_s4_worker_boundary_contracts.py::test_s4_qa_preflight_fails_closed_when_acl_inspection_is_denied",
+        "tests/qa/test_s4_worker_boundary_contracts.py::test_s4_qa_preflight_accepts_source_without_extended_acls",
         "tests/qa/test_s4_worker_boundary_contracts.py::test_s4_snapshot_and_qa_output_directories_inherit_worker_group",
         "tests/qa/test_s4_pass_line_parser.py::test_s4_pass_line_parser_accepts_one_quiet_dot_and_rejects_lookalikes",
         "tests/vst/test_s3_worker_adapter.py::test_ac1_request_contract_enforces_identity_fence_and_payload_bounds",

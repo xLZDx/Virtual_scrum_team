@@ -613,3 +613,7 @@ At source/test HEAD `7b0fe23`, ten focused selectors passed and the synthetic fu
 ## 2026-10-25 — Fail closed on QA source and Git ACLs
 
 A fresh security sweep found that the S4 read-only source/Git preflight could miss a named POSIX ACL granting worker UID write access while owner/group/other mode checks passed. Reject extended access ACLs on every candidate and default ACLs on directories using the shared fail-closed inspector. The fix is implemented but not yet tested; required mapped ACL regressions and fresh security review remain open. See change 0255.
+
+## 2026-10-25 — Map QA source/Git ACL regression selectors
+
+Map deterministic selectors for named user/group access ACLs, directory default ACLs, fail-closed inspection errors, and the no-ACL valid path. Pin functional source provenance to product fix `c51105a`; test execution is pending after the mapped commit. See change 0256.
