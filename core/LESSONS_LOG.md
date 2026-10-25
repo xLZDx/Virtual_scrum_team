@@ -569,3 +569,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — SHORTCOMING: the native runner treated inventory `NOT_RUN` rows as preflight blockers and skipped all eligible tests in affected categories. Rule: exclude prohibited IDs from the child command, execute eligible selectors, then report policy-only incompleteness as `INCONCLUSIVE`; any test/preflight error remains non-approving. See change 0252.
 
 2026-10-25 — S4 E2E baseline rule: synthetic candidates must archive the product commit that contains the behavior under review. Keep the fixture baseline exact and regenerate the selector registry after changing its source commit constant. See change 0253.
+
+2026-10-25 — S4 registry sequencing: after committing an E2E source baseline update, regenerate the manifest before testing; otherwise a correct product fix can still be blocked as stale test provenance. See change 0254.

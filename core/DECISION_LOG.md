@@ -449,3 +449,7 @@ At `11e231f`, the runner blocked integration and API before pytest because those
 ## 2026-10-25 — Pin the E2E synthetic baseline to the policy fix
 
 The E2E fixture now archives runner code from `f32c6e3`, where policy `NOT_RUN` is applied after eligible selectors execute. Its previous baseline did not include that behavior. Regenerate the registry after this test-source change. See change 0253.
+
+## 2026-10-25 — Regenerate the S4 registry after E2E baseline update
+
+The E2E source baseline changed in `653d10c`; the committed category manifest now reflects its source digest and commit provenance. Exact-head category execution remains pending. See change 0254.
