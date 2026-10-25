@@ -721,3 +721,7 @@ After test-source commit `c4f9cb9`, regenerate the category registry before reru
 ## 2026-10-25 — Add focused S4 dependency and WSL identity test coverage
 
 Designated GPT-6 Luna test agents added AC-17 dependency-provenance tests, the AC-16 POSIX worker-identity selector and WSL-only registry mapping, and two E2E/CLI contract tests. The focused runs passed 7/7 and 2/2 respectively at committed base `e792d2f`; AC-16 report-bound WSL execution remains `NOT_RUN`. The new test-source provenance must be committed before regenerating `docs/qa/categories.json`. Keep the 52 policy-excluded selectors unchanged. Change 0314 records the coverage and exact commands.
+
+## 2026-10-25 — Bind AC-16/AC-17 selectors to committed source provenance
+
+After test-source commit `5d1a8d599bec046da9b3afd36e697774e65ac49b`, `C:\Python314\python.exe -m tools.qa.build_registry --repo-root . --write` regenerated the S4 selector manifest. It includes the AC-16 selector only in the Ubuntu 24.04 WSL profile and preserves all 52 policy `NOT_RUN` rows. The manifest SHA-256 is `1105267d25cad88e31d57bd61aab8593a514adb7a0b52fad56c4dd5138f7c669`. Generation is inventory evidence only; WSL helper installation and report-bound runtime remain open. See change 0315.
