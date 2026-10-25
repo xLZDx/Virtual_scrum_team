@@ -87,6 +87,14 @@ try:
     if total == 0:
         raise SystemExit("source bundle is empty")
     os.replace(bundle_part, bundle_path)
+    # Create the repository root under the setgid run directory so the kernel
+    # assigns worker_gid and preserves setgid at creation time. chmod cannot
+    # reliably add setgid for a runner outside that group without CAP_FSETID.
+    repo_path.mkdir(mode=0o2750)
+    repo_info = repo_path.stat(follow_symlinks=False)
+    if (repo_info.st_uid != os.geteuid() or repo_info.st_gid != worker_gid or
+            stat.S_IMODE(repo_info.st_mode) != 0o2750):
+        raise SystemExit("source snapshot repository did not inherit the worker-group boundary")
     environment = {
         "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
         "HOME": str(run_path),
@@ -125,7 +133,6 @@ try:
     # The repository root is runner-owned and worker-group-readable, but the
     # worker must not be able to create files there. setgid carries the worker
     # group to the private QA output subtree created later by tools.qa.run.
-    os.chmod(repo_path, 0o2750)
     repo_info = repo_path.stat(follow_symlinks=False)
     if (repo_info.st_uid != os.geteuid() or repo_info.st_gid != worker_gid or
             stat.S_IMODE(repo_info.st_mode) != 0o2750):

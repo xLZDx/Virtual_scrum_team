@@ -565,3 +565,7 @@ After the S4 worker capability-drop fix, the read-only security review found tha
 ## 2026-10-25 — Map S4 ACL and artifact-group regressions before runtime retry
 
 Add functional selectors for access/default/traversed-parent ACLs, ACL inspection failure, and worker-group inheritance through the real snapshot receiver/output allocator. Pin category source provenance to code commit `cadd801`. Do not treat authoring or Windows skips as runtime evidence; execute the committed selectors on a fresh Ubuntu-24.04 WSL snapshot. See change 0243.
+
+## 2026-10-25 — Preserve snapshot setgid through creation-time inheritance
+
+The fresh snapshot at `415916e` failed because runner `chmod` could not set setgid on a worker-group repository root (`0750` observed). Keep the runner's capability set narrow; create the repository root below the pre-provisioned setgid run directory and verify inherited owner/group/mode before and after clone. Re-run exact-head snapshot and mapped tests before report-bound retry. See change 0244.
