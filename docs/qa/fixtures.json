@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "status": "NOT_RUN",
+  "reason": "Fixture inputs and consuming tests must be authored by the test roles after S4 coding is committed.",
+  "fixtures": []
+}

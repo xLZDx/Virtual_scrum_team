@@ -28,8 +28,8 @@ Python module APIs in `tools/vst/`.
   single CLI. `tools/qa/pytest_plugin.py` captures collection and per-case outcomes. Report
   normalization and digest validation live in `tools/qa/report.py`; synthetic negative inputs are
   data fixtures consumed through unchanged VST product interfaces.
-- The runner invokes pytest as a child using the explicitly selected interpreter and repository
-  lock (`tools/qa/requirements.lock`). The environment baseline is CPython 3.14.3. Pytest is pinned
+- The runner invokes pytest as a child using the approved interpreter `C:\Python314\python.exe` and
+  repository lock (`tools/qa/requirements.lock`). The environment baseline is CPython 3.14.3. Pytest is pinned
   to 9.0.3: the official 9.0.3 release supports Python 3.14 and its PyPI advisory record lists no
   vulnerabilities, while 8.4.2's record identifies a UNIX temporary-directory vulnerability fixed
   in 9.0.3. The transitive test-only packages are pinned and wheel-hash-locked from the official
@@ -45,9 +45,24 @@ Python module APIs in `tools/vst/`.
   receipt contract while retaining concrete pytest outcomes for audit.
 - Reports contain relative artifact paths, exact candidate HEAD, registry hash, lock hash,
   interpreter/tool versions, command, exit status, expected selectors, concrete collected and
-  executed node IDs, per-case outcomes, and a typed result. Volatile timestamps are excluded from
-  normalized report digests. Environment values, credentials, and user-specific absolute paths are
-  never serialized.
+  executed node IDs, per-case outcomes, and a typed result. Output logs are append-only per
+  category. Each report binds to the exact stdout/stderr byte ranges written by that invocation
+  and their chunk hashes; byte offsets and run timestamps are excluded from normalized report
+  digests so earlier log history does not change the current run's semantic digest. The fixed
+  paths are `docs/sdlc/evidence/qa/{category}.report.jsonl`, `{category}.stdout.txt`, and
+  `{category}.stderr.txt` for all six categories. Environment values, credentials, and user-specific
+  absolute paths are never serialized.
+
+When a QA invocation runs through VST, its exact task manifest must explicitly include the three
+output paths for that category in `change_scope.allowed_paths`. The manifest may additionally
+include the exact source paths and lock path required for that task. This per-invocation declaration
+does not widen or change VST diffgate rules. The runner rejects any output path other than the fixed
+category paths.
+
+New QA contract tests belong under `tests/qa/` and use the `test_s4_` filename convention. The
+deterministic registry builder classifies those files into the matching S4 lane; seeded-failure
+tests use `tests/qa/seeded_failure/` or the `test_s4_seeded_failure` prefix. Unknown test paths fail
+registry generation rather than silently receiving a category.
 
 ## Failure modes
 
