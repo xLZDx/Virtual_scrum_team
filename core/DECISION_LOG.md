@@ -461,3 +461,7 @@ At exact candidate HEAD `ba43fd6`, the API category failed before pytest startup
 ## 2026-10-25 — Test category filtering and bounded selector invocation
 
 Added designated-agent tests for bounded argv, exact selector-file maps, category/policy filtering, unknown-selector fail-closed behavior, and all audited E4 termination selectors. The E2E fixture is pinned to product commit `7a0c8d4`. Test execution remains pending until the selector registry is regenerated. See change 0256.
+
+## 2026-10-25 — Refresh S4 selector inventory after test-source commit
+
+Regenerated the category manifest after test-source commit `c80357e`; the manifest now binds those sources and includes the expanded E4 policy `NOT_RUN` inventory. Exact-head test execution remains pending. See change 0257.

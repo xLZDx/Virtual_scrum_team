@@ -575,3 +575,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — SHORTCOMING: an implementation agent ran `git diff --check` before coding was complete despite the test/check phase restriction. It returned 0 and made no changes. Rule: agents must treat the no-check instruction as applying to all check commands, including diff hygiene; review diffs by reading until coding is complete. See change 0255.
 
 2026-10-25 — S4 selector test provenance rule: bind synthetic E2E fixtures to the exact committed product implementation and verify the baseline object exists before execution; a mistyped SHA leaves the fixture unable to archive its source. Corrected before testing. See change 0256.
+
+2026-10-25 — S4 registry refresh sequence: commit designated test sources first, then regenerate `categories.json` so test hashes and source provenance match immutable Git objects. Exact-head execution follows only after this refresh is committed. See change 0257.

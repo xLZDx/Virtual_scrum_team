@@ -33,12 +33,12 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "ba43fd6724783dabe9ba8aee3c520a1f84d91ff0",
+  "source_head": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
   "source_inventory": [
     {
       "path": "tests/qa/test_s4_e2e_runner_cli.py",
-      "source_commit": "653d10c862198fe946eb362ff78cba2fedcae925",
-      "sha256": "03edc0fe0412dbeb452ec6193381956470f8e8240da751ea8af8ee8dc1e3b7a9"
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
+      "sha256": "4948f85f0167b4924042f8d666fe6920d71bbc7dff803508d26c8a5cf62f6e64"
     },
     {
       "path": "tests/qa/test_s4_functional_report_contracts.py",
@@ -47,8 +47,8 @@
     },
     {
       "path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
-      "sha256": "b85506b2a7196bb97b8fc94c7007543166ab3c1567d23b80d3e3e21e9b1b6fbe"
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
+      "sha256": "78c65b01afc452ff505bb1f133aa2c585322dfa8d5dda6896fe77925865de1e6"
     },
     {
       "path": "tests/qa/test_s4_seeded_failure_contracts.py",
@@ -131,70 +131,77 @@
       "test_id": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_blocks_dirty_tracked_candidate_before_native_collection",
       "selector": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_blocks_dirty_tracked_candidate_before_native_collection",
       "source_path": "tests/qa/test_s4_e2e_runner_cli.py",
-      "source_commit": "653d10c862198fe946eb362ff78cba2fedcae925",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "e2e"
     },
     {
       "test_id": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_fails_closed_on_output_truncation",
       "selector": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_fails_closed_on_output_truncation",
       "source_path": "tests/qa/test_s4_e2e_runner_cli.py",
-      "source_commit": "653d10c862198fe946eb362ff78cba2fedcae925",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "e2e"
     },
     {
       "test_id": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_native_collection_binds_candidate_and_repeatable_artifact_chunks",
       "selector": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_native_collection_binds_candidate_and_repeatable_artifact_chunks",
       "source_path": "tests/qa/test_s4_e2e_runner_cli.py",
-      "source_commit": "653d10c862198fe946eb362ff78cba2fedcae925",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "e2e"
     },
     {
       "test_id": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_preserves_sandbox_dependent_selector_as_not_run",
       "selector": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_preserves_sandbox_dependent_selector_as_not_run",
       "source_path": "tests/qa/test_s4_e2e_runner_cli.py",
-      "source_commit": "653d10c862198fe946eb362ff78cba2fedcae925",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "e2e"
     },
     {
       "test_id": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_refuses_candidate_head_and_registry_selector_mismatches",
       "selector": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_refuses_candidate_head_and_registry_selector_mismatches",
       "source_path": "tests/qa/test_s4_e2e_runner_cli.py",
-      "source_commit": "653d10c862198fe946eb362ff78cba2fedcae925",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "e2e"
     },
     {
       "test_id": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_refuses_registry_with_a_missing_selector",
       "selector": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_refuses_registry_with_a_missing_selector",
       "source_path": "tests/qa/test_s4_e2e_runner_cli.py",
-      "source_commit": "653d10c862198fe946eb362ff78cba2fedcae925",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "e2e"
     },
     {
       "test_id": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_rejects_artifact_path_outside_fixed_contract",
       "selector": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_rejects_artifact_path_outside_fixed_contract",
       "source_path": "tests/qa/test_s4_e2e_runner_cli.py",
-      "source_commit": "653d10c862198fe946eb362ff78cba2fedcae925",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "e2e"
     },
     {
       "test_id": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_rejects_uncollected_duplicate_skipped_or_xfailed_selector",
       "selector": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_rejects_uncollected_duplicate_skipped_or_xfailed_selector",
       "source_path": "tests/qa/test_s4_e2e_runner_cli.py",
-      "source_commit": "653d10c862198fe946eb362ff78cba2fedcae925",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "e2e"
     },
     {
       "test_id": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_reports_missing_dependency_without_fallback_or_child_invocation",
       "selector": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_reports_missing_dependency_without_fallback_or_child_invocation",
       "source_path": "tests/qa/test_s4_e2e_runner_cli.py",
-      "source_commit": "653d10c862198fe946eb362ff78cba2fedcae925",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "e2e"
     },
     {
       "test_id": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_timeout_is_nonapproving_without_install_or_fallback",
       "selector": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_timeout_is_nonapproving_without_install_or_fallback",
       "source_path": "tests/qa/test_s4_e2e_runner_cli.py",
-      "source_commit": "653d10c862198fe946eb362ff78cba2fedcae925",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
+      "primary_category": "e2e"
+    },
+    {
+      "test_id": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_pytest_argv_size_depends_on_source_files_not_selector_count",
+      "selector": "tests/qa/test_s4_e2e_runner_cli.py::test_s4_pytest_argv_size_depends_on_source_files_not_selector_count",
+      "source_path": "tests/qa/test_s4_e2e_runner_cli.py",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "e2e"
     },
     {
@@ -247,206 +254,227 @@
       "primary_category": "functional"
     },
     {
+      "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_audited_e4_terminating_selectors_remain_not_run",
+      "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_audited_e4_terminating_selectors_remain_not_run",
+      "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
+      "primary_category": "functional"
+    },
+    {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_catalog_rejects_malformed_or_approving_rows",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_catalog_rejects_malformed_or_approving_rows",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_catalog_requires_hash_and_registered_seed_selector",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_catalog_requires_hash_and_registered_seed_selector",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_is_bound_to_exact_seed_test_node",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_is_bound_to_exact_seed_test_node",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_rejects_a_different_nonapproving_outcome",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_rejects_a_different_nonapproving_outcome",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_rejects_duplicate_observation",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_rejects_duplicate_observation",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_rejects_wrong_node_binding",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_rejects_wrong_node_binding",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_main_reports_wrong_interpreter_as_blocked_without_spawning_pytest",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_main_reports_wrong_interpreter_as_blocked_without_spawning_pytest",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
+      "primary_category": "functional"
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_plugin_filters_known_other_category_and_policy_but_keeps_unknown",
+      "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_plugin_filters_known_other_category_and_policy_but_keeps_unknown",
+      "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_plugin_maps_parameter_instances_to_one_registered_function_selector",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_plugin_maps_parameter_instances_to_one_registered_function_selector",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_plugin_maps_unittest_concrete_method_to_class_selector",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_plugin_maps_unittest_concrete_method_to_class_selector",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_process_death_selectors_are_declared_not_run_by_policy",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_process_death_selectors_are_declared_not_run_by_policy",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
+      "primary_category": "functional"
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_pytest_command_bounds_argv_for_hundreds_of_selectors",
+      "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_pytest_command_bounds_argv_for_hundreds_of_selectors",
+      "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_accepts_real_committed_selector_denominator",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_accepts_real_committed_selector_denominator",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_duplicate_selector_before_acceptance",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_duplicate_selector_before_acceptance",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_linked_source_path_escape",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_linked_source_path_escape",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_missing_or_unknown_static_selector",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_missing_or_unknown_static_selector",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_noncanonical_source_path",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_noncanonical_source_path",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_source_changed_after_manifest_digest",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_source_changed_after_manifest_digest",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_source_head_outside_candidate_history",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_source_head_outside_candidate_history",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_test_assigned_to_wrong_primary_category",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_test_assigned_to_wrong_primary_category",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_source_digest_is_stable_across_checkout_line_endings",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_source_digest_is_stable_across_checkout_line_endings",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_resolve_cases_classifies_skipped_xfail_xpass_missing_and_unexpected",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_resolve_cases_classifies_skipped_xfail_xpass_missing_and_unexpected",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_resolve_cases_fails_closed_on_malformed_events",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_resolve_cases_fails_closed_on_malformed_events",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_resolve_cases_rejects_duplicate_concrete_node_ids",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_resolve_cases_rejects_duplicate_concrete_node_ids",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_resolve_cases_reports_uncollected_required_selector_and_plugin_diagnostics",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_resolve_cases_reports_uncollected_required_selector_and_plugin_diagnostics",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_identifies_missing_locked_distribution",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_identifies_missing_locked_distribution",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_refuses_an_unapproved_interpreter",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_refuses_an_unapproved_interpreter",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_rejects_artifacts_outside_fixed_category_paths",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_rejects_artifacts_outside_fixed_category_paths",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_rejects_noncanonical_artifact_paths",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_rejects_noncanonical_artifact_paths",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_reports_missing_dependency_lock_as_typed_failure",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_reports_missing_dependency_lock_as_typed_failure",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_source_parser_maps_functions_unittest_classes_and_inherited_methods",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_source_parser_maps_functions_unittest_classes_and_inherited_methods",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "d4464792633b5552cfa3c5bb2f4b6cb45ef03625",
+      "source_commit": "c80357e8c3d84e477ec969b4af88c422bc3fcdee",
       "primary_category": "functional"
     },
     {
@@ -6446,6 +6474,7 @@
         "tests/qa/test_s4_functional_report_contracts.py::test_s4_run_output_records_reproducible_digests_for_stdout_and_stderr",
         "tests/qa/test_s4_functional_report_contracts.py::test_s4_runner_command_selection_is_exact_and_does_not_install_packages",
         "tests/qa/test_s4_functional_report_contracts.py::test_s4_runner_rejects_empty_selector_invocation",
+        "tests/qa/test_s4_functional_runner_contracts.py::test_s4_audited_e4_terminating_selectors_remain_not_run",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_catalog_rejects_malformed_or_approving_rows",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_catalog_requires_hash_and_registered_seed_selector",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_is_bound_to_exact_seed_test_node",
@@ -6453,9 +6482,11 @@
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_rejects_duplicate_observation",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_rejects_wrong_node_binding",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_main_reports_wrong_interpreter_as_blocked_without_spawning_pytest",
+        "tests/qa/test_s4_functional_runner_contracts.py::test_s4_plugin_filters_known_other_category_and_policy_but_keeps_unknown",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_plugin_maps_parameter_instances_to_one_registered_function_selector",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_plugin_maps_unittest_concrete_method_to_class_selector",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_process_death_selectors_are_declared_not_run_by_policy",
+        "tests/qa/test_s4_functional_runner_contracts.py::test_s4_pytest_command_bounds_argv_for_hundreds_of_selectors",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_accepts_real_committed_selector_denominator",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_duplicate_selector_before_acceptance",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_linked_source_path_escape",
@@ -7363,6 +7394,7 @@
         "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_rejects_uncollected_duplicate_skipped_or_xfailed_selector",
         "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_reports_missing_dependency_without_fallback_or_child_invocation",
         "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_timeout_is_nonapproving_without_install_or_fallback",
+        "tests/qa/test_s4_e2e_runner_cli.py::test_s4_pytest_argv_size_depends_on_source_files_not_selector_count",
         "tests/vst/test_e5_slice.py::SliceCliTests::test_cli_report_equals_the_in_process_report",
         "tests/vst/test_e5_slice.py::SliceCliTests::test_cli_runs_end_to_end_and_reports_all_twenty_three_scenarios",
         "tests/vst/test_e5_slice.py::SliceCliTests::test_cli_with_too_many_arguments_exits_two",
@@ -7436,6 +7468,7 @@
         "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_rejects_artifact_path_outside_fixed_contract",
         "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_rejects_uncollected_duplicate_skipped_or_xfailed_selector",
         "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_reports_missing_dependency_without_fallback_or_child_invocation",
+        "tests/qa/test_s4_e2e_runner_cli.py::test_s4_pytest_argv_size_depends_on_source_files_not_selector_count",
         "tests/qa/test_s4_functional_report_contracts.py::test_s4_artifact_chunk_hashes_are_stable_and_ranges_bind_each_append",
         "tests/qa/test_s4_functional_report_contracts.py::test_s4_base_status_keeps_unknown_and_unrun_categories_non_approving",
         "tests/qa/test_s4_functional_report_contracts.py::test_s4_normalized_report_digest_ignores_only_declared_run_volatile_fields",
@@ -7443,6 +7476,7 @@
         "tests/qa/test_s4_functional_report_contracts.py::test_s4_run_output_records_reproducible_digests_for_stdout_and_stderr",
         "tests/qa/test_s4_functional_report_contracts.py::test_s4_runner_command_selection_is_exact_and_does_not_install_packages",
         "tests/qa/test_s4_functional_report_contracts.py::test_s4_runner_rejects_empty_selector_invocation",
+        "tests/qa/test_s4_functional_runner_contracts.py::test_s4_audited_e4_terminating_selectors_remain_not_run",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_catalog_rejects_malformed_or_approving_rows",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_catalog_requires_hash_and_registered_seed_selector",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_is_bound_to_exact_seed_test_node",
@@ -7450,9 +7484,11 @@
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_rejects_duplicate_observation",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_rejects_wrong_node_binding",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_main_reports_wrong_interpreter_as_blocked_without_spawning_pytest",
+        "tests/qa/test_s4_functional_runner_contracts.py::test_s4_plugin_filters_known_other_category_and_policy_but_keeps_unknown",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_plugin_maps_parameter_instances_to_one_registered_function_selector",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_plugin_maps_unittest_concrete_method_to_class_selector",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_process_death_selectors_are_declared_not_run_by_policy",
+        "tests/qa/test_s4_functional_runner_contracts.py::test_s4_pytest_command_bounds_argv_for_hundreds_of_selectors",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_accepts_real_committed_selector_denominator",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_duplicate_selector_before_acceptance",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_linked_source_path_escape",
