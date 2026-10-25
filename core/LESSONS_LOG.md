@@ -649,3 +649,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — FAILURE: A fresh security review found that the QA source/Git read-only preflight checked mode bits but did not inspect named POSIX ACLs. A worker-specific ACL could grant write while owner/group/other checks passed. The review caught it; implementation adds fail-closed ACL inspection on each candidate and default ACLs on directories. Add mapped named-ACL regressions and re-review before treating exact-head acceptance as current. See change 0255.
 
 2026-10-25 — After a security fix to the QA source boundary, map tests that isolate ACL denial from mode-bit checks, including named user/group grants, default ACL inheritance, inspection failure, and the valid ACL-free path. Pin the category source head to the product fix before exact-head runtime verification. See change 0256.
+
+2026-10-25 — Synthetic xattr tests should not require platform APIs to exist before monkeypatching them. Keep the fixture portable while leaving production inspection fail-closed; record interim test evidence with its dirty note and rerun at a clean head. See change 0257.

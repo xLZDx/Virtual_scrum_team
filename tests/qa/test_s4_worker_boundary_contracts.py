@@ -76,7 +76,7 @@ def test_s4_qa_preflight_rejects_named_worker_acl_on_tracked_source(
             return f"synthetic-{acl_kind}-acl-grants-worker-write".encode()
         return _no_acl(path, attribute, follow_symlinks=follow_symlinks)
 
-    monkeypatch.setattr(sandbox.os, "getxattr", getxattr)
+    monkeypatch.setattr(sandbox.os, "getxattr", getxattr, raising=False)
     with pytest.raises(ContractError, match="extended POSIX ACL"):
         qa_run._require_worker_source_read_only(root, _WORKER_UID, _WORKER_GID)
 
@@ -90,7 +90,7 @@ def test_s4_qa_preflight_rejects_directory_default_acl(tmp_path, monkeypatch):
             return b"synthetic-default-acl-grants-worker-write-to-children"
         return _no_acl(path, attribute, follow_symlinks=follow_symlinks)
 
-    monkeypatch.setattr(sandbox.os, "getxattr", getxattr)
+    monkeypatch.setattr(sandbox.os, "getxattr", getxattr, raising=False)
     with pytest.raises(ContractError, match="extended POSIX ACL"):
         qa_run._require_worker_source_read_only(root, _WORKER_UID, _WORKER_GID)
 
@@ -102,7 +102,7 @@ def test_s4_qa_preflight_fails_closed_when_acl_inspection_is_denied(tmp_path, mo
     def denied(path, _attribute, *, follow_symlinks=True):
         raise OSError(errno.EPERM, "ACL inspection denied", os.fspath(path))
 
-    monkeypatch.setattr(sandbox.os, "getxattr", denied)
+    monkeypatch.setattr(sandbox.os, "getxattr", denied, raising=False)
     with pytest.raises(ContractError, match="ACL inspection failed"):
         qa_run._require_worker_source_read_only(root, _WORKER_UID, _WORKER_GID)
 
@@ -110,7 +110,7 @@ def test_s4_qa_preflight_fails_closed_when_acl_inspection_is_denied(tmp_path, mo
 def test_s4_qa_preflight_accepts_source_without_extended_acls(tmp_path, monkeypatch):
     root, _tracked = _source_tree(tmp_path)
     _isolate_mode_bits(monkeypatch)
-    monkeypatch.setattr(sandbox.os, "getxattr", _no_acl)
+    monkeypatch.setattr(sandbox.os, "getxattr", _no_acl, raising=False)
 
     assert qa_run._require_worker_source_read_only(
         root, _WORKER_UID, _WORKER_GID,

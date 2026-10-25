@@ -617,3 +617,7 @@ A fresh security sweep found that the S4 read-only source/Git preflight could mi
 ## 2026-10-25 — Map QA source/Git ACL regression selectors
 
 Map deterministic selectors for named user/group access ACLs, directory default ACLs, fail-closed inspection errors, and the no-ACL valid path. Pin functional source provenance to product fix `c51105a`; test execution is pending after the mapped commit. See change 0256.
+
+## 2026-10-25 — Make synthetic ACL xattr tests portable
+
+The local CPython 3.14 run passed five targeted preflight selectors after making the synthetic `os.getxattr` monkeypatch tolerate platforms where that attribute does not exist. The production helper remains fail-closed. This interim run had a dirty test file at `eb5187b`; repeat on the committed exact test head. See change 0257.
