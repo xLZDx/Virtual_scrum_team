@@ -64,10 +64,7 @@ def _isolate_mode_bits(monkeypatch):
     monkeypatch.setattr(qa_run, "_worker_writable", lambda *_args: False)
 
 
-@pytest.mark.parametrize("acl_kind", ["named-user", "named-group"])
-def test_s4_qa_preflight_rejects_named_worker_acl_on_tracked_source(
-    tmp_path, monkeypatch, acl_kind
-):
+def _assert_named_source_acl_rejected(tmp_path, monkeypatch, acl_kind):
     root, tracked = _source_tree(tmp_path)
     _isolate_mode_bits(monkeypatch)
 
@@ -79,6 +76,14 @@ def test_s4_qa_preflight_rejects_named_worker_acl_on_tracked_source(
     monkeypatch.setattr(sandbox.os, "getxattr", getxattr, raising=False)
     with pytest.raises(ContractError, match="extended POSIX ACL"):
         qa_run._require_worker_source_read_only(root, _WORKER_UID, _WORKER_GID)
+
+
+def test_s4_qa_preflight_rejects_named_user_acl_on_tracked_source(tmp_path, monkeypatch):
+    _assert_named_source_acl_rejected(tmp_path, monkeypatch, "named-user")
+
+
+def test_s4_qa_preflight_rejects_named_group_acl_on_tracked_source(tmp_path, monkeypatch):
+    _assert_named_source_acl_rejected(tmp_path, monkeypatch, "named-group")
 
 
 def test_s4_qa_preflight_rejects_directory_default_acl(tmp_path, monkeypatch):

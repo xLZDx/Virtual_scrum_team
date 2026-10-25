@@ -651,3 +651,7 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — After a security fix to the QA source boundary, map tests that isolate ACL denial from mode-bit checks, including named user/group grants, default ACL inheritance, inspection failure, and the valid ACL-free path. Pin the category source head to the product fix before exact-head runtime verification. See change 0256.
 
 2026-10-25 — Synthetic xattr tests should not require platform APIs to exist before monkeypatching them. Keep the fixture portable while leaving production inspection fail-closed; record interim test evidence with its dirty note and rerun at a clean head. See change 0257.
+
+2026-10-25 — Keep synthetic ACL unit evidence separate from real POSIX/WSL boundary proof. A clean Windows exact-head run can verify the guard's fail-closed decision, but Linux ACL and sandbox behavior still require the designated WSL runtime. See change 0258.
+
+2026-10-25 — FAILURE: The new functional mapping initially used parametrized pytest node IDs, but the static registry resolver rejects bracketed parameters by contract. I caught this while auditing the exact registry behavior before the outer functional CLI run. Use separate static test functions instead of broadening the resolver; mark the prior unit run interim-only and rerun the corrected mapping. See change 0258.

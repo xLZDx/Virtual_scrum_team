@@ -621,3 +621,11 @@ Map deterministic selectors for named user/group access ACLs, directory default 
 ## 2026-10-25 — Make synthetic ACL xattr tests portable
 
 The local CPython 3.14 run passed five targeted preflight selectors after making the synthetic `os.getxattr` monkeypatch tolerate platforms where that attribute does not exist. The production helper remains fail-closed. This interim run had a dirty test file at `eb5187b`; repeat on the committed exact test head. See change 0257.
+
+## 2026-10-25 — Record clean-head ACL preflight unit evidence
+
+At clean test HEAD `97c2c24`, the focused ACL source-preflight selectors passed 5/5 under CPython 3.14.3 on Windows (12 selected/deselected total accounting: 5 passed, 7 deselected). The selectors use synthetic xattrs and do not prove Linux ACL semantics. Fresh WSL runtime and security re-review remain required. See change 0258 and `docs/sdlc/evidence/s4-source-acl-preflight-97c2c24.md`.
+
+## 2026-10-25 — Correct ACL test IDs to match static registry contract
+
+Reviewing the committed category resolver after the interim unit run showed it rejects parametrized node IDs by design. Replace the parameterized named-ACL regression with two ordinary source-resolvable selectors and update the mapping. The prior Windows run is retained as interim-only evidence; rerun the corrected mapping at a clean head. See change 0258.
