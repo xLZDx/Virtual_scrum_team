@@ -20,6 +20,7 @@ def test_api_validate_task_manifest_v2_rejects_missing_contract_fields():
 def test_api_acquire_epoch_idempotent_replay_keeps_one_new_epoch(tmp_path):
     store, _, epoch = new_env(str(tmp_path / "epoch.db"))
     try:
+        store.release_epoch(STORY, "owner-a")
         acquired = store.acquire_epoch_idempotent(
             "epoch-op-1", STORY, epoch, "owner-b", 30,
         )
