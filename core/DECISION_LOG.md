@@ -445,3 +445,7 @@ The Windows junction/POSIX symlink test is now committed under a truthful linked
 ## 2026-10-25 — Run eligible selectors before applying policy NOT_RUN outcome
 
 At `11e231f`, the runner blocked integration and API before pytest because those inventories include policy `NOT_RUN` selectors. The functional category passed. Policy rows should remain excluded and visible, while eligible tests execute; only after a clean eligible run should policy-only incompleteness yield `INCONCLUSIVE`. See change 0252.
+
+## 2026-10-25 — Pin the E2E synthetic baseline to the policy fix
+
+The E2E fixture now archives runner code from `f32c6e3`, where policy `NOT_RUN` is applied after eligible selectors execute. Its previous baseline did not include that behavior. Regenerate the registry after this test-source change. See change 0253.
