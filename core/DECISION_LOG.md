@@ -417,3 +417,7 @@ Synthetic candidate repositories must include minimal Python cache ignore rules 
 ## 2026-10-25 — Use the canonical CPython implementation display name
 
 The S4 exact-head runtime report recorded CPython 3.14.3 at the approved executable but seven CLI cases were blocked because `sys.implementation.name` (`cpython`) was compared with `CPython`. Use `platform.python_implementation()` for the display-name check and preserve the separate path/version checks. The report also showed expected Python caches dirtying the synthetic fixture; change 0244 adds narrow ignores. See change 0245.
+
+## 2026-10-25 — Keep S4 failure fixtures inside valid Git and QA-plugin contexts
+
+The source-head negative test now uses an existing but unreachable commit object so Git can distinguish non-ancestry from an invalid object query. E2E synthetic candidates now archive the committed CPython fix. Seeded fixture observations remain runner-only and must be exercised through the QA plugin; direct pytest is not evidence for that category. See change 0246.

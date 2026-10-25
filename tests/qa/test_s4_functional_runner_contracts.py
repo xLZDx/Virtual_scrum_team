@@ -27,6 +27,15 @@ def _git(root: Path, *args: str) -> None:
     )
 
 
+def _git_output(root: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", *args], cwd=root, check=True,
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, shell=False,
+    )
+    return result.stdout.strip()
+
+
 def _build_candidate_repo(tmp_path: Path, *, include_seeded: bool = True) -> tuple[Path, dict]:
     """Build a tiny committed QA repository so registry checks use real Git provenance."""
     root = tmp_path / "candidate"
@@ -137,8 +146,12 @@ def test_s4_registry_rejects_source_changed_after_manifest_digest(candidate_repo
 
 def test_s4_registry_rejects_source_head_outside_candidate_history(candidate_repo):
     root, manifest = candidate_repo
+    tree = _git_output(root, "rev-parse", "HEAD^{tree}")
+    unreachable_commit = _git_output(
+        root, "commit-tree", tree, "-m", "valid commit outside candidate history"
+    )
     changed = copy.deepcopy(manifest)
-    changed["source_head"] = "0" * 40
+    changed["source_head"] = unreachable_commit
     _rewrite_manifest(root, changed)
 
     with pytest.raises(registry.RegistryError, match="source_head is not an ancestor"):
