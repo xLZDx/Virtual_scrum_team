@@ -143,6 +143,44 @@ def test_s4_registry_loader_rejects_noncanonical_path_even_when_ast_target_exist
         registry.load_registry(tmp_path)
 
 
+def test_s4_registry_rejects_test_source_over_one_mib_before_ast_parse(tmp_path, monkeypatch):
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    source = (
+        b"#" + b"x" * registry.MAX_TEST_SOURCE_BYTES
+        + b"\ndef test_large_source():\n    pass\n"
+    )
+    (tests_dir / "large.py").write_bytes(source)
+    ast_called = False
+
+    def unexpected_parse(*args, **kwargs):
+        nonlocal ast_called
+        ast_called = True
+        raise AssertionError("oversized source must be rejected before AST parsing")
+
+    monkeypatch.setattr(registry.ast, "parse", unexpected_parse)
+
+    assert not registry._pytest_node_id_exists(tmp_path, "tests/large.py::test_large_source")
+    assert not ast_called
+
+
+def test_s4_registry_treats_recursion_error_during_ast_parse_as_unresolved(tmp_path, monkeypatch):
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "recursive.py").write_text(
+        "def test_recursive_source():\n    pass\n", encoding="utf-8"
+    )
+
+    def recursive_parse(*args, **kwargs):
+        raise RecursionError("synthetic parser recursion exhaustion")
+
+    monkeypatch.setattr(registry.ast, "parse", recursive_parse)
+
+    assert not registry._pytest_node_id_exists(
+        tmp_path, "tests/recursive.py::test_recursive_source"
+    )
+
+
 def test_s4_registry_rejects_supported_category_without_required_ids(monkeypatch):
     candidate = _registry_fixture()
     candidate["categories"]["functional"]["test_ids"] = []
