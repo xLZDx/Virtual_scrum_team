@@ -25,7 +25,9 @@ S4's exact lock must be usable without installing packages into the global `C:\P
 
 ## Verification state
 
-- Static source inspection only. No tests, checks, build, CI, package installation, or runtime command was run.
+- Static source inspection only; no tests, checks, build, CI, or runner execution was performed.
+- Environment preparation command: `C:\Python314\python.exe -m pip install --require-hashes --no-deps --only-binary=:all: --target %TEMP%\virtual_scrum_team_qa_f4ef8e7 -r tools/qa/requirements.lock`.
+- Pip reported successful installation of pytest 9.0.3, pluggy 1.6.0, packaging 26.2, iniconfig 2.3.0, Pygments 2.20.0, and colorama 0.4.6, using cached wheels. `--require-hashes` verified the lock hashes. The target is external to the repository.
 - No global Python installation was modified.
 - The previously existing untracked `docs/sdlc/evidence/s2-functional-test-run.md` remains untouched and unstaged.
 
