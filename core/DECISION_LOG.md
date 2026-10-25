@@ -473,3 +473,7 @@ The S5 plan previously described the S4 seeded-failure catalog as uncommitted. C
 ## 2026-10-25 — Separate semantic report digest from exact output chunk metadata
 
 At exact candidate HEAD `d1bd2cf`, the repeated synthetic E2E run exposed that elapsed-time text in raw pytest stdout changes per-run artifact hashes and sizes even when selector results are the same. Keep exact sizes and hashes in each report and verify them against captured byte ranges, but exclude those per-run output fields from the cross-run semantic digest. See change 0259.
+
+## 2026-10-25 — Correct stale S4 test expectations after exact-head execution
+
+The first complete exact-head suite showed failures caused by old test contracts for CLI argv, plugin selection schema, waiver scope and store schema version. Tests were updated against the current committed contracts; these changes remain unrun until the manifest is refreshed. See change 0260.

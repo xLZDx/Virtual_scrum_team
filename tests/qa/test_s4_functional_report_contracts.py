@@ -40,6 +40,51 @@ def test_s4_normalized_report_digest_ignores_only_declared_run_volatile_fields()
     assert first_bytes.endswith(b"\n") and second_bytes.endswith(b"\n")
 
 
+def test_s4_normalized_digest_excludes_raw_artifact_hashes_but_preserves_range_integrity(
+    tmp_path: Path,
+):
+    payloads = (b"stdout A\n", b"stdout B has more bytes\n")
+    reports = []
+    artifact_paths = []
+    for index, payload in enumerate(payloads):
+        artifact_path = tmp_path / f"capture-{index}.stdout"
+        capture = run._append_raw_artifact(artifact_path, payload)
+        artifact_paths.append(artifact_path)
+        reports.append({
+            "schema_version": 1,
+            "candidate_head": "a" * 40,
+            "result": "PASS",
+            "reasons": [],
+            "artifact_digests": {"stdout": capture["sha256"]},
+            "artifact_sizes": {"stdout": capture["size"]},
+            "artifact_ranges": {
+                "stdout": {"start": capture["start"], "end": capture["end"]}
+            },
+            "run_id": "same-run-shape",
+            "duration_seconds": 1.0,
+            "created_utc": "2026-10-25T00:00:00Z",
+            "normalized_sha256": None,
+        })
+
+    for artifact_path, report_row in zip(artifact_paths, reports):
+        byte_range = report_row["artifact_ranges"]["stdout"]
+        captured_bytes = artifact_path.read_bytes()[byte_range["start"]:byte_range["end"]]
+        assert hashlib.sha256(captured_bytes).hexdigest() == report_row["artifact_digests"]["stdout"]
+        assert len(captured_bytes) == report_row["artifact_sizes"]["stdout"]
+        assert byte_range["end"] - byte_range["start"] == report_row["artifact_sizes"]["stdout"]
+
+    first_bytes = report.encode_report(reports[0])
+    second_bytes = report.encode_report(reports[1])
+
+    assert reports[0]["artifact_digests"] != reports[1]["artifact_digests"]
+    assert reports[0]["artifact_sizes"] != reports[1]["artifact_sizes"]
+    assert reports[0]["normalized_sha256"] == reports[1]["normalized_sha256"]
+    assert json.loads(first_bytes)["artifact_digests"] == reports[0]["artifact_digests"]
+    assert json.loads(second_bytes)["artifact_digests"] == reports[1]["artifact_digests"]
+    assert json.loads(first_bytes)["artifact_sizes"] == reports[0]["artifact_sizes"]
+    assert json.loads(second_bytes)["artifact_sizes"] == reports[1]["artifact_sizes"]
+
+
 def test_s4_artifact_chunk_hashes_are_stable_and_ranges_bind_each_append(tmp_path: Path):
     payload = b"PASS tests/qa/test_contract.py::test_example\n"
     path = tmp_path / "stdout.txt"
@@ -120,11 +165,15 @@ def test_s4_runner_command_selection_is_exact_and_does_not_install_packages(tmp_
         invocations.append((argv, child_env))
         selections.append(selection)
 
+    expected_map = {test_id: test_id for test_id in ids}
     assert selections[0] == selections[1] == {
-        "schema_version": 1, "selectors": {test_id: test_id for test_id in ids}
+        "schema_version": 2,
+        "expected_selectors": expected_map,
+        "known_selectors": expected_map,
     }
     for argv, child_env in invocations:
-        assert argv[-len(ids):] == ids
+        assert argv[-1:] == ["tests/qa/test_case.py"]
+        assert not set(ids).intersection(argv)
         assert argv[1:4] == ["-m", "pytest", "-q"]
         assert child_env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] == "1"
         assert child_env["PYTHONPATH"] == str(dependency_target)

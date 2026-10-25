@@ -266,7 +266,7 @@ def test_s4_plugin_maps_parameter_instances_to_one_registered_function_selector(
     selector = "tests/qa/test_parameterized.py::test_color"
     plugin = object.__new__(pytest_plugin._QAPlugin)
     plugin.repo_root = tmp_path.resolve()
-    plugin.selector_map = {selector: selector}
+    plugin.known_selector_values = {selector}
     plugin.collected = {}
     plugin.outcomes = {}
     plugin.duplicates = []
@@ -293,7 +293,7 @@ def test_s4_plugin_maps_unittest_concrete_method_to_class_selector(tmp_path: Pat
     selector = "tests/qa/test_unittest_cases.py::TestSuite::test_method"
     plugin = object.__new__(pytest_plugin._QAPlugin)
     plugin.repo_root = tmp_path.resolve()
-    plugin.selector_map = {selector: selector}
+    plugin.known_selector_values = {selector}
     plugin.collected = {}
     plugin.outcomes = {}
     plugin.duplicates = []

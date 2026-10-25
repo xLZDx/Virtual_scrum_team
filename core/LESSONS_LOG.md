@@ -581,3 +581,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — Sprint readiness records must separate committed test/catalog source from runtime acceptance. Update stale cross-sprint status from canonical evidence without upgrading authored coverage to a pass. See change 0258.
 
 2026-10-25 — SHORTCOMING: the first S4 repeated-run fixture required raw stdout chunk hashes to remain equal across independent executions, although pytest output carries elapsed time. Preserve exact per-run byte-range, size, and SHA-256 integrity; exclude those run-specific output fields from the semantic result digest. See change 0259.
+
+2026-10-25 — SHORTCOMING: a test-authoring agent ran `git diff --check` once despite the no-check instruction; it produced no output and changed no files. Rule: test authors must not run any command labelled as a check before coding and authorship are complete. Separately, an exact baseline SHA sent by the coordinator was mistyped and corrected by `git rev-parse HEAD` before use. Always verify full commit IDs from the canonical checkout immediately before sharing them. See change 0260.

@@ -20,7 +20,7 @@ from pathlib import Path, PurePosixPath
 import pytest
 
 
-BASELINE_HEAD = "7a0c8d4e33e8db3ddb141e66fb93becf2fb0a5e1"
+BASELINE_HEAD = "f0c91163ce1af3c952539df0aef9ce571976f238"
 FIXTURE_TEST_PATH = "tests/qa/test_native_fixture.py"
 FIXTURE_TEST_ID = f"{FIXTURE_TEST_PATH}::test_native_fixture"
 NOT_RUN_TEST_ID = f"{FIXTURE_TEST_PATH}::test_sandbox_dependent_fixture"
@@ -36,7 +36,8 @@ LOCKED_ARTIFACTS = {
     )
 }
 VOLATILE_REPORT_FIELDS = {
-    "created_utc", "duration_seconds", "run_id", "artifact_ranges", "normalized_sha256"
+    "created_utc", "duration_seconds", "run_id", "artifact_ranges",
+    "artifact_digests", "artifact_sizes", "normalized_sha256",
 }
 SYNTHETIC_SECRET = "s4-e2e-private-token-must-not-be-recorded"
 
@@ -227,7 +228,7 @@ def _make_candidate(
     _extract_committed_runner(candidate)
     _git(candidate, "init", "--quiet", "--initial-branch=qa-synthetic")
     (candidate / ".gitignore").write_text(
-        "__pycache__/\n*.py[cod]\n", encoding="utf-8", newline="\n"
+        "__pycache__/\n*.py[cod]\n.pytest_cache/\n", encoding="utf-8", newline="\n"
     )
     (candidate / "tests").mkdir(parents=True)
     test_file = candidate / FIXTURE_TEST_PATH
@@ -389,6 +390,14 @@ def _assert_nonapproving(result: subprocess.CompletedProcess, report: dict) -> N
     assert report["result"] in {"BLOCKED", "FAIL", "NOT_RUN", "UNSUPPORTED", "INCONCLUSIVE"}
 
 
+def _assert_pytest_module_invocation(report: dict) -> None:
+    command = report["command"]
+    assert command[:3] == ["<approved-python-base>/python.exe", "-m", "pytest"]
+    assert command[-1] == FIXTURE_TEST_PATH
+    assert FIXTURE_TEST_ID not in command
+    assert NOT_RUN_TEST_ID not in command
+
+
 def test_s4_e2e_cli_native_collection_binds_candidate_and_repeatable_artifact_chunks(tmp_path):
     target = _dependency_target()
     candidate, expected_head = _make_candidate(tmp_path)
@@ -404,7 +413,10 @@ def test_s4_e2e_cli_native_collection_binds_candidate_and_repeatable_artifact_ch
     assert report1["result"] == "PASS"
     assert report1["candidate_head"] == expected_head
     assert report1["expected_test_ids"] == [FIXTURE_TEST_ID]
+    assert report1["inventory_test_ids"] == [FIXTURE_TEST_ID]
+    _assert_pytest_module_invocation(report1)
     assert report1["collected_node_ids"] == [FIXTURE_TEST_ID]
+    assert report1["executed_node_ids"] == [FIXTURE_TEST_ID]
     assert report1["passed_test_ids"] == [FIXTURE_TEST_ID]
     assert report1["dirty_tree"]["after"] is False
     assert report1["environment"]["dependency_target"] == "isolated-external-target"
@@ -414,8 +426,10 @@ def test_s4_e2e_cli_native_collection_binds_candidate_and_repeatable_artifact_ch
     report2, report_line2 = _last_report(candidate)
     _assert_report_hashes(candidate, report2, report_line2)
     assert report2["candidate_head"] == expected_head
+    _assert_pytest_module_invocation(report2)
+    assert report2["collected_node_ids"] == [FIXTURE_TEST_ID]
+    assert report2["executed_node_ids"] == [FIXTURE_TEST_ID]
     assert report2["normalized_sha256"] == report1["normalized_sha256"]
-    assert report2["artifact_digests"] == report1["artifact_digests"]
 
 
 def test_s4_e2e_cli_preserves_sandbox_dependent_selector_as_not_run(tmp_path):
@@ -432,10 +446,7 @@ def test_s4_e2e_cli_preserves_sandbox_dependent_selector_as_not_run(tmp_path):
     assert report["not_run_test_reasons"] == {
         NOT_RUN_TEST_ID: "Sandbox-dependent S3 acceptance lacks a run-bound platform proof."
     }
-    assert report["command"][:3] == ["<approved-python-base>/python.exe", "-m", "pytest"]
-    assert report["command"][-1] == FIXTURE_TEST_PATH
-    assert FIXTURE_TEST_ID not in report["command"]
-    assert NOT_RUN_TEST_ID not in report["command"]
+    _assert_pytest_module_invocation(report)
     assert report["collected_node_ids"] == [FIXTURE_TEST_ID]
     assert report["executed_node_ids"] == [FIXTURE_TEST_ID]
     assert NOT_RUN_TEST_ID not in report["collected_node_ids"]
@@ -522,10 +533,23 @@ def test_s4_e2e_cli_rejects_uncollected_duplicate_skipped_or_xfailed_selector(
     report, report_line = _last_report(candidate)
     _assert_nonapproving(result, report)
     _assert_report_hashes(candidate, report, report_line)
+    assert report["expected_test_ids"] == [FIXTURE_TEST_ID]
+    assert report["inventory_test_ids"] == [FIXTURE_TEST_ID]
+    _assert_pytest_module_invocation(report)
     if report_field == "reasons":
-        assert any("pytest emitted duplicate node IDs" in reason for reason in report["reasons"])
+        assert any("pytest event accounting failed: QARunError" in reason for reason in report["reasons"])
+        assert report["collected_node_ids"] == []
+        assert report["executed_node_ids"] == []
+        assert report["passed_test_ids"] == []
     else:
         assert report[report_field] == [FIXTURE_TEST_ID]
+        if collector == "uncollected":
+            assert report["collected_node_ids"] == []
+            assert report["executed_node_ids"] == []
+        else:
+            assert report["collected_node_ids"] == [FIXTURE_TEST_ID]
+            assert report["executed_node_ids"] == [FIXTURE_TEST_ID]
+        assert FIXTURE_TEST_ID not in report["passed_test_ids"]
     assert report["result"] == "FAIL"
 
 
@@ -538,6 +562,13 @@ def test_s4_e2e_cli_fails_closed_on_output_truncation(tmp_path):
     report, report_line = _last_report(candidate)
     _assert_nonapproving(result, report)
     _assert_report_hashes(candidate, report, report_line)
+    assert report["expected_test_ids"] == [FIXTURE_TEST_ID]
+    assert report["collected_node_ids"] == [FIXTURE_TEST_ID]
+    assert report["executed_node_ids"] == [FIXTURE_TEST_ID]
+    assert report["passed_test_ids"] == [FIXTURE_TEST_ID]
+    _assert_pytest_module_invocation(report)
+    assert report["exit_code"] == -3
+    assert report["capture"]["timed_out"] is False
     assert report["capture"]["stdout_truncated"] or report["capture"]["stderr_truncated"]
     assert any("output exceeded the configured cap" in reason for reason in report["reasons"])
     assert report["result"] == "FAIL"
@@ -570,8 +601,12 @@ def test_s4_e2e_cli_blocks_dirty_tracked_candidate_before_native_collection(tmp_
     _assert_nonapproving(result, report)
     _assert_report_hashes(candidate, report, report_line)
     assert report["dirty_tree"]["before"] is True
+    assert report["dirty_tree"]["before_paths"] == ["tools/vst/runner.py"]
     assert any("unrelated changes before execution" in reason for reason in report["reasons"])
     assert report["command"] == []
+    assert report["exit_code"] is None
+    assert report["collected_node_ids"] == []
+    assert report["executed_node_ids"] == []
 
 
 def test_s4_e2e_cli_rejects_artifact_path_outside_fixed_contract(tmp_path):
