@@ -23,7 +23,7 @@ Change 0096 fixed a reliability-review MINOR by distinguishing adapter cleanup o
 
 ## Verification state
 
-- Test source is committed; focused execution and exact-head evidence are pending.
+- Test source is committed in `2a8c17583e4e7594464b85aace6addb827a5eb6c`. Focused execution passed at that same exact HEAD: 16 passed, 0 skipped, 0 failed; exit code 0; one pytest-asyncio deprecation warning. See `docs/sdlc/evidence/s3-stop-cleanup-functional-2a8c175.md` and evidence record 0098.
 - Required outcomes: adapter return remains `INCONCLUSIVE` and `NOT_VERIFIED`; adapter exception remains `INCONCLUSIVE`, fences the stale attempt, identifies only a validated bounded class name, and does not disclose exception text; invalid/overlong class names map to a safe fallback.
 - Process note: the test author accidentally ran `git diff --cached --check` while inspecting staged changes. It printed no diagnostics, but the exit code was not captured; this is not verification evidence and is recorded as a workflow failure in `core/LESSONS_LOG.md`.
 - No process-kill, sandbox, candidate, build, CI, or migration evidence is claimed.

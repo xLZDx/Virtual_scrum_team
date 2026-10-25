@@ -28,5 +28,5 @@ The S3 reliability review recorded that cleanup exceptions were swallowed, obscu
 ## Verification state
 
 - Code and documentation were inspected and updated; no tests, checks, builds, CI, migrations, or runtime probes were run during implementation.
-- Required focused functional/E2E regression and exact-head specialist review remain pending.
+- Functional cleanup response/fence regression passed at exact test HEAD `2a8c17583e4e7594464b85aace6addb827a5eb6c` (16 passed, 0 skipped, 0 failed); see `docs/sdlc/evidence/s3-stop-cleanup-functional-2a8c175.md`. Exact-head specialist re-review remains pending.
 - Process cleanup after timeout, sandbox runtime, candidate execution, and prohibited process-kill/kill-table scenarios remain `NOT_RUN` or `NOT_VERIFIED`.

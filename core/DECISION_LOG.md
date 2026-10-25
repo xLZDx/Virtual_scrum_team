@@ -294,5 +294,5 @@ Keep the durable STOP epoch fence and non-approving `INCONCLUSIVE` response rega
 
 ## 2026-10-25 -- Test STOP cleanup diagnostics at the Store boundary
 
-Exercise `SyntheticStoryPilot.stop` through the real Store/Supervisor fixture. Assert adapter return and exception outcomes, durable epoch fencing, a non-approving response, no raw exception text, and fallback for invalid/overlong class names. Keep OS cleanup `NOT_VERIFIED`; this functional fixture cannot prove child termination. Test source and pending verification details are in change record 0097.
+Exercise `SyntheticStoryPilot.stop` through the real Store/Supervisor fixture. Assert adapter return and exception outcomes, durable epoch fencing, a non-approving response, no raw exception text, and fallback for invalid/overlong class names. Keep OS cleanup `NOT_VERIFIED`; this functional fixture cannot prove child termination. The exact-head run passed 16 tests at `2a8c175`; evidence is in `docs/sdlc/evidence/s3-stop-cleanup-functional-2a8c175.md` and record 0098.
 
