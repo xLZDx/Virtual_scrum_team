@@ -621,3 +621,7 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — SHORTCOMING: the corruption test changed an artifact to different-length bytes, so validation correctly failed the range-length check before checking its digest. Rule: preserve declared range length when a fixture intends to prove digest mismatch. This fixture correction has not been rerun. See change 0279.
 
 2026-10-25 — SUCCESS: after the corruption-test source was committed, the category registry was regenerated from the exact committed test tree before retrying. The registry refresh is recorded at change 0280; it does not count as test evidence.
+
+2026-10-25 — SHORTCOMING: the initial S4 matrix compared raw lock-file bytes across Windows and WSL, so equivalent CRLF/LF checkouts produced stale hashes. The restricted root probe also read `/proc/1/ns/net` after capabilities were dropped and got `PermissionError`, leaving root selectors `NOT_RUN`; the runner used `--tb=no`, hiding failure context. Rule: hash canonical LF text, capture the namespace descriptor before privilege drop and validate its inode, and retain bounded redacted tracebacks. See change 0281.
+
+2026-10-25 — SHORTCOMING: the first safe-root-helper revision bound the proof to a candidate HEAD but did not bind the installed helper bytes that generated it. Rule: compare the root-owned installed helper with the candidate source before privileged setup, then carry and verify its SHA-256 in the proof and matrix report. Static review caught the gap before runtime execution. See change 0281.

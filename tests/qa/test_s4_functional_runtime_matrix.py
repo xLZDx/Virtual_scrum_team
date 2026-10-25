@@ -57,7 +57,13 @@ def _report_registry(
     )
 
 
-def _write_category_report(tmp_path: Path, profile: str, *, root_proof_mismatch: bool = False):
+def _write_category_report(
+    tmp_path: Path,
+    profile: str,
+    *,
+    root_proof_mismatch: bool = False,
+    root_helper_mismatch: bool = False,
+):
     """Create exact category report/artifact inputs for the matrix validator."""
     candidate = tmp_path / "candidate"
     root = candidate
@@ -65,6 +71,9 @@ def _write_category_report(tmp_path: Path, profile: str, *, root_proof_mismatch:
     qa_root.mkdir(parents=True, exist_ok=True)
     (root / "tools" / "qa").mkdir(parents=True, exist_ok=True)
     (root / "tools" / "qa" / "requirements.lock").write_bytes(LOCK)
+    helper_bytes = b"candidate root harness fixture\n"
+    (root / "tools" / "qa" / "root_harness.py").write_bytes(helper_bytes)
+    helper_sha256 = hashlib.sha256(helper_bytes).hexdigest()
     selected_id = ROOT_ID if profile == registry.WSL_ROOT_PROFILE else RUNNABLE_ID
     category = "integration" if profile == registry.WSL_ROOT_PROFILE else "functional"
     registry_view = _report_registry(profile, test_id=selected_id, category=category)
@@ -85,6 +94,7 @@ def _write_category_report(tmp_path: Path, profile: str, *, root_proof_mismatch:
             "run_nonce_sha256": "e" * 64,
             "candidate_root": WSL_ROOT + ("/mismatch" if root_proof_mismatch else ""),
             "mountinfo_sha256": MOUNT_HASH,
+            "helper_sha256": "f" * 64 if root_helper_mismatch else helper_sha256,
         }
     identity = {
         registry.WINDOWS_PROFILE: {
@@ -185,6 +195,52 @@ def test_s4_committed_registry_binds_profiles_and_preserves_policy_not_run():
     assert NOT_RUN_ID in loaded.category_not_run["api"]
     assert loaded.category_profile_test_ids["functional"][registry.WINDOWS_PROFILE]
     assert loaded.category_profile_test_ids["functional"][registry.WSL_PROFILE]
+
+
+def test_s4_dependency_lock_hash_is_line_ending_invariant_and_rejects_bare_carriage_return(
+    tmp_path: Path,
+):
+    """S4 AC-4/VST-033: CRLF normalizes to LF; a bare CR cannot enter the dependency contract."""
+    lock_path = tmp_path / "tools" / "qa" / "requirements.lock"
+    lock_path.parent.mkdir(parents=True)
+    lf_lock = (
+        b"# Wheel-only, exact hashes for CPython 3.14 QA execution.\n"
+        b"pytest==9.0.3 \\\n"
+        + b"    --hash=sha256:" + b"a" * 64 + b"\n"
+    )
+    lock_path.write_bytes(lf_lock)
+    lf_digest, lf_versions = run._lock_versions(tmp_path)
+
+    lock_path.write_bytes(lf_lock.replace(b"\n", b"\r\n"))
+    crlf_digest, crlf_versions = run._lock_versions(tmp_path)
+
+    assert crlf_digest == lf_digest == hashlib.sha256(lf_lock).hexdigest()
+    assert crlf_versions == lf_versions == {"pytest": "9.0.3"}
+
+    lock_path.write_bytes(lf_lock + b"\r")
+    with pytest.raises(run.QARunError, match="unsupported bare carriage returns"):
+        run._lock_versions(tmp_path)
+
+
+def test_s4_matrix_normalizes_crlf_lock_and_rejects_bare_carriage_return(tmp_path: Path):
+    """S4 AC-4/VST-037: matrix report and run validation share canonical lock bytes."""
+    root, registry_view, run_id = _write_category_report(tmp_path, registry.WINDOWS_PROFILE)
+    lock_path = root / "tools" / "qa" / "requirements.lock"
+    lock_path.write_bytes(LOCK.replace(b"\n", b"\r\n"))
+
+    normalized = matrix._matrix_report(root, registry_view, {}, set())
+    _, crlf_reasons = matrix._validate_run(
+        root, registry_view, registry.WINDOWS_PROFILE, "functional", run_id
+    )
+
+    assert normalized["lock_sha256"] == hashlib.sha256(LOCK).hexdigest()
+    assert "category report dependency-lock hash is stale" not in crlf_reasons
+
+    lock_path.write_bytes(LOCK + b"\r")
+    _, bare_cr_reasons = matrix._validate_run(
+        root, registry_view, registry.WINDOWS_PROFILE, "functional", run_id
+    )
+    assert "category report dependency-lock hash is stale" in bare_cr_reasons
 
 
 @pytest.mark.parametrize(
@@ -288,15 +344,31 @@ def test_s4_wsl_boundary_rejects_nine_p_mount_covering_candidate(monkeypatch, tm
 
 
 @pytest.mark.parametrize(
-    ("has_only_loopback", "loopback_canary_passed"),
-    [(False, True), (True, False), (True, True)],
+    ("has_only_loopback", "loopback_canary_passed", "parent_namespace_inode"),
+    [
+        (False, True, 4321),
+        (True, False, 4321),
+        (True, True, 4321),
+        (True, True, None),
+        (True, True, True),
+        (True, True, 0),
+    ],
 )
 def test_s4_root_harness_requires_observed_private_loopback_network(
-    monkeypatch, tmp_path: Path, has_only_loopback: bool, loopback_canary_passed: bool
+    monkeypatch,
+    tmp_path: Path,
+    has_only_loopback: bool,
+    loopback_canary_passed: bool,
+    parent_namespace_inode,
 ):
     """S4 AC-14/VST-033: root proof booleans must match observed namespace/socket facts."""
     candidate = tmp_path / "candidate"
     candidate.mkdir()
+    helper_bytes = b"candidate root harness fixture\n"
+    helper_path = candidate / "tools" / "qa" / "root_harness.py"
+    helper_path.parent.mkdir(parents=True)
+    helper_path.write_bytes(helper_bytes)
+    helper_sha256 = hashlib.sha256(helper_bytes).hexdigest()
     proof_path = tmp_path / "harness-proof.json"
     boundary = {
         "candidate_root": WSL_ROOT,
@@ -307,8 +379,9 @@ def test_s4_root_harness_requires_observed_private_loopback_network(
     head = "f" * 40
     nonce = "1" * 64
     proof = {
-        "schema_version": 2,
+        "schema_version": run.ROOT_HARNESS_PROOF_VERSION,
         "authority": run.ROOT_HARNESS_PROOF_AUTHORITY,
+        "helper_sha256": helper_sha256,
         "run_id": "root-run",
         "run_nonce": nonce,
         "candidate_head": head,
@@ -328,13 +401,18 @@ def test_s4_root_harness_requires_observed_private_loopback_network(
         "loopback_canary_passed": loopback_canary_passed,
         "candidate_root": WSL_ROOT,
         "mountinfo_sha256": MOUNT_HASH,
+        "parent_network_namespace_inode": parent_namespace_inode,
     }
     proof_path.write_text(json.dumps(proof), encoding="utf-8")
-    fake_os = SimpleNamespace(geteuid=lambda: 0, getegid=lambda: 0, getgroups=lambda: [])
+    fake_os = SimpleNamespace(
+        geteuid=lambda: 0,
+        getegid=lambda: 0,
+        getgroups=lambda: [],
+        stat=lambda _path: SimpleNamespace(st_ino=4322),
+    )
     monkeypatch.setattr(run, "os", fake_os)
     monkeypatch.setattr(run, "_wsl_distro_identity", lambda: (True, "Ubuntu", "microsoft-wsl"))
     monkeypatch.setattr(run, "_linux_capability_masks", lambda: (run.ROOT_HARNESS_CAP_MASK, run.ROOT_HARNESS_CAP_MASK))
-    monkeypatch.setattr(run, "_private_network_namespace", lambda: True)
     monkeypatch.setattr(run, "_loopback_only_network", lambda: has_only_loopback)
     monkeypatch.setattr(run, "_loopback_canary_passed", lambda: loopback_canary_passed)
     args = Namespace(
@@ -344,12 +422,13 @@ def test_s4_root_harness_requires_observed_private_loopback_network(
         run_id="root-run",
     )
 
-    if has_only_loopback and loopback_canary_passed:
+    if has_only_loopback and loopback_canary_passed and parent_namespace_inode == 4321:
         accepted = run._validate_privileged_harness_proof(
             args, candidate, head, registry.WSL_ROOT_PROFILE, boundary
         )
         assert accepted["candidate_root"] == WSL_ROOT
         assert accepted["mountinfo_sha256"] == MOUNT_HASH
+        assert accepted["helper_sha256"] == helper_sha256
     else:
         with pytest.raises(run.QARunError, match="does not match this process, candidate, or WSL boundary"):
             run._validate_privileged_harness_proof(
@@ -375,10 +454,54 @@ def test_s4_root_network_guard_proves_only_ephemeral_loopback_connectivity():
     assert run._loopback_canary_passed()
 
 
+@pytest.mark.parametrize(
+    ("parent_inode", "current_inode", "expected"),
+    [(41, 42, True), (41, 41, False)],
+)
+def test_s4_root_network_guard_compares_to_captured_parent_namespace(
+    monkeypatch, parent_inode: int, current_inode: int, expected: bool
+):
+    """S4 AC-14/VST-033: network isolation is relative to the pre-drop parent namespace."""
+    observed_paths = []
+    fake_os = SimpleNamespace(
+        stat=lambda path: observed_paths.append(path) or SimpleNamespace(st_ino=current_inode)
+    )
+    monkeypatch.setattr(run, "os", fake_os)
+
+    assert run._private_network_namespace(parent_inode) is expected
+    assert observed_paths == ["/proc/self/ns/net"]
+
+
+@pytest.mark.parametrize("parent_inode", [None, True, 0, -1, "41"])
+def test_s4_root_network_guard_fails_closed_for_invalid_parent_namespace_inode(
+    monkeypatch, parent_inode
+):
+    """S4 AC-14/VST-033: absent, boolean, nonpositive, or noninteger parent inode is rejected."""
+    fake_os = SimpleNamespace(
+        stat=lambda _path: pytest.fail("invalid parent namespace must be rejected before stat")
+    )
+    monkeypatch.setattr(run, "os", fake_os)
+
+    assert run._private_network_namespace(parent_inode) is False
+
+
 def test_s4_matrix_refuses_root_proof_bound_to_another_candidate(tmp_path: Path):
     """S4 AC-11/AC-14/VST-037: a passing root row must bind proof and report to one candidate."""
     root, report_registry, run_id = _write_category_report(
         tmp_path, registry.WSL_ROOT_PROFILE, root_proof_mismatch=True
+    )
+
+    _, reasons = matrix._validate_run(
+        root, report_registry, registry.WSL_ROOT_PROFILE, "integration", run_id
+    )
+
+    assert any("root-profile report lacks a validated run-bound" in reason for reason in reasons)
+
+
+def test_s4_matrix_refuses_root_proof_bound_to_another_helper_digest(tmp_path: Path):
+    """S4 AC-11/AC-14/VST-037: root proof helper digest must match candidate source bytes."""
+    root, report_registry, run_id = _write_category_report(
+        tmp_path, registry.WSL_ROOT_PROFILE, root_helper_mismatch=True
     )
 
     _, reasons = matrix._validate_run(

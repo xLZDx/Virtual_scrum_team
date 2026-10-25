@@ -589,3 +589,11 @@ match the committed equal-length corruption fixture. The denominator remains 919
 868 assigned runnable and 51 policy `NOT_RUN`. Generator exited 0. The 25/29 focused run at prior
 HEAD `3916101` remains the only execution evidence for the new suite; rerun at the refreshed exact
 HEAD is pending. See change 0280.
+
+## 2026-10-25 — Bind S4 lock hashes to canonical text and capture root network namespace before dropping privileges
+
+Exact-candidate Windows and WSL reports at `29bf95e` stored different raw lock hashes even though the lock text was the same: Windows had mixed CRLF/LF and WSL had LF. Normalize CRLF to LF in both runner and matrix and reject bare carriage returns. The root profile also attempted to read `/proc/1/ns/net` after dropping capabilities and received `PermissionError`; capture an open parent namespace descriptor before `unshare`, verify its target and inode in the child, and bind that inode into the run proof. Preserve the loopback-only interface set and exact `0xc1` capability mask. The previous `--tb=no` hid failure context; use bounded, redacted short tracebacks. See change 0281. Operator instruction: all S2–S5 development stays in `D:\Repo\Virtual_scrum_team`; do not create per-sprint worktrees.
+
+## 2026-10-25 — Bind the installed S4 helper to the candidate source
+
+Static review found that a root-owned helper path and a run-bound candidate HEAD did not prove which installed helper version created the preflight. Decision: the helper compares its own bytes with `tools/qa/root_harness.py` from the selected candidate before unshare, proof schema v4 records that SHA-256, and both runner and matrix verify it against the candidate source. A fresh static review found no remaining BLOCKER/MAJOR/MINOR; execution remains pending. See change 0281.

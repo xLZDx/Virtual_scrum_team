@@ -44,7 +44,7 @@ from .registry import (
     git_root,
     validate_registry,
 )
-from .report import encode_report, sha256_bytes
+from .report import canonical_lock_bytes, encode_report, sha256_bytes
 
 
 MAX_TIMEOUT_SECONDS = 3600
@@ -54,6 +54,7 @@ EXPECTED_PYTHON_EXE = r"C:\Python314\python.exe"
 EXPECTED_WSL_PYTHON_EXE = "/usr/bin/python3.12"
 ROOT_HARNESS_CAP_MASK = (1 << 0) | (1 << 6) | (1 << 7)  # CHOWN, SETGID, SETUID only.
 ROOT_HARNESS_PROOF_AUTHORITY = "local-qa-preflight-non-authoritative"
+ROOT_HARNESS_PROOF_VERSION = 4
 ROOT_HARNESS_REPORT_SCOPE = (
     "local QA preflight only; not an S2 worker receipt or independent approval"
 )
@@ -65,7 +66,7 @@ ROOT_HARNESS_PROOF_FIELDS = {
     "supplementary_groups", "capability_mask", "automount_enabled",
     "interop_enabled", "private_network", "default_deny_egress",
     "external_canary_blocked", "loopback_canary_passed", "candidate_root",
-    "mountinfo_sha256",
+    "mountinfo_sha256", "parent_network_namespace_inode", "helper_sha256",
 }
 _RUN_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z")
 _HEX64 = re.compile(r"[0-9a-f]{64}\Z")
@@ -298,13 +299,19 @@ def _linux_capability_masks() -> tuple[int | None, int | None]:
     return values.get("CapEff"), values.get("CapBnd")
 
 
-def _private_network_namespace() -> bool:
+def _private_network_namespace(parent_namespace_inode: int | None = None) -> bool:
+    """Compare against the parent namespace inode captured before capability drop."""
+    if (
+        not isinstance(parent_namespace_inode, int)
+        or isinstance(parent_namespace_inode, bool)
+        or parent_namespace_inode <= 0
+    ):
+        return False
     try:
         current = os.stat("/proc/self/ns/net").st_ino
-        init = os.stat("/proc/1/ns/net").st_ino
     except OSError:
         return False
-    return current != init
+    return current != parent_namespace_inode
 
 
 def _loopback_only_network() -> bool:
@@ -486,7 +493,7 @@ def _validate_privileged_harness_proof(
     head: str,
     profile: str | None,
     boundary: dict[str, Any] | None,
-) -> dict[str, str] | None:
+) -> dict[str, Any] | None:
     proof_arg = args.privileged_harness_proof
     nonce = args.run_nonce
     if profile != WSL_ROOT_PROFILE:
@@ -519,10 +526,14 @@ def _validate_privileged_harness_proof(
         raise QARunError("privileged harness proof has an invalid exact schema")
     distribution_ok, _, kernel = _wsl_distro_identity()
     effective, bounding = _linux_capability_masks()
-    isolated_network = _private_network_namespace() and _loopback_only_network()
+    parent_namespace_inode = proof.get("parent_network_namespace_inode")
+    helper_path = root / "tools" / "qa" / "root_harness.py"
+    helper_sha256 = hashlib.sha256(helper_path.read_bytes()).hexdigest()
+    supplied_helper_sha256 = proof.get("helper_sha256")
+    isolated_network = _private_network_namespace(parent_namespace_inode) and _loopback_only_network()
     loopback_canary_passed = _loopback_canary_passed()
     expected_values = {
-        "schema_version": 2,
+        "schema_version": ROOT_HARNESS_PROOF_VERSION,
         "authority": ROOT_HARNESS_PROOF_AUTHORITY,
         "run_id": args.run_id,
         "run_nonce": nonce,
@@ -543,6 +554,8 @@ def _validate_privileged_harness_proof(
         "loopback_canary_passed": loopback_canary_passed,
         "candidate_root": boundary["candidate_root"] if boundary else None,
         "mountinfo_sha256": boundary["mountinfo_sha256"] if boundary else None,
+        "parent_network_namespace_inode": parent_namespace_inode,
+        "helper_sha256": helper_sha256,
     }
     if (
         not distribution_ok
@@ -561,6 +574,8 @@ def _validate_privileged_harness_proof(
         "scope": ROOT_HARNESS_REPORT_SCOPE,
         "sha256": hashlib.sha256(proof_bytes).hexdigest(),
         "run_nonce_sha256": hashlib.sha256(nonce.encode("ascii")).hexdigest(),
+        "parent_network_namespace_inode": parent_namespace_inode,
+        "helper_sha256": supplied_helper_sha256,
         "candidate_root": boundary["candidate_root"],
         "mountinfo_sha256": boundary["mountinfo_sha256"],
     }
@@ -602,7 +617,10 @@ def _lock_versions(root: Path) -> tuple[str, dict[str, str]]:
         raise QARunError("QA dependency lock ends without a wheel hash")
     if "pytest" not in versions:
         raise QARunError("pytest is absent from the QA lock")
-    return hashlib.sha256(raw).hexdigest(), versions
+    canonical_lock = canonical_lock_bytes(raw)
+    if b"\r" in canonical_lock:
+        raise QARunError("QA dependency lock contains unsupported bare carriage returns")
+    return hashlib.sha256(canonical_lock).hexdigest(), versions
 
 
 def _installed_versions(expected: dict[str, str], target: Path) -> tuple[dict[str, str], list[str]]:
@@ -994,7 +1012,7 @@ def _pytest_command(
         "-q",
         "--no-header",
         "--no-summary",
-        "--tb=no",
+        "--tb=short",
         "--disable-warnings",
         "--show-capture=no",
         "--color=no",

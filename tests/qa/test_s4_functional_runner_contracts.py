@@ -342,6 +342,8 @@ def test_s4_pytest_command_bounds_argv_for_hundreds_of_selectors(tmp_path: Path)
     assert argv[-len(source_paths):] == source_paths
     assert len(argv) <= 80
     assert not set(expected_ids).intersection(argv)
+    assert "--tb=short" in argv
+    assert "--tb=no" not in argv
 
 
 def test_s4_plugin_filters_known_other_category_and_policy_but_keeps_unknown(tmp_path: Path):

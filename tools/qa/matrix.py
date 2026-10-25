@@ -19,7 +19,7 @@ from .registry import (
     git_root,
     validate_registry,
 )
-from .report import canonical_json, normalized_report, sha256_bytes
+from .report import canonical_json, canonical_lock_bytes, normalized_report, sha256_bytes
 
 
 MATRIX_SCHEMA_VERSION = 1
@@ -263,7 +263,8 @@ def _validate_run(
         reasons.append("category report candidate HEAD is stale")
     if report.get("registry_sha256") != registry.sha256:
         reasons.append("category report registry hash is stale")
-    if report.get("lock_sha256") != hashlib.sha256((root / "tools/qa/requirements.lock").read_bytes()).hexdigest():
+    lock_bytes = canonical_lock_bytes((root / "tools/qa/requirements.lock").read_bytes())
+    if b"\r" in lock_bytes or report.get("lock_sha256") != hashlib.sha256(lock_bytes).hexdigest():
         reasons.append("category report dependency-lock hash is stale")
     if report.get("expected_test_ids") != expected:
         reasons.append("category report expected selectors do not match profile assignment")
@@ -338,7 +339,8 @@ def _validate_run(
             not isinstance(proof, dict)
             or set(proof) != {
                 "authority", "scope", "sha256", "run_nonce_sha256",
-                "candidate_root", "mountinfo_sha256",
+                "candidate_root", "mountinfo_sha256", "parent_network_namespace_inode",
+                "helper_sha256",
             }
             or proof.get("authority") != "local-qa-preflight-non-authoritative"
             or proof.get("scope") != (
@@ -348,6 +350,14 @@ def _validate_run(
             or _HEX64.fullmatch(proof["sha256"]) is None
             or not isinstance(proof.get("run_nonce_sha256"), str)
             or _HEX64.fullmatch(proof["run_nonce_sha256"]) is None
+            or not isinstance(proof.get("parent_network_namespace_inode"), int)
+            or isinstance(proof.get("parent_network_namespace_inode"), bool)
+            or proof.get("parent_network_namespace_inode", 0) <= 0
+            or not isinstance(proof.get("helper_sha256"), str)
+            or _HEX64.fullmatch(proof["helper_sha256"]) is None
+            or proof.get("helper_sha256") != hashlib.sha256(
+                (root / "tools/qa/root_harness.py").read_bytes()
+            ).hexdigest()
             or not isinstance(runtime_boundary, dict)
             or proof.get("candidate_root") != runtime_boundary.get("candidate_root")
             or proof.get("mountinfo_sha256") != runtime_boundary.get("mountinfo_sha256")
@@ -384,7 +394,9 @@ def _matrix_report(
         "run_id": "",
         "candidate_head": registry.candidate_head,
         "registry_sha256": registry.sha256,
-        "lock_sha256": hashlib.sha256((root / "tools/qa/requirements.lock").read_bytes()).hexdigest(),
+        "lock_sha256": hashlib.sha256(
+            canonical_lock_bytes((root / "tools/qa/requirements.lock").read_bytes())
+        ).hexdigest(),
         "runtime_profiles": list(RUNTIME_PROFILES),
         "expected_report_refs": [
             {"profile": profile, "category": category, "run_id": run_refs.get((profile, category))}

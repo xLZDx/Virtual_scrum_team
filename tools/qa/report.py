@@ -22,6 +22,11 @@ def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
+def canonical_lock_bytes(raw: bytes) -> bytes:
+    """Normalize checkout CRLF while preserving committed text content."""
+    return raw.replace(b"\r\n", b"\n")
+
+
 def normalized_report(report: dict[str, Any]) -> dict[str, Any]:
     # Artifact hashes and sizes bind each invocation's raw output, whose
     # timing-bearing summaries can vary across equivalent runs; keep them in

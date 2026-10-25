@@ -85,10 +85,16 @@ The committed selector registry assigns each selector to Windows, unprivileged U
 the restricted Ubuntu-24.04 root harness, or more than one of those runtime profiles. The runner
 executes only selectors assigned to its exact profile. Selectors assigned elsewhere are not treated
 as passes or skips in the current profile. The root harness can run only its two explicitly assigned
-identity-isolation selectors; its run-nonce-bound proof verifies a private network namespace with
-only loopback and a working ephemeral loopback socket. With no non-loopback interface and no
-`CAP_NET_ADMIN`, external egress is structurally unavailable without an external canary request.
-This is local QA evidence, not an S2 worker receipt or independent approval.
+identity-isolation selectors; its versioned run-nonce-bound proof verifies a private network
+namespace with only loopback and a working ephemeral loopback socket. A shell-free wrapper passes an
+open parent namespace descriptor across `unshare --net`, validates its `net:[inode]` target, and
+binds that inode into the proof; the restricted runner compares it with the current namespace
+without reading `/proc/1/ns/net`. The helper source in the repository must be installed at the fixed
+root-owned, non-group/world-writable `/usr/local/libexec/vst-s4-root-harness.py` path and invoked
+with isolated Python (`-I`). It uses fixed system executable paths and imports no candidate module
+before `setpriv` drops the bounding set. With no non-loopback interface and no `CAP_NET_ADMIN`, external
+egress is structurally unavailable without an external canary request. This is local QA evidence,
+not an S2 worker receipt or independent approval.
 
 Every WSL candidate must resolve beneath the distro-local `/tmp/vst-s4-candidate` root. The runner
 scans `/proc/self/mountinfo`, rejects Windows-drive `drvfs` or `9p` sources and any `drvfs`/`9p`
@@ -96,7 +102,9 @@ mount covering the candidate, and permits unrelated WSL `9p` mounts. Reports bin
 candidate path and mount-table SHA-256. The matrix requires all WSL reports to share the same
 candidate path and checks that the root proof agrees with its report.
 
-The matrix combines per-profile reports only when candidate HEAD, registry hash, lock hash,
+The runner and matrix normalize CRLF to LF before hashing the dependency lock, so equivalent Windows
+and POSIX checkouts bind to one digest; bare carriage returns are rejected. The matrix combines
+per-profile reports only when candidate HEAD, registry hash, lock hash,
 artifact integrity, and runtime identity agree. It rejects missing profile reports, stale or
 duplicate selector outcomes, any assigned selector that is failed/skipped/`NOT_RUN`, incomplete
 capture, or unexpected nodes. Matrix approval requires every committed selector to pass on every

@@ -58,7 +58,9 @@ only a test input and must not be used for source changes.
   IDs only; other IDs are recorded as not assigned to that profile, not as skips or passes.
 - Add a matrix validator that consumes exact per-profile reports and artifact ranges. It verifies
   candidate HEAD, registry/lock hashes, profile identity, expected selector assignment, exact
-  outcome accounting, capture completeness, and artifact integrity. The matrix fails on missing,
+  outcome accounting, capture completeness, and artifact integrity. The lock digest normalizes
+  Windows CRLF and POSIX LF checkout bytes to the same LF representation and rejects bare carriage
+  returns. The matrix fails on missing,
   stale, corrupt, duplicate, skipped, failed, or policy `NOT_RUN` assigned selectors. It may pass
   only when each registry selector has exactly one passing outcome on every assigned profile.
 - Transfer the candidate to WSL as a Git bundle created from the canonical checkout, then clone
@@ -74,7 +76,14 @@ only a test input and must not be used for source changes.
   private network namespace with only the loopback interface, and a passing ephemeral loopback
   socket canary. The absence of any non-loopback interface plus the lack of `CAP_NET_ADMIN` proves
   external egress is unavailable without making an external network request. Its proof is
-  run-nonce and candidate-head bound. Do not run other tests as root or as UID 997 with the signer
+  run-nonce and candidate-head bound. The wrapper passes an inherited network-namespace file
+  descriptor across `unshare --net`; it validates the descriptor target and inode, then compares
+  the current namespace with the captured parent after dropping capabilities. This avoids relying
+  on `/proc/1/ns/net`, which is inaccessible to the restricted process. The helper source remains
+  in this repository but must be installed as a root-owned, non-group/world-writable
+  `/usr/local/libexec/vst-s4-root-harness.py` and started with isolated Python (`-I`). It uses only
+  fixed system executable paths and standard-library preflight before launching candidate code
+  under the reduced capability set. Do not run other tests as root or as UID 997 with the signer
   supplementary group.
 - Keep prohibited process-termination selectors in the registry as policy `NOT_RUN`; a matrix
   containing any such required selector remains non-approving. The current generated inventory
