@@ -477,3 +477,7 @@ At exact candidate HEAD `d1bd2cf`, the repeated synthetic E2E run exposed that e
 ## 2026-10-25 — Correct stale S4 test expectations after exact-head execution
 
 The first complete exact-head suite showed failures caused by old test contracts for CLI argv, plugin selection schema, waiver scope and store schema version. Tests were updated against the current committed contracts; these changes remain unrun until the manifest is refreshed. See change 0260.
+
+## 2026-10-25 — Regenerate S4 selector inventory after corrected test commit
+
+The category manifest was regenerated from the corrected test sources committed at `b0beca3`. This updates source commit/hash bindings and the selector denominator, but does not establish test behavior. The exact six-category rerun remains pending. See change 0261.
