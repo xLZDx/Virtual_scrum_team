@@ -114,6 +114,39 @@ def _request(fixture, candidate_revision: str, *, attempt: int = 1, epoch: int |
     )
 
 
+def _stop_request(original):
+    return StopRequest(
+        operation_key=operation_key_for("stop", original.run_id, original.attempt_id),
+        effect_key=original.effect_key,
+        run_id=original.run_id,
+        attempt_id=original.attempt_id,
+        attempt=original.attempt,
+        candidate_id=original.candidate_id,
+        candidate_revision=original.candidate_revision,
+        manifest_sha256=original.manifest_sha256,
+        task_id=original.task_id,
+        story_id=original.story_id,
+        sandbox_run_id=original.sandbox_run_id,
+        allowed_paths=original.allowed_paths,
+        budget_cap=original.budget_cap,
+        budget_units=original.budget_units,
+        budget_remaining=original.budget_cap - original.budget_units,
+        epoch=original.epoch,
+        fence=original.fence,
+        reason="operator requested stop",
+        authorized_actor="synthetic-operator",
+        invocation_id=original.invocation_id,
+    )
+
+
+def _inject_app_checkpoint_interrupt(pilot):
+    def interrupt(checkpoint):
+        if checkpoint == Checkpoint.AFTER_EDIT_BEFORE_COMMIT:
+            raise InterruptedAfterEditBeforeCommit("deterministic app checkpoint")
+
+    pilot.adapter.checkpoint_hook = interrupt
+
+
 def test_s3_pilot_commits_only_the_manifest_scoped_synthetic_change(pilot_env):
     """S3 AC-1/AC-2/AC-3: Store lease, adapter edit, bounded path, no self approval."""
     fixture, pilot, repository, candidate_revision = pilot_env
@@ -149,11 +182,7 @@ def test_s3_app_checkpoint_can_resume_same_effect_under_new_store_epoch(pilot_en
     fixture, pilot, repository, candidate_revision = pilot_env
     original = _request(fixture, candidate_revision)
 
-    def interrupt(checkpoint):
-        if checkpoint == Checkpoint.AFTER_EDIT_BEFORE_COMMIT:
-            raise InterruptedAfterEditBeforeCommit("deterministic app checkpoint")
-
-    pilot.adapter.checkpoint_hook = interrupt
+    _inject_app_checkpoint_interrupt(pilot)
     interrupted = pilot.start(original)
     assert interrupted.state == WorkerState.INCONCLUSIVE
     assert interrupted.checkpoint == Checkpoint.AFTER_EDIT_BEFORE_COMMIT
@@ -195,32 +224,16 @@ def test_s3_stop_fences_interrupted_attempt_idempotently_and_rejects_stale_start
     interrupted = pilot.start(original)
     assert interrupted.state == WorkerState.INCONCLUSIVE
 
-    stop = StopRequest(
-        operation_key=operation_key_for("stop", original.run_id, original.attempt_id),
-        effect_key=original.effect_key,
-        run_id=original.run_id,
-        attempt_id=original.attempt_id,
-        attempt=original.attempt,
-        candidate_id=original.candidate_id,
-        candidate_revision=original.candidate_revision,
-        manifest_sha256=original.manifest_sha256,
-        task_id=original.task_id,
-        story_id=original.story_id,
-        sandbox_run_id=original.sandbox_run_id,
-        allowed_paths=original.allowed_paths,
-        budget_cap=original.budget_cap,
-        budget_units=original.budget_units,
-        budget_remaining=original.budget_cap - original.budget_units,
-        epoch=original.epoch,
-        fence=original.fence,
-        reason="operator requested stop",
-        authorized_actor="synthetic-operator",
-        invocation_id=original.invocation_id,
-    )
+    stop = _stop_request(original)
 
     first = pilot.stop(stop)
     replay = pilot.stop(stop)
     assert first.state == replay.state == WorkerState.INCONCLUSIVE
+    assert first.error is not None
+    assert first.error.message == (
+        "epoch fenced; adapter.stop completed but worker process cleanup is NOT_VERIFIED"
+    )
+    assert replay.error == first.error
     assert first.progress == replay.progress
     assert fixture.store.current_epoch(fixture.story_id) == original.epoch + 1
     stale = pilot.start(original)
@@ -228,6 +241,65 @@ def test_s3_stop_fences_interrupted_attempt_idempotently_and_rejects_stale_start
     assert stale.error is not None
     assert stale.error.code == WorkerErrorCode.FENCE_REJECTED
     assert fixture.store.receipts_for_task(fixture.task_id) == []
+
+
+def test_s3_stop_cleanup_exception_preserves_fence_and_hides_exception_text(pilot_env, monkeypatch):
+    """S3 AC-4: cleanup failures remain non-approving and safely diagnosable."""
+    fixture, pilot, _repository, candidate_revision = pilot_env
+    original = _request(fixture, candidate_revision)
+    _inject_app_checkpoint_interrupt(pilot)
+    interrupted = pilot.start(original)
+    assert interrupted.state is WorkerState.INCONCLUSIVE
+
+    secret = "PRIVATE_CLEANUP_DETAIL"
+
+    def fail_cleanup(_request):
+        raise RuntimeError(secret)
+
+    monkeypatch.setattr(pilot.adapter, "stop", fail_cleanup)
+    response = pilot.stop(_stop_request(original))
+
+    assert response.state is WorkerState.INCONCLUSIVE
+    assert response.error is not None
+    assert response.error.code is WorkerErrorCode.INTERRUPTED
+    assert response.error.message == (
+        "epoch fenced; adapter.stop raised RuntimeError; worker process cleanup is NOT_VERIFIED"
+    )
+    assert secret not in response.error.message
+    assert fixture.store.current_epoch(fixture.story_id) == original.epoch + 1
+    assert response.progress == f"new_fence={original.epoch + 1}"
+    assert fixture.store.receipts_for_task(fixture.task_id) == []
+    stale = pilot.start(original)
+    assert stale.state is WorkerState.BLOCKED
+    assert stale.error is not None
+    assert stale.error.code is WorkerErrorCode.FENCE_REJECTED
+
+
+@pytest.mark.parametrize("name", ["X" * 65, "invalid name"])
+def test_s3_stop_cleanup_exception_class_falls_back_to_bounded_safe_name(
+    pilot_env, monkeypatch, name,
+):
+    """S3 AC-4: non-identifier and overlong exception types are not serialized."""
+    fixture, pilot, _repository, candidate_revision = pilot_env
+    original = _request(fixture, candidate_revision)
+    _inject_app_checkpoint_interrupt(pilot)
+    assert pilot.start(original).state is WorkerState.INCONCLUSIVE
+
+    error_type = type("CleanupProblem", (Exception,), {})
+    error_type.__name__ = name
+
+    def fail_cleanup(_request):
+        raise error_type("untrusted details")
+
+    monkeypatch.setattr(pilot.adapter, "stop", fail_cleanup)
+    response = pilot.stop(_stop_request(original))
+
+    assert response.state is WorkerState.INCONCLUSIVE
+    assert response.error is not None
+    assert "adapter.stop raised UnknownError;" in response.error.message
+    assert name not in response.error.message
+    assert "untrusted details" not in response.error.message
+    assert fixture.store.current_epoch(fixture.story_id) == original.epoch + 1
 
 
 def test_s3_candidate_identity_cannot_be_self_selected(pilot_env):

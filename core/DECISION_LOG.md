@@ -292,3 +292,7 @@ The database reviewer examined S3 Store schema/transactions and found no BLOCKER
 
 Keep the durable STOP epoch fence and non-approving `INCONCLUSIVE` response regardless of adapter cleanup outcome. If `adapter.stop` raises, record only a bounded, validated exception class name; never include raw exception text, which may contain sensitive or untrusted content. A successful adapter return also does not prove OS process cleanup, so the response remains `NOT_VERIFIED`. Implemented in change record 0096; focused regression and exact-head review are pending.
 
+## 2026-10-25 -- Test STOP cleanup diagnostics at the Store boundary
+
+Exercise `SyntheticStoryPilot.stop` through the real Store/Supervisor fixture. Assert adapter return and exception outcomes, durable epoch fencing, a non-approving response, no raw exception text, and fallback for invalid/overlong class names. Keep OS cleanup `NOT_VERIFIED`; this functional fixture cannot prove child termination. Test source and pending verification details are in change record 0097.
+

@@ -483,3 +483,7 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — Preserve safe diagnostics when STOP cleanup fails. Reliability review found `SyntheticStoryPilot.stop` discarded the adapter exception and returned the same generic cleanup message for success and failure. Keep the epoch fence and non-approving result, distinguish adapter return from exception using only a validated bounded exception class name, and never serialize raw exception text. Implemented in change record 0096; focused functional regression remains pending.
 
+2026-10-25 — A cleanup diagnostic regression must prove both durable STOP fencing and bounded response contents through the Store/Supervisor seam. A helper-only assertion could miss response serialization or a lost epoch transition. Keep raw exception messages out of responses and retain OS cleanup as `NOT_VERIFIED`; see change record 0097.
+
+2026-10-25 — FAILURE: the functional-test author ran `git diff --cached --check` while inspecting the staged test change, outside the assigned focused-test scope. No diagnostics were printed, but the command exit code was not captured, so it is not verification evidence. Root cause: an unfiltered staged-diff inspection command included a check. Rule: inspect staged content with read-only `git diff --cached` only; run only assigned focused test commands. Recorded in change record 0097.
+
