@@ -18,7 +18,7 @@ S3 requires immutable candidate identity, license/dependency review, compatibili
 - SDK release notes state one feature needs server 1.32.0 or later. This only supports that feature-specific compatibility claim. Full SDK Core submodule/dependency closure, transitive license inventory, general compatibility, effective listener/auth/egress settings and sandbox runtime remain unverified.
 - Issue #1881 reports local-activity replay grouping behavior on 1.32.0/1.33.0; release 1.34.0 describes a matching fix but does not identify that issue or demonstrate its exact reproducer. Replay verification remains `NOT_RUN`.
 - No reachable exploit in the proposed deployment was established by this source-only review. S2 OS isolation remains mandatory; SDK workflow sandboxing is not containment.
-- PM Bridge exact-head status was not refreshed because its status/health/job tools returned `Transport closed`; the previous request ID was queried once and no matching local receipt was found. No approval is claimed.
+- PM Bridge status/health/job tools returned `Transport closed`. A request ID from other sprint context cannot establish S3 gate status; no exact-head S3 approval is claimed. The current S3 report retains this unresolved gate.
 
 ## Ownership and next step
 

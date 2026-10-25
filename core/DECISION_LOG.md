@@ -316,3 +316,7 @@ Read-only security review of official immutable source `4a5c45390ff46c0fc28d3160
 ## 2026-10-25 -- Record bounded Temporal server and Python SDK source audit
 
 VST-028 now records Temporal as a two-component candidate: server `v1.32.1` (`af08a5e5f2dd40f545f2afac7780daaa6987001e`) plus Python SDK worker `1.34.0` (`a4c2bb38c3bad43498dfa6bd849e8d85bb684e94`). Both pinned repositories declare MIT. The SDK supports Python >=3.10 and its documented release minimum for one feature is server >=1.32.0; this is not a general compatibility matrix. SDK workflow sandboxing is determinism-oriented and is not an OS boundary. Runtime dependency/license closure, the SDK Core pin/build profile, effective server configuration and sandbox behavior remain unverified; the replay-grouping reproducer remains NOT_RUN despite a matching fix in the 1.34.0 release notes. No source was acquired, installed, built or run. Keep acquisition gated pending residual audit and explicit operator authorization. See change 0201.
+
+## 2026-10-25 -- Correct S3 GPT-PM request correlation
+
+A S3 report update copied a GPT-PM request ID from other sprint context into S3's gate row. That identifier cannot establish S3 request/reply state. Removed the cross-sprint ID and corrected the report/change record: the S3 exact-head GPT-PM gate remains unconfirmed; current PM Bridge mode/health/job queries returned `Transport closed`. Do not infer a gate verdict across sprint/project bindings. Before any future S3 send, resolve the S3-specific request state and exact HEAD. See change 0202.

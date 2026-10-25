@@ -40,13 +40,17 @@
   <dl>
     <dt>Проект</dt><dd>Virtual_scrum_team</dd>
     <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s3-vendor-neutral-worker-pilot @ 4db8b71</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s3-vendor-neutral-worker-pilot @ 597259b</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
           data-fail="Выделите вручную">Копировать страницу</button>
 </div>
 <!-- report-conform:end -->
+
+
+
+
 
 
 
@@ -81,7 +85,7 @@
       <tr><td>AC-10</td><td>STOP идемпотентен, новая эпоха блокирует старые записи и поздние результаты.</td><td class="pass">PASS для Store fencing; очистка процесса не подтверждена.</td><td>Функциональная регрессия подтверждает один durable fence, отклонение stale start и ответ INCONCLUSIVE после исключения cleanup.</td><td>Termination процесса и cleanup после timeout: NOT_VERIFIED.</td><td>Оператор — владелец делегированной задачи; технический владелец ОС sandbox не установлен. Следующий шаг — только отдельное разрешённое platform runtime-доказательство.</td></tr>
       <tr><td>AC-13–14</td><td>Изменения ограничены synthetic worktree и allowlist; запрещённый diff не может пройти gate.</td><td class="partial">Локальные synthetic journey проходят; sandbox-bound ограничение не доказано.</td><td>E2E-модуль содержит scoped-change и out-of-scope rejection сценарии.</td><td>Идентичное подтверждение на S2 sandbox и для внешнего кандидата отсутствует.</td><td>Codex — исполнитель; владелец технического sandbox UNKNOWN. Следующий шаг — привязать те же сценарии к свежему sandbox run после доступности probe.</td></tr>
       <tr><td>AC-15</td><td>Попытка внешнего egress должна завершаться отказом.</td><td>NOT_RUN.</td><td>Положительный внешний network probe не выполнялся.</td><td>Нужна разрешённая sandbox-среда и точная локальная canary-конфигурация из S3/S2 контракта.</td><td>Оператор остаётся ответственным за делегированную задачу; технический service owner неизвестен. Следующий шаг — выполнить только согласованный закрытый canary после sandbox probe.</td></tr>
-      <tr><td>Exact-head reviews и GPT gate</td><td>Свежий независимый просмотр и GPT-PM решение перед push/PR.</td><td>Code/security/reliability обзоры есть на указанной ниже истории; актуальный GPT-PM статус неизвестен.</td><td>Code, reliability и security: GPT-6 Luna, средний уровень, без findings на HEAD <code>86f59dc</code>; после этого отчёт/кандидатные записи обновляются отдельно. Запрос <code>a6c05d4e-344f-42d8-aea8-5a1d87525a31</code> проверен, но ответ не прочитан.</td><td>PM Bridge status/health/job вызовы вернули <code>Transport closed</code>; совпадающая локальная receipt-запись не найдена; approval и merge не подтверждены.</td><td>Владелец gate — GPT-PM; Codex следующий раз проверяет тот же request ID через job status после восстановления транспорта и не дублирует отправку без подтверждённого статуса. Не push/merge до exact-head APPROVE.</td></tr>
+      <tr><td>Exact-head reviews и GPT gate</td><td>Свежий независимый просмотр и GPT-PM решение перед push/PR.</td><td>Код/security/reliability обзоры зафиксированы на HEAD <code>86f59dc</code>; статус S3 exact-head запроса не подтверждён.</td><td>Отчёт и source audit обновлены в commit <code>597259b</code>; независимые code/security/reliability findings относятся к прежнему source HEAD <code>86f59dc</code>. В этой работе новый S3 review-запрос не отправлялся.</td><td>PM Bridge status/health/job вызовы вернули <code>Transport closed</code>; коррелированный S3 GPT-PM ответ и approval не проверены.</td><td>Владелец gate — GPT-PM; после восстановления транспорта Codex проверит S3 request state и, если нет действующего exact-head рассмотрения, подготовит и отправит новый полный gate. Не push/merge до APPROVE.</td></tr>
     </tbody>
   </table>
 
@@ -90,9 +94,13 @@
     <li>Закрыть остаток source/dependency аудита BMad и Temporal (включая trust/config, runtime license closure и SDK Core pin); Codex исполняет аудит, оператор владеет отдельной авторизацией приобретения и выбором. До неё кандидаты не приобретать и не запускать.</li>
     <li>После доступности среды выполнить новый run-bound подписанный sandbox probe и проверку egress; не считать локальные синтетические тесты платформенным доказательством.</li>
     <li>При разрешении платформенных сценариев проверить процессный crash/cleanup и worktree isolation; до этого оставить их NOT_RUN/NOT_VERIFIED.</li>
-    <li>Когда PM Bridge восстановится, сначала проверить job status существующего request ID <code>a6c05d4e-344f-42d8-aea8-5a1d87525a31</code>, затем при необходимости отправить GPT-PM точный текущий HEAD с полной матрицей остатка; push/PR закрыты до correlated APPROVE.</li>
+    <li>Когда PM Bridge восстановится, проверить S3-specific request state и при отсутствии активного exact-head рассмотрения отправить GPT-PM запрос для текущего HEAD с полной матрицей остатка; push/PR закрыты до correlated APPROVE.</li>
   </ol>
 </main>
+
+
+
+
 
 
 

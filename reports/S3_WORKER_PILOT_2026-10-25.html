@@ -40,13 +40,17 @@
   <dl>
     <dt>Project</dt><dd>Virtual_scrum_team</dd>
     <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s3-vendor-neutral-worker-pilot @ 4db8b71</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s3-vendor-neutral-worker-pilot @ 597259b</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
           data-fail="Select manually">Copy page</button>
 </div>
 <!-- report-conform:end -->
+
+
+
+
 
 
 
@@ -81,7 +85,7 @@
       <tr><td>AC-10</td><td>STOP is idempotent; the new epoch fences stale writes and late outcomes.</td><td class="pass">PASS for Store fencing; process cleanup is unverified.</td><td>Functional regression proves one durable fence, stale-start rejection, and an INCONCLUSIVE response after a cleanup exception.</td><td>Process termination and cleanup after timeout remain NOT_VERIFIED.</td><td>The operator is accountable for delegated work; no operating-system sandbox owner is identified. Next: obtain a separate permitted platform-runtime proof.</td></tr>
       <tr><td>AC-13–14</td><td>Changes stay inside the synthetic worktree and allowlist; an out-of-scope diff cannot pass the gate.</td><td class="partial">Local synthetic journeys pass; sandbox-bound confinement is unproven.</td><td>The E2E module covers manifest-scoped changes and out-of-scope rejection.</td><td>There is no equivalent proof on the S2 sandbox or for an external candidate.</td><td>Codex executes; the technical sandbox owner is UNKNOWN. Next: bind these same cases to a fresh sandbox run when a probe is available.</td></tr>
       <tr><td>AC-15</td><td>An external egress attempt must fail.</td><td>NOT_RUN.</td><td>No positive external-network probe was executed.</td><td>Requires an authorized sandbox and the exact local canary configuration from the S3/S2 contract.</td><td>The operator remains accountable; the technical service owner is unknown. Next: run only the contracted closed canary after sandbox probing.</td></tr>
-      <tr><td>Exact-head reviews and GPT gate</td><td>Fresh independent review and GPT-PM decision before push/PR.</td><td>Code/security/reliability reviews exist on the recorded history; current GPT-PM status is unknown.</td><td>Code, reliability, and security: GPT-6 Luna, medium effort, no findings at HEAD <code>86f59dc</code>. Request <code>a6c05d4e-344f-42d8-aea8-5a1d87525a31</code> was checked, but no reply was read.</td><td>PM Bridge status/health/job calls returned <code>Transport closed</code>; no matching local receipt was found; approval and merge are unconfirmed.</td><td>GPT-PM owns the review gate. After transport recovers, Codex checks job status for the same request ID before considering a new send. Do not push/merge before exact-head APPROVE.</td></tr>
+      <tr><td>Exact-head reviews and GPT gate</td><td>Fresh independent review and GPT-PM decision before push/PR.</td><td>Code/security/reliability reviews are recorded at HEAD <code>86f59dc</code>; status of an S3 exact-head request is unconfirmed.</td><td>The report and source audit were updated in commit <code>597259b</code>; specialist findings apply to prior source HEAD <code>86f59dc</code>. No new S3 review request was sent during this work.</td><td>PM Bridge status/health/job calls returned <code>Transport closed</code>; a correlated S3 GPT-PM reply or approval was not verified.</td><td>GPT-PM owns the review gate. When transport recovers, Codex will check S3 request state and, if no active exact-head review exists, prepare and send the full gate for current HEAD. Do not push/merge before APPROVE.</td></tr>
     </tbody>
   </table>
 
@@ -90,9 +94,13 @@
     <li>Complete the remaining BMad and Temporal source/dependency audit, including trust/configuration, runtime license closure, and the SDK Core pin; Codex executes the audit, while the operator owns separate acquisition authorization and selection. Do not acquire or execute either candidate before authorization.</li>
     <li>Once the environment is available, run a fresh run-bound signed sandbox probe and egress check; do not treat synthetic local tests as platform evidence.</li>
     <li>If platform scenarios are permitted, verify process crash/cleanup and worktree isolation; until then keep them NOT_RUN/NOT_VERIFIED.</li>
-    <li>When PM Bridge recovers, first check job status for existing request ID <code>a6c05d4e-344f-42d8-aea8-5a1d87525a31</code>, then send the exact current HEAD and full residual matrix only if needed; push/PR remains gated on a correlated APPROVE.</li>
+    <li>When PM Bridge recovers, send the S3 final gate for the exact current HEAD with the complete residual matrix; push/PR remains gated on a correlated APPROVE.</li>
   </ol>
 </main>
+
+
+
+
 
 
 
