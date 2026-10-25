@@ -513,3 +513,7 @@ All six S4 categories now have run records bound to candidate `ac17bde` and regi
 ## 2026-10-25 — Defer S4 report approval until final candidate status succeeds
 
 At `ac17bde`, reliability review found that a failed final candidate-state query could leave a previously appended `PASS` report. `tools/qa/run.py` now appends only after final status succeeds, allowing the error path to persist `BLOCKED`. The functional-test reviewer added and ran a fault-injection regression (1 passed at dirty source HEAD `9cceab3`). The exact full-category run and fresh specialist recheck must use the later committed source and refreshed selector registry. Security review also recorded unverified provenance of the external dependency target as a MINOR follow-up; see change 0269.
+
+## 2026-10-25 — Refresh S4 selector registry after final-status regression
+
+After source/test commit `1012a5e`, regenerated `docs/qa/categories.json` with `C:\Python314\python.exe -m tools.qa.build_registry --repo-root . --write` (exit 0). The manifest binds the added final-status selector to `1012a5e`; inventory is functional 59, integration 84 including 36 policy `NOT_RUN`, API 705 including 12 policy `NOT_RUN`, E2E 56 including 1 policy `NOT_RUN`, seeded-failure 3, regression 855 including 49 policy `NOT_RUN`. No product tests were run during registry generation. The full supported suite must run at the exact candidate containing this refreshed manifest.

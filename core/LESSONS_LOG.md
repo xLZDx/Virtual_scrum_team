@@ -599,3 +599,7 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — SHORTCOMING: the QA runner persisted an approving report before its final candidate-cleanliness query; if that query timed out, durable JSONL could retain PASS while the CLI returned BLOCKED. Defer approval append until final state verification and exercise the failure boundary with injected timeout. See change 0269.
 
 2026-10-25 — SHORTCOMING: a reviewer invoked `git diff --check` despite the review task explicitly forbidding checks; it produced no diagnostics and changed no files. Rule: reviewers must limit commands to source inspection and plain diff output when instructed. See change 0269.
+
+2026-10-25 — S4 test-source changes require a new committed selector manifest before exact-head QA; the refreshed registry now binds the added final-status failure regression to source HEAD `1012a5e`. Keep the earlier six-category run at `ac17bde` as historical evidence only. See change 0270.
+
+2026-10-25 — SHORTCOMING: a documentation update script wrote `STATE.md` contents into `BACKLOG.md` because it reused the wrong path variable. The mistake was found in the uncommitted diff, restored from the current committed backlog, and the intended VST rows were reapplied; no commit or evidence loss resulted. Rule: bind each state file to a dedicated path variable and reread the target file after scripted edits. See change 0270.
