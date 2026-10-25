@@ -467,3 +467,8 @@ The 27-selector functional/integration/seeded run at `126b67f3a969a067ac1643beba
 ## 2026-10-25 -- Bound retry for registry ancestry provenance
 
 The ancestry helper now uses the existing one-retry wrapper, with five seconds per attempt. This allows one transient `git merge-base --is-ancestor` timeout to recover while retaining fail-closed behavior after retry. The mapped-run discrepancy at `126b67f` is consistent with a transient timeout, but its root cause was not reproduced. See change 0186; exact-head test-owner rerun is required.
+
+
+## 2026-10-25 -- Pass S4 mapped functional, integration, and seeded denominator
+
+At candidate HEAD `97c39000331c96b0184b1fb18d9ac2ba65c5658d`, both targeted registry-ancestry regressions passed (2/2), then the complete mapped denominator passed (27/27: functional 14, integration 6, seeded-failure 7) on Windows PowerShell with Python 3.14.3. The prior E2E source ancestry rejection did not recur. This exact-head evidence does not cover API/E2E selectors or trusted signer/report/sandbox/POSIX runtime. See change record 0186.
