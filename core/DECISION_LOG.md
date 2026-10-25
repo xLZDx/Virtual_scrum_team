@@ -517,3 +517,11 @@ At `ac17bde`, reliability review found that a failed final candidate-state query
 ## 2026-10-25 — Refresh S4 selector registry after final-status regression
 
 After source/test commit `1012a5e`, regenerated `docs/qa/categories.json` with `C:\Python314\python.exe -m tools.qa.build_registry --repo-root . --write` (exit 0). The manifest binds the added final-status selector to `1012a5e`; inventory is functional 59, integration 84 including 36 policy `NOT_RUN`, API 705 including 12 policy `NOT_RUN`, E2E 56 including 1 policy `NOT_RUN`, seeded-failure 3, regression 855 including 49 policy `NOT_RUN`. No product tests were run during registry generation. The full supported suite must run at the exact candidate containing this refreshed manifest.
+
+## 2026-10-25 — Preserve S4 post-fix exact-head results
+
+Change 0271 records the six-category candidate run at `fd49fad` and the same-head regression rerun. Keep the initial single failed selector as observed; later isolated/category passes do not erase it or identify its assertion. Required skips and prohibited `NOT_RUN` selectors remain non-approving. The evidence is retained under `docs/sdlc/evidence/qa/`; no push or merge is authorized by these results.
+
+## 2026-10-25 — Extend S4 coverage with strict POSIX runtime matrix
+
+Change 0272 records the design decision to add a POSIX profile alongside the pinned Windows profile because required POSIX selectors cannot satisfy the S4 no-skip acceptance on Windows. The matrix must bind all reports to the same candidate, registry and dependency lock, and every selector must pass on its assigned profile. This is not a waiver for skipped or prohibited tests. User authorization for the dedicated Ubuntu-24.04 WSL2 environment is recorded in the conversation; the runtime profile remains unimplemented and unverified.
