@@ -499,3 +499,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — For a WSL workflow pinned to a named distribution, use that name directly and do not run a distribution-list command as an environment probe. One incidental `wsl.exe -l -q` was executed before a focused S5 test; it did not change configuration, but was unnecessary and outside the minimal evidence path. See change 0137.
 
+2026-10-25 — A digest helper and truthful receipt schema do not prove analyzer confinement or that declared rules actually ran. GPT-PM found no local source defect but kept AC-5–AC-8 open until an authorized analyzer identity/interface, immutable read-only snapshot boundary, enforced resource/process/network limits, attestor, and seeded rule evidence exist. Do not add an untested generic wrapper or infer rule coverage. See change 0220.
+

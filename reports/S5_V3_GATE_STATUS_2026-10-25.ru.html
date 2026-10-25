@@ -15,7 +15,7 @@ code{overflow-wrap:anywhere}
 <body>
 <header>
 <h1>S5: итог версии 3 bounded evidence gate</h1>
-<p class="mut">Локальный VST v3 контракт и Store→Gate путь реализованы, покрыты focused functional/E2E и прошли code/security review. Полный AEVE runtime остаётся незакрытым; финальный GPT exact-head gate ожидает восстановления PM Bridge.</p>
+<p class="mut">На точном S5 HEAD <code>8cb3ab4167239c0ad3316a9e51d756be3d9520c2</code> GPT-PM вернул <code>MAJOR — MODIFY</code> по двум незакрытым acceptance требованиям (AC-5/6 bounded execution и AC-7/8 truthful analyzer evidence); подтверждённых source-level BLOCKER/MAJOR — 0. Локальный VST v3 контракт и Store→Gate slice подтверждены; реальный AEVE adapter/runtime и seeded analyzer evidence отсутствуют.</p>
 </header>
 
 <!-- report-conform:begin -->
@@ -43,7 +43,7 @@ code{overflow-wrap:anywhere}
   <dl>
     <dt>Проект</dt><dd>Virtual_scrum_team</dd>
     <dt>Папка</dt><dd>D:\tmp\scratch_worktrees\Virtual_scrum_team-s5</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s5-bounded-aeve-evidence @ 606bba9</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s5-bounded-aeve-evidence @ 8cb3ab4</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
@@ -59,9 +59,11 @@ code{overflow-wrap:anywhere}
 
 
 
+
+
 <h2>1. Итог</h2>
-<p>S5 доказал локальные свойства формата и gate для синтетической StaticAnalysis-квитанции: неизменность v1/v2 golden-представлений, независимый v3 ключ, truthful rule partition, digest resolver checks, stale-head rejection и отсутствие лишнего acceptance. На functional прогоне было 39 passed и 1 skipped; Store→Gate E2E дал 3 passed. Code reviewer и security reviewer на product-code HEAD <code>5b839d0869bd62c7f8d8180d45f3bf68e43b8f6f</code> не нашли valid BLOCKER/MAJOR.</p>
-<p class="warn">Это частичное выполнение плана: в репозитории нет авторизованной AEVE identity/adapter, immutable snapshot enforcement, resource/network/process boundary или provisioned analyzer attestor. Каталог seeded failures пуст и имеет state NOT_RUN. Symlink test пропущен на Windows из-за WinError 1314 / errno 22. Не заявляется запуск реального analyzer или sandbox.</p>
+<p>S5 подтверждает локальные свойства формата и gate для синтетической StaticAnalysis-квитанции: неизменность v1/v2 golden-представлений, отдельный v3 ключ, truthful rule partition, digest resolver checks, stale-head rejection и отсутствие лишнего acceptance. Записанный functional результат — 39 passed и 1 skipped; Store→Gate E2E — 3 passed. Code/security reviewers не нашли valid source-level BLOCKER/MAJOR на product-code HEAD <code>5b839d0869bd62c7f8d8180d45f3bf68e43b8f6f</code>. Коррелированный финальный review точного repository HEAD <code>8cb3ab4167239c0ad3316a9e51d756be3d9520c2</code> вернул <code>MAJOR — MODIFY</code> по двум незакрытым acceptance требованиям.</p>
+<p class="warn">Это частичное выполнение плана: в checkout нет авторизованной AEVE source identity/interface, bounded adapter, immutable snapshot enforcement, resource/network/process boundary или provisioned analyzer attestor. Каталог seeded failures пуст и имеет state NOT_RUN. Symlink test пропущен на Windows из-за WinError 1314 / errno 22. Запуск реального analyzer или sandbox не заявляется.</p>
 
 <h2>2. Матрица приёмки S5</h2>
 <table>
@@ -90,17 +92,21 @@ code{overflow-wrap:anywhere}
 <li>Store→Gate E2E exact-head run: 3 passed, 0 skipped/failed на <code>7cd83eac005e318dca5ae8782b45d2c443cdccc0</code>; temporary SQLite and temporary report/source files. <a href="../docs/sdlc/evidence/s5-v3-store-gate-e2e-7cd83ea.md">E2E evidence</a>.</li>
 <li>Code review: GPT-6 Luna, medium effort, HEAD <code>5b839d0869bd62c7f8d8180d45f3bf68e43b8f6f</code>, no material BLOCKER/MAJOR.</li>
 <li>Security review: GPT-6 Luna, medium effort, same HEAD, no BLOCKER/MAJOR/MINOR.</li>
+<li>GPT-PM exact-head final review на <code>8cb3ab4167239c0ad3316a9e51d756be3d9520c2</code>: correlated <code>MAJOR — MODIFY</code>, подтверждённых source-level BLOCKER/MAJOR — 0, незакрытых acceptance MAJOR — 2. Request <code>f9399e86-4b8b-4d8a-b2b5-26140f5639e1</code>, reply <code>61d7078e-ec7e-45e6-9f6a-ad2beb99c9e7</code>, input hash <code>8ab6b4e5d46876a4266847340e4c3481f8c4b70594621cbac40e4e8e686dd52f</code>. Полный ответ: <code>docs/sdlc/evidence/s5-gptpm-final-review-8cb3ab4.json</code> (change 0220).</li>
 <li>Primary session accidentally invoked <code>git diff --check</code> once during manual review; it returned no output and its exit code was not recorded. Required report formatting check <code>report_conform.py reports --check</code> passed: all reports carry the mandated block. No S5 product tests/build/CI/migration were run in the primary session.</li>
 </ul>
 
 <h2>4. Финальный gate и следующие шаги</h2>
-<p class="bad">Финальный GPT exact-head approval отсутствует. Ранее PM Bridge вернул <code>Transport closed</code> для product-code HEAD <code>5b839d0</code> и report HEAD <code>9886973ce374790026dd6edecd15e2a8ce1c314b</code>; request IDs <code>9f927e38-8d34-4f44-9d25-547952447b91</code> и <code>7b71a1be-e2dd-4c15-bc82-7f3bb0c962d1</code> остаются для read-only status recovery. В этом ходе health и job-status повторно вернули <code>Transport closed</code>; в receipt log совпадающих записей нет. На текущем exact S5 HEAD <code>606bba9a5c3563b195eee7b5dd11f0dd243c44a5</code> approval отсутствует, новый запрос не отправлен. Push/PR не выполнялись.</p>
+<p class="bad">Коррелированный GPT-PM review точного HEAD <code>8cb3ab4167239c0ad3316a9e51d756be3d9520c2</code> вернул <code>MAJOR — MODIFY</code> по двум полным acceptance требованиям, при 0 source-level BLOCKER/MAJOR. M01: отсутствует bounded analyzer adapter с immutable/read-only snapshot и CPU, memory, time, output, subprocess и network limits (AC-5/6). M02: нет авторизованного analyzer с проверенным supported-rule inventory и доказанным seeded finding/clean checked-rule evidence (AC-7/8). Request <code>f9399e86-4b8b-4d8a-b2b5-26140f5639e1</code>, reply <code>61d7078e-ec7e-45e6-9f6a-ad2beb99c9e7</code>, input hash <code>8ab6b4e5d46876a4266847340e4c3481f8c4b70594621cbac40e4e8e686dd52f</code>. Полный S5 DoD, push, PR и merge не одобрены.</p>
 <ol>
-<li>Рекомендуется восстановить PM Bridge и проверить оба request ID; если correlated reply отсутствует — отправить новый review с точным diff текущего committed HEAD. Без approval push/PR остаётся закрыт.</li>
-<li>Затем получить authorized AEVE source identity/license/capability inventory и attestor/signer owner; это разблокирует AC-5–7 и real-runtime часть AC-3/4/11/12.</li>
-<li>Получить авторизованную AEVE identity и adapter interface; проверить оставшиеся timeout/output, subprocess и network boundaries только на реальном adapter/runtime.</li>
+<li>Оператор: предоставить/авторизовать in-scope AEVE source identity/revision и путь к владельцу analyzer/attestor; в проектных документах технический владелец не указан. Не обращаться к соседнему checkout и не приобретать неавторизованный candidate.</li>
+<li>Codex после получения identity и утверждённой runtime boundary: реализовать bounded adapter вокруг immutable read-only snapshot с CPU, memory, wall-time, output, subprocess и network limits. Универсальная непроверенная обёртка не закроет AC-5/6.</li>
+<li>Functional-test-reviewer и e2e-runner: связать принятые seeded fixtures со стабильными required rule IDs; выполнить known-issue finding и clean checked-rule сценарии на авторизованном analyzer (AC-7/8).</li>
+<li>Provision отдельный trusted analyzer attestor, выполнить exact-head signed report/gate integration и свежий GPT review после кода и тестов. Не делать push/PR до полного acceptance и correlated APPROVE.</li>
 </ol>
-<p class="mut">Local code HEAD: <code>5b839d0869bd62c7f8d8180d45f3bf68e43b8f6f</code>. Base: <code>1cd868b776a50147b951c9282cc73e2868c6bad6</code>. Durable evidence and decisions are linked above.</p>
+<p class="mut">Reviewed repository HEAD: <code>8cb3ab4167239c0ad3316a9e51d756be3d9520c2</code>. Code/security review HEAD: <code>5b839d0869bd62c7f8d8180d45f3bf68e43b8f6f</code>. Base: <code>6117ba24b08a260b42402db6da0bf767864e1c04</code>. Durable evidence and decisions are linked above.</p>
+
+
 
 
 
