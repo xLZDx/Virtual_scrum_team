@@ -532,6 +532,8 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — Change 0152 captured intermittent five-second timeouts in read-only Git lookups during the focused registry module; the calls correctly failed closed, and the direct lookup succeeded outside pytest. The underlying environmental cause is not verified. A single retry is bounded to ten seconds total for affected lookups; keep rejection after a second timeout and require the designated agent to rerun the full module. See change 0153.
 
+2026-10-25 — After one timeout-only retry was added with a five-second per-attempt and ten-second total bound, the full focused registry module passed at exact HEAD `08b82e07bceb1bd928a5a02ac6ee9479854caf16` (17 passed, 1 Windows symlink skip, 0 failed). Keep the earlier timeout evidence as an operational finding; retain `NOT_RUN` for symlink runtime on platforms where this host lacks link privileges. See change 0154.
+
 2026-10-25 — During change 0151 commit preparation I ran `git diff --check` before the designated test phase. It emitted CRLF-to-LF warnings and no visible diagnostics, but this was still an out-of-phase check and is not verification evidence. Record the deviation immediately and keep subsequent coding commands to edits, staging, and commit only.
 
 2026-10-25 — AST-cache acceptance has a deterministic focused test, but the full registry module still depends on a five-second Git subprocess timeout for its committed-registry integration case. The timeout correctly fails closed, yet leaves the module `NOT_PASS`; retain exact evidence and resolve the runtime-boundary flake before promoting the full-module result. See change 0152.

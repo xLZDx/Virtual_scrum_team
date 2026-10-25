@@ -372,3 +372,7 @@ Change 0152 records three focused-module runs that intermittently exceeded the f
 ## 2026-10-25 -- Verify registry source AST caching
 
 The designated functional reviewer at code HEAD `93cd3c334c66683a379ca594215eaa3f5507bfd8` added two cases. The targeted AST-cache command passed 2/2. The full focused module returned 16 passed, 1 symlink skip, and 1 failure because the committed-registry integration case's bounded `git rev-parse --verify HEAD` timed out after five seconds; retain this as `NOT_PASS`, not green. See change 0152 and evidence `docs/sdlc/evidence/s4-ast-cache-functional-93cd3c3.md`.
+
+## 2026-10-25 -- Re-run S4 registry tests after one bounded timeout retry
+
+At clean exact code HEAD `08b82e07bceb1bd928a5a02ac6ee9479854caf16`, Python 3.14.3 / pytest 8.4.2, the focused registry module passed: 17 passed, 1 skipped, 0 failed. The skip is Windows symlink creation privilege (`WinError 1314`); POSIX symlink execution remains unverified. No Git timeout recurred. See change 0154 and evidence `docs/sdlc/evidence/s4-registry-module-retry-08b82e0.md`.
