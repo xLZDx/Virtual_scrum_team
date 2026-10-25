@@ -495,5 +495,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — A static-analysis receipt must not claim authority through the same key as the worker or runner, and hash fields are not proof unless the gate recomputes them. Pin an independent analyzer key/domain, bind the profile/source/report/run/head/scope, and fail closed when trusted digest resolvers are absent. Keep analyzer findings non-approving and do not describe a hash helper as an immutable sandbox. The local contract and Store→Gate suites pass; actual AEVE remains unavailable. See changes 0120 and 0135.
 
-2026-10-25 — Exact-head final approval is a distinct gate after focused tests and specialist review. When PM Bridge returned `Transport closed` for send, health, job status, and mode start, preserve the request ID, do not infer sent/approved, and do not push/open a PR until a correlated reply is available. See change record 0135.
+2026-10-25 — Exact-head final approval is a distinct gate after focused tests and specialist review. When PM Bridge returns `Transport closed` for send, health, or job status, preserve each request ID, do not infer sent/approved, and do not push/open a PR until a correlated reply is available. See change records 0135–0136.
 

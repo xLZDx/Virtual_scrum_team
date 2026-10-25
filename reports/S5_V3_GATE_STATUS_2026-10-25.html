@@ -43,13 +43,15 @@ code{overflow-wrap:anywhere}
   <dl>
     <dt>Project</dt><dd>Virtual_scrum_team</dd>
     <dt>Folder</dt><dd>D:\tmp\scratch_worktrees\Virtual_scrum_team-s5</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s5-bounded-aeve-evidence @ 5b839d0</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s5-bounded-aeve-evidence @ 9886973</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
           data-fail="Select manually">Copy page</button>
 </div>
 <!-- report-conform:end -->
+
+
 
 
 
@@ -87,13 +89,15 @@ code{overflow-wrap:anywhere}
 </ul>
 
 <h2>4. Final gate and next actions</h2>
-<p class="bad">Final GPT exact-head approval is missing. PM Bridge `gpt_send_and_await`, health, job-status and mode-on returned `Transport closed`; request ID <code>9f927e38-8d34-4f44-9d25-547952447b91</code> is preserved for status recovery if the bridge returns. No push/PR was performed.</p>
+<p class="bad">Final GPT exact-head approval is missing. PM Bridge returned <code>Transport closed</code> for product-code HEAD <code>5b839d0</code> and report HEAD <code>9886973ce374790026dd6edecd15e2a8ce1c314b</code>; job status/health were unavailable and no correlated reply exists. Request IDs: <code>9f927e38-8d34-4f44-9d25-547952447b91</code> and <code>7b71a1be-e2dd-4c15-bc82-7f3bb0c962d1</code>. No push/PR was performed.</p>
 <ol>
-<li>Recommended: restore PM Bridge and first check the existing request ID; if no reply was sent, request GPT approval for the final committed head. Push/PR remains gated on a correlated approval.</li>
+<li>Recommended: restore PM Bridge and check both request IDs; if no correlated reply exists, send a new review with the exact diff for the current committed HEAD. Push/PR remains gated on a correlated approval.</li>
 <li>Then obtain an authorized AEVE source identity/license/capability inventory and attestor/signer owner; these unblock AC-5–7 and real-runtime parts of AC-3/4/11/12.</li>
 <li>Run the symlink case in an authorized symlink-capable environment and extend evidence only to scenarios actually executed.</li>
 </ol>
 <p class="mut">Local code HEAD: <code>5b839d0869bd62c7f8d8180d45f3bf68e43b8f6f</code>. Base: <code>1cd868b776a50147b951c9282cc73e2868c6bad6</code>. Durable evidence and decisions are linked above.</p>
+
+
 
 
 

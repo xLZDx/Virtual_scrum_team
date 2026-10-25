@@ -43,13 +43,15 @@ code{overflow-wrap:anywhere}
   <dl>
     <dt>Проект</dt><dd>Virtual_scrum_team</dd>
     <dt>Папка</dt><dd>D:\tmp\scratch_worktrees\Virtual_scrum_team-s5</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s5-bounded-aeve-evidence @ 5b839d0</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s5-bounded-aeve-evidence @ 9886973</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
           data-fail="Выделите вручную">Копировать страницу</button>
 </div>
 <!-- report-conform:end -->
+
+
 
 
 
@@ -87,13 +89,15 @@ code{overflow-wrap:anywhere}
 </ul>
 
 <h2>4. Финальный gate и следующие шаги</h2>
-<p class="bad">Финальный GPT exact-head approval отсутствует. PM Bridge `gpt_send_and_await`, health, job-status и mode-on вернули `Transport closed`; request ID <code>9f927e38-8d34-4f44-9d25-547952447b91</code> сохранён для проверки, если bridge восстановится. Push/PR не выполнялись.</p>
+<p class="bad">Финальный GPT exact-head approval отсутствует. Для product-code HEAD <code>5b839d0</code> и report HEAD <code>9886973ce374790026dd6edecd15e2a8ce1c314b</code> PM Bridge вернул <code>Transport closed</code>; job-status/health недоступны, correlated reply отсутствует. Request IDs: <code>9f927e38-8d34-4f44-9d25-547952447b91</code> и <code>7b71a1be-e2dd-4c15-bc82-7f3bb0c962d1</code>. Push/PR не выполнялись.</p>
 <ol>
-<li>Рекомендуется восстановить PM Bridge и сначала проверить состояние указанного request ID; если ответа не было — запросить GPT approval для финального committed head. Без correlated approval push/PR остаётся закрыт.</li>
+<li>Рекомендуется восстановить PM Bridge и проверить оба request ID; если correlated reply отсутствует — отправить новый review с точным diff текущего committed HEAD. Без approval push/PR остаётся закрыт.</li>
 <li>Затем получить authorized AEVE source identity/license/capability inventory и attestor/signer owner; это разблокирует AC-5–7 и real-runtime часть AC-3/4/11/12.</li>
 <li>Провести symlink case в разрешённой symlink-capable среде и расширить evidence только по реально запущенным сценариям.</li>
 </ol>
 <p class="mut">Local code HEAD: <code>5b839d0869bd62c7f8d8180d45f3bf68e43b8f6f</code>. Base: <code>1cd868b776a50147b951c9282cc73e2868c6bad6</code>. Durable evidence and decisions are linked above.</p>
+
+
 
 
 
