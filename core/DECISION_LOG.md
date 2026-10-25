@@ -286,3 +286,7 @@ Updated the bilingual S2 status report after the 0162 implementation, 0163 funct
 ## 2026-10-25 -- Record the complete safe E6 diff-gate module at an exact head
 
 The designated E2E agent inspected and ran the full `tests/vst/test_s2_diffgate.py` module at committed HEAD `6b426b775e7ce92ad2fe6d42c1ede7f620ee4994`. It passed 17/17 under the WSL `vst-runner` identity. The module uses synthetic inputs and does not perform process-kill, kill-table, mutation-testing, CI, external writes, or migration operations. This is focused E6 evidence only; it does not close other S2 gates. See change 0210.
+
+## 2026-10-25 -- Triage S2 E4 WSL containment skips
+
+At triage repository HEAD `50647fb`, the four E4 skips were confirmed as parameter values in an unconditional `NOT_RUN` placeholder, not standalone runnable selectors. Process-group and descendant cleanup remain prohibited, worker key-file denial has a separate real passing WSL selector, and parent Job Object nesting requires Windows. No additional tests were run. See change 0211.
