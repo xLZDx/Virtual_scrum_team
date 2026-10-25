@@ -1,6 +1,6 @@
 # S4 WSL worker identity helper design
 
-Status: implementation authorized by the operator for one report-bound UID-boundary scenario. This does not authorize process-kill, timeout, mutation, or other existing `NOT_RUN` scenarios.
+Status: helper source and exact-head installer are in change 0310. The helper has not been installed or runtime-proven, and the report-bound selector is pending. This does not authorize process-kill, timeout, mutation, or other existing `NOT_RUN` scenarios.
 
 ## Goal
 
@@ -19,7 +19,23 @@ Current behavior: `tools/qa/run.py::_run_bounded` launches pytest as its current
 
 Add a small C helper source under `tools/qa/` and an installer for the selected Ubuntu 24.04 WSL distribution. The installed file has fixed path `/usr/local/libexec/vst-s4-worker-exec`, owner `root`, group `vst-runner`, and mode `4750`. Installation is allowed only after checking the exact WSL identity/configuration, account IDs, clean candidate HEAD and source hash. No repository path is mounted into WSL; test code is staged into the distro-local candidate root.
 
-The helper accepts only the fixed Python 3.12 interpreter, isolated `-I -c` invocation, script and its arguments. It accepts no target identity, executable path, shell command, or environment override. It verifies the caller real UID/GID are 997:988 and effective UID is root, clears supplementary groups, sets all real/effective/saved GIDs to 989 and UIDs to 999, sets `no_new_privs`, replaces the environment with a small fixed allowlist, then uses `execve` without a shell. Failure before `execve` exits non-zero and never starts the child.
+The helper accepts only the fixed Python 3.12 interpreter, isolated `-I -c` invocation, script and its arguments. It accepts no target identity, executable path, shell command, or environment override. It verifies the caller real UID/GID are 997:988 and effective UID is root, clears supplementary groups and inherited file descriptors above stderr, sets all real/effective/saved GIDs to 989 and UIDs to 999, sets `no_new_privs`, replaces the environment with a small fixed allowlist, then uses `execve` without a shell. It embeds the exact candidate commit and C-source hash and exposes those values through a non-privileged `--version` response for report-bound verification. Failure before `execve` exits non-zero and never starts the child.
+
+The root installer itself must be streamed from the immutable blob at the explicitly selected commit into `/bin/sh -s`; never invoke the installer from the runner-writable checkout as root. Run the following pipeline from an already authenticated root shell in the selected WSL distribution; the command sanitizes that shell but does not elevate privileges itself:
+
+```sh
+/usr/bin/env -i PATH=/usr/bin:/bin GIT_CONFIG_NOSYSTEM=1 \
+  GIT_CONFIG_GLOBAL=/dev/null GIT_PAGER=cat \
+  /usr/bin/git --no-replace-objects --no-pager \
+  -c safe.directory=/tmp/vst-s4-candidate/repo \
+  -c core.fsmonitor=false -c core.hooksPath=/dev/null \
+  -C /tmp/vst-s4-candidate/repo \
+  show <EXPECTED_HEAD>:tools/qa/install_wsl_worker_helper.sh \
+| /usr/bin/env -i PATH=/usr/bin:/bin /bin/sh -s -- \
+    <EXPECTED_HEAD> /tmp/vst-s4-candidate/repo
+```
+
+Replace `<EXPECTED_HEAD>` with the exact full commit ID to be tested. The left `env -i` clears inherited Git repository/configuration variables before reading the installer blob; the right `env -i` starts the root shell with only a fixed path. The command also sanitizes Git configuration and disables replacement refs before the root shell receives installer bytes. The installer's own Git commands apply the same protections before checking the clean candidate and extracting the committed C source. Compilation and helper identity verification also use a clean environment. The installer builds in a root-only temporary directory under `/usr/local/libexec` so the final rename stays on one filesystem; it produces one binary and no separate manifest file.
 
 Add one S4 functional selector that runs under the ordinary WSL profile as `vst-runner`. The test creates disposable runner-owned file/socket sentinels in its temporary directory, invokes the installed helper, and checks the child's UID/GID/groups and denied file/socket access. The test emits ordinary pytest evidence through the existing report-bound runner; `_run_bounded` and the runner-owned report/scratch artifacts remain owned by UID 997.
 
@@ -31,6 +47,7 @@ Add one S4 functional selector that runs under the ordinary WSL profile as `vst-
 ## Failure modes
 
 - Missing, stale, writable, wrongly owned, wrongly grouped, or incorrectly permissioned helper: the report-bound selector fails; no fallback runner or identity is used.
+- An installer not obtained from the expected immutable Git blob: do not run it as root. The installer cannot make its own pre-execution trust check because the shell would already be interpreting its contents.
 - Wrong caller identity, missing target IDs, inability to clear groups, or failed `setresgid`/`setresuid`/`no_new_privs`: helper exits non-zero before executing Python.
 - A later source change invalidates helper hash and exact-head evidence; the helper must be rebuilt and reinstalled from the new reviewed source.
 
