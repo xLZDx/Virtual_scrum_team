@@ -593,3 +593,6 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 
 2026-10-25 — Keep ancestry exit code 1 (a valid non-ancestor) distinct from higher exit codes and from timeout/invocation failures. Tests for bounded retries should assert both typed failure and the finite retry count; deterministic subprocess stubs avoid depending on local Git/OS state. See change 0196; selector execution follows mapping in 0197.
+
+
+2026-10-25 — Commit new static test nodes before pointing category provenance at them, then map each node exactly once under its primary category and record the canonical registry hash. Keep non-ancestor return code distinct from Git invocation errors. See changes 0196 and 0197; exact category runs are pending.

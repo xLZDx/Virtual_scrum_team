@@ -506,3 +506,8 @@ Registry ancestry validation now interprets Git status 1 as a genuine non-ancest
 ## 2026-10-25 -- Add deterministic S4 ancestry outcome tests
 
 Five static-ID functional tests exercise the Git ancestry query's defined outcomes: return code 0/1, unexpected nonzero, exhausted bounded timeout retry, and invocation `OSError`. Tests use deterministic subprocess monkeypatches and assert typed failures. This source-test commit intentionally precedes category registration; no tests were run. See change record 0196.
+
+
+## 2026-10-25 -- Map S4 ancestry outcome tests as functional selectors
+
+The five deterministic ancestry outcome tests from source commit `173a7f2` are mapped under the functional primary category. Functional selector count is 19; its registry provenance points to the test-source commit. API, integration, seeded-failure and E2E IDs are unchanged. Category registry SHA-256 is recorded in change record 0197. Runtime evidence is pending the post-mapping exact-head runs.

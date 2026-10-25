@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "source_head": "598d22ddf4db6a64c61db3f6441855e2f143bc30",
+  "source_head": "173a7f25966fdbd92a36e0705be6fa2b2537aae7",
   "categories": {
     "functional": {
       "state": "SUPPORTED",
       "coverage_state": "COMPLETE",
-      "coverage_reason": "The accepted local functional denominator covers receipt-order invariance, missing receipts, malformed manifest fields, wrong-key signatures, stale candidate HEAD, and skipped/xfail required IDs; the original S3 contract selectors remain included. Network API and report-runtime paths are excluded from this local functional category.",
+      "coverage_reason": "The accepted local functional denominator covers receipt-order invariance, missing receipts, malformed manifest fields, wrong-key signatures, stale candidate HEAD, and skipped/xfail required IDs; the original S3 contract selectors remain included. Network API and report-runtime paths are excluded from this local functional category. Registry ancestry outcomes are additionally mapped for true ancestor, valid non-ancestor, unexpected Git exit, exhausted timeout retry, and invocation failure.",
       "owner_role": "functional-test-reviewer",
-      "source_head": "a73e87a3c4b414f0c97ac1d09fdedf037ec17dde",
+      "source_head": "173a7f25966fdbd92a36e0705be6fa2b2537aae7",
       "test_ids": [
         "tests/vst/test_s3_worker_adapter.py::test_ac1_request_contract_enforces_identity_fence_and_payload_bounds",
         "tests/vst/test_s3_worker_adapter.py::test_ac1_response_contract_rejects_untyped_or_oversized_worker_claims",
@@ -22,7 +22,12 @@
         "tests/vst/test_e1_contracts.py::test_manifest_unknown_field_rejected",
         "tests/vst/test_e2_gate.py::test_signature_by_wrong_key_rejected",
         "tests/vst/test_e4_runner.py::test_replay_against_another_head_is_rejected",
-        "tests/vst/test_e4_runner.py::test_skipped_or_xfail_ids_prevent_pass"
+        "tests/vst/test_e4_runner.py::test_skipped_or_xfail_ids_prevent_pass",
+        "tests/qa/test_s4_registry_contracts.py::test_s4_git_ancestry_returncode_zero_is_true",
+        "tests/qa/test_s4_registry_contracts.py::test_s4_git_ancestry_returncode_one_is_false",
+        "tests/qa/test_s4_registry_contracts.py::test_s4_git_ancestry_other_returncode_is_contract_error",
+        "tests/qa/test_s4_registry_contracts.py::test_s4_git_ancestry_second_timeout_is_contract_error",
+        "tests/qa/test_s4_registry_contracts.py::test_s4_git_ancestry_oserror_is_contract_error"
       ]
     },
     "integration": {
