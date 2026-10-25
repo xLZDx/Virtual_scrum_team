@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S2 — изолированная worker-среда</title>
+  <style>
+    body { font: 16px/1.55 system-ui, sans-serif; max-width: 1180px; margin: 2rem auto; padding: 0 1rem; color: #18212b; }
+    h1, h2 { line-height: 1.2; } table { border-collapse: collapse; width: 100%; margin: 1rem 0 2rem; }
+    th, td { border: 1px solid #9aa8b5; padding: .55rem; text-align: left; vertical-align: top; }
+    th { background: #edf2f6; } code { overflow-wrap: anywhere; }
+    .partial { color: #805700; } .pass { color: #176b38; }
+  </style>
+</head>
+<body>
+<header><h1>S2 — изолированная worker-среда: статус и приёмка</h1></header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>Virtual_scrum_team</dd>
+    <dt>Папка</dt><dd>D:\tmp\scratch_worktrees\Virtual_scrum_team-s2-final</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-isolated-worker-sandbox @ 3505f76</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+<main>
+  <p><strong>Состояние на 25 октября 2026:</strong> реализация завершена на source HEAD <code>dc95915018b80f498d5cf775363712fb915fe04e</code>; focused functional/E2E доказательства и свежие code reviews завершены. Фаза 8 — GPT-PM одобрение точного итогового HEAD — ещё не пройдена. Некоторые опасные или платформенные сценарии остаются <code>NOT_RUN</code>, а отдельные production resource limits — <code>NOT_VERIFIED</code>. Push/PR не выполнялся.</p>
+  <p>«E1–E8» — восемь эпиков S2. «NOT_RUN» означает, что сценарий не исполнялся; «NOT_VERIFIED» — свойство не доказано. 14 пропусков в Windows E2E — не успешные тесты.</p>
+
+  <h2>Доказательства</h2>
+  <ul>
+    <li>Функциональный recovery-модуль на source HEAD <code>dc95915018b80f498d5cf775363712fb915fe04e</code>: 4 passed, 0 skipped; Python 3.14.3, pytest 8.4.2; одна pytest-asyncio deprecation warning. Команда — в [change 0085](../docs/changes/0085-s2-windows-snapshot-functional-rerun.md).</li>
+    <li>Windows runner/store E2E на том же source HEAD: 80 passed, 14 skipped, 0 failed; Python 3.14.3, pytest 8.4.2; одна deprecation warning. Выбранный Ubuntu-24.04 WSL2 POSIX lock сценарий: 1 passed. Сценарии с пропуском остаются NOT_RUN. См. [change 0083](../docs/changes/0083-s2-e2e-bounded-source-snapshot.md) и evidence в <code>docs/sdlc/evidence/</code>.</li>
+    <li>Отдельный run-scoped WSL2 signer/sandbox inventory с подписью и network-policy attestation прошёл на прежнем source run <code>280e2d0</code>; это не доказательство постоянного production deployment или поведения другого HEAD. Evidence: <code>docs/sdlc/evidence/s2-e5-runmanifest-wsl-280e2d0.md</code>, <code>s2-e5-operator-attestation.json</code>, change 0063.</li>
+    <li>Security и reliability reviewers (GPT-6 Luna, low effort) и database reviewer (GPT-6 Luna, medium effort) не нашли code-level BLOCKER/MAJOR на source HEAD <code>dc959…</code>. Обзоры read-only, не запускали проверки. Остатки среды и процессного cleanup сохранены отдельно в STATE/backlog.</li>
+    <li>Текущий S2 branch HEAD до этого отчёта: <code>3505f769f9c1c245d368a8318aeb04a76e1c5537</code>; source code HEAD остаётся <code>dc959…</code>. Ключевые источники: <code>docs/sdlc/STATE.md</code>, S2 plan, records 0076–0085.</li>
+  </ul>
+
+  <h2>Матрица приёмки</h2>
+  <table>
+    <thead><tr><th>Критерий</th><th>Смысл</th><th>Состояние</th><th>Доказательства</th><th>Остаток и зависимость</th><th>Владелец и следующий шаг</th></tr></thead>
+    <tbody>
+      <tr><td>E1 — ключ рецензента</td><td>Независимый reviewer credential отличается от worker credential; receipt authority проверяется.</td><td>Код и focused контрактные сценарии пройдены.</td><td>Records 0056–0058 и final source test/review records 0083–0085.</td><td>Локальные подписи не доказывают production key custody за пределами записанного run.</td><td>Оператор отвечает за делегированный проект; Codex исполняет. Следующий шаг — GPT-PM review точного HEAD.</td></tr>
+      <tr><td>E2 — runner-derived HEAD и изоляция signer</td><td>Runner самостоятельно связывает evidence с candidate commit; worker не получает ключ и signer IPC.</td><td class="partial">Код и локальные негативные сценарии PASS; один WSL run boundary PASS только для своего run.</td><td>Windows E2E 80 pass/14 skip; run-scoped WSL signer evidence `280e2d0`.</td><td>WSL signer boundary не перепривязан к каждому будущему run; скрытые/production deployment claims не сделаны.</td><td>Оператор — accountable owner; technical service owner неизвестен. Следующий шаг — свежая signed attestation для отдельного production-qualified run.</td></tr>
+      <tr><td>E3 — внешняя якорная голова событий</td><td>Rollback/restore обнаруживается через внешний event head и безопасную recovery.</td><td class="partial">Store реализация и доступные focused cases проверены; полный POSIX failure/recovery набор не закрыт.</td><td>Records 0043, 0056–0058 и focused source run `dc959`.</td><td>POSIX anchor restore/interruption и restart failure scenarios остаются NOT_RUN там, где skipped или запрещены.</td><td>Технический platform owner UNKNOWN. Следующий шаг — разрешённые platform-specific сценарии; сохранить fail-closed при отсутствующей среде.</td></tr>
+      <tr><td>E4 — process containment</td><td>POSIX identity/permissions/process group и Windows Job Object nesting.</td><td class="partial">Часть WSL identity, file/socket и lock boundary доказана; полная containment не принята.</td><td>Run-scoped WSL evidence и test record 0083.</td><td>Windows parent Job Object nesting, child termination/kill-table и полная POSIX containment — NOT_RUN; 14 skipped не являются PASS.</td><td>Оператор владеет делегированным решением о запрещённых сценариях; технический platform owner UNKNOWN. Следующий шаг — только если соответствующая запретительная политика изменится и платформа доступна.</td></tr>
+      <tr><td>E5 — sandbox spec и preflight</td><td>Dedicated WSL2 конфигурация, подписанная инвентаризация, закрытый egress и per-run secret boundary.</td><td class="partial">Одна точная WSL run acceptance прошла; production deployment не доказан.</td><td>Подписанная inventory/network-policy attestation и run manifest для `280e2d0` (change 0063).</td><td>Нет постоянного deployment proof; будущие среды требуют свежего инвентаря и закрытого probe.</td><td>Оператор accountable; service owner UNKNOWN. Следующий шаг — квалифицировать только точную новую среду с новой подписью.</td></tr>
+      <tr><td>E6 — diff gate и read-only reviewer</td><td>Опасные/вне allowlist изменения не проходят; reviewer credential не может писать в snapshot.</td><td class="pass">Код, focused negative tests и один WSL write-denial boundary прошли.</td><td>Record 0056 и `s2-e5-runmanifest-wsl-280e2d0.md`; source review на `dc959` без BLOCKER/MAJOR.</td><td>Доказательство write denial привязано к одной run-конфигурации.</td><td>Codex — executor; следующий шаг — final GPT-PM review на актуальном branch HEAD.</td></tr>
+      <tr><td>E7 — STOP, rollback, idempotency, breaker, recovery</td><td>Повторы безопасны, состояния durable, STOP закрывает старую эпоху, recovery не принимает сомнительный результат.</td><td class="partial">Реализованные сценарии и focused E2E проходят; процессное завершение и cleanup не подтверждены.</td><td>Functional 4/4; Windows lifecycle/store E2E 80/94 runnable total with 14 skips; selected WSL lock 1/1.</td><td>Process-kill/kill-table и post-start overflow cleanup — NOT_RUN; OS memory/storage quotas and workspace binding — NOT_VERIFIED.</td><td>Оператор — accountable owner; e2e-runner — test executor only for allowed runs. Следующий шаг — сохранить точные NOT_RUN причины и не заявлять production readiness.</td></tr>
+      <tr><td>E8 — isolated worker crash/resume bake-off</td><td>Один crash/resume fixture сравнивает workers с новым fence/receipt и пределами бюджета.</td><td class="partial">Безопасный STOP/resume/budget/idempotency/scope-denial subset пройден; полное acceptance не выполнено.</td><td>WSL safe subset и contract test IDs записаны в backlog/evidence.</td><td>Полный crash/cleanup запускает запрещённые child termination/mutation пути; candidate comparison также заблокирован отсутствием authorized candidates.</td><td>Оператор владеет разрешением на точный crash fixture и candidate authorization. Следующий шаг — не запускать до явной применимой авторизации.</td></tr>
+      <tr><td>S2.D1/D2 — команды и waivers</td><td>Каждый slot связан с обязательной командой/parser; waiver не превращает FAIL в APPROVE.</td><td>PASS в коде и focused tests.</td><td>Records 0055–0056 и final source test evidence.</td><td>Только состояния NOT_RUN/INCONCLUSIVE/BLOCKED могут иметь допустимый waiver.</td><td>Codex — executor; следующий шаг — сохранить этот контракт в GPT-PM точном обзоре.</td></tr>
+      <tr><td>Production resource limits</td><td>Жёсткие OS memory/temp quotas, точная source workspace binding, внешние writer исключены.</td><td>NOT_VERIFIED.</td><td>State и reviewer findings не заявляют доказательство этих deployment границ.</td><td>Нужна проверяемая платформа/конфигурация и привязанный runtime artifact.</td><td>Оператор accountable; технический сервисный владелец UNKNOWN. Следующий шаг — определить и подтвердить ограничения до production использования.</td></tr>
+      <tr><td>Phase 8 exact-head gate</td><td>GPT-PM проверяет exact final branch HEAD; затем разрешён один PR.</td><td>Ожидает GPT-PM; merge не выполнен.</td><td>Локальные evidence и обзоры собраны; PM Bridge health/status/job вызовы завершились <code>Transport closed</code>.</td><td>Нет коррелированного APPROVE.</td><td>Владелец gate — GPT-PM; Codex отправит полный scope и exact HEAD после восстановления транспорта. Не push/PR до approval.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Упорядоченные следующие шаги</h2>
+  <ol>
+    <li>Получить correlated GPT-PM adversarial review на точный S2 branch HEAD после обновления состояния/отчёта; владелец — GPT-PM. Без approval не выполнять push/PR.</li>
+    <li>Оставить запрещённые process-kill, kill-table, post-start cleanup и Windows Job Object сценарии как NOT_RUN; следующий шаг — только если политика и платформа допускают конкретный сценарий.</li>
+    <li>До production qualification получить доказательство OS memory/storage quotas, workspace binding и исключения внешних writer; технический owner не установлен.</li>
+    <li>Не выполнять merge, пока exact-head gate не вернёт APPROVE.</li>
+  </ol>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

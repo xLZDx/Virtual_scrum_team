@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S2 — isolated worker sandbox</title>
+  <style>
+    body { font: 16px/1.55 system-ui, sans-serif; max-width: 1180px; margin: 2rem auto; padding: 0 1rem; color: #18212b; }
+    h1, h2 { line-height: 1.2; } table { border-collapse: collapse; width: 100%; margin: 1rem 0 2rem; }
+    th, td { border: 1px solid #9aa8b5; padding: .55rem; text-align: left; vertical-align: top; }
+    th { background: #edf2f6; } code { overflow-wrap: anywhere; }
+    .partial { color: #805700; } .pass { color: #176b38; }
+  </style>
+</head>
+<body>
+<header><h1>S2 — isolated worker sandbox: status and acceptance</h1></header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>Virtual_scrum_team</dd>
+    <dt>Folder</dt><dd>D:\tmp\scratch_worktrees\Virtual_scrum_team-s2-final</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-isolated-worker-sandbox @ 3505f76</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+<main>
+  <p><strong>Status on 25 October 2026:</strong> implementation is complete at source HEAD <code>dc95915018b80f498d5cf775363712fb915fe04e</code>; focused functional/E2E evidence and fresh code reviews are complete. Phase 8, GPT-PM approval of the exact final HEAD, has not passed. Some dangerous or platform-dependent scenarios remain <code>NOT_RUN</code>, and some production resource limits remain <code>NOT_VERIFIED</code>. No push/PR was performed.</p>
+  <p>“E1–E8” are S2’s eight epics. “NOT_RUN” means a scenario was not executed; “NOT_VERIFIED” means a required property has not been proven. The 14 Windows E2E skips are not passing tests.</p>
+
+  <h2>Evidence</h2>
+  <ul>
+    <li>Functional recovery module at source HEAD <code>dc95915018b80f498d5cf775363712fb915fe04e</code>: 4 passed, 0 skipped; Python 3.14.3, pytest 8.4.2; one pytest-asyncio deprecation warning. Command details are in [change 0085](../docs/changes/0085-s2-windows-snapshot-functional-rerun.md).</li>
+    <li>Windows runner/store E2E at the same source HEAD: 80 passed, 14 skipped, 0 failed; Python 3.14.3, pytest 8.4.2; one deprecation warning. One selected Ubuntu-24.04 WSL2 POSIX-lock scenario passed. Skipped scenarios remain NOT_RUN. See [change 0083](../docs/changes/0083-s2-e2e-bounded-source-snapshot.md) and evidence under <code>docs/sdlc/evidence/</code>.</li>
+    <li>A separate run-scoped WSL2 signer/sandbox inventory with signature and network-policy attestation passed on earlier source run <code>280e2d0</code>; this does not prove a persistent production deployment or another HEAD. Evidence: <code>docs/sdlc/evidence/s2-e5-runmanifest-wsl-280e2d0.md</code>, <code>s2-e5-operator-attestation.json</code>, change 0063.</li>
+    <li>Security and reliability reviewers (GPT-6 Luna, low effort) and a database reviewer (GPT-6 Luna, medium effort) found no code-level BLOCKER/MAJOR at source HEAD <code>dc959…</code>. Reviews were read-only and ran no checks. Environment and process-cleanup residuals remain separately recorded in STATE/backlog.</li>
+    <li>Current S2 branch HEAD before this report: <code>3505f769f9c1c245d368a8318aeb04a76e1c5537</code>; source code HEAD remains <code>dc959…</code>. Primary records: <code>docs/sdlc/STATE.md</code>, the S2 plan, and change records 0076–0085.</li>
+  </ul>
+
+  <h2>Acceptance matrix</h2>
+  <table>
+    <thead><tr><th>Criterion</th><th>Meaning</th><th>State</th><th>Evidence</th><th>Remaining work and dependency</th><th>Owner and next step</th></tr></thead>
+    <tbody>
+      <tr><td>E1 — reviewer key</td><td>Independent reviewer credentials differ from worker credentials; receipt authority is verified.</td><td>Code and focused contract scenarios passed.</td><td>Records 0056–0058 and final source test/review records 0083–0085.</td><td>Local signatures do not prove production key custody beyond the recorded run.</td><td>The operator is accountable for delegated work; Codex executes. Next: GPT-PM review of the exact HEAD.</td></tr>
+      <tr><td>E2 — runner-derived HEAD and signer isolation</td><td>The runner binds evidence to the candidate commit; the worker cannot access signing keys or signer IPC.</td><td class="partial">Code and local negative scenarios PASS; one run-scoped WSL boundary PASS applies only to that run.</td><td>Windows E2E 80 pass/14 skip; run-scoped WSL signer evidence `280e2d0`.</td><td>The WSL signer boundary is not a permanent deployment proof and is not automatically transferred to future runs.</td><td>The operator is accountable; technical service owner is unknown. Next: produce fresh signed attestation for each separately qualified run.</td></tr>
+      <tr><td>E3 — externally anchored event head</td><td>Rollback/restore is detected through an external event head and recovery is bounded.</td><td class="partial">Store implementation and available focused cases are covered; the full POSIX failure/recovery set is not closed.</td><td>Records 0043, 0056–0058 and focused source run `dc959`.</td><td>POSIX anchor restore/interruption and restart-failure cases remain NOT_RUN where skipped or prohibited.</td><td>Technical platform owner is UNKNOWN. Next: run permitted platform scenarios; retain fail-closed behavior where the platform is absent.</td></tr>
+      <tr><td>E4 — process containment</td><td>POSIX identity/permissions/process groups and Windows Job Object nesting.</td><td class="partial">Some WSL identity, file/socket, and lock boundaries are proven; full containment is not accepted.</td><td>Run-scoped WSL evidence and test record 0083.</td><td>Windows parent Job Object nesting, child termination/kill-table, and full POSIX containment are NOT_RUN; 14 skips are not PASS.</td><td>The operator owns authorization for prohibited scenarios; technical platform owner is UNKNOWN. Next: only run a specific scenario if policy and platform allow it.</td></tr>
+      <tr><td>E5 — sandbox specification and preflight</td><td>Dedicated WSL2 configuration, signed inventory, denied egress, and per-run secret boundary.</td><td class="partial">One exact WSL run passed; production deployment is not proven.</td><td>Signed inventory/network-policy attestation and run manifest for `280e2d0` (change 0063).</td><td>No persistent deployment proof exists; future environments require a fresh inventory and closed probe.</td><td>The operator is accountable; service owner is UNKNOWN. Next: qualify only a precise new environment with a new signature.</td></tr>
+      <tr><td>E6 — diff gate and read-only reviewer</td><td>Out-of-scope or prohibited changes cannot pass; reviewer credentials cannot write the snapshot.</td><td class="pass">Code, focused negative tests, and one WSL write-denial boundary passed.</td><td>Record 0056 and `s2-e5-runmanifest-wsl-280e2d0.md`; source review at `dc959` found no BLOCKER/MAJOR.</td><td>Write-denial evidence applies to one run configuration.</td><td>Codex executes. Next: final GPT-PM review at the current branch HEAD.</td></tr>
+      <tr><td>E7 — STOP, rollback, idempotency, breaker, recovery</td><td>Retries are safe, states are durable, STOP fences the old epoch, and uncertain results are not accepted.</td><td class="partial">Implemented scenarios and focused E2E pass; process termination and cleanup are unverified.</td><td>Functional 4/4; Windows lifecycle/store E2E 80/94 runnable with 14 skips; selected WSL lock 1/1.</td><td>Process-kill/kill-table and post-start overflow cleanup are NOT_RUN; OS memory/storage quotas and workspace binding are NOT_VERIFIED.</td><td>The operator is accountable; e2e-runner executes only permitted tests. Next: retain exact NOT_RUN causes and make no production-readiness claim.</td></tr>
+      <tr><td>E8 — isolated worker crash/resume bake-off</td><td>One crash/resume fixture compares workers under fresh fencing/receipts and budget limits.</td><td class="partial">A safe STOP/resume/budget/idempotency/scope-denial subset passed; full acceptance is incomplete.</td><td>WSL safe subset and contract test IDs are recorded in backlog/evidence.</td><td>Full crash/cleanup invokes prohibited child-termination/mutation paths; candidate comparison is also gated because candidates are not authorized.</td><td>The operator owns authorization for the exact crash fixture and any candidate. Next: do not run until explicit applicable authorization exists.</td></tr>
+      <tr><td>S2.D1/D2 — commands and waivers</td><td>Every slot has a required command/parser; waivers cannot turn FAIL into APPROVE.</td><td>PASS in code and focused tests.</td><td>Records 0055–0056 and final source test evidence.</td><td>Only NOT_RUN/INCONCLUSIVE/BLOCKED may have an allowed waiver.</td><td>Codex executes. Next: preserve this contract in the exact GPT-PM review.</td></tr>
+      <tr><td>Production resource limits</td><td>Hard OS memory/temp quotas, exact source workspace binding, and exclusion of external writers.</td><td>NOT_VERIFIED.</td><td>State/reviews do not claim proof of these deployment boundaries.</td><td>Requires a verifiable platform/configuration and a correlated runtime artifact.</td><td>The operator is accountable; technical service owner is UNKNOWN. Next: establish and verify limits before production use.</td></tr>
+      <tr><td>Phase 8 exact-head gate</td><td>GPT-PM reviews the exact final branch HEAD; then one PR may proceed.</td><td>Awaiting GPT-PM; no merge.</td><td>Local evidence/reviews are collected; PM Bridge health/status/job calls returned <code>Transport closed</code>.</td><td>No correlated APPROVE exists.</td><td>GPT-PM owns the gate; Codex will send complete scope and exact HEAD after transport recovery. No push/PR before approval.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Ordered next steps</h2>
+  <ol>
+    <li>Obtain a correlated GPT-PM adversarial review for the exact S2 branch HEAD after state/report reconciliation; GPT-PM owns that gate. Do not push/open a PR without approval.</li>
+    <li>Keep prohibited process-kill, kill-table, post-start cleanup, and Windows Job Object scenarios as NOT_RUN; the next step is only a specific run allowed by the applicable policy and platform.</li>
+    <li>Before production qualification, obtain evidence for OS memory/storage quotas, workspace binding, and external-writer exclusion; no technical owner is established.</li>
+    <li>Do not merge until the exact-head gate returns APPROVE.</li>
+  </ol>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

@@ -8,8 +8,8 @@ Markdown documents: **152**
 | kind | documents |
 |---|---|
 | Agent | 6 |
-| Change record | 85 |
-| Documentation | 41 |
+| Change record | 86 |
+| Documentation | 40 |
 | Governance | 1 |
 | Project state | 4 |
 | Root document | 5 |
@@ -111,6 +111,7 @@ Markdown documents: **152**
 | `docs/changes/0084-s2-windows-object-snapshot-identity.md` | Change record | 0084 S2 Windows source-object snapshot identity |
 | `docs/changes/0085-s2-windows-snapshot-functional-rerun.md` | Change record | 0085 S2 Windows snapshot functional rerun |
 | `docs/changes/0086-s2-phase7-state-and-s3-baseline-reconciliation.md` | Change record | 0086 S2 Phase 7 reconciliation and S3 source baseline |
+| `docs/changes/0150-s2-status-report.md` | Change record | 0150 S2 status and acceptance report |
 | `docs/DESIGN_BASELINE_AND_IMPLEMENTATION_PLAN_2026-10-24.md` | Documentation | Design baseline 1.0 and implementation plan |
 | `docs/FULL_TEAM_EXPANSION_PLAN_2026-10-23.md` | Documentation | Full Virtual Engineering Team — Expansion Plan |
 | `docs/INDEPENDENT_REVIEW_DECISION_PROVENANCE_2026-10-23.md` | Documentation | Independent Review Dossier — Unified Virtual Engineering Organization |
@@ -141,7 +142,6 @@ Markdown documents: **152**
 | `docs/sdlc/evidence/s2-e2e-platform-run.md` | Documentation | S2 E2E and platform test evidence |
 | `docs/sdlc/evidence/s2-e2e-wsl-diagnostic-c470542.md` | Documentation | S2 E2E Windows and WSL diagnostic evidence |
 | `docs/sdlc/evidence/s2-e5-runmanifest-wsl-280e2d0.md` | Documentation | S2 E5 real runner integration and scoped WSL evidence |
-| `docs/sdlc/evidence/s2-functional-test-run.md` | Documentation | S2 functional test run evidence |
 | `docs/sdlc/INDEPENDENT_REVIEW_REQUEST_S1.md` | Documentation | Independent review request: Virtual Scrum Team S1 |
 | `docs/sdlc/s0/PROFILE_RESOLUTION.md` | Documentation | S0 profile resolution |
 | `docs/sdlc/s0/REPO_REGISTRY.md` | Documentation | S0 repository registry |

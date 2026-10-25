@@ -1,6 +1,6 @@
 # Sprint S2 plan: trust roots and isolated worker sandbox
 
-Status: IN PROGRESS, implementation not started at baseline `6117ba24`. Prepared on 2026-10-24 while S1 was being tested and reviewed (process rule: prepare the next sprint's documentation during the current sprint's testing). Nothing in this document is done; every statement about behavior describes a target.
+Status: **IMPLEMENTED; FOCUSED FUNCTIONAL/E2E AND SPECIALIST REVIEWS COMPLETE ON SOURCE `dc959150`; PHASE 8 GPT-PM EXACT-HEAD GATE PENDING.** Focused functional recovery passed 4/4. Windows lifecycle/store E2E passed 80 cases with 14 platform/prohibition skips; one selected WSL POSIX lock scenario passed. Fresh security, reliability and database reviews found no code-level BLOCKER/MAJOR. This does not close the prohibited process-kill/kill-table and post-start overflow cleanup scenarios, Windows Job Object nesting, full POSIX containment, complete E8 crash/resume, or unverified production memory/storage/workspace limits. See `docs/sdlc/STATE.md`, `core/BACKLOG.md`, and the bilingual S2 report. No push/PR before fresh GPT-PM approval of the exact final branch HEAD.
 
 Sources: `docs/DESIGN_BASELINE_AND_IMPLEMENTATION_PLAN_2026-10-24.md` section 4 (S2 paragraph), blueprint `docs/UNIFIED_ENGINEERING_ORGANIZATION_MASTER_BLUEPRINT_2026-10-23.md` sections 6, 9, 13.2-13.4, decision log entries "S1 third review" and "S1 fourth check" in `core/DECISION_LOG.md`, and "Known limits" in `tools/vst/schemas/README.md`.
 

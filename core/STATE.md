@@ -4,7 +4,7 @@ Last updated: 2026-10-25. Re-verify volatile facts (`git log --oneline -1`, `git
 
 ## Active sprint: S2 isolated worker sandbox
 
-Current branch: `s2-isolated-worker-sandbox`. Source head: `dc95915018b80f498d5cf775363712fb915fe04e`; repository head before this reconciliation: `648012236a783e36c88573b34cf3a0c302413958`. Phase 7 functional/E2E evidence and fresh specialist reviews are complete for this source. Process-kill/kill-table, post-start overflow cleanup, Windows Job Object nesting, full POSIX containment, and complete E8 crash/resume remain `NOT_RUN`; OS memory/temp-storage quotas and workspace binding remain `NOT_VERIFIED`. Phase 8 GPT-PM exact-head approval is pending, so no push/PR is ready. See [`docs/sdlc/STATE.md`](../docs/sdlc/STATE.md) and [`core/BACKLOG.md`](BACKLOG.md) for evidence and next steps.
+Current branch: `s2-isolated-worker-sandbox`. Source head: `dc95915018b80f498d5cf775363712fb915fe04e`; repository head before this report/state reconciliation: `3505f769f9c1c245d368a8318aeb04a76e1c5537`. Phase 7 functional/E2E evidence and fresh specialist reviews are complete for this source. Process-kill/kill-table, post-start overflow cleanup, Windows Job Object nesting, full POSIX containment, and complete E8 crash/resume remain `NOT_RUN`; OS memory/temp-storage quotas and workspace binding remain `NOT_VERIFIED`. Phase 8 GPT-PM exact-head approval is pending for the final branch HEAD, so no push/PR is ready. See [`docs/sdlc/STATE.md`](../docs/sdlc/STATE.md), [`core/BACKLOG.md`](BACKLOG.md), and the bilingual S2 report for evidence and next steps.
 
 ## What exists
 
