@@ -38,7 +38,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "ce9624c05dad07d7b4661e6fa892c21fceddd865",
+  "source_head": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
   "source_inventory": [
     {
       "path": "tests/qa/test_s4_e2e_runner_cli.py",
@@ -51,14 +51,19 @@
       "sha256": "02d00d382c8facbac01981d5f4a52ca5918306c34bc92d4a91b4508c1cfe5611"
     },
     {
+      "path": "tests/qa/test_s4_functional_root_harness.py",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
+      "sha256": "46a64f0cf32a8f5de8e7b44f35ed033feeffb102417e6306395528e3aaa2b6cb"
+    },
+    {
       "path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
-      "sha256": "6eebd8bc4933a41adcbe0178c2181e777a7d3d88a9dc55d9bb455e8bf2db4c12"
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
+      "sha256": "4c10f72ae5315deb7c9c4f3ccaeee5677435c5fbc39da6284db8a9a4596854c9"
     },
     {
       "path": "tests/qa/test_s4_functional_runtime_matrix.py",
-      "source_commit": "ce9624c05dad07d7b4661e6fa892c21fceddd865",
-      "sha256": "0003ba99013597218bb0e89f68306dd89ac3e3a91ab806e2c9ba87c9b47a564b"
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
+      "sha256": "cfe8b24945b6ab4158da7ebb1e3e57cd69fccac2b533f5e606c62045cf51c87f"
     },
     {
       "path": "tests/qa/test_s4_seeded_failure_contracts.py",
@@ -344,10 +349,131 @@
       ]
     },
     {
+      "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_candidate_mount_boundary_rejects_windows_backing",
+      "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_candidate_mount_boundary_rejects_windows_backing",
+      "source_path": "tests/qa/test_s4_functional_root_harness.py",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_child_binds_mount_and_parent_proof_then_launches_qa_through_setpriv",
+      "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_child_binds_mount_and_parent_proof_then_launches_qa_through_setpriv",
+      "source_path": "tests/qa/test_s4_functional_root_harness.py",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_child_rejects_unproven_or_non_private_namespace_before_qa",
+      "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_child_rejects_unproven_or_non_private_namespace_before_qa",
+      "source_path": "tests/qa/test_s4_functional_root_harness.py",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_git_preflight_uses_fixed_absolute_executable",
+      "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_git_preflight_uses_fixed_absolute_executable",
+      "source_path": "tests/qa/test_s4_functional_root_harness.py",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_outer_preflights_candidate_then_reexecs_fixed_installed_helper",
+      "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_outer_preflights_candidate_then_reexecs_fixed_installed_helper",
+      "source_path": "tests/qa/test_s4_functional_root_harness.py",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_rejects_candidate_helper_mismatch_before_unshare",
+      "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_rejects_candidate_helper_mismatch_before_unshare",
+      "source_path": "tests/qa/test_s4_functional_root_harness.py",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_rejects_invalid_cli_contract_before_process_launch",
+      "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_rejects_invalid_cli_contract_before_process_launch",
+      "source_path": "tests/qa/test_s4_functional_root_harness.py",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_rejects_untrusted_install_before_git_or_process_launch",
+      "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_rejects_untrusted_install_before_git_or_process_launch",
+      "source_path": "tests/qa/test_s4_functional_root_harness.py",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_requires_isolated_python_before_git_or_process_launch",
+      "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_requires_isolated_python_before_git_or_process_launch",
+      "source_path": "tests/qa/test_s4_functional_root_harness.py",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_requires_root_owned_nonwritable_libexec_parent",
+      "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_requires_root_owned_nonwritable_libexec_parent",
+      "source_path": "tests/qa/test_s4_functional_root_harness.py",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_requires_trusted_installed_root_owned_helper",
+      "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_requires_trusted_installed_root_owned_helper",
+      "source_path": "tests/qa/test_s4_functional_root_harness.py",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_audited_e4_terminating_selectors_remain_not_run",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_audited_e4_terminating_selectors_remain_not_run",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -358,7 +484,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_catalog_rejects_malformed_or_approving_rows",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_catalog_rejects_malformed_or_approving_rows",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -369,7 +495,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_catalog_requires_hash_and_registered_seed_selector",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_catalog_requires_hash_and_registered_seed_selector",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -380,7 +506,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_is_bound_to_exact_seed_test_node",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_is_bound_to_exact_seed_test_node",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -391,7 +517,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_rejects_a_different_nonapproving_outcome",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_rejects_a_different_nonapproving_outcome",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -402,7 +528,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_rejects_duplicate_observation",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_rejects_duplicate_observation",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -413,7 +539,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_rejects_wrong_node_binding",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_observation_rejects_wrong_node_binding",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -424,7 +550,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_main_persists_blocked_when_final_git_status_fails_after_pytest_passes",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_main_persists_blocked_when_final_git_status_fails_after_pytest_passes",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -435,7 +561,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_main_reports_wrong_interpreter_as_blocked_without_spawning_pytest",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_main_reports_wrong_interpreter_as_blocked_without_spawning_pytest",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -446,7 +572,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_plugin_filters_known_other_category_and_policy_but_keeps_unknown",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_plugin_filters_known_other_category_and_policy_but_keeps_unknown",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -457,7 +583,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_plugin_maps_parameter_instances_to_one_registered_function_selector",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_plugin_maps_parameter_instances_to_one_registered_function_selector",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -468,7 +594,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_plugin_maps_unittest_concrete_method_to_class_selector",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_plugin_maps_unittest_concrete_method_to_class_selector",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -479,7 +605,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_process_death_selectors_are_declared_not_run_by_policy",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_process_death_selectors_are_declared_not_run_by_policy",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -490,7 +616,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_pytest_command_bounds_argv_for_hundreds_of_selectors",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_pytest_command_bounds_argv_for_hundreds_of_selectors",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -501,7 +627,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_accepts_real_committed_selector_denominator",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_accepts_real_committed_selector_denominator",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -512,7 +638,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_duplicate_selector_before_acceptance",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_duplicate_selector_before_acceptance",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -523,7 +649,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_linked_source_path_escape",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_linked_source_path_escape",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -534,7 +660,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_missing_or_unknown_static_selector",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_missing_or_unknown_static_selector",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -545,7 +671,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_noncanonical_source_path",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_noncanonical_source_path",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -556,7 +682,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_source_changed_after_manifest_digest",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_source_changed_after_manifest_digest",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -567,7 +693,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_source_head_outside_candidate_history",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_source_head_outside_candidate_history",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -578,7 +704,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_test_assigned_to_wrong_primary_category",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_rejects_test_assigned_to_wrong_primary_category",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -589,7 +715,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_source_digest_is_stable_across_checkout_line_endings",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_registry_source_digest_is_stable_across_checkout_line_endings",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -600,7 +726,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_resolve_cases_classifies_skipped_xfail_xpass_missing_and_unexpected",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_resolve_cases_classifies_skipped_xfail_xpass_missing_and_unexpected",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -611,7 +737,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_resolve_cases_fails_closed_on_malformed_events",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_resolve_cases_fails_closed_on_malformed_events",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -622,7 +748,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_resolve_cases_rejects_duplicate_concrete_node_ids",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_resolve_cases_rejects_duplicate_concrete_node_ids",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -633,7 +759,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_resolve_cases_reports_uncollected_required_selector_and_plugin_diagnostics",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_resolve_cases_reports_uncollected_required_selector_and_plugin_diagnostics",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -644,7 +770,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_identifies_missing_locked_distribution",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_identifies_missing_locked_distribution",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -655,7 +781,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_refuses_an_unapproved_interpreter",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_refuses_an_unapproved_interpreter",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -666,7 +792,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_rejects_artifacts_outside_fixed_category_paths",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_rejects_artifacts_outside_fixed_category_paths",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -677,7 +803,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_rejects_noncanonical_artifact_paths",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_rejects_noncanonical_artifact_paths",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -688,7 +814,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_reports_missing_dependency_lock_as_typed_failure",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_reports_missing_dependency_lock_as_typed_failure",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -699,7 +825,7 @@
       "test_id": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_source_parser_maps_functions_unittest_classes_and_inherited_methods",
       "selector": "tests/qa/test_s4_functional_runner_contracts.py::test_s4_source_parser_maps_functions_unittest_classes_and_inherited_methods",
       "source_path": "tests/qa/test_s4_functional_runner_contracts.py",
-      "source_commit": "1012a5e15715777ea70fc63ef0c132e625eb7975",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -710,7 +836,18 @@
       "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_committed_registry_binds_profiles_and_preserves_policy_not_run",
       "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_committed_registry_binds_profiles_and_preserves_policy_not_run",
       "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
-      "source_commit": "ce9624c05dad07d7b4661e6fa892c21fceddd865",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_dependency_lock_hash_is_line_ending_invariant_and_rejects_bare_carriage_return",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_dependency_lock_hash_is_line_ending_invariant_and_rejects_bare_carriage_return",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -721,7 +858,7 @@
       "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_accepts_report_with_matching_candidate_and_profile_bindings",
       "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_accepts_report_with_matching_candidate_and_profile_bindings",
       "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
-      "source_commit": "ce9624c05dad07d7b4661e6fa892c21fceddd865",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -732,7 +869,18 @@
       "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_never_promotes_a_policy_not_run_selector",
       "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_never_promotes_a_policy_not_run_selector",
       "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
-      "source_commit": "ce9624c05dad07d7b4661e6fa892c21fceddd865",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_normalizes_crlf_lock_and_rejects_bare_carriage_return",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_normalizes_crlf_lock_and_rejects_bare_carriage_return",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -743,7 +891,18 @@
       "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_refuses_root_proof_bound_to_another_candidate",
       "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_refuses_root_proof_bound_to_another_candidate",
       "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
-      "source_commit": "ce9624c05dad07d7b4661e6fa892c21fceddd865",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_refuses_root_proof_bound_to_another_helper_digest",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_refuses_root_proof_bound_to_another_helper_digest",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -754,7 +913,7 @@
       "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_missing_profile_report_references",
       "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_missing_profile_report_references",
       "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
-      "source_commit": "ce9624c05dad07d7b4661e6fa892c21fceddd865",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -765,7 +924,7 @@
       "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_skipped_required_concrete_cases",
       "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_skipped_required_concrete_cases",
       "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
-      "source_commit": "ce9624c05dad07d7b4661e6fa892c21fceddd865",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -776,7 +935,7 @@
       "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_stale_candidate_and_corrupt_artifact_range",
       "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_stale_candidate_and_corrupt_artifact_range",
       "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
-      "source_commit": "ce9624c05dad07d7b4661e6fa892c21fceddd865",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -787,7 +946,29 @@
       "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_harness_requires_observed_private_loopback_network",
       "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_harness_requires_observed_private_loopback_network",
       "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
-      "source_commit": "ce9624c05dad07d7b4661e6fa892c21fceddd865",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_compares_to_captured_parent_namespace",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_compares_to_captured_parent_namespace",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_fails_closed_for_invalid_parent_namespace_inode",
+      "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_fails_closed_for_invalid_parent_namespace_inode",
+      "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -798,7 +979,7 @@
       "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_proves_only_ephemeral_loopback_connectivity",
       "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_proves_only_ephemeral_loopback_connectivity",
       "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
-      "source_commit": "ce9624c05dad07d7b4661e6fa892c21fceddd865",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -809,7 +990,7 @@
       "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_requires_loopback_only_interface_set",
       "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_requires_loopback_only_interface_set",
       "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
-      "source_commit": "ce9624c05dad07d7b4661e6fa892c21fceddd865",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -820,7 +1001,7 @@
       "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_runtime_profile_rejects_identity_and_capability_drift",
       "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_runtime_profile_rejects_identity_and_capability_drift",
       "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
-      "source_commit": "ce9624c05dad07d7b4661e6fa892c21fceddd865",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -831,7 +1012,7 @@
       "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_runtime_registry_assigns_each_selector_to_its_supported_profile",
       "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_runtime_registry_assigns_each_selector_to_its_supported_profile",
       "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
-      "source_commit": "ce9624c05dad07d7b4661e6fa892c21fceddd865",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -842,7 +1023,7 @@
       "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_wsl_boundary_allows_unrelated_wslg_9p_mount",
       "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_wsl_boundary_allows_unrelated_wslg_9p_mount",
       "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
-      "source_commit": "ce9624c05dad07d7b4661e6fa892c21fceddd865",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -853,7 +1034,7 @@
       "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_wsl_boundary_rejects_nine_p_mount_covering_candidate",
       "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_wsl_boundary_rejects_nine_p_mount_covering_candidate",
       "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
-      "source_commit": "ce9624c05dad07d7b4661e6fa892c21fceddd865",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -864,7 +1045,7 @@
       "test_id": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_wsl_boundary_rejects_windows_drive_mounts",
       "selector": "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_wsl_boundary_rejects_windows_drive_mounts",
       "source_path": "tests/qa/test_s4_functional_runtime_matrix.py",
-      "source_commit": "ce9624c05dad07d7b4661e6fa892c21fceddd865",
+      "source_commit": "d77d7ccce1f98bffb07642d4619dcd2b96d5a3aa",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -10130,6 +10311,17 @@
         "tests/qa/test_s4_functional_report_contracts.py::test_s4_run_output_records_reproducible_digests_for_stdout_and_stderr",
         "tests/qa/test_s4_functional_report_contracts.py::test_s4_runner_command_selection_is_exact_and_does_not_install_packages",
         "tests/qa/test_s4_functional_report_contracts.py::test_s4_runner_rejects_empty_selector_invocation",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_candidate_mount_boundary_rejects_windows_backing",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_child_binds_mount_and_parent_proof_then_launches_qa_through_setpriv",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_child_rejects_unproven_or_non_private_namespace_before_qa",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_git_preflight_uses_fixed_absolute_executable",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_outer_preflights_candidate_then_reexecs_fixed_installed_helper",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_rejects_candidate_helper_mismatch_before_unshare",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_rejects_invalid_cli_contract_before_process_launch",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_rejects_untrusted_install_before_git_or_process_launch",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_requires_isolated_python_before_git_or_process_launch",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_requires_root_owned_nonwritable_libexec_parent",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_requires_trusted_installed_root_owned_helper",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_audited_e4_terminating_selectors_remain_not_run",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_catalog_rejects_malformed_or_approving_rows",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_catalog_requires_hash_and_registered_seed_selector",
@@ -10164,13 +10356,18 @@
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_reports_missing_dependency_lock_as_typed_failure",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_source_parser_maps_functions_unittest_classes_and_inherited_methods",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_committed_registry_binds_profiles_and_preserves_policy_not_run",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_dependency_lock_hash_is_line_ending_invariant_and_rejects_bare_carriage_return",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_accepts_report_with_matching_candidate_and_profile_bindings",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_never_promotes_a_policy_not_run_selector",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_normalizes_crlf_lock_and_rejects_bare_carriage_return",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_refuses_root_proof_bound_to_another_candidate",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_refuses_root_proof_bound_to_another_helper_digest",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_missing_profile_report_references",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_skipped_required_concrete_cases",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_stale_candidate_and_corrupt_artifact_range",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_harness_requires_observed_private_loopback_network",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_compares_to_captured_parent_namespace",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_fails_closed_for_invalid_parent_namespace_inode",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_proves_only_ephemeral_loopback_connectivity",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_requires_loopback_only_interface_set",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_runtime_profile_rejects_identity_and_capability_drift",
@@ -11151,6 +11348,17 @@
         "tests/qa/test_s4_functional_report_contracts.py::test_s4_run_output_records_reproducible_digests_for_stdout_and_stderr",
         "tests/qa/test_s4_functional_report_contracts.py::test_s4_runner_command_selection_is_exact_and_does_not_install_packages",
         "tests/qa/test_s4_functional_report_contracts.py::test_s4_runner_rejects_empty_selector_invocation",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_candidate_mount_boundary_rejects_windows_backing",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_child_binds_mount_and_parent_proof_then_launches_qa_through_setpriv",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_child_rejects_unproven_or_non_private_namespace_before_qa",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_git_preflight_uses_fixed_absolute_executable",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_outer_preflights_candidate_then_reexecs_fixed_installed_helper",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_rejects_candidate_helper_mismatch_before_unshare",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_rejects_invalid_cli_contract_before_process_launch",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_rejects_untrusted_install_before_git_or_process_launch",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_requires_isolated_python_before_git_or_process_launch",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_requires_root_owned_nonwritable_libexec_parent",
+        "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_requires_trusted_installed_root_owned_helper",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_audited_e4_terminating_selectors_remain_not_run",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_catalog_rejects_malformed_or_approving_rows",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_fixture_catalog_requires_hash_and_registered_seed_selector",
@@ -11185,13 +11393,18 @@
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_runner_reports_missing_dependency_lock_as_typed_failure",
         "tests/qa/test_s4_functional_runner_contracts.py::test_s4_source_parser_maps_functions_unittest_classes_and_inherited_methods",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_committed_registry_binds_profiles_and_preserves_policy_not_run",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_dependency_lock_hash_is_line_ending_invariant_and_rejects_bare_carriage_return",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_accepts_report_with_matching_candidate_and_profile_bindings",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_never_promotes_a_policy_not_run_selector",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_normalizes_crlf_lock_and_rejects_bare_carriage_return",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_refuses_root_proof_bound_to_another_candidate",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_refuses_root_proof_bound_to_another_helper_digest",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_missing_profile_report_references",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_skipped_required_concrete_cases",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_matrix_rejects_stale_candidate_and_corrupt_artifact_range",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_harness_requires_observed_private_loopback_network",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_compares_to_captured_parent_namespace",
+        "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_fails_closed_for_invalid_parent_namespace_inode",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_proves_only_ephemeral_loopback_connectivity",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_root_network_guard_requires_loopback_only_interface_set",
         "tests/qa/test_s4_functional_runtime_matrix.py::test_s4_runtime_profile_rejects_identity_and_capability_drift",

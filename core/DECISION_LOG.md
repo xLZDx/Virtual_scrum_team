@@ -597,3 +597,7 @@ Exact-candidate Windows and WSL reports at `29bf95e` stored different raw lock h
 ## 2026-10-25 — Bind the installed S4 helper to the candidate source
 
 Static review found that a root-owned helper path and a run-bound candidate HEAD did not prove which installed helper version created the preflight. Decision: the helper compares its own bytes with `tools/qa/root_harness.py` from the selected candidate before unshare, proof schema v4 records that SHA-256, and both runner and matrix verify it against the candidate source. A fresh static review found no remaining BLOCKER/MAJOR/MINOR; execution remains pending. See change 0281.
+
+## 2026-10-25 — Refresh the S4 selector registry after committing test contracts
+
+After test source commit `d77d7cc`, regenerate the schema-v2 category registry from committed sources before any test execution. The generator recorded 935 regression selectors, 884 assigned runnable and 51 policy `NOT_RUN`, including all 16 new functional contracts. Keep policy `NOT_RUN` rows non-approving and bind all subsequent evidence to an exact candidate HEAD. See change 0282.
