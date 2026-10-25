@@ -678,6 +678,10 @@ The WSL E2E candidate at exact HEAD `6aa5c42` reached the child pytest process b
 
 After test-source commit `5cb61b2`, the category registry was regenerated from exact source HEAD `5cb61b2ba11192241f6c01465895daf22fdd5ef8`. It contains 935 primary regression selectors, 883 assigned runnable and 52 policy `NOT_RUN`; functional, integration, API and E2E categories contain 90, 84, 705 and 56 selectors respectively. The three seeded-failure selectors remain separate. The timeout-recovery selector stays policy-excluded. Registry generation is not execution evidence; focused Windows and WSL E2E reruns are next. See change 0302.
 
+## 2026-10-25 — Restore lesson-log entries omitted from S4 changes 0301 and 0302
+
+Review against the source request found changes 0301 and 0302 had dedicated change records and decision-log entries but omitted the separately required `core/LESSONS_LOG.md` entry. The root cause was an incomplete pre-commit checklist while continuing the established registry sequence. Add the omission, cause and preventive rule in change 0303 without rewriting prior commits; before every later sprint commit, stage the decision and lessons logs in separate commands before the commit. No tests or checks ran for this documentation correction.
+
 ## 2026-10-25 — Refresh the selector registry after the Linux flag fixture
 
 After test-source commit `c4f9cb9`, regenerate the category registry before rerunning. It now binds to exact source HEAD `c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209` and records 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN`, and 90 functional selectors. Preserve the policy rows and use exact-head evidence. See change 0290.
