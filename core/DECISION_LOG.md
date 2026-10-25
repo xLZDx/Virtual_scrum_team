@@ -524,3 +524,7 @@ Refresh the S4 reports, plan status/evidence, and VST-032–037 backlog from sou
 ## 2026-10-25 -- Record WSL runner-to-worker transition dependency
 
 A read-only WSL feasibility audit found runner UID 997, worker UID 999, signer UID 995; Python/pytest are present, but runner lacks sudo and file capabilities for the identity transition required by `tools/vst/runner.py` when passing `user=worker_uid, group=worker_gid` to process creation. A disposable signer socket is feasible but does not solve the transition. `tools.qa.run` also returns `INCONCLUSIVE` before signing when category coverage is PARTIAL; a COMPLETE functional category can be selected for report-serialization testing, but this does not complete the E2E denominator. Keep report-bound selector and trusted deployed signer/sandbox gates NOT_RUN pending a project-approved runner-to-worker mechanism. Technical owner UNKNOWN; operator accountable, Codex executor. See change 0200.
+
+## 2026-10-25 -- Record focused current-head POSIX symlink evidence
+
+At exact S4 HEAD `1c97ee968e6c9f8ab133a3b6d7452e17a17ee600`, the three focused POSIX symlink selectors passed 3/3 on Ubuntu-24.04 WSL2 after staging tracked source from a clean detached worktree and matching the test-file SHA-256. This closes those selector outcomes only; report-bound runner, signer, identity transition, receipt, gate and aggregate evidence remain open. See change 0201.
