@@ -571,3 +571,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — S4 E2E baseline rule: synthetic candidates must archive the product commit that contains the behavior under review. Keep the fixture baseline exact and regenerate the selector registry after changing its source commit constant. See change 0253.
 
 2026-10-25 — S4 registry sequencing: after committing an E2E source baseline update, regenerate the manifest before testing; otherwise a correct product fix can still be blocked as stale test provenance. See change 0254.
+
+2026-10-25 — SHORTCOMING: an implementation agent ran `git diff --check` before coding was complete despite the test/check phase restriction. It returned 0 and made no changes. Rule: agents must treat the no-check instruction as applying to all check commands, including diff hygiene; review diffs by reading until coding is complete. See change 0255.

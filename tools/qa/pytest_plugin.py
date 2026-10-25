@@ -25,13 +25,35 @@ class _QAPlugin:
         if not all(isinstance(value, str) and value for value in (selection_path, events_path, repo_root)):
             raise RuntimeError("QA plugin options are incomplete")
         selection = json.loads(Path(selection_path).read_text(encoding="utf-8"))
-        if not isinstance(selection, dict) or set(selection) != {"schema_version", "selectors"}:
+        if not isinstance(selection, dict) or set(selection) != {
+            "schema_version", "expected_selectors", "known_selectors"
+        }:
             raise RuntimeError("QA selection file schema is invalid")
-        if selection["schema_version"] != 1 or not isinstance(selection["selectors"], dict):
+        if (
+            selection["schema_version"] != 2
+            or not isinstance(selection["expected_selectors"], dict)
+            or not isinstance(selection["known_selectors"], dict)
+        ):
             raise RuntimeError("QA selection file contents are invalid")
         self.events_path = Path(events_path)
         self.repo_root = Path(repo_root).resolve(strict=True)
-        self.selector_map = selection["selectors"]
+        self.expected_selectors = selection["expected_selectors"]
+        self.known_selectors = selection["known_selectors"]
+        if (
+            not self.expected_selectors
+            or not set(self.expected_selectors).issubset(self.known_selectors)
+            or any(
+                not isinstance(test_id, str)
+                or not isinstance(selector, str)
+                or self.known_selectors.get(test_id) != selector
+                for test_id, selector in self.expected_selectors.items()
+            )
+            or any(not isinstance(test_id, str) or not isinstance(selector, str)
+                   for test_id, selector in self.known_selectors.items())
+        ):
+            raise RuntimeError("QA selector maps are inconsistent")
+        self.expected_selector_values = set(self.expected_selectors.values())
+        self.known_selector_values = set(self.known_selectors.values())
         self.collected: dict[str, dict[str, str | None]] = {}
         self.outcomes: dict[str, dict[str, Any]] = {}
         self.duplicates: list[str] = []
@@ -51,7 +73,21 @@ class _QAPlugin:
             selector = f"{relative}::{cls.__name__}::{original}"
         else:
             selector = f"{relative}::{original}"
-        return selector if selector in self.selector_map else None
+        return selector if selector in self.known_selector_values else None
+
+    def select_items(self, items: list[Any]) -> tuple[list[Any], list[Any]]:
+        selected: list[Any] = []
+        deselected: list[Any] = []
+        for item in items:
+            selector = self.selector_for_item(item)
+            # Keep unknown selectors from requested source files so the runner can
+            # fail closed. Known selectors outside this category (including policy
+            # NOT_RUN selectors) are deliberately not executed.
+            if selector is None or selector in self.expected_selector_values:
+                selected.append(item)
+            else:
+                deselected.append(item)
+        return selected, deselected
 
     def collect(self, session: Any) -> None:
         for item in session.items:
@@ -128,6 +164,15 @@ def pytest_configure(config: Any) -> None:
 def pytest_collection_finish(session: Any) -> None:
     if _PLUGIN is not None:
         _PLUGIN.collect(session)
+
+
+def pytest_collection_modifyitems(session: Any, config: Any, items: list[Any]) -> None:
+    if _PLUGIN is None:
+        return
+    selected, deselected = _PLUGIN.select_items(items)
+    if deselected:
+        config.hook.pytest_deselected(items=deselected)
+        items[:] = selected
 
 
 def pytest_collectreport(report: Any) -> None:

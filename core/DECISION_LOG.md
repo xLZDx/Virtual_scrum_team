@@ -453,3 +453,7 @@ The E2E fixture now archives runner code from `f32c6e3`, where policy `NOT_RUN` 
 ## 2026-10-25 — Regenerate the S4 registry after E2E baseline update
 
 The E2E source baseline changed in `653d10c`; the committed category manifest now reflects its source digest and commit provenance. Exact-head category execution remains pending. See change 0254.
+
+## 2026-10-25 — Bound pytest selection arguments and preserve policy exclusions
+
+At exact candidate HEAD `ba43fd6`, the API category failed before pytest startup because hundreds of selectors exceeded the Windows process argument limit. Pass unique source modules and an invocation-local exact selector map; deselect known non-category selectors and preserve unknown selectors for fail-closed accounting. Keep every process-termination selector explicitly `NOT_RUN`. See change 0255.

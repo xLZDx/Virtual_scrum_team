@@ -33,7 +33,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "653d10c862198fe946eb362ff78cba2fedcae925",
+  "source_head": "ba43fd6724783dabe9ba8aee3c520a1f84d91ff0",
   "source_inventory": [
     {
       "path": "tests/qa/test_s4_e2e_runner_cli.py",
@@ -7336,7 +7336,17 @@
       ],
       "not_run_reasons": {
         "tests/vst/test_e4_runner.py::test_background_process_holding_the_pipe_gives_exit_minus_four_and_capture_incomplete": "NOT_RUN: this scenario invokes process-kill cleanup; process-kill execution is prohibited for this S4 run.",
-        "tests/vst/test_e4_runner.py::test_capture_incomplete_takes_precedence_over_output_truncation": "NOT_RUN: this scenario invokes process-kill cleanup; process-kill execution is prohibited for this S4 run."
+        "tests/vst/test_e4_runner.py::test_capture_incomplete_takes_precedence_over_output_truncation": "NOT_RUN: this scenario invokes process-kill cleanup; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_deadline_limits_a_command_below_its_own_timeout": "NOT_RUN: this scenario invokes timeout process-tree cleanup; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_job_is_closed_when_thread_start_fails": "NOT_RUN: this Windows-only scenario invokes child process termination; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_overall_deadline_stops_later_commands_without_running_them": "NOT_RUN: this scenario invokes timeout process-tree cleanup; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_report_capture_incomplete_is_false_for_every_normal_outcome": "NOT_RUN: a parameterized case invokes timeout process-tree cleanup; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_stray_descendant_is_killed_after_the_root_command_exited_normally": "NOT_RUN: this scenario invokes process-tree termination; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_thread_start_failure_for_the_first_reader_also_cleans_up": "NOT_RUN: this scenario invokes child process termination; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_thread_start_failure_kills_the_child_and_cleans_up": "NOT_RUN: this scenario invokes child process termination; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_timeout_does_not_prevent_following_commands_within_the_deadline": "NOT_RUN: this scenario invokes timeout process-tree cleanup; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_timeout_kills_the_whole_process_tree": "NOT_RUN: this scenario invokes process-tree termination; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_timeout_records_exit_minus_one_and_fails": "NOT_RUN: this scenario invokes timeout process-tree cleanup; process-kill execution is prohibited for this S4 run."
       },
       "reason": null
     },
@@ -8039,7 +8049,6 @@
         "tests/vst/test_e4_runner.py::test_contained_artifact_path_unit",
         "tests/vst/test_e4_runner.py::test_covered_acceptance_must_be_a_subset_of_manifest_acceptance",
         "tests/vst/test_e4_runner.py::test_cwd_that_is_a_file_maps_to_exit_minus_two",
-        "tests/vst/test_e4_runner.py::test_deadline_limits_a_command_below_its_own_timeout",
         "tests/vst/test_e4_runner.py::test_default_cap_is_one_mebibyte",
         "tests/vst/test_e4_runner.py::test_deleted_artifact_is_rejected_by_gate_resolver",
         "tests/vst/test_e4_runner.py::test_directory_is_not_an_artifact_and_gets_zero_digest",
@@ -8067,7 +8076,6 @@
         "tests/vst/test_e4_runner.py::test_ids_hidden_beyond_the_cap_cannot_produce_a_pass",
         "tests/vst/test_e4_runner.py::test_invalid_inputs_raise_before_any_subprocess_starts",
         "tests/vst/test_e4_runner.py::test_invalid_or_foreign_manifests_are_rejected_before_running",
-        "tests/vst/test_e4_runner.py::test_job_is_closed_when_thread_start_fails",
         "tests/vst/test_e4_runner.py::test_key_does_not_leak_into_cwd_even_with_preexisting_files",
         "tests/vst/test_e4_runner.py::test_key_is_not_visible_to_the_child_process",
         "tests/vst/test_e4_runner.py::test_key_never_appears_in_receipt",
@@ -8094,7 +8102,6 @@
         "tests/vst/test_e4_runner.py::test_output_injection_of_extra_test_ids_does_not_make_pass",
         "tests/vst/test_e4_runner.py::test_output_injection_of_missing_ids_cannot_be_hidden",
         "tests/vst/test_e4_runner.py::test_output_over_the_cap_gives_exit_minus_three_and_fail",
-        "tests/vst/test_e4_runner.py::test_overall_deadline_stops_later_commands_without_running_them",
         "tests/vst/test_e4_runner.py::test_parser_exception_propagates_instead_of_silent_pass",
         "tests/vst/test_e4_runner.py::test_parser_receives_joined_stdout_in_order",
         "tests/vst/test_e4_runner.py::test_parser_returning_blank_ids_is_rejected",
@@ -8107,7 +8114,6 @@
         "tests/vst/test_e4_runner.py::test_replay_against_another_epoch_is_rejected",
         "tests/vst/test_e4_runner.py::test_replay_against_another_head_is_rejected",
         "tests/vst/test_e4_runner.py::test_replay_against_another_task_is_rejected",
-        "tests/vst/test_e4_runner.py::test_report_capture_incomplete_is_false_for_every_normal_outcome",
         "tests/vst/test_e4_runner.py::test_report_dict_describes_each_command",
         "tests/vst/test_e4_runner.py::test_result_is_computed_not_caller_controlled",
         "tests/vst/test_e4_runner.py::test_retry_after_fail_through_runner_is_approved_with_retained_failure",
@@ -8129,12 +8135,6 @@
         "tests/vst/test_e4_runner.py::test_stderr_has_its_own_cap",
         "tests/vst/test_e4_runner.py::test_stderr_within_cap_does_not_fail_a_passing_run",
         "tests/vst/test_e4_runner.py::test_stdin_is_closed_so_a_reading_command_cannot_hang",
-        "tests/vst/test_e4_runner.py::test_stray_descendant_is_killed_after_the_root_command_exited_normally",
-        "tests/vst/test_e4_runner.py::test_thread_start_failure_for_the_first_reader_also_cleans_up",
-        "tests/vst/test_e4_runner.py::test_thread_start_failure_kills_the_child_and_cleans_up",
-        "tests/vst/test_e4_runner.py::test_timeout_does_not_prevent_following_commands_within_the_deadline",
-        "tests/vst/test_e4_runner.py::test_timeout_kills_the_whole_process_tree",
-        "tests/vst/test_e4_runner.py::test_timeout_records_exit_minus_one_and_fails",
         "tests/vst/test_e4_runner.py::test_timeouts_are_bounded_by_the_manifest",
         "tests/vst/test_e4_runner.py::test_traversal_absolute_and_malformed_artifact_paths_are_refused_before_running",
         "tests/vst/test_e4_runner.py::test_truncated_exit_code_wins_over_a_failing_exit_code",
@@ -8316,6 +8316,16 @@
         "tests/vst/test_e5_process_death.py::SecondRoundStoreTests::test_worker_receipt_failures_count_per_slot_not_per_receipt_total": "NOT_RUN: this selector launches a child that terminates via os._exit; process-death execution is prohibited for this S4 run.",
         "tests/vst/test_e4_runner.py::test_background_process_holding_the_pipe_gives_exit_minus_four_and_capture_incomplete": "NOT_RUN: this scenario invokes process-kill cleanup; process-kill execution is prohibited for this S4 run.",
         "tests/vst/test_e4_runner.py::test_capture_incomplete_takes_precedence_over_output_truncation": "NOT_RUN: this scenario invokes process-kill cleanup; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_deadline_limits_a_command_below_its_own_timeout": "NOT_RUN: this scenario invokes timeout process-tree cleanup; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_job_is_closed_when_thread_start_fails": "NOT_RUN: this Windows-only scenario invokes child process termination; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_overall_deadline_stops_later_commands_without_running_them": "NOT_RUN: this scenario invokes timeout process-tree cleanup; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_report_capture_incomplete_is_false_for_every_normal_outcome": "NOT_RUN: a parameterized case invokes timeout process-tree cleanup; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_stray_descendant_is_killed_after_the_root_command_exited_normally": "NOT_RUN: this scenario invokes process-tree termination; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_thread_start_failure_for_the_first_reader_also_cleans_up": "NOT_RUN: this scenario invokes child process termination; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_thread_start_failure_kills_the_child_and_cleans_up": "NOT_RUN: this scenario invokes child process termination; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_timeout_does_not_prevent_following_commands_within_the_deadline": "NOT_RUN: this scenario invokes timeout process-tree cleanup; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_timeout_kills_the_whole_process_tree": "NOT_RUN: this scenario invokes process-tree termination; process-kill execution is prohibited for this S4 run.",
+        "tests/vst/test_e4_runner.py::test_timeout_records_exit_minus_one_and_fails": "NOT_RUN: this scenario invokes timeout process-tree cleanup; process-kill execution is prohibited for this S4 run.",
         "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_timeout_is_nonapproving_without_install_or_fallback": "NOT_RUN: this scenario invokes process-tree termination; process-kill execution is prohibited for this S4 run."
       },
       "reason": null

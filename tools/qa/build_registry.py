@@ -29,6 +29,26 @@ TEST_FILE_CATEGORIES = {
 }
 PRIMARY_CATEGORIES = ("functional", "integration", "api", "e2e", "seeded-failure")
 POLICY_NOT_RUN = {
+    "tests/vst/test_e4_runner.py::test_timeout_records_exit_minus_one_and_fails":
+        "NOT_RUN: this scenario invokes timeout process-tree cleanup; process-kill execution is prohibited for this S4 run.",
+    "tests/vst/test_e4_runner.py::test_timeout_kills_the_whole_process_tree":
+        "NOT_RUN: this scenario invokes process-tree termination; process-kill execution is prohibited for this S4 run.",
+    "tests/vst/test_e4_runner.py::test_overall_deadline_stops_later_commands_without_running_them":
+        "NOT_RUN: this scenario invokes timeout process-tree cleanup; process-kill execution is prohibited for this S4 run.",
+    "tests/vst/test_e4_runner.py::test_deadline_limits_a_command_below_its_own_timeout":
+        "NOT_RUN: this scenario invokes timeout process-tree cleanup; process-kill execution is prohibited for this S4 run.",
+    "tests/vst/test_e4_runner.py::test_timeout_does_not_prevent_following_commands_within_the_deadline":
+        "NOT_RUN: this scenario invokes timeout process-tree cleanup; process-kill execution is prohibited for this S4 run.",
+    "tests/vst/test_e4_runner.py::test_report_capture_incomplete_is_false_for_every_normal_outcome":
+        "NOT_RUN: a parameterized case invokes timeout process-tree cleanup; process-kill execution is prohibited for this S4 run.",
+    "tests/vst/test_e4_runner.py::test_stray_descendant_is_killed_after_the_root_command_exited_normally":
+        "NOT_RUN: this scenario invokes process-tree termination; process-kill execution is prohibited for this S4 run.",
+    "tests/vst/test_e4_runner.py::test_thread_start_failure_kills_the_child_and_cleans_up":
+        "NOT_RUN: this scenario invokes child process termination; process-kill execution is prohibited for this S4 run.",
+    "tests/vst/test_e4_runner.py::test_thread_start_failure_for_the_first_reader_also_cleans_up":
+        "NOT_RUN: this scenario invokes child process termination; process-kill execution is prohibited for this S4 run.",
+    "tests/vst/test_e4_runner.py::test_job_is_closed_when_thread_start_fails":
+        "NOT_RUN: this Windows-only scenario invokes child process termination; process-kill execution is prohibited for this S4 run.",
     "tests/vst/test_e4_runner.py::test_background_process_holding_the_pipe_gives_exit_minus_four_and_capture_incomplete":
         "NOT_RUN: this scenario invokes process-kill cleanup; process-kill execution is prohibited for this S4 run.",
     "tests/vst/test_e4_runner.py::test_capture_incomplete_takes_precedence_over_output_truncation":

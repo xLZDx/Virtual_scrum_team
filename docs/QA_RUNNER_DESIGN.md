@@ -28,6 +28,12 @@ Python module APIs in `tools/vst/`.
   single CLI. `tools/qa/pytest_plugin.py` captures collection and per-case outcomes. Report
   normalization and digest validation live in `tools/qa/report.py`; synthetic negative inputs are
   data fixtures consumed through unchanged VST product interfaces.
+- The runner passes each distinct source module to pytest once and writes the expected selector IDs
+  plus the full known selector map to an invocation-local selection file. The plugin deselects known
+  selectors that are outside the requested category, including policy `NOT_RUN` rows; unknown items
+  from those modules remain collected so the runner can report them as unexpected and fail closed.
+  This keeps Windows process arguments bounded independently of the selector count while preserving
+  expected-selector, unexpected-item, and uncollected-selector accounting.
 - The runner invokes pytest as a child using the approved interpreter `C:\Python314\python.exe`,
   an explicit isolated dependency target outside the repository, and the repository lock
   (`tools/qa/requirements.lock`). The environment baseline is CPython 3.14.3. Pytest is pinned

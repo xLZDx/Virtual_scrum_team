@@ -642,9 +642,13 @@ def _pytest_command(
         raise QARunError("pytest cannot be invoked with an empty registered selector set")
     selection_path = scratch_run / "selection.json"
     events_path = scratch_run / "events.json"
+    expected_selectors = {test_id: selectors[test_id]["selector"] for test_id in expected_ids}
+    known_selectors = {test_id: row["selector"] for test_id, row in selectors.items()}
+    source_paths = sorted({selector.split("::", 1)[0] for selector in expected_selectors.values()})
     selection = {
-        "schema_version": 1,
-        "selectors": {test_id: selectors[test_id]["selector"] for test_id in expected_ids},
+        "schema_version": 2,
+        "expected_selectors": expected_selectors,
+        "known_selectors": known_selectors,
     }
     with selection_path.open("x", encoding="utf-8", newline="\n") as handle:
         json.dump(selection, handle, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -665,7 +669,7 @@ def _pytest_command(
         f"--qa-selection-file={os.fspath(selection_path)}",
         f"--qa-events-file={os.fspath(events_path)}",
         f"--qa-repo-root={os.fspath(repo_root)}",
-        *[selectors[test_id]["selector"] for test_id in expected_ids],
+        *source_paths,
     ]
     env = build_environment()
     env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
