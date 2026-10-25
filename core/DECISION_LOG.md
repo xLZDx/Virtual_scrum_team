@@ -300,3 +300,7 @@ Exercise `SyntheticStoryPilot.stop` through the real Store/Supervisor fixture. A
 ## 2026-10-25 -- Record exact-head S3 pilot E2E result
 
 At repository HEAD `71169f7e004160f9bc0781de2dce1568bbaa8e49`, the focused `tests/vst/test_s3_worker_pilot_e2e.py` module passed 8 tests with no failures or skips. The worktree remained dirty only because the pre-existing unrelated S2 evidence file was present before and after; it was not staged or modified. This synthetic module does not prove OS cleanup, sandbox containment, or external candidate behavior. See change 0099.
+
+## 2026-10-25 -- Report S3 local acceptance and external gates separately
+
+S3's local hand-written adapter code, focused functional run (16 passed) and worker-pilot E2E run (8 passed) are reviewed at exact repository HEAD `86f59dc911f9a9ddbef029b2e9f57b6b7052bb92`; fresh code, security and reliability reviews found no open findings. This does not close candidate comparison, fresh sandbox proof, OS cleanup, process-kill, egress runtime, or GPT-PM exact-head approval. Keep those states `NOT_RUN`, `NOT_VERIFIED`, or pending as individually applicable. Russian and English status reports are `reports/S3_WORKER_PILOT_2026-10-25.ru.html` and `.html`; see change record 0100.

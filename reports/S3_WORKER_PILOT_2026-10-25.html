@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S3 — isolated worker pilot</title>
+  <style>
+    body { font: 16px/1.55 system-ui, sans-serif; max-width: 1180px; margin: 2rem auto; padding: 0 1rem; color: #18212b; }
+    h1, h2 { line-height: 1.2; } table { border-collapse: collapse; width: 100%; margin: 1rem 0 2rem; }
+    th, td { border: 1px solid #9aa8b5; padding: .55rem; text-align: left; vertical-align: top; }
+    th { background: #edf2f6; } code { overflow-wrap: anywhere; }
+    .state { font-weight: 700; } .partial { color: #805700; } .pass { color: #176b38; }
+  </style>
+</head>
+<body>
+<header><h1>S3 — isolated worker pilot: status and acceptance</h1></header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>Virtual_scrum_team</dd>
+    <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s3-vendor-neutral-worker-pilot @ 86f59dc</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+
+
+<main>
+  <p><strong>Status on 25 October 2026:</strong> the local synthetic path is implemented, focused functional and end-to-end (E2E) scenarios passed, and code, reliability, and security reviews found no open findings. The sprint is not fully accepted or merged: external worker-candidate comparison, a fresh sandbox run, and exact-head GPT-PM approval remain open.</p>
+  <p>“AC” means acceptance criterion; “NOT_RUN” means the scenario was not executed; “NOT_VERIFIED” means the required property has not been proven. Local synthetic results do not prove operating-system behavior or external-candidate behavior.</p>
+
+  <h2>Evidence</h2>
+  <ul>
+    <li>STOP cleanup diagnostic fix: <code>34fbe8c931b9e5792eea782bed6356e753bc3d28</code>. After the durable Store fence, the response remains <code>INCONCLUSIVE</code>; it includes only a safe, bounded exception-type name and keeps process cleanup <code>NOT_VERIFIED</code>.</li>
+    <li>Functional run on code/test HEAD <code>2a8c17583e4e7594464b85aace6addb827a5eb6c</code>: 16 passed, 0 skipped, 0 failed; 53.86 seconds; Python 3.14.3, pytest 8.4.2. One pytest-asyncio deprecation warning reports the future removal of <code>asyncio.get_event_loop_policy</code>.</li>
+    <li>E2E run on code HEAD <code>71169f7e004160f9bc0781de2dce1568bbaa8e49</code>: 8 passed, 0 skipped, 0 failed; 89.31 seconds; one pytest-asyncio warning. The worktree contained only a pre-existing uncommitted S2 evidence file; it was not changed or committed.</li>
+    <li>Final documentation HEAD: <code>86f59dc911f9a9ddbef029b2e9f57b6b7052bb92</code>. Separate code-reviewer, reliability-reviewer, and security-reviewer agents (GPT-6 Luna, medium effort) found no open findings. Reviewers ran no tests.</li>
+    <li>Run details: <code>docs/sdlc/evidence/s3-stop-cleanup-functional-2a8c175.md</code> and <code>docs/sdlc/evidence/s3-e2e-exact-head-71169f7.md</code>; change records 0096–0099.</li>
+  </ul>
+
+  <h2>Acceptance matrix</h2>
+  <table>
+    <thead><tr><th>Criterion</th><th>Meaning</th><th>State</th><th>Evidence</th><th>Remaining work and dependency</th><th>Owner and next step</th></tr></thead>
+    <tbody>
+      <tr><td>AC-1–4</td><td>One worker-adapter contract, VST as the sole verdict authority, idempotent requests, and diagnosable errors.</td><td class="partial">Partial — the local hand-written adapter is verified.</td><td>Functional run 16/16 and E2E run 8/8; change 0096 keeps STOP non-approving and exposes only safe diagnostics.</td><td>Comparison across all three worker implementations is not proven: external candidates were not acquired or executed.</td><td>The operator owns acquisition authorization and the final choice; Codex executes. Next: complete the pinned candidate audit and obtain explicit authorization before acquisition.</td></tr>
+      <tr><td>AC-5–8</td><td>Immutable candidate identity, sandbox isolation, secrets protection, and denied external egress.</td><td class="partial">NOT_RUN / NOT_VERIFIED.</td><td>Local synthetic code is not represented as sandbox or network-isolation evidence.</td><td>No fresh run-bound signed sandbox probe exists for S3; BMad Loop and Temporal remain acquisition-gated; no runtime egress test ran.</td><td>The operator owns candidate authorization; the technical sandbox owner is unknown in project records. Next: after authorization, run a fresh signed probe and an allowed isolated candidate run.</td></tr>
+      <tr><td>AC-9, AC-11–12</td><td>Application checkpoint, attempts/retries, and exact budget limits without false PASS.</td><td class="pass">PASS for the synthetic Store/adapter path.</td><td>Functional coverage verifies exact-cap, replay, fencing, and named application checkpoints; the E2E module passed 8/8.</td><td>Actual abrupt process termination and operating-system cleanup were not exercised.</td><td>Codex executed local acceptance scenarios. Next: keep process-kill/cleanup as NOT_RUN until an allowed platform run exists.</td></tr>
+      <tr><td>AC-10</td><td>STOP is idempotent; the new epoch fences stale writes and late outcomes.</td><td class="pass">PASS for Store fencing; process cleanup is unverified.</td><td>Functional regression proves one durable fence, stale-start rejection, and an INCONCLUSIVE response after a cleanup exception.</td><td>Process termination and cleanup after timeout remain NOT_VERIFIED.</td><td>The operator is accountable for delegated work; no operating-system sandbox owner is identified. Next: obtain a separate permitted platform-runtime proof.</td></tr>
+      <tr><td>AC-13–14</td><td>Changes stay inside the synthetic worktree and allowlist; an out-of-scope diff cannot pass the gate.</td><td class="partial">Local synthetic journeys pass; sandbox-bound confinement is unproven.</td><td>The E2E module covers manifest-scoped changes and out-of-scope rejection.</td><td>There is no equivalent proof on the S2 sandbox or for an external candidate.</td><td>Codex executes; the technical sandbox owner is UNKNOWN. Next: bind these same cases to a fresh sandbox run when a probe is available.</td></tr>
+      <tr><td>AC-15</td><td>An external egress attempt must fail.</td><td>NOT_RUN.</td><td>No positive external-network probe was executed.</td><td>Requires an authorized sandbox and the exact local canary configuration from the S3/S2 contract.</td><td>The operator remains accountable; the technical service owner is unknown. Next: run only the contracted closed canary after sandbox probing.</td></tr>
+      <tr><td>Exact-head reviews and GPT gate</td><td>Fresh independent review and GPT-PM decision before push/PR.</td><td>Reviews complete; GPT-PM gate is awaiting send/reply.</td><td>Code, reliability, and security: GPT-6 Luna, medium effort, no findings at HEAD <code>86f59dc</code>.</td><td>PM Bridge health/status/job calls returned <code>Transport closed</code>; no GPT-PM approval or merge exists.</td><td>GPT-PM owns the review gate. Next: when transport recovers, request one complete exact-head review. Do not push/merge before approval.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Ordered next steps</h2>
+  <ol>
+    <li>Complete the BMad Loop and Temporal pinned-version audits; the operator owns acquisition and selection. Do not acquire or execute either candidate before authorization.</li>
+    <li>Once the environment is available, run a fresh run-bound signed sandbox probe and egress check; do not treat synthetic local tests as platform evidence.</li>
+    <li>If platform scenarios are permitted, verify process crash/cleanup and worktree isolation; until then keep them NOT_RUN/NOT_VERIFIED.</li>
+    <li>When PM Bridge recovers, send GPT-PM the exact current HEAD and full residual matrix; push/PR remains gated on a correlated APPROVE.</li>
+  </ol>
+</main>
+
+
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

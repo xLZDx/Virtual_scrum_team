@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S3 — пилот изолированного worker</title>
+  <style>
+    body { font: 16px/1.55 system-ui, sans-serif; max-width: 1180px; margin: 2rem auto; padding: 0 1rem; color: #18212b; }
+    h1, h2 { line-height: 1.2; } table { border-collapse: collapse; width: 100%; margin: 1rem 0 2rem; }
+    th, td { border: 1px solid #9aa8b5; padding: .55rem; text-align: left; vertical-align: top; }
+    th { background: #edf2f6; } code { overflow-wrap: anywhere; }
+    .state { font-weight: 700; } .partial { color: #805700; } .pass { color: #176b38; }
+  </style>
+</head>
+<body>
+<header><h1>S3 — пилот изолированного worker: статус и приёмка</h1></header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>Virtual_scrum_team</dd>
+    <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s3-vendor-neutral-worker-pilot @ 86f59dc</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+
+
+<main>
+  <p><strong>Состояние на 25 октября 2026:</strong> локальный синтетический путь реализован, функциональные и end-to-end (E2E, сквозные) сценарии прошли; code, reliability и security обзоры не нашли открытых замечаний. Спринт не принят полностью и не объединён: сравнение внешних worker-кандидатов, свежий sandbox-прогон и точное одобрение GPT-PM остаются открытыми.</p>
+  <p>«AC» означает критерий приёмки; «NOT_RUN» — сценарий не запускался; «NOT_VERIFIED» — требуемое свойство не подтверждено. Локальные синтетические результаты не доказывают поведение ОС или внешних кандидатов.</p>
+
+  <h2>Доказательства</h2>
+  <ul>
+    <li>Кодовый фикс STOP cleanup-диагностики: <code>34fbe8c931b9e5792eea782bed6356e753bc3d28</code>. После durable Store fence ответ остаётся <code>INCONCLUSIVE</code>; сообщение включает только безопасное ограниченное имя типа исключения и сохраняет <code>NOT_VERIFIED</code> для очистки процесса ОС.</li>
+    <li>Функциональный прогон на code/test HEAD <code>2a8c17583e4e7594464b85aace6addb827a5eb6c</code>: 16 passed, 0 skipped, 0 failed; 53,86 с; Python 3.14.3, pytest 8.4.2. Одна предупреждающая запись pytest-asyncio о будущем удалении <code>asyncio.get_event_loop_policy</code>.</li>
+    <li>E2E-прогон на code HEAD <code>71169f7e004160f9bc0781de2dce1568bbaa8e49</code>: 8 passed, 0 skipped, 0 failed; 89,31 с; одно предупреждение pytest-asyncio. Worktree содержал только ранее существовавший незакоммиченный S2 evidence-файл; он не изменялся и не включался в коммит.</li>
+    <li>Итоговая документационная голова: <code>86f59dc911f9a9ddbef029b2e9f57b6b7052bb92</code>. На ней отдельные code-reviewer, reliability-reviewer и security-reviewer (GPT-6 Luna, средний уровень) не обнаружили открытых замечаний. Тесты обзорами не запускались.</li>
+    <li>Детали прогонов: <code>docs/sdlc/evidence/s3-stop-cleanup-functional-2a8c175.md</code> и <code>docs/sdlc/evidence/s3-e2e-exact-head-71169f7.md</code>; change records 0096–0099.</li>
+  </ul>
+
+  <h2>Матрица приёмки</h2>
+  <table>
+    <thead><tr><th>Критерий</th><th>Смысл</th><th>Состояние</th><th>Доказательства</th><th>Остаток и зависимость</th><th>Владелец и следующий шаг</th></tr></thead>
+    <tbody>
+      <tr><td>AC-1–4</td><td>Единый контракт worker adapter, VST как единственный источник решения, повторяемые запросы и диагностируемые ошибки.</td><td class="partial">Частично — локальный hand-written adapter подтверждён.</td><td>Функциональный прогон 16/16 и E2E 8/8; изменение 0096 удерживает non-approving STOP результат и безопасную диагностику.</td><td>Сравнение трёх реализаций и их поведение не подтверждены: внешние кандидаты не приобретались и не исполнялись.</td><td>Оператор отвечает за авторизацию приобретения и выбор; Codex исполняет. Следующий шаг — завершить аудит закреплённого кандидата и получить явную авторизацию до приобретения.</td></tr>
+      <tr><td>AC-5–8</td><td>Неизменяемая идентичность кандидата, изоляция sandbox, секреты и закрытый внешний egress.</td><td class="partial">NOT_RUN / NOT_VERIFIED.</td><td>Локальный синтетический код не выдаётся за доказательство sandbox или сетевой изоляции.</td><td>Нет свежего run-bound подписанного sandbox probe для S3; BMad Loop и Temporal остаются acquisition-gated; egress runtime не выполнялся.</td><td>Оператор — авторизация кандидатов; технический владелец sandbox в проектных записях неизвестен. Следующий шаг — после авторизации выполнить новый подписанный probe и допустимый изолированный прогон.</td></tr>
+      <tr><td>AC-9, AC-11–12</td><td>Контрольная точка приложения, попытки/повторы и точные лимиты бюджета без ложного PASS.</td><td class="pass">PASS для синтетического Store/adapter пути.</td><td>Функциональный набор проверил exact-cap, replay, fencing и named application checkpoint; E2E-модуль завершился 8/8.</td><td>Настоящий аварийный останов процесса и очистка ОС не проверялись.</td><td>Codex исполнил локальные acceptance-сценарии; следующий шаг — держать process-kill/cleanup как NOT_RUN до разрешённой платформенной проверки.</td></tr>
+      <tr><td>AC-10</td><td>STOP идемпотентен, новая эпоха блокирует старые записи и поздние результаты.</td><td class="pass">PASS для Store fencing; очистка процесса не подтверждена.</td><td>Функциональная регрессия подтверждает один durable fence, отклонение stale start и ответ INCONCLUSIVE после исключения cleanup.</td><td>Termination процесса и cleanup после timeout: NOT_VERIFIED.</td><td>Оператор — владелец делегированной задачи; технический владелец ОС sandbox не установлен. Следующий шаг — только отдельное разрешённое platform runtime-доказательство.</td></tr>
+      <tr><td>AC-13–14</td><td>Изменения ограничены synthetic worktree и allowlist; запрещённый diff не может пройти gate.</td><td class="partial">Локальные synthetic journey проходят; sandbox-bound ограничение не доказано.</td><td>E2E-модуль содержит scoped-change и out-of-scope rejection сценарии.</td><td>Идентичное подтверждение на S2 sandbox и для внешнего кандидата отсутствует.</td><td>Codex — исполнитель; владелец технического sandbox UNKNOWN. Следующий шаг — привязать те же сценарии к свежему sandbox run после доступности probe.</td></tr>
+      <tr><td>AC-15</td><td>Попытка внешнего egress должна завершаться отказом.</td><td>NOT_RUN.</td><td>Положительный внешний network probe не выполнялся.</td><td>Нужна разрешённая sandbox-среда и точная локальная canary-конфигурация из S3/S2 контракта.</td><td>Оператор остаётся ответственным за делегированную задачу; технический service owner неизвестен. Следующий шаг — выполнить только согласованный закрытый canary после sandbox probe.</td></tr>
+      <tr><td>Exact-head reviews и GPT gate</td><td>Свежий независимый просмотр и GPT-PM решение перед push/PR.</td><td>Обзоры пройдены; GPT-PM gate ожидает отправки/ответа.</td><td>Code, reliability и security: GPT-6 Luna, средний уровень, без findings на HEAD <code>86f59dc</code>.</td><td>PM Bridge health/status/job calls вернули <code>Transport closed</code>; одобрение GPT-PM и merge отсутствуют.</td><td>Владелец gate — GPT-PM; следующий шаг — после восстановления транспорта запросить одно полное exact-head рассмотрение. Не push/merge до approval.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Упорядоченные следующие шаги</h2>
+  <ol>
+    <li>Завершить аудит BMad Loop и Temporal по закреплённой версии; владелец решения о приобретении и выборе — оператор. До авторизации кандидаты не приобретать и не запускать.</li>
+    <li>После доступности среды выполнить новый run-bound подписанный sandbox probe и проверку egress; не считать локальные синтетические тесты платформенным доказательством.</li>
+    <li>При разрешении платформенных сценариев проверить процессный crash/cleanup и worktree isolation; до этого оставить их NOT_RUN/NOT_VERIFIED.</li>
+    <li>Когда PM Bridge восстановится, отправить GPT-PM точный текущий HEAD с полной матрицей остатка; push/PR остаются закрыты до correlated APPROVE.</li>
+  </ol>
+</main>
+
+
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>
