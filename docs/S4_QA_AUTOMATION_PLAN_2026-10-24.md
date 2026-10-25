@@ -1,6 +1,6 @@
 # Sprint S4 plan: reproducible QA automation
 
-Status: **WINDOWS PROFILE RUN COMPLETE / POSIX MATRIX IMPLEMENTED IN WORKING TREE / S4 ACCEPTANCE INCOMPLETE** under the operator's S2-S5 continuation request. Candidate `fd49fad2bac249f329f4020ca5c1d55e38aa9bd7` has current six-category evidence in change 0271: functional and seeded-failure PASS; integration, API, and regression FAIL; E2E INCONCLUSIVE. Platform skips and policy `NOT_RUN` remain non-approving. One selector failed in the initial regression run and passed in three isolated reruns plus a same-head category rerun; its original assertion remains unknown. The Windows runner, exact-head evidence and remaining limits are summarized in change 0271. The POSIX runtime matrix is implemented in the current working tree but is not yet committed, tested, installed, or runtime-proven; the S4 acceptance criteria remain open. CI, mutations, seeded product-code defects, and external service calls remain prohibited.
+Status: **S4 IMPLEMENTED; PLATFORM MATRIX INCONCLUSIVE/FAIL; ACCEPTANCE OPEN.** At candidate `05b18450176109aafc108020bc2fafb7136a43d6`, exact-head Windows and WSL reports and the 15-reference matrix are recorded in change 0308. The matrix is non-approving because 52 explicit policy selectors remain `NOT_RUN`. The operator additionally authorized one narrow WSL runner-to-worker identity-boundary helper and one report-bound test; that work is specified in `docs/S4_WSL_WORKER_UID_HELPER_DESIGN.md` and is not yet implemented or runtime-proven. This authorization does not lift existing process-kill, timeout, process-death, mutation, or E8 policy exclusions. CI, mutation runs, seeded product-code defects, and external service calls remain prohibited.
 
 Sources: `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` section 1; `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`; `governance/DEFINITION_OF_DONE.md`; S2 and S3 plans; current `tests/vst/`, `tools/vst/runner.py`, `tools/vst/slice.py`, and `tools/vst/{contracts,gate,store}.py`.
 
@@ -37,6 +37,8 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 **S4.2.1** Establish a repository-owned, hash-pinned QA dependency input compatible with the strict Windows CPython 3.14.3 and POSIX CPython 3.12.3 runtime profiles, and record relevant OS/runtime/tool versions for each category and selector assignment.
 
 **S4.2.2** Implement one bounded runner entry point that launches pytest's native discovery/execution for the requested category, preserving existing unittest discovery. It records argv, exit code, duration, stdout/stderr references, environment identity, expected and collected IDs, and output artifact digests.
+
+**S4.2.3** Add a fixed-identity helper used by one report-bound WSL functional selector. A child launched by `vst-runner` UID/GID 997:988 must run only as `vst-worker` UID/GID 999:989 with supplementary groups cleared. The helper accepts no arbitrary target identity or executable and does not replace the QA runner's process or artifact ownership. The test verifies the child identity and denial of runner-owned file/socket sentinels. Contract and constraints: `docs/S4_WSL_WORKER_UID_HELPER_DESIGN.md`.
 
 **AC-4:** Running the same committed category manifest under the same platform profile and dependency lock yields the same selected test-ID set; the platform matrix binds each profile report to the exact candidate and registry, and artifact timestamps may differ but are excluded from normalized content hashes.
 
@@ -84,6 +86,8 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 
 **AC-15:** Evidence artifacts are reproducible and contain no secrets, user-specific absolute paths, tokens, or unrestricted environment values. Environment variable names may be reported only under the existing privacy contract.
 
+**AC-16:** The report-bound identity selector passes on the WSL UID-997 profile using the installed root-owned helper at its fixed path. The helper accepts only caller UID/GID 997:988, drops to UID/GID 999:989, clears supplementary groups, enables `no_new_privs`, uses the fixed interpreter without a shell, and fails closed on any mismatch. The selector observes the child identity and confirms the worker cannot read the runner-owned sentinel file or connect to its runner-only socket. The restricted-root profile remains separate; existing `NOT_RUN` policy exclusions are unchanged.
+
 ## Requirements-to-test map and denominator
 
 | Requirement | ACs | Required falsifying scenario / oracle | Layer | State/dependency |
@@ -98,6 +102,7 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 | Regression denominator | AC-11 | Delete, duplicate, skip or xfail one registered test ID -> non-approving report | Aggregate regression run over primary-category IDs | Depends on all prior category IDs |
 | Seeded failure | AC-12, AC-13 | Each unchanged-product synthetic negative fixture triggers its documented rejection; fixture mismatch cannot pass | Seeded-failure | Fixture catalog is new; no mutation or source patch |
 | Evidence integrity | AC-3, AC-14, AC-15 | Alter report/hash or replay against another HEAD -> gate rejects; reports contain no secret values | Evidence/gate integration | Requires report schema and authoritative gate binding |
+| WSL worker identity | AC-16 | Caller other than 997:988, helper with changed owner/mode, extra groups, wrong UID/GID, readable runner sentinel, or connectable runner-only socket -> selector fails | Report-bound functional selector | Operator authorized the fixed 997:988 -> 999:989 helper; implementation and runtime evidence pending |
 
 **Denominator rule:** At sprint start, freeze a committed registry containing every test ID and one `primary_category`, including `UNSUPPORTED` and `NOT_RUN` rows with reasons. The regression manifest is a separate aggregate reference to the required functional, integration, API, and E2E IDs; it does not create duplicate primary-category assignments. Per-primary-category and regression reports must account for 100% of their applicable registry or aggregate manifest. No percentage or category-level PASS can hide an unaccounted ID. Recompute and review the inventory when tests are added or removed; bind it to the exact source HEAD and registry hash.
 
