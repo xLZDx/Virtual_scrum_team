@@ -593,3 +593,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — End-to-end tests that invoke a bounded runner must derive fixture dependencies from the dependency target actually loaded by the test interpreter, not from `TEMP`/`TMPDIR` when the runner intentionally isolates those variables. Explicit module paths bypass `pytest_ignore_collect`; test uncollection at the collection-modification stage. See change 0264.
 
 2026-10-25 — Duplicate-node fail-closed tests should assert the selector's failed outcome as well as the duplicate rejection reason; pytest can execute a repeated node once successfully and then fail the duplicate instance. See change 0266.
+
+2026-10-25 — SHORTCOMING: the first read-only comparison of the final S4 artifacts looked under an assumed `artifacts/qa` path and reported missing files; the run reports identify `docs/sdlc/evidence/qa/`, where all 18 files matched the candidate. No files were changed by the mistaken comparison. Rule: read the artifact paths from the current run record before checking hashes. See change 0268.

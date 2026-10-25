@@ -505,3 +505,7 @@ At exact `6fd26c6`, the runner rejected a duplicate node and recorded the select
 ## 2026-10-25 — Refresh S4 selector registry after duplicate assertion fix
 
 The category manifest now binds to source commit `28e7c50`. The complete supported exact-head rerun is required before closing S4; skips and policy `NOT_RUN` rows remain explicit. See change 0267.
+
+## 2026-10-25 — Record S4 final exact-head category evidence
+
+All six S4 categories now have run records bound to candidate `ac17bde` and registry source `28e7c50`. Functional and seeded-failure report `PASS`; integration/API/regression report `FAIL`, and E2E reports `INCONCLUSIVE`, because required platform skips and prohibited process-termination selectors remain non-approving. All reports show zero failed selectors, but those category statuses do not close the gate. The 18 candidate/canonical evidence files match by SHA-256 and byte size. See change 0268 and `docs/sdlc/evidence/qa/`.
