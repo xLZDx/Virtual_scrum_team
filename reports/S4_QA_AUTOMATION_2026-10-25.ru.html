@@ -42,13 +42,15 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
   <dl>
     <dt>Проект</dt><dd>Virtual_scrum_team</dd>
     <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team-s4</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 0aa7a53</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 45f4bb7</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
           data-fail="Выделите вручную">Копировать страницу</button>
 </div>
 <!-- report-conform:end -->
+
+
 
 
 
@@ -79,7 +81,7 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <tr><td>AC-1 — единый реестр категорий и test ID</td><td>Частично</td><td><code>categories.json</code> содержит 19 functional, 6 integration, 73 API, 7 seeded-failure и 12 E2E mapped IDs. API inventory complete; E2E denominator PARTIAL без <code>tools.qa.run</code>/v2 report selector.</td><td>Оператор — accountable owner; Codex — executor. E2E test owner: добавить report-bound selector при наличии поддерживаемого signer/manifest контракта.</td></tr>
 <tr><td>AC-2 — нативный запуск каждой категории</td><td>Частично</td><td>На exact test HEAD <code>20fa7bb</code> functional/integration/seeded прошли 32/32; API — 92 passed, 1 Windows symlink skip, 0 failed; все 12 mapped E2E прошли. Это отдельные category runs; report-bound v2 и полный aggregate run с артефактами отсутствуют.</td><td>Оператор — accountable owner; Codex — executor. Test owners: завершить report-bound category и aggregate run; QA runner/gate service owner UNKNOWN.</td></tr>
 <tr><td>AC-3 — hash и HEAD provenance</td><td>Локально проверено</td><td>В source commit <code>7b8200c</code> exit 0 значит ancestor, exit 1 — non-ancestor; status выше 1, exhausted timeout и invocation <code>OSError</code> дают типизированный <code>ContractError</code>. Все 5 тестов исходов прошли в наборе 32/32 на <code>20fa7bb</code> (0198).</td><td>Оператор — accountable owner; Codex — executor. Сохранять fail-closed классификацию и exact-head evidence.</td></tr>
-<tr><td>AC-4 — воспроизводимый набор ID</td><td>Частично</td><td>Все mapped local categories запускались на одном exact source/test HEAD <code>20fa7bb</code>; API имеет один Windows symlink privilege skip. Три focused POSIX symlink selectors прошли 3/3 на exact HEAD <code>1c97ee9</code> в Ubuntu-24.04 WSL2 (0201). Report-bound current-head suite не запускался.</td><td>Технический владелец QA среды UNKNOWN; оператор отвечает за задачу. Завершить report-bound current-head coverage после одобрения runner-to-worker mechanism и trusted signer.</td></tr>
+<tr><td>AC-4 — воспроизводимый набор ID</td><td>Частично</td><td>Все mapped local categories запускались на одном exact source/test HEAD <code>20fa7bb</code>; API имеет один Windows symlink privilege skip. Три focused POSIX symlink selectors прошли 3/3 на exact HEAD <code>1c97ee9</code> в Ubuntu-24.04 WSL2 (0201). Report-bound current-head suite не запускался.</td><td>Технический владелец QA среды UNKNOWN; оператор отвечает за задачу. Сначала test-agent должен подтвердить capability-drop trampoline и signer denial на свежем exact-head snapshot; затем нужны trusted signer и manifest.</td></tr>
 <tr><td>AC-5 — typed fail-closed ошибки</td><td>Частично</td><td>Проверены пять исходов ancestry: exit 0, exit 1, неожиданный exit, retry exhaustion и <code>OSError</code>; последние три дают типизированную ошибку контракта. Seeded и локальные E2E artifact rejection cases также прошли. V2 report-bound путь не запускался.</td><td>Оператор — accountable owner; Codex — executor. Проверить v2 negative paths в поддерживаемой среде.</td></tr>
 <tr><td>AC-6 — отсутствие установки зависимостей во время run</td><td>Не проверено полностью</td><td>Зафиксированные category pytest команды не устанавливают пакеты. <code>tools.qa.run</code> report-bound путь и enforcement dependency lock не запускались.</td><td>Оператор — accountable owner; Codex — executor. Записать lock evidence при report-bound запуске.</td></tr>
 <tr><td>AC-7 — функциональные и Python API сценарии</td><td>Частично</td><td>Functional/integration/seeded: 32 passed, 0 skipped, 0 failed. API: 73 mapped selectors раскрылись в 93 cases, 92 passed и 1 skipped; symlink creation blocked Windows <code>WinError 1314</code> (0198). Затем три focused POSIX symlink selectors прошли 3/3 на WSL2 при exact S4 HEAD <code>1c97ee9</code> (0201).</td><td>Оператор — accountable owner; Codex — executor. Закрыть оставшееся report-bound acceptance; focused POSIX selectors закрыты.</td></tr>
@@ -121,6 +123,8 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <footer class="mut">
 <p>Источник решения и критериев: <a href="../docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md">S4 plan</a>. Проверяемые источники: change records 0195–0201 (ancestry fix/tests, exact-head runs, POSIX symlink evidence, ревью и reconciliation отчёта), более раннее WSL evidence 0159 для source HEAD <code>56dce67</code> и ветка <code>s4-native-qa-runner</code>. Этот checkpoint создан из локальных Git/evidence записей; он не является PM approval, merge доказательством или подтверждением полного acceptance.</p>
 </footer>
+
+
 
 
 

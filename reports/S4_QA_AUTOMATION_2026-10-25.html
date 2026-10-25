@@ -42,13 +42,15 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
   <dl>
     <dt>Project</dt><dd>Virtual_scrum_team</dd>
     <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team-s4</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 0aa7a53</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 45f4bb7</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
           data-fail="Select manually">Copy page</button>
 </div>
 <!-- report-conform:end -->
+
+
 
 
 
@@ -79,7 +81,7 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <tr><td>AC-1 — category and test-ID registry</td><td>Partial</td><td><code>categories.json</code> maps 19 functional, 6 integration, 73 API, 7 seeded-failure, and 12 E2E selector IDs. API inventory is complete; E2E denominator remains PARTIAL without a <code>tools.qa.run</code>/v2 report selector.</td><td>Operator — accountable owner; Codex — executor. E2E test owner: add the report-bound selector when the supported signer/manifest contract is available.</td></tr>
 <tr><td>AC-2 — native invocation for every category</td><td>Partial</td><td>At exact test HEAD <code>20fa7bb</code>, functional/integration/seeded passed 32/32, API passed 92 with 1 Windows symlink skip and 0 failures, and all 12 mapped E2E IDs passed. These are separate category runs; report-bound v2 and full aggregate artifact run are absent.</td><td>Operator — accountable owner; Codex — executor. Test owners: complete report-bound category and aggregate run; QA runner/gate service owner UNKNOWN.</td></tr>
 <tr><td>AC-3 — hash and HEAD provenance</td><td>Locally verified</td><td>At source commit <code>7b8200c</code>, exit 0 means ancestor and exit 1 means non-ancestor; higher statuses, exhausted timeout, and invocation <code>OSError</code> become typed <code>ContractError</code>. All five outcome selectors passed within the 32/32 functional/integration/seeded run at <code>20fa7bb</code> (0198).</td><td>Operator — accountable owner; Codex — executor. Preserve fail-closed classification and exact-head evidence.</td></tr>
-<tr><td>AC-4 — reproducible test-ID set</td><td>Partial</td><td>All mapped local categories were run at the exact same source/test HEAD <code>20fa7bb</code>; API had one Windows symlink-privilege skip. Three focused POSIX symlink selectors passed 3/3 at exact HEAD <code>1c97ee9</code> on Ubuntu-24.04 WSL2 (0201). The report-bound current-head suite was not run.</td><td>QA environment technical owner UNKNOWN; operator remains accountable. Complete report-bound current-head coverage after approval of the runner-to-worker mechanism and trusted signer.</td></tr>
+<tr><td>AC-4 — reproducible test-ID set</td><td>Partial</td><td>All mapped local categories were run at the exact same source/test HEAD <code>20fa7bb</code>; API had one Windows symlink-privilege skip. Three focused POSIX symlink selectors passed 3/3 at exact HEAD <code>1c97ee9</code> on Ubuntu-24.04 WSL2 (0201). The report-bound current-head suite was not run.</td><td>QA environment technical owner UNKNOWN; operator remains accountable. First, a test agent must confirm the capability-drop trampoline and signer denial on a fresh exact-head snapshot; then trusted signer and manifest evidence are still required.</td></tr>
 <tr><td>AC-5 — typed fail-closed errors</td><td>Partial</td><td>Five ancestry outcomes were tested: exit 0, exit 1, unexpected exit, timeout exhaustion, and <code>OSError</code>; the last three return typed contract errors. Seeded and local E2E artifact rejection cases also passed. The v2 report-bound path remains unrun.</td><td>Operator — accountable owner; Codex — executor. Verify report-bound v2 negative paths in the supported environment.</td></tr>
 <tr><td>AC-6 — no dependency installation during a run</td><td>Not fully verified</td><td>Recorded category commands run pytest without installing packages. The <code>tools.qa.run</code> report-bound path and dependency-lock enforcement were not run.</td><td>Operator — accountable owner; Codex — executor. Record lock evidence during report-bound execution.</td></tr>
 <tr><td>AC-7 — functional and Python API scenarios</td><td>Partial</td><td>Functional/integration/seeded: 32 passed, 0 skipped, 0 failed (19/6/7 selectors). API: 73 mapped selectors expanded to 93 cases, 92 passed and 1 skipped; Windows symlink creation failed with <code>WinError 1314</code> (0198). The three focused POSIX symlink selectors then passed 3/3 on WSL2 at exact S4 HEAD <code>1c97ee9</code> (0201).</td><td>Operator — accountable owner; Codex — executor. Complete remaining report-bound acceptance; the focused POSIX selectors are closed.</td></tr>
@@ -121,6 +123,8 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <footer class="mut">
 <p>Decision and criteria source: <a href="../docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md">S4 plan</a>. Verifiable sources: change records 0195–0201 (ancestry fix/tests, exact-head runs, focused POSIX symlink evidence, reviews, and report reconciliation), earlier WSL evidence 0159 for source HEAD <code>56dce67</code>, and branch <code>s4-native-qa-runner</code>. This checkpoint is derived from local Git/evidence records; it is not PM approval, merge evidence, or proof of full acceptance.</p>
 </footer>
+
+
 
 
 

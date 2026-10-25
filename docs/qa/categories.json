@@ -5,10 +5,11 @@
     "functional": {
       "state": "SUPPORTED",
       "coverage_state": "COMPLETE",
-      "coverage_reason": "The accepted local functional denominator covers receipt-order invariance, missing receipts, malformed manifest fields, wrong-key signatures, stale candidate HEAD, and skipped/xfail required IDs; the original S3 contract selectors remain included. Network API and report-runtime paths are excluded from this local functional category. Registry ancestry outcomes are additionally mapped for true ancestor, valid non-ancestor, unexpected Git exit, exhausted timeout retry, and invocation failure.",
+      "coverage_reason": "The accepted local functional denominator covers receipt-order invariance, missing receipts, malformed manifest fields, wrong-key signatures, stale candidate HEAD, skipped/xfail required IDs, and the POSIX worker capability-drop boundary (exact worker identity, empty inheritable/permitted/effective/ambient sets, no-new-privileges, and denied runner UID regain). The original S3 contract selectors remain included. Network API and report-runtime paths are excluded from this local functional category. Registry ancestry outcomes are additionally mapped for true ancestor, valid non-ancestor, unexpected Git exit, exhausted timeout retry, and invocation failure.",
       "owner_role": "functional-test-reviewer",
-      "source_head": "173a7f25966fdbd92a36e0705be6fa2b2537aae7",
+      "source_head": "45f4bb7ee7a62ac3f700533e20ec1a60a2f05139",
       "test_ids": [
+        "tests/qa/test_s4_worker_exec.py::test_s4_worker_trampoline_drops_capabilities_before_manifest_exec",
         "tests/vst/test_s3_worker_adapter.py::test_ac1_request_contract_enforces_identity_fence_and_payload_bounds",
         "tests/vst/test_s3_worker_adapter.py::test_ac1_response_contract_rejects_untyped_or_oversized_worker_claims",
         "tests/vst/test_s3_worker_adapter.py::test_ac2_resume_and_stop_requests_require_new_fence_and_bound_keys",
