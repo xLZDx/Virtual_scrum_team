@@ -581,3 +581,7 @@ The report-bound run at `5b5e6c7` recorded all 25 successful IDs in plugin event
 ## 2026-10-25 — Map a regression for pytest quiet-mode pass records
 
 Add a functional selector for the parser's exact accepted form and malformed lookalikes. Pin category source provenance to parser code `869cf36`. Test execution remains pending at a fresh exact-head WSL snapshot; authoring and mapping are not runtime proof. See change 0247.
+
+## 2026-10-25 — Narrow the S4 parser to the observed quiet-mode prefix
+
+The fresh security review identified a MINOR concern that arbitrary counts of leading dots were accepted although WSL output showed exactly one. Keep plain synthetic `PASS ` and exact pytest `.PASS ` forms; reject repeated dots. Re-run the mapped parser test, report-bound functional CLI and security review on the new exact head. See change 0248.

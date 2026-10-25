@@ -48,10 +48,13 @@ def _parse_pass_lines(stdout: str) -> tuple[list[str], list[str], list[str]]:
     """Built-in parser for synthetic fixtures; callers cannot register parsers."""
     executed = []
     for line in stdout.splitlines():
-        # Pytest -q prefixes this reporter's PASS line with its progress dots.
-        # Match the whole line shape: arbitrary leading text is never ignored.
-        pass_line = line.lstrip(".")
-        if not pass_line.startswith("PASS "):
+        # Pytest -q emits one progress dot before this reporter's PASS line.
+        # Accept only the two complete documented line shapes.
+        if line.startswith("PASS "):
+            pass_line = line
+        elif line.startswith(".PASS "):
+            pass_line = line[1:]
+        else:
             continue
         test_id = pass_line[5:]
         if test_id and test_id == test_id.strip():
