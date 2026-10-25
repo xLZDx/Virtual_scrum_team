@@ -1,6 +1,6 @@
 # Sprint S4 plan: reproducible QA automation
 
-Status: **Previously mapped primary-category selectors have recorded Windows/WSL2 evidence; five new local E2E fixture selectors are committed but await exact-head execution. The E2E denominator remains PARTIAL because report-bound `tools.qa.run` serialization/v2 artifact coverage is absent.** Registry module passed 19 cases with 1 Windows symlink-privilege skip and 0 failures at source HEAD `6903b7bf3e3dd4fc1281412c173fb82db9924d11` (0156). The eight functional and one integration selectors passed at clean code HEAD `b741dc205a111e56bb984c59a63af2801870e4fc` (0160). Seven mapped selectors passed 7/7 on Windows at `2dc6947e416b61103548285ec279d787c1027d8b` (0157); a fresh transfer at source HEAD `56dce67e508ccf452b2b7b39ed7f33c863081269` returned run ID `f3ad62c94bc0429987bc24277103d5b4`, and worker read-only boundary plus seven mapped POSIX selectors passed 7/7 (0159). The earlier transfer without returned metadata remains `RESULT_NOT_CAPTURED`; its destination was not inspected or retried. Fresh code/security/reliability reviews at `2dc6947e416b61103548285ec279d787c1027d8b` found no open BLOCKER/MAJOR. Source indexing is bounded at 1 MiB per file, 4 MiB aggregate, and 2,048 IDs (0151, 0155); transient Git tracked-file and candidate-HEAD lookups receive one bounded retry (0153). Full aggregate regression, report-bound v2 signer/receipt path, POSIX symlink-specific registry case, complete API breadth, and broader signed sandbox acceptance remain `NOT_RUN` or partial. See evidence 0156–0160 and changes 0189–0190.
+Status: **Mapped local runs are recorded: functional/integration/seeded 27/27 at `c8bb027` (latest rerun; 0187 also recorded 27/27 at `97c3900`); API 92 passed, 1 skipped, 0 failed at `c8bb027`; all 12 mapped E2E IDs passed at `47918f9`. E2E denominator remains PARTIAL because report-bound `tools.qa.run`/v2 signed-artifact coverage is absent. Trusted signer, run-specific manifest, authoritative report/receipt/gate, and fresh current-head WSL/POSIX acceptance remain NOT_RUN.**
 
 The path-confinement MINOR was resolved in 0137 and the source parser was bounded in 0142. The focused registry suite then failed twice at test HEAD `64b8bb1` (14 passed, 1 skipped, 1 failed each run): a separate bounded `git cat-file` query returned false for valid provenance SHAs, which direct Git queries later confirmed existed. Change 0146 removes that redundant live query; full lowercase-SHA syntax remains checked, and the bounded ancestry query now supplies the single existence/history proof. The code reviewer reported the earlier source-read MINOR; the security reviewer reported no finding. The corrected committed-registry module passed at `56a58a7` (15 passed, 1 skipped, 0 failed) in the exact-head functional rerun recorded by change 0149; symlink runtime remains `NOT_RUN` on Windows.
 
@@ -16,11 +16,11 @@ Out of scope: CI or release pipelines; mutation testing; red/green cycles that a
 
 ## Current evidence and constraints
 
-- `tests/vst/` contains the S1 contract, gate, store, runner, process-death, and slice tests, plus the five S2 acceptance modules. The current discovery evidence is source-path inspection only; this plan makes no runtime claim.
-- `tools/vst/slice.py` provides a synthetic, local vertical-slice harness. `tools/vst/runner.py` executes allowlisted local commands and captures bounded command evidence. They are possible integration points, not yet QA category runners.
-- ADR-0001 forbids CI and mutation runs and requires exact-head agent-run evidence. Its permitted synthetic known-defect fixtures may demonstrate a falsifying oracle without mutating product code.
-- A repository-owned QA dependency lock and stable category/test-ID registry do not currently appear in the inspected paths. Their exact formats and dependency resolution are UNKNOWN and must be established in Gate 1.
-- S3 acceptance artifacts and any new S3 test paths do not yet exist. S4's regression denominator must include the accepted S3 tests once their paths and IDs are established.
+- The committed registry at `docs/qa/categories.json` maps functional (14), integration (6), Python API (73), seeded-failure (7), and E2E (12) selectors. API inventory is complete; E2E coverage remains `PARTIAL` because no selector exercises the `tools.qa.run` report-serialization/v2 signed-artifact path.
+- `tools/qa/run.py`, `tools/qa/registry.py`, `tools/qa/wsl_snapshot.py`, `tools/qa/requirements.in`, and `tools/qa/requirements.lock` now exist. Local category suites have recorded exact-head Windows runs; the trusted report-bound v2 path has not run because no supported signer socket and run-specific manifest are evidenced.
+- `tools/vst/slice.py` provides a synthetic local vertical-slice harness; `tools/vst/runner.py` executes allowlisted local commands and captures bounded command evidence. Current mapped E2E selectors include S3 worker journeys and S4 local QA journeys, but their Windows runs do not establish the separate current-head POSIX sandbox gate.
+- ADR-0001 remains binding: CI and mutation/red-green runs are `NOT_RUN`; `functional-test-reviewer` and `e2e-runner` own required test authorship/execution. Exact-head local test evidence is recorded in changes 0187, 0192, and 0193.
+- S3 acceptance test paths now exist and are included in the 12-ID E2E registry. The earlier WSL transfer and seven POSIX selectors are recorded in change 0159 at source HEAD `56dce67`; that run does not establish the current S4 code/test head.
 
 ## Stories and acceptance criteria
 
@@ -122,7 +122,7 @@ Exact commands are formed from committed category selectors; proposed interface:
 /usr/bin/python3 -m tools.qa.run --category <category> --manifest <run-specific-vst-v2-manifest> --registry docs/qa/categories.json --signer-socket <trusted-local-socket> ...
 ```
 
-The fresh bounded source transfer and seven mapped native POSIX pytest selectors passed on WSL2 in run `f3ad62c94bc0429987bc24277103d5b4` at source HEAD `56dce67e508ccf452b2b7b39ed7f33c863081269` (change 0159). Change 0189 adds five deterministic local fixture selectors for pytest discovery and the v1 runner/gate artifact boundary; they do not exercise `tools.qa.run` report serialization or v2 signing. Accordingly the E2E denominator remains PARTIAL until that report-bound selector exists. The report-bound path itself remains NOT_RUN, POSIX-only, and dependent on a trusted signer socket plus run-specific v2 manifest in the named WSL environment. No packages were installed and no Windows fallback was used.
+The fresh bounded source transfer and seven mapped native POSIX pytest selectors passed on WSL2 in run `f3ad62c94bc0429987bc24277103d5b4` at source HEAD `56dce67e508ccf452b2b7b39ed7f33c863081269` (change 0159); that older run does not establish current S4 HEAD. Changes 0189–0190 add five deterministic local fixture selectors for pytest discovery and the v1 runner/gate artifact boundary; they do not exercise `tools.qa.run` report serialization or v2 signing. All twelve currently mapped E2E selectors later passed together on Windows at test HEAD `47918f9c0a229b4dac0ea095763775eb20eb6755` (0193). The E2E denominator remains PARTIAL until a report-bound selector exists. The report-bound path, trusted signer socket, run-specific v2 manifest and fresh S4 WSL/POSIX sandbox execution remain NOT_RUN. No packages were installed for these recorded test runs.
 
 ## Definition of Ready
 
@@ -157,18 +157,18 @@ The operator is accountable task owner under the delegated continuation; Codex c
 | S4-E / VST-036 | Synthetic seeded-failure fixture catalog | Operator accountable; test-agent roles author/run; fixture service owner UNKNOWN | S4-A, ADR-0001 constraints |
 | S4-F / VST-037 | Evidence envelope, hashes and no-skip gate integration | Operator accountable; implementation-engineer executes; technical gate owner UNKNOWN | S4-B through E; current VST gate contract |
 
-Identifiers VST-032–037 are proposals only and must be reconciled with the canonical backlog when S4 formally starts.
+Identifiers VST-032–037 are reconciled to the canonical S4 backlog row in `core/BACKLOG.md`; current evidence and remaining acceptance are tracked there and in the bilingual report.
 
 ## Ordered work and safe stopping points
 
-1. Reconcile S3 accepted adapter interfaces and complete the denominator: current functional, integration, Python API and E2E inventory is only `PARTIAL`; seeded-failure is `NOT_RUN` pending tests authored by the authorized test owner.
-2. Implement and commit environment lock, runner and evidence schema; verify each new seam with its own focused local contract proof after all S4 coding is complete. The runner now disables ambient pytest plugin autoload for the report-bound QA lane, and the bounded event file is readable by the runner through its private run directory.
-3. Add category manifests and synthetic fixtures; connect all six category selectors to native execution.
-4. Complete all S4 code before test phase; only then test agents author/run the per-epic and final exact-head suites. Keep the current emphasis on implementation; test inventory expansion is the authorized test roles' next phase.
-5. Run relevant reviewers, resolve valid findings, request the exact-head GPT-PM gate, then push and merge one S4 PR only after approval.
+The implementation and local mapped-test phases have completed for the currently available Windows environment. Exact evidence is recorded in changes 0187, 0192 and 0193. The remaining sequence is:
 
-The first independently safe stopping point is after E1, with the S3 dependency map and denominator frozen. Total gates: **6**, one per epic above. Source transfer from the Windows checkout to an isolated repository snapshot inside `Ubuntu-24.04` and the seven mapped POSIX selectors are runtime-proven for the exact run cited above; report-bound v2 execution remains `NOT_RUN` until the trusted signer socket and run-specific manifest are available. No package installation or test execution is authorized during coding.
+1. Add a deterministic `tools.qa.run` report-serialization/v2 signed-artifact selector, once the supported signer/manifest contract and required POSIX runner boundary are available; E2E denominator remains PARTIAL until then.
+2. Obtain a fresh current-head WSL/POSIX transfer, trusted signer socket and run-specific manifest; execute report, receipt and authoritative-gate acceptance without installing dependencies during the run. These runtime items remain NOT_RUN.
+3. Run the full aggregate regression at one exact committed HEAD after the report-bound selector exists; separately rerun the skipped symlink case on a POSIX host.
+4. Obtain fresh specialist consensus and GPT-PM approval on the exact final HEAD. Do not push or open a PR without the required APPROVE.
 
+The earlier WSL transfer and seven POSIX selectors in run `f3ad62c94bc0429987bc24277103d5b4` remain valid only for source HEAD `56dce67e508ccf452b2b7b39ed7f33c863081269`. The technical QA runner/gate service owner remains UNKNOWN in canonical project records; the operator is accountable task owner and Codex is executor.
 ## Unknowns to resolve at S4 start
 
 - Runtime inventory: the named distro reported Python 3.12.3, pytest 7.4.4, iniconfig 1.1.1, packaging 24.0 and pluggy 1.4.0. pytest-asyncio is absent, and no current test source has async tests/markers. The lock pins pytest and its required runtime dependencies; no plugin is added absent a concrete need.

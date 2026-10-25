@@ -493,3 +493,7 @@ At source HEAD `c8bb027cf3df93755b17f33b3ddfb129e837d124`, the 73-selector API c
 ## 2026-10-25 — Record all mapped E2E selectors passing at exact S4 head
 
 All twelve currently mapped E2E selectors passed together at exact source HEAD 47918f9c0a229b4dac0ea095763775eb20eb6755 on Windows Python 3.14.3/pytest 8.4.2. One pytest-asyncio deprecation warning was emitted. This is not POSIX/WSL, trusted signer, report-bound v2, or sandbox evidence; report-bound selector coverage remains partial. See change 0193.
+
+## 2026-10-25 -- Reconcile S4 reports to recorded exact-head evidence
+
+Refresh the bilingual S4 report, plan status, and VST-032–037 backlog against changes 0186–0193. Keep E2E coverage PARTIAL until a report-bound `tools.qa.run`/v2 selector exists; keep trusted signer, run-specific manifest, current-head WSL/POSIX sandbox, report/receipt/authoritative gate, and mutation/red-green states explicit and non-approving. The prior WSL run at `56dce67` is not current-head evidence. See change 0194.
