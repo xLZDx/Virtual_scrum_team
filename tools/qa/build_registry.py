@@ -35,6 +35,8 @@ POLICY_NOT_RUN = {
         "NOT_RUN: this scenario invokes process-kill cleanup; process-kill execution is prohibited for this S4 run.",
     "tests/vst/test_s2_runner_lifecycle.py::test_e4_platform_containment_scenarios_not_run":
         "NOT_RUN: process-kill/kill-table containment scenarios are explicitly prohibited for this S4 run.",
+    "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_timeout_is_nonapproving_without_install_or_fallback":
+        "NOT_RUN: this scenario invokes process-tree termination; process-kill execution is prohibited for this S4 run.",
 }
 
 

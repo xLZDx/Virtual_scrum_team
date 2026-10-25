@@ -545,3 +545,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — S5 readiness rule: separate local contract preparation from real analyzer execution. A plan's proposed backlog IDs are not canonical until sprint activation; retain the entry dependencies and do not read an adjacent analyzer checkout to close missing identity, license, interface or support evidence. Keep development in the designated checkout; immutable input snapshots are data. See change 0240.
 
 2026-10-25 — S4 selector-registry provenance rule: commit test-role-authored sources before generating the shared category registry, because the generator records committed source identity. Keep prohibited process-tree termination in the inventory as `NOT_RUN`; a skipped authored test is not passing runtime evidence. See change 0241.
+
+2026-10-25 — S4 registry refresh rule: after committed test-source changes, regenerate the category manifest and keep executable category counts separate from aggregate regression references. A complete inventory and a `SUPPORTED` lane do not imply that its tests have run. See change 0242.

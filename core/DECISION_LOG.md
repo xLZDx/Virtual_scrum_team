@@ -401,3 +401,7 @@ S4 category, selector, runner and report implementation is committed (`c814443`,
 ## 2026-10-25 — Commit S4 test authorship before registry generation
 
 The required functional and E2E agents authored the S4 runner, report, seeded-failure, and CLI test sources using GPT-6 Luna at medium effort. Commit test source provenance before regenerating `docs/qa/categories.json`; otherwise selectors cannot be bound to committed source revisions. The process-tree termination selector remains policy `NOT_RUN`. Authorship does not imply runtime acceptance. See change 0241.
+
+## 2026-10-25 — Regenerate S4 selector registry from committed sources
+
+After test authorship commit `298b9a6`, regenerate `docs/qa/categories.json` so all selectors have committed source provenance. The policy-prohibited process-tree timeout remains in the E2E inventory as explicit `NOT_RUN`. Registry presence is not runtime test evidence. See change 0242.

@@ -1,6 +1,6 @@
 # Sprint S4 plan: reproducible QA automation
 
-Status: **TEST CODE AUTHORED / NOT RUN** under the operator's S2-S5 continuation request. The runner and category registry are committed, and `functional-test-reviewer`/`e2e-runner` have authored focused tests and seeded fixtures. The shared category registry still needs regeneration from the committed test files before execution. CI, mutations, seeded product-code defects, and external service calls remain prohibited.
+Status: **TEST CODE AUTHORED / REGISTRY REGENERATED / NOT RUN** under the operator's S2-S5 continuation request. The runner, test sources, fixture catalog, and category registry are committed. Functional and E2E runtime evidence remains pending. CI, mutations, seeded product-code defects, and external service calls remain prohibited.
 
 Sources: `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` section 1; `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`; `governance/DEFINITION_OF_DONE.md`; S2 and S3 plans; current `tests/vst/`, `tools/vst/runner.py`, `tools/vst/slice.py`, and `tools/vst/{contracts,gate,store}.py`.
 
@@ -163,7 +163,7 @@ VST-032–037 are registered in the canonical backlog as the six S4 implementati
 4. Complete all S4 code before test phase; only then test agents author/run the per-epic and final exact-head suites.
 5. Run relevant reviewers, resolve valid findings, request the exact-head GPT-PM gate, then push and merge one S4 PR only after approval.
 
-The first independently safe implementation point was after E1, with the S3 dependency map and denominator frozen. Total gates: **6**, one per epic above. S4 product coding is committed; test authorship is complete, and execution is next after the registry is regenerated from the committed test sources. E2E rows that require incomplete S2/S3 external acceptance stay in the denominator as `NOT_RUN` and cannot satisfy DoD.
+The first independently safe implementation point was after E1, with the S3 dependency map and denominator frozen. Total gates: **6**, one per epic above. S4 product coding and test authorship are committed; the category registry has been regenerated from committed test sources. Functional and E2E execution is next. E2E rows that require incomplete S2/S3 external acceptance stay in the denominator as `NOT_RUN` and cannot satisfy DoD.
 
 ## Unknowns to resolve at S4 start
 
