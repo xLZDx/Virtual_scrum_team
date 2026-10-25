@@ -489,3 +489,7 @@ The exact `3558b14a` API run exposed one test treating the supported schema-v3-t
 ## 2026-10-25 — Refresh S4 selector registry after API test corrections
 
 The selector manifest now binds all S4 test sources and policy-denominator rows to corrected source commit `05f7ba4`. This updates the exact-head candidate denominator; no behavioral conclusion is drawn until the full supported run completes. See change 0263.
+
+## 2026-10-25 — Correct E2E synthetic fixture assumptions
+
+The exact `e020823` E2E run exposed a dependency-target lookup tied to the runner's scratch `TEMP`, an uncollected fixture that did not apply to an explicit module path, a non-deterministic text rewrite under autocrlf, and an overly narrow duplicate-event assertion. Focused diagnostics showed no product assertion defect in the first six cases; two remaining failures were confined to test setup/assertion. See change 0264.

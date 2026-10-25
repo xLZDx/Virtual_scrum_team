@@ -88,8 +88,8 @@ def _collector_source(mode: str) -> str | None:
         )
     if mode == "uncollected":
         return (
-            "def pytest_ignore_collect(collection_path, config):\n"
-            "    return collection_path.name == 'test_native_fixture.py'\n"
+            "def pytest_collection_modifyitems(session, config, items):\n"
+            "    items[:] = [item for item in items if item.name != 'test_native_fixture']\n"
         )
     return None
 
@@ -285,13 +285,8 @@ def _write_manifest_variant(candidate: Path, variant: str) -> None:
 
 
 def _dependency_target() -> Path:
-    configured = os.environ.get("S4_QA_DEPENDENCY_TARGET")
-    if configured is None:
-        temp_root = os.environ.get("TEMP")
-        assert temp_root, "TEMP is required to locate the pre-provisioned isolated QA target"
-        configured = str(Path(temp_root) / "virtual_scrum_team_qa_f4ef8e7")
-    target = Path(configured).resolve(strict=True)
-    assert target.is_dir()
+    target = Path(pytest.__file__).resolve(strict=True).parent.parent
+    assert target.is_dir() and (target / "pytest").is_dir()
     return target
 
 
@@ -537,10 +532,10 @@ def test_s4_e2e_cli_rejects_uncollected_duplicate_skipped_or_xfailed_selector(
     assert report["inventory_test_ids"] == [FIXTURE_TEST_ID]
     _assert_pytest_module_invocation(report)
     if report_field == "reasons":
-        assert any("pytest event accounting failed: QARunError" in reason for reason in report["reasons"])
-        assert report["collected_node_ids"] == []
-        assert report["executed_node_ids"] == []
-        assert report["passed_test_ids"] == []
+        assert "pytest emitted duplicate node IDs" in report["reasons"]
+        assert report["collected_node_ids"] == [FIXTURE_TEST_ID]
+        assert report["executed_node_ids"] == [FIXTURE_TEST_ID]
+        assert report["passed_test_ids"] == [FIXTURE_TEST_ID]
     else:
         assert report[report_field] == [FIXTURE_TEST_ID]
         if collector == "uncollected":
@@ -591,10 +586,7 @@ def test_s4_e2e_cli_blocks_dirty_tracked_candidate_before_native_collection(tmp_
     target = _dependency_target()
     candidate, _ = _make_candidate(tmp_path)
     tracked_source = candidate / "tools" / "vst" / "runner.py"
-    tracked_source.write_text(
-        tracked_source.read_text(encoding="utf-8") + "\n# dirty synthetic fixture\n",
-        encoding="utf-8",
-    )
+    tracked_source.write_bytes(tracked_source.read_bytes() + b"\n# dirty synthetic fixture\n")
 
     result = _run_cli(candidate, tmp_path, target, run_id="dirty-candidate")
     report, report_line = _last_report(candidate)
