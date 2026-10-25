@@ -377,3 +377,7 @@ During execution, the coordinator also ran a host-wide `Get-Process -Name python
 ## 2026-10-25 -- Reconcile S3 commit attribution footer
 
 S3 branch HEAD `aa534da` contains change record 0221 but its full commit message does not include the required terminal `Executor: Codex` attribution footer. The commit origin and reason for the omission are not verified from this checkout. Preserve the existing history and record the discrepancy in reconciliation commit 0230; do not attribute authorship or rewrite the commit.
+
+## 2026-10-25 -- Reconcile explicit Git hook-path override in S3 commit
+
+S3 commit `98f118b` was created in this session with `git -c core.hooksPath=NUL commit`, which explicitly overrides normal hook discovery. A read-only inspection of the shared repository hooks path found no configured `core.hooksPath` and only `.sample` files, so no active hook was present there at inspection time; this does not justify the override. Preserve all history. The cause was failure to inspect hook configuration before using the override. See reconciliation change 0236.
