@@ -698,6 +698,10 @@ The safe WSL E2E case at exact candidate `d2c5dd2` exposed a stale fixture: it a
 
 After test-source commit `26b959f53e8398b7b4b736b66e4c5a406369705b`, regenerate the selector registry so it binds to the updated synthetic contract baseline. Change 0307 records 935 primary regression selectors (883 runnable, 52 policy `NOT_RUN`) and 3 separate seeded-failure selectors. Generation is not runtime evidence; rerun the compliant focused Windows/WSL cases and then the assigned matrix.
 
+## 2026-10-25 — Record the exact-head S4 platform matrix
+
+At candidate `05b18450176109aafc108020bc2fafb7136a43d6`, designated agents completed six Windows categories, six WSL user categories, and three WSL root categories, plus focused Windows/WSL contracts. All assigned selectors passed; the 52 unique policy-excluded selectors stayed `NOT_RUN`. The valid 15-reference matrix is `FAIL` only because 11 category reports are `INCONCLUSIVE` on those exclusions; it found no other reason class. Change 0308 stores the raw combined evidence and sanitized manifest. Keep S4 open until the applicable policy decision or signed waiver authorizes any otherwise prohibited scenario; do not promote this evidence to S2 approval.
+
 ## 2026-10-25 — Refresh the selector registry after the Linux flag fixture
 
 After test-source commit `c4f9cb9`, regenerate the category registry before rerunning. It now binds to exact source HEAD `c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209` and records 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN`, and 90 functional selectors. Preserve the policy rows and use exact-head evidence. See change 0290.

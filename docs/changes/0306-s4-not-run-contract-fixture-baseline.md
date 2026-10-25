@@ -21,4 +21,4 @@ At exact candidate `d2c5dd2fbe182def7fdb0f5bb1a7656dc917614c`, the safe WSL E2E 
 
 ## Next
 
-Commit this fixture correction, regenerate and commit the selector registry from that committed source, then rerun the safe focused Windows and WSL contracts at the exact registry candidate. Keep the underlying sandbox-dependent selector, timeout, process-kill/death, and mutation scenarios unexecuted.
+The fixture correction was committed as `26b959f`, and change 0307 refreshed the registry. Designated agents reran the focused contracts and complete assigned platform matrix at candidate `05b1845`; see change 0308. The matrix remains non-approving while policy exclusions remain. Keep the underlying sandbox-dependent selector, timeout, process-kill/death, and mutation scenarios unexecuted.

@@ -22,4 +22,4 @@ The selector registry records test-source identities and must follow every commi
 
 ## Next
 
-Commit this registry refresh with its own decision and lessons entries, then rerun compliant focused Windows and WSL contracts at the resulting exact committed candidate before the complete assigned matrix.
+This registry refresh and its decision/lessons entries were committed at `05b1845`. Designated agents reran focused Windows and WSL contracts and all assigned Windows/WSL/root categories at that exact candidate; change 0308 records the valid 15-reference matrix, which remains non-approving because of 52 policy `NOT_RUN` selectors.

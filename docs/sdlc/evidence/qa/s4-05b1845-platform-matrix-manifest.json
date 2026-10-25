@@ -1,0 +1,1205 @@
+{
+  "schema_version": 1,
+  "title": "Sanitized S4 platform matrix evidence",
+  "purpose": "Read-only aggregation of exact-head Windows, WSL user, and WSL root-harness report rows; no tests were run during aggregation.",
+  "candidate": {
+    "head": "05b18450176109aafc108020bc2fafb7136a43d6",
+    "registry_source_head": "26b959f53e8398b7b4b736b66e4c5a406369705b",
+    "registry_sha256": "6edc55d7c8ba633b90868a8ce3d0b68baef76985d97f0b3ee02fb93dd7274b41",
+    "lock_sha256": "6e23fdd343a14e9d85a27f6d86cfb4498c1af9d33281e05ca5a3ff331c45e691",
+    "snapshot_kind": "isolated test-only candidate snapshot; not a development worktree",
+    "canonical_checkout_modified": false
+  },
+  "environment": {
+    "windows": {
+      "python": "3.14.3",
+      "pytest": "9.0.3"
+    },
+    "wsl_user": {
+      "distribution": "Ubuntu 24.04",
+      "python": "3.12.3",
+      "pytest": "9.0.3"
+    },
+    "wsl_root_harness": {
+      "distribution": "Ubuntu 24.04",
+      "uid": 0,
+      "gid": 0,
+      "supplementary_groups": []
+    }
+  },
+  "command_templates": {
+    "native_category_runner": "{PYTHON_EXE} -m tools.qa.run --category {CATEGORY} --repo-root {CANDIDATE_REPO_ROOT} --manifest docs/qa/categories.json --fixtures docs/qa/fixtures.json --dependency-target {LOCKED_DEPENDENCY_TARGET} --scratch-root {SCRATCH_ROOT} --run-id {RUN_ID} --expected-head {CANDIDATE_HEAD} --report-path docs/sdlc/evidence/qa/{CATEGORY}.report.jsonl --stdout-path docs/sdlc/evidence/qa/{CATEGORY}.stdout.txt --stderr-path docs/sdlc/evidence/qa/{CATEGORY}.stderr.txt",
+    "matrix_aggregation": "{PYTHON_EXE} -m tools.qa.matrix --repo-root {CANDIDATE_REPO_ROOT} --manifest docs/qa/categories.json --run-id {MATRIX_RUN_ID} {REPEATED_RUN_REF_ARGS} --output-path docs/sdlc/evidence/qa/matrix.report.jsonl",
+    "run_ref_format": "--run-ref {RUNTIME_PROFILE}:{CATEGORY}:{RUN_ID}"
+  },
+  "source_inputs": {
+    "windows": {
+      "manifest_file": "windows-s4-matrix-manifest.json",
+      "manifest": {
+        "bytes": 19393,
+        "sha256": "e0a571dba5264c73abae18439c7f44f60c1d8d12ed810a22dc957ed823eb54e1"
+      },
+      "candidate_bundle_sha256": "cbccc04997ff2f4f3471dced6eb2a75eecdef7d0344d5c2d9fd49ad2d8f83d66",
+      "candidate_bundle_bytes": 1941416,
+      "normalized_lock_sha256": "6e23fdd343a14e9d85a27f6d86cfb4498c1af9d33281e05ca5a3ff331c45e691"
+    },
+    "wsl_user_root": {
+      "manifest_file": "wsl-artifacts.manifest.json",
+      "manifest": {
+        "bytes": 10596,
+        "sha256": "3ddaf01ead0578fbb0989781ed01970ba71c141f15e2a2e892595b2686c86878"
+      },
+      "archive_file": "wsl-artifacts.tar",
+      "archive": {
+        "bytes": 18892800,
+        "sha256": "21ba3008e4edade88892ceb4736c9e908195d4f01267e2d6d57a4b94524865a5"
+      },
+      "candidate_bundle_sha256": "f1350110c00343be74a7e0540d045fefb8a7cbfb7310a3c8bef7633bdfb34151"
+    },
+    "root_regression": {
+      "manifest_file": "wsl-root-regression.manifest.json",
+      "manifest": {
+        "bytes": 3151,
+        "sha256": "d89981d06aaca90799288aa0a9456de38ec399d8ad55dc23b909094c00e1a23e"
+      },
+      "archive_file": "wsl-root-regression.tar",
+      "archive": {
+        "bytes": 5478400,
+        "sha256": "5db87ff10dd9fda52c675ffe5011c34945ad1ce244b802ee96e5de66dba6b423"
+      },
+      "candidate_bundle_sha256": "f1350110c00343be74a7e0540d045fefb8a7cbfb7310a3c8bef7633bdfb34151"
+    }
+  },
+  "source_reports": [
+    {
+      "profile": "windows-cpython-3.14.3",
+      "category": "functional",
+      "run_id": "s4-05b1845-20261025t-functional",
+      "candidate_head": "05b18450176109aafc108020bc2fafb7136a43d6",
+      "registry_source_head": "26b959f53e8398b7b4b736b66e4c5a406369705b",
+      "source_result": "PASS",
+      "counts": {
+        "expected": 90,
+        "passed": 90,
+        "failed": 0,
+        "skipped": 0,
+        "uncollected": 0,
+        "policy_not_run": 0
+      },
+      "duration_seconds": 107.526,
+      "source_report_row": {
+        "bytes": 124016,
+        "sha256": "20513ece72bacedaf2d8eaa305970e6578e16fc94b03e7b1bb6e0310842926ae"
+      },
+      "combined_report_row": {
+        "bytes": 124016,
+        "sha256": "20513ece72bacedaf2d8eaa305970e6578e16fc94b03e7b1bb6e0310842926ae",
+        "normalized_sha256_preserved": true
+      },
+      "source_artifact_files": {
+        "functional.report.jsonl": {
+          "bytes": 826041,
+          "sha256": "34b616e4adf6e2c98b25adefc1332409725ee408b2704ef9a90d55bcc8e6c8aa"
+        },
+        "functional.stderr.txt": {
+          "bytes": 199,
+          "sha256": "1932684bd5ff43a2d720e739eff51d82c5ec576d20819b33633255a5462b3451"
+        },
+        "functional.stdout.txt": {
+          "bytes": 2051,
+          "sha256": "0c58a459ad09761359b1cfda936796cd16c3574da09d768cebbf65c68866a6eb"
+        }
+      },
+      "chunks": {
+        "stdout": {
+          "source_range": {
+            "end": 2051,
+            "start": 1775
+          },
+          "combined_range": {
+            "start": 1775,
+            "end": 2051
+          },
+          "bytes": 276,
+          "sha256": "201ac2d438c8947a5c9da4ec42aeeac5453089e4d51cc1c8e91364142704855d"
+        },
+        "stderr": {
+          "source_range": {
+            "end": 199,
+            "start": 199
+          },
+          "combined_range": {
+            "start": 199,
+            "end": 199
+          },
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "profile": "windows-cpython-3.14.3",
+      "category": "integration",
+      "run_id": "s4-05b1845-20261025t-integration",
+      "candidate_head": "05b18450176109aafc108020bc2fafb7136a43d6",
+      "registry_source_head": "26b959f53e8398b7b4b736b66e4c5a406369705b",
+      "source_result": "INCONCLUSIVE",
+      "counts": {
+        "expected": 41,
+        "passed": 41,
+        "failed": 0,
+        "skipped": 0,
+        "uncollected": 0,
+        "policy_not_run": 37
+      },
+      "duration_seconds": 59.201,
+      "source_report_row": {
+        "bytes": 74671,
+        "sha256": "8db142c2182fda3a09b82970c3aeeb1ba54a0b80c9073e9d491b1641562a0d4e"
+      },
+      "combined_report_row": {
+        "bytes": 74671,
+        "sha256": "8db142c2182fda3a09b82970c3aeeb1ba54a0b80c9073e9d491b1641562a0d4e",
+        "normalized_sha256_preserved": true
+      },
+      "source_artifact_files": {
+        "integration.report.jsonl": {
+          "bytes": 671137,
+          "sha256": "5934bd977b9f42d7bce7689c893037954de11ea885a5c7e8d7d7885696ec5cbc"
+        },
+        "integration.stderr.txt": {
+          "bytes": 167,
+          "sha256": "a790be6d8b616f585f3632a59dbd5d6dd00df05596eddab3dc067c19b938baab"
+        },
+        "integration.stdout.txt": {
+          "bytes": 1708,
+          "sha256": "cbdc3b8826c87e2645a0a554b4c2122025c5b88ef19eae8829bbe4979b7b31ad"
+        }
+      },
+      "chunks": {
+        "stdout": {
+          "source_range": {
+            "end": 1708,
+            "start": 1510
+          },
+          "combined_range": {
+            "start": 1510,
+            "end": 1708
+          },
+          "bytes": 198,
+          "sha256": "f900ad9c87b85c853685d16c03b263e0f4c9a33b41988ef1ad671c0854d64522"
+        },
+        "stderr": {
+          "source_range": {
+            "end": 167,
+            "start": 167
+          },
+          "combined_range": {
+            "start": 167,
+            "end": 167
+          },
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "profile": "windows-cpython-3.14.3",
+      "category": "api",
+      "run_id": "s4-05b1845-20261025t-api",
+      "candidate_head": "05b18450176109aafc108020bc2fafb7136a43d6",
+      "registry_source_head": "26b959f53e8398b7b4b736b66e4c5a406369705b",
+      "source_result": "INCONCLUSIVE",
+      "counts": {
+        "expected": 688,
+        "passed": 688,
+        "failed": 0,
+        "skipped": 0,
+        "uncollected": 0,
+        "policy_not_run": 14
+      },
+      "duration_seconds": 92.887,
+      "source_report_row": {
+        "bytes": 803646,
+        "sha256": "460b8e3b4ef182611d7f35418a58ba2ebbe97bec15d0f9325573d7022a3b2f94"
+      },
+      "combined_report_row": {
+        "bytes": 803646,
+        "sha256": "460b8e3b4ef182611d7f35418a58ba2ebbe97bec15d0f9325573d7022a3b2f94",
+        "normalized_sha256_preserved": true
+      },
+      "source_artifact_files": {
+        "api.report.jsonl": {
+          "bytes": 5963743,
+          "sha256": "232057d684fe6a86031e62248e981d6adf15473cb6a31b136052b8784abb036b"
+        },
+        "api.stderr.txt": {
+          "bytes": 167,
+          "sha256": "a790be6d8b616f585f3632a59dbd5d6dd00df05596eddab3dc067c19b938baab"
+        },
+        "api.stdout.txt": {
+          "bytes": 12339,
+          "sha256": "27d7c4746fc95ad62411c8f1ffa096ed3d5e0f452c890d01c0542fbfdadd0d18"
+        }
+      },
+      "chunks": {
+        "stdout": {
+          "source_range": {
+            "end": 12339,
+            "start": 10590
+          },
+          "combined_range": {
+            "start": 10590,
+            "end": 12339
+          },
+          "bytes": 1749,
+          "sha256": "29c90b8dd2cd4d02a7eb64752e112645e8b3c4a774c898269bb391d3002921f7"
+        },
+        "stderr": {
+          "source_range": {
+            "end": 167,
+            "start": 167
+          },
+          "combined_range": {
+            "start": 167,
+            "end": 167
+          },
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "profile": "windows-cpython-3.14.3",
+      "category": "e2e",
+      "run_id": "s4-05b1845-20261025t-e2e",
+      "candidate_head": "05b18450176109aafc108020bc2fafb7136a43d6",
+      "registry_source_head": "26b959f53e8398b7b4b736b66e4c5a406369705b",
+      "source_result": "INCONCLUSIVE",
+      "counts": {
+        "expected": 55,
+        "passed": 55,
+        "failed": 0,
+        "skipped": 0,
+        "uncollected": 0,
+        "policy_not_run": 1
+      },
+      "duration_seconds": 131.103,
+      "source_report_row": {
+        "bytes": 49669,
+        "sha256": "1373e797804b8339edd58a370407c69c2f293a0c084e34ae02d740df6bbabef6"
+      },
+      "combined_report_row": {
+        "bytes": 49669,
+        "sha256": "1373e797804b8339edd58a370407c69c2f293a0c084e34ae02d740df6bbabef6",
+        "normalized_sha256_preserved": true
+      },
+      "source_artifact_files": {
+        "e2e.report.jsonl": {
+          "bytes": 299256,
+          "sha256": "c34836b3dda889c19241fadd8148d5601acb1c718e1c23c101034fe36007b32c"
+        },
+        "e2e.stderr.txt": {
+          "bytes": 101,
+          "sha256": "a528b1e4d996e9b60eccbc8a0592358d1272e47b0eedcbdee4f448ee8777562b"
+        },
+        "e2e.stdout.txt": {
+          "bytes": 790,
+          "sha256": "2e9f1c8f00a66f4282b7caf2fcac5a21895294c996c6a9d9e805627035a9ed7e"
+        }
+      },
+      "chunks": {
+        "stdout": {
+          "source_range": {
+            "end": 790,
+            "start": 663
+          },
+          "combined_range": {
+            "start": 663,
+            "end": 790
+          },
+          "bytes": 127,
+          "sha256": "817793df594b32c0a7f567a0d9a1446828ccabf7a650c47b57e7cc56a68bd141"
+        },
+        "stderr": {
+          "source_range": {
+            "end": 101,
+            "start": 101
+          },
+          "combined_range": {
+            "start": 101,
+            "end": 101
+          },
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "profile": "windows-cpython-3.14.3",
+      "category": "regression",
+      "run_id": "s4-05b1845-20261025t-regression",
+      "candidate_head": "05b18450176109aafc108020bc2fafb7136a43d6",
+      "registry_source_head": "26b959f53e8398b7b4b736b66e4c5a406369705b",
+      "source_result": "INCONCLUSIVE",
+      "counts": {
+        "expected": 874,
+        "passed": 874,
+        "failed": 0,
+        "skipped": 0,
+        "uncollected": 0,
+        "policy_not_run": 52
+      },
+      "duration_seconds": 389.024,
+      "source_report_row": {
+        "bytes": 1043993,
+        "sha256": "8b9b937ebb080b11badc57dd821c0a6518eb17cb65952758d8f7bbedbf71e9cd"
+      },
+      "combined_report_row": {
+        "bytes": 1043993,
+        "sha256": "8b9b937ebb080b11badc57dd821c0a6518eb17cb65952758d8f7bbedbf71e9cd",
+        "normalized_sha256_preserved": true
+      },
+      "source_artifact_files": {
+        "regression.report.jsonl": {
+          "bytes": 5076741,
+          "sha256": "e616c1596429739fb790d768da491a62e9c14915271e0005dc2a3a81da06f824"
+        },
+        "regression.stderr.txt": {
+          "bytes": 101,
+          "sha256": "a528b1e4d996e9b60eccbc8a0592358d1272e47b0eedcbdee4f448ee8777562b"
+        },
+        "regression.stdout.txt": {
+          "bytes": 10520,
+          "sha256": "80d9a9f1f7325fd99b3c94d86916f67e0c751e734c7334b3a5a1fa1597a51ab5"
+        }
+      },
+      "chunks": {
+        "stdout": {
+          "source_range": {
+            "end": 10520,
+            "start": 8365
+          },
+          "combined_range": {
+            "start": 8365,
+            "end": 10520
+          },
+          "bytes": 2155,
+          "sha256": "47669ffe60ed083b2537d4b53c3deb7578ab827fc606eda814e4efe44fcf22db"
+        },
+        "stderr": {
+          "source_range": {
+            "end": 101,
+            "start": 101
+          },
+          "combined_range": {
+            "start": 101,
+            "end": 101
+          },
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "profile": "windows-cpython-3.14.3",
+      "category": "seeded-failure",
+      "run_id": "s4-05b1845-20261025t-seeded-failure",
+      "candidate_head": "05b18450176109aafc108020bc2fafb7136a43d6",
+      "registry_source_head": "26b959f53e8398b7b4b736b66e4c5a406369705b",
+      "source_result": "PASS",
+      "counts": {
+        "expected": 3,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "uncollected": 0,
+        "policy_not_run": 0
+      },
+      "duration_seconds": 2.03,
+      "source_report_row": {
+        "bytes": 6556,
+        "sha256": "3e83aa838912b28205d7ac9262d64b2ef2baa82c544de12fae73fe81a52f0b14"
+      },
+      "combined_report_row": {
+        "bytes": 6556,
+        "sha256": "3e83aa838912b28205d7ac9262d64b2ef2baa82c544de12fae73fe81a52f0b14",
+        "normalized_sha256_preserved": true
+      },
+      "source_artifact_files": {
+        "seeded-failure.report.jsonl": {
+          "bytes": 27527,
+          "sha256": "abd0bfeadb8746e9ec8ef49f539a7e7593cac04bdab627233a86952395e55c46"
+        },
+        "seeded-failure.stderr.txt": {
+          "bytes": 101,
+          "sha256": "a528b1e4d996e9b60eccbc8a0592358d1272e47b0eedcbdee4f448ee8777562b"
+        },
+        "seeded-failure.stdout.txt": {
+          "bytes": 400,
+          "sha256": "a5820fa5391d82b41d3c40eb3362ba15c8a08a32f804ed969ef1b7386a704ab3"
+        }
+      },
+      "chunks": {
+        "stdout": {
+          "source_range": {
+            "end": 400,
+            "start": 300
+          },
+          "combined_range": {
+            "start": 300,
+            "end": 400
+          },
+          "bytes": 100,
+          "sha256": "f2f6334897174b6d7610c7b1de425e41034bc23e9a67766d61ab8a3bf4869ad4"
+        },
+        "stderr": {
+          "source_range": {
+            "end": 101,
+            "start": 101
+          },
+          "combined_range": {
+            "start": 101,
+            "end": 101
+          },
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "profile": "wsl-ubuntu-24.04-cpython-3.12.3",
+      "category": "functional",
+      "run_id": "wsl-05b1845-functional-nested",
+      "candidate_head": "05b18450176109aafc108020bc2fafb7136a43d6",
+      "registry_source_head": "26b959f53e8398b7b4b736b66e4c5a406369705b",
+      "source_result": "PASS",
+      "counts": {
+        "expected": 90,
+        "passed": 90,
+        "failed": 0,
+        "skipped": 0,
+        "uncollected": 0,
+        "policy_not_run": 0
+      },
+      "duration_seconds": 5.437,
+      "source_report_row": {
+        "bytes": 124263,
+        "sha256": "09bcc0ac94b696cb06899aa268c5e11dca2c2e8cce88370429620ba746c1e48a"
+      },
+      "combined_report_row": {
+        "bytes": 124263,
+        "sha256": "95b417b800f7627132a24009c1cd7d0d2d291d88d75e7f80bf74ae865d20aab6",
+        "normalized_sha256_preserved": true
+      },
+      "source_report_file": {
+        "bytes": 826277,
+        "sha256": "196a527bf43ec57fd898d0cbb4958d31561e7ec04c7c45875a923a02cb009987"
+      },
+      "chunks": {
+        "stdout": {
+          "source_range": {
+            "end": 2008,
+            "start": 1748
+          },
+          "combined_range": {
+            "start": 2051,
+            "end": 2311
+          },
+          "bytes": 260,
+          "sha256": "3f74a629ef9aa55dc9b03228be6f74f0283bbc2396f4db56a94446f666fe94f2"
+        },
+        "stderr": {
+          "source_range": {
+            "end": 197,
+            "start": 197
+          },
+          "combined_range": {
+            "start": 199,
+            "end": 199
+          },
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "profile": "wsl-ubuntu-24.04-cpython-3.12.3",
+      "category": "integration",
+      "run_id": "wsl-05b1845-integration-nested",
+      "candidate_head": "05b18450176109aafc108020bc2fafb7136a43d6",
+      "registry_source_head": "26b959f53e8398b7b4b736b66e4c5a406369705b",
+      "source_result": "INCONCLUSIVE",
+      "counts": {
+        "expected": 46,
+        "passed": 46,
+        "failed": 0,
+        "skipped": 0,
+        "uncollected": 0,
+        "policy_not_run": 37
+      },
+      "duration_seconds": 7.579,
+      "source_report_row": {
+        "bytes": 79838,
+        "sha256": "9a2b310fbec6dc41dfb8d58365f16fc2f04cd04cc93d7f2b29b19f8d2da7f143"
+      },
+      "combined_report_row": {
+        "bytes": 79838,
+        "sha256": "6a922f9b249ad0b7c312e9e2f8dd0eba753464df90de84502605b73a1bd6e0e9",
+        "normalized_sha256_preserved": true
+      },
+      "source_report_file": {
+        "bytes": 676295,
+        "sha256": "ce6fa6396ed929a173d3cb6373e3fbb00793c81d2db114adf2e052369ec34f76"
+      },
+      "chunks": {
+        "stdout": {
+          "source_range": {
+            "end": 1682,
+            "start": 1489
+          },
+          "combined_range": {
+            "start": 1708,
+            "end": 1901
+          },
+          "bytes": 193,
+          "sha256": "49dd7be2262ad97342e136cf901201afcad63560c6301689894bdddfeeab5c21"
+        },
+        "stderr": {
+          "source_range": {
+            "end": 165,
+            "start": 165
+          },
+          "combined_range": {
+            "start": 167,
+            "end": 167
+          },
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "profile": "wsl-ubuntu-24.04-cpython-3.12.3",
+      "category": "api",
+      "run_id": "wsl-05b1845-api-nested",
+      "candidate_head": "05b18450176109aafc108020bc2fafb7136a43d6",
+      "registry_source_head": "26b959f53e8398b7b4b736b66e4c5a406369705b",
+      "source_result": "INCONCLUSIVE",
+      "counts": {
+        "expected": 690,
+        "passed": 690,
+        "failed": 0,
+        "skipped": 0,
+        "uncollected": 0,
+        "policy_not_run": 14
+      },
+      "duration_seconds": 50.199,
+      "source_report_row": {
+        "bytes": 804795,
+        "sha256": "39862964e762a057cdfddad41af93c0ea21edd8896d54e5640e1dbde5db52b04"
+      },
+      "combined_report_row": {
+        "bytes": 804795,
+        "sha256": "4ede9742a83c4aca1295b3d5d6b5201aafbe957fe2f41c2e95b741771f5bf7a5",
+        "normalized_sha256_preserved": true
+      },
+      "source_report_file": {
+        "bytes": 5964883,
+        "sha256": "8a760969041e202f82afbf7db9f79394bdbb030bb4cb19a3bb2df05a8c750ef9"
+      },
+      "chunks": {
+        "stdout": {
+          "source_range": {
+            "end": 12175,
+            "start": 10458
+          },
+          "combined_range": {
+            "start": 12339,
+            "end": 14056
+          },
+          "bytes": 1717,
+          "sha256": "951b108f267ac845e74b46d018854463c39ff4ead8d13aee401ffc238b2d9b35"
+        },
+        "stderr": {
+          "source_range": {
+            "end": 165,
+            "start": 165
+          },
+          "combined_range": {
+            "start": 167,
+            "end": 167
+          },
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "profile": "wsl-ubuntu-24.04-cpython-3.12.3",
+      "category": "e2e",
+      "run_id": "wsl-05b1845-e2e-nested",
+      "candidate_head": "05b18450176109aafc108020bc2fafb7136a43d6",
+      "registry_source_head": "26b959f53e8398b7b4b736b66e4c5a406369705b",
+      "source_result": "INCONCLUSIVE",
+      "counts": {
+        "expected": 55,
+        "passed": 55,
+        "failed": 0,
+        "skipped": 0,
+        "uncollected": 0,
+        "policy_not_run": 1
+      },
+      "duration_seconds": 29.836,
+      "source_report_row": {
+        "bytes": 49917,
+        "sha256": "cfffeef5e9c600e32f15397f76612a68a6eb3e5f2c42da5f65dfabaa54d0f0f3"
+      },
+      "combined_report_row": {
+        "bytes": 49917,
+        "sha256": "d950ed40f6616d0b470ba21632d5932b5cefe49cfdcfbedf41577724f27e92aa",
+        "normalized_sha256_preserved": true
+      },
+      "source_report_file": {
+        "bytes": 299498,
+        "sha256": "73fcce1fae39a3447c166891e70d7eb8026f519b193f7dce0022540f8e716cc2"
+      },
+      "chunks": {
+        "stdout": {
+          "source_range": {
+            "end": 767,
+            "start": 653
+          },
+          "combined_range": {
+            "start": 790,
+            "end": 904
+          },
+          "bytes": 114,
+          "sha256": "e41206c17f1131cbf24ca8a4010cf52ed7366457e34ceaa2cc00ed39a3bd9425"
+        },
+        "stderr": {
+          "source_range": {
+            "end": 100,
+            "start": 100
+          },
+          "combined_range": {
+            "start": 101,
+            "end": 101
+          },
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "profile": "wsl-ubuntu-24.04-cpython-3.12.3",
+      "category": "regression",
+      "run_id": "wsl-05b1845-regression-nested",
+      "candidate_head": "05b18450176109aafc108020bc2fafb7136a43d6",
+      "registry_source_head": "26b959f53e8398b7b4b736b66e4c5a406369705b",
+      "source_result": "INCONCLUSIVE",
+      "counts": {
+        "expected": 881,
+        "passed": 881,
+        "failed": 0,
+        "skipped": 0,
+        "uncollected": 0,
+        "policy_not_run": 52
+      },
+      "duration_seconds": 75.419,
+      "source_report_row": {
+        "bytes": 1050060,
+        "sha256": "21b46d96f8e13b6699d5055332f9f58082344817ba260ad40e652053c4f176cd"
+      },
+      "combined_report_row": {
+        "bytes": 1050061,
+        "sha256": "98b8f026a330cae559952e7cc6c94ca6c04e82b5dbd2ddfb08227b04f0190a48",
+        "normalized_sha256_preserved": true
+      },
+      "source_report_file": {
+        "bytes": 5082803,
+        "sha256": "ba746575d553fffd56afc580877b01393d0dfb076efa6a6bc52b4b05a824a9f8"
+      },
+      "chunks": {
+        "stdout": {
+          "source_range": {
+            "end": 10388,
+            "start": 8261
+          },
+          "combined_range": {
+            "start": 10520,
+            "end": 12647
+          },
+          "bytes": 2127,
+          "sha256": "ec77d904c1f5468eab5e610ed5b9bcba6ba8a94dc06eb3dff4bec15896d95404"
+        },
+        "stderr": {
+          "source_range": {
+            "end": 100,
+            "start": 100
+          },
+          "combined_range": {
+            "start": 101,
+            "end": 101
+          },
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "profile": "wsl-ubuntu-24.04-cpython-3.12.3",
+      "category": "seeded-failure",
+      "run_id": "wsl-05b1845-seeded-nested",
+      "candidate_head": "05b18450176109aafc108020bc2fafb7136a43d6",
+      "registry_source_head": "26b959f53e8398b7b4b736b66e4c5a406369705b",
+      "source_result": "PASS",
+      "counts": {
+        "expected": 3,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "uncollected": 0,
+        "policy_not_run": 0
+      },
+      "duration_seconds": 0.467,
+      "source_report_row": {
+        "bytes": 6797,
+        "sha256": "82dd0bbff8ed3eaa24de9f4f16c1514958754f95d89722f25d4d0d1677f3c8b9"
+      },
+      "combined_report_row": {
+        "bytes": 6797,
+        "sha256": "10ef0a9f53115d223c1d54d685cd1505cc4aff8464021c5fb5027eeeb21bac0b",
+        "normalized_sha256_preserved": true
+      },
+      "source_report_file": {
+        "bytes": 27764,
+        "sha256": "c439367e39def3fa7fe7840f759c8d98f36ede156094b83464e23262e446bd07"
+      },
+      "chunks": {
+        "stdout": {
+          "source_range": {
+            "end": 392,
+            "start": 294
+          },
+          "combined_range": {
+            "start": 400,
+            "end": 498
+          },
+          "bytes": 98,
+          "sha256": "86288ee89a493b657a4f02c2118272c4f6a9a7afa049f10741e60f3a564db934"
+        },
+        "stderr": {
+          "source_range": {
+            "end": 100,
+            "start": 100
+          },
+          "combined_range": {
+            "start": 101,
+            "end": 101
+          },
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "profile": "wsl-ubuntu-24.04-root-harness",
+      "category": "integration",
+      "run_id": "wsl-root-05b1845-integration-nested",
+      "candidate_head": "05b18450176109aafc108020bc2fafb7136a43d6",
+      "registry_source_head": "26b959f53e8398b7b4b736b66e4c5a406369705b",
+      "source_result": "INCONCLUSIVE",
+      "counts": {
+        "expected": 1,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "uncollected": 0,
+        "policy_not_run": 37
+      },
+      "duration_seconds": 0.467,
+      "source_report_row": {
+        "bytes": 28105,
+        "sha256": "a6c94be1934bbbb0b954cfb968bf080cc4923205844758ff5c58e79c345dc4ea"
+      },
+      "combined_report_row": {
+        "bytes": 28105,
+        "sha256": "6c24adc9f198ec0a759b701c8630c1e21a83f71802bfa010d4fa5c346cae8493",
+        "normalized_sha256_preserved": true
+      },
+      "source_report_file": {
+        "bytes": 624562,
+        "sha256": "2dbc61313936afcbfbbf0bbdbebfce3fdd91c4cad35249b54a10e228e9728c80"
+      },
+      "chunks": {
+        "stdout": {
+          "source_range": {
+            "end": 1602,
+            "start": 1489
+          },
+          "combined_range": {
+            "start": 1901,
+            "end": 2014
+          },
+          "bytes": 113,
+          "sha256": "16fcc48c8518851d2de9b31a3e9f9ef20f01d40c6cb06d3068f86d3fa1e65568"
+        },
+        "stderr": {
+          "source_range": {
+            "end": 165,
+            "start": 165
+          },
+          "combined_range": {
+            "start": 167,
+            "end": 167
+          },
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "profile": "wsl-ubuntu-24.04-root-harness",
+      "category": "api",
+      "run_id": "wsl-root-05b1845-api-nested",
+      "candidate_head": "05b18450176109aafc108020bc2fafb7136a43d6",
+      "registry_source_head": "26b959f53e8398b7b4b736b66e4c5a406369705b",
+      "source_result": "INCONCLUSIVE",
+      "counts": {
+        "expected": 1,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "uncollected": 0,
+        "policy_not_run": 14
+      },
+      "duration_seconds": 0.417,
+      "source_report_row": {
+        "bytes": 127456,
+        "sha256": "4a0d9c24221723e17d75ef16ff644c8278fcf6f75838e245890c8533c0f85f31"
+      },
+      "combined_report_row": {
+        "bytes": 127456,
+        "sha256": "20d7593e3a362c96c5dfb1ea11cdf7ff186ede5f5137fdda3355c8afd2823e46",
+        "normalized_sha256_preserved": true
+      },
+      "source_report_file": {
+        "bytes": 5287544,
+        "sha256": "21ad9c5fbfa8e13a404ca93353c91ef3505e8b439df8c5e661738e77fbd9e1ff"
+      },
+      "chunks": {
+        "stdout": {
+          "source_range": {
+            "end": 10571,
+            "start": 10458
+          },
+          "combined_range": {
+            "start": 14056,
+            "end": 14169
+          },
+          "bytes": 113,
+          "sha256": "6cc7fc9cf19a6cce6f26fd0a1b52e9dc08fdba7f8332fb2887dafb656a3aceaa"
+        },
+        "stderr": {
+          "source_range": {
+            "end": 165,
+            "start": 165
+          },
+          "combined_range": {
+            "start": 167,
+            "end": 167
+          },
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "profile": "wsl-ubuntu-24.04-root-harness",
+      "category": "regression",
+      "run_id": "wsl-root-05b1845-regression-nested-r3",
+      "candidate_head": "05b18450176109aafc108020bc2fafb7136a43d6",
+      "registry_source_head": "26b959f53e8398b7b4b736b66e4c5a406369705b",
+      "source_result": "INCONCLUSIVE",
+      "counts": {
+        "expected": 2,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "uncollected": 0,
+        "policy_not_run": 52
+      },
+      "duration_seconds": 0.718,
+      "source_report_row": {
+        "bytes": 184404,
+        "sha256": "338fd428f9b5a0443a30a81d63fed0decab71b3926d6fefdd229edd336dca06c"
+      },
+      "combined_report_row": {
+        "bytes": 184404,
+        "sha256": "a59dc1f21903873d4fa039e0c8806712deeb50aa1f98a186daacb4e914372696",
+        "normalized_sha256_preserved": true
+      },
+      "source_report_file": {
+        "bytes": 5450047,
+        "sha256": "0077618911c880a38e87cab9d3bb90b6d5a2bc0f1f4f675e4a24e256beca107f"
+      },
+      "chunks": {
+        "stdout": {
+          "source_range": {
+            "end": 10501,
+            "start": 10388
+          },
+          "combined_range": {
+            "start": 12647,
+            "end": 12760
+          },
+          "bytes": 113,
+          "sha256": "e032f3ad9821a9935847de255c2923b1f9893fb3fb675a8e6bc9e76603a3e702"
+        },
+        "stderr": {
+          "source_range": {
+            "end": 202,
+            "start": 202
+          },
+          "combined_range": {
+            "start": 101,
+            "end": 101
+          },
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    }
+  ],
+  "artifact_assembly": {
+    "source_report_rows": 15,
+    "all_source_row_hashes_validated": true,
+    "all_stdout_stderr_ranges_sizes_and_hashes_validated": true,
+    "all_combined_report_normalized_digests_preserved": true,
+    "all_source_rows_bound_to_candidate_and_registry_heads": true,
+    "candidate_to_canonical_artifact_copy_performed": false
+  },
+  "final_matrix": {
+    "first_attempt": {
+      "run_id": "s4-05b1845-platform-matrix-20261025",
+      "result": "BLOCKED",
+      "expected_report_refs": 15,
+      "supplied_report_refs": 14,
+      "missing_ref": {
+        "profile": "wsl-ubuntu-24.04-root-harness",
+        "category": "regression",
+        "run_id": null
+      },
+      "reasons": [
+        "one or more assigned profile/category reports are not referenced"
+      ],
+      "row_bytes": 8204,
+      "row_sha256": "dd0327e5b88628be21a00c6c5c0e4cc7e97b6a7582d61ca00508cef5da4569e6",
+      "matrix_file_prefix_bytes": 8204,
+      "matrix_file_prefix_sha256": "dd0327e5b88628be21a00c6c5c0e4cc7e97b6a7582d61ca00508cef5da4569e6"
+    },
+    "final_attempt": {
+      "run_id": "s4-05b1845-platform-matrix-20261025-r2",
+      "result": "FAIL",
+      "expected_report_refs": 15,
+      "resolved_report_refs": 15,
+      "profile_counts": {
+        "windows-cpython-3.14.3": 6,
+        "wsl-ubuntu-24.04-cpython-3.12.3": 6,
+        "wsl-ubuntu-24.04-root-harness": 3
+      },
+      "category_verdict_counts": {
+        "FAIL": 11,
+        "PASS": 4
+      },
+      "policy_not_run_count": 52,
+      "reason_count": 126,
+      "non_policy_reason_count": 0,
+      "row_bytes": 1625581,
+      "row_sha256": "2bba5f4dbf90defba9024132e10496c5cf0ad1fae0c61f3fcea59dac8e8a295a",
+      "normalized_sha256": "b82f325f408a2ba7f06693d80b467274597e7291171884e5ceeb4bd4ea54ceab",
+      "matrix_file_bytes": 1633785,
+      "matrix_file_sha256": "bf8c3d5cc8916a6bd4490ddaa208d8e47966ef97a8d4d69b8c0e483b4fb99fb6"
+    },
+    "final_matrix_artifact": {
+      "repo_relative_path": "docs/sdlc/evidence/qa/matrix.report.jsonl",
+      "bytes": 1633785,
+      "sha256": "bf8c3d5cc8916a6bd4490ddaa208d8e47966ef97a8d4d69b8c0e483b4fb99fb6"
+    }
+  },
+  "final_combined_artifacts": [
+    {
+      "repo_relative_path": "docs/sdlc/evidence/qa/functional.report.jsonl",
+      "bytes": 950304,
+      "sha256": "74c8afbefb10497e881704be88444f036ebf11dcd4e1fe88361ab173f11b6fa7"
+    },
+    {
+      "repo_relative_path": "docs/sdlc/evidence/qa/functional.stdout.txt",
+      "bytes": 2311,
+      "sha256": "e8db792c8811116bf855551e06b90d8d96683043dc5bd8f9399852fb52c5139a"
+    },
+    {
+      "repo_relative_path": "docs/sdlc/evidence/qa/functional.stderr.txt",
+      "bytes": 199,
+      "sha256": "1932684bd5ff43a2d720e739eff51d82c5ec576d20819b33633255a5462b3451"
+    },
+    {
+      "repo_relative_path": "docs/sdlc/evidence/qa/integration.report.jsonl",
+      "bytes": 779080,
+      "sha256": "2dff7131f04b4b9a1039af1c57afdc5b453c3ce9c15c5f3272c1eb6edb0bdfed"
+    },
+    {
+      "repo_relative_path": "docs/sdlc/evidence/qa/integration.stdout.txt",
+      "bytes": 2014,
+      "sha256": "bc1abb03f69fe314a1f881fc531d3a2e9ad8f37fcc45817720b3157b93b171b1"
+    },
+    {
+      "repo_relative_path": "docs/sdlc/evidence/qa/integration.stderr.txt",
+      "bytes": 167,
+      "sha256": "a790be6d8b616f585f3632a59dbd5d6dd00df05596eddab3dc067c19b938baab"
+    },
+    {
+      "repo_relative_path": "docs/sdlc/evidence/qa/api.report.jsonl",
+      "bytes": 6895994,
+      "sha256": "ce3b71867ebd3f98f5d91b695ce4ce21f742bd639e5b978692d32c9c389c790a"
+    },
+    {
+      "repo_relative_path": "docs/sdlc/evidence/qa/api.stdout.txt",
+      "bytes": 14169,
+      "sha256": "0a55111ffeafe36d03f840755ff50b471e275b73e2adadb5789b2f502bf4995d"
+    },
+    {
+      "repo_relative_path": "docs/sdlc/evidence/qa/api.stderr.txt",
+      "bytes": 167,
+      "sha256": "a790be6d8b616f585f3632a59dbd5d6dd00df05596eddab3dc067c19b938baab"
+    },
+    {
+      "repo_relative_path": "docs/sdlc/evidence/qa/e2e.report.jsonl",
+      "bytes": 349173,
+      "sha256": "be77efb2323764632a364f17414aae8b7432e9b3301d6cefe0576d8d75dcd678"
+    },
+    {
+      "repo_relative_path": "docs/sdlc/evidence/qa/e2e.stdout.txt",
+      "bytes": 904,
+      "sha256": "b6c5acfd394d7dec93bcdf6910830d3899fc14e374fe81abf11fad24a9e0e108"
+    },
+    {
+      "repo_relative_path": "docs/sdlc/evidence/qa/e2e.stderr.txt",
+      "bytes": 101,
+      "sha256": "a528b1e4d996e9b60eccbc8a0592358d1272e47b0eedcbdee4f448ee8777562b"
+    },
+    {
+      "repo_relative_path": "docs/sdlc/evidence/qa/regression.report.jsonl",
+      "bytes": 6311206,
+      "sha256": "dfff8d413334ee51b7f8c81b7336bcde9c1c2e978eb66a75d68bd7acead64b08"
+    },
+    {
+      "repo_relative_path": "docs/sdlc/evidence/qa/regression.stdout.txt",
+      "bytes": 12760,
+      "sha256": "fd71f93c9783ce18000e6a3f97797b7e5ffb632c441df8c71aa10811e1cfb199"
+    },
+    {
+      "repo_relative_path": "docs/sdlc/evidence/qa/regression.stderr.txt",
+      "bytes": 101,
+      "sha256": "a528b1e4d996e9b60eccbc8a0592358d1272e47b0eedcbdee4f448ee8777562b"
+    },
+    {
+      "repo_relative_path": "docs/sdlc/evidence/qa/seeded-failure.report.jsonl",
+      "bytes": 34324,
+      "sha256": "fde2d2c0ba00f8c92ebf9c14f734deaecf4d04be17909f2743d8a389362efb73"
+    },
+    {
+      "repo_relative_path": "docs/sdlc/evidence/qa/seeded-failure.stdout.txt",
+      "bytes": 498,
+      "sha256": "f9afe996beaf40246afd10e2c1b7ecd1ea80a89fc4c9c14a7b2c380466fff1f7"
+    },
+    {
+      "repo_relative_path": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt",
+      "bytes": 101,
+      "sha256": "a528b1e4d996e9b60eccbc8a0592358d1272e47b0eedcbdee4f448ee8777562b"
+    },
+    {
+      "repo_relative_path": "docs/sdlc/evidence/qa/matrix.report.jsonl",
+      "bytes": 1633785,
+      "sha256": "bf8c3d5cc8916a6bd4490ddaa208d8e47966ef97a8d4d69b8c0e483b4fb99fb6"
+    }
+  ],
+  "run_references": [
+    {
+      "profile": "windows-cpython-3.14.3",
+      "category": "functional",
+      "run_id": "s4-05b1845-20261025t-functional"
+    },
+    {
+      "profile": "windows-cpython-3.14.3",
+      "category": "integration",
+      "run_id": "s4-05b1845-20261025t-integration"
+    },
+    {
+      "profile": "windows-cpython-3.14.3",
+      "category": "api",
+      "run_id": "s4-05b1845-20261025t-api"
+    },
+    {
+      "profile": "windows-cpython-3.14.3",
+      "category": "e2e",
+      "run_id": "s4-05b1845-20261025t-e2e"
+    },
+    {
+      "profile": "windows-cpython-3.14.3",
+      "category": "regression",
+      "run_id": "s4-05b1845-20261025t-regression"
+    },
+    {
+      "profile": "windows-cpython-3.14.3",
+      "category": "seeded-failure",
+      "run_id": "s4-05b1845-20261025t-seeded-failure"
+    },
+    {
+      "profile": "wsl-ubuntu-24.04-cpython-3.12.3",
+      "category": "functional",
+      "run_id": "wsl-05b1845-functional-nested"
+    },
+    {
+      "profile": "wsl-ubuntu-24.04-cpython-3.12.3",
+      "category": "integration",
+      "run_id": "wsl-05b1845-integration-nested"
+    },
+    {
+      "profile": "wsl-ubuntu-24.04-cpython-3.12.3",
+      "category": "api",
+      "run_id": "wsl-05b1845-api-nested"
+    },
+    {
+      "profile": "wsl-ubuntu-24.04-cpython-3.12.3",
+      "category": "e2e",
+      "run_id": "wsl-05b1845-e2e-nested"
+    },
+    {
+      "profile": "wsl-ubuntu-24.04-cpython-3.12.3",
+      "category": "regression",
+      "run_id": "wsl-05b1845-regression-nested"
+    },
+    {
+      "profile": "wsl-ubuntu-24.04-cpython-3.12.3",
+      "category": "seeded-failure",
+      "run_id": "wsl-05b1845-seeded-nested"
+    },
+    {
+      "profile": "wsl-ubuntu-24.04-root-harness",
+      "category": "integration",
+      "run_id": "wsl-root-05b1845-integration-nested"
+    },
+    {
+      "profile": "wsl-ubuntu-24.04-root-harness",
+      "category": "api",
+      "run_id": "wsl-root-05b1845-api-nested"
+    },
+    {
+      "profile": "wsl-ubuntu-24.04-root-harness",
+      "category": "regression",
+      "run_id": "wsl-root-05b1845-regression-nested-r3"
+    }
+  ]
+}

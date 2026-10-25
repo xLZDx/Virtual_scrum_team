@@ -2,7 +2,19 @@
 
 Last updated: 2026-10-25. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
 
-## Current continuation checkpoint — S4 QA automation
+## Latest verified continuation checkpoint — S4 QA automation
+
+The tested code/test candidate is `05b18450176109aafc108020bc2fafb7136a43d6` on branch `s4-reproducible-qa-automation`; registry source HEAD is `26b959f53e8398b7b4b736b66e4c5a406369705b`, and registry SHA-256 is `6edc55d7c8ba633b90868a8ce3d0b68baef76985d97f0b3ee02fb93dd7274b41`. The canonical development checkout remains `D:\Repo\Virtual_scrum_team`. No per-sprint development worktree was created. The pre-existing untracked `docs/sdlc/evidence/s2-functional-test-run.md` was preserved. Test-only snapshots were isolated under temporary Windows/WSL paths.
+
+At candidate `05b1845`, designated agents ran focused Windows S4 contracts (110 passed, zero failed/skipped, one deprecation warning) and focused WSL E2E contracts (7 passed, zero failed/skipped). The sandbox-dependent underlying selector, timeout, process-kill/death, and mutation selectors were not invoked.
+
+The complete assigned platform matrix contains 15 required profile/category reports: six Windows, six unprivileged WSL, and three restricted-root WSL reports. All 15 report references resolve. Windows functional 90/90 and seeded-failure 3/3 are `PASS`; integration 41/41, API 688/688, E2E 55/55 and regression 874/874 are `INCONCLUSIVE` only because policy `NOT_RUN` entries remain. Unprivileged WSL functional 90/90 and seeded-failure 3/3 are `PASS`; integration 46/46, API 690/690, E2E 55/55 and regression 881/881 are `INCONCLUSIVE` only because policy entries remain. Restricted-root integration 1/1, API 1/1 and regression 2/2 assigned selectors passed, with category-level `NOT_RUN`; its preflight is local and explicitly non-authoritative, not an S2 receipt.
+
+The final matrix row is `FAIL` at exact candidate `05b1845`: 4 category reports are `PASS`, 11 are `FAIL` because their category result is `INCONCLUSIVE`; the only reason classes are the 52 unique policy `NOT_RUN` selectors (126 repeated matrix reasons). There are no failed, skipped, xfailed, or uncollected assigned selectors, and no excluded selector was executed. Matrix row SHA-256 is `2bba5f4dbf90defba9024132e10496c5cf0ad1fae0c61f3fcea59dac8e8a295a`; full `matrix.report.jsonl` SHA-256 is `bf8c3d5cc8916a6bd4490ddaa208d8e47966ef97a8d4d69b8c0e483b4fb99fb6`. Sanitized evidence manifest: [`s4-05b1845-platform-matrix-manifest.json`](sdlc/evidence/qa/s4-05b1845-platform-matrix-manifest.json), SHA-256 `11fe8a2c2ab9854c87d85b2e5281994cc60bcf6f0709be639b8a1452feb04a9c`.
+
+Fresh exact-head static reviews at `05b1845` found no actionable code findings: Python reviewer (GPT-6 Luna, low effort), code reviewer (GPT-6 Luna, medium effort), and security reviewer (GPT-6 Luna; actual effort `NOT_VERIFIED` by that agent). Reviews ran no tests. No GPT-PM exact-head final gate, push, PR, or merge is recorded. S4 is not closed because required policy scenarios remain `NOT_RUN`; they require an explicit policy/scope decision before execution or an accepted signed waiver. S2, S3 and S5 remain open as detailed in the backlog. Continue independent authorized work in this canonical checkout.
+
+## Historical S4 checkpoints — superseded by the latest section above
 
 Active sprint: S4 on branch `s4-reproducible-qa-automation` in the canonical `D:\Repo\Virtual_scrum_team` checkout. Current committed test source HEAD is `dc853578e9076db6a6ff75738e8230219fd4bc17`; change 0298 binds the selector registry to it. The pre-existing untracked `docs/sdlc/evidence/s2-functional-test-run.md` remains preserved. No per-sprint Git worktree has been created or will be created; all development stays in this repository.
 
