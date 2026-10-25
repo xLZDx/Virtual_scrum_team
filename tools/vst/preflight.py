@@ -134,9 +134,12 @@ def collect_inventory(run_id: str, nonce: str | None = None, *,
                       network_policy_attestation: dict[str, Any] | None = None) -> dict[str, Any]:
     if not isinstance(run_id, str) or not run_id.strip():
         raise ContractError("run_id must be non-empty")
+    if nonce is None:
+        nonce = uuid.uuid4().hex
+    elif not isinstance(nonce, str) or not nonce.strip():
+        raise ContractError("nonce must be non-empty")
     if os.name != "posix" or not hasattr(os, "geteuid"):
         raise ContractError("sandbox probe requires a POSIX sandbox")
-    nonce = nonce or uuid.uuid4().hex
     mounts = Path("/proc/self/mounts").read_text(encoding="utf-8", errors="replace")
     interop_path = Path("/proc/sys/fs/binfmt_misc/WSLInterop")
     interop_present = interop_path.exists()

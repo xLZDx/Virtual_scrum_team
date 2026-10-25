@@ -448,3 +448,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 - Evidence: change record 0083 and `docs/sdlc/evidence/s2-e2e-bounded-snapshot-ed531.md`. Live process termination, kill-table, and post-start overflow cleanup remain `NOT_RUN` under the active prohibition.
 
 2026-10-25 — SUCCESS: S2 status reconciliation ties the implementation to source HEAD `dc959`, distinguishes the 80 passed/14 skipped Windows E2E result and single selected WSL lock scenario, and preserves process/platform/resource-limit residuals as `NOT_RUN` or `NOT_VERIFIED`. Do not upgrade skips or one-run attestation into production proof. See change record 0150.
+
+2026-10-25 — Generate a preflight nonce only for an omitted (`None`) value. Replacing an explicitly empty or malformed nonce can hide a caller's binding error even if a later verification gate rejects it. Reject invalid explicit values with a typed contract error and test empty, non-string, omitted, and valid inputs. See change record 0162.

@@ -262,3 +262,7 @@ The E2E-owned lifecycle/store modules passed on source HEAD `c0e7e9ce15958b6c6de
 ## 2026-10-25 -- Reconcile S2 status report without upgrading skipped evidence
 
 The S2 branch report reconciles source HEAD `dc95915018b80f498d5cf775363712fb915fe04e` and its focused functional, Windows E2E, selected WSL, and specialist-review records. Fourteen Windows E2E skips remain `NOT_RUN`; prohibited process/platform scenarios remain `NOT_RUN`, production resource limits remain `NOT_VERIFIED`, and exact-head GPT-PM approval remains pending. The current branch HEAD before this report was `3505f769f9c1c245d368a8318aeb04a76e1c5537`. See `reports/S2_ISOLATED_WORKER_SANDBOX_2026-10-25.ru.html`, `.html`, and change record 0150.
+
+## 2026-10-25 -- Reject explicitly invalid S2 preflight nonce inputs
+
+`collect_inventory` now generates a nonce only when callers omit it (`None`). An explicitly empty or non-string nonce is rejected with `ContractError` rather than silently replaced, preserving the caller's run/nonce binding and exposing provisioning mistakes. This is a source-only change for S2 E5/VST-014; focused functional verification is pending with the designated test owner. See change record 0162.
