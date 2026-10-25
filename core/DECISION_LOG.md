@@ -393,3 +393,7 @@ S4 implements six native pytest lanes from a committed selector registry; HTTP r
 ## 2026-10-25 — Require an explicit isolated S4 dependency target
 
 The S4 runner now requires `--dependency-target` naming an existing directory outside the candidate repository. It checks that target contains exactly the distributions and versions from `tools/qa/requirements.lock`, then passes only that target to the pytest child via `PYTHONPATH` with user-site loading disabled. This keeps environment preparation separate from test execution and avoids changing the global `C:\Python314` installation. The target path itself is not written into reports. See change 0239.
+
+## 2026-10-25 — Reconcile S4 backlog progress and S5 readiness
+
+S4 category, selector, runner and report implementation is committed (`c814443`, with runner isolation fix `f4ef8e7`); functional and E2E test authorship is now active. Runtime category evidence, seeded fixture closure, exact-head reviews and the S4 final gate remain pending. S5 remains prepared, not active: its required S2 signer/gate evidence and S4 seeded-fixture catalog are not yet closed. S5 synthetic VST contract preparation may follow those local dependencies; trust-boundary changes and actual AEVE analysis require separate authorized source identity/interface evidence. Keep the canonical development checkout at `D:\Repo\Virtual_scrum_team`; an immutable analyzer snapshot is data, not a sprint worktree. The proposed VST-038..042 remain unregistered until S5 formally starts. See change 0240.

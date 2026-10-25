@@ -1,6 +1,6 @@
 # Sprint S5 plan: bounded AEVE evidence gate
 
-Status: **PREPARED / NOT STARTED**. This is a VST-side plan. It does not access, acquire, or execute the separate AEVE repository and does not claim the analyzer is available in this checkout.
+Status: **PREPARED / BLOCKED FROM IMPLEMENTATION** until S2's required signer/gate evidence is reconciled and S4 commits its seeded-fixture catalog. This is a VST-side plan. It does not access, acquire, or execute the separate AEVE repository and does not claim the analyzer is available in this checkout.
 
 Sources: continuation scope and exit rule in `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` section 1; AEVE bounded-evidence role and unsupported-capability caveat in `docs/UNIFIED_ENGINEERING_ORGANIZATION_MASTER_BLUEPRINT_2026-10-23.md` sections 1, 8, 10, 11, 13.1 and 13.2; existing VST receipt contract in `tools/vst/contracts.py`; gate behavior in `tools/vst/gate.py`; S2 authority and exact-head boundaries in `docs/S2_SANDBOX_WORKER_PLAN_2026-10-24.md`; and `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`. This plan follows the later S2–S5 continuation rather than stale blueprint roadmap labels.
 
@@ -18,6 +18,8 @@ Constraints already recorded in this repository:
 - The analyzer must not execute the candidate, call a provider, write to the worktree, use network access, mutate VST state, or approve its own output.
 - V1 and v2 receipt bytes and hashes remain immutable. The existing v2 signed body must not gain optional provenance fields after the fact.
 - The exact AEVE source revision, license, supported rule inventory, transport, and runnable integration are **UNKNOWN / NOT_VERIFIED in this repository**. Do not fill these gaps by reading a sibling checkout or by treating blueprint summaries as reproduced evidence.
+- All sprint development remains in the operator-designated checkout `D:\Repo\Virtual_scrum_team`. Do not create a sprint worktree or sibling development checkout. An immutable analyzer input snapshot, if later authorized, is data supplied to the analyzer and is not a development checkout.
+- S2 exact-head signer/gate evidence and the committed S4 seeded-fixture catalog are entry dependencies for S5 contract work. Real AEVE adapter execution additionally depends on authorized, in-scope evidence for the exact AEVE source identity/revision, license, supported rules, and interface; until then, real analysis remains `NOT_RUN` and unsupported claims stay `UNKNOWN`.
 
 ## 2. Existing interfaces and proposed design
 
@@ -176,6 +178,8 @@ All digest algorithms and canonicalization must be versioned. Paths are reposito
 - Analyzer trust authority, key provisioning and signed payload/domain contract are reviewed; signer key material is not given to analyzer code.
 - Synthetic fixtures, resource limits, failure boundaries and evidence retention path are specified.
 - Functional and E2E test agents confirm the test map before implementation; they do not run tests until all S5 coding is complete.
+
+The current state does not satisfy the S2 exact-head readiness item: its gate remains pending. The S4 seeded-failure catalog is also still in progress, and authorized AEVE source/interface evidence is absent. Synthetic contract and coverage fixtures may be prepared only after the S2/S4 local dependencies are reconciled. Signer-authority changes and real AEVE adapter execution remain blocked until their specific trust/source dependencies are met.
 
 ## 8. Definition of Done
 
