@@ -135,6 +135,7 @@ def _pytest_node_id_exists(root: Path, test_id: str) -> bool:
 
 
 def _git_commit_exists(root: Path, revision: str) -> bool:
+    """Compatibility helper; provenance validation uses the ancestry query below."""
     try:
         result = subprocess.run(
             ["git", "cat-file", "-e", f"{revision}^{{commit}}"], cwd=root,
@@ -178,18 +179,12 @@ def load_registry(root: Path, relative_path: str = "docs/qa/categories.json") ->
     """Validate committed registry syntax, unique IDs, categories, and source paths."""
     registry, raw = _read_repo_json(root, relative_path, max_bytes=MAX_REGISTRY_BYTES)
     tracked_cache: dict[str, bool] = {}
-    commit_cache: dict[str, bool] = {}
     ancestry_cache: dict[tuple[str, str], bool] = {}
 
     def is_tracked(path: str) -> bool:
         if path not in tracked_cache:
             tracked_cache[path] = _git_file_is_tracked(root, path)
         return tracked_cache[path]
-
-    def commit_exists(revision: str) -> bool:
-        if revision not in commit_cache:
-            commit_cache[revision] = _git_commit_exists(root, revision)
-        return commit_cache[revision]
 
     def is_ancestor(revision: str, candidate: str) -> bool:
         pair = (revision, candidate)
@@ -203,12 +198,11 @@ def load_registry(root: Path, relative_path: str = "docs/qa/categories.json") ->
         raise ContractError("unsupported QA registry schema_version")
     source_head = registry["source_head"]
     if (not isinstance(source_head, str) or len(source_head) != 40 or
-            any(char not in "0123456789abcdef" for char in source_head) or
-            not commit_exists(source_head)):
+            any(char not in "0123456789abcdef" for char in source_head)):
         raise ContractError("QA registry source_head must be a full lowercase Git SHA")
     candidate_head = _current_candidate_head(root)
     if not is_ancestor(source_head, candidate_head):
-        raise ContractError("QA registry source_head is stale or outside the candidate history")
+        raise ContractError("QA registry source_head is missing, stale, or outside the candidate history")
     categories = registry["categories"]
     if not isinstance(categories, dict) or set(categories) != set(PRIMARY_CATEGORIES):
         raise ContractError("QA registry must account for every primary category")
@@ -246,11 +240,12 @@ def load_registry(root: Path, relative_path: str = "docs/qa/categories.json") ->
             raise ContractError(f"QA category {category!r} has an invalid test owner role")
         head = entry.get("source_head")
         if (not isinstance(head, str) or len(head) != 40 or
-                any(char not in "0123456789abcdef" for char in head) or
-                not commit_exists(head)):
+                any(char not in "0123456789abcdef" for char in head)):
             raise ContractError(f"QA category {category!r} needs a full source_head")
         if not is_ancestor(head, candidate_head):
-            raise ContractError(f"QA category {category!r} source_head is stale or outside candidate history")
+            raise ContractError(
+                f"QA category {category!r} source_head is missing, stale, or outside candidate history"
+            )
         test_ids = entry.get("test_ids")
         if not isinstance(test_ids, list) or not test_ids:
             raise ContractError(f"supported QA category {category!r} needs test IDs")

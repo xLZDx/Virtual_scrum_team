@@ -348,3 +348,7 @@ At clean S4 source HEAD `c5289cae2255b51e165ec8e65a322c752be0e99a`, the seven ma
 ## 2026-10-25 -- Bound QA registry source parsing
 
 The S4 code reviewer found that node resolution read tracked test files without a size ceiling and did not convert AST recursion failure into a closed refusal. Read at most 1 MiB plus one sentinel byte, reject oversized input before decoding, and return non-resolving for `RecursionError`. Preserve existing path confinement and do not parse source through imports or pytest collection. Implemented in change record 0142; focused regression is pending.
+
+## 2026-10-25 -- Use one bounded Git query for QA provenance
+
+The exact-head functional module at `64b8bb1` failed twice because a separate `git cat-file` helper returned false for valid source-head SHAs, while direct Git inspection later confirmed the objects existed. Keep syntactic lowercase-SHA validation, then use only bounded `git merge-base --is-ancestor` to prove both object presence and candidate-history membership. Report valid-but-missing/stale/out-of-history provenance as such; an operational timeout must not be mislabeled as malformed SHA. Retain the private existence helper only for test monkeypatch compatibility, not live validation. Implemented in change 0146; functional rerun remains pending.
