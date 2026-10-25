@@ -342,3 +342,6 @@ Follow-up exact-version registry lookups supersede the UNKNOWN direct-license st
 ## 2026-10-25 -- Preserve exact-version Go license uncertainty
 
 The exact pkg.go.dev page for `github.com/nexus-rpc/nexus-proto-annotations@v0.1.0` is retrievable and explicitly reports `License: None detected`. The exact tag's upstream LICENSE path returns 404. Although current upstream main is MIT, neither that nor a third-party inference from sibling modules proves this tag's license. Keep the version `UNKNOWN`/`NOT_VERIFIED`; 106 other Go lookups remain unresolved. See change 0211.
+## 2026-10-25 -- Preserve the complete pinned Temporal Go license lookup denominator
+
+A controlled, exact-version rerun queried all 223 module/version rows from Temporal server `go.mod` at `af08a5e5f2dd40f545f2afac7780daaa6987001e`. It returned 211 pkg.go.dev pages with license sections, one `License: None detected`, and 11 exact-version HTTP 404 pages, with no HTTP 429 in the rerun. All 223 rows and their individual statuses/metadata are retained in the TSV evidence. The 12 rows without license values remain UNKNOWN; this is not a selected runtime license closure. No package/source was downloaded. See change 0212.
