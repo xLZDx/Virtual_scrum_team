@@ -654,6 +654,10 @@ At exact registry HEAD `af424b51592646dc5dd918bd571f47110bd82cc9`, the designate
 
 The test selector `tests/vst/test_s2_runner_lifecycle.py::test_local_git_timeout_leaves_pending_then_restart_retry_completes_same_key` was not listed in the policy exclusions and was included in the Windows integration invocation at candidate `e1a4278`, contrary to this continuation's timeout-run prohibition. The e2e-runner report also lists it among six failed integration selectors; only this report-level statement is currently known, and the invocation is not acceptance evidence. Add the exact selector to `POLICY_NOT_RUN` with an explicit timeout reason. Regeneration keeps the total inventory at 935, reduces assigned runnable selectors from 884 to 883, and increases policy `NOT_RUN` from 51 to 52. Do not execute it again; preserve the completed invocation report as non-approving evidence. Change 0296 records the correction.
 
+## 2026-10-25 — Use a WSL-capable runner baseline in S4 E2E fixtures
+
+At corrected candidate `0825202`, four WSL E2E selectors (seven concrete cases) were blocked before child collection because their synthetic repository extracted the runner from `f0c91163`, which required the Windows Python 3.14 interpreter. The current candidate contains the WSL Python 3.12.3 runtime profile. Keep test assertions and the isolated synthetic repository, but pin its runner baseline to the committed WSL-capable implementation. This is a test-fixture correction only; re-run focused tests and the full assigned matrix at an exact committed head before acceptance. See change 0297.
+
 ## 2026-10-25 — Refresh the selector registry after the Linux flag fixture
 
 After test-source commit `c4f9cb9`, regenerate the category registry before rerunning. It now binds to exact source HEAD `c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209` and records 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN`, and 90 functional selectors. Preserve the policy rows and use exact-head evidence. See change 0290.

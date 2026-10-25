@@ -23,7 +23,7 @@ from pathlib import Path, PurePosixPath
 import pytest
 
 
-BASELINE_HEAD = "f0c91163ce1af3c952539df0aef9ce571976f238"
+BASELINE_HEAD = "08252020f24d47f1d23ffb15e15080193400bb9b"
 FIXTURE_TEST_PATH = "tests/qa/test_native_fixture.py"
 FIXTURE_TEST_ID = f"{FIXTURE_TEST_PATH}::test_native_fixture"
 NOT_RUN_TEST_ID = f"{FIXTURE_TEST_PATH}::test_sandbox_dependent_fixture"

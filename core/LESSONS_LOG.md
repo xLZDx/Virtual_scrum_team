@@ -654,4 +654,6 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — SHORTCOMING: the selector registry left one timeout-recovery test assigned to integration even though the active S4 execution policy prohibits timeout scenarios. The full-category Windows invocation included it; the report now remains non-approving, regardless of its mocked timeout implementation. Rule: classify every timeout-related selector explicitly as policy `NOT_RUN` before running category batches; a committed registry assignment is not sufficient permission to execute. See change 0296.
 
+2026-10-25 — SHORTCOMING: WSL E2E fixtures copied an older committed runner baseline and therefore tested a Windows-only interpreter contract in the WSL profile. Rule: synthetic candidate tests must pin a baseline that supports the assigned runtime profile, or explicitly scope that test to its supported platform; preserve the observable assertions. See change 0297.
+
 2026-10-25 — SUCCESS: after the Linux close-on-exec test fixture was committed, the selector registry was regenerated against the exact committed test source. The denominator remains 935 regression selectors, 884 assigned, and 51 policy `NOT_RUN`; refresh is not execution evidence. See change 0290.
