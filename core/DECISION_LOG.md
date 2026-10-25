@@ -605,3 +605,7 @@ After test source commit `d77d7cc`, regenerate the schema-v2 category registry f
 ## 2026-10-25 — Repair test fixtures found by the first exact-head S4 focused run
 
 The focused run at `7cc903b17bb651710ee1a91c5c1fb61949353eb3` returned 87 passed, 21 failed and one warning on Windows CPython 3.14.3. The failures were stale `ValidatedRegistry` and runner-argument fixtures, an incomplete schema-v4 root proof fixture, and POSIX-only root-helper mocks that did not account for Windows Python. Decision: preserve product assertions and update only the three designated test modules to provide current contract fields and host-portable POSIX doubles. No product implementation failure was established by these tracebacks. The corrections require commit, registry refresh and a fresh exact-head run before acceptance. See change 0283.
+
+## 2026-10-25 — Bind the refreshed selector registry to corrected S4 test sources
+
+After test-only correction commit `05d9935`, regenerate the test-selector registry before rerunning tests. The registry source HEAD is `05d9935c7ae8ace69ab9e8d1e083ae96c353741b`; it retains 935 regression selectors, 884 assigned runnable and 51 policy `NOT_RUN`, with 90 functional selectors. Preserve the 51 non-approving policy rows and run only after the registry refresh is committed. See change 0284.

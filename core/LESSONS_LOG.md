@@ -629,3 +629,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — SUCCESS: after committing S4 test contracts, the category registry was regenerated from exact committed test sources before execution. The refreshed denominator contains 935 regression selectors, 884 assigned and 51 policy `NOT_RUN`; registry generation is not test evidence. See change 0282.
 
 2026-10-25 — SHORTCOMING: the first focused S4 run after registry generation found stale test fixture signatures and POSIX mocks that were not portable to the Windows host. Rule: keep test doubles aligned with the current exact-schema objects and use host-aware path expectations when testing Linux helper behavior from Windows. The test-only fixes need a fresh exact-head run. See change 0283.
+
+2026-10-25 — SUCCESS: after committing focused-test fixture corrections, the category selector registry was regenerated against the corrected exact source HEAD before retrying. The count stayed at 935 regression selectors, 884 assigned and 51 policy `NOT_RUN`; the registry generation itself does not verify the tests. See change 0284.
