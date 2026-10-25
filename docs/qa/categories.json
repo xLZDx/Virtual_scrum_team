@@ -32,7 +32,7 @@
     "api": {
       "state": "SUPPORTED",
       "coverage_state": "PARTIAL",
-      "coverage_reason": "The Python API denominator covers representative tools.vst contracts, gate, store, runner and supervisor behavior plus S4 registry, provenance, selector projection, seeded catalog validation, canonical path confinement, bounded source reads and parser recursion rejection. It remains partial because the full public VST API surface is not inventoried or mapped.",
+      "coverage_reason": "The finite source-defined callable inventory is recorded in docs/qa/python_api_inventory.md: 79 entries across the five S4.3.2 modules. AC-7 stale/signature failures are mapped. Focused falsifiers have been added for the previously unreferenced entrypoints, but most existing candidate selectors are not required by the API category. Coverage remains PARTIAL pending unique API-category mapping for all inventory rows.",
       "owner_role": "functional-test-reviewer",
       "source_head": "11cdba225a7eaa4a9c89c16cd990b74a5bda4a47",
       "test_ids": [
@@ -101,3 +101,4 @@
     ]
   }
 }
+
