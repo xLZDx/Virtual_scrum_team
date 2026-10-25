@@ -294,3 +294,10 @@ At triage repository HEAD `50647fb`, the four E4 skips were confirmed as paramet
 ## 2026-10-25 -- Record correlated S2 GPT-PM MAJOR findings
 
 The exact-head review of S2 HEAD `12758c9410276e58591f879b34a2a5b0b39c8b30` returned `MAJOR — MODIFY`, correlated request `460d72c5-e4a7-4b92-b5e4-9f6a16221a9d`, reply `2c5bfa37-3502-46e6-8092-dcd77904f5e4`, input hash `b51609ec03d37bf0b45961d1ac794894ac37ecec99e8cc6ea2f31575b19397a6`. The three findings are incomplete E8 crash/resume evidence, E4 platform containment proof, and E5 worker/environment/workspace/resource binding. GPT-PM found no newly demonstrated source exploit/defect. Full response is preserved in `docs/sdlc/evidence/s2-gptpm-final-review-12758c9.json` (change 0212). No push/PR is authorized.
+## 2026-10-25 — Reconcile S2 provisioning entry criterion with recorded WSL2 evidence
+
+The S2 plan still said dedicated sandbox provisioning had not been reached. The provisioning guide, VST-014 backlog row, and signed run `280e2d0` inventory/attestation establish that a dedicated Ubuntu-24.04 WSL2 environment was provisioned and one run-scoped E5 probe was accepted. Update only the stale entry-criterion wording: this does not close GPT-PM M03 or claim persistent deployment. Actual worker/workspace binding, OS memory/temp/process quotas, direct-writer exclusion, full POSIX proof, and E8 remain unverified or NOT_RUN. See change 0222.
+
+## 2026-10-25 — Correct WSL enumeration scope and record exact-head recovery evidence
+
+The coordinator repeated `wsl --list --verbose` despite the existing 0061 decision to query only the named project distribution. Its output exposed the names/state/version of other registered distros; no other distro was accessed or modified. Do not repeat host-wide WSL enumeration; use only direct commands against the authorized `Ubuntu-24.04` distribution. In the same work period, the designated functional reviewer reran `tests/vst/test_s2_operation_recovery.py` at exact repository HEAD `c2771b5968afcdd2b027f1c008fc8023fd0e0f12` with 4 passed, 0 failed/skipped; evidence is `docs/sdlc/evidence/s2-exact-head-functional-e2e-2026-10-25.md`. See change 0222.
