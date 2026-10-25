@@ -481,3 +481,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — Release-to-release behavior cannot be inherited from documentation alone. For BMad v0.11, retain README/security-policy observations as documented claims and keep code-level permissions, prompt injection, network and sandbox behavior `NOT_VERIFIED` until the pinned source is fully reviewed. See change record 0095.
 
+2026-10-25 — Preserve safe diagnostics when STOP cleanup fails. Reliability review found `SyntheticStoryPilot.stop` discarded the adapter exception and returned the same generic cleanup message for success and failure. Keep the epoch fence and non-approving result, distinguish adapter return from exception using only a validated bounded exception class name, and never serialize raw exception text. Implemented in change record 0096; focused functional regression remains pending.
+

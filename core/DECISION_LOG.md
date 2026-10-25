@@ -288,3 +288,7 @@ Pinned v0.11 README describes coding-CLI orchestration, configured verification,
 
 The database reviewer examined S3 Store schema/transactions and found no BLOCKER/MAJOR/MINOR in uniqueness, budget charge, epoch resume, or STOP fencing. External callbacks still require downstream idempotency and reconciliation; no S3 integration defect was established. Runtime concurrency evidence remains `NOT_RUN`. See change record 0094.
 
+## 2026-10-25 -- Preserve bounded STOP cleanup failure diagnostics
+
+Keep the durable STOP epoch fence and non-approving `INCONCLUSIVE` response regardless of adapter cleanup outcome. If `adapter.stop` raises, record only a bounded, validated exception class name; never include raw exception text, which may contain sensitive or untrusted content. A successful adapter return also does not prove OS process cleanup, so the response remains `NOT_VERIFIED`. Implemented in change record 0096; focused regression and exact-head review are pending.
+

@@ -726,13 +726,20 @@ class SyntheticStoryPilot:
         )
         # The synchronous worker adapter cannot prove OS-level termination.
         # Store epoch fencing is durable; process cleanup remains INCONCLUSIVE.
+        cleanup_error_type: str | None = None
         try:
             self.adapter.stop(request)
-        except Exception:
-            pass
+        except Exception as exc:
+            cleanup_error_type = _bounded_exception_type(exc)
+        cleanup_message = (
+            "epoch fenced; adapter.stop completed but worker process cleanup is NOT_VERIFIED"
+            if cleanup_error_type is None else
+            "epoch fenced; adapter.stop raised "
+            f"{cleanup_error_type}; worker process cleanup is NOT_VERIFIED"
+        )
         return _stop_response(
             request, WorkerState.INCONCLUSIVE,
-            WorkerError(WorkerErrorCode.INTERRUPTED, "epoch fenced; worker process cleanup is NOT_VERIFIED"),
+            WorkerError(WorkerErrorCode.INTERRUPTED, cleanup_message),
             progress=f"new_fence={result['new_epoch']}",
         )
 
@@ -952,6 +959,14 @@ class SyntheticStoryPilot:
             self.fixture.store.current_epoch(request.story_id),
             self.fixture.key,
         )
+
+
+def _bounded_exception_type(exc: Exception) -> str:
+    """Return a bounded exception class name without exposing exception text."""
+    name = type(exc).__name__
+    if isinstance(name, str) and len(name) <= 64 and name.isascii() and name.isidentifier():
+        return name
+    return "UnknownError"
 
 
 def _derived_key(kind: str, value: str) -> str:
