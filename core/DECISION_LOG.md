@@ -352,3 +352,7 @@ The S4 code reviewer found that node resolution read tracked test files without 
 ## 2026-10-25 -- Use one bounded Git query for QA provenance
 
 The exact-head functional module at `64b8bb1` failed twice because a separate `git cat-file` helper returned false for valid source-head SHAs, while direct Git inspection later confirmed the objects existed. Keep syntactic lowercase-SHA validation, then use only bounded `git merge-base --is-ancestor` to prove both object presence and candidate-history membership. Report valid-but-missing/stale/out-of-history provenance as such; an operational timeout must not be mislabeled as malformed SHA. Retain the private existence helper only for test monkeypatch compatibility, not live validation. Implemented in change 0146; functional rerun remains pending.
+
+## 2026-10-25 -- Verify ancestry-only QA provenance validation
+
+At clean exact HEAD `56a58a72c337c7c712ce2efb72e99efc179552bd`, the focused registry module passed 15 cases with one Windows symlink-privilege skip and no failures. The committed-registry loader now accepts the valid provenance sources after removal of the duplicate Git existence query. A stale expected-message assertion was corrected in test-only change 0147 without weakening the negative provenance check. Symlink runtime remains `NOT_RUN` on this host. See change 0149 and evidence `docs/sdlc/evidence/s4-provenance-rerun-56a58a7.md`.
