@@ -9,6 +9,7 @@ import os
 import re
 import subprocess
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -19,6 +20,8 @@ PRIMARY_CATEGORIES = ("functional", "integration", "api", "e2e", "seeded-failure
 REGRESSION_CATEGORIES = ("functional", "integration", "api", "e2e")
 MAX_REGISTRY_BYTES = 512 * 1024
 MAX_TEST_SOURCE_BYTES = 1024 * 1024
+MAX_REGISTRY_TEST_IDS = 2048
+MAX_REGISTRY_SOURCE_BYTES = 4 * 1024 * 1024
 GIT_COMMAND_TIMEOUT_SECONDS = 5
 GIT_TIMEOUT_RETRIES = 1
 SEEDED_CATALOG_PATH = "docs/qa/seeded_failures.json"
@@ -87,11 +90,20 @@ def _run_git_with_timeout_retry(command: list[str], **kwargs: Any) -> subprocess
                 raise
 
 
+@dataclass
+class _SourceNodeCache:
+    """Per-load compact indexes and aggregate source-read budget."""
+
+    nodes_by_path: dict[Path, frozenset[tuple[str, str]] | None] = field(default_factory=dict)
+    source_bytes_read: int = 0
+    budget_exceeded: bool = False
+
+
 def _pytest_node_id_exists(
     root: Path,
     test_id: str,
     *,
-    source_cache: dict[Path, ast.Module | None] | None = None,
+    source_cache: _SourceNodeCache | dict[Path, frozenset[tuple[str, str]] | None] | None = None,
 ) -> bool:
     """Resolve the statically named pytest function/class node in its source."""
     parts = test_id.split("::")
@@ -124,51 +136,68 @@ def _pytest_node_id_exists(
     except OSError:
         return False
 
-    cache = source_cache if source_cache is not None else {}
-    if resolved in cache:
-        module = cache[resolved]
-        if module is None:
+    if isinstance(source_cache, _SourceNodeCache):
+        cache = source_cache
+    else:
+        # Keep direct helper calls using the earlier plain-dict cache compatible.
+        cache = _SourceNodeCache(
+            nodes_by_path=source_cache if source_cache is not None else {}
+        )
+    if resolved in cache.nodes_by_path:
+        node_index = cache.nodes_by_path[resolved]
+        if node_index is None:
             return False
     else:
+        remaining = MAX_REGISTRY_SOURCE_BYTES - cache.source_bytes_read
+        if remaining <= 0:
+            cache.budget_exceeded = True
+            return False
+        read_limit = min(MAX_TEST_SOURCE_BYTES, remaining)
         try:
             with resolved.open("rb") as handle:
-                raw_source = handle.read(MAX_TEST_SOURCE_BYTES + 1)
+                raw_source = handle.read(read_limit + 1)
             if len(raw_source) > MAX_TEST_SOURCE_BYTES:
-                cache[resolved] = None
+                cache.nodes_by_path[resolved] = None
                 return False
+            if len(raw_source) > remaining:
+                cache.budget_exceeded = True
+                return False
+            cache.source_bytes_read += len(raw_source)
             source = raw_source.decode("utf-8")
             module = ast.parse(source, filename=path)
         except (OSError, UnicodeError, SyntaxError, RecursionError):
-            cache[resolved] = None
+            cache.nodes_by_path[resolved] = None
             return False
-        cache[resolved] = module
-
-    if len(selectors) == 1:
-        return any(
-            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-            and node.name == selectors[0]
-            and node.name.startswith("test_")
-            for node in module.body
-        )
-
-    class_name, method_name = selectors
-    if not class_name.startswith("Test") or not method_name.startswith("test_"):
-        return False
-    for node in module.body:
-        if isinstance(node, ast.ClassDef) and node.name == class_name:
+        node_index: set[tuple[str, str]] = set()
+        for node in module.body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if node.name.startswith("test_"):
+                    node_index.add(("", node.name))
+                continue
+            if not isinstance(node, ast.ClassDef) or not node.name.startswith("Test"):
+                continue
             if any(
                 isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
                 and member.name in {"__init__", "__new__"}
                 for member in node.body
             ):
-                return False
-            return any(
-                isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
-                and member.name == method_name
-                and member.name.startswith("test_")
+                continue
+            node_index.update(
+                (node.name, member.name)
                 for member in node.body
+                if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and member.name.startswith("test_")
             )
-    return False
+        node_index = frozenset(node_index)
+        cache.nodes_by_path[resolved] = node_index
+
+    if len(selectors) == 1:
+        return ("", selectors[0]) in node_index
+
+    class_name, method_name = selectors
+    if not class_name.startswith("Test") or not method_name.startswith("test_"):
+        return False
+    return (class_name, method_name) in node_index
 
 
 def _git_commit_exists(root: Path, revision: str) -> bool:
@@ -217,7 +246,7 @@ def load_registry(root: Path, relative_path: str = "docs/qa/categories.json") ->
     registry, raw = _read_repo_json(root, relative_path, max_bytes=MAX_REGISTRY_BYTES)
     tracked_cache: dict[str, bool] = {}
     ancestry_cache: dict[tuple[str, str], bool] = {}
-    source_cache: dict[Path, ast.Module | None] = {}
+    source_cache = _SourceNodeCache()
 
     def is_tracked(path: str) -> bool:
         if path not in tracked_cache:
@@ -291,6 +320,10 @@ def load_registry(root: Path, relative_path: str = "docs/qa/categories.json") ->
             raise ContractError(f"QA category {category!r} test IDs must be strings")
         if len(test_ids) != len(set(test_ids)):
             raise ContractError(f"QA category {category!r} has duplicate test IDs")
+        if len(seen_ids) + len(test_ids) > MAX_REGISTRY_TEST_IDS:
+            raise ContractError(
+                f"QA registry exceeds the {MAX_REGISTRY_TEST_IDS} test-ID limit"
+            )
         for test_id in test_ids:
             if not isinstance(test_id, str) or "::" not in test_id:
                 raise ContractError(f"QA test ID is not a pytest node ID: {test_id!r}")
@@ -298,6 +331,11 @@ def load_registry(root: Path, relative_path: str = "docs/qa/categories.json") ->
             if "\\" in path or not path.startswith("tests/") or not is_tracked(path):
                 raise ContractError(f"QA test ID source is not a tracked tests path: {test_id!r}")
             if not _pytest_node_id_exists(root, test_id, source_cache=source_cache):
+                if source_cache.budget_exceeded:
+                    raise ContractError(
+                        "QA test source validation exceeds the "
+                        f"{MAX_REGISTRY_SOURCE_BYTES}-byte aggregate limit"
+                    )
                 raise ContractError(
                     "QA test ID does not resolve to a statically named pytest node: "
                     f"{test_id!r}"

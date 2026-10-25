@@ -361,6 +361,10 @@ At clean exact HEAD `56a58a72c337c7c712ce2efb72e99efc179552bd`, the focused regi
 
 At clean `s4-native-qa-runner` HEAD `cbdce020fbd8030e7518285526831c2932f879a2`, the seven registered mapped selectors passed on the Windows host: 7 passed, 0 failed, 0 skipped. HEAD and worktree status were unchanged before and after. This result is Windows-only; the earlier WSL transfer remains `RESULT_NOT_CAPTURED`, and no WSL destination was inspected or retried. See change 0150.
 
+## 2026-10-25 -- Bound aggregate QA registry source indexing
+
+Fresh independent reviews at `e52ec7f63fa7285ad0bb3910e8bfd31a9707f31e` found that per-file caps and same-file AST caching did not bound many distinct source files or retained AST memory. Replace retained AST modules with compact node-name sets and enforce explicit per-load limits of 2,048 test IDs and 4 MiB aggregate source bytes, preserving the existing per-file cap and path checks. Implemented in change 0155; functional revalidation is pending.
+
 ## 2026-10-25 -- Cache QA test-source ASTs for one registry load
 
 The fresh S4 security review at `2ffc8f7c59156d882f9d69729bc0337439e3705c` found candidate-controlled repeated parsing of one test source per registry ID. Cache each validated resolved source's AST (including closed failures) for the duration of one `load_registry` call, while repeating path/symlink/containment checks for each ID. This limits same-file parsing amplification without retaining cross-run state. Implemented in change 0151; designated functional regression and fresh security re-review remain pending.
