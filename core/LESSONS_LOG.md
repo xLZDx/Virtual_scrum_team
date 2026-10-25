@@ -452,3 +452,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — Generate a preflight nonce only for an omitted (`None`) value. Replacing an explicitly empty or malformed nonce can hide a caller's binding error even if a later verification gate rejects it. Reject invalid explicit values with a typed contract error and test empty, non-string, omitted, and valid inputs. See change record 0162.
 
 2026-10-25 — When sprint branches share one repository, reserve change-record numbers across active branches before parallel documentation work. If a collision occurs, preserve commits but publish one unique current file/reference set and record the reconciliation. See change 0166.
+
+2026-10-25 — Keep current-state summaries aligned to the newest implementation without upgrading older test results: state the code HEAD and test HEAD separately, preserve the prior test denominator and scope, and retain platform gaps as `NOT_RUN`/`NOT_VERIFIED`. The S2 explicit-nonce test passed on its designated code/test heads, but it does not prove the prohibited process or full crash/resume scenarios. See change 0205.

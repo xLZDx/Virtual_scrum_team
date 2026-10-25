@@ -276,3 +276,7 @@ The S2 exact-head nonce evidence was numbered 0164 while an independent S4 docum
 ## 2026-10-25 -- Reconcile S2 report with nonce evidence and focused reviews
 
 Updated the bilingual S2 status report after the 0162 implementation, 0163 functional test cases, and exact-head evidence 0165. The test owner recorded 4 passed, 22 deselected, 0 failed at code HEAD `6ee97cb` / test HEAD `deed6ab`. A code reviewer (GPT-6 Luna, low) reported no BLOCKER/MAJOR/MINOR; a security reviewer (GPT-6 Luna, medium) reported no security findings. Earlier platform/prohibited/quota gates remain distinct and open. Report conformance exited 0. See change 0167.
+
+## 2026-10-25 -- Reconcile S2 state to the nonce fix and its focused evidence
+
+The S2 current-state summaries now distinguish the earlier Phase 7 evidence at source HEAD `dc95915018b80f498d5cf775363712fb915fe04e` from the later E5 explicit-nonce implementation at `6ee97cb06b52900c3c2ab2a9b1b415ae117a7932` and designated focused test run at test HEAD `deed6abe34eeaa8620593442bcdb1413d846f798` (4 passed, 22 deselected, 0 failed). The run-scoped WSL2 acceptance remains limited to run `280e2d0`. Phase 8 exact-final-head GPT-PM approval remains pending; do not push/PR without it. See change 0205.
