@@ -629,3 +629,7 @@ After test-source commit `24ba10d`, regenerate the category registry before retr
 ## 2026-10-25 — Model Linux close-on-exec in the Windows root-helper contract test
 
 The focused run at `17096c74d0b9a71ca26298aa47d785949b51f4ce` returned 107 passed, 1 failed and one warning. The sole failure was a Windows-host test double invoking a Linux-only root-helper path without `os.O_CLOEXEC`, producing `AttributeError` before the assertion. Add a test-local Linux flag constant and assert the namespace descriptor uses `O_RDONLY | O_CLOEXEC`; do not add a Windows fallback to the WSL-only helper implementation. Refresh the test registry and rerun. See change 0289.
+
+## 2026-10-25 — Refresh the selector registry after the Linux flag fixture
+
+After test-source commit `c4f9cb9`, regenerate the category registry before rerunning. It now binds to exact source HEAD `c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209` and records 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN`, and 90 functional selectors. Preserve the policy rows and use exact-head evidence. See change 0290.

@@ -641,3 +641,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — SUCCESS: after correcting a Python 3.14 `sys.flags` test double, the selector registry was regenerated against the exact committed test source before rerun. The inventory remains 935 regression selectors, 884 assigned and 51 policy `NOT_RUN`; registry generation is not a pass. See change 0288.
 
 2026-10-25 — SHORTCOMING: a Windows-host test of a Linux-only helper path failed because the host lacks `os.O_CLOEXEC`. Rule: provide a platform-compatible test-local Linux constant while still asserting the exact Linux flags, rather than changing the production contract to fit the host. See change 0289.
+
+2026-10-25 — SUCCESS: after the Linux close-on-exec test fixture was committed, the selector registry was regenerated against the exact committed test source. The denominator remains 935 regression selectors, 884 assigned, and 51 policy `NOT_RUN`; refresh is not execution evidence. See change 0290.

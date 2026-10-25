@@ -38,7 +38,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "24ba10dd341f8bc9a99dd8f303f760f83fb8aef6",
+  "source_head": "c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209",
   "source_inventory": [
     {
       "path": "tests/qa/test_s4_e2e_runner_cli.py",
@@ -52,8 +52,8 @@
     },
     {
       "path": "tests/qa/test_s4_functional_root_harness.py",
-      "source_commit": "24ba10dd341f8bc9a99dd8f303f760f83fb8aef6",
-      "sha256": "9e8489e660226c024582a710b5413eafccb4ae54211918b1b91bfcf842751189"
+      "source_commit": "c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209",
+      "sha256": "87ae1374b676ce7dedeb626ad1b91939193bd9b468f97cac5bdd18bb01c52ed9"
     },
     {
       "path": "tests/qa/test_s4_functional_runner_contracts.py",
@@ -352,7 +352,7 @@
       "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_candidate_mount_boundary_rejects_windows_backing",
       "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_candidate_mount_boundary_rejects_windows_backing",
       "source_path": "tests/qa/test_s4_functional_root_harness.py",
-      "source_commit": "24ba10dd341f8bc9a99dd8f303f760f83fb8aef6",
+      "source_commit": "c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -363,7 +363,7 @@
       "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_child_binds_mount_and_parent_proof_then_launches_qa_through_setpriv",
       "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_child_binds_mount_and_parent_proof_then_launches_qa_through_setpriv",
       "source_path": "tests/qa/test_s4_functional_root_harness.py",
-      "source_commit": "24ba10dd341f8bc9a99dd8f303f760f83fb8aef6",
+      "source_commit": "c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -374,7 +374,7 @@
       "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_child_rejects_unproven_or_non_private_namespace_before_qa",
       "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_child_rejects_unproven_or_non_private_namespace_before_qa",
       "source_path": "tests/qa/test_s4_functional_root_harness.py",
-      "source_commit": "24ba10dd341f8bc9a99dd8f303f760f83fb8aef6",
+      "source_commit": "c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -385,7 +385,7 @@
       "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_git_preflight_uses_fixed_absolute_executable",
       "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_git_preflight_uses_fixed_absolute_executable",
       "source_path": "tests/qa/test_s4_functional_root_harness.py",
-      "source_commit": "24ba10dd341f8bc9a99dd8f303f760f83fb8aef6",
+      "source_commit": "c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -396,7 +396,7 @@
       "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_outer_preflights_candidate_then_reexecs_fixed_installed_helper",
       "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_outer_preflights_candidate_then_reexecs_fixed_installed_helper",
       "source_path": "tests/qa/test_s4_functional_root_harness.py",
-      "source_commit": "24ba10dd341f8bc9a99dd8f303f760f83fb8aef6",
+      "source_commit": "c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -407,7 +407,7 @@
       "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_rejects_candidate_helper_mismatch_before_unshare",
       "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_rejects_candidate_helper_mismatch_before_unshare",
       "source_path": "tests/qa/test_s4_functional_root_harness.py",
-      "source_commit": "24ba10dd341f8bc9a99dd8f303f760f83fb8aef6",
+      "source_commit": "c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -418,7 +418,7 @@
       "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_rejects_invalid_cli_contract_before_process_launch",
       "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_rejects_invalid_cli_contract_before_process_launch",
       "source_path": "tests/qa/test_s4_functional_root_harness.py",
-      "source_commit": "24ba10dd341f8bc9a99dd8f303f760f83fb8aef6",
+      "source_commit": "c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -429,7 +429,7 @@
       "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_rejects_untrusted_install_before_git_or_process_launch",
       "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_rejects_untrusted_install_before_git_or_process_launch",
       "source_path": "tests/qa/test_s4_functional_root_harness.py",
-      "source_commit": "24ba10dd341f8bc9a99dd8f303f760f83fb8aef6",
+      "source_commit": "c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -440,7 +440,7 @@
       "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_requires_isolated_python_before_git_or_process_launch",
       "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_requires_isolated_python_before_git_or_process_launch",
       "source_path": "tests/qa/test_s4_functional_root_harness.py",
-      "source_commit": "24ba10dd341f8bc9a99dd8f303f760f83fb8aef6",
+      "source_commit": "c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -451,7 +451,7 @@
       "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_requires_root_owned_nonwritable_libexec_parent",
       "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_requires_root_owned_nonwritable_libexec_parent",
       "source_path": "tests/qa/test_s4_functional_root_harness.py",
-      "source_commit": "24ba10dd341f8bc9a99dd8f303f760f83fb8aef6",
+      "source_commit": "c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -462,7 +462,7 @@
       "test_id": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_requires_trusted_installed_root_owned_helper",
       "selector": "tests/qa/test_s4_functional_root_harness.py::test_s4_root_harness_requires_trusted_installed_root_owned_helper",
       "source_path": "tests/qa/test_s4_functional_root_harness.py",
-      "source_commit": "24ba10dd341f8bc9a99dd8f303f760f83fb8aef6",
+      "source_commit": "c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",

@@ -16,6 +16,8 @@ The rerun at exact HEAD `0b28d1f8ec56fe4b4e4e7c870596d781fe149636`, Python 3.14.
 
 The focused rerun at exact registry HEAD `17096c74d0b9a71ca26298aa47d785949b51f4ce`, Python 3.14.3, completed with 107 passed, 1 failed, 1 warning in 316.51 seconds (exit 1). The failure was in the Windows-host test for the Linux root-helper outer path: `os.O_CLOEXEC` is absent on Windows, so the mock raised `AttributeError`. Change 0289 adds a Linux-compatible test-local flag and asserts it is included in `os.open`; this test-only correction is uncommitted, unregistered and unverified. Next: commit 0289, refresh selector registry, then rerun focused modules at the exact resulting HEAD.
 
+Commit `c4f9cb9` contains the test-only flag fixture. The category registry was regenerated from exact source HEAD `c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209`: regression 935 total, 884 assigned runnable, 51 policy `NOT_RUN`; functional 90. This is registry generation, not test evidence. After change 0290 is committed, rerun the three focused modules through `functional-test-reviewer` at the exact resulting HEAD.
+
 S2 remains open: its E4/E5/E8 criteria are partial or `NOT_RUN`. S3 has local synthetic pilot evidence but candidate, sandbox, egress and process-death acceptance remains partial. S5 is not closed. No S4 exact-head specialist consensus, PM approval, push, pull request or merge is currently established.
 ## Historical checkpoint: S3 vendor-neutral worker pilot (S2 gate remains open)
 
