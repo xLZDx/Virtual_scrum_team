@@ -122,7 +122,7 @@ Exact commands are formed from committed category selectors; proposed interface:
 /usr/bin/python3 -m tools.qa.run --category <category> --manifest <run-specific-vst-v2-manifest> --registry docs/qa/categories.json --signer-socket <trusted-local-socket> ...
 ```
 
-The bounded source transfer and mapped native pytest selectors have been executed on the identified WSL snapshot described in change 0134. The report-bound `tools.qa.run` v2 signer path remains `NOT_RUN`; it is POSIX-only and requires the trusted signer socket inside the named WSL environment. No packages were installed and no Windows fallback was used.
+The fresh bounded source transfer and seven mapped native POSIX pytest selectors passed on WSL2 in run `f3ad62c94bc0429987bc24277103d5b4` at source HEAD `56dce67e508ccf452b2b7b39ed7f33c863081269` (change 0159). The report-bound `tools.qa.run` v2 signer path remains `NOT_RUN`; it is POSIX-only and requires the trusted signer socket and run-specific v2 manifest inside the named WSL environment. No packages were installed and no Windows fallback was used.
 
 ## Definition of Ready
 
@@ -167,12 +167,12 @@ Identifiers VST-032–037 are proposals only and must be reconciled with the can
 4. Complete all S4 code before test phase; only then test agents author/run the per-epic and final exact-head suites. Keep the current emphasis on implementation; test inventory expansion is the authorized test roles' next phase.
 5. Run relevant reviewers, resolve valid findings, request the exact-head GPT-PM gate, then push and merge one S4 PR only after approval.
 
-The first independently safe stopping point is after E1, with the S3 dependency map and denominator frozen. Total gates: **6**, one per epic above. Source transfer from the Windows checkout to an isolated repository snapshot inside `Ubuntu-24.04` is implemented but not runtime-proven; actual v2 execution is `NOT_RUN` until the selected isolated destination and trusted signer socket are available. No package installation or test execution is authorized during coding.
+The first independently safe stopping point is after E1, with the S3 dependency map and denominator frozen. Total gates: **6**, one per epic above. Source transfer from the Windows checkout to an isolated repository snapshot inside `Ubuntu-24.04` and the seven mapped POSIX selectors are runtime-proven for the exact run cited above; report-bound v2 execution remains `NOT_RUN` until the trusted signer socket and run-specific manifest are available. No package installation or test execution is authorized during coding.
 
 ## Unknowns to resolve at S4 start
 
 - Runtime inventory: the named distro reported Python 3.12.3, pytest 7.4.4, iniconfig 1.1.1, packaging 24.0 and pluggy 1.4.0. pytest-asyncio is absent, and no current test source has async tests/markers. The lock pins pytest and its required runtime dependencies; no plugin is added absent a concrete need.
-- Source transfer: `tools/qa/wsl_snapshot.py` now streams a self-contained exact-branch Git bundle through `wsl.exe` stdin into a pre-provisioned private WSL root and checks the cloned HEAD, bundle hash and bounded permission layout. The transfer and native run remain `NOT_RUN`; the specific runner account, worker group ID, destination root and signer socket are not recorded in public repository sources. Technical owner is `UNKNOWN`; next step is to select values from private provisioning evidence and execute the transfer in the designated E2E phase. Operator remains accountable under delegated continuation.
+- Source transfer: `tools/qa/wsl_snapshot.py` streamed a self-contained exact-branch Git bundle into a fresh pre-provisioned WSL root for run `f3ad62c94bc0429987bc24277103d5b4`; exact HEAD, bundle identity, read-only worker boundary, seven mapped POSIX selectors and clean post-run state are recorded in change 0159. The older transfer with no correlated run ID remains `RESULT_NOT_CAPTURED`; its destination was not inspected or retried. Report-bound signer execution remains `NOT_RUN`; public records do not identify a signer socket or canonical technical service owner. Operator remains accountable under delegated continuation.
 - Whether S3 adds a transport API, more test categories, or sandbox-bound E2E paths: inspect the accepted S3 plan and implementation; absent evidence, report Python API only and mark transport API unsupported.
 - The canonical service owner for category registry, runner, and evidence gate: no owner is established in the inspected repository sources; preserve `UNKNOWN` and proceed with role-based execution.
 - Which S3 test IDs belong in the regression denominator: derive from committed test files and exact-head test records when S3 is accepted.
