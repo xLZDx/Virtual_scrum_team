@@ -22,6 +22,7 @@ WSL_PROFILE = "wsl-ubuntu-24.04-cpython-3.12.3"
 WSL_ROOT_PROFILE = "wsl-ubuntu-24.04-root-harness"
 RUNTIME_PROFILES = (WINDOWS_PROFILE, WSL_PROFILE, WSL_ROOT_PROFILE)
 POSIX_ONLY_SELECTORS = frozenset({
+    "tests/qa/test_s4_functional_worker_identity.py::test_s4_worker_helper_drops_runner_identity_and_denies_runner_sentinels",
     "tests/vst/test_e3_store.py::test_database_file_is_owner_only_on_posix",
     "tests/vst/test_e4_runner.py::test_link_created_by_the_command_itself_gets_a_zero_digest",
     "tests/vst/test_s2_store_lifecycle.py::test_anchor_compare_append_is_idempotent_and_rejects_same_count_fork",

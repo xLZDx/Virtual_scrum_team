@@ -2,7 +2,15 @@
 
 Last updated: 2026-10-25. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
 
-## Latest verified continuation checkpoint — S4 QA automation
+## Latest continuation checkpoint — S4 test work in canonical checkout
+
+Current branch and committed HEAD before the uncommitted test-agent changes: `s4-canonical-continuation`, `e792d2f99c82ccea95ae935705b1b84d92ccd9a7`. All current development remains in `D:\Repo\Virtual_scrum_team`; this continuation created no per-sprint worktree or fork folder. `git worktree list` showed pre-existing S2 and S4 sibling checkouts plus a scratch S5 checkout; their provenance is UNKNOWN and they were not used or modified. The pre-existing untracked `docs/sdlc/evidence/s2-functional-test-run.md` remains untouched.
+
+At the working tree based on `e792d2f`, the designated functional-test reviewer ran `C:\Python314\python.exe -m pytest -q tests/qa/test_s4_dependency_provenance.py`: 7 passed, 0 failed/skipped, 1 pytest-asyncio deprecation warning, exit 0, Python 3.14.3. The designated E2E runner ran its two authored selectors from `tests/qa/test_s4_e2e_runner_cli.py`: 2 passed, 0 failed/skipped, 1 deprecation warning, exit 0, Python 3.14.3. Both agents reported the same committed HEAD before and after their runs. Those runs used test-source changes on the working tree; `docs/qa/categories.json` remains pending a refresh after the sources are committed.
+
+The AC-16 report-bound WSL selector is authored and registered in `tools/qa/registry.py` but remains `NOT_RUN`. Read-only `wsl.exe --list --verbose` showed an existing `Ubuntu-24.04` distribution on WSL2, stopped at inspection time. The helper install and report-bound run have not been performed. The S4 runner requires an external trusted wheelhouse; the project-referenced `D:\Temp\virtual_scrum_team_qa_f4ef8e7` is an installed dependency target, not that wheelhouse. No trusted wheelhouse path is established. The selector manifest must be regenerated after the test source is committed; then run AC-16 through the WSL report-bound runner when the wheelhouse dependency is resolved. Keep the 52 policy-excluded selectors `NOT_RUN`.
+
+## Historical S4 checkpoint — previous QA automation candidate
 
 The tested code/test candidate is `05b18450176109aafc108020bc2fafb7136a43d6` on branch `s4-reproducible-qa-automation`; registry source HEAD is `26b959f53e8398b7b4b736b66e4c5a406369705b`, and registry SHA-256 is `6edc55d7c8ba633b90868a8ce3d0b68baef76985d97f0b3ee02fb93dd7274b41`. The canonical development checkout remains `D:\Repo\Virtual_scrum_team`. No per-sprint development worktree was created. The pre-existing untracked `docs/sdlc/evidence/s2-functional-test-run.md` was preserved. Test-only snapshots were isolated under temporary Windows/WSL paths.
 

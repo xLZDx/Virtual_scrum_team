@@ -49,6 +49,10 @@ VOLATILE_REPORT_FIELDS = {
     "artifact_digests", "artifact_sizes", "normalized_sha256",
 }
 SYNTHETIC_SECRET = "s4-e2e-private-token-must-not-be-recorded"
+S4_WORKER_HELPER_TEST_ID = (
+    "tests/qa/test_s4_functional_worker_identity.py::"
+    "test_s4_worker_helper_drops_runner_identity_and_denies_runner_sentinels"
+)
 WSL_TEST_FIXTURE_PARENT = Path("/tmp/vst-s4-candidate/test-fixtures")
 
 
@@ -706,6 +710,35 @@ def test_s4_e2e_cli_rejects_artifact_path_outside_fixed_contract(tmp_path, candi
     assert result.returncode == 2
     assert b"artifact paths must match the fixed append-only category paths" in result.stdout
     assert not (candidate / "docs" / "sdlc" / "evidence" / "qa" / "e2e.report.jsonl").exists()
+
+
+def test_s4_e2e_cli_requires_explicit_dependency_wheelhouse():
+    result = subprocess.run(
+        [
+            sys.executable, "-m", "tools.qa.run",
+            "--category", "e2e",
+            "--repo-root", os.fspath(Path(__file__).resolve().parents[2]),
+            "--dependency-target", "unused-target",
+            "--scratch-root", "unused-scratch",
+            "--run-id", "missing-wheelhouse-argument",
+            "--report-path", f"{QA_ARTIFACT_ROOT}/e2e.report.jsonl",
+            "--stdout-path", f"{QA_ARTIFACT_ROOT}/e2e.stdout.txt",
+            "--stderr-path", f"{QA_ARTIFACT_ROOT}/e2e.stderr.txt",
+        ],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+        shell=False,
+    )
+
+    assert result.returncode == 2
+    assert b"--dependency-wheelhouse" in result.stderr
+    assert b"required" in result.stderr
+
+
+def test_s4_worker_helper_selector_is_wsl_only():
+    assert required_runtime_profiles(S4_WORKER_HELPER_TEST_ID) == [WSL_PROFILE]
 
 
 @pytest.mark.skip(

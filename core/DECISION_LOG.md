@@ -717,3 +717,7 @@ At candidate `05b18450176109aafc108020bc2fafb7136a43d6`, designated agents compl
 ## 2026-10-25 — Refresh the selector registry after the Linux flag fixture
 
 After test-source commit `c4f9cb9`, regenerate the category registry before rerunning. It now binds to exact source HEAD `c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209` and records 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN`, and 90 functional selectors. Preserve the policy rows and use exact-head evidence. See change 0290.
+
+## 2026-10-25 — Add focused S4 dependency and WSL identity test coverage
+
+Designated GPT-6 Luna test agents added AC-17 dependency-provenance tests, the AC-16 POSIX worker-identity selector and WSL-only registry mapping, and two E2E/CLI contract tests. The focused runs passed 7/7 and 2/2 respectively at committed base `e792d2f`; AC-16 report-bound WSL execution remains `NOT_RUN`. The new test-source provenance must be committed before regenerating `docs/qa/categories.json`. Keep the 52 policy-excluded selectors unchanged. Change 0314 records the coverage and exact commands.
