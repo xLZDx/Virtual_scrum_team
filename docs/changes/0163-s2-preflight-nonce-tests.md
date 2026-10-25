@@ -16,11 +16,11 @@ S2 E5/VST-014 binds preflight inventory to a caller-selected run and nonce. The 
 
 ## Verification state
 
-- Test cases authored. The initial focused execution passed before this test commit, but exact committed-head verification is pending and will be recorded separately after rerun.
+- Test cases authored and exact committed-head verification passed; see change record 0164 and `docs/sdlc/evidence/s2-preflight-nonce-functional-run.md`.
 - No product source was changed by this test-owner commit.
 
 ## Ownership and next step
 
 - Accountable task owner: operator (delegated S2 continuation).
 - Test author/executor: functional-test-reviewer.
-- Next: rerun these selectors on the committed source/test HEAD and record exact command, environment, counts, warning, and HEADs in evidence/change record 0164.
+- Next: continue the remaining S2 acceptance queue; prohibited process-kill scenarios, unverified production quotas/workspace binding, and exact-head GPT-PM approval remain separate gates.

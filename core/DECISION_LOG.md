@@ -266,3 +266,5 @@ The S2 branch report reconciles source HEAD `dc95915018b80f498d5cf775363712fb915
 ## 2026-10-25 -- Reject explicitly invalid S2 preflight nonce inputs
 
 `collect_inventory` now generates a nonce only when callers omit it (`None`). An explicitly empty or non-string nonce is rejected with `ContractError` rather than silently replaced, preserving the caller's run/nonce binding and exposing provisioning mistakes. This is a source-only change for S2 E5/VST-014; focused functional verification is pending with the designated test owner. See change record 0162.
+
+The exact committed implementation/test-head run passed all four focused cases: omitted nonce generation, explicit nonce preservation, and empty/non-string rejection before platform probing. CPython 3.14.3 / pytest 8.4.2, Windows; 4 passed, 22 deselected, 0 failed; one existing pytest-asyncio deprecation warning. Code HEAD `6ee97cb06b52900c3c2ab2a9b1b415ae117a7932`, test HEAD `deed6abe34eeaa8620593442bcdb1413d846f798`. See change records 0163–0164 and `docs/sdlc/evidence/s2-preflight-nonce-functional-run.md`.
