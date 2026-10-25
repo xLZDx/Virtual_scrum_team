@@ -4,7 +4,7 @@ Last updated: 2026-10-25. Re-verify volatile facts (`git log --oneline -1`, `git
 
 ## Current continuation checkpoint — S4 QA automation
 
-Active coding/testing sprint: S4 on branch `s4-reproducible-qa-automation`. Last completed exact test candidate HEAD: `8eb8dbd38d196b1434b3fcb8d3f1a27eb7c54944`. The functional category reported 108 passed and 1 skipped, with the required link-escape selector skipped because Windows file-symlink creation was unavailable; therefore the category result is FAIL, not PASS. A Windows junction/POSIX symlink test correction is authored and awaits commit; the category registry must be regenerated after that selector change. The six-category attempt at `0122f06` was blocked before collection because raw Windows CRLF working bytes differed from committed LF bytes; see changes 0248–0250 and `docs/sdlc/evidence/qa/`.
+Active coding/testing sprint: S4 on branch `s4-reproducible-qa-automation`. Last completed exact test candidate HEAD: `11e231ffde78fda18f107d52c7964f6f23499ee3`. The functional category passed with 54/54 selectors and 109 concrete cases, no failures or skips. Integration (48 eligible selectors, 36 policy `NOT_RUN`) and API (703 eligible, 2 policy `NOT_RUN`) were blocked before child execution because the runner treated those policy rows as preflight errors; this product defect is corrected in 0252 and exact-head confirmation remains pending. Earlier line-ending and cross-platform linked-path corrections are recorded in 0248–0251; reports are in `docs/sdlc/evidence/qa/`.
 
 The S2 sandbox gate remains open. S3 has local synthetic pilot evidence but candidate, sandbox, egress, and process-death acceptance remains partial. S5 remains prepared, not active, pending S2 and S4 dependencies. No push or PR is ready.
 

@@ -776,8 +776,6 @@ def main() -> int:
         if args.category not in registry.category_test_ids:
             reasons.append(f"unknown category: {args.category}")
         policy_not_run = registry.category_not_run.get(args.category, {})
-        if policy_not_run:
-            reasons.append("one or more inventory selectors are explicitly NOT_RUN by policy")
 
         category_status = registry.data["categories"].get(args.category, {}).get("status")
         category_reason = registry.data["categories"].get(args.category, {}).get("reason")
@@ -907,6 +905,8 @@ def main() -> int:
         report["unexpected_candidate_changes"] = unexpected_changes
         report["collected_node_ids"] = sorted(report["collected_node_ids"])
         policy_reason = "one or more inventory selectors are explicitly NOT_RUN by policy"
+        if policy_not_run:
+            reasons.append(policy_reason)
         if (
             policy_not_run
             and not unexpected_changes

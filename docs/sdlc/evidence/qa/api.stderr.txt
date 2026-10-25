@@ -1,1 +1,2 @@
 RegistryError: test source changed after registry generation: tests/vst/test_s2_runner_lifecycle.py
+one or more inventory selectors are explicitly NOT_RUN by policy

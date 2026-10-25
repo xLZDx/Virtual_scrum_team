@@ -441,3 +441,7 @@ The S4 functional run at `8eb8dbd` skipped the required path-escape test because
 ## 2026-10-25 — Regenerate the registry after linked-path selector rename
 
 The Windows junction/POSIX symlink test is now committed under a truthful linked-path selector. Regenerate the category manifest from the committed selector before rerunning the functional lane. See change 0251.
+
+## 2026-10-25 — Run eligible selectors before applying policy NOT_RUN outcome
+
+At `11e231f`, the runner blocked integration and API before pytest because those inventories include policy `NOT_RUN` selectors. The functional category passed. Policy rows should remain excluded and visible, while eligible tests execute; only after a clean eligible run should policy-only incompleteness yield `INCONCLUSIVE`. See change 0252.
