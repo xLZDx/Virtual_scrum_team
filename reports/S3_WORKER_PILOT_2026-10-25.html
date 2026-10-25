@@ -40,13 +40,15 @@
   <dl>
     <dt>Project</dt><dd>Virtual_scrum_team</dd>
     <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s3-vendor-neutral-worker-pilot @ 86f59dc</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s3-vendor-neutral-worker-pilot @ a2f644c</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
           data-fail="Select manually">Copy page</button>
 </div>
 <!-- report-conform:end -->
+
+
 
 
 <main>
@@ -60,6 +62,7 @@
     <li>E2E run on code HEAD <code>71169f7e004160f9bc0781de2dce1568bbaa8e49</code>: 8 passed, 0 skipped, 0 failed; 89.31 seconds; one pytest-asyncio warning. The worktree contained only a pre-existing uncommitted S2 evidence file; it was not changed or committed.</li>
     <li>Final documentation HEAD: <code>86f59dc911f9a9ddbef029b2e9f57b6b7052bb92</code>. Separate code-reviewer, reliability-reviewer, and security-reviewer agents (GPT-6 Luna, medium effort) found no open findings. Reviewers ran no tests.</li>
     <li>Run details: <code>docs/sdlc/evidence/s3-stop-cleanup-functional-2a8c175.md</code> and <code>docs/sdlc/evidence/s3-e2e-exact-head-71169f7.md</code>; change records 0096–0099.</li>
+    <li>Candidate-pin refresh and bounded BMad Loop source review: latest tag <code>v0.13.2</code> / <code>4a5c45390ff46c0fc28d316004ffe0ed7c8eea60</code>; GPT-6 Luna security-reviewer, medium. Review identified control-plane/Git mutation, configured commands/hooks/plugins, and a process-harvest residual; plugin trust flow and sandbox runtime remain NOT_VERIFIED. No candidate acquisition/execution. See changes 0168–0169 and the S3 plan.</li>
   </ul>
 
   <h2>Acceptance matrix</h2>
@@ -67,7 +70,7 @@
     <thead><tr><th>Criterion</th><th>Meaning</th><th>State</th><th>Evidence</th><th>Remaining work and dependency</th><th>Owner and next step</th></tr></thead>
     <tbody>
       <tr><td>AC-1–4</td><td>One worker-adapter contract, VST as the sole verdict authority, idempotent requests, and diagnosable errors.</td><td class="partial">Partial — the local hand-written adapter is verified.</td><td>Functional run 16/16 and E2E run 8/8; change 0096 keeps STOP non-approving and exposes only safe diagnostics.</td><td>Comparison across all three worker implementations is not proven: external candidates were not acquired or executed.</td><td>The operator owns acquisition authorization and the final choice; Codex executes. Next: complete the pinned candidate audit and obtain explicit authorization before acquisition.</td></tr>
-      <tr><td>AC-5–8</td><td>Immutable candidate identity, sandbox isolation, secrets protection, and denied external egress.</td><td class="partial">NOT_RUN / NOT_VERIFIED.</td><td>Local synthetic code is not represented as sandbox or network-isolation evidence.</td><td>No fresh run-bound signed sandbox probe exists for S3; BMad Loop and Temporal remain acquisition-gated; no runtime egress test ran.</td><td>The operator owns candidate authorization; the technical sandbox owner is unknown in project records. Next: after authorization, run a fresh signed probe and an allowed isolated candidate run.</td></tr>
+      <tr><td>AC-5–8</td><td>Immutable candidate identity, sandbox isolation, secrets protection, and denied external egress.</td><td class="partial">NOT_RUN / NOT_VERIFIED.</td><td>Public candidate pin is refreshed; BMad v0.13.2 received a limited read-only source review, which does not establish the worker boundary or containment.</td><td>No fresh run-bound signed sandbox probe exists for S3; BMad Loop and Temporal remain acquisition-gated; no runtime egress test ran.</td><td>The operator owns candidate authorization and selection; the technical sandbox owner is unknown. Next: complete source review, obtain authorization, then run a fresh signed probe and permitted isolated run.</td></tr>
       <tr><td>AC-9, AC-11–12</td><td>Application checkpoint, attempts/retries, and exact budget limits without false PASS.</td><td class="pass">PASS for the synthetic Store/adapter path.</td><td>Functional coverage verifies exact-cap, replay, fencing, and named application checkpoints; the E2E module passed 8/8.</td><td>Actual abrupt process termination and operating-system cleanup were not exercised.</td><td>Codex executed local acceptance scenarios. Next: keep process-kill/cleanup as NOT_RUN until an allowed platform run exists.</td></tr>
       <tr><td>AC-10</td><td>STOP is idempotent; the new epoch fences stale writes and late outcomes.</td><td class="pass">PASS for Store fencing; process cleanup is unverified.</td><td>Functional regression proves one durable fence, stale-start rejection, and an INCONCLUSIVE response after a cleanup exception.</td><td>Process termination and cleanup after timeout remain NOT_VERIFIED.</td><td>The operator is accountable for delegated work; no operating-system sandbox owner is identified. Next: obtain a separate permitted platform-runtime proof.</td></tr>
       <tr><td>AC-13–14</td><td>Changes stay inside the synthetic worktree and allowlist; an out-of-scope diff cannot pass the gate.</td><td class="partial">Local synthetic journeys pass; sandbox-bound confinement is unproven.</td><td>The E2E module covers manifest-scoped changes and out-of-scope rejection.</td><td>There is no equivalent proof on the S2 sandbox or for an external candidate.</td><td>Codex executes; the technical sandbox owner is UNKNOWN. Next: bind these same cases to a fresh sandbox run when a probe is available.</td></tr>
@@ -78,12 +81,14 @@
 
   <h2>Ordered next steps</h2>
   <ol>
-    <li>Complete the BMad Loop and Temporal pinned-version audits; the operator owns acquisition and selection. Do not acquire or execute either candidate before authorization.</li>
+    <li>Complete the BMad Loop/Temporal source-level audits, including plugin trust/configuration boundaries; the operator owns acquisition and selection. Do not acquire or execute either candidate before authorization.</li>
     <li>Once the environment is available, run a fresh run-bound signed sandbox probe and egress check; do not treat synthetic local tests as platform evidence.</li>
     <li>If platform scenarios are permitted, verify process crash/cleanup and worktree isolation; until then keep them NOT_RUN/NOT_VERIFIED.</li>
     <li>When PM Bridge recovers, send GPT-PM the exact current HEAD and full residual matrix; push/PR remains gated on a correlated APPROVE.</li>
   </ol>
 </main>
+
+
 
 
 

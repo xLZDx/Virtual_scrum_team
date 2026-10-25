@@ -40,13 +40,15 @@
   <dl>
     <dt>Проект</dt><dd>Virtual_scrum_team</dd>
     <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s3-vendor-neutral-worker-pilot @ 86f59dc</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s3-vendor-neutral-worker-pilot @ a2f644c</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
           data-fail="Выделите вручную">Копировать страницу</button>
 </div>
 <!-- report-conform:end -->
+
+
 
 
 <main>
@@ -60,6 +62,7 @@
     <li>E2E-прогон на code HEAD <code>71169f7e004160f9bc0781de2dce1568bbaa8e49</code>: 8 passed, 0 skipped, 0 failed; 89,31 с; одно предупреждение pytest-asyncio. Worktree содержал только ранее существовавший незакоммиченный S2 evidence-файл; он не изменялся и не включался в коммит.</li>
     <li>Итоговая документационная голова: <code>86f59dc911f9a9ddbef029b2e9f57b6b7052bb92</code>. На ней отдельные code-reviewer, reliability-reviewer и security-reviewer (GPT-6 Luna, средний уровень) не обнаружили открытых замечаний. Тесты обзорами не запускались.</li>
     <li>Детали прогонов: <code>docs/sdlc/evidence/s3-stop-cleanup-functional-2a8c175.md</code> и <code>docs/sdlc/evidence/s3-e2e-exact-head-71169f7.md</code>; change records 0096–0099.</li>
+    <li>Candidate pin refresh and bounded BMad Loop source review: latest tag <code>v0.13.2</code> / <code>4a5c45390ff46c0fc28d316004ffe0ed7c8eea60</code>; GPT-6 Luna security-reviewer, medium. Review identified control-plane/Git mutation, configured commands/hooks/plugins and process-harvest residual; plugin trust flow and sandbox runtime remain NOT_VERIFIED. No candidate acquisition/execution. See changes 0168–0169 and the S3 plan.</li>
   </ul>
 
   <h2>Матрица приёмки</h2>
@@ -67,7 +70,7 @@
     <thead><tr><th>Критерий</th><th>Смысл</th><th>Состояние</th><th>Доказательства</th><th>Остаток и зависимость</th><th>Владелец и следующий шаг</th></tr></thead>
     <tbody>
       <tr><td>AC-1–4</td><td>Единый контракт worker adapter, VST как единственный источник решения, повторяемые запросы и диагностируемые ошибки.</td><td class="partial">Частично — локальный hand-written adapter подтверждён.</td><td>Функциональный прогон 16/16 и E2E 8/8; изменение 0096 удерживает non-approving STOP результат и безопасную диагностику.</td><td>Сравнение трёх реализаций и их поведение не подтверждены: внешние кандидаты не приобретались и не исполнялись.</td><td>Оператор отвечает за авторизацию приобретения и выбор; Codex исполняет. Следующий шаг — завершить аудит закреплённого кандидата и получить явную авторизацию до приобретения.</td></tr>
-      <tr><td>AC-5–8</td><td>Неизменяемая идентичность кандидата, изоляция sandbox, секреты и закрытый внешний egress.</td><td class="partial">NOT_RUN / NOT_VERIFIED.</td><td>Локальный синтетический код не выдаётся за доказательство sandbox или сетевой изоляции.</td><td>Нет свежего run-bound подписанного sandbox probe для S3; BMad Loop и Temporal остаются acquisition-gated; egress runtime не выполнялся.</td><td>Оператор — авторизация кандидатов; технический владелец sandbox в проектных записях неизвестен. Следующий шаг — после авторизации выполнить новый подписанный probe и допустимый изолированный прогон.</td></tr>
+      <tr><td>AC-5–8</td><td>Неизменяемая идентичность кандидата, изоляция sandbox, секреты и закрытый внешний egress.</td><td class="partial">NOT_RUN / NOT_VERIFIED.</td><td>Публичный pin обновлён; BMad v0.13.2 получил ограниченный read-only source review, но он не подтверждает worker boundary или containment.</td><td>Нет свежего run-bound подписанного sandbox probe для S3; BMad Loop и Temporal остаются acquisition-gated; egress runtime не выполнялся.</td><td>Оператор отвечает за авторизацию и выбор; технический владелец sandbox неизвестен. Следующий шаг — закрыть источник-код аудит, получить авторизацию, затем выполнить новый подписанный probe и разрешённый изолированный прогон.</td></tr>
       <tr><td>AC-9, AC-11–12</td><td>Контрольная точка приложения, попытки/повторы и точные лимиты бюджета без ложного PASS.</td><td class="pass">PASS для синтетического Store/adapter пути.</td><td>Функциональный набор проверил exact-cap, replay, fencing и named application checkpoint; E2E-модуль завершился 8/8.</td><td>Настоящий аварийный останов процесса и очистка ОС не проверялись.</td><td>Codex исполнил локальные acceptance-сценарии; следующий шаг — держать process-kill/cleanup как NOT_RUN до разрешённой платформенной проверки.</td></tr>
       <tr><td>AC-10</td><td>STOP идемпотентен, новая эпоха блокирует старые записи и поздние результаты.</td><td class="pass">PASS для Store fencing; очистка процесса не подтверждена.</td><td>Функциональная регрессия подтверждает один durable fence, отклонение stale start и ответ INCONCLUSIVE после исключения cleanup.</td><td>Termination процесса и cleanup после timeout: NOT_VERIFIED.</td><td>Оператор — владелец делегированной задачи; технический владелец ОС sandbox не установлен. Следующий шаг — только отдельное разрешённое platform runtime-доказательство.</td></tr>
       <tr><td>AC-13–14</td><td>Изменения ограничены synthetic worktree и allowlist; запрещённый diff не может пройти gate.</td><td class="partial">Локальные synthetic journey проходят; sandbox-bound ограничение не доказано.</td><td>E2E-модуль содержит scoped-change и out-of-scope rejection сценарии.</td><td>Идентичное подтверждение на S2 sandbox и для внешнего кандидата отсутствует.</td><td>Codex — исполнитель; владелец технического sandbox UNKNOWN. Следующий шаг — привязать те же сценарии к свежему sandbox run после доступности probe.</td></tr>
@@ -78,12 +81,14 @@
 
   <h2>Упорядоченные следующие шаги</h2>
   <ol>
-    <li>Завершить аудит BMad Loop и Temporal по закреплённой версии; владелец решения о приобретении и выборе — оператор. До авторизации кандидаты не приобретать и не запускать.</li>
+    <li>Завершить source-level аудит BMad Loop/Temporal (включая plugin trust/config boundary) по закреплённой версии; владелец решения о приобретении и выборе — оператор. До авторизации кандидаты не приобретать и не запускать.</li>
     <li>После доступности среды выполнить новый run-bound подписанный sandbox probe и проверку egress; не считать локальные синтетические тесты платформенным доказательством.</li>
     <li>При разрешении платформенных сценариев проверить процессный crash/cleanup и worktree isolation; до этого оставить их NOT_RUN/NOT_VERIFIED.</li>
     <li>Когда PM Bridge восстановится, отправить GPT-PM точный текущий HEAD с полной матрицей остатка; push/PR остаются закрыты до correlated APPROVE.</li>
   </ol>
 </main>
+
+
 
 
 

@@ -308,3 +308,7 @@ S3's local hand-written adapter code, focused functional run (16 passed) and wor
 ## 2026-10-25 -- Refresh BMad Loop candidate pin to v0.13.2
 
 Official upstream release metadata identifies v0.13.2 as latest; read-only `git ls-remote` resolved the tag to `4a5c45390ff46c0fc28d316004ffe0ed7c8eea60`. Pinned `pyproject.toml`, LICENSE, SECURITY.md, and README record MIT/Python/dependency floors and maintainer-described coding-agent execution and security scope. These claims increase the control-plane overlap concern but do not establish implementation behavior or security. No source acquired or executed; operator acquisition authorization remains required. Temporal v1.32.1 remains the official latest pin. See change 0168.
+
+## 2026-10-25 -- Record bounded BMad Loop v0.13.2 source review
+
+Read-only security review of official immutable source `4a5c45390ff46c0fc28d316004ffe0ed7c8eea60` found an independent orchestration/Git mutation lifecycle, configurable verify commands and shell hooks, enabled in-process Python plugins, project profile overlays, and a documented process-harvest escape race. The review did not establish an OS-enforced egress/credential boundary or complete plugin trust flow; presumed trust/loader source URLs returned 404. These are candidate-suitability risks/unknowns, not an exploit finding or acquisition approval. No source was acquired or executed. Keep VST-028 partial and acquisition gated. See change 0169.
