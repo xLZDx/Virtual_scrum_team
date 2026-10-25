@@ -344,3 +344,7 @@ Following the operator's WSL2 selection, prepare a separate S4 snapshot root in 
 ## 2026-10-25 -- Keep current-head Windows E2E separate from WSL acceptance
 
 At clean S4 source HEAD `c5289cae2255b51e165ec8e65a322c752be0e99a`, the seven mapped S4/S3 selectors passed on the Windows host (7 passed, 0 failed, 0 skipped). This does not upgrade the earlier WSL transfer/native run at `452c8ea`. The current-head WSL transfer wrapper returned no correlated result to the test agent because its nested session handle was not retained; keep transfer and POSIX behavior `RESULT_NOT_CAPTURED` / `NOT_RUN` and do not inspect or retry an unidentified destination. See change 0141 and the current-head evidence file.
+
+## 2026-10-25 -- Bound QA registry source parsing
+
+The S4 code reviewer found that node resolution read tracked test files without a size ceiling and did not convert AST recursion failure into a closed refusal. Read at most 1 MiB plus one sentinel byte, reject oversized input before decoding, and return non-resolving for `RecursionError`. Preserve existing path confinement and do not parse source through imports or pytest collection. Implemented in change record 0142; focused regression is pending.

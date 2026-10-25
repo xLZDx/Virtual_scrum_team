@@ -18,6 +18,7 @@ from tools.vst.contracts import ContractError, manifest_sha256, validate_task_ma
 PRIMARY_CATEGORIES = ("functional", "integration", "api", "e2e", "seeded-failure")
 REGRESSION_CATEGORIES = ("functional", "integration", "api", "e2e")
 MAX_REGISTRY_BYTES = 512 * 1024
+MAX_TEST_SOURCE_BYTES = 1024 * 1024
 SEEDED_CATALOG_PATH = "docs/qa/seeded_failures.json"
 MAX_SEEDED_CATALOG_BYTES = 128 * 1024
 _FIXTURE_ID = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
@@ -96,9 +97,13 @@ def _pytest_node_id_exists(root: Path, test_id: str) -> bool:
         resolved = target.resolve(strict=True)
         if tests_root not in resolved.parents:
             return False
-        source = resolved.read_text(encoding="utf-8")
+        with resolved.open("rb") as handle:
+            raw_source = handle.read(MAX_TEST_SOURCE_BYTES + 1)
+        if len(raw_source) > MAX_TEST_SOURCE_BYTES:
+            return False
+        source = raw_source.decode("utf-8")
         module = ast.parse(source, filename=path)
-    except (OSError, UnicodeError, SyntaxError):
+    except (OSError, UnicodeError, SyntaxError, RecursionError):
         return False
 
     if len(selectors) == 1:

@@ -517,3 +517,7 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 
 2026-10-25 — A nested execution tool can return a live session handle before a long-running test or transfer finishes. Retain that handle and poll it through completion; otherwise preserve `RESULT_NOT_CAPTURED`, do not infer an exit status, and do not inspect or retry an unidentified WSL destination without run metadata. The second local exact-head run was captured successfully; the S4 WSL attempt was not. See change record 0141.
+
+2026-10-25 — Static registry parsing is also an input boundary. A tracked test source can still be oversized or deeply nested; bound bytes before decoding/AST parsing and convert parser recursion failure to a closed non-match. The code reviewer caught the unbounded read; the designated functional test owner still needs to prove both refusal paths. See change record 0142.
+
+2026-10-25 — The S4 implementation pass accidentally ran `git diff --cached --check` despite the coding-phase instruction to defer checks to designated agents. It returned exit code 0 with no diagnostics, but is not verification evidence. Do not run any checks during source implementation; stage/diff inspection is read-only and sufficient until the test phase. Recorded in change 0142.

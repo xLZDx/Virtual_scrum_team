@@ -2,6 +2,8 @@
 
 Status: **S4 registry path regressions and mapped selectors have local exact-head evidence; current WSL transfer is `RESULT_NOT_CAPTURED`; signer/report/gate remain partial.** Functional/API registry cases reported 9/9 at clean HEAD `594eeddcd1f6409928e7eebb1e9f8581c8eba75c`. Registry path regressions reported 13 passed and 1 Windows symlink-privilege skip at `d5d2de80a4abaa18166dd595cf268759064b0c53`. Seven mapped selectors passed 7/7 on Windows at `c5289cae2255b51e165ec8e65a322c752be0e99a`; the transfer/native WSL pass at `452c8ea8da5545bdce0f584a6b51662b93a33abf` remains tied to that earlier head. The current-head transfer response was not captured, so no current WSL clone identity or worker boundary is claimed. Signer/report/gate runtime and broader signed sandbox acceptance remain `NOT_RUN`. No full category coverage or complete sandbox acceptance is claimed. See `docs/sdlc/evidence/s4-current-head-e2e-c5289ca.md` and change 0141.
 
+The final S4 code review at `292dd825a0a91b1162c64291c3bd3a01398ee344` resolved the path-confinement MINOR and identified a missing byte bound on static test-source parsing. Change 0142 caps source reads at 1 MiB and converts AST recursion errors to non-resolving IDs; focused regression is pending. Reviewer consensus: code reviewer reported this one MINOR, while the security reviewer reported no finding; both reviewed the exact same HEAD and ran no checks.
+
 Sources: `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` section 1; `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`; `governance/DEFINITION_OF_DONE.md`; S2 and S3 plans; current `tests/vst/`, `tools/vst/runner.py`, `tools/vst/slice.py`, and `tools/vst/{contracts,gate,store}.py`.
 
 ## Goal and scope
