@@ -501,3 +501,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — A digest helper and truthful receipt schema do not prove analyzer confinement or that declared rules actually ran. GPT-PM found no local source defect but kept AC-5–AC-8 open until an authorized analyzer identity/interface, immutable read-only snapshot boundary, enforced resource/process/network limits, attestor, and seeded rule evidence exist. Do not add an untested generic wrapper or infer rule coverage. See change 0220.
 
+
+2026-10-25 — At exact source/test HEAD `65d725f0101c5e1d0f758cd7850f97313144dc06`, functional-test-reviewer reran the S5 synthetic evidence contract (39 passed, 1 skipped, 0 failed) and e2e-runner reran synthetic Store-to-Gate (3 passed, 0 skipped/failed). These results refresh only the local synthetic contract boundary; they do not establish the bounded AEVE adapter, attestor, analyzer-rule truth, seeded finding or clean analyzer run. Preserve the Windows symlink skip. See change 0226.

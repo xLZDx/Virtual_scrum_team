@@ -43,13 +43,15 @@ code{overflow-wrap:anywhere}
   <dl>
     <dt>Project</dt><dd>Virtual_scrum_team</dd>
     <dt>Folder</dt><dd>D:\tmp\scratch_worktrees\Virtual_scrum_team-s5</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s5-bounded-aeve-evidence @ 8cb3ab4</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s5-bounded-aeve-evidence @ 65d725f</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
           data-fail="Select manually">Copy page</button>
 </div>
 <!-- report-conform:end -->
+
+
 
 
 
@@ -77,7 +79,7 @@ code{overflow-wrap:anywhere}
 <tr><td>AC-6</td><td>Traversal, symlinks, size, timeout, subprocess and network attempts fail safely.</td><td class="warn">PARTIAL / NOT_RUN</td><td>Traversal, missing paths and size bounds are functionally tested. The Windows symlink case was skipped (WinError 1314/errno 22); the source-digest symlink selector passed 1/1 at exact HEAD <code>606bba9</code> on Ubuntu-24.04 WSL2 (0137).</td><td>Analyzer adapter, immutable runtime input, timeout/output, subprocess and network enforcement are unproven.</td><td>Analyzer owner UNKNOWN; an authorized adapter and runtime are required.</td><td>Obtain an in-scope AEVE identity/interface; run remaining bounded scenarios only through the real adapter/runtime.</td></tr>
 <tr><td>AC-7</td><td>FULL requires all required rules checked; a seeded known issue yields a finding.</td><td class="warn">PARTIAL</td><td>Contract tests cover exact partition and finding-derived FAIL; synthetic E2E finding receives no acceptance.</td><td>Seeded-failure catalog is empty; no real analyzer finding was run.</td><td>Test owners: functional-test-reviewer/e2e-runner; analyzer technical owner UNKNOWN.</td><td>Define and accept the exact fixture-to-rule map before analyzer integration.</td></tr>
 <tr><td>AC-8</td><td>Unsupported/missing/duplicate rules and malformed findings cannot pass.</td><td class="ok">PASS, local</td><td>Functional negative cases and Gate checks on persisted finding evidence.</td><td>No real rule inventory.</td><td>Rule-catalog dependency; technical owner UNKNOWN.</td><td>Limit claims to the VST contract until the catalog exists.</td></tr>
-<tr><td>AC-9</td><td>A valid exact-head receipt satisfies only declared static-analysis acceptance IDs.</td><td class="ok">PASS, local</td><td>Store→Gate test showed static-only acceptance; absent test/review receipts kept the decision from APPROVE.</td><td>Signed production gate path was not exercised.</td><td>Real signer/attestor and complete manifest evidence required.</td><td>Retain `docs/sdlc/evidence/s5-v3-store-gate-e2e-7cd83ea.md`.</td></tr>
+<tr><td>AC-9</td><td>A valid exact-head receipt satisfies only declared static-analysis acceptance IDs.</td><td class="ok">PASS, local</td><td>Exact-head synthetic Store→Gate rerun at <code>65d725f</code> passed 3/3; static-only acceptance held and absent test/review receipts kept the decision from APPROVE. See <code>s5-exact-head-synthetic-reruns-65d725f.md</code>.</td><td>Signed production gate path was not exercised.</td><td>Real signer/attestor and complete manifest evidence required.</td><td>Retain the exact-head rerun record and keep deployed signing NOT_RUN.</td></tr>
 <tr><td>AC-10</td><td>Wrong head/manifest/scope/profile/source/report/run/epoch does not pass.</td><td class="ok">PASS, local</td><td>Functional mutation cases and stale-head Store→Gate negative journey.</td><td>Synthetic receipts/artifacts only.</td><td>Local VST gate boundary; executor: Codex.</td><td>Repeat after product-code changes.</td></tr>
 <tr><td>AC-11</td><td>Missing/forged/replayed/partial/unsupported evidence cannot cause ordinary APPROVE.</td><td class="ok">PASS for local cases</td><td>Gate negative cases cover broken chains, missing resolvers, partial coverage and stale evidence.</td><td>Full multi-slot production manifest/signer flow was not executed.</td><td>Signer service/provisioning dependency; technical owner UNKNOWN.</td><td>Keep production flow NOT_RUN.</td></tr>
 <tr><td>AC-12</td><td>Evidence retains exact head, command, environment, IDs, result and unavailable cases.</td><td class="ok">PASS for local runs; runtime partial</td><td>Both evidence files include exact head, commands, versions, counts, mappings, warnings/skip and limits.</td><td>No actual analyzer/runtime limits/digests or signed report execution.</td><td>AEVE/attestor source and service owner UNKNOWN.</td><td>Extend only after an authorized runtime run.</td></tr>
@@ -88,6 +90,7 @@ code{overflow-wrap:anywhere}
 <h2>3. Tests and reviews</h2>
 <ul>
 <li>Functional exact-head run: 39 passed, 1 skipped, 0 failed on <code>0dbb66293fbf9df946b1b1cb5cc9b841d7b9d1ed</code>; Python 3.14.3, pytest 8.4.2. Skip: symlink creation on Windows, WinError 1314 / errno 22. <a href="../docs/sdlc/evidence/s5-v3-functional-0dbb662.md">Test map</a>.</li>
+<li>Exact source/test HEAD <code>65d725f0101c5e1d0f758cd7850f97313144dc06</code> reruns: functional contract 39 passed, 1 skipped, 0 failed; Store→Gate E2E 3 passed, 0 skipped/failed. Windows 10, Python 3.14.3, pytest 8.4.2; each emitted one pytest-asyncio deprecation warning. This refreshes synthetic contract evidence only; analyzer runtime/attestor/seeded-rule evidence remains NOT_RUN. <a href="../docs/sdlc/evidence/s5-exact-head-synthetic-reruns-65d725f.md">Exact-head record</a>.</li>
 <li>POSIX symlink selector: 1 passed, 0 skipped/failed at exact HEAD <code>606bba9a5c3563b195eee7b5dd11f0dd243c44a5</code>; Ubuntu-24.04 WSL2, Python 3.12.3, pytest 7.4.4. This closes only the source-digest utility's symlink rejection case. <a href="../docs/sdlc/evidence/s5-posix-symlink-606bba9.md">Evidence</a>.</li>
 <li>Store→Gate E2E exact-head run: 3 passed, 0 skipped/failed on <code>7cd83eac005e318dca5ae8782b45d2c443cdccc0</code>; temporary SQLite and temporary report/source files. <a href="../docs/sdlc/evidence/s5-v3-store-gate-e2e-7cd83ea.md">E2E evidence</a>.</li>
 <li>Code review: GPT-6 Luna, medium effort, HEAD <code>5b839d0869bd62c7f8d8180d45f3bf68e43b8f6f</code>, no material BLOCKER/MAJOR.</li>
@@ -105,6 +108,8 @@ code{overflow-wrap:anywhere}
 <li>Provision an independent trusted analyzer attestor, then run the exact-head signed report/gate integration and fresh final GPT review after coding and tests are complete. Do not push/PR before full acceptance and a correlated APPROVE.</li>
 </ol>
 <p class="mut">Reviewed repository HEAD: <code>8cb3ab4167239c0ad3316a9e51d756be3d9520c2</code>. Code/security review HEAD: <code>5b839d0869bd62c7f8d8180d45f3bf68e43b8f6f</code>. Base: <code>6117ba24b08a260b42402db6da0bf767864e1c04</code>. Durable evidence and decisions are linked above.</p>
+
+
 
 
 

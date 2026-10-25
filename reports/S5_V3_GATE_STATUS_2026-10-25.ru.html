@@ -43,13 +43,15 @@ code{overflow-wrap:anywhere}
   <dl>
     <dt>Проект</dt><dd>Virtual_scrum_team</dd>
     <dt>Папка</dt><dd>D:\tmp\scratch_worktrees\Virtual_scrum_team-s5</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s5-bounded-aeve-evidence @ 8cb3ab4</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s5-bounded-aeve-evidence @ 65d725f</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
           data-fail="Выделите вручную">Копировать страницу</button>
 </div>
 <!-- report-conform:end -->
+
+
 
 
 
@@ -77,7 +79,7 @@ code{overflow-wrap:anywhere}
 <tr><td>AC-6</td><td>Traversal, symlink, size, timeout, subprocess и network attempts отказываются безопасно.</td><td class="warn">PARTIAL / NOT_RUN</td><td>Traversal, missing paths и size limits покрыты functional тестами. Windows symlink case был skipped (WinError 1314/errno 22); source-digest symlink selector прошёл 1/1 на exact HEAD <code>606bba9</code> в Ubuntu-24.04 WSL2 (0137).</td><td>Не проверены analyzer adapter, immutable runtime input, timeout/output, subprocess и network enforcement.</td><td>Analyzer owner UNKNOWN; нужны авторизованный adapter и runtime.</td><td>Получить in-scope AEVE identity/interface; выполнить остальные ограниченные сценарии через designated test owners, не заявлять sandbox enforcement до adapter.</td></tr>
 <tr><td>AC-7</td><td>FULL только при checked всех required rules; seeded known issue даёт finding.</td><td class="warn">PARTIAL</td><td>Контракт тестирует exact partition и finding-derived FAIL; synthetic E2E finding не получил acceptance.</td><td>Seeded failure catalog пуст; реальный analyzer finding не запускался.</td><td>Test owners — functional-test-reviewer/e2e-runner; analyzer technical owner UNKNOWN.</td><td>Сначала сформировать и принять exact fixture-to-rule map, затем проверить analyzer integration.</td></tr>
 <tr><td>AC-8</td><td>Unsupported/missing/duplicate rule и malformed finding не дают PASS.</td><td class="ok">PASS, локально</td><td>Functional негативные случаи и Gate проверки на persisted finding.</td><td>Нет реальной rule inventory.</td><td>Rule catalog dependency; технический владелец UNKNOWN.</td><td>Удерживать только VST contract claim до появления каталога.</td></tr>
-<tr><td>AC-9</td><td>Valid exact-head receipt удовлетворяет только заявленные static acceptance IDs.</td><td class="ok">PASS, локально</td><td>Store→Gate test подтвердил static-only acceptance; test/review receipts отсутствовали, итог не APPROVE.</td><td>Не выполнен signed production gate path.</td><td>Нужны real signer/attestor и complete manifest evidence.</td><td>Сохранить `docs/sdlc/evidence/s5-v3-store-gate-e2e-7cd83ea.md`.</td></tr>
+<tr><td>AC-9</td><td>Valid exact-head receipt удовлетворяет только заявленные static acceptance IDs.</td><td class="ok">PASS, локально</td><td>Exact-head synthetic Store→Gate rerun на <code>65d725f</code> прошёл 3/3; static-only acceptance подтверждён, без test/review receipts решение не стало APPROVE. См. <code>s5-exact-head-synthetic-reruns-65d725f.md</code>.</td><td>Signed production gate path не запускался.</td><td>Нужны real signer/attestor и complete manifest evidence.</td><td>Сохранить exact-head rerun и оставить deployed signing NOT_RUN.</td></tr>
 <tr><td>AC-10</td><td>Другая head/manifest/scope/profile/source/report/run/epoch не проходит.</td><td class="ok">PASS, локально</td><td>Functional mutations и stale-head Store→Gate negative journey.</td><td>Только synthetic receipts/artifacts.</td><td>Local VST gate boundary; executor — Codex.</td><td>Повторять при изменении product code.</td></tr>
 <tr><td>AC-11</td><td>Missing/forged/replayed/partial/unsupported evidence не даёт обычный APPROVE.</td><td class="ok">PASS, для локальных сценариев</td><td>Gate negative cases, broken chains, missing resolvers, partial coverage, stale evidence.</td><td>Не исполнен полный multi-slot production manifest/signer flow.</td><td>Signer service/provisioning dependency, технический владелец UNKNOWN.</td><td>Оставить production flow NOT_RUN.</td></tr>
 <tr><td>AC-12</td><td>Доказательства сохраняют exact head, command, environment, IDs, result и отсутствующие случаи.</td><td class="ok">PASS для local runs; partial runtime</td><td>Два evidence файла включают exact HEAD, команды, версии, counts, mapping, warnings/skip и limits.</td><td>Нет actual analyzer/runtime limits/digests или signed report execution.</td><td>AEVE/attestor source и service owner UNKNOWN.</td><td>Дополнить только после authorized runtime run.</td></tr>
@@ -88,6 +90,7 @@ code{overflow-wrap:anywhere}
 <h2>3. Тесты и reviews</h2>
 <ul>
 <li>Functional exact-head run: 39 passed, 1 skipped, 0 failed на <code>0dbb66293fbf9df946b1b1cb5cc9b841d7b9d1ed</code>; Python 3.14.3, pytest 8.4.2. Skip: symlink creation, Windows WinError 1314 / errno 22. <a href="../docs/sdlc/evidence/s5-v3-functional-0dbb662.md">Подробная карта тестов</a>.</li>
+<li>Повторные прогоны на exact source/test HEAD <code>65d725f0101c5e1d0f758cd7850f97313144dc06</code>: functional contract 39 passed, 1 skipped, 0 failed; Store→Gate E2E 3 passed, 0 skipped/failed. Windows 10, Python 3.14.3, pytest 8.4.2; в каждом прогоне одно pytest-asyncio deprecation warning. Это обновляет только синтетические contract evidence; analyzer runtime/attestor/seeded-rule остаются NOT_RUN. <a href="../docs/sdlc/evidence/s5-exact-head-synthetic-reruns-65d725f.md">Exact-head record</a>.</li>
 <li>POSIX symlink selector: 1 passed, 0 skipped/failed на exact HEAD <code>606bba9a5c3563b195eee7b5dd11f0dd243c44a5</code>; Ubuntu-24.04 WSL2, Python 3.12.3, pytest 7.4.4. Это закрывает только symlink rejection в source-digest utility. <a href="../docs/sdlc/evidence/s5-posix-symlink-606bba9.md">Evidence</a>.</li>
 <li>Store→Gate E2E exact-head run: 3 passed, 0 skipped/failed на <code>7cd83eac005e318dca5ae8782b45d2c443cdccc0</code>; temporary SQLite and temporary report/source files. <a href="../docs/sdlc/evidence/s5-v3-store-gate-e2e-7cd83ea.md">E2E evidence</a>.</li>
 <li>Code review: GPT-6 Luna, medium effort, HEAD <code>5b839d0869bd62c7f8d8180d45f3bf68e43b8f6f</code>, no material BLOCKER/MAJOR.</li>
@@ -105,6 +108,8 @@ code{overflow-wrap:anywhere}
 <li>Provision отдельный trusted analyzer attestor, выполнить exact-head signed report/gate integration и свежий GPT review после кода и тестов. Не делать push/PR до полного acceptance и correlated APPROVE.</li>
 </ol>
 <p class="mut">Reviewed repository HEAD: <code>8cb3ab4167239c0ad3316a9e51d756be3d9520c2</code>. Code/security review HEAD: <code>5b839d0869bd62c7f8d8180d45f3bf68e43b8f6f</code>. Base: <code>6117ba24b08a260b42402db6da0bf767864e1c04</code>. Durable evidence and decisions are linked above.</p>
+
+
 
 
 
