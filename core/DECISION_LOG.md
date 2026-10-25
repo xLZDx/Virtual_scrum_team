@@ -539,3 +539,11 @@ policy `NOT_RUN` selectors; no waiver is introduced. No tests, builds, WSL runne
 dependency installation, matrix execution, or CI were performed. One out-of-sequence `git diff
 --check` occurred during coding and is documented in the change record and lessons log. See change
 0274.
+
+## 2026-10-25 — Author focused S4 runtime-matrix contract coverage
+
+Change 0275 adds 15 focused test functions mapped to S4 AC-4/11/14 and VST-032/033/037. Coverage
+addresses profile assignment and identity, the distro-local WSL mount boundary, observed root
+network conditions, report/proof binding, and fail-closed matrix evidence. The test author did not
+execute tests or checks. Refresh the category registry after the test source commit before any test
+execution; keep policy `NOT_RUN` rows non-approving. See change 0275.
