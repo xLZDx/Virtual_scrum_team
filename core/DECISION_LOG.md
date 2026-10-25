@@ -409,3 +409,7 @@ After test authorship commit `298b9a6`, regenerate `docs/qa/categories.json` so 
 ## 2026-10-25 — Create the E2E synthetic fixture catalog directory
 
 The S4 E2E test fixture archives only committed runner sources and may not contain `docs/qa`. Create that directory before writing its synthetic `fixtures.json`; do not rely on a product archive to provide test-fixture directories. See change 0243.
+
+## 2026-10-25 — Ignore Python cache files in synthetic QA candidates
+
+Synthetic candidate repositories must include minimal Python cache ignore rules before their first commit. Importing the runner itself creates bytecode before its own clean-tree snapshot; without ignore rules that fixture setup falsely marks an otherwise clean source candidate dirty. See change 0244.

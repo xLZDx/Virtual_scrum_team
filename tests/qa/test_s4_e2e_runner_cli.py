@@ -226,6 +226,9 @@ def _make_candidate(
     assert candidate.resolve().is_relative_to(tmp_path.resolve())
     _extract_committed_runner(candidate)
     _git(candidate, "init", "--quiet", "--initial-branch=qa-synthetic")
+    (candidate / ".gitignore").write_text(
+        "__pycache__/\n*.py[cod]\n", encoding="utf-8", newline="\n"
+    )
     (candidate / "tests").mkdir(parents=True)
     test_file = candidate / FIXTURE_TEST_PATH
     test_file.parent.mkdir(parents=True, exist_ok=True)

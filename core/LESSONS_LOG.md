@@ -549,3 +549,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — S4 registry refresh rule: after committed test-source changes, regenerate the category manifest and keep executable category counts separate from aggregate regression references. A complete inventory and a `SUPPORTED` lane do not imply that its tests have run. See change 0242.
 
 2026-10-25 — S4 CLI E2E fixture rule: create every synthetic repository directory explicitly before writing fixture files; an implementation archive may intentionally include only product sources. See change 0243.
+
+2026-10-25 — S4 synthetic candidate hygiene rule: provide the same minimal bytecode ignores as a normal Python repository before invoking `python -m`; otherwise interpreter-created caches contaminate the runner's clean-source check. See change 0244.
