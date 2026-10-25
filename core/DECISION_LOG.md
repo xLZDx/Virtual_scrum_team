@@ -650,6 +650,10 @@ After test-only source commit `a318f11`, regenerate the selector registry before
 
 At exact registry HEAD `af424b51592646dc5dd918bd571f47110bd82cc9`, the designated functional-test reviewer ran the three focused S4 contract modules on Windows Python 3.14.3: 108 passed, 0 failed, 0 skipped, exit 0, with one pytest-asyncio deprecation warning. This closes only focused contract coverage; no full Windows/WSL/root matrix acceptance is implied. See change 0295. Next, run the complete assigned matrix at one exact committed head.
 
+## 2026-10-25 — Exclude S4 timeout-recovery selector from execution
+
+The test selector `tests/vst/test_s2_runner_lifecycle.py::test_local_git_timeout_leaves_pending_then_restart_retry_completes_same_key` was not listed in the policy exclusions and was included in the Windows integration invocation at candidate `e1a4278`, contrary to this continuation's timeout-run prohibition. The e2e-runner report also lists it among six failed integration selectors; only this report-level statement is currently known, and the invocation is not acceptance evidence. Add the exact selector to `POLICY_NOT_RUN` with an explicit timeout reason. Regeneration keeps the total inventory at 935, reduces assigned runnable selectors from 884 to 883, and increases policy `NOT_RUN` from 51 to 52. Do not execute it again; preserve the completed invocation report as non-approving evidence. Change 0296 records the correction.
+
 ## 2026-10-25 — Refresh the selector registry after the Linux flag fixture
 
 After test-source commit `c4f9cb9`, regenerate the category registry before rerunning. It now binds to exact source HEAD `c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209` and records 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN`, and 90 functional selectors. Preserve the policy rows and use exact-head evidence. See change 0290.

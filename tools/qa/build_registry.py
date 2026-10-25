@@ -68,6 +68,8 @@ POLICY_NOT_RUN = {
         "NOT_RUN: the test placeholder is unconditionally skipped and requires run-bound sandbox attestation.",
     "tests/vst/test_s2_sandbox_probe.py::test_e8_sandbox_bakeoff_scenarios_not_run":
         "NOT_RUN: full E8 acceptance requires process-death/STOP execution and a run-bound sandbox; prohibited for this S4 run.",
+    "tests/vst/test_s2_runner_lifecycle.py::test_local_git_timeout_leaves_pending_then_restart_retry_completes_same_key":
+        "NOT_RUN: this selector exercises timeout recovery; timeout scenarios are prohibited for this S4 run.",
     "tests/qa/test_s4_e2e_runner_cli.py::test_s4_e2e_cli_timeout_is_nonapproving_without_install_or_fallback":
         "NOT_RUN: this scenario invokes process-tree termination; process-kill execution is prohibited for this S4 run.",
 }

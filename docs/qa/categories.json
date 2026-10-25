@@ -38,7 +38,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
+  "source_head": "e1a427884b9c954d58114ca8d281f38a07da1851",
   "source_inventory": [
     {
       "path": "tests/qa/test_s4_e2e_runner_cli.py",
@@ -9624,10 +9624,7 @@
       "source_path": "tests/vst/test_s2_runner_lifecycle.py",
       "source_commit": "a318f11b0a93c50f7c37e242f2dabd78358e0f73",
       "primary_category": "integration",
-      "runtime_profiles": [
-        "windows-cpython-3.14.3",
-        "wsl-ubuntu-24.04-cpython-3.12.3"
-      ]
+      "runtime_profiles": []
     },
     {
       "test_id": "tests/vst/test_s2_runner_lifecycle.py::test_manual_override_replay_is_stale_after_a_later_breaker_episode",
@@ -10487,6 +10484,7 @@
       ],
       "not_run_reasons": {
         "tests/vst/test_s2_runner_lifecycle.py::test_e4_platform_containment_scenarios_not_run": "NOT_RUN: process-kill/kill-table containment scenarios are explicitly prohibited for this S4 run.",
+        "tests/vst/test_s2_runner_lifecycle.py::test_local_git_timeout_leaves_pending_then_restart_retry_completes_same_key": "NOT_RUN: this selector exercises timeout recovery; timeout scenarios are prohibited for this S4 run.",
         "tests/vst/test_e5_process_death.py::ConcurrentSerialisationTests::test_two_store_instances_exactly_one_live_lease_per_task": "NOT_RUN: this selector launches a child that terminates via os._exit; process-death execution is prohibited for this S4 run.",
         "tests/vst/test_e5_process_death.py::ConcurrentSerialisationTests::test_two_store_instances_exactly_one_wins_each_epoch_round": "NOT_RUN: this selector launches a child that terminates via os._exit; process-death execution is prohibited for this S4 run.",
         "tests/vst/test_e5_process_death.py::IndependentReviewFixTests::test_exact_cap_spend_does_not_block_the_next_lease_after_a_real_death": "NOT_RUN: this selector launches a child that terminates via os._exit; process-death execution is prohibited for this S4 run.",
@@ -12153,7 +12151,6 @@
         "tests/vst/test_s2_runner_lifecycle.py::test_hook_free_publication_transfers_source_only_commit_without_running_pre_push",
         "tests/vst/test_s2_runner_lifecycle.py::test_idempotent_push_and_pull_request_use_local_bare_remote",
         "tests/vst/test_s2_runner_lifecycle.py::test_lifecycle_transition_table_rejects_unlisted_pairs",
-        "tests/vst/test_s2_runner_lifecycle.py::test_local_git_timeout_leaves_pending_then_restart_retry_completes_same_key",
         "tests/vst/test_s2_runner_lifecycle.py::test_manual_override_replay_is_stale_after_a_later_breaker_episode",
         "tests/vst/test_s2_runner_lifecycle.py::test_nonstrict_windows_launch_keeps_unsuspended_compatibility_path",
         "tests/vst/test_s2_runner_lifecycle.py::test_poisoned_or_interrupted_target_refuses_before_object_writer",
@@ -12217,6 +12214,7 @@
       ],
       "not_run_reasons": {
         "tests/vst/test_s2_runner_lifecycle.py::test_e4_platform_containment_scenarios_not_run": "NOT_RUN: process-kill/kill-table containment scenarios are explicitly prohibited for this S4 run.",
+        "tests/vst/test_s2_runner_lifecycle.py::test_local_git_timeout_leaves_pending_then_restart_retry_completes_same_key": "NOT_RUN: this selector exercises timeout recovery; timeout scenarios are prohibited for this S4 run.",
         "tests/vst/test_e5_process_death.py::ConcurrentSerialisationTests::test_two_store_instances_exactly_one_live_lease_per_task": "NOT_RUN: this selector launches a child that terminates via os._exit; process-death execution is prohibited for this S4 run.",
         "tests/vst/test_e5_process_death.py::ConcurrentSerialisationTests::test_two_store_instances_exactly_one_wins_each_epoch_round": "NOT_RUN: this selector launches a child that terminates via os._exit; process-death execution is prohibited for this S4 run.",
         "tests/vst/test_e5_process_death.py::IndependentReviewFixTests::test_exact_cap_spend_does_not_block_the_next_lease_after_a_real_death": "NOT_RUN: this selector launches a child that terminates via os._exit; process-death execution is prohibited for this S4 run.",

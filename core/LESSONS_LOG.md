@@ -652,4 +652,6 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — SUCCESS: the focused S4 runner, runtime-matrix, and root-harness contract modules passed 108/108 at exact committed HEAD `af424b5` on Windows Python 3.14.3. One pytest-asyncio deprecation warning remains; this focused pass is not full runtime-matrix evidence. See change 0295.
 
+2026-10-25 — SHORTCOMING: the selector registry left one timeout-recovery test assigned to integration even though the active S4 execution policy prohibits timeout scenarios. The full-category Windows invocation included it; the report now remains non-approving, regardless of its mocked timeout implementation. Rule: classify every timeout-related selector explicitly as policy `NOT_RUN` before running category batches; a committed registry assignment is not sufficient permission to execute. See change 0296.
+
 2026-10-25 — SUCCESS: after the Linux close-on-exec test fixture was committed, the selector registry was regenerated against the exact committed test source. The denominator remains 935 regression selectors, 884 assigned, and 51 policy `NOT_RUN`; refresh is not execution evidence. See change 0290.
