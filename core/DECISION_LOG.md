@@ -484,3 +484,8 @@ Map the five selectors from change 0189 while keeping E2E and aggregate regressi
 ## 2026-10-25 — Record exact-head bounded local S4 E2E run
 
 The five local E2E fixture selectors passed 5/5 at exact source HEAD 7d14e43d1e9568dddd5366ed979a187457c507b9 on Windows Python 3.14.3/pytest 8.4.2. This proves discovery and v1 local runner/gate artifact cases only; report-bound tools.qa.run/v2, trusted signer, POSIX transfer, and sandbox remain outside this run. See change 0191.
+
+
+## 2026-10-25 -- Record S4 API and local category exact-head runs
+
+At source HEAD `c8bb027cf3df93755b17f33b3ddfb129e837d124`, the 73-selector API category expanded to 93 pytest cases: 92 passed, one symlink case skipped because Windows returned WinError 1314, and zero failed. The separate 27-selector functional/integration/seeded run passed 27/27. Both used Windows NT 10.0.26300.0, Python 3.14.3 and pytest 8.4.2. E2E and trusted signer/report/sandbox runtime were not part of these runs. See change record 0192.

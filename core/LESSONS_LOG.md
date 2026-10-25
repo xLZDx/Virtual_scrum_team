@@ -581,3 +581,6 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — Distinguish selector-denominator completeness from runtime result. Local fixture selectors can be fully enumerated while a missing report-bound tools.qa.run/v2 journey keeps the E2E denominator PARTIAL; trusted signer and sandbox runtime are separate NOT_RUN dependencies. See change 0190; exact-head selector execution is pending.
 
 2026-10-25 — A green local fixture E2E run is bounded evidence: five selectors establish native pytest collection and local v1 runner/gate artifact behavior at the recorded head, not report-bound v2 signer or deployment acceptance. Keep these runtime gates NOT_RUN and the report-bound selector gap PARTIAL. See change 0191.
+
+
+2026-10-25 — Report mapped API selector count separately from pytest's expanded parametrized case count. A green API run with one Windows symlink privilege skip is not POSIX symlink evidence; capture the exact skip reason and keep it scoped. At `c8bb027`, 73 API selector IDs yielded 92 passed/1 skipped, while functional/integration/seeded yielded 27/27. See change 0192.
