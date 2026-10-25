@@ -765,7 +765,7 @@ def main() -> int:
         if report["pytest_version"] is None:
             missing_versions.append("pytest")
         reasons: list[str] = []
-        if sys.implementation.name != "CPython" or sys.version_info[:2] != (3, 14):
+        if platform.python_implementation() != "CPython" or sys.version_info[:2] != (3, 14):
             reasons.append("runner requires the pinned CPython 3.14 interpreter")
         if not _canonical_interpreter_matches():
             reasons.append("runner executable is not the approved C:/Python314/python.exe")

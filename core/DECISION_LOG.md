@@ -413,3 +413,7 @@ The S4 E2E test fixture archives only committed runner sources and may not conta
 ## 2026-10-25 — Ignore Python cache files in synthetic QA candidates
 
 Synthetic candidate repositories must include minimal Python cache ignore rules before their first commit. Importing the runner itself creates bytecode before its own clean-tree snapshot; without ignore rules that fixture setup falsely marks an otherwise clean source candidate dirty. See change 0244.
+
+## 2026-10-25 — Use the canonical CPython implementation display name
+
+The S4 exact-head runtime report recorded CPython 3.14.3 at the approved executable but seven CLI cases were blocked because `sys.implementation.name` (`cpython`) was compared with `CPython`. Use `platform.python_implementation()` for the display-name check and preserve the separate path/version checks. The report also showed expected Python caches dirtying the synthetic fixture; change 0244 adds narrow ignores. See change 0245.

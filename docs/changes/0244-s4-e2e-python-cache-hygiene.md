@@ -14,7 +14,7 @@ The prior E2E report showed that importing `tools.qa.run` generated Python bytec
 
 ## Evidence and verification
 
-- Prior report `D:\Temp\pytest-of-koros\pytest-2929\test_s4_e2e_cli_native_collect0\candidate\docs\sdlc\evidence\qa\e2e.report.jsonl` recorded only `tools/qa/__pycache__/*.pyc` and `tools/vst/__pycache__/*.pyc` in both before/after dirty paths.
+- A retained report in pytest's temporary directory recorded only `tools/qa/__pycache__/*.pyc` and `tools/vst/__pycache__/*.pyc` in both before/after dirty paths.
 - The E2E test asserts the candidate is clean immediately before CLI execution at `tests/qa/test_s4_e2e_runner_cli.py`.
 - This is test-only fixture hygiene; no product code or other test source changed in this commit.
 - No tests were run for this correction. The timeout/process-tree test remains policy-skipped.
