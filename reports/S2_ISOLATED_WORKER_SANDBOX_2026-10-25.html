@@ -40,13 +40,15 @@
   <dl>
     <dt>Project</dt><dd>Virtual_scrum_team</dd>
     <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team-s2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-isolated-worker-sandbox @ ed723a9</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-isolated-worker-sandbox @ 6b426b7</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
           data-fail="Select manually">Copy page</button>
 </div>
 <!-- report-conform:end -->
+
+
 
 
 
@@ -62,6 +64,7 @@
     <li>Functional recovery module at source HEAD <code>dc95915018b80f498d5cf775363712fb915fe04e</code>: 4 passed, 0 skipped; Python 3.14.3, pytest 8.4.2; one pytest-asyncio deprecation warning. Command details are in [change 0085](../docs/changes/0085-s2-windows-snapshot-functional-rerun.md).</li>
     <li>Windows runner/store E2E at the same source HEAD: 80 passed, 14 skipped, 0 failed; Python 3.14.3, pytest 8.4.2; one deprecation warning. One selected Ubuntu-24.04 WSL2 POSIX-lock scenario passed. Skipped scenarios remain NOT_RUN. See [change 0083](../docs/changes/0083-s2-e2e-bounded-source-snapshot.md) and evidence under <code>docs/sdlc/evidence/</code>.</li>
     <li>Later allowed WSL2 run at exact committed HEAD <code>ed723a953d51b92827d3977c96e833258a38342c</code>: Store lifecycle 19 passed; runner/sandbox lifecycle 90 passed, 11 skipped; combined 109 passed, 11 skipped out of 120 collected. Environment: Ubuntu 24.04.5 on WSL2, Python 3.12.3, pytest 7.4.4. Four E4 containment cases, one actual inventory probe, and six E8 cases remain NOT_RUN. Exact commands, stage provenance, setup correction, and limits: <code>docs/sdlc/evidence/s2-e2e-wsl-ed723a-2026-10-25.md</code>; change 0209.</li>
+    <li>E6 diff-gate module at exact current committed HEAD <code>6b426b775e7ce92ad2fe6d42c1ede7f620ee4994</code>: 17 passed, 0 skipped, 0 failed; Ubuntu 24.04.5 WSL2, Python 3.12.3, pytest 7.4.4, executed as <code>vst-runner</code>. The suite used synthetic path and diff evidence and did not invoke prohibited operations. Exact command and coverage: <code>docs/sdlc/evidence/s2-e6-diffgate-wsl-6b426b7.md</code>; change 0210.</li>
     <li>S2 E5/VST-014 nonce contract: at product HEAD <code>6ee97cb</code>, the designated functional-test-reviewer covered omitted input, valid explicit nonce, and empty/non-string rejection before probing; 4 passed, 22 deselected, 0 failed at test HEAD <code>deed6ab</code> (Python 3.14.3, pytest 8.4.2). Code review: GPT-6 Luna low; security review: GPT-6 Luna medium; the code reviewer reported no BLOCKER/MAJOR/MINOR; the security reviewer reported no security findings. Evidence 0165; implementation 0162; test cases 0163.</li>
     <li>A separate run-scoped WSL2 signer/sandbox inventory with signature and network-policy attestation passed on earlier source run <code>280e2d0</code>; this does not prove a persistent production deployment or another HEAD. Evidence: <code>docs/sdlc/evidence/s2-e5-runmanifest-wsl-280e2d0.md</code>, <code>s2-e5-operator-attestation.json</code>, change 0063.</li>
     <li>Security and reliability reviewers (GPT-6 Luna, low effort) and a database reviewer (GPT-6 Luna, medium effort) found no code-level BLOCKER/MAJOR at source HEAD <code>dc959…</code>. Reviews were read-only and ran no checks. Environment and process-cleanup residuals remain separately recorded in STATE/backlog.</li>
@@ -94,6 +97,8 @@
     <li>Do not merge until the exact-head gate returns APPROVE.</li>
   </ol>
 </main>
+
+
 
 
 

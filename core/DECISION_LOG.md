@@ -282,4 +282,7 @@ Updated the bilingual S2 status report after the 0162 implementation, 0163 funct
 
 ## 2026-10-25 -- Record the permitted S2 WSL E2E subset without upgrading skipped cases
 
-The designated E2E agent ran the permitted Store and runner/sandbox subset at committed source/test HEAD `ed723a953d51b92827d3977c96e833258a38342c` in a fresh WSL stage. Result: 109 passed and 11 skipped across 120 collected. The 11 skips include prohibited/platform-dependent E4 cases, the actual E5 inventory probe, and prohibited E8 scenarios. Preserve these as `NOT_RUN`; this run does not replace run `280e2d0` or establish deployment qualification. See change 0209.
+
+## 2026-10-25 -- Record the complete safe E6 diff-gate module at an exact head
+
+The designated E2E agent inspected and ran the full `tests/vst/test_s2_diffgate.py` module at committed HEAD `6b426b775e7ce92ad2fe6d42c1ede7f620ee4994`. It passed 17/17 under the WSL `vst-runner` identity. The module uses synthetic inputs and does not perform process-kill, kill-table, mutation-testing, CI, external writes, or migration operations. This is focused E6 evidence only; it does not close other S2 gates. See change 0210.

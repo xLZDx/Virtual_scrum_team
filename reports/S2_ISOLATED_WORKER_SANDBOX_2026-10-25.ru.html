@@ -40,13 +40,15 @@
   <dl>
     <dt>Проект</dt><dd>Virtual_scrum_team</dd>
     <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team-s2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-isolated-worker-sandbox @ ed723a9</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-isolated-worker-sandbox @ 6b426b7</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
           data-fail="Выделите вручную">Копировать страницу</button>
 </div>
 <!-- report-conform:end -->
+
+
 
 
 
@@ -62,6 +64,7 @@
     <li>Функциональный recovery-модуль на source HEAD <code>dc95915018b80f498d5cf775363712fb915fe04e</code>: 4 passed, 0 skipped; Python 3.14.3, pytest 8.4.2; одна pytest-asyncio deprecation warning. Команда — в [change 0085](../docs/changes/0085-s2-windows-snapshot-functional-rerun.md).</li>
     <li>Windows runner/store E2E на том же source HEAD: 80 passed, 14 skipped, 0 failed; Python 3.14.3, pytest 8.4.2; одна deprecation warning. Выбранный Ubuntu-24.04 WSL2 POSIX lock сценарий: 1 passed. Сценарии с пропуском остаются NOT_RUN. См. [change 0083](../docs/changes/0083-s2-e2e-bounded-source-snapshot.md) и evidence в <code>docs/sdlc/evidence/</code>.</li>
     <li>Более поздний разрешённый WSL2 прогон на точном committed HEAD <code>ed723a953d51b92827d3977c96e833258a38342c</code>: Store lifecycle — 19 passed; runner/sandbox lifecycle — 90 passed, 11 skipped; всего 109 passed, 11 skipped из 120 собранных. Среда: Ubuntu 24.04.5 на WSL2, Python 3.12.3, pytest 7.4.4. Четыре сценария E4 containment, одна настоящая inventory probe и шесть сценариев E8 остаются NOT_RUN. Команды, происхождение stage, исправление подготовки и ограничения: <code>docs/sdlc/evidence/s2-e2e-wsl-ed723a-2026-10-25.md</code>; change 0209.</li>
+    <li>E6 diff-gate модуль на точном текущем committed HEAD <code>6b426b775e7ce92ad2fe6d42c1ede7f620ee4994</code>: 17 passed, 0 skipped, 0 failed; Ubuntu 24.04.5 WSL2, Python 3.12.3, pytest 7.4.4, запуск от <code>vst-runner</code>. Использовались синтетические пути и diff evidence, запрещённые операции не запускались. Команда и покрытие: <code>docs/sdlc/evidence/s2-e6-diffgate-wsl-6b426b7.md</code>; change 0210.</li>
     <li>S2 E5/VST-014 nonce контракт: на product HEAD <code>6ee97cb</code> designated functional-test-reviewer проверил пропущенное значение, валидный explicit nonce и отклонение пустого/non-string до probing; 4 passed, 22 deselected, 0 failed на test HEAD <code>deed6ab</code> (Python 3.14.3, pytest 8.4.2). Код ревью: GPT-6 Luna low, security review: GPT-6 Luna medium; code reviewer сообщил об отсутствии BLOCKER/MAJOR/MINOR; security reviewer — об отсутствии security findings. Evidence 0165; implementation 0162; test cases 0163.</li>
     <li>Отдельный run-scoped WSL2 signer/sandbox inventory с подписью и network-policy attestation прошёл на прежнем source run <code>280e2d0</code>; это не доказательство постоянного production deployment или поведения другого HEAD. Evidence: <code>docs/sdlc/evidence/s2-e5-runmanifest-wsl-280e2d0.md</code>, <code>s2-e5-operator-attestation.json</code>, change 0063.</li>
     <li>Fresh security и reliability reviewers (GPT-6 Luna, low effort) и database reviewer (GPT-6 Luna, medium effort) не нашли code-level BLOCKER/MAJOR на source HEAD <code>dc959…</code>. Для nonce change 0162 отдельные code reviewer (GPT-6 Luna, low) и security reviewer (GPT-6 Luna, medium) на code HEAD <code>6ee97cb</code> не нашли BLOCKER/MAJOR/MINOR/INFO. Обзоры read-only, не запускали проверки. Остатки среды и процессного cleanup сохранены отдельно в STATE/backlog.</li>
@@ -94,6 +97,8 @@
     <li>Не выполнять merge, пока exact-head gate не вернёт APPROVE.</li>
   </ol>
 </main>
+
+
 
 
 
