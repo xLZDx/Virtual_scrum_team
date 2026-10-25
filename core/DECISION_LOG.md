@@ -497,3 +497,7 @@ All twelve currently mapped E2E selectors passed together at exact source HEAD 4
 ## 2026-10-25 -- Reconcile S4 reports to recorded exact-head evidence
 
 Refresh the bilingual S4 report, plan status, and VST-032–037 backlog against changes 0186–0193. Keep E2E coverage PARTIAL until a report-bound `tools.qa.run`/v2 selector exists; keep trusted signer, run-specific manifest, current-head WSL/POSIX sandbox, report/receipt/authoritative gate, and mutation/red-green states explicit and non-approving. The prior WSL run at `56dce67` is not current-head evidence. See change 0194.
+
+## 2026-10-25 -- Distinguish ancestry negatives from verification errors
+
+Registry ancestry validation now interprets Git status 1 as a genuine non-ancestor answer, status 0 as ancestor, and all other statuses as inability to verify. Retry exhaustion and invocation errors raise `ContractError` with diagnostics while preserving the two-attempt, five-second-per-attempt bound and fail-closed behavior. See change 0195; runtime evidence is pending the designated test owner.

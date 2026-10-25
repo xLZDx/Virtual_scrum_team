@@ -221,9 +221,21 @@ def _git_commit_is_ancestor(root: Path, revision: str, candidate_head: str) -> b
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-    except (OSError, subprocess.TimeoutExpired):
+    except subprocess.TimeoutExpired as exc:
+        raise ContractError(
+            "cannot verify QA registry ancestry: git merge-base timed out after "
+            f"{GIT_TIMEOUT_RETRIES + 1} attempts of {GIT_COMMAND_TIMEOUT_SECONDS} seconds"
+        ) from exc
+    except OSError as exc:
+        raise ContractError(f"cannot invoke git to verify QA registry ancestry: {exc}") from exc
+    if result.returncode == 0:
+        return True
+    if result.returncode == 1:
         return False
-    return result.returncode == 0
+    raise ContractError(
+        "cannot verify QA registry ancestry: git merge-base exited "
+        f"with status {result.returncode}"
+    )
 
 
 def _current_candidate_head(root: Path) -> str:

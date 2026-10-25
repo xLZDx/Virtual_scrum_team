@@ -588,3 +588,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — Run the complete currently mapped E2E selector set together when updating exact-head evidence. A 12/12 Windows pass establishes only those local mapped journeys; it does not resolve the report-bound v2 selector gap or the separate trusted signer/WSL/sandbox gates. Preserve the asyncio deprecation warning and platform limit in the evidence. See change 0193.
 
 2026-10-25 — Keep status reports synchronized with the latest per-category exact-head evidence, and distinguish selector execution from aggregate report-bound acceptance. A green Windows category run does not imply a fresh POSIX transfer, trusted signer, v2 report, receipt, authoritative gate, or sandbox result. See change 0194.
+
+2026-10-25 — Do not collapse a Git verification failure into a valid negative domain answer. For `merge-base --is-ancestor`, exit 1 means non-ancestor; timeout exhaustion, invocation errors, and other nonzero statuses mean verification failed and should remain fail-closed with a distinct diagnostic. Preserve the bounded retry. See change 0195.
