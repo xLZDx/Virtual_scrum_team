@@ -40,13 +40,15 @@
   <dl>
     <dt>Project</dt><dd>Virtual_scrum_team</dd>
     <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s3-vendor-neutral-worker-pilot @ 674c225</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s3-vendor-neutral-worker-pilot @ 4aefd0e</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
           data-fail="Select manually">Copy page</button>
 </div>
 <!-- report-conform:end -->
+
+
 
 
 
@@ -76,6 +78,7 @@
     <li>Run details: <code>docs/sdlc/evidence/s3-stop-cleanup-functional-2a8c175.md</code> and <code>docs/sdlc/evidence/s3-e2e-exact-head-71169f7.md</code>; change records 0096–0099.</li>
     <li>BMad Loop <code>v0.13.2</code> source review at <code>4a5c45390ff46c0fc28d316004ffe0ed7c8eea60</code>; GPT-6 Luna security-reviewer, medium. Resolved plugin paths show untrusted project manifests can run shell hooks as the BMad process with inherited environment/worktree; Python plugin policy is project-local name-only, and project plugins override same-name built-ins without digest/signature pinning. Conditional project-content code execution, not a proven exploit/escape. OS containment remains unverified. No candidate acquired or executed. See changes 0168, 0169, 0204 and the S3 plan.</li>
     <li>Temporal source/dependency audit: server <code>v1.32.1</code> / <code>af08a5e5f2dd40f545f2afac7780daaa6987001e</code>; Python SDK <code>1.34.0</code> / <code>a4c2bb38c3bad43498dfa6bd849e8d85bb684e94</code>; SDK Core Rust <code>e163abd6dc19040064986a63c8b8cf4756ffd320</code>. GPT-6 Luna security-reviewer, medium. All three roots declare MIT; lockfiles pin package versions but do not close third-party licenses. PyPI wheel hashes exist, but inspected metadata has <code>provenance=false</code>. Full license closure, source-linked build provenance, effective server policy, OS containment and replay reproduction remain unverified/not run. No clone/install/build/run. See changes 0201 and 0203.</li>
+    <li>Hypothetical Linux/Python 3.12 base-profile license screen: BMad pinned base dependencies identify PyYAML MIT and regex <code>Apache-2.0 AND CNRI-Python</code>; Temporal Python identifies nexus-rpc MIT, protobuf BSD-3-Clause, typing stubs Apache-2.0 and typing-extensions PSF-2.0. The profile is not selected. Temporal Rust bridge and server Go graph licenses, build inclusion/provenance and full notices remain open; no packages were downloaded or installed. See change 0206.</li>
   </ul>
 
   <h2>Acceptance matrix</h2>
@@ -84,7 +87,7 @@
     <tbody>
       <tr><td>AC-1–4</td><td>One worker-adapter contract, VST as the sole verdict authority, idempotent requests, and diagnosable errors.</td><td class="partial">Partial — the local hand-written adapter is verified.</td><td>Functional run 16/16 and E2E run 8/8; change 0096 keeps STOP non-approving and exposes only safe diagnostics.</td><td>Comparison across all three worker implementations is not proven: external candidates were not acquired or executed.</td><td>The operator owns acquisition authorization and the final choice; Codex executes. Next: complete the pinned candidate audit and obtain explicit authorization before acquisition.</td></tr>
       <tr><td>AC-5–8</td><td>Immutable candidate identity, sandbox isolation, secrets protection, and denied external egress.</td><td class="partial">NOT_RUN / NOT_VERIFIED.</td><td>BMad trust/loader paths are reviewed at the pinned SHA: project shell hooks run as the BMad process with inherited environment/worktree; Python plugin enablement is project-local name-only and allows same-name project overrides without content digest/signature approval. This is conditional project-code execution, not proof of escape.</td><td>No fresh run-bound signed sandbox probe exists for S3; both candidates remain acquisition-gated; no runtime egress test ran.</td><td>The operator owns candidate authorization and selection; the technical sandbox owner is unknown. Next: close dependency/license residuals, obtain authorization, then run a fresh probe and permitted isolated trial.</td></tr>
-      <tr><td>S3.2.1 / VST-028</td><td>Immutable candidate identity, license, dependencies, compatibility, and security before acquisition.</td><td class="partial">Source audit partially closed; acquisition and runtime remain gated.</td><td>BMad hook/plugin trust paths are pinned; project-controlled shell/Python code can execute as the BMad process, a conditional risk without proven escape. Temporal server+Python SDK/Core pins are recorded as MIT. Lockfiles do not close full license inventory; PyPI wheel metadata has <code>provenance=false</code>. GPT-6 Luna security review, medium.</td><td>Transitive license closure, source-linked wheel provenance, general server/SDK compatibility, effective listener/auth/egress config, and replay reproduction remain open. No candidate was cloned, installed or run.</td><td>Codex is audit executor; operator owns acquisition authorization and selection. Next: finish license/provenance residuals; then operator authorizes a candidate, and runtime agents use it only after a fresh S2 probe.</td></tr>
+      <tr><td>S3.2.1 / VST-028</td><td>Immutable candidate identity, license, dependencies, compatibility, and security before acquisition.</td><td class="partial">Pinned source audit and hypothetical base-profile Python license screen are partial; acquisition and runtime remain gated.</td><td>BMad hook/plugin trust paths are pinned; project-controlled shell/Python code can execute as the BMad process, a conditional risk without proven escape. Temporal server+Python SDK/Core pins are recorded as MIT. Public lock/metadata evidence identifies licenses for the hypothetical Python base dependencies, but no candidate profile is selected.</td><td>Temporal Rust bridge and server Go dependency license graphs, full build/notice closure, source-linked wheel provenance, general server/SDK compatibility, effective listener/auth/egress config, and replay reproduction remain open. No candidate/package was downloaded, installed, or run.</td><td>Codex is audit executor; operator owns candidate selection and acquisition authorization. Next: finish the bounded Rust/Go/build-graph audit for any selected profile; acquire/run only after explicit authorization and a fresh S2 probe.</td></tr>
       <tr><td>AC-9, AC-11–12</td><td>Application checkpoint, attempts/retries, and exact budget limits without false PASS.</td><td class="pass">PASS for the synthetic Store/adapter path.</td><td>Functional coverage verifies exact-cap, replay, fencing, and named application checkpoints; the E2E module passed 8/8.</td><td>Actual abrupt process termination and operating-system cleanup were not exercised.</td><td>Codex executed local acceptance scenarios. Next: keep process-kill/cleanup as NOT_RUN until an allowed platform run exists.</td></tr>
       <tr><td>AC-10</td><td>STOP is idempotent; the new epoch fences stale writes and late outcomes.</td><td class="pass">PASS for Store fencing; process cleanup is unverified.</td><td>Functional regression proves one durable fence, stale-start rejection, and an INCONCLUSIVE response after a cleanup exception.</td><td>Process termination and cleanup after timeout remain NOT_VERIFIED.</td><td>The operator is accountable for delegated work; no operating-system sandbox owner is identified. Next: obtain a separate permitted platform-runtime proof.</td></tr>
       <tr><td>AC-13–14</td><td>Changes stay inside the synthetic worktree and allowlist; an out-of-scope diff cannot pass the gate.</td><td class="partial">Local synthetic journeys pass; sandbox-bound confinement is unproven.</td><td>The E2E module covers manifest-scoped changes and out-of-scope rejection.</td><td>There is no equivalent proof on the S2 sandbox or for an external candidate.</td><td>Codex executes; the technical sandbox owner is UNKNOWN. Next: bind these same cases to a fresh sandbox run when a probe is available.</td></tr>
@@ -95,12 +98,14 @@
 
   <h2>Ordered next steps</h2>
   <ol>
-    <li>Complete the bounded dependency-license and artifact-provenance assessment for the candidate runtime profiles. The BMad source trust/load audit is now resolved at the pinned SHA; remaining source-level unknowns concern deployment/runtime boundaries. Codex executes read-only analysis; the operator owns acquisition authorization and final selection. Do not acquire or execute either candidate before authorization.</li>
+    <li>Complete the remaining Temporal Rust-bridge and server Go dependency/license and build-notice assessment for any profile the operator selects. A hypothetical Python 3.12 base-profile screen is recorded but does not select or approve a candidate. Codex executes read-only analysis; the operator owns selection and acquisition authorization. Do not acquire or execute either candidate before authorization.</li>
     <li>Once the environment is available, run a fresh run-bound signed sandbox probe and egress check; do not treat synthetic local tests as platform evidence.</li>
     <li>If platform scenarios are permitted, verify process crash/cleanup and worktree isolation; until then keep them NOT_RUN/NOT_VERIFIED.</li>
     <li>When PM Bridge recovers, send the S3 final gate for the exact current HEAD with the complete residual matrix; push/PR remains gated on a correlated APPROVE.</li>
   </ol>
 </main>
+
+
 
 
 

@@ -327,3 +327,7 @@ The pinned Temporal Python SDK 1.34.0 gitlink resolves `temporalio/bridge/sdk-co
 ## 2026-10-25 — Resolve BMad Loop v0.13.2 plugin trust flow at the pinned source
 
 The bounded source follow-up at immutable commit `4a5c45390ff46c0fc28d316004ffe0ed7c8eea60` resolved the previously unavailable plugin trust/load paths. Declarative shell hooks use the BMad process identity, inherited environment and project worktree. Python plugin enablement uses project-local name membership; project plugins can override same-name built-ins, and the manifest has no content digest/signature. This establishes a conditional project-controlled code-execution surface, not a confirmed exploit or sandbox escape. No source was acquired or executed. Keep acquisition blocked pending dependency/license and artifact-provenance closure, explicit operator authorization and a fresh S2 sandbox probe. See change 0204.
+
+## 2026-10-25 — Partially map licenses for hypothetical S3 Python base profiles
+
+A read-only reviewer mapped public pinned metadata for illustrative Linux/Python 3.12 base profiles: BMad Loop 0.13.2 with PyYAML and regex; Temporal Python SDK 1.34.0 with nexus-rpc, protobuf, typing stubs and typing-extensions. This is not a selected runtime profile or acquisition approval. The Temporal Rust bridge and server Go dependency license/build-notice graphs remain open; source-linked wheel provenance is absent in inspected PyPI metadata. Keep VST-028 partial. The operator owns candidate choice/acquisition; Codex continues the bounded audit. See change 0206.
