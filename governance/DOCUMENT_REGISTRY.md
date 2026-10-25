@@ -197,6 +197,7 @@ Markdown documents: **261**
 | `docs/changes/0188-s4-reconcile-change-record-number.md` | Change record | Change 0188: Reconcile duplicate S4 change-record number |
 | `docs/changes/0189-s4-local-runner-gate-e2e-selectors.md` | Change record | 0189 — Add deterministic S4 local runner-to-gate E2E selectors |
 | `docs/changes/0190-s4-e2e-denominator-mapping.md` | Change record | 0190 — Map bounded S4 E2E selectors and preserve report-bound gap |
+| `docs/changes/0191-s4-local-e2e-selector-run.md` | Change record | 0191 — Run bounded local S4 E2E selectors at exact committed head |
 | `docs/DESIGN_BASELINE_AND_IMPLEMENTATION_PLAN_2026-10-24.md` | Documentation | Design baseline 1.0 and implementation plan |
 | `docs/FULL_TEAM_EXPANSION_PLAN_2026-10-23.md` | Documentation | Full Virtual Engineering Team — Expansion Plan |
 | `docs/INDEPENDENT_REVIEW_DECISION_PROVENANCE_2026-10-23.md` | Documentation | Independent Review Dossier — Unified Virtual Engineering Organization |

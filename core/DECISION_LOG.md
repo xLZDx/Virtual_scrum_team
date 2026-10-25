@@ -480,3 +480,7 @@ Add E2E-primary selectors for committed native pytest discovery and local `run_a
 ## 2026-10-25 — Keep report-bound E2E gap visible after fixture selector mapping
 
 Map the five selectors from change 0189 while keeping E2E and aggregate regression coverage PARTIAL: no selector drives tools.qa.run report serialization with v2 signed artifacts. Treat exact-head local selector execution, trusted signer deployment, WSL transfer, and sandbox runtime as separate evidence. Selector mapping completeness does not imply runtime PASS. See change 0190; selector execution is pending.
+
+## 2026-10-25 — Record exact-head bounded local S4 E2E run
+
+The five local E2E fixture selectors passed 5/5 at exact source HEAD 7d14e43d1e9568dddd5366ed979a187457c507b9 on Windows Python 3.14.3/pytest 8.4.2. This proves discovery and v1 local runner/gate artifact cases only; report-bound tools.qa.run/v2, trusted signer, POSIX transfer, and sandbox remain outside this run. See change 0191.
