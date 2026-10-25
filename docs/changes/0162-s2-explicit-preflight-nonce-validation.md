@@ -18,13 +18,12 @@ The previous `nonce = nonce or uuid.uuid4().hex` expression silently changed fal
 
 ## Verification state
 
-- Code implemented; not runtime-proven.
-- No tests or checks were run by Codex during this coding step. The designated `functional-test-reviewer` owns focused verification for omitted nonce generation, valid explicit nonce preservation, and rejection of empty/non-string explicit values.
-- Exact source head and test result must be recorded after the test-owner run.
+- Code implemented at HEAD `6ee97cb06b52900c3c2ab2a9b1b415ae117a7932`.
+- The designated functional-test-reviewer verified omitted nonce generation, valid explicit nonce preservation, and empty/non-string rejection: 4 passed, 22 deselected, 0 failed at test HEAD `deed6abe34eeaa8620593442bcdb1413d846f7982`; see record 0165 and `docs/sdlc/evidence/s2-preflight-nonce-functional-run.md`.
 
 ## Ownership and next step
 
 - Accountable task owner: operator (delegated S2 continuation).
 - Executor: Codex.
 - Test author/executor: `functional-test-reviewer`.
-- Next: commit this coherent change, then run the focused functional verification on the committed exact head; preserve unrelated process-kill and production quota gates as `NOT_RUN`/`NOT_VERIFIED`.
+- Next: use the exact final branch HEAD for GPT-PM review after specialist review; preserve unrelated process-kill and production quota gates as `NOT_RUN`/`NOT_VERIFIED`.

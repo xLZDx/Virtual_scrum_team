@@ -39,22 +39,25 @@
 <div class="rc-bar">
   <dl>
     <dt>Project</dt><dd>Virtual_scrum_team</dd>
-    <dt>Folder</dt><dd>D:\tmp\scratch_worktrees\Virtual_scrum_team-s2-final</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-isolated-worker-sandbox @ 3505f76</dd>
+    <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team-s2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-isolated-worker-sandbox @ f1eef32</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
           data-fail="Select manually">Copy page</button>
 </div>
 <!-- report-conform:end -->
+
+
 <main>
-  <p><strong>Status on 25 October 2026:</strong> implementation is complete at source HEAD <code>dc95915018b80f498d5cf775363712fb915fe04e</code>; focused functional/E2E evidence and fresh code reviews are complete. Phase 8, GPT-PM approval of the exact final HEAD, has not passed. Some dangerous or platform-dependent scenarios remain <code>NOT_RUN</code>, and some production resource limits remain <code>NOT_VERIFIED</code>. No push/PR was performed.</p>
+  <p><strong>Status on 25 October 2026:</strong> S2 code includes the preflight nonce fail-closed correction at product HEAD <code>6ee97cb06b52900c3c2ab2a9b1b415ae117a7932</code>; prior focused functional/E2E results remain bound to the HEADs listed below. Phase 8, GPT-PM approval of the exact final HEAD, has not passed. Some dangerous or platform-dependent scenarios remain <code>NOT_RUN</code>, and some production resource limits remain <code>NOT_VERIFIED</code>. No push/PR was performed.</p>
   <p>“E1–E8” are S2’s eight epics. “NOT_RUN” means a scenario was not executed; “NOT_VERIFIED” means a required property has not been proven. The 14 Windows E2E skips are not passing tests.</p>
 
   <h2>Evidence</h2>
   <ul>
     <li>Functional recovery module at source HEAD <code>dc95915018b80f498d5cf775363712fb915fe04e</code>: 4 passed, 0 skipped; Python 3.14.3, pytest 8.4.2; one pytest-asyncio deprecation warning. Command details are in [change 0085](../docs/changes/0085-s2-windows-snapshot-functional-rerun.md).</li>
     <li>Windows runner/store E2E at the same source HEAD: 80 passed, 14 skipped, 0 failed; Python 3.14.3, pytest 8.4.2; one deprecation warning. One selected Ubuntu-24.04 WSL2 POSIX-lock scenario passed. Skipped scenarios remain NOT_RUN. See [change 0083](../docs/changes/0083-s2-e2e-bounded-source-snapshot.md) and evidence under <code>docs/sdlc/evidence/</code>.</li>
+    <li>S2 E5/VST-014 nonce contract: at product HEAD <code>6ee97cb</code>, the designated functional-test-reviewer covered omitted input, valid explicit nonce, and empty/non-string rejection before probing; 4 passed, 22 deselected, 0 failed at test HEAD <code>deed6ab</code> (Python 3.14.3, pytest 8.4.2). Code review: GPT-6 Luna low; security review: GPT-6 Luna medium; the code reviewer reported no BLOCKER/MAJOR/MINOR; the security reviewer reported no security findings. Evidence 0165; implementation 0162; test cases 0163.</li>
     <li>A separate run-scoped WSL2 signer/sandbox inventory with signature and network-policy attestation passed on earlier source run <code>280e2d0</code>; this does not prove a persistent production deployment or another HEAD. Evidence: <code>docs/sdlc/evidence/s2-e5-runmanifest-wsl-280e2d0.md</code>, <code>s2-e5-operator-attestation.json</code>, change 0063.</li>
     <li>Security and reliability reviewers (GPT-6 Luna, low effort) and a database reviewer (GPT-6 Luna, medium effort) found no code-level BLOCKER/MAJOR at source HEAD <code>dc959…</code>. Reviews were read-only and ran no checks. Environment and process-cleanup residuals remain separately recorded in STATE/backlog.</li>
     <li>Current S2 branch HEAD before this report: <code>3505f769f9c1c245d368a8318aeb04a76e1c5537</code>; source code HEAD remains <code>dc959…</code>. Primary records: <code>docs/sdlc/STATE.md</code>, the S2 plan, and change records 0076–0085.</li>
@@ -68,7 +71,7 @@
       <tr><td>E2 — runner-derived HEAD and signer isolation</td><td>The runner binds evidence to the candidate commit; the worker cannot access signing keys or signer IPC.</td><td class="partial">Code and local negative scenarios PASS; one run-scoped WSL boundary PASS applies only to that run.</td><td>Windows E2E 80 pass/14 skip; run-scoped WSL signer evidence `280e2d0`.</td><td>The WSL signer boundary is not a permanent deployment proof and is not automatically transferred to future runs.</td><td>The operator is accountable; technical service owner is unknown. Next: produce fresh signed attestation for each separately qualified run.</td></tr>
       <tr><td>E3 — externally anchored event head</td><td>Rollback/restore is detected through an external event head and recovery is bounded.</td><td class="partial">Store implementation and available focused cases are covered; the full POSIX failure/recovery set is not closed.</td><td>Records 0043, 0056–0058 and focused source run `dc959`.</td><td>POSIX anchor restore/interruption and restart-failure cases remain NOT_RUN where skipped or prohibited.</td><td>Technical platform owner is UNKNOWN. Next: run permitted platform scenarios; retain fail-closed behavior where the platform is absent.</td></tr>
       <tr><td>E4 — process containment</td><td>POSIX identity/permissions/process groups and Windows Job Object nesting.</td><td class="partial">Some WSL identity, file/socket, and lock boundaries are proven; full containment is not accepted.</td><td>Run-scoped WSL evidence and test record 0083.</td><td>Windows parent Job Object nesting, child termination/kill-table, and full POSIX containment are NOT_RUN; 14 skips are not PASS.</td><td>The operator owns authorization for prohibited scenarios; technical platform owner is UNKNOWN. Next: only run a specific scenario if policy and platform allow it.</td></tr>
-      <tr><td>E5 — sandbox specification and preflight</td><td>Dedicated WSL2 configuration, signed inventory, denied egress, and per-run secret boundary.</td><td class="partial">One exact WSL run passed; production deployment is not proven.</td><td>Signed inventory/network-policy attestation and run manifest for `280e2d0` (change 0063).</td><td>No persistent deployment proof exists; future environments require a fresh inventory and closed probe.</td><td>The operator is accountable; service owner is UNKNOWN. Next: qualify only a precise new environment with a new signature.</td></tr>
+      <tr><td>E5 — sandbox specification and preflight</td><td>Dedicated WSL2 configuration, signed inventory, denied egress, and per-run secret boundary.</td><td class="partial">One exact WSL run passed; empty/non-string nonce inputs are now rejected and valid/omitted inputs were verified at code HEAD <code>6ee97cb</code>; production deployment is not proven.</td><td>Signed inventory/network-policy attestation and run manifest for `280e2d0` (change 0063); nonce test evidence 0165.</td><td>No persistent deployment proof exists; future environments require a fresh inventory and closed probe.</td><td>The operator is accountable; service owner is UNKNOWN. Next: qualify only a precise new environment with a new signature.</td></tr>
       <tr><td>E6 — diff gate and read-only reviewer</td><td>Out-of-scope or prohibited changes cannot pass; reviewer credentials cannot write the snapshot.</td><td class="pass">Code, focused negative tests, and one WSL write-denial boundary passed.</td><td>Record 0056 and `s2-e5-runmanifest-wsl-280e2d0.md`; source review at `dc959` found no BLOCKER/MAJOR.</td><td>Write-denial evidence applies to one run configuration.</td><td>Codex executes. Next: final GPT-PM review at the current branch HEAD.</td></tr>
       <tr><td>E7 — STOP, rollback, idempotency, breaker, recovery</td><td>Retries are safe, states are durable, STOP fences the old epoch, and uncertain results are not accepted.</td><td class="partial">Implemented scenarios and focused E2E pass; process termination and cleanup are unverified.</td><td>Functional 4/4; Windows lifecycle/store E2E 80/94 runnable with 14 skips; selected WSL lock 1/1.</td><td>Process-kill/kill-table and post-start overflow cleanup are NOT_RUN; OS memory/storage quotas and workspace binding are NOT_VERIFIED.</td><td>The operator is accountable; e2e-runner executes only permitted tests. Next: retain exact NOT_RUN causes and make no production-readiness claim.</td></tr>
       <tr><td>E8 — isolated worker crash/resume bake-off</td><td>One crash/resume fixture compares workers under fresh fencing/receipts and budget limits.</td><td class="partial">A safe STOP/resume/budget/idempotency/scope-denial subset passed; full acceptance is incomplete.</td><td>WSL safe subset and contract test IDs are recorded in backlog/evidence.</td><td>Full crash/cleanup invokes prohibited child-termination/mutation paths; candidate comparison is also gated because candidates are not authorized.</td><td>The operator owns authorization for the exact crash fixture and any candidate. Next: do not run until explicit applicable authorization exists.</td></tr>
@@ -86,6 +89,8 @@
     <li>Do not merge until the exact-head gate returns APPROVE.</li>
   </ol>
 </main>
+
+
 
 <!-- report-conform:script:begin -->
 <script>
