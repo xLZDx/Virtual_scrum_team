@@ -559,3 +559,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — S4 registry freshness rule: the runner correctly blocked before pytest when a committed test source digest no longer matched the category registry. Regenerate and commit the registry after every test-source correction; record preflight blocks as `BLOCKED`, not test failures. See change 0247.
 
 2026-10-25 — SHORTCOMING: registry generation hashed raw Windows working-copy bytes while clean checkout bytes followed `.gitattributes` LF normalization. Six category attempts blocked before collection; no test ran. Rule: normalize CRLF/LF consistently at the registry hash boundary and test this across checkout representations. See change 0248.
+
+2026-10-25 — S4 manifest sequencing rule: commit registry source changes and tests first, then regenerate the category manifest and bind it to committed provenance before launching the next exact-head run. See change 0249.

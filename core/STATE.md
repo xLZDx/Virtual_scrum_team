@@ -2,7 +2,13 @@
 
 Last updated: 2026-10-25. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
 
-## Active sprint: S3 vendor-neutral worker pilot (S2 gate remains open)
+## Current continuation checkpoint — S4 QA automation
+
+Active coding/testing sprint: S4 on branch `s4-reproducible-qa-automation`. Source HEAD before normalized registry refresh: `0d55c086930680994d99da06576fde025b96fa28`. S4 runner fixes and focused test sources are committed; the category manifest is being regenerated after the line-ending-stable digest test was committed. No S4 category test body has passed at runtime yet. The six-category attempt at `0122f06` was blocked before collection because the Windows working-copy CRLF digest differed from the committed LF bytes; see change 0248 and `docs/sdlc/evidence/qa/`.
+
+The S2 sandbox gate remains open. S3 has local synthetic pilot evidence but candidate, sandbox, egress, and process-death acceptance remains partial. S5 remains prepared, not active, pending S2 and S4 dependencies. No push or PR is ready.
+
+## Historical checkpoint: S3 vendor-neutral worker pilot (S2 gate remains open)
 
 Current branch: `s3-vendor-neutral-worker-pilot`, current documentation/test HEAD `2c4e9fd0d546d26212dcffa8348fe5349386e2d3`. Source fixes are committed in `040a3f2af217f38254cf91f2cb0559fb61fe2c80`; test files were committed in `3283bface17fe01d4661f248ab8b6502647f5fb2`. Both focused functional/E2E modules were rerun by their designated test agents at exact repository HEAD `2c4e9fd`: 9/9 each, with one pytest-asyncio deprecation warning on E2E. Fresh security and reliability reviews at `3283bfa` found no valid BLOCKER/MAJOR/MINOR. Correlated GPT-PM final review APPROVED the local synthetic pilot scope at exact HEAD `7f1aa35` (request `e4f16fdc-6175-43f1-97a1-74d50e173970`, reply `7d317e5b-bff9-485f-bce5-d09390f000f3`); later S3 commits were documentation-only, and this approval explicitly does not close full S3 acceptance. The process-hook test is confined to a disposable repository; the STOP lock orders one pilot instance in one process and does not prove cross-process behavior. S3 candidate choice/acquisition, fresh S2-bound sandbox probe, external egress/replay, and process-kill cleanup remain NOT_RUN or gated. S2 remains unmerged: its latest correlated exact-head PM review returned MAJOR/MODIFY, with E4/E5/E8 acceptance gaps. No push/PR is ready. See [`core/BACKLOG.md`](BACKLOG.md) and [`reports/S3_WORKER_PILOT_2026-10-25.ru.html`](../reports/S3_WORKER_PILOT_2026-10-25.ru.html) for evidence.
 

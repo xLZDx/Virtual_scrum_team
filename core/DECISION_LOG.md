@@ -429,3 +429,7 @@ At exact HEAD `d99be24`, the native functional category was blocked before colle
 ## 2026-10-25 — Normalize test-source line endings in registry digests
 
 Six native category attempts at `0122f06` were blocked before collection because the registry had hashed the canonical CRLF working copy while a clean checkout contained the committed LF blob. Normalize CRLF to LF in both registry generation and validation, then regenerate after the fix is committed. See change 0248.
+
+## 2026-10-25 — Regenerate S4 manifest after normalized-hash test commit
+
+The registry must be regenerated after the new LF/CRLF contract test is committed, and its source inventory hashes use normalized line endings. S4 remains in test execution; prior preflight blocks are not runtime results. See change 0249.
