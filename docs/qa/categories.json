@@ -7,7 +7,7 @@
       "coverage_state": "COMPLETE",
       "coverage_reason": "The accepted local functional denominator covers receipt-order invariance, missing receipts, malformed manifest fields, wrong-key signatures, stale candidate HEAD, skipped/xfail required IDs, and the POSIX worker capability-drop boundary (exact worker identity, empty inheritable/permitted/effective/ambient sets, no-new-privileges, and denied runner UID regain). Signer ACL coverage rejects access/default ACLs and fails closed on denied ACL inspection; the POSIX snapshot/output selector verifies worker-group inheritance without runner chown. The original S3 contract selectors remain included. Network API and report-runtime paths are excluded from this local functional category. Registry ancestry outcomes are additionally mapped for true ancestor, valid non-ancestor, unexpected Git exit, exhausted timeout retry, and invocation failure.",
       "owner_role": "functional-test-reviewer",
-      "source_head": "cadd8014fcb9eb8b6f226cda726cad3328d78d66",
+      "source_head": "288e33d81243a7939972461767a748f4a029ffce",
       "test_ids": [
         "tests/qa/test_s4_worker_exec.py::test_s4_worker_trampoline_drops_capabilities_before_manifest_exec",
         "tests/qa/test_s4_worker_boundary_contracts.py::test_s4_signer_guard_rejects_access_acl_on_socket",

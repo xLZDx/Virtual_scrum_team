@@ -569,3 +569,7 @@ Add functional selectors for access/default/traversed-parent ACLs, ACL inspectio
 ## 2026-10-25 — Preserve snapshot setgid through creation-time inheritance
 
 The fresh snapshot at `415916e` failed because runner `chmod` could not set setgid on a worker-group repository root (`0750` observed). Keep the runner's capability set narrow; create the repository root below the pre-provisioned setgid run directory and verify inherited owner/group/mode before and after clone. Re-run exact-head snapshot and mapped tests before report-bound retry. See change 0244.
+
+## 2026-10-25 — Pin S4 functional source provenance after boundary fixes
+
+Update the functional category source head to `288e33d`, the committed ACL and worker-group implementation before the mapping commit. A successful snapshot transfer at that head confirms the clone-root setgid inheritance correction only; mapped test execution remains pending on a fresh exact-head snapshot including the provenance update. See change 0245.

@@ -625,3 +625,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — Add focused regression selectors and category mapping before retrying a report-bound runtime path. Keep the code provenance pinned to the source commit and record Windows skips as `NOT_RUN`; only the designated test agent executes required selectors. See change 0243.
 
 2026-10-25 — A runner outside the worker group cannot necessarily set that group's setgid bit later with `chmod`. Establish the ownership/mode boundary by creating the directory beneath the pre-provisioned setgid parent, and verify it before and after population. Do not broaden capabilities to repair a mode inheritance mistake. The first 415916e snapshot was blocked before tests, not a test failure. See change 0244.
+
+2026-10-25 — When source code advances after test mapping, update category provenance to the code head being tested; then create a fresh exact-head snapshot after the mapping commit. A successful transfer is setup evidence, not test execution. See change 0245.
