@@ -577,3 +577,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-25 — S4 selector test provenance rule: bind synthetic E2E fixtures to the exact committed product implementation and verify the baseline object exists before execution; a mistyped SHA leaves the fixture unable to archive its source. Corrected before testing. See change 0256.
 
 2026-10-25 — S4 registry refresh sequence: commit designated test sources first, then regenerate `categories.json` so test hashes and source provenance match immutable Git objects. Exact-head execution follows only after this refresh is committed. See change 0257.
+
+2026-10-25 — Sprint readiness records must separate committed test/catalog source from runtime acceptance. Update stale cross-sprint status from canonical evidence without upgrading authored coverage to a pass. See change 0258.

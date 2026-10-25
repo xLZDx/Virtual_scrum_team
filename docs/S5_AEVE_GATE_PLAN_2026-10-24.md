@@ -1,6 +1,6 @@
 # Sprint S5 plan: bounded AEVE evidence gate
 
-Status: **PREPARED / BLOCKED FROM IMPLEMENTATION** until S2's required signer/gate evidence is reconciled and S4 commits its seeded-fixture catalog. This is a VST-side plan. It does not access, acquire, or execute the separate AEVE repository and does not claim the analyzer is available in this checkout.
+Status: **PREPARED / BLOCKED FROM IMPLEMENTATION** until S2's required signer/gate evidence and S4 seeded-failure runtime evidence are reconciled. The S4 catalog source and selector manifest are committed; their exact-head runtime evidence is pending. This is a VST-side plan. It does not access, acquire, or execute the separate AEVE repository and does not claim the analyzer is available in this checkout.
 
 Sources: continuation scope and exit rule in `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` section 1; AEVE bounded-evidence role and unsupported-capability caveat in `docs/UNIFIED_ENGINEERING_ORGANIZATION_MASTER_BLUEPRINT_2026-10-23.md` sections 1, 8, 10, 11, 13.1 and 13.2; existing VST receipt contract in `tools/vst/contracts.py`; gate behavior in `tools/vst/gate.py`; S2 authority and exact-head boundaries in `docs/S2_SANDBOX_WORKER_PLAN_2026-10-24.md`; and `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`. This plan follows the later S2–S5 continuation rather than stale blueprint roadmap labels.
 
@@ -179,7 +179,7 @@ All digest algorithms and canonicalization must be versioned. Paths are reposito
 - Synthetic fixtures, resource limits, failure boundaries and evidence retention path are specified.
 - Functional and E2E test agents confirm the test map before implementation; they do not run tests until all S5 coding is complete.
 
-The current state does not satisfy the S2 exact-head readiness item: its gate remains pending. The S4 seeded-failure catalog is also still in progress, and authorized AEVE source/interface evidence is absent. Synthetic contract and coverage fixtures may be prepared only after the S2/S4 local dependencies are reconciled. Signer-authority changes and real AEVE adapter execution remain blocked until their specific trust/source dependencies are met.
+The current state does not satisfy the S2 exact-head readiness item: its gate remains pending. The S4 seeded-failure catalog source and selector manifest are committed, but the required exact-head runtime evidence has not yet been collected. Authorized AEVE source/interface evidence is also absent. Synthetic contract and coverage fixtures may be prepared only after the S2/S4 local dependencies are reconciled. Signer-authority changes and real AEVE adapter execution remain blocked until their specific trust/source dependencies are met.
 
 ## 8. Definition of Done
 

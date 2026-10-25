@@ -465,3 +465,7 @@ Added designated-agent tests for bounded argv, exact selector-file maps, categor
 ## 2026-10-25 — Refresh S4 selector inventory after test-source commit
 
 Regenerated the category manifest after test-source commit `c80357e`; the manifest now binds those sources and includes the expanded E4 policy `NOT_RUN` inventory. Exact-head test execution remains pending. See change 0257.
+
+## 2026-10-25 — Separate S4 catalog source status from runtime acceptance
+
+The S5 plan previously described the S4 seeded-failure catalog as uncommitted. Canonical backlog and manifest evidence show its source is committed while exact-head runtime acceptance remains pending. Correct the plan to preserve that distinction; do not treat committed source as runtime proof. See change 0258.
