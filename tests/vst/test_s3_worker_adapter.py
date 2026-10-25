@@ -1,11 +1,16 @@
 """S3-AC-1..4 and Store-backed recovery contracts for the worker protocol."""
 from __future__ import annotations
 
+import subprocess
 from dataclasses import replace
 
 import pytest
 
-from tools.vst.slice import EVENT_KEY, OPERATOR_KEY, SLICE_KEY, SUPERVISOR_KEY, FakeClock, SliceFixture
+from tools.vst.slice import (
+    EVENT_KEY, OPERATOR_KEY, SLICE_KEY, SUPERVISOR_KEY, FakeClock,
+    HandWrittenWorker, SliceFixture,
+)
+from tools.vst.pilot import HandWrittenWorkerAdapter
 from tools.vst.store import StoreError
 from tools.vst.worker_adapter import (
     Checkpoint, ResumeRequest, StopRequest, WorkerError, WorkerErrorCode,
@@ -16,6 +21,15 @@ from tools.vst.worker_adapter import (
 REV = "a" * 40
 HEAD = "b" * 40
 MANIFEST = "c" * 64
+
+
+def _git(repository, *args: str) -> str:
+    completed = subprocess.run(
+        ["git", "-C", str(repository), *args], check=True,
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True,
+    )
+    return completed.stdout.strip()
 
 
 def request(**changes) -> WorkerRequest:
@@ -206,3 +220,56 @@ def test_ac4_worker_state_alone_never_creates_verification_receipts(tmp_path):
         assert fx.gate()["verdict"] != "APPROVE"
     finally:
         fx.close()
+
+
+def test_ac7_commit_suppresses_repository_pre_commit_commit_msg_and_post_commit_hooks(tmp_path):
+    """S3-M01: repository-local hook configuration cannot execute at commit."""
+    repository = tmp_path / "candidate"
+    repository.mkdir()
+    _git(repository, "init")
+    _git(repository, "config", "user.name", "Synthetic Worker")
+    _git(repository, "config", "user.email", "worker@example.invalid")
+    source = repository / "src" / "synthetic.py"
+    source.parent.mkdir()
+    source.write_text("value = 'base'\n", encoding="utf-8")
+    _git(repository, "add", "--", "src/synthetic.py")
+    _git(repository, "commit", "-m", "synthetic base")
+
+    hooks = repository / ".git" / "candidate-hooks"
+    hooks.mkdir()
+    for hook_name in ("pre-commit", "commit-msg", "post-commit"):
+        hook = hooks / hook_name
+        hook.write_text(
+            "#!/bin/sh\n"
+            "printf '%s\\n' \"$0\" >> \"$(git rev-parse --git-dir)/hook-marker\"\n",
+            encoding="utf-8",
+        )
+        hook.chmod(hook.stat().st_mode | 0o111)
+    _git(repository, "config", "core.hooksPath", str(hooks))
+    marker = repository / ".git" / "hook-marker"
+    assert not marker.exists()
+
+    # Prove the temporary hooks are executable in this Git environment, then
+    # clear only their disposable-fixture marker before exercising the adapter.
+    source.write_text("value = 'hook calibration'\n", encoding="utf-8")
+    _git(repository, "add", "--", "src/synthetic.py")
+    _git(repository, "-c", f"core.hooksPath={hooks}", "commit", "-m", "hook calibration")
+    assert marker.is_file()
+    assert len(marker.read_text(encoding="utf-8").splitlines()) == 3
+    marker.unlink()
+    base_head = _git(repository, "rev-parse", "--verify", "HEAD")
+
+    worker = HandWrittenWorker(str(repository))
+    adapter = HandWrittenWorkerAdapter(
+        worker, candidate_id="handwritten-v1", candidate_revision=base_head,
+    )
+    adapter.fence_check = lambda _request: True
+    req = request(candidate_id="handwritten-v1", candidate_revision=base_head,
+                  base_head=base_head)
+
+    response = adapter.start(req)
+
+    assert response.state is WorkerState.SUCCEEDED
+    assert response.candidate_head != base_head
+    assert not marker.exists()
+    assert _git(repository, "config", "--get", "core.hooksPath") == str(hooks)

@@ -2,9 +2,9 @@
 
 Last updated: 2026-10-25. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
 
-## Active sprint: S2 isolated worker sandbox
+## Active sprint: S3 vendor-neutral worker pilot (S2 gate remains open)
 
-Current branch: `s2-isolated-worker-sandbox`. Source head: `dc95915018b80f498d5cf775363712fb915fe04e`; repository head before this reconciliation: `648012236a783e36c88573b34cf3a0c302413958`. Phase 7 functional/E2E evidence and fresh specialist reviews are complete for this source. Process-kill/kill-table, post-start overflow cleanup, Windows Job Object nesting, full POSIX containment, and complete E8 crash/resume remain `NOT_RUN`; OS memory/temp-storage quotas and workspace binding remain `NOT_VERIFIED`. Phase 8 GPT-PM exact-head approval is pending, so no push/PR is ready. See [`docs/sdlc/STATE.md`](../docs/sdlc/STATE.md) and [`core/BACKLOG.md`](BACKLOG.md) for evidence and next steps.
+Current branch: `s3-vendor-neutral-worker-pilot`. At source HEAD `040a3f2af217f38254cf91f2cb0559fb61fe2c80`, GPT-PM findings for repository commit hooks and a STOP/commit race have code fixes and focused functional/E2E evidence (9/9 in each module); fresh specialist review and a new exact-head GPT-PM gate are pending. The process hook test is confined to a disposable repository; the STOP lock orders one pilot instance in one process and does not prove cross-process behavior. S3 candidate choice/acquisition, fresh S2-bound sandbox probe, external egress/replay, and process-kill cleanup remain NOT_RUN or gated. S2 remains unmerged: its latest correlated exact-head PM review returned MAJOR/MODIFY, with E4/E5/E8 acceptance gaps. No push/PR is ready. See [`core/BACKLOG.md`](BACKLOG.md) and [`reports/S3_WORKER_PILOT_2026-10-25.ru.html`](../reports/S3_WORKER_PILOT_2026-10-25.ru.html) for evidence.
 
 ## What exists
 

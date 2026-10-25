@@ -243,6 +243,38 @@ def test_s3_stop_fences_interrupted_attempt_idempotently_and_rejects_stale_start
     assert fixture.store.receipts_for_task(fixture.task_id) == []
 
 
+def test_s3_stop_first_epoch_fence_prevents_late_worker_commit(pilot_env):
+    """S3-M02: STOP before publication lock prevents the stopped attempt from writing."""
+    fixture, pilot, repository, candidate_revision = pilot_env
+    original = _request(fixture, candidate_revision)
+    stop_responses = []
+
+    def stop_before_publication_lock(checkpoint):
+        if checkpoint is Checkpoint.BEFORE_EDIT:
+            # The adapter invokes this checkpoint before taking the shared
+            # publication lock. Complete the durable STOP before returning to
+            # start(), which then resumes and must reject its stale fence.
+            stop_responses.append(pilot.stop(_stop_request(original)))
+
+    pilot.adapter.checkpoint_hook = stop_before_publication_lock
+    initial_contents = (repository / "src" / "synthetic.py").read_text(encoding="utf-8")
+    initial_head = _git(repository, "rev-parse", "--verify", "HEAD")
+
+    response = pilot.start(original)
+
+    assert len(stop_responses) == 1
+    stopped = stop_responses[0]
+    assert stopped.state is WorkerState.INCONCLUSIVE
+    assert fixture.store.current_epoch(fixture.story_id) == original.epoch + 1
+    assert response.state is WorkerState.INCONCLUSIVE
+    assert response.error is not None
+    assert response.error.code is WorkerErrorCode.FENCE_REJECTED
+    assert _git(repository, "rev-parse", "--verify", "HEAD") == initial_head
+    assert (repository / "src" / "synthetic.py").read_text(encoding="utf-8") == initial_contents
+    assert fixture.store.current_epoch(fixture.story_id) == original.epoch + 1
+    assert fixture.store.receipts_for_task(fixture.task_id) == []
+
+
 def test_s3_stop_cleanup_exception_preserves_fence_and_hides_exception_text(pilot_env, monkeypatch):
     """S3 AC-4: cleanup failures remain non-approving and safely diagnosable."""
     fixture, pilot, _repository, candidate_revision = pilot_env
