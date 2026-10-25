@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_head": "a73e87a3c4b414f0c97ac1d09fdedf037ec17dde",
+  "source_head": "126b67f3a969a067ac1643bebab2ac669a821eaa",
   "categories": {
     "functional": {
       "state": "SUPPORTED",
@@ -147,7 +147,7 @@
       "coverage_state": "COMPLETE",
       "coverage_reason": "All seven currently catalogued unchanged-product fixtures have one unique hash-bound test and an observed rejection: invalid task manifest, stale HEAD, missing required receipt, invalid signature, out-of-scope diff, skipped required ID, and artifact digest mismatch. This is bounded fixture coverage, not a mutation score or claim of exhaustive failure enumeration.",
       "owner_role": "functional-test-reviewer",
-      "source_head": "a73e87a3c4b414f0c97ac1d09fdedf037ec17dde",
+      "source_head": "126b67f3a969a067ac1643bebab2ac669a821eaa",
       "test_ids": [
         "tests/qa/test_s4_registry_contracts.py::test_s4_seeded_failure_rejects_invalid_manifest_and_records_observation",
         "tests/qa/test_s4_seeded_failures.py::test_seeded_stale_head_rejects_current_gate_decision",

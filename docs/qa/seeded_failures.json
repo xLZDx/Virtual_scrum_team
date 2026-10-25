@@ -15,10 +15,10 @@
       "fixture_id": "stale-head",
       "input": {
         "current_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "current_epoch": 1,
+        "current_epoch": 2,
         "receipt_head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
-      "input_sha256": "636e4874102f5f9b6d4a4ab06aafdacfa61f66aa011f5f0e69acb8cd553d56f4",
+      "input_sha256": "f942b4e6a7a20d638a46b2160434873298b968f53b25e9ffb08b211881ad029e",
       "expected_rejection": "STALE_HEAD",
       "test_id": "tests/qa/test_s4_seeded_failures.py::test_seeded_stale_head_rejects_current_gate_decision"
     },

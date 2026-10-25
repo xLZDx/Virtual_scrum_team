@@ -564,3 +564,6 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 
 2026-10-25 — A seeded fixture catalog must match the primary category list exactly, with one unique test ID per fixture; hashes use canonical sorted compact JSON. Functional selectors need static node IDs and should target accepted AC-7 failure modes without duplicating API-primary IDs. Local signer protocol tests do not establish trusted OS peer credentials or report-bound runtime, so integration remains PARTIAL. See change 0183; exact-head execution is pending.
+
+
+2026-10-25 — When expanding a seeded catalog, update old seeded tests to load the complete committed category/catalog contract; do not manufacture a narrower category projection for one fixture. For stale-head tests, keep receipt epoch valid so the intended stale-head check is the first meaningful rejection. A provenance failure must be tied to candidate ancestry evidence; direct `git merge-base --is-ancestor` returned true for the recorded E2E head at `126b67f`, so its test-local failure remains unclassified pending reproduction. See change 0184.

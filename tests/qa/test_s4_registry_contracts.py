@@ -432,11 +432,11 @@ def test_s4_seeded_failure_rejects_invalid_manifest_and_records_observation(monk
     ).hexdigest()
     fixture_id = "invalid-task-manifest"
     test_id = f"{HERE}::test_s4_seeded_failure_rejects_invalid_manifest_and_records_observation"
-    candidate = _registry_fixture()
-    candidate["categories"]["seeded-failure"]["test_ids"] = [test_id]
-    # The committed fixture catalog is the real input boundary for this lane.
-    loaded_catalog, _ = registry.load_seeded_failure_catalog(ROOT, candidate)
-    assert loaded_catalog["fixtures"][0]["test_id"] == test_id
+    # The committed category and fixture catalog jointly define the real lane.
+    loaded_registry, _ = registry.load_registry(ROOT)
+    loaded_catalog, _ = registry.load_seeded_failure_catalog(ROOT, loaded_registry)
+    fixture = next(row for row in loaded_catalog["fixtures"] if row["fixture_id"] == fixture_id)
+    assert fixture["test_id"] == test_id
 
     with pytest.raises(ContractError, match=r"task_manifest_v2: missing field\(s\):"):
         validate_task_manifest(invalid_input)
