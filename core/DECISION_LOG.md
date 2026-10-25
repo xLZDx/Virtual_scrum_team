@@ -301,3 +301,7 @@ The S2 plan still said dedicated sandbox provisioning had not been reached. The 
 ## 2026-10-25 — Correct WSL enumeration scope and record exact-head recovery evidence
 
 The coordinator repeated `wsl --list --verbose` despite the existing 0061 decision to query only the named project distribution. Its output exposed the names/state/version of other registered distros; no other distro was accessed or modified. Do not repeat host-wide WSL enumeration; use only direct commands against the authorized `Ubuntu-24.04` distribution. In the same work period, the designated functional reviewer reran `tests/vst/test_s2_operation_recovery.py` at exact repository HEAD `c2771b5968afcdd2b027f1c008fc8023fd0e0f12` with 4 passed, 0 failed/skipped; evidence is `docs/sdlc/evidence/s2-exact-head-functional-e2e-2026-10-25.md`. See change 0222.
+
+## 2026-10-25 — Record unresolved PM Bridge follow-up at exact S2 head
+
+A full adversarial S2 GPT-PM follow-up was prepared for exact HEAD `f683a371d3cde79d3318378d7e9a14c8bb8abd85` after the exact-commit functional/WSL reruns. The `gpt_send_and_await`, `pm_bridge_health`, and `pm_bridge_job_status` tool calls each returned `Transport closed`; no correlated delivery or reply state is available. Do not infer that the request was delivered or that GPT-PM reviewed this HEAD. Preserve request ID `5f95bf0c-0e62-4aa3-90e3-2f42e247e129`; after PM Bridge recovers, inspect that same ID before any resend. Prior correlated review at `12758c9` remains `MAJOR — MODIFY` with M01-M03 open. See change 0223.

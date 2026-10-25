@@ -40,13 +40,15 @@
   <dl>
     <dt>Проект</dt><dd>Virtual_scrum_team</dd>
     <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team-s2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-isolated-worker-sandbox @ c2771b5</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-isolated-worker-sandbox @ f683a37</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
           data-fail="Выделите вручную">Копировать страницу</button>
 </div>
 <!-- report-conform:end -->
+
+
 
 
 
@@ -96,7 +98,7 @@
       <tr><td>E8 — isolated worker crash/resume bake-off</td><td>Один crash/resume fixture сравнивает workers с новым fence/receipt и пределами бюджета.</td><td class="partial">Безопасный STOP/resume/budget/idempotency/scope-denial subset пройден; полное acceptance не выполнено.</td><td>WSL safe subset и contract test IDs записаны в backlog/evidence.</td><td>Полный crash/cleanup запускает запрещённые child termination/mutation пути; candidate comparison также заблокирован отсутствием authorized candidates.</td><td>Оператор владеет разрешением на точный crash fixture и candidate authorization. Следующий шаг — не запускать до явной применимой авторизации.</td></tr>
       <tr><td>S2.D1/D2 — команды и waivers</td><td>Каждый slot связан с обязательной командой/parser; waiver не превращает FAIL в APPROVE.</td><td>PASS в коде и focused tests.</td><td>Records 0055–0056 и final source test evidence.</td><td>Только состояния NOT_RUN/INCONCLUSIVE/BLOCKED могут иметь допустимый waiver.</td><td>Codex — executor; следующий шаг — сохранить этот контракт в GPT-PM точном обзоре.</td></tr>
       <tr><td>Production resource limits</td><td>Жёсткие OS memory/temp quotas, точная source workspace binding, внешние writer исключены.</td><td>NOT_VERIFIED.</td><td>State и reviewer findings не заявляют доказательство этих deployment границ.</td><td>Нужна проверяемая платформа/конфигурация и привязанный runtime artifact.</td><td>Оператор accountable; технический сервисный владелец UNKNOWN. Следующий шаг — определить и подтвердить ограничения до production использования.</td></tr>
-      <tr><td>Phase 8 exact-head gate</td><td>GPT-PM проверяет exact final branch HEAD; затем разрешён один PR.</td><td>Коррелированный review на <code>12758c9</code> вернул <code>MAJOR — MODIFY</code>; merge не выполнен.</td><td>Request <code>460d72c5-e4a7-4b92-b5e4-9f6a16221a9d</code>, reply <code>2c5bfa37-3502-46e6-8092-dcd77904f5e4</code>; полный ответ — evidence 0212.</td><td>Открыты три acceptance finding: platform proof E4, worker/environment/resource binding E5, crash/resume E8.</td><td>Оператор владеет решением о scoped release; technical platform owner UNKNOWN. Закрыть допустимым evidence или валидным scoped operator decision, затем запросить свежий exact-head review. Не push/PR до APPROVE.</td></tr>
+      <tr><td>Phase 8 exact-head gate</td><td>GPT-PM проверяет exact final branch HEAD; затем допускается один PR.</td><td>Коррелированный review на <code>12758c9</code> вернул <code>MAJOR — MODIFY</code>; follow-up для текущего exact HEAD пока не разрешён: PM Bridge вернул <code>Transport closed</code> на send, health и job-status запросах.</td><td>Предыдущий request <code>460d72c5-e4a7-4b92-b5e4-9f6a16221a9d</code>, reply <code>2c5bfa37-3502-46e6-8092-dcd77904f5e4</code>; у follow-up request <code>5f95bf0c-0e62-4aa3-90e3-2f42e247e129</code> состояние доставки/ответа не подтверждено. Полный предыдущий ответ — evidence 0212.</td><td>Открыты три acceptance finding: platform proof E4, worker/environment/resource binding E5, crash/resume E8. Для HEAD <code>f683a37</code> нет коррелированного verdict.</td><td>Оператор — accountable за делегированную поставку; technical platform owner UNKNOWN. После восстановления PM Bridge сначала проверить тот же request ID и только затем решать, нужен ли resend; закрыть findings. Не push/PR без коррелированного APPROVE.</td></tr>
     </tbody>
   </table>
 
@@ -109,6 +111,8 @@
     <li>Не выполнять merge, пока exact-head gate не вернёт APPROVE.</li>
   </ol>
 </main>
+
+
 
 
 
