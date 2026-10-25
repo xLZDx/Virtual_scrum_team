@@ -8,7 +8,7 @@ import json
 import os
 import stat
 from argparse import Namespace
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from types import SimpleNamespace
 
 import pytest
@@ -117,6 +117,9 @@ def test_s4_root_harness_outer_preflights_candidate_then_reexecs_fixed_installed
     monkeypatch.setattr(root_harness, "_args", lambda: args)
     monkeypatch.setattr(root_harness, "_distribution", lambda: True)
     monkeypatch.setattr(root_harness, "_trusted_installed_helper", lambda: True)
+    monkeypatch.setattr(
+        root_harness, "INSTALLED_HELPER", PurePosixPath("/usr/local/libexec/vst-s4-root-harness.py")
+    )
     monkeypatch.setattr(root_harness, "_git_head", lambda path: events.append("git") or args.expected_head)
     monkeypatch.setenv("PATH", "/untrusted/path")
     monkeypatch.setattr(root_harness.os, "geteuid", lambda: 0, raising=False)
