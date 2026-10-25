@@ -13,7 +13,7 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <body>
 <header>
 <h1>S4: автоматизация QA — отчёт о состоянии</h1>
-<p class="mut">Дата: 2026-10-25. Спринт частично реализован и локально проверен; полное принятие, GPT-PM gate и merge не подтверждены.</p>
+<p class="mut">Дата: 2026-10-25. Спринт частично реализован; точный GPT-PM review вернул MODIFY для полного принятия, source-level дефект не установлен, report-bound runtime evidence не выполнено.</p>
 <p><a href="S4_QA_AUTOMATION_2026-10-25.html">English report</a></p>
 </header>
 
@@ -42,13 +42,17 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
   <dl>
     <dt>Проект</dt><dd>Virtual_scrum_team</dd>
     <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team-s4</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 5e9c566</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 4509586</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
           data-fail="Выделите вручную">Копировать страницу</button>
 </div>
 <!-- report-conform:end -->
+
+
+
+
 
 
 
@@ -91,6 +95,8 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <li>Functional-test-reviewer: на том же HEAD 73 API selectors раскрылись в 93 cases: 92 passed, 1 skipped, 0 failed. Skip — symlink creation с <code>WinError 1314</code>; команда и причина — 0198.</li>
 <li>E2E runner: все 12 mapped E2E IDs прошли на том же exact HEAD; одно pytest-asyncio deprecation warning; evidence — 0198.</li>
 <li>Code-reviewer и reliability-reviewer: GPT-6 Luna, low effort, ревью source change <code>7b8200c</code>; нет BLOCKER/MAJOR/MINOR. Reliability INFO: stderr Git подавляется, поэтому fatal-exit диагностика содержит только status code.</li>
+<li>GPT-PM final review exact S4 HEAD <code>45095867163fc3e25184b49c328eb3c5b49dbea6</code>: correlated <code>MAJOR — MODIFY</code> по одному незакрытому acceptance требованию; source-level BLOCKER=0 и MAJOR=0. Нужна полная цепочка <code>tools.qa.run</code> → v2 report → trusted signer → receipt/artifact resolver → authoritative gate, плюс aggregate report-bound regression. Request <code>eb320905-19ac-4353-a028-7d2613721987</code>, reply <code>3310760a-833d-4e37-85ed-18858bb90c68</code>, input hash <code>def75f9a0fed5cba23307a5acf6209ff467b4507ad7bd473e18e8b8ca251a0aa</code>; full reply — evidence/change 0219.</li>
+<li>Свежий e2e-runner read-only audit: existing local fixture already tests synthetic signed receipt/artifact/gate; it explicitly excludes the CLI, deployed signer and sandbox. No file changes or tests. UID transition <code>997→999</code> and trusted signer remain real external dependencies.</li>
 </ul>
 </section>
 <section>
@@ -100,13 +106,17 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <li>После появления механизма проверить <code>tools.qa.run</code> report serialization на COMPLETE functional category с disposable signer socket. E2E category остаётся PARTIAL, и CLI отказывается подписывать её результат.</li>
 <li>Добавить report-bound E2E selector в принятом category/run contract, затем получить trusted deployed signer и run-specific manifest. Disposable socket не является подтверждением deployed signer.</li>
 <li>Получить report-bound evidence на current HEAD: одобренный runner-to-worker transition, trusted signer и run manifest, report/receipt/authoritative gate и aggregate regression.</li>
-<li>Запросить GPT-PM review exact final HEAD. Не push/open PR без требуемого свежего APPROVE.</li>
+<li>После report-bound E2E и aggregate regression запросить новый GPT-PM review точного final HEAD. Текущий ответ MODIFY не является approval; не push/open PR.</li>
 </ol>
 <p>Accountable task owner: operator. Executor: Codex. Technical QA runner/gate service owner is UNKNOWN in canonical records.</p>
 </section>
 <footer class="mut">
 <p>Источник решения и критериев: <a href="../docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md">S4 plan</a>. Проверяемые источники: change records 0195–0201 (ancestry fix/tests, exact-head runs, POSIX symlink evidence, ревью и reconciliation отчёта), более раннее WSL evidence 0159 для source HEAD <code>56dce67</code> и ветка <code>s4-native-qa-runner</code>. Этот checkpoint создан из локальных Git/evidence записей; он не является PM approval, merge доказательством или подтверждением полного acceptance.</p>
 </footer>
+
+
+
+
 
 
 

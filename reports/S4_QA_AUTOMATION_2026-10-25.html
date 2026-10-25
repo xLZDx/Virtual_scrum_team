@@ -13,7 +13,7 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <body>
 <header>
 <h1>S4 QA Automation — status report</h1>
-<p class="mut">Date: 2026-10-25. Sprint is partially implemented and locally verified; full acceptance, GPT-PM gate, and merge are not established.</p>
+<p class="mut">Date: 2026-10-25. Sprint is partially implemented; exact-head GPT-PM review returned MODIFY for full acceptance, no source-level defect was established, and report-bound runtime evidence remains unexecuted.</p>
 <p><a href="S4_QA_AUTOMATION_2026-10-25.ru.html">Russian report</a></p>
 </header>
 
@@ -42,13 +42,17 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
   <dl>
     <dt>Project</dt><dd>Virtual_scrum_team</dd>
     <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team-s4</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 5e9c566</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-native-qa-runner @ 4509586</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
           data-fail="Select manually">Copy page</button>
 </div>
 <!-- report-conform:end -->
+
+
+
+
 
 
 
@@ -91,6 +95,8 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <li>Functional-test-reviewer: at the same HEAD, 73 API selectors expanded to 93 cases: 92 passed, 1 skipped, 0 failed. The skip was symlink creation failing with <code>WinError 1314</code>; diagnostic and command are in 0198.</li>
 <li>E2E runner: all 12 mapped E2E IDs passed together at the same exact HEAD; one pytest-asyncio deprecation warning; evidence is in 0198.</li>
 <li>Code-reviewer and reliability-reviewer: GPT-6 Luna, low effort, reviewed source change <code>7b8200c</code>; no BLOCKER/MAJOR/MINOR. Reliability INFO: Git stderr is suppressed, so fatal-exit diagnostics contain only the status code.</li>
+<li>GPT-PM final review of exact S4 HEAD <code>45095867163fc3e25184b49c328eb3c5b49dbea6</code>: correlated <code>MAJOR — MODIFY</code> for one unclosed acceptance requirement; source-level BLOCKER=0 and MAJOR=0. The full <code>tools.qa.run</code> → v2 report → trusted signer → receipt/artifact resolver → authoritative gate journey and aggregate report-bound regression remain unexecuted. Request <code>eb320905-19ac-4353-a028-7d2613721987</code>, reply <code>3310760a-833d-4e37-85ed-18858bb90c68</code>, input hash <code>def75f9a0fed5cba23307a5acf6209ff467b4507ad7bd473e18e8b8ca251a0aa</code>; full reply is evidence/change 0219.</li>
+<li>Fresh e2e-runner read-only audit: the existing local fixture already tests synthetic signed receipt/artifact/gate behavior but explicitly excludes the CLI, deployed signer and sandbox. No files changed and no tests ran. UID transition <code>997→999</code> and trusted signer remain external dependencies.</li>
 </ul>
 </section>
 <section>
@@ -100,13 +106,17 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max
 <li>Once that mechanism is available, exercise <code>tools.qa.run</code> report serialization with a COMPLETE functional category and disposable signer socket. The E2E category is PARTIAL and the CLI refuses to sign its results.</li>
 <li>Add a report-bound E2E selector under an accepted category/run contract, then obtain trusted deployed signer and run-specific manifest. Do not equate the disposable socket with deployed signer acceptance.</li>
 <li>Obtain report-bound current-head evidence: approved runner-to-worker transition, trusted signer and run manifest, report/receipt/authoritative gate, and aggregate regression.</li>
-<li>Request GPT-PM review of the exact final HEAD. Do not push/open a PR without the required fresh APPROVE.</li>
+<li>After report-bound E2E and aggregate regression, request a new GPT-PM review of the exact final HEAD. The current MODIFY is not approval; do not push/open a PR.</li>
 </ol>
 <p>Accountable task owner: operator. Executor: Codex. Technical QA runner/gate service owner is UNKNOWN in canonical records.</p>
 </section>
 <footer class="mut">
 <p>Decision and criteria source: <a href="../docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md">S4 plan</a>. Verifiable sources: change records 0195–0201 (ancestry fix/tests, exact-head runs, focused POSIX symlink evidence, reviews, and report reconciliation), earlier WSL evidence 0159 for source HEAD <code>56dce67</code>, and branch <code>s4-native-qa-runner</code>. This checkpoint is derived from local Git/evidence records; it is not PM approval, merge evidence, or proof of full acceptance.</p>
 </footer>
+
+
+
+
 
 
 
