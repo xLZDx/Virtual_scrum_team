@@ -561,3 +561,7 @@ The operator explicitly authorized a narrow S4 runner-to-worker helper. A transi
 ## 2026-10-25 — Reject signer-path ACL grants and remove artifact chown
 
 After the S4 worker capability-drop fix, the read-only security review found that POSIX named ACL entries were not covered by signer socket mode checks. The report-bound CLI also demonstrated that runner UID 997 cannot `chown` run artifacts to worker GID 989 under the bounded unit. Reject present/unknown signer-path ACL states fail-closed, and use setgid worker-group inheritance from the snapshot root to the private QA output subtree; do not add `CAP_CHOWN` or broaden runner identity. Fresh exact-head tests and report-bound CLI execution are pending. See change 0242.
+
+## 2026-10-25 — Map S4 ACL and artifact-group regressions before runtime retry
+
+Add functional selectors for access/default/traversed-parent ACLs, ACL inspection failure, and worker-group inheritance through the real snapshot receiver/output allocator. Pin category source provenance to code commit `cadd801`. Do not treat authoring or Windows skips as runtime evidence; execute the committed selectors on a fresh Ubuntu-24.04 WSL snapshot. See change 0243.
