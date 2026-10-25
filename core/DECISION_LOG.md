@@ -348,3 +348,7 @@ At exact source/test HEAD `65d725f0101c5e1d0f758cd7850f97313144dc06`, `functiona
 ## 2026-10-25 -- Preserve attribution-footer reconciliation for S5 commit
 
 The local coordinator commit `8a0b426` (change 0226) omitted the required project attribution footer `Executor: Codex`. The project convention requires preserving existing history and adding an explicit reconciliation commit; no history rewrite was performed. This record does not claim the original message contained the footer. The new reconciliation commit message ends with the required footer. See change 0229.
+
+## 2026-10-25 -- Reconcile S5 contract-test commit metadata
+
+The last-15 S5 history audit found commits `5b839d0`, `7cd83ea`, `2f4f8ce`, `0306079`, `5f88b89`, and `0dbb662` include detailed `docs/changes/` files in their trees but the messages do not link those records or end with the required `Executor: Codex` footer. The creators and omission causes are not independently established by this checkout. Preserve history and record the discrepancy in reconciliation commit 0234; do not infer authorship or rewrite commits.
