@@ -18,6 +18,8 @@ The focused rerun at exact registry HEAD `17096c74d0b9a71ca26298aa47d785949b51f4
 
 Commit `c4f9cb9` contains the test-only flag fixture. The category registry was regenerated from exact source HEAD `c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209`: regression 935 total, 884 assigned runnable, 51 policy `NOT_RUN`; functional 90. This is registry generation, not test evidence. After change 0290 is committed, rerun the three focused modules through `functional-test-reviewer` at the exact resulting HEAD.
 
+Change 0291 commits the `PurePosixPath` test fixture and documents the authorized WSL helper installation. The selector registry was regenerated from committed test source HEAD `d1416dc271143d926075cc39467869257bcd9f51`: 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN`, and 90 functional selectors. This is generation only. Change 0292 records the refresh; rerun the focused tests through `functional-test-reviewer` at the exact post-0292 HEAD. The installed helper is still unexecuted.
+
 S2 remains open: its E4/E5/E8 criteria are partial or `NOT_RUN`. S3 has local synthetic pilot evidence but candidate, sandbox, egress and process-death acceptance remains partial. S5 is not closed. No S4 exact-head specialist consensus, PM approval, push, pull request or merge is currently established.
 ## Historical checkpoint: S3 vendor-neutral worker pilot (S2 gate remains open)
 

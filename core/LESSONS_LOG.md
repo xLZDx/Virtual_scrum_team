@@ -644,4 +644,6 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — SHORTCOMING: `pathlib.Path` on Windows changed the separators of a fixed POSIX command path in a test double. Rule: model Linux paths with `PurePosixPath` in Windows-host tests, keeping the exact production command assertion. See change 0291.
 
+2026-10-25 — SUCCESS: after committing the POSIX path fixture, the S4 selector registry was refreshed from exact test source commit `d1416dc` before rerun; the denominator remains 935 total regression, 884 assigned and 51 policy `NOT_RUN`. Registry generation is not execution evidence. See change 0292.
+
 2026-10-25 — SUCCESS: after the Linux close-on-exec test fixture was committed, the selector registry was regenerated against the exact committed test source. The denominator remains 935 regression selectors, 884 assigned, and 51 policy `NOT_RUN`; refresh is not execution evidence. See change 0290.

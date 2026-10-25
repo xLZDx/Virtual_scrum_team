@@ -634,6 +634,10 @@ The focused run at `17096c74d0b9a71ca26298aa47d785949b51f4ce` returned 107 passe
 
 The next focused run at `211b823d140037fca13e8d91a15d4302813db1b4` returned 107 passed and one failed; the Windows `Path` type rendered the Linux fixed helper path with backslashes in the mocked command. Keep the exact WSL path assertion and set the test's simulated `INSTALLED_HELPER` to `PurePosixPath`. The same change records the authorized narrow helper installation: root-owned `/usr/local/libexec` mode 0755, helper mode 0644, and matching source SHA-256 `044e4577e7d8f6d2bde55735896b0ed8002f6bcb12b51957a295e3d093f8911a`. The helper remains unexecuted. See change 0291.
 
+## 2026-10-25 — Refresh selector inventory after POSIX path test correction
+
+After test source commit `d1416dc`, the registry was regenerated from that exact commit. It contains 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN` and 90 functional selectors. Keep the policy rows non-approving and rerun focused tests only at a commit that includes the registry. See change 0292.
+
 ## 2026-10-25 — Refresh the selector registry after the Linux flag fixture
 
 After test-source commit `c4f9cb9`, regenerate the category registry before rerunning. It now binds to exact source HEAD `c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209` and records 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN`, and 90 functional selectors. Preserve the policy rows and use exact-head evidence. See change 0290.
