@@ -352,3 +352,7 @@ The local coordinator commit `8a0b426` (change 0226) omitted the required projec
 ## 2026-10-25 -- Reconcile S5 contract-test commit metadata
 
 The last-15 S5 history audit found commits `5b839d0`, `7cd83ea`, `2f4f8ce`, `0306079`, `5f88b89`, and `0dbb662` include detailed `docs/changes/` files in their trees but the messages do not link those records or end with the required `Executor: Codex` footer. The creators and omission causes are not independently established by this checkout. Preserve history and record the discrepancy in reconciliation commit 0234; do not infer authorship or rewrite commits.
+
+## 2026-10-25 -- Reconcile explicit Git hook-path overrides in S5 commits
+
+S5 commits `8a0b426`, `6bd6a4e`, and `0a18a22` were created in this session with `git -c core.hooksPath=NUL commit`, explicitly overriding normal hook discovery. Read-only inspection of the shared repository hook directory found no configured `core.hooksPath` and only `.sample` files, so no active hook was present there at inspection time; this does not justify the override. Preserve all history and record the discrepancy in reconciliation change 0238.
