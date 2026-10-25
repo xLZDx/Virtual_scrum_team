@@ -58,8 +58,10 @@ Python module APIs in `tools/vst/`.
   interpreter/tool versions, command, exit status, expected selectors, concrete collected and
   executed node IDs, per-case outcomes, and a typed result. Output logs are append-only per
   category. Each report binds to the exact stdout/stderr byte ranges written by that invocation
-  and their chunk hashes; byte offsets and run timestamps are excluded from normalized report
-  digests so earlier log history does not change the current run's semantic digest. The fixed
+  and their chunk hashes and sizes. Those exact per-run output metadata remain serialized and
+  checked against the captured bytes, but are excluded from the cross-run semantic digest because
+  pytest output may contain timing-dependent text. Byte offsets, run timestamps and prior append-only
+  history are also excluded from that digest. The fixed
   paths are `docs/sdlc/evidence/qa/{category}.report.jsonl`, `{category}.stdout.txt`, and
   `{category}.stderr.txt` for all six categories. Environment values, credentials, and user-specific
   absolute paths are never serialized.

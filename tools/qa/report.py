@@ -23,10 +23,14 @@ def sha256_bytes(value: bytes) -> str:
 
 
 def normalized_report(report: dict[str, Any]) -> dict[str, Any]:
+    # Artifact hashes and sizes bind each invocation's raw output, whose
+    # timing-bearing summaries can vary across equivalent runs; keep them in
+    # the report, but exclude them from the cross-run semantic digest.
     normalized = {
         key: value
         for key, value in report.items()
-        if key not in VOLATILE_FIELDS and key != "normalized_sha256"
+        if key not in VOLATILE_FIELDS
+        and key not in {"artifact_digests", "artifact_sizes", "normalized_sha256"}
     }
     return normalized
 

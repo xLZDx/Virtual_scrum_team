@@ -469,3 +469,7 @@ Regenerated the category manifest after test-source commit `c80357e`; the manife
 ## 2026-10-25 — Separate S4 catalog source status from runtime acceptance
 
 The S5 plan previously described the S4 seeded-failure catalog as uncommitted. Canonical backlog and manifest evidence show its source is committed while exact-head runtime acceptance remains pending. Correct the plan to preserve that distinction; do not treat committed source as runtime proof. See change 0258.
+
+## 2026-10-25 — Separate semantic report digest from exact output chunk metadata
+
+At exact candidate HEAD `d1bd2cf`, the repeated synthetic E2E run exposed that elapsed-time text in raw pytest stdout changes per-run artifact hashes and sizes even when selector results are the same. Keep exact sizes and hashes in each report and verify them against captured byte ranges, but exclude those per-run output fields from the cross-run semantic digest. See change 0259.

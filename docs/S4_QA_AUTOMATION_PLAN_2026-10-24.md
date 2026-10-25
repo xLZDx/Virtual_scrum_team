@@ -108,7 +108,7 @@ Each run appends one JSON Lines envelope and output chunks to fixed per-category
 - sprint, category, run id, schema version, exact repository HEAD, branch, dirty flag and changed-path list;
 - category-registry version/hash, expected, collected, executed, skipped, xfailed, failed, unexpected and uncollected test IDs;
 - exact argv, working-directory-relative selector, exit code, start/end/duration, interpreter path/version, OS/runtime identity, pytest version and lockfile hash;
-- output artifact relative paths, exact per-run stdout/stderr byte ranges and SHA-256 chunk digests; normalized summary digest excludes nondeterministic wall-clock fields and prior append-only history;
+- output artifact relative paths, exact per-run stdout/stderr byte ranges, byte sizes, and SHA-256 chunk digests; the normalized semantic digest excludes nondeterministic wall-clock fields, raw output size/hash metadata, and prior append-only history, while each exact per-run output hash and size is still verified against its captured byte range;
 - per-fixture seeded-failure ID, input digest, expected/observed verdict and linked test ID, where applicable;
 - result: `PASS`, `FAIL`, `NOT_RUN`, `UNSUPPORTED`, `INCONCLUSIVE` or `BLOCKED`, with reason and dependency; no implicit conversion between states.
 
