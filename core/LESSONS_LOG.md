@@ -658,4 +658,6 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-25 — SUCCESS: after committing the WSL-capable synthetic runner baseline, the S4 selector registry was regenerated from exact test source HEAD `dc85357`; inventory remains 935 total regression selectors, 883 assigned runnable and 52 policy `NOT_RUN`. Refresh is not runtime evidence. See change 0298.
 
+2026-10-25 — SHORTCOMING: during S4 test-fixture coding, a reviewer agent accidentally ran `git diff --check` before coding completion, contrary to the test/check phase boundary. It produced no output; do not treat it as verification. Rule: test authors may review diffs, but do not invoke checks until all sprint coding is complete and explicitly assigned. See change 0299.
+
 2026-10-25 — SUCCESS: after the Linux close-on-exec test fixture was committed, the selector registry was regenerated against the exact committed test source. The denominator remains 935 regression selectors, 884 assigned, and 51 policy `NOT_RUN`; refresh is not execution evidence. See change 0290.

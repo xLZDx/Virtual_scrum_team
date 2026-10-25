@@ -662,6 +662,10 @@ At corrected candidate `0825202`, four WSL E2E selectors (seven concrete cases) 
 
 After test-source commit `dc85357`, regenerate the registry so the exact committed WSL-capable fixture is represented in the test-source inventory. Change 0298 binds the manifest to the full source HEAD, keeps 935 total regression selectors (883 assigned runnable and 52 policy `NOT_RUN`), and leaves the prohibited timeout selector excluded. This is generation only. Next run the focused contracts and complete assigned matrix at an exact committed candidate.
 
+## 2026-10-25 — Upgrade synthetic S4 E2E manifest to schema v2
+
+The WSL-capable runner baseline introduced by change 0297 exposed a stale schema-v1 synthetic manifest: selected Windows and WSL E2E assertions saw `BLOCKED` before child collection. Update the fixture to schema v2 and derive runtime profiles from the registry contract while keeping all assertions unchanged. A test agent accidentally ran `git diff --check` during code work; it emitted no output and is not acceptance evidence. Record the process deviation and resume the correct sequence: finish coding, commit, regenerate registry, then rerun focused/full tests. See change 0299.
+
 ## 2026-10-25 — Refresh the selector registry after the Linux flag fixture
 
 After test-source commit `c4f9cb9`, regenerate the category registry before rerunning. It now binds to exact source HEAD `c4f9cb9a10f2a1ed4404c5b9277fb26c27a77209` and records 935 regression selectors, 884 assigned runnable, 51 policy `NOT_RUN`, and 90 functional selectors. Preserve the policy rows and use exact-head evidence. See change 0290.

@@ -22,6 +22,8 @@ from pathlib import Path, PurePosixPath
 
 import pytest
 
+from tools.qa.registry import RUNTIME_PROFILES, required_runtime_profiles
+
 
 BASELINE_HEAD = "08252020f24d47f1d23ffb15e15080193400bb9b"
 FIXTURE_TEST_PATH = "tests/qa/test_native_fixture.py"
@@ -179,8 +181,9 @@ def _category_manifest(
         "reason": None,
     }
     return {
-        "schema_version": 1,
-        "registry_version": "1",
+        "schema_version": 2,
+        "registry_version": "2",
+        "runtime_profiles": list(RUNTIME_PROFILES),
         "artifacts": LOCKED_ARTIFACTS,
         "source_head": source_commit,
         "source_inventory": [{
@@ -195,6 +198,10 @@ def _category_manifest(
                 "source_path": FIXTURE_TEST_PATH,
                 "source_commit": source_commit,
                 "primary_category": "e2e",
+                "runtime_profiles": (
+                    [] if test_id in not_run_reasons
+                    else sorted(required_runtime_profiles(FIXTURE_TEST_ID))
+                ),
             }
             for test_id in inventory_ids
         ],
