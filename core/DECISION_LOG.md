@@ -463,3 +463,7 @@ The focused run at `126b67f3a969a067ac1643bebab2ac669a821eaa` produced 24 passed
 ## 2026-10-25 -- Preserve S4 mapped-run NOT_PASS evidence
 
 The 27-selector functional/integration/seeded run at `126b67f3a969a067ac1643bebab2ac669a821eaa` returned 24 passed and 3 failed in 82.62 seconds. Two test/catalog mismatches were corrected in commit `8b5178b`; the third failure is a registry E2E-source ancestry rejection conflicting with a direct `git merge-base --is-ancestor` exit 0. Its root cause is unverified. Per coordinator direction, do not rerun the affected denominator until implementation engineering investigates the bounded ancestry path. See change record 0185.
+
+## 2026-10-25 -- Bound retry for registry ancestry provenance
+
+The ancestry helper now uses the existing one-retry wrapper, with five seconds per attempt. This allows one transient `git merge-base --is-ancestor` timeout to recover while retaining fail-closed behavior after retry. The mapped-run discrepancy at `126b67f` is consistent with a transient timeout, but its root cause was not reproduced. See change 0186; exact-head test-owner rerun is required.

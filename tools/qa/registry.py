@@ -216,10 +216,10 @@ def _git_commit_exists(root: Path, revision: str) -> bool:
 def _git_commit_is_ancestor(root: Path, revision: str, candidate_head: str) -> bool:
     """Require registry provenance to be part of the candidate's history."""
     try:
-        result = subprocess.run(
+        result = _run_git_with_timeout_retry(
             ["git", "merge-base", "--is-ancestor", revision, candidate_head], cwd=root,
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL, timeout=5, check=False,
+            stderr=subprocess.DEVNULL,
         )
     except (OSError, subprocess.TimeoutExpired):
         return False

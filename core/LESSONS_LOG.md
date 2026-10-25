@@ -570,3 +570,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 
 2026-10-25 — Preserve exact mixed-run outcomes as NOT_PASS even when most mapped selectors pass. Separate the reproducible test/catalog mismatches from an unexplained registry provenance result; a direct ancestry check is evidence of conflict, not proof of the registry root cause. Hold the rerun only for the coordinator-assigned bounded ancestry investigation and retain the exact failing candidate HEAD. See change 0185.
+
+2026-10-25 — A provenance helper that converts timeout and non-ancestry to the same false result can hide transient Git stalls as history violations. Reuse the established single bounded retry for the ancestry query; keep timeout recovery fail-closed after the retry and avoid claiming an unobserved timeout as the proven root cause. See change 0186.
