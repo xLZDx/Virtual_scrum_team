@@ -14,6 +14,10 @@ For unrun Windows Job Object, full POSIX containment, and E8 crash/resume eviden
 
 After three independent exact-head specialist reviews found that the runner ignored false/exception results from `TerminateJobObject` and `CloseHandle`, change 0319 makes the cleanup result fail closed and attempts the existing tree-kill fallback. A failed cleanup remains `capture_incomplete` even if a later handle-close retry succeeds. This is source remediation only; runtime behavior and exact-head regression evidence are pending. The implementation agent also ran `git diff --check -- tools/vst/runner.py` outside the requested phase; no exit code was recorded and the command is not verification evidence. See change 0319.
 
+## 2026-10-26 -- Preserve S2/S3 exact-source test outcomes and residuals
+
+At source HEAD `5ae495c073a7bfb5d26f209f582c00e7c4c954c7`, designated agents passed 12 mocked Job Object cleanup cases, 10 S2 Store lifecycle cases, 4 S2 operation-recovery cases, 8 safe S3 adapter cases and 3 safe S3 pilot cases. Nine POSIX-only Store cases were skipped; S3 resume/STOP and sandbox-boundary scenarios remained `NOT_RUN`. The functional test file was dirty during these runs, so rerun after its test commit before exact-head review. See change 0320 and its evidence file.
+
 ## 2026-10-25 -- Add one fixed WSL runner-to-worker identity selector
 
 The operator explicitly authorized a narrow helper for one report-bound child transition from `vst-runner` UID/GID 997:988 to `vst-worker` UID/GID 999:989. Decision: add a fixed-identity, fixed-interpreter helper and one S4 functional selector for the identity/file/socket boundary; do not move the full pytest process or report artifacts to UID 999. Do not change the separate restricted-root harness or any existing `NOT_RUN` policy exclusions for process-kill, timeout, process-death, mutation, or E8 scenarios. The implementation contract and rollout constraints are in `docs/S4_WSL_WORKER_UID_HELPER_DESIGN.md`; acceptance is AC-16 in the S4 plan. Implementation and runtime evidence are pending. Operator: accountable task owner; Codex: executor; exact WSL service owner is unknown.

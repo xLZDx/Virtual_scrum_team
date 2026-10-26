@@ -1669,3 +1669,101 @@ def test_job_is_closed_when_thread_start_fails(work, monkeypatch):
     with pytest.raises(RuntimeError):
         run(work, m=mf([sleeper]), commands=[sleeper], test_result_parser=ALL_IDS)
     assert closed and closed[0] is True  # the job was terminated on the exception path
+
+
+# ------------------------------------------ Windows Job Object API failures
+
+
+@pytest.mark.parametrize("terminate", [False, RuntimeError("terminate failed")], ids=["false", "raises"])
+@pytest.mark.parametrize("close", [True, False, RuntimeError("close failed")], ids=["true", "false", "raises"])
+def test_job_cleanup_failure_is_never_confirmed_and_fallback_runs(monkeypatch, terminate, close):
+    """Mock Win32 outcomes only; no child process or kill-table scenario is used."""
+    calls = []
+
+    def outcome(name, value):
+        calls.append(name)
+        if isinstance(value, Exception):
+            raise value
+        return value
+
+    api = type("Api", (), {"k32": type("Kernel32", (), {
+        "TerminateJobObject": staticmethod(lambda *args: outcome("terminate", terminate)),
+        "CloseHandle": staticmethod(lambda *args: outcome("close", close)),
+    })()})
+    job = runner._JobObject(api, 123)
+    fallback = []
+    monkeypatch.setattr(runner, "_taskkill_tree", lambda pid: fallback.append(pid))
+
+    result = job.terminate_and_close()
+    if terminate is not True or close is not True:
+        assert result is False
+        runner._kill_tree(type("Proc", (), {"pid": 456, "kill": lambda self: None})())
+        assert fallback == [456]
+    else:
+        assert result is True
+        assert fallback == []
+    assert calls == ["terminate", "close"]
+    assert (job._handle is None) is (close is True)
+
+
+@pytest.mark.parametrize("close", [False, RuntimeError("close failed")], ids=["false", "raises"])
+def test_failed_job_handle_close_is_retried(monkeypatch, close):
+    calls = []
+
+    def close_handle(handle):
+        calls.append(handle)
+        if len(calls) == 1:
+            if isinstance(close, Exception):
+                raise close
+            return close
+        return True
+
+    api = type("Api", (), {"k32": type("Kernel32", (), {
+        "TerminateJobObject": staticmethod(lambda *args: True),
+        "CloseHandle": staticmethod(close_handle),
+    })()})
+    job = runner._JobObject(api, 789)
+    assert job.terminate_and_close() is False
+    assert job._handle == 789
+    assert job.terminate_and_close() is True
+    assert job._handle is None
+    assert calls == [789, 789]
+
+
+@pytest.mark.parametrize("api_name", ["TerminateJobObject", "CloseHandle"], ids=["terminate", "close"])
+@pytest.mark.parametrize("failure", ["false", "raises"], ids=["false", "raises"])
+def test_run_receipt_fails_closed_when_job_cleanup_is_unconfirmed(
+    work, monkeypatch, api_name, failure
+):
+    """Exercise runner-to-receipt propagation with mocked Win32 APIs and no real kill."""
+    calls = []
+
+    def failed_api(*args):
+        calls.append(api_name)
+        if failure == "raises":
+            raise RuntimeError(f"{api_name} failed")
+        return False
+
+    class Kernel32:
+        TerminateJobObject = staticmethod(lambda *args: True)
+        CloseHandle = staticmethod(lambda *args: True)
+
+    setattr(Kernel32, api_name, staticmethod(failed_api))
+    api = type("Api", (), {"k32": Kernel32()})
+    fake_job = runner._JobObject(api, 321)
+    monkeypatch.setattr(runner._JobObject, "attach", classmethod(lambda cls, proc: fake_job))
+    monkeypatch.setattr(runner, "_spawn_kwargs", lambda **kwargs: {})
+    fallback = []
+    monkeypatch.setattr(runner, "_kill_tree", lambda proc: fallback.append(proc.pid))
+    monkeypatch.setattr(runner.os, "name", "nt")
+
+    report = {}
+    r = run(work, report=report, test_result_parser=ALL_IDS)
+
+    assert r["commands"][0]["exit_code"] == runner.EXIT_CAPTURE_INCOMPLETE == -4
+    assert report["capture_incomplete"] is True
+    assert report["commands"][0]["capture_incomplete"] is True
+    assert r["result"] == "FAIL" and signing.verify(r, KEY)
+    assert calls.count(api_name) == (1 if api_name == "TerminateJobObject" else 2)
+    assert len(fallback) >= 1
+    assert len(set(fallback)) == 1

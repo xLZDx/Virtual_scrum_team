@@ -30,6 +30,15 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Additional process shortcoming: the implementation agent ran `git diff --check -- tools/vst/runner.py` contrary to its instruction; output was empty but exit code was not retained. Treat it as non-evidence.
 - Fix status: source and contract documentation updated in change 0319; required test-agent runs remain open.
 
+## 2026-10-26 — Test retrying cleanup without weakening the fail-closed assertion
+
+- Kind: SHORTCOMING (first integration assertions assumed cleanup ran once although the finalizer retries it).
+- Facts: functional-test-reviewer initially observed four failing assertions because `CloseHandle` and fallback calls can repeat in `finally`; after adjusting the test to assert sticky fail-closed behavior while allowing retry, the focused set passed 12/12 at source HEAD `5ae495c`. The test double also first lacked `proc.kill`; it was corrected. Attempt counts for that earlier test-double run were not retained.
+- Root cause: the initial test assertion did not account for the deliberate final cleanup retry.
+- Layer that caught it: designated functional-test-reviewer.
+- Rule: test the invariant (cleanup failure cannot produce PASS) and the retry contract, not an incidental exact call count.
+- Fix status: regression coverage and evidence recorded in change 0320; exact committed-test-head rerun pending.
+
 ## 2026-10-25 -- Reconcile prepared sprint docs with repository evidence before execution
 
 - Kind: SHORTCOMING (documentation drift caught before implementation).

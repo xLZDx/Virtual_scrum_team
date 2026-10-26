@@ -2,6 +2,10 @@
 
 Last updated: 2026-10-26. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
 
+## Current continuation checkpoint — S2 cleanup fix and S2/S3 regression evidence
+
+Current canonical checkout: `D:\Repo\Virtual_scrum_team`; branch `s4-canonical-continuation`; S2 source-fix HEAD `5ae495c073a7bfb5d26f209f582c00e7c4c954c7`. Change 0319 fixes the Windows Job Object cleanup false-success path found by three independent S2 specialist reviews. Designated test agents then ran focused S2/S3 subsets at that source HEAD; exact commands, counts, skips and limitations are in `docs/sdlc/evidence/s2-s3-current-source-regression-5ae495c.md`. The functional test source was uncommitted during those runs, so a committed-test-head rerun is still required. S2 specialist re-review and GPT-PM exact-head approval remain pending. S2 forbidden process-kill/kill-table, full POSIX/Windows containment and E8 crash/resume remain `NOT_RUN`; S3 resume/STOP cases and sandbox-boundary proof also remain `NOT_RUN`. S4 remains open after GPT-PM REJECT at `ece6065`, with 52 policy selectors `NOT_RUN` and AC-16/AC-17 report-bound runtime prerequisites unresolved. S5 remains blocked by S2/S4 entry conditions and unverified AEVE source/interface evidence. No push, PR or merge is approved. All work remains in this canonical checkout; the pre-existing untracked S2 functional report is preserved.
+
 ## Latest continuation checkpoint — S4 test work in canonical checkout
 
 Latest reviewed S4 code/test head: `ece606584a7c0dd86e76ce475d6f6728c6804508` on branch `s4-canonical-continuation`; the category manifest source head is `5d1a8d599bec046da9b3afd36e697774e65ac49b`. All development in this continuation stayed in `D:\Repo\Virtual_scrum_team`; no per-sprint worktree or fork folder was created or used. `git worktree list` showed pre-existing S2 and S4 sibling checkouts plus a scratch S5 checkout; their provenance is not verified, and this continuation did not inspect or modify their contents. The pre-existing untracked `docs/sdlc/evidence/s2-functional-test-run.md` remains untouched.
