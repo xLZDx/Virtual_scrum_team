@@ -178,14 +178,29 @@ def _wheel_file_map(filename: str, content: bytes, locked: LockedWheel) -> dict[
     tags = wheel_metadata.get_all("Tag", [])
     if wheel_metadata.get("Root-Is-Purelib", "").lower() != "true" or not tags:
         raise DependencyProvenanceError("only purelib wheels with explicit tags are supported")
-    supported_tags = {"py3-none-any", "py2.py3-none-any"}
-    if any(tag not in supported_tags for tag in tags):
-        raise DependencyProvenanceError("wheel contains an unsupported Python/platform tag")
+
+    def expand_supported_tags(values: list[str]) -> set[str]:
+        expanded: set[str] = set()
+        for value in values:
+            parts = value.split("-")
+            python_tags = parts[0].split(".") if len(parts) == 3 else []
+            if (
+                len(parts) != 3
+                or not python_tags
+                or any(tag not in {"py2", "py3"} for tag in python_tags)
+                or len(set(python_tags)) != len(python_tags)
+                or parts[1:] != ["none", "any"]
+            ):
+                raise DependencyProvenanceError("wheel contains an unsupported Python/platform tag")
+            expanded.update(f"{tag}-none-any" for tag in python_tags)
+        return expanded
+
+    metadata_tags = expand_supported_tags(tags)
     wheel_parts = filename[:-4].split("-") if filename.endswith(".whl") else []
     if len(wheel_parts) < 5 or _normalize_name(wheel_parts[0]) != locked.name or wheel_parts[1] != locked.version:
         raise DependencyProvenanceError("wheel filename does not match locked package metadata")
-    filename_tags = {"-".join(wheel_parts[-3:])}
-    if not filename_tags.issubset(supported_tags) or not filename_tags.issubset(set(tags)):
+    filename_tags = expand_supported_tags(["-".join(wheel_parts[-3:])])
+    if filename_tags != metadata_tags:
         raise DependencyProvenanceError("wheel filename has an unsupported Python/platform tag")
 
     record_rows: dict[str, tuple[str, str]] = {}

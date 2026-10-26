@@ -17,28 +17,96 @@ import pytest
 from tools.qa import build_registry, dependencies, registry, run
 
 
-def _wheel_bytes(*, include_relocation: bool = False) -> bytes:
+def _wheel_bytes(
+    *,
+    include_relocation: bool = False,
+    project: str = "pytest",
+    version: str = "9.0.3",
+    tags: tuple[str, ...] = ("py3-none-any",),
+) -> bytes:
+    dist_info = f"{project}-{version}.dist-info"
     files = {
-        "pytest/__init__.py": b"__version__ = '9.0.3'\n",
-        "pytest-9.0.3.dist-info/METADATA": b"Metadata-Version: 2.1\nName: pytest\nVersion: 9.0.3\n\n",
-        "pytest-9.0.3.dist-info/WHEEL": (
-            b"Wheel-Version: 1.0\nGenerator: s4-test\nRoot-Is-Purelib: true\nTag: py3-none-any\n\n"
+        f"{project}/__init__.py": f"__version__ = '{version}'\n".encode(),
+        f"{dist_info}/METADATA": (
+            f"Metadata-Version: 2.1\nName: {project}\nVersion: {version}\n\n".encode()
         ),
+        f"{dist_info}/WHEEL": (
+            "Wheel-Version: 1.0\nGenerator: s4-test\nRoot-Is-Purelib: true\n"
+            + "".join(f"Tag: {tag}\n" for tag in tags)
+            + "\n"
+        ).encode(),
     }
     if include_relocation:
-        files["pytest-9.0.3.data/purelib/relocated.py"] = b"value = 1\n"
+        files[f"{project}-{version}.data/purelib/relocated.py"] = b"value = 1\n"
     record = io.StringIO(newline="")
     writer = csv.writer(record, lineterminator="\n")
     for name, content in sorted(files.items()):
         digest = base64.urlsafe_b64encode(hashlib.sha256(content).digest()).decode().rstrip("=")
         writer.writerow((name, f"sha256={digest}", str(len(content))))
-    writer.writerow(("pytest-9.0.3.dist-info/RECORD", "", ""))
-    files["pytest-9.0.3.dist-info/RECORD"] = record.getvalue().encode()
+    writer.writerow((f"{dist_info}/RECORD", "", ""))
+    files[f"{dist_info}/RECORD"] = record.getvalue().encode()
     output = io.BytesIO()
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for name, content in sorted(files.items()):
             archive.writestr(name, content)
     return output.getvalue()
+
+
+def test_s4_dependency_accepts_equivalent_expanded_python_wheel_tags(tmp_path: Path):
+    wheelhouse = tmp_path / "wheelhouse"
+    wheelhouse.mkdir()
+    pytest_wheel = _wheel_bytes()
+    (wheelhouse / "pytest-9.0.3-py3-none-any.whl").write_bytes(pytest_wheel)
+    wheel = _wheel_bytes(
+        project="colorama",
+        version="0.4.6",
+        tags=("py2-none-any", "py3-none-any"),
+    )
+    (wheelhouse / "colorama-0.4.6-py2.py3-none-any.whl").write_bytes(wheel)
+    lock = tmp_path / "requirements.lock"
+    lock.write_text(
+        "# Wheel-only, exact hashes for a synthetic runner test.\n"
+        "pytest==9.0.3 \\\n"
+        f"    --hash=sha256:{hashlib.sha256(pytest_wheel).hexdigest()}\n"
+        "colorama==0.4.6 \\\n"
+        f"    --hash=sha256:{hashlib.sha256(wheel).hexdigest()}\n",
+        encoding="utf-8",
+    )
+
+    target = tmp_path / "target"
+    prepared = dependencies.prepare_dependency_target(lock, wheelhouse, target)
+
+    assert prepared["versions"] == {"colorama": "0.4.6", "pytest": "9.0.3"}
+    assert dependencies.verify_dependency_environment(lock, target, wheelhouse)["versions"] == {
+        "colorama": "0.4.6",
+        "pytest": "9.0.3",
+    }
+
+    for tags, reason in (
+        (("py3-none-any",), "wheel filename has an unsupported Python/platform tag"),
+        (("cp314-cp314-win_amd64",), "wheel contains an unsupported Python/platform tag"),
+    ):
+        rejected_wheel = _wheel_bytes(project="colorama", version="0.4.6", tags=tags)
+        rejected_wheelhouse = tmp_path / f"wheelhouse-{tags[0]}"
+        rejected_wheelhouse.mkdir()
+        (rejected_wheelhouse / "pytest-9.0.3-py3-none-any.whl").write_bytes(pytest_wheel)
+        (rejected_wheelhouse / "colorama-0.4.6-py2.py3-none-any.whl").write_bytes(rejected_wheel)
+        rejected_lock = tmp_path / f"requirements-{tags[0]}.lock"
+        rejected_lock.write_text(
+            "# Wheel-only, exact hashes for a synthetic runner test.\n"
+            "pytest==9.0.3 \\\n"
+            f"    --hash=sha256:{hashlib.sha256(pytest_wheel).hexdigest()}\n"
+            "colorama==0.4.6 \\\n"
+            f"    --hash=sha256:{hashlib.sha256(rejected_wheel).hexdigest()}\n",
+            encoding="utf-8",
+        )
+
+        with pytest.raises(dependencies.DependencyProvenanceError, match=reason):
+            dependencies.prepare_dependency_target(
+                rejected_lock,
+                rejected_wheelhouse,
+                tmp_path / f"target-{tags[0]}",
+            )
 
 
 def _locked_fixture(tmp_path: Path, *, include_relocation: bool = False):
