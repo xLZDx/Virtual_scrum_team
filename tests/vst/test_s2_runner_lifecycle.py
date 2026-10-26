@@ -1163,6 +1163,8 @@ def _install_mock_windows_run(monkeypatch, *, failure=None):
             if not self.closed:
                 self.closed = True
                 events.append("job_cleanup")
+                return True
+            return True
 
     class Pointer:
         def __init__(self, value):

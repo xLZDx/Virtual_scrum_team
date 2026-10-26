@@ -72,3 +72,23 @@ After change 0320 committed the functional test source and evidence, the designa
 | S3 pilot safe subset | Three selectors listed in the prior section | 3 passed; exit 0 |
 
 Python: 3.14.3. Every invocation emitted one `pytest-asyncio` deprecation warning about `asyncio.get_event_loop_policy`; no failures occurred. The explicit POSIX skips, resume deselection, S3 stop/fencing cases and sandbox boundary cases remain `NOT_RUN`, not passes. These results are bound to the exact committed source/test HEAD `2eec051`; this evidence document and subsequent status records do not change source or test files.
+
+## Current continuation: exact S2 lifecycle regression follow-up
+
+At repository HEAD `c7ad087c9006d07eeafd348cdc3df8cbc73888d1`, the designated `e2e-runner` ran the broad safe lifecycle selection:
+
+```powershell
+C:\Python314\python.exe -m pytest -q tests/vst/test_s2_runner_lifecycle.py -k "not test_signer_rejects_malformed_signing_evidence"
+```
+
+The first run returned **64 passed, 2 failed, 5 skipped, 4 deselected** (exit 1). The two failures were `test_strict_windows_launch_suspends_assigns_job_then_resumes_before_command` and `test_nonstrict_windows_launch_keeps_unsuspended_compatibility_path`; both received `EXIT_CAPTURE_INCOMPLETE` (-4) instead of 0. Inspection showed the test-only `MockJob.terminate_and_close()` implicitly returned `None`, while the production contract treats only explicit `True` as confirmed cleanup. The implementation was not changed.
+
+`functional-test-reviewer` updated that mock to return `True` on successful and idempotent cleanup while preserving assignment, thread-discovery and resume failure cases. The rerun used:
+
+```powershell
+C:\Python314\python.exe -m pytest tests/vst/test_s2_runner_lifecycle.py -k 'not signer_rejects_malformed_signing_evidence' -q
+```
+
+It exited 0: **66 passed, 5 skipped, 4 deselected**, with one `pytest-asyncio` deprecation warning. Python 3.14.3; elapsed 47.63 seconds. HEAD remained `c7ad087c9006d07eeafd348cdc3df8cbc73888d1`; the test file was modified in the working tree for this run. The corrected test source must be committed and rerun at its exact committed HEAD before final S2 review.
+
+The designated E2E runner also attempted `tests/vst/test_s2_sandbox_probe.py::test_posix_read_only_reviewer_cannot_write_worktree_or_store_fixture` in Ubuntu-24.04 WSL. The distro was available, but `/mnt/d/Repo/Virtual_scrum_team` did not exist because `/mnt/d` was an empty mount placeholder. The selector is **NOT_RUN**; no mount or provisioning change was attempted.
