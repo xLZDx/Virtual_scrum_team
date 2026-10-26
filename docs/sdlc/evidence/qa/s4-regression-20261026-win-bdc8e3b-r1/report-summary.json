@@ -1,0 +1,51 @@
+{
+  "run_id": "s4-regression-20261026-win-bdc8e3b-r1",
+  "result": "INCONCLUSIVE",
+  "exit_code": 0,
+  "candidate_head": "bdc8e3be7d74ca20a380ecade6acd4e277e9c4dd",
+  "registry_sha256": "7b03dd4ac32b671a5e9a9a95a04c717dd6af2628dfda5d485d712788a4f2dd7a",
+  "expected_selector_count": 897,
+  "passed_selector_count": 897,
+  "failed_selector_count": 0,
+  "concrete_executed_count": 1845,
+  "not_run_count": 53,
+  "unassigned_count": 9,
+  "forbidden_timeout_in_expected": false,
+  "forbidden_timeout_in_executed": false,
+  "previous_s2": [
+    {
+      "selector": "tests/vst/test_s2_runner_lifecycle.py::test_bounded_source_preflight_rejects_before_pack_or_index_writer",
+      "passed": true,
+      "failed": false,
+      "not_run": false
+    },
+    {
+      "selector": "tests/vst/test_s2_runner_lifecycle.py::test_cumulative_target_storage_cap_rejects_before_pack_process_starts",
+      "passed": true,
+      "failed": false,
+      "not_run": false
+    },
+    {
+      "selector": "tests/vst/test_s2_runner_lifecycle.py::test_hook_free_publication_transfers_source_only_commit_without_running_pre_push",
+      "passed": true,
+      "failed": false,
+      "not_run": false
+    },
+    {
+      "selector": "tests/vst/test_s2_runner_lifecycle.py::test_source_object_alternates_are_rejected_before_pack_or_index_writer",
+      "passed": true,
+      "failed": false,
+      "not_run": false
+    },
+    {
+      "selector": "tests/vst/test_s2_runner_lifecycle.py::test_synthetic_backend_fast_forward_and_conflicting_branch_and_pr_refs",
+      "passed": true,
+      "failed": false,
+      "not_run": false
+    }
+  ],
+  "reason": [
+    "one or more inventory selectors are explicitly NOT_RUN by policy"
+  ],
+  "unexpected_candidate_changes": []
+}

@@ -1,0 +1,2 @@
+ M docs/sdlc/evidence/qa/regression.report.jsonl
+ M docs/sdlc/evidence/qa/regression.stdout.txt

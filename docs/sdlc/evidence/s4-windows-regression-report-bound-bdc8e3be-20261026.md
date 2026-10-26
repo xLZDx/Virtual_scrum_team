@@ -90,7 +90,7 @@ it does not classify the earlier discrepancy as a flake.
   all three artifacts; the report/stdout ranges bind the newly appended bytes.
 - The 53 `NOT_RUN` rows, `selection.json`, `events.json`, raw report/stdout/stderr,
   controller output, exact command, and before/after target evidence are preserved
-  under `D:\Temp\vst-s4-regression-evidence-20261026-bdc8e3b\`.
+  under `D:\Temp\vst-s4-regression-evidence-20261026-bdc8e3b\`. The same raw evidence is now retained in-repository under `docs/sdlc/evidence/qa/s4-regression-20261026-win-bdc8e3b-r1/`. The raw report row SHA-256 is `0eb134b9ab349524587167b8a87e61b5902a3269b2fe92ece58bd2965a6921c7`; the full report SHA-256 remains `900c4b481d5963b8a50878b53931d99db4b4f8f14c75d3a4b72c059998c7a052`.
 
 No broad E2E category was rerun. No source or registry file was changed, and no
 commit was created by this run.

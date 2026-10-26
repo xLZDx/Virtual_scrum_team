@@ -1,0 +1,92 @@
+[
+  {
+    "file": "candidate-status-after.txt",
+    "bytes": 98,
+    "sha256": "82fd1be511c4a1880cb29c06292cb43f16dff92b1e70a3227bea15bf02182df3"
+  },
+  {
+    "file": "controller-stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "controller-stdout.txt",
+    "bytes": 85855,
+    "sha256": "475f2685e86f2bb27ef40e6c23f3b136351311e62fcc9e9d389d93f1f332a9aa"
+  },
+  {
+    "file": "events.json",
+    "bytes": 425161,
+    "sha256": "73f3972ec2bf723d928bdf76b90f0471b08262c4fb09379870cdc50ffc90ffbf"
+  },
+  {
+    "file": "exit-code.txt",
+    "bytes": 3,
+    "sha256": "f1b2f662800122bed0ff255693df89c4487fbdcf453d3524a42d4ec20c3d9c04"
+  },
+  {
+    "file": "final-accounting.json",
+    "bytes": 10732,
+    "sha256": "e073261970735ad9f81f4e7e9b70fed166b3da604c3b67ca7d212deed7af57b0"
+  },
+  {
+    "file": "policy-not-run-53.json",
+    "bytes": 12805,
+    "sha256": "96a7ffb37b56b8d65fe45e35462ca8dc7668ee547b914ba5912feb53ef1a2036"
+  },
+  {
+    "file": "registry-preflight.json",
+    "bytes": 951,
+    "sha256": "aeb229779c35551da087bef0eb2256a2a43019781b80f9ba3bde496b5e2ed912"
+  },
+  {
+    "file": "regression.report.jsonl",
+    "bytes": 7380251,
+    "sha256": "900c4b481d5963b8a50878b53931d99db4b4f8f14c75d3a4b72c059998c7a052"
+  },
+  {
+    "file": "regression.stderr.txt",
+    "bytes": 101,
+    "sha256": "a528b1e4d996e9b60eccbc8a0592358d1272e47b0eedcbdee4f448ee8777562b"
+  },
+  {
+    "file": "regression.stdout.txt",
+    "bytes": 14944,
+    "sha256": "24e8770b92bd152f6fcca28e4c2edd5226f8aa62f3c88a634467ed8fef9f6f60"
+  },
+  {
+    "file": "report-accounting.json",
+    "bytes": 2632,
+    "sha256": "7be609751fdc5ef8c7e54f36cee1c0be58145169db2b8324d84f8a76d5c075d0"
+  },
+  {
+    "file": "report-row-sha256.txt",
+    "bytes": 66,
+    "sha256": "3c9c60dbe6ed02491587c4c380afe2511695628625a704aec916983d9f666d46"
+  },
+  {
+    "file": "report-summary.json",
+    "bytes": 1784,
+    "sha256": "0267bb5d2ff981cf31713044f2ab641db3ff1ab54b7ef9739dd1016c8d721423"
+  },
+  {
+    "file": "run-command.txt",
+    "bytes": 639,
+    "sha256": "abe52d5c68600747be3e7b49434ed667e2463e038fa65f8114a2893c80587399"
+  },
+  {
+    "file": "selection.json",
+    "bytes": 343716,
+    "sha256": "d354fff7bfdf703eef0f51b3ac295c673cc658a16632bf192480d60056c0b34b"
+  },
+  {
+    "file": "target-after.json",
+    "bytes": 1038,
+    "sha256": "fbf2a7fa82c3c7deb395f3cf7f8c3276550e221e6cd148abdc0066f1e018a282"
+  },
+  {
+    "file": "target-prepare.json",
+    "bytes": 1038,
+    "sha256": "fbf2a7fa82c3c7deb395f3cf7f8c3276550e221e6cd148abdc0066f1e018a282"
+  }
+]
