@@ -6,7 +6,16 @@ Read-only inventory from the canonical repository `D:\Repo\Virtual_scrum_team`. 
 
 ## Observed facts
 
-Command: `wsl.exe -d Ubuntu-24.04 --user root --exec sh -lc '<read-only inventory>'`.
+Commands executed from PowerShell in `D:\Repo\Virtual_scrum_team`:
+
+```powershell
+wsl.exe -d Ubuntu-24.04 --user root --exec sh -lc 'cat /etc/wsl.conf'
+wsl.exe -d Ubuntu-24.04 --user root --exec sh -lc 'id; test -S /var/run/docker.sock && echo docker_socket=present || echo docker_socket=absent; grep -E "Max processes|Max open files|Max locked memory|Max address space" /proc/self/limits'
+wsl.exe -d Ubuntu-24.04 --user root --exec sh -lc "findmnt -rn -o TARGET,FSTYPE,SOURCE,OPTIONS | grep -E '^(/ |/tmp |/dev/shm |/mnt/c |/mnt/d )' || true; printf 'LISTENING_SOCKET_COUNT='; ss -H -lntup 2>/dev/null | wc -l; printf 'WSL_VERSION='; uname -r; printf 'USER='; id -un"
+wsl.exe -d Ubuntu-24.04 --user root --exec sh -lc "findmnt -rn -o TARGET,FSTYPE,SOURCE,OPTIONS | grep -E '^(/ |/tmp |/dev/shm |/mnt/c |/mnt/d )' || true; getent passwd vst-worker || true; getent passwd vst-runner || true; test -S /var/run/docker.sock && echo docker_socket=present || echo docker_socket=absent; ss -H -lntup 2>/dev/null | wc -l"
+```
+
+The first mount-filter attempt used an incorrectly quoted `awk` expression and failed without mount output; the subsequent `findmnt | grep` commands above are the successful observations used below. The environment was not changed between these read-only queries.
 
 - Kernel identifies as WSL2: `6.6.114.1-microsoft-standard-WSL2`.
 - `/etc/wsl.conf` reports `automount.enabled=false`, `interop.enabled=false`, and `appendWindowsPath=false`.

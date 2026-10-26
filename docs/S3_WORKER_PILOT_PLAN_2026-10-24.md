@@ -187,13 +187,13 @@ Canonical S3 backlog grouping. These items are registered while local contract c
 
 | Proposed item | Scope | Accountable / technical ownership | Entry/dependency |
 |---|---|---|---|
-| S3-A / VST-027 | Vendor-neutral single-story adapter, in-repository synthetic integration, and idempotent operations | Operator is accountable for the delegated sprint; Codex executes. Canonical service owner is UNKNOWN. | S2 control-plane contract inspection; code preparation does not start worker execution |
-| S3-B / VST-028 | Candidate identity, immutable revision, license, dependency, compatibility, and security audits | Operator owns explicit acquisition authorization; Codex performs the read-only audit; technical audit service owner is UNKNOWN. | Complete before any candidate acquisition |
+| S3-A / VST-027 | Vendor-neutral single-story adapter, in-repository synthetic integration, and idempotent operations | Operator is accountable for the delegated sprint; Codex executes and owns identifying any unresolved service boundary. | S2 control-plane contract inspection; code preparation does not start worker execution |
+| S3-B / VST-028 | Candidate identity, immutable revision, license, dependency, compatibility, and security audits | Operator owns explicit acquisition authorization; Codex performs and owns the read-only technical audit. | Complete before any candidate acquisition |
 | S3-C / VST-029 | Shared deterministic crash/resume, STOP, retry, and budget fixture | Operator is accountable; Codex implements product fixture; functional-test-reviewer and e2e-runner own required test authorship/execution. These are roles, not named people. | Accepted requirements and code completion; process-kill scenarios remain separately gated |
-| S3-D / VST-030 | Sandbox-bound worktree, credentials, diff, and egress proof | Operator is accountable for sandbox provisioning; Codex binds a fresh probe to each authorized run; exact platform/service owner is UNKNOWN. | Verified sandbox and fresh signed probe for each run |
+| S3-D / VST-030 | Sandbox-bound worktree, credentials, diff, and egress proof | Operator is accountable for sandbox provisioning; Codex owns identification of the required platform boundary and binds a fresh probe to each authorized run. | Verified sandbox and fresh signed probe for each run |
 | S3-E / VST-031 | Candidate comparison, residual risk, and operator choice | Operator owns the final choice; reviewers supply evidence, not the decision. | Complete denominator, candidate gates, and exact-head review |
 
-The matching IDs are tracked in `core/BACKLOG.md`. The operator is the accountable task owner under delegated work; Codex is the executor. No named human/service technical owner is asserted where project records do not identify one.
+The matching IDs are tracked in `core/BACKLOG.md`. The operator is the accountable task owner under delegated work; Codex owns execution and closure of technical evidence gaps; GPT-PM owns architecture adjudication. A platform/service boundary may remain technically unidentified, but this is not an ownership gap.
 
 ## 10. Open dependencies and decisions
 
