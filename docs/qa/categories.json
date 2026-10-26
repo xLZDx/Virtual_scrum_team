@@ -43,7 +43,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "4d4341e4812ba726c0b35e83ee2fad0a3fb5a7f1",
+  "source_head": "96c9c1556e0bd7d7731bbfba40806c4d1e209907",
   "source_inventory": [
     {
       "path": "tests/qa/test_s4_dependency_provenance.py",
@@ -77,8 +77,8 @@
     },
     {
       "path": "tests/qa/test_s4_functional_worker_identity.py",
-      "source_commit": "5d1a8d599bec046da9b3afd36e697774e65ac49b",
-      "sha256": "04b2730a9b1c8be0c872cd241cca231d69234d6404925e1ff48cfae4ad5e1444"
+      "source_commit": "96c9c1556e0bd7d7731bbfba40806c4d1e209907",
+      "sha256": "bd4335ab85327246849673a7d7e52b28f2fd62b0e47d065040206bb45e86b474"
     },
     {
       "path": "tests/qa/test_s4_seeded_failure_contracts.py",
@@ -1203,7 +1203,7 @@
       "test_id": "tests/qa/test_s4_functional_worker_identity.py::test_s4_worker_helper_drops_runner_identity_and_denies_runner_sentinels",
       "selector": "tests/qa/test_s4_functional_worker_identity.py::test_s4_worker_helper_drops_runner_identity_and_denies_runner_sentinels",
       "source_path": "tests/qa/test_s4_functional_worker_identity.py",
-      "source_commit": "5d1a8d599bec046da9b3afd36e697774e65ac49b",
+      "source_commit": "96c9c1556e0bd7d7731bbfba40806c4d1e209907",
       "primary_category": "identity",
       "runtime_profiles": [
         "wsl-ubuntu-24.04-cpython-3.12.3"
