@@ -550,6 +550,27 @@ def test_s4_matrix_rejects_missing_profile_report_references(tmp_path: Path):
     assert any("reports are not referenced" in reason for reason in output["reasons"])
 
 
+def test_s4_matrix_requires_identity_report_only_for_unprivileged_wsl():
+    identity_id = registry.IDENTITY_SELECTOR
+    identity_profiles = {
+        profile: [identity_id] if profile == registry.WSL_PROFILE else []
+        for profile in registry.RUNTIME_PROFILES
+    }
+    registry_view = SimpleNamespace(
+        category_profile_test_ids={"identity": identity_profiles},
+    )
+
+    expected = matrix._expected_report_refs(registry_view)
+
+    assert (registry.WSL_PROFILE, "identity") in expected
+    assert (registry.WINDOWS_PROFILE, "identity") not in expected
+    assert (registry.WSL_ROOT_PROFILE, "identity") not in expected
+
+    identity_profiles[registry.WINDOWS_PROFILE] = [identity_id]
+    with pytest.raises(matrix.MatrixError, match="exactly one unprivileged WSL profile report"):
+        matrix._expected_report_refs(registry_view)
+
+
 def test_s4_matrix_never_promotes_a_policy_not_run_selector(tmp_path: Path):
     """S4 AC-11/AC-14/VST-032/037: policy NOT_RUN stays outside every passing denominator."""
     profile_ids = {profile: [] for profile in registry.RUNTIME_PROFILES}

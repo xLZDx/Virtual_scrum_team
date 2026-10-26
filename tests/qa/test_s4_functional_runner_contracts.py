@@ -44,13 +44,22 @@ def _build_candidate_repo(tmp_path: Path, *, include_seeded: bool = True) -> tup
     (root / "docs").mkdir(exist_ok=True)
     (root / "tools" / "vst").mkdir(parents=True)
 
-    categories = ("functional", "integration", "api", "e2e")
+    categories = ("functional", "integration", "api", "e2e", "identity")
     if include_seeded:
         categories += ("seeded_failure",)
     for category in categories:
-        filename = f"test_s4_{category}_fixture.py"
+        filename = (
+            "test_s4_functional_worker_identity.py"
+            if category == "identity"
+            else f"test_s4_{category}_fixture.py"
+        )
+        test_name = (
+            "test_s4_worker_helper_drops_runner_identity_and_denies_runner_sentinels"
+            if category == "identity"
+            else "test_fixture_node"
+        )
         (root / "tests" / "qa" / filename).write_bytes(
-            "def test_fixture_node():\n    return None\n".encode("utf-8")
+            f"def {test_name}():\n    return None\n".encode("utf-8")
         )
     (root / "docs" / "S4_QA_AUTOMATION_PLAN_2026-10-24.md").write_text(
         "# Python API scope\n", encoding="utf-8"
@@ -92,13 +101,37 @@ def test_s4_registry_accepts_real_committed_selector_denominator(candidate_repo)
     ).hexdigest()
     assert loaded.candidate_head == manifest["source_head"]
     assert set(loaded.category_inventory_ids) >= {
-        "functional", "integration", "api", "e2e", "seeded-failure", "regression"
+        "functional", "integration", "api", "e2e", "identity", "seeded-failure", "regression"
     }
+    identity_id = registry.IDENTITY_SELECTOR
+    assert loaded.category_test_ids["identity"] == [identity_id]
+    assert identity_id not in loaded.category_test_ids["regression"]
     assert loaded.category_test_ids["regression"] == sorted(
         test_id
         for category in ("functional", "integration", "api", "e2e")
         for test_id in loaded.category_test_ids[category]
     )
+
+
+def test_s4_registry_rejects_non_singleton_identity_category(candidate_repo):
+    root, manifest = candidate_repo
+    changed = copy.deepcopy(manifest)
+    functional_id = next(
+        item["test_id"] for item in changed["tests"]
+        if item["primary_category"] == "functional"
+    )
+    changed["tests"] = [
+        {**item, "primary_category": "identity"}
+        if item["test_id"] == functional_id else item
+        for item in changed["tests"]
+    ]
+    changed["categories"]["functional"]["test_ids"].remove(functional_id)
+    changed["categories"]["identity"]["test_ids"].append(functional_id)
+    changed["categories"]["identity"]["test_ids"].sort()
+    _rewrite_manifest(root, changed)
+
+    with pytest.raises(registry.RegistryError, match="identity category must contain exactly"):
+        registry.validate_registry(root)
 
 
 @pytest.mark.parametrize(
@@ -768,6 +801,33 @@ def test_s4_runner_rejects_artifacts_outside_fixed_category_paths(tmp_path: Path
 
     with pytest.raises(run.QARunError, match="fixed append-only category paths"):
         run._repo_paths(args)
+
+
+def test_s4_runner_accepts_identity_category_fixed_artifact_paths(tmp_path: Path):
+    root, _ = _build_candidate_repo(tmp_path / "identity-candidate", include_seeded=False)
+    expected = {
+        "report": "docs/sdlc/evidence/qa/identity.report.jsonl",
+        "stdout": "docs/sdlc/evidence/qa/identity.stdout.txt",
+        "stderr": "docs/sdlc/evidence/qa/identity.stderr.txt",
+    }
+    args = SimpleNamespace(
+        repo_root=str(root),
+        scratch_root=str(tmp_path / "scratch"),
+        run_id="identity-run",
+        timeout_seconds=30,
+        output_cap_bytes=4096,
+        category="identity",
+        report_path=expected["report"],
+        stdout_path=expected["stdout"],
+        stderr_path=expected["stderr"],
+        dependency_target=str(tmp_path / "target"),
+        dependency_wheelhouse=str(tmp_path / "wheelhouse"),
+    )
+
+    _, _, output_paths = run._repo_paths(args)
+
+    assert {kind: path.relative_to(root).as_posix() for kind, path in output_paths.items()} == expected
+    assert set(expected.values()) <= run._known_artifact_paths()
 
 
 def test_s4_main_reports_wrong_interpreter_as_blocked_without_spawning_pytest(
