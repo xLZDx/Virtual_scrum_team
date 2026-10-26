@@ -362,6 +362,7 @@ def test_s4_pytest_command_bounds_argv_for_hundreds_of_selectors(tmp_path: Path)
         scratch_run=scratch_run,
         repo_root=tmp_path,
         dependency_target=dependency_target,
+        dependency_wheelhouse=tmp_path / "wheelhouse",
     )
 
     selection = json.loads((scratch_run / "selection.json").read_text(encoding="utf-8"))

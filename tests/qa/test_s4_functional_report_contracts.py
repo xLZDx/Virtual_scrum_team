@@ -143,6 +143,7 @@ def test_s4_report_redacts_candidate_scratch_user_paths_and_credentials(tmp_path
 def test_s4_runner_command_selection_is_exact_and_does_not_install_packages(tmp_path: Path):
     repo = tmp_path / "candidate"
     dependency_target = tmp_path / "target"
+    dependency_wheelhouse = tmp_path / "wheelhouse"
     dependency_target.mkdir()
     ids = [
         "tests/qa/test_case.py::test_function",
@@ -160,6 +161,7 @@ def test_s4_runner_command_selection_is_exact_and_does_not_install_packages(tmp_
             scratch_run=scratch_run,
             repo_root=repo,
             dependency_target=dependency_target,
+            dependency_wheelhouse=dependency_wheelhouse,
         )
         selection = json.loads((scratch_run / "selection.json").read_text(encoding="utf-8"))
         invocations.append((argv, child_env))
@@ -177,6 +179,7 @@ def test_s4_runner_command_selection_is_exact_and_does_not_install_packages(tmp_
         assert argv[1:4] == ["-m", "pytest", "-q"]
         assert child_env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] == "1"
         assert child_env["PYTHONPATH"] == str(dependency_target)
+        assert child_env["VST_QA_DEPENDENCY_WHEELHOUSE"] == str(dependency_wheelhouse)
         assert not any(token.lower() in {"install", "pip", "download"} for token in argv)
 
 
@@ -188,6 +191,7 @@ def test_s4_runner_rejects_empty_selector_invocation(tmp_path: Path):
         run._pytest_command(
             expected_ids=[], selectors={}, scratch_run=scratch_run,
             repo_root=tmp_path, dependency_target=tmp_path / "target",
+            dependency_wheelhouse=tmp_path / "wheelhouse",
         )
     except run.QARunError as exc:
         assert "empty registered selector set" in str(exc)

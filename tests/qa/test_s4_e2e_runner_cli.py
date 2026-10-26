@@ -29,7 +29,7 @@ from tools.qa.registry import (
 )
 
 
-BASELINE_HEAD = "fc20c9e31e1d4bb9bd9356921add66e14e5e230a"
+BASELINE_HEAD = "7929bc01d8f0a09975e319c8357c6497b9aba04e"
 FIXTURE_TEST_PATH = "tests/qa/test_native_fixture.py"
 FIXTURE_TEST_ID = f"{FIXTURE_TEST_PATH}::test_native_fixture"
 NOT_RUN_TEST_ID = f"{FIXTURE_TEST_PATH}::test_sandbox_dependent_fixture"
@@ -370,6 +370,11 @@ def _run_cli(
     output_cap_bytes: int = 1024 * 1024,
     report_path: str = f"{QA_ARTIFACT_ROOT}/e2e.report.jsonl",
 ) -> subprocess.CompletedProcess:
+    dependency_wheelhouse = os.environ.get("VST_QA_DEPENDENCY_WHEELHOUSE")
+    if not dependency_wheelhouse:
+        raise RuntimeError(
+            "VST_QA_DEPENDENCY_WHEELHOUSE is required for nested QA runner tests"
+        )
     args = [
         sys.executable, "-m", "tools.qa.run",
         "--category", "e2e",
@@ -377,6 +382,7 @@ def _run_cli(
         "--manifest", "docs/qa/categories.json",
         "--fixtures", "docs/qa/fixtures.json",
         "--dependency-target", str(dependency_target),
+        "--dependency-wheelhouse", dependency_wheelhouse,
         "--scratch-root", str(tmp_path / "scratch"),
         "--run-id", run_id,
         "--timeout-seconds", str(timeout_seconds),
@@ -418,17 +424,27 @@ def test_s4_e2e_child_runner_disables_dependency_bytecode(monkeypatch, tmp_path)
     captured = {}
 
     def fake_run(args, **kwargs):
+        captured["args"] = args
         captured["env"] = kwargs["env"]
         return subprocess.CompletedProcess(args, 0, stdout=b"", stderr=b"")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
+    monkeypatch.delenv("VST_QA_DEPENDENCY_WHEELHOUSE", raising=False)
     dependency_target = tmp_path / "dependency-target"
+    with pytest.raises(RuntimeError, match="VST_QA_DEPENDENCY_WHEELHOUSE"):
+        _run_cli(tmp_path, tmp_path, dependency_target, run_id="missing-wheelhouse")
+
+    dependency_wheelhouse = tmp_path / "wheelhouse"
+    monkeypatch.setenv("VST_QA_DEPENDENCY_WHEELHOUSE", os.fspath(dependency_wheelhouse))
     result = _run_cli(
         tmp_path, tmp_path, dependency_target, run_id="bytecode-disabled"
     )
 
     assert result.returncode == 0
+    assert captured["args"][captured["args"].index("--dependency-wheelhouse") + 1] == str(
+        dependency_wheelhouse
+    )
     assert captured["env"]["PYTHONDONTWRITEBYTECODE"] == "1"
     cache_prefix = Path(captured["env"]["PYTHONPYCACHEPREFIX"])
     assert cache_prefix == tmp_path / "pycache"
@@ -567,6 +583,7 @@ def test_s4_pytest_argv_size_depends_on_source_files_not_selector_count(tmp_path
 
     source_path = "tests/qa/test_many_registered_selectors.py"
     dependency_target = tmp_path / "dependencies"
+    dependency_wheelhouse = tmp_path / "wheelhouse"
 
     def command_for(selector_count: int) -> tuple[list[str], dict[str, str], Path]:
         expected_ids = [f"{source_path}::test_registered_{index:04d}" for index in range(selector_count)]
@@ -579,6 +596,7 @@ def test_s4_pytest_argv_size_depends_on_source_files_not_selector_count(tmp_path
             scratch_run=scratch_run,
             repo_root=tmp_path,
             dependency_target=dependency_target,
+            dependency_wheelhouse=dependency_wheelhouse,
         )
         return argv, child_env, scratch_run
 
@@ -595,6 +613,7 @@ def test_s4_pytest_argv_size_depends_on_source_files_not_selector_count(tmp_path
         cache_prefix = Path(child_env["PYTHONPYCACHEPREFIX"])
         assert cache_prefix == scratch_run / "pycache"
         assert not cache_prefix.is_relative_to(dependency_target)
+        assert child_env["VST_QA_DEPENDENCY_WHEELHOUSE"] == str(dependency_wheelhouse)
 
 
 def test_s4_e2e_cli_refuses_candidate_head_and_registry_selector_mismatches(
