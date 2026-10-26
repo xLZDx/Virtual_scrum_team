@@ -27,3 +27,22 @@ Primary sources:
 This closes only the narrow compatibility fact for the SDK's documented first-execution-run-ID behavior. General server/SDK compatibility, the pilot's exact replay/start/status/STOP/resume path, listener and persistence topology, source-to-artifact provenance, dependency closure, and runtime behavior remain `NOT_VERIFIED` or `NOT_RUN`. S3-G01 license/notice and S3-G02 dependency/provenance remain open. Acquisition and execution remain `NOT_APPROVED`; S2 Phase 8 is still not approved. No final candidate or “TOP” decision follows from this audit.
 
 Owner: Codex records pinned-source evidence; GPT-PM adjudicates the architecture contract; operator retains legal/acquisition decisions. Next: continue read-only primary-source audit and close build/profile provenance without acquiring candidate material; obtain authorization separately only after all audit gates are closed.
+
+## Pinned server/dependency metadata recheck — 2026-10-26
+
+Read-only primary-source inspection of the exact server pin found:
+
+- The official `v1.32.1` release page identifies commit `af08a5e` and marks its GitHub commit signature verified. This authenticates the source tag/commit display only; it is not binary provenance or a reproducible-build result.
+- The pinned server `go.mod` declares `go 1.26.8` and requires `github.com/nexus-rpc/nexus-proto-annotations v0.1.0`.
+- The exact `v0.1.0` dependency `go.mod` declares `go 1.25.4` and `google.golang.org/protobuf v1.36.1`.
+- The pinned server's root `LICENSE` is MIT. Requests for the dependency's root `LICENSE`, `LICENSE.txt`, and `COPYING` at the exact tag returned HTTP 404. The repository tree was not exhaustively enumerated; this does not prove that no notice/license exists elsewhere. The dependency's exact-version legal notice remains `NOT_VERIFIED` and requires legal disposition before acquisition.
+
+Primary sources, all pinned or exact-tag paths:
+
+- [Temporal v1.32.1 release](https://github.com/temporalio/temporal/releases/tag/v1.32.1)
+- [Temporal pinned go.mod](https://raw.githubusercontent.com/temporalio/temporal/af08a5e5f2dd40f545f2afac7780daaa6987001e/go.mod)
+- [Temporal pinned LICENSE](https://raw.githubusercontent.com/temporalio/temporal/af08a5e5f2dd40f545f2afac7780daaa6987001e/LICENSE)
+- [nexus-proto-annotations v0.1.0 go.mod](https://raw.githubusercontent.com/nexus-rpc/nexus-proto-annotations/v0.1.0/go.mod)
+- [nexus-proto-annotations v0.1.0 root LICENSE path](https://raw.githubusercontent.com/nexus-rpc/nexus-proto-annotations/v0.1.0/LICENSE)
+
+No source, wheel, module archive, or binary was downloaded. No build or candidate run was performed. Server Go dependency closure, artifact attestation, full SDK/server compatibility, pilot-topology fit, and legal approval remain open.
