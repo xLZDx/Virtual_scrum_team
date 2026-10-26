@@ -8,6 +8,7 @@ import os
 import socket
 import stat
 import subprocess
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -40,46 +41,55 @@ def test_s4_worker_helper_drops_runner_identity_and_denies_runner_sentinels(tmp_
     sentinel = tmp_path / "runner-secret"
     sentinel.write_text("runner-only\n", encoding="utf-8")
     sentinel.chmod(0o600)
-    server_path = tmp_path / "runner.sock"
-    listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    listener.bind(str(server_path))
-    server_path.chmod(0o600)
-    listener.listen(1)
-    tmp_path.chmod(0o711)
-    read_fd, write_fd = os.pipe()
+    socket_dir = tempfile.TemporaryDirectory(prefix="s4i-", dir="/tmp")
+    listener = None
     try:
-        os.set_inheritable(read_fd, True)
-        script = "\n".join((
-            "import ctypes, json, os, socket, sys",
-            "fd = int(sys.argv[3])",
-            "try:",
-            "    open(sys.argv[1], 'rb').close()",
-            "    file_denied = False",
-            "except PermissionError:",
-            "    file_denied = True",
-            "sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)",
-            "try:",
-            "    sock.connect(sys.argv[2])",
-            "    socket_denied = False",
-            "except PermissionError:",
-            "    socket_denied = True",
-            "finally:",
-            "    sock.close()",
-            "print(json.dumps({'uid': os.getuid(), 'euid': os.geteuid(), 'gid': os.getgid(),",
-            "    'egid': os.getegid(), 'groups': os.getgroups(),",
-            "    'no_new_privs': ctypes.CDLL(None).prctl(39, 0, 0, 0, 0),",
-            "    'fd_closed': not os.path.exists('/proc/self/fd/' + str(fd)),",
-            "    'file_denied': file_denied, 'socket_denied': socket_denied}))",
-        ))
-        result = subprocess.run(
-            [str(HELPER), "-I", "-c", script, str(sentinel), str(server_path), str(read_fd)],
-            check=True, text=True, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, close_fds=False, pass_fds=(read_fd,), timeout=10,
-        )
+        listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        server_path = Path(socket_dir.name) / "runner.sock"
+        server_path.parent.chmod(0o711)
+        listener.bind(str(server_path))
+        server_path.chmod(0o600)
+        listener.listen(1)
+        tmp_path.chmod(0o711)
+        read_fd, write_fd = os.pipe()
+        try:
+            os.set_inheritable(read_fd, True)
+            script = "\n".join((
+                "import ctypes, json, os, socket, sys",
+                "fd = int(sys.argv[3])",
+                "try:",
+                "    open(sys.argv[1], 'rb').close()",
+                "    file_denied = False",
+                "except PermissionError:",
+                "    file_denied = True",
+                "sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)",
+                "try:",
+                "    sock.connect(sys.argv[2])",
+                "    socket_denied = False",
+                "except PermissionError:",
+                "    socket_denied = True",
+                "finally:",
+                "    sock.close()",
+                "print(json.dumps({'uid': os.getuid(), 'euid': os.geteuid(), 'gid': os.getgid(),",
+                "    'egid': os.getegid(), 'groups': os.getgroups(),",
+                "    'no_new_privs': ctypes.CDLL(None).prctl(39, 0, 0, 0, 0),",
+                "    'fd_closed': not os.path.exists('/proc/self/fd/' + str(fd)),",
+                "    'file_denied': file_denied, 'socket_denied': socket_denied}))",
+            ))
+            result = subprocess.run(
+                [str(HELPER), "-I", "-c", script, str(sentinel), str(server_path), str(read_fd)],
+                check=True, text=True, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, close_fds=False, pass_fds=(read_fd,), timeout=10,
+            )
+        finally:
+            os.close(read_fd)
+            os.close(write_fd)
     finally:
-        os.close(read_fd)
-        os.close(write_fd)
-        listener.close()
+        try:
+            if listener is not None:
+                listener.close()
+        finally:
+            socket_dir.cleanup()
 
     observed = json.loads(result.stdout)
     assert observed == {
