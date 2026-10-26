@@ -763,7 +763,10 @@ def test_s4_e2e_cli_reports_missing_dependency_without_fallback_or_child_invocat
     report, report_line = _last_report(candidate)
     _assert_nonapproving(result, report)
     _assert_report_hashes(candidate, report, report_line)
-    assert any("locked QA dependencies are missing or mismatched" in reason for reason in report["reasons"])
+    assert any(
+        "dependency target inventory differs from the locked wheel inventory" in reason
+        for reason in report["reasons"]
+    )
     assert report["command"] == []
     assert report["exit_code"] is None
 
