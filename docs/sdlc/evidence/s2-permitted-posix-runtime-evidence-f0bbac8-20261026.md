@@ -220,3 +220,34 @@ anchor selectors and complete Store module, prior DiffGate and contract
 `diff_gate` cases, and prior runner provenance/Job Object setup selectors were
 not repeated. No process-kill, kill-table, mutation-testing, or full E8
 crash/resume scenario was executed by this inventory.
+
+### Fresh permitted POSIX subset at repository HEAD `022fd6b` (2026-10-26)
+
+The designated `e2e-runner` ran six individually selected POSIX identity and
+external-anchor cases from a temporary archive of the canonical checkout at
+`022fd6bc5d68e94edde6d281e7e5bec4030b2908`. The checkout contained only the
+pre-existing untracked `docs/sdlc/evidence/s2-functional-test-run.md`; no source
+or test changes were made. The final HEAD was unchanged, and that untracked file
+was preserved with SHA-256
+`1273679AC992268BB6FAAC4AC002EDCEDE5D884A7470325314D181E67F6B6B08`.
+
+Environment: selected `Ubuntu-24.04` WSL2, Python 3.12.3, pytest 7.4.4. The
+distro was stopped before the run and started by the WSL invocation; it remained
+running afterward. `automount.enabled=false` and `interop.enabled=false`. The
+real `vst-runner`, `vst-worker`, `vst-signer`, and `vst-reviewer` identities were
+present. No helper, package, or compiler was installed.
+
+Exact command:
+
+```text
+git archive --format=tar HEAD | wsl.exe -d Ubuntu-24.04 --user root --exec sh -lc 'set -eu; target=/tmp/vst-s2-runtime-022fd6-20261026; mkdir -p "$target"; tar -xf - -C "$target"; test ! -e "$target/.git"; cd "$target"; python3 -m pytest -q tests/vst/test_s2_runner_lifecycle.py::test_posix_worker_cannot_read_signer_or_key_file tests/vst/test_s2_sandbox_probe.py::test_posix_read_only_reviewer_cannot_write_worktree_or_store_fixture tests/vst/test_s2_store_lifecycle.py::test_anchor_compare_append_is_idempotent_and_rejects_same_count_fork tests/vst/test_s2_store_lifecycle.py::test_external_anchor_detects_restored_older_database_and_locks_writes tests/vst/test_s2_store_lifecycle.py::test_exactly_one_event_ahead_is_recovered_before_mutation tests/vst/test_s2_store_lifecycle.py::test_multi_event_transaction_recovers_suffix_after_one_checkpoint_append; rc=$?; rm -rf "$target"; exit $rc'
+```
+
+Result: **6 passed, 0 failed, 0 skipped**, exit code 0, in 0.63 seconds.
+Coverage is limited to fixture-scoped worker key/socket denial, reviewer
+write-denial, and temporary external-anchor append/restore/reconciliation. The
+recovery cases changed only disposable SQLite/anchor fixtures and injected a
+Python exception; no OS process was terminated. The archive snapshot was
+removed after the run. No process-kill, kill-table, mutation-testing, Windows
+Job Object, real POSIX process-group cleanup, full crash/resume, or real
+egress/sandbox-inventory selector was run. This run does not close S2 Phase 8.

@@ -805,3 +805,7 @@ The synthetic AC-12 seeded-failure category passed 3/3 on Windows and 3/3 on WSL
 ## 2026-10-26 — Record operator response: no existing S4 wheelhouse
 
 The operator answered that no existing trusted offline wheelhouse path is available for the report-bound S4 run. This confirms no path can currently be used; it does not authorize a download or provisioning. Keep AC-17 and the fresh exact-candidate seeded-failure report blocked. Operator owns any future provisioning authorization/path; Codex owns coordinating the bounded setup; designated test roles execute after the prerequisite is available. See change 0342.
+
+## 2026-10-26 — Fresh permitted S2 POSIX identity and anchor subset
+
+At repository HEAD `022fd6bc5d68e94edde6d281e7e5bec4030b2908`, the designated `e2e-runner` executed six individually selected WSL tests from an exact archive: worker key/socket denial, reviewer write denial, and four temporary external-anchor append/restore/reconciliation cases. Ubuntu-24.04 WSL2, Python 3.12.3, pytest 7.4.4; result 6 passed, exit 0. The temporary archive was removed. No source or tests changed, no helper/compiler was installed, and prohibited process-kill, kill-table, mutation-testing, Windows Job Object, real POSIX process-group cleanup, full crash/resume, and real egress/sandbox-inventory scenarios were not run. Decision: record this narrow fixture evidence without promoting POSIX containment or S2 Phase 8 to complete. See change 0343 and the addendum in `docs/sdlc/evidence/s2-permitted-posix-runtime-evidence-f0bbac8-20261026.md`.
