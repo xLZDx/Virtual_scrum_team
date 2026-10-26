@@ -2,6 +2,15 @@
 
 Entry fields: date and commit title; kind; facts with evidence pointer; root cause; layer that missed or caught it; rule for next time.
 
+## 2026-10-26 — Reconcile sprint status without moving evidence to the current HEAD
+
+- Kind: SUCCESS (documentation drift corrected while preserving evidence boundaries).
+- Facts: S2 plan/backlog labels lagged the Phase 7 records in `docs/sdlc/STATE.md`; source/test evidence is tied to `dc95915018b80f498d5cf775363712fb915fe04e`, while the continuation started at repository HEAD `a760cbe8e2664d71733570245274cf690065c9fc`. Change 0317 corrects the status wording without rebinding the evidence or treating S4's REJECT as an S2 decision.
+- Root cause: historical sprint-planning text remained after implementation and bounded verification advanced.
+- Layer that caught it: canonical S2 state/backlog reconciliation.
+- Rule: update status against recorded artifacts, preserve each evidence revision, and name the exact remaining gate before marking a sprint accepted.
+- Fix status: documentation reconciliation recorded in change 0317; no tests/checks/runtime actions run.
+
 ## 2026-10-25 -- Reconcile prepared sprint docs with repository evidence before execution
 
 - Kind: SHORTCOMING (documentation drift caught before implementation).

@@ -1,10 +1,10 @@
 # Sprint S2 plan: trust roots and isolated worker sandbox
 
-Status: IN PROGRESS, implementation not started at baseline `6117ba24`. Prepared on 2026-10-24 while S1 was being tested and reviewed (process rule: prepare the next sprint's documentation during the current sprint's testing). Nothing in this document is done; every statement about behavior describes a target.
+Status: IN PROGRESS; source implementation and the recorded Phase 7 evidence are complete only for the bounded scenarios listed in `docs/sdlc/STATE.md`. Full sandbox acceptance and Phase 8 approval remain open. This plan was prepared on 2026-10-24 against baseline `6117ba24`; later source and evidence are linked in the phase record rather than retroactively changing that baseline.
 
 Sources: `docs/DESIGN_BASELINE_AND_IMPLEMENTATION_PLAN_2026-10-24.md` section 4 (S2 paragraph), blueprint `docs/UNIFIED_ENGINEERING_ORGANIZATION_MASTER_BLUEPRINT_2026-10-23.md` sections 6, 9, 13.2-13.4, decision log entries "S1 third review" and "S1 fourth check" in `core/DECISION_LOG.md`, and "Known limits" in `tools/vst/schemas/README.md`.
 
-Naming note: the blueprint roadmap (section 10) calls S2 "Planning router" and S3 "Worker pilot". The baseline plan (section 4) re-scoped S2 to the isolated worker sandbox, and this plan follows the baseline. The blueprint roadmap table is stale on this point and is not changed here; the S2 closing change record should align it.
+Naming note: the blueprint roadmap (section 10) now calls S2 "Isolated worker sandbox" and S3 "Worker pilot", consistent with this plan and the baseline scope. The earlier stale "Planning router" wording has already been corrected in the blueprint; this note records the current alignment.
 
 ## 1. Goal
 
