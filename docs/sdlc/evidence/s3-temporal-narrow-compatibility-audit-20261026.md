@@ -35,7 +35,7 @@ Read-only primary-source inspection of the exact server pin found:
 - The official `v1.32.1` release page identifies commit `af08a5e` and marks its GitHub commit signature verified. This authenticates the source tag/commit display only; it is not binary provenance or a reproducible-build result.
 - The pinned server `go.mod` declares `go 1.26.8` and requires `github.com/nexus-rpc/nexus-proto-annotations v0.1.0`.
 - The exact `v0.1.0` dependency `go.mod` declares `go 1.25.4` and `google.golang.org/protobuf v1.36.1`.
-- The pinned server's root `LICENSE` is MIT. Requests for the dependency's root `LICENSE`, `LICENSE.txt`, and `COPYING` at the exact tag returned HTTP 404. The repository tree was not exhaustively enumerated; this does not prove that no notice/license exists elsewhere. The dependency's exact-version legal notice remains `NOT_VERIFIED` and requires legal disposition before acquisition.
+- The pinned server's root `LICENSE` is MIT. Requests for the dependency's root `LICENSE`, `LICENSE.txt`, and `COPYING` at the exact tag returned HTTP 404. A prior exact-tag tree audit in `s3-temporal-server-go-license-source-followup-2026-10-25.tsv` additionally found no `LICENSE`, `LICENSE.md`, `LICENCE`, `COPYING`, `NOTICE`, or `COPYRIGHT` path. This closes the tracked-file search for those conventional notice names, but it does not establish license rights from another authoritative source. The dependency's exact-version legal status remains `NOT_VERIFIED` and requires legal disposition before acquisition.
 
 Primary sources, all pinned or exact-tag paths:
 
