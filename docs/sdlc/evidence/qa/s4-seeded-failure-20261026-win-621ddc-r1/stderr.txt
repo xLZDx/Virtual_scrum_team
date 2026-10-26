@@ -1,0 +1,1 @@
+RegistryError: test source changed after registry generation: tests/vst/test_s2_runner_lifecycle.py

@@ -1,0 +1,11 @@
+Commands:
+wsl.exe -d Ubuntu-24.04 -u root --exec /usr/bin/stat -c '%n %u:%g:%a:%s' /usr/local/libexec/vst-s4-worker-exec /usr/local/libexec/vst-s4-worker-exec.previous-4fe150326a36faf401b045cfa1b9a2e64d89436b
+wsl.exe -d Ubuntu-24.04 -u root --exec /usr/bin/sha256sum /usr/local/libexec/vst-s4-worker-exec /usr/local/libexec/vst-s4-worker-exec.previous-4fe150326a36faf401b045cfa1b9a2e64d89436b
+wsl.exe -d Ubuntu-24.04 -u root --exec /usr/local/libexec/vst-s4-worker-exec --version
+
+Output:
+/usr/local/libexec/vst-s4-worker-exec 0:988:4750:16984
+/usr/local/libexec/vst-s4-worker-exec.previous-4fe150326a36faf401b045cfa1b9a2e64d89436b 0:988:750:16984
+a9d381acab8cbfd299be2e631caeca370f98193271df85fa8583172dbc0591dc  /usr/local/libexec/vst-s4-worker-exec
+6973df62818be76759f87e1231b6a5dfea4b64c08f16fb19f1b6c77975818e68  /usr/local/libexec/vst-s4-worker-exec.previous-4fe150326a36faf401b045cfa1b9a2e64d89436b
+schema=1 head=621ddc01d1b5bbf701ccced7bb073c26e89c8c07 source_sha256=8c1a5986c8e081a05a3291b65f082fbd3a0dd0f93109a6395dd2bf57d43beb21

@@ -1,0 +1,6 @@
+/usr/bin/python3.12: Error while finding module specification for 'tools.qa.prepare_dependencies' (ModuleNotFoundError: No module named 'tools')
+/usr/bin/python3.12: Error while finding module specification for 'tools.qa.prepare_dependencies' (ModuleNotFoundError: No module named 'tools')
+fatal: detected dubious ownership in repository at '/tmp/vst-s4-candidate/repo'
+To add an exception for this directory, call:
+
+	git config --global --add safe.directory /tmp/vst-s4-candidate/repo
