@@ -30,6 +30,8 @@ After change 0320 committed the test source, `functional-test-reviewer` and `e2e
 
 2026-10-26 — The designated `e2e-runner` passed the POSIX read-only reviewer-boundary selector 1/1 in Ubuntu-24.04 WSL using an archive snapshot of `dfb99cb` under `/tmp` (no `.git`, worktree, mount changes, or canonical edits). The test launched the child as `vst-reviewer` and removed its disposable fixture; full POSIX containment, canonical path binding, and signed sandbox inventory remain open. See change 0325 and the S2/S3 regression evidence.
 
+2026-10-26 — The designated `e2e-runner` inspected and passed S3 `test_ac4_resume_accepts_only_returned_named_app_checkpoint_and_is_idempotent` at `42ab7bf` (1 passed). It uses an isolated temporary synthetic SliceFixture and no process-kill, external service, or mutation path. The test source hash matches the committed version at `2eec051`; combined with the 8 passed cases at that head, all nine adapter selectors now have passing runs across exact committed test bytes. STOP/crash recovery, cross-process locking, and sandbox acceptance remain open. See change 0327.
+
 2026-10-26 — Retained the earlier `c7ad087` reliability review's non-blocking advisory: `_JobObject.attach()` ignores a false `CloseHandle` return while handling setup failure, so a kernel handle could remain open; strict mode still refuses the requested command and the later exact-head review found no actionable cleanup finding. Codex owns a future focused fix/disposition; do not misstate it as a false-PASS path. The S2 GPT-PM review request `d923dc1a-4a93-45d5-8524-61b6352df401` remains transport-uncertain with no correlated user/reply turn. No approval is recorded. See change 0326.
 
 ## 2026-10-25 -- Add one fixed WSL runner-to-worker identity selector

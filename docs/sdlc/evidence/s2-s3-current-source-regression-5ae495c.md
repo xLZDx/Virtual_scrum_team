@@ -112,3 +112,13 @@ wsl.exe -d Ubuntu-24.04 --cd /tmp/vst-s2-boundary-dfb99cb python3 -m pytest -q t
 Result: exit 0; **1 passed in 0.54 seconds**. The test fixture and archive snapshot were removed; a follow-up search found no `/tmp/vst-reviewer-boundary-*` fixture. No packages/downloads, mount changes, worktrees, process-kill, mutation, E8, or real sandbox-inventory steps were performed.
 
 This closes only the named reviewer write-denial selector for the disposable fixture. Full POSIX containment, canonical Windows-path binding, signed run-bound sandbox inventory/default-deny egress, and other S2 platform criteria remain `NOT_RUN` or `NOT_VERIFIED` as listed above.
+
+## S3 AC-4 app-checkpoint resume selector
+
+The designated `e2e-runner` inspected and ran the previously deselected S3 adapter resume selector. It uses a `SliceFixture` under pytest `tmp_path`, stores a synthetic returned `INCONCLUSIVE`/`INTERRUPTED` application checkpoint, calls `resume_epoch_idempotent` twice, and asserts the same epoch is returned. Inspection found no subprocess, OS process-kill, external service, mutation testing, or policy-excluded lifecycle behavior.
+
+Command: `C:\Python314\python.exe -m pytest -q tests/vst/test_s3_worker_adapter.py::test_ac4_resume_accepts_only_returned_named_app_checkpoint_and_is_idempotent`
+
+At repository HEAD `42ab7bf90bdf7ab36b41f1df813945ef6a0a6f10`, Python 3.14.3, result was exit 0, **1 passed**, one `pytest-asyncio` deprecation warning. HEAD and status were unchanged before/after except the preserved untracked S2 evidence file. The test file SHA-256 `625f93f43402aff1a6447c2273ef9773cd8ded38` matched the exact committed file at `2eec051`; no edits were made.
+
+Together with the prior safe adapter subset at `2eec051` (8 passed, 1 deselected), the adapter selectors now have successful outcomes for all nine cases. This does not prove STOP/crash recovery, cross-process locking, sandbox boundaries, external candidate execution, or the complete S3 scenario denominator; those remain `NOT_RUN` or gated.
