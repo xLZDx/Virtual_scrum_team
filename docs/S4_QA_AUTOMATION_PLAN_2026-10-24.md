@@ -4,6 +4,8 @@ Status: **S4 IMPLEMENTED; PLATFORM MATRIX INCONCLUSIVE/FAIL; ACCEPTANCE OPEN.** 
 
 Continuation note (2026-10-26): the three synthetic seeded-failure fixtures passed 3/3 on Windows and 3/3 on WSL at historical candidate `05b1845` (VST-036). That evidence does not establish the later `ece6065` candidate: `tools/qa/run.py` and `docs/qa/categories.json` changed after `05b1845`. The report-bound runner now requires a trusted external wheelhouse; the only checked named path is an installed dependency target, not a wheelhouse (change 0328). Keep seeded-failure rows distinct from policy-excluded mutation/process-death selectors and refresh their exact-head report once the wheelhouse prerequisite is available.
 
+Operator follow-up (2026-10-26): no existing trusted offline wheelhouse path is available. This is not authorization to download or provision one. Keep report-bound S4 seeded-failure and AC-17 runtime `BLOCKED` until the operator supplies an authorized source/path or explicitly authorizes provisioning. See change 0342.
+
 Sources: `docs/sdlc/AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md` section 1; `docs/ADR_0001_TEST_AUTHORITY_MODELS_CI_NOT_RUN_2026-10-24.md`; `governance/DEFINITION_OF_DONE.md`; S2 and S3 plans; current `tests/vst/`, `tools/vst/runner.py`, `tools/vst/slice.py`, and `tools/vst/{contracts,gate,store}.py`.
 
 ## Goal and scope
