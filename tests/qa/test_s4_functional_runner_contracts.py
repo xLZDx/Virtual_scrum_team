@@ -13,7 +13,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tools.qa import build_registry, fixtures, pytest_plugin, registry, run
+from tools.qa import build_registry, dependencies, fixtures, pytest_plugin, registry, run
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -774,10 +774,23 @@ def test_s4_runner_reports_missing_dependency_lock_as_typed_failure(tmp_path: Pa
 
 
 def test_s4_runner_identifies_missing_locked_distribution(tmp_path: Path):
-    actual, missing = run._installed_versions({"pytest": "999.0"}, tmp_path)
+    lock = tmp_path / "requirements.lock"
+    lock.write_text(
+        "# Wheel-only, exact hashes for a synthetic runner test.\n"
+        "pytest==9.0.3 \\\n"
+        f"    --hash=sha256:{'0' * 64}\n",
+        encoding="utf-8",
+    )
+    wheelhouse = tmp_path / "wheelhouse"
+    wheelhouse.mkdir()
+    target = tmp_path / "target"
 
-    assert actual == {}
-    assert missing == ["pytest"]
+    with pytest.raises(
+        dependencies.DependencyProvenanceError,
+        match="locked wheel selection is ambiguous or missing for pytest",
+    ):
+        dependencies.prepare_dependency_target(lock, wheelhouse, target)
+    assert not target.exists()
 
 
 def test_s4_runner_refuses_an_unapproved_interpreter(monkeypatch, tmp_path: Path):
@@ -857,12 +870,15 @@ def test_s4_main_reports_wrong_interpreter_as_blocked_without_spawning_pytest(
 
     dependency_target = tmp_path / "empty-dependency-target"
     dependency_target.mkdir()
+    dependency_wheelhouse = tmp_path / "empty-dependency-wheelhouse"
+    dependency_wheelhouse.mkdir()
     args = Namespace(
         category="functional",
         repo_root=str(root),
         manifest="docs/qa/categories.json",
         fixtures="docs/qa/fixtures.json",
         dependency_target=str(dependency_target),
+        dependency_wheelhouse=str(dependency_wheelhouse),
         scratch_root=str(tmp_path / "scratch"),
         run_id="wrong-interpreter",
         expected_head=None,
@@ -883,6 +899,12 @@ def test_s4_main_reports_wrong_interpreter_as_blocked_without_spawning_pytest(
     monkeypatch.setattr(run, "_args", lambda: args)
     monkeypatch.setattr(run.sys, "executable", str(tmp_path / "unapproved-python.exe"))
     monkeypatch.setattr(run.sys, "path", list(run.sys.path))
+    monkeypatch.setattr(run, "verify_dependency_environment", lambda *_args: {
+        "lock_sha256": "a" * 64,
+        "wheels": [{"name": "pytest", "version": "9.0.3", "sha256": "b" * 64}],
+        "target_sha256": "c" * 64,
+        "versions": {"pytest": "9.0.3"},
+    })
     monkeypatch.setattr(run, "_pytest_command", fail_if_pytest_is_spawned)
     monkeypatch.setattr(run, "_run_bounded", fail_if_pytest_is_spawned)
 
@@ -895,11 +917,9 @@ def test_s4_main_reports_wrong_interpreter_as_blocked_without_spawning_pytest(
     assert "QA_RESULT BLOCKED" in stdout
     assert report["result"] == "BLOCKED"
     assert report["exit_code"] is None
-    assert any(
-        "runner process does not match an approved runtime profile and identity" in reason
-        for reason in report["reasons"]
-    )
-    assert any("locked QA dependencies are missing or mismatched" in reason for reason in report["reasons"])
+    assert report["reasons"] == [
+        "runner process does not match an approved runtime profile and identity"
+    ]
     assert report["command"] == []
     assert spawn_attempts == []
 
@@ -925,12 +945,15 @@ def test_s4_main_persists_blocked_when_final_git_status_fails_after_pytest_passe
     )
     dependency_target = tmp_path / "dependency-target"
     dependency_target.mkdir()
+    dependency_wheelhouse = tmp_path / "dependency-wheelhouse"
+    dependency_wheelhouse.mkdir()
     args = Namespace(
         category="functional",
         repo_root=str(root),
         manifest="docs/qa/categories.json",
         fixtures="docs/qa/fixtures.json",
         dependency_target=str(dependency_target),
+        dependency_wheelhouse=str(dependency_wheelhouse),
         scratch_root=str(tmp_path / "scratch"),
         run_id="final-status-timeout",
         expected_head=None,
@@ -988,8 +1011,12 @@ def test_s4_main_persists_blocked_when_final_git_status_fails_after_pytest_passe
     monkeypatch.setattr(run.sys, "path", list(run.sys.path))
     monkeypatch.setattr(run, "_runtime_profile", lambda: registry.WINDOWS_PROFILE)
     monkeypatch.setattr(run, "_git_status_paths", fail_final_status)
-    monkeypatch.setattr(run, "_lock_versions", lambda _root: ("a" * 64, {"pytest": "9.0.3"}))
-    monkeypatch.setattr(run, "_installed_versions", lambda _versions, _target: ({"pytest": "9.0.3"}, []))
+    monkeypatch.setattr(run, "verify_dependency_environment", lambda *_args: {
+        "lock_sha256": "a" * 64,
+        "wheels": [{"name": "pytest", "version": "9.0.3", "sha256": "b" * 64}],
+        "target_sha256": "c" * 64,
+        "versions": {"pytest": "9.0.3"},
+    })
     monkeypatch.setattr(run, "_pytest_command", build_passed_pytest_events)
     monkeypatch.setattr(run, "_run_bounded", return_successful_pytest)
 

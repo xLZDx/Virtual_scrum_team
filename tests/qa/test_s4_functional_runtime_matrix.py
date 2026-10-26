@@ -14,7 +14,11 @@ from tools.qa import matrix, registry, report, run
 
 
 HEAD = "a" * 40
-LOCK = b"fixture-lock\n"
+LOCK = (
+    b"# Wheel-only, exact hashes for CPython 3.14 QA execution.\n"
+    b"pytest==9.0.3 \\\n"
+    + b"    --hash=sha256:" + b"a" * 64 + b"\n"
+)
 RUNNABLE_ID = "tests/qa/test_s4_functional_fixture.py::test_functional"
 ROOT_ID = "tests/vst/test_s2_runner_lifecycle.py::test_posix_worker_cannot_read_signer_or_key_file"
 NOT_RUN_ID = "tests/vst/test_e4_runner.py::test_timeout_records_exit_minus_one_and_fails"
@@ -31,11 +35,15 @@ def _report_registry(
         profile_name: [test_id] if profile_name == profile else []
         for profile_name in registry.RUNTIME_PROFILES
     }
+    identity_profile_ids = {
+        profile_name: [registry.IDENTITY_SELECTOR] if profile_name == registry.WSL_PROFILE else []
+        for profile_name in registry.RUNTIME_PROFILES
+    }
     return SimpleNamespace(
         candidate_head=HEAD,
         sha256="c" * 64,
         data={"source_head": HEAD},
-        category_profile_test_ids={category: profile_ids},
+        category_profile_test_ids={category: profile_ids, "identity": identity_profile_ids},
         category_profile_unassigned_ids={
             category: {
                 profile_name: [] if profile_name == profile else [test_id]
@@ -119,13 +127,27 @@ def _write_category_report(
     stdout_path.write_bytes(stdout)
     stderr_path.write_bytes(stderr)
     node_id = f"{selected_id}::case"
+    locked_wheels = run.locked_wheel_manifest(
+        root / "tools" / "qa" / "requirements.lock",
+        "win32" if profile == registry.WINDOWS_PROFILE else "linux",
+    )
+    dependency_versions = {item["name"]: item["version"] for item in locked_wheels}
+    dependency_target_sha256 = "d" * 64
     row = {
-        "schema_version": 2,
+        "schema_version": 3,
         "category": category,
         "run_id": run_id,
         "candidate_head": HEAD,
         "registry_sha256": "c" * 64,
         "lock_sha256": hashlib.sha256(LOCK).hexdigest(),
+        "dependency_target_sha256": dependency_target_sha256,
+        "dependency_target_sha256_after": dependency_target_sha256,
+        "dependency_content_verified_before": True,
+        "dependency_content_verified_after": True,
+        "dependency_execution_integrity": "NOT_VERIFIED",
+        "dependency_wheels": locked_wheels,
+        "dependency_versions": dependency_versions,
+        "pytest_version": dependency_versions["pytest"],
         "runtime_profile": profile,
         **identity,
         "runtime_boundary": runtime_boundary,
@@ -536,10 +558,14 @@ def test_s4_matrix_rejects_missing_profile_report_references(tmp_path: Path):
         profile: [RUNNABLE_ID] if profile in {registry.WINDOWS_PROFILE, registry.WSL_PROFILE} else []
         for profile in registry.RUNTIME_PROFILES
     }
+    identity_profile_ids = {
+        profile: [registry.IDENTITY_SELECTOR] if profile == registry.WSL_PROFILE else []
+        for profile in registry.RUNTIME_PROFILES
+    }
     registry_view = SimpleNamespace(
         candidate_head=HEAD,
         sha256="c" * 64,
-        category_profile_test_ids={"functional": profile_ids},
+        category_profile_test_ids={"functional": profile_ids, "identity": identity_profile_ids},
         category_not_run={},
     )
     expected = matrix._expected_report_refs(registry_view)

@@ -34,6 +34,7 @@ def _args(repo: Path, **overrides) -> Namespace:
         "repo_root": str(repo),
         "category": "functional",
         "dependency_target": str(repo / "deps"),
+        "dependency_wheelhouse": str(repo / "wheelhouse"),
         "scratch_root": str(repo / "scratch"),
         "run_id": "root-harness-contract",
         "expected_head": "a" * 40,
@@ -247,6 +248,7 @@ def test_s4_root_harness_child_binds_mount_and_parent_proof_then_launches_qa_thr
     assert insertion >= 0
     assert module_run > insertion
     assert launcher[4] == str(Path(args.repo_root).resolve())
+    assert restricted[restricted.index("--dependency-wheelhouse") + 1] == args.dependency_wheelhouse
     assert "--bounding-set=-all,+chown,+setgid,+setuid" in restricted
     assert options["shell"] is False
     assert options["env"] == EXPECTED_MINIMAL_ENV
@@ -291,7 +293,8 @@ def test_s4_root_harness_rejects_invalid_cli_contract_before_process_launch(
     repo.mkdir()
     argv = [
         "root_harness", "--repo-root", str(repo), "--category", "functional",
-        "--dependency-target", str(repo), "--scratch-root", str(repo), "--run-id", "valid-id",
+        "--dependency-target", str(repo), "--dependency-wheelhouse", str(repo),
+        "--scratch-root", str(repo), "--run-id", "valid-id",
         "--expected-head", "a" * 40, "--report-path", "report", "--stdout-path", "stdout",
         "--stderr-path", "stderr",
     ]

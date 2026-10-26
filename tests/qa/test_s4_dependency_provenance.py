@@ -219,6 +219,11 @@ def test_s4_runner_reports_post_execution_dependency_mutation(tmp_path: Path, mo
         (candidate / "tests" / "qa" / f"test_s4_{category}_fixture.py").write_text(
             f"def test_{category}_fixture_node():\n    return None\n", encoding="utf-8"
         )
+    identity_relative = registry.IDENTITY_SELECTOR.split("::", 1)[0]
+    identity_source = Path(__file__).resolve().parents[2] / identity_relative
+    identity_target = candidate / identity_relative
+    identity_target.parent.mkdir(parents=True, exist_ok=True)
+    identity_target.write_bytes(identity_source.read_bytes())
     (candidate / "docs" / "S4_QA_AUTOMATION_PLAN_2026-10-24.md").write_text(
         "# Synthetic candidate\n", encoding="utf-8"
     )
