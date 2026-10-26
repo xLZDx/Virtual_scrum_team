@@ -1,0 +1,272 @@
+[
+  {
+    "package": "libc6",
+    "architecture": "amd64",
+    "relative": "pool/main/g/glibc/libc6_2.39-0ubuntu8.9_amd64.deb",
+    "filename": "libc6_2.39-0ubuntu8.9_amd64.deb",
+    "sha256": "ff5557d99b51f761c4b7c92368b9cc45565eda17df9bf9eb4b134d09825008be",
+    "bytes": 3264314,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/glibc/libc6_2.39-0ubuntu8.9_amd64.deb"
+  },
+  {
+    "package": "libc-bin",
+    "architecture": "amd64",
+    "relative": "pool/main/g/glibc/libc-bin_2.39-0ubuntu8.9_amd64.deb",
+    "filename": "libc-bin_2.39-0ubuntu8.9_amd64.deb",
+    "sha256": "066398a06ef1a218d4109461d4c636eafe83322ad19b179de9ef7af42b3fec58",
+    "bytes": 682164,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/glibc/libc-bin_2.39-0ubuntu8.9_amd64.deb"
+  },
+  {
+    "package": "locales",
+    "architecture": "all",
+    "relative": "pool/main/g/glibc/locales_2.39-0ubuntu8.9_all.deb",
+    "filename": "locales_2.39-0ubuntu8.9_all.deb",
+    "sha256": "f8310ef4ba442845cf5d44a5ce3d5d7accb659bae96b3a0999002132209cd367",
+    "bytes": 4231704,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/glibc/locales_2.39-0ubuntu8.9_all.deb"
+  },
+  {
+    "package": "gcc-13-base",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-13/gcc-13-base_13.3.0-6ubuntu2~24.04.1_amd64.deb",
+    "filename": "gcc-13-base_13.3.0-6ubuntu2%7e24.04.1_amd64.deb",
+    "sha256": "e859aca26585bb91113a451f1e66bc0e5283cb08797d679aacc1d936ae6dff8e",
+    "bytes": 51616,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-13/gcc-13-base_13.3.0-6ubuntu2%7e24.04.1_amd64.deb"
+  },
+  {
+    "package": "libisl23",
+    "architecture": "amd64",
+    "relative": "pool/main/i/isl/libisl23_0.26-3build1.1_amd64.deb",
+    "filename": "libisl23_0.26-3build1.1_amd64.deb",
+    "sha256": "4e040926e50fb961fae9bf95660189d468336a4a17bc321872c434fc8f777e7f",
+    "bytes": 679812,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/i/isl/libisl23_0.26-3build1.1_amd64.deb"
+  },
+  {
+    "package": "libmpc3",
+    "architecture": "amd64",
+    "relative": "pool/main/m/mpclib3/libmpc3_1.3.1-1build1.1_amd64.deb",
+    "filename": "libmpc3_1.3.1-1build1.1_amd64.deb",
+    "sha256": "cebe6098bb3d66fdacac9dc6fe406a651216d9c00f27c3f9c159d15d96cdf864",
+    "bytes": 54636,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/m/mpclib3/libmpc3_1.3.1-1build1.1_amd64.deb"
+  },
+  {
+    "package": "cpp-13-x86-64-linux-gnu",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-13/cpp-13-x86-64-linux-gnu_13.3.0-6ubuntu2~24.04.1_amd64.deb",
+    "filename": "cpp-13-x86-64-linux-gnu_13.3.0-6ubuntu2%7e24.04.1_amd64.deb",
+    "sha256": "2ca48bf0c2d6465bc39322899715a85d934b4d7442dd5586a7bebbe3ce0f806b",
+    "bytes": 10714542,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-13/cpp-13-x86-64-linux-gnu_13.3.0-6ubuntu2%7e24.04.1_amd64.deb"
+  },
+  {
+    "package": "cpp-13",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-13/cpp-13_13.3.0-6ubuntu2~24.04.1_amd64.deb",
+    "filename": "cpp-13_13.3.0-6ubuntu2%7e24.04.1_amd64.deb",
+    "sha256": "c7535331fbb183c802c3bf4b6b210872dcc12d0421b3212b3c4b940f2c59ed3a",
+    "bytes": 1042,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-13/cpp-13_13.3.0-6ubuntu2%7e24.04.1_amd64.deb"
+  },
+  {
+    "package": "cpp-x86-64-linux-gnu",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-defaults/cpp-x86-64-linux-gnu_13.2.0-7ubuntu1_amd64.deb",
+    "filename": "cpp-x86-64-linux-gnu_13.2.0-7ubuntu1_amd64.deb",
+    "sha256": "85059b30960de3582e8612740614da3dfe47241d0368a28dea686188cf7648dd",
+    "bytes": 5326,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-defaults/cpp-x86-64-linux-gnu_13.2.0-7ubuntu1_amd64.deb"
+  },
+  {
+    "package": "cpp",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-defaults/cpp_13.2.0-7ubuntu1_amd64.deb",
+    "filename": "cpp_13.2.0-7ubuntu1_amd64.deb",
+    "sha256": "b51f8094760f7b41afdcb1fe1b5a57fc64b75a090859918af17450a10f8c7d31",
+    "bytes": 22442,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-defaults/cpp_13.2.0-7ubuntu1_amd64.deb"
+  },
+  {
+    "package": "libcc1-0",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-14/libcc1-0_14.2.0-4ubuntu2~24.04.1_amd64.deb",
+    "filename": "libcc1-0_14.2.0-4ubuntu2%7e24.04.1_amd64.deb",
+    "sha256": "454456436ca767817a860557263d7cc2489f0a410f03efff4c0bb236d579ec09",
+    "bytes": 48002,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/libcc1-0_14.2.0-4ubuntu2%7e24.04.1_amd64.deb"
+  },
+  {
+    "package": "libgomp1",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-14/libgomp1_14.2.0-4ubuntu2~24.04.1_amd64.deb",
+    "filename": "libgomp1_14.2.0-4ubuntu2%7e24.04.1_amd64.deb",
+    "sha256": "e8a95ec58125b4933597f30ff56c2ae10edf90f287262e366d4b6edea3019144",
+    "bytes": 148062,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/libgomp1_14.2.0-4ubuntu2%7e24.04.1_amd64.deb"
+  },
+  {
+    "package": "libitm1",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-14/libitm1_14.2.0-4ubuntu2~24.04.1_amd64.deb",
+    "filename": "libitm1_14.2.0-4ubuntu2%7e24.04.1_amd64.deb",
+    "sha256": "1fca498129dd3510294809d77ee754f72a9de281111200e9b7b9a5adf37faa9f",
+    "bytes": 29702,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/libitm1_14.2.0-4ubuntu2%7e24.04.1_amd64.deb"
+  },
+  {
+    "package": "libatomic1",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-14/libatomic1_14.2.0-4ubuntu2~24.04.1_amd64.deb",
+    "filename": "libatomic1_14.2.0-4ubuntu2%7e24.04.1_amd64.deb",
+    "sha256": "fe49cbbc7be753528380c724a8eef5f1e31dffa9221f692c5069048d81c7449d",
+    "bytes": 10466,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/libatomic1_14.2.0-4ubuntu2%7e24.04.1_amd64.deb"
+  },
+  {
+    "package": "libasan8",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-14/libasan8_14.2.0-4ubuntu2~24.04.1_amd64.deb",
+    "filename": "libasan8_14.2.0-4ubuntu2%7e24.04.1_amd64.deb",
+    "sha256": "8321aac6230fa1da320e76eb6288b7436164624aec449ed3933ea6c4cc86daac",
+    "bytes": 3026656,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/libasan8_14.2.0-4ubuntu2%7e24.04.1_amd64.deb"
+  },
+  {
+    "package": "liblsan0",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-14/liblsan0_14.2.0-4ubuntu2~24.04.1_amd64.deb",
+    "filename": "liblsan0_14.2.0-4ubuntu2%7e24.04.1_amd64.deb",
+    "sha256": "dc0c2a1a053e833ba4d71e1ec2ba4244fe301761ad4a91d6725f927a52d86a14",
+    "bytes": 1321652,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/liblsan0_14.2.0-4ubuntu2%7e24.04.1_amd64.deb"
+  },
+  {
+    "package": "libtsan2",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-14/libtsan2_14.2.0-4ubuntu2~24.04.1_amd64.deb",
+    "filename": "libtsan2_14.2.0-4ubuntu2%7e24.04.1_amd64.deb",
+    "sha256": "8cbcc9b3ae5ef23b449383d47a9035b27596e307d7dce7df9b83d47a7acd1d91",
+    "bytes": 2771910,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/libtsan2_14.2.0-4ubuntu2%7e24.04.1_amd64.deb"
+  },
+  {
+    "package": "libubsan1",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-14/libubsan1_14.2.0-4ubuntu2~24.04.1_amd64.deb",
+    "filename": "libubsan1_14.2.0-4ubuntu2%7e24.04.1_amd64.deb",
+    "sha256": "a16dea3abe2dcac99bcfae27e7e5672fde64573c3c170dcb0cd55631238f9814",
+    "bytes": 1183812,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/libubsan1_14.2.0-4ubuntu2%7e24.04.1_amd64.deb"
+  },
+  {
+    "package": "libhwasan0",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-14/libhwasan0_14.2.0-4ubuntu2~24.04.1_amd64.deb",
+    "filename": "libhwasan0_14.2.0-4ubuntu2%7e24.04.1_amd64.deb",
+    "sha256": "2195318cfe68fe16b601913ef7b33c9a900372f57861643fdc9ae6fef84534cd",
+    "bytes": 1640706,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/libhwasan0_14.2.0-4ubuntu2%7e24.04.1_amd64.deb"
+  },
+  {
+    "package": "libquadmath0",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-14/libquadmath0_14.2.0-4ubuntu2~24.04.1_amd64.deb",
+    "filename": "libquadmath0_14.2.0-4ubuntu2%7e24.04.1_amd64.deb",
+    "sha256": "dc8f0ca542e09d662f29370c8393c016440dd4bc5c996c5fcc19f632b63ce3b0",
+    "bytes": 153316,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/libquadmath0_14.2.0-4ubuntu2%7e24.04.1_amd64.deb"
+  },
+  {
+    "package": "libgcc-13-dev",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-13/libgcc-13-dev_13.3.0-6ubuntu2~24.04.1_amd64.deb",
+    "filename": "libgcc-13-dev_13.3.0-6ubuntu2%7e24.04.1_amd64.deb",
+    "sha256": "cd689db2691edaa10f37329307292796bb599e722e0505c79e14caaa1fe9a93a",
+    "bytes": 2680642,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-13/libgcc-13-dev_13.3.0-6ubuntu2%7e24.04.1_amd64.deb"
+  },
+  {
+    "package": "gcc-13-x86-64-linux-gnu",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-13/gcc-13-x86-64-linux-gnu_13.3.0-6ubuntu2~24.04.1_amd64.deb",
+    "filename": "gcc-13-x86-64-linux-gnu_13.3.0-6ubuntu2%7e24.04.1_amd64.deb",
+    "sha256": "a134b0319a82d14581b3a14820d2832af4ec9778ed8b9b4ddaeecfb0555ec325",
+    "bytes": 21084546,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-13/gcc-13-x86-64-linux-gnu_13.3.0-6ubuntu2%7e24.04.1_amd64.deb"
+  },
+  {
+    "package": "gcc-13",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-13/gcc-13_13.3.0-6ubuntu2~24.04.1_amd64.deb",
+    "filename": "gcc-13_13.3.0-6ubuntu2%7e24.04.1_amd64.deb",
+    "sha256": "7438ff160b020a74970672189ecae25d0ca650de6d7f543f12a3134192cffbd9",
+    "bytes": 494262,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-13/gcc-13_13.3.0-6ubuntu2%7e24.04.1_amd64.deb"
+  },
+  {
+    "package": "gcc-x86-64-linux-gnu",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-defaults/gcc-x86-64-linux-gnu_13.2.0-7ubuntu1_amd64.deb",
+    "filename": "gcc-x86-64-linux-gnu_13.2.0-7ubuntu1_amd64.deb",
+    "sha256": "72e79089a10e381360bfc6f03c5e5d8c2ff177d6dbac2cd7ffb3cc1383f57591",
+    "bytes": 1212,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-defaults/gcc-x86-64-linux-gnu_13.2.0-7ubuntu1_amd64.deb"
+  },
+  {
+    "package": "gcc",
+    "architecture": "amd64",
+    "relative": "pool/main/g/gcc-defaults/gcc_13.2.0-7ubuntu1_amd64.deb",
+    "filename": "gcc_13.2.0-7ubuntu1_amd64.deb",
+    "sha256": "0e0bb8b25153ed1c44ab92bc219eed469fcb5820c5c0bc6454b2fd366a33d3ee",
+    "bytes": 5018,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-defaults/gcc_13.2.0-7ubuntu1_amd64.deb"
+  },
+  {
+    "package": "libc-dev-bin",
+    "architecture": "amd64",
+    "relative": "pool/main/g/glibc/libc-dev-bin_2.39-0ubuntu8.9_amd64.deb",
+    "filename": "libc-dev-bin_2.39-0ubuntu8.9_amd64.deb",
+    "sha256": "77db23aba4582d034d9a95e4818a16e7e51a2d4fb17a9204439688e288d67f4c",
+    "bytes": 20402,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/glibc/libc-dev-bin_2.39-0ubuntu8.9_amd64.deb"
+  },
+  {
+    "package": "linux-libc-dev",
+    "architecture": "amd64",
+    "relative": "pool/main/l/linux/linux-libc-dev_6.8.0-147.147_amd64.deb",
+    "filename": "linux-libc-dev_6.8.0-147.147_amd64.deb",
+    "sha256": "fec8e4a308c03cd98dace67370a8d5a8031c36741796065c9f6e3f9548ab0cd2",
+    "bytes": 1595188,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/l/linux/linux-libc-dev_6.8.0-147.147_amd64.deb"
+  },
+  {
+    "package": "libcrypt-dev",
+    "architecture": "amd64",
+    "relative": "pool/main/libx/libxcrypt/libcrypt-dev_4.4.36-4build1_amd64.deb",
+    "filename": "libcrypt-dev_4.4.36-4build1_amd64.deb",
+    "sha256": "2edff420ef80b4a3f3751e65c33423ef30e563122a58b759e4854ea8d84ba1b1",
+    "bytes": 111780,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/libx/libxcrypt/libcrypt-dev_4.4.36-4build1_amd64.deb"
+  },
+  {
+    "package": "rpcsvc-proto",
+    "architecture": "amd64",
+    "relative": "pool/main/r/rpcsvc-proto/rpcsvc-proto_1.4.2-0ubuntu7_amd64.deb",
+    "filename": "rpcsvc-proto_1.4.2-0ubuntu7_amd64.deb",
+    "sha256": "7eb710fe148d224c159ddec1ceb0ba53ead52a80a6793dcdae1474acf20d8f71",
+    "bytes": 67446,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/r/rpcsvc-proto/rpcsvc-proto_1.4.2-0ubuntu7_amd64.deb"
+  },
+  {
+    "package": "libc6-dev",
+    "architecture": "amd64",
+    "relative": "pool/main/g/glibc/libc6-dev_2.39-0ubuntu8.9_amd64.deb",
+    "filename": "libc6-dev_2.39-0ubuntu8.9_amd64.deb",
+    "sha256": "e13d5fcc1b2a86f75bca8e0026a8e39f24fe97ca86e92be79991f8697eb1306f",
+    "bytes": 2125612,
+    "source": "https://archive.ubuntu.com/ubuntu/pool/main/g/glibc/libc6-dev_2.39-0ubuntu8.9_amd64.deb"
+  }
+]
