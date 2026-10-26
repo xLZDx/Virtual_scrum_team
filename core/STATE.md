@@ -2,9 +2,17 @@
 
 Last updated: 2026-10-26. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
 
-## Latest continuation checkpoint — S2–S5 autonomous work
+## Latest continuation checkpoint — S2–S5 autonomous work (2026-10-26)
 
-## Latest verified continuation — S2–S5 and S4 acceptance
+New safe S2 evidence at committed repository HEAD `6ca2ee00ef31ac621e7ff3231ac175646bbd3bb2`: 74 Windows contract/store cases and 7 WSL2 temporary external-anchor cases passed, with no failure or skip. This is bounded fixture evidence only; it does not establish Windows Job Object or POSIX process-group containment, and the full 86-ID registry denominator is not exhausted. The protected pre-existing untracked `docs/sdlc/evidence/s2-functional-test-run.md` retained SHA-256 `1273679AC992268BB6FAAC4AC002EDCEDE5D884A7470325314D181E67F6B6B08` and was not modified. A read-only source audit found no safe code defect in S2 E4/E5/E8; see `docs/sdlc/evidence/s2-safe-source-gap-audit-20261026.md`. Process-kill, crash/process-death, timeout cleanup, mutation, and E8 scenarios remain `NOT_RUN`; full host egress/firewall/hypervisor, workspace binding, and persistent deployment remain incomplete or `NOT_VERIFIED`.
+
+S3 Temporal remains provisional and acquisition/build/execution remain NOT APPROVED. A primary-source read-only audit closes only the narrow fact that SDK 1.34.0's documented running-workflow first-run-ID behavior requires server 1.32.0+, met by pinned server 1.32.1. PyPI now displays verified publishing provenance for all eight SDK 1.34.0 artifacts and links the Linux x86-64 wheel to the exact SDK source commit; this is partial G02 evidence only and has not been independently cryptographically verified because that requires downloading the wheel. Server artifact provenance/dependency closure, exact-version license/notice, and full compatibility remain open. Evidence: `docs/sdlc/evidence/s3-temporal-narrow-compatibility-audit-20261026.md` and `s3-temporal-sdk-pypi-provenance-20261026.md`.
+
+S4 code and tests remain at the recorded heads (`3885d8a` source-policy; regression `bdc8e3b`; targeted `621ddc01`). The full allowed Windows regression passed 897/897 expected selector IDs (1,845 concrete cases), but is non-approving because 53 policy selectors remain `NOT_RUN`. Exact-candidate targeted Windows/WSL seeded-failure and WSL identity cases passed. AC-17 same-identity change-and-restore during pytest remains `NOT_VERIFIED`. Fresh code/security reviews found no BLOCKER/MAJOR; evidence is `docs/sdlc/evidence/s4-specialist-reviews-3885d8a-20261026.md`. The prior attempted GPT-PM exact-head request has no durable job, receipt, or correlated exchange; obtain a fresh exact-head adjudication before delivery.
+
+S2 Phase 8 remains NOT APPROVED. S5 remains blocked on S2/S4 closure and authorized in-scope AEVE identity/interface/license evidence. The previously named `.patch` manual cleanup remains operator-owned and outside this checkout; Codex did not inspect the neighboring checkout. No push, PR, or merge is authorized without the required exact-head GPT-PM approval.
+
+## Historical checkpoint before 6ca2ee0 — S2–S5 and S4 acceptance
 
 Current repository HEAD before this status update: `41c1aaca3d049621aa8d357ac88ab9dc34e8fd1f`; branch `s4-canonical-continuation`; all work stayed in `D:\Repo\Virtual_scrum_team`; no per-sprint worktree/fork was created. The pre-existing untracked `docs/sdlc/evidence/s2-functional-test-run.md` is still protected and untouched.
 
