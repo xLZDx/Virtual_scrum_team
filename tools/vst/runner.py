@@ -906,8 +906,12 @@ def _derive_head(cwd: str) -> str:
 
 def _diff_paths(cwd: str, base_head: str) -> tuple[bytes, list[str], list[tuple[str, str]], list[str]]:
     raw = _git_bytes(cwd, "diff", "--binary", "--find-renames", base_head, "--")
-    untracked_raw = _git_bytes(cwd, "ls-files", "--others", "--ignored", "--exclude-standard", "-z")
-    untracked = sorted(path for path in untracked_raw.decode("utf-8", "surrogateescape").split("\0") if path)
+    ordinary_raw = _git_bytes(cwd, "ls-files", "--others", "--exclude-standard", "-z")
+    ignored_raw = _git_bytes(cwd, "ls-files", "--others", "--ignored", "--exclude-standard", "-z")
+    # Inventory both classes explicitly: ignored files remain part of the diff evidence.
+    ordinary = ordinary_raw.decode("utf-8", "surrogateescape").split("\0")
+    ignored = ignored_raw.decode("utf-8", "surrogateescape").split("\0")
+    untracked = sorted({path for path in (*ordinary, *ignored) if path})
     for path in untracked:
         full_path = os.path.join(cwd, path)
         if os.path.islink(full_path):
