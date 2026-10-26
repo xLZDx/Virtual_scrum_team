@@ -747,6 +747,8 @@ def test_s4_audited_e4_terminating_selectors_remain_not_run():
         "tests/vst/test_e4_runner.py::test_job_is_closed_when_thread_start_fails",
         "tests/vst/test_e4_runner.py::test_background_process_holding_the_pipe_gives_exit_minus_four_and_capture_incomplete",
         "tests/vst/test_e4_runner.py::test_capture_incomplete_takes_precedence_over_output_truncation",
+        "tests/vst/test_e4_runner.py::test_root_that_survives_the_kill_gives_exit_minus_four",
+
     }
     generated = build_registry.build_registry(ROOT)
     api_not_run = generated["categories"]["api"]["not_run_reasons"]

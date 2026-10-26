@@ -61,6 +61,8 @@ POLICY_NOT_RUN = {
         "NOT_RUN: this Windows-only scenario invokes child process termination; process-kill execution is prohibited for this S4 run.",
     "tests/vst/test_e4_runner.py::test_background_process_holding_the_pipe_gives_exit_minus_four_and_capture_incomplete":
         "NOT_RUN: this scenario invokes process-kill cleanup; process-kill execution is prohibited for this S4 run.",
+    "tests/vst/test_e4_runner.py::test_root_that_survives_the_kill_gives_exit_minus_four":
+        "NOT_RUN: this scenario deliberately exercises timeout and post-timeout cleanup behavior; timeout/process cleanup execution is prohibited for this S4 run.",
     "tests/vst/test_e4_runner.py::test_capture_incomplete_takes_precedence_over_output_truncation":
         "NOT_RUN: this scenario invokes process-kill cleanup; process-kill execution is prohibited for this S4 run.",
     "tests/vst/test_s2_runner_lifecycle.py::test_e4_platform_containment_scenarios_not_run":
