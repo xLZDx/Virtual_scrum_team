@@ -98,3 +98,17 @@ After change 0322 committed the corrected lifecycle test, the designated functio
 The designated functional-test reviewer also repeated the contract/diffgate modules at exact committed HEAD `9ce27f0d9837e2d302872df0b878ebcaba15b513` using `C:\Python314\python.exe -m pytest tests/vst/test_s2_contract_gate.py tests/vst/test_s2_diffgate.py -q`. Result: exit 0, **60 passed**, one pytest-asyncio deprecation warning, Python 3.14.3, 0.82 seconds. HEAD was unchanged. The working tree contained only the concurrent documentation updates for change 0323 and the preserved untracked S2 evidence file; the test agent made no edits.
 
 The designated E2E runner also attempted `tests/vst/test_s2_sandbox_probe.py::test_posix_read_only_reviewer_cannot_write_worktree_or_store_fixture` in Ubuntu-24.04 WSL. The distro was available, but `/mnt/d/Repo/Virtual_scrum_team` did not exist because `/mnt/d` was an empty mount placeholder. The selector is **NOT_RUN**; no mount or provisioning change was attempted.
+
+## POSIX reviewer-boundary selector from a disposable WSL source snapshot
+
+To avoid mounting the canonical Windows checkout, the designated `e2e-runner` created a one-time archive snapshot of committed HEAD `dfb99cbf611f42a89e27277dbe4a2818518bb311` at `/tmp/vst-s2-boundary-dfb99cb` inside Ubuntu-24.04 WSL. The snapshot contained no `.git` directory and was not a worktree. The selector file was byte-for-byte unchanged from source/test HEAD `9ce27f0d9837e2d302872df0b878ebcaba15b513` (`git diff 9ce27f0..dfb99cb -- tests/vst/test_s2_sandbox_probe.py` was empty). No canonical checkout files were modified.
+
+Environment: Ubuntu-24.04 WSL, Python 3.12.3, pytest 7.4.4. The parent invocation ran as root; the selector launched the child under the provisioned `vst-reviewer` identity and verified denied writes to the disposable worktree/Store fixture. Exact command:
+
+```powershell
+wsl.exe -d Ubuntu-24.04 --cd /tmp/vst-s2-boundary-dfb99cb python3 -m pytest -q tests/vst/test_s2_sandbox_probe.py::test_posix_read_only_reviewer_cannot_write_worktree_or_store_fixture
+```
+
+Result: exit 0; **1 passed in 0.54 seconds**. The test fixture and archive snapshot were removed; a follow-up search found no `/tmp/vst-reviewer-boundary-*` fixture. No packages/downloads, mount changes, worktrees, process-kill, mutation, E8, or real sandbox-inventory steps were performed.
+
+This closes only the named reviewer write-denial selector for the disposable fixture. Full POSIX containment, canonical Windows-path binding, signed run-bound sandbox inventory/default-deny egress, and other S2 platform criteria remain `NOT_RUN` or `NOT_VERIFIED` as listed above.
