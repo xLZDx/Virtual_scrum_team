@@ -395,6 +395,7 @@ def _run_cli(
     env.update({
         "PYTHONNOUSERSITE": "1",
         "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONPYCACHEPREFIX": os.fspath(tmp_path / "pycache"),
         "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
         "PIP_NO_INDEX": "1",
         "QA_E2E_SECRET_TOKEN": SYNTHETIC_SECRET,
@@ -422,10 +423,16 @@ def test_s4_e2e_child_runner_disables_dependency_bytecode(monkeypatch, tmp_path)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
-    result = _run_cli(tmp_path, tmp_path, tmp_path, run_id="bytecode-disabled")
+    dependency_target = tmp_path / "dependency-target"
+    result = _run_cli(
+        tmp_path, tmp_path, dependency_target, run_id="bytecode-disabled"
+    )
 
     assert result.returncode == 0
     assert captured["env"]["PYTHONDONTWRITEBYTECODE"] == "1"
+    cache_prefix = Path(captured["env"]["PYTHONPYCACHEPREFIX"])
+    assert cache_prefix == tmp_path / "pycache"
+    assert not cache_prefix.is_relative_to(dependency_target)
 
 
 def _last_report(candidate: Path) -> tuple[dict, bytes]:
@@ -559,27 +566,35 @@ def test_s4_pytest_argv_size_depends_on_source_files_not_selector_count(tmp_path
     from tools.qa.run import _pytest_command
 
     source_path = "tests/qa/test_many_registered_selectors.py"
+    dependency_target = tmp_path / "dependencies"
 
-    def command_for(selector_count: int) -> list[str]:
+    def command_for(selector_count: int) -> tuple[list[str], dict[str, str], Path]:
         expected_ids = [f"{source_path}::test_registered_{index:04d}" for index in range(selector_count)]
         selectors = {test_id: {"selector": test_id} for test_id in expected_ids}
         scratch_run = tmp_path / f"scratch-{selector_count}"
         scratch_run.mkdir()
-        argv, _ = _pytest_command(
+        argv, child_env = _pytest_command(
             expected_ids=expected_ids,
             selectors=selectors,
             scratch_run=scratch_run,
             repo_root=tmp_path,
-            dependency_target=tmp_path,
+            dependency_target=dependency_target,
         )
-        return argv
+        return argv, child_env, scratch_run
 
-    one_selector_argv = command_for(1)
-    many_selectors_argv = command_for(1000)
+    one_selector_argv, one_selector_env, one_selector_scratch = command_for(1)
+    many_selectors_argv, many_selectors_env, many_selectors_scratch = command_for(1000)
 
     assert len(many_selectors_argv) == len(one_selector_argv)
     assert many_selectors_argv[-1] == source_path
     assert not any("::" in argument for argument in many_selectors_argv)
+    for child_env, scratch_run in (
+        (one_selector_env, one_selector_scratch),
+        (many_selectors_env, many_selectors_scratch),
+    ):
+        cache_prefix = Path(child_env["PYTHONPYCACHEPREFIX"])
+        assert cache_prefix == scratch_run / "pycache"
+        assert not cache_prefix.is_relative_to(dependency_target)
 
 
 def test_s4_e2e_cli_refuses_candidate_head_and_registry_selector_mismatches(
