@@ -31,10 +31,14 @@ The download used pip hash enforcement and binary-only selection. The pre-existi
 
 ## Acceptance boundary
 
-- S4 AC-16 helper compilation, installation, and report-bound identity execution: `NOT_RUN` at the resulting source head. The earlier compile failure also exposed the source declaration issue now fixed in change 0344.
-- S4 AC-17 report-bound dependency-content execution and the three seeded-failure selectors: `NOT_RUN` at the resulting source head.
+- At the time this prerequisite record was created, S4 AC-16 helper compilation, installation, and report-bound identity execution were `NOT_RUN`; the earlier compile failure exposed the source declaration issue fixed in change 0344.
+- At the time this prerequisite record was created, AC-17 report-bound dependency-content execution and the three seeded-failure selectors were `NOT_RUN`.
 - The 52 policy-excluded selectors remain `NOT_RUN`; no timeout, process-kill, process-death, mutation, or prohibited crash scenario was invoked.
 - This record proves the prerequisite artifacts were provisioned and locally inventoried, not that tests passed or that S4 is approved.
+
+## Subsequent report-bound results
+
+At candidate HEAD `4fe150326a36faf401b045cfa1b9a2e64d89436b`, the designated `e2e-runner` passed the singleton AC-16 WSL identity selector 1/1 and all three permitted AC-12 seeded-failure selectors 3/3. The locked dependency-target inventory matched the wheel lock both immediately before and after each run. The runner leaves in-run dependency mutation/change-and-restore protection `NOT_VERIFIED`; no stronger guarantee is claimed. Exact run IDs, row hashes, source/manifest identity, and limitations are recorded in [`s4-report-bound-allowed-runs-20261026.md`](s4-report-bound-allowed-runs-20261026.md). The 52 policy selectors remain `NOT_RUN`, and S4 has not received an exact-head GPT-PM gate.
 
 ## Attribution
 

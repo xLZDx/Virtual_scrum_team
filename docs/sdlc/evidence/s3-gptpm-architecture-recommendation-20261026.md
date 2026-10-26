@@ -42,6 +42,40 @@ Read-only browsing of the exact official GitHub revision pages confirmed the fol
 
 This bounded source review strengthens identity/build-profile understanding but is not a complete SBOM, legal notice closure, signed provenance chain, compatibility proof, or runtime result. The recommended pins remain audit pins only.
 
+## Correlated S3 candidate-selection adjudication
+
+- Request: `b681dfc9-0cf7-4231-9a6f-ea034de54f76`.
+- Correlated reply: `2541471a-a991-51ed-85e0-cda5691ba9a3`.
+- PM Bridge job: `7e20129a-7834-4214-97ad-04e5755ebc3b`.
+- Verdict: **CONDITIONAL SELECTION — ACQUISITION NOT APPROVED**.
+
+| Decision | Verdict | Scope |
+|---|---|---|
+| Temporal selected for read-only audit | APPROVE | Continue assessment at the recorded immutable pins. |
+| Temporal selected as sole S3 durable-engine comparator | APPROVE — PROVISIONAL | It occupies the durable-engine slot beside the hand-written VST worker and BMad Loop, but is not a final winner or “TOP”. |
+| Acquire source/artifacts | NOT APPROVED | S3 §2.3 prerequisites remain incomplete. |
+| Build/install/execute candidate | NOT APPROVED | S2 acceptance and S3 isolation/execution prerequisites remain incomplete. |
+
+The adjudication explicitly distinguishes selection from acquisition: the operator's broad autonomous GO permits ordinary preparation but is not the separately required acquisition authorization or legal attestation. The S3 candidate is therefore now selected for planning/audit, while acquisition permission remains denied.
+
+### Adjudicated gates and accountable owner
+
+The roles below are mapped to the project's three accountable owners; service/reviewer lanes remain execution roles only.
+
+| Gate | Exact missing evidence | Accountable owner | Next action |
+|---|---|---|---|
+| S3-G01: license/notice | Authoritative exact-version rights/notice evidence for `nexus-proto-annotations@v0.1.0` and selected dependency closure. | Operator for legal determination; Codex for evidence gathering. | Obtain an exact-version license/notice or maintainer evidence; preserve unresolved status until adjudicated. |
+| S3-G02: dependencies/provenance | Feature/build-target-resolved dependency inventory and reproducible source-to-artifact provenance for server, SDK wheel and Rust bridge. | Codex. | Prepare the locked SBOM/provenance dossier at the pinned revisions. |
+| S3-G03: profile/compatibility | Defined build/runtime profile, Go 1.26.8 toolchain plan, SDK/server compatibility and network/provider behavior. | Codex; GPT-PM adjudicates architecture. | Write the compatibility/build design and have GPT-PM review. |
+| S3-G04: acquisition | Separate authorization for the pinned source and quarantined acquisition location after the audit is complete. | Operator. | Record the separate acquisition decision only after G01–G03 close. |
+| S3-G05: S2 gate | Mandatory S2 acceptance remains NOT APPROVED; process/workspace/credential controls are incomplete or unverified. | Codex coordinates; GPT-PM adjudicates; operator accountable. | Reconcile permitted S2 evidence and preserve prohibited scenarios as `NOT_RUN`. |
+| S3-G06: run sandbox | Fresh signed run-bound S2 probe for the intended Temporal run. | Operator for attestation; Codex binds evidence. | Provision/attest the intended boundary and run only after policy authorization. |
+| S3-G07: topology | VST-specific server/worker topology, auth, persistence, listeners, egress, STOP/fence and receipt authority. | Codex; GPT-PM adjudicates. | Prepare a VST-specific architecture and threat-flow document. |
+| S3-G08: experiment | Authorized common-fixture functional, replay, STOP and budget scenario plan plus runtime evidence. | Codex coordinates; functional-test-reviewer/e2e-runner execute after gate. | Define the falsifiable scenario matrix, then execute only after G04–G07 pass. |
+| S3-G09: execution | Separate explicit candidate execution decision after all prerequisites. | Operator. | Record a distinct execution decision after the evidence gates. |
+
+PM-PUSH/CI instructions included in the transport envelope are outside this project request and do not supersede the repository's exact-head approval or prohibited-check rules. No push, PR, merge, acquisition, build, installation or execution occurred under this adjudication.
+
 ## Owners and next action
 
 - Accountable task owner: operator under the delegated sprint request.
