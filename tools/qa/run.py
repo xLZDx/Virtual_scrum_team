@@ -953,6 +953,7 @@ def _pytest_command(
     scratch_run: Path,
     repo_root: Path,
     dependency_target: Path,
+    dependency_wheelhouse: Path,
 ) -> tuple[list[str], dict[str, str]]:
     if not expected_ids:
         raise QARunError("pytest cannot be invoked with an empty registered selector set")
@@ -994,6 +995,7 @@ def _pytest_command(
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     env["PYTHONPYCACHEPREFIX"] = os.fspath(scratch_run / "pycache")
     env["PYTHONPATH"] = os.fspath(dependency_target)
+    env["VST_QA_DEPENDENCY_WHEELHOUSE"] = os.fspath(dependency_wheelhouse)
     temp_root = os.fspath(scratch_run)
     env["TEMP"] = temp_root
     env["TMP"] = temp_root
@@ -1179,6 +1181,7 @@ def main() -> int:
             scratch_run=scratch_run,
             repo_root=root,
             dependency_target=dependency_target,
+            dependency_wheelhouse=wheelhouse,
         )
         if _wsl_candidate_boundary(root, profile) != args._runtime_boundary:
             raise QARunError("WSL candidate mount boundary changed before test execution")
