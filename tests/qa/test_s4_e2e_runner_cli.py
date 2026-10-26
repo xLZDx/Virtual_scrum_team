@@ -41,7 +41,8 @@ LOCKED_ARTIFACTS = {
         "stderr": f"{QA_ARTIFACT_ROOT}/{category}.stderr.txt",
     }
     for category in (
-        "functional", "integration", "api", "e2e", "regression", "seeded-failure"
+        "functional", "integration", "api", "e2e", "identity", "regression",
+        "seeded-failure",
     )
 }
 VOLATILE_REPORT_FIELDS = {
@@ -53,6 +54,7 @@ S4_WORKER_HELPER_TEST_ID = (
     "tests/qa/test_s4_functional_worker_identity.py::"
     "test_s4_worker_helper_drops_runner_identity_and_denies_runner_sentinels"
 )
+S4_WORKER_HELPER_TEST_PATH = "tests/qa/test_s4_functional_worker_identity.py"
 WSL_TEST_FIXTURE_PARENT = Path("/tmp/vst-s4-candidate/test-fixtures")
 
 
@@ -130,7 +132,8 @@ def _extract_committed_runner(candidate: Path) -> None:
     archive = subprocess.run(
         [
             "git", "archive", "--format=tar", BASELINE_HEAD,
-            "tools/qa", "tools/vst", "docs/QA_RUNNER_DESIGN.md",
+            "tools/qa", "tools/vst", "tests/qa/test_s4_functional_worker_identity.py",
+            "docs/QA_RUNNER_DESIGN.md",
         ],
         cwd=source_root,
         stdin=subprocess.DEVNULL,
@@ -158,7 +161,11 @@ def _extract_committed_runner(candidate: Path) -> None:
 
 
 def _category_manifest(
-    source_commit: str, source_sha256: str, *, include_not_run: bool = False
+    source_commit: str,
+    source_sha256: str,
+    identity_sha256: str,
+    *,
+    include_not_run: bool = False,
 ) -> dict:
     inventory_ids = [FIXTURE_TEST_ID]
     not_run_reasons = {}
@@ -175,6 +182,12 @@ def _category_manifest(
             "reason": f"The synthetic CLI fixture does not exercise {category}.",
         }
         for category in ("functional", "integration", "api", "seeded-failure")
+    }
+    categories["identity"] = {
+        "status": "SUPPORTED",
+        "test_ids": [S4_WORKER_HELPER_TEST_ID],
+        "not_run_reasons": {},
+        "reason": None,
     }
     categories["e2e"] = {
         "status": "SUPPORTED",
@@ -194,24 +207,44 @@ def _category_manifest(
         "runtime_profiles": list(RUNTIME_PROFILES),
         "artifacts": LOCKED_ARTIFACTS,
         "source_head": source_commit,
-        "source_inventory": [{
-            "path": FIXTURE_TEST_PATH,
-            "source_commit": source_commit,
-            "sha256": source_sha256,
-        }],
+        "source_inventory": [
+            {
+                "path": FIXTURE_TEST_PATH,
+                "source_commit": source_commit,
+                "sha256": source_sha256,
+            },
+            {
+                "path": S4_WORKER_HELPER_TEST_PATH,
+                "source_commit": source_commit,
+                "sha256": identity_sha256,
+            },
+        ],
         "tests": [
             {
                 "test_id": test_id,
                 "selector": test_id,
-                "source_path": FIXTURE_TEST_PATH,
+                "source_path": (
+                    S4_WORKER_HELPER_TEST_PATH
+                    if test_id == S4_WORKER_HELPER_TEST_ID
+                    else FIXTURE_TEST_PATH
+                ),
                 "source_commit": source_commit,
-                "primary_category": "e2e",
+                "primary_category": (
+                    "identity" if test_id == S4_WORKER_HELPER_TEST_ID else "e2e"
+                ),
                 "runtime_profiles": (
-                    [] if test_id in not_run_reasons
-                    else sorted(required_runtime_profiles(FIXTURE_TEST_ID))
+                    []
+                    if test_id in not_run_reasons
+                    else sorted(
+                        required_runtime_profiles(
+                            S4_WORKER_HELPER_TEST_ID
+                            if test_id == S4_WORKER_HELPER_TEST_ID
+                            else FIXTURE_TEST_ID
+                        )
+                    )
                 ),
             }
-            for test_id in inventory_ids
+            for test_id in [*inventory_ids, S4_WORKER_HELPER_TEST_ID]
         ],
         "categories": categories,
         "aggregates": {"regression_members": ["functional", "integration", "api", "e2e"]},
@@ -249,7 +282,7 @@ def _make_candidate(
     (candidate / ".gitignore").write_text(
         "__pycache__/\n*.py[cod]\n.pytest_cache/\n", encoding="utf-8", newline="\n"
     )
-    (candidate / "tests").mkdir(parents=True)
+    (candidate / "tests").mkdir(parents=True, exist_ok=True)
     test_file = candidate / FIXTURE_TEST_PATH
     test_file.parent.mkdir(parents=True, exist_ok=True)
     test_file.write_text(
@@ -273,12 +306,20 @@ def _make_candidate(
         encoding="utf-8",
         newline="\n",
     )
+    identity_test_file = candidate / S4_WORKER_HELPER_TEST_PATH
+    assert identity_test_file.is_file()
     source_commit = _git_commit(candidate, "add synthetic native selector")
     source_sha256 = hashlib.sha256(test_file.read_bytes()).hexdigest()
+    identity_sha256 = hashlib.sha256(identity_test_file.read_bytes()).hexdigest()
     manifest_path = candidate / "docs" / "qa" / "categories.json"
     _write_json(
         manifest_path,
-        _category_manifest(source_commit, source_sha256, include_not_run=include_not_run),
+        _category_manifest(
+            source_commit,
+            source_sha256,
+            identity_sha256,
+            include_not_run=include_not_run,
+        ),
     )
     _git_commit(candidate, "bind synthetic selector registry")
     head = _git(candidate, "rev-parse", "--verify", "HEAD").stdout.decode().strip()
