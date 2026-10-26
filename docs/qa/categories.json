@@ -43,12 +43,12 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "96c9c1556e0bd7d7731bbfba40806c4d1e209907",
+  "source_head": "62e9c946bdb66fccc6eaf0b164b8c5e178592cf8",
   "source_inventory": [
     {
       "path": "tests/qa/test_s4_dependency_provenance.py",
-      "source_commit": "5d1a8d599bec046da9b3afd36e697774e65ac49b",
-      "sha256": "483f4af1957dc42aa9b68c53a2c5257341b9ab36e7d406354f11e90a8021b7bf"
+      "source_commit": "62e9c946bdb66fccc6eaf0b164b8c5e178592cf8",
+      "sha256": "cbb0bf03ee6b8606775df3c13820c9f7dd3dfa4b47a7ee5de4fcdac536c4daa2"
     },
     {
       "path": "tests/qa/test_s4_e2e_runner_cli.py",
@@ -158,10 +158,21 @@
   ],
   "tests": [
     {
+      "test_id": "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_accepts_equivalent_expanded_python_wheel_tags",
+      "selector": "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_accepts_equivalent_expanded_python_wheel_tags",
+      "source_path": "tests/qa/test_s4_dependency_provenance.py",
+      "source_commit": "62e9c946bdb66fccc6eaf0b164b8c5e178592cf8",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
       "test_id": "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_execution_integrity_is_explicitly_not_verified",
       "selector": "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_execution_integrity_is_explicitly_not_verified",
       "source_path": "tests/qa/test_s4_dependency_provenance.py",
-      "source_commit": "5d1a8d599bec046da9b3afd36e697774e65ac49b",
+      "source_commit": "62e9c946bdb66fccc6eaf0b164b8c5e178592cf8",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -172,7 +183,7 @@
       "test_id": "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_preparation_rejects_unsupported_wheel_relocation",
       "selector": "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_preparation_rejects_unsupported_wheel_relocation",
       "source_path": "tests/qa/test_s4_dependency_provenance.py",
-      "source_commit": "5d1a8d599bec046da9b3afd36e697774e65ac49b",
+      "source_commit": "62e9c946bdb66fccc6eaf0b164b8c5e178592cf8",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -183,7 +194,7 @@
       "test_id": "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_target_bytes_must_match_locked_same_version_wheel",
       "selector": "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_target_bytes_must_match_locked_same_version_wheel",
       "source_path": "tests/qa/test_s4_dependency_provenance.py",
-      "source_commit": "5d1a8d599bec046da9b3afd36e697774e65ac49b",
+      "source_commit": "62e9c946bdb66fccc6eaf0b164b8c5e178592cf8",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -194,7 +205,7 @@
       "test_id": "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_target_rejects_extra_importable_file",
       "selector": "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_target_rejects_extra_importable_file",
       "source_path": "tests/qa/test_s4_dependency_provenance.py",
-      "source_commit": "5d1a8d599bec046da9b3afd36e697774e65ac49b",
+      "source_commit": "62e9c946bdb66fccc6eaf0b164b8c5e178592cf8",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -205,7 +216,7 @@
       "test_id": "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_wheel_must_match_lock_hash",
       "selector": "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_wheel_must_match_lock_hash",
       "source_path": "tests/qa/test_s4_dependency_provenance.py",
-      "source_commit": "5d1a8d599bec046da9b3afd36e697774e65ac49b",
+      "source_commit": "62e9c946bdb66fccc6eaf0b164b8c5e178592cf8",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -216,7 +227,7 @@
       "test_id": "tests/qa/test_s4_dependency_provenance.py::test_s4_runner_cli_requires_explicit_dependency_wheelhouse",
       "selector": "tests/qa/test_s4_dependency_provenance.py::test_s4_runner_cli_requires_explicit_dependency_wheelhouse",
       "source_path": "tests/qa/test_s4_dependency_provenance.py",
-      "source_commit": "5d1a8d599bec046da9b3afd36e697774e65ac49b",
+      "source_commit": "62e9c946bdb66fccc6eaf0b164b8c5e178592cf8",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -227,7 +238,7 @@
       "test_id": "tests/qa/test_s4_dependency_provenance.py::test_s4_runner_reports_post_execution_dependency_mutation",
       "selector": "tests/qa/test_s4_dependency_provenance.py::test_s4_runner_reports_post_execution_dependency_mutation",
       "source_path": "tests/qa/test_s4_dependency_provenance.py",
-      "source_commit": "5d1a8d599bec046da9b3afd36e697774e65ac49b",
+      "source_commit": "62e9c946bdb66fccc6eaf0b164b8c5e178592cf8",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -10567,6 +10578,7 @@
     "functional": {
       "status": "SUPPORTED",
       "test_ids": [
+        "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_accepts_equivalent_expanded_python_wheel_tags",
         "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_execution_integrity_is_explicitly_not_verified",
         "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_preparation_rejects_unsupported_wheel_relocation",
         "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_target_bytes_must_match_locked_same_version_wheel",
@@ -11625,6 +11637,7 @@
     "regression": {
       "status": "AGGREGATE",
       "test_ids": [
+        "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_accepts_equivalent_expanded_python_wheel_tags",
         "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_execution_integrity_is_explicitly_not_verified",
         "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_preparation_rejects_unsupported_wheel_relocation",
         "tests/qa/test_s4_dependency_provenance.py::test_s4_dependency_target_bytes_must_match_locked_same_version_wheel",
