@@ -394,6 +394,7 @@ def _run_cli(
     }
     env.update({
         "PYTHONNOUSERSITE": "1",
+        "PYTHONDONTWRITEBYTECODE": "1",
         "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
         "PIP_NO_INDEX": "1",
         "QA_E2E_SECRET_TOKEN": SYNTHETIC_SECRET,
@@ -410,6 +411,21 @@ def _run_cli(
         shell=False,
     )
     return result
+
+
+def test_s4_e2e_child_runner_disables_dependency_bytecode(monkeypatch, tmp_path):
+    captured = {}
+
+    def fake_run(args, **kwargs):
+        captured["env"] = kwargs["env"]
+        return subprocess.CompletedProcess(args, 0, stdout=b"", stderr=b"")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = _run_cli(tmp_path, tmp_path, tmp_path, run_id="bytecode-disabled")
+
+    assert result.returncode == 0
+    assert captured["env"]["PYTHONDONTWRITEBYTECODE"] == "1"
 
 
 def _last_report(candidate: Path) -> tuple[dict, bytes]:
