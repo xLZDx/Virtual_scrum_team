@@ -992,6 +992,7 @@ def _pytest_command(
     env["PYTHONUTF8"] = "1"
     env["PYTHONNOUSERSITE"] = "1"
     env["PYTHONDONTWRITEBYTECODE"] = "1"
+    env["PYTHONPYCACHEPREFIX"] = os.fspath(scratch_run / "pycache")
     env["PYTHONPATH"] = os.fspath(dependency_target)
     temp_root = os.fspath(scratch_run)
     env["TEMP"] = temp_root
