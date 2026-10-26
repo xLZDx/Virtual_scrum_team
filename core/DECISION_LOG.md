@@ -821,3 +821,7 @@ Correlated PM Bridge request `b10f9f72-c0d1-4ac1-b020-38cb3af40345`, reply `0797
 ## 2026-10-26 — Bind focused S4 identity contract tests to a refreshed registry
 
 Designated `functional-test-reviewer` authored four focused AC-16 contracts across `test_s4_functional_runner_contracts.py` and `test_s4_functional_runtime_matrix.py`; change 0347 records their assertions and exact selectors. No tests have run yet. After test-source commit `4d4341e4812ba726c0b35e83ee2fad0a3fb5a7f1`, change 0348 regenerated the registry with source head `4d4341e`; regression inventory is 905 runnable plus 52 policy `NOT_RUN`, and the isolated `identity` selector remains WSL-only and outside the regression aggregate. Decision: execute only the four focused selectors after this registry commit, then proceed to the report-bound E2E attempt if the exact-head preflight permits. Preserve the unrelated pre-existing untracked S2 evidence file.
+
+## 2026-10-26 — Record focused S4 identity functional result
+
+The designated `functional-test-reviewer` executed the four exact selectors at repository HEAD `f3677a98f7b51bc1646aea4e43b2443ce338ba3f` after change 0348 bound the registry to source HEAD `4d4341e`. Result: 4 passed, exit 0, one pytest-asyncio deprecation warning, 10.78 seconds. This validates only local category/registry/matrix contracts. AC-16 helper runtime, AC-17 report-bound dependency integrity, seeded-failure reports, policy exclusions and S4 acceptance remain open. Exact record: change 0350 and `docs/sdlc/evidence/s4-identity-contract-tests-f3677a9-20261026.md`.
