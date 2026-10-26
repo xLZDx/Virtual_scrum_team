@@ -1,6 +1,6 @@
 # S4 WSL worker identity helper design
 
-Status: helper source and exact-head installer are in change 0310. The AC-16 report-bound selector and WSL-only mapping are committed in change 0314; the category registry is regenerated from exact test-source HEAD in change 0315. The helper has not been installed or runtime-proven, and the selector remains `NOT_RUN` pending a trusted wheelhouse and report-bound WSL run. This does not authorize process-kill, timeout, mutation, or other existing `NOT_RUN` scenarios.
+Status: helper source and exact-head installer are in change 0310. The AC-16 report-bound selector and WSL-only mapping are committed in change 0314; the category registry is regenerated from exact test-source HEAD in change 0315. At exact candidate `ece6065`, the installer validated the candidate but could not build because `/usr/bin/cc` is absent; no helper was installed. The selector remains `NOT_RUN`. Codex owns locating an authorized offline compiler and trusted wheelhouse; the operator owns authorizing/providing new system prerequisites if needed. This does not authorize process-kill, timeout, mutation, or other existing `NOT_RUN` scenarios.
 
 ## Goal
 
