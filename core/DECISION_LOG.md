@@ -18,6 +18,10 @@ After three independent exact-head specialist reviews found that the runner igno
 
 At source HEAD `5ae495c073a7bfb5d26f209f582c00e7c4c954c7`, designated agents passed 12 mocked Job Object cleanup cases, 10 S2 Store lifecycle cases, 4 S2 operation-recovery cases, 8 safe S3 adapter cases and 3 safe S3 pilot cases. Nine POSIX-only Store cases were skipped; S3 resume/STOP and sandbox-boundary scenarios remained `NOT_RUN`. The functional test file was dirty during these runs, so rerun after its test commit before exact-head review. See change 0320 and its evidence file.
 
+## 2026-10-26 -- Bind S2/S3 focused results to committed test source
+
+After change 0320 committed the test source, `functional-test-reviewer` and `e2e-runner` repeated the selected S2/S3 commands at exact committed HEAD `2eec05101abe38b7ec50aefcb3ec04788dc26195`; counts were unchanged and the tree remained otherwise clean except for the preserved untracked S2 evidence file. This binds the reported subset to committed test and source bytes only. Skipped/deselected platform, STOP and resume cases remain `NOT_RUN`. See change 0321.
+
 ## 2026-10-25 -- Add one fixed WSL runner-to-worker identity selector
 
 The operator explicitly authorized a narrow helper for one report-bound child transition from `vst-runner` UID/GID 997:988 to `vst-worker` UID/GID 999:989. Decision: add a fixed-identity, fixed-interpreter helper and one S4 functional selector for the identity/file/socket boundary; do not move the full pytest process or report artifacts to UID 999. Do not change the separate restricted-root harness or any existing `NOT_RUN` policy exclusions for process-kill, timeout, process-death, mutation, or E8 scenarios. The implementation contract and rollout constraints are in `docs/S4_WSL_WORKER_UID_HELPER_DESIGN.md`; acceptance is AC-16 in the S4 plan. Implementation and runtime evidence are pending. Operator: accountable task owner; Codex: executor; exact WSL service owner is unknown.

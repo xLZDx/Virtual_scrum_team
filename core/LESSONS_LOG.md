@@ -39,6 +39,15 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Rule: test the invariant (cleanup failure cannot produce PASS) and the retry contract, not an incidental exact call count.
 - Fix status: regression coverage and evidence recorded in change 0320; exact committed-test-head rerun pending.
 
+## 2026-10-26 — Repeat accepted test selectors after committing their source
+
+- Kind: SUCCESS (test evidence rebound to the committed source and selector bytes).
+- Facts: the initial 12 cleanup cases and safe S2/S3 subsets ran at source HEAD `5ae495c` while `tests/vst/test_e4_runner.py` was dirty. After change 0320 committed the test file, the designated agents reran those selectors at exact HEAD `2eec051`; all counts were unchanged and no files were edited. See the full command/evidence record in change 0321.
+- Root cause: test authoring produces a dirty test source that is not part of the exact committed candidate.
+- Layer that caught it: exact-head evidence reconciliation before final review.
+- Rule: repeat the required selectors after the test-source commit and preserve both source and test head in the evidence record.
+- Fix status: exact committed-head reruns recorded in change 0321; specialist and GPT-PM gates remain open.
+
 ## 2026-10-25 -- Reconcile prepared sprint docs with repository evidence before execution
 
 - Kind: SHORTCOMING (documentation drift caught before implementation).

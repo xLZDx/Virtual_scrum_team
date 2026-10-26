@@ -59,4 +59,16 @@ Result: exit 0; **3 passed**, one pytest-asyncio deprecation warning. The test a
 
 ## Limitations and next step
 
-The S2 source implementation and the later shared `tools/vst/store.py` / `tools/vst/slice.py` changes have not received a complete exact committed-test-head suite. The above commands ran at source HEAD `5ae495c` with the new functional test file dirty. After change 0320 commits the test source and evidence, the designated test agents must rerun the applicable selectors at that exact committed head. The skipped/deselected S2/S3 cases remain `NOT_RUN`, not passes.
+## Exact committed-test-head rerun
+
+After change 0320 committed the functional test source and evidence, the designated agents repeated the same applicable selectors without edits at repository HEAD `2eec05101abe38b7ec50aefcb3ec04788dc26195`. Before/after status contained only the preserved untracked `docs/sdlc/evidence/s2-functional-test-run.md`.
+
+| Test set | Exact command / selectors | Result |
+|---|---|---|
+| S2 Job Object cleanup | `C:\Python314\python.exe -m pytest tests/vst/test_e4_runner.py -k 'job_cleanup_failure_is_never_confirmed_and_fallback_runs or failed_job_handle_close_is_retried or run_receipt_fails_closed_when_job_cleanup_is_unconfirmed' -q` | 12 passed, 290 deselected; exit 0 |
+| S2 Store lifecycle | `C:\Python314\python.exe -m pytest -q tests/vst/test_s2_store_lifecycle.py` | 10 passed, 9 POSIX-only skipped; exit 0 |
+| S2 operation recovery | `C:\Python314\python.exe -m pytest -q tests/vst/test_s2_operation_recovery.py` | 4 passed; exit 0 |
+| S3 worker adapter safe subset | `C:\Python314\python.exe -m pytest -q tests/vst/test_s3_worker_adapter.py -k "not ac4_resume_accepts_only_returned_named_app_checkpoint_and_is_idempotent"` | 8 passed, 1 resume case deselected; exit 0 |
+| S3 pilot safe subset | Three selectors listed in the prior section | 3 passed; exit 0 |
+
+Python: 3.14.3. Every invocation emitted one `pytest-asyncio` deprecation warning about `asyncio.get_event_loop_policy`; no failures occurred. The explicit POSIX skips, resume deselection, S3 stop/fencing cases and sandbox boundary cases remain `NOT_RUN`, not passes. These results are bound to the exact committed source/test HEAD `2eec051`; this evidence document and subsequent status records do not change source or test files.
