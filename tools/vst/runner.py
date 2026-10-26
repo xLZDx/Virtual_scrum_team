@@ -426,19 +426,26 @@ class _JobObject:
                     pass
             return None
 
-    def terminate_and_close(self) -> None:
-        """TerminateJobObject then CloseHandle; idempotent, never raises."""
-        handle, self._handle = self._handle, None
+    def terminate_and_close(self) -> bool:
+        """TerminateJobObject then CloseHandle; report unconfirmed cleanup."""
+        handle = self._handle
         if not handle:
-            return
+            return True
+        terminated = False
+        closed = False
         try:
-            self._api.k32.TerminateJobObject(handle, _JOB_TERMINATE_EXIT_CODE)
+            terminated = bool(
+                self._api.k32.TerminateJobObject(handle, _JOB_TERMINATE_EXIT_CODE)
+            )
         except Exception:  # noqa: BLE001
             pass
         try:
-            self._api.k32.CloseHandle(handle)
+            closed = bool(self._api.k32.CloseHandle(handle))
         except Exception:  # noqa: BLE001
             pass
+        if closed:
+            self._handle = None
+        return terminated and closed
 
 
 def _kill_tree(proc: subprocess.Popen) -> None:
@@ -532,6 +539,14 @@ def _run_one(
     err: _Capture | None = None
     completed = False
     kill_failed = False
+    cleanup_failed = False
+
+    def cleanup_job() -> None:
+        nonlocal cleanup_failed
+        if job is not None and not job.terminate_and_close():
+            cleanup_failed = True
+            _kill_tree(proc)  # best-effort fallback when Win32 cleanup is unconfirmed
+
     try:
         # Windows: put the child in a kill-on-close Job Object right away so every
         # descendant dies on any exit path, even after the root has exited. Strict
@@ -556,8 +571,7 @@ def _run_one(
         if os.name == "nt" and require_job_object and not _resume_suspended_primary_thread(proc.pid):
             info["job_object_refused"] = True
             if job is not None:
-                job.terminate_and_close()
-                job = None
+                cleanup_job()
             _kill_tree(proc)
             try:
                 proc.wait(timeout=10)
@@ -576,7 +590,7 @@ def _run_one(
         except subprocess.TimeoutExpired:
             info["timed_out"] = True
             if job is not None:
-                job.terminate_and_close()
+                cleanup_job()
             _kill_tree(proc)  # taskkill /T /F fallback (also the no-job path)
             try:
                 proc.wait(timeout=10)
@@ -584,7 +598,7 @@ def _run_one(
                 kill_failed = True  # the root survived the kill: output is unreliable
         else:
             if job is not None:
-                job.terminate_and_close()
+                cleanup_job()
             elif os.name == "nt":
                 _taskkill_tree(proc.pid)  # no job: best effort, failures ignored
             else:
@@ -595,7 +609,7 @@ def _run_one(
         completed = True
     finally:
         if job is not None:
-            job.terminate_and_close()  # idempotent; covers unexpected exceptions
+            cleanup_job()  # idempotent; covers unexpected exceptions
         if not completed:
             # ANY exception (including a failed reader-thread start): kill the
             # whole tree (process group on POSIX, taskkill /T on Windows).
@@ -613,7 +627,9 @@ def _run_one(
     assert out is not None and err is not None
     info["stdout_truncated"] = out.truncated
     info["stderr_truncated"] = err.truncated
-    info["capture_incomplete"] = out.incomplete or err.incomplete or kill_failed
+    info["capture_incomplete"] = (
+        out.incomplete or err.incomplete or kill_failed or cleanup_failed
+    )
     if info["capture_incomplete"]:
         code = EXIT_CAPTURE_INCOMPLETE
     elif info["timed_out"]:

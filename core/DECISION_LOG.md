@@ -10,6 +10,10 @@ The S2 plan and backlog contained baseline-era "implementation not started" and 
 
 For unrun Windows Job Object, full POSIX containment, and E8 crash/resume evidence, the operator is accountable for any applicable policy authorization; Codex prepares exact fixtures and coordinates evidence; `e2e-runner` executes only when the policy gate permits it. The technical platform owner remains unknown. Assignment does not change `NOT_RUN` or grant authorization. See change 0318.
 
+## 2026-10-26 -- Treat unconfirmed Windows Job Object cleanup as failure
+
+After three independent exact-head specialist reviews found that the runner ignored false/exception results from `TerminateJobObject` and `CloseHandle`, change 0319 makes the cleanup result fail closed and attempts the existing tree-kill fallback. A failed cleanup remains `capture_incomplete` even if a later handle-close retry succeeds. This is source remediation only; runtime behavior and exact-head regression evidence are pending. The implementation agent also ran `git diff --check -- tools/vst/runner.py` outside the requested phase; no exit code was recorded and the command is not verification evidence. See change 0319.
+
 ## 2026-10-25 -- Add one fixed WSL runner-to-worker identity selector
 
 The operator explicitly authorized a narrow helper for one report-bound child transition from `vst-runner` UID/GID 997:988 to `vst-worker` UID/GID 999:989. Decision: add a fixed-identity, fixed-interpreter helper and one S4 functional selector for the identity/file/socket boundary; do not move the full pytest process or report artifacts to UID 999. Do not change the separate restricted-root harness or any existing `NOT_RUN` policy exclusions for process-kill, timeout, process-death, mutation, or E8 scenarios. The implementation contract and rollout constraints are in `docs/S4_WSL_WORKER_UID_HELPER_DESIGN.md`; acceptance is AC-16 in the S4 plan. Implementation and runtime evidence are pending. Operator: accountable task owner; Codex: executor; exact WSL service owner is unknown.

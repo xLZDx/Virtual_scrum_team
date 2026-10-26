@@ -20,6 +20,16 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Rule: preserve unknown technical ownership as context, but assign closure to one of the three project owners and name the gated executor step.
 - Fix status: docs updated in change 0318; no tests/checks/runtime actions run.
 
+## 2026-10-26 — Check native cleanup return values before accepting work
+
+- Kind: SHORTCOMING (independent reviews found a swallowed containment failure).
+- Facts: at HEAD `08cb561`, `_JobObject.terminate_and_close()` ignored Win32 return values, and a Windows command could be accepted after cleanup was unconfirmed. Change 0319 makes that state fail closed and adds a best-effort tree fallback. Exact S2 regression/runtime proof remains pending.
+- Root cause: cleanup APIs were treated as best-effort without propagating failure into the signed result.
+- Layer that caught it: silent-failure, reliability, and security reviews; their findings agreed on the same reachable path.
+- Rule: inspect native API return values, preserve retryable handles until close is confirmed, and make uncertain cleanup invalidate acceptance.
+- Additional process shortcoming: the implementation agent ran `git diff --check -- tools/vst/runner.py` contrary to its instruction; output was empty but exit code was not retained. Treat it as non-evidence.
+- Fix status: source and contract documentation updated in change 0319; required test-agent runs remain open.
+
 ## 2026-10-25 -- Reconcile prepared sprint docs with repository evidence before execution
 
 - Kind: SHORTCOMING (documentation drift caught before implementation).
