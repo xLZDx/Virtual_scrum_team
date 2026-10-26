@@ -67,6 +67,7 @@ Standard library only; no network.
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import re
 import signal
@@ -420,10 +421,18 @@ class _JobObject:
             return cls(api, job)
         except Exception:  # noqa: BLE001 - never let job setup break the run
             if job:
-                try:
-                    k32.CloseHandle(job)
-                except Exception:  # noqa: BLE001
-                    pass
+                closed = False
+                for _ in range(2):
+                    try:
+                        closed = bool(k32.CloseHandle(job))
+                    except Exception:  # noqa: BLE001 - cleanup failures must remain visible
+                        closed = False
+                    if closed:
+                        break
+                if not closed:
+                    logging.getLogger(__name__).error(
+                        "failed to close Windows Job Object after setup failure"
+                    )
             return None
 
     def terminate_and_close(self) -> bool:

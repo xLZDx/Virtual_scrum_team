@@ -1139,6 +1139,104 @@ class _MockChild:
         return self.returncode
 
 
+def _job_object_setup_failure_api(close_outcomes):
+    events = []
+    close_calls = []
+
+    class FakeKernel32:
+        @staticmethod
+        def CreateJobObjectW(_attributes, _name):
+            events.append("create_job")
+            return 700
+
+        @staticmethod
+        def SetInformationJobObject(*_args):
+            events.append("configure_job")
+            return False
+
+        @staticmethod
+        def CloseHandle(handle):
+            close_calls.append(handle)
+            events.append(f"close_job_{len(close_calls)}")
+            outcome = close_outcomes[len(close_calls) - 1]
+            if isinstance(outcome, BaseException):
+                raise outcome
+            return outcome
+
+    class FakeLimits:
+        def __init__(self):
+            self.BasicLimitInformation = SimpleNamespace(LimitFlags=0)
+
+    api = SimpleNamespace(
+        k32=FakeKernel32,
+        ExtendedLimits=FakeLimits,
+        ctypes=SimpleNamespace(byref=lambda value: value, sizeof=lambda _value: 1),
+    )
+    return api, events, close_calls
+
+
+@pytest.mark.parametrize(
+    ("close_outcomes", "expected_log"),
+    [
+        ([False, True], False),
+        ([RuntimeError("first close failed"), True], False),
+        ([False, False], True),
+        ([RuntimeError("first close failed"), RuntimeError("second close failed")], True),
+    ],
+    ids=["false-then-success", "exception-then-success", "persistent-false", "persistent-exception"],
+)
+def test_job_object_attach_setup_failure_retries_close_and_logs_only_if_cleanup_fails(
+    monkeypatch, caplog, close_outcomes, expected_log,
+):
+    api, events, close_calls = _job_object_setup_failure_api(close_outcomes)
+    monkeypatch.setattr(runner, "_win_api", lambda: api)
+
+    attached = runner._JobObject.attach(SimpleNamespace(_handle=123))
+
+    assert attached is None
+    assert events == ["create_job", "configure_job", "close_job_1", "close_job_2"]
+    assert close_calls == [700, 700]
+    if expected_log:
+        assert "failed to close Windows Job Object after setup failure" in caplog.text
+    else:
+        assert "failed to close Windows Job Object after setup failure" not in caplog.text
+
+
+def test_strict_windows_launch_stays_fail_closed_after_job_setup_cleanup_failure(
+    monkeypatch, caplog,
+):
+    api, close_events, close_calls = _job_object_setup_failure_api([False, False])
+    run_events = []
+    resume_calls = []
+    monkeypatch.setattr(runner, "os", SimpleNamespace(name="nt"))
+    monkeypatch.setattr(runner, "_win_api", lambda: api)
+
+    def popen(argv, **_kwargs):
+        run_events.append("create_suspended")
+        assert argv == ["synthetic-command"]
+        return _MockChild(4242, run_events)
+
+    monkeypatch.setattr(runner.subprocess, "Popen", popen)
+    monkeypatch.setattr(runner, "_kill_tree", lambda _child: run_events.append("cleanup"))
+    monkeypatch.setattr(
+        runner, "_resume_suspended_primary_thread",
+        lambda _pid: resume_calls.append("resumed"),
+    )
+
+    code, output, info = runner._run_one(
+        ["synthetic-command"], ".", 1, {}, 1024, require_job_object=True,
+    )
+
+    assert code == runner.EXIT_CAPTURE_INCOMPLETE
+    assert output == ""
+    assert info["job_object_refused"] is True
+    assert resume_calls == []
+    assert run_events == ["create_suspended", "cleanup", "wait"]
+    assert close_events == ["create_job", "configure_job", "close_job_1", "close_job_2"]
+    assert close_calls == [700, 700]
+    assert "failed to close Windows Job Object after setup failure" in caplog.text
+
+
 def _install_mock_windows_run(monkeypatch, *, failure=None):
     events = []
     command_callbacks = []
