@@ -746,4 +746,6 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 
 2026-10-26 — SUCCESS: after an earlier review identified ignored `CloseHandle` failure during Job Object setup, the runner now retries once, emits an error if cleanup remains unconfirmed, and preserves strict refusal. Focused test evidence covers false returns and exceptions. Rule: resource cleanup failures need bounded retries, observable diagnostics, and unchanged fail-closed behavior. See change 0331.
 
+2026-10-26 — SUCCESS: designated E2E exact-head reruns and fresh reliability/silent-failure reviews covered the bounded Job Object setup-cleanup retry at one committed head. Both reviews found no actionable source issue; mocked outcomes do not establish actual Windows behavior. Rule: bind focused retry behavior and independent failure-path review to the same committed source before carrying the result forward. See change 0332.
+
 2026-10-26 — SUCCESS: the designated E2E role ran both S3 synthetic adapter/pilot modules at one exact committed head and retained exact commands, counts, warnings, duration, and limits. The 18 passing test cases establish a coherent local fixture baseline but do not prove real sandbox or process-kill recovery. Rule: bind the complete permitted local module set to one exact head and state excluded platform behavior explicitly. See change 0330.
