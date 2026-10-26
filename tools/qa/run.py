@@ -155,7 +155,7 @@ def _repo_paths(args: argparse.Namespace) -> tuple[Path, Path, dict[str, Path]]:
         raise QARunError("timeout-seconds is outside the supported bound")
     if not 1 <= args.output_cap_bytes <= MAX_CAPTURE_BYTES:
         raise QARunError("output-cap-bytes is outside the supported bound")
-    if args.category not in {"functional", "integration", "api", "e2e", "regression", "seeded-failure"}:
+    if args.category not in {"functional", "integration", "api", "e2e", "identity", "regression", "seeded-failure"}:
         raise QARunError("category is not a registered QA category")
     base = f"docs/sdlc/evidence/qa/{args.category}"
     expected_paths = {
@@ -218,7 +218,7 @@ def _git_status_paths(root: Path) -> list[str]:
 def _known_artifact_paths() -> set[str]:
     return {
         f"docs/sdlc/evidence/qa/{category}.{kind}"
-        for category in ("functional", "integration", "api", "e2e", "regression", "seeded-failure")
+        for category in ("functional", "integration", "api", "e2e", "identity", "regression", "seeded-failure")
         for kind in ("report.jsonl", "stdout.txt", "stderr.txt")
     } | {"docs/sdlc/evidence/qa/matrix.report.jsonl"}
 
@@ -1020,7 +1020,7 @@ def _normalized_command(argv: list[str], scratch_run: Path) -> list[str]:
 
 
 def _base_status(category_status: str | None, category: str, reason: str | None) -> tuple[str, list[str]]:
-    if category not in {"functional", "integration", "api", "e2e", "regression", "seeded-failure"}:
+    if category not in {"functional", "integration", "api", "e2e", "identity", "regression", "seeded-failure"}:
         return "BLOCKED", [f"unknown category: {category}"]
     if category_status == "NOT_RUN":
         return "NOT_RUN", [reason or "category is committed as NOT_RUN without a reason"]

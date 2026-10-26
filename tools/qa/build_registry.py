@@ -23,6 +23,7 @@ from .registry import (
 TEST_FILE_CATEGORIES = {
     "test_s2_contract_gate.py": "functional",
     "test_s2_diffgate.py": "functional",
+    "test_s4_functional_worker_identity.py": "identity",
     "test_e1_contracts.py": "api",
     "test_e2_gate.py": "api",
     "test_e3_store.py": "api",
@@ -36,7 +37,7 @@ TEST_FILE_CATEGORIES = {
     "test_e5_slice.py": "e2e",
     "test_s3_worker_pilot_e2e.py": "e2e",
 }
-PRIMARY_CATEGORIES = ("functional", "integration", "api", "e2e", "seeded-failure")
+PRIMARY_CATEGORIES = ("functional", "integration", "api", "e2e", "identity", "seeded-failure")
 POLICY_NOT_RUN = {
     "tests/vst/test_e4_runner.py::test_timeout_records_exit_minus_one_and_fails":
         "NOT_RUN: this scenario invokes timeout process-tree cleanup; process-kill execution is prohibited for this S4 run.",
@@ -193,7 +194,7 @@ def build_registry(root_path: str | Path) -> dict:
                 "stderr": f"docs/sdlc/evidence/qa/{category}.stderr.txt",
             }
             for category in (
-                "functional", "integration", "api", "e2e", "regression", "seeded-failure"
+                "functional", "integration", "api", "e2e", "identity", "regression", "seeded-failure"
             )
         },
         "source_head": source_head,

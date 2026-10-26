@@ -14,6 +14,7 @@ from .registry import (
     ALL_CATEGORIES,
     RUNTIME_PROFILES,
     WINDOWS_PROFILE,
+    WSL_PROFILE,
     WSL_ROOT_PROFILE,
     RegistryError,
     ValidatedRegistry,
@@ -55,6 +56,12 @@ def _args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def _expected_report_refs(registry: ValidatedRegistry) -> set[tuple[str, str]]:
+    identity_profiles = {
+        profile for profile in RUNTIME_PROFILES
+        if registry.category_profile_test_ids.get("identity", {}).get(profile)
+    }
+    if identity_profiles != {WSL_PROFILE}:
+        raise MatrixError("identity category must require exactly one unprivileged WSL profile report")
     return {
         (profile, category)
         for profile in RUNTIME_PROFILES

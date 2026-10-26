@@ -14,13 +14,14 @@ from typing import Any
 
 
 PRIMARY_CATEGORIES = frozenset(
-    {"functional", "integration", "api", "e2e", "seeded-failure"}
+    {"functional", "integration", "api", "e2e", "identity", "seeded-failure"}
 )
 ALL_CATEGORIES = PRIMARY_CATEGORIES | {"regression"}
 WINDOWS_PROFILE = "windows-cpython-3.14.3"
 WSL_PROFILE = "wsl-ubuntu-24.04-cpython-3.12.3"
 WSL_ROOT_PROFILE = "wsl-ubuntu-24.04-root-harness"
 RUNTIME_PROFILES = (WINDOWS_PROFILE, WSL_PROFILE, WSL_ROOT_PROFILE)
+IDENTITY_SELECTOR = "tests/qa/test_s4_functional_worker_identity.py::test_s4_worker_helper_drops_runner_identity_and_denies_runner_sentinels"
 POSIX_ONLY_SELECTORS = frozenset({
     "tests/qa/test_s4_functional_worker_identity.py::test_s4_worker_helper_drops_runner_identity_and_denies_runner_sentinels",
     "tests/vst/test_e3_store.py::test_database_file_is_owner_only_on_posix",
@@ -330,7 +331,7 @@ def validate_registry(
 
     categories = data["categories"]
     if not isinstance(categories, dict) or set(categories) != ALL_CATEGORIES:
-        raise RegistryError("categories must declare all five primary categories and regression")
+        raise RegistryError("categories must declare all six primary categories and regression")
     tests = data["tests"]
     if not isinstance(tests, list):
         raise RegistryError("tests must be a list")
@@ -391,6 +392,21 @@ def validate_registry(
         raise RegistryError(
             f"registry selector inventory differs from source (missing={len(missing)}, extra={len(extra)})"
         )
+
+    identity_module_selectors = {
+        selector for selector in actual_selectors
+        if selector.startswith("tests/qa/test_s4_functional_worker_identity.py::")
+    }
+    if identity_module_selectors != {IDENTITY_SELECTOR}:
+        raise RegistryError("identity test module must contain exactly the committed identity selector")
+    if selectors_by_id[IDENTITY_SELECTOR]["primary_category"] != "identity":
+        raise RegistryError("identity selector must be assigned to the identity category")
+    categorized_identity = {
+        test_id for test_id, item in selectors_by_id.items()
+        if item["primary_category"] == "identity"
+    }
+    if categorized_identity != {IDENTITY_SELECTOR}:
+        raise RegistryError("identity category must contain exactly the committed identity selector")
 
     category_test_ids: dict[str, list[str]] = {}
     category_inventory_ids: dict[str, list[str]] = {}
