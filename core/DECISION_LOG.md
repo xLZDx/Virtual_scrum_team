@@ -6,6 +6,10 @@ Append-only. One dated entry per decision, piece of evidence or refusal.
 
 The S2 plan and backlog contained baseline-era "implementation not started" and blanket "specialist review pending" wording while `docs/sdlc/STATE.md` already recorded the bounded source, Phase 7 results, review heads, and open acceptance. Reconcile those descriptions only: retain source/test evidence at its recorded S2 revisions; record the starting canonical repository HEAD for this documentation pass; keep prohibited runtime scenarios and unverified production limits open; and keep S2's exact-head GPT-PM gate distinct from S4's correlated REJECT. No acceptance waiver or promotion is granted. See change 0317.
 
+## 2026-10-26 -- Assign accountable closure for S2 containment evidence
+
+For unrun Windows Job Object, full POSIX containment, and E8 crash/resume evidence, the operator is accountable for any applicable policy authorization; Codex prepares exact fixtures and coordinates evidence; `e2e-runner` executes only when the policy gate permits it. The technical platform owner remains unknown. Assignment does not change `NOT_RUN` or grant authorization. See change 0318.
+
 ## 2026-10-25 -- Add one fixed WSL runner-to-worker identity selector
 
 The operator explicitly authorized a narrow helper for one report-bound child transition from `vst-runner` UID/GID 997:988 to `vst-worker` UID/GID 999:989. Decision: add a fixed-identity, fixed-interpreter helper and one S4 functional selector for the identity/file/socket boundary; do not move the full pytest process or report artifacts to UID 999. Do not change the separate restricted-root harness or any existing `NOT_RUN` policy exclusions for process-kill, timeout, process-death, mutation, or E8 scenarios. The implementation contract and rollout constraints are in `docs/S4_WSL_WORKER_UID_HELPER_DESIGN.md`; acceptance is AC-16 in the S4 plan. Implementation and runtime evidence are pending. Operator: accountable task owner; Codex: executor; exact WSL service owner is unknown.

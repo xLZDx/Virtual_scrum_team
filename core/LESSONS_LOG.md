@@ -11,6 +11,15 @@ Entry fields: date and commit title; kind; facts with evidence pointer; root cau
 - Rule: update status against recorded artifacts, preserve each evidence revision, and name the exact remaining gate before marking a sprint accepted.
 - Fix status: documentation reconciliation recorded in change 0317; no tests/checks/runtime actions run.
 
+## 2026-10-26 — Assign accountable owners without inventing technical owners
+
+- Kind: SUCCESS (closure path clarified without overstating runtime evidence).
+- Facts: S2 state identified the technical platform owner as not established but omitted accountable ownership for Windows Job Object, full POSIX containment, and E8 crash/resume evidence. Change 0318 assigns policy authorization to the operator, fixture/evidence coordination to Codex, and conditional execution to `e2e-runner`; all remain `NOT_RUN`.
+- Root cause: technical-owner uncertainty was recorded without the project-level accountable owner and next action.
+- Layer that caught it: final S2 acceptance/ownership reconciliation.
+- Rule: preserve unknown technical ownership as context, but assign closure to one of the three project owners and name the gated executor step.
+- Fix status: docs updated in change 0318; no tests/checks/runtime actions run.
+
 ## 2026-10-25 -- Reconcile prepared sprint docs with repository evidence before execution
 
 - Kind: SHORTCOMING (documentation drift caught before implementation).
