@@ -45,3 +45,24 @@ At candidate HEAD `4fe150326a36faf401b045cfa1b9a2e64d89436b`, the designated `e2
 - Accountable task owner: operator under the delegated sprint request.
 - Provisioning and evidence recording: Codex.
 - Runtime test execution remains assigned to `functional-test-reviewer` / `e2e-runner` after coding and registry commit.
+
+## Read-only prerequisite recheck — 2026-10-26
+
+The current continuation verified the exact recorded wheelhouse path
+`D:\Temp\virtual_scrum_team_qa_f4ef8e7_wheelhouse` by enumerating the six `.whl`
+files and computing SHA-256. All six digests match the lock/provisioning table above.
+No download, installation, or project test was performed during this recheck.
+
+The following read-only commands were run in the named `Ubuntu-24.04` WSL distro:
+
+```text
+wsl.exe -d Ubuntu-24.04 -- /usr/bin/gcc --version
+wsl.exe -d Ubuntu-24.04 -- /usr/bin/cc --version
+wsl.exe -d Ubuntu-24.04 -- /usr/bin/id
+```
+
+Observed compiler: GCC/CC `13.3.0`. The default distro command identity was
+`uid=0(root) gid=0(root) groups=0(root)`. This confirms toolchain availability only;
+it does not prove the report-bound helper's unprivileged worker identity or S2
+containment. The earlier report-bound worker-identity evidence remains separately
+scoped to its recorded run.
