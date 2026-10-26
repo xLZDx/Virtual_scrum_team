@@ -38,6 +38,8 @@ After change 0320 committed the test source, `functional-test-reviewer` and `e2e
 
 2026-10-26 — Follow-up audit found commit `965c475` (change 0328) omitted the task-required lesson-log entry. No decision or acceptance claim changed; change 0329 records the process shortcoming without rewriting history. See `core/LESSONS_LOG.md` and change 0329.
 
+2026-10-26 — The designated `e2e-runner` ran both existing S3 local synthetic modules at exact canonical HEAD `7816aeb`: adapter 9/9 and pilot 9/9 passed, each with one pytest-asyncio deprecation warning. Inspection found no sandbox, external candidate, network service, OS process-kill, or mutation path in the modules. This binds the safe subset to one exact head but does not close S3 real recovery, cross-process or sandbox acceptance. See change 0330 and `docs/sdlc/evidence/s3-exact-head-safe-rerun-7816aeb.md`.
+
 ## 2026-10-25 -- Add one fixed WSL runner-to-worker identity selector
 
 The operator explicitly authorized a narrow helper for one report-bound child transition from `vst-runner` UID/GID 997:988 to `vst-worker` UID/GID 999:989. Decision: add a fixed-identity, fixed-interpreter helper and one S4 functional selector for the identity/file/socket boundary; do not move the full pytest process or report artifacts to UID 999. Do not change the separate restricted-root harness or any existing `NOT_RUN` policy exclusions for process-kill, timeout, process-death, mutation, or E8 scenarios. The implementation contract and rollout constraints are in `docs/S4_WSL_WORKER_UID_HELPER_DESIGN.md`; acceptance is AC-16 in the S4 plan. Implementation and runtime evidence are pending. Operator: accountable task owner; Codex: executor; exact WSL service owner is unknown.
