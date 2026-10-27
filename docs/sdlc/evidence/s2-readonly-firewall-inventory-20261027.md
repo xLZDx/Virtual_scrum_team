@@ -25,7 +25,7 @@ cat /proc/sys/net/ipv4/ip_forward
 cat /proc/sys/net/ipv6/conf/all/forwarding
 ```
 
-Run as `root` through `wsl.exe -d Ubuntu-24.04 --user root --exec sh -lc ...`. Observed a default route via `172.31.176.1` on `eth0`, and nftables table `inet vst_s2_filter` with input and output chains set to `policy drop`; each chain accepts loopback only. `iptables` was unavailable. IPv4 forwarding was `1`; IPv6 forwarding was `0`.
+Run as `root` through `wsl.exe -d Ubuntu-24.04 --user root --exec sh -lc ...`. A default route was present on `eth0`; the transient private gateway address is intentionally omitted. Nftables table `inet vst_s2_filter` had input and output chains set to `policy drop`; each chain accepts loopback only. `iptables` was unavailable. IPv4 forwarding was `1`; IPv6 forwarding was `0`.
 
 ## Acceptance disposition
 
