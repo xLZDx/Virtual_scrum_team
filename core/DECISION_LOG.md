@@ -2,6 +2,10 @@
 
 Append-only. One dated entry per decision, piece of evidence or refusal.
 
+## 2026-10-27 -- Record upstream Temporal SQLite CI failure details
+
+Read-only historical GitHub logs for three failed SQLite shards in `All Tests` run `37665870783` on the exact pinned Temporal SHA report 49, 52, and 59 per-shard failures respectively and each ends at a 39-minute runner timeout. Logs include worker-versioning lookup failures, SQLite workflow-type length CHECK failures, and context deadlines; shard-level root causes and reproducibility are not established. The fourth failed shard, cass_os3 shard 2, remains without decoded logs. This is upstream CI evidence only, not local acceptance or a basis to independently declare the provisional candidate accepted/rejected. See `docs/sdlc/evidence/s3-temporal-upstream-ci-failure-detail-20261027.md` and change 0421.
+
 ## 2026-10-27 -- Record Temporal pinned workflow job outcomes
 
 A read-only job API query for the successful exact-SHA Build and Publish run identified successful amd64, arm64, and Docker jobs. The separate exact-SHA All Tests run had failed SQLite functional shards 0, 1, and 2 and `cass_os3` shard 2; the `Test Status` job also failed. Failure logs were not inspected, so causes remain unknown. The pinned release workflow checks out the released ref and invokes the local Build Binaries action in release mode; exact-SHA Release run `37850182088` reported successful checkout and binary-build steps. This corroborates a successful configured release build invocation but does not independently bind release asset bytes/digest to that output. No candidate asset or local acceptance test was acquired or executed. See the pinned workflow and action source links in the evidence screen. See `docs/sdlc/evidence/s3-temporal-server-build-profile-source-screen-20261027.md` and change 0419.
