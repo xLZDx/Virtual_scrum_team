@@ -14,7 +14,7 @@ Read-only examination of historical GitHub Actions logs for the upstream `All Te
 
 These are upstream per-shard report counts, not unique defect counts. The logs establish observed failures and timeout behavior but do not establish one root cause or whether the failures are reproducible. Resource pressure, runner contention, flaky tests, and product defects are not distinguished by this screen.
 
-The All Tests run also had failed `cass_os3` shard 2 (job `112946311769`). The workflow-job-logs tool returned an empty content field for that request in this turn; its failure details remain unknown. No test-summary artifact was downloaded.
+The All Tests run also had failed `cass_os3` shard 2 (job `112946311769`). The workflow-job-logs tool returned an empty content field for that request in this turn; its failure details remain unknown. A GitHub test-summary ZIP was later fetched as an opaque temporary file reference but could not be decoded or inspected; the JUnit artifact was not fetched. Artifact IDs and GitHub-listed digests are recorded in `s3-temporal-upstream-ci-artifact-metadata-20261027.md`; they do not establish the shard's failure details.
 
 ## Acceptance disposition
 
