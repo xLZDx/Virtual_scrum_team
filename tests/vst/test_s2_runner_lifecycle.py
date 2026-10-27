@@ -587,6 +587,25 @@ def test_bounded_git_reader_start_failure_kills_reaps_and_closes(monkeypatch, tm
     assert process.stdout.closed and process.stderr.closed
 
 
+def test_bounded_git_thread_constructor_failure_kills_reaps_and_closes(monkeypatch, tmp_path):
+    """VST-017: reader thread construction failure cannot bypass child cleanup."""
+    from tools.vst import slice as slice_module
+
+    backend = _bare_bounded_git_backend(tmp_path)
+    process = _FakeBoundedGitProcess()
+    monkeypatch.setattr(slice_module.subprocess, "Popen", lambda *args, **kwargs: process)
+
+    def fail_thread_constructor(*args, **kwargs):
+        raise MemoryError("injected thread construction failure")
+
+    monkeypatch.setattr(slice_module.threading, "Thread", fail_thread_constructor)
+    with pytest.raises(MemoryError, match="injected thread construction failure"):
+        backend._run_bounded_git(["git", "--version"], env={})
+
+    assert process.poll() == -9 and process.waited
+    assert process.stdout.closed and process.stderr.closed
+
+
 def test_bounded_git_reader_failure_kills_reaps_and_fails_closed(monkeypatch, tmp_path):
     """VST-017: pipe read failure cannot produce a successful partial result."""
     from tools.vst import slice as slice_module
