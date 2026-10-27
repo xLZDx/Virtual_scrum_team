@@ -82,7 +82,7 @@ PY
 }
 
 install_dir=/usr/local/libexec
-helper=$install_dir/vst-s4-worker-exec
+helper=$install_dir/vst-s4-worker-exec-$expected_head
 [ "$(/usr/bin/realpath -e -- "$install_dir")" = "$install_dir" ] || {
     echo "helper directory must be the canonical /usr/local/libexec path" >&2; exit 1;
 }
@@ -118,8 +118,12 @@ staged_identity=$(/usr/bin/env -i PATH=/usr/bin:/bin "$build_dir/vst-s4-worker-e
 }
 
 if [ -e "$helper" ] || [ -L "$helper" ]; then
-    [ ! -L "$helper" ] && [ -f "$helper" ] && [ "$(/usr/bin/stat -c '%u' "$helper")" = 0 ] || {
-        echo "existing helper is not a root-owned regular file; no host state changed" >&2; exit 1;
+    [ ! -L "$helper" ] && [ -f "$helper" ] || {
+        echo "existing exact-version helper is not a regular file; no host state changed" >&2; exit 1;
+    }
+    existing_metadata=$(/usr/bin/stat -c '%u:%g:%a:%h' "$helper")
+    [ "$existing_metadata" = "0:988:4750:1" ] || {
+        echo "existing exact-version helper metadata differs; preserve and inspect before retry" >&2; exit 1;
     }
     existing_sha=$(/usr/bin/sha256sum "$helper" | /usr/bin/cut -d' ' -f1)
     [ "$existing_sha" = "$binary_sha" ] || {
@@ -129,21 +133,26 @@ if [ -e "$helper" ] || [ -L "$helper" ]; then
     [ "$existing_identity" = "$expected_identity" ] || {
         echo "existing helper identity differs from the requested source; no host state changed" >&2; exit 1;
     }
-    /usr/bin/chown root:vst-runner "$helper"
-    /bin/chmod 4750 "$helper"
 else
     # Publish only a fully built exact binary; hard-link creation cannot replace an existing path.
     /usr/bin/install -o root -g vst-runner -m 4750 "$build_dir/vst-s4-worker-exec" "$build_dir/installed-helper"
     /bin/ln -- "$build_dir/installed-helper" "$helper" || {
         echo "helper destination changed during no-overwrite installation; inspect and retry" >&2; exit 1;
     }
+    /bin/rm -- "$build_dir/installed-helper"
 fi
 
 installed_identity=$(/usr/bin/env -i PATH=/usr/bin:/bin "$helper" --version)
 [ "$installed_identity" = "$expected_identity" ] || {
     echo "installed helper build identity did not match the committed source; preserve and inspect state" >&2; exit 1;
 }
+[ "$(/usr/bin/sha256sum "$helper" | /usr/bin/cut -d' ' -f1)" = "$binary_sha" ] || {
+    echo "published helper digest differs from the verified build; preserve and inspect state" >&2; exit 1;
+}
+[ "$(/usr/bin/stat -c '%u:%g:%a:%h' "$helper")" = "0:988:4750:1" ] || {
+    echo "published helper metadata differs from the required immutable installation; preserve and inspect" >&2; exit 1;
+}
 
-echo "installed fixed WSL worker helper from source bundle $expected_head"
+echo "installed immutable versioned WSL worker helper from source bundle $expected_head"
 echo "binary_sha256=$binary_sha"
 echo "helper_mode=$( /usr/bin/stat -c '%u:%g:%a' "$helper" )"

@@ -50,7 +50,8 @@ $archiveStart.RedirectStandardError = $true
 foreach ($argument in @(
     # Do not apply the caller's Windows checkout conversion to POSIX source
     # blobs embedded in the WSL deployment archive.
-    '-c', 'core.autocrlf=false', '-C', $repoRoot, '--no-replace-objects', 'archive', '--format=tar',
+    '-c', 'core.autocrlf=false', '-c', 'core.eol=lf',
+    '-C', $repoRoot, '--no-replace-objects', 'archive', '--format=tar',
     $ExpectedHead, '--', 'tools/vst', 'tools/qa/install_wsl_runner_runtime.sh',
     'tools/qa/install_wsl_worker_helper.sh', 'tools/qa/worker_exec.c',
     'docs/SANDBOX_SPEC.md'
@@ -256,7 +257,7 @@ if os.path.lexists(runtime_link):
 for unit in ("vst-supervisor.service", "vst-signer.service", "vst-runner.service"):
     with open(os.path.join(source_units, unit), "rb") as stream:
         require_root_file(os.path.join(unit_dir, unit), stream.read())
-helper_path = "/usr/local/libexec/vst-s4-worker-exec"
+helper_path = "/usr/local/libexec/vst-s4-worker-exec-" + head
 for directory in ("/opt", unit_dir, "/usr/local/libexec"):
     info = os.lstat(directory)
     if (not stat.S_ISDIR(info.st_mode) or info.st_uid != 0
@@ -264,8 +265,9 @@ for directory in ("/opt", unit_dir, "/usr/local/libexec"):
         raise SystemExit("fixed installation parent has an unsafe owner/mode: " + directory)
 if os.path.lexists(helper_path):
     info = os.lstat(helper_path)
-    if not stat.S_ISREG(info.st_mode) or info.st_uid != 0:
-        raise SystemExit("existing worker helper path is not a root-owned regular file; no state changed")
+    if (not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or info.st_gid != 988
+            or stat.S_IMODE(info.st_mode) != 0o4750 or info.st_nlink != 1):
+        raise SystemExit("existing exact-version worker helper has unexpected identity; no state changed")
 
 worker = ["/bin/sh", os.path.join(stage, "tools/qa/install_wsl_worker_helper.sh"), head, stage, digest]
 runtime = ["/bin/sh", os.path.join(stage, "tools/qa/install_wsl_runner_runtime.sh"), head, stage, digest]

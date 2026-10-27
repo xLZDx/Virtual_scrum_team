@@ -4,11 +4,14 @@ from __future__ import annotations
 import base64
 import copy
 import hashlib
+import stat
 
 import pytest
 
 from tools.vst import contracts
 from tools.vst.runner_service import (
+    _verify_worker_exec_helper,
+    _versioned_worker_exec_helper_path,
     dispatch_authorized_manifest_run,
     load_runner_service_config,
 )
@@ -717,7 +720,10 @@ def test_pre_reserve_runner_failure_terminalizes_claim_without_calling_reserve(m
         "openssl_path": "/unused", "audience": "vst-runner-service-v1",
         "signer_socket": "/unused/signer.sock", "repository_root": "/unused/repo",
         "worker_uid": 999, "worker_gid": 989, "max_output_bytes": 1024,
+        "worker_exec_helper_head": "a" * 40,
+        "worker_exec_helper_path": "/usr/local/libexec/vst-s4-worker-exec-" + "a" * 40,
     })()
+    server.worker_exec_helper_identity = (1, 2, 3, 0, 988, 0o4750, "c" * 64)
     server.supervisor = FakeSupervisor()
     server._require_local_boundary = lambda: "generation-1"
     monkeypatch.setattr(grant_module, "verify_execution_grant", lambda *_args, **_kwargs: grant)
@@ -1060,7 +1066,10 @@ def test_runner_service_fail_stops_every_post_reservation_failure_before_complet
         "openssl_path": "/unused", "audience": "vst-runner-service-v1",
         "signer_socket": "/unused/signer.sock", "repository_root": "/unused/repo",
         "worker_uid": 999, "worker_gid": 989, "max_output_bytes": 1024,
+        "worker_exec_helper_head": "a" * 40,
+        "worker_exec_helper_path": "/usr/local/libexec/vst-s4-worker-exec-" + "a" * 40,
     })()
+    server.worker_exec_helper_identity = (1, 2, 3, 0, 988, 0o4750, "c" * 64)
     server.supervisor = type("Supervisor", (), {
         "previous_receipt": lambda *_args: None,
     })()
@@ -1135,7 +1144,10 @@ def test_post_reservation_boundary_exception_confirms_reservation_and_fails_stop
         "openssl_path": "/unused", "audience": "vst-runner-service-v1",
         "signer_socket": "/unused/signer.sock", "repository_root": "/unused/repo",
         "worker_uid": 999, "worker_gid": 989, "max_output_bytes": 1024,
+        "worker_exec_helper_head": "a" * 40,
+        "worker_exec_helper_path": "/usr/local/libexec/vst-s4-worker-exec-" + "a" * 40,
     })()
+    server.worker_exec_helper_identity = (1, 2, 3, 0, 988, 0o4750, "c" * 64)
     server.supervisor = FakeSupervisor()
     server._require_local_boundary = require_boundary
     monkeypatch.setattr(grant_module, "verify_execution_grant", lambda *_args, **_kwargs: grant)
@@ -1194,7 +1206,9 @@ def test_runner_config_requires_and_loads_fixed_daemon_gid(monkeypatch):
         "worker_exec_helper_head": "a" * 40,
         "worker_exec_helper_source_sha256": "b" * 64,
         "worker_exec_helper_binary_sha256": "c" * 64,
+        "worker_exec_helper_path": "/usr/local/libexec/vst-s4-worker-exec-" + "a" * 40,
     }
+    monkeypatch.setattr(runner_service, "_verify_worker_exec_helper", lambda _config: None)
     monkeypatch.setattr(runner_service, "_read_root_controlled_json", lambda *_args, **_kwargs: dict(config))
 
     loaded = load_runner_service_config("/etc/vst-runner/runner-service.json")
@@ -1205,6 +1219,310 @@ def test_runner_config_requires_and_loads_fixed_daemon_gid(monkeypatch):
     monkeypatch.setattr(runner_service, "_read_root_controlled_json", lambda *_args, **_kwargs: missing_gid)
     with pytest.raises(contracts.ContractError, match="fields do not match"):
         load_runner_service_config("/etc/vst-runner/runner-service.json")
+
+    missing_helper_path = dict(config)
+    del missing_helper_path["worker_exec_helper_path"]
+    monkeypatch.setattr(
+        runner_service, "_read_root_controlled_json",
+        lambda *_args, **_kwargs: missing_helper_path,
+    )
+    with pytest.raises(contracts.ContractError, match="fields do not match"):
+        load_runner_service_config("/etc/vst-runner/runner-service.json")
+
+
+def test_versioned_worker_helper_path_requires_full_lowercase_commit_id():
+    assert _versioned_worker_exec_helper_path("a" * 40) == (
+        "/usr/local/libexec/vst-s4-worker-exec-" + "a" * 40
+    )
+    for invalid in ("a" * 39, "A" * 40, "g" * 40, "../" + "a" * 37):
+        with pytest.raises(contracts.ContractError, match="full lowercase commit id"):
+            _versioned_worker_exec_helper_path(invalid)
+
+
+@pytest.mark.parametrize("path", [
+    "/usr/local/libexec/vst-s4-worker-exec",
+    "/usr/local/libexec/vst-s4-worker-exec-" + "b" * 40,
+    "/tmp/vst-s4-worker-exec-" + "a" * 40,
+])
+def test_versioned_worker_helper_rejects_unbound_path_before_filesystem(path):
+    from types import SimpleNamespace
+
+    config = SimpleNamespace(
+        worker_exec_helper_head="a" * 40,
+        worker_exec_helper_path=path,
+    )
+    with pytest.raises(contracts.ContractError, match="not the configured exact-version path"):
+        _verify_worker_exec_helper(config)
+
+
+def test_versioned_worker_helper_verifies_immutable_identity_and_uses_no_legacy_fallback(monkeypatch):
+    from types import SimpleNamespace
+    from tools.vst import runner_service
+
+    head = "a" * 40
+    path = _versioned_worker_exec_helper_path(head)
+    payload = b"versioned-helper-test-binary"
+    source_sha = "b" * 64
+    expected_output = (
+        f"schema=1 head={head} source_sha256={source_sha}\n"
+    ).encode("ascii")
+    file_identity = SimpleNamespace(
+        st_mode=stat.S_IFREG | 0o4750, st_uid=0, st_gid=988, st_nlink=1,
+        st_dev=7, st_ino=19, st_size=len(payload),
+    )
+    directory_identity = SimpleNamespace(st_mode=stat.S_IFDIR | 0o755, st_uid=0)
+    stat_calls = []
+    read_values = [payload, b""]
+    subprocess_calls = []
+
+    def fake_stat(candidate, *, follow_symlinks=True):
+        stat_calls.append(candidate)
+        if candidate == path:
+            return file_identity
+        return directory_identity
+
+    def fake_run(args, **_kwargs):
+        subprocess_calls.append(args)
+        return SimpleNamespace(returncode=0, stdout=expected_output)
+
+    monkeypatch.setattr(runner_service.os, "O_NOFOLLOW", 0, raising=False)
+    monkeypatch.setattr(runner_service.os, "stat", fake_stat)
+    monkeypatch.setattr(runner_service.os, "open", lambda candidate, _flags: 41)
+    monkeypatch.setattr(runner_service.os, "fstat", lambda _fd: file_identity)
+    monkeypatch.setattr(runner_service.os, "read", lambda _fd, _size: read_values.pop(0))
+    monkeypatch.setattr(runner_service.os, "close", lambda _fd: None)
+    monkeypatch.setattr(runner_service.subprocess, "run", fake_run)
+    config = SimpleNamespace(
+        worker_exec_helper_head=head,
+        worker_exec_helper_source_sha256=source_sha,
+        worker_exec_helper_binary_sha256=hashlib.sha256(payload).hexdigest(),
+        worker_exec_helper_path=path,
+        daemon_gid=988,
+    )
+
+    identity = _verify_worker_exec_helper(config)
+
+    assert identity == (7, 19, len(payload), 0, 988, 0o4750,
+                        hashlib.sha256(payload).hexdigest())
+    assert subprocess_calls == [[path, "--version"]]
+    assert subprocess_calls[0][0] != "/usr/local/libexec/vst-s4-worker-exec"
+    assert stat_calls[-1] == path
+
+
+@pytest.mark.parametrize("metadata", [
+    {"st_uid": 1000},
+    {"st_gid": 987},
+    {"st_mode": stat.S_IFREG | 0o755},
+    {"st_nlink": 2},
+])
+def test_versioned_worker_helper_rejects_invalid_file_metadata(monkeypatch, metadata):
+    from types import SimpleNamespace
+    from tools.vst import runner_service
+
+    head = "a" * 40
+    path = _versioned_worker_exec_helper_path(head)
+    payload = b"versioned-helper-test-binary"
+    file_values = {
+        "st_mode": stat.S_IFREG | 0o4750, "st_uid": 0, "st_gid": 988,
+        "st_nlink": 1, "st_dev": 7, "st_ino": 19, "st_size": len(payload),
+    }
+    file_values.update(metadata)
+    file_identity = SimpleNamespace(**file_values)
+    directory_identity = SimpleNamespace(st_mode=stat.S_IFDIR | 0o755, st_uid=0)
+    monkeypatch.setattr(runner_service.os, "O_NOFOLLOW", 0, raising=False)
+    monkeypatch.setattr(
+        runner_service.os, "stat",
+        lambda candidate, **_kwargs: directory_identity if candidate != path else file_identity,
+    )
+    monkeypatch.setattr(runner_service.os, "open", lambda _candidate, _flags: 41)
+    monkeypatch.setattr(runner_service.os, "fstat", lambda _fd: file_identity)
+    monkeypatch.setattr(runner_service.os, "close", lambda _fd: None)
+    config = SimpleNamespace(
+        worker_exec_helper_head=head,
+        worker_exec_helper_source_sha256="b" * 64,
+        worker_exec_helper_binary_sha256=hashlib.sha256(payload).hexdigest(),
+        worker_exec_helper_path=path,
+        daemon_gid=988,
+    )
+
+    with pytest.raises(contracts.ContractError, match="owner, group, or setuid mode"):
+        _verify_worker_exec_helper(config)
+
+
+def test_versioned_worker_helper_rejects_digest_mismatch_before_execution(monkeypatch):
+    from types import SimpleNamespace
+    from tools.vst import runner_service
+
+    head = "a" * 40
+    path = _versioned_worker_exec_helper_path(head)
+    payload = b"versioned-helper-test-binary"
+    file_identity = SimpleNamespace(
+        st_mode=stat.S_IFREG | 0o4750, st_uid=0, st_gid=988, st_nlink=1,
+        st_dev=7, st_ino=19, st_size=len(payload),
+    )
+    directory_identity = SimpleNamespace(st_mode=stat.S_IFDIR | 0o755, st_uid=0)
+    executed = []
+    monkeypatch.setattr(runner_service.os, "O_NOFOLLOW", 0, raising=False)
+    monkeypatch.setattr(
+        runner_service.os, "stat",
+        lambda candidate, **_kwargs: directory_identity if candidate != path else file_identity,
+    )
+    monkeypatch.setattr(runner_service.os, "open", lambda _candidate, _flags: 41)
+    reads = [payload, b""]
+    monkeypatch.setattr(runner_service.os, "read", lambda _fd, _size: reads.pop(0))
+    monkeypatch.setattr(runner_service.os, "fstat", lambda _fd: file_identity)
+    monkeypatch.setattr(runner_service.os, "close", lambda _fd: None)
+    monkeypatch.setattr(runner_service.subprocess, "run", lambda *args, **kwargs: executed.append(args))
+    config = SimpleNamespace(
+        worker_exec_helper_head=head,
+        worker_exec_helper_source_sha256="b" * 64,
+        worker_exec_helper_binary_sha256="c" * 64,
+        worker_exec_helper_path=path,
+        daemon_gid=988,
+    )
+
+    with pytest.raises(contracts.ContractError, match="binary digest"):
+        _verify_worker_exec_helper(config)
+    assert executed == []
+
+
+def test_versioned_worker_helper_rejects_embedded_identity_mismatch(monkeypatch):
+    from types import SimpleNamespace
+    from tools.vst import runner_service
+
+    head = "a" * 40
+    path = _versioned_worker_exec_helper_path(head)
+    payload = b"versioned-helper-test-binary"
+    file_identity = SimpleNamespace(
+        st_mode=stat.S_IFREG | 0o4750, st_uid=0, st_gid=988, st_nlink=1,
+        st_dev=7, st_ino=19, st_size=len(payload),
+    )
+    directory_identity = SimpleNamespace(st_mode=stat.S_IFDIR | 0o755, st_uid=0)
+    monkeypatch.setattr(runner_service.os, "O_NOFOLLOW", 0, raising=False)
+    monkeypatch.setattr(
+        runner_service.os, "stat",
+        lambda candidate, **_kwargs: directory_identity if candidate != path else file_identity,
+    )
+    monkeypatch.setattr(runner_service.os, "open", lambda _candidate, _flags: 41)
+    reads = [payload, b""]
+    monkeypatch.setattr(runner_service.os, "read", lambda _fd, _size: reads.pop(0))
+    monkeypatch.setattr(runner_service.os, "fstat", lambda _fd: file_identity)
+    monkeypatch.setattr(runner_service.os, "close", lambda _fd: None)
+    monkeypatch.setattr(
+        runner_service.subprocess, "run",
+        lambda *_args, **_kwargs: SimpleNamespace(returncode=0, stdout=b"wrong-build-identity\n"),
+    )
+    config = SimpleNamespace(
+        worker_exec_helper_head=head,
+        worker_exec_helper_source_sha256="b" * 64,
+        worker_exec_helper_binary_sha256=hashlib.sha256(payload).hexdigest(),
+        worker_exec_helper_path=path,
+        daemon_gid=988,
+    )
+
+    with pytest.raises(contracts.ContractError, match="build identity"):
+        _verify_worker_exec_helper(config)
+
+
+def test_versioned_worker_helper_rejects_path_inode_change_during_verification(monkeypatch):
+    from types import SimpleNamespace
+    from tools.vst import runner_service
+
+    head = "a" * 40
+    path = _versioned_worker_exec_helper_path(head)
+    payload = b"versioned-helper-test-binary"
+    opened_identity = SimpleNamespace(
+        st_mode=stat.S_IFREG | 0o4750, st_uid=0, st_gid=988, st_nlink=1,
+        st_dev=7, st_ino=19, st_size=len(payload),
+    )
+    replaced_identity = SimpleNamespace(
+        st_mode=stat.S_IFREG | 0o4750, st_uid=0, st_gid=988, st_nlink=1,
+        st_dev=7, st_ino=20, st_size=len(payload),
+    )
+    directory_identity = SimpleNamespace(st_mode=stat.S_IFDIR | 0o755, st_uid=0)
+    path_stats = []
+
+    def fake_stat(candidate, **_kwargs):
+        if candidate != path:
+            return directory_identity
+        path_stats.append(candidate)
+        return replaced_identity
+
+    monkeypatch.setattr(runner_service.os, "O_NOFOLLOW", 0, raising=False)
+    monkeypatch.setattr(runner_service.os, "stat", fake_stat)
+    monkeypatch.setattr(runner_service.os, "open", lambda _candidate, _flags: 41)
+    reads = [payload, b""]
+    monkeypatch.setattr(runner_service.os, "read", lambda _fd, _size: reads.pop(0))
+    monkeypatch.setattr(runner_service.os, "fstat", lambda _fd: opened_identity)
+    monkeypatch.setattr(runner_service.os, "close", lambda _fd: None)
+    monkeypatch.setattr(
+        runner_service.subprocess, "run",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            returncode=0,
+            stdout=f"schema=1 head={head} source_sha256={'b' * 64}\n".encode("ascii"),
+        ),
+    )
+    config = SimpleNamespace(
+        worker_exec_helper_head=head,
+        worker_exec_helper_source_sha256="b" * 64,
+        worker_exec_helper_binary_sha256=hashlib.sha256(payload).hexdigest(),
+        worker_exec_helper_path=path,
+        daemon_gid=988,
+    )
+
+    with pytest.raises(contracts.ContractError, match="identity changed during verification"):
+        _verify_worker_exec_helper(config)
+
+    assert path_stats == [path]
+
+
+def test_service_refuses_helper_identity_change_before_runner_spawn(monkeypatch):
+    from tools.vst import runner, runner_service
+
+    manifest, *_ = _authority_fixture()
+    grant = _grant(manifest, deadline=30)
+    expected_identity = (7, 19, 100, 0, 988, 0o4750, "c" * 64)
+    changed_identity = (7, 20, 100, 0, 988, 0o4750, "d" * 64)
+    server = object.__new__(runner_service.PersistentRunnerService)
+    server.config = type("Config", (), {
+        "deadline_sec": 60, "timeout_sec": 30, "daemon_uid": 997,
+        "grant_trust_keys": {"grant-key-1": "/unused"},
+        "openssl_path": "/unused", "audience": "vst-runner-service-v1",
+        "signer_socket": "/unused/signer.sock", "repository_root": "/unused/repo",
+        "worker_uid": 999, "worker_gid": 989, "max_output_bytes": 1024,
+        "worker_exec_helper_head": "a" * 40,
+        "worker_exec_helper_path": "/usr/local/libexec/vst-s4-worker-exec-" + "a" * 40,
+    })()
+    server.worker_exec_helper_identity = expected_identity
+    server.supervisor = type("Supervisor", (), {
+        "previous_receipt": lambda *_args: None,
+    })()
+
+    class FakeAuthority:
+        def __init__(self, *_args, **_kwargs):
+            self.reservation_confirmed = False
+            self.completion_confirmed = False
+            self.claim_confirmed = False
+            self.no_execution_confirmed = False
+
+    monkeypatch.setattr(runner_service, "ExecutionAuthority", FakeAuthority)
+    monkeypatch.setattr(
+        runner_service, "_verify_worker_exec_helper", lambda _config: changed_identity,
+    )
+    spawn_attempts = []
+
+    def runner_boundary(**kwargs):
+        assert kwargs["worker_exec_helper_path"] == server.config.worker_exec_helper_path
+        assert kwargs["worker_exec_helper_head"] == server.config.worker_exec_helper_head
+        kwargs["verify_worker_exec_helper"]()
+        spawn_attempts.append("Popen")
+
+    monkeypatch.setattr(runner, "run_manifest_commands", runner_boundary)
+
+    with pytest.raises(contracts.ContractError, match="identity changed after service startup"):
+        server._run_grant(grant, manifest, [], "generation-1")
+
+    assert spawn_attempts == []
 
 
 def test_dispatcher_obtains_supervisor_grant_before_runner_dispatch(monkeypatch):

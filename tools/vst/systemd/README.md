@@ -87,6 +87,10 @@ group, plus exact peer UID/GID/cgroup/operation entries for `dispatcher`,
 model ID to one SHA-256 digest. Configuration and its parent directories must
 be root-owned and not group/world writable.
 
+An optional `operator` Supervisor reconciliation peer is inactive by default;
+it exists only when an operator explicitly provisions and configures its peer
+identity and transport. Deployment does not generate operator credentials.
+
 At startup, the root service verifies the configured probe signature and
 operator network-policy attestation against the installed
 `docs/SANDBOX_SPEC.md` digest, then idempotently records that exact run/nonce
@@ -101,12 +105,25 @@ The runner configuration at `/etc/vst-runner/runner-service.json` contains the
 daemon UID/GID (`997:988`), dispatcher socket/cgroup identities, canonical
 repository path, signer and Supervisor socket paths, public grant-key ring,
 worker IDs, audience, bounded request/output/deadline limits, and the worker
-helper's commit, source, and binary digests. `daemon_gid` is required by the
-configuration schema and must be `988`; omission is a configuration error. The
-helper path is fixed at
-`/usr/local/libexec/vst-s4-worker-exec`; it must be root-owned, group `vst-runner`,
-mode `4750`. Lock inodes are read from the published root snapshot at runtime,
-not copied into static configuration.
+helper's exact absolute path, full commit, source digest, and binary digest.
+`worker_exec_helper_path` must equal
+`/usr/local/libexec/vst-s4-worker-exec-<full-40-character-lowercase-commit>`
+for `worker_exec_helper_head`; dispatcher and worker requests cannot select
+that path. At startup and immediately before each child launch, the runner
+revalidates the root-owned regular file, `vst-runner` group, mode `4750`,
+binary digest, and embedded build identity. There is no fallback to another
+helper. `daemon_gid` is required by the configuration schema and must be
+`988`; omission is a configuration error. The old unversioned
+`/usr/local/libexec/vst-s4-worker-exec` is left untouched. Lock inodes are read
+from the published root snapshot at runtime, not copied into static
+configuration.
+
+The source installer does not generate this privileged Runner configuration.
+Deployment must provision it as a root-owned artifact from the exact audited
+runtime/helper build record; the helper path, source digest, and binary digest
+must agree with that record. A missing or stale configuration is a startup
+failure, not permission to select a helper from a request or to fall back to
+the legacy path.
 
 The signer configuration at `/etc/vst-runner/signer-service.json` binds the
 signer key and persistent replay-ledger paths, `vst-runner` peer UID/GID and

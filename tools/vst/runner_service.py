@@ -32,7 +32,7 @@ MAX_RUNNER_REQUEST_BYTES = 1024 * 1024
 MAX_RUNNER_RESPONSE_BYTES = 8 * 1024 * 1024
 DEFAULT_CONFIG_PATH = "/etc/vst-runner/runner-service.json"
 _HEADER = struct.Struct("!I")
-_WORKER_EXEC_HELPER = "/usr/local/libexec/vst-s4-worker-exec"
+_WORKER_EXEC_HELPER_PREFIX = "/usr/local/libexec/vst-s4-worker-exec-"
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _GIT_HEAD = re.compile(r"^[0-9a-f]{40}$")
 
@@ -154,6 +154,7 @@ def load_runner_service_config(path: str = DEFAULT_CONFIG_PATH) -> "RunnerServic
         "service_cgroup", "audience", "runner_id", "repository_root", "signer_socket",
         "openssl_path", "grant_trust_keys", "worker_uid", "worker_gid",
         "worker_exec_helper_head", "worker_exec_helper_source_sha256", "worker_exec_helper_binary_sha256",
+        "worker_exec_helper_path",
     }
     optional = {
         "max_request_bytes", "max_response_bytes", "timeout_sec", "deadline_sec", "max_output_bytes",
@@ -188,6 +189,7 @@ class RunnerServiceConfig:
     worker_exec_helper_head: str
     worker_exec_helper_source_sha256: str
     worker_exec_helper_binary_sha256: str
+    worker_exec_helper_path: str
     max_request_bytes: int = MAX_RUNNER_REQUEST_BYTES
     max_response_bytes: int = MAX_RUNNER_RESPONSE_BYTES
     timeout_sec: int = 600
@@ -252,11 +254,25 @@ class RunnerServiceConfig:
                 or not isinstance(self.worker_exec_helper_binary_sha256, str)
                 or not _SHA256.fullmatch(self.worker_exec_helper_binary_sha256)):
             raise ContractError("runner helper build identity is malformed")
+        if (not isinstance(self.worker_exec_helper_path, str)
+                or self.worker_exec_helper_path != _versioned_worker_exec_helper_path(
+                    self.worker_exec_helper_head
+                )):
+            raise ContractError("runner helper path is not bound to the exact configured build head")
         _verify_worker_exec_helper(self)
 
 
-def _verify_worker_exec_helper(config: RunnerServiceConfig) -> None:
-    parent = os.path.dirname(_WORKER_EXEC_HELPER)
+def _versioned_worker_exec_helper_path(head: str) -> str:
+    if not isinstance(head, str) or not _GIT_HEAD.fullmatch(head):
+        raise ContractError("worker helper path requires a full lowercase commit id")
+    return _WORKER_EXEC_HELPER_PREFIX + head
+
+
+def _verify_worker_exec_helper(config: RunnerServiceConfig) -> tuple[int, int, int, int, int, int, str]:
+    expected_path = _versioned_worker_exec_helper_path(config.worker_exec_helper_head)
+    if config.worker_exec_helper_path != expected_path:
+        raise ContractError("worker helper path is not the configured exact-version path")
+    parent = os.path.dirname(config.worker_exec_helper_path)
     while True:
         info = os.stat(parent, follow_symlinks=False)
         if not stat.S_ISDIR(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o022:
@@ -264,13 +280,16 @@ def _verify_worker_exec_helper(config: RunnerServiceConfig) -> None:
         if parent == "/":
             break
         parent = os.path.dirname(parent)
-    fd = os.open(_WORKER_EXEC_HELPER, os.O_RDONLY | os.O_NOFOLLOW)
+    fd = os.open(config.worker_exec_helper_path, os.O_RDONLY | os.O_NOFOLLOW)
     try:
         info = os.fstat(fd)
         if (not stat.S_ISREG(info.st_mode) or info.st_uid != 0
                 or info.st_gid != config.daemon_gid
-                or stat.S_IMODE(info.st_mode) != 0o4750):
+                or stat.S_IMODE(info.st_mode) != 0o4750
+                or info.st_nlink != 1):
             raise ContractError("worker helper owner, group, or setuid mode is invalid")
+        identity = (info.st_dev, info.st_ino, info.st_size, info.st_uid,
+                    info.st_gid, stat.S_IMODE(info.st_mode))
         digest = hashlib.sha256()
         while True:
             chunk = os.read(fd, 65536)
@@ -283,7 +302,7 @@ def _verify_worker_exec_helper(config: RunnerServiceConfig) -> None:
         raise ContractError("worker helper binary digest does not match the root config")
     try:
         result = subprocess.run(
-            [_WORKER_EXEC_HELPER, "--version"], cwd="/",
+            [config.worker_exec_helper_path, "--version"], cwd="/",
             env={"LC_ALL": "C", "PATH": ""}, stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
             close_fds=True, timeout=5, check=False,
@@ -296,6 +315,15 @@ def _verify_worker_exec_helper(config: RunnerServiceConfig) -> None:
     ).encode("ascii")
     if result.returncode != 0 or result.stdout != expected:
         raise ContractError("worker helper build identity does not match the root config")
+    try:
+        current = os.stat(config.worker_exec_helper_path, follow_symlinks=False)
+    except OSError as exc:
+        raise ContractError("worker helper path identity changed during verification") from exc
+    if (not stat.S_ISREG(current.st_mode)
+            or (current.st_dev, current.st_ino, current.st_size, current.st_uid,
+                current.st_gid, stat.S_IMODE(current.st_mode)) != identity):
+        raise ContractError("worker helper path identity changed during verification")
+    return (*identity, digest.hexdigest())
 
 
 def _recv_exact(conn: socket.socket, count: int) -> bytes:
@@ -322,6 +350,7 @@ class PersistentRunnerService:
         if not callable(service_generation_provider):
             raise ContractError("runner service generation provider is unavailable")
         self.config = config
+        self.worker_exec_helper_identity = _verify_worker_exec_helper(config)
         self.supervisor = supervisor
         self.service_generation_provider = service_generation_provider
         self._server: socket.socket | None = None
@@ -491,6 +520,12 @@ class PersistentRunnerService:
             complete=lambda value, receipt: self.supervisor.complete(value, receipt),
         )
         report: dict = {}
+        expected_helper_identity = self.worker_exec_helper_identity
+
+        def verify_worker_helper_before_spawn() -> None:
+            if _verify_worker_exec_helper(self.config) != expected_helper_identity:
+                raise ContractError("configured worker helper identity changed after service startup")
+
         previous = self.supervisor.previous_receipt(grant["task_id"], grant["slot"])
         if grant["attempt"] == 1 and previous is not None:
             raise ContractError("first execution attempt unexpectedly has a prior receipt")
@@ -501,6 +536,9 @@ class PersistentRunnerService:
                 invocation_id=grant["invocation_id"], runner_id=grant["runner_id"],
                 signer_socket=self.config.signer_socket, cwd=self.config.repository_root,
                 worker_uid=self.config.worker_uid, worker_gid=self.config.worker_gid,
+                worker_exec_helper_head=self.config.worker_exec_helper_head,
+                worker_exec_helper_path=self.config.worker_exec_helper_path,
+                verify_worker_exec_helper=verify_worker_helper_before_spawn,
                 run_id=grant["run_id"], model_provenance_sha256=grant["model_provenance_sha256"],
                 execution_authority=authority,
                 created_at=datetime.now(timezone.utc).isoformat(),

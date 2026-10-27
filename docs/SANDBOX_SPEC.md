@@ -27,13 +27,20 @@ groups when launching it. The signer authenticates runner UID using kernel
 peer credentials and rejects all other identities.
 
 On POSIX, the worker must have empty effective, permitted, inheritable, and
-ambient capability sets after the runner's identity transition. The fixed
-root-owned `/usr/local/libexec/vst-s4-worker-exec` helper clears supplementary
-groups, irreversibly sets the worker UID/GID, clears ambient capabilities,
-zeros and reads back the Linux capability sets, and sets `no_new_privs` before
-executing the fixed Python gate. Missing capability APIs or any nonzero
-readback refuses to execute the worker. The helper accepts no caller-selected
-identity or executable path.
+ambient capability sets after the runner's identity transition. The
+root-owned, versioned helper at
+`/usr/local/libexec/vst-s4-worker-exec-<full-40-character-commit>` clears
+supplementary groups, irreversibly sets the worker UID/GID, clears ambient
+capabilities, zeros and reads back the Linux capability sets, and sets
+`no_new_privs` before executing the fixed Python gate. Root Runner configuration
+binds the exact helper path to the full source commit, source SHA-256, and
+binary SHA-256. The runner validates the path suffix against that full commit
+and rechecks file ownership, group, mode, digest, and embedded build identity
+immediately before launch. Missing or changed identity refuses execution;
+there is no path supplied by a request and no fallback. The legacy unversioned
+`/usr/local/libexec/vst-s4-worker-exec` remains untouched. Missing capability
+APIs or any nonzero readback refuses to execute the worker. The helper accepts
+no caller-selected identity or executable path.
 
 Review runs under a separate read-only identity. Its credential must have no
 write access to the worker worktree or control-plane store. The runner verifies

@@ -240,7 +240,11 @@ _POSIX_GATE = (
 _POSIX_CGROUP_CLEANUP_FAILED = threading.Event()
 _POSIX_CGROUP_RUN_LOCK = threading.Lock()
 _POSIX_CGROUP_RUNTIME_DIR = "/run/vst-runner"
-_POSIX_WORKER_EXEC_HELPER = "/usr/local/libexec/vst-s4-worker-exec"
+_POSIX_WORKER_EXEC_HELPER_PREFIX = "/usr/local/libexec/vst-s4-worker-exec-"
+_POSIX_WORKER_EXEC_HELPER_PATH = re.compile(
+    r"^/usr/local/libexec/vst-s4-worker-exec-[0-9a-f]{40}$"
+)
+_POSIX_WORKER_EXEC_HELPER_HEAD = re.compile(r"^[0-9a-f]{40}$")
 
 
 @contextmanager
@@ -784,7 +788,8 @@ def _resume_suspended_primary_thread(pid: int) -> bool:
 def _run_one(
     argv: list[str], cwd: str, limit_sec: float, env: dict[str, str], cap: int,
     *, require_job_object: bool = False, worker_uid: int | None = None,
-    worker_gid: int | None = None, _deadline_at: float | None = None,
+    worker_gid: int | None = None, worker_exec_helper_path: str | None = None,
+    _deadline_at: float | None = None,
     _before_spawn: Callable[[], None] | None = None,
 ) -> tuple[int, str, dict]:
     """Run one argv without a shell; return (exit_code, stdout_text, info)."""
@@ -809,13 +814,16 @@ def _run_one(
     gate_read: int | None = None
     env_write: int | None = None
     try:
-        # A fixed, root-owned setuid helper performs only the configured
+        # The root-configured, version-pinned setuid helper performs only the configured
         # vst-runner to vst-worker identity drop. The Python service itself has
         # no SETUID/SETGID capability; command control remains manifest-pinned.
         child_argv = argv
         child_env = env
         pass_fds: tuple[int, ...] = ()
         if os.name != "nt" and worker_uid is not None and worker_gid is not None:
+            if (not isinstance(worker_exec_helper_path, str)
+                    or not _POSIX_WORKER_EXEC_HELPER_PATH.fullmatch(worker_exec_helper_path)):
+                raise ContractError("POSIX worker helper path must be an exact versioned installation path")
             if _POSIX_CGROUP_CLEANUP_FAILED.is_set():
                 return EXIT_CAPTURE_INCOMPLETE, "", {
                     **info, "capture_incomplete": True,
@@ -831,7 +839,7 @@ def _run_one(
             env_read, env_write = os.pipe()
             gate_read, gate_release_fd = os.pipe()
             child_argv = [
-                _POSIX_WORKER_EXEC_HELPER, "-I", "-c", _POSIX_GATE,
+                worker_exec_helper_path, "-I", "-c", _POSIX_GATE,
                 str(env_read), str(gate_read), *argv,
             ]
             child_env = {"PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C"}
@@ -1397,6 +1405,9 @@ def run_manifest_commands(
     *, manifest: dict, slot: str, attempt: int, epoch: int, resolved_model: str,
     invocation_id: str, runner_id: str, signer_socket: str, cwd: str,
     worker_uid: int, worker_gid: int,
+    worker_exec_helper_head: str,
+    worker_exec_helper_path: str,
+    verify_worker_exec_helper: Callable[[], None],
     run_id: str | None = None, model_provenance_sha256: str | None = None,
     execution_authority: Any | None = None,
     created_at: str, prev_receipt_sha256: str | None = None,
@@ -1439,6 +1450,13 @@ def run_manifest_commands(
         raise ContractError("worker_uid and worker_gid must be positive POSIX ids")
     if (worker_uid, worker_gid) != (999, 989) or (os.geteuid(), os.getegid()) != (997, 988):
         raise ContractError("POSIX manifest execution requires the fixed vst-runner to vst-worker helper")
+    if (not isinstance(worker_exec_helper_path, str)
+            or not _POSIX_WORKER_EXEC_HELPER_PATH.fullmatch(worker_exec_helper_path)
+            or not isinstance(worker_exec_helper_head, str)
+            or not _POSIX_WORKER_EXEC_HELPER_HEAD.fullmatch(worker_exec_helper_head)
+            or worker_exec_helper_path != _POSIX_WORKER_EXEC_HELPER_PREFIX + worker_exec_helper_head
+            or not callable(verify_worker_exec_helper)):
+        raise ContractError("manifest execution requires the exact helper path for its full configured build head")
     require_distinct_worker_identity(worker_uid)
     require_runner_can_access_signer(signer_socket)
     require_worker_cannot_access_signer(signer_socket, worker_uid=worker_uid, worker_gid=worker_gid)
@@ -1491,7 +1509,7 @@ def run_manifest_commands(
     reservation_confirmed = False
     command_launch_deadline = deadline_at
 
-    def reserve_before_first_spawn() -> None:
+    def verify_and_reserve_before_spawn() -> None:
         nonlocal reservation_confirmed
         if time.monotonic() >= command_launch_deadline:
             raise ContractError("command deadline expired before child launch")
@@ -1500,6 +1518,7 @@ def run_manifest_commands(
             reservation_confirmed = True
         if time.monotonic() >= command_launch_deadline:
             raise ContractError("command deadline expired after launch reservation")
+        verify_worker_exec_helper()
 
     for item in pinned:
         parser_key = (item["parser_id"], item["parser_version"], item["parser_sha256"])
@@ -1526,8 +1545,9 @@ def run_manifest_commands(
                 item["argv"], cwd, min(float(per_command), remaining), env,
                 max_output_bytes, require_job_object=True,
                 worker_uid=worker_uid, worker_gid=worker_gid,
+                worker_exec_helper_path=worker_exec_helper_path,
                 _deadline_at=min(deadline_at, now + float(per_command)),
-                _before_spawn=reserve_before_first_spawn,
+                _before_spawn=verify_and_reserve_before_spawn,
             )
             if not info.get("admission_wait_expired"):
                 info["skipped_by_deadline"] = False
