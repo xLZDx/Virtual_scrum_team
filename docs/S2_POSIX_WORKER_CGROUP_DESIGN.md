@@ -1,6 +1,6 @@
 # S2 POSIX cross-UID process cleanup design
 
-Status: implemented in the S2 working tree; exact-head and WSL runtime acceptance pending, 2026-10-27.
+Status: implemented; exact-head source/tests and bounded WSL lock/empty-scope evidence recorded; full platform/runtime acceptance remains open, 2026-10-27.
 Scope: VST-013 / S2 E4.1 and VST-017 bounded process cleanup in the existing Ubuntu-24.04 WSL sandbox.
 
 ## Goal and constraints
@@ -42,7 +42,7 @@ Provision the runner systemd service/scope with `Delegate=yes`, a stable delegat
 
 ## Unknowns
 
-The read-only systemd preflight established that this WSL host can run a transient `Delegate=yes` unit whose cgroup directory is writable by `vst-runner` and exposes `cgroup.kill`. It did not establish the private runtime directory, stable delegated-root identity, cross-process lock behavior, restart recovery, or stale-scope cleanup. Those require exact bounded runtime evidence; no persistent production service deployment is established by the preflight.
+The initial read-only systemd preflight established that this WSL host can run a transient `Delegate=yes` unit whose cgroup directory is writable by `vst-runner` and exposes `cgroup.kill`. Exact-head evidence at `a6ea0dc` subsequently established a runner-owned mode-0700 `/run/vst-runner`, real cross-process `flock` serialization, and removal of a synthetic stale scope only after confirming `populated=0` and empty `cgroup.procs`; see `docs/sdlc/evidence/s2-restart-fence-exact-a6ea0dc-20261027.md`. A separate bounded read-only namespace observer found no Windows-drive or host-backed mount candidates in its 29-row view; details and limits are in `docs/sdlc/evidence/s2-current-namespace-snapshot-a6ea0dc-20261027.md`. These observations do not establish a persistent runner service, stable delegated-parent behavior across replacement, populated-scope cleanup, runner crash/restart recovery, Windows Job Object nesting, or a complete signed E5 preflight.
 
 ## Attribution
 
