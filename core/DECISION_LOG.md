@@ -1005,3 +1005,7 @@ Change 0445 corrects the active S2 STATE wording: the prior GPT-PM-reviewed full
 ## 2026-10-27 — Reconcile the S2 open-system-acceptance summary
 
 Change 0446 updates the open-acceptance paragraph to include both source corrections, all five focused regressions across dc1741b/79155fd, and five fresh specialist reviews. System acceptance remains incomplete and Phase 8 remains NOT APPROVED.
+
+## 2026-10-27 — Defer S2 anchor directory-fsync MINOR
+
+Codex resolved the database review's conditional MINOR against S2 section 10.3: missing anchor for nonempty data must fail closed; continuous availability after host power loss is not stated as an acceptance requirement. Parent-directory fsync after first anchor creation remains a nonblocking availability improvement. Change 0447 records this inference and retains the integrity safeguard.
