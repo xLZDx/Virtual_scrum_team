@@ -72,6 +72,7 @@ import json
 import logging
 import os
 import re
+import select
 import signal
 import subprocess
 import threading
@@ -233,6 +234,28 @@ _POSIX_GATE = (
     "argv = sys.argv[3:]\n"
     "os.execvpe(argv[0], argv, worker_env)\n"
 )
+
+
+def _write_pipe_before_deadline(fd: int, data: bytes, deadline: float, proc) -> None:
+    """Send gate environment data without blocking beyond command admission time."""
+    os.set_blocking(fd, False)
+    view = memoryview(data)
+    while view:
+        if proc.poll() is not None:
+            raise OSError("POSIX exec gate exited before environment handoff")
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise subprocess.TimeoutExpired("POSIX exec gate", 0)
+        _readable, writable, _exceptional = select.select([], [fd], [], min(remaining, 0.05))
+        if not writable:
+            continue
+        try:
+            written = os.write(fd, view[:65536])
+        except BlockingIOError:
+            continue
+        if written <= 0:
+            raise OSError("POSIX exec gate environment pipe closed")
+        view = view[written:]
 
 
 class _DelegatedCgroup:
@@ -601,6 +624,7 @@ def _run_one(
     worker_gid: int | None = None,
 ) -> tuple[int, str, dict]:
     """Run one argv without a shell; return (exit_code, stdout_text, info)."""
+    command_deadline = time.monotonic() + limit_sec
     info = {
         "stdout_truncated": False,
         "stderr_truncated": False,
@@ -684,8 +708,27 @@ def _run_one(
             env_pipe = os.fdopen(env_write, "wb")
             env_write = None
             with env_pipe as stream:
-                stream.write(payload)
+                _write_pipe_before_deadline(stream.fileno(), payload, command_deadline, proc)
             cgroup.attach(proc.pid)
+        except subprocess.TimeoutExpired:
+            info["timed_out"] = True
+            if gate_release_fd is not None:
+                os.close(gate_release_fd)
+                gate_release_fd = None
+            cleanup_confirmed = cgroup.kill_and_remove()
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                cleanup_confirmed = False
+            for stream in (proc.stdout, proc.stderr):
+                if stream is not None:
+                    stream.close()
+            info["capture_incomplete"] = not cleanup_confirmed
+            info["posix_gate_timeout"] = True
+            return (
+                EXIT_CAPTURE_INCOMPLETE if not cleanup_confirmed else EXIT_TIMEOUT,
+                "", info,
+            )
         except (OSError, TypeError, ValueError) as exc:
             info["posix_cgroup_refused"] = str(exc)
             if env_write is not None:
@@ -760,11 +803,14 @@ def _run_one(
         out = _Capture(proc.stdout, cap)
         err = _Capture(proc.stderr, cap)
         if gate_release_fd is not None:
-            os.write(gate_release_fd, b"1")
-            os.close(gate_release_fd)
-            gate_release_fd = None
+            if command_deadline > time.monotonic():
+                os.write(gate_release_fd, b"1")
+                os.close(gate_release_fd)
+                gate_release_fd = None
+            else:
+                info["timed_out"] = True
         try:
-            proc.wait(timeout=limit_sec)
+            proc.wait(timeout=max(0.0, command_deadline - time.monotonic()))
         except subprocess.TimeoutExpired:
             info["timed_out"] = True
             if job is not None:
@@ -991,7 +1037,10 @@ def run_and_sign(
 
     If `report` is a dict it is filled with {"commands": [{"stdout_truncated",
     "stderr_truncated", "timed_out", "capture_incomplete", "job_object",
-    "skipped_by_deadline"}, ...], "capture_incomplete": bool}. "job_object" is
+    "skipped_by_deadline", optional "skipped_after_capture_incomplete"}, ...],
+    "capture_incomplete": bool}. Commands after unconfirmed tree cleanup are
+    recorded as not run; no later command is launched in the same run.
+    "job_object" is
     True only if the command ran inside a Windows Job Object (always False on
     POSIX, for commands skipped by the deadline and for -2 start failures).
     """
@@ -1010,9 +1059,18 @@ def run_and_sign(
     recorded: list[dict] = []
     outputs: list[str] = []
     infos: list[dict] = []
+    stop_after_capture_incomplete = False
     for argv in argvs:
         remaining = deadline_at - time.monotonic()
-        if remaining <= 0:
+        if stop_after_capture_incomplete:
+            exit_code, stdout = EXIT_CAPTURE_INCOMPLETE, ""
+            info = {
+                "stdout_truncated": False, "stderr_truncated": False,
+                "timed_out": False, "capture_incomplete": True,
+                "job_object": False, "skipped_by_deadline": False,
+                "skipped_after_capture_incomplete": True,
+            }
+        elif remaining <= 0:
             recorded.append({"argv": list(argv), "exit_code": EXIT_TIMEOUT})
             outputs.append("")
             infos.append(
@@ -1021,14 +1079,17 @@ def run_and_sign(
                  "job_object": False, "skipped_by_deadline": True}
             )
             continue
-        exit_code, stdout, info = _run_one(
-            list(argv), cwd, min(float(per_command), remaining), env, max_output_bytes,
-            require_job_object=True,
-        )
-        info["skipped_by_deadline"] = False
+        else:
+            exit_code, stdout, info = _run_one(
+                list(argv), cwd, min(float(per_command), remaining), env, max_output_bytes,
+                require_job_object=True,
+            )
+            info["skipped_by_deadline"] = False
         recorded.append({"argv": list(argv), "exit_code": exit_code})
         outputs.append(stdout)
         infos.append(info)
+        if exit_code == EXIT_CAPTURE_INCOMPLETE or info["capture_incomplete"]:
+            stop_after_capture_incomplete = True
     if report is not None:
         report["commands"] = infos
         report["capture_incomplete"] = any(info["capture_incomplete"] for info in infos)
@@ -1221,13 +1282,22 @@ def run_manifest_commands(
     commands: list[dict] = []
     parser_results: list[dict] = []
     infos: list[dict] = []
+    stop_after_capture_incomplete = False
     for item in pinned:
         parser_key = (item["parser_id"], item["parser_version"], item["parser_sha256"])
         parser = TRUSTED_PARSER_CATALOG.get(parser_key)
         if parser is None:
             raise ContractError("manifest parser is not present in trusted built-in catalog")
         remaining = deadline_at - time.monotonic()
-        if remaining <= 0:
+        if stop_after_capture_incomplete:
+            exit_code, stdout = EXIT_CAPTURE_INCOMPLETE, ""
+            info = {
+                "stdout_truncated": False, "stderr_truncated": False,
+                "timed_out": False, "capture_incomplete": True,
+                "job_object": False, "skipped_by_deadline": False,
+                "skipped_after_capture_incomplete": True,
+            }
+        elif remaining <= 0:
             exit_code, stdout = EXIT_TIMEOUT, ""
             info = {"stdout_truncated": False, "stderr_truncated": False, "timed_out": False,
                     "capture_incomplete": False, "job_object": False, "skipped_by_deadline": True}
@@ -1251,6 +1321,8 @@ def run_manifest_commands(
                               "xfail_test_ids": xfail},
         })
         infos.append(info)
+        if exit_code == EXIT_CAPTURE_INCOMPLETE or info["capture_incomplete"]:
+            stop_after_capture_incomplete = True
     candidate_head = _derive_head(cwd)
     executed_all = [test_id for result in parser_results for test_id in result["parser_result"]["executed_test_ids"]]
     skipped_all = [test_id for result in parser_results for test_id in result["parser_result"]["skipped_test_ids"]]

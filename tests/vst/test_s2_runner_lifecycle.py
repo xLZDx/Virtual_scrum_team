@@ -1585,6 +1585,9 @@ class _GateChild:
         self.reader.join(timeout=2)
         return self.returncode
 
+    def poll(self):
+        return self.returncode if not self.reader.is_alive() and self.wait_count else None
+
 
 def _install_gate_popen(monkeypatch, events, *, timeout_once=False):
     def fake_popen(argv, **kwargs):
@@ -1601,7 +1604,7 @@ def _install_gate_popen(monkeypatch, events, *, timeout_once=False):
                 if not chunk:
                     break
                 env_data.extend(chunk)
-            events.append(("worker_env_loaded", json.loads(env_data)))
+            events.append(("worker_env_loaded", json.loads(env_data) if env_data else {}))
             release = os.read(gate_fd, 1)
             if release == b"1":
                 events.append("exec_after_gate")
@@ -1615,6 +1618,10 @@ def _install_gate_popen(monkeypatch, events, *, timeout_once=False):
         return _GateChild(events, reader, timeout_once=timeout_once)
 
     monkeypatch.setattr(runner.subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(
+        runner, "_write_pipe_before_deadline",
+        lambda fd, data, _deadline, _proc: runner.os.write(fd, data),
+    )
 
 
 def test_distinct_uid_cgroup_gate_orders_attach_environment_and_exec(monkeypatch):
@@ -1706,6 +1713,133 @@ def test_distinct_uid_cgroup_cleanup_failure_is_non_approving(monkeypatch):
     assert code == runner.EXIT_CAPTURE_INCOMPLETE
     assert info["capture_incomplete"] is True
     assert events.count("kill_and_remove") == 2  # immediate attempt plus finally retry
+
+
+@pytest.mark.parametrize("cleanup_result", [True, False])
+def test_distinct_uid_gate_environment_timeout_cleans_scope_and_refuses_exec(
+    monkeypatch, cleanup_result,
+):
+    _posix_runner_os(monkeypatch)
+    events = []
+    scope = _ObservedCgroup(events, cleanup_result=cleanup_result)
+    monkeypatch.setattr(runner._DelegatedCgroup, "create", lambda: scope)
+    deadline_handoff = runner._write_pipe_before_deadline
+    _install_gate_popen(monkeypatch, events)
+    monkeypatch.setattr(runner, "_write_pipe_before_deadline", deadline_handoff)
+    clock = iter((100.0, 102.0))
+    monkeypatch.setattr(runner.time, "monotonic", lambda: next(clock))
+    monkeypatch.setattr(runner.select, "select", lambda *_a: ([], [], []))
+
+    code, output, info = runner._run_one(
+        ["synthetic-command"], ".", 1, {"PATH": "/worker/bin"}, 1024,
+        worker_uid=1001, worker_gid=1001,
+    )
+
+    assert output == ""
+    assert info["timed_out"] is True
+    assert info["posix_gate_timeout"] is True
+    assert info["capture_incomplete"] is (not cleanup_result)
+    assert code == (runner.EXIT_TIMEOUT if cleanup_result else runner.EXIT_CAPTURE_INCOMPLETE)
+    assert events.count("kill_and_remove") == 1
+    assert "attach" not in events
+    assert "gate_closed_without_exec" in events
+    assert "exec_after_gate" not in events
+
+
+def test_run_and_sign_stops_after_incomplete_cleanup_and_records_later_command_not_run(
+    monkeypatch, tmp_path,
+):
+    commands = [["synthetic-command", "first"], ["synthetic-command", "second"]]
+    manifest = base_manifest(allowed_commands=[{"slot": "tests", "argv": argv} for argv in commands])
+    launched = []
+
+    def incomplete(argv, *_args, **_kwargs):
+        launched.append(argv)
+        return runner.EXIT_CAPTURE_INCOMPLETE, "", {
+            "stdout_truncated": False, "stderr_truncated": False,
+            "timed_out": False, "capture_incomplete": True, "job_object": False,
+        }
+
+    monkeypatch.setattr(runner, "_run_one", incomplete)
+    report = {}
+    receipt = runner.run_and_sign(
+        manifest=manifest, slot="tests", attempt=1, epoch=1,
+        candidate_head="a" * 40, resolved_model="synthetic", invocation_id="inv-s2-stop",
+        runner_id="runner-s2", key=KEY, commands=commands, expected_test_ids=["t1", "t2"],
+        test_result_parser=lambda _output: ([], [], []), covered_acceptance=["AC-1"],
+        artifact_paths=[], prev_receipt_sha256=None, cwd=str(tmp_path),
+        created_at="2026-10-27T00:00:00Z", timeout_sec=30, deadline_sec=30, report=report,
+    )
+
+    assert launched == [commands[0]]
+    assert receipt["result"] == "INCONCLUSIVE"
+    assert receipt["executed_test_ids"] == []
+    assert [entry["exit_code"] for entry in receipt["commands"]] == [
+        runner.EXIT_CAPTURE_INCOMPLETE, runner.EXIT_CAPTURE_INCOMPLETE,
+    ]
+    assert report["capture_incomplete"] is True
+    assert report["commands"][1]["skipped_after_capture_incomplete"] is True
+
+
+def test_run_manifest_commands_stops_after_incomplete_cleanup_and_records_later_command_not_run(
+    monkeypatch, tmp_path,
+):
+    import tools.vst.sandbox as sandbox
+    import tools.vst.signer as signer
+
+    _posix_runner_os(monkeypatch)
+    manifest, _registry, _reviewer_key, _keys = _authority_fixture()
+    parser_id, parser_version, parser_digest = next(iter(contracts.TRUSTED_PARSER_CATALOG))
+    commands = [["synthetic-command", "first"], ["synthetic-command", "second"]]
+    manifest["allowed_commands"] = [{"slot": "tests", "argv": argv} for argv in commands]
+    manifest["mandatory_commands"] = [
+        {"slot": "tests", "argv": argv, "parser_id": parser_id,
+         "parser_version": parser_version, "parser_sha256": parser_digest}
+        for argv in commands
+    ]
+    monkeypatch.setattr(sandbox, "require_distinct_worker_identity", lambda _uid: None)
+    monkeypatch.setattr(sandbox, "require_runner_can_access_signer", lambda _socket: None)
+    monkeypatch.setattr(sandbox, "require_worker_cannot_access_signer", lambda *_a, **_k: None)
+    monkeypatch.setattr(signer, "authorize_runner_over_socket", lambda _socket: None)
+    monkeypatch.setattr(
+        signer, "sign_diff_over_socket",
+        lambda _socket, _request_id, evidence: sign(evidence, SIGNER_KEY, DIFF_GATE_LABEL),
+    )
+    monkeypatch.setattr(
+        signer, "sign_over_socket",
+        lambda _socket, request: sign(request, SIGNER_KEY, SIGNING_REQUEST_LABEL),
+    )
+    monkeypatch.setattr(runner, "_derive_head", lambda _cwd: "a" * 40)
+    monkeypatch.setattr(runner, "_diff_paths", lambda *_a: (b"", [], [], []))
+    launched = []
+
+    def incomplete(argv, *_args, **_kwargs):
+        launched.append(argv)
+        return runner.EXIT_CAPTURE_INCOMPLETE, "", {
+            "stdout_truncated": False, "stderr_truncated": False,
+            "timed_out": False, "capture_incomplete": True, "job_object": False,
+        }
+
+    monkeypatch.setattr(runner, "_run_one", incomplete)
+    report = {}
+    receipt = runner.run_manifest_commands(
+        manifest=manifest, slot="tests", attempt=1, epoch=1, resolved_model="synthetic",
+        invocation_id="inv-s2-stop-v2", runner_id="runner-s2", signer_socket="unused",
+        cwd=str(tmp_path), worker_uid=1001, worker_gid=1001,
+        created_at="2026-10-27T00:00:00Z", timeout_sec=30, deadline_sec=30, report=report,
+    )
+
+    assert launched == [commands[0]]
+    assert receipt["result"] == "INCONCLUSIVE"
+    assert receipt["executed_test_ids"] == []
+    assert [entry["exit_code"] for entry in receipt["commands"]] == [
+        runner.EXIT_CAPTURE_INCOMPLETE, runner.EXIT_CAPTURE_INCOMPLETE,
+    ]
+    assert receipt["parser_results"][1]["parser_result"] == {
+        "executed_test_ids": [], "skipped_test_ids": [], "xfail_test_ids": [],
+    }
+    assert report["capture_incomplete"] is True
+    assert report["commands"][1]["skipped_after_capture_incomplete"] is True
 
 
 @pytest.mark.skipif(os.name == "nt", reason="NOT_RUN: POSIX account and Unix-socket permissions are unavailable on Windows")

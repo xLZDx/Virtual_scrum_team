@@ -23,7 +23,8 @@ On timeout, root-command exit, reader failure, or exceptional cleanup, the runne
 
 - Missing unified cgroup v2, missing `Delegate=yes`, unwritable delegated parent, or absent cgroup control files: refuse to execute a distinct-UID worker and return a non-approving containment result.
 - Failure to attach the gated PID: close the gate without releasing the requested command, reap the no-op trampoline, and return non-approving. The trampoline runs only with the fixed sanitized environment until attached, so inherited dynamic-loader variables cannot execute code before containment.
-- Failure to kill/reap the cgroup or confirm `populated 0`: return `EXIT_CAPTURE_INCOMPLETE`, preserve diagnostics, and never report PASS.
+- Failure to kill/reap the cgroup or confirm `populated 0`: return `EXIT_CAPTURE_INCOMPLETE`, preserve diagnostics, never report PASS, and stop launching later commands from the same manifest run.
+- The exec-gate environment handoff is nonblocking and shares the command deadline. If the gate cannot receive the environment before the deadline, close the gate and kill its cgroup without releasing worker code.
 - Do not add `CAP_KILL` as a fallback. The outer service timeout is only emergency cleanup, not acceptance evidence.
 
 ## Rollout and rollback
@@ -32,9 +33,9 @@ Provision the runner systemd service/scope with `Delegate=yes` and retain the ex
 
 ## Verification plan and owners
 
-- `functional-test-reviewer`: maintain a temp-only acceptance test where UID 997 runner launches UID 999 worker, a bounded descendant writes a heartbeat, timeout cleanup stops it, and the descendant self-exits within six seconds if cleanup fails.
+- `functional-test-reviewer`: maintain a temp-only acceptance test where UID 997 runner launches UID 999 worker, a bounded descendant writes a heartbeat, timeout cleanup stops it, and the descendant self-exits within six seconds if cleanup fails; also cover fail-closed gate handoff timeout and stopping later manifest commands after incomplete cleanup.
 - `e2e-runner`: execute that selector in the existing Ubuntu-24.04 WSL profile with `Delegate=yes`; record exact source/test head, cgroup path/properties, capabilities, command, result, and cleanup.
-- Codex: add deterministic helper tests for unavailable delegation and gated-launch failure; implement least-privilege cleanup; reconcile systemd sandbox specification and evidence.
+- `functional-test-reviewer`: author deterministic helper tests for unavailable delegation and gated-launch failure; Codex implements least-privilege cleanup and reconciles the systemd sandbox specification and evidence.
 - Fresh reliability/security/architecture reviewers: inspect the exact post-test head; no real process result may be upgraded from the scoped WSL profile to general platform proof.
 - GPT-PM: exact final S2 gate only after remaining acceptance evidence is ready.
 

@@ -6,6 +6,10 @@ Last updated: 2026-10-27. Re-verify volatile facts (`git log --oneline -1`, `git
 
 At canonical S2 continuation HEAD `47cdc48`, the designated `e2e-runner` reproduced a real VST-013 defect: the UID 999 descendant kept writing after the UID 997 runner timed out and attempted process-group cleanup (invocation `4399ad0027ec49bd8a273b587a24999c`). Codex implemented a fail-closed, per-command delegated cgroup-v2 path for distinct-UID POSIX workers, with a sanitized exec gate that is attached before worker code is released; Windows and same-UID compatibility paths are unchanged. Architecture review accepted the revised design after two environment/scope clarifications. Five focused functional selectors passed in the pre-commit working tree; they are not exact-commit evidence. Exact-head unit rerun and real delegated-WSL E2E remain pending. S2 stays NOT APPROVED; no S3 work started. The pre-existing untracked `docs/sdlc/evidence/s2-functional-test-run.md` remains untouched. See change 0454.
 
+## S2 E4 safety review follow-up — 2026-10-27
+
+At exact HEAD `ce8f7eeae840d911ae89ae91f0264eec2d540874`, exact-head focused tests (5 passed) and the real delegated WSL cross-UID selector (1 passed) demonstrated heartbeat cleanup for that revision. The test's active cgroup path/events were not retained. Fresh reviews found one MAJOR (do not launch later commands after incomplete cleanup) and one MINOR (include gate handoff in the command deadline); security review found no finding. Codex implemented both fixes and `functional-test-reviewer` passed 9 focused tests on the uncommitted follow-up tree. Current exact-head unit and E2E evidence are pending; VST-013 and S2 remain open. No S3 work started. Change 0455 tracks the follow-up.
+
 ## Latest continuation checkpoint — S2–S5 autonomous work (2026-10-27)
 
 ### Latest docs-only follow-up (2026-10-27; starting HEAD `71c87e38d4910c75500ef94d61f00f963c32eb0a`)
