@@ -19,8 +19,10 @@ import hmac
 import inspect
 import json
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 import pytest
@@ -616,6 +618,82 @@ def test_timeout_kills_the_whole_process_tree(work, tmp_path):
     size = os.path.getsize(beat)
     time.sleep(1.0)
     assert os.path.getsize(beat) == size, "grandchild survived the timeout kill"
+
+
+def test_posix_worker_timeout_kills_descendant_across_uid_boundary():
+    """VST-013 / E4.1: the runner must clean up worker descendants across UIDs."""
+    if os.name != "posix":
+        pytest.skip("POSIX process-group acceptance runs only inside the provisioned sandbox distro")
+
+    import pwd
+    try:
+        runner_account = pwd.getpwnam("vst-runner")
+        worker_account = pwd.getpwnam("vst-worker")
+    except KeyError as exc:
+        pytest.skip(f"provisioned S2 runner/worker account is unavailable: {exc}")
+    if os.geteuid() != runner_account.pw_uid:
+        pytest.skip("must run as the provisioned vst-runner identity")
+    try:
+        with open("/proc/self/status", encoding="ascii") as status_file:
+            cap_eff_line = next(line for line in status_file if line.startswith("CapEff:"))
+    except (OSError, StopIteration) as exc:
+        pytest.skip(f"runner effective capabilities are unavailable: {exc}")
+    cap_eff = int(cap_eff_line.split(":", 1)[1].strip(), 16)
+    required_caps = (1 << 6) | (1 << 7)  # CAP_SETGID and CAP_SETUID for Popen identity switch
+    if cap_eff & required_caps != required_caps:
+        pytest.skip("runner lacks the provisioned CAP_SETGID/CAP_SETUID profile")
+    if not os.path.isfile("/usr/bin/setpriv"):
+        pytest.skip("the approved fixed-path /usr/bin/setpriv helper is unavailable")
+
+    # Use a unique child of the sandbox's private tmpfs; the runner-created
+    # directory is shared only so the switched worker can write its marker.
+    if not os.path.isdir("/tmp") or os.stat("/tmp").st_mode & 0o1777 != 0o1777:
+        pytest.skip("sandbox /tmp is not the expected private, sticky temporary filesystem")
+    work = tempfile.mkdtemp(prefix="vst-s2-posix-cleanup-", dir="/tmp")
+    os.chmod(work, 0o777)
+    beat = os.path.join(work, "descendant-beat.txt")
+    grandchild = (
+        "import time\n"
+        "deadline = time.monotonic() + 6\n"
+        "while time.monotonic() < deadline:\n"
+        f"    with open({beat!r}, 'a', encoding='ascii') as stream: stream.write('x')\n"
+        "    time.sleep(0.1)\n"
+    )
+    parent = (
+        "import os, subprocess, sys, time\n"
+        f"subprocess.Popen([sys.executable, '-c', {grandchild!r}],"
+        " stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
+        f"deadline = time.monotonic() + 2\nwhile not os.path.exists({beat!r}) and time.monotonic() < deadline:\n"
+        "    time.sleep(0.02)\n"
+        "print('WORKER_UID', os.geteuid(), flush=True)\n"
+        "time.sleep(3.2)\n"
+    )
+
+    try:
+        code, stdout, info = runner._run_one(
+            pycmd(parent),
+            work,
+            3,
+            {"PATH": "/usr/bin:/bin", "PYTHONIOENCODING": "utf-8"},
+            4096,
+            worker_uid=worker_account.pw_uid,
+            worker_gid=worker_account.pw_gid,
+        )
+
+        assert f"WORKER_UID {worker_account.pw_uid}" in stdout
+        assert info["timed_out"] is True
+        assert info["capture_incomplete"] is False, f"runner did not confirm cleanup: {info!r}"
+        assert code == runner.EXIT_TIMEOUT
+        assert os.path.exists(beat), "worker descendant never started; test proves nothing"
+        final_size = os.path.getsize(beat)
+        deadline = time.monotonic() + 0.8
+        while time.monotonic() < deadline:
+            assert os.path.getsize(beat) == final_size, (
+                "worker descendant survived POSIX process-group timeout cleanup"
+            )
+            time.sleep(0.05)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
 
 def test_overall_deadline_stops_later_commands_without_running_them(work):

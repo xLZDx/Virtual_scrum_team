@@ -1025,3 +1025,7 @@ Change 0450 records four selectors at dc1741b and three bounded-Git selectors at
 ## 2026-10-27 — Exhaust safe S2 selector denominator
 
 Change 0451 records the 2e-runner read-only audit: no further non-duplicative selector is safe under current restrictions. Five unique correction regressions have seven exact-head executions (four at dc1741b, three at 79155fd). Real process, crash, mutation and timeout selectors remain NOT_RUN; Phase 8 remains NOT APPROVED pending system acceptance/authorized waivers.
+
+## 2026-10-27 — Add POSIX cross-UID descendant cleanup acceptance
+
+Change 0452 adds a focused VST-013/E4.1 test that runs a bounded descendant under st-worker while the runner is st-runner, requiring process-group timeout cleanup to stop its heartbeat. Current operator instruction authorizes closing S2 blockers; this test is temp-only, bounded, and owned by functional-test-reviewer/e2e-runner. No test has yet run at its committed head.
