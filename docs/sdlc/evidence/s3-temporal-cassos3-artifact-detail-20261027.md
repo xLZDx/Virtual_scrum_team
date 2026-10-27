@@ -32,9 +32,10 @@ The existing classifications for the three SQLite shards are unchanged: Worker D
 
 ## Acceptance and next review
 
-- This resolves the prior `cass_os3` **failure-details-unknown** evidence gap (`S3-CI-I02`): the artifacts have now been read and digested, and the shard remains **FAILED**.
-- This supplemental artifact surfaces additional upstream failure signals beyond those in GPT-PM's prior `S3-CI-N01` review. The source-only mappings above are provisional until GPT-PM reviews this supplemental record; do not claim that the earlier S3-CI-N01 response adjudicated newly recovered details.
-- The earlier S3-CI-N01 source-only closure remains a record of the evidence it reviewed. This supplement neither changes that historical response nor closes exact-pair/runtime compatibility.
+- The recovered artifacts resolve the `cass_os3` **failure-details-unknown** evidence gap (`S3-CI-I02`); GPT-PM's correlated supplemental response accepts the source-only impact mapping. The upstream shard remains **FAILED**.
+- GPT-PM accepted the callback and schedule exclusions only for the current G07 profile; task-forward/versioning errors remain `UNRESOLVED`, and activity timeout/goroutine behavior remains `QUALIFICATION_REQUIRED`. New INFO `S3-CI-SUP-I01` requires preserving these feature-specific exclusions separately from shared lifecycle uncertainty.
+- The earlier S3-CI-N01 source-only closure remains historically accurate for the evidence it reviewed; it did not adjudicate the newly recovered cass_os3 content. This supplement does not close exact-pair/runtime compatibility.
+- Correlated supplemental GPT-PM response: `docs/sdlc/evidence/s3-temporal-cassos3-gptpm-adjudication-20261027.md`; request `d09d38ca-76f4-47c2-9bd2-aa2e6d8cd38f`, reply `453a15fe-f0d3-4944-a9ee-f2986a34d3a7`, `correlated=true`. GPT-PM reviewed the six supplied documents but did not independently parse the raw archives, inspect the checkout, or verify attachment bytes against Git HEAD.
 - No local acceptance test, build, install, candidate run, network probe, restricted selector, CI rerun, push, PR, or merge was performed.
 
 ## Sources and ownership
