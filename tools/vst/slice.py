@@ -1312,46 +1312,80 @@ class SyntheticOperationBackend:
         )
         outputs = {"stdout": bytearray(), "stderr": bytearray()}
         overflow = {"stdout": False, "stderr": False}
+        reader_errors: dict[str, BaseException] = {}
 
         def drain(name: str, stream) -> None:
-            while True:
-                chunk = stream.read(4096)
-                if not chunk:
-                    return
-                remaining = output_limit - len(outputs[name])
-                if remaining > 0:
-                    outputs[name].extend(chunk[:remaining])
-                if len(chunk) > remaining:
-                    overflow[name] = True
+            try:
+                while True:
+                    chunk = stream.read(4096)
+                    if not chunk:
+                        return
+                    remaining = output_limit - len(outputs[name])
+                    if remaining > 0:
+                        outputs[name].extend(chunk[:remaining])
+                    if len(chunk) > remaining:
+                        overflow[name] = True
+            except BaseException as exc:  # preserve every capture failure
+                reader_errors[name] = exc
+                try:
+                    process.kill()
+                except OSError:
+                    # The parent wait has its own deadline and repeats kill
+                    # and reap if this first cleanup attempt fails.
+                    pass
 
         readers = [
             threading.Thread(target=drain, args=(name, stream), daemon=True)
             for name, stream in (("stdout", process.stdout), ("stderr", process.stderr))
         ]
-        for reader in readers:
-            reader.start()
+        started_readers = []
+
+        def kill_and_reap() -> None:
+            if process.poll() is None:
+                try:
+                    process.kill()
+                except OSError as exc:
+                    if process.poll() is None:
+                        raise RuntimeError(
+                            "bounded Git process could not be killed after capture failure"
+                        ) from exc
+            try:
+                process.wait(timeout=1)
+            except (subprocess.TimeoutExpired, OSError) as exc:
+                raise RuntimeError(
+                    "bounded Git process could not be reaped after capture failure"
+                ) from exc
+
         try:
+            for reader in readers:
+                reader.start()
+                started_readers.append(reader)
             returncode = process.wait(timeout=self.command_timeout_sec)
         except subprocess.TimeoutExpired as exc:
             try:
-                process.kill()
-            except OSError:
-                pass
-            try:
-                process.wait(timeout=1)
-            except (subprocess.TimeoutExpired, OSError) as reap_error:
-                raise TimeoutError("bounded Git preflight process could not be reaped") from reap_error
+                kill_and_reap()
+            except RuntimeError as cleanup_error:
+                raise cleanup_error from exc
             raise TimeoutError("bounded Git preflight command exceeded its time limit") from exc
+        except BaseException as exc:
+            try:
+                kill_and_reap()
+            except RuntimeError as cleanup_error:
+                raise cleanup_error from exc
+            raise
         finally:
-            for reader in readers:
+            for reader in started_readers:
                 reader.join(timeout=1)
             for stream in (process.stdout, process.stderr):
                 if stream is not None:
                     stream.close()
         if any(overflow.values()):
             raise RuntimeError("bounded Git command output exceeded its limit")
-        if any(reader.is_alive() for reader in readers):
+        if any(reader.is_alive() for reader in started_readers):
             raise RuntimeError("bounded Git preflight output reader did not finish")
+        if reader_errors:
+            name, error = next(iter(reader_errors.items()))
+            raise RuntimeError(f"bounded Git preflight {name} capture failed") from error
         return bytes(outputs["stdout"]), bytes(outputs["stderr"]), returncode
 
     @staticmethod

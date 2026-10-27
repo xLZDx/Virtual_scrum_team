@@ -526,8 +526,23 @@ def _run_one(
         "job_object": False,
     }
     try:
+        # The trusted runner may carry ambient SETUID/SETGID capabilities so
+        # Popen can switch to the worker identity. Drop ambient and inheritable
+        # capabilities in a trusted system helper before the requested command
+        # is exec'd. The unit also sets no_new_privs; repeat it at this boundary
+        # so file capabilities cannot restore privilege for the worker.
+        child_argv = argv
+        if worker_uid is not None and worker_gid is not None:
+            child_argv = [
+                "/usr/bin/setpriv",
+                "--inh-caps=-all",
+                "--ambient-caps=-all",
+                "--no-new-privs",
+                "--",
+                *argv,
+            ]
         proc = subprocess.Popen(
-            argv,
+            child_argv,
             shell=False,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,

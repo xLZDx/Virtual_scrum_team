@@ -26,6 +26,11 @@ account is not a member of the runner group and the runner drops supplementary
 groups when launching it. The signer authenticates runner UID using kernel
 peer credentials and rejects all other identities.
 
+On POSIX, the worker must not inherit effective, permitted, inheritable, or
+ambient capabilities that let it change UID/GID after the runner's identity
+transition. The trusted runner drops inheritable and ambient capabilities and
+sets `no_new_privs` through `/usr/bin/setpriv` before executing worker code.
+
 Review runs under a separate read-only identity. Its credential must have no
 write access to the worker worktree or control-plane store. The runner verifies
 that the mounted review tree is read-only before launching review. A failure
