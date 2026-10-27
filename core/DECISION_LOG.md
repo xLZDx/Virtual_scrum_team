@@ -18,6 +18,10 @@ Security review of `55cc6313dceeffe2d6777b10e686ab851e0a8b8c` found no confirmed
 
 Architecture and security reviews of exact HEAD `b00edae5cdd46920c2a1ec26bfc58796ba58f372` identified a conditional race between checking the process-local cleanup latch and admitting a concurrent launch. Distinct-UID POSIX `_run_one` calls now share a process lock across launch, wait, and cleanup. The concurrency regression test held one call inside failing cleanup and confirmed a second call waited, then refused before cgroup creation/Popen. Eleven focused selectors passed on the uncommitted working tree. The WSL selector at `b00edae` predates this serialization change and must be rerun at the exact next head. See change 0457.
 
+## 2026-10-27 -- Include queued admission in the POSIX command deadline
+
+Architecture and security reviewers of exact HEAD `3be44ad4ea93bc9e68cee1534d1d4c4e731ac451` independently found a MAJOR deadline defect: a distinct-UID call could wait past its precomputed command/overall budget and then start using the stale budget. The lock now has a bounded acquisition and `_run_one` receives the original absolute deadline; expiry returns timeout without cgroup creation or `Popen`. The focused regression is authored; exact-head test, WSL runtime, and fresh review are pending. See change 0458.
+
 ## 2026-10-27 -- Record upstream Temporal SQLite CI failure details
 
 Read-only historical GitHub logs for three failed SQLite shards in `All Tests` run `37665870783` on the exact pinned Temporal SHA report 49, 52, and 59 per-shard failures respectively and each ends at a 39-minute runner timeout. Logs include worker-versioning lookup failures, SQLite workflow-type length CHECK failures, and context deadlines; shard-level root causes and reproducibility are not established. The fourth failed shard, cass_os3 shard 2, remains without decoded logs. This is upstream CI evidence only, not local acceptance or a basis to independently declare the provisional candidate accepted/rejected. See `docs/sdlc/evidence/s3-temporal-upstream-ci-failure-detail-20261027.md` and change 0421.

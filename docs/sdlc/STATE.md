@@ -92,3 +92,7 @@ At `55cc6313dceeffe2d6777b10e686ab851e0a8b8c`, 9 focused unit tests and the real
 ## S2 E4 concurrent runner admission — 2026-10-27
 
 At `b00edae5cdd46920c2a1ec26bfc58796ba58f372`, 10 focused selectors and the real delegated WSL cross-UID selector passed. Architecture/security review identified a conditional race between the process-local cleanup latch and concurrent calls. Codex serialized distinct-UID POSIX launches over launch, wait, and cleanup; the new bounded concurrency test confirmed the second call waits and then refuses after the first cleanup fails. Eleven focused selectors passed on the uncommitted tree. Exact-head tests and WSL E2E remain pending. VST-013/S2 remain open; S3 has not started. See change 0457.
+
+## S2 E4 admission deadline correction — 2026-10-27
+
+At exact commit `3be44ad4ea93bc9e68cee1534d1d4c4e731ac451`, 11 focused lifecycle selectors and the designated POSIX cross-UID WSL selector passed. The WSL runner/test archive matched the exact commit; `Delegate=yes`, cgroup controls, UID/capability boundary, and bounded resource profile were observed. The fast final `populated=0` cgroup event was not retained, while assertions for `capture_incomplete=False` and stopped heartbeat passed. Exact-head architecture/security review then found lock wait was outside the deadline. Change 0458 now bounds admission by the original command budget and refuses to spawn after expiry. Exact-head test/runtime/review results are pending; prior 3be44ad evidence does not verify the correction. VST-013/S2 remain open; S3 has not started.

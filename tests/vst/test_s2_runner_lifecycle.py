@@ -1766,15 +1766,14 @@ def test_concurrent_distinct_uid_launch_waits_for_cleanup_latch_admission(monkey
             self._entries = 0
             self.second_waiting = threading.Event()
 
-        def __enter__(self):
+        def acquire(self, timeout=-1):
             with self._guard:
                 self._entries += 1
                 if self._entries == 2:
                     self.second_waiting.set()
-            self._lock.acquire()
-            return self
+            return self._lock.acquire(timeout=timeout)
 
-        def __exit__(self, *_exc):
+        def release(self):
             self._lock.release()
 
     run_lock = ObservedLock()
@@ -1859,6 +1858,68 @@ def test_concurrent_distinct_uid_launch_waits_for_cleanup_latch_admission(monkey
     assert created == ["cgroup_create"]
     assert len(popen_calls) == 1
     assert events.count("cleanup_unconfirmed") == 2
+
+
+def test_distinct_uid_launch_skips_after_lock_wait_exhausts_command_budget(monkeypatch):
+    _posix_runner_os(monkeypatch)
+
+    class ObservedLock:
+        def __init__(self):
+            self._lock = threading.Lock()
+            self._guard = threading.Lock()
+            self._acquire_calls = 0
+            self.waiting_launch = threading.Event()
+
+        def acquire(self, timeout=-1):
+            with self._guard:
+                self._acquire_calls += 1
+                if self._acquire_calls == 2:
+                    self.waiting_launch.set()
+            return self._lock.acquire(timeout=timeout)
+
+        def release(self):
+            self._lock.release()
+
+    run_lock = ObservedLock()
+    monkeypatch.setattr(runner, "_POSIX_CGROUP_RUN_LOCK", run_lock)
+    assert run_lock.acquire()
+    downstream_calls = []
+    monkeypatch.setattr(
+        runner._DelegatedCgroup, "create",
+        lambda: downstream_calls.append("cgroup_create"),
+    )
+    monkeypatch.setattr(
+        runner.subprocess, "Popen",
+        lambda *args, **kwargs: downstream_calls.append("popen"),
+    )
+    results = []
+
+    def queued_launch():
+        results.append(runner._run_one(
+            ["synthetic-command"], ".", 0.05,
+            {"PATH": "/worker/bin"}, 1024,
+            worker_uid=1001, worker_gid=1001,
+        ))
+
+    launch = threading.Thread(target=queued_launch, daemon=True)
+    try:
+        launch.start()
+        assert run_lock.waiting_launch.wait(timeout=2)
+        launch.join(timeout=2)
+    finally:
+        run_lock.release()
+        launch.join(timeout=2)
+
+    assert not launch.is_alive()
+    assert len(results) == 1
+    code, output, info = results[0]
+    assert code == runner.EXIT_TIMEOUT
+    assert output == ""
+    assert info["timed_out"] is True
+    assert info["skipped_by_deadline"] is True
+    assert info["admission_wait_expired"] is True
+    assert info["capture_incomplete"] is False
+    assert downstream_calls == []
 
 
 @pytest.mark.parametrize("cleanup_result", [True, False])

@@ -18,6 +18,10 @@ At exact HEAD `55cc6313dceeffe2d6777b10e686ab851e0a8b8c`, 9 focused tests and th
 
 At exact HEAD `b00edae5cdd46920c2a1ec26bfc58796ba58f372`, 10 focused unit selectors and the delegated WSL cross-UID selector passed. Architecture/security reviewers identified a conditional same-process concurrency race at the process-local latch. Codex serialized distinct-UID `_run_one` calls through cgroup cleanup; the concurrency regression passed within an 11-selector focused run on the uncommitted tree. Exact-head unit/E2E reruns remain pending; VST-013/S2 remain open and S3 has not started. See change 0457.
 
+## S2 E4 admission deadline correction — 2026-10-27
+
+At exact commit `3be44ad4ea93bc9e68cee1534d1d4c4e731ac451`, the functional reviewer passed 11 focused lifecycle selectors and the designated E2E role passed the cross-UID WSL selector. The WSL archive matched the commit; full invocation and boundary details are in the pending evidence record for change 0458. Exact-head architecture/security reviews then found a MAJOR: a queued call could start after its command deadline using stale budget. Change 0458 bounds lock acquisition and carries the absolute deadline; exact-head functional run, WSL rerun, and fresh reviews are pending. The 3be44ad test/E2E results do not verify the deadline correction. S2/VST-013 remain open; S3 has not started.
+
 ## Latest continuation checkpoint — S2–S5 autonomous work (2026-10-27)
 
 ### Latest docs-only follow-up (2026-10-27; starting HEAD `71c87e38d4910c75500ef94d61f00f963c32eb0a`)

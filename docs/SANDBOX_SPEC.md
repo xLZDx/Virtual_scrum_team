@@ -65,7 +65,8 @@ unconfirmed empty-scope cleanup is a non-approving failure; after unconfirmed
 cleanup, remaining commands in that manifest run are not launched and the
 current runner process refuses later distinct-UID launches. Distinct-UID
 launches are serialized per runner process so a concurrent call cannot pass
-the cleanup latch check early. A replacement
+the cleanup latch check early; time spent waiting consumes that command's
+remaining deadline, and an expired admission does not start a worker. A replacement
 runner may start only after the outer service/sandbox has stopped or fenced any
 prior scope. Same-UID compatibility launches retain process-group cleanup and
 do not satisfy the S2 all-descendant acceptance guarantee. No host path beyond that run directory may be

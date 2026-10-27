@@ -240,7 +240,7 @@ _POSIX_CGROUP_RUN_LOCK = threading.Lock()
 
 
 def _serialize_distinct_uid_launch(function: Callable) -> Callable:
-    """Prevent concurrent same-process workers racing an uncertain cleanup latch."""
+    """Serialize distinct-UID workers without exceeding their admission budget."""
     @functools.wraps(function)
     def wrapped(*args, **kwargs):
         if (
@@ -248,8 +248,35 @@ def _serialize_distinct_uid_launch(function: Callable) -> Callable:
             and kwargs.get("worker_uid") is not None
             and kwargs.get("worker_gid") is not None
         ):
-            with _POSIX_CGROUP_RUN_LOCK:
+            requested_limit = args[2] if len(args) > 2 else kwargs["limit_sec"]
+            deadline = time.monotonic() + max(0.0, float(requested_limit))
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not _POSIX_CGROUP_RUN_LOCK.acquire(timeout=remaining):
+                return EXIT_TIMEOUT, "", {
+                    "stdout_truncated": False,
+                    "stderr_truncated": False,
+                    "timed_out": True,
+                    "capture_incomplete": False,
+                    "job_object": False,
+                    "skipped_by_deadline": True,
+                    "admission_wait_expired": True,
+                }
+            try:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return EXIT_TIMEOUT, "", {
+                        "stdout_truncated": False,
+                        "stderr_truncated": False,
+                        "timed_out": True,
+                        "capture_incomplete": False,
+                        "job_object": False,
+                        "skipped_by_deadline": True,
+                        "admission_wait_expired": True,
+                    }
+                kwargs["_deadline_at"] = deadline
                 return function(*args, **kwargs)
+            finally:
+                _POSIX_CGROUP_RUN_LOCK.release()
         return function(*args, **kwargs)
     return wrapped
 
@@ -642,10 +669,10 @@ def _resume_suspended_primary_thread(pid: int) -> bool:
 def _run_one(
     argv: list[str], cwd: str, limit_sec: float, env: dict[str, str], cap: int,
     *, require_job_object: bool = False, worker_uid: int | None = None,
-    worker_gid: int | None = None,
+    worker_gid: int | None = None, _deadline_at: float | None = None,
 ) -> tuple[int, str, dict]:
     """Run one argv without a shell; return (exit_code, stdout_text, info)."""
-    command_deadline = time.monotonic() + limit_sec
+    command_deadline = _deadline_at if _deadline_at is not None else time.monotonic() + limit_sec
     info = {
         "stdout_truncated": False,
         "stderr_truncated": False,
@@ -653,6 +680,13 @@ def _run_one(
         "capture_incomplete": False,
         "job_object": False,
     }
+    if command_deadline <= time.monotonic():
+        return EXIT_TIMEOUT, "", {
+            **info,
+            "timed_out": True,
+            "skipped_by_deadline": True,
+            "admission_wait_expired": True,
+        }
     cgroup: _DelegatedCgroup | None = None
     gate_release_fd: int | None = None
     env_read: int | None = None
@@ -1110,7 +1144,8 @@ def run_and_sign(
                 list(argv), cwd, min(float(per_command), remaining), env, max_output_bytes,
                 require_job_object=True,
             )
-            info["skipped_by_deadline"] = False
+            if not info.get("admission_wait_expired"):
+                info["skipped_by_deadline"] = False
         recorded.append({"argv": list(argv), "exit_code": exit_code})
         outputs.append(stdout)
         infos.append(info)
@@ -1333,7 +1368,8 @@ def run_manifest_commands(
                 max_output_bytes, require_job_object=True,
                 worker_uid=worker_uid, worker_gid=worker_gid,
             )
-            info["skipped_by_deadline"] = False
+            if not info.get("admission_wait_expired"):
+                info["skipped_by_deadline"] = False
         parsed = parser(stdout)
         if (not isinstance(parsed, tuple) or len(parsed) != 3 or
                 any(not isinstance(group, list) or any(not isinstance(x, str) for x in group) for group in parsed)):
