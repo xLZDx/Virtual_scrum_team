@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-This is a planning proposal for read-only S3 audit and a future authorized comparison. It does not approve Temporal architecture, acquire any package, resolve a license, provision an environment, or authorize a build, install, test, or execution. GPT-PM adjudication is required before treating it as the accepted S3 target profile.
+This is a planning proposal for read-only S3 audit and a future authorized comparison. GPT-PM's target-profile review found the technology selection coherent as a planning basis but returned `MODIFY` with one MAJOR, `S3-PROFILE-M01`, because this document and the older S3 plan did not make the accepted G07 topology normative. The G07 authorization mapping and file-backed configuration design are authoritative for this profile and supersede any less restrictive topology wording in this document or the older plan. The finding remains open pending a fresh GPT-PM verification of this reconciliation. This document does not approve implementation, acquire any package, resolve a license, provision an environment, or authorize a build, install, test, or execution.
 
 ## Proposed comparison target
 
@@ -15,15 +15,23 @@ This is a planning proposal for read-only S3 audit and a future authorized compa
 | Rust bridge | Gitlink `e163abd6dc19040064986a63c8b8cf4756ffd320` | Recorded source identity; full build closure remains open. |
 | Bridge features | Source-declared `tls-ring` default; do not select optional `fips` for this proposal | The actual platform-resolved feature graph has not been built or independently resolved. Required path features remain as declared by the pinned manifest. |
 | Extras | No optional Python integration extras in the minimal comparison profile | This is a profile proposal, not a dependency lock or proof of a minimal transitive closure. |
-| Topology | One server and one worker inside the same per-run sandbox, loopback-only endpoint; VST Store, signer and acceptance authority remain outside candidate access | Aligns with the already proposed S3 topology in plan section 10. Startup, listener, auth and persistence settings still need exact implementation review. |
+| Topology | One run-scoped Temporal server (`vst-engine`), one trusted SDK adapter (`vst-adapter`), one isolated untrusted candidate worker (`vst-worker`), and the trusted VST runner/Supervisor (`vst-runner`) use distinct principals. Every SDK connection, RPC and retry must pass through the mandatory deny-by-default gRPC gateway. The adapter cannot connect directly to the server; the candidate cannot reach the server or gateway or alter gateway configuration. Server audience and authorization follow the reviewed G07 mapping. Default and visibility stores use the reviewed file-backed per-run state profile. The VST Store/Supervisor remains the sole acceptance authority. | Normative design only: `s3-temporal-g07-authorization-mapping-20261027.md` and `s3-temporal-g07-exact-config-proposal-20261027.md` supersede the older, less-specific topology text. Principals, gateway, listeners, quotas, persistence behavior and no-bypass controls remain unimplemented or unverified. |
 | Network and authority | No public egress; Temporal history is supporting state only; VST owns run state, stop fence and authoritative receipts | Configuration and runtime enforcement remain unverified until permitted S2 evidence exists. |
 | Workload | One synthetic story, one worker, fixed budget and allowed paths | Matches S3 plan scope. No customer or live repository data. |
+
+### Normative topology and authority
+
+The G07 authorization mapping and exact-config proposal define the mandatory topology for this profile and supersede older, less restrictive wording in this file or S3 plan section 10. The design requires four distinct security principals: trusted `vst-runner` (VST Supervisor/Store/signer), `vst-engine` (Temporal server/state), `vst-adapter` (trusted SDK client/worker), and isolated untrusted `vst-worker` (candidate code). The adapter dispatches candidate work through the bounded runner interface and never executes candidate code in its own process.
+
+Every SDK connection, RPC and retry must pass through the mandatory trusted deny-by-default gRPC gateway, including connection-time `GetSystemInfo`. The adapter cannot connect directly to the server; only the gateway can reach the server; candidate code cannot reach either endpoint or change gateway configuration. A per-run server audience, reviewed cluster-reader plus synthetic-namespace writer claims, closed RPC allowlist, and complete persisted VST request/STOP/RESUME/response identity mapping are required. Both default and visibility persistence use the reviewed file-backed database under bounded per-run `/tmp`, engine-owned and outside candidate access. The VST Store/Supervisor alone authorizes receipts and final acceptance.
+
+These are design requirements, not existing implementation or runtime facts. Principals, gateway, route/listener isolation, claims, file ownership, quota enforcement, server restart/replay and no-bypass behavior remain unimplemented or `NOT_VERIFIED`/`NOT_RUN`. No reading of the older loopback-only or same-identity topology as an approved alternative is permitted. `S3-PROFILE-M01` remains open until GPT-PM verifies this reconciliation.
 
 ## Acceptance mapping and outstanding proof
 
 The candidate-independent contract and scenario denominator are in `docs/S3_WORKER_PILOT_PLAN_2026-10-24.md` sections 3 and 5 (AC-1–AC-15). Required observable behavior includes idempotent start/resume, typed non-approving status on uncertainty, STOP fencing against late writes/receipts, checkpoint recovery, bounded budget, path isolation, signed evidence authority, and egress refusal. The status matrix in `s3-static-candidate-comparison-20261027.md` records that the required shared-fixture runtime comparison remains `NOT_RUN` for all candidates.
 
-The target profile still needs a platform-resolved dependency/license graph, server and SDK artifact provenance, source/build reproducibility, exact server storage/listener/auth configuration, and a threat-flow review. S2 Phase 8 must be accepted before any sandbox-bound run. The 53 S4 policy selectors remain `NOT_RUN` and are not prerequisites to be waived as part of this S3 proposal; no such waiver is requested.
+The target profile still needs a platform-resolved dependency/license graph, server and SDK artifact provenance, source/build reproducibility, exact server storage/listener/auth configuration, and a threat-flow review. S2 Phase 8 must be accepted before any sandbox-bound run. The 53 S4 policy selectors remain `NOT_RUN` and are not prerequisites to be waived as part of this S3 proposal; no such waiver is requested. GPT-PM's post-fix review closed `S3-PROFILE-M01` at design/documentation level only; implementation, runtime, artifact and S3 acceptance gates remain open.
 
 ## Candidate role terminology
 
@@ -44,5 +52,7 @@ The proposal intentionally prevents the word “fallback” from implying produc
 
 - `docs/S3_WORKER_PILOT_PLAN_2026-10-24.md` sections 2, 3, 5, 10 and 12
 - `docs/sdlc/evidence/s3-temporal-sdk-feature-profile-screen-20261027.md`
+- `docs/sdlc/evidence/s3-temporal-g07-authorization-mapping-20261027.md`
+- `docs/sdlc/evidence/s3-temporal-g07-exact-config-proposal-20261027.md`
 - `docs/sdlc/evidence/s3-temporal-exact-version-license-metadata-20261027.md`
 - `docs/sdlc/evidence/s3-static-candidate-comparison-20261027.md`
