@@ -1065,3 +1065,7 @@ Change 0452 adds a focused VST-013/E4.1 test that runs a bounded descendant unde
 ## 2026-10-27 — Select per-command delegated cgroup cleanup for POSIX cross-UID workers
 
 The exact VST-013 acceptance run showed runner UID 997 cannot kill a worker UID 999 descendant with the existing CAP_SETUID/CAP_SETGID-only profile. Codex rejected broad CAP_KILL and a new root helper; selected systemd-delegated cgroup-v2 per-command cleanup with a gated exec barrier and fail-closed behavior when delegation is unavailable. Design: docs/S2_POSIX_WORKER_CGROUP_DESIGN.md (change 0453). No source fix or passing run yet.
+
+## 2026-10-27 — Reconcile safe S2 evidence at exact HEAD 4c1692d
+
+The six-module S2 inventory at `4c1692d61ee04e945fc0ccdd44db71869ccd5468` has 189 passes of 209 IDs: 178 focused Windows selections, 8 POSIX E3 temporary-anchor selectors, 1 WSL VST-011 capability-drop selector, and 2 POSIX identity-boundary selectors. The separate E4.1 WSL selector passed outside that denominator. Crash/recovery, process-kill, policy, and mutation-testing cases remain `NOT_RUN`; synthetic invalid-anchor fixtures are negative inputs, not mutation-testing runs. Specialist reviews found no actionable BLOCKER/MAJOR in their stated code scope but do not close S2. E5 fresh signature/inventory and Windows key ACL/Job Object boundaries remain separate. See change 0462 and the exact evidence/matrix in `docs/sdlc/evidence/`.
