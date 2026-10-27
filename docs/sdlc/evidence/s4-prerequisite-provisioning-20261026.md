@@ -66,3 +66,24 @@ Observed compiler: GCC/CC `13.3.0`. The default distro command identity was
 it does not prove the report-bound helper's unprivileged worker identity or S2
 containment. The earlier report-bound worker-identity evidence remains separately
 scoped to its recorded run.
+
+## Read-only wheelhouse recheck — 2026-10-27
+
+The exact previously recorded path `D:\Temp\virtual_scrum_team_qa_f4ef8e7_wheelhouse`
+was present as a directory. A read-only enumeration found exactly these six wheel
+files and calculated SHA-256 values matching the provisioning table above:
+
+| Wheel | SHA-256 |
+|---|---|
+| `colorama-0.4.6-py2.py3-none-any.whl` | `4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6` |
+| `iniconfig-2.3.0-py3-none-any.whl` | `f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12` |
+| `packaging-26.2-py3-none-any.whl` | `5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e` |
+| `pluggy-1.6.0-py3-none-any.whl` | `e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746` |
+| `pygments-2.20.0-py3-none-any.whl` | `81a9e26dd42fd28a23a2d169d86d7ac03b46e2f8b59ed4698fb4785f946d0176` |
+| `pytest-9.0.3-py3-none-any.whl` | `2c5efc453d45394fdd706ade797c0a81091eccd1d6e4bccfcd476e2b8e0ab5d9` |
+
+The recheck did not access the separate installed dependency-target path, write to the
+wheelhouse, download, install, or run tests. This confirms current file presence and
+bytes; it does not alter S4's `INCONCLUSIVE` status or authorize any selector. The 53
+policy selectors remain `NOT_RUN`, and AC-17's in-run mutation/change-and-restore
+property remains `NOT_VERIFIED`.

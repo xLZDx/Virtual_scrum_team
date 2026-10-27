@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S2–S5 — промежуточный отчет и матрица приёмки</title>
+  <style>
+    body { font: 16px/1.55 system-ui, sans-serif; max-width: 1250px; margin: 2rem auto; padding: 0 1rem; color: #18212b; }
+    h1,h2 { line-height: 1.2; } table { border-collapse: collapse; width: 100%; margin: 1rem 0 2rem; }
+    th,td { border: 1px solid #9aa8b5; padding: .55rem; text-align: left; vertical-align: top; }
+    th { background: #edf2f6; } code { overflow-wrap: anywhere; }
+    .state { font-weight: 700; } .open { color: #805700; } .done { color: #176b38; }
+  </style>
+</head>
+<body>
+<header><h1>S2–S5 — промежуточный отчет и матрица приёмки</h1></header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>Virtual_scrum_team</dd>
+    <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s4-canonical-continuation @ a583514</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+
+
+
+<p><strong>Срез:</strong> baseline <code>a583514b58e0cfab95fe2e8cbf921634aaa6857f</code>, ветка <code>s4-canonical-continuation</code>. Вся работа велась в каноническом <code>D:\Repo\Virtual_scrum_team</code>; новые sprint worktree/fork каталоги не создавались.</p>
+<p><strong>Короткий статус:</strong> проектные тесты и code checks, сборки, миграции и запуски кандидата не выполнялись; обязательная проверка формата отчёта прошла. Запрещённые S2 сценарии и 53 S4 policy-селектора остаются <code>NOT_RUN</code>. GPT‑PM принял корректирующий G07 дизайн S3, но не runtime/config. S4 сохраняется как <code>INCONCLUSIVE</code>; S5 и downstream release gates не запущены.</p>
+
+<h2>Матрица критериев</h2>
+<table>
+<thead><tr><th>ID / критерий</th><th>Смысл</th><th>Состояние</th><th>Доказательство / выполнено</th><th>Остаток</th><th>Зависимость / блокер</th><th>Владелец</th><th>Следующий шаг</th></tr></thead>
+<tbody>
+<tr><td>1 — S2 разрешённые доказательства</td><td>Собирать только разрешённые системные данные; запрещённые сценарии не запускать.</td><td class="state open">Частично выполнено; S2 Phase 8 NOT APPROVED</td><td>Обновлены read-only инвентари WSL, nftables и Windows Firewall. E2E runner проверил safe-denominator и не нашёл нового разрешённого селектора; тестов не запускал и файлов не менял. Подробности: <a href="../docs/sdlc/STATE.md">S2 state</a>, <a href="../docs/sdlc/evidence/s2-readonly-wsl-system-inventory-20261027.md">WSL inventory</a>, <a href="../docs/sdlc/evidence/s2-readonly-firewall-inventory-20261027.md">firewall inventory</a>.</td><td>Windows Job Object/POSIX containment, worker identity, workspace binding, host egress и persistent deployment не доказаны. Процесс/краш/мутация сценарии остаются NOT_RUN.</td><td>Требуются разрешённые host/runtime доказательства и GPT‑PM gate; запрещённые кейсы не запускаются.</td><td>Codex — разрешённый аудит; GPT‑PM — adjudication; оператор — только если нужен отдельный waiver.</td><td>Сохранить NOT_RUN; собирать только новый разрешённый системный артефакт, если он существует. Иначе держать Phase 8 открытой.</td></tr>
+<tr><td>2 — S3 read-only audit</td><td>Продолжать аудит pinned кандидата; legal/acquisition решает оператор, архитектуру adjudicates GPT‑PM.</td><td class="state open">Аудит продолжается; дизайн G07 принят, один config MAJOR открыт</td><td>Read-only source screen зафиксировал file-backed SQLite шаблон, DSN/setup поведение и ограничения default authorizer. GPT‑PM принял G07 corrective design: request <code>3d72de89-1451-43d5-8a4f-4ca3b141d875</code>, reply <code>56a5f7a5-71ae-5080-9dc0-f8dcc3f0f7dd</code>. См. <a href="../docs/sdlc/evidence/s3-temporal-pinned-dev-config-screen-20261027.md">source screen</a>, <a href="../docs/sdlc/evidence/s3-temporal-g07-closure-design-20261027.md">design</a>, <a href="../docs/sdlc/evidence/s3-temporal-g07-exact-config-proposal-20261027.md">config proposal</a>. <a href="../docs/sdlc/evidence/s3-gptpm-g07-exact-config-review-20261027.md">exact-config PM review</a>, <a href="../docs/sdlc/evidence/s3-gptpm-g07-focused-review-20261027.md">focused mapping review</a>, <a href="../docs/sdlc/evidence/s3-temporal-g07-authorization-mapping-20261027.md">corrective mapping</a>, <a href="../docs/sdlc/evidence/s3-temporal-exact-pin-license-screen-20261027.md">exact-pin license screen</a> (upstream file facts only; no legal disposition).</td><td>Runtime proof, final config, auth/listener maps, G03 compatibility/provenance, exact-version license disposition и same-fixture comparison открыты. Коррелированный exact-config review <code>a5f46781-b5f6-436c-b2d4-bf8f38bd317c</code> / <code>d2f7f553-f270-597b-a0ac-15400d67b948</code> вернул MODIFY, MAJOR G07-CFG-M01 открыт. Фокусированный PM review вернул MODIFY: ноль BLOCKER, MAJOR G07-CFG-M01 открыт. Codex проверил точный bootstrap и полный identity binding; исправленная карта ожидает следующую архитектурную adjudication.</td><td>Некоторые правовые решения принадлежат оператору; GPT‑PM exact-config review нужен до принятия конфигурации. PM Bridge wait был uncertain, но его durable result содержит correlated reply; MODIFY не является одобрением.</td><td>Codex — read-only evidence/retry; GPT‑PM — architecture; оператор — legal/acquisition.</td><td>Продолжить безопасный pinned-source аудит; получить correlated verdict по отправленному re-review <code>f591d5e7-9be2-4e26-94ce-d8e16be73b6e</code>; до ответа G07-CFG-M01 остаётся открытым; не приобретать, собирать, устанавливать или запускать Temporal.</td></tr>
+<tr><td>3 — S4 waiver / INCONCLUSIVE</td><td>Получить точный подписанный waiver либо оставить S4 INCONCLUSIVE; 53 policy селектора не запускать.</td><td class="state done">Ограничение исполнено: S4 остаётся INCONCLUSIVE</td><td>53 селектора сохранены как NOT_RUN. Read-only сверка ранее записанного wheelhouse подтвердила 6 SHA-256; установка и тесты не выполнялись. См. <a href="../docs/sdlc/evidence/s4-prerequisite-provisioning-20261026.md">provisioning evidence</a>.</td><td>Нет operator-signed exact waiver; AC-17 in-run same-identity mutation остаётся NOT_VERIFIED. Это не acceptance S4.</td><td>Подписанный scoped waiver — только оператор; без него сохранять INCONCLUSIVE.</td><td>Оператор — waiver; Codex — сохранение статуса/доказательств.</td><td>Не запускать 53 селектора. Оставить INCONCLUSIVE до точного подписанного решения или разрешённого изменения контракта.</td></tr>
+<tr><td>4 — S5 после S2/S4</td><td>После закрытия S2/S4 получить или разрешить конкретный AEVE source и возобновить аудит.</td><td class="state open">Не начат; корректно отложен</td><td>Ранее зафиксировано <code>NOT_COVERED: AEVE_PROFILE_TRANSPORT_UNAVAILABLE</code>; этот turn не обращался к соседним checkout. См. <a href="../core/BACKLOG.md">VST-041</a>.</td><td>S2/S4 не закрыты; AEVE identity/revision/license/interface source не предоставлен в scope.</td><td>Требуются S2/S4 closure и конкретный in-scope source/authorization.</td><td>Оператор — внешняя scope/source authorization; Codex — аудит; GPT‑PM — contract.</td><td>Возобновить только после закрытия prerequisites и привязки source identity.</td></tr>
+<tr><td>5 — post-acceptance tests/reviews/GPT‑PM/PR</td><td>После acceptance выполнить назначенные тесты/reviews, exact-head GPT‑PM, затем отдельные PR/merge по спринтам.</td><td class="state open">Отложено до prerequisite acceptance</td><td>Текущие S2/S4 gates не приняты; в этой работе tests/checks/build не выполнялись. Новые worktree/fork каталоги не создавались; push/PR/merge не выполнялись.</td><td>Нужны закрытые acceptance gates, затем отдельные test-agent evidence, specialist reviews и correlated approval на exact final head.</td><td>Блокируется критериями 1–4; approval не переносится на последующие изменения.</td><td>Codex — координация; functional-test-reviewer/e2e-runner — тесты; GPT‑PM — exact-head approval; оператор — merge/deployment authority.</td><td>После закрытия критериев 1–4 завершить код, передать назначенные тесты и reviews, получить новый exact-head gate; оформлять отдельный PR на каждый sprint.</td></tr>
+</tbody></table>
+
+<h2>Подробный checkpoint</h2>
+<ul>
+  <li><strong>S2:</strong> текущие системные снимки показывают конфигурацию, но не доказывают поведение из-под worker identity, process containment или end-to-end egress. E2E reviewer подтвердил, что дополнительных разрешённых селекторов без повтора уже записанных нет; новых тестов в этой работе не было.</li>
+  <li><strong>S3:</strong> Server <code>v1.32.1</code> (<code>af08a5e5f2dd40f545f2afac7780daaa6987001e</code>) и SDK <code>1.34.0</code> (<code>a4c2bb38c3bad43498dfa6bd849e8d85bb684e94</code>) остаются только read-only comparator. GPT‑PM закрыл два design MAJOR в G07, не runtime/config acceptance. Коррелированный exact-config reply вернул MODIFY, 1 MAJOR G07-CFG-M01 открыт; ожидание сохранилось как uncertain, но reply подтверждён PM Bridge.</li>
+  <li><strong>S4:</strong> wheelhouse существует по уже документированному пути и шесть хэшей совпали при read-only проверке. Это не разрешение на install/test. Все 53 policy selectors остаются NOT_RUN.</li>
+  <li><strong>S5/release:</strong> ожидание AEVE source и закрытых upstream gates; тест/review/PR sequence ещё не начата.</li>
+  <li><strong>Рабочее дерево:</strong> baseline HEAD указан выше. Существующий untracked <code>docs/sdlc/evidence/s2-functional-test-run.md</code> сохранён без изменения и не staged. Текущие изменения — evidence/state/report записи, отражённые в change 0400.</li>
+</ul>
+
+<h2>Упорядоченные следующие шаги</h2>
+<ol>
+  <li>Codex: повторно проверить завершение существующего GPT‑PM exact-config запроса с тем же request ID, затем записать correlated reply либо точную ошибку.</li>
+  <li>Codex: продолжать только read-only S3 audit в пределах pinned source; не приобретать, не строить и не запускать кандидат.</li>
+  <li>Оператор: если требуется закрыть S4, подписать точный scoped waiver; иначе оставить INCONCLUSIVE. До этого все 53 policy селектора остаются NOT_RUN.</li>
+  <li>Codex: сохранять запрещённые S2 сценарии NOT_RUN и собирать только реально разрешённые дополнительные доказательства.</li>
+  <li>После S2/S4 closure оператор предоставляет/разрешает конкретный AEVE source; затем Codex возобновляет S5.</li>
+  <li>После всех acceptance gates: назначить тесты/reviews по ролям, получить correlated GPT‑PM approval exact head и готовить отдельные PR/merge по спринтам.</li>
+</ol>
+
+<p><strong>Итоговое состояние:</strong> критерий 3 выполнен как ограничение (S4 оставлен INCONCLUSIVE и 53 селектора не запускались); критерий 1 частично выполнен по разрешённому сбору данных, но S2 gate открыт; критерий 2 продвинут и архитектурный G07 дизайн принят, но audit/config/runtime остаются открыты; критерии 4–5 условно отложены до своих prerequisites. Никакой sprint acceptance или release approval не заявляется.</p>
+
+
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

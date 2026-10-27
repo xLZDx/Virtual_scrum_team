@@ -889,3 +889,19 @@ The follow-up static WSL inspection started Ubuntu-24.04 from Stopped to Running
 ## 2026-10-27 — Reconcile GPT-PM S3 architecture findings with local plan
 
 GPT-PM request `efb3f084-9e88-4e0f-9111-e152d99bc013` returned MODIFY while accepting the provisional hand-written baseline, read-only BMad/Temporal comparator roles, and no-winner/no-TOP result. The response was explicitly evidence-scoped and did not inspect the repository. Local review confirms the existing S3 plan already defines a candidate-independent adapter contract, AC-1–AC-15 mapping, and common scenario denominator; shared-fixture runtime remains `NOT_RUN`. Change 0396 removes ambiguous “fallback” wording, records the accepted role states, and proposes a precise planning profile for full GPT-PM re-adjudication. No acquisition/run authorization follows.
+
+## 2026-10-27 — Keep S2/S4 gates conservative; reconcile S3 G07 at design level
+
+At baseline `a583514`, keep S2 Phase 8 `NOT APPROVED` and S4 `INCONCLUSIVE`. All prohibited/policy-bound S2 cases and S4's 53 selectors remain `NOT_RUN`; S4 AC-17 same-identity in-run mutation remains `NOT_VERIFIED`. A read-only hash recheck of the recorded S4 wheelhouse is provisioning evidence only and does not authorize tests or constitute a waiver. GPT-PM's correlated S3 G07 response `3d72de89-1451-43d5-8a4f-4ca3b141d875` / `56a5f7a5-71ae-5080-9dc0-f8dcc3f0f7dd` accepts the corrective design and closes two design MAJORs, but not runtime qualification, S2/S4, G03, legal, acquisition, or candidate selection. Exact config request `a5f46781-b5f6-436c-b2d4-bf8f38bd317c` has no confirmed completed reply; its timed-out generation is not an approval. Change 0400 records this checkpoint.
+
+## 2026-10-27 — Correct the S3 G07 authorization map before implementation
+
+GPT-PM request `a5f46781-b5f6-436c-b2d4-bf8f38bd317c` / correlated reply `d2f7f553-f270-597b-a0ac-15400d67b948` returned MODIFY with one MAJOR `G07-CFG-M01`: expected audience enforcement, precise RPC allowlist, and VST-to-Temporal run identity were not completely specified. Codex recorded the pinned Server/SDK-Core audience and method behavior in `docs/sdlc/evidence/s3-temporal-g07-authorization-mapping-20261027.md` and requested focused GPT-PM review `f8bcdb1b-6baa-47a1-88aa-d4550ec5d7bb`. Keep the proposal unapproved and runtime NOT_RUN until the correlated adjudication and later implementation evidence. Change 0400 records this decision.
+
+## 2026-10-27 — Retain G07-CFG-M01 and correct bootstrap/identity mapping
+
+Focused GPT-PM request `9cc85b3d-644d-45b4-a80c-5dabd8f1ed18`, correlated reply `bcfe039f-a0af-5695-b26b-ef23631e7d8a`, returned MODIFY with zero BLOCKER and one MAJOR `G07-CFG-M01` open. The exact pinned SDK-Core calls cluster-scope `GetSystemInfo` during connection, while the Python bridge exposes neither Core's skip flag nor its lower-level gRPC callback. The revised design adds only `temporal-system:read` plus the synthetic namespace writer and requires a trusted network gateway to forward only the closed method list; the gateway remains unimplemented and must be reviewed before any code. The full VST request/stop/resume and response identity echoes are now explicitly bound to the durable mapping. Keep the design unapproved and runtime NOT_RUN pending focused GPT-PM re-review. See `s3-gptpm-g07-focused-review-20261027.md` and change 0400.
+
+## 2026-10-27 — Keep exact-pin license facts separate from legal disposition
+
+The exact pinned Temporal Server, Python SDK, and SDK-Core repository-level license files state MIT terms. This is top-level source evidence only; it does not enumerate or assess transitive dependencies and is not legal approval. The operator retains legal/acquisition disposition. The focused mapping request `9cc85b3d-644d-45b4-a80c-5dabd8f1ed18` was sent and is awaiting a correlated GPT-PM response. See `docs/sdlc/evidence/s3-temporal-exact-pin-license-screen-20261027.md` and change 0400.
