@@ -2,6 +2,10 @@
 
 Append-only. One dated entry per decision, piece of evidence or refusal.
 
+## 2026-10-27 — Fence POSIX runner cgroup scopes across process restart
+
+Full architecture and reliability reviews of the S2 source/test delta at `4c1692d61ee04e945fc0ccdd44db71869ccd5468` found that a replacement runner could lose the in-memory cleanup latch while an old worker cgroup remained populated. No repository-contained deployment evidence established an outer service fence. Decision: require a runner-owned private `/run/vst-runner` directory and a cross-process exclusive `flock` held across cgroup stale-scope reconciliation, command admission, execution, and cleanup; before admission remove only strict runner-named direct-child scopes after confirming `populated 0`. Any missing/unsafe lock or unresolved scope refuses admission. The service must keep one stable delegated subtree and retire all pre-lock runner instances before rollout. Code changed at the working tree; designated test and bounded WSL evidence are pending. This does not authorize prohibited process-kill/crash acceptance scenarios or close S2. See change 0464 and `docs/S2_POSIX_WORKER_CGROUP_DESIGN.md`.
+
 ## 2026-10-27 -- Use delegated cgroup-v2 scope for distinct-UID POSIX worker cleanup
 
 The cross-UID timeout acceptance at source/test HEAD `161dcc7838b2bd05f01f485dab38a37cba9d82b2` showed UID 999's descendant continued writing after UID 997's process-group cleanup. Do not add `CAP_KILL` or a custom privileged helper. Use a unique child cgroup below the runner's systemd-delegated cgroup-v2 subtree, require `cgroup.kill`, `cgroup.events`, and `cgroup.procs`, and attach a sanitized-environment exec gate before releasing worker code. Unavailable delegation, failed attachment, and unconfirmed cleanup are non-approving. This guarantee is scoped to distinct-UID POSIX workers; same-UID compatibility is excluded. Unit coverage passed on the working tree, but exact-commit and real WSL cgroup acceptance are still required. Architecture review found and closed two environment/scope gaps before implementation. See change 0454 and `docs/S2_POSIX_WORKER_CGROUP_DESIGN.md`.

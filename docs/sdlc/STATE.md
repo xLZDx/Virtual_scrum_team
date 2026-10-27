@@ -1,5 +1,9 @@
 # SDLC state
 
+## Latest S2 runner restart-fence follow-up — 2026-10-27
+
+At the previously reviewed code/test HEAD `4c1692d61ee04e945fc0ccdd44db71869ccd5468`, full architecture and reliability reviews found that in-process cleanup latching did not fence a replacement process from an abandoned worker cgroup. Codex added shared `flock` admission plus strict stale-scope reconciliation and documented the required runner-owned `/run/vst-runner` mode-0700 directory and stable delegated-subtree rollout contract in change 0464. The designated functional-test-reviewer passed 11 focused selectors, then 6 lock selectors after the directory-mode tightening, and one bounded-lock-deadline selector on dirty HEAD `6b0f32948c7b2b804123ba5e1b67271197ef97a9`; exact committed-head test evidence remains pending. No WSL restart/scope evidence, fresh post-change specialist review, or GPT-PM decision is recorded yet. Existing 20 `NOT_RUN` selectors, including prohibited process-kill, crash/recovery, mutation, E8, and policy scenarios, remain `NOT_RUN`. Persistent runtime/service provisioning remains `NOT_VERIFIED`; S2 is not approved and S3 source work remains deferred.
+
 Project: Virtual Scrum Team   Sprint: S2   Phase: 8 - Gate (NOT APPROVED; mandatory runtime/system acceptance incomplete)   Base HEAD: `6117ba24`   Prior tested S2 source/test HEAD: `f0bbac8d64d3abd1aa261dabec1954ca4f0c17a2`   Current exact regression source/test HEAD: `79155fdf9f1f4a7ba71358592ccd54c669a76291` (seven focused selector executions passed across exact heads: four at `dc1741b`, three bounded-Git at this head; 5 fresh specialist reviews complete, no code BLOCKER/MAJOR; one nonblocking database MINOR)   Updated: 2026-10-27
 
 ## Latest docs-only continuation — 2026-10-27

@@ -75,10 +75,12 @@ import os
 import re
 import select
 import signal
+import stat
 import subprocess
 import threading
 import time
 import uuid
+from contextlib import contextmanager
 from typing import Callable
 
 from .contracts import (
@@ -237,6 +239,52 @@ _POSIX_GATE = (
 )
 _POSIX_CGROUP_CLEANUP_FAILED = threading.Event()
 _POSIX_CGROUP_RUN_LOCK = threading.Lock()
+_POSIX_CGROUP_RUNTIME_DIR = "/run/vst-runner"
+
+
+@contextmanager
+def _posix_cgroup_process_lock(deadline: float):
+    """Serialize cgroup admission across runner processes and reconcile leftovers."""
+    if os.name == "nt":
+        yield
+        return
+    try:
+        import fcntl
+    except ImportError as exc:
+        raise OSError("POSIX cgroup admission requires flock support") from exc
+
+    runtime_dir = _POSIX_CGROUP_RUNTIME_DIR
+    dir_stat = os.stat(runtime_dir, follow_symlinks=False)
+    if not stat.S_ISDIR(dir_stat.st_mode) or dir_stat.st_uid != os.geteuid():
+        raise OSError("runner runtime directory must be a real directory owned by the runner")
+    if dir_stat.st_mode & (stat.S_IRWXG | stat.S_IRWXO):
+        raise OSError("runner runtime directory must be private to its owner")
+
+    lock_path = os.path.join(runtime_dir, "cgroup-admission.lock")
+    flags = os.O_CREAT | os.O_RDWR | getattr(os, "O_CLOEXEC", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(lock_path, flags, 0o600)
+    try:
+        lock_stat = os.fstat(fd)
+        if (
+            not stat.S_ISREG(lock_stat.st_mode)
+            or lock_stat.st_uid != os.geteuid()
+            or lock_stat.st_mode & (stat.S_IRWXG | stat.S_IRWXO)
+        ):
+            raise OSError("runner cgroup admission lock must be a private runner-owned regular file")
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError("runner cgroup admission lock deadline expired")
+                time.sleep(min(0.02, remaining))
+        _DelegatedCgroup.reconcile_stale(deadline)
+        yield
+    finally:
+        os.close(fd)
 
 
 def _serialize_distinct_uid_launch(function: Callable) -> Callable:
@@ -276,7 +324,32 @@ def _serialize_distinct_uid_launch(function: Callable) -> Callable:
                         "admission_wait_expired": True,
                     }
                 kwargs["_deadline_at"] = deadline
-                return function(*args, **kwargs)
+                process_lock = _posix_cgroup_process_lock(deadline)
+                try:
+                    process_lock.__enter__()
+                except TimeoutError:
+                    return EXIT_TIMEOUT, "", {
+                        "stdout_truncated": False,
+                        "stderr_truncated": False,
+                        "timed_out": True,
+                        "capture_incomplete": False,
+                        "job_object": False,
+                        "skipped_by_deadline": True,
+                        "admission_wait_expired": True,
+                    }
+                except OSError as exc:
+                    return EXIT_CAPTURE_INCOMPLETE, "", {
+                        "stdout_truncated": False,
+                        "stderr_truncated": False,
+                        "timed_out": False,
+                        "capture_incomplete": True,
+                        "job_object": False,
+                        "posix_cgroup_refused": str(exc),
+                    }
+                try:
+                    return function(*args, **kwargs)
+                finally:
+                    process_lock.__exit__(None, None, None)
             finally:
                 _POSIX_CGROUP_RUN_LOCK.release()
         return function(*args, **kwargs)
@@ -312,8 +385,8 @@ class _DelegatedCgroup:
         self.path = path
         self._closed = False
 
-    @classmethod
-    def create(cls) -> "_DelegatedCgroup":
+    @staticmethod
+    def _runner_parent() -> str:
         with open("/proc/self/cgroup", encoding="ascii") as stream:
             entries = [line.rstrip("\n").split(":", 2) for line in stream]
         unified = next(
@@ -327,6 +400,34 @@ class _DelegatedCgroup:
         root = os.path.realpath("/sys/fs/cgroup")
         if os.path.commonpath((root, parent)) != root:
             raise OSError("runner cgroup path escaped the cgroup-v2 mount")
+        return parent
+
+    @classmethod
+    def reconcile_stale(cls, deadline: float) -> None:
+        """Kill and remove only abandoned command scopes under this runner cgroup."""
+        parent = cls._runner_parent()
+        try:
+            entries = list(os.scandir(parent))
+        except OSError as exc:
+            raise OSError("cannot enumerate delegated cgroup before worker admission") from exc
+        for entry in entries:
+            if not entry.name.startswith("vst-command-"):
+                continue
+            if not re.fullmatch(r"vst-command-[0-9]+-[0-9a-f]{32}", entry.name):
+                raise OSError("unrecognized runner command cgroup blocks worker admission")
+            if entry.is_symlink() or not entry.is_dir(follow_symlinks=False):
+                raise OSError("runner command cgroup is not a real child cgroup")
+            path = os.path.realpath(entry.path)
+            if os.path.dirname(path) != parent or os.path.basename(path) != entry.name:
+                raise OSError("runner command cgroup escaped its delegated parent")
+            scope = cls(path)
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not scope.kill_and_remove(timeout=min(10.0, remaining)):
+                raise OSError("abandoned runner command cgroup could not be confirmed empty")
+
+    @classmethod
+    def create(cls) -> "_DelegatedCgroup":
+        parent = cls._runner_parent()
         path = os.path.join(parent, f"vst-command-{os.getpid()}-{uuid.uuid4().hex}")
         os.mkdir(path, 0o700)
         scope = cls(path)

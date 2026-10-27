@@ -2,6 +2,15 @@
 
 Entry fields: date and commit title; kind; facts with evidence pointer; root cause; layer that missed or caught it; rule for next time.
 
+## 2026-10-27 — A process-local latch is not a runner-restart fence
+
+- Kind: SHORTCOMING (the same-process safety boundary was incorrectly treated as a restart boundary).
+- Facts: full architecture and reliability reviews of the seven-path S2 code/test delta at `4c1692d61ee04e945fc0ccdd44db71869ccd5468` found the cleanup latch and admission mutex were process-local; a replacement runner could launch while an abandoned child cgroup remained. See change 0464.
+- Root cause: review and tests covered repeated/concurrent calls in one process, but no repository evidence established the outer service lifecycle across runner-process death.
+- Layer that missed it: exact-diff specialist review caught an omitted cross-process/restart acceptance case.
+- Rule: use a trusted shared process lock and reconcile only strictly named owned cgroups before worker admission; bound both by the original deadline and fail closed. Separately verify stable service subtree and runtime-directory provisioning. A local latch is only a same-process fast refusal.
+- Fix status: source and contract updated in the working tree; exact-head tests and WSL runtime proof pending.
+
 ## 2026-10-26 — Reconcile sprint status without moving evidence to the current HEAD
 
 - Kind: SUCCESS (documentation drift corrected while preserving evidence boundaries).

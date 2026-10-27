@@ -11,6 +11,8 @@ import struct
 import subprocess
 import sys
 import threading
+import time
+from contextlib import contextmanager
 from types import SimpleNamespace
 
 import pytest
@@ -1519,7 +1521,234 @@ def _posix_runner_os(monkeypatch):
     posix_os.name = "posix"
     monkeypatch.setattr(runner, "os", posix_os)
     monkeypatch.setattr(runner, "_POSIX_CGROUP_CLEANUP_FAILED", threading.Event())
+
+    @contextmanager
+    def synthetic_process_lock(_deadline):
+        yield
+
+    monkeypatch.setattr(runner, "_posix_cgroup_process_lock", synthetic_process_lock)
     return posix_os
+
+
+def test_posix_admission_lock_validates_private_runtime_and_lock_file(monkeypatch, tmp_path):
+    runtime_dir = tmp_path / "runtime"
+    runtime_dir.mkdir()
+    calls = []
+    actual_os = os
+
+    class FakeStat:
+        def __init__(self, mode):
+            self.st_mode = mode
+            self.st_uid = 1001
+
+    posix_os = SimpleNamespace(**vars(actual_os))
+    posix_os.name = "posix"
+    posix_os.geteuid = lambda: 1001
+    posix_os.stat = lambda _path, follow_symlinks=False: FakeStat(
+        runner.stat.S_IFDIR | 0o700
+    )
+    posix_os.open = lambda path, flags, mode=0o777: calls.append(
+        ("open", path, flags, mode)
+    ) or 41
+    posix_os.fstat = lambda _fd: FakeStat(runner.stat.S_IFREG | 0o600)
+    posix_os.close = lambda fd: calls.append(("close", fd))
+    monkeypatch.setattr(runner, "os", posix_os)
+    monkeypatch.setattr(runner, "_POSIX_CGROUP_RUNTIME_DIR", str(runtime_dir))
+    monkeypatch.setattr(runner._DelegatedCgroup, "reconcile_stale", lambda _deadline: calls.append("reconcile"))
+
+    fake_fcntl = SimpleNamespace(LOCK_EX=2, LOCK_NB=4)
+    fake_fcntl.flock = lambda fd, operation: calls.append(("flock", fd, operation))
+    monkeypatch.setitem(sys.modules, "fcntl", fake_fcntl)
+
+    with runner._posix_cgroup_process_lock(10.0):
+        calls.append("admitted")
+
+    assert calls[0][0] == "open"
+    assert calls[1] == ("flock", 41, fake_fcntl.LOCK_EX | fake_fcntl.LOCK_NB)
+    assert calls[2] == "reconcile"
+    assert calls[3] == "admitted"
+    assert calls[4] == ("close", 41)
+
+
+@pytest.mark.parametrize(
+    "bad_mode",
+    [
+        runner.stat.S_IFDIR | 0o777,
+        runner.stat.S_IFDIR | 0o755,
+        runner.stat.S_IFLNK | 0o700,
+    ],
+)
+def test_posix_admission_lock_refuses_untrusted_runtime_directory(monkeypatch, tmp_path, bad_mode):
+    runtime_dir = tmp_path / "runtime"
+    runtime_dir.mkdir()
+    opened = []
+    posix_os = SimpleNamespace(**vars(os))
+    posix_os.name = "posix"
+    posix_os.geteuid = lambda: 1001
+    posix_os.stat = lambda _path, follow_symlinks=False: SimpleNamespace(
+        st_mode=bad_mode, st_uid=1001
+    )
+    posix_os.open = lambda *args, **kwargs: opened.append(args)
+    monkeypatch.setattr(runner, "os", posix_os)
+    monkeypatch.setattr(runner, "_POSIX_CGROUP_RUNTIME_DIR", str(runtime_dir))
+    monkeypatch.setitem(sys.modules, "fcntl", SimpleNamespace(LOCK_EX=2, LOCK_NB=4))
+
+    with pytest.raises(OSError, match="runtime directory"):
+        with runner._posix_cgroup_process_lock(10.0):
+            pytest.fail("untrusted runtime directory must not admit a worker")
+    assert opened == []
+
+
+def test_posix_admission_lock_refuses_non_private_lock_file(monkeypatch, tmp_path):
+    runtime_dir = tmp_path / "runtime"
+    runtime_dir.mkdir()
+    opened = []
+    posix_os = SimpleNamespace(**vars(os))
+    posix_os.name = "posix"
+    posix_os.geteuid = lambda: 1001
+    posix_os.stat = lambda _path, follow_symlinks=False: SimpleNamespace(
+        st_mode=runner.stat.S_IFDIR | 0o700, st_uid=1001
+    )
+    posix_os.open = lambda *args, **kwargs: 42
+    posix_os.fstat = lambda _fd: SimpleNamespace(
+        st_mode=runner.stat.S_IFREG | 0o640, st_uid=1001
+    )
+    posix_os.close = lambda fd: opened.append(("close", fd))
+    monkeypatch.setattr(runner, "os", posix_os)
+    monkeypatch.setattr(runner, "_POSIX_CGROUP_RUNTIME_DIR", str(runtime_dir))
+    monkeypatch.setitem(sys.modules, "fcntl", SimpleNamespace(LOCK_EX=2, LOCK_NB=4))
+
+    with pytest.raises(OSError, match="private runner-owned"):
+        with runner._posix_cgroup_process_lock(10.0):
+            pytest.fail("unsafe lock file must not admit a worker")
+    assert opened == [("close", 42)]
+
+
+def test_posix_admission_lock_deadline_refuses_contended_flock(monkeypatch, tmp_path):
+    runtime_dir = tmp_path / "runtime"
+    runtime_dir.mkdir()
+    calls = []
+    posix_os = SimpleNamespace(**vars(os))
+    posix_os.name = "posix"
+    posix_os.geteuid = lambda: 1001
+    posix_os.stat = lambda _path, follow_symlinks=False: SimpleNamespace(
+        st_mode=runner.stat.S_IFDIR | 0o700, st_uid=1001
+    )
+    posix_os.open = lambda *args, **kwargs: 43
+    posix_os.fstat = lambda _fd: SimpleNamespace(
+        st_mode=runner.stat.S_IFREG | 0o600, st_uid=1001
+    )
+    posix_os.close = lambda fd: calls.append(("close", fd))
+    monkeypatch.setattr(runner, "os", posix_os)
+    monkeypatch.setattr(runner, "_POSIX_CGROUP_RUNTIME_DIR", str(runtime_dir))
+    monkeypatch.setattr(runner._DelegatedCgroup, "reconcile_stale", lambda _deadline: calls.append("reconcile"))
+
+    now = [10.0]
+    fake_time = SimpleNamespace(
+        monotonic=lambda: now[0],
+        sleep=lambda seconds: (calls.append(("sleep", seconds)), now.__setitem__(0, now[0] + seconds)),
+    )
+    monkeypatch.setattr(runner, "time", fake_time)
+    fake_fcntl = SimpleNamespace(LOCK_EX=2, LOCK_NB=4)
+
+    def contended_flock(fd, operation):
+        calls.append(("flock", fd, operation))
+        raise BlockingIOError("lock held by another runner")
+
+    fake_fcntl.flock = contended_flock
+    monkeypatch.setitem(sys.modules, "fcntl", fake_fcntl)
+
+    with pytest.raises(TimeoutError, match="admission lock deadline expired"):
+        with runner._posix_cgroup_process_lock(10.05):
+            pytest.fail("contended lock must not admit a worker")
+
+    assert calls[0] == ("flock", 43, fake_fcntl.LOCK_EX | fake_fcntl.LOCK_NB)
+    assert calls[-1] == ("close", 43)
+    assert "reconcile" not in calls
+    sleeps = [call[1] for call in calls if isinstance(call, tuple) and call[0] == "sleep"]
+    assert sleeps
+    assert sum(sleeps) <= 0.05 + 1e-9
+
+
+def test_posix_stale_cgroup_reconciliation_removes_only_owned_scope(monkeypatch, tmp_path):
+    parent = tmp_path / "runner-cgroup"
+    parent.mkdir()
+    stale = parent / f"vst-command-123-{'a' * 32}"
+    stale.mkdir()
+    unrelated = parent / "other-service"
+    unrelated.mkdir()
+    removed = []
+    monkeypatch.setattr(runner._DelegatedCgroup, "_runner_parent", lambda: str(parent))
+
+    def kill_and_remove(scope, timeout=10.0):
+        removed.append((scope.path, timeout))
+        os.rmdir(scope.path)
+        return True
+
+    monkeypatch.setattr(runner._DelegatedCgroup, "kill_and_remove", kill_and_remove)
+    runner._DelegatedCgroup.reconcile_stale(time.monotonic() + 5.0)
+
+    assert len(removed) == 1
+    assert removed[0][0] == str(stale)
+    assert 0 < removed[0][1] <= 5.0
+    assert not stale.exists()
+    assert unrelated.is_dir()
+
+
+def test_posix_stale_cgroup_reconciliation_fails_closed_on_malformed_scope(monkeypatch, tmp_path):
+    parent = tmp_path / "runner-cgroup"
+    parent.mkdir()
+    malformed = parent / "vst-command-not-a-owned-scope"
+    malformed.mkdir()
+    cleanup_calls = []
+    monkeypatch.setattr(runner._DelegatedCgroup, "_runner_parent", lambda: str(parent))
+    monkeypatch.setattr(
+        runner._DelegatedCgroup, "kill_and_remove",
+        lambda *args, **kwargs: cleanup_calls.append((args, kwargs)) or True,
+    )
+
+    with pytest.raises(OSError, match="unrecognized runner command cgroup"):
+        runner._DelegatedCgroup.reconcile_stale(time.monotonic() + 5.0)
+    assert cleanup_calls == []
+    assert malformed.is_dir()
+
+
+def test_posix_stale_cgroup_reconciliation_refuses_unconfirmed_cleanup(monkeypatch, tmp_path):
+    parent = tmp_path / "runner-cgroup"
+    parent.mkdir()
+    stale = parent / f"vst-command-123-{'b' * 32}"
+    stale.mkdir()
+    monkeypatch.setattr(runner._DelegatedCgroup, "_runner_parent", lambda: str(parent))
+    monkeypatch.setattr(runner._DelegatedCgroup, "kill_and_remove", lambda *_args, **_kwargs: False)
+
+    with pytest.raises(OSError, match="could not be confirmed empty"):
+        runner._DelegatedCgroup.reconcile_stale(time.monotonic() + 5.0)
+    assert stale.is_dir()
+
+
+def test_distinct_uid_launch_refuses_when_process_lock_or_reconciliation_fails(monkeypatch):
+    _posix_runner_os(monkeypatch)
+    downstream = []
+
+    @contextmanager
+    def unavailable_lock(_deadline):
+        raise OSError("stale scope could not be confirmed empty")
+        yield
+
+    monkeypatch.setattr(runner, "_posix_cgroup_process_lock", unavailable_lock)
+    monkeypatch.setattr(runner._DelegatedCgroup, "create", lambda: downstream.append("cgroup"))
+    monkeypatch.setattr(runner.subprocess, "Popen", lambda *args, **kwargs: downstream.append("popen"))
+
+    code, output, info = runner._run_one(
+        ["synthetic-command"], ".", 1, {"PATH": "/worker/bin"}, 1024,
+        worker_uid=1001, worker_gid=1001,
+    )
+
+    assert code == runner.EXIT_CAPTURE_INCOMPLETE
+    assert output == ""
+    assert info["capture_incomplete"] is True
+    assert "could not be confirmed empty" in info["posix_cgroup_refused"]
+    assert downstream == []
 
 
 class _ObservedCgroup:
