@@ -851,6 +851,56 @@ index 679aa42..a0017d7 100644
  @pytest.mark.parametrize("scenario", [
      "posix_process_group_cleanup",
      "post_exit_descendant_cleanup",
+diff --git a/tests/vst/test_s2_store_lifecycle.py b/tests/vst/test_s2_store_lifecycle.py
+index 4ac26a2..5988a2a 100644
+--- a/tests/vst/test_s2_store_lifecycle.py
++++ b/tests/vst/test_s2_store_lifecycle.py
+@@ -37,6 +37,23 @@ def test_anchor_compare_append_is_idempotent_and_rejects_same_count_fork(tmp_pat
+         anchor.compare_and_append(signed, fork)
+ 
+ 
++@pytest.mark.skipif(os.name != "posix", reason="NOT_RUN: FileExternalAnchor requires POSIX sandbox")
++def test_anchor_append_separates_valid_tail_without_final_newline(tmp_path):
++    """VST-012: recover a valid final checkpoint without its terminating LF."""
++    anchor_path = tmp_path / "anchor-without-final-lf.jsonl"
++    anchor = FileExternalAnchor(str(anchor_path), EVENT)
++    genesis = signed_checkpoint(0, GENESIS_HASH, EVENT)
++    anchor_path.write_bytes(json.dumps(genesis, separators=(",", ":")).encode("utf-8"))
++
++    assert anchor.read_latest() == genesis
++    successor = signed_checkpoint(1, "a" * 64, EVENT)
++    assert anchor.compare_and_append(genesis, successor) == successor
++
++    lines = anchor_path.read_bytes().splitlines()
++    assert [json.loads(line) for line in lines] == [genesis, successor]
++    assert anchor.read_latest() == successor
++
++
+ @pytest.mark.skipif(os.name != "posix", reason="NOT_RUN: external anchor restore detection requires POSIX sandbox")
+ def test_external_anchor_detects_restored_older_database_and_locks_writes(tmp_path):
+     db, anchor_path = tmp_path / "state.db", tmp_path / "anchor.jsonl"
+diff --git a/tools/vst/lifecycle.py b/tools/vst/lifecycle.py
+index f13f87f..3a6db33 100644
+--- a/tools/vst/lifecycle.py
++++ b/tools/vst/lifecycle.py
+@@ -199,6 +199,17 @@ class FileExternalAnchor:
+                             raise AnchorError("same checkpoint count has a different head")
+                         raise AnchorError("external checkpoint compare-and-append conflict")
+                     stream.seek(0, os.SEEK_END)
++                    end = stream.tell()
++                    if end:
++                        stream.seek(end - 1, os.SEEK_SET)
++                        if stream.read(1) != b"\n":
++                            # A crash may leave a complete JSON record without
++                            # its final newline. Separate it durably before the
++                            # next record so recovery never merges two objects.
++                            stream.seek(0, os.SEEK_END)
++                            stream.write(b"\n")
++                            stream.flush()
++                            os.fsync(stream.fileno())
+                     stream.write(canonical_bytes(checkpoint) + b"\n")
+                     stream.flush()
+                     os.fsync(stream.fileno())
 diff --git a/tools/vst/runner.py b/tools/vst/runner.py
 index 9953378..26b55c4 100644
 --- a/tools/vst/runner.py
@@ -1366,3 +1416,175 @@ index 9953378..26b55c4 100644
      candidate_head = _derive_head(cwd)
      executed_all = [test_id for result in parser_results for test_id in result["parser_result"]["executed_test_ids"]]
      skipped_all = [test_id for result in parser_results for test_id in result["parser_result"]["skipped_test_ids"]]
+diff --git a/tools/vst/schemas/README.md b/tools/vst/schemas/README.md
+index 3f70605..6196b05 100644
+--- a/tools/vst/schemas/README.md
++++ b/tools/vst/schemas/README.md
+@@ -113,9 +113,11 @@ Tables: `stories(story_id, project_id, phase 1..10, epoch, owner, state in OPEN/
+ 
+ Execution: `subprocess.Popen(shell=False)`, stdin from the null device, started in its own process group (POSIX) / process group without a window (Windows). The child gets a minimal explicit environment: the allowlisted names `ENV_ALLOWLIST` (PATH, PATHEXT, SYSTEMROOT, SYSTEMDRIVE, WINDIR, TEMP, TMP, TMPDIR, LANG, LC_ALL) copied from the runner process, `PYTHONIOENCODING=utf-8` and the caller's explicit `extra_env`; nothing else is inherited. `extra_env` is an allowlist: every name must fully match `VST_[A-Z0-9_]+` (case-sensitive); anything else is rejected with `ContractError` (a `ValueError`) before anything runs. stdout and stderr are read by threads and capped at `max_output_bytes` each (excess drained and dropped).
+ 
++For distinct-UID POSIX runs, the trusted runner invokes `/usr/bin/setpriv` with a fixed sanitized environment, starts an isolated exec gate, and moves that gate into a unique child of its delegated cgroup-v2 subtree before releasing the allowlisted command. The intended worker environment is transferred as data over a separate pipe, and the handoff is bounded by the command deadline. Distinct-UID launches are serialized within one runner process; lock wait consumes the command's remaining budget, and an expired queued launch returns timeout without spawning. Cgroup creation, attachment, `cgroup.kill`, and `populated 0` cleanup must be confirmed; otherwise the result is non-approving, later commands in the same manifest run are recorded as not run, and the current runner process refuses future distinct-UID launches. A replacement runner must not be admitted until the outer service/sandbox has stopped or fenced any leftover scope. If the helper or delegated scope is unavailable, the command does not execute. Same-UID compatibility launches retain process-group cleanup and do not satisfy the S2 all-descendant guarantee. The exact provisioned sandbox still requires runtime acceptance evidence.
++
+ Process-tree containment: on Windows the child is assigned to a Job Object with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`. Strict callers create it suspended and require successful assignment before resuming; if setup fails, they refuse to run the command. Cleanup calls `TerminateJobObject` and then `CloseHandle`, checking both Win32 return values. A false result or exception marks capture incomplete, triggers a best-effort `taskkill /PID <pid> /T /F` fallback, and forces exit code -4 so the command cannot be accepted as successful; a failed `CloseHandle` is retried during final cleanup. Compatibility callers may continue without a Job Object after assignment failure, with the existing `taskkill` fallback best effort. On POSIX the process group is killed with `os.killpg(SIGKILL)` on timeout and after a normal exit.
+ 
+-Recorded exit codes: the process exit code; -1 timeout or deadline reached (commands not started before the deadline are recorded as -1 without running); -2 missing executable / cwd / permission / any `OSError` at start (non-OSError exceptions propagate); -3 `EXIT_OUTPUT_TRUNCATED` when either stream exceeded the cap (fail-closed: the result derives to FAIL); -4 `EXIT_CAPTURE_INCOMPLETE` when a reader thread is still alive after the join, a pipe read failed with any exception, the root process survived the kill for 10 s, or strict Windows Job Object cleanup was not confirmed (takes precedence over -1 and -3; fail-closed, derives to FAIL). If `report` is a dict it receives `{"commands": [{stdout_truncated, stderr_truncated, timed_out, capture_incomplete, job_object, skipped_by_deadline}, ...], "capture_incomplete": bool}`; `job_object` is True only when the command ran inside a Windows Job Object. On any exception the process tree is killed and the pipes are closed after the readers are joined.
++Recorded exit codes: the process exit code; -1 timeout or deadline reached (commands not started before the deadline are recorded as -1 without running); -2 missing executable / cwd / permission / any `OSError` at start (non-OSError exceptions propagate); -3 `EXIT_OUTPUT_TRUNCATED` when either stream exceeded the cap (fail-closed: the result derives to FAIL); -4 `EXIT_CAPTURE_INCOMPLETE` when a reader thread is still alive after the join, a pipe read failed with any exception, the root process survived the kill for 10 s, cgroup cleanup was not confirmed, or strict Windows Job Object cleanup was not confirmed (takes precedence over -1 and -3; fail-closed, derives to FAIL). After -4, the current run does not launch later commands; those entries have exit code -4 and report flag `skipped_after_capture_incomplete=true`. If `report` is a dict it receives `{"commands": [{stdout_truncated, stderr_truncated, timed_out, capture_incomplete, job_object, skipped_by_deadline, optional skipped_after_capture_incomplete}, ...], "capture_incomplete": bool}`; `job_object` is True only when the command ran inside a Windows Job Object. On any exception the process tree is killed and the pipes are closed after the readers are joined.
+ 
+ Then stdout of all commands is joined and given to the injected parser (`(executed, skipped, xfail)`), the TestRun receipt (with `manifest_sha256`) is built, `result = derive_result(receipt)`, signed with `signing.sign` and validated. Artifacts are hashed AFTER the commands (relative to `cwd`; the path as given is the key in `artifact_digests`); a missing, non-regular, symlinked or escaping artifact gets the all-zero digest (FAIL). The key is a plain argument: never written, logged, passed to a child or read from the worker cwd. Helpers: `file_sha256(path)`, `artifact_digests(paths)`, `build_environment(extra_env)`, `contained_artifact_path(cwd, rel)`.
+ 
+@@ -140,10 +142,10 @@ Synthetic vertical slice: no real project, no network; exactly one scenario (`re
+ 
+ - Event-chain edit, deletion and tail truncation are detected through the keyed HMAC chain and keyed anchor row. A per-run external anchor is supported, but rollback to an older internally consistent database copy is not detected when the matching external checkpoint is also unavailable or rolled back; compromise of `event_key` defeats the local authenticity boundary.
+ - The HMAC proves origin within the machine trust boundary (the holder of the key signed the receipt); it does not prove that the test run was honest or that recorded stdout, test ids or digests are true.
+-- S2 per-run WSL evidence demonstrates runner/signer separation for the recorded `run_manifest_commands` execution. It is not a persistent production deployment or a claim that every host/runtime is qualified. The operator attestation and sanitized runtime evidence are in `docs/sdlc/evidence/s2-e5-operator-attestation.json` and `s2-e5-runmanifest-wsl-280e2d0.md`.
++- S2 per-run WSL evidence demonstrates runner/signer separation for the recorded `run_manifest_commands` execution. The exact source/test-head `f0bbac8` probe passed all seven recorded checks; its run-bound attestation and limits are in `docs/sdlc/evidence/s2-e5-operator-attestation-f0bbac8-20261026.json` and `s2-e5-runmanifest-wsl-f0bbac8-20261026.md` (change 0339). This is not a persistent production deployment or a claim that every host/runtime is qualified. The older `280e2d0` run remains historical evidence only.
+ - Reviewer receipts are authenticated with keys in the operator-signed registry and bound to the manifest, but the registry maps normalized principal strings to keys; it does not independently establish a human's real-world identity.
+ - After an epoch takeover, receipts from earlier epochs remain as history only; they never satisfy a slot in the new epoch.
+-- POSIX file/socket boundaries and selected WSL unit limits were exercised in the recorded WSL run. Windows Job Object nesting and prohibited process-kill/kill-table scenarios remain unverified (`NOT_RUN`). Full E8 crash/resume bake-off is also `NOT_RUN`; the current lifecycle fixture terminates a child process.
++- The exact-head POSIX runtime subset and the run-bound WSL probe are recorded in `s2-permitted-posix-runtime-evidence-f0bbac8-20261026.md` and `s2-e5-runmanifest-wsl-f0bbac8-20261026.md`. These prove only the listed fixtures and one per-run environment: Windows Job Object nesting, full process-group/descendant containment, prohibited process-kill/kill-table scenarios, and full E8 crash/resume remain unverified or `NOT_RUN`; a bounded fixture cleanup is not platform containment proof.
+ - The store's database/WAL/SHM permission hardening uses best-effort `chmod`; Windows ACL behavior was not established by the recorded WSL evidence.
+-- Simulated push/pull-request operations persist an append-only `PENDING` intent and later a completion event; their local Git subprocesses have finite command timeouts. A timeout remains pending and requires same-key/same-payload retry against the backend's durable idempotency binding. This updated path is pending a designated-agent regression run on its new code head.
+-- The synthetic Git backend receives an explicit candidate source repository and local bare target. It transfers the exact requested commit and reachable objects as a pack, imports it into the target, and updates refs with compare-and-swap; it does not run `git push`, remote helpers, or source hooks. The worker has no backend publish method or target credential. This hook-avoidance revision awaits its designated security regression run.
++- Simulated push/pull-request operations persist an append-only `PENDING` intent and later a completion event; their local Git subprocesses have finite command timeouts. The safe exact-head runner-lifecycle remainder at `f0bbac8` passed 56 selected cases, including the idempotent push/pull and hook-free publication fixtures. The distinct local-Git timeout/restart selector was excluded by policy and remains `NOT_RUN`; it must not be inferred from the other passes. Bounded Git subprocess setup, reader-start, and read failures now fall inside cleanup handling that kills/reaps the child and fails closed. See `s2-permitted-posix-runtime-evidence-f0bbac8-20261026.md` for the prior run and later S2 change records for the correction.
++- The synthetic Git backend receives an explicit candidate source repository and local bare target. It transfers the exact requested commit and reachable objects as a pack, imports it into the target, and updates refs with compare-and-swap; it does not run `git push`, remote helpers, or source hooks. The worker has no backend publish method or target credential. The hook-free fixture passed in the safe exact-head runner-lifecycle remainder, but this is a local bare-target test, not evidence of a real remote publication boundary or Windows/POSIX process containment; those platform limits remain open.
+diff --git a/tools/vst/slice.py b/tools/vst/slice.py
+index 2e69a63..fe2acfe 100644
+--- a/tools/vst/slice.py
++++ b/tools/vst/slice.py
+@@ -1306,52 +1306,102 @@ class SyntheticOperationBackend:
+     ) -> tuple[bytes, bytes, int]:
+         """Run trusted Git plumbing with fixed-size output capture and timeout."""
+         output_limit = self._MAX_PREFLIGHT_OUTPUT_BYTES if output_limit is None else output_limit
+-        process = subprocess.Popen(
+-            command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+-            stderr=subprocess.PIPE, env=env, bufsize=0,
+-        )
+         outputs = {"stdout": bytearray(), "stderr": bytearray()}
+         overflow = {"stdout": False, "stderr": False}
++        reader_errors: dict[str, BaseException | None] = {"stdout": None, "stderr": None}
++        readers: list[threading.Thread] = []
++        process: subprocess.Popen | None = None
+ 
+         def drain(name: str, stream) -> None:
+-            while True:
+-                chunk = stream.read(4096)
+-                if not chunk:
+-                    return
+-                remaining = output_limit - len(outputs[name])
+-                if remaining > 0:
+-                    outputs[name].extend(chunk[:remaining])
+-                if len(chunk) > remaining:
+-                    overflow[name] = True
++            try:
++                while True:
++                    chunk = stream.read(4096)
++                    if not chunk:
++                        return
++                    remaining = output_limit - len(outputs[name])
++                    if remaining > 0:
++                        outputs[name].extend(chunk[:remaining])
++                    if len(chunk) > remaining:
++                        overflow[name] = True
++            except BaseException as exc:  # preserve every capture failure
++                reader_errors[name] = exc
++                try:
++                    if process is not None:
++                        process.kill()
++                except OSError:
++                    # The parent wait has its own deadline and repeats kill
++                    # and reap if this first cleanup attempt fails.
++                    pass
++
++        def kill_and_reap() -> None:
++            child = process
++            if child is None:
++                return
++            if child.poll() is None:
++                try:
++                    child.kill()
++                except OSError as exc:
++                    if child.poll() is None:
++                        raise RuntimeError(
++                            "bounded Git process could not be killed after capture failure"
++                        ) from exc
++            try:
++                child.wait(timeout=1)
++            except (subprocess.TimeoutExpired, OSError) as exc:
++                raise RuntimeError(
++                    "bounded Git process could not be reaped after capture failure"
++                ) from exc
++
++        def cleanup() -> None:
++            cleanup_error: BaseException | None = None
++            try:
++                kill_and_reap()
++            except BaseException as exc:
++                cleanup_error = exc
++            child = process
++            if child is not None:
++                for reader in readers:
++                    if reader.ident is not None:
++                        try:
++                            reader.join(timeout=1)
++                        except BaseException as exc:
++                            if cleanup_error is None:
++                                cleanup_error = exc
++                for stream in (child.stdout, child.stderr):
++                    if stream is not None:
++                        try:
++                            stream.close()
++                        except BaseException as exc:
++                            if cleanup_error is None:
++                                cleanup_error = exc
++            if cleanup_error is not None:
++                raise RuntimeError("bounded Git process cleanup was incomplete") from cleanup_error
++
++        process = subprocess.Popen(
++            command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
++            stderr=subprocess.PIPE, env=env, bufsize=0,
++        )
+ 
+-        readers = [
+-            threading.Thread(target=drain, args=(name, stream), daemon=True)
+-            for name, stream in (("stdout", process.stdout), ("stderr", process.stderr))
+-        ]
+-        for reader in readers:
+-            reader.start()
+         try:
+-            returncode = process.wait(timeout=self.command_timeout_sec)
++            child = process
++            assert child is not None
++            for name, stream in (("stdout", child.stdout), ("stderr", child.stderr)):
++                reader = threading.Thread(target=drain, args=(name, stream), daemon=True)
++                readers.append(reader)
++                reader.start()
++            returncode = child.wait(timeout=self.command_timeout_sec)
+         except subprocess.TimeoutExpired as exc:
+-            try:
+-                process.kill()
+-            except OSError:
+-                pass
+-            try:
+-                process.wait(timeout=1)
+-            except (subprocess.TimeoutExpired, OSError) as reap_error:
+-                raise TimeoutError("bounded Git preflight process could not be reaped") from reap_error
+             raise TimeoutError("bounded Git preflight command exceeded its time limit") from exc
+         finally:
+-            for reader in readers:
+-                reader.join(timeout=1)
+-            for stream in (process.stdout, process.stderr):
+-                if stream is not None:
+-                    stream.close()
++            cleanup()
+         if any(overflow.values()):
+             raise RuntimeError("bounded Git command output exceeded its limit")
+         if any(reader.is_alive() for reader in readers):
+             raise RuntimeError("bounded Git preflight output reader did not finish")
++        failed_reader = next(((name, error) for name, error in reader_errors.items() if error is not None), None)
++        if failed_reader is not None:
++            name, error = failed_reader
++            raise RuntimeError(f"bounded Git preflight {name} capture failed") from error
+         return bytes(outputs["stdout"]), bytes(outputs["stderr"]), returncode
+ 
+     @staticmethod

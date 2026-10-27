@@ -17,7 +17,7 @@ The 0461 absolute-deadline change required current-head evidence. Earlier exact-
 - `docs/sdlc/evidence/s2-safe-functional-exact-4c1692d-20261027.md`
 - `docs/sdlc/evidence/s2-specialist-review-4c1692d-20261027.md`
 - `docs/sdlc/evidence/s2-task-acceptance-4c1692d-20261027.md`
-- `docs/sdlc/evidence/s2-code-diff-f0bbac8-to-4c1692d.patch` (SHA-256 `F82DA5F89858FB08B01DA6B16CA177C3E6AB45FF2F6A8CD73D5A456029FA8CA1`)
+- `docs/sdlc/evidence/s2-code-diff-f0bbac8-to-4c1692d.patch` (superseded by change 0463; current exact seven-file patch SHA-256 recorded there)
 - `core/BACKLOG.md`, `core/STATE.md`, `core/DECISION_LOG.md`, `core/LESSONS_LOG.md`
 - `docs/sdlc/STATE.md`
 - `tools/vst/schemas/README.md` (Known limits)

@@ -1069,3 +1069,7 @@ The exact VST-013 acceptance run showed runner UID 997 cannot kill a worker UID 
 ## 2026-10-27 — Reconcile safe S2 evidence at exact HEAD 4c1692d
 
 The six-module S2 inventory at `4c1692d61ee04e945fc0ccdd44db71869ccd5468` has 189 passes of 209 IDs: 178 focused Windows selections, 8 POSIX E3 temporary-anchor selectors, 1 WSL VST-011 capability-drop selector, and 2 POSIX identity-boundary selectors. The separate E4.1 WSL selector passed outside that denominator. Crash/recovery, process-kill, policy, and mutation-testing cases remain `NOT_RUN`; synthetic invalid-anchor fixtures are negative inputs, not mutation-testing runs. Specialist reviews found no actionable BLOCKER/MAJOR in their stated code scope but do not close S2. E5 fresh signature/inventory and Windows key ACL/Job Object boundaries remain separate. See change 0462 and the exact evidence/matrix in `docs/sdlc/evidence/`.
+
+## 2026-10-27 — Complete S2 review-diff scope (change 0463)
+
+Before the final gate, the code delta from prior S2 baseline `f0bbac8` to exact test head `4c1692d` was audited by path. The initial attachment omitted four of seven changed S2 paths. Change 0463 replaces it with the complete seven-file diff and records its hash; no code/test head changed. The gate must attach the corrected patch and bind the repository HEAD separately.
