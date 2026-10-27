@@ -985,3 +985,7 @@ GPT-PM's correlated supplemental review returned **ACCEPT — source-only eviden
 ## 2026-10-27 — Bind post-spawn reader-constructor failure to S2 cleanup
 
 Change 0441 adds one fake-process VST-017 regression for Thread constructor MemoryError after Popen; it must prove child kill/reap and both pipe closures on the exact source head 95ceb1. This is synthetic-only evidence and does not authorize restricted process-kill, crash/resume, mutation, or timeout/restart selectors. 2e-runner owns the focused execution; Codex owns exact-head reconciliation.
+
+## 2026-10-27 — Record synthetic VST-017 constructor-failure result
+
+Change 0442 records the single selector at source/test HEAD 79155fdf9f1f4a7ba71358592ccd54c669a76291: 1 passed, 0 failed, 0 skipped in Ubuntu-24.04 WSL. It used a fake process and proves only constructor-failure cleanup assertions; it is not real process-kill or platform containment evidence. Invocation 4360e5aed857492f933bb5ab4e8b5cf5. Restricted process-kill, crash/resume, mutation, timeout/restart, and policy selectors remain NOT_RUN.
