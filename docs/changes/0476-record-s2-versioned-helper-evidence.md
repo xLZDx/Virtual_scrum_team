@@ -48,13 +48,15 @@ provenance before exact-head specialist review and GPT-PM adjudication.
 - `S2-DISPATCH-M01` remains MAJOR/OPEN: no production coordinator source or
   trusted caller identity exists in the in-scope repository. No new scheduler,
   CLI, queue, spool, or assignment authority was created.
-- Fresh exact-head specialist reviews and GPT-PM final gate remain pending.
+- Fresh specialist reviews found no confirmed code BLOCKER/MAJOR; their scope and one
+  non-blocking operational limitation are recorded in change 0477. The exact-head GPT-PM final S2
+  gate remains pending.
   No push, PR, or merge is authorized by this evidence-only change.
 
 ## Next action and owner
 
-Codex coordinates fresh relevant specialist reviews on the exact resulting
-head, then requests GPT-PM's final S2 gate. The operator owns the actual
+Codex requests GPT-PM's final S2 gate on the reviewed exact source/evidence
+head. The operator owns the actual
 root-owned Runner configuration/credentials and current-run E5 signature; until
 those exist, service execution, signed inventory and effective network
 acceptance remain unproven. Keep prohibited selectors `NOT_RUN` and do not

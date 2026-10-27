@@ -78,7 +78,12 @@ or POSIX process containment, restricted scenarios, push, PR, or merge.
   `docs/sdlc/evidence/s2-versioned-worker-helper-install-d5001797-20261028.md`.
 - No keys, root Runner configuration, signed E5 attestation, manifest run, or
   traffic probe were performed.
-- Fresh specialist review and exact-head GPT-PM final gate: pending.
+- Fresh architect, security, reliability, Python, silent-failure, and general code reviews on
+  source/test HEAD `d5001797cb94113efd9a8dc26e4a15f2dc130976` (evidence-only HEAD
+  `59e26ab6897d5cbfb7a12f1d24c67fcb7b50293d`) found no confirmed code BLOCKER/MAJOR. The
+  reliability review noted a non-blocking operational limitation: a later runtime revision switch
+  procedure should be documented before another rollout; see change 0477. Final GPT-PM S2 gate is
+  still pending.
 - Existing read-only archive evidence is in
   `docs/sdlc/evidence/s2-wsl-archive-eol-repro-9a5c41d-20261028.md`; it does
   not establish installed/runtime behavior.
