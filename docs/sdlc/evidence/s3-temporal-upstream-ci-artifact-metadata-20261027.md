@@ -19,4 +19,8 @@ The test-summary ZIP was retrieved through the connected GitHub artifact tool as
 
 This improves artifact traceability only. It does not establish a root cause, product defect, reproducibility, or local acceptance result. No test was run locally, no candidate artifact was acquired, and no repository artifact copy was stored. Temporal remains a provisional comparator pending GPT-PM architecture adjudication and the open source-to-asset, runtime, license, and common-fixture gates.
 
-Owner: Codex owns read-only source and artifact metadata reconciliation; GPT-PM owns architecture adjudication; the operator retains legal/acquisition authority. Next: use the artifact ID through authorized GitHub access if the exact test summary is required for the architecture decision; keep this metadata distinct from interpreted test evidence.
+Owner: Codex owns read-only source and artifact metadata reconciliation; GPT-PM owns architecture adjudication; the operator retains legal/acquisition authority. At this initial metadata stage, the artifact contents were still unread.
+
+## Content recovery update — 2026-10-27
+
+Codex subsequently downloaded both listed archives through the connected GitHub Actions artifact tool and inspected them read-only. The locally computed SHA-256 values match the GitHub-listed archive digests for summary artifact `11505227999` and JUnit artifact `11505437566`. The extracted summary and JUnit content, bounded counts, newly visible failure families and provisional VST-impact classifications are recorded in `s3-temporal-cassos3-artifact-detail-20261027.md`. The earlier `FAILURE_DETAILS_UNKNOWN` status is superseded as an evidence-availability statement; the shard remains failed, causes/reproducibility remain unknown, and GPT-PM review of the newly recovered impact mapping is pending. No candidate source or executable artifact was downloaded or run.
