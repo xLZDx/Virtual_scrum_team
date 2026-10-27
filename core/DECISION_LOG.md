@@ -905,3 +905,7 @@ Focused GPT-PM request `9cc85b3d-644d-45b4-a80c-5dabd8f1ed18`, correlated reply 
 ## 2026-10-27 — Keep exact-pin license facts separate from legal disposition
 
 The exact pinned Temporal Server, Python SDK, and SDK-Core repository-level license files state MIT terms. This is top-level source evidence only; it does not enumerate or assess transitive dependencies and is not legal approval. The operator retains legal/acquisition disposition. The focused mapping request `9cc85b3d-644d-45b4-a80c-5dabd8f1ed18` was sent and is awaiting a correlated GPT-PM response. See `docs/sdlc/evidence/s3-temporal-exact-pin-license-screen-20261027.md` and change 0400.
+
+## 2026-10-27 — Accept S3 G07 corrected authorization design only
+
+GPT-PM's correlated request `f591d5e7-9be2-4e26-94ce-d8e16be73b6e` / reply `c9313616-dae6-5e23-9d94-21297ae17ec5` (job `9b792eb2-e051-4a3a-9d38-638694b05a6b`) returned `ACCEPT — DESIGN ONLY`, closing `G07-CFG-M01` with zero design BLOCKERs/MAJORs. The accepted design requires an unavoidable deny-by-default gateway on every pinned SDK connection/call/retry, exact bootstrap response compatibility, and complete persisted VST identity binding. It does not approve implementation, runtime qualification, S2/S3 acceptance, candidate acquisition, tests, or delivery. Codex owns read-only evidence and later implementation coordination; GPT-PM owns architecture adjudication; operator owns legal/acquisition decisions. Evidence: `docs/sdlc/evidence/s3-gptpm-g07-design-acceptance-20261027.md`; change 0401.
