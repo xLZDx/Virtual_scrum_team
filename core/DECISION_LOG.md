@@ -1021,3 +1021,7 @@ Change 0449 records two fake-process selectors passing at exact source/test HEAD
 ## 2026-10-27 — Reconcile S2 exact-head selector counts
 
 Change 0450 records four selectors at dc1741b and three bounded-Git selectors at 79155fd (seven executions total). Their exact-head evidence remains separate; S2 Phase 8 is still NOT APPROVED pending system acceptance.
+
+## 2026-10-27 — Exhaust safe S2 selector denominator
+
+Change 0451 records the 2e-runner read-only audit: no further non-duplicative selector is safe under current restrictions. Five unique correction regressions have seven exact-head executions (four at dc1741b, three at 79155fd). Real process, crash, mutation and timeout selectors remain NOT_RUN; Phase 8 remains NOT APPROVED pending system acceptance/authorized waivers.
