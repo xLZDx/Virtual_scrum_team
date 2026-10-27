@@ -17,6 +17,18 @@ Observed Domain, Private, and Public profiles were enabled, with inbound `Block`
 
 The same commands were repeated read-only on 2026-10-27 during the autonomous continuation. `Get-NetFirewallProfile -PolicyStore ActiveStore` again returned Domain/Private/Public `Enabled=1`, `DefaultInboundAction=4` (`Block`), and `DefaultOutboundAction=2` (`Allow`); `netsh advfirewall show allprofiles` again reported each profile `ON` with `BlockInbound,AllowOutbound`. A separate call omitting `-PolicyStore ActiveStore` returned raw enum value `0`; it is not used to override the ActiveStore/netsh observation. No network traffic was sent and no firewall rule was changed.
 
+## Current-turn read-only host recheck — 2026-10-27
+
+After change 0405 was committed as `77b319367b575b9f4c0a193e91405df507c886e6`, Codex ran only these host-status queries from `D:\Repo\Virtual_scrum_team`:
+
+```powershell
+Get-NetFirewallProfile -PolicyStore ActiveStore | Select-Object Name,Enabled,DefaultInboundAction,DefaultOutboundAction
+wsl --status
+wsl --list --verbose
+```
+
+The current result again showed all three Windows firewall profiles enabled with inbound `Block` and outbound `Allow`; WSL default version `2`; `docker-desktop` running as WSL2; and `Ubuntu-24.04` stopped as WSL2. The queries did not start the stopped Ubuntu distribution or change firewall, WSL, or repository configuration. This confirms only a point-in-time host configuration/state observation. It is not a network, egress, worker-identity, process-containment, or persistence test and does not change S2 acceptance: Phase 8 remains `NOT APPROVED`, and prohibited scenarios remain `NOT_RUN`.
+
 WSL read-only command:
 
 ```sh
