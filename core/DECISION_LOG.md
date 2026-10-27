@@ -2,6 +2,10 @@
 
 Append-only. One dated entry per decision, piece of evidence or refusal.
 
+## 2026-10-27 -- Synchronize the latest S3–S5 phase note
+
+The repository history already contains change 0407's S3 phase-state reconciliation and change 0408's VST-028 clarification, but the top-level `docs/sdlc/STATE.md` continuation note still identified change 0406 as latest. Change 0409 updates that note to match the existing records. This is a documentation correction only: the exact-head GPT-PM G03/G07 result remains design-only; S2 remains NOT APPROVED; S4 remains INCONCLUSIVE with 53 policy selectors NOT_RUN; and S5 remains gated. No new approval, runtime evidence, legal disposition, or acquisition authorization is inferred. See change 0409.
+
 ## 2026-10-26 -- Reconcile S2 status without changing evidence provenance
 
 The S2 plan and backlog contained baseline-era "implementation not started" and blanket "specialist review pending" wording while `docs/sdlc/STATE.md` already recorded the bounded source, Phase 7 results, review heads, and open acceptance. Reconcile those descriptions only: retain source/test evidence at its recorded S2 revisions; record the starting canonical repository HEAD for this documentation pass; keep prohibited runtime scenarios and unverified production limits open; and keep S2's exact-head GPT-PM gate distinct from S4's correlated REJECT. No acceptance waiver or promotion is granted. See change 0317.
