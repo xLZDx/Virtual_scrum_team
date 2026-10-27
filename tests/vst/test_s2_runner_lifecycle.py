@@ -524,6 +524,84 @@ def _synthetic_git_source(tmp_path, *, filename="candidate.txt"):
     )
 
 
+class _FakeBoundedGitStream:
+    def __init__(self, *, fail_read=False):
+        self.fail_read = fail_read
+        self.closed = False
+
+    def read(self, _size):
+        if self.fail_read:
+            raise OSError("injected pipe read failure")
+        return b""
+
+    def close(self):
+        self.closed = True
+
+
+class _FakeBoundedGitProcess:
+    def __init__(self, *, fail_stdout_read=False):
+        self.stdout = _FakeBoundedGitStream(fail_read=fail_stdout_read)
+        self.stderr = _FakeBoundedGitStream()
+        self._finished = threading.Event()
+        self.waited = False
+
+    def poll(self):
+        return -9 if self._finished.is_set() else None
+
+    def kill(self):
+        self._finished.set()
+
+    def wait(self, timeout=None):
+        if not self._finished.wait(timeout):
+            raise subprocess.TimeoutExpired(["fake-bounded-git"], timeout)
+        self.waited = True
+        return -9
+
+
+def _bare_bounded_git_backend(tmp_path):
+    from tools.vst.slice import SyntheticOperationBackend
+
+    return SyntheticOperationBackend(
+        str(tmp_path / "unused-target.git"),
+        source_repo=str(tmp_path / "unused-source"),
+        command_timeout_sec=1,
+    )
+
+
+def test_bounded_git_reader_start_failure_kills_reaps_and_closes(monkeypatch, tmp_path):
+    """VST-017: startup failure cannot bypass bounded child cleanup."""
+    from tools.vst import slice as slice_module
+
+    backend = _bare_bounded_git_backend(tmp_path)
+    process = _FakeBoundedGitProcess()
+    monkeypatch.setattr(slice_module.subprocess, "Popen", lambda *args, **kwargs: process)
+
+    def fail_thread_start(_thread):
+        raise RuntimeError("injected reader startup failure")
+
+    monkeypatch.setattr(slice_module.threading.Thread, "start", fail_thread_start)
+    with pytest.raises(RuntimeError, match="injected reader startup failure"):
+        backend._run_bounded_git(["git", "--version"], env={})
+
+    assert process.poll() == -9 and process.waited
+    assert process.stdout.closed and process.stderr.closed
+
+
+def test_bounded_git_reader_failure_kills_reaps_and_fails_closed(monkeypatch, tmp_path):
+    """VST-017: pipe read failure cannot produce a successful partial result."""
+    from tools.vst import slice as slice_module
+
+    backend = _bare_bounded_git_backend(tmp_path)
+    process = _FakeBoundedGitProcess(fail_stdout_read=True)
+    monkeypatch.setattr(slice_module.subprocess, "Popen", lambda *args, **kwargs: process)
+
+    with pytest.raises(RuntimeError, match="stdout capture failed"):
+        backend._run_bounded_git(["git", "--version"], env={})
+
+    assert process.poll() == -9 and process.waited
+    assert process.stdout.closed and process.stderr.closed
+
+
 def test_hook_free_publication_transfers_source_only_commit_without_running_pre_push(tmp_path, monkeypatch):
     from tools.vst import slice as slice_module
 
@@ -1525,6 +1603,57 @@ if denied != len(paths) or not socket_denied:
                 os.chown(fixture_dir, 0, 0)
                 os.chmod(fixture_dir, 0o700)
         shutil.rmtree(fixture_root)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="NOT_RUN: POSIX worker capabilities require the provisioned WSL sandbox")
+def test_runner_drops_uid_change_capabilities_before_worker_command():
+    """VST-011: actual runner launch drops capabilities before the worker command."""
+    import pwd
+
+    runner_account = pwd.getpwnam("vst-runner")
+    worker_account = pwd.getpwnam("vst-worker")
+    signer_account = pwd.getpwnam("vst-signer")
+    if os.geteuid() != runner_account.pw_uid:
+        pytest.skip("requires runner UID with the provisioned ambient capability profile")
+
+    cap_setgid_setuid = (1 << 6) | (1 << 7)
+    with open("/proc/self/status", encoding="ascii") as status_file:
+        current_status = {
+            line.split(":", 1)[0]: line.split(":", 1)[1].strip()
+            for line in status_file
+            if ":" in line
+        }
+    if int(current_status.get("CapAmb", "0"), 16) & cap_setgid_setuid != cap_setgid_setuid:
+        pytest.skip("requires runner AmbientCapabilities=CAP_SETGID,CAP_SETUID")
+
+    child = r'''import json, os, sys
+status = {}
+with open("/proc/self/status", encoding="ascii") as stream:
+    for line in stream:
+        if line.startswith(("CapEff:", "CapPrm:", "CapInh:", "CapAmb:")):
+            name, value = line.split(":", 1)
+            status[name] = value.strip()
+try:
+    os.setuid(int(sys.argv[1]))
+    can_change_uid = True
+except PermissionError:
+    can_change_uid = False
+print(json.dumps({"caps": status, "can_change_uid": can_change_uid}))
+if can_change_uid or any(int(value, 16) != 0 for value in status.values()):
+    raise SystemExit(2)
+'''
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    code, output, info = runner._run_one(
+        [sys.executable, "-c", child, str(signer_account.pw_uid)],
+        repo_root, 5, {"PATH": os.environ.get("PATH", ""), "PYTHONIOENCODING": "utf-8"},
+        4096, worker_uid=worker_account.pw_uid, worker_gid=worker_account.pw_gid,
+    )
+
+    assert code == 0, f"worker capability probe failed: {output!r} {info!r}"
+    result = json.loads(output)
+    assert result["can_change_uid"] is False
+    assert set(result["caps"]) == {"CapEff", "CapPrm", "CapInh", "CapAmb"}
+    assert all(int(value, 16) == 0 for value in result["caps"].values())
 
 
 @pytest.mark.parametrize("scenario", [

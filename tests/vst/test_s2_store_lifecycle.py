@@ -37,6 +37,23 @@ def test_anchor_compare_append_is_idempotent_and_rejects_same_count_fork(tmp_pat
         anchor.compare_and_append(signed, fork)
 
 
+@pytest.mark.skipif(os.name != "posix", reason="NOT_RUN: FileExternalAnchor requires POSIX sandbox")
+def test_anchor_append_separates_valid_tail_without_final_newline(tmp_path):
+    """VST-012: recover a valid final checkpoint without its terminating LF."""
+    anchor_path = tmp_path / "anchor-without-final-lf.jsonl"
+    anchor = FileExternalAnchor(str(anchor_path), EVENT)
+    genesis = signed_checkpoint(0, GENESIS_HASH, EVENT)
+    anchor_path.write_bytes(json.dumps(genesis, separators=(",", ":")).encode("utf-8"))
+
+    assert anchor.read_latest() == genesis
+    successor = signed_checkpoint(1, "a" * 64, EVENT)
+    assert anchor.compare_and_append(genesis, successor) == successor
+
+    lines = anchor_path.read_bytes().splitlines()
+    assert [json.loads(line) for line in lines] == [genesis, successor]
+    assert anchor.read_latest() == successor
+
+
 @pytest.mark.skipif(os.name != "posix", reason="NOT_RUN: external anchor restore detection requires POSIX sandbox")
 def test_external_anchor_detects_restored_older_database_and_locks_writes(tmp_path):
     db, anchor_path = tmp_path / "state.db", tmp_path / "anchor.jsonl"
