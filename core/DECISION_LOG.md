@@ -1001,3 +1001,7 @@ Five fresh specialist reviews at exact source/test HEAD 79155fdf9f1f4a7ba7135859
 ## 2026-10-27 — Distinguish S2 prior full review from focused current-head results
 
 Change 0445 corrects the active S2 STATE wording: the prior GPT-PM-reviewed full candidate remains 0bbac8; targeted fixes/tests and fresh source reviews are separately bound to current source/test HEAD 79155fd. This does not change Phase 8, which remains NOT APPROVED pending system acceptance.
+
+## 2026-10-27 — Reconcile the S2 open-system-acceptance summary
+
+Change 0446 updates the open-acceptance paragraph to include both source corrections, all five focused regressions across dc1741b/79155fd, and five fresh specialist reviews. System acceptance remains incomplete and Phase 8 remains NOT APPROVED.
