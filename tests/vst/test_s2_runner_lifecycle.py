@@ -1025,6 +1025,10 @@ class _RequestConnection:
         self.chunks = [payload, b""]
         self.uid = uid
         self.response = b""
+        self.timeout = None
+
+    def settimeout(self, value):
+        self.timeout = value
 
     def getsockopt(self, _level, _option, _size):
         return struct.pack("3i", 101, self.uid, 4242)
@@ -1069,6 +1073,8 @@ def _handle_signer_protocol(monkeypatch, server, request):
 def test_signing_request_exact_schema_and_replay_protocol_without_os_claim(monkeypatch):
     server = object.__new__(AuthenticatedSigner)
     server.runner_uid = 4242
+    server.runner_gid = None
+    server.require_pinned_daemon = False
     server.key = SIGNER_KEY
     server._ledger = sqlite3.connect(":memory:")
     server._ledger.execute("CREATE TABLE requests (request_id TEXT PRIMARY KEY, payload BLOB NOT NULL, signature TEXT NOT NULL)")

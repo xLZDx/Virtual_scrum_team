@@ -1,5 +1,22 @@
 # SDLC state
 
+## S2 persistent runner proposal — focused correction after GPT-PM MODIFY — 2026-10-27
+
+Change 0470's correlated GPT-PM decision was `MODIFY` (request
+`0ea02a82-72ba-44dc-a431-213d99bf8192`, reply `62890e6f-0fc5-432c-8bde-ba46be1fad8b`, job
+`411b4d13-4c15-400c-85f6-54c8f7db289b`), with three MAJOR findings and one MINOR. The proposal
+now defines one manager-controlled service replacement mode and a predecessor stop/fence record;
+Supervisor/Store as sole grant issuer with current-authority checks and a separate, revocable
+trust-root lifecycle; and a dedicated daemon OS identity with a grant-bound durable pre-dispatch
+claim before child creation. GPT-PM returned correlated `ACCEPT — DESIGN ONLY` for M01-M03/N01
+(request `4c2b6ea5-7de8-4d08-9d24-5c24e38d4b76`, reply
+`c92f2614-885e-4e44-9160-c23650f80cb9`); a non-blocking changed-parent wording clarification
+N02 was corrected and focused verification is pending. This accepts the architecture only:
+systemd directive/effective-credential behavior, implementation, provisioning, and runtime
+enforcement remain open. No source implementation or provisioning is approved. S2 Phase 8 remains
+`NOT APPROVED`; restricted selectors stay `NOT_RUN`. See change 0470 and
+`evidence/s2-persistent-runner-service-gptpm-review-20261027.md`.
+
 ## S2 Windows ACL/signer boundary design — 2026-10-27
 
 At documentation baseline `41cfd5e`, actual architect and security-reviewer agents found the S2.3 Windows ACL requirement is not reachable through the current signed v2 Windows code path: `run_manifest_commands` fails closed on non-POSIX; its worker identity API accepts POSIX UID/GID; and the signer requires POSIX `O_NOFOLLOW` and Unix `SO_PEERCRED`. A DACL-only helper would not establish effective worker access or authenticated signer IPC. Windows VST-011 and VST-015 remain `NOT_VERIFIED`. The fail-closed code is preserved; GPT-PM owns the platform-scope adjudication. If Windows v2 execution is selected, define SID/token provisioning, secure key opening, and caller-authenticated signer IPC before implementation. Design evidence: `evidence/s2-windows-acl-boundary-design-20261027.md`; change 0468. S2 remains NOT APPROVED and S3 source work remains deferred.
@@ -118,3 +135,67 @@ At exact commit `2a71cf4fc32715a1f9f502ab5e7e7788aeff45e8`, the designated funct
 At exact code/test HEAD `4c1692d61ee04e945fc0ccdd44db71869ccd5468`, 178 focused Windows tests passed. Eight POSIX E3 temporary-anchor selectors, the VST-011 capability-drop selector, and two POSIX identity-boundary selectors passed in bounded WSL; a separate POSIX E4.1 cross-UID cleanup selector passed 1/1. Of 209 collected IDs, 189 passed and 20 remain `NOT_RUN`; E4.1 is outside this denominator. Commands, WSL unit profiles, archive hashes and limits are in `evidence/s2-safe-functional-exact-4c1692d-20261027.md`; task-by-task status is in `evidence/s2-task-acceptance-4c1692d-20261027.md`.
 
 Four focused specialist reviews (architect, security, reliability and silent-failure; GPT-6 Luna, medium effort) found no actionable BLOCKER/MAJOR in their reviewed code scope at 4c1692d. This does not approve the sprint. E5 fresh signed inventory, Windows key ACL behavior, Windows Job Object nesting and E8 remain incomplete. Prohibited process/kill, crash/recovery and mutation-testing scenarios remain `NOT_RUN`. Exact-head GPT-PM adjudication and any required signed operator evidence are outstanding. S2 remains NOT APPROVED; no S3 changes were made during this continuation.
+
+## S2 persistent runner implementation continuation — 2026-10-27
+
+The current canonical-checkout working tree now contains the persistent manifest runner, root
+Supervisor IPC, strict signer admission, execution grants, Store schema v5 claims/events, lifecycle
+fence, fixed systemd units, and exact-HEAD helper/runtime installers. The source implementation and
+documentation are recorded in change 0471 and the revised S2 design/evidence pages. These edits
+have not been tested, checked, built, migrated, provisioned, reviewed against the final exact diff,
+or runtime-proven. The earlier design-only GPT-PM acceptance is not an implementation approval.
+The full current diff still needs actual assigned functional/E2E work after coding closure, relevant
+specialist reviews, and fresh exact-head GPT-PM adjudication. The selected WSL setup must also
+reconcile disabled automount with access to the one canonical `/mnt/d/Repo/Virtual_scrum_team`
+checkout without creating a separate worktree. Existing forbidden process-kill, crash/recovery,
+mutation, E8, and restricted policy selectors remain `NOT_RUN`; no waiver was inferred. S2 remains
+open, and S3 has not started. Owner: Codex for code/review coordination; functional-test-reviewer
+and e2e-runner for permitted post-code test/runtime evidence; relevant specialist agents and GPT-PM
+for exact-diff review and gate; operator for any required WSL host action or attestation.
+
+The 2026-10-27 focused lease/dispatch adjudication is `MODIFY` (request
+`1ff3b849-6180-4cb3-83ea-0eab47e56a3e`, reply `762291a2-5c34-470d-8b98-9a38a4cfc5ee`). GPT-PM
+rejected invoking the global reaper from `issue_grant` because that would expand dispatcher
+authority to reconcile unrelated tasks; missing lease markers require trusted recovery and grant
+refusal. `S2-DISPATCH-M01` remains MAJOR/OPEN because no production coordinator source/call site
+was identified; no scheduler, CLI, spool, or new assignment authority is approved. Recovery,
+retry authorization, and grant issuance remain separate. Evidence:
+`evidence/s2-persistent-runner-lease-dispatch-gptpm-review-20261027.md`. This adjudication did not
+independently verify the current checkout or approve the current exact diff, runtime, release, or
+restricted selectors.
+
+Subsequent correlated GPT-PM review opened `S2-RC-M01` MAJOR: a predecessor `INDETERMINATE`
+grant is terminal but does not resolve its possible effects or authorize attempt+1. A distinct
+authenticated evidence-bound `RECONCILED` disposition that permits continuation is required before
+a separately authorized successor attempt; enforcement is required at lease acquisition, grant
+basis and claim admission. Request `e73cabde-5580-4be5-9ad1-63f65521f347`, reply
+`9f337b5f-04f6-4610-b453-3926ba4a6bc8`; evidence is
+`evidence/s2-runner-claim-reconciliation-gptpm-review-20261027.md`. Fresh reliability review also
+opened `REL-M01` MAJOR: a generic exception after a durable reservation can leave the current
+service generation running with an unresolved claim; it must fail-stop or enter authenticated
+recovery. The earlier 117/130 focused passes predate the final gate/reconciliation corrections and
+are not current-source verification. Change 0472 records the source fixes and final 138-ID focused
+rerun; runtime remains NOT_RUN. The current regression fixes still require fresh specialist review
+and exact-head GPT-PM approval. S2 remains NOT APPROVED, S3 has not started, and the production
+coordinator blocker remains open.
+
+## S2 final gate authority corrections — 2026-10-28
+
+The assigned functional-test-reviewer ran four approved groups on the working source/test diff based
+on base HEAD `2da827be982d3f2d6f2adf152668af6ff8007f21`: 46 persistent-runner, 32 E1, 38 E2, and 22
+E6 tests passed (138 passed, 0 failed, 0 skipped). The direct regressions prove that unresolved
+runner claims block a stale PASS at gate time, signed reconciliation binds the exact
+`EXECUTION_RESERVED` predecessor and closed outcome matrix, and an exception after confirmed
+reservation enters the fail-stop path before child launch. Evidence:
+`evidence/s2-final-gate-authority-regressions-20261028.md`.
+
+The focused tests use in-memory Store fixtures and fake callbacks; they do not establish installed
+service framing, daemon/systemd restart, Windows/WSL containment, E5 signed inventory, or production
+coordinator integration. `S2-DISPATCH-M01` remains MAJOR/OPEN because no production coordinator
+callsite has been found and no new scheduler, CLI, spool, or assignment authority is approved. The
+operator-reconciliation method is still in-process only; deployed service dispatch/role allowlist
+exposes no reconciliation operation. Fresh specialist review and exact-head GPT-PM approval are
+pending. Prohibited process/crash/recovery/mutation/E8/policy selectors remain `NOT_RUN`. S2 remains
+NOT APPROVED; S3 has not started. Owner: Codex for bounded source correction, permitted evidence and
+integration discovery; GPT-PM for architecture/exact-head adjudication; operator for any required
+signed attestation.

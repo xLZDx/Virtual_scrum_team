@@ -1081,3 +1081,40 @@ The six-module S2 inventory at `4c1692d61ee04e945fc0ccdd44db71869ccd5468` has 18
 ## 2026-10-27 — Complete S2 review-diff scope (change 0463)
 
 Before the final gate, the code delta from prior S2 baseline `f0bbac8` to exact test head `4c1692d` was audited by path. The initial attachment omitted four of seven changed S2 paths. Change 0463 replaces it with the complete seven-file diff and records its hash; no code/test head changed. The gate must attach the corrected patch and bind the repository HEAD separately.
+
+## 2026-10-27 — Implement the S2 persistent manifest-runner boundary (change 0471)
+
+The canonical checkout now contains the service entry points, root-owned Supervisor grant/Store
+boundary, one-invocation Ed25519 grants, append-only Store v5 execution claims, lifecycle fence,
+fixed units, and exact-HEAD helper/runtime installers. This implements the design previously
+accepted by GPT-PM at design-only scope; it does not close S2. The implementation is still a
+working-tree diff and has not been tested, reviewed at its final exact diff, migrated, provisioned,
+or runtime-proven. One S2 sprint remains active; do not begin S3. Forbidden crash/recovery,
+process-kill, mutation, E8, and policy selectors stay `NOT_RUN`. See `docs/changes/0471-implement-s2-persistent-runner-service.md` and the current S2 state/evidence pages.
+
+## 2026-10-27 — S2 runner-claim reconciliation finding (GPT-PM MODIFY)
+
+Correlated request `e73cabde-5580-4be5-9ad1-63f65521f347`, reply
+`9f337b5f-04f6-4610-b453-3926ba4a6bc8`, job `3cbf606b-b4ea-4902-9ad6-f3a05958d807`:
+`S2-RC-M01` is a valid MAJOR. `INDETERMINATE` terminalizes the old grant but does not prove
+absence of effects or authorize attempt+1. A distinct authenticated `RECONCILED` record that
+binds the exact old grant and evidence must explicitly permit continuation before a successor
+attempt can be separately authorized. Enforce the guard at lease acquisition, grant-basis
+validation and claim admission. Do not use lease expiry or a `WORKER_LOST` marker as reconciliation.
+Do not add a new scheduler/CLI/spool, broad dispatcher capability, or reaper side effect in
+`issue_grant`. The absent production coordinator remains a separate MAJOR/OPEN blocker. Evidence:
+`docs/sdlc/evidence/s2-runner-claim-reconciliation-gptpm-review-20261027.md`. Codex owns source
+correction and evidence; GPT-PM owns adjudication; the operator owns any required attestation and
+does not have a fabricated signature or resolution on record.
+
+## 2026-10-28 — S2 gate authority/reconciliation corrections (change 0472)
+
+The current source review found a stale receipt could hide a newer unresolved runner claim, one
+INDETERMINATE path did not bind its `EXECUTION_RESERVED` predecessor, and an exception thrown by the
+post-reservation boundary callback could evade the generation fail-stop. The bounded correction
+checks claims in the same gate snapshot, closes the reconciliation predecessor/outcome matrix, and
+marks reservation confirmed before the callback. Four approved functional groups then passed 138
+IDs. This is not full S2 acceptance or exact-head approval. No production coordinator, scheduler,
+CLI, spool, or assignment authority was added. The operator reconciliation transport is still absent;
+production dispatch, authorized system evidence, operator-signed E5, fresh reviews, and exact-head
+GPT-PM gate remain open. Evidence: `docs/sdlc/evidence/s2-final-gate-authority-regressions-20261028.md`.

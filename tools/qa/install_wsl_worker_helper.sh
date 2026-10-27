@@ -2,25 +2,45 @@
 set -eu
 
 usage() {
-    echo "usage: install_wsl_worker_helper.sh EXPECTED_HEAD CANDIDATE_REPO_ROOT" >&2
+    echo "usage: install_wsl_worker_helper.sh EXPECTED_HEAD SOURCE_BUNDLE_ROOT ARCHIVE_SHA256" >&2
     exit 2
 }
 
-[ "$#" -eq 2 ] || usage
+[ "$#" -eq 3 ] || usage
 expected_head=$1
-repo_root=$2
+bundle_root=$2
+archive_sha=$3
 
 [ "$(id -u)" -eq 0 ] || { echo "installer must run as root" >&2; exit 1; }
 case "$expected_head" in
     *[!0-9a-f]*|'') echo "expected head must be a full lowercase commit id" >&2; exit 1 ;;
 esac
 [ "${#expected_head}" -eq 40 ] || { echo "expected head must be a full lowercase commit id" >&2; exit 1; }
-
-repo_root=$(/usr/bin/realpath -e -- "$repo_root")
-case "$repo_root" in
-    /tmp/vst-s4-candidate|/tmp/vst-s4-candidate/*) ;;
-    *) echo "candidate must be inside the distro-local /tmp/vst-s4-candidate root" >&2; exit 1 ;;
+case "$archive_sha" in
+    *[!0-9a-f]*|'') echo "archive digest must be a lowercase SHA-256" >&2; exit 1 ;;
 esac
+[ "${#archive_sha}" -eq 64 ] || { echo "archive digest must be 64 hex characters" >&2; exit 1; }
+
+[ "$(/usr/bin/realpath -e -- "$bundle_root")" = "$bundle_root" ] || {
+    echo "source bundle path must be canonical" >&2; exit 1;
+}
+/usr/bin/python3.12 -I -S -c 'import os,re,sys; head,path=sys.argv[1:]; assert re.fullmatch(r"/run/vst-deploy-"+head+r"-[0-9a-f]{32}", path)' "$expected_head" "$bundle_root" || {
+    echo "source bundle must use a unique fixed distro-local deployment path" >&2; exit 1;
+}
+[ "$(/usr/bin/stat -c '%u:%a' "$bundle_root")" = "0:700" ] || {
+    echo "source bundle must be a root-owned mode-0700 directory" >&2; exit 1;
+}
+/usr/bin/python3.12 -I -S - "$bundle_root/.vst-source-manifest.json" "$expected_head" "$archive_sha" <<'PY'
+import json, os, stat, sys
+path, head, digest = sys.argv[1:]
+info = os.stat(path, follow_symlinks=False)
+if not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or stat.S_IMODE(info.st_mode) != 0o600:
+    raise SystemExit("source bundle manifest must be a root-owned mode-0600 regular file")
+with open(path, "r", encoding="ascii") as stream:
+    manifest = json.load(stream)
+if manifest != {"archive_sha256": digest, "head": head, "schema": 1}:
+    raise SystemExit("source bundle manifest does not match requested revision and digest")
+PY
 
 . /etc/os-release
 [ "${ID:-}" = ubuntu ] && [ "${VERSION_ID:-}" = 24.04 ] || {
@@ -29,9 +49,24 @@ esac
 /bin/grep -qi microsoft /proc/sys/kernel/osrelease || {
     echo "installer requires WSL" >&2; exit 1;
 }
-/usr/bin/python3.12 -I -c 'import configparser; p=configparser.ConfigParser(); p.read("/etc/wsl.conf"); assert p.getboolean("automount", "enabled") is False; assert p.getboolean("interop", "enabled") is False' || {
+/usr/bin/python3.12 -I -S -c 'import configparser; p=configparser.ConfigParser(); p.read("/etc/wsl.conf"); assert p.getboolean("automount", "enabled") is False; assert p.getboolean("interop", "enabled") is False; assert p.getboolean("interop", "appendWindowsPath") is False' || {
     echo "WSL automount and interop must both be disabled" >&2; exit 1;
 }
+/usr/bin/python3.12 -I -S - <<'PY'
+import re
+with open("/proc/self/mountinfo", encoding="ascii") as stream:
+    for line in stream:
+        fields = line.rstrip("\n").split(" - ", 1)
+        if len(fields) != 2:
+            raise SystemExit("cannot parse complete mount inventory")
+        mount = fields[1].split()
+        if len(mount) < 3:
+            raise SystemExit("cannot parse mount entry")
+        fs_type, source, super_options = mount[:3]
+        drive_source = bool(re.match(r"^[A-Za-z]:[\\/]?$", source))
+        if fs_type == "drvfs" or (fs_type == "9p" and (drive_source or "aname=drvfs" in super_options)):
+            raise SystemExit("Windows-drive mount is visible; refusing helper install")
+PY
 
 [ "$(/usr/bin/getent passwd 997 | /usr/bin/cut -d: -f1,3,4)" = "vst-runner:997:988" ] || {
     echo "UID/GID 997:988 is not vst-runner" >&2; exit 1;
@@ -44,21 +79,6 @@ esac
 }
 [ "$(/usr/bin/getent group 989 | /usr/bin/cut -d: -f1,3)" = "vst-worker:989" ] || {
     echo "GID 989 is not vst-worker" >&2; exit 1;
-}
-
-gitc() {
-    /usr/bin/env -i PATH=/usr/bin:/bin GIT_CONFIG_NOSYSTEM=1 \
-        GIT_CONFIG_GLOBAL=/dev/null GIT_PAGER=cat \
-        /usr/bin/git --no-replace-objects --no-pager -c "safe.directory=$repo_root" \
-        -c core.fsmonitor=false -c core.hooksPath=/dev/null \
-        -C "$repo_root" "$@"
-}
-
-[ "$(gitc rev-parse --verify HEAD)" = "$expected_head" ] || {
-    echo "candidate HEAD does not match the requested helper source" >&2; exit 1;
-}
-[ -z "$(gitc status --porcelain=v1 --untracked-files=all)" ] || {
-    echo "candidate worktree must be clean before helper installation" >&2; exit 1;
 }
 
 install_dir=/usr/local/libexec
@@ -74,11 +94,6 @@ dir_mode=$(/usr/bin/stat -c '%a' "$install_dir")
     echo "helper directory must not be group/world writable" >&2; exit 1;
 }
 
-if [ -e "$helper" ] || [ -L "$helper" ]; then
-    echo "refusing to replace a pre-existing worker helper" >&2
-    exit 1
-fi
-
 build_dir=$(/usr/bin/mktemp -d "$install_dir/.vst-s4-worker-installer.XXXXXX")
 case "$build_dir" in
     /usr/local/libexec/.vst-s4-worker-installer.*) ;;
@@ -86,7 +101,8 @@ case "$build_dir" in
 esac
 trap '/bin/rm -rf -- "$build_dir"' EXIT HUP INT TERM
 
-gitc show "$expected_head:tools/qa/worker_exec.c" > "$build_dir/worker_exec.c"
+/usr/bin/install -o root -g root -m 0600 \
+    "$bundle_root/tools/qa/worker_exec.c" "$build_dir/worker_exec.c"
 source_sha=$(/usr/bin/sha256sum "$build_dir/worker_exec.c" | /usr/bin/cut -d' ' -f1)
 /usr/bin/env -i PATH=/usr/bin:/bin /usr/bin/cc \
     -std=c11 -O2 -D_FORTIFY_SOURCE=2 -fstack-protector-strong \
@@ -101,16 +117,33 @@ staged_identity=$(/usr/bin/env -i PATH=/usr/bin:/bin "$build_dir/vst-s4-worker-e
     echo "staged helper build identity did not match the committed source" >&2; exit 1;
 }
 
-# Fixed destination, owner and mode: no parameter can broaden the privilege.
-/usr/bin/install -o root -g vst-runner -m 4750 "$build_dir/vst-s4-worker-exec" "$build_dir/installed-helper"
-/bin/mv -- "$build_dir/installed-helper" "$helper"
+if [ -e "$helper" ] || [ -L "$helper" ]; then
+    [ ! -L "$helper" ] && [ -f "$helper" ] && [ "$(/usr/bin/stat -c '%u' "$helper")" = 0 ] || {
+        echo "existing helper is not a root-owned regular file; no host state changed" >&2; exit 1;
+    }
+    existing_sha=$(/usr/bin/sha256sum "$helper" | /usr/bin/cut -d' ' -f1)
+    [ "$existing_sha" = "$binary_sha" ] || {
+        echo "existing helper bytes differ from the requested build; preserve and inspect before retry" >&2; exit 1;
+    }
+    existing_identity=$(/usr/bin/env -i PATH=/usr/bin:/bin "$helper" --version)
+    [ "$existing_identity" = "$expected_identity" ] || {
+        echo "existing helper identity differs from the requested source; no host state changed" >&2; exit 1;
+    }
+    /usr/bin/chown root:vst-runner "$helper"
+    /bin/chmod 4750 "$helper"
+else
+    # Publish only a fully built exact binary; hard-link creation cannot replace an existing path.
+    /usr/bin/install -o root -g vst-runner -m 4750 "$build_dir/vst-s4-worker-exec" "$build_dir/installed-helper"
+    /bin/ln -- "$build_dir/installed-helper" "$helper" || {
+        echo "helper destination changed during no-overwrite installation; inspect and retry" >&2; exit 1;
+    }
+fi
 
 installed_identity=$(/usr/bin/env -i PATH=/usr/bin:/bin "$helper" --version)
 [ "$installed_identity" = "$expected_identity" ] || {
-    /bin/chmod 0750 "$helper"
-    echo "installed helper build identity did not match the committed source" >&2; exit 1;
+    echo "installed helper build identity did not match the committed source; preserve and inspect state" >&2; exit 1;
 }
 
-echo "installed fixed WSL worker helper for candidate $expected_head"
+echo "installed fixed WSL worker helper from source bundle $expected_head"
 echo "binary_sha256=$binary_sha"
 echo "helper_mode=$( /usr/bin/stat -c '%u:%g:%a' "$helper" )"

@@ -1,0 +1,705 @@
+"""Narrow, pidfd-pinned local RPC between the Supervisor and runner services."""
+
+from __future__ import annotations
+
+import json
+import hashlib
+import os
+import select
+import signal
+import socket
+import stat
+import struct
+import threading
+import sys
+import re
+from dataclasses import dataclass
+from typing import Any
+
+from .contracts import ContractError, canonical_bytes
+from .store import StoreError
+
+MAX_SUPERVISOR_MESSAGE_BYTES = 1024 * 1024
+_HEADER = struct.Struct("!I")
+
+
+class SupervisorRPCError(RuntimeError):
+    """A bounded refusal from the trusted Supervisor RPC endpoint."""
+
+
+@dataclass(frozen=True)
+class SupervisorPeer:
+    role: str
+    uid: int
+    gid: int
+    cgroup: str
+    operations: frozenset[str]
+
+
+def _recv_exact(conn: socket.socket, count: int) -> bytes:
+    chunks = bytearray()
+    while len(chunks) < count:
+        part = conn.recv(count - len(chunks))
+        if not part:
+            raise ContractError("Supervisor RPC frame ended early")
+        chunks.extend(part)
+    return bytes(chunks)
+
+
+def _peer_pidfd(conn: socket.socket, pid: int, *, require: bool) -> int | None:
+    option = getattr(socket, "SO_PEERPIDFD", None)
+    if option is None:
+        if require:
+            raise ContractError("kernel peer pidfd support is unavailable")
+        return None
+    raw = conn.getsockopt(socket.SOL_SOCKET, option, struct.calcsize("i"))
+    if not isinstance(raw, bytes) or len(raw) != struct.calcsize("i"):
+        raise ContractError("kernel did not return a peer pidfd")
+    pidfd = struct.unpack("i", raw)[0]
+    if pidfd < 0:
+        raise ContractError("kernel returned an invalid peer pidfd")
+    os.set_inheritable(pidfd, False)
+    poller = select.poll()
+    poller.register(pidfd, select.POLLIN | select.POLLHUP | select.POLLERR)
+    if poller.poll(0):
+        os.close(pidfd)
+        raise ContractError("Supervisor RPC peer has exited")
+    return pidfd
+
+
+def _pidfd_alive(pidfd: int | None) -> bool:
+    if pidfd is None:
+        return False
+    poller = select.poll()
+    poller.register(pidfd, select.POLLIN | select.POLLHUP | select.POLLERR)
+    return not poller.poll(0)
+
+
+def _read_peer_cgroup(pid: int) -> str:
+    try:
+        with open(f"/proc/{pid}/cgroup", encoding="ascii") as stream:
+            rows = [line.rstrip("\n").split(":", 2) for line in stream]
+    except OSError as exc:
+        raise ContractError("Supervisor RPC peer cgroup is unavailable") from exc
+    path = next((row[2] for row in rows if len(row) == 3 and row[:2] == ["0", ""]), None)
+    if not path or ".." in path.split("/"):
+        raise ContractError("Supervisor RPC peer lacks a unified cgroup")
+    return os.path.normpath(path)
+
+
+class AuthenticatedSupervisorAPI:
+    """Root-owned API; callers receive narrow operations, never Store credentials."""
+
+    def __init__(
+        self, supervisor: Any, socket_path: str, *, peers: tuple[SupervisorPeer, ...],
+        socket_gid: int, require_peer_pidfd: bool = True,
+    ) -> None:
+        if os.name != "posix" or not hasattr(socket, "SO_PEERCRED"):
+            raise ContractError("Supervisor RPC requires POSIX peer credentials")
+        if require_peer_pidfd and getattr(socket, "SO_PEERPIDFD", None) is None:
+            raise ContractError("Supervisor RPC requires kernel peer pidfd support")
+        if os.geteuid() != 0:
+            raise ContractError("Supervisor RPC server must run as root")
+        if not os.path.isabs(socket_path):
+            raise ContractError("Supervisor RPC socket path must be absolute")
+        if type(socket_gid) is not int or socket_gid < 0:
+            raise ContractError("Supervisor RPC socket group is invalid")
+        if not peers or len({peer.role for peer in peers}) != len(peers):
+            raise ContractError("Supervisor RPC peer policy is empty or duplicated")
+        if len({(peer.uid, peer.gid) for peer in peers}) != len(peers):
+            raise ContractError("Supervisor RPC peer credentials must map to one role")
+        self.supervisor = supervisor
+        self.socket_path = socket_path
+        self.peers = {(peer.uid, peer.gid): peer for peer in peers}
+        self.socket_gid = socket_gid
+        self.require_peer_pidfd = require_peer_pidfd
+        self._server: socket.socket | None = None
+        self._shutdown = threading.Event()
+
+    def shutdown(self) -> None:
+        """Stop accepting new RPCs and let the active request finish."""
+        self._shutdown.set()
+
+    def serve_forever(self) -> None:
+        parent = os.path.dirname(self.socket_path)
+        parent_stat = os.stat(parent, follow_symlinks=False)
+        if (not stat.S_ISDIR(parent_stat.st_mode) or parent_stat.st_uid != 0
+                or parent_stat.st_gid != self.socket_gid
+                or stat.S_IMODE(parent_stat.st_mode) != 0o710):
+            raise ContractError("Supervisor RPC directory must be root-owned mode 0710")
+        if os.path.lexists(self.socket_path):
+            raise ContractError("Supervisor RPC socket path already exists")
+        server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self._server = server
+        try:
+            server.bind(self.socket_path)
+            os.chown(self.socket_path, 0, self.socket_gid)
+            os.chmod(self.socket_path, 0o660)
+            server.listen(8)
+            server.settimeout(0.5)
+            while not self._shutdown.is_set():
+                try:
+                    conn, _ = server.accept()
+                except socket.timeout:
+                    continue
+                except OSError:
+                    if self._shutdown.is_set():
+                        break
+                    raise
+                with conn:
+                    self._handle(conn)
+        finally:
+            server.close()
+            self._server = None
+            try:
+                os.unlink(self.socket_path)
+            except FileNotFoundError:
+                pass
+
+    def _handle(self, conn: socket.socket) -> None:
+        pidfd = None
+        try:
+            conn.settimeout(10.0)
+            raw_creds = conn.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3i"))
+            pid, uid, gid = struct.unpack("3i", raw_creds)
+            peer = self.peers.get((uid, gid))
+            if peer is None:
+                raise ContractError("Supervisor RPC peer identity is not authorized")
+            pidfd = _peer_pidfd(conn, pid, require=self.require_peer_pidfd)
+            if _read_peer_cgroup(pid) != peer.cgroup or not _pidfd_alive(pidfd):
+                raise ContractError("Supervisor RPC peer process boundary is not authorized")
+            header = _recv_exact(conn, _HEADER.size)
+            length = _HEADER.unpack(header)[0]
+            if length < 2 or length > MAX_SUPERVISOR_MESSAGE_BYTES:
+                raise ContractError("Supervisor RPC request size is invalid")
+            message = json.loads(_recv_exact(conn, length))
+            if (not isinstance(message, dict) or set(message) != {"operation", "body"}
+                    or not isinstance(message["operation"], str)
+                    or message["operation"] not in peer.operations
+                    or not isinstance(message["body"], dict)):
+                raise ContractError("Supervisor RPC operation is not authorized")
+            result = self._dispatch(message["operation"], message["body"])
+            if not _pidfd_alive(pidfd):
+                raise ContractError("Supervisor RPC peer exited during request")
+            response = {"ok": True, "result": result}
+        except Exception as exc:
+            kind = exc.kind if isinstance(exc, StoreError) else "refused"
+            response = {"ok": False, "error": str(kind)[:40]}
+        finally:
+            if pidfd is not None:
+                os.close(pidfd)
+        encoded = canonical_bytes(response)
+        if len(encoded) > MAX_SUPERVISOR_MESSAGE_BYTES:
+            encoded = canonical_bytes({"ok": False, "error": "response_too_large"})
+        try:
+            conn.sendall(_HEADER.pack(len(encoded)) + encoded)
+        except OSError:
+            return
+
+    def _dispatch(self, operation: str, body: dict) -> Any:
+        if operation == "issue_grant":
+            if set(body) != {
+                "task_id", "slot", "attempt", "epoch", "run_id", "resolved_model",
+                "model_provenance_sha256",
+            }:
+                raise ContractError("grant request fields are invalid")
+            return self.supervisor.issue_execution_grant(**body)
+        if operation == "claim":
+            if set(body) != {"grant"} or not isinstance(body["grant"], dict):
+                raise ContractError("claim request fields are invalid")
+            receipt = self.supervisor.claim_runner_execution(body["grant"])
+            if receipt is None:
+                return None
+            if not isinstance(receipt, dict):
+                raise ContractError("Supervisor claim returned an invalid replay receipt")
+            # Keep Store and in-process Supervisor APIs backward-compatible
+            # (they return the raw stored receipt), while giving the runner's
+            # execution-authority callback its explicit replay-state contract.
+            return {"state": "COMPLETE", "receipt": receipt}
+        if operation == "claim_status":
+            if set(body) != {"grant"} or not isinstance(body["grant"], dict):
+                raise ContractError("claim-status request fields are invalid")
+            return self.supervisor.runner_execution_claim_status(body["grant"])
+        if operation == "reserve":
+            if set(body) != {"grant"} or not isinstance(body["grant"], dict):
+                raise ContractError("reservation request fields are invalid")
+            return self.supervisor.reserve_runner_execution(body["grant"])
+        if operation == "pending":
+            if set(body) != {"grant"} or not isinstance(body["grant"], dict):
+                raise ContractError("pending request fields are invalid")
+            return {"pending": self.supervisor.verify_pending_runner_execution(body["grant"])}
+        if operation == "complete":
+            if set(body) != {"grant", "receipt"} or not all(
+                isinstance(body[name], dict) for name in ("grant", "receipt")
+            ):
+                raise ContractError("completion request fields are invalid")
+            self.supervisor.complete_runner_execution(body["grant"], body["receipt"])
+            return {"state": "COMPLETE"}
+        if operation == "recover":
+            if body:
+                raise ContractError("recovery request must be empty")
+            return {"indeterminate": self.supervisor.recover_predecessor_runner_claims()}
+        if operation == "manifest":
+            if set(body) != {"task_id", "manifest_sha256"}:
+                raise ContractError("manifest request fields are invalid")
+            return self.supervisor.store.get_manifest_by_digest(
+                body["task_id"], body["manifest_sha256"],
+            )
+        if operation == "previous_receipt":
+            if set(body) != {"task_id", "slot"}:
+                raise ContractError("receipt-tip request fields are invalid")
+            return {"receipt_sha256": self.supervisor.store.previous_receipt_sha256(
+                body["task_id"], body["slot"],
+            )}
+        if operation == "generation":
+            if body:
+                raise ContractError("generation request must be empty")
+            provider = getattr(self.supervisor, "service_generation_provider", None)
+            if not callable(provider):
+                raise ContractError("active runner generation provider is unavailable")
+            return {"service_generation": provider()}
+        raise ContractError("unknown Supervisor RPC operation")
+
+
+class SupervisorClient:
+    """Small framed client that pins the root Supervisor peer before RPC."""
+
+    def __init__(self, socket_path: str, *, expected_server_uid: int = 0, timeout_sec: float = 5.0):
+        if os.name != "posix" or not hasattr(socket, "SO_PEERCRED"):
+            raise ContractError("Supervisor RPC client requires POSIX peer credentials")
+        if getattr(socket, "SO_PEERPIDFD", None) is None:
+            raise ContractError("Supervisor RPC client requires kernel peer pidfd support")
+        if not os.path.isabs(socket_path) or type(expected_server_uid) is not int:
+            raise ContractError("Supervisor RPC client configuration is invalid")
+        self.socket_path = socket_path
+        self.expected_server_uid = expected_server_uid
+        self.timeout_sec = timeout_sec
+
+    def call(self, operation: str, body: dict) -> Any:
+        if not isinstance(operation, str) or not isinstance(body, dict):
+            raise ContractError("Supervisor RPC call is malformed")
+        payload = canonical_bytes({"operation": operation, "body": body})
+        if len(payload) > MAX_SUPERVISOR_MESSAGE_BYTES:
+            raise ContractError("Supervisor RPC request exceeds its size limit")
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+            client.settimeout(self.timeout_sec)
+            client.connect(self.socket_path)
+            raw_creds = client.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3i"))
+            pid, uid, _gid = struct.unpack("3i", raw_creds)
+            if uid != self.expected_server_uid:
+                raise SupervisorRPCError("Supervisor RPC server identity is unauthorized")
+            pidfd = _peer_pidfd(client, pid, require=True)
+            try:
+                client.sendall(_HEADER.pack(len(payload)) + payload)
+                length = _HEADER.unpack(_recv_exact(client, _HEADER.size))[0]
+                if length > MAX_SUPERVISOR_MESSAGE_BYTES:
+                    raise SupervisorRPCError("Supervisor RPC response exceeds its size limit")
+                response = json.loads(_recv_exact(client, length))
+                if not _pidfd_alive(pidfd):
+                    raise SupervisorRPCError("Supervisor RPC server exited during request")
+            finally:
+                if pidfd is not None:
+                    os.close(pidfd)
+        if not isinstance(response, dict) or type(response.get("ok")) is not bool:
+            raise SupervisorRPCError("Supervisor RPC response is malformed")
+        if response["ok"] is True:
+            if set(response) != {"ok", "result"}:
+                raise SupervisorRPCError("Supervisor RPC success response is malformed")
+            return response["result"]
+        if set(response) != {"ok", "error"}:
+            raise SupervisorRPCError("Supervisor RPC error response is malformed")
+        else:
+            error = response.get("error")
+            raise SupervisorRPCError(f"Supervisor RPC refused request ({error})")
+
+    def issue_grant(self, **body: Any) -> dict:
+        result = self.call("issue_grant", body)
+        if not isinstance(result, dict):
+            raise SupervisorRPCError("Supervisor returned a malformed grant")
+        return result
+
+    def claim(self, grant: dict) -> dict | None:
+        result = self.call("claim", {"grant": grant})
+        if result is not None and not isinstance(result, dict):
+            raise SupervisorRPCError("Supervisor returned a malformed claim result")
+        return result
+
+    def claim_status(self, grant: dict) -> dict:
+        result = self.call("claim_status", {"grant": grant})
+        if (not isinstance(result, dict)
+                or result.get("state") not in {
+                    "NOT_FOUND", "PENDING", "EXECUTION_RESERVED",
+                    "COMPLETE", "INDETERMINATE", "RECONCILED",
+                }
+                or not isinstance(result.get("service_generation"), str)):
+            raise SupervisorRPCError("Supervisor returned a malformed claim status")
+        if result["state"] == "COMPLETE":
+            if set(result) != {"state", "service_generation", "receipt"} or not isinstance(result["receipt"], dict):
+                raise SupervisorRPCError("Supervisor returned a malformed completed claim status")
+        elif set(result) != {"state", "service_generation"}:
+            raise SupervisorRPCError("Supervisor returned unexpected claim status fields")
+        return result
+
+    def reserve(self, grant: dict) -> dict:
+        result = self.call("reserve", {"grant": grant})
+        if (not isinstance(result, dict)
+                or set(result) != {"state", "grant_id", "payload_sha256", "service_generation"}
+                or result.get("state") != "EXECUTION_RESERVED"):
+            raise SupervisorRPCError("Supervisor returned a malformed reservation")
+        return result
+
+    def pending(self, grant: dict) -> bool:
+        result = self.call("pending", {"grant": grant})
+        return isinstance(result, dict) and result.get("pending") is True
+
+    def generation(self) -> str:
+        result = self.call("generation", {})
+        if (not isinstance(result, dict) or set(result) != {"service_generation"}
+                or not isinstance(result["service_generation"], str)
+                or not result["service_generation"]):
+            raise SupervisorRPCError("Supervisor returned a malformed generation")
+        return result["service_generation"]
+
+    def complete(self, grant: dict, receipt: dict) -> None:
+        result = self.call("complete", {"grant": grant, "receipt": receipt})
+        if not isinstance(result, dict) or result.get("state") != "COMPLETE":
+            raise SupervisorRPCError("Supervisor did not confirm completion")
+
+    def recover(self) -> int:
+        result = self.call("recover", {})
+        if not isinstance(result, dict) or type(result.get("indeterminate")) is not int:
+            raise SupervisorRPCError("Supervisor returned a malformed recovery result")
+        return result["indeterminate"]
+
+    def manifest(self, task_id: str, manifest_sha256: str) -> dict:
+        result = self.call("manifest", {"task_id": task_id, "manifest_sha256": manifest_sha256})
+        if not isinstance(result, dict):
+            raise SupervisorRPCError("Supervisor returned a malformed manifest")
+        return result
+
+    def previous_receipt(self, task_id: str, slot: str) -> str | None:
+        result = self.call("previous_receipt", {"task_id": task_id, "slot": slot})
+        if not isinstance(result, dict) or set(result) != {"receipt_sha256"}:
+            raise SupervisorRPCError("Supervisor returned a malformed receipt tip")
+        return result["receipt_sha256"]
+
+
+DEFAULT_CONFIG_PATH = "/etc/vst-runner/supervisor-service.json"
+_MODEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/+-]{0,127}$")
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+
+
+def _read_controlled_json(path: str, *, max_bytes: int = 262144) -> dict:
+    if os.name != "posix" or not os.path.isabs(path):
+        raise ContractError("Supervisor config path must be absolute on POSIX")
+    parent = os.path.dirname(path)
+    while True:
+        info = os.stat(parent, follow_symlinks=False)
+        if not stat.S_ISDIR(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o022:
+            raise ContractError("Supervisor config path is not root-controlled")
+        if parent == "/":
+            break
+        parent = os.path.dirname(parent)
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        info = os.fstat(fd)
+        if (not stat.S_ISREG(info.st_mode) or info.st_uid != 0
+                or info.st_mode & 0o022 or info.st_size > max_bytes):
+            raise ContractError("Supervisor config is not a bounded root-controlled file")
+        raw = bytearray()
+        while len(raw) <= max_bytes:
+            chunk = os.read(fd, min(65536, max_bytes + 1 - len(raw)))
+            if not chunk:
+                break
+            raw.extend(chunk)
+        if len(raw) > max_bytes:
+            raise ContractError("Supervisor config exceeds its size limit")
+    finally:
+        os.close(fd)
+    def unique(pairs: list[tuple[str, Any]]) -> dict:
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise ContractError("duplicate Supervisor config key")
+            value[key] = item
+        return value
+    value = json.loads(raw, object_pairs_hook=unique)
+    if not isinstance(value, dict):
+        raise ContractError("Supervisor config must be a JSON object")
+    return value
+
+
+def _read_root_key(path: str) -> bytes:
+    if not isinstance(path, str) or not os.path.isabs(path):
+        raise ContractError("Supervisor secret key path must be absolute")
+    parent = os.path.dirname(path)
+    while True:
+        info = os.stat(parent, follow_symlinks=False)
+        if not stat.S_ISDIR(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o022:
+            raise ContractError("Supervisor secret key directory is not root-controlled")
+        if parent == "/":
+            break
+        parent = os.path.dirname(parent)
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        info = os.fstat(fd)
+        if (not stat.S_ISREG(info.st_mode) or info.st_uid != 0
+                or stat.S_IMODE(info.st_mode) != 0o600
+                or info.st_size < 32 or info.st_size > 4096):
+            raise ContractError("Supervisor secret key has unsafe owner, mode, or size")
+        data = bytearray()
+        while len(data) <= 4096:
+            chunk = os.read(fd, 4097 - len(data))
+            if not chunk:
+                break
+            data.extend(chunk)
+        if len(data) < 32 or len(data) > 4096:
+            raise ContractError("Supervisor secret key has invalid length")
+        return bytes(data)
+    finally:
+        os.close(fd)
+
+
+def _validate_root_data_path(path: str, *, max_existing_mode: int = 0o600) -> None:
+    if not isinstance(path, str) or not os.path.isabs(path):
+        raise ContractError("Supervisor data path must be absolute")
+    parent = os.path.dirname(path)
+    while True:
+        info = os.stat(parent, follow_symlinks=False)
+        if not stat.S_ISDIR(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o022:
+            raise ContractError("Supervisor data directory is not root-controlled")
+        if parent == "/":
+            break
+        parent = os.path.dirname(parent)
+    try:
+        info = os.stat(path, follow_symlinks=False)
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        raise ContractError("Supervisor data path cannot be inspected") from exc
+    if (not stat.S_ISREG(info.st_mode) or info.st_uid != 0
+            or stat.S_IMODE(info.st_mode) & ~max_existing_mode):
+        raise ContractError("existing Supervisor data file has unsafe type, owner, or mode")
+
+
+def _active_runner_generation(config: dict) -> str:
+    from .runner_fence import _manager_unit
+
+    invocation, control_group = _manager_unit({
+        "systemctl_path": config["systemctl_path"],
+        "unit_name": config["runner_unit_name"],
+    })
+    record = _read_controlled_json(config["generation_record_path"], max_bytes=65536)
+    required = {
+        "version", "state", "unit", "invocation_id", "control_group",
+        "cgroup_device", "cgroup_inode", "lock_device", "lock_inode",
+        "generation", "predecessor_outcome", "sequence", "recorded_at",
+        "previous_record_sha256", "record_sha256",
+    }
+    if not isinstance(record, dict) or set(record) != required:
+        raise ContractError("published runner generation record has an invalid schema")
+    record_stat = os.stat(config["generation_record_path"], follow_symlinks=False)
+    if (not stat.S_ISREG(record_stat.st_mode) or record_stat.st_uid != 0
+            or stat.S_IMODE(record_stat.st_mode) != 0o644):
+        raise ContractError("published runner generation record is not root-owned and read-only")
+    body = {key: value for key, value in record.items() if key != "record_sha256"}
+    if record["record_sha256"] != hashlib.sha256(canonical_bytes(body)).hexdigest():
+        raise ContractError("published runner generation record hash is invalid")
+    if (record["version"] != 1 or record["state"] != "RUNNING"
+            or record["unit"] != config["runner_unit_name"]
+            or record["invocation_id"] != invocation or record["generation"] != invocation
+            or record["control_group"] != control_group
+            or control_group != config["runner_control_group"]):
+        raise ContractError("published runner generation is not the active manager invocation")
+    cgroup = os.path.realpath(os.path.join("/sys/fs/cgroup", control_group.lstrip("/")))
+    cgroup_root = os.path.realpath("/sys/fs/cgroup")
+    if os.path.commonpath((cgroup_root, cgroup)) != cgroup_root:
+        raise ContractError("published runner cgroup escaped the unified hierarchy")
+    lock_path = config["runner_lock_path"]
+    cgroup_stat = os.stat(cgroup, follow_symlinks=False)
+    lock_stat = os.stat(lock_path, follow_symlinks=False)
+    if (cgroup_stat.st_dev != record["cgroup_device"]
+            or cgroup_stat.st_ino != record["cgroup_inode"]
+            or lock_stat.st_dev != record["lock_device"]
+            or lock_stat.st_ino != record["lock_inode"]):
+        raise ContractError("published runner generation resource identity changed")
+    return invocation
+
+
+def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[AuthenticatedSupervisorAPI, Any]:
+    """Build the root Supervisor from a strict root-owned deployment contract."""
+    value = _read_controlled_json(path)
+    required = {
+        "store_path", "anchor_path", "event_key_path", "startup_supervisor_key_path",
+        "execution_grant_key_id", "execution_grant_private_key_path", "execution_grant_trust_keys", "openssl_path",
+        "run_id", "probe_nonce", "preflight_record_path", "probe_key_path", "operator_key_path",
+        "execution_grant_audience", "generation_record_path", "runner_unit_name",
+        "runner_control_group", "runner_lock_path", "systemctl_path", "model_provenance",
+        "socket_path", "socket_gid", "peers",
+    }
+    if set(value) != required:
+        raise ContractError("Supervisor service config fields do not match its schema")
+    for field in ("store_path", "anchor_path", "event_key_path", "startup_supervisor_key_path",
+                  "execution_grant_private_key_path", "probe_key_path", "operator_key_path",
+                  "preflight_record_path", "openssl_path", "generation_record_path",
+                  "runner_lock_path", "systemctl_path", "socket_path"):
+        if not isinstance(value[field], str) or not os.path.isabs(value[field]):
+            raise ContractError(f"Supervisor service {field} must be an absolute path")
+    if (not isinstance(value["execution_grant_key_id"], str)
+            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}", value["execution_grant_key_id"])
+            or not isinstance(value["execution_grant_audience"], str)
+            or not _MODEL_ID.fullmatch(value["execution_grant_audience"])
+            or not isinstance(value["runner_unit_name"], str)
+            or not value["runner_unit_name"].endswith(".service")
+            or not isinstance(value["runner_control_group"], str)
+            or not value["runner_control_group"].startswith("/")
+            or ".." in value["runner_control_group"].split("/")
+            or os.path.normpath(value["runner_control_group"]) != value["runner_control_group"]):
+        raise ContractError("Supervisor service identity configuration is malformed")
+    if (value["runner_unit_name"] != "vst-runner.service"
+            or value["runner_control_group"] != "/system.slice/vst-runner.service"
+            or value["systemctl_path"] != "/usr/bin/systemctl"
+            or value["runner_lock_path"] != "/run/vst-runner/cgroup-admission.lock"):
+        raise ContractError("Supervisor service accepts only the fixed runner manager boundary")
+    trust_keys = value["execution_grant_trust_keys"]
+    if (not isinstance(trust_keys, dict) or not trust_keys
+            or any(not isinstance(key_id, str)
+                   or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}", key_id)
+                   or not isinstance(key_path, str) or not os.path.isabs(key_path)
+                   for key_id, key_path in trust_keys.items())):
+        raise ContractError("Supervisor execution-grant trust registry is malformed")
+    from .execution_grant import _trusted_root_file
+    for key_path in trust_keys.values():
+        _trusted_root_file(key_path, private=False)
+    socket_gid = value["socket_gid"]
+    if type(socket_gid) is not int or socket_gid < 1:
+        raise ContractError("Supervisor service socket group is invalid")
+    model_provenance = value["model_provenance"]
+    if (not isinstance(model_provenance, dict) or not model_provenance
+            or any(not isinstance(model, str) or not _MODEL_ID.fullmatch(model)
+                   or not isinstance(digest, str) or not _SHA256.fullmatch(digest)
+                   for model, digest in model_provenance.items())):
+        raise ContractError("Supervisor model provenance registry is malformed")
+    peers_value = value["peers"]
+    if not isinstance(peers_value, list):
+        raise ContractError("Supervisor peer policy must be a list")
+    peers = []
+    role_operations = {
+        "dispatcher": frozenset({"issue_grant"}),
+        "runnerd": frozenset({
+            "claim", "claim_status", "reserve", "complete", "generation",
+            "recover", "manifest", "previous_receipt",
+        }),
+        "signer": frozenset({"generation", "pending"}),
+    }
+    for item in peers_value:
+        if (not isinstance(item, dict) or set(item) != {"role", "uid", "gid", "cgroup", "operations"}
+                or not isinstance(item["role"], str) or not item["role"]
+                or type(item["uid"]) is not int or item["uid"] < 1
+                or type(item["gid"]) is not int or item["gid"] < 1
+                or not isinstance(item["cgroup"], str) or not item["cgroup"].startswith("/")
+                or item["role"] not in role_operations
+                or not isinstance(item["operations"], list)
+                or frozenset(item["operations"]) != role_operations[item["role"]]
+                or len(item["operations"]) != len(set(item["operations"]))):
+            raise ContractError("Supervisor peer policy entry is malformed")
+        peers.append(SupervisorPeer(
+            role=item["role"], uid=item["uid"], gid=item["gid"], cgroup=item["cgroup"],
+            operations=frozenset(item["operations"]),
+        ))
+    if {peer.role for peer in peers} != set(role_operations):
+        raise ContractError("Supervisor peer policy must define dispatcher, runnerd, and signer")
+    by_role = {peer.role: peer for peer in peers}
+    runner_peer = by_role["runnerd"]
+    signer_peer = by_role["signer"]
+    dispatcher_peer = by_role["dispatcher"]
+    if (runner_peer.uid != 997 or runner_peer.gid != 988
+            or runner_peer.cgroup != value["runner_control_group"]
+            or signer_peer.uid in {runner_peer.uid, dispatcher_peer.uid, 999}
+            or signer_peer.gid != 988
+            or signer_peer.cgroup == runner_peer.cgroup
+            or dispatcher_peer.uid in {runner_peer.uid, signer_peer.uid, 999}
+            or dispatcher_peer.gid in {988, 989}
+            or socket_gid == 989):
+        raise ContractError("Supervisor peer identities violate fixed runner, dispatcher, or worker separation")
+    for path_key in ("store_path", "anchor_path"):
+        _validate_root_data_path(value[path_key])
+    event_key = _read_root_key(value["event_key_path"])
+    supervisor_key = _read_root_key(value["startup_supervisor_key_path"])
+    if event_key == supervisor_key:
+        raise ContractError("Store event and startup supervisor keys must be distinct")
+    run_id, probe_nonce = value["run_id"], value["probe_nonce"]
+    if (not isinstance(run_id, str) or not run_id.strip()
+            or not isinstance(probe_nonce, str) or not probe_nonce.strip()):
+        raise ContractError("Supervisor run id and preflight nonce must be non-empty")
+    probe_file = os.stat(value["preflight_record_path"], follow_symlinks=False)
+    if not stat.S_ISREG(probe_file.st_mode) or probe_file.st_uid != 0 or stat.S_IMODE(probe_file.st_mode) != 0o600:
+        raise ContractError("Supervisor preflight record must be root-owned mode 0600")
+    probe = _read_controlled_json(value["preflight_record_path"], max_bytes=1024 * 1024)
+    probe_key = _read_root_key(value["probe_key_path"])
+    operator_key = _read_root_key(value["operator_key_path"])
+    if len({event_key, supervisor_key, probe_key, operator_key}) != 4:
+        raise ContractError("Store, startup-supervisor, probe, and operator keys must be distinct")
+    from .preflight import SPEC_PATH, verify_fresh_probe, verify_network_policy_attestation
+
+    spec_sha256 = hashlib.sha256(SPEC_PATH.read_bytes()).hexdigest()
+    if not verify_fresh_probe(
+        probe, run_id=run_id, spec_sha256=spec_sha256, nonce=probe_nonce, key=probe_key,
+    ):
+        raise ContractError("root service preflight record is invalid or not bound to this run")
+    if not verify_network_policy_attestation(
+        probe["inventory"].get("network_policy_attestation"), run_id=run_id,
+        spec_sha256=spec_sha256, nonce=probe_nonce, key=operator_key,
+    ):
+        raise ContractError("root service operator network attestation is invalid")
+    from .store import Store
+    from .supervisor import Supervisor
+
+    store = Store(
+        value["store_path"], event_key=event_key,
+        anchor_path=value["anchor_path"], sandbox_mode=True,
+        supervisor_key=supervisor_key,
+        execution_resolution_key=operator_key,
+        supervisor_runner_id="persistent-runner-supervisor",
+    )
+    supervisor = Supervisor(
+        store, operation_backend=None,
+        run_id=run_id, probe_nonce=probe_nonce,
+        probe_key=probe_key, operator_key=operator_key,
+        execution_grant_key_id=value["execution_grant_key_id"],
+        execution_grant_private_key_path=value["execution_grant_private_key_path"],
+        execution_grant_openssl_path=value["openssl_path"],
+        execution_grant_trust_keys=trust_keys,
+        execution_grant_audience=value["execution_grant_audience"],
+        service_generation_provider=lambda: _active_runner_generation(value),
+        model_provenance_verifier=lambda model, digest: model_provenance.get(model) == digest,
+    )
+    probe_digest = hashlib.sha256(canonical_bytes(probe)).hexdigest()
+    store.ensure_preflight_consumed(run_id, probe_nonce, spec_sha256, probe_digest)
+    supervisor._probe_consumed = True
+    api = AuthenticatedSupervisorAPI(
+        supervisor, value["socket_path"], peers=tuple(peers), socket_gid=socket_gid,
+        require_peer_pidfd=True,
+    )
+    return api, supervisor
+
+
+def main() -> None:
+    if os.geteuid() != 0:
+        raise ContractError("Supervisor service must run as root")
+    config_path = DEFAULT_CONFIG_PATH
+    if len(sys.argv) == 2:
+        config_path = sys.argv[1]
+    elif len(sys.argv) > 2:
+        raise ContractError("Supervisor service accepts only one fixed config path")
+    api, supervisor = load_supervisor_service(config_path)
+    signal.signal(signal.SIGTERM, lambda _signum, _frame: api.shutdown())
+    signal.signal(signal.SIGINT, lambda _signum, _frame: api.shutdown())
+    try:
+        api.serve_forever()
+    finally:
+        supervisor.store.close()
+
+
+if __name__ == "__main__":
+    main()

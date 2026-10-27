@@ -4,6 +4,40 @@ Implemented in `tools/vst/contracts.py`, `tools/vst/signing.py`, `tools/vst/gate
 
 Closed enums: `RESULT` = PASS, FAIL, BLOCKED, NOT_RUN, INCONCLUSIVE. `COVERAGE` = FULL, PARTIAL, NOT_COVERED. `VERDICT` = APPROVE, APPROVED_WITH_WAIVER, MODIFY, NO_GO. `RECEIPT_TYPES` = TestRun, StaticAnalysis, IndependentReview, Documentation. Hashes are lowercase hex (head = 40 chars, sha256 = 64). Dates are opaque non-empty strings.
 
+## Persistent runner execution authorization (Store schema v5)
+
+The persistent POSIX runner accepts only a signed, short-lived execution grant issued by the root
+Supervisor. The grant binds one manifest `TestRun` slot, task, story epoch, lease/worker, consumed
+run preflight, service generation, request and invocation IDs, and resolved-model provenance. The
+Store atomically rechecks the live owner, manifest digest, lease, slot, preflight and budget before
+recording the append-only `PENDING` claim. Immediately before the first child launch, the fixed
+runner daemon atomically reserves the exact claim as `EXECUTION_RESERVED`, rechecking the active
+generation, story epoch/owner, live lease, expiry, and budget. A validated receipt may transition
+only a reserved claim to `COMPLETE`; a generation change turns predecessor `PENDING` or
+`EXECUTION_RESERVED` claims into terminal `INDETERMINATE`. A predecessor `PENDING` claim is
+never reclaimed, and a lost reservation response is ambiguous: the daemon must not launch based
+only on a status read. Only an exact stored `COMPLETE` receipt can be replayed. `PENDING`,
+`EXECUTION_RESERVED`, `INDETERMINATE`, and `RECONCILED` claims cannot be reclaimed to start
+commands again. The bounded claim-status operation accepts only the original signed grant and its
+service generation. A task with any nonterminal runner claim is fenced from successor lease,
+grant-basis, and claim admission. Recovery's `INDETERMINATE` transition from predecessor
+`PENDING` proves pre-spawn because `EXECUTION_RESERVED` is mandatory before child launch; that
+specific path may proceed under the ordinary lease/retry/epoch/budget checks. An
+`EXECUTION_RESERVED` predecessor or any other may-have-started state remains fenced until a signed
+operator resolution bound to the exact full grant hash and execution identity appends
+`RECONCILED`; `NO_EXECUTION_PROVEN` (only from predecessor `PENDING`) and `EFFECTS_RESOLVED`
+permit a successor. `EFFECTS_UNRESOLVED` and `RECONCILIATION_REJECTED` remain fenced. The
+resolution HMAC binds its evidence digest and outcome as an operator attestation; `key_id` is the
+SHA-256 fingerprint of the configured operator HMAC key, and each outcome requires its matching
+fixed attestation statement in the signed record. Evidence bytes are external and are not
+independently fetched or verified by Store. The focused
+`Supervisor.reconcile_runner_execution` / `Store.reconcile_runner_execution` API has no
+production operator transport or caller in this source change, and no actual operator-signed
+record is claimed. The schema-v5 source migration is additive and is not
+run as part of source preparation. See `tools/vst/execution_grant.py`, `tools/vst/store.py`,
+`tools/vst/supervisor_service.py`, and `tools/vst/runner_service.py`; implementation and runtime
+acceptance remain pending exact-diff testing/review and dedicated WSL evidence.
+
 ## TaskManifest (`validate_task_manifest`)
 
 | Field | Type / rule |
@@ -113,7 +147,7 @@ Tables: `stories(story_id, project_id, phase 1..10, epoch, owner, state in OPEN/
 
 Execution: `subprocess.Popen(shell=False)`, stdin from the null device, started in its own process group (POSIX) / process group without a window (Windows). The child gets a minimal explicit environment: the allowlisted names `ENV_ALLOWLIST` (PATH, PATHEXT, SYSTEMROOT, SYSTEMDRIVE, WINDIR, TEMP, TMP, TMPDIR, LANG, LC_ALL) copied from the runner process, `PYTHONIOENCODING=utf-8` and the caller's explicit `extra_env`; nothing else is inherited. `extra_env` is an allowlist: every name must fully match `VST_[A-Z0-9_]+` (case-sensitive); anything else is rejected with `ContractError` (a `ValueError`) before anything runs. stdout and stderr are read by threads and capped at `max_output_bytes` each (excess drained and dropped).
 
-For distinct-UID POSIX runs, the trusted runner invokes `/usr/bin/setpriv` with a fixed sanitized environment, starts an isolated exec gate, and moves that gate into a unique child of its delegated cgroup-v2 subtree before releasing the allowlisted command. The intended worker environment is transferred as data over a separate pipe, and the handoff is bounded by the command deadline. Distinct-UID launches are serialized within one runner process and across runner processes with a private `flock` under `/run/vst-runner`; lock wait and abandoned-scope reconciliation consume the command's remaining budget, and an expired wait returns timeout without spawning. Before admission, the runner examines only strict `vst-command-<pid>-<uuid>` child scopes under its delegated cgroup, kills abandoned matching scopes, and requires `populated 0` plus successful removal. Unknown, inaccessible, or unremovable scopes refuse admission. Cgroup creation, attachment, `cgroup.kill`, and `populated 0` cleanup must be confirmed; otherwise the result is non-approving, later commands in the same manifest run are recorded as not run, and the current runner process refuses future distinct-UID launches. Deployment must provision a private runner-owned `/run/vst-runner` directory and preserve one stable delegated subtree across runner-process replacement; all pre-lock runner instances must be stopped before rollout. If the helper, lock directory, or delegated scope is unavailable, the command does not execute. Same-UID compatibility launches retain process-group cleanup and do not satisfy the S2 all-descendant guarantee. The exact provisioned sandbox still requires runtime acceptance evidence.
+For distinct-UID POSIX runs, the trusted runner invokes the fixed root-owned `/usr/local/libexec/vst-s4-worker-exec` helper for the configured `vst-runner` (997:988) to `vst-worker` (999:989) transition. The helper clears supplementary groups and capabilities, validates the two pipe descriptors, sets `no_new_privs`, and runs the isolated exec gate with a fixed sanitized environment. The runner moves that gate into a unique child of its delegated cgroup-v2 subtree before releasing the allowlisted command. The intended worker environment is transferred as data through a separate pipe, and the handoff is bounded by the command deadline. Distinct-UID launches are serialized within one runner process and across runner processes with a private `flock` under `/run/vst-runner`; lock wait and stale-scope reconciliation consume the command's remaining budget, and an expired wait returns timeout without spawning. Before admission, the runner examines only strict `vst-command-<pid>-<uuid>` child scopes under its delegated cgroup. It removes an empty scope only after `populated 0` and empty `cgroup.procs` are confirmed. Populated, unknown, inaccessible, or unremovable scopes refuse admission and are never killed or adopted. Cgroup creation, attachment, `cgroup.kill` for a scope created by the current run, and `populated 0` cleanup must be confirmed; otherwise the result is non-approving, later commands in the same manifest run are recorded as not run, and the current runner process refuses future distinct-UID launches. Deployment must provision a daemon-owned `/run/vst-runner` directory with mode 0710, a daemon-owned 0600 admission lock, and preserve one stable delegated subtree across runner-service replacement. If the helper, lock directory, or delegated scope is unavailable, the command does not execute. Same-UID compatibility launches retain process-group cleanup and do not satisfy the S2 all-descendant guarantee. The exact provisioned sandbox still requires runtime acceptance evidence.
 
 Process-tree containment: on Windows the child is assigned to a Job Object with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`. Strict callers create it suspended and require successful assignment before resuming; if setup fails, they refuse to run the command. Cleanup calls `TerminateJobObject` and then `CloseHandle`, checking both Win32 return values. A false result or exception marks capture incomplete, triggers a best-effort `taskkill /PID <pid> /T /F` fallback, and forces exit code -4 so the command cannot be accepted as successful; a failed `CloseHandle` is retried during final cleanup. Compatibility callers may continue without a Job Object after assignment failure, with the existing `taskkill` fallback best effort. On POSIX the process group is killed with `os.killpg(SIGKILL)` on timeout and after a normal exit.
 

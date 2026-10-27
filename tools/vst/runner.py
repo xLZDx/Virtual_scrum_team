@@ -240,6 +240,7 @@ _POSIX_GATE = (
 _POSIX_CGROUP_CLEANUP_FAILED = threading.Event()
 _POSIX_CGROUP_RUN_LOCK = threading.Lock()
 _POSIX_CGROUP_RUNTIME_DIR = "/run/vst-runner"
+_POSIX_WORKER_EXEC_HELPER = "/usr/local/libexec/vst-s4-worker-exec"
 
 
 @contextmanager
@@ -257,8 +258,8 @@ def _posix_cgroup_process_lock(deadline: float):
     dir_stat = os.stat(runtime_dir, follow_symlinks=False)
     if not stat.S_ISDIR(dir_stat.st_mode) or dir_stat.st_uid != os.geteuid():
         raise OSError("runner runtime directory must be a real directory owned by the runner")
-    if dir_stat.st_mode & (stat.S_IRWXG | stat.S_IRWXO):
-        raise OSError("runner runtime directory must be private to its owner")
+    if dir_stat.st_mode & (stat.S_IRGRP | stat.S_IWGRP | stat.S_IRWXO):
+        raise OSError("runner runtime directory must deny group read/write and all other access")
 
     lock_path = os.path.join(runtime_dir, "cgroup-admission.lock")
     flags = os.O_CREAT | os.O_RDWR | getattr(os, "O_CLOEXEC", 0)
@@ -404,7 +405,7 @@ class _DelegatedCgroup:
 
     @classmethod
     def reconcile_stale(cls, deadline: float) -> None:
-        """Kill and remove only abandoned command scopes under this runner cgroup."""
+        """Remove only provably empty stale scopes; never kill or adopt them."""
         parent = cls._runner_parent()
         try:
             entries = list(os.scandir(parent))
@@ -420,10 +421,21 @@ class _DelegatedCgroup:
             path = os.path.realpath(entry.path)
             if os.path.dirname(path) != parent or os.path.basename(path) != entry.name:
                 raise OSError("runner command cgroup escaped its delegated parent")
-            scope = cls(path)
-            remaining = deadline - time.monotonic()
-            if remaining <= 0 or not scope.kill_and_remove(timeout=min(10.0, remaining)):
-                raise OSError("abandoned runner command cgroup could not be confirmed empty")
+            if time.monotonic() >= deadline:
+                raise OSError("stale-scope reconciliation deadline expired")
+            try:
+                with open(os.path.join(path, "cgroup.events"), encoding="ascii") as stream:
+                    events = dict(line.split() for line in stream if line.strip())
+                with open(os.path.join(path, "cgroup.procs"), encoding="ascii") as stream:
+                    pids = [line.strip() for line in stream if line.strip()]
+            except (OSError, ValueError) as exc:
+                raise OSError("stale command scope emptiness cannot be verified") from exc
+            if events.get("populated") != "0" or pids:
+                raise OSError("unknown or populated stale command scope blocks worker admission")
+            try:
+                os.rmdir(path)
+            except OSError as exc:
+                raise OSError("verified empty stale command scope could not be removed") from exc
 
     @classmethod
     def create(cls) -> "_DelegatedCgroup":
@@ -773,6 +785,7 @@ def _run_one(
     argv: list[str], cwd: str, limit_sec: float, env: dict[str, str], cap: int,
     *, require_job_object: bool = False, worker_uid: int | None = None,
     worker_gid: int | None = None, _deadline_at: float | None = None,
+    _before_spawn: Callable[[], None] | None = None,
 ) -> tuple[int, str, dict]:
     """Run one argv without a shell; return (exit_code, stdout_text, info)."""
     command_deadline = _deadline_at if _deadline_at is not None else time.monotonic() + limit_sec
@@ -796,11 +809,9 @@ def _run_one(
     gate_read: int | None = None
     env_write: int | None = None
     try:
-        # The trusted runner may carry ambient SETUID/SETGID capabilities so
-        # Popen can switch to the worker identity. Drop ambient and inheritable
-        # capabilities in a trusted system helper before the requested command
-        # is exec'd. The unit also sets no_new_privs; repeat it at this boundary
-        # so file capabilities cannot restore privilege for the worker.
+        # A fixed, root-owned setuid helper performs only the configured
+        # vst-runner to vst-worker identity drop. The Python service itself has
+        # no SETUID/SETGID capability; command control remains manifest-pinned.
         child_argv = argv
         child_env = env
         pass_fds: tuple[int, ...] = ()
@@ -819,18 +830,14 @@ def _run_one(
                 }
             env_read, env_write = os.pipe()
             gate_read, gate_release_fd = os.pipe()
-            gate_child_argv = ["/usr/bin/python3", "-I", "-S", "-c", _POSIX_GATE,
-                               str(env_read), str(gate_read), *argv]
             child_argv = [
-                "/usr/bin/setpriv",
-                "--inh-caps=-all",
-                "--ambient-caps=-all",
-                "--no-new-privs",
-                "--",
-                *gate_child_argv,
+                _POSIX_WORKER_EXEC_HELPER, "-I", "-c", _POSIX_GATE,
+                str(env_read), str(gate_read), *argv,
             ]
             child_env = {"PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C"}
             pass_fds = (env_read, gate_read)
+        if _before_spawn is not None:
+            _before_spawn()
         proc = subprocess.Popen(
             child_argv,
             shell=False,
@@ -841,8 +848,6 @@ def _run_one(
             env=child_env,
             bufsize=0,
             pass_fds=pass_fds,
-            **({"user": worker_uid, "group": worker_gid, "extra_groups": ()}
-               if worker_uid is not None and worker_gid is not None else {}),
             **_spawn_kwargs(suspended=os.name == "nt" and require_job_object),
         )
     except OSError:
@@ -861,6 +866,16 @@ def _run_one(
                 "posix_cgroup_cleanup_failed": True,
             }
         return EXIT_MISSING_EXECUTABLE, "", info
+    except BaseException:
+        for fd in (env_read, gate_read, env_write, gate_release_fd):
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+        if cgroup is not None:
+            cgroup.kill_and_remove()
+        raise
     if cgroup is not None:
         os.close(env_read)
         env_read = None
@@ -1382,6 +1397,8 @@ def run_manifest_commands(
     *, manifest: dict, slot: str, attempt: int, epoch: int, resolved_model: str,
     invocation_id: str, runner_id: str, signer_socket: str, cwd: str,
     worker_uid: int, worker_gid: int,
+    run_id: str | None = None, model_provenance_sha256: str | None = None,
+    execution_authority: Any | None = None,
     created_at: str, prev_receipt_sha256: str | None = None,
     artifact_paths: list[str] | None = None, timeout_sec: int | None = None,
     deadline_sec: int | None = None, max_output_bytes: int = DEFAULT_MAX_OUTPUT_BYTES,
@@ -1391,9 +1408,12 @@ def run_manifest_commands(
 
     The worker does not supply a candidate head, commands, parser callable, or
     signing key. The authenticated signer signs the exact evidence request and
-    the separate deterministic diff-gate body.
+    the separate deterministic diff-gate body. Production calls require a
+    verified, daemon-bound execution authority that durably claims the grant
+    before the first child process and stores the exact completed receipt.
     """
     from .diffgate import git_diff_evidence
+    from .execution_grant import ExecutionAuthority
     from .sandbox import (require_distinct_worker_identity,
                           require_runner_can_access_signer,
                           require_worker_cannot_access_signer)
@@ -1402,10 +1422,14 @@ def run_manifest_commands(
     valid = validate_task_manifest(manifest)
     if valid.get("contract_version") != 2:
         raise ContractError("run_manifest_commands requires manifest contract v2")
+    if type(execution_authority) is not ExecutionAuthority:
+        raise ContractError("manifest execution requires a verified persistent-runner authorization")
     for name, value in (("slot", slot), ("resolved_model", resolved_model),
                         ("invocation_id", invocation_id), ("runner_id", runner_id),
                         ("created_at", created_at), ("cwd", cwd), ("signer_socket", signer_socket)):
         _req_str(value, name)
+    _req_str(run_id, "run_id")
+    _req_hex(model_provenance_sha256, "model_provenance_sha256", 64)
     if not os.path.isdir(cwd):
         raise ContractError("cwd must be an existing repository directory")
     if os.name != "posix":
@@ -1413,10 +1437,11 @@ def run_manifest_commands(
     if (not isinstance(worker_uid, int) or isinstance(worker_uid, bool) or worker_uid < 1 or
             not isinstance(worker_gid, int) or isinstance(worker_gid, bool) or worker_gid < 1):
         raise ContractError("worker_uid and worker_gid must be positive POSIX ids")
+    if (worker_uid, worker_gid) != (999, 989) or (os.geteuid(), os.getegid()) != (997, 988):
+        raise ContractError("POSIX manifest execution requires the fixed vst-runner to vst-worker helper")
     require_distinct_worker_identity(worker_uid)
     require_runner_can_access_signer(signer_socket)
     require_worker_cannot_access_signer(signer_socket, worker_uid=worker_uid, worker_gid=worker_gid)
-    authorize_runner_over_socket(signer_socket)
     _req_int(attempt, "attempt", 1, MAX_COUNTER)
     _req_int(epoch, "epoch", 1, MAX_COUNTER)
     if prev_receipt_sha256 is not None:
@@ -1444,11 +1469,38 @@ def run_manifest_commands(
         if contained_artifact_path(cwd, path) is None:
             raise ContractError(f"artifact path escapes run directory: {path!r}")
     env = build_environment(_check_env(extra_env))
+    request_id = execution_authority.grant.get("request_id")
+    _req_str(request_id, "authorized request_id")
+    replay = execution_authority.authorize_and_claim({
+        "manifest_sha256": manifest_hash, "task_id": valid["task_id"], "slot": slot,
+        "attempt": attempt, "epoch": epoch, "run_id": run_id,
+        "invocation_id": invocation_id, "request_id": request_id,
+        "runner_id": runner_id, "resolved_model": resolved_model,
+        "model_provenance_sha256": model_provenance_sha256,
+        "execution_deadline_sec": deadline,
+        "service_generation": execution_authority.service_generation,
+    })
+    if replay is not None:
+        return validate_receipt(replay)
+    authorize_runner_over_socket(signer_socket, grant=execution_authority.grant)
     deadline_at = time.monotonic() + deadline
     commands: list[dict] = []
     parser_results: list[dict] = []
     infos: list[dict] = []
     stop_after_capture_incomplete = False
+    reservation_confirmed = False
+    command_launch_deadline = deadline_at
+
+    def reserve_before_first_spawn() -> None:
+        nonlocal reservation_confirmed
+        if time.monotonic() >= command_launch_deadline:
+            raise ContractError("command deadline expired before child launch")
+        if not reservation_confirmed:
+            execution_authority.reserve()
+            reservation_confirmed = True
+        if time.monotonic() >= command_launch_deadline:
+            raise ContractError("command deadline expired after launch reservation")
+
     for item in pinned:
         parser_key = (item["parser_id"], item["parser_version"], item["parser_sha256"])
         parser = TRUSTED_PARSER_CATALOG.get(parser_key)
@@ -1469,11 +1521,13 @@ def run_manifest_commands(
             info = {"stdout_truncated": False, "stderr_truncated": False, "timed_out": False,
                     "capture_incomplete": False, "job_object": False, "skipped_by_deadline": True}
         else:
+            command_launch_deadline = min(deadline_at, now + float(per_command))
             exit_code, stdout, info = _run_one(
                 item["argv"], cwd, min(float(per_command), remaining), env,
                 max_output_bytes, require_job_object=True,
                 worker_uid=worker_uid, worker_gid=worker_gid,
                 _deadline_at=min(deadline_at, now + float(per_command)),
+                _before_spawn=reserve_before_first_spawn,
             )
             if not info.get("admission_wait_expired"):
                 info["skipped_by_deadline"] = False
@@ -1492,6 +1546,10 @@ def run_manifest_commands(
         infos.append(info)
         if exit_code == EXIT_CAPTURE_INCOMPLETE or info["capture_incomplete"]:
             stop_after_capture_incomplete = True
+    if not reservation_confirmed:
+        raise ContractError(
+            "no command reached its launch path before the deadline; refusing an unreserved receipt"
+        )
     candidate_head = _derive_head(cwd)
     executed_all = [test_id for result in parser_results for test_id in result["parser_result"]["executed_test_ids"]]
     skipped_all = [test_id for result in parser_results for test_id in result["parser_result"]["skipped_test_ids"]]
@@ -1500,15 +1558,19 @@ def run_manifest_commands(
     diff_bytes, changed, renames, symlinks = _diff_paths(cwd, valid["base_head"])
     diff = git_diff_evidence(cwd, valid, candidate_head, diff_bytes, changed,
                              symlink_paths=symlinks, rename_pairs=renames)
-    request_id = uuid.uuid4().hex
-    diff["signature"] = sign_diff_over_socket(signer_socket, f"{request_id}:diff", {k: v for k, v in diff.items()})
+    diff["signature"] = sign_diff_over_socket(
+        signer_socket, f"{request_id}:diff", {k: v for k, v in diff.items()},
+        execution_grant=execution_authority.grant,
+    )
     request = {
         "request_id": request_id, "task_id": valid["task_id"], "slot": slot,
         "attempt": attempt, "epoch": epoch, "manifest_sha256": manifest_hash,
         "candidate_head": candidate_head, "commands": commands,
         "parser_results": parser_results, "artifact_digests": digests,
     }
-    request_sig = sign_over_socket(signer_socket, request)
+    request_sig = sign_over_socket(
+        signer_socket, request, execution_grant=execution_authority.grant
+    )
     receipt = {
         "contract_version": 2,
         "receipt_id": f"{valid['task_id']}:{slot}:{attempt}:{invocation_id}",
@@ -1526,9 +1588,11 @@ def run_manifest_commands(
         "signature": request_sig,
     }
     receipt["result"] = derive_result(receipt)
+    validated_receipt = validate_receipt(receipt)
+    execution_authority.complete(validated_receipt)
     if report is not None:
         report["commands"] = infos
         report["capture_incomplete"] = any(info["capture_incomplete"] for info in infos)
         report["candidate_head"] = candidate_head
         report["diff_gate"] = diff
-    return validate_receipt(receipt)
+    return validated_receipt

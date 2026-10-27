@@ -1,0 +1,35 @@
+[Unit]
+Description=Virtual Scrum Team persistent Supervisor
+After=local-fs.target
+Before=vst-runner.service
+RequiresMountsFor=/var/lib/vst-runner /etc/vst-runner
+
+[Service]
+Type=simple
+User=root
+Group=vst-supervisor-client
+RuntimeDirectory=vst-supervisor
+RuntimeDirectoryMode=0710
+RuntimeDirectoryPreserve=restart
+ExecStart=/usr/bin/python3.12 -I -S -c "import sys; sys.path.insert(0, '/opt/vst-runtime'); from tools.vst.supervisor_service import main; main()"
+Restart=on-failure
+RestartSec=2s
+StartLimitIntervalSec=60s
+StartLimitBurst=3
+TimeoutStartSec=30s
+TimeoutStopSec=15s
+LimitNOFILE=128
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ReadWritePaths=/var/lib/vst-runner /run/vst-supervisor
+NoNewPrivileges=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

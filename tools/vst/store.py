@@ -6,7 +6,7 @@ transaction with an explicit COMMIT or ROLLBACK; SQLite "busy"/"locked"
 errors become the distinct StoreBusyError (a StoreError with kind 'busy').
 journal_mode is WAL, foreign_keys and recursive_triggers are ON.
 
-Schema versioning: PRAGMA user_version is SCHEMA_VERSION (4). A new file is
+Schema versioning: PRAGMA user_version is SCHEMA_VERSION (5). A new file is
 initialised inside one transaction; a legacy un-versioned database that already
 has tables, or any other version, is refused with StoreError(kind='schema').
 The database file (and its -wal/-shm files) get mode 0o600 on a best-effort
@@ -133,7 +133,7 @@ from .contracts import (
 from .signing import MIN_KEY_BYTES, OPERATOR_MANUAL_OVERRIDE_LABEL, RECEIPT_V2_LABEL, sign, verify
 from .lifecycle import AnchorError, FileExternalAnchor, signed_checkpoint
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 GENESIS_HASH = "0" * 64
 DEFAULT_OWNER_TTL_SEC = 3600.0
 SUPERVISOR_RUNNER_ID = "store-supervisor"
@@ -163,6 +163,17 @@ LIFECYCLE_ACTION_STATES = {
 }
 SUPERVISOR_ACTIONS = frozenset({"manual_override"})
 ACTION_RESOLUTION_LABEL = b"vst-lifecycle-resolution-v1\0"
+RUNNER_EXECUTION_RESOLUTION_LABEL = b"vst-runner-execution-resolution-v1\0"
+RUNNER_EXECUTION_RESOLUTION_OUTCOMES = frozenset({
+    "NO_EXECUTION_PROVEN", "EFFECTS_RESOLVED",
+    "EFFECTS_UNRESOLVED", "RECONCILIATION_REJECTED",
+})
+RUNNER_EXECUTION_RESOLUTION_ATTESTATIONS = {
+    "NO_EXECUTION_PROVEN": "operator-attests-no-child-launch-for-grant",
+    "EFFECTS_RESOLVED": "operator-attests-all-effects-resolved-for-grant",
+    "EFFECTS_UNRESOLVED": "operator-attests-effects-unresolved-for-grant",
+    "RECONCILIATION_REJECTED": "operator-rejects-reconciliation-for-grant",
+}
 EVENT_KINDS = frozenset(
     {
         "EPOCH_ACQUIRED",
@@ -199,6 +210,45 @@ _ANCHOR_KEY = "events_anchor"
 
 def _sql_list(values: Any) -> str:
     return ", ".join("'" + value + "'" for value in sorted(values))
+
+
+def _runner_execution_schema_statements() -> tuple[str, ...]:
+    """Append-only identities and lifecycle events for manifest-run claims."""
+    return (
+        """CREATE TABLE runner_execution_claims (
+            grant_id TEXT PRIMARY KEY,
+            invocation_id TEXT NOT NULL UNIQUE,
+            request_id TEXT NOT NULL UNIQUE,
+            task_id TEXT NOT NULL REFERENCES tasks(task_id),
+            slot TEXT NOT NULL,
+            runner_id TEXT NOT NULL,
+            attempt INT NOT NULL CHECK (attempt >= 1),
+            epoch INT NOT NULL CHECK (epoch >= 1),
+            run_id TEXT NOT NULL REFERENCES supervisor_probes(run_id),
+            service_generation TEXT NOT NULL,
+            manifest_sha256 TEXT NOT NULL,
+            payload_sha256 TEXT NOT NULL,
+            grant_body TEXT NOT NULL,
+            claimed_at REAL NOT NULL,
+            UNIQUE (task_id, slot, attempt)
+        )""",
+        """CREATE TABLE runner_execution_events (
+            seq INTEGER PRIMARY KEY AUTOINCREMENT,
+            grant_id TEXT NOT NULL REFERENCES runner_execution_claims(grant_id),
+            state TEXT NOT NULL CHECK (state IN ('PENDING', 'EXECUTION_RESERVED', 'COMPLETE', 'INDETERMINATE', 'RECONCILED')),
+            payload TEXT NOT NULL,
+            created_at REAL NOT NULL,
+            UNIQUE (grant_id, state)
+        )""",
+        """CREATE TRIGGER runner_execution_claims_no_update BEFORE UPDATE ON runner_execution_claims
+        BEGIN SELECT RAISE(ABORT, 'runner execution claims are append-only'); END""",
+        """CREATE TRIGGER runner_execution_claims_no_delete BEFORE DELETE ON runner_execution_claims
+        BEGIN SELECT RAISE(ABORT, 'runner execution claims are append-only'); END""",
+        """CREATE TRIGGER runner_execution_events_no_update BEFORE UPDATE ON runner_execution_events
+        BEGIN SELECT RAISE(ABORT, 'runner execution events are append-only'); END""",
+        """CREATE TRIGGER runner_execution_events_no_delete BEFORE DELETE ON runner_execution_events
+        BEGIN SELECT RAISE(ABORT, 'runner execution events are append-only'); END""",
+    )
 
 
 def _schema_statements() -> tuple[str, ...]:
@@ -268,6 +318,7 @@ def _schema_statements() -> tuple[str, ...]:
             spent INT NOT NULL DEFAULT 0 CHECK (spent >= 0)
         )""",
         "CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
+        *_runner_execution_schema_statements(),
         """CREATE TABLE supervisor_operations (
             operation_key TEXT PRIMARY KEY,
             operation TEXT NOT NULL,
@@ -403,6 +454,65 @@ def _valid_action_resolution(event: dict, key: bytes | None) -> bool:
     return verify(record, bytes(key), ACTION_RESOLUTION_LABEL)
 
 
+def _valid_runner_execution_resolution(
+    event: dict, claim: sqlite3.Row, key: bytes | None, predecessor_state: str,
+) -> bool:
+    record = event.get("resolution")
+    if (not isinstance(key, (bytes, bytearray)) or len(key) < MIN_KEY_BYTES
+            or not isinstance(record, dict)):
+        return False
+    expected_fields = {
+        "version", "resolution_id", "outcome", "attestation", "evidence_sha256", "actor", "key_id",
+        "grant_id", "grant_sha256", "request_id", "invocation_id", "task_id", "slot",
+        "attempt", "epoch", "run_id", "service_generation", "predecessor_state", "signature",
+    }
+    if (set(record) != expected_fields or type(record.get("version")) is not int
+            or record.get("version") != 1):
+        return False
+    if (not isinstance(record.get("resolution_id"), str)
+            or not record["resolution_id"].strip() or len(record["resolution_id"]) > 128
+            or record.get("actor") != "operator"
+            or record.get("key_id") != hashlib.sha256(bytes(key)).hexdigest()
+            or not isinstance(record.get("outcome"), str)
+            or record.get("outcome") not in RUNNER_EXECUTION_RESOLUTION_OUTCOMES
+            or record.get("attestation") != RUNNER_EXECUTION_RESOLUTION_ATTESTATIONS.get(record.get("outcome"))
+            or record.get("predecessor_state") != predecessor_state):
+        return False
+    for name in ("evidence_sha256", "grant_sha256"):
+        digest = record.get(name)
+        if (not isinstance(digest, str) or len(digest) != 64
+                or any(character not in "0123456789abcdef" for character in digest)):
+            return False
+    bindings = {
+        "grant_id": "grant_id", "grant_sha256": "payload_sha256",
+        "request_id": "request_id", "invocation_id": "invocation_id",
+        "task_id": "task_id", "slot": "slot", "attempt": "attempt",
+        "epoch": "epoch", "run_id": "run_id", "service_generation": "service_generation",
+    }
+    if any(record.get(record_name) != claim[claim_name]
+           for record_name, claim_name in bindings.items()):
+        return False
+    for field in ("attempt", "epoch"):
+        if not _is_int(record.get(field)):
+            return False
+    allowed_predecessors = {
+        "NO_EXECUTION_PROVEN": {"PENDING"},
+        "EFFECTS_RESOLVED": {"EXECUTION_RESERVED"},
+        "EFFECTS_UNRESOLVED": {"PENDING", "EXECUTION_RESERVED"},
+        "RECONCILIATION_REJECTED": {"PENDING", "EXECUTION_RESERVED"},
+    }
+    if (predecessor_state not in {"PENDING", "EXECUTION_RESERVED"}
+            or predecessor_state not in allowed_predecessors[record["outcome"]]):
+        return False
+    if (event.get("event") != "RUNNER_EXECUTION_RECONCILED"
+            or event.get("state") != "RECONCILED"
+            or event.get("grant_id") != claim["grant_id"]
+            or event.get("payload_sha256") != claim["payload_sha256"]
+            or event.get("predecessor_state") != predecessor_state):
+        return False
+    return verify(record, bytes(key), RUNNER_EXECUTION_RESOLUTION_LABEL)
+
+
 def _iso(now: float) -> str:
     return datetime.fromtimestamp(now, timezone.utc).isoformat()
 
@@ -435,6 +545,7 @@ class Store:
         anchor_path: str | None = None,
         sandbox_mode: bool = False,
         supervisor_key: bytes | None = None,
+        execution_resolution_key: bytes | None = None,
         supervisor_runner_id: str = "store-startup-supervisor",
     ) -> None:
         self._event_key = _need_key(event_key, "event_key")
@@ -448,6 +559,14 @@ class Store:
         if sandbox_mode and supervisor_key is None:
             raise StoreError("sandbox mode requires a supervisor key for startup reconciliation", kind="key")
         self._startup_supervisor_key = None if supervisor_key is None else self._need_supervisor_key(supervisor_key)
+        self._execution_resolution_key = (
+            None if execution_resolution_key is None
+            else _need_key(execution_resolution_key, "execution_resolution_key")
+        )
+        if (self._execution_resolution_key is not None
+                and (self._execution_resolution_key == self._event_key
+                     or self._execution_resolution_key == self._startup_supervisor_key)):
+            raise StoreError("execution resolution key must be distinct from Store keys", kind="key")
         self._startup_supervisor_runner_id = _need_str(supervisor_runner_id, "supervisor_runner_id")
         self._external_anchor = (
             FileExternalAnchor(anchor_path, self._event_key) if anchor_path else None
@@ -536,6 +655,14 @@ class Store:
                     "CREATE TRIGGER supervisor_probes_no_delete BEFORE DELETE ON supervisor_probes "
                     "BEGIN SELECT RAISE(ABORT, 'supervisor probes are append-only'); END"
                 )
+                for statement in _runner_execution_schema_statements():
+                    conn.execute(statement)
+                conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+            elif version == 4:
+                # Add the one-invocation runner authorization ledger without
+                # rewriting prior task, lease, receipt, or event history.
+                for statement in _runner_execution_schema_statements():
+                    conn.execute(statement)
                 conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
             elif version != SCHEMA_VERSION:
                 raise StoreError(
@@ -1153,6 +1280,89 @@ class Store:
         """The registered manifest of a task (deep copy from the stored JSON)."""
         return json.loads(self._task_row(self._conn, task_id)["manifest"])
 
+    def get_manifest_by_digest(self, task_id: str, digest: str) -> dict:
+        """Return only the immutable registered manifest named by its digest."""
+        _need_str(task_id, "task_id")
+        _need_str(digest, "manifest_sha256")
+        if not self.reconciliation_complete or not self.verify_event_chain():
+            raise StoreError("verified Store history is required for manifest lookup", kind="integrity")
+        with self._read_tx() as conn:
+            task = self._task_row(conn, task_id)
+            if task["manifest_sha256"] != digest:
+                raise StoreError("manifest digest is not registered for the task", kind="manifest")
+            manifest = validate_task_manifest(json.loads(task["manifest"]))
+            if manifest_sha256(manifest) != digest:
+                raise StoreError("registered manifest digest is inconsistent", kind="integrity")
+            return manifest
+
+    def previous_receipt_sha256(self, task_id: str, slot: str) -> str | None:
+        """Read the current receipt-chain tip for one registered task slot."""
+        _need_str(task_id, "task_id")
+        _need_str(slot, "slot")
+        if not self.reconciliation_complete or not self.verify_event_chain():
+            raise StoreError("verified Store history is required for receipt lookup", kind="integrity")
+        with self._read_tx() as conn:
+            self._task_row(conn, task_id)
+            row = conn.execute(
+                "SELECT receipt_sha256 FROM receipts WHERE task_id = ? AND slot = ? ORDER BY attempt DESC LIMIT 1",
+                (task_id, slot),
+            ).fetchone()
+            return None if row is None else str(row["receipt_sha256"])
+
+    def execution_grant_basis(
+        self, task_id: str, slot: str, attempt: int, epoch: int, run_id: str,
+        *, active_service_generation: str,
+    ) -> dict:
+        """Return a read-only snapshot for grant signing; claim rechecks it atomically."""
+        for value, name in ((task_id, "task_id"), (slot, "slot"), (run_id, "run_id"),
+                            (active_service_generation, "active_service_generation")):
+            _need_str(value, name)
+        _need_int(attempt, "attempt", 1, MAX_COUNTER)
+        _need_int(epoch, "epoch", 1, MAX_COUNTER)
+        if not self.reconciliation_complete or not self.verify_event_chain():
+            raise StoreError("verified Store reconciliation is required before grant issuance", kind="integrity")
+        with self._read_tx() as conn:
+            now = self._now()
+            task = self._task_row(conn, task_id)
+            self._guard_runner_task_continuation_locked(conn, task_id)
+            story = self._story_row(conn, task["story_id"])
+            if (int(story["epoch"]) != epoch or story["state"] != "OWNED"
+                    or story["owner"] is None or story["owner_expires_at"] is None
+                    or float(story["owner_expires_at"]) <= now):
+                raise StoreError("grant has no current live story owner/epoch", kind="epoch")
+            manifest = validate_task_manifest(json.loads(task["manifest"]))
+            digest = manifest_sha256(manifest)
+            if digest != task["manifest_sha256"]:
+                raise StoreError("registered manifest digest is inconsistent", kind="integrity")
+            if {entry["slot"]: entry["receipt_type"] for entry in manifest["required_receipts"]}.get(slot) != "TestRun":
+                raise StoreError("grant slot is not a manifest TestRun slot", kind="slot")
+            lease = conn.execute(
+                "SELECT epoch, status, expires_at, worker_id FROM leases WHERE task_id = ? AND attempt = ?",
+                (task_id, attempt),
+            ).fetchone()
+            if (lease is None or int(lease["epoch"]) != epoch or lease["status"] != LEASE_LIVE
+                    or float(lease["expires_at"]) <= now):
+                raise StoreError("grant has no current live lease", kind="lease")
+            if conn.execute(
+                "SELECT 1 FROM receipts WHERE task_id = ? AND slot = ? AND attempt = ?",
+                (task_id, slot, attempt),
+            ).fetchone() is not None:
+                raise StoreError("grant attempt already has a receipt", kind="duplicate")
+            if conn.execute(
+                "SELECT 1 FROM supervisor_probes WHERE run_id = ?", (run_id,)
+            ).fetchone() is None:
+                raise StoreError("grant requires a consumed run-bound preflight", kind="probe")
+            blocked = self._budget_block_locked(conn, task_id)
+            if blocked is not None:
+                raise StoreError(blocked, kind="budget")
+            return {
+                "task_id": task_id, "slot": slot, "attempt": attempt,
+                "epoch": epoch, "run_id": run_id, "manifest_sha256": digest,
+                "manifest_timeout_sec": int(manifest["timeout_sec"]),
+                "runner_id": lease["worker_id"],
+                "service_generation": active_service_generation,
+            }
+
     # --------------------------------------------------------------- leases
 
     def acquire_lease(
@@ -1204,6 +1414,7 @@ class Store:
                 raise StoreError(
                     f"task {task_id!r} belongs to story {task['story_id']!r}", kind="story"
                 )
+            self._guard_runner_task_continuation_locked(conn, task_id)
             prior = conn.execute(
                 "SELECT * FROM leases WHERE task_id = ? ORDER BY attempt DESC LIMIT 1",
                 (task_id,),
@@ -1469,7 +1680,7 @@ class Store:
         conn: sqlite3.Connection,
         receipt: dict,
         story_id: str,
-        key: bytes,
+        key: bytes | None,
         *,
         supervisor: bool,
     ) -> str:
@@ -1502,7 +1713,7 @@ class Store:
                     kind="slot",
                 )
         is_v2 = valid.get("contract_version") == 2
-        if not is_v2 and not verify(valid, key):
+        if not is_v2 and (key is None or not verify(valid, key)):
             raise StoreError("invalid receipt signature", kind="signature")
         if is_v2 and valid["receipt_type"] == "TestRun":
             # The runner key is deliberately not available to the store. The
@@ -1510,7 +1721,7 @@ class Store:
             if valid["signature"] != valid["runner_attestation"]["signature"]:
                 raise StoreError("TestRun signature does not match runner attestation", kind="signature")
         elif is_v2 and valid["receipt_type"] != "IndependentReview":
-            if not verify(valid, key, RECEIPT_V2_LABEL):
+            if key is None or not verify(valid, key, RECEIPT_V2_LABEL):
                 raise StoreError("invalid v2 receipt signature", kind="signature")
         if derive_result(valid) != valid["result"]:
             raise StoreError("receipt result does not match the derived result", kind="signature")
@@ -1723,6 +1934,9 @@ class Store:
             ).fetchone()
             if task_row is None:
                 raise StoreError(f"unknown task {task_id!r}", kind="task")
+            # Evaluate receipts and execution lifecycle from this same SQLite
+            # snapshot. A stale PASS receipt cannot mask a newer ambiguous run.
+            self._guard_runner_task_continuation_locked(conn, task_id)
             manifest = json.loads(task_row["manifest"])
             body_rows = conn.execute(
                 "SELECT body, receipt_sha256 FROM receipts WHERE task_id = ? ORDER BY seq", (task_id,)
@@ -2188,6 +2402,7 @@ class Store:
         external_completions: dict[str, list[dict]] = {}
         external_unknown: dict[str, list[dict]] = {}
         event_probes: dict[str, dict] = {}
+        runner_chain_events: dict[str, list[dict]] = {}
         for row in conn.execute("SELECT task_id, payload FROM events WHERE kind = 'NOTE'").fetchall():
             try:
                 payload = json.loads(row["payload"])
@@ -2205,6 +2420,10 @@ class Store:
                 external_unknown.setdefault(row["task_id"], []).append(payload)
             elif payload.get("event") == "PREFLIGHT_CONSUMED":
                 event_probes[row["task_id"]] = payload
+            elif payload.get("event") in {
+                    "RUNNER_EXECUTION_PENDING", "RUNNER_EXECUTION_RESERVED", "RUNNER_EXECUTION_COMPLETE",
+                    "RUNNER_EXECUTION_INDETERMINATE", "RUNNER_EXECUTION_RECONCILED"}:
+                runner_chain_events.setdefault(row["task_id"], []).append(payload)
         external_keys = set(external_intents)
         if (set(operations) != set(event_operations) | external_keys
                 or external_keys & set(event_operations)
@@ -2268,6 +2487,132 @@ class Store:
                     or event.get("spec_sha256") != row["spec_sha256"]
                     or event.get("probe_sha256") != row["probe_sha256"]):
                 raise StoreError("supervisor probe record does not match its event", kind="integrity")
+
+        runner_claims = {
+            row["grant_id"]: row
+            for row in conn.execute("SELECT * FROM runner_execution_claims").fetchall()
+        }
+        runner_table_events: dict[str, list[dict]] = {}
+        for row in conn.execute(
+                "SELECT grant_id, state, payload FROM runner_execution_events ORDER BY seq").fetchall():
+            try:
+                event = json.loads(row["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("runner execution side event is malformed", kind="integrity") from exc
+            if not isinstance(event, dict) or event.get("state") != row["state"]:
+                raise StoreError("runner execution side event state is invalid", kind="integrity")
+            runner_table_events.setdefault(row["grant_id"], []).append(event)
+        if set(runner_claims) != set(runner_table_events) or set(runner_claims) != set(runner_chain_events):
+            raise StoreError("runner execution claims differ from their append-only events", kind="integrity")
+        event_name = {
+            "PENDING": "RUNNER_EXECUTION_PENDING",
+            "EXECUTION_RESERVED": "RUNNER_EXECUTION_RESERVED",
+            "COMPLETE": "RUNNER_EXECUTION_COMPLETE",
+            "INDETERMINATE": "RUNNER_EXECUTION_INDETERMINATE",
+            "RECONCILED": "RUNNER_EXECUTION_RECONCILED",
+        }
+        runner_resolution_ids: set[str] = set()
+        for grant_id, claim in runner_claims.items():
+            try:
+                grant = json.loads(claim["grant_body"])
+                canonical_grant = canonical_bytes(grant)
+            except (TypeError, ValueError) as exc:
+                raise StoreError("runner execution grant record is malformed", kind="integrity") from exc
+            if (hashlib.sha256(canonical_grant).hexdigest() != claim["payload_sha256"]
+                    or grant.get("grant_id") != claim["grant_id"]
+                    or grant.get("invocation_id") != claim["invocation_id"]
+                    or grant.get("request_id") != claim["request_id"]
+                    or grant.get("task_id") != claim["task_id"]
+                    or grant.get("slot") != claim["slot"]
+                    or grant.get("runner_id") != claim["runner_id"]
+                    or grant.get("attempt") != claim["attempt"]
+                    or grant.get("epoch") != claim["epoch"]
+                    or grant.get("run_id") != claim["run_id"]
+                    or grant.get("service_generation") != claim["service_generation"]
+                    or grant.get("manifest_sha256") != claim["manifest_sha256"]):
+                raise StoreError("runner execution claim differs from its signed grant", kind="integrity")
+            side_events = runner_table_events[grant_id]
+            chain_events = runner_chain_events[grant_id]
+            states = tuple(event.get("state") for event in side_events)
+            if (states not in {
+                    ("PENDING",),
+                    ("PENDING", "EXECUTION_RESERVED"),
+                    ("PENDING", "INDETERMINATE"),
+                    ("PENDING", "EXECUTION_RESERVED", "COMPLETE"),
+                    ("PENDING", "EXECUTION_RESERVED", "INDETERMINATE"),
+                    ("PENDING", "INDETERMINATE", "RECONCILED"),
+                    ("PENDING", "EXECUTION_RESERVED", "INDETERMINATE", "RECONCILED"),
+                } or len(chain_events) != len(side_events)):
+                raise StoreError("runner execution lifecycle event sequence is invalid", kind="integrity")
+            for side, chained in zip(side_events, chain_events):
+                if (side.get("event") != event_name.get(side.get("state"))
+                        or canonical_bytes(side) != canonical_bytes(chained)
+                        or side.get("grant_id") != grant_id
+                        or side.get("payload_sha256") != claim["payload_sha256"]):
+                    raise StoreError("runner execution side event differs from hash-chained event", kind="integrity")
+            pending = side_events[0]
+            if (pending.get("invocation_id") != claim["invocation_id"]
+                    or pending.get("request_id") != claim["request_id"]
+                    or pending.get("task_id") != claim["task_id"]
+                    or pending.get("slot") != claim["slot"]
+                    or pending.get("runner_id") != claim["runner_id"]
+                    or pending.get("attempt") != claim["attempt"]
+                    or pending.get("epoch") != claim["epoch"]
+                    or pending.get("run_id") != claim["run_id"]
+                    or pending.get("service_generation") != claim["service_generation"]):
+                raise StoreError("runner execution pending event differs from its claim", kind="integrity")
+            if len(side_events) >= 2 and side_events[1]["state"] == "EXECUTION_RESERVED":
+                reserved = side_events[1]
+                if (reserved.get("grant_id") != claim["grant_id"]
+                        or reserved.get("payload_sha256") != claim["payload_sha256"]
+                        or reserved.get("service_generation") != claim["service_generation"]
+                        or reserved.get("invocation_id") != claim["invocation_id"]
+                        or reserved.get("request_id") != claim["request_id"]):
+                    raise StoreError("execution reservation differs from its claim", kind="integrity")
+            terminal = side_events[-1] if len(side_events) > 1 else None
+            if terminal is not None and terminal["state"] == "COMPLETE":
+                receipt = terminal.get("receipt")
+                if (not isinstance(receipt, dict)
+                        or receipt_sha256(receipt) != terminal.get("receipt_sha256")):
+                    raise StoreError("completed runner receipt digest is invalid", kind="integrity")
+            indeterminate_indexes = [
+                index for index, event in enumerate(side_events)
+                if event["state"] == "INDETERMINATE"
+            ]
+            if len(indeterminate_indexes) > 1:
+                raise StoreError("runner execution has multiple indeterminate transitions", kind="integrity")
+            if indeterminate_indexes:
+                indeterminate_index = indeterminate_indexes[0]
+                indeterminate = side_events[indeterminate_index]
+                if indeterminate_index < 1:
+                    raise StoreError("indeterminate runner claim lacks its predecessor state", kind="integrity")
+                predecessor_state = side_events[indeterminate_index - 1]["state"]
+                if indeterminate.get("reason") == "PREDECESSOR_GENERATION_STOPPED":
+                    recovery_generation = indeterminate.get("recovery_service_generation")
+                    if (not isinstance(recovery_generation, str) or not recovery_generation
+                            or recovery_generation == claim["service_generation"]
+                            or indeterminate.get("predecessor_state") != predecessor_state
+                            or predecessor_state not in {"PENDING", "EXECUTION_RESERVED"}):
+                        raise StoreError("indeterminate runner claim lacks a predecessor-generation fence", kind="integrity")
+                elif indeterminate.get("reason") == "AUTHORITY_CHANGED_BEFORE_COMPLETION":
+                    observed_generation = indeterminate.get("observed_service_generation")
+                    if (not isinstance(observed_generation, str) or not observed_generation
+                            or predecessor_state != "EXECUTION_RESERVED"
+                            or indeterminate.get("predecessor_state") != predecessor_state
+                            or indeterminate_index != 2):
+                        raise StoreError("indeterminate runner completion lacks authority evidence", kind="integrity")
+                else:
+                    raise StoreError("indeterminate runner event has no recognized reason", kind="integrity")
+                if terminal is not None and terminal["state"] == "RECONCILED":
+                    if indeterminate_index != len(side_events) - 2 or not _valid_runner_execution_resolution(
+                        terminal, claim, self._execution_resolution_key,
+                        indeterminate.get("predecessor_state"),
+                    ):
+                        raise StoreError("runner execution reconciliation is invalid or unauthenticated", kind="integrity")
+                    resolution_id = terminal["resolution"]["resolution_id"]
+                    if resolution_id in runner_resolution_ids:
+                        raise StoreError("runner execution resolution id is reused", kind="integrity")
+                    runner_resolution_ids.add(resolution_id)
 
     def _sync_external_anchor(self) -> None:
         if self._external_anchor is None:
@@ -2481,6 +2826,570 @@ class Store:
                 "result": None,
                 "error_types": error_types,
             }
+
+    def _runner_execution_states_locked(self, conn: sqlite3.Connection, grant_id: str) -> list[dict]:
+        rows = conn.execute(
+            "SELECT state, payload FROM runner_execution_events WHERE grant_id = ? ORDER BY seq",
+            (grant_id,),
+        ).fetchall()
+        states = []
+        for row in rows:
+            try:
+                payload = json.loads(row["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("runner execution event is malformed", kind="integrity") from exc
+            if not isinstance(payload, dict) or payload.get("state") != row["state"]:
+                raise StoreError("runner execution event state is inconsistent", kind="integrity")
+            states.append(payload)
+        if not states or states[0].get("state") != "PENDING":
+            raise StoreError("runner execution record lacks its PENDING claim", kind="integrity")
+        sequence = tuple(state.get("state") for state in states)
+        if sequence not in {
+                ("PENDING",),
+                ("PENDING", "EXECUTION_RESERVED"),
+                ("PENDING", "INDETERMINATE"),
+                ("PENDING", "EXECUTION_RESERVED", "COMPLETE"),
+                ("PENDING", "EXECUTION_RESERVED", "INDETERMINATE"),
+                ("PENDING", "INDETERMINATE", "RECONCILED"),
+                ("PENDING", "EXECUTION_RESERVED", "INDETERMINATE", "RECONCILED"),
+        }:
+            raise StoreError("runner execution lifecycle is invalid", kind="integrity")
+        if states[-1]["state"] == "RECONCILED":
+            claim = conn.execute(
+                "SELECT * FROM runner_execution_claims WHERE grant_id = ?", (grant_id,)
+            ).fetchone()
+            indeterminate = states[-2]
+            predecessor_state = indeterminate.get("predecessor_state")
+            if (claim is None or indeterminate.get("state") != "INDETERMINATE"
+                    or not _valid_runner_execution_resolution(
+                        states[-1], claim, self._execution_resolution_key, predecessor_state,
+                    )):
+                raise StoreError("runner execution resolution is invalid or unauthenticated", kind="integrity")
+        return states
+
+    def _guard_runner_task_continuation_locked(
+        self, conn: sqlite3.Connection, task_id: str,
+    ) -> None:
+        """Block successors until every earlier execution has a signed safe resolution."""
+        claims = conn.execute(
+            "SELECT grant_id FROM runner_execution_claims WHERE task_id = ? ORDER BY attempt",
+            (task_id,),
+        ).fetchall()
+        for claim_row in claims:
+            states = self._runner_execution_states_locked(conn, claim_row["grant_id"])
+            state = states[-1]["state"]
+            if state == "COMPLETE":
+                continue
+            if (state == "INDETERMINATE"
+                    and states[-1].get("reason") == "PREDECESSOR_GENERATION_STOPPED"
+                    and states[-1].get("predecessor_state") == "PENDING"):
+                # Reservation is mandatory before first child launch, so a
+                # predecessor PENDING claim is conclusively pre-spawn. Normal
+                # lease, retry, epoch, and budget checks still gate successors.
+                continue
+            if state == "RECONCILED":
+                outcome = states[-1]["resolution"]["outcome"]
+                if outcome in {"NO_EXECUTION_PROVEN", "EFFECTS_RESOLVED"}:
+                    continue
+            raise StoreError(
+                f"prior runner execution {claim_row['grant_id']!r} is {state} and blocks continuation",
+                kind="lifecycle",
+            )
+
+    def claim_runner_execution(
+        self, grant: dict, *, active_service_generation: str
+    ) -> dict | None:
+        """Atomically recheck current Store authority and claim a grant as PENDING.
+
+        The authenticated Supervisor IPC is the authorization boundary for this
+        method. Its caller must provide the generation obtained from the trusted
+        lifecycle fence, not from the runner request. This method does not verify
+        Ed25519; the daemon verifies the signature and the Store independently
+        rechecks every current task/lease/preflight/budget fence before child
+        creation.
+
+        Returns None for a newly claimed run, or the exact stored receipt for a
+        duplicate COMPLETE grant. PENDING, EXECUTION_RESERVED, INDETERMINATE,
+        and RECONCILED grants are never replayed or reclaimed.
+        """
+        if not self.reconciliation_complete:
+            raise StoreError("startup reconciliation must complete before runner admission", kind="integrity")
+        if not self.verify_event_chain():
+            raise StoreError("event chain failed verification before runner admission", kind="integrity")
+        from .execution_grant import MAX_EXECUTION_DEADLINE_SEC, validate_execution_grant
+
+        try:
+            valid = validate_execution_grant(grant)
+        except Exception as exc:
+            raise StoreError("execution grant is malformed", kind="authorization") from exc
+        _need_str(active_service_generation, "active_service_generation")
+        if valid["service_generation"] != active_service_generation:
+            raise StoreError("execution grant belongs to a stale service generation", kind="authorization")
+        grant_bytes = canonical_bytes(valid)
+        grant_digest = hashlib.sha256(grant_bytes).hexdigest()
+        with self._tx() as conn:
+            now = self._now()
+            collision = conn.execute(
+                "SELECT * FROM runner_execution_claims WHERE grant_id = ? OR invocation_id = ? "
+                "OR request_id = ? OR (task_id = ? AND slot = ? AND attempt = ?)",
+                (valid["grant_id"], valid["invocation_id"], valid["request_id"],
+                 valid["task_id"], valid["slot"], valid["attempt"]),
+            ).fetchone()
+            if collision is not None:
+                identity_matches = (
+                    collision["grant_id"] == valid["grant_id"]
+                    and collision["invocation_id"] == valid["invocation_id"]
+                    and collision["request_id"] == valid["request_id"]
+                    and collision["task_id"] == valid["task_id"]
+                    and collision["runner_id"] == valid["runner_id"]
+                    and collision["run_id"] == valid["run_id"]
+                    and collision["slot"] == valid["slot"]
+                    and int(collision["attempt"]) == valid["attempt"]
+                    and collision["payload_sha256"] == grant_digest
+                )
+                if not identity_matches:
+                    raise StoreError("execution grant, invocation, request, or attempt was already claimed", kind="duplicate")
+                states = self._runner_execution_states_locked(conn, valid["grant_id"])
+                terminal = states[-1]
+                if terminal["state"] == "COMPLETE":
+                    receipt = terminal.get("receipt")
+                    if not isinstance(receipt, dict):
+                        raise StoreError("completed runner receipt is missing", kind="integrity")
+                    return dict(receipt)
+                raise StoreError(f"execution grant is non-replayable ({terminal['state']})", kind="lifecycle")
+
+            if (valid["issued_at"] > now + 5.0 or valid["claim_expires_at"] <= now
+                    or valid["expires_at"] <= now):
+                raise StoreError("execution grant claim window or run deadline expired", kind="authorization")
+
+            task = self._task_row(conn, valid["task_id"])
+            self._guard_runner_task_continuation_locked(conn, valid["task_id"])
+            story = self._story_row(conn, task["story_id"])
+            if (int(story["epoch"]) != valid["epoch"] or story["state"] != "OWNED"
+                    or story["owner"] is None or story["owner_expires_at"] is None
+                    or float(story["owner_expires_at"]) <= now):
+                raise StoreError("execution grant has no current live story owner/epoch", kind="epoch")
+            manifest = json.loads(task["manifest"])
+            if (task["manifest_sha256"] != valid["manifest_sha256"]
+                    or manifest_sha256(manifest) != valid["manifest_sha256"]):
+                raise StoreError("execution grant manifest is no longer registered", kind="manifest")
+            declared_slots = {
+                entry["slot"]: entry["receipt_type"] for entry in manifest["required_receipts"]
+            }
+            if declared_slots.get(valid["slot"]) != "TestRun":
+                raise StoreError("execution grant slot is not a manifest TestRun slot", kind="slot")
+            if valid["execution_deadline_sec"] > min(
+                int(manifest["timeout_sec"]), MAX_EXECUTION_DEADLINE_SEC,
+            ):
+                raise StoreError("execution grant deadline exceeds the bounded manifest timeout", kind="authorization")
+            lease = conn.execute(
+                "SELECT epoch, status, expires_at, worker_id FROM leases WHERE task_id = ? AND attempt = ?",
+                (valid["task_id"], valid["attempt"]),
+            ).fetchone()
+            if (lease is None or int(lease["epoch"]) != valid["epoch"]
+                    or lease["status"] != LEASE_LIVE or float(lease["expires_at"]) <= now
+                    or lease["worker_id"] != valid["runner_id"]):
+                raise StoreError("execution grant has no current live lease", kind="lease")
+            if conn.execute(
+                "SELECT 1 FROM receipts WHERE task_id = ? AND slot = ? AND attempt = ?",
+                (valid["task_id"], valid["slot"], valid["attempt"]),
+            ).fetchone() is not None:
+                raise StoreError("execution attempt already has a receipt", kind="duplicate")
+            if conn.execute(
+                "SELECT 1 FROM supervisor_probes WHERE run_id = ?", (valid["run_id"],)
+            ).fetchone() is None:
+                raise StoreError("execution grant has no consumed run-bound preflight", kind="probe")
+            blocked = self._budget_block_locked(conn, valid["task_id"])
+            if blocked is not None:
+                raise StoreError(blocked, kind="budget")
+            try:
+                conn.execute(
+                    "INSERT INTO runner_execution_claims "
+                    "(grant_id, invocation_id, request_id, task_id, slot, runner_id, attempt, epoch, run_id, "
+                    "service_generation, manifest_sha256, payload_sha256, grant_body, claimed_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (valid["grant_id"], valid["invocation_id"], valid["request_id"],
+                     valid["task_id"], valid["slot"], valid["runner_id"],
+                     valid["attempt"], valid["epoch"], valid["run_id"],
+                     valid["service_generation"], valid["manifest_sha256"], grant_digest,
+                     grant_bytes.decode("utf-8"), now),
+                )
+            except sqlite3.IntegrityError as exc:
+                raise StoreError("execution grant identity was concurrently claimed", kind="duplicate") from exc
+            event = {
+                "event": "RUNNER_EXECUTION_PENDING", "state": "PENDING",
+                "grant_id": valid["grant_id"], "invocation_id": valid["invocation_id"],
+                "request_id": valid["request_id"], "task_id": valid["task_id"],
+                "slot": valid["slot"], "runner_id": valid["runner_id"], "attempt": valid["attempt"],
+                "epoch": valid["epoch"], "service_generation": valid["service_generation"],
+                "run_id": valid["run_id"],
+                "payload_sha256": grant_digest,
+            }
+            conn.execute(
+                "INSERT INTO runner_execution_events(grant_id, state, payload, created_at) "
+                "VALUES (?, 'PENDING', ?, ?)",
+                (valid["grant_id"], canonical_bytes(event).decode("utf-8"), now),
+            )
+            self._record_event_locked(conn, valid["grant_id"], "supervisor", "NOTE", event)
+        return None
+
+    def verify_pending_runner_execution(
+        self, grant: dict, *, active_service_generation: str,
+    ) -> bool:
+        """Read-only signer-side check that a grant is pending/reserved and current."""
+        from .execution_grant import validate_execution_grant
+
+        try:
+            valid = validate_execution_grant(grant)
+        except Exception as exc:
+            raise StoreError("execution grant is malformed", kind="authorization") from exc
+        _need_str(active_service_generation, "active_service_generation")
+        if not self.reconciliation_complete or not self.verify_event_chain():
+            raise StoreError("verified Store history is required for signer admission", kind="integrity")
+        now = self._now()
+        with self._read_tx() as conn:
+            row = conn.execute(
+                "SELECT * FROM runner_execution_claims WHERE grant_id = ?", (valid["grant_id"],)
+            ).fetchone()
+            if row is None:
+                return False
+            digest = hashlib.sha256(canonical_bytes(valid)).hexdigest()
+            if (row["payload_sha256"] != digest
+                    or row["service_generation"] != active_service_generation
+                    or valid["service_generation"] != active_service_generation
+                    or valid["expires_at"] <= now
+                    or float(row["claimed_at"]) > float(valid["claim_expires_at"])
+                    or valid["issued_at"] > now + 5.0):
+                return False
+            states = self._runner_execution_states_locked(conn, valid["grant_id"])
+            if states[-1]["state"] not in {"PENDING", "EXECUTION_RESERVED"}:
+                return False
+            task = self._task_row(conn, valid["task_id"])
+            story = self._story_row(conn, task["story_id"])
+            lease = conn.execute(
+                "SELECT epoch, status, expires_at, worker_id FROM leases "
+                "WHERE task_id = ? AND attempt = ?",
+                (valid["task_id"], valid["attempt"]),
+            ).fetchone()
+            return not (
+                int(story["epoch"]) != valid["epoch"] or story["state"] != "OWNED"
+                or story["owner"] is None or story["owner_expires_at"] is None
+                or float(story["owner_expires_at"]) <= now
+                or lease is None or int(lease["epoch"]) != valid["epoch"]
+                or lease["status"] != LEASE_LIVE or float(lease["expires_at"]) <= now
+                or lease["worker_id"] != valid["runner_id"]
+                or self._budget_block_locked(conn, valid["task_id"]) is not None
+            )
+
+    def runner_execution_claim_status(
+        self, grant: dict, *, active_service_generation: str,
+    ) -> dict:
+        """Return state only for this exact grant under its original live generation."""
+        from .execution_grant import validate_execution_grant
+
+        try:
+            valid = validate_execution_grant(grant)
+        except Exception as exc:
+            raise StoreError("execution grant is malformed", kind="authorization") from exc
+        _need_str(active_service_generation, "active_service_generation")
+        if valid["service_generation"] != active_service_generation:
+            raise StoreError("execution claim belongs to a different service generation", kind="authorization")
+        if not self.reconciliation_complete or not self.verify_event_chain():
+            raise StoreError("verified Store history is required for claim status", kind="integrity")
+        digest = hashlib.sha256(canonical_bytes(valid)).hexdigest()
+        with self._read_tx() as conn:
+            row = conn.execute(
+                "SELECT * FROM runner_execution_claims WHERE grant_id = ?", (valid["grant_id"],)
+            ).fetchone()
+            if row is None:
+                return {"state": "NOT_FOUND", "service_generation": active_service_generation}
+            if (row["payload_sha256"] != digest
+                    or row["service_generation"] != active_service_generation
+                    or row["invocation_id"] != valid["invocation_id"]
+                    or row["request_id"] != valid["request_id"]
+                    or row["task_id"] != valid["task_id"]
+                    or row["slot"] != valid["slot"]
+                    or int(row["attempt"]) != valid["attempt"]):
+                raise StoreError("execution claim status does not match the exact grant", kind="integrity")
+            states = self._runner_execution_states_locked(conn, valid["grant_id"])
+            if states[-1]["state"] == "PENDING":
+                now = self._now()
+                if (valid["expires_at"] <= now
+                        or now + valid["execution_deadline_sec"] > valid["expires_at"]):
+                    raise StoreError(
+                        "pending execution claim is no longer recoverable within its signed run window",
+                        kind="authorization",
+                    )
+            result = {"state": states[-1]["state"], "service_generation": row["service_generation"]}
+            if states[-1]["state"] == "COMPLETE":
+                receipt = states[-1].get("receipt")
+                if not isinstance(receipt, dict):
+                    raise StoreError("completed runner receipt is missing", kind="integrity")
+                result["receipt"] = dict(receipt)
+            return result
+
+    def reserve_runner_execution(
+        self, grant: dict, *, active_service_generation: str,
+    ) -> dict:
+        """Atomically reserve the one permitted launch after rechecking authority."""
+        from .execution_grant import MAX_EXECUTION_DEADLINE_SEC, validate_execution_grant
+
+        try:
+            valid = validate_execution_grant(grant)
+        except Exception as exc:
+            raise StoreError("execution grant is malformed", kind="authorization") from exc
+        _need_str(active_service_generation, "active_service_generation")
+        if valid["service_generation"] != active_service_generation:
+            raise StoreError("execution grant belongs to a stale service generation", kind="authorization")
+        if not self.reconciliation_complete or not self.verify_event_chain():
+            raise StoreError("verified Store history is required for execution reservation", kind="integrity")
+        digest = hashlib.sha256(canonical_bytes(valid)).hexdigest()
+        with self._tx() as conn:
+            now = self._now()
+            row = conn.execute(
+                "SELECT * FROM runner_execution_claims WHERE grant_id = ?", (valid["grant_id"],)
+            ).fetchone()
+            if (row is None or row["payload_sha256"] != digest
+                    or row["service_generation"] != active_service_generation
+                    or row["invocation_id"] != valid["invocation_id"]
+                    or row["request_id"] != valid["request_id"]
+                    or row["task_id"] != valid["task_id"]
+                    or row["slot"] != valid["slot"]
+                    or int(row["attempt"]) != valid["attempt"]):
+                raise StoreError("execution reservation does not match the exact claimed grant", kind="integrity")
+            states = self._runner_execution_states_locked(conn, valid["grant_id"])
+            if len(states) != 1 or states[0]["state"] != "PENDING":
+                raise StoreError("execution grant is not an unreserved PENDING claim", kind="lifecycle")
+            if (valid["issued_at"] > now + 5.0 or valid["expires_at"] <= now
+                    or now + valid["execution_deadline_sec"] > valid["expires_at"]
+                    or valid["execution_deadline_sec"] > MAX_EXECUTION_DEADLINE_SEC):
+                raise StoreError("execution grant lacks its full bounded run window at reservation", kind="authorization")
+            task = self._task_row(conn, valid["task_id"])
+            story = self._story_row(conn, task["story_id"])
+            if (task["manifest_sha256"] != valid["manifest_sha256"]
+                    or manifest_sha256(json.loads(task["manifest"])) != valid["manifest_sha256"]):
+                raise StoreError("execution grant manifest is no longer registered", kind="manifest")
+            manifest = json.loads(task["manifest"])
+            declared_slots = {
+                entry["slot"]: entry["receipt_type"] for entry in manifest["required_receipts"]
+            }
+            if (declared_slots.get(valid["slot"]) != "TestRun"
+                    or valid["execution_deadline_sec"] > min(
+                        int(manifest["timeout_sec"]), MAX_EXECUTION_DEADLINE_SEC,
+                    )):
+                raise StoreError("execution grant no longer matches its manifest run contract", kind="authorization")
+            if (int(story["epoch"]) != valid["epoch"] or story["state"] != "OWNED"
+                    or story["owner"] is None or story["owner_expires_at"] is None
+                    or float(story["owner_expires_at"]) <= now):
+                raise StoreError("execution grant has no current live story owner/epoch", kind="epoch")
+            lease = conn.execute(
+                "SELECT epoch, status, expires_at, worker_id FROM leases "
+                "WHERE task_id = ? AND attempt = ?", (valid["task_id"], valid["attempt"]),
+            ).fetchone()
+            if (lease is None or int(lease["epoch"]) != valid["epoch"]
+                    or lease["status"] != LEASE_LIVE or float(lease["expires_at"]) <= now
+                    or lease["worker_id"] != valid["runner_id"]):
+                raise StoreError("execution grant has no current live lease", kind="lease")
+            if self._budget_block_locked(conn, valid["task_id"]) is not None:
+                raise StoreError("execution budget is blocked before launch reservation", kind="budget")
+            event = {
+                "event": "RUNNER_EXECUTION_RESERVED", "state": "EXECUTION_RESERVED",
+                "grant_id": valid["grant_id"], "payload_sha256": digest,
+                "invocation_id": valid["invocation_id"], "request_id": valid["request_id"],
+                "service_generation": active_service_generation,
+            }
+            conn.execute(
+                "INSERT INTO runner_execution_events(grant_id, state, payload, created_at) "
+                "VALUES (?, 'EXECUTION_RESERVED', ?, ?)",
+                (valid["grant_id"], canonical_bytes(event).decode("utf-8"), now),
+            )
+            self._record_event_locked(conn, valid["grant_id"], "supervisor", "NOTE", event)
+        return {
+            "state": "EXECUTION_RESERVED", "grant_id": valid["grant_id"],
+            "payload_sha256": digest, "service_generation": active_service_generation,
+        }
+
+    def complete_runner_execution(
+        self, grant: dict, receipt: dict, *, active_service_generation: str,
+    ) -> None:
+        """Persist receipt only if the lease, epoch, budget, and generation remain current."""
+        from .execution_grant import validate_execution_grant
+
+        try:
+            valid = validate_execution_grant(grant)
+            valid_receipt = validate_receipt(receipt)
+        except Exception as exc:
+            raise StoreError("runner execution completion is malformed", kind="validation") from exc
+        if not self.reconciliation_complete or not self.verify_event_chain():
+            raise StoreError("verified Store history is required for runner completion", kind="integrity")
+        _need_str(active_service_generation, "active_service_generation")
+        digest = hashlib.sha256(canonical_bytes(valid)).hexdigest()
+        authority_changed = False
+        with self._tx() as conn:
+            row = conn.execute(
+                "SELECT * FROM runner_execution_claims WHERE grant_id = ?", (valid["grant_id"],)
+            ).fetchone()
+            if row is None or row["payload_sha256"] != digest:
+                raise StoreError("runner execution completion does not match its exact claim", kind="integrity")
+            states = self._runner_execution_states_locked(conn, valid["grant_id"])
+            if (len(states) != 2 or states[0]["state"] != "PENDING"
+                    or states[1]["state"] != "EXECUTION_RESERVED"):
+                raise StoreError("runner execution claim is not durably reserved", kind="lifecycle")
+            if (valid_receipt["task_id"] != valid["task_id"]
+                    or valid_receipt["manifest_sha256"] != valid["manifest_sha256"]
+                    or valid_receipt["slot"] != valid["slot"]
+                    or valid_receipt["attempt"] != valid["attempt"]
+                    or valid_receipt["epoch"] != valid["epoch"]
+                    or valid_receipt["invocation_id"] != valid["invocation_id"]
+                    or valid_receipt["runner_id"] != valid["runner_id"]
+                    or valid_receipt["resolved_model"] != valid["resolved_model"]
+                    or valid_receipt["runner_attestation"]["request"]["request_id"] != valid["request_id"]):
+                raise StoreError("runner receipt differs from its execution grant", kind="integrity")
+            now = self._now()
+            task = self._task_row(conn, valid["task_id"])
+            story = self._story_row(conn, task["story_id"])
+            lease = conn.execute(
+                "SELECT epoch, status, expires_at, worker_id FROM leases "
+                "WHERE task_id = ? AND attempt = ?",
+                (valid["task_id"], valid["attempt"]),
+            ).fetchone()
+            authority_changed = (
+                valid["service_generation"] != active_service_generation
+                or int(story["epoch"]) != valid["epoch"] or story["state"] != "OWNED"
+                or story["owner"] is None or story["owner_expires_at"] is None
+                or float(story["owner_expires_at"]) <= now
+                or lease is None or int(lease["epoch"]) != valid["epoch"]
+                or lease["status"] != LEASE_LIVE or float(lease["expires_at"]) <= now
+                or lease["worker_id"] != valid["runner_id"]
+                or self._budget_block_locked(conn, valid["task_id"]) is not None
+            )
+            if authority_changed:
+                event = {
+                    "event": "RUNNER_EXECUTION_INDETERMINATE", "state": "INDETERMINATE",
+                    "grant_id": valid["grant_id"], "payload_sha256": digest,
+                    "reason": "AUTHORITY_CHANGED_BEFORE_COMPLETION",
+                    "predecessor_state": "EXECUTION_RESERVED",
+                    "observed_service_generation": active_service_generation,
+                }
+                state = "INDETERMINATE"
+            else:
+                # Persistent runner TestRun receipts must enter the same
+                # receipt/hash chain consumed by gates and retries. The v2
+                # TestRun branch validates the embedded runner attestation
+                # shape here; cryptographic trust is checked by the gate.
+                self._append_locked(
+                    conn, valid_receipt, str(task["story_id"]), None, supervisor=False,
+                )
+                event = {
+                    "event": "RUNNER_EXECUTION_COMPLETE", "state": "COMPLETE",
+                    "grant_id": valid["grant_id"], "payload_sha256": digest,
+                    "receipt": valid_receipt,
+                    "receipt_sha256": receipt_sha256(valid_receipt),
+                }
+                state = "COMPLETE"
+            conn.execute(
+                "INSERT INTO runner_execution_events(grant_id, state, payload, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (valid["grant_id"], state, canonical_bytes(event).decode("utf-8"), now),
+            )
+            self._record_event_locked(conn, valid["grant_id"], "supervisor", "NOTE", event)
+        if authority_changed:
+            raise StoreError("execution authority changed before completion; no receipt was returned", kind="authorization")
+
+    def mark_pending_runner_executions_indeterminate(self, *, current_service_generation: str) -> int:
+        """Terminalize predecessor PENDING/reserved grants without reclaiming them."""
+        if not self.reconciliation_complete:
+            raise StoreError("startup reconciliation must complete before runner recovery", kind="integrity")
+        if not self.verify_event_chain():
+            raise StoreError("event chain failed verification during runner recovery", kind="integrity")
+        _need_str(current_service_generation, "current_service_generation")
+        marked = 0
+        with self._tx() as conn:
+            rows = conn.execute(
+                "SELECT claim.grant_id, claim.payload_sha256 FROM runner_execution_claims claim "
+                "WHERE NOT EXISTS (SELECT 1 FROM runner_execution_events terminal "
+                "WHERE terminal.grant_id = claim.grant_id AND terminal.state IN "
+                "('COMPLETE', 'INDETERMINATE', 'RECONCILED')) "
+                "AND claim.service_generation != ? ORDER BY claim.grant_id",
+                (current_service_generation,),
+            ).fetchall()
+            now = self._now()
+            for row in rows:
+                states = self._runner_execution_states_locked(conn, row["grant_id"])
+                predecessor_state = states[-1]["state"]
+                if predecessor_state not in {"PENDING", "EXECUTION_RESERVED"}:
+                    raise StoreError("predecessor runner claim has an invalid recovery state", kind="integrity")
+                event = {
+                    "event": "RUNNER_EXECUTION_INDETERMINATE", "state": "INDETERMINATE",
+                    "grant_id": row["grant_id"], "payload_sha256": row["payload_sha256"],
+                    "reason": "PREDECESSOR_GENERATION_STOPPED",
+                    "predecessor_state": predecessor_state,
+                    "recovery_service_generation": current_service_generation,
+                }
+                conn.execute(
+                    "INSERT INTO runner_execution_events(grant_id, state, payload, created_at) "
+                    "VALUES (?, 'INDETERMINATE', ?, ?)",
+                    (row["grant_id"], canonical_bytes(event).decode("utf-8"), now),
+                )
+                self._record_event_locked(conn, row["grant_id"], "supervisor", "NOTE", event)
+                marked += 1
+        return marked
+
+    def reconcile_runner_execution(self, resolution_record: dict) -> dict:
+        """Append an operator-attested resolution for one exact INDETERMINATE grant."""
+        key = self._execution_resolution_key
+        if key is None:
+            raise StoreError("trusted execution-resolution key is unavailable", kind="authorization")
+        if (not self.reconciliation_complete or not self.verify_event_chain()):
+            raise StoreError("verified Store history is required for execution reconciliation", kind="integrity")
+        if not isinstance(resolution_record, dict):
+            raise StoreError("execution resolution record must be an object", kind="authorization")
+        grant_id = resolution_record.get("grant_id")
+        _need_str(grant_id, "grant_id")
+        with self._tx() as conn:
+            self._verify_supervisor_records(conn)
+            claim = conn.execute(
+                "SELECT * FROM runner_execution_claims WHERE grant_id = ?", (grant_id,)
+            ).fetchone()
+            if claim is None:
+                raise StoreError("execution resolution names an unknown grant", kind="task")
+            states = self._runner_execution_states_locked(conn, grant_id)
+            if states[-1]["state"] != "INDETERMINATE":
+                raise StoreError("only an unresolved INDETERMINATE grant may be reconciled", kind="lifecycle")
+            predecessor_state = states[-1].get("predecessor_state")
+            event = {
+                "event": "RUNNER_EXECUTION_RECONCILED", "state": "RECONCILED",
+                "grant_id": grant_id, "payload_sha256": claim["payload_sha256"],
+                "predecessor_state": predecessor_state,
+                "resolution": dict(resolution_record),
+            }
+            if not _valid_runner_execution_resolution(event, claim, key, predecessor_state):
+                raise StoreError(
+                    "operator execution resolution signature or exact-grant binding is invalid",
+                    kind="authorization",
+                )
+            resolution_id = resolution_record["resolution_id"]
+            for row in conn.execute(
+                "SELECT payload FROM runner_execution_events WHERE state = 'RECONCILED'"
+            ).fetchall():
+                prior_event = json.loads(row["payload"])
+                prior_record = prior_event.get("resolution") if isinstance(prior_event, dict) else None
+                if isinstance(prior_record, dict) and prior_record.get("resolution_id") == resolution_id:
+                    raise StoreError("execution resolution id is already used", kind="duplicate")
+            now = self._now()
+            conn.execute(
+                "INSERT INTO runner_execution_events(grant_id, state, payload, created_at) "
+                "VALUES (?, 'RECONCILED', ?, ?)",
+                (grant_id, canonical_bytes(event).decode("utf-8"), now),
+            )
+            self._record_event_locked(conn, grant_id, "supervisor", "NOTE", event)
+        return {
+            "grant_id": grant_id, "state": "RECONCILED",
+            "outcome": resolution_record["outcome"],
+            "continuation_allowed": resolution_record["outcome"] in {
+                "NO_EXECUTION_PROVEN", "EFFECTS_RESOLVED",
+            },
+        }
 
     def charge_idempotent(
         self,
@@ -2807,6 +3716,50 @@ class Store:
                     "spec_sha256": spec_sha256, "probe_sha256": probe_sha256,
                 },
             )
+
+    def ensure_preflight_consumed(
+        self, run_id: str, nonce: str, spec_sha256: str, probe_sha256: str,
+    ) -> bool:
+        """Consume an exact verified run probe, allowing idempotent service restart only.
+
+        Returns True when this call appended the first consumption record and
+        False when the same immutable run/nonce/digest tuple was already stored.
+        A reused run ID or nonce with different evidence remains a hard failure.
+        """
+        if not self.reconciliation_complete or not self.verify_event_chain():
+            raise StoreError(
+                "verified Store history is required before preflight consumption",
+                kind="integrity",
+            )
+        for value, name in ((run_id, "run_id"), (nonce, "nonce")):
+            _need_str(value, name)
+        for value, name in ((spec_sha256, "spec_sha256"), (probe_sha256, "probe_sha256")):
+            if not isinstance(value, str) or len(value) != 64 or any(
+                char not in "0123456789abcdef" for char in value
+            ):
+                raise StoreError(f"{name}: must be a lowercase SHA-256 digest", kind="argument")
+        with self._tx() as conn:
+            existing = conn.execute(
+                "SELECT run_id, nonce, spec_sha256, probe_sha256 FROM supervisor_probes "
+                "WHERE run_id = ? OR nonce = ?", (run_id, nonce),
+            ).fetchall()
+            if existing:
+                if (len(existing) == 1 and existing[0]["run_id"] == run_id
+                        and existing[0]["nonce"] == nonce
+                        and existing[0]["spec_sha256"] == spec_sha256
+                        and existing[0]["probe_sha256"] == probe_sha256):
+                    return False
+                raise StoreError("preflight run id or nonce was already consumed", kind="duplicate")
+            conn.execute(
+                "INSERT INTO supervisor_probes(run_id, nonce, spec_sha256, probe_sha256) "
+                "VALUES (?, ?, ?, ?)", (run_id, nonce, spec_sha256, probe_sha256),
+            )
+            self._record_event_locked(
+                conn, run_id, "supervisor", "NOTE",
+                {"event": "PREFLIGHT_CONSUMED", "nonce": nonce,
+                 "spec_sha256": spec_sha256, "probe_sha256": probe_sha256},
+            )
+        return True
 
     # --------------------------------------------------------------- budget
 

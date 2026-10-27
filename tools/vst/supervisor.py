@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import uuid
 from typing import Any, Callable
 
@@ -33,6 +34,13 @@ class Supervisor:
         probe_nonce: str | None = None,
         probe_key: bytes | None = None,
         operator_key: bytes | None = None,
+        execution_grant_key_id: str | None = None,
+        execution_grant_private_key_path: str | None = None,
+        execution_grant_openssl_path: str | None = None,
+        execution_grant_trust_keys: dict[str, str] | None = None,
+        execution_grant_audience: str = "vst-runner-service-v1",
+        service_generation_provider: Callable[[], str] | None = None,
+        model_provenance_verifier: Callable[[str, str], bool] | None = None,
     ):
         if isinstance(failure_threshold, bool) or not isinstance(failure_threshold, int) or failure_threshold < 1:
             raise ValueError("failure_threshold must be a positive integer")
@@ -44,6 +52,13 @@ class Supervisor:
         self.probe_nonce = probe_nonce
         self.probe_key = probe_key
         self.operator_key = operator_key
+        self.execution_grant_key_id = execution_grant_key_id
+        self.execution_grant_private_key_path = execution_grant_private_key_path
+        self.execution_grant_openssl_path = execution_grant_openssl_path
+        self.execution_grant_trust_keys = execution_grant_trust_keys
+        self.execution_grant_audience = execution_grant_audience
+        self.service_generation_provider = service_generation_provider
+        self.model_provenance_verifier = model_provenance_verifier
         self._seen_run_ids = {run_id} if isinstance(run_id, str) else set()
         self._seen_probe_nonces = {probe_nonce} if isinstance(probe_nonce, str) else set()
         self._probe_consumed = False
@@ -57,6 +72,13 @@ class Supervisor:
             raise ValueError("sandbox supervisor requires trusted run id, nonce and probe verification key")
         if operator_key is not None and bytes(operator_key) == store._event_key:
             raise ValueError("operator_key must differ from the event key")
+        grant_settings = (
+            execution_grant_key_id, execution_grant_private_key_path,
+            execution_grant_openssl_path, execution_grant_trust_keys, service_generation_provider,
+            model_provenance_verifier,
+        )
+        if any(value is not None for value in grant_settings) and any(value is None for value in grant_settings):
+            raise ValueError("execution grants require a signing key, active-generation provider, and model provenance verifier")
         self._action_status: dict[str, dict] = {}
         self._control_history = store.control_events()
         configs = [row for row in self._control_history if row["kind"] == "CONTROL_BREAKER_CONFIG"]
@@ -290,6 +312,162 @@ class Supervisor:
         self._seen_run_ids.add(run_id)
         self._seen_probe_nonces.add(nonce)
         self._probe_consumed = False
+
+    def issue_execution_grant(
+        self, *, task_id: str, slot: str, attempt: int, epoch: int,
+        run_id: str, resolved_model: str, model_provenance_sha256: str,
+    ) -> dict:
+        """Issue a bounded one-run grant with a short claim window."""
+        if (not isinstance(self.execution_grant_key_id, str)
+                or not isinstance(self.execution_grant_private_key_path, str)
+                or not isinstance(self.execution_grant_openssl_path, str)
+                or not callable(self.service_generation_provider)
+                or not callable(self.model_provenance_verifier)):
+            raise StoreError("execution grant issuer is not configured", kind="authorization")
+        if not self.store.reconciliation_complete:
+            raise StoreError("startup reconciliation must complete before grant issuance", kind="integrity")
+        if self.lifecycle_state == "BLOCKED_RECOVERY" or self.breaker_state != "CLOSED":
+            raise StoreError("supervisor is not in an admitting state", kind="lifecycle")
+        if not isinstance(resolved_model, str) or not resolved_model.strip() or not _valid_sha256(model_provenance_sha256):
+            raise StoreError("resolved model provenance is malformed", kind="authorization")
+        if self.model_provenance_verifier(resolved_model, model_provenance_sha256) is not True:
+            raise StoreError("resolved model provenance is not trusted", kind="authorization")
+        if self.store.sandbox_mode and (run_id != self.run_id or not self._probe_consumed):
+            raise StoreError("execution grant must use this service's consumed preflight run", kind="probe")
+        generation = self.service_generation_provider()
+        if not isinstance(generation, str) or not generation.strip():
+            raise StoreError("active service generation is unavailable", kind="authorization")
+        basis = self.store.execution_grant_basis(
+            task_id, slot, attempt, epoch, run_id,
+            active_service_generation=generation,
+        )
+        manifest_timeout = basis.pop("manifest_timeout_sec")
+        from .execution_grant import (
+            GRANT_CLAIM_WINDOW_SEC, GRANT_COMPLETION_SLACK_SEC,
+            MAX_EXECUTION_DEADLINE_SEC, sign_execution_grant,
+        )
+        execution_deadline_sec = min(int(manifest_timeout), MAX_EXECUTION_DEADLINE_SEC)
+
+        now = self.store._now()
+        claim_expires_at = now + GRANT_CLAIM_WINDOW_SEC
+        grant = {
+            "version": 1, "grant_id": uuid.uuid4().hex,
+            "request_id": uuid.uuid4().hex, "audience": self.execution_grant_audience,
+            **basis, "invocation_id": uuid.uuid4().hex,
+            "resolved_model": resolved_model,
+            "model_provenance_sha256": model_provenance_sha256,
+            "execution_deadline_sec": execution_deadline_sec,
+            "issued_at": now, "claim_expires_at": claim_expires_at,
+            "expires_at": claim_expires_at + execution_deadline_sec + GRANT_COMPLETION_SLACK_SEC,
+        }
+        return sign_execution_grant(
+            grant, key_id=self.execution_grant_key_id,
+            private_key_path=self.execution_grant_private_key_path,
+            openssl_path=self.execution_grant_openssl_path,
+        )
+
+    def claim_runner_execution(self, grant: dict) -> dict | None:
+        """Supervisor IPC endpoint: recheck active generation and Store state before dispatch."""
+        if not callable(self.service_generation_provider):
+            raise StoreError("active service-generation provider is unavailable", kind="authorization")
+        generation = self.service_generation_provider()
+        if not isinstance(generation, str) or not generation:
+            raise StoreError("active service generation is unavailable", kind="authorization")
+        # An expired grant may retrieve its exact already-completed receipt;
+        # Store rejects any expired grant that has no matching COMPLETE claim.
+        self._verify_issued_execution_grant(grant, generation, allow_expired=True)
+        return self.store.claim_runner_execution(
+            grant, active_service_generation=generation,
+        )
+
+    def runner_execution_claim_status(self, grant: dict) -> dict:
+        """Resolve an uncertain claim response without moving or reclaiming its owner."""
+        if not callable(self.service_generation_provider):
+            raise StoreError("active service-generation provider is unavailable", kind="authorization")
+        generation = self.service_generation_provider()
+        if not isinstance(generation, str) or not generation:
+            raise StoreError("active service generation is unavailable", kind="authorization")
+        self._verify_issued_execution_grant(grant, generation, allow_expired=True)
+        return self.store.runner_execution_claim_status(
+            grant, active_service_generation=generation,
+        )
+
+    def reserve_runner_execution(self, grant: dict) -> dict:
+        """Atomically reserve launch for the current exact grant and service generation."""
+        if not callable(self.service_generation_provider):
+            raise StoreError("active service-generation provider is unavailable", kind="authorization")
+        generation = self.service_generation_provider()
+        if not isinstance(generation, str) or not generation:
+            raise StoreError("active service generation is unavailable", kind="authorization")
+        self._verify_issued_execution_grant(grant, generation)
+        return self.store.reserve_runner_execution(
+            grant, active_service_generation=generation,
+        )
+
+    def verify_pending_runner_execution(self, grant: dict) -> bool:
+        """Signer IPC endpoint: prove exact-grant PENDING/reserved authority is current."""
+        if not callable(self.service_generation_provider):
+            return False
+        generation = self.service_generation_provider()
+        if not isinstance(generation, str) or not generation:
+            return False
+        try:
+            self._verify_issued_execution_grant(grant, generation)
+        except Exception:
+            return False
+        return self.store.verify_pending_runner_execution(
+            grant, active_service_generation=generation,
+        )
+
+    def complete_runner_execution(self, grant: dict, receipt: dict) -> None:
+        """Supervisor IPC endpoint: persist a receipt only while its authority remains current."""
+        if not callable(self.service_generation_provider):
+            raise StoreError("active service-generation provider is unavailable", kind="authorization")
+        generation = self.service_generation_provider()
+        if not isinstance(generation, str) or not generation:
+            raise StoreError("active service generation is unavailable", kind="authorization")
+        self._verify_issued_execution_grant(grant, generation)
+        self.store.complete_runner_execution(
+            grant, receipt, active_service_generation=generation,
+        )
+
+    def _verify_issued_execution_grant(
+        self, grant: dict, generation: str, *, allow_expired: bool = False,
+    ) -> dict:
+        if (not isinstance(self.execution_grant_openssl_path, str)
+                or not isinstance(self.execution_grant_audience, str)
+                or not isinstance(self.execution_grant_trust_keys, dict)):
+            raise StoreError("execution grant trust roots are unavailable", kind="authorization")
+        from .execution_grant import verify_execution_grant
+        try:
+            return verify_execution_grant(
+                grant, self.execution_grant_trust_keys,
+                audience=self.execution_grant_audience,
+                service_generation=generation,
+                openssl_path=self.execution_grant_openssl_path,
+                allow_expired=allow_expired,
+            )
+        except Exception as exc:
+            raise StoreError("execution grant signature or scope is invalid", kind="authorization") from exc
+
+    def recover_predecessor_runner_claims(self) -> int:
+        """Terminalize predecessor PENDING/reserved claims after the new generation is verified empty."""
+        if not callable(self.service_generation_provider):
+            raise StoreError("active service-generation provider is unavailable", kind="authorization")
+        generation = self.service_generation_provider()
+        if not isinstance(generation, str) or not generation:
+            raise StoreError("active service generation is unavailable", kind="authorization")
+        return self.store.mark_pending_runner_executions_indeterminate(
+            current_service_generation=generation,
+        )
+
+    def reconcile_runner_execution(self, resolution_record: dict) -> dict:
+        """Apply only an operator-signed exact-grant resolution to an indeterminate claim."""
+        if (not isinstance(self.operator_key, (bytes, bytearray))
+                or not isinstance(self.store._execution_resolution_key, (bytes, bytearray))
+                or bytes(self.operator_key) != bytes(self.store._execution_resolution_key)):
+            raise StoreError("matching trusted operator key is required for runner reconciliation", kind="authorization")
+        return self.store.reconcile_runner_execution(resolution_record)
 
     def evaluate_gate(
         self,

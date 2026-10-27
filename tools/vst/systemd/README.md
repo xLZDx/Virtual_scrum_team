@@ -1,0 +1,161 @@
+# S2 persistent runner deployment contract
+
+This directory contains unit templates for the source implementation in
+`tools/vst/runner_service.py`, `tools/vst/supervisor_service.py`, and
+`tools/vst/signer.py`. The templates and installers are preparation only. No
+account, key, unit, runtime directory, database migration, or service has been
+provisioned or started by these files in the current coding pass.
+
+## Runtime roles
+
+- `vst-runner` (UID:GID `997:988`) is the only runner daemon identity and owns
+  the delegated cgroup. This fixed identity matches the narrowly scoped worker
+  helper.
+- `vst-worker` (`999:989`) runs manifest-pinned commands. The setuid helper
+  clears supplementary groups, drops permanently to this identity, clears and
+  reads back all Linux capability sets, and sets `no_new_privs` before the gate
+  can execute a command.
+- A separate `vst-dispatcher` identity is the only permitted runner-socket
+  peer. It has no cgroup write access and may request grants only through
+  authenticated Supervisor IPC; it never creates or signs grants locally.
+  `dispatch_authorized_manifest_run` is currently a library integration
+  function, not a runnable production dispatcher. No trusted coordinator caller
+  identity or request source is established in this repository, so deployment
+  acceptance remains open until that exact integration contract is authorized.
+- A separate `vst-signer` identity serves the signer socket. Its primary GID
+  is `988` so only the runner group can connect; its private signing key and
+  replay ledger remain signer-owned.
+- `vst-supervisor-client` is the shared socket-access group for the dispatcher,
+  runner, and signer. It must not include the worker identity.
+- The root Supervisor alone opens the Store and signs execution grants. RPC
+  peers are pinned by UID/GID, exact systemd cgroup, and `SO_PEERPIDFD`.
+  The fixed runner peer may claim an exact grant, query that grant's claim
+  state, reserve its one allowed launch, and complete it. Status and reservation
+  requests require the signed grant and active service generation; no operation
+  transfers work to a replacement generation. The signer may check
+  PENDING/EXECUTION_RESERVED authority but cannot claim or reserve work.
+
+The dispatcher UID/GID and signer UID are assigned when the dedicated WSL
+instance is provisioned. They must be distinct from `997:988`, `999:989`, and
+each other. No free numeric IDs are assumed by the source contract.
+
+## Paths and state
+
+The fixed runner unit is `vst-runner.service` in
+`/system.slice/vst-runner.service`. `/run/vst-runner` is preserved across a
+systemd restart, mode `0710`, daemon-owned, and grouped to the dispatcher. The
+admission lock is daemon-owned mode `0600`; the root fence records and checks
+its device and inode. A changed lock or cgroup identity refuses admission.
+The unit's graceful stop timeout is 1900 seconds to cover the maximum
+1800-second signed execution deadline, 90-second completion slack, and cleanup
+overhead. `SendSIGKILL=no` remains set; an overrun therefore fails the manager
+transition closed instead of claiming a clean stop.
+If the runner cannot establish whether an exact claim or launch reservation committed, it sends a
+bounded `REFUSED` response when possible and exits nonzero. `Restart=on-failure` starts a new
+service generation; startup recovery terminalizes predecessor `PENDING` and `EXECUTION_RESERVED`
+claims as `INDETERMINATE`. The old generation never retries or reclaims an ambiguous launch. A
+reserve error whose exact status remains `PENDING` also fail-stops; no same-generation retry is
+attempted.
+Once reservation has been confirmed, any exception before the Supervisor confirms durable
+`COMPLETE` sends `REFUSED` when possible and exits nonzero so startup recovery can mark an
+unfinished predecessor `INDETERMINATE`. Exact `COMPLETE` replay remains safe; ordinary refusals
+before reservation do not restart the unit.
+A failed initial claim followed by an exact-shape `NOT_FOUND` for the current generation is an
+ordinary refusal because no durable claim exists; the daemon remains available. `NOT_FOUND` at
+the reservation boundary after claim admission remains fatal and rotates the generation.
+Signer socket client and handler operations have a 10-second bound and a
+4-KiB response cap; the client reads the complete response through EOF rather
+than assuming one stream `recv()` returns the full JSON message.
+
+The root fence keeps its append-only, hash-chained ledger in a root-only
+directory (mode `0700`) and publishes the current record as a root-owned,
+read-only JSON snapshot (mode `0644`) under a separate root-controlled
+directory. The runner and Supervisor check the snapshot hash, systemd
+`InvocationID`, `ControlGroup`, and live cgroup/lock inodes before accepting a
+grant. First install requires an explicit `bootstrap` operation after inventory
+proves the unit inactive and the reserved UIDs and cgroups empty. A reboot does
+not silently recreate the baseline.
+
+The root Supervisor configuration at `/etc/vst-runner/supervisor-service.json`
+contains absolute paths for the Store, external anchor, root-only event and
+startup keys, a run-bound preflight record and distinct probe/operator
+verification keys, its exact run ID and nonce, grant key ID/private-key
+path/public-key ring, OpenSSL executable,
+generation snapshot and lock, fixed runner unit/cgroup, socket path and its
+group, plus exact peer UID/GID/cgroup/operation entries for `dispatcher`,
+`runnerd`, and `signer`. The model-provenance map binds each allowed resolved
+model ID to one SHA-256 digest. Configuration and its parent directories must
+be root-owned and not group/world writable.
+
+At startup, the root service verifies the configured probe signature and
+operator network-policy attestation against the installed
+`docs/SANDBOX_SPEC.md` digest, then idempotently records that exact run/nonce
+tuple in the append-only Store only after startup reconciliation and event-chain
+verification succeed, before exposing its socket. An integrity-locked Store
+refuses even that preflight write. A restart may confirm
+the same tuple; any changed run, nonce, spec digest, or probe digest refuses
+startup. The record and symmetric verification keys are root-owned mode `0600`;
+the operator key is not copied into runner, worker, or reviewer identities.
+
+The runner configuration at `/etc/vst-runner/runner-service.json` contains the
+daemon UID/GID (`997:988`), dispatcher socket/cgroup identities, canonical
+repository path, signer and Supervisor socket paths, public grant-key ring,
+worker IDs, audience, bounded request/output/deadline limits, and the worker
+helper's commit, source, and binary digests. `daemon_gid` is required by the
+configuration schema and must be `988`; omission is a configuration error. The
+helper path is fixed at
+`/usr/local/libexec/vst-s4-worker-exec`; it must be root-owned, group `vst-runner`,
+mode `4750`. Lock inodes are read from the published root snapshot at runtime,
+not copied into static configuration.
+
+The signer configuration at `/etc/vst-runner/signer-service.json` binds the
+signer key and persistent replay-ledger paths, `vst-runner` peer UID/GID and
+service cgroup, public grant-key ring, OpenSSL path, audience, and Supervisor
+socket. The worker receives neither the signer group nor the supervisor-client
+group.
+
+## Isolated Python launch
+
+The systemd units use `python3.12 -I -S -c` and explicitly add the immutable,
+root-owned `/opt/vst-runtime` deployment artifact to `sys.path` before importing
+the service entry point. This path insertion is intentional and does not use a
+working directory or environment variable. Python isolated mode removes both
+the current directory and the script directory from `sys.path`; see the
+[official Python command-line documentation](https://docs.python.org/3.12/using/cmdline.html#cmdoption-I).
+`tools/qa/install_wsl_runtime.ps1` packages only the requested committed HEAD
+from the one canonical `D:\Repo\Virtual_scrum_team` checkout and streams the
+bounded Git archive over `wsl.exe` stdin. The host script verifies HEAD and its
+committed bytes; the Linux bootstrap verifies the archive digest and member
+allowlist, Ubuntu/WSL identity, disabled automount/interop, no `appendWindowsPath`,
+and absence of Windows-drive mounts. It extracts runtime modules and the matching
+`docs/SANDBOX_SPEC.md` into a root-private, per-attempt
+`/run/vst-deploy-<HEAD>-<transfer-id>` directory; no drive mount or second
+checkout is used.
+
+Before either installer mutates a fixed destination, the bootstrap checks every
+runtime path. An existing runtime directory is accepted only with the matching
+HEAD/archive manifest and byte-identical runtime/spec tree; existing unit files
+must be root-owned mode `0644` and byte-identical. The helper installer compiles
+the expected binary first and accepts an existing helper only when its digest
+and embedded HEAD/source identity match, then repairs its fixed owner/mode. Each
+new transfer uses a fresh random ID, so an interrupted source extraction does
+not block a retry. Unrelated pre-existing state is preserved and causes refusal.
+This is source-only, unreviewed, and unexecuted; it does not establish E5 or
+deployment acceptance.
+
+## Installation and verification boundary
+
+`tools/qa/install_wsl_runner_runtime.sh` installs the immutable Python source
+artifact and three unit files. It accepts only matching prior artifacts and
+refuses to replace mismatched host state; it does not enable or start units.
+`tools/qa/install_wsl_worker_helper.sh` builds the fixed C helper from the same
+committed source revision. These scripts are not run during code completion.
+The one-time `bootstrap` fence action, key provisioning, systemd enable/start,
+database schema upgrade, and all runtime evidence wait until the code and
+security review phase and a cleanly provisioned dedicated WSL host.
+
+Functional and E2E test authoring/execution belongs to the designated test
+agents after all S2 coding is complete. Required policy selectors and forbidden
+process/crash/mutation scenarios remain `NOT_RUN`. A successful install or
+unit startup alone is not S2 acceptance; acceptance also requires exact-head
+tests, restart evidence, reviews, and a correlated final GPT-PM decision.

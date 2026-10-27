@@ -26,10 +26,14 @@ account is not a member of the runner group and the runner drops supplementary
 groups when launching it. The signer authenticates runner UID using kernel
 peer credentials and rejects all other identities.
 
-On POSIX, the worker must not inherit effective, permitted, inheritable, or
-ambient capabilities that let it change UID/GID after the runner's identity
-transition. The trusted runner drops inheritable and ambient capabilities and
-sets `no_new_privs` through `/usr/bin/setpriv` before executing worker code.
+On POSIX, the worker must have empty effective, permitted, inheritable, and
+ambient capability sets after the runner's identity transition. The fixed
+root-owned `/usr/local/libexec/vst-s4-worker-exec` helper clears supplementary
+groups, irreversibly sets the worker UID/GID, clears ambient capabilities,
+zeros and reads back the Linux capability sets, and sets `no_new_privs` before
+executing the fixed Python gate. Missing capability APIs or any nonzero
+readback refuses to execute the worker. The helper accepts no caller-selected
+identity or executable path.
 
 Review runs under a separate read-only identity. Its credential must have no
 write access to the worker worktree or control-plane store. The runner verifies

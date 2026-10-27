@@ -225,3 +225,23 @@ At exact commit `2a71cf4fc32715a1f9f502ab5e7e7788aeff45e8`, 12 focused lifecycle
 At exact code/test HEAD `4c1692d61ee04e945fc0ccdd44db71869ccd5468`, the assigned functional reviewer ran 178 focused Windows selectors successfully across S2 modules. The designated E2E role ran 8 POSIX E3 temporary-anchor selectors, the VST-011 capability-drop selector, and two POSIX identity-boundary selectors in bounded Ubuntu 24.04 WSL; all passed. A separate bounded E4.1 cross-UID descendant cleanup selector passed 1/1. Thus, of the six-module 209-ID inventory, 189 passed and 20 remain `NOT_RUN`; E4.1 is outside that denominator. Exact commands, hashes, units, profiles and limitations are in `docs/sdlc/evidence/s2-safe-functional-exact-4c1692d-20261027.md`; the per-task dispositions are in `docs/sdlc/evidence/s2-task-acceptance-4c1692d-20261027.md`.
 
 Architect, security, reliability and silent-failure reviewers examined code HEAD 4c1692d using GPT-6 Luna, medium effort; none reported an actionable BLOCKER/MAJOR in their stated scope. This is not sprint approval. E5 fresh signed inventory, Windows ACL/key isolation, Windows nested Job Object runtime and E8 remain incomplete. Prohibited process/kill, crash/recovery and mutation-testing scenarios remain `NOT_RUN`. The timeout/retry case injects `TimeoutExpired` before child creation; it is not kill/crash evidence. S2 remains NOT APPROVED; no S3 changes were made during this continuation.
+
+## S2 final gate authority corrections — 2026-10-28
+
+After the working source review, the assigned functional-test-reviewer ran the four approved
+focused groups at base HEAD `2da827be982d3f2d6f2adf152668af6ff8007f21` with the current dirty source/test
+diff: 46 persistent-runner, 32 E1, 38 E2 and 22 E6 tests passed (138 passed, 0 failed, 0 skipped).
+The direct regressions prove that unresolved runner claims block a stale PASS at gate time, signed
+reconciliation binds the exact `EXECUTION_RESERVED` predecessor and closed outcome matrix, and an
+exception after confirmed reservation enters the fail-stop path before child launch. Evidence:
+`docs/sdlc/evidence/s2-final-gate-authority-regressions-20261028.md`.
+
+These focused in-memory tests do not establish installed service framing, daemon/systemd restart,
+Windows/WSL containment, E5 signed inventory, or production coordinator integration. `S2-DISPATCH-M01`
+remains MAJOR/OPEN because no production coordinator callsite has been found and no new scheduler,
+CLI, spool or assignment authority is approved. The operator-reconciliation method remains in-process
+only; deployed service dispatch/role allowlist exposes no reconciliation operation. Fresh specialist
+review and exact-head GPT-PM approval are pending. Prohibited process/crash/recovery/mutation/E8/policy
+selectors remain `NOT_RUN`. S2 remains NOT APPROVED; S3 has not started. Owner: Codex for the bounded
+source correction, permitted evidence and integration discovery; GPT-PM for architecture/exact-head
+adjudication; operator for any genuinely required signed attestation.
