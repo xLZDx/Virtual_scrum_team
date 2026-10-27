@@ -249,7 +249,9 @@ def _serialize_distinct_uid_launch(function: Callable) -> Callable:
             and kwargs.get("worker_gid") is not None
         ):
             requested_limit = args[2] if len(args) > 2 else kwargs["limit_sec"]
-            deadline = time.monotonic() + max(0.0, float(requested_limit))
+            deadline = kwargs.get("_deadline_at")
+            if deadline is None:
+                deadline = time.monotonic() + max(0.0, float(requested_limit))
             remaining = deadline - time.monotonic()
             if remaining <= 0 or not _POSIX_CGROUP_RUN_LOCK.acquire(timeout=remaining):
                 return EXIT_TIMEOUT, "", {
@@ -1121,7 +1123,8 @@ def run_and_sign(
     infos: list[dict] = []
     stop_after_capture_incomplete = False
     for argv in argvs:
-        remaining = deadline_at - time.monotonic()
+        now = time.monotonic()
+        remaining = deadline_at - now
         if stop_after_capture_incomplete:
             exit_code, stdout = EXIT_CAPTURE_INCOMPLETE, ""
             info = {
@@ -1143,6 +1146,7 @@ def run_and_sign(
             exit_code, stdout, info = _run_one(
                 list(argv), cwd, min(float(per_command), remaining), env, max_output_bytes,
                 require_job_object=True,
+                _deadline_at=min(deadline_at, now + float(per_command)),
             )
             if not info.get("admission_wait_expired"):
                 info["skipped_by_deadline"] = False
@@ -1349,7 +1353,8 @@ def run_manifest_commands(
         parser = TRUSTED_PARSER_CATALOG.get(parser_key)
         if parser is None:
             raise ContractError("manifest parser is not present in trusted built-in catalog")
-        remaining = deadline_at - time.monotonic()
+        now = time.monotonic()
+        remaining = deadline_at - now
         if stop_after_capture_incomplete:
             exit_code, stdout = EXIT_CAPTURE_INCOMPLETE, ""
             info = {
@@ -1367,6 +1372,7 @@ def run_manifest_commands(
                 item["argv"], cwd, min(float(per_command), remaining), env,
                 max_output_bytes, require_job_object=True,
                 worker_uid=worker_uid, worker_gid=worker_gid,
+                _deadline_at=min(deadline_at, now + float(per_command)),
             )
             if not info.get("admission_wait_expired"):
                 info["skipped_by_deadline"] = False

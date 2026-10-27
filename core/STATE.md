@@ -203,3 +203,7 @@ See `core/BACKLOG.md`.
 `origin` = `https://github.com/xLZDx/Virtual_scrum_team.git` (public). `git ls-remote origin refs/heads/main`
 reported `6117ba24b08a260b42402db6da0bf767864e1c04` on 2026-10-24; local `main` matched it before the S2 branch was created. Merge `d5cd7f5` and follow-ups are present; branch `s1-control-plane-core` is kept on the remote. The first commit `0a5821b` on `origin/main` contains a local
 absolute path in this file; the operator decided on 2026-10-23 to keep history unrewritten.
+
+## S2 E4 absolute deadline follow-up — 2026-10-27
+
+At exact commit `2a71cf4fc32715a1f9f502ab5e7e7788aeff45e8`, 12 focused lifecycle selectors passed and the permitted cross-UID POSIX WSL E4.1 selector passed once; exact evidence and the unretained final child-cgroup event limitation are recorded in change 0460. Architecture/security/silent-failure review found no actionable BLOCKER/MAJOR there, while reliability found that a relative remaining-time value could still be rebased before wrapper entry. Change 0461 now propagates the caller's absolute per-command/overall deadline and adds an expired-deadline regression. Exact-head test/runtime/reviews for 0461 remain pending; the 2a71 results do not verify it. S2/VST-013 remain open; S3 has not started.

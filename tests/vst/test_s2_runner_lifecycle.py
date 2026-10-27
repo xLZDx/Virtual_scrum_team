@@ -1569,6 +1569,38 @@ def test_distinct_uid_worker_refuses_launch_when_delegated_cgroup_is_unavailable
     assert calls == []
 
 
+def test_distinct_uid_launch_preserves_expired_absolute_deadline_at_admission(monkeypatch):
+    _posix_runner_os(monkeypatch)
+    monkeypatch.setattr(runner, "_POSIX_CGROUP_RUN_LOCK", threading.Lock())
+    monkeypatch.setattr(runner.time, "monotonic", lambda: 200.0)
+    downstream_calls = []
+    scope = _ObservedCgroup([])
+
+    def create_scope():
+        downstream_calls.append("cgroup_create")
+        return scope
+
+    def unexpected_popen(*_args, **_kwargs):
+        downstream_calls.append("popen")
+        raise OSError("unexpected Popen after expired deadline")
+
+    monkeypatch.setattr(runner._DelegatedCgroup, "create", create_scope)
+    monkeypatch.setattr(runner.subprocess, "Popen", unexpected_popen)
+
+    code, output, info = runner._run_one(
+        ["synthetic-command"], ".", 1, {"PATH": "/worker/bin"}, 1024,
+        worker_uid=1001, worker_gid=1001, _deadline_at=199.0,
+    )
+
+    assert code == runner.EXIT_TIMEOUT
+    assert output == ""
+    assert info["timed_out"] is True
+    assert info["skipped_by_deadline"] is True
+    assert info["admission_wait_expired"] is True
+    assert info["capture_incomplete"] is False
+    assert downstream_calls == []
+
+
 class _GateChild:
     def __init__(self, events, reader, *, timeout_once=False):
         self.pid = 4243

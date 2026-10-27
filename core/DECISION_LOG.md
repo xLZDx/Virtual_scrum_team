@@ -26,6 +26,14 @@ Architecture and security reviewers of exact HEAD `3be44ad4ea93bc9e68cee1534d1d4
 
 At exact HEAD `aa965c030396001fce82583d17fc6dca9a50cdf7`, the focused test run had 10 passes and two gate-timeout fixture failures. The new production deadline checks consumed fake-clock reads earlier than the old two-value sequence expected, so the call timed out before the gate-specific branch and the fixture raised `KeyError`. The test author moved the deterministic fake expiry to the gate handoff and asserts the read count; exact-head rerun is pending. Source did not change. See change 0459.
 
+## 2026-10-27 -- Record exact-head S2 E4 deadline and WSL evidence
+
+At exact code/test HEAD `2a71cf4fc32715a1f9f502ab5e7e7788aeff45e8`, 12 focused lifecycle selectors passed (85 deselected, 0 skipped) and the designated WSL cross-UID E4.1 selector passed 1/1 under a bounded `Delegate=yes` unit. The environment enforced CPU, memory, task, runtime, private-network, NNP and capability constraints; runner UID 997 and worker UID 999 with no worker capabilities were observed. The child cgroup final `populated=0` sample was not retained, though cleanup and heartbeat-stop assertions passed. This closes only the selected POSIX test behavior, not all E4/S2 acceptance. See change 0460 and `docs/sdlc/evidence/s2-e4-deadline-exact-2a71cf4-20261027.md`.
+
+## 2026-10-27 -- Propagate the caller's absolute POSIX command deadline
+
+Reliability review of exact HEAD `2a71cf4fc32715a1f9f502ab5e7e7788aeff45e8` found the admission wrapper reconstructed a fresh deadline from a relative budget. A scheduling pause before wrapper entry could still extend the overall deadline. Callers now pass the absolute minimum of the existing overall deadline and per-command limit; admission uses it unchanged and returns timeout without launch when expired. A new regression is authored; exact-head tests, WSL E2E, and fresh specialist reviews are pending. See change 0461.
+
 ## 2026-10-27 -- Record upstream Temporal SQLite CI failure details
 
 Read-only historical GitHub logs for three failed SQLite shards in `All Tests` run `37665870783` on the exact pinned Temporal SHA report 49, 52, and 59 per-shard failures respectively and each ends at a 39-minute runner timeout. Logs include worker-versioning lookup failures, SQLite workflow-type length CHECK failures, and context deadlines; shard-level root causes and reproducibility are not established. The fourth failed shard, cass_os3 shard 2, remains without decoded logs. This is upstream CI evidence only, not local acceptance or a basis to independently declare the provisional candidate accepted/rejected. See `docs/sdlc/evidence/s3-temporal-upstream-ci-failure-detail-20261027.md` and change 0421.
