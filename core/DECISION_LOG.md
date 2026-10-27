@@ -997,3 +997,7 @@ Change 0443 updates S2 state to reflect four selectors at dc1741b and the constr
 ## 2026-10-27 — Close current S2 code-review findings; retain durability MINOR
 
 Five fresh specialist reviews at exact source/test HEAD 79155fdf9f1f4a7ba71358592ccd54c669a76291 found no actionable BLOCKER/MAJOR. The database reviewer recorded a nonblocking initial-anchor parent-directory fsync limitation; if a power loss removes the entry, startup remains fail-closed and availability is lost. Change 0444 preserves this distinction and keeps S2 Phase 8 NOT APPROVED pending system acceptance.
+
+## 2026-10-27 — Distinguish S2 prior full review from focused current-head results
+
+Change 0445 corrects the active S2 STATE wording: the prior GPT-PM-reviewed full candidate remains 0bbac8; targeted fixes/tests and fresh source reviews are separately bound to current source/test HEAD 79155fd. This does not change Phase 8, which remains NOT APPROVED pending system acceptance.
