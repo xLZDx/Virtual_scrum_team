@@ -1017,3 +1017,7 @@ Change 0448 aligns the phase table with the five actual fresh reviewer outcomes 
 ## 2026-10-27 — Re-run bounded-Git reader failure tests after cleanup correction
 
 Change 0449 records two fake-process selectors passing at exact source/test HEAD 79155fd after 95ceb1: reader construction/start failure and pipe-read failure. Together with the constructor-failure selector, three current-head bounded-Git cleanup regressions pass; four prior targeted regressions remain tied to dc1741b. Real process-kill, crash, mutation, timeout/restart and policy selectors remain NOT_RUN.
+
+## 2026-10-27 — Reconcile S2 exact-head selector counts
+
+Change 0450 records four selectors at dc1741b and three bounded-Git selectors at 79155fd (seven executions total). Their exact-head evidence remains separate; S2 Phase 8 is still NOT APPROVED pending system acceptance.
