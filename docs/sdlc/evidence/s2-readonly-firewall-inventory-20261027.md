@@ -31,6 +31,6 @@ Run as `root` through `wsl.exe -d Ubuntu-24.04 --user root --exec sh -lc ...`. A
 
 ## Acceptance disposition
 
-The WSL ruleset is a point-in-time configuration observation. It does not prove that the rules are immutable against the worker, persist across restart, cover every host/hypervisor path, or actually block all egress; no traffic was sent. The Windows host permits outbound traffic by default. Therefore complete S2 egress/system acceptance remains `NOT_VERIFIED`, and S2 Phase 8 remains NOT APPROVED. Prohibited process, crash, and mutation scenarios remain `NOT_RUN`.
+The WSL ruleset is a point-in-time configuration observation. A second root-shell read-only inventory on 2026-10-27 again observed input/output `policy drop` and loopback-only accepts; it also observed IPv4 forwarding `1`, IPv6 forwarding `0`, and no packet was sent. It does not prove that the rules are immutable against the worker, persist across restart, cover every host/hypervisor path, or actually block all egress. The Windows host permits outbound traffic by default. Therefore complete S2 egress/system acceptance remains `NOT_VERIFIED`, and S2 Phase 8 remains NOT APPROVED. Prohibited process, crash, and mutation scenarios remain `NOT_RUN`.
 
 Owner: Codex owns evidence recording and boundary reconciliation; the operator owns any provisioning or policy change; GPT-PM owns gate adjudication. Next: keep the distinction between observed WSL policy and end-to-end enforcement, and obtain permitted boundary evidence before requesting a new gate.

@@ -42,4 +42,25 @@ wsl --status
 wsl --list --verbose
 ```
 
-Observed output reported Windows 10 Pro, version `2009`, build `26300`, 64-bit; WSL default version `2`; `docker-desktop` running as WSL2; and `Ubuntu-24.04` stopped as WSL2 at the time of `wsl --list --verbose`. The firewall command without an explicit policy store returned raw enum defaults of `0`; the ActiveStore plus `netsh` commands documented in `s2-readonly-firewall-inventory-20261027.md` are retained for effective-profile interpretation. This host-state screen does not prove that the Ubuntu environment is provisioned for the S2 acceptance boundary and does not add POSIX runtime, containment, or egress evidence.
+Observed output reported Windows 10 Pro, version `2009`, build `26300`, 64-bit; WSL default version `2`; `docker-desktop` running as WSL2; and `Ubuntu-24.04` stopped as WSL2 at the time of `wsl --list --verbose`. The firewall command without an explicit policy store returned raw enum defaults of `0`; the ActiveStore plus `netsh` commands documented in `s2-readonly-firewall-inventory-20261027.md` are retained for effective-profile interpretation.
+
+## Ubuntu 24.04 static system recheck — 2026-10-27
+
+The distribution was listed `Stopped` immediately before this read-only inventory. Running `wsl.exe -d Ubuntu-24.04 --user root --exec sh -lc ...` started it to permit configuration inspection; the following `wsl --list --verbose` listed it `Running` afterward. No package, file, configuration, account, firewall rule, or network state was changed intentionally. The commands executed were:
+
+```sh
+id
+uname -r
+cat /etc/wsl.conf
+findmnt -rn -o TARGET,FSTYPE | grep -E '^(/ |/tmp |/dev/shm |/mnt/c |/mnt/d )'
+getent passwd vst-worker vst-runner
+ls -l /var/run/docker.sock
+nft list chain inet vst_s2_filter input
+nft list chain inet vst_s2_filter output
+cat /proc/sys/net/ipv4/ip_forward
+cat /proc/sys/net/ipv6/conf/all/forwarding
+```
+
+Observed identity was `root` (UID 0), kernel `6.6.114.1-microsoft-standard-WSL2`, and `/etc/wsl.conf` had systemd enabled, automount disabled, interop disabled, and Windows PATH append disabled. The queried mounts were `/` on ext4 and `/dev/shm` on tmpfs; no Windows drive mount appeared in that filtered output. Accounts `vst-worker` (UID 999/GID 989) and `vst-runner` (UID 997/GID 988) exist; this did not execute as either account. `/var/run/docker.sock` was absent. The nftables input and output chain policies were `drop` with loopback-only accepts. IPv4 forwarding was `1`; IPv6 forwarding was `0`.
+
+These are point-in-time static observations from a root shell. No packet, DNS, egress, process-containment, or worker-identity test was performed. Starting the stopped WSL distribution changed its runtime state to Running; no persistent system configuration was altered. S2 remains NOT APPROVED.
