@@ -790,3 +790,8 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 2026-10-27 — SUCCESS: the S5 AEVE router check reported its precise transport limitation because neither AEVE MCP tools nor the documented CLI were available. No neighboring repository was searched. Rule: when a domain router lacks its supported transport, record the exact `NOT_COVERED` code and stop that access path rather than constructing an undocumented fallback. See change 0391.
 
 2026-10-27 — SUCCESS: the portfolio checkpoint now includes the exact S5 profile-transport limitation and the last verified repository baseline without claiming that a state-document commit records its own final HEAD. Rule: bind mutable status fields to a verified parent baseline and verify the resulting commit separately. See change 0392.
+## 2026-10-27 — Keep repository license badges separate from pinned-version evidence
+
+For versioned dependencies, a repository overview badge does not establish that the exact tag includes or is covered by that license. Record repository-level metadata alongside exact-tag tree evidence, keep contradictory or incomplete records unresolved, and preserve the operator's legal decision boundary. See change 0393.
+
+2026-10-27 — SHORTCOMING: a `git diff --cached --check` command was issued during review without preserving its exit status. Rule: do not cite silent output as a pass; disclose the command and leave it out of verification evidence unless the exact exit status is captured. See change 0393.
