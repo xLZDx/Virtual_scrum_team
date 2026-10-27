@@ -2,6 +2,10 @@
 
 Append-only. One dated entry per decision, piece of evidence or refusal.
 
+## 2026-10-27 -- Record official Go toolchain digest and reproducible-build metadata
+
+The official Go downloads index publishes SHA-256 `ccfe7ae822d2c2f41f4fe7c956199967a4dac22d0ee0d2b2bfdb440aab3b20c5` for the S3 design-pinned `go1.26.10.linux-amd64.tar.gz`; the official Go reproducible-build report marks the same archive `PASS` and lists a matching digest prefix. Change 0412 records this as publisher evidence only: no local toolchain bytes were acquired, installed, executed, or hash-verified. The G03 design acceptance remains design-only. See the provenance screen and change 0412.
+
 ## 2026-10-27 -- Record published Temporal Server release digests without acquisition
 
 Read-only inspection of the official `v1.32.1` GitHub release assets page exposed the published SHA-256 metadata for `checksums.txt` and the Linux amd64 archive. Change 0411 records those values and explicitly leaves byte-level verification, source-to-binary provenance, acquisition, build, installation, and runtime acceptance open. The correlated G03/G07 decision remains design-only; no legal or acquisition disposition is made. See `docs/sdlc/evidence/s3-temporal-server-release-provenance-screen-20261027.md` and change 0411.
