@@ -1933,8 +1933,22 @@ def test_distinct_uid_gate_environment_timeout_cleans_scope_and_refuses_exec(
     deadline_handoff = runner._write_pipe_before_deadline
     _install_gate_popen(monkeypatch, events)
     monkeypatch.setattr(runner, "_write_pipe_before_deadline", deadline_handoff)
-    clock = iter((100.0, 102.0))
-    monkeypatch.setattr(runner.time, "monotonic", lambda: next(clock))
+
+    class GateHandoffTimeoutClock:
+        """Expire only at pipe handoff, after admission and the initial guard."""
+        def __init__(self):
+            self.values = iter((100.0, 100.0, 100.0, 100.0, 102.0))
+            self.calls = 0
+
+        def monotonic(self):
+            self.calls += 1
+            try:
+                return next(self.values)
+            except StopIteration as exc:
+                raise AssertionError("unexpected monotonic clock read") from exc
+
+    clock = GateHandoffTimeoutClock()
+    monkeypatch.setattr(runner.time, "monotonic", clock.monotonic)
     monkeypatch.setattr(runner.select, "select", lambda *_a: ([], [], []))
 
     code, output, info = runner._run_one(
@@ -1947,6 +1961,7 @@ def test_distinct_uid_gate_environment_timeout_cleans_scope_and_refuses_exec(
     assert info["posix_gate_timeout"] is True
     assert info["capture_incomplete"] is (not cleanup_result)
     assert code == (runner.EXIT_TIMEOUT if cleanup_result else runner.EXIT_CAPTURE_INCOMPLETE)
+    assert clock.calls == 5
     assert events.count("kill_and_remove") == 1
     assert "attach" not in events
     assert "gate_closed_without_exec" in events
