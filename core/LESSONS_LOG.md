@@ -795,3 +795,5 @@ The functional-owned recovery module passed again at exact source HEAD `dc959150
 For versioned dependencies, a repository overview badge does not establish that the exact tag includes or is covered by that license. Record repository-level metadata alongside exact-tag tree evidence, keep contradictory or incomplete records unresolved, and preserve the operator's legal decision boundary. See change 0393.
 
 2026-10-27 — SHORTCOMING: a `git diff --cached --check` command was issued during review without preserving its exit status. Rule: do not cite silent output as a pass; disclose the command and leave it out of verification evidence unless the exact exit status is captured. See change 0393.
+
+2026-10-27 — SHORTCOMING: commit 0393 used the per-command override `core.hooksPath=NUL`, which skipped repository-local hooks. Rule: never suppress the configured Git hook path for convenience; disclose the exact affected commit and use the ordinary commit command thereafter. See change 0394.

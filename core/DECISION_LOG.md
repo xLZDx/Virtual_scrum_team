@@ -865,3 +865,7 @@ S2 safe exact-head subsets at `6ca2ee00ef31ac621e7ff3231ac175646bbd3bb2` add 74 
 ## 2026-10-27 — Preserve exact-version S3 license uncertainty
 
 The GitHub organization repository listing displays an MIT badge for `nexus-proto-annotations`, but the exact S3-pinned `v0.1.0` tag tree has no conventional license/notice file and prior pkg.go.dev metadata recorded `NONE_DETECTED`. The repository-level badge is not bound to the pinned version and does not settle rights. Keep S3-G01 `NOT_VERIFIED`; operator owns legal disposition, Codex owns any additional read-only evidence, and no acquisition/build/install/execute is authorized. See change 0393 and `docs/sdlc/evidence/s3-temporal-exact-version-license-metadata-20261027.md`.
+
+## 2026-10-27 — Disclose local hook override on change 0393
+
+The commit command for change 0393 set `core.hooksPath=NUL`, so configured repository-local Git hooks did not run. Preserve that commit without rewriting it; do not claim any hook/check result for 0393. Subsequent commits use the normal Git hook path. See change 0394.
