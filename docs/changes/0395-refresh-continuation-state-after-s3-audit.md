@@ -3,6 +3,7 @@
 ## What changed
 
 - Updated `core/STATE.md` to the verified baseline and branch distance after changes 0393–0394.
+- Added a permitted read-only Windows/WSL host-state and firewall configuration recheck to the S2 evidence record, without claiming runtime or egress acceptance.
 - Reconciled S3 exact-version license metadata, the pending GPT-PM architecture adjudication, and the non-approving status of all S2/S4/S5 gates.
 - Refreshed the generated document registry.
 
@@ -13,6 +14,8 @@ The preceding portfolio checkpoint referenced an earlier baseline and omitted ch
 ## Affected paths
 
 - `core/STATE.md`
+- `docs/sdlc/evidence/s2-readonly-firewall-inventory-20261027.md`
+- `docs/sdlc/evidence/s2-readonly-wsl-system-inventory-20261027.md`
 - `core/DECISION_LOG.md`
 - `docs/changes/0395-refresh-continuation-state-after-s3-audit.md`
 - `governance/DOCUMENT_REGISTRY.md`
@@ -23,6 +26,7 @@ The preceding portfolio checkpoint referenced an earlier baseline and omitted ch
 - `git status --short` showed only the protected pre-existing untracked `docs/sdlc/evidence/s2-functional-test-run.md`; it was not modified or staged.
 - The document registry was generated with `C:\Python314\python.exe tools/build_document_registry.py`.
 - No tests, builds, policy selectors, network tests, or candidate executions were performed for this state refresh.
+- Host readout observed Windows 10 Pro build `26300`, WSL default version 2, `docker-desktop` running, and `Ubuntu-24.04` stopped at the distribution-list command. ActiveStore/netsh continued to report BlockInbound/AllowOutbound for Windows profiles.
 - No source/test code, sprint fork folder, push, PR, or merge was created.
 
 ## Decision

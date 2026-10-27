@@ -30,3 +30,16 @@ The first mount-filter attempt used an incorrectly quoted `awk` expression and f
 This inventory is supplemental system evidence only. It does not prove worker isolation, process containment, filesystem write exclusion, full egress enforcement, persistent deployment, host firewall/hypervisor policy, or Windows Job Object behavior. S2 Phase 8 remains NOT APPROVED. Prohibited process, crash, and mutation scenarios remain `NOT_RUN`; do not infer PASS from this inventory. The prior 81-case safe Windows/WSL subset and its 86-ID registry denominator remain documented in `s2-safe-platform-subset-6ca2ee0-20261026.md`.
 
 Owner: Codex owns evidence recording and gate reconciliation; the operator owns any authorization to broaden process/crash/mutation scope; GPT-PM owns gate adjudication. Next: preserve these limits and request another gate only after all mandatory permitted evidence and any required explicit waiver are recorded.
+
+## Windows/WSL host state screen — 2026-10-27
+
+Additional read-only commands from the same canonical checkout:
+
+```powershell
+Get-ComputerInfo | Select-Object WindowsProductName,WindowsVersion,OsBuildNumber,OsArchitecture
+Get-NetFirewallProfile | Select-Object Name,Enabled,DefaultInboundAction,DefaultOutboundAction
+wsl --status
+wsl --list --verbose
+```
+
+Observed output reported Windows 10 Pro, version `2009`, build `26300`, 64-bit; WSL default version `2`; `docker-desktop` running as WSL2; and `Ubuntu-24.04` stopped as WSL2 at the time of `wsl --list --verbose`. The firewall command without an explicit policy store returned raw enum defaults of `0`; the ActiveStore plus `netsh` commands documented in `s2-readonly-firewall-inventory-20261027.md` are retained for effective-profile interpretation. This host-state screen does not prove that the Ubuntu environment is provisioned for the S2 acceptance boundary and does not add POSIX runtime, containment, or egress evidence.

@@ -797,3 +797,9 @@ For versioned dependencies, a repository overview badge does not establish that 
 2026-10-27 — SHORTCOMING: a `git diff --cached --check` command was issued during review without preserving its exit status. Rule: do not cite silent output as a pass; disclose the command and leave it out of verification evidence unless the exact exit status is captured. See change 0393.
 
 2026-10-27 — SHORTCOMING: commit 0393 used the per-command override `core.hooksPath=NUL`, which skipped repository-local hooks. Rule: never suppress the configured Git hook path for convenience; disclose the exact affected commit and use the ordinary commit command thereafter. See change 0394.
+
+2026-10-27 — SUCCESS: the evidence-scoped S3 architecture review was reconciled against the full in-repository plan before adopting its findings. The plan already contains the candidate-neutral contract and scenario denominator, while the current comparison used ambiguous “fallback” language. Rule: verify reviewer claims against the full named in-scope source, separate missing runtime evidence from missing design artifacts, and request focused re-adjudication when the reviewer lacked that source. See change 0396.
+
+2026-10-27 — SUCCESS: the S2 host recheck distinguished ActiveStore policy from raw default enum output and preserved its point-in-time scope. Rule: identify the policy-store source, record effective configuration only, and never infer egress or worker isolation from firewall settings without permitted behavior evidence. See change 0397.
+
+2026-10-27 — SHORTCOMING: an out-of-scope GitHub repository-list call was made during the S3 task. Root cause: a connector was selected without first confirming the request required an external account/project lookup. Rule: keep investigation inside the named canonical repository and its authorized evidence sources; do not call account-wide repository discovery for a local project task. See change 0398.

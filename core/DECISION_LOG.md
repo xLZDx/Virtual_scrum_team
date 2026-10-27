@@ -873,3 +873,17 @@ The commit command for change 0393 set `core.hooksPath=NUL`, so configured repos
 ## 2026-10-27 — Refresh the active S2–S5 checkpoint
 
 Change 0395 advances the current portfolio record from baseline `a15602a` and incorporates changes 0393–0394: S3's repository-level MIT metadata does not resolve exact-version license status; the GPT-PM architecture adjudication is pending; S2 Phase 8, S4 policy exclusions, and S5 remain open. The protected untracked S2 evidence file remains untouched. This is a state/documentation update only, not acceptance evidence.
+
+The same change adds a read-only S2 Windows/WSL state screen and confirms effective Windows ActiveStore/netsh profile values remain inbound Block/outbound Allow. Ubuntu 24.04 was listed stopped at the distribution-list query; no POSIX runtime or network behavior was tested. These observations do not change S2 acceptance.
+
+## 2026-10-27 — Disclose out-of-scope GitHub repository-list read
+
+While continuing the S3 review, Codex accidentally called the GitHub connector's general repository-list tool. It was read-only; only a bounded prefix of returned metadata was displayed, no repository contents were opened, and the result was not used. Stop cross-project access and continue only within the named canonical repository. See change 0398.
+
+## 2026-10-27 — Record read-only S2 host-state recheck
+
+Change 0397 repeats the ActiveStore and `netsh` Windows firewall inventory and records the read-only Windows/WSL distro state. The host profiles remain inbound Block/outbound Allow; Ubuntu-24.04 was listed stopped at the query. No traffic, worker, test, or policy-restricted scenario was run, so S2 Phase 8 remains NOT APPROVED.
+
+## 2026-10-27 — Reconcile GPT-PM S3 architecture findings with local plan
+
+GPT-PM request `efb3f084-9e88-4e0f-9111-e152d99bc013` returned MODIFY while accepting the provisional hand-written baseline, read-only BMad/Temporal comparator roles, and no-winner/no-TOP result. The response was explicitly evidence-scoped and did not inspect the repository. Local review confirms the existing S3 plan already defines a candidate-independent adapter contract, AC-1–AC-15 mapping, and common scenario denominator; shared-fixture runtime remains `NOT_RUN`. Change 0396 removes ambiguous “fallback” wording, records the accepted role states, and proposes a precise planning profile for full GPT-PM re-adjudication. No acquisition/run authorization follows.

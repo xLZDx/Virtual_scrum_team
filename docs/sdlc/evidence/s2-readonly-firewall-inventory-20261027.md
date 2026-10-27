@@ -15,6 +15,8 @@ netsh advfirewall show allprofiles
 
 Observed Domain, Private, and Public profiles were enabled, with inbound `Block` and outbound `Allow`. `netsh` reported `BlockInbound,AllowOutbound` for all three profiles and local firewall rules as GPO-store only. Therefore the host firewall configuration does not establish default-deny outbound traffic.
 
+The same commands were repeated read-only on 2026-10-27 during the autonomous continuation. `Get-NetFirewallProfile -PolicyStore ActiveStore` again returned Domain/Private/Public `Enabled=1`, `DefaultInboundAction=4` (`Block`), and `DefaultOutboundAction=2` (`Allow`); `netsh advfirewall show allprofiles` again reported each profile `ON` with `BlockInbound,AllowOutbound`. A separate call omitting `-PolicyStore ActiveStore` returned raw enum value `0`; it is not used to override the ActiveStore/netsh observation. No network traffic was sent and no firewall rule was changed.
+
 WSL read-only command:
 
 ```sh
