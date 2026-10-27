@@ -151,6 +151,8 @@ Each result records candidate id + commit SHA, fixture version/seed, sandbox pro
 
 The comparison table has one row per scenario and candidate, including `NOT_RUN` rows. Compare recovery correctness, STOP behavior, retry/budget enforcement, worktree confinement, unauthorized access attempts, egress, evidence completeness, restart determinism, and operator-visible failure modes. Do not combine missing evidence with success and do not score candidates on speed alone.
 
+A read-only source/evidence comparison is recorded in `docs/sdlc/evidence/s3-static-candidate-comparison-20261027.md`. It documents current identities and known risks without claiming the required shared-fixture runtime comparison or a winner. Temporal remains the provisional audit comparator only; `TOP` remains prohibited until all criteria below pass.
+
 No candidate receives a “TOP” label until:
 
 1. all candidates have immutable identity/revision and completed license/compatibility/security audits;
