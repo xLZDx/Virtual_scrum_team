@@ -2,6 +2,15 @@
 
 Entry fields: date and commit title; kind; facts with evidence pointer; root cause; layer that missed or caught it; rule for next time.
 
+## 2026-10-27 — Verify restart fencing with separate code and deployment evidence
+
+- Kind: SUCCESS (the code-level restart gap was corrected and the remaining service boundary was kept open rather than inferred).
+- Facts: at exact source/test HEAD `a6ea0dc15b9e02b37f48a85f1fcc76cbe81df5a3`, designated test roles passed 188 Windows and 11 WSL selected IDs; WSL separately demonstrated two-process `flock` serialization and removed only an empty `populated=0` cgroup fixture. The fresh reliability review still found persistent stable-parent service evidence missing. See change 0465 and `docs/sdlc/evidence/s2-restart-fence-exact-a6ea0dc-20261027.md`.
+- Root cause: earlier same-process tests were not evidence for cross-process locking, while a transient unit was not evidence for a persistent service restart boundary.
+- Layer that caught it: full-diff specialist review identified the code gap; exact-head functional/runtime evidence and fresh specialist review separated what was fixed from what remained external.
+- Rule: bind every claim to an exact code/test head and actual runtime profile. An empty cgroup fixture proves empty-scope cleanup only; do not upgrade it to populated orphan recovery, crash restart, or persistent deployment evidence.
+- Fix status: code fix committed as `a6ea0dc`; exact-head safe tests and reviews recorded. S2 still NOT APPROVED; 20 restricted/unavailable selectors remain `NOT_RUN`, and the stable service-parent gate remains open.
+
 ## 2026-10-27 — A process-local latch is not a runner-restart fence
 
 - Kind: SHORTCOMING (the same-process safety boundary was incorrectly treated as a restart boundary).
