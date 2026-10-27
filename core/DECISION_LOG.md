@@ -2,6 +2,10 @@
 
 Append-only. One dated entry per decision, piece of evidence or refusal.
 
+## 2026-10-27 -- Record Temporal pinned-commit workflow-run outcomes
+
+A read-only GitHub Actions API query for Temporal Server commit `af08a5e5f2dd40f545f2afac7780daaa6987001e` returned a successful Build and Publish run `37665870819`, a failed separate All Tests run `37665870783`, and a successful Release run `37850182088`. This confirms workflow outcomes for that source SHA but does not bind a specific release asset/checksum to a build artifact. Logs and artifact bytes were not retrieved; no candidate acquisition or execution occurred. See `docs/sdlc/evidence/s3-temporal-server-build-profile-source-screen-20261027.md` and change 0418.
+
 ## 2026-10-27 -- Record pinned Temporal Server build-profile source metadata
 
 The pinned server `.goreleaser.yml` declares a `cmd/server` build with `CGO_ENABLED=0`, includes Linux amd64 among targets, runs `go mod download`, and configures SHA-256 checksums; `go.mod` declares Go 1.26.8. These are source configuration facts, not release-job execution or source-to-binary provenance. See the pinned build-profile source screen and change 0417.
