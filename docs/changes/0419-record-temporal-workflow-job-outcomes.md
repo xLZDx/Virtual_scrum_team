@@ -36,7 +36,7 @@ Change 0418 established workflow-level outcomes but deliberately did not retriev
 
 ## Verification and acceptance
 
-- `python tools/build_document_registry.py --check`, `python C:/Users/koros/.claude/tools/report_conform.py reports --check`, and `git diff --cached --check` completed successfully after the final review. These are documentation hygiene checks, not sprint acceptance tests.
+- Rerun `python tools/build_document_registry.py --check`, `python C:/Users/koros/.claude/tools/report_conform.py reports --check`, and `git diff --cached --check` after the final report update; these are documentation hygiene checks, not sprint acceptance tests.
 - This strengthens read-only S3 CI/build-invocation evidence only. It does not independently prove that a published asset digest matches the release build output, explain CI failures, satisfy local compatibility/runtime acceptance, or provide legal/acquisition approval.
 - S2 remains NOT APPROVED. S4 remains INCONCLUSIVE and all 53 policy selectors remain NOT_RUN. S5 remains gated.
 
