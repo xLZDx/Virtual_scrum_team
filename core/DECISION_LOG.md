@@ -2,6 +2,10 @@
 
 Append-only. One dated entry per decision, piece of evidence or refusal.
 
+## 2026-10-27 -- Record pinned Temporal Server build-profile source metadata
+
+The pinned server `.goreleaser.yml` declares a `cmd/server` build with `CGO_ENABLED=0`, includes Linux amd64 among targets, runs `go mod download`, and configures SHA-256 checksums; `go.mod` declares Go 1.26.8. These are source configuration facts, not release-job execution or source-to-binary provenance. See the pinned build-profile source screen and change 0417.
+
 ## 2026-10-27 -- Reconcile Go dependency license metadata denominator
 
 The existing S3 Go license metadata table has 223 rows; all 12 package-metadata gaps are present in the source follow-up: ten source-text/template classifications, one noncanonical BSD-style entry with SPDX unverified, and one UNKNOWN Nexus entry. This reconciles the recorded table only and does not establish complete dependency closure or legal acceptability. See the S3 license detail follow-up and change 0414.
