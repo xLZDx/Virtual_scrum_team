@@ -43,7 +43,7 @@ The per-shard failure totals (49/52/59) are partial upstream reports and not dis
 - GPT-PM verdict: **ACCEPT — provisional read-only comparator retained**; 0 new architecture BLOCKER, 0 new architecture MAJOR, 1 MINOR (`S3-CI-N01`) and 2 INFO (`S3-CI-I01`, `S3-CI-I02`). Acquisition/runtime readiness remains `NOT_APPROVED`; final winner/TOP remains none.
 - The first wait timed out; the later durable job-status and reply retrieval confirmed the exact correlated response. This was architecture adjudication, not exact-head implementation approval.
 
-GPT-PM's `S3-CI-N01` closure criterion is that every observed error family receives a reasoned impact disposition. Root-cause resolution is not required to retain a read-only comparator, but lifecycle-relevant unresolved failures remain open for later runtime acceptance. GPT-PM must verify this disposition against the exact committed head before the finding is marked closed.
+GPT-PM's `S3-CI-N01` closure criterion is that every observed error family receives a reasoned impact disposition. The correlated focused verification at declared HEAD `0a9a70bd5d80a64bba4c7d6e9f8ae7f47dd24ac6` closed `S3-CI-N01` at source-only documentation level; exact response and correlation are recorded in `s3-temporal-upstream-ci-gptpm-verification-20261027.md`. GPT-PM added `S3-CI-I03` (INFO): preserve this documentation closure as distinct from compatibility closure. Root-cause resolution is not required to retain a read-only comparator, but lifecycle-relevant unresolved failures remain open for later runtime acceptance.
 
 ## Sources and ownership
 
