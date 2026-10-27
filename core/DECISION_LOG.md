@@ -2,6 +2,10 @@
 
 Append-only. One dated entry per decision, piece of evidence or refusal.
 
+## 2026-10-27 -- Reconcile stale G03 review status in S3 handover documents
+
+The current S3 target-profile proposal and bilingual S2–S5 handover still described the corrected G03 design as pending GPT-PM verification, although the correlated `ACCEPT` at exact reviewed HEAD `77b319367b575b9f4c0a193e91405df507c886e6` is recorded in change 0405/0406. Change 0410 corrects those current status statements and preserves the earlier `MODIFY` as review history. It does not promote design acceptance into implementation, runtime, license, acquisition, S2/S4, or candidate-comparison acceptance. See change 0410.
+
 ## 2026-10-27 -- Synchronize the latest S3–S5 phase note
 
 The repository history already contains change 0407's S3 phase-state reconciliation and change 0408's VST-028 clarification, but the top-level `docs/sdlc/STATE.md` continuation note still identified change 0406 as latest. Change 0409 updates that note to match the existing records. This is a documentation correction only: the exact-head GPT-PM G03/G07 result remains design-only; S2 remains NOT APPROVED; S4 remains INCONCLUSIVE with 53 policy selectors NOT_RUN; and S5 remains gated. No new approval, runtime evidence, legal disposition, or acquisition authorization is inferred. See change 0409.
