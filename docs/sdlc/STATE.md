@@ -84,3 +84,7 @@ The current S2 continuation now includes the VST-013 cross-UID cleanup correctio
 ## S2 E4 post-review safety follow-up — 2026-10-27
 
 At exact HEAD `ce8f7eeae840d911ae89ae91f0264eec2d540874`, the selected POSIX cross-UID WSL E4.1 selector passed (1 passed in 4.11s), and exact-head unit tests passed (5 passed). The active cgroup path/events were not retained. Fresh architecture and reliability reviews then found a gate-start timeout gap and that later manifest commands could run after cgroup cleanup was unconfirmed; security review found no issue. Codex fixed both; nine focused unit selectors passed on the uncommitted follow-up. Since source changed, the prior real E2E result is not exact-head acceptance for the current tree. Exact-head functional and WSL E2E reruns remain pending. VST-013 and S2 Phase 8 remain open, and S3 has not started. See change 0455.
+
+## S2 E4 runner retry-latch follow-up — 2026-10-27
+
+At `55cc6313dceeffe2d6777b10e686ab851e0a8b8c`, 9 focused unit tests and the real UID 997→999 delegated-WSL selector passed; the active child cgroup path and `cgroup.kill` were captured, while the final `populated 0` event was not retained. Fresh security review raised a conditional same-process retry concern after an unconfirmed cleanup. Codex added a process-local latch and the functional-test reviewer passed four focused latch/deadline selectors on the uncommitted tree. Exact-head unit, E2E and fresh review are required after this source change. S2 remains open; S3 has not started. See change 0456.

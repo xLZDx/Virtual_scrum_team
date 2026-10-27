@@ -62,9 +62,11 @@ systemd-delegated cgroup-v2 subtree with `cgroup.kill`; it attaches an isolated,
 fixed-environment exec gate before releasing the allowlisted worker command.
 The gate handoff is bounded by the command deadline. Unavailable delegation or
 unconfirmed empty-scope cleanup is a non-approving failure; after unconfirmed
-cleanup, remaining commands in that manifest run are not launched. Same-UID
-compatibility launches retain process-group cleanup and do not satisfy the S2
-all-descendant acceptance guarantee. No host path beyond that run directory may be
+cleanup, remaining commands in that manifest run are not launched and the
+current runner process refuses later distinct-UID launches. A replacement
+runner may start only after the outer service/sandbox has stopped or fenced any
+prior scope. Same-UID compatibility launches retain process-group cleanup and
+do not satisfy the S2 all-descendant acceptance guarantee. No host path beyond that run directory may be
 mounted or passed to the worker. Job Object nesting on Windows must be
 verified on the target host; unsupported nesting is a refusal, not a
 best-effort success.

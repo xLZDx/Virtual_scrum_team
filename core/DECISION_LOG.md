@@ -10,6 +10,14 @@ The cross-UID timeout acceptance at source/test HEAD `161dcc7838b2bd05f01f485dab
 
 The exact-head review of change 0454 found that a `capture_incomplete` result did not stop later manifest commands, and that a blocking environment-pipe write could exceed the command deadline before its timeout began. Changes in the current follow-up stop remaining commands after any `EXIT_CAPTURE_INCOMPLETE` and use a nonblocking environment handoff against the same per-command deadline. Nine focused functional tests passed on the uncommitted follow-up tree. The real POSIX selector passed at `ce8f7ee`, before these follow-up changes; exact-head rerun is required. See change 0455.
 
+## 2026-10-27 -- Latch the runner after unconfirmed cgroup cleanup
+
+Security review of `55cc6313dceeffe2d6777b10e686ab851e0a8b8c` found no confirmed vulnerability but identified a conditional retry risk: an external long-lived caller could invoke the runner again after cleanup failure. The runner now sets a process-local latch on any unconfirmed cgroup kill/removal and refuses subsequent distinct-UID launches before cgroup creation or `Popen`. The focused latch regression passed. Recovery requires the outer service/sandbox boundary to stop or fence any prior scope before a replacement runner starts. The cross-UID E2E at `55cc631` predates this latch and must be rerun at the final head. See change 0456.
+
+## 2026-10-27 -- Latch the runner after unconfirmed cgroup cleanup
+
+Security review of `55cc6313dceeffe2d6777b10e686ab851e0a8b8c` found no confirmed vulnerability but identified a conditional retry risk: an external long-lived caller could invoke the runner again after cleanup failure. The runner now sets a process-local latch on any unconfirmed cgroup kill/removal and refuses subsequent distinct-UID launches before cgroup creation or `Popen`. The focused latch regression passed. Recovery requires the outer service/sandbox boundary to stop or fence any prior scope before a replacement runner starts. The cross-UID E2E at `55cc631` predates this latch and must be rerun at the final head. See change 0456.
+
 ## 2026-10-27 -- Record upstream Temporal SQLite CI failure details
 
 Read-only historical GitHub logs for three failed SQLite shards in `All Tests` run `37665870783` on the exact pinned Temporal SHA report 49, 52, and 59 per-shard failures respectively and each ends at a 39-minute runner timeout. Logs include worker-versioning lookup failures, SQLite workflow-type length CHECK failures, and context deadlines; shard-level root causes and reproducibility are not established. The fourth failed shard, cass_os3 shard 2, remains without decoded logs. This is upstream CI evidence only, not local acceptance or a basis to independently declare the provisional candidate accepted/rejected. See `docs/sdlc/evidence/s3-temporal-upstream-ci-failure-detail-20261027.md` and change 0421.

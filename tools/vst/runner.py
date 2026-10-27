@@ -234,6 +234,7 @@ _POSIX_GATE = (
     "argv = sys.argv[3:]\n"
     "os.execvpe(argv[0], argv, worker_env)\n"
 )
+_POSIX_CGROUP_CLEANUP_FAILED = threading.Event()
 
 
 def _write_pipe_before_deadline(fd: int, data: bytes, deadline: float, proc) -> None:
@@ -318,7 +319,9 @@ class _DelegatedCgroup:
                     return True
                 time.sleep(0.02)
         except (OSError, ValueError):
+            _POSIX_CGROUP_CLEANUP_FAILED.set()
             return False
+        _POSIX_CGROUP_CLEANUP_FAILED.set()
         return False
 
 
@@ -647,6 +650,11 @@ def _run_one(
         child_env = env
         pass_fds: tuple[int, ...] = ()
         if os.name != "nt" and worker_uid is not None and worker_gid is not None:
+            if _POSIX_CGROUP_CLEANUP_FAILED.is_set():
+                return EXIT_CAPTURE_INCOMPLETE, "", {
+                    **info, "capture_incomplete": True,
+                    "posix_cgroup_refused": "a prior cleanup was not confirmed in this runner process",
+                }
             try:
                 cgroup = _DelegatedCgroup.create()
             except OSError as exc:

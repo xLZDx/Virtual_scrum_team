@@ -24,6 +24,7 @@ On timeout, root-command exit, reader failure, or exceptional cleanup, the runne
 - Missing unified cgroup v2, missing `Delegate=yes`, unwritable delegated parent, or absent cgroup control files: refuse to execute a distinct-UID worker and return a non-approving containment result.
 - Failure to attach the gated PID: close the gate without releasing the requested command, reap the no-op trampoline, and return non-approving. The trampoline runs only with the fixed sanitized environment until attached, so inherited dynamic-loader variables cannot execute code before containment.
 - Failure to kill/reap the cgroup or confirm `populated 0`: return `EXIT_CAPTURE_INCOMPLETE`, preserve diagnostics, never report PASS, and stop launching later commands from the same manifest run.
+- If a scope's kill/removal remains unconfirmed, latch the failure in the runner process and refuse subsequent distinct-UID launches from that process. A new runner must not be admitted until its outer service/sandbox boundary has stopped or fenced the prior scope.
 - The exec-gate environment handoff is nonblocking and shares the command deadline. If the gate cannot receive the environment before the deadline, close the gate and kill its cgroup without releasing worker code.
 - Do not add `CAP_KILL` as a fallback. The outer service timeout is only emergency cleanup, not acceptance evidence.
 

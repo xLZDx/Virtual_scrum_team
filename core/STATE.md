@@ -10,6 +10,10 @@ At canonical S2 continuation HEAD `47cdc48`, the designated `e2e-runner` reprodu
 
 At exact HEAD `ce8f7eeae840d911ae89ae91f0264eec2d540874`, exact-head focused tests (5 passed) and the real delegated WSL cross-UID selector (1 passed) demonstrated heartbeat cleanup for that revision. The test's active cgroup path/events were not retained. Fresh reviews found one MAJOR (do not launch later commands after incomplete cleanup) and one MINOR (include gate handoff in the command deadline); security review found no finding. Codex implemented both fixes and `functional-test-reviewer` passed 9 focused tests on the uncommitted follow-up tree. Current exact-head unit and E2E evidence are pending; VST-013 and S2 remain open. No S3 work started. Change 0455 tracks the follow-up.
 
+## S2 E4 runner retry latch — 2026-10-27
+
+At exact HEAD `55cc6313dceeffe2d6777b10e686ab851e0a8b8c`, 9 focused tests and the real delegated WSL selector passed; the WSL run retained the child cgroup path and `cgroup.kill`, but not its final `populated 0` journal transition. Fresh architecture/reliability reviews found no BLOCKER/MAJOR; security found no confirmed issue and raised a conditional same-process retry concern. Codex added a process-local latch that blocks future distinct-UID launches after unconfirmed cleanup. Four focused latch/deadline tests passed in the uncommitted tree. Exact-head rerun and final code review remain pending; VST-013/S2 stay open and S3 has not started. See change 0456.
+
 ## Latest continuation checkpoint — S2–S5 autonomous work (2026-10-27)
 
 ### Latest docs-only follow-up (2026-10-27; starting HEAD `71c87e38d4910c75500ef94d61f00f963c32eb0a`)

@@ -1518,6 +1518,7 @@ def _posix_runner_os(monkeypatch):
     posix_os = SimpleNamespace(**vars(os))
     posix_os.name = "posix"
     monkeypatch.setattr(runner, "os", posix_os)
+    monkeypatch.setattr(runner, "_POSIX_CGROUP_CLEANUP_FAILED", threading.Event())
     return posix_os
 
 
@@ -1542,6 +1543,8 @@ class _ObservedCgroup:
                 os.kill(self.pid, runner.signal.SIGKILL)
             except ProcessLookupError:
                 pass
+        if not self.cleanup_result:
+            runner._POSIX_CGROUP_CLEANUP_FAILED.set()
         return self.cleanup_result
 
 
@@ -1713,6 +1716,43 @@ def test_distinct_uid_cgroup_cleanup_failure_is_non_approving(monkeypatch):
     assert code == runner.EXIT_CAPTURE_INCOMPLETE
     assert info["capture_incomplete"] is True
     assert events.count("kill_and_remove") == 2  # immediate attempt plus finally retry
+
+
+def test_unconfirmed_cgroup_cleanup_latches_later_distinct_uid_launches(monkeypatch):
+    _posix_runner_os(monkeypatch)
+    events = []
+    scope = _ObservedCgroup(events, cleanup_result=False)
+    monkeypatch.setattr(runner._DelegatedCgroup, "create", lambda: scope)
+    _install_gate_popen(monkeypatch, events)
+    runner.os.write = lambda fd, data: os.write(fd, data)
+
+    first_code, _output, first_info = runner._run_one(
+        ["synthetic-command", "first"], ".", 1, {"PATH": "/worker/bin"}, 1024,
+        worker_uid=1001, worker_gid=1001,
+    )
+    assert first_code == runner.EXIT_CAPTURE_INCOMPLETE
+    assert first_info["capture_incomplete"] is True
+    assert runner._POSIX_CGROUP_CLEANUP_FAILED.is_set()
+
+    later_calls = []
+    monkeypatch.setattr(
+        runner._DelegatedCgroup, "create",
+        lambda: later_calls.append("cgroup_create"),
+    )
+    monkeypatch.setattr(
+        runner.subprocess, "Popen",
+        lambda *args, **kwargs: later_calls.append("popen"),
+    )
+    second_code, second_output, second_info = runner._run_one(
+        ["synthetic-command", "second"], ".", 1, {"PATH": "/worker/bin"}, 1024,
+        worker_uid=1001, worker_gid=1001,
+    )
+
+    assert second_code == runner.EXIT_CAPTURE_INCOMPLETE
+    assert second_output == ""
+    assert second_info["capture_incomplete"] is True
+    assert "prior cleanup was not confirmed" in second_info["posix_cgroup_refused"]
+    assert later_calls == []
 
 
 @pytest.mark.parametrize("cleanup_result", [True, False])
