@@ -58,29 +58,34 @@ or POSIX process containment, restricted scenarios, push, PR, or merge.
 ## Verification state
 
 - Base HEAD: `9a5c41de5ce2878558402665eafaa0a80c09d177`.
+- Committed code/test HEAD: `d5001797cb94113efd9a8dc26e4a15f2dc130976`.
 - The functional-test-reviewer authored acceptance tests in
   `docs/sdlc/evidence/s2-versioned-worker-helper-functional-20261028.md`.
   E2E-runner executed the two focused modules four times while fixing test
   fixture defects; attempts 1–3 failed for documented assertion/fixture
-  reasons. Attempt 4 passed **179, failed 0, skipped 6** using
-  `C:\Python314\python.exe` (CPython 3.14.3), exit 0, on dirty base HEAD
-  `9a5c41de5ce2878558402665eafaa0a80c09d177`. Exact command, file hashes and
-  all failures are retained in the corresponding
+  reasons. Attempt 4 passed **179, failed 0, skipped 6** on the dirty base.
+  Attempt 5 passed **179, failed 0, skipped 6** using
+  `C:\Python314\python.exe` (CPython 3.14.3), exit 0, on exact committed HEAD
+  `d5001797cb94113efd9a8dc26e4a15f2dc130976`. Exact command, file hashes and
+  all attempts are retained in the corresponding
   `docs/sdlc/evidence/s2-versioned-worker-helper-execution-20261028*.md`
-  files. The six platform skips are not passes. The same command still
-  requires a final run on the exact committed head.
-- WSL installation/runtime: pending E2E role after source/test freeze and exact
-  commit. Existing old helper must be measured before and after and remain
-  untouched. The installer must not enable or start services or provision
-  signing keys/configuration.
+  files. The six platform skips are not passes.
+- Exact-head WSL install at `d5001797cb94113efd9a8dc26e4a15f2dc130976`
+  succeeded in the already provisioned Ubuntu-24.04 WSL2 environment. The new
+  versioned helper, runtime tree, and three units match the recorded hashes;
+  the old helper remains unchanged. Units were not enabled or started. Full
+  commands, preflight and results are in
+  `docs/sdlc/evidence/s2-versioned-worker-helper-install-d5001797-20261028.md`.
+- No keys, root Runner configuration, signed E5 attestation, manifest run, or
+  traffic probe were performed.
 - Fresh specialist review and exact-head GPT-PM final gate: pending.
 - Existing read-only archive evidence is in
   `docs/sdlc/evidence/s2-wsl-archive-eol-repro-9a5c41d-20261028.md`; it does
   not establish installed/runtime behavior.
 - The root-owned Runner configuration has no in-repository producer. The
   required exact path/head/source digest/binary digest contract is documented,
-  but its runtime provisioning and any needed root key/configuration remain
-  external and have not been performed.
+  but root-owned provisioning and any needed keys remain external and have not
+  been performed.
 - S2-DISPATCH-M01, E5 operator signature, effective egress, platform
   containment, and restricted process/crash/mutation/E8/policy scenarios remain
   separate open criteria. Restricted scenarios remain `NOT_RUN`.

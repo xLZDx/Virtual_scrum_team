@@ -12,11 +12,11 @@
 
 | Gate | Required behavior | Test coverage authored | Execution |
 |---|---|---|---|
-| S2-WH-1 | Helper path is the exact absolute versioned path derived from a full lowercase 40-character commit ID; malformed, legacy, alternate-head, and alternate-prefix paths fail closed. | `test_versioned_worker_helper_path_requires_full_lowercase_commit_id`; `test_versioned_worker_helper_rejects_unbound_path_before_filesystem`; config loader fixture now requires `worker_exec_helper_path`. | PASS in dirty-diff attempt 4; exact committed head pending |
-| S2-WH-2 | Root helper file must be a regular singly linked file with root owner, daemon group, and exact setuid mode. | `test_versioned_worker_helper_rejects_invalid_file_metadata` (owner, group, mode, hard-link count). | PASS in dirty-diff attempt 4; exact committed head pending |
-| S2-WH-3 | The binary digest and embedded build identity must match trusted configuration. | `test_versioned_worker_helper_rejects_digest_mismatch_before_execution`; `test_versioned_worker_helper_rejects_embedded_identity_mismatch`. | PASS in dirty-diff attempt 4; exact committed head pending |
-| S2-WH-4 | Verification detects an inode replacement during validation and the service rejects a changed helper identity before a child launch. | `test_versioned_worker_helper_rejects_path_inode_change_during_verification`; `test_service_refuses_helper_identity_change_before_runner_spawn`; `test_versioned_helper_identity_mismatch_refuses_spawn_without_fallback`. | PASS in dirty-diff attempt 4; exact committed head pending |
-| S2-WH-5 | POSIX distinct-UID launch uses only the versioned helper and runs identity verification before `Popen`, with no legacy-path fallback. | `test_versioned_worker_helper_verifies_immutable_identity_and_uses_no_legacy_fallback`; `test_versioned_helper_identity_callback_runs_before_spawn`; shared gate Popen fixture asserts its executable equals the exact versioned path. | PASS in dirty-diff attempt 4; exact committed head pending |
+| S2-WH-1 | Helper path is the exact absolute versioned path derived from a full lowercase 40-character commit ID; malformed, legacy, alternate-head, and alternate-prefix paths fail closed. | `test_versioned_worker_helper_path_requires_full_lowercase_commit_id`; `test_versioned_worker_helper_rejects_unbound_path_before_filesystem`; config loader fixture now requires `worker_exec_helper_path`. | PASS at exact committed code/test HEAD `d5001797cb94113efd9a8dc26e4a15f2dc130976` |
+| S2-WH-2 | Root helper file must be a regular singly linked file with root owner, daemon group, and exact setuid mode. | `test_versioned_worker_helper_rejects_invalid_file_metadata` (owner, group, mode, hard-link count). | PASS at exact committed code/test HEAD `d5001797cb94113efd9a8dc26e4a15f2dc130976` |
+| S2-WH-3 | The binary digest and embedded build identity must match trusted configuration. | `test_versioned_worker_helper_rejects_digest_mismatch_before_execution`; `test_versioned_worker_helper_rejects_embedded_identity_mismatch`. | PASS at exact committed code/test HEAD `d5001797cb94113efd9a8dc26e4a15f2dc130976` |
+| S2-WH-4 | Verification detects an inode replacement during validation and the service rejects a changed helper identity before a child launch. | `test_versioned_worker_helper_rejects_path_inode_change_during_verification`; `test_service_refuses_helper_identity_change_before_runner_spawn`; `test_versioned_helper_identity_mismatch_refuses_spawn_without_fallback`. | PASS at exact committed code/test HEAD `d5001797cb94113efd9a8dc26e4a15f2dc130976` |
+| S2-WH-5 | POSIX distinct-UID launch uses only the versioned helper and runs identity verification before `Popen`, with no legacy-path fallback. | `test_versioned_worker_helper_verifies_immutable_identity_and_uses_no_legacy_fallback`; `test_versioned_helper_identity_callback_runs_before_spawn`; shared gate Popen fixture asserts its executable equals the exact versioned path. | PASS at exact committed code/test HEAD `d5001797cb94113efd9a8dc26e4a15f2dc130976` |
 
 ## Execution status
 
@@ -26,7 +26,7 @@ This functional-test author did not execute pytest because its role explicitly p
 C:\Python314\python.exe -m pytest -q tests/vst/test_s2_persistent_runner_service.py tests/vst/test_s2_runner_lifecycle.py
 ```
 
-The result is on dirty base HEAD `9a5c41de5ce2878558402665eafaa0a80c09d177`, so it is diagnostic evidence only. Six platform-conditional skips are not passes. Exact hashes and prior failure details are retained in `s2-versioned-worker-helper-execution-20261028.md` and `s2-versioned-worker-helper-execution-20261028-attempt2.md` through `attempt4.md`; the final exact committed-head rerun remains pending.
+Attempt 4 is diagnostic evidence on dirty base HEAD `9a5c41de5ce2878558402665eafaa0a80c09d177`. The final exact-head run is attempt 5: **179 passed, 0 failed, 6 skipped**, exit 0, 77.53 seconds, CPython 3.14.3, at committed HEAD `d5001797cb94113efd9a8dc26e4a15f2dc130976`. It used the exact command above. The attempt-5 evidence file records source/test SHA-256 values, exact revision, one pytest-asyncio deprecation warning, and the six platform skips. Skips are not passes and remain unverified.
 
 A separate E2E-role run reported that the three parameter cases in `test_versioned_worker_helper_rejects_unbound_path_before_filesystem` failed because the assertion expected stale error wording (`not bound to the exact-version path`). The matcher now uses the implementation's actual message (`not the configured exact-version path`). That earlier result predates this assertion-only test fix and is not final evidence for the current test revision. Pytest was not rerun after the fix; current execution remains **NOT_RUN**.
 
@@ -40,6 +40,6 @@ The E2E attempt 3 report was **178 passed, 1 failed, 6 skipped**. Its sole failu
 
 ## Limitations and next action
 
-- These tests passed on the dirty diff but not yet on an exact committed head, and they do not prove privileged helper installation or WSL runtime behavior.
-- Owner: Codex coordinates; e2e-runner owns exact-head focused execution and subsequent permitted WSL runtime acceptance.
-- Next action: commit stable source/tests and this evidence, rerun the exact command on that commit, then record the final revision/counts/skips. Keep system/runtime outcomes separate from unit-test proof.
+- Exact-head focused functional acceptance is proven by attempt 5; this does not prove privileged-helper installation or service runtime behavior. Separate successful artifact-install evidence is in `s2-versioned-worker-helper-install-d5001797-20261028.md`; no service was activated.
+- Owner: Codex maintains provenance and coordinates; e2e-runner owns remaining permitted runtime acceptance.
+- Next action: finish fresh exact-head specialist review and GPT-PM adjudication; keep root configuration, E5 signature, effective egress, containment, and unit-test proof as separate criteria.
