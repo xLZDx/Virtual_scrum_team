@@ -1029,3 +1029,7 @@ Change 0451 records the 2e-runner read-only audit: no further non-duplicative s
 ## 2026-10-27 — Add POSIX cross-UID descendant cleanup acceptance
 
 Change 0452 adds a focused VST-013/E4.1 test that runs a bounded descendant under st-worker while the runner is st-runner, requiring process-group timeout cleanup to stop its heartbeat. Current operator instruction authorizes closing S2 blockers; this test is temp-only, bounded, and owned by functional-test-reviewer/e2e-runner. No test has yet run at its committed head.
+
+## 2026-10-27 — Select per-command delegated cgroup cleanup for POSIX cross-UID workers
+
+The exact VST-013 acceptance run showed runner UID 997 cannot kill a worker UID 999 descendant with the existing CAP_SETUID/CAP_SETGID-only profile. Codex rejected broad CAP_KILL and a new root helper; selected systemd-delegated cgroup-v2 per-command cleanup with a gated exec barrier and fail-closed behavior when delegation is unavailable. Design: docs/S2_POSIX_WORKER_CGROUP_DESIGN.md (change 0453). No source fix or passing run yet.
