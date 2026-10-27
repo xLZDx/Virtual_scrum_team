@@ -1755,6 +1755,112 @@ def test_unconfirmed_cgroup_cleanup_latches_later_distinct_uid_launches(monkeypa
     assert later_calls == []
 
 
+def test_concurrent_distinct_uid_launch_waits_for_cleanup_latch_admission(monkeypatch):
+    _posix_runner_os(monkeypatch)
+
+    class ObservedLock:
+        """Expose when the second launch has reached the serialized boundary."""
+        def __init__(self):
+            self._lock = threading.Lock()
+            self._guard = threading.Lock()
+            self._entries = 0
+            self.second_waiting = threading.Event()
+
+        def __enter__(self):
+            with self._guard:
+                self._entries += 1
+                if self._entries == 2:
+                    self.second_waiting.set()
+            self._lock.acquire()
+            return self
+
+        def __exit__(self, *_exc):
+            self._lock.release()
+
+    run_lock = ObservedLock()
+    monkeypatch.setattr(runner, "_POSIX_CGROUP_RUN_LOCK", run_lock)
+    cleanup_entered = threading.Event()
+    finish_cleanup = threading.Event()
+    events = []
+
+    class BlockingFailedCleanupCgroup:
+        def attach(self, pid):
+            events.append(("attach", pid))
+
+        def kill_and_remove(self, timeout=10.0):
+            events.append("cleanup_started")
+            if not cleanup_entered.is_set():
+                cleanup_entered.set()
+                assert finish_cleanup.wait(timeout=5)
+            runner._POSIX_CGROUP_CLEANUP_FAILED.set()
+            events.append("cleanup_unconfirmed")
+            return False
+
+    scope = BlockingFailedCleanupCgroup()
+    created = []
+
+    def create_scope():
+        created.append("cgroup_create")
+        return scope
+
+    monkeypatch.setattr(runner._DelegatedCgroup, "create", create_scope)
+    _install_gate_popen(monkeypatch, events)
+    original_popen = runner.subprocess.Popen
+    popen_calls = []
+
+    def observed_popen(argv, **kwargs):
+        popen_calls.append(argv)
+        return original_popen(argv, **kwargs)
+
+    monkeypatch.setattr(runner.subprocess, "Popen", observed_popen)
+    results = {}
+
+    def run(command):
+        results[command] = runner._run_one(
+            ["synthetic-command", command], ".", 2,
+            {"PATH": "/worker/bin"}, 1024,
+            worker_uid=1001, worker_gid=1001,
+        )
+
+    first = threading.Thread(target=run, args=("first",), daemon=True)
+    second = threading.Thread(target=run, args=("second",), daemon=True)
+    first.start()
+    try:
+        assert cleanup_entered.wait(timeout=5)
+        second.start()
+        assert run_lock.second_waiting.wait(timeout=5)
+
+        # The first command is still inside unconfirmed cgroup cleanup. The
+        # second must not reach cgroup creation or Popen while that state is
+        # unresolved.
+        assert not finish_cleanup.is_set()
+        assert created == ["cgroup_create"]
+        assert len(popen_calls) == 1
+
+        finish_cleanup.set()
+        first.join(timeout=5)
+        second.join(timeout=5)
+    finally:
+        finish_cleanup.set()
+        first.join(timeout=5)
+        if second.ident is not None:
+            second.join(timeout=5)
+
+    assert not first.is_alive()
+    assert not second.is_alive()
+    first_code, _first_output, first_info = results["first"]
+    second_code, second_output, second_info = results["second"]
+    assert first_code == runner.EXIT_CAPTURE_INCOMPLETE
+    assert first_info["capture_incomplete"] is True
+    assert second_code == runner.EXIT_CAPTURE_INCOMPLETE
+    assert second_output == ""
+    assert second_info["capture_incomplete"] is True
+    assert "prior cleanup was not confirmed" in second_info["posix_cgroup_refused"]
+    assert created == ["cgroup_create"]
+    assert len(popen_calls) == 1
+    assert events.count("cleanup_unconfirmed") == 2
+
+
 @pytest.mark.parametrize("cleanup_result", [True, False])
 def test_distinct_uid_gate_environment_timeout_cleans_scope_and_refuses_exec(
     monkeypatch, cleanup_result,

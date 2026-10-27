@@ -88,3 +88,7 @@ At exact HEAD `ce8f7eeae840d911ae89ae91f0264eec2d540874`, the selected POSIX cro
 ## S2 E4 runner retry-latch follow-up — 2026-10-27
 
 At `55cc6313dceeffe2d6777b10e686ab851e0a8b8c`, 9 focused unit tests and the real UID 997→999 delegated-WSL selector passed; the active child cgroup path and `cgroup.kill` were captured, while the final `populated 0` event was not retained. Fresh security review raised a conditional same-process retry concern after an unconfirmed cleanup. Codex added a process-local latch and the functional-test reviewer passed four focused latch/deadline selectors on the uncommitted tree. Exact-head unit, E2E and fresh review are required after this source change. S2 remains open; S3 has not started. See change 0456.
+
+## S2 E4 concurrent runner admission — 2026-10-27
+
+At `b00edae5cdd46920c2a1ec26bfc58796ba58f372`, 10 focused selectors and the real delegated WSL cross-UID selector passed. Architecture/security review identified a conditional race between the process-local cleanup latch and concurrent calls. Codex serialized distinct-UID POSIX launches over launch, wait, and cleanup; the new bounded concurrency test confirmed the second call waits and then refuses after the first cleanup fails. Eleven focused selectors passed on the uncommitted tree. Exact-head tests and WSL E2E remain pending. VST-013/S2 remain open; S3 has not started. See change 0457.

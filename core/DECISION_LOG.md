@@ -14,9 +14,9 @@ The exact-head review of change 0454 found that a `capture_incomplete` result di
 
 Security review of `55cc6313dceeffe2d6777b10e686ab851e0a8b8c` found no confirmed vulnerability but identified a conditional retry risk: an external long-lived caller could invoke the runner again after cleanup failure. The runner now sets a process-local latch on any unconfirmed cgroup kill/removal and refuses subsequent distinct-UID launches before cgroup creation or `Popen`. The focused latch regression passed. Recovery requires the outer service/sandbox boundary to stop or fence any prior scope before a replacement runner starts. The cross-UID E2E at `55cc631` predates this latch and must be rerun at the final head. See change 0456.
 
-## 2026-10-27 -- Latch the runner after unconfirmed cgroup cleanup
+## 2026-10-27 -- Serialize distinct-UID launches around the cleanup latch
 
-Security review of `55cc6313dceeffe2d6777b10e686ab851e0a8b8c` found no confirmed vulnerability but identified a conditional retry risk: an external long-lived caller could invoke the runner again after cleanup failure. The runner now sets a process-local latch on any unconfirmed cgroup kill/removal and refuses subsequent distinct-UID launches before cgroup creation or `Popen`. The focused latch regression passed. Recovery requires the outer service/sandbox boundary to stop or fence any prior scope before a replacement runner starts. The cross-UID E2E at `55cc631` predates this latch and must be rerun at the final head. See change 0456.
+Architecture and security reviews of exact HEAD `b00edae5cdd46920c2a1ec26bfc58796ba58f372` identified a conditional race between checking the process-local cleanup latch and admitting a concurrent launch. Distinct-UID POSIX `_run_one` calls now share a process lock across launch, wait, and cleanup. The concurrency regression test held one call inside failing cleanup and confirmed a second call waited, then refused before cgroup creation/Popen. Eleven focused selectors passed on the uncommitted working tree. The WSL selector at `b00edae` predates this serialization change and must be rerun at the exact next head. See change 0457.
 
 ## 2026-10-27 -- Record upstream Temporal SQLite CI failure details
 

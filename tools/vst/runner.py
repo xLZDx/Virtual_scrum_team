@@ -67,6 +67,7 @@ Standard library only; no network.
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import logging
@@ -235,6 +236,22 @@ _POSIX_GATE = (
     "os.execvpe(argv[0], argv, worker_env)\n"
 )
 _POSIX_CGROUP_CLEANUP_FAILED = threading.Event()
+_POSIX_CGROUP_RUN_LOCK = threading.Lock()
+
+
+def _serialize_distinct_uid_launch(function: Callable) -> Callable:
+    """Prevent concurrent same-process workers racing an uncertain cleanup latch."""
+    @functools.wraps(function)
+    def wrapped(*args, **kwargs):
+        if (
+            os.name != "nt"
+            and kwargs.get("worker_uid") is not None
+            and kwargs.get("worker_gid") is not None
+        ):
+            with _POSIX_CGROUP_RUN_LOCK:
+                return function(*args, **kwargs)
+        return function(*args, **kwargs)
+    return wrapped
 
 
 def _write_pipe_before_deadline(fd: int, data: bytes, deadline: float, proc) -> None:
@@ -621,6 +638,7 @@ def _resume_suspended_primary_thread(pid: int) -> bool:
         k32.CloseHandle(snapshot)
 
 
+@_serialize_distinct_uid_launch
 def _run_one(
     argv: list[str], cwd: str, limit_sec: float, env: dict[str, str], cap: int,
     *, require_job_object: bool = False, worker_uid: int | None = None,

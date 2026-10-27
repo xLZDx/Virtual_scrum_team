@@ -63,7 +63,9 @@ fixed-environment exec gate before releasing the allowlisted worker command.
 The gate handoff is bounded by the command deadline. Unavailable delegation or
 unconfirmed empty-scope cleanup is a non-approving failure; after unconfirmed
 cleanup, remaining commands in that manifest run are not launched and the
-current runner process refuses later distinct-UID launches. A replacement
+current runner process refuses later distinct-UID launches. Distinct-UID
+launches are serialized per runner process so a concurrent call cannot pass
+the cleanup latch check early. A replacement
 runner may start only after the outer service/sandbox has stopped or fenced any
 prior scope. Same-UID compatibility launches retain process-group cleanup and
 do not satisfy the S2 all-descendant acceptance guarantee. No host path beyond that run directory may be

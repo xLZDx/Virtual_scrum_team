@@ -14,6 +14,10 @@ At exact HEAD `ce8f7eeae840d911ae89ae91f0264eec2d540874`, exact-head focused tes
 
 At exact HEAD `55cc6313dceeffe2d6777b10e686ab851e0a8b8c`, 9 focused tests and the real delegated WSL selector passed; the WSL run retained the child cgroup path and `cgroup.kill`, but not its final `populated 0` journal transition. Fresh architecture/reliability reviews found no BLOCKER/MAJOR; security found no confirmed issue and raised a conditional same-process retry concern. Codex added a process-local latch that blocks future distinct-UID launches after unconfirmed cleanup. Four focused latch/deadline tests passed in the uncommitted tree. Exact-head rerun and final code review remain pending; VST-013/S2 stay open and S3 has not started. See change 0456.
 
+## S2 E4 concurrent-admission serialization — 2026-10-27
+
+At exact HEAD `b00edae5cdd46920c2a1ec26bfc58796ba58f372`, 10 focused unit selectors and the delegated WSL cross-UID selector passed. Architecture/security reviewers identified a conditional same-process concurrency race at the process-local latch. Codex serialized distinct-UID `_run_one` calls through cgroup cleanup; the concurrency regression passed within an 11-selector focused run on the uncommitted tree. Exact-head unit/E2E reruns remain pending; VST-013/S2 remain open and S3 has not started. See change 0457.
+
 ## Latest continuation checkpoint — S2–S5 autonomous work (2026-10-27)
 
 ### Latest docs-only follow-up (2026-10-27; starting HEAD `71c87e38d4910c75500ef94d61f00f963c32eb0a`)
