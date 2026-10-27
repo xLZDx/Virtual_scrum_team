@@ -1013,3 +1013,7 @@ Codex resolved the database review's conditional MINOR against S2 section 10.3: 
 ## 2026-10-27 — Correct S2 Phase 8 review count
 
 Change 0448 aligns the phase table with the five actual fresh reviewer outcomes recorded in evidence at exact source/test head 79155fd. No acceptance state changed; system acceptance remains open.
+
+## 2026-10-27 — Re-run bounded-Git reader failure tests after cleanup correction
+
+Change 0449 records two fake-process selectors passing at exact source/test HEAD 79155fd after 95ceb1: reader construction/start failure and pipe-read failure. Together with the constructor-failure selector, three current-head bounded-Git cleanup regressions pass; four prior targeted regressions remain tied to dc1741b. Real process-kill, crash, mutation, timeout/restart and policy selectors remain NOT_RUN.
