@@ -1306,13 +1306,11 @@ class SyntheticOperationBackend:
     ) -> tuple[bytes, bytes, int]:
         """Run trusted Git plumbing with fixed-size output capture and timeout."""
         output_limit = self._MAX_PREFLIGHT_OUTPUT_BYTES if output_limit is None else output_limit
-        process = subprocess.Popen(
-            command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, env=env, bufsize=0,
-        )
         outputs = {"stdout": bytearray(), "stderr": bytearray()}
         overflow = {"stdout": False, "stderr": False}
-        reader_errors: dict[str, BaseException] = {}
+        reader_errors: dict[str, BaseException | None] = {"stdout": None, "stderr": None}
+        readers: list[threading.Thread] = []
+        process: subprocess.Popen | None = None
 
         def drain(name: str, stream) -> None:
             try:
@@ -1328,63 +1326,81 @@ class SyntheticOperationBackend:
             except BaseException as exc:  # preserve every capture failure
                 reader_errors[name] = exc
                 try:
-                    process.kill()
+                    if process is not None:
+                        process.kill()
                 except OSError:
                     # The parent wait has its own deadline and repeats kill
                     # and reap if this first cleanup attempt fails.
                     pass
 
-        readers = [
-            threading.Thread(target=drain, args=(name, stream), daemon=True)
-            for name, stream in (("stdout", process.stdout), ("stderr", process.stderr))
-        ]
-        started_readers = []
-
         def kill_and_reap() -> None:
-            if process.poll() is None:
+            child = process
+            if child is None:
+                return
+            if child.poll() is None:
                 try:
-                    process.kill()
+                    child.kill()
                 except OSError as exc:
-                    if process.poll() is None:
+                    if child.poll() is None:
                         raise RuntimeError(
                             "bounded Git process could not be killed after capture failure"
                         ) from exc
             try:
-                process.wait(timeout=1)
+                child.wait(timeout=1)
             except (subprocess.TimeoutExpired, OSError) as exc:
                 raise RuntimeError(
                     "bounded Git process could not be reaped after capture failure"
                 ) from exc
 
+        def cleanup() -> None:
+            cleanup_error: BaseException | None = None
+            try:
+                kill_and_reap()
+            except BaseException as exc:
+                cleanup_error = exc
+            child = process
+            if child is not None:
+                for reader in readers:
+                    if reader.ident is not None:
+                        try:
+                            reader.join(timeout=1)
+                        except BaseException as exc:
+                            if cleanup_error is None:
+                                cleanup_error = exc
+                for stream in (child.stdout, child.stderr):
+                    if stream is not None:
+                        try:
+                            stream.close()
+                        except BaseException as exc:
+                            if cleanup_error is None:
+                                cleanup_error = exc
+            if cleanup_error is not None:
+                raise RuntimeError("bounded Git process cleanup was incomplete") from cleanup_error
+
+        process = subprocess.Popen(
+            command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, env=env, bufsize=0,
+        )
+
         try:
-            for reader in readers:
+            child = process
+            assert child is not None
+            for name, stream in (("stdout", child.stdout), ("stderr", child.stderr)):
+                reader = threading.Thread(target=drain, args=(name, stream), daemon=True)
+                readers.append(reader)
                 reader.start()
-                started_readers.append(reader)
-            returncode = process.wait(timeout=self.command_timeout_sec)
+            returncode = child.wait(timeout=self.command_timeout_sec)
         except subprocess.TimeoutExpired as exc:
-            try:
-                kill_and_reap()
-            except RuntimeError as cleanup_error:
-                raise cleanup_error from exc
             raise TimeoutError("bounded Git preflight command exceeded its time limit") from exc
-        except BaseException as exc:
-            try:
-                kill_and_reap()
-            except RuntimeError as cleanup_error:
-                raise cleanup_error from exc
-            raise
         finally:
-            for reader in started_readers:
-                reader.join(timeout=1)
-            for stream in (process.stdout, process.stderr):
-                if stream is not None:
-                    stream.close()
+            cleanup()
         if any(overflow.values()):
             raise RuntimeError("bounded Git command output exceeded its limit")
-        if any(reader.is_alive() for reader in started_readers):
+        if any(reader.is_alive() for reader in readers):
             raise RuntimeError("bounded Git preflight output reader did not finish")
-        if reader_errors:
-            name, error = next(iter(reader_errors.items()))
+        failed_reader = next(((name, error) for name, error in reader_errors.items() if error is not None), None)
+        if failed_reader is not None:
+            name, error = failed_reader
             raise RuntimeError(f"bounded Git preflight {name} capture failed") from error
         return bytes(outputs["stdout"]), bytes(outputs["stderr"]), returncode
 
