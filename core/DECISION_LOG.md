@@ -869,3 +869,7 @@ The GitHub organization repository listing displays an MIT badge for `nexus-prot
 ## 2026-10-27 — Disclose local hook override on change 0393
 
 The commit command for change 0393 set `core.hooksPath=NUL`, so configured repository-local Git hooks did not run. Preserve that commit without rewriting it; do not claim any hook/check result for 0393. Subsequent commits use the normal Git hook path. See change 0394.
+
+## 2026-10-27 — Refresh the active S2–S5 checkpoint
+
+Change 0395 advances the current portfolio record from baseline `a15602a` and incorporates changes 0393–0394: S3's repository-level MIT metadata does not resolve exact-version license status; the GPT-PM architecture adjudication is pending; S2 Phase 8, S4 policy exclusions, and S5 remain open. The protected untracked S2 evidence file remains untouched. This is a state/documentation update only, not acceptance evidence.
