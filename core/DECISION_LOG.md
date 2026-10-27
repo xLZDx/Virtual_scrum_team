@@ -993,3 +993,7 @@ Change 0442 records the single selector at source/test HEAD 79155fdf9f1f4a7ba713
 ## 2026-10-27 — Reconcile S2 regression and review status
 
 Change 0443 updates S2 state to reflect four selectors at dc1741b and the constructor-failure selector at 79155fd. Reliability, architecture, and silent-failure reviewers reported no actionable code BLOCKER/MAJOR at the latter exact source/test head; security/database review and system acceptance remain open. Phase 8 remains NOT APPROVED.
+
+## 2026-10-27 — Close current S2 code-review findings; retain durability MINOR
+
+Five fresh specialist reviews at exact source/test HEAD 79155fdf9f1f4a7ba71358592ccd54c669a76291 found no actionable BLOCKER/MAJOR. The database reviewer recorded a nonblocking initial-anchor parent-directory fsync limitation; if a power loss removes the entry, startup remains fail-closed and availability is lost. Change 0444 preserves this distinction and keeps S2 Phase 8 NOT APPROVED pending system acceptance.
