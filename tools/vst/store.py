@@ -519,6 +519,28 @@ def _valid_runner_execution_resolution(
 def _valid_runner_prespawn_no_execution_event(event: dict, claim: sqlite3.Row) -> bool:
     """Validate the terminal claim that proves no child reservation occurred."""
     reason = event.get("reason") if isinstance(event, dict) else None
+    # Schema-v5 stores written before change 0473 can contain this exact recovery
+    # event. A PENDING predecessor is conclusively pre-spawn because reservation
+    # is durable before child creation. Keep accepting only the old closed shape;
+    # the event remains bound to the claim ID/digest and authenticated by the
+    # append-only supervisor history chain.
+    legacy_recovery_fields = {
+        "event", "state", "grant_id", "payload_sha256", "reason",
+        "predecessor_state", "recovery_service_generation",
+    }
+    if (reason == "PREDECESSOR_GENERATION_STOPPED"
+            and isinstance(event, dict) and set(event) == legacy_recovery_fields):
+        recovery_generation = event.get("recovery_service_generation")
+        return (
+            event.get("event") == "RUNNER_EXECUTION_INDETERMINATE"
+            and event.get("state") == "INDETERMINATE"
+            and event.get("predecessor_state") == "PENDING"
+            and isinstance(recovery_generation, str)
+            and bool(recovery_generation)
+            and recovery_generation != claim["service_generation"]
+            and event.get("grant_id") == claim["grant_id"]
+            and event.get("payload_sha256") == claim["payload_sha256"]
+        )
     expected_fields = {
         "event", "state", "grant_id", "payload_sha256", "reason",
         "terminal_disposition", "predecessor_state", "request_id", "invocation_id",
@@ -550,6 +572,52 @@ def _valid_runner_prespawn_no_execution_event(event: dict, claim: sqlite3.Row) -
     }
     return all(event.get(event_name) == claim[claim_name]
                for event_name, claim_name in bindings.items())
+
+
+def _valid_predecessor_generation_stopped_event(
+    event: dict, claim: sqlite3.Row, predecessor_state: str,
+) -> bool:
+    """Validate a generation-stop event against its exact predecessor and claim."""
+    legacy_fields = {
+        "event", "state", "grant_id", "payload_sha256", "reason",
+        "predecessor_state", "recovery_service_generation",
+    }
+    current_fields = legacy_fields | {
+        "request_id", "invocation_id", "task_id", "slot", "runner_id",
+        "attempt", "epoch", "run_id", "service_generation",
+    }
+    if predecessor_state not in {"PENDING", "EXECUTION_RESERVED"}:
+        return False
+    recovery_generation = event.get("recovery_service_generation") if isinstance(event, dict) else None
+    if (not isinstance(event, dict)
+            or event.get("event") != "RUNNER_EXECUTION_INDETERMINATE"
+            or event.get("state") != "INDETERMINATE"
+            or event.get("reason") != "PREDECESSOR_GENERATION_STOPPED"
+            or event.get("predecessor_state") != predecessor_state
+            or not isinstance(recovery_generation, str)
+            or not recovery_generation
+            or recovery_generation == claim["service_generation"]):
+        return False
+    if predecessor_state == "PENDING":
+        return _valid_runner_prespawn_no_execution_event(event, claim)
+    if event.get("terminal_disposition") is not None:
+        return False
+    fields = frozenset(event)
+    if fields not in {frozenset(legacy_fields), frozenset(current_fields)}:
+        return False
+    if (event.get("grant_id") != claim["grant_id"]
+            or event.get("payload_sha256") != claim["payload_sha256"]):
+        return False
+    if fields == frozenset(current_fields):
+        bindings = {
+            "request_id": "request_id", "invocation_id": "invocation_id",
+            "task_id": "task_id", "slot": "slot", "runner_id": "runner_id",
+            "attempt": "attempt", "epoch": "epoch", "run_id": "run_id",
+            "service_generation": "service_generation",
+        }
+        return all(event.get(event_name) == claim[claim_name]
+                   for event_name, claim_name in bindings.items())
+    return True
 
 
 def _iso(now: float) -> str:
@@ -2674,16 +2742,11 @@ class Store:
                             or not _valid_runner_prespawn_no_execution_event(indeterminate, claim)):
                         raise StoreError("runner pre-spawn terminal event does not match its claim", kind="integrity")
                 elif indeterminate.get("reason") == "PREDECESSOR_GENERATION_STOPPED":
-                    recovery_generation = indeterminate.get("recovery_service_generation")
-                    if (not isinstance(recovery_generation, str) or not recovery_generation
-                            or recovery_generation == claim["service_generation"]
-                            or indeterminate.get("predecessor_state") != predecessor_state
-                            or predecessor_state not in {"PENDING", "EXECUTION_RESERVED"}
-                            or (predecessor_state == "PENDING"
-                                and (indeterminate.get("terminal_disposition") != "NO_EXECUTION"
-                                     or not _valid_runner_prespawn_no_execution_event(indeterminate, claim)))
-                            or (predecessor_state == "EXECUTION_RESERVED"
-                                and "terminal_disposition" in indeterminate)):
+                    expected_index = 1 if predecessor_state == "PENDING" else 2
+                    if (indeterminate_index != expected_index
+                            or not _valid_predecessor_generation_stopped_event(
+                                indeterminate, claim, predecessor_state,
+                            )):
                         raise StoreError("indeterminate runner claim lacks a predecessor-generation fence", kind="integrity")
                 elif indeterminate.get("reason") == "AUTHORITY_CHANGED_BEFORE_COMPLETION":
                     observed_generation = indeterminate.get("observed_service_generation")
@@ -2984,10 +3047,45 @@ class Store:
                 ("PENDING", "EXECUTION_RESERVED", "INDETERMINATE", "RECONCILED"),
         }:
             raise StoreError("runner execution lifecycle is invalid", kind="integrity")
-        if states[-1]["state"] == "RECONCILED":
+        indeterminate_indexes = [
+            index for index, state in enumerate(states)
+            if state.get("state") == "INDETERMINATE"
+        ]
+        if len(indeterminate_indexes) > 1:
+            raise StoreError("runner execution has multiple indeterminate transitions", kind="integrity")
+        claim = None
+        if indeterminate_indexes:
+            indeterminate_index = indeterminate_indexes[0]
+            if indeterminate_index < 1:
+                raise StoreError("indeterminate runner claim lacks its predecessor state", kind="integrity")
             claim = conn.execute(
                 "SELECT * FROM runner_execution_claims WHERE grant_id = ?", (grant_id,)
             ).fetchone()
+            indeterminate = states[indeterminate_index]
+            predecessor_state = states[indeterminate_index - 1]["state"]
+            reason = indeterminate.get("reason")
+            if reason == RUNNER_PRESPAWN_NO_EXECUTION_REASON:
+                if (claim is None or indeterminate_index != 1 or predecessor_state != "PENDING"
+                        or not _valid_runner_prespawn_no_execution_event(indeterminate, claim)):
+                    raise StoreError("runner pre-spawn terminal event does not match its claim", kind="integrity")
+            elif reason == "PREDECESSOR_GENERATION_STOPPED":
+                expected_index = 1 if predecessor_state == "PENDING" else 2
+                if (claim is None or indeterminate_index != expected_index
+                        or not _valid_predecessor_generation_stopped_event(
+                            indeterminate, claim, predecessor_state,
+                        )):
+                    raise StoreError("indeterminate runner claim lacks a predecessor-generation fence", kind="integrity")
+            elif reason == "AUTHORITY_CHANGED_BEFORE_COMPLETION":
+                observed_generation = indeterminate.get("observed_service_generation")
+                if (indeterminate_index != 2 or predecessor_state != "EXECUTION_RESERVED"
+                        or indeterminate.get("predecessor_state") != predecessor_state
+                        or not isinstance(observed_generation, str) or not observed_generation
+                        or "terminal_disposition" in indeterminate):
+                    raise StoreError("runner execution completion lacks authority evidence", kind="integrity")
+            else:
+                raise StoreError("indeterminate runner event has no recognized reason", kind="integrity")
+
+        if states[-1]["state"] == "RECONCILED":
             indeterminate = states[-2]
             predecessor_state = indeterminate.get("predecessor_state")
             if (claim is None or indeterminate.get("state") != "INDETERMINATE"
@@ -2995,20 +3093,6 @@ class Store:
                         states[-1], claim, self._execution_resolution_key, predecessor_state,
                     )):
                 raise StoreError("runner execution resolution is invalid or unauthenticated", kind="integrity")
-        elif states[-1]["state"] == "INDETERMINATE":
-            claim = conn.execute(
-                "SELECT * FROM runner_execution_claims WHERE grant_id = ?", (grant_id,)
-            ).fetchone()
-            terminal = states[-1]
-            if terminal.get("reason") == RUNNER_PRESPAWN_NO_EXECUTION_REASON:
-                if (claim is None or len(states) != 2
-                        or not _valid_runner_prespawn_no_execution_event(terminal, claim)):
-                    raise StoreError("runner pre-spawn terminal event does not match its claim", kind="integrity")
-            elif (terminal.get("reason") == "PREDECESSOR_GENERATION_STOPPED"
-                    and terminal.get("predecessor_state") == "PENDING"):
-                if (claim is None or len(states) != 2
-                        or not _valid_runner_prespawn_no_execution_event(terminal, claim)):
-                    raise StoreError("recovered pre-spawn claim lacks a no-execution disposition", kind="integrity")
         return states
 
     def _runner_attempt_successor_eligibility_locked(
@@ -3038,7 +3122,6 @@ class Store:
         terminal = states[-1]
         if (terminal["state"] == "INDETERMINATE"
                 and terminal.get("predecessor_state") == "PENDING"
-                and terminal.get("terminal_disposition") == "NO_EXECUTION"
                 and _valid_runner_prespawn_no_execution_event(terminal, claim)):
             return "NO_EXECUTION_PROVEN"
         if terminal["state"] != "RECONCILED":

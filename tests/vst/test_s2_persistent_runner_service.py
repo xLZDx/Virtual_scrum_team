@@ -59,9 +59,10 @@ EXECUTION_RESOLUTION_KEY = b"execution-resolution-test-key-0123456789"
 def _store_with_claim_basis(
     manifest: dict, clock: FakeClock, *, execution_resolution_key: bytes | None = None,
     slots: int = 1, story_ttl_sec: int = 1800, lease_ttl_sec: int = 1200,
+    db_path: str = ":memory:",
 ):
     store = Store(
-        ":memory:", clock, event_key=EVENT_KEY,
+        db_path, clock, event_key=EVENT_KEY,
         execution_resolution_key=execution_resolution_key,
     )
     store.init_slots(slots)
@@ -175,6 +176,179 @@ def _append_completed_pass(store: Store, manifest: dict, clock: FakeClock) -> di
     )
     store.release_lease(manifest["task_id"], "runner-1", grant["epoch"])
     return grant
+
+
+def _append_pre_0473_v5_pending_recovery_event(
+    store: Store, grant: dict, clock: FakeClock, *, changes: dict | None = None,
+) -> dict:
+    """Persist the exact schema-v5 pre-0473 recovery event shape into Store history."""
+    with store._read_tx() as conn:
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 5
+        claim = conn.execute(
+            "SELECT * FROM runner_execution_claims WHERE grant_id = ?",
+            (grant["grant_id"],),
+        ).fetchone()
+    assert claim is not None
+    event = {
+        "event": "RUNNER_EXECUTION_INDETERMINATE",
+        "state": "INDETERMINATE",
+        "grant_id": claim["grant_id"],
+        "payload_sha256": claim["payload_sha256"],
+        "reason": "PREDECESSOR_GENERATION_STOPPED",
+        "predecessor_state": "PENDING",
+        "recovery_service_generation": "generation-2",
+    }
+    assert set(event) == {
+        "event", "state", "grant_id", "payload_sha256", "reason",
+        "predecessor_state", "recovery_service_generation",
+    }
+    if changes:
+        event.update(changes)
+    with store._tx() as conn:
+        conn.execute(
+            "INSERT INTO runner_execution_events(grant_id, state, payload, created_at) "
+            "VALUES (?, 'INDETERMINATE', ?, ?)",
+            (grant["grant_id"], contracts.canonical_bytes(event).decode("utf-8"), clock()),
+        )
+        store._record_event_locked(
+            conn, grant["grant_id"], "supervisor", "NOTE", event,
+        )
+    return event
+
+
+def _assert_raw_store_event_chain_is_valid(store: Store) -> None:
+    """Prove a legacy-shape mutation is authenticated rather than hash corruption."""
+    with store._read_tx() as conn:
+        rows = conn.execute(
+            "SELECT ts, task_id, actor, kind, payload, prev_hash, hash "
+            "FROM events ORDER BY seq"
+        ).fetchall()
+        previous_hash = "0" * 64
+        for row in rows:
+            fields = {
+                name: row[name] for name in ("ts", "task_id", "actor", "kind", "payload")
+            }
+            assert row["prev_hash"] == previous_hash
+            assert store._event_mac(previous_hash, fields) == row["hash"]
+            previous_hash = row["hash"]
+        count, head = store._anchor_state(conn)
+        assert count == len(rows)
+        assert head == previous_hash
+
+
+def test_pre_0473_schema_v5_pending_recovery_event_survives_fresh_reconciliation_and_allows_only_authorized_successor(
+    tmp_path,
+):
+    manifest, *_ = _authority_fixture()
+    clock = FakeClock(1000)
+    db_path = str(tmp_path / "pre-0473-schema-v5.sqlite3")
+    writer = _store_with_claim_basis(
+        manifest, clock, story_ttl_sec=3600, lease_ttl_sec=3600, db_path=db_path,
+    )
+    reader = None
+    try:
+        predecessor = _grant(manifest, now=clock())
+        assert writer.claim_runner_execution(
+            predecessor, active_service_generation="generation-1",
+        ) is None
+        legacy_event = _append_pre_0473_v5_pending_recovery_event(
+            writer, predecessor, clock,
+        )
+        assert set(legacy_event) == {
+            "event", "state", "grant_id", "payload_sha256", "reason",
+            "predecessor_state", "recovery_service_generation",
+        }
+        _assert_raw_store_event_chain_is_valid(writer)
+        writer.close()
+
+        # Store construction runs startup reconciliation against the persisted
+        # event chain, as it would when reopening a schema-v5 database.
+        reader = Store(
+            db_path, clock, event_key=EVENT_KEY,
+            execution_resolution_key=EXECUTION_RESOLUTION_KEY,
+        )
+        assert reader.reconciliation_complete
+        assert reader.runner_execution_claim_status(
+            predecessor, active_service_generation="generation-1",
+        ) == {
+            "state": "INDETERMINATE", "service_generation": "generation-1",
+        }
+
+        reader.release_lease(manifest["task_id"], "runner-1", predecessor["epoch"])
+        reader.acquire_lease(
+            manifest["task_id"], manifest["story_id"], "runner-1", 2, 2, 3600,
+            supervisor_key=SUPERVISOR_KEY,
+        )
+        with pytest.raises(StoreError, match="consumed run-bound preflight") as error:
+            reader.execution_grant_basis(
+                manifest["task_id"], "tests", 2, 2, "run-2",
+                active_service_generation="generation-2",
+            )
+        assert error.value.kind == "probe"
+
+        reader.ensure_preflight_consumed("run-2", "nonce-2", "c" * 64, "d" * 64)
+        basis = reader.execution_grant_basis(
+            manifest["task_id"], "tests", 2, 2, "run-2",
+            active_service_generation="generation-2",
+        )
+        successor = _successor_grant(manifest, basis, now=clock())
+        assert reader.claim_runner_execution(
+            successor, active_service_generation="generation-2",
+        ) is None
+        assert reader.runner_execution_claim_status(
+            predecessor, active_service_generation="generation-1",
+        )["state"] == "INDETERMINATE"
+    finally:
+        if reader is not None:
+            reader.close()
+        else:
+            writer.close()
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        pytest.param({"terminal_disposition": "NO_EXECUTION"}, id="unexpected-legacy-field"),
+        pytest.param({"predecessor_state": "EXECUTION_RESERVED"}, id="predecessor-mismatch"),
+        pytest.param({"grant_id": "other-grant"}, id="grant-mismatch"),
+        pytest.param({"payload_sha256": "0" * 64}, id="claim-digest-mismatch"),
+        pytest.param({"recovery_service_generation": "generation-1"}, id="not-a-successor-generation"),
+    ],
+)
+def test_pre_0473_schema_v5_pending_recovery_event_rejects_malformed_or_mismatched_fields(
+    changes: dict, tmp_path,
+):
+    manifest, *_ = _authority_fixture()
+    clock = FakeClock(1000)
+    db_path = str(tmp_path / "malformed-pre-0473-schema-v5.sqlite3")
+    store = _store_with_claim_basis(manifest, clock, db_path=db_path)
+    reader = None
+    try:
+        grant = _grant(manifest, now=clock())
+        assert store.claim_runner_execution(
+            grant, active_service_generation="generation-1",
+        ) is None
+        _append_pre_0473_v5_pending_recovery_event(
+            store, grant, clock, changes=changes,
+        )
+
+        _assert_raw_store_event_chain_is_valid(store)
+        store.close()
+        reader = Store(
+            db_path, clock, event_key=EVENT_KEY,
+            execution_resolution_key=EXECUTION_RESOLUTION_KEY,
+        )
+        assert not reader.reconciliation_complete
+        with pytest.raises(StoreError) as error:
+            reader.runner_execution_claim_status(
+                grant, active_service_generation="generation-1",
+            )
+        assert error.value.kind == "integrity"
+    finally:
+        if reader is not None:
+            reader.close()
+        else:
+            store.close()
 
 
 def _assert_successor_gates_blocked(store: Store, manifest: dict, clock: FakeClock) -> None:

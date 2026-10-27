@@ -48,7 +48,9 @@ $archiveStart.UseShellExecute = $false
 $archiveStart.RedirectStandardOutput = $true
 $archiveStart.RedirectStandardError = $true
 foreach ($argument in @(
-    '-C', $repoRoot, '--no-replace-objects', 'archive', '--format=tar',
+    # Do not apply the caller's Windows checkout conversion to POSIX source
+    # blobs embedded in the WSL deployment archive.
+    '-c', 'core.autocrlf=false', '-C', $repoRoot, '--no-replace-objects', 'archive', '--format=tar',
     $ExpectedHead, '--', 'tools/vst', 'tools/qa/install_wsl_runner_runtime.sh',
     'tools/qa/install_wsl_worker_helper.sh', 'tools/qa/worker_exec.c',
     'docs/SANDBOX_SPEC.md'
