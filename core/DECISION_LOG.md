@@ -2,6 +2,10 @@
 
 Append-only. One dated entry per decision, piece of evidence or refusal.
 
+## 2026-10-27 -- Record published Temporal Server release digests without acquisition
+
+Read-only inspection of the official `v1.32.1` GitHub release assets page exposed the published SHA-256 metadata for `checksums.txt` and the Linux amd64 archive. Change 0411 records those values and explicitly leaves byte-level verification, source-to-binary provenance, acquisition, build, installation, and runtime acceptance open. The correlated G03/G07 decision remains design-only; no legal or acquisition disposition is made. See `docs/sdlc/evidence/s3-temporal-server-release-provenance-screen-20261027.md` and change 0411.
+
 ## 2026-10-27 -- Reconcile stale G03 review status in S3 handover documents
 
 The current S3 target-profile proposal and bilingual S2–S5 handover still described the corrected G03 design as pending GPT-PM verification, although the correlated `ACCEPT` at exact reviewed HEAD `77b319367b575b9f4c0a193e91405df507c886e6` is recorded in change 0405/0406. Change 0410 corrects those current status statements and preserves the earlier `MODIFY` as review history. It does not promote design acceptance into implementation, runtime, license, acquisition, S2/S4, or candidate-comparison acceptance. See change 0410.
