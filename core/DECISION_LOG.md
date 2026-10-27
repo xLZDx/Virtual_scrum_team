@@ -2,6 +2,10 @@
 
 Append-only. One dated entry per decision, piece of evidence or refusal.
 
+## 2026-10-27 -- Record Temporal pinned workflow job outcomes
+
+A read-only job API query for the successful exact-SHA Build and Publish run identified successful amd64, arm64, and Docker jobs. The separate exact-SHA All Tests run had failed SQLite functional shards 0, 1, and 2 and `cass_os3` shard 2; the `Test Status` job also failed. Failure logs were not inspected, so causes remain unknown. The pinned release workflow checks out the released ref and invokes the local Build Binaries action in release mode; exact-SHA Release run `37850182088` reported successful checkout and binary-build steps. This corroborates a successful configured release build invocation but does not independently bind release asset bytes/digest to that output. No candidate asset or local acceptance test was acquired or executed. See the pinned workflow and action source links in the evidence screen. See `docs/sdlc/evidence/s3-temporal-server-build-profile-source-screen-20261027.md` and change 0419.
+
 ## 2026-10-27 -- Record Temporal pinned-commit workflow-run outcomes
 
 A read-only GitHub Actions API query for Temporal Server commit `af08a5e5f2dd40f545f2afac7780daaa6987001e` returned a successful Build and Publish run `37665870819`, a failed separate All Tests run `37665870783`, and a successful Release run `37850182088`. This confirms workflow outcomes for that source SHA but does not bind a specific release asset/checksum to a build artifact. Logs and artifact bytes were not retrieved; no candidate acquisition or execution occurred. See `docs/sdlc/evidence/s3-temporal-server-build-profile-source-screen-20261027.md` and change 0418.
