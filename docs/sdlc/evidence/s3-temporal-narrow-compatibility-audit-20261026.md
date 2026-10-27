@@ -11,6 +11,8 @@ No candidate source or artifact was acquired, built, installed, or executed.
 
 ## Evidence and result
 
+**Current exact-pin CI-risk follow-up:** The upstream `All Tests` run later failed on the pinned server SHA. Its per-shard logs and bounded impact mapping are recorded in `s3-temporal-upstream-ci-failure-detail-20261027.md` and `s3-temporal-upstream-ci-risk-disposition-20261027.md`. The source-only mapping classifies the Worker Deployment build-ID message as outside the current fixed-queue/closed-RPC profile; SQLite type-length and context-deadline paths require qualification; `send on closed channel` and cass_os3 details remain unresolved. Upstream CI remains failed; runtime compatibility and G03/G07 remain open. This does not change the narrow release-note fact below or promote the comparator.
+
 The official SDK 1.34.0 release notes state that when a start request attaches to an already running workflow, the SDK uses the server-provided first execution run ID with Temporal Server 1.32.0 or later. The selected server pin is 1.32.1, which satisfies that stated minimum for this behavior. The same release notes describe other SDK 1.34.0 changes; they do not establish compatibility for the complete S3 pilot topology.
 
 The exact SDK source pin's `pyproject.toml` declares version 1.34.0, Python `>=3.10`, MIT, and a Rust extension build through Maturin (the existing S3 audit covers those details). The exact server pin's `go.mod` requires `github.com/nexus-rpc/nexus-proto-annotations v0.1.0`; that component's exact-version license/notice question remains unresolved in the existing S3 evidence.

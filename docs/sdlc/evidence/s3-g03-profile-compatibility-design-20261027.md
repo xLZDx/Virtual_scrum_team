@@ -2,6 +2,8 @@
 
 ## Status and authority
 
+The bounded disposition for failed upstream All Tests shards at the exact pinned server SHA is in [`s3-temporal-upstream-ci-risk-disposition-20261027.md`](s3-temporal-upstream-ci-risk-disposition-20261027.md). It preserves the failed CI result and maps each readable failure family to the proposed VST lifecycle without treating the source-only classification as runtime evidence. The workflow type remains unfrozen, so the SQLite length path stays open for qualification; timeout and channel-close behavior also remain open.
+
 This is a design-only reconciliation against the existing pinned-source evidence and the official Go release index. GPT-PM's adversarial review of exact repository HEAD `20499392f8d78b56214d0d109c9532d50531ac86` returned `MODIFY`: two MAJOR findings for the Go toolchain contract and the full SDK/server lifecycle map, plus one MINOR for a consolidated network/provider matrix. The correlated response is recorded in this document's linked change record. No candidate source or artifact was acquired; no build, install, runtime test or network probe was performed.
 
 The profile remains provisional. Rows below distinguish a design choice, source facts inherited from named audit records, and runtime behavior that remains `NOT_RUN` or `NOT_VERIFIED`. This document does not close S3-G01/G02/G04/G05/G06/G07-G09 or S3 acceptance, and grants no acquisition or execution authority.
