@@ -9,6 +9,10 @@ Read-only inspection of the two unresolved source entries in `s3-temporal-server
 - `github.com/planetscale/vtprotobuf@v0.6.1-0.20240319094008-0393e58bdf10`, source revision `0393e58bdf10`: the pinned `LICENSE` contains a three-condition BSD-style grant, attribution/notice retention, non-endorsement and warranty/liability disclaimers. The text names PlanetScale, GoGo Authors and Go Authors. The inspected text differs from the canonical BSD-3-Clause template, so retain `BSD-3-Clause-like (SPDX unverified)`; this screen does not assign an SPDX identifier.
 - `github.com/nexus-rpc/nexus-proto-annotations@v0.1.0`, source revision `e558d6edaf84e280dddfc87b5b8ce1662f66ac8b`: the previously recorded recursive tag-tree screen found no conventional root `LICENSE`, `LICENSE.md`, `LICENCE`, `COPYING`, `NOTICE`, or `COPYRIGHT` path, and pkg.go.dev metadata reported `NONE_DETECTED`. Read-only inspection of the pinned `nexusannotations/v1/options.proto` and generated `go/nexusannotations/v1/options.pb.go` showed no inline copyright/license header in the returned file text. This does not establish the governing terms or prove that no other source-level notice exists.
 
+## Existing inventory denominator
+
+The in-repository Go license metadata TSV contains 223 rows. Twelve rows are flagged for follow-up: eleven have `UNKNOWN_PAGE_UNAVAILABLE` metadata responses and one Nexus row has `NONE_DETECTED`. The matching source-follow-up TSV contains all twelve. Ten entries have a source-text or text-template classification, `vtprotobuf` has a noncanonical BSD-style classification with SPDX unverified, and Nexus remains `UNKNOWN`. These counts reconcile the existing evidence tables only; they do not prove that the pinned candidate's full dependency closure is complete.
+
 ## Acceptance and ownership
 
 - Technical source observations are narrowed for the two previously unresolved entries; legal status remains `NOT_VERIFIED` for the candidate dependency inventory, and the Nexus entry remains `UNKNOWN`.

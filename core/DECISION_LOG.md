@@ -2,6 +2,10 @@
 
 Append-only. One dated entry per decision, piece of evidence or refusal.
 
+## 2026-10-27 -- Reconcile Go dependency license metadata denominator
+
+The existing S3 Go license metadata table has 223 rows; all 12 package-metadata gaps are present in the source follow-up: ten source-text/template classifications, one noncanonical BSD-style entry with SPDX unverified, and one UNKNOWN Nexus entry. This reconciles the recorded table only and does not establish complete dependency closure or legal acceptability. See the S3 license detail follow-up and change 0414.
+
 ## 2026-10-27 -- Record pinned Go dependency license source follow-up
 
 Read-only inspection of the exact pinned `vtprotobuf` LICENSE found three-condition BSD-style terms that differ from the canonical BSD-3-Clause template; its SPDX identifier remains unverified. The pinned Nexus annotations proto and generated Go file showed no inline license header in the inspected source text; the existing exact-tag inventory found no conventional license/notice path and pkg.go.dev reports `NONE_DETECTED`. The Nexus terms remain UNKNOWN, and no legal/acquisition decision is made. See `docs/sdlc/evidence/s3-temporal-go-license-detail-followup-20261027.md` and change 0413.
