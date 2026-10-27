@@ -2,6 +2,10 @@
 
 Last updated: 2026-10-27. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
 
+## S2 E4 implementation continuation — 2026-10-27
+
+At canonical S2 continuation HEAD `47cdc48`, the designated `e2e-runner` reproduced a real VST-013 defect: the UID 999 descendant kept writing after the UID 997 runner timed out and attempted process-group cleanup (invocation `4399ad0027ec49bd8a273b587a24999c`). Codex implemented a fail-closed, per-command delegated cgroup-v2 path for distinct-UID POSIX workers, with a sanitized exec gate that is attached before worker code is released; Windows and same-UID compatibility paths are unchanged. Architecture review accepted the revised design after two environment/scope clarifications. Five focused functional selectors passed in the pre-commit working tree; they are not exact-commit evidence. Exact-head unit rerun and real delegated-WSL E2E remain pending. S2 stays NOT APPROVED; no S3 work started. The pre-existing untracked `docs/sdlc/evidence/s2-functional-test-run.md` remains untouched. See change 0454.
+
 ## Latest continuation checkpoint — S2–S5 autonomous work (2026-10-27)
 
 ### Latest docs-only follow-up (2026-10-27; starting HEAD `71c87e38d4910c75500ef94d61f00f963c32eb0a`)

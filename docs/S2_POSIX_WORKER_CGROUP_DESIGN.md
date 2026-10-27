@@ -1,6 +1,6 @@
 # S2 POSIX cross-UID process cleanup design
 
-Status: proposed for implementation after the user-authorized S2 closure instruction, 2026-10-27.
+Status: implemented in the S2 working tree; exact-head and WSL runtime acceptance pending, 2026-10-27.
 Scope: VST-013 / S2 E4.1 and VST-017 bounded process cleanup in the existing Ubuntu-24.04 WSL sandbox.
 
 ## Goal and constraints
@@ -15,14 +15,14 @@ The runner must stop a worker and every descendant after timeout, normal root ex
 
 ## Design
 
-The runner service must have `Delegate=yes` and run on unified cgroup v2. For each POSIX launch using a distinct worker UID/GID, the runner creates a unique child cgroup under its delegated cgroup and requires `cgroup.procs`, `cgroup.events`, and `cgroup.kill`. It starts a trusted, isolated (`python -I -S`) exec gate under the worker UID through the fixed `/usr/bin/setpriv` capability-drop path. The gate waits on an inherited pipe; the worker command has not executed yet. The runner moves the gated process PID into the child cgroup, starts output readers, then releases the gate to `execvpe` the original argv. Descendants inherit the cgroup even if they change session or process group.
+The runner service must have `Delegate=yes` and run on unified cgroup v2. For each POSIX launch using a distinct worker UID/GID, the runner creates a unique child cgroup under its delegated cgroup and requires `cgroup.procs`, `cgroup.events`, and `cgroup.kill`. It starts the fixed `/usr/bin/setpriv` helper with a sanitized environment before the first child `exec`, then launches a trusted, isolated (`python -I -S`) exec gate under the worker UID. The gate starts with the same fixed, sanitized environment that contains no loader hooks or Python startup controls. The intended worker environment is sent as data through a separate inherited pipe, never as the helper/gate process environment. The gate waits on a second inherited pipe; the worker command has not executed yet. The runner moves the gated process PID into the child cgroup, starts output readers, then releases the gate to `execvpe` the original argv with the supplied worker environment. Descendants inherit the cgroup even if they change session or process group.
 
-On timeout, root-command exit, reader failure, or exceptional cleanup, the runner writes `1` to that command's `cgroup.kill`, waits for `cgroup.events` to report `populated 0`, reaps the root process, closes capture pipes, and removes the empty child cgroup. Each command owns a unique scope; concurrent commands never share a kill target. Windows continues to use the existing Job Object path. Same-UID POSIX compatibility launches may retain their existing process-group path.
+On timeout, root-command exit, reader failure, or exceptional cleanup, the runner writes `1` to that command's `cgroup.kill`, waits for `cgroup.events` to report `populated 0`, reaps the root process, closes capture pipes, and removes the empty child cgroup. Each command owns a unique scope; concurrent commands never share a kill target. Windows continues to use the existing Job Object path. The all-descendant guarantee applies to distinct-UID worker launches that use this cgroup path; same-UID compatibility calls retain the legacy process-group behavior and are outside this S2 acceptance guarantee.
 
 ## Failure behavior
 
 - Missing unified cgroup v2, missing `Delegate=yes`, unwritable delegated parent, or absent cgroup control files: refuse to execute a distinct-UID worker and return a non-approving containment result.
-- Failure to attach the gated PID: close the gate without releasing the requested command, reap the no-op trampoline, and return non-approving.
+- Failure to attach the gated PID: close the gate without releasing the requested command, reap the no-op trampoline, and return non-approving. The trampoline runs only with the fixed sanitized environment until attached, so inherited dynamic-loader variables cannot execute code before containment.
 - Failure to kill/reap the cgroup or confirm `populated 0`: return `EXIT_CAPTURE_INCOMPLETE`, preserve diagnostics, and never report PASS.
 - Do not add `CAP_KILL` as a fallback. The outer service timeout is only emergency cleanup, not acceptance evidence.
 

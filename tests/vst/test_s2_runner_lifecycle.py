@@ -1514,6 +1514,200 @@ def test_posix_launch_keeps_session_based_compatibility_path(monkeypatch):
     assert "posix_group_cleanup" in events
 
 
+def _posix_runner_os(monkeypatch):
+    posix_os = SimpleNamespace(**vars(os))
+    posix_os.name = "posix"
+    monkeypatch.setattr(runner, "os", posix_os)
+    return posix_os
+
+
+class _ObservedCgroup:
+    def __init__(self, events, *, attach_error=None, cleanup_result=True, kill_pid=False):
+        self.events = events
+        self.attach_error = attach_error
+        self.cleanup_result = cleanup_result
+        self.kill_pid = kill_pid
+        self.pid = None
+
+    def attach(self, pid):
+        self.events.append("attach")
+        self.pid = pid
+        if self.attach_error:
+            raise self.attach_error
+
+    def kill_and_remove(self, timeout=10.0):
+        self.events.append("kill_and_remove")
+        if self.kill_pid and self.pid is not None:
+            try:
+                os.kill(self.pid, runner.signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        return self.cleanup_result
+
+
+def test_distinct_uid_worker_refuses_launch_when_delegated_cgroup_is_unavailable(monkeypatch):
+    _posix_runner_os(monkeypatch)
+    calls = []
+
+    def unavailable():
+        raise OSError("no delegated cgroup")
+
+    monkeypatch.setattr(runner._DelegatedCgroup, "create", unavailable)
+    monkeypatch.setattr(runner.subprocess, "Popen", lambda *a, **k: calls.append((a, k)))
+    code, output, info = runner._run_one(
+        ["synthetic-command"], ".", 1, {"PATH": "/usr/bin"}, 1024,
+        worker_uid=1001, worker_gid=1001,
+    )
+
+    assert code == runner.EXIT_CAPTURE_INCOMPLETE
+    assert output == ""
+    assert info["capture_incomplete"] is True
+    assert "no delegated cgroup" in info["posix_cgroup_refused"]
+    assert calls == []
+
+
+class _GateChild:
+    def __init__(self, events, reader, *, timeout_once=False):
+        self.pid = 4243
+        self.stdout = io.BytesIO(b"synthetic stdout")
+        self.stderr = io.BytesIO(b"")
+        self.returncode = 0
+        self.events = events
+        self.reader = reader
+        self.timeout_once = timeout_once
+        self.wait_count = 0
+
+    def wait(self, timeout=None):
+        self.events.append("wait")
+        self.wait_count += 1
+        if self.timeout_once and self.wait_count == 1:
+            raise subprocess.TimeoutExpired("gate-child", timeout)
+        self.reader.join(timeout=2)
+        return self.returncode
+
+
+def _install_gate_popen(monkeypatch, events, *, timeout_once=False):
+    def fake_popen(argv, **kwargs):
+        assert kwargs["env"] == {"PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C"}
+        assert kwargs["pass_fds"]
+        script_at = argv.index("-c")
+        env_fd = os.dup(int(argv[script_at + 2]))
+        gate_fd = os.dup(int(argv[script_at + 3]))
+
+        def read_gate():
+            env_data = bytearray()
+            while True:
+                chunk = os.read(env_fd, 65536)
+                if not chunk:
+                    break
+                env_data.extend(chunk)
+            events.append(("worker_env_loaded", json.loads(env_data)))
+            release = os.read(gate_fd, 1)
+            if release == b"1":
+                events.append("exec_after_gate")
+            else:
+                events.append("gate_closed_without_exec")
+            os.close(env_fd)
+            os.close(gate_fd)
+
+        reader = threading.Thread(target=read_gate, daemon=True)
+        reader.start()
+        return _GateChild(events, reader, timeout_once=timeout_once)
+
+    monkeypatch.setattr(runner.subprocess, "Popen", fake_popen)
+
+
+def test_distinct_uid_cgroup_gate_orders_attach_environment_and_exec(monkeypatch):
+    posix_os = _posix_runner_os(monkeypatch)
+    events = []
+    scope = _ObservedCgroup(events)
+    monkeypatch.setattr(runner._DelegatedCgroup, "create", lambda: scope)
+    _install_gate_popen(monkeypatch, events)
+    real_write = os.write
+
+    def observed_write(fd, data):
+        if data == b"1":
+            events.append("gate_released")
+        return real_write(fd, data)
+
+    posix_os.write = observed_write
+    worker_env = {"PATH": "/worker/bin", "VST_SENTINEL": "payload"}
+    code, output, info = runner._run_one(
+        ["synthetic-command", "argument"], ".", 1, worker_env, 1024,
+        worker_uid=1001, worker_gid=1001,
+    )
+
+    assert code == 0
+    assert output == "synthetic stdout"
+    assert info["capture_incomplete"] is False
+    assert events.index("attach") < events.index("gate_released") < events.index("exec_after_gate")
+    loaded_env = next(value for event in events if isinstance(event, tuple)
+                      for name, value in [event] if name == "worker_env_loaded")
+    assert loaded_env == worker_env
+    assert events[-1] == "kill_and_remove"
+
+
+def test_distinct_uid_attach_failure_closes_gate_without_exec(monkeypatch):
+    _posix_runner_os(monkeypatch)
+    events = []
+    scope = _ObservedCgroup(events, attach_error=OSError("attach denied"))
+    monkeypatch.setattr(runner._DelegatedCgroup, "create", lambda: scope)
+    _install_gate_popen(monkeypatch, events)
+
+    code, output, info = runner._run_one(
+        ["synthetic-command"], ".", 1, {"PATH": "/worker/bin"}, 1024,
+        worker_uid=1001, worker_gid=1001,
+    )
+
+    assert code == runner.EXIT_CAPTURE_INCOMPLETE
+    assert output == ""
+    assert info["capture_incomplete"] is True
+    assert "attach denied" in info["posix_cgroup_refused"]
+    assert "gate_closed_without_exec" in events
+    assert "exec_after_gate" not in events
+
+
+@pytest.mark.parametrize("scenario", ["normal_exit", "timeout"])
+def test_distinct_uid_cgroup_gate_cleans_scope_on_exit_and_timeout(monkeypatch, scenario):
+    _posix_runner_os(monkeypatch)
+    events = []
+    scope = _ObservedCgroup(events)
+    monkeypatch.setattr(runner._DelegatedCgroup, "create", lambda: scope)
+    _install_gate_popen(monkeypatch, events, timeout_once=(scenario == "timeout"))
+    real_write = os.write
+    runner.os.write = lambda fd, data: real_write(fd, data)
+    timeout = 0.001 if scenario == "timeout" else 1
+
+    code, _output, info = runner._run_one(
+        ["synthetic-command"], ".", timeout, {"PATH": "/worker/bin"}, 1024,
+        worker_uid=1001, worker_gid=1001,
+    )
+
+    assert "kill_and_remove" in events
+    assert info["capture_incomplete"] is False
+    assert info["timed_out"] is (scenario == "timeout")
+    assert code == (runner.EXIT_TIMEOUT if scenario == "timeout" else 0)
+
+
+def test_distinct_uid_cgroup_cleanup_failure_is_non_approving(monkeypatch):
+    _posix_runner_os(monkeypatch)
+    events = []
+    scope = _ObservedCgroup(events, cleanup_result=False)
+    monkeypatch.setattr(runner._DelegatedCgroup, "create", lambda: scope)
+    _install_gate_popen(monkeypatch, events)
+    real_write = os.write
+    runner.os.write = lambda fd, data: real_write(fd, data)
+
+    code, _output, info = runner._run_one(
+        ["synthetic-command"], ".", 1, {"PATH": "/worker/bin"}, 1024,
+        worker_uid=1001, worker_gid=1001,
+    )
+
+    assert code == runner.EXIT_CAPTURE_INCOMPLETE
+    assert info["capture_incomplete"] is True
+    assert events.count("kill_and_remove") == 2  # immediate attempt plus finally retry
+
+
 @pytest.mark.skipif(os.name == "nt", reason="NOT_RUN: POSIX account and Unix-socket permissions are unavailable on Windows")
 def test_posix_worker_cannot_read_signer_or_key_file():
     """Drop a child to the provisioned worker identity; all key/socket data is disposable."""

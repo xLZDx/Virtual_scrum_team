@@ -57,7 +57,12 @@ limit, disk quota, and wall-clock deadline. The values are recorded in the
 run configuration before launch; absence of any limit blocks the worker.
 Commands use the run directory as their working directory, a minimal
 allowlisted environment, no inherited stdin, bounded output capture, and
-process-tree termination. No host path beyond that run directory may be
+process-tree termination. The distinct-UID POSIX worker path requires a
+systemd-delegated cgroup-v2 subtree with `cgroup.kill`; it attaches an isolated,
+fixed-environment exec gate before releasing the allowlisted worker command.
+Unavailable delegation or unconfirmed empty-scope cleanup is a non-approving
+failure. Same-UID compatibility launches retain process-group cleanup and do
+not satisfy the S2 all-descendant acceptance guarantee. No host path beyond that run directory may be
 mounted or passed to the worker. Job Object nesting on Windows must be
 verified on the target host; unsupported nesting is a refusal, not a
 best-effort success.

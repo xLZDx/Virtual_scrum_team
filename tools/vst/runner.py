@@ -38,9 +38,10 @@ Execution (subprocess.Popen, shell=False):
   then resumes its primary thread. Assignment or resume failure terminates and
   refuses the command before it executes. On EVERY exit path the runner calls
   TerminateJobObject and then CloseHandle. Non-strict Windows callers retain the
-  legacy best-effort taskkill fallback. POSIX: the process group
-  (the child is started in its own session) is killed with SIGKILL on timeout
-  and after a normal exit. Timeout exit code -1.
+  legacy best-effort taskkill fallback. Distinct-UID POSIX worker launches use
+  a runner-delegated cgroup-v2 scope, killed and confirmed empty on every exit
+  path. Same-UID compatibility calls retain process-group cleanup. Timeout
+  exit code -1.
 - capture completeness: after both pipes were joined, a reader thread that is
   still alive, a read error of any kind (any Exception in the reader), or a root
   process that is still running 10 s after the kill, means the captured output
@@ -67,6 +68,7 @@ Standard library only; no network.
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import os
 import re
@@ -214,6 +216,87 @@ def _hash_artifacts(paths: list[str], cwd: str) -> dict[str, str]:
 
 
 # ------------------------------------------------------------------- execution
+
+
+_POSIX_GATE = (
+    "import json, os, sys\n"
+    "env_fd, gate_fd = int(sys.argv[1]), int(sys.argv[2])\n"
+    "chunks = []\n"
+    "while True:\n"
+    " chunk = os.read(env_fd, 65536)\n"
+    " if not chunk: break\n"
+    " chunks.append(chunk)\n"
+    "os.close(env_fd)\n"
+    "worker_env = json.loads(b''.join(chunks))\n"
+    "if os.read(gate_fd, 1) != b'1': sys.exit(125)\n"
+    "os.close(gate_fd)\n"
+    "argv = sys.argv[3:]\n"
+    "os.execvpe(argv[0], argv, worker_env)\n"
+)
+
+
+class _DelegatedCgroup:
+    """A unique kill scope below the runner's delegated cgroup-v2 subtree."""
+
+    def __init__(self, path: str) -> None:
+        self.path = path
+        self._closed = False
+
+    @classmethod
+    def create(cls) -> "_DelegatedCgroup":
+        with open("/proc/self/cgroup", encoding="ascii") as stream:
+            entries = [line.rstrip("\n").split(":", 2) for line in stream]
+        unified = next(
+            (entry[2] for entry in entries
+             if len(entry) == 3 and entry[:2] == ["0", ""]),
+            None,
+        )
+        if not unified or ".." in unified.split("/"):
+            raise OSError("unified cgroup-v2 delegation is unavailable")
+        parent = os.path.realpath(os.path.join("/sys/fs/cgroup", unified.lstrip("/")))
+        root = os.path.realpath("/sys/fs/cgroup")
+        if os.path.commonpath((root, parent)) != root:
+            raise OSError("runner cgroup path escaped the cgroup-v2 mount")
+        path = os.path.join(parent, f"vst-command-{os.getpid()}-{uuid.uuid4().hex}")
+        os.mkdir(path, 0o700)
+        scope = cls(path)
+        try:
+            for name in ("cgroup.procs", "cgroup.events", "cgroup.kill"):
+                if not os.path.isfile(os.path.join(path, name)):
+                    raise OSError(f"delegated cgroup control is missing: {name}")
+            for name in ("cgroup.procs", "cgroup.kill"):
+                fd = os.open(os.path.join(path, name), os.O_WRONLY)
+                os.close(fd)
+        except BaseException:
+            try:
+                os.rmdir(path)
+            except OSError:
+                pass
+            raise
+        return scope
+
+    def attach(self, pid: int) -> None:
+        with open(os.path.join(self.path, "cgroup.procs"), "w", encoding="ascii") as stream:
+            stream.write(f"{pid}\n")
+
+    def kill_and_remove(self, timeout: float = 10.0) -> bool:
+        if self._closed:
+            return True
+        try:
+            with open(os.path.join(self.path, "cgroup.kill"), "w", encoding="ascii") as stream:
+                stream.write("1\n")
+            deadline = time.monotonic() + timeout
+            while time.monotonic() < deadline:
+                with open(os.path.join(self.path, "cgroup.events"), encoding="ascii") as stream:
+                    events = dict(line.split() for line in stream if line.strip())
+                if events.get("populated") == "0":
+                    os.rmdir(self.path)
+                    self._closed = True
+                    return True
+                time.sleep(0.02)
+        except (OSError, ValueError):
+            return False
+        return False
 
 
 class _Capture:
@@ -525,6 +608,11 @@ def _run_one(
         "capture_incomplete": False,
         "job_object": False,
     }
+    cgroup: _DelegatedCgroup | None = None
+    gate_release_fd: int | None = None
+    env_read: int | None = None
+    gate_read: int | None = None
+    env_write: int | None = None
     try:
         # The trusted runner may carry ambient SETUID/SETGID capabilities so
         # Popen can switch to the worker identity. Drop ambient and inheritable
@@ -532,15 +620,30 @@ def _run_one(
         # is exec'd. The unit also sets no_new_privs; repeat it at this boundary
         # so file capabilities cannot restore privilege for the worker.
         child_argv = argv
-        if worker_uid is not None and worker_gid is not None:
+        child_env = env
+        pass_fds: tuple[int, ...] = ()
+        if os.name != "nt" and worker_uid is not None and worker_gid is not None:
+            try:
+                cgroup = _DelegatedCgroup.create()
+            except OSError as exc:
+                return EXIT_CAPTURE_INCOMPLETE, "", {
+                    **info, "capture_incomplete": True,
+                    "posix_cgroup_refused": str(exc),
+                }
+            env_read, env_write = os.pipe()
+            gate_read, gate_release_fd = os.pipe()
+            gate_child_argv = ["/usr/bin/python3", "-I", "-S", "-c", _POSIX_GATE,
+                               str(env_read), str(gate_read), *argv]
             child_argv = [
                 "/usr/bin/setpriv",
                 "--inh-caps=-all",
                 "--ambient-caps=-all",
                 "--no-new-privs",
                 "--",
-                *argv,
+                *gate_child_argv,
             ]
+            child_env = {"PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C"}
+            pass_fds = (env_read, gate_read)
         proc = subprocess.Popen(
             child_argv,
             shell=False,
@@ -548,16 +651,58 @@ def _run_one(
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             cwd=cwd,
-            env=env,
+            env=child_env,
             bufsize=0,
+            pass_fds=pass_fds,
             **({"user": worker_uid, "group": worker_gid, "extra_groups": ()}
                if worker_uid is not None and worker_gid is not None else {}),
             **_spawn_kwargs(suspended=os.name == "nt" and require_job_object),
         )
     except OSError:
+        for fd in (env_read, gate_read, env_write, gate_release_fd):
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+        cgroup_clean = cgroup is None or cgroup.kill_and_remove()
         # Missing executable, missing/invalid cwd, no permission, or any other
         # OS-level failure to start. Non-OSError exceptions propagate.
+        if not cgroup_clean:
+            return EXIT_CAPTURE_INCOMPLETE, "", {
+                **info, "capture_incomplete": True,
+                "posix_cgroup_cleanup_failed": True,
+            }
         return EXIT_MISSING_EXECUTABLE, "", info
+    if cgroup is not None:
+        os.close(env_read)
+        env_read = None
+        os.close(gate_read)
+        gate_read = None
+        try:
+            payload = json.dumps(env, separators=(",", ":")).encode("utf-8")
+            env_pipe = os.fdopen(env_write, "wb")
+            env_write = None
+            with env_pipe as stream:
+                stream.write(payload)
+            cgroup.attach(proc.pid)
+        except (OSError, TypeError, ValueError) as exc:
+            info["posix_cgroup_refused"] = str(exc)
+            if env_write is not None:
+                os.close(env_write)
+                env_write = None
+            if gate_release_fd is not None:
+                os.close(gate_release_fd)
+                gate_release_fd = None
+            cgroup.kill_and_remove()
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                pass
+            for stream in (proc.stdout, proc.stderr):
+                if stream is not None:
+                    stream.close()
+            return EXIT_CAPTURE_INCOMPLETE, "", {**info, "capture_incomplete": True}
     job: _JobObject | None = None
     out: _Capture | None = None
     err: _Capture | None = None
@@ -570,6 +715,11 @@ def _run_one(
         if job is not None and not job.terminate_and_close():
             cleanup_failed = True
             _kill_tree(proc)  # best-effort fallback when Win32 cleanup is unconfirmed
+
+    def cleanup_cgroup() -> None:
+        nonlocal cleanup_failed
+        if cgroup is not None and not cgroup.kill_and_remove():
+            cleanup_failed = True
 
     try:
         # Windows: put the child in a kill-on-close Job Object right away so every
@@ -609,13 +759,20 @@ def _run_one(
             return EXIT_CAPTURE_INCOMPLETE, "", {**info, "capture_incomplete": True}
         out = _Capture(proc.stdout, cap)
         err = _Capture(proc.stderr, cap)
+        if gate_release_fd is not None:
+            os.write(gate_release_fd, b"1")
+            os.close(gate_release_fd)
+            gate_release_fd = None
         try:
             proc.wait(timeout=limit_sec)
         except subprocess.TimeoutExpired:
             info["timed_out"] = True
             if job is not None:
                 cleanup_job()
-            _kill_tree(proc)  # taskkill /T /F fallback (also the no-job path)
+            if cgroup is not None:
+                cleanup_cgroup()
+            else:
+                _kill_tree(proc)  # taskkill /T /F fallback (also the no-job path)
             try:
                 proc.wait(timeout=10)
             except subprocess.TimeoutExpired:
@@ -623,6 +780,8 @@ def _run_one(
         else:
             if job is not None:
                 cleanup_job()
+            elif cgroup is not None:
+                cleanup_cgroup()  # also kills descendants after normal root exit
             elif os.name == "nt":
                 _taskkill_tree(proc.pid)  # no job: best effort, failures ignored
             else:
@@ -634,10 +793,18 @@ def _run_one(
     finally:
         if job is not None:
             cleanup_job()  # idempotent; covers unexpected exceptions
-        if not completed:
+        if cgroup is not None:
+            cleanup_cgroup()  # retry an unconfirmed kill/removal before reporting
+        elif not completed:
             # ANY exception (including a failed reader-thread start): kill the
-            # whole tree (process group on POSIX, taskkill /T on Windows).
+            # process group or Windows tree as applicable.
             _kill_tree(proc)
+        if gate_release_fd is not None:
+            try:
+                os.close(gate_release_fd)
+            except OSError:
+                pass
+            gate_release_fd = None
         for capture in (out, err):
             if capture is not None:
                 capture.finish()
