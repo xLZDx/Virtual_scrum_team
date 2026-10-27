@@ -2,6 +2,10 @@
 
 Append-only. One dated entry per decision, piece of evidence or refusal.
 
+## 2026-10-27 -- Record pinned Go dependency license source follow-up
+
+Read-only inspection of the exact pinned `vtprotobuf` LICENSE found three-condition BSD-style terms that differ from the canonical BSD-3-Clause template; its SPDX identifier remains unverified. The pinned Nexus annotations proto and generated Go file showed no inline license header in the inspected source text; the existing exact-tag inventory found no conventional license/notice path and pkg.go.dev reports `NONE_DETECTED`. The Nexus terms remain UNKNOWN, and no legal/acquisition decision is made. See `docs/sdlc/evidence/s3-temporal-go-license-detail-followup-20261027.md` and change 0413.
+
 ## 2026-10-27 -- Record official Go toolchain digest and reproducible-build metadata
 
 The official Go downloads index publishes SHA-256 `ccfe7ae822d2c2f41f4fe7c956199967a4dac22d0ee0d2b2bfdb440aab3b20c5` for the S3 design-pinned `go1.26.10.linux-amd64.tar.gz`; the official Go reproducible-build report marks the same archive `PASS` and lists a matching digest prefix. Change 0412 records this as publisher evidence only: no local toolchain bytes were acquired, installed, executed, or hash-verified. The G03 design acceptance remains design-only. See the provenance screen and change 0412.
