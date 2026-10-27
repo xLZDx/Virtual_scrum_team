@@ -193,19 +193,19 @@ The current state does not satisfy the S2 exact-head readiness item: its gate re
 
 ## 9. Ownership, backlog, and dependencies
 
-Operator is the accountable owner of the delegated S5 sprint; Codex coordinates implementation. `functional-test-reviewer` and `e2e-runner` own required test authorship/execution. No named AEVE technical service owner or adapter maintainer is established by this repository; that specific ownership gap remains UNKNOWN. Do not label a reviewer role as a person or technical service.
+Operator is accountable for the delegated S5 sprint; Codex owns source discovery, contract preparation and implementation coordination until a technical service is identified. Codex also owns and coordinates required test work; `functional-test-reviewer` and `e2e-runner` are the authorized roles for test authorship/execution. The AEVE technical service identity and adapter maintainer are not established by this repository; Codex owns resolving that evidence dependency within the authorized project scope and does not infer a service identity. Do not label a reviewer role as a person or technical service.
 
-Proposed backlog items, to register when S5 is formally started:
+Proposed work breakdown under canonical backlog item VST-041, to reconcile when S5 is formally started. These keys are not VST backlog IDs; they deliberately avoid collisions with existing sprint IDs.
 
-| Proposed item | Scope | Accountable / technical owner | Dependency |
+| Proposed subtask key | Scope | Accountable / technical owner | Dependency |
 |---|---|---|---|
-| VST-038 | Versioned static evidence provenance contract and v1 compatibility | Operator accountable; implementation-engineer executes; service owner unknown | S2 exact-head gate state |
-| VST-039 | Independent analyzer authority and signature binding | Operator accountable; signer service owner unknown | S2 signer boundary and key provisioning |
-| VST-040 | Bounded, read-only analyzer adapter and deterministic snapshot hashing | Operator accountable; adapter technical owner unknown | Authorized immutable AEVE identity and sandbox |
-| VST-041 | Truthful rule coverage and finding evidence map | Test agents own required tests; implementation-engineer owns production changes | Audited rule inventory or explicit unsupported fixture |
-| VST-042 | Exact-head gate and reproducible evidence integration | Operator accountable; VST gate is technical boundary | VST v3 contract and signed evidence format |
+| S5-P01 | Versioned static evidence provenance contract and v1 compatibility | Operator accountable; Codex prepares the contract and coordinates implementation | S2 exact-head gate state |
+| S5-P02 | Independent analyzer authority and signature binding | Operator accountable; Codex coordinates signer-boundary evidence | S2 signer boundary and key provisioning |
+| S5-P03 | Bounded, read-only analyzer adapter and deterministic snapshot hashing | Operator accountable; Codex owns delivery and implementation-engineer executes | Authorized immutable AEVE identity and sandbox |
+| S5-P04 | Truthful rule coverage and finding evidence map | Codex owns coverage and production changes; functional/E2E test roles author and execute required tests; implementation-engineer executes scoped production changes | Audited rule inventory or explicit unsupported fixture |
+| S5-P05 | Exact-head gate and reproducible evidence integration | Operator accountable; Codex owns integration against the VST gate contract | VST v3 contract and signed evidence format |
 
-These IDs are proposals, not canonical backlog entries. The actual AEVE candidate identity, license, revision, support matrix, adapter, and any external trust service are unavailable in this repository and are not attributed to a named owner.
+These are provisional decomposition keys, not canonical backlog entries; VST-041 remains the canonical backlog item until a formally authorized S5 start allocates any further VST IDs. The actual AEVE candidate identity, license, revision, support matrix, adapter, and any external trust service are not established by this repository.
 
 ## 10. Ordered work
 
