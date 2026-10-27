@@ -472,9 +472,10 @@ class PersistentRunnerService:
         deadline_sec = grant.get("execution_deadline_sec")
         if (type(deadline_sec) is not int or deadline_sec < 1
                 or deadline_sec > self.config.deadline_sec
+                or deadline_sec > self.config.timeout_sec
                 or deadline_sec > int(manifest["timeout_sec"])):
             raise ContractError("grant execution deadline exceeds the configured run boundary")
-        timeout_sec = min(self.config.timeout_sec, deadline_sec)
+        timeout_sec = deadline_sec
 
         authority = ExecutionAuthority(
             grant, daemon_uid=self.config.daemon_uid,
@@ -483,6 +484,9 @@ class PersistentRunnerService:
             daemon_boundary_check=lambda: self._require_local_boundary() == generation,
             claim=lambda value: self.supervisor.claim(value),
             claim_status=lambda value: self.supervisor.claim_status(value),
+            terminalize_no_execution=lambda value, reason: self.supervisor.terminalize_no_execution(
+                value, reason,
+            ),
             reserve=lambda value: self.supervisor.reserve(value),
             complete=lambda value, receipt: self.supervisor.complete(value, receipt),
         )
@@ -490,8 +494,6 @@ class PersistentRunnerService:
         previous = self.supervisor.previous_receipt(grant["task_id"], grant["slot"])
         if grant["attempt"] == 1 and previous is not None:
             raise ContractError("first execution attempt unexpectedly has a prior receipt")
-        if grant["attempt"] > 1 and previous is None:
-            raise ContractError("retry execution grant has no prior receipt-chain tip")
         try:
             return run_manifest_commands(
                 manifest=manifest, slot=grant["slot"], attempt=grant["attempt"],
@@ -511,6 +513,13 @@ class PersistentRunnerService:
                 raise AmbiguousExecutionAuthorityError(
                     "reserved execution failed before durable COMPLETE; terminating service generation"
                 ) from exc
+            if authority.claim_confirmed and not authority.no_execution_confirmed:
+                try:
+                    authority.terminalize_no_execution("RUNNER_PRESPAWN_FAILURE")
+                except Exception as terminalize_exc:
+                    raise AmbiguousExecutionAuthorityError(
+                        "pre-spawn refusal could not be durably terminalized; terminating service generation"
+                    ) from terminalize_exc
             raise
 
 

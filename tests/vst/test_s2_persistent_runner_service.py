@@ -58,7 +58,7 @@ EXECUTION_RESOLUTION_KEY = b"execution-resolution-test-key-0123456789"
 
 def _store_with_claim_basis(
     manifest: dict, clock: FakeClock, *, execution_resolution_key: bytes | None = None,
-    slots: int = 1,
+    slots: int = 1, story_ttl_sec: int = 1800, lease_ttl_sec: int = 1200,
 ):
     store = Store(
         ":memory:", clock, event_key=EVENT_KEY,
@@ -66,11 +66,13 @@ def _store_with_claim_basis(
     )
     store.init_slots(slots)
     store.open_story(manifest["story_id"], manifest["project_id"], manifest["phase"])
-    epoch = store.acquire_epoch(manifest["story_id"], "test-owner", ttl_sec=1800)
+    epoch = store.acquire_epoch(
+        manifest["story_id"], "test-owner", ttl_sec=story_ttl_sec,
+    )
     assert epoch == 2
     store.register_task(manifest)
     store.acquire_lease(
-        manifest["task_id"], manifest["story_id"], "runner-1", epoch, 1, 1200,
+        manifest["task_id"], manifest["story_id"], "runner-1", epoch, 1, lease_ttl_sec,
         supervisor_key=SUPERVISOR_KEY,
     )
     store.ensure_preflight_consumed("run-1", "nonce-1", "a" * 64, "b" * 64)
@@ -142,11 +144,14 @@ def _receipt_for_grant(grant: dict, manifest: dict) -> dict:
     return receipt
 
 
-def _make_indeterminate_predecessor(*, reserve: bool = True):
+def _make_indeterminate_predecessor(
+    *, reserve: bool = True, story_ttl_sec: int = 1800, lease_ttl_sec: int = 1200,
+):
     manifest, *_ = _authority_fixture()
     clock = FakeClock(1000)
     store = _store_with_claim_basis(
         manifest, clock, execution_resolution_key=EXECUTION_RESOLUTION_KEY,
+        story_ttl_sec=story_ttl_sec, lease_ttl_sec=lease_ttl_sec,
     )
     grant = _grant(manifest, now=clock())
     assert store.claim_runner_execution(grant, active_service_generation="generation-1") is None
@@ -200,7 +205,7 @@ def test_store_claim_rejects_deadline_beyond_manifest_before_persisting_claim():
     clock = FakeClock(1000)
     store = _store_with_claim_basis(manifest, clock)
     try:
-        with pytest.raises(StoreError, match="deadline exceeds"):
+        with pytest.raises(StoreError, match="full manifest run window"):
             store.claim_runner_execution(
                 _grant(manifest, deadline=601, now=clock()),
                 active_service_generation="generation-1",
@@ -226,6 +231,7 @@ def test_store_completion_appends_the_receipt_chain_and_replays_only_exact_compl
             "manifest_sha256": contracts.manifest_sha256(manifest),
             "manifest_timeout_sec": manifest["timeout_sec"],
             "runner_id": "runner-1", "service_generation": "generation-1",
+            "authority_expires_at": 2200.0,
         }
         assert store.claim_runner_execution(grant, active_service_generation="generation-1") is None
         assert store.verify_pending_runner_execution(
@@ -261,6 +267,505 @@ def test_store_completion_appends_the_receipt_chain_and_replays_only_exact_compl
         assert store._conn.execute("SELECT COUNT(*) FROM receipts").fetchone()[0] == 1
     finally:
         store.close()
+
+
+def test_verified_pre_spawn_gap_allows_next_receipt_and_preserves_receipt_hash_chain():
+    manifest, *_ = _authority_fixture()
+    clock = FakeClock(1000)
+    store = _store_with_claim_basis(
+        manifest, clock, execution_resolution_key=EXECUTION_RESOLUTION_KEY,
+        story_ttl_sec=3600,
+    )
+    try:
+        first = _append_completed_pass(store, manifest, clock)
+        first_receipt = store.receipts_for_task(manifest["task_id"])[0]
+
+        store.acquire_lease(
+            manifest["task_id"], manifest["story_id"], "runner-1", 2, 2, 1200,
+            supervisor_key=SUPERVISOR_KEY,
+        )
+        store.ensure_preflight_consumed("run-2", "nonce-2", "c" * 64, "d" * 64)
+        basis2 = store.execution_grant_basis(
+            manifest["task_id"], "tests", 2, 2, "run-2",
+            active_service_generation="generation-1",
+        )
+        grant2 = _successor_grant(manifest, basis2, now=clock())
+        assert store.claim_runner_execution(
+            grant2, active_service_generation="generation-1",
+        ) is None
+        terminal = store.mark_runner_prespawn_no_execution(
+            grant2, active_service_generation="generation-1",
+            reason_code="RUNNER_PRESPAWN_FAILURE",
+        )
+        assert terminal == {
+            "state": "NO_EXECUTION", "grant_id": grant2["grant_id"],
+            "payload_sha256": hashlib.sha256(contracts.canonical_bytes(grant2)).hexdigest(),
+            "service_generation": "generation-1",
+        }
+        store.release_lease(manifest["task_id"], "runner-1", 2)
+
+        store.acquire_lease(
+            manifest["task_id"], manifest["story_id"], "runner-1", 2, 3, 1200,
+            supervisor_key=SUPERVISOR_KEY,
+        )
+        store.ensure_preflight_consumed("run-3", "nonce-3", "e" * 64, "f" * 64)
+        basis3 = store.execution_grant_basis(
+            manifest["task_id"], "tests", 3, 2, "run-3",
+            active_service_generation="generation-1",
+        )
+        grant3 = _successor_grant(manifest, basis3, now=clock())
+        assert store.claim_runner_execution(
+            grant3, active_service_generation="generation-1",
+        ) is None
+        store.reserve_runner_execution(grant3, active_service_generation="generation-1")
+        receipt3 = _receipt_for_grant(grant3, manifest)
+        receipt3["receipt_id"] = "receipt-attempt-3"
+        receipt3["prev_receipt_sha256"] = contracts.receipt_sha256(first_receipt)
+        store.complete_runner_execution(
+            grant3, receipt3, active_service_generation="generation-1",
+        )
+
+        receipts = store.receipts_for_task(manifest["task_id"])
+        receipt_rows = [
+            (receipt["slot"], receipt["attempt"], receipt["receipt_id"], receipt["receipt_type"])
+            for receipt in receipts
+        ]
+        assert [receipt["attempt"] for receipt in receipts] == [1, 3], receipt_rows
+        assert receipts[1]["prev_receipt_sha256"] == contracts.receipt_sha256(first_receipt)
+        assert first["attempt"] == 1
+        decision = _evaluate_store_gate(store, manifest)
+        assert decision["verdict"] == "MODIFY"
+        assert "attempt chain broken" not in str(decision)
+    finally:
+        store.close()
+
+
+def test_effects_resolved_gap_links_successor_to_last_real_receipt_hash():
+    manifest, *_ = _authority_fixture()
+    clock = FakeClock(1000)
+    store = _store_with_claim_basis(
+        manifest, clock, execution_resolution_key=EXECUTION_RESOLUTION_KEY,
+        story_ttl_sec=3600,
+    )
+    try:
+        _append_completed_pass(store, manifest, clock)
+        first_receipt = next(
+            receipt for receipt in store.receipts_for_task(manifest["task_id"])
+            if receipt["slot"] == "tests" and receipt["receipt_type"] == "TestRun"
+        )
+        first_receipt_sha256 = contracts.receipt_sha256(first_receipt)
+
+        store.acquire_lease(
+            manifest["task_id"], manifest["story_id"], "runner-1", 2, 2, 1200,
+            supervisor_key=SUPERVISOR_KEY,
+        )
+        store.ensure_preflight_consumed("run-2", "nonce-2", "c" * 64, "d" * 64)
+        basis2 = store.execution_grant_basis(
+            manifest["task_id"], "tests", 2, 2, "run-2",
+            active_service_generation="generation-1",
+        )
+        grant2 = _successor_grant(manifest, basis2, now=clock())
+        assert store.claim_runner_execution(
+            grant2, active_service_generation="generation-1",
+        ) is None
+        store.reserve_runner_execution(grant2, active_service_generation="generation-1")
+        store.mark_pending_runner_executions_indeterminate(
+            current_service_generation="generation-2",
+        )
+        resolution = _execution_resolution(
+            grant2, predecessor_state="EXECUTION_RESERVED", outcome="EFFECTS_RESOLVED",
+            resolution_id="effects-resolved-gap-chain-1",
+        )
+        assert store.reconcile_runner_execution(resolution) == {
+            "grant_id": grant2["grant_id"], "state": "RECONCILED",
+            "outcome": "EFFECTS_RESOLVED", "continuation_allowed": True,
+        }
+
+        clock.advance(1201)
+        store.supervisor_reap_and_mark(SUPERVISOR_KEY, "store-test-supervisor")
+        store.acquire_lease(
+            manifest["task_id"], manifest["story_id"], "runner-1", 2, 3, 1200,
+            supervisor_key=SUPERVISOR_KEY,
+        )
+        store.ensure_preflight_consumed("run-3", "nonce-3", "e" * 64, "f" * 64)
+        basis3 = store.execution_grant_basis(
+            manifest["task_id"], "tests", 3, 2, "run-3",
+            active_service_generation="generation-2",
+        )
+        grant3 = _successor_grant(manifest, basis3, now=clock())
+        assert store.claim_runner_execution(
+            grant3, active_service_generation="generation-2",
+        ) is None
+        store.reserve_runner_execution(grant3, active_service_generation="generation-2")
+        receipt3 = _receipt_for_grant(grant3, manifest)
+        receipt3["receipt_id"] = "receipt-after-effects-resolved"
+        receipt3["prev_receipt_sha256"] = first_receipt_sha256
+        store.complete_runner_execution(
+            grant3, receipt3, active_service_generation="generation-2",
+        )
+
+        receipts = [
+            receipt for receipt in store.receipts_for_task(manifest["task_id"])
+            if receipt["slot"] == "tests" and receipt["receipt_type"] == "TestRun"
+        ]
+        receipt_rows = [
+            (receipt["slot"], receipt["attempt"], receipt["receipt_id"], receipt["receipt_type"])
+            for receipt in receipts
+        ]
+        assert [receipt["attempt"] for receipt in receipts] == [1, 3], receipt_rows
+        assert receipts[0] == first_receipt
+        assert receipts[1]["prev_receipt_sha256"] == first_receipt_sha256
+        assert store.previous_receipt_sha256(
+            manifest["task_id"], "tests",
+        ) == contracts.receipt_sha256(receipts[1])
+        assert _evaluate_store_gate(store, manifest)["verdict"] == "MODIFY"
+    finally:
+        store.close()
+
+
+def test_execution_gap_rejects_reserved_predecessor_and_untrusted_gate_gap_evidence():
+    manifest, *_ = _authority_fixture()
+    clock = FakeClock(1000)
+    store = _store_with_claim_basis(
+        manifest, clock, execution_resolution_key=EXECUTION_RESOLUTION_KEY,
+        story_ttl_sec=3600,
+    )
+    try:
+        _append_completed_pass(store, manifest, clock)
+        store.acquire_lease(
+            manifest["task_id"], manifest["story_id"], "runner-1", 2, 2, 1200,
+            supervisor_key=SUPERVISOR_KEY,
+        )
+        store.ensure_preflight_consumed("run-2", "nonce-2", "c" * 64, "d" * 64)
+        basis = store.execution_grant_basis(
+            manifest["task_id"], "tests", 2, 2, "run-2",
+            active_service_generation="generation-1",
+        )
+        grant = _successor_grant(manifest, basis, now=clock())
+        assert store.claim_runner_execution(
+            grant, active_service_generation="generation-1",
+        ) is None
+        store.reserve_runner_execution(grant, active_service_generation="generation-1")
+        store.mark_pending_runner_executions_indeterminate(
+            current_service_generation="generation-2",
+        )
+        with store._read_tx() as conn:
+            assert not store._runner_receipt_gap_is_eligible_locked(
+                conn, manifest["task_id"], "tests", 1, 3,
+            )
+
+        worker_key, options = _gate_options()
+        with pytest.raises(
+            StoreError, match="runner successor eligibility is supplied only by verified Store history",
+        ):
+            store.evaluate_gate(
+                manifest["task_id"], "a" * 40, 2, worker_key,
+                verified_successor_attempts={"tests": {2}}, **options,
+            )
+    finally:
+        store.close()
+
+
+def test_runner_prespawn_terminalization_binds_exact_claim_and_blocks_later_reserve():
+    manifest, *_ = _authority_fixture()
+    clock = FakeClock(1000)
+    store = _store_with_claim_basis(manifest, clock)
+    grant = _grant(manifest, now=clock())
+    try:
+        assert store.claim_runner_execution(
+            grant, active_service_generation="generation-1",
+        ) is None
+        mismatched = copy.deepcopy(grant)
+        mismatched["request_id"] = "different-request"
+        with pytest.raises(StoreError, match="does not match the exact claim"):
+            store.mark_runner_prespawn_no_execution(
+                mismatched, active_service_generation="generation-1",
+                reason_code="RUNNER_PRESPAWN_FAILURE",
+            )
+        with pytest.raises(StoreError, match="not recognized"):
+            store.mark_runner_prespawn_no_execution(
+                grant, active_service_generation="generation-1", reason_code="UNKNOWN",
+            )
+
+        result = store.mark_runner_prespawn_no_execution(
+            grant, active_service_generation="generation-1",
+            reason_code="RUNNER_PRESPAWN_FAILURE",
+        )
+        assert result["state"] == "NO_EXECUTION"
+        assert store.runner_execution_claim_status(
+            grant, active_service_generation="generation-1",
+        ) == {
+            "state": "INDETERMINATE", "service_generation": "generation-1",
+            "reason_code": "RUNNER_PRESPAWN_FAILURE",
+        }
+        with pytest.raises(StoreError, match="not an unreserved PENDING claim"):
+            store.reserve_runner_execution(grant, active_service_generation="generation-1")
+        assert store.runner_execution_claim_status(
+            grant, active_service_generation="generation-1",
+        )["reason_code"] == "RUNNER_PRESPAWN_FAILURE"
+    finally:
+        store.close()
+
+
+def test_pre_reserve_runner_failure_terminalizes_claim_without_calling_reserve(monkeypatch):
+    from tools.vst import execution_grant as grant_module, runner, runner_service
+
+    manifest, *_ = _authority_fixture()
+    grant = _grant(manifest, deadline=30)
+    calls = []
+
+    class FakeSupervisor:
+        def previous_receipt(self, *_args):
+            return None
+
+        def claim(self, _grant):
+            calls.append("claim")
+            return None
+
+        def claim_status(self, _grant):
+            return {"state": "PENDING", "service_generation": "generation-1"}
+
+        def terminalize_no_execution(self, received, reason_code):
+            calls.append(("no_execution", reason_code))
+            return {
+                "state": "NO_EXECUTION", "grant_id": received["grant_id"],
+                "payload_sha256": hashlib.sha256(contracts.canonical_bytes(received)).hexdigest(),
+                "service_generation": received["service_generation"],
+            }
+
+        def reserve(self, _grant):
+            raise AssertionError("reserve must not run after a pre-spawn failure")
+
+    server = object.__new__(runner_service.PersistentRunnerService)
+    server.config = type("Config", (), {
+        "deadline_sec": 60, "timeout_sec": 30, "daemon_uid": 997,
+        "grant_trust_keys": {"grant-key-1": "/unused"},
+        "openssl_path": "/unused", "audience": "vst-runner-service-v1",
+        "signer_socket": "/unused/signer.sock", "repository_root": "/unused/repo",
+        "worker_uid": 999, "worker_gid": 989, "max_output_bytes": 1024,
+    })()
+    server.supervisor = FakeSupervisor()
+    server._require_local_boundary = lambda: "generation-1"
+    monkeypatch.setattr(grant_module, "verify_execution_grant", lambda *_args, **_kwargs: grant)
+    monkeypatch.setattr(grant_module.os, "name", "posix")
+    monkeypatch.setattr(grant_module.os, "geteuid", lambda: 997, raising=False)
+
+    def fail_before_spawn(**kwargs):
+        authority = kwargs["execution_authority"]
+        context = {key: grant[key] for key in (
+            "manifest_sha256", "task_id", "slot", "attempt", "epoch", "run_id",
+            "invocation_id", "request_id", "runner_id", "resolved_model",
+            "model_provenance_sha256", "execution_deadline_sec", "service_generation",
+        )}
+        authority.authorize_and_claim(context)
+        raise OSError("signer unavailable before spawn")
+
+    monkeypatch.setattr(runner, "run_manifest_commands", fail_before_spawn)
+    with pytest.raises(OSError, match="signer unavailable before spawn"):
+        server._run_grant(grant, manifest, [], "generation-1")
+    assert calls == ["claim", ("no_execution", "RUNNER_PRESPAWN_FAILURE")]
+
+
+@pytest.mark.parametrize("stage", ["issue", "claim", "reserve"])
+def test_runner_authority_window_must_cover_manifest_timeout_and_completion_margin(stage, monkeypatch):
+    from tools.vst.supervisor import Supervisor
+    from tools.vst import execution_grant as grant_module
+
+    manifest, *_ = _authority_fixture()
+    clock = FakeClock(1000)
+    store = _store_with_claim_basis(
+        manifest, clock, story_ttl_sec=3600, lease_ttl_sec=3600,
+    )
+    grant = _grant(manifest, now=clock())
+    grant["expires_at"] = clock() + 5000
+    grant["claim_expires_at"] = clock() + 4000
+    supervisor = Supervisor(
+        store, operation_backend=None,
+        execution_grant_key_id="grant-key-1",
+        execution_grant_private_key_path="/unused/private.key",
+        execution_grant_openssl_path="/unused/openssl",
+        execution_grant_trust_keys={"grant-key-1": "/unused/public.key"},
+        service_generation_provider=lambda: "generation-1",
+        model_provenance_verifier=lambda _model, _digest: True,
+    )
+    monkeypatch.setattr(grant_module, "sign_execution_grant", lambda body, **_kwargs: dict(body))
+    try:
+        if stage == "issue":
+            store._conn.execute(
+                "UPDATE leases SET expires_at = ? WHERE task_id = ? AND attempt = 1",
+                (clock() + 604, manifest["task_id"]),
+            )
+            with pytest.raises(StoreError, match="cannot cover the required run and completion margin"):
+                supervisor.issue_execution_grant(
+                    task_id=manifest["task_id"], slot="tests", attempt=1, epoch=2,
+                    run_id="run-1", resolved_model="test-model",
+                    model_provenance_sha256="e" * 64,
+                )
+            assert store._conn.execute(
+                "SELECT COUNT(*) FROM runner_execution_claims",
+            ).fetchone()[0] == 0
+        elif stage == "claim":
+            store._conn.execute(
+                "UPDATE leases SET expires_at = ? WHERE task_id = ? AND attempt = 1",
+                (clock() + 604, manifest["task_id"]),
+            )
+            with pytest.raises(StoreError, match="remaining owner/lease authority window"):
+                store.claim_runner_execution(
+                    grant, active_service_generation="generation-1",
+                )
+            assert store._conn.execute(
+                "SELECT COUNT(*) FROM runner_execution_claims",
+            ).fetchone()[0] == 0
+        else:
+            assert store.claim_runner_execution(
+                grant, active_service_generation="generation-1",
+            ) is None
+            store._conn.execute(
+                "UPDATE leases SET expires_at = ? WHERE task_id = ? AND attempt = 1",
+                (clock() + 604, manifest["task_id"]),
+            )
+            with pytest.raises(StoreError, match="remaining owner/lease authority window"):
+                store.reserve_runner_execution(
+                    grant, active_service_generation="generation-1",
+                )
+            assert store.runner_execution_claim_status(
+                grant, active_service_generation="generation-1",
+            )["state"] == "PENDING"
+    finally:
+        store.close()
+
+
+def test_runner_grant_uses_full_manifest_timeout_when_issuance_is_feasible(monkeypatch):
+    from tools.vst.supervisor import Supervisor
+    from tools.vst import execution_grant as grant_module
+
+    manifest, *_ = _authority_fixture()
+    clock = FakeClock(1000)
+    store = _store_with_claim_basis(
+        manifest, clock, story_ttl_sec=3600, lease_ttl_sec=3600,
+    )
+    supervisor = Supervisor(
+        store, operation_backend=None,
+        execution_grant_key_id="grant-key-1",
+        execution_grant_private_key_path="/unused/private.key",
+        execution_grant_openssl_path="/unused/openssl",
+        execution_grant_trust_keys={"grant-key-1": "/unused/public.key"},
+        service_generation_provider=lambda: "generation-1",
+        model_provenance_verifier=lambda _model, _digest: True,
+    )
+    monkeypatch.setattr(grant_module, "sign_execution_grant", lambda body, **_kwargs: dict(body))
+    try:
+        grant = supervisor.issue_execution_grant(
+            task_id=manifest["task_id"], slot="tests", attempt=1, epoch=2,
+            run_id="run-1", resolved_model="test-model",
+            model_provenance_sha256="e" * 64,
+        )
+        assert grant["execution_deadline_sec"] == manifest["timeout_sec"]
+        assert grant["expires_at"] <= 4600.0
+    finally:
+        store.close()
+
+
+def test_operator_reconciliation_rpc_is_versioned_and_role_pinned(monkeypatch):
+    import json
+    import os
+    import struct
+    from tools.vst import supervisor_service as rpc
+
+    resolution = {"grant_id": "grant-1", "signature": "signed-resolution"}
+    calls = []
+
+    class FakeSupervisor:
+        def reconcile_runner_execution(self, record):
+            calls.append(record)
+            return {"state": "RECONCILED", "grant_id": record["grant_id"]}
+
+    class FakeConnection:
+        def __init__(self, *, pid, uid, gid, operation, body):
+            payload = json.dumps({"operation": operation, "body": body}).encode("utf-8")
+            self.frames = [rpc._HEADER.pack(len(payload)) + payload]
+            self.credentials = struct.pack("3i", pid, uid, gid)
+            self.response = b""
+
+        def settimeout(self, _seconds):
+            return None
+
+        def getsockopt(self, *_args):
+            return self.credentials
+
+        def recv(self, size):
+            if not self.frames:
+                return b""
+            frame = self.frames[0]
+            part, remainder = frame[:size], frame[size:]
+            if remainder:
+                self.frames[0] = remainder
+            else:
+                self.frames.pop(0)
+            return part
+
+        def sendall(self, response):
+            self.response = response
+
+    peers = {
+        (3001, 2001): rpc.SupervisorPeer(
+            "dispatcher", 3001, 2001, "/system.slice/vst-dispatcher.service",
+            frozenset({"issue_grant"}),
+        ),
+        (997, 988): rpc.SupervisorPeer(
+            "runnerd", 997, 988, "/system.slice/vst-runner.service",
+            frozenset({"claim", "claim_status", "reserve", "complete", "generation",
+                       "recover", "manifest", "previous_receipt", "no_execution"}),
+        ),
+        (3002, 2001): rpc.SupervisorPeer(
+            "operator", 3002, 2001, "/system.slice/vst-operator.service",
+            frozenset({"reconcile_runner_execution"}),
+        ),
+    }
+    server = object.__new__(rpc.AuthenticatedSupervisorAPI)
+    server.supervisor = FakeSupervisor()
+    server.peers = peers
+    server.require_peer_pidfd = True
+    monkeypatch.setattr(rpc.socket, "SO_PEERCRED", 1, raising=False)
+    monkeypatch.setattr(rpc, "_peer_pidfd", lambda *_args, **_kwargs: os.open(os.devnull, os.O_RDONLY))
+    monkeypatch.setattr(rpc, "_pidfd_alive", lambda _fd: True)
+    monkeypatch.setattr(
+        rpc, "_read_peer_cgroup",
+        lambda pid: {
+            101: "/system.slice/vst-dispatcher.service",
+            102: "/system.slice/vst-runner.service",
+            103: "/system.slice/vst-operator.service",
+        }[pid],
+    )
+
+    operator_conn = FakeConnection(
+        pid=103, uid=3002, gid=2001, operation="reconcile_runner_execution",
+        body={"version": 1, "resolution": resolution},
+    )
+    server._handle(operator_conn)
+    operator_size = rpc._HEADER.unpack(operator_conn.response[:rpc._HEADER.size])[0]
+    operator_response = json.loads(operator_conn.response[rpc._HEADER.size:rpc._HEADER.size + operator_size])
+    assert operator_response == {
+        "ok": True, "result": {"state": "RECONCILED", "grant_id": "grant-1"},
+    }
+    assert calls == [resolution]
+
+    for pid, uid, gid in ((101, 3001, 2001), (102, 997, 988)):
+        conn = FakeConnection(
+            pid=pid, uid=uid, gid=gid, operation="reconcile_runner_execution",
+            body={"version": 1, "resolution": resolution},
+        )
+        server._handle(conn)
+        size = rpc._HEADER.unpack(conn.response[:rpc._HEADER.size])[0]
+        response = json.loads(conn.response[rpc._HEADER.size:rpc._HEADER.size + size])
+        assert response == {"error": "refused", "ok": False}
+    assert calls == [resolution]
+
+    with pytest.raises(contracts.ContractError, match="operator reconciliation request fields"):
+        server._dispatch(
+            "reconcile_runner_execution", {"version": True, "resolution": resolution},
+        )
+    assert calls == [resolution]
 
 
 def _claim_successor_after_stale_pass(store: Store, manifest: dict, clock: FakeClock) -> dict:
@@ -390,6 +895,11 @@ def test_runner_service_fail_stops_every_post_reservation_failure_before_complet
         def __init__(self, *_args, **_kwargs):
             self.reservation_confirmed = False
             self.completion_confirmed = False
+            self.claim_confirmed = False
+            self.no_execution_confirmed = False
+
+        def terminalize_no_execution(self, *_args):
+            raise AssertionError("reserved execution must never be terminalized as no-execution")
 
         def fail_complete(self, _receipt):
             self.reservation_confirmed = True
@@ -591,7 +1101,9 @@ def test_supervisor_claim_rpc_preserves_new_pending_claim_as_none():
     assert server._dispatch("claim", {"grant": {"grant_id": "grant-1"}}) is None
 
 
-def _fake_execution_authority(grant, *, claim, claim_status, reserve, monkeypatch):
+def _fake_execution_authority(
+    grant, *, claim, claim_status, reserve, monkeypatch, terminalize_no_execution=None,
+):
     from tools.vst.execution_grant import ExecutionAuthority
 
     import tools.vst.execution_grant as grant_module
@@ -605,10 +1117,19 @@ def _fake_execution_authority(grant, *, claim, claim_status, reserve, monkeypatc
     authority._daemon_boundary_check = lambda: True
     authority._claim = claim
     authority._claim_status = claim_status
+    authority._terminalize_no_execution = terminalize_no_execution or (
+        lambda received, _reason: {
+            "state": "NO_EXECUTION", "grant_id": received["grant_id"],
+            "payload_sha256": hashlib.sha256(contracts.canonical_bytes(received)).hexdigest(),
+            "service_generation": received["service_generation"],
+        }
+    )
     authority._reserve = reserve
     authority._complete = lambda _grant, _receipt: None
     authority._claimed = False
     authority._reserved = False
+    authority._completed = False
+    authority._no_execution_confirmed = False
     context = {
         key: grant[key] for key in (
             "manifest_sha256", "task_id", "slot", "attempt", "epoch", "run_id",
@@ -859,7 +1380,9 @@ def test_execution_reserved_predecessor_blocks_successor_gates_before_recovery()
 
 
 def test_effects_resolved_operator_record_allows_only_a_separately_authorized_successor():
-    store, manifest, clock, grant, predecessor_state = _make_indeterminate_predecessor()
+    store, manifest, clock, grant, predecessor_state = _make_indeterminate_predecessor(
+        story_ttl_sec=3600,
+    )
     try:
         resolution = _execution_resolution(
             grant, predecessor_state=predecessor_state, outcome="EFFECTS_RESOLVED",
@@ -892,7 +1415,9 @@ def test_effects_resolved_operator_record_allows_only_a_separately_authorized_su
 
 
 def test_pre_spawn_pending_predecessor_can_retry_only_after_normal_lease_rules():
-    store, manifest, clock, grant, predecessor_state = _make_indeterminate_predecessor(reserve=False)
+    store, manifest, clock, grant, predecessor_state = _make_indeterminate_predecessor(
+        reserve=False, story_ttl_sec=3600,
+    )
     try:
         assert predecessor_state == "PENDING"
         clock.advance(1201)

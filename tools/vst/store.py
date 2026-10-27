@@ -142,6 +142,9 @@ MAX_COUNTER = 2**31 - 1
 MAX_BUDGET = 10**12
 MAX_SLOTS = 1024
 MAX_TTL_SEC = 366 * 24 * 3600
+RUNNER_PRESPAWN_NO_EXECUTION_REASON = "PRESPAWN_REFUSAL"
+RUNNER_PRESPAWN_REASON_CODES = frozenset({"RUNNER_PRESPAWN_FAILURE"})
+RUNNER_AUTHORITY_COMPLETION_MARGIN_SEC = 5.0
 
 LEASE_LIVE = "LIVE"
 LEASE_RELEASED = "RELEASED"
@@ -511,6 +514,42 @@ def _valid_runner_execution_resolution(
             or event.get("predecessor_state") != predecessor_state):
         return False
     return verify(record, bytes(key), RUNNER_EXECUTION_RESOLUTION_LABEL)
+
+
+def _valid_runner_prespawn_no_execution_event(event: dict, claim: sqlite3.Row) -> bool:
+    """Validate the terminal claim that proves no child reservation occurred."""
+    reason = event.get("reason") if isinstance(event, dict) else None
+    expected_fields = {
+        "event", "state", "grant_id", "payload_sha256", "reason",
+        "terminal_disposition", "predecessor_state", "request_id", "invocation_id",
+        "task_id", "slot", "runner_id", "attempt", "epoch", "run_id",
+        "service_generation",
+    }
+    if reason == RUNNER_PRESPAWN_NO_EXECUTION_REASON:
+        expected_fields.add("reason_code")
+    elif reason == "PREDECESSOR_GENERATION_STOPPED":
+        expected_fields.add("recovery_service_generation")
+    if (not isinstance(event, dict) or set(event) != expected_fields
+            or event.get("event") != "RUNNER_EXECUTION_INDETERMINATE"
+            or event.get("state") != "INDETERMINATE"
+            or event.get("terminal_disposition") != "NO_EXECUTION"
+            or (reason == RUNNER_PRESPAWN_NO_EXECUTION_REASON
+                and event.get("reason_code") not in RUNNER_PRESPAWN_REASON_CODES)
+            or (reason == "PREDECESSOR_GENERATION_STOPPED"
+                and (not isinstance(event.get("recovery_service_generation"), str)
+                     or event.get("recovery_service_generation") == claim["service_generation"]))
+            or reason not in {RUNNER_PRESPAWN_NO_EXECUTION_REASON, "PREDECESSOR_GENERATION_STOPPED"}
+            or event.get("predecessor_state") != "PENDING"):
+        return False
+    bindings = {
+        "grant_id": "grant_id", "payload_sha256": "payload_sha256",
+        "request_id": "request_id", "invocation_id": "invocation_id",
+        "task_id": "task_id", "slot": "slot", "runner_id": "runner_id",
+        "attempt": "attempt", "epoch": "epoch", "run_id": "run_id",
+        "service_generation": "service_generation",
+    }
+    return all(event.get(event_name) == claim[claim_name]
+               for event_name, claim_name in bindings.items())
 
 
 def _iso(now: float) -> str:
@@ -1343,6 +1382,14 @@ class Store:
             if (lease is None or int(lease["epoch"]) != epoch or lease["status"] != LEASE_LIVE
                     or float(lease["expires_at"]) <= now):
                 raise StoreError("grant has no current live lease", kind="lease")
+            last_receipt = conn.execute(
+                "SELECT attempt FROM receipts WHERE task_id = ? AND slot = ? ORDER BY attempt DESC LIMIT 1",
+                (task_id, slot),
+            ).fetchone()
+            expected_attempt = 1 if last_receipt is None else int(last_receipt["attempt"]) + 1
+            if not self._runner_receipt_gap_is_eligible_locked(
+                    conn, task_id, slot, expected_attempt - 1, attempt):
+                raise StoreError("receipt attempt gap lacks a verified successor disposition", kind="chain")
             if conn.execute(
                 "SELECT 1 FROM receipts WHERE task_id = ? AND slot = ? AND attempt = ?",
                 (task_id, slot, attempt),
@@ -1360,6 +1407,9 @@ class Store:
                 "epoch": epoch, "run_id": run_id, "manifest_sha256": digest,
                 "manifest_timeout_sec": int(manifest["timeout_sec"]),
                 "runner_id": lease["worker_id"],
+                "authority_expires_at": min(
+                    float(story["owner_expires_at"]), float(lease["expires_at"]),
+                ),
                 "service_generation": active_service_generation,
             }
 
@@ -1771,9 +1821,18 @@ class Store:
             (valid["task_id"], valid["slot"]),
         ).fetchone()
         expected_attempt = 1 if last is None else last["attempt"] + 1
-        if valid["attempt"] != expected_attempt:
+        persistent_runner_receipt = (
+            valid["receipt_type"] == "TestRun"
+            and valid.get("contract_version") == 2
+            and isinstance(valid.get("runner_attestation"), dict)
+        )
+        if (valid["attempt"] != expected_attempt
+                and not (persistent_runner_receipt and self._runner_receipt_gap_is_eligible_locked(
+                    conn, valid["task_id"], valid["slot"], expected_attempt - 1, valid["attempt"],
+                ))):
             raise StoreError(
-                f"attempt {valid['attempt']} breaks the chain; expected {expected_attempt}",
+                f"attempt {valid['attempt']} breaks the chain or lacks a verified successor disposition; "
+                f"expected {expected_attempt}",
                 kind="chain",
             )
         expected_prev = None if last is None else last["receipt_sha256"]
@@ -1901,6 +1960,11 @@ class Store:
         from .gate import evaluate as gate_evaluator
 
         _need_str(task_id, "task_id")
+        if "verified_successor_attempts" in gate_options:
+            raise StoreError(
+                "runner successor eligibility is supplied only by verified Store history",
+                kind="authorization",
+            )
         if not self._reconciliation_complete or self._integrity_locked:
             raise StoreError("startup reconciliation is incomplete or integrity-locked", kind="integrity")
         with self._read_tx() as conn:
@@ -1942,6 +2006,21 @@ class Store:
                 "SELECT body, receipt_sha256 FROM receipts WHERE task_id = ? ORDER BY seq", (task_id,)
             ).fetchall()
             receipts = [json.loads(row["body"]) for row in body_rows]
+            verified_successor_attempts: dict[str, set[int]] = {}
+            slot_types = {
+                item["slot"]: item["receipt_type"]
+                for item in manifest["required_receipts"]
+            }
+            for slot in slot_types:
+                through_attempt = max(
+                    (receipt["attempt"] for receipt in receipts if receipt["slot"] == slot),
+                    default=0,
+                )
+                verified_successor_attempts[slot] = (
+                    self._verified_runner_successor_attempts_locked(
+                        conn, task_id, slot, through_attempt,
+                    )
+                )
             row_shas = {row["receipt_sha256"] for row in body_rows}
             event_shas: set[str] = set()
             for event in conn.execute(
@@ -1956,7 +2035,9 @@ class Store:
                 self._integrity_locked = True
                 raise StoreError("receipt rows do not match the event chain", kind="integrity")
             return gate_evaluator(
-                manifest, receipts, current_head, current_epoch, worker_key, **gate_options
+                manifest, receipts, current_head, current_epoch, worker_key,
+                verified_successor_attempts=verified_successor_attempts,
+                **gate_options,
             )
 
     # --------------------------------------------------------------- events
@@ -2587,18 +2668,29 @@ class Store:
                 if indeterminate_index < 1:
                     raise StoreError("indeterminate runner claim lacks its predecessor state", kind="integrity")
                 predecessor_state = side_events[indeterminate_index - 1]["state"]
-                if indeterminate.get("reason") == "PREDECESSOR_GENERATION_STOPPED":
+                if indeterminate.get("reason") == RUNNER_PRESPAWN_NO_EXECUTION_REASON:
+                    if (predecessor_state != "PENDING"
+                            or indeterminate.get("terminal_disposition") != "NO_EXECUTION"
+                            or not _valid_runner_prespawn_no_execution_event(indeterminate, claim)):
+                        raise StoreError("runner pre-spawn terminal event does not match its claim", kind="integrity")
+                elif indeterminate.get("reason") == "PREDECESSOR_GENERATION_STOPPED":
                     recovery_generation = indeterminate.get("recovery_service_generation")
                     if (not isinstance(recovery_generation, str) or not recovery_generation
                             or recovery_generation == claim["service_generation"]
                             or indeterminate.get("predecessor_state") != predecessor_state
-                            or predecessor_state not in {"PENDING", "EXECUTION_RESERVED"}):
+                            or predecessor_state not in {"PENDING", "EXECUTION_RESERVED"}
+                            or (predecessor_state == "PENDING"
+                                and (indeterminate.get("terminal_disposition") != "NO_EXECUTION"
+                                     or not _valid_runner_prespawn_no_execution_event(indeterminate, claim)))
+                            or (predecessor_state == "EXECUTION_RESERVED"
+                                and "terminal_disposition" in indeterminate)):
                         raise StoreError("indeterminate runner claim lacks a predecessor-generation fence", kind="integrity")
                 elif indeterminate.get("reason") == "AUTHORITY_CHANGED_BEFORE_COMPLETION":
                     observed_generation = indeterminate.get("observed_service_generation")
                     if (not isinstance(observed_generation, str) or not observed_generation
                             or predecessor_state != "EXECUTION_RESERVED"
                             or indeterminate.get("predecessor_state") != predecessor_state
+                            or "terminal_disposition" in indeterminate
                             or indeterminate_index != 2):
                         raise StoreError("indeterminate runner completion lacks authority evidence", kind="integrity")
                 else:
@@ -2613,6 +2705,44 @@ class Store:
                     if resolution_id in runner_resolution_ids:
                         raise StoreError("runner execution resolution id is reused", kind="integrity")
                     runner_resolution_ids.add(resolution_id)
+        self._verify_runner_receipt_chains_locked(conn)
+
+    def _verify_runner_receipt_chains_locked(self, conn: sqlite3.Connection) -> None:
+        """Replay receipt attempt and digest links against verified successor proofs."""
+        tips: dict[tuple[str, str], tuple[int, str | None]] = {}
+        rows = conn.execute(
+            "SELECT task_id, slot, attempt, receipt_sha256, prev_receipt_sha256, body "
+            "FROM receipts ORDER BY task_id, slot, seq"
+        ).fetchall()
+        for row in rows:
+            key = (row["task_id"], row["slot"])
+            previous_attempt, previous_sha = tips.get(key, (0, None))
+            try:
+                receipt = json.loads(row["body"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("receipt row is malformed during history replay", kind="integrity") from exc
+            if (not isinstance(receipt, dict)
+                    or receipt.get("task_id") != row["task_id"]
+                    or receipt.get("slot") != row["slot"]
+                    or receipt.get("attempt") != int(row["attempt"])
+                    or receipt_sha256(receipt) != row["receipt_sha256"]
+                    or receipt.get("prev_receipt_sha256") != row["prev_receipt_sha256"]
+                    or row["prev_receipt_sha256"] != previous_sha):
+                raise StoreError("receipt digest chain differs during history replay", kind="integrity")
+            expected_attempt = previous_attempt + 1
+            if int(row["attempt"]) != expected_attempt:
+                persistent_runner_receipt = (
+                    receipt.get("receipt_type") == "TestRun"
+                    and receipt.get("contract_version") == 2
+                    and isinstance(receipt.get("runner_attestation"), dict)
+                )
+                if (not persistent_runner_receipt
+                        or not self._runner_receipt_gap_is_eligible_locked(
+                            conn, row["task_id"], row["slot"], previous_attempt,
+                            int(row["attempt"]),
+                        )):
+                    raise StoreError("receipt history contains an ineligible attempt gap", kind="integrity")
+            tips[key] = (int(row["attempt"]), row["receipt_sha256"])
 
     def _sync_external_anchor(self) -> None:
         if self._external_anchor is None:
@@ -2865,14 +2995,95 @@ class Store:
                         states[-1], claim, self._execution_resolution_key, predecessor_state,
                     )):
                 raise StoreError("runner execution resolution is invalid or unauthenticated", kind="integrity")
+        elif states[-1]["state"] == "INDETERMINATE":
+            claim = conn.execute(
+                "SELECT * FROM runner_execution_claims WHERE grant_id = ?", (grant_id,)
+            ).fetchone()
+            terminal = states[-1]
+            if terminal.get("reason") == RUNNER_PRESPAWN_NO_EXECUTION_REASON:
+                if (claim is None or len(states) != 2
+                        or not _valid_runner_prespawn_no_execution_event(terminal, claim)):
+                    raise StoreError("runner pre-spawn terminal event does not match its claim", kind="integrity")
+            elif (terminal.get("reason") == "PREDECESSOR_GENERATION_STOPPED"
+                    and terminal.get("predecessor_state") == "PENDING"):
+                if (claim is None or len(states) != 2
+                        or not _valid_runner_prespawn_no_execution_event(terminal, claim)):
+                    raise StoreError("recovered pre-spawn claim lacks a no-execution disposition", kind="integrity")
         return states
+
+    def _runner_attempt_successor_eligibility_locked(
+        self, conn: sqlite3.Connection, task_id: str, slot: str, attempt: int,
+    ) -> str | None:
+        """Return the verified terminal disposition that permits a successor attempt.
+
+        The evidence is bound to one exact claim and its lease identity. Reconciled
+        EFFECTS_RESOLVED is eligible only from EXECUTION_RESERVED and only after
+        validating the signed resolution record; generic INDETERMINATE and other
+        signed outcomes never authorize a successor.
+        """
+        claim = conn.execute(
+            "SELECT * FROM runner_execution_claims WHERE task_id = ? AND slot = ? AND attempt = ?",
+            (task_id, slot, attempt),
+        ).fetchone()
+        if claim is None:
+            return None
+        lease = conn.execute(
+            "SELECT epoch, worker_id FROM leases WHERE task_id = ? AND attempt = ?",
+            (task_id, attempt),
+        ).fetchone()
+        if (lease is None or int(lease["epoch"]) != int(claim["epoch"])
+                or lease["worker_id"] != claim["runner_id"]):
+            return None
+        states = self._runner_execution_states_locked(conn, claim["grant_id"])
+        terminal = states[-1]
+        if (terminal["state"] == "INDETERMINATE"
+                and terminal.get("predecessor_state") == "PENDING"
+                and terminal.get("terminal_disposition") == "NO_EXECUTION"
+                and _valid_runner_prespawn_no_execution_event(terminal, claim)):
+            return "NO_EXECUTION_PROVEN"
+        if terminal["state"] != "RECONCILED":
+            return None
+        predecessor_state = terminal.get("predecessor_state")
+        if not _valid_runner_execution_resolution(
+                terminal, claim, self._execution_resolution_key, predecessor_state):
+            return None
+        resolution = terminal.get("resolution")
+        if (resolution.get("outcome") == "NO_EXECUTION_PROVEN"
+                and predecessor_state == "PENDING"):
+            return "NO_EXECUTION_PROVEN"
+        if (resolution.get("outcome") == "EFFECTS_RESOLVED"
+                and predecessor_state == "EXECUTION_RESERVED"):
+            return "EFFECTS_RESOLVED"
+        return None
+
+    def _verified_runner_successor_attempts_locked(
+        self, conn: sqlite3.Connection, task_id: str, slot: str, through_attempt: int,
+    ) -> set[int]:
+        return {
+            attempt for attempt in range(1, through_attempt + 1)
+            if self._runner_attempt_successor_eligibility_locked(conn, task_id, slot, attempt)
+        }
+
+    def _runner_receipt_gap_is_eligible_locked(
+        self, conn: sqlite3.Connection, task_id: str, slot: str,
+        previous_receipt_attempt: int, successor_attempt: int,
+    ) -> bool:
+        """Verify each missing attempt between this receipt tip and its successor."""
+        if successor_attempt <= previous_receipt_attempt:
+            return False
+        if successor_attempt == previous_receipt_attempt + 1:
+            return True
+        return all(
+            self._runner_attempt_successor_eligibility_locked(conn, task_id, slot, attempt) is not None
+            for attempt in range(previous_receipt_attempt + 1, successor_attempt)
+        )
 
     def _guard_runner_task_continuation_locked(
         self, conn: sqlite3.Connection, task_id: str,
     ) -> None:
-        """Block successors until every earlier execution has a signed safe resolution."""
+        """Block successors until every earlier execution has verified successor eligibility."""
         claims = conn.execute(
-            "SELECT grant_id FROM runner_execution_claims WHERE task_id = ? ORDER BY attempt",
+            "SELECT grant_id, task_id, slot, attempt FROM runner_execution_claims WHERE task_id = ? ORDER BY attempt",
             (task_id,),
         ).fetchall()
         for claim_row in claims:
@@ -2880,17 +3091,9 @@ class Store:
             state = states[-1]["state"]
             if state == "COMPLETE":
                 continue
-            if (state == "INDETERMINATE"
-                    and states[-1].get("reason") == "PREDECESSOR_GENERATION_STOPPED"
-                    and states[-1].get("predecessor_state") == "PENDING"):
-                # Reservation is mandatory before first child launch, so a
-                # predecessor PENDING claim is conclusively pre-spawn. Normal
-                # lease, retry, epoch, and budget checks still gate successors.
+            if self._runner_attempt_successor_eligibility_locked(
+                    conn, claim_row["task_id"], claim_row["slot"], int(claim_row["attempt"])):
                 continue
-            if state == "RECONCILED":
-                outcome = states[-1]["resolution"]["outcome"]
-                if outcome in {"NO_EXECUTION_PROVEN", "EFFECTS_RESOLVED"}:
-                    continue
             raise StoreError(
                 f"prior runner execution {claim_row['grant_id']!r} is {state} and blocks continuation",
                 kind="lifecycle",
@@ -2978,10 +3181,9 @@ class Store:
             }
             if declared_slots.get(valid["slot"]) != "TestRun":
                 raise StoreError("execution grant slot is not a manifest TestRun slot", kind="slot")
-            if valid["execution_deadline_sec"] > min(
-                int(manifest["timeout_sec"]), MAX_EXECUTION_DEADLINE_SEC,
-            ):
-                raise StoreError("execution grant deadline exceeds the bounded manifest timeout", kind="authorization")
+            if (int(manifest["timeout_sec"]) > MAX_EXECUTION_DEADLINE_SEC
+                    or valid["execution_deadline_sec"] != int(manifest["timeout_sec"])):
+                raise StoreError("execution grant does not cover the full manifest run window", kind="authorization")
             lease = conn.execute(
                 "SELECT epoch, status, expires_at, worker_id FROM leases WHERE task_id = ? AND attempt = ?",
                 (valid["task_id"], valid["attempt"]),
@@ -2990,6 +3192,20 @@ class Store:
                     or lease["status"] != LEASE_LIVE or float(lease["expires_at"]) <= now
                     or lease["worker_id"] != valid["runner_id"]):
                 raise StoreError("execution grant has no current live lease", kind="lease")
+            authority_expires_at = min(
+                float(story["owner_expires_at"]), float(lease["expires_at"]),
+            )
+            if authority_expires_at - now < (
+                    valid["execution_deadline_sec"] + RUNNER_AUTHORITY_COMPLETION_MARGIN_SEC):
+                raise StoreError("execution grant exceeds the remaining owner/lease authority window", kind="authorization")
+            last_receipt = conn.execute(
+                "SELECT attempt FROM receipts WHERE task_id = ? AND slot = ? ORDER BY attempt DESC LIMIT 1",
+                (valid["task_id"], valid["slot"]),
+            ).fetchone()
+            previous_receipt_attempt = 0 if last_receipt is None else int(last_receipt["attempt"])
+            if not self._runner_receipt_gap_is_eligible_locked(
+                    conn, valid["task_id"], valid["slot"], previous_receipt_attempt, valid["attempt"]):
+                raise StoreError("receipt attempt gap lacks a verified successor disposition", kind="chain")
             if conn.execute(
                 "SELECT 1 FROM receipts WHERE task_id = ? AND slot = ? AND attempt = ?",
                 (valid["task_id"], valid["slot"], valid["attempt"]),
@@ -3032,6 +3248,71 @@ class Store:
             )
             self._record_event_locked(conn, valid["grant_id"], "supervisor", "NOTE", event)
         return None
+
+    def mark_runner_prespawn_no_execution(
+        self, grant: dict, *, active_service_generation: str, reason_code: str,
+    ) -> dict:
+        """Terminalize an exact PENDING claim after the runner proves no spawn occurred.
+
+        This is only called by the authenticated runner daemon. Child creation is
+        impossible before EXECUTION_RESERVED, so a still-PENDING claim is a
+        conclusive pre-spawn state. The transaction rejects any concurrent or
+        previously committed reservation.
+        """
+        from .execution_grant import validate_execution_grant
+
+        try:
+            valid = validate_execution_grant(grant)
+        except Exception as exc:
+            raise StoreError("execution grant is malformed", kind="authorization") from exc
+        _need_str(active_service_generation, "active_service_generation")
+        if valid["service_generation"] != active_service_generation:
+            raise StoreError("execution claim belongs to a different service generation", kind="authorization")
+        if (not isinstance(reason_code, str)
+                or reason_code not in RUNNER_PRESPAWN_REASON_CODES):
+            raise StoreError("runner pre-spawn reason code is not recognized", kind="argument")
+        if not self.reconciliation_complete or not self.verify_event_chain():
+            raise StoreError("verified Store history is required for pre-spawn terminalization", kind="integrity")
+        digest = hashlib.sha256(canonical_bytes(valid)).hexdigest()
+        with self._tx() as conn:
+            claim = conn.execute(
+                "SELECT * FROM runner_execution_claims WHERE grant_id = ?", (valid["grant_id"],)
+            ).fetchone()
+            if (claim is None or claim["payload_sha256"] != digest
+                    or claim["service_generation"] != active_service_generation
+                    or claim["request_id"] != valid["request_id"]
+                    or claim["invocation_id"] != valid["invocation_id"]
+                    or claim["task_id"] != valid["task_id"]
+                    or claim["slot"] != valid["slot"]
+                    or int(claim["attempt"]) != valid["attempt"]
+                    or int(claim["epoch"]) != valid["epoch"]
+                    or claim["run_id"] != valid["run_id"]):
+                raise StoreError("pre-spawn terminalization does not match the exact claim", kind="integrity")
+            states = self._runner_execution_states_locked(conn, valid["grant_id"])
+            if len(states) != 1 or states[0]["state"] != "PENDING":
+                raise StoreError("claim is no longer an unreserved PENDING execution", kind="lifecycle")
+            event = {
+                "event": "RUNNER_EXECUTION_INDETERMINATE", "state": "INDETERMINATE",
+                "grant_id": claim["grant_id"], "payload_sha256": claim["payload_sha256"],
+                "reason": RUNNER_PRESPAWN_NO_EXECUTION_REASON,
+                "terminal_disposition": "NO_EXECUTION",
+                "reason_code": reason_code, "predecessor_state": "PENDING",
+                "request_id": claim["request_id"], "invocation_id": claim["invocation_id"],
+                "task_id": claim["task_id"], "slot": claim["slot"],
+                "runner_id": claim["runner_id"], "attempt": int(claim["attempt"]),
+                "epoch": int(claim["epoch"]), "run_id": claim["run_id"],
+                "service_generation": claim["service_generation"],
+            }
+            conn.execute(
+                "INSERT INTO runner_execution_events(grant_id, state, payload, created_at) "
+                "VALUES (?, 'INDETERMINATE', ?, ?)",
+                (valid["grant_id"], canonical_bytes(event).decode("utf-8"), self._now()),
+            )
+            self._record_event_locked(conn, valid["grant_id"], "supervisor", "NOTE", event)
+        return {
+            "state": "NO_EXECUTION", "grant_id": valid["grant_id"],
+            "payload_sha256": digest, "service_generation": active_service_generation,
+        }
 
     def verify_pending_runner_execution(
         self, grant: dict, *, active_service_generation: str,
@@ -3078,6 +3359,9 @@ class Store:
                 or lease is None or int(lease["epoch"]) != valid["epoch"]
                 or lease["status"] != LEASE_LIVE or float(lease["expires_at"]) <= now
                 or lease["worker_id"] != valid["runner_id"]
+                or min(float(story["owner_expires_at"]), float(lease["expires_at"])) - now < (
+                    valid["execution_deadline_sec"] + RUNNER_AUTHORITY_COMPLETION_MARGIN_SEC
+                )
                 or self._budget_block_locked(conn, valid["task_id"]) is not None
             )
 
@@ -3121,6 +3405,9 @@ class Store:
                         kind="authorization",
                     )
             result = {"state": states[-1]["state"], "service_generation": row["service_generation"]}
+            if (states[-1]["state"] == "INDETERMINATE"
+                    and states[-1].get("reason") == RUNNER_PRESPAWN_NO_EXECUTION_REASON):
+                result["reason_code"] = states[-1]["reason_code"]
             if states[-1]["state"] == "COMPLETE":
                 receipt = states[-1].get("receipt")
                 if not isinstance(receipt, dict):
@@ -3174,9 +3461,8 @@ class Store:
                 entry["slot"]: entry["receipt_type"] for entry in manifest["required_receipts"]
             }
             if (declared_slots.get(valid["slot"]) != "TestRun"
-                    or valid["execution_deadline_sec"] > min(
-                        int(manifest["timeout_sec"]), MAX_EXECUTION_DEADLINE_SEC,
-                    )):
+                    or int(manifest["timeout_sec"]) > MAX_EXECUTION_DEADLINE_SEC
+                    or valid["execution_deadline_sec"] != int(manifest["timeout_sec"])):
                 raise StoreError("execution grant no longer matches its manifest run contract", kind="authorization")
             if (int(story["epoch"]) != valid["epoch"] or story["state"] != "OWNED"
                     or story["owner"] is None or story["owner_expires_at"] is None
@@ -3190,6 +3476,20 @@ class Store:
                     or lease["status"] != LEASE_LIVE or float(lease["expires_at"]) <= now
                     or lease["worker_id"] != valid["runner_id"]):
                 raise StoreError("execution grant has no current live lease", kind="lease")
+            authority_expires_at = min(
+                float(story["owner_expires_at"]), float(lease["expires_at"]),
+            )
+            if authority_expires_at - now < (
+                    valid["execution_deadline_sec"] + RUNNER_AUTHORITY_COMPLETION_MARGIN_SEC):
+                raise StoreError("execution reservation exceeds the remaining owner/lease authority window", kind="authorization")
+            last_receipt = conn.execute(
+                "SELECT attempt FROM receipts WHERE task_id = ? AND slot = ? ORDER BY attempt DESC LIMIT 1",
+                (valid["task_id"], valid["slot"]),
+            ).fetchone()
+            previous_receipt_attempt = 0 if last_receipt is None else int(last_receipt["attempt"])
+            if not self._runner_receipt_gap_is_eligible_locked(
+                    conn, valid["task_id"], valid["slot"], previous_receipt_attempt, valid["attempt"]):
+                raise StoreError("receipt attempt gap lacks a verified successor disposition", kind="chain")
             if self._budget_block_locked(conn, valid["task_id"]) is not None:
                 raise StoreError("execution budget is blocked before launch reservation", kind="budget")
             event = {
@@ -3306,7 +3606,7 @@ class Store:
         marked = 0
         with self._tx() as conn:
             rows = conn.execute(
-                "SELECT claim.grant_id, claim.payload_sha256 FROM runner_execution_claims claim "
+                "SELECT claim.* FROM runner_execution_claims claim "
                 "WHERE NOT EXISTS (SELECT 1 FROM runner_execution_events terminal "
                 "WHERE terminal.grant_id = claim.grant_id AND terminal.state IN "
                 "('COMPLETE', 'INDETERMINATE', 'RECONCILED')) "
@@ -3325,7 +3625,14 @@ class Store:
                     "reason": "PREDECESSOR_GENERATION_STOPPED",
                     "predecessor_state": predecessor_state,
                     "recovery_service_generation": current_service_generation,
+                    "request_id": row["request_id"], "invocation_id": row["invocation_id"],
+                    "task_id": row["task_id"], "slot": row["slot"],
+                    "runner_id": row["runner_id"], "attempt": int(row["attempt"]),
+                    "epoch": int(row["epoch"]), "run_id": row["run_id"],
+                    "service_generation": row["service_generation"],
                 }
+                if predecessor_state == "PENDING":
+                    event["terminal_disposition"] = "NO_EXECUTION"
                 conn.execute(
                     "INSERT INTO runner_execution_events(grant_id, state, payload, created_at) "
                     "VALUES (?, 'INDETERMINATE', ?, ?)",

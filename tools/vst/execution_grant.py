@@ -296,6 +296,7 @@ class ExecutionAuthority:
         daemon_boundary_check: Any,
         claim: Any,
         claim_status: Any,
+        terminalize_no_execution: Any,
         reserve: Any,
         complete: Any,
     ) -> None:
@@ -310,16 +311,19 @@ class ExecutionAuthority:
         if self.grant["service_generation"] != self.service_generation:
             raise ContractError("execution authority generation does not match grant")
         if (not callable(daemon_boundary_check) or not callable(claim)
-                or not callable(claim_status) or not callable(reserve) or not callable(complete)):
+                or not callable(claim_status) or not callable(terminalize_no_execution)
+                or not callable(reserve) or not callable(complete)):
             raise ContractError("execution authority callbacks are invalid")
         self._daemon_boundary_check = daemon_boundary_check
         self._claim = claim
         self._claim_status = claim_status
+        self._terminalize_no_execution = terminalize_no_execution
         self._reserve = reserve
         self._complete = complete
         self._claimed = False
         self._reserved = False
         self._completed = False
+        self._no_execution_confirmed = False
 
     @property
     def reservation_confirmed(self) -> bool:
@@ -330,6 +334,16 @@ class ExecutionAuthority:
     def completion_confirmed(self) -> bool:
         """Whether the Supervisor confirmed durable COMPLETE for this process."""
         return self._completed
+
+    @property
+    def no_execution_confirmed(self) -> bool:
+        """Whether the exact claim has a durable terminal pre-spawn disposition."""
+        return self._no_execution_confirmed
+
+    @property
+    def claim_confirmed(self) -> bool:
+        """Whether this process confirmed the exact durable PENDING claim."""
+        return self._claimed
 
     def authorize_and_claim(self, context: object) -> dict[str, Any] | None:
         """Enforce exact binding and return a stored receipt for safe COMPLETE replay."""
@@ -454,6 +468,41 @@ class ExecutionAuthority:
             raise AmbiguousExecutionAuthorityError(
                 "runner service generation changed after launch reservation"
             )
+
+    def terminalize_no_execution(self, reason_code: str) -> None:
+        """Close a claimed run only when this process has not confirmed reservation."""
+        if not self._claimed or self._reserved or self._completed:
+            raise AmbiguousExecutionAuthorityError(
+                "pre-spawn terminalization is unavailable after reservation or without a claim"
+            )
+        try:
+            result = self._terminalize_no_execution(dict(self.grant), reason_code)
+        except Exception as terminalize_error:
+            try:
+                status = self._claim_status(dict(self.grant))
+            except Exception as status_error:
+                raise AmbiguousExecutionAuthorityError(
+                    "pre-spawn terminalization outcome is unknown"
+                ) from status_error
+            if (not isinstance(status, dict)
+                    or status.get("service_generation") != self.service_generation
+                    or status.get("state") != "INDETERMINATE"
+                    or status.get("reason_code") != reason_code):
+                raise AmbiguousExecutionAuthorityError(
+                    "pre-spawn terminalization was not confirmed by exact claim status"
+                ) from terminalize_error
+        else:
+            digest = hashlib.sha256(canonical_bytes(self.grant)).hexdigest()
+            if (not isinstance(result, dict)
+                    or set(result) != {"state", "grant_id", "payload_sha256", "service_generation"}
+                    or result.get("state") != "NO_EXECUTION"
+                    or result.get("grant_id") != self.grant["grant_id"]
+                    or result.get("payload_sha256") != digest
+                    or result.get("service_generation") != self.service_generation):
+                raise AmbiguousExecutionAuthorityError(
+                    "pre-spawn terminal response does not match the exact claim"
+                )
+        self._no_execution_confirmed = True
 
     def complete(self, receipt: object) -> None:
         """Persist exactly one receipt after the runner returned a complete result."""

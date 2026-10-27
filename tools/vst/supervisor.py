@@ -10,7 +10,10 @@ from typing import Any, Callable
 from .contracts import canonical_bytes
 from .lifecycle import STOP_TRANSITIONS, transition
 from .signing import OPERATOR_MANUAL_OVERRIDE_LABEL, verify
-from .store import ACTION_RESOLUTION_LABEL, Store, StoreError
+from .store import (
+    ACTION_RESOLUTION_LABEL, RUNNER_AUTHORITY_COMPLETION_MARGIN_SEC,
+    Store, StoreError,
+)
 
 _LIFECYCLE_ACTIONS = {"start", "stop_terminate", "stop_cleanup", "rollback_effect", "rollback_cleanup", "resume"}
 
@@ -342,14 +345,32 @@ class Supervisor:
             active_service_generation=generation,
         )
         manifest_timeout = basis.pop("manifest_timeout_sec")
+        authority_expires_at = basis.pop("authority_expires_at")
         from .execution_grant import (
             GRANT_CLAIM_WINDOW_SEC, GRANT_COMPLETION_SLACK_SEC,
             MAX_EXECUTION_DEADLINE_SEC, sign_execution_grant,
         )
-        execution_deadline_sec = min(int(manifest_timeout), MAX_EXECUTION_DEADLINE_SEC)
-
         now = self.store._now()
-        claim_expires_at = now + GRANT_CLAIM_WINDOW_SEC
+        if int(manifest_timeout) > MAX_EXECUTION_DEADLINE_SEC:
+            raise StoreError(
+                "manifest run window exceeds the persistent runner's supported execution bound",
+                kind="authorization",
+            )
+        execution_deadline_sec = int(manifest_timeout)
+        completion_margin_sec = RUNNER_AUTHORITY_COMPLETION_MARGIN_SEC
+        remaining_window = float(authority_expires_at) - now
+        if remaining_window <= execution_deadline_sec + completion_margin_sec:
+            raise StoreError(
+                "owner/lease authority window cannot cover the required run and completion margin",
+                kind="authorization",
+            )
+        claim_window = min(
+            float(GRANT_CLAIM_WINDOW_SEC),
+            remaining_window - execution_deadline_sec - completion_margin_sec,
+        )
+        if claim_window < 1.0:
+            raise StoreError("owner/lease authority window leaves no safe grant-claim interval", kind="authorization")
+        claim_expires_at = now + claim_window
         grant = {
             "version": 1, "grant_id": uuid.uuid4().hex,
             "request_id": uuid.uuid4().hex, "audience": self.execution_grant_audience,
@@ -358,7 +379,10 @@ class Supervisor:
             "model_provenance_sha256": model_provenance_sha256,
             "execution_deadline_sec": execution_deadline_sec,
             "issued_at": now, "claim_expires_at": claim_expires_at,
-            "expires_at": claim_expires_at + execution_deadline_sec + GRANT_COMPLETION_SLACK_SEC,
+            "expires_at": min(
+                float(authority_expires_at),
+                claim_expires_at + execution_deadline_sec + GRANT_COMPLETION_SLACK_SEC,
+            ),
         }
         return sign_execution_grant(
             grant, key_id=self.execution_grant_key_id,
@@ -390,6 +414,18 @@ class Supervisor:
         self._verify_issued_execution_grant(grant, generation, allow_expired=True)
         return self.store.runner_execution_claim_status(
             grant, active_service_generation=generation,
+        )
+
+    def mark_runner_prespawn_no_execution(self, grant: dict, *, reason_code: str) -> dict:
+        """Accept a runnerd-only terminal proof for an unreserved exact claim."""
+        if not callable(self.service_generation_provider):
+            raise StoreError("active service-generation provider is unavailable", kind="authorization")
+        generation = self.service_generation_provider()
+        if not isinstance(generation, str) or not generation:
+            raise StoreError("active service generation is unavailable", kind="authorization")
+        self._verify_issued_execution_grant(grant, generation, allow_expired=True)
+        return self.store.mark_runner_prespawn_no_execution(
+            grant, active_service_generation=generation, reason_code=reason_code,
         )
 
     def reserve_runner_execution(self, grant: dict) -> dict:

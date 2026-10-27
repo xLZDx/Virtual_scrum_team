@@ -220,6 +220,12 @@ class AuthenticatedSupervisorAPI:
             if set(body) != {"grant"} or not isinstance(body["grant"], dict):
                 raise ContractError("claim-status request fields are invalid")
             return self.supervisor.runner_execution_claim_status(body["grant"])
+        if operation == "no_execution":
+            if set(body) != {"grant", "reason_code"} or not isinstance(body["grant"], dict):
+                raise ContractError("pre-spawn terminal request fields are invalid")
+            return self.supervisor.mark_runner_prespawn_no_execution(
+                body["grant"], reason_code=body["reason_code"],
+            )
         if operation == "reserve":
             if set(body) != {"grant"} or not isinstance(body["grant"], dict):
                 raise ContractError("reservation request fields are invalid")
@@ -251,6 +257,15 @@ class AuthenticatedSupervisorAPI:
             return {"receipt_sha256": self.supervisor.store.previous_receipt_sha256(
                 body["task_id"], body["slot"],
             )}
+        if operation == "reconcile_runner_execution":
+            if (set(body) != {"version", "resolution"} or type(body.get("version")) is not int
+                    or body.get("version") != 1 \
+                    or not isinstance(body.get("resolution"), dict)):
+                raise ContractError("operator reconciliation request fields are invalid")
+            result = self.supervisor.reconcile_runner_execution(body["resolution"])
+            if not isinstance(result, dict) or result.get("state") != "RECONCILED":
+                raise ContractError("operator reconciliation returned an invalid result")
+            return result
         if operation == "generation":
             if body:
                 raise ContractError("generation request must be empty")
@@ -336,8 +351,26 @@ class SupervisorClient:
         if result["state"] == "COMPLETE":
             if set(result) != {"state", "service_generation", "receipt"} or not isinstance(result["receipt"], dict):
                 raise SupervisorRPCError("Supervisor returned a malformed completed claim status")
+        elif (result["state"] == "INDETERMINATE"
+              and set(result) == {"state", "service_generation", "reason_code"}):
+            if result["reason_code"] != "RUNNER_PRESPAWN_FAILURE":
+                raise SupervisorRPCError("Supervisor returned an unknown terminal reason")
         elif set(result) != {"state", "service_generation"}:
             raise SupervisorRPCError("Supervisor returned unexpected claim status fields")
+        return result
+
+    def terminalize_no_execution(self, grant: dict, reason_code: str) -> dict:
+        result = self.call("no_execution", {"grant": grant, "reason_code": reason_code})
+        if (not isinstance(result, dict)
+                or set(result) != {"state", "grant_id", "payload_sha256", "service_generation"}
+                or result.get("state") != "NO_EXECUTION"):
+            raise SupervisorRPCError("Supervisor returned a malformed pre-spawn terminal result")
+        return result
+
+    def reconcile_runner_execution(self, resolution: dict) -> dict:
+        result = self.call("reconcile_runner_execution", {"version": 1, "resolution": resolution})
+        if not isinstance(result, dict) or result.get("state") != "RECONCILED":
+            raise SupervisorRPCError("Supervisor returned a malformed reconciliation result")
         return result
 
     def reserve(self, grant: dict) -> dict:
@@ -588,9 +621,12 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
         "dispatcher": frozenset({"issue_grant"}),
         "runnerd": frozenset({
             "claim", "claim_status", "reserve", "complete", "generation",
-            "recover", "manifest", "previous_receipt",
+            "recover", "manifest", "previous_receipt", "no_execution",
         }),
         "signer": frozenset({"generation", "pending"}),
+        # Optional, separately provisioned principal. No deployment config
+        # enables it by default; it receives only signed reconciliation.
+        "operator": frozenset({"reconcile_runner_execution"}),
     }
     for item in peers_value:
         if (not isinstance(item, dict) or set(item) != {"role", "uid", "gid", "cgroup", "operations"}
@@ -607,7 +643,9 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
             role=item["role"], uid=item["uid"], gid=item["gid"], cgroup=item["cgroup"],
             operations=frozenset(item["operations"]),
         ))
-    if {peer.role for peer in peers} != set(role_operations):
+    roles = {peer.role for peer in peers}
+    required_roles = {"dispatcher", "runnerd", "signer"}
+    if not required_roles <= roles or not roles <= set(role_operations):
         raise ContractError("Supervisor peer policy must define dispatcher, runnerd, and signer")
     by_role = {peer.role: peer for peer in peers}
     runner_peer = by_role["runnerd"]
@@ -622,6 +660,13 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
             or dispatcher_peer.gid in {988, 989}
             or socket_gid == 989):
         raise ContractError("Supervisor peer identities violate fixed runner, dispatcher, or worker separation")
+    operator_peer = by_role.get("operator")
+    if operator_peer is not None and (
+            operator_peer.uid in {runner_peer.uid, signer_peer.uid, dispatcher_peer.uid, 999}
+            or operator_peer.gid != socket_gid
+            or operator_peer.gid in {runner_peer.gid, signer_peer.gid, dispatcher_peer.gid, 989}
+            or operator_peer.cgroup in {runner_peer.cgroup, signer_peer.cgroup, dispatcher_peer.cgroup}):
+        raise ContractError("Supervisor operator identity must be independently pinned")
     for path_key in ("store_path", "anchor_path"):
         _validate_root_data_path(value[path_key])
     event_key = _read_root_key(value["event_key_path"])
