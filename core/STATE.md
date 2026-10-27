@@ -1,6 +1,18 @@
 # Virtual Scrum Team - current state (read first)
 
-Last updated: 2026-10-26. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
+Last updated: 2026-10-27. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
+
+## Latest continuation checkpoint — S2–S5 autonomous work (2026-10-27)
+
+Current work is in canonical checkout `D:\Repo\Virtual_scrum_team`, branch `s4-canonical-continuation`, at documentation baseline `199c35320026dced7f4acf9b85aa4cbee1cad145` before the pending process-record reconciliation. The branch is 231 commits ahead of `origin/main`; `origin/main` is `6117ba24b08a260b42402db6da0bf767864e1c04`, and contains S0/S1 merge `d5cd7f5` plus follow-ups `c5a8eb1` and `61412e2`. No push or PR was made. The only dirty/untracked path is the protected pre-existing `docs/sdlc/evidence/s2-functional-test-run.md`; it has not been modified or staged. No sprint worktree or fork was created by this continuation.
+
+S2 remains Phase 8 NOT APPROVED. Inherited safe subset evidence remains 74 Windows + 7 WSL2 cases passed at the recorded source/test head, without exhausting the 86-ID denominator; no tests were run in this continuation. Read-only host and firewall inventories are in `docs/sdlc/evidence/s2-readonly-wsl-system-inventory-20261027.md` and `s2-readonly-firewall-inventory-20261027.md`. Windows firewall profiles are enabled with outbound Allow; the current WSL nftables input/output chains show drop policy and loopback-only accepts. This is configuration evidence only: no egress traffic was tested, current commands ran as root, and worker identity, policy immutability, restart persistence, host/hypervisor egress, Windows Job Object/POSIX containment, and persistent deployment remain incomplete or NOT_VERIFIED. Prohibited process, crash, and mutation scenarios remain NOT_RUN. The S2 phase record is `docs/sdlc/STATE.md`.
+
+S3 Temporal remains the provisional read-only comparator at the recorded immutable server/SDK pins. No acquisition, build, installation, or candidate execution occurred. Exact-version license/notice, complete feature-resolved dependency and artifact provenance, general compatibility, separate acquisition authorization, S2 acceptance, fresh run probe, and runtime comparison remain open. The S3 technical service boundary may be unidentified; Codex owns identifying and evidencing it, while GPT-PM owns architecture adjudication and the operator owns legal/acquisition decisions.
+
+S4's existing reports record compiler/toolchain and six trusted lock-matching wheels, targeted Windows/WSL seeded-failure passes, and AC-17 pre/post checks. A read-only recheck on 2026-10-27 found those six wheels and GCC 13.3.0 at the named locations; this continuation ran no tests or builds. S4 remains not accepted because 53 policy selectors are NOT_RUN and no signed operator waiver is recorded; AC-17 same-identity change-and-restore during execution remains NOT_VERIFIED. GPT-PM's prior exact-head verdict was REJECT. Preserve every policy selector as NOT_RUN.
+
+S5 remains prepared but blocked: the in-scope `tools/` and `tests/` inventory has no AEVE source or analyzer. S2/S4 entry conditions and authorized source identity/license/interface evidence remain open; no neighboring repository was inspected. The named `.patch` path was previously checked and not found; no deletion was performed. See `core/BACKLOG.md`, S2/S3 evidence above, changes 0383-0385, and the process-correction record 0386. Changes 0383-0385 did include individual change records, but this continuation identified that they omitted the required contemporaneous decision/lesson log entries and document-registry refresh; history was not rewritten, and a corrective record is being added in a new commit.
 
 ## Latest continuation checkpoint — S2–S5 autonomous work (2026-10-26)
 
