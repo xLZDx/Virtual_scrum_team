@@ -427,11 +427,11 @@ def test_s2_owner_service_public_key_requires_root_owner_group_and_mode(
 
 
 @pytest.mark.parametrize(
-    ("env", "reason"),
+    "env",
     [
-        ({"LISTEN_PID": "0", "LISTEN_FDS": "1", "LISTEN_FDNAMES": "dispatch-owner"}, "pid"),
-        ({"LISTEN_PID": "123", "LISTEN_FDS": "2", "LISTEN_FDNAMES": "dispatch-owner"}, "fds"),
-        ({"LISTEN_PID": "123", "LISTEN_FDS": "1", "LISTEN_FDNAMES": "wrong"}, "name"),
+        {"LISTEN_PID": "0", "LISTEN_FDS": "1", "LISTEN_FDNAMES": "dispatch-owner"},
+        {"LISTEN_PID": "123", "LISTEN_FDS": "2", "LISTEN_FDNAMES": "dispatch-owner"},
+        {"LISTEN_PID": "123", "LISTEN_FDS": "1", "LISTEN_FDNAMES": "wrong"},
     ],
     ids=["wrong-activation-pid", "extra-activation-fd", "wrong-activation-name"],
 )
