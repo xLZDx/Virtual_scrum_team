@@ -44,13 +44,74 @@ acceptance evidence for current HEAD `70f8953c69276fa9cbc00f2695dde2ca5aded1cc`.
    isolation controls are enforced; record any property not independently observable as
    `NOT_VERIFIED` and do not claim S2 acceptance from the coordinator implementation.
 
-## Required adjudication before implementation
+## GPT-PM adjudication and mandatory amendment
 
-GPT-PM must approve or amend the trust boundary above and state whether this coordinator closes
-`S2-DISPATCH-M01` when the authenticated caller is the fixed in-repository dispatcher service and
-the Store remains the sole assignment authority. The previous GPT-PM decision prohibited a new
-assignment authority and required separate adjudication for a new architecture. No code, service,
-credential, or configuration has been changed under this proposal.
+GPT-PM reviewed the proposal under request `dd7175f5-40f3-4714-932d-dc44dca55cc2`, reply
+`c064e8f2-eb6d-5945-97e1-f6f6c71d6b92`, job `e93fd0e2-2097-4e6d-8728-756d7672a99b`, and user turn
+`3ecfb955-de1d-4d63-8e05-173846fa7275`. Result: `MODIFY — CONDITIONAL DESIGN`; production runtime
+remains disabled and `S2-DISPATCH-M01` remains MAJOR/OPEN. The architecture is acceptable only
+after request provenance is explicitly bound to an already-authorized assignment. An authenticated
+coordinator process alone is insufficient; it must not select arbitrary work or enumerate tasks.
+
+GPT-PM permits the existing `vst-dispatcher` peer to request a grant for an independently
+authorized existing assignment and forward that grant to Runner. It forbids grant signing, task or
+lease creation, arbitrary work selection, and direct Store mutation. Root Supervisor remains the
+only grant issuer. Each peer must be pinned to its provisioned UID/GID, exact systemd cgroup, and
+kernel-verifiable process identity. No dispatcher UID may be hard-coded before provisioning.
+
+### Request-provenance amendment submitted for adjudication
+
+The proposed bound is:
+
+1. The trusted source is an explicit operator instruction to Codex for an existing Codex-owned VST
+   task. The corresponding task and live lease must already exist in the root Store; the
+   coordinator cannot create, lease, list, or select them.
+2. The caller is authenticated by AF_UNIX peer credentials and the pinned process identity. A
+   root-owned deployment mapping binds that peer to the fixed principal `Codex`; the principal is
+   never accepted from the JSON body. Each request names one exact task, slot, attempt, epoch, and
+   unique request ID. The coordinator refuses batch or enumeration requests.
+3. The coordinator forwards the principal and identifiers through the existing dispatcher grant
+   request. Root Supervisor verifies that the current Store story owner is `Codex`, that the exact
+   lease/attempt/epoch is live, and that the manifest, budget, preflight and service generation are
+   current before issuing a grant. If the existing RPC cannot perform this principal-to-owner
+   check, implementation must add it to that existing operation; no new Supervisor operation is
+   presumed authorized.
+4. An identical request ID and canonical payload may only resolve its existing same-generation
+   grant/claim/result. A reused request ID with different payload, stale/revoked lease, duplicate
+   launch, or cross-generation retry is refused. The coordinator never automatically retries an
+   ambiguous launch.
+5. The caller cannot provide commands, executable paths, worker identity, Store/config paths,
+   model provenance, or artifact paths; those values come from the root-owned validated manifest
+   and configuration.
+
+This amendment uses the operator's current instruction as authorization for Codex-owned work and
+the pre-existing Store owner/lease as durable execution authority. It does not claim that an
+independent operator signing key exists. GPT-PM has been asked to approve or modify this precise
+binding before coordinator implementation.
+
+## Provisioning authorization and E5 boundary
+
+The same GPT-PM decision conditionally permits local root-only service keys/configuration inside
+the dedicated WSL2 after review of the exact service configuration and key custody. Codex may
+generate local Store event-integrity and startup/reconciliation keys, and service keys only under
+the approved custody rules. The operator network-policy attestation key remains
+operator-controlled; Codex must not impersonate it. The independent probe identity must be
+separately established. External provider/production credentials must come from their authorized
+owners. This adjudication did not authorize systemd enable/start.
+
+Fresh E5 must bind the exact committed source/runtime/helper revision, installed sandbox-spec
+digest, fresh run ID and nonce, authentic probe signature, independently operator-authorized
+network-policy attestation, actual environment inventory, and service generation/cgroup/artifacts.
+Automount/interoperability, Windows-drive absence, egress policy, host paths/sockets, UID/GID and
+capabilities, cgroup containment, filesystem isolation, restart fencing, and reviewer/signer
+isolation need real host evidence. Anything not observed remains `NOT_VERIFIED`.
+
+## Current status
+
+No coordinator source, key, root configuration, service state, test, migration, or E5 run has been
+created under this proposal. The amended request-provenance contract is pending a correlated
+GPT-PM decision. No code may implement the coordinator until that amendment is approved; source
+tests and documentation preparation may proceed within the approved scope.
 
 ## Verification and operational boundary
 
