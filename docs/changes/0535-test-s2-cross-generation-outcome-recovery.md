@@ -30,11 +30,11 @@ Coverage maps to `S2-PROV-M03-R01` and the read-only recovery contract:
 
 ## Verification state
 
-- Coverage is authored only; no test or check was run by the test author.
-- The designated `e2e-runner` must run the focused selectors at the resulting exact commit and
-  record exact commands, environment, test-file hashes, and results before acceptance is claimed.
-- The Windows-only external-anchor case is explicitly `NOT_RUN` outside POSIX; it is selected in
-  the authorized WSL run.
+- The functional-test-reviewer did not run tests. The designated e2e-runner executed the four
+  focused selectors at exact HEAD `c855ca4f2888d7288b006973950e4c6d28023b63`: **130 passed,
+  0 failed**, exit 0. Exact command, environment, hashes, and limits are in
+  `docs/sdlc/evidence/s2-cross-generation-outcome-recovery-test-run-20261029.md`.
+- The external-anchor selector is POSIX-only; it ran in the authorized WSL environment.
 - M03 and overall S2 remain open until the exact run and fresh specialist reviews pass. Production
   coordinator, runtime/E5, root configuration/credentials, prohibited selectors, and the final
   exact-head GPT-PM gate remain separate.

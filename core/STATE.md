@@ -543,7 +543,10 @@ New admission retains current authorization checks; legacy/integrity failures st
 Correlated decision and limitations:
 `docs/sdlc/evidence/s2-cross-generation-outcome-recovery-adjudication-20261029.md`.
 
-Source implementation is present but unverified; mapped functional tests and fresh specialist
-reviews are pending. `S2-PROV-M03-R01` remains MAJOR/OPEN. Production coordinator
+The designated e2e-runner executed the four-file focused suite at exact HEAD
+`c855ca4f2888d7288b006973950e4c6d28023b63`: 130 passed, 0 failed. Exact command, hashes, and
+limits are recorded in
+`docs/sdlc/evidence/s2-cross-generation-outcome-recovery-test-run-20261029.md`. Fresh specialist
+reviews remain pending; `S2-PROV-M03-R01` remains MAJOR/OPEN. Production coordinator
 (`S2-DISPATCH-M01`), production runtime/E5, exact-head final GPT-PM approval, prohibited selectors,
 and overall S2 acceptance remain open. No S3 work starts before S2 closure.

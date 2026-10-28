@@ -296,8 +296,11 @@ Current signature expiry or key revocation may not block retrieval of that exact
 new admission retains all current checks. An absent/mismatched request and legacy or corrupt
 history fail closed.
 
-Implementation is present in the canonical checkout but unverified. Mapped tests have not yet
-run; fresh code, security, and reliability review remain required. MAJOR
+Implementation is present in the canonical checkout. The designated e2e-runner executed the
+four-file focused suite at exact HEAD `c855ca4f2888d7288b006973950e4c6d28023b63`: 130 passed,
+0 failed; evidence and hashes are in
+`evidence/s2-cross-generation-outcome-recovery-test-run-20261029.md`. Fresh code, security, and
+reliability review remain required. MAJOR
 `S2-PROV-M03-R01` therefore remains OPEN. `S2-DISPATCH-M01` remains MAJOR/OPEN; production
 coordinator, runtime/E5, production credentials/configuration, prohibited scenarios, and exact-head
 GPT-PM acceptance remain separate S2 gates. S3 remains unstarted. Decision evidence:
