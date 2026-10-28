@@ -1264,7 +1264,14 @@ class Store:
             if set(note) != required:
                 raise StoreError("dispatch outcome control record fields are malformed", kind="integrity")
             request_id = note["request_id"]
-            if not isinstance(request_id, str) or not request_id:
+            if (not isinstance(request_id, str) or not request_id
+                    or not isinstance(note["principal"], str) or not note["principal"]
+                    or not isinstance(note["service_generation"], str) or not note["service_generation"]
+                    or type(note["event_seq"]) is not int or note["event_seq"] < 1
+                    or not isinstance(note["payload_digest"], str)
+                    or not re.fullmatch(r"[0-9a-f]{64}", note["payload_digest"])
+                    or not isinstance(note["result_sha256"], str)
+                    or not re.fullmatch(r"[0-9a-f]{64}", note["result_sha256"])):
                 raise StoreError("dispatch outcome control request id is malformed", kind="integrity")
             bucket = controls.setdefault(request_id, {"pending": [], "ack": []})
             key = "pending" if control_type.endswith("PENDING") else "ack"
