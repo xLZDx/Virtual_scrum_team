@@ -1180,3 +1180,7 @@ Decision: identify the 53-selector policy family as S4 acceptance, not S2. No S4
 ## 2026-10-28 — Keep S2 production dispatch disabled without an identified coordinator (change 0486)
 
 GPT-PM's correlated architecture adjudication confirmed Option A for `S2-DISPATCH-M01`: dispatch remains disabled/fail-closed until an existing trusted coordinator and authenticated assignment path are identified. No new assignment authority or production CLI/queue/spool is authorized. The decision leaves `S2-DISPATCH-M01` MAJOR/OPEN and S2 NOT APPROVED. Request `fca31d62-2d04-4d22-9753-103b748b5ae9`, reply `73847bec-1421-53e7-8c8d-ffb98ef240e5`, job `a1d2be1d-1d39-4edc-a369-76772cb8587c`. Evidence: `docs/sdlc/evidence/s2-dispatch-architecture-adjudication-20261028.md`.
+
+## 2026-10-28 — Downgrade WSL selector summaries with invalid provenance (change 0487)
+
+Exact source review found that the recorded module paths for five E3 selectors and both synthetic identity selectors do not match their definitions at source/test commit `d5001797cb94113efd9a8dc26e4a15f2dc130976`. The capability-drop selector is also recorded in the wrong module (change 0485). Since raw invocations/output are unavailable, all three retained WSL summaries are NOT_VERIFIED and do not count as acceptance. Run the actual IDs from the corrected evidence with the designated e2e-runner; do not infer passes from the retained summaries.

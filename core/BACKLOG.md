@@ -161,3 +161,7 @@ The two POSIX runner selector results are `NOT_VERIFIED` and `NOT_RUN` for accep
 ## S2 dispatch architecture decision — change 0486
 
 GPT-PM confirmed `S2-DISPATCH-M01` remains MAJOR/OPEN: keep production dispatch fail-closed until an existing trusted coordinator and authenticated caller are identified. No new scheduler, assignment authority, CLI, queue, spool or validation bypass is authorized. Owner: Codex for source review inside this repo; operator for an exact external source path if it exists; GPT-PM for any future architecture decision. Next: do not inspect neighboring checkouts; review only a specifically named source or preserve the blocker. Evidence: `docs/sdlc/evidence/s2-dispatch-architecture-adjudication-20261028.md`.
+
+## S2 WSL runtime evidence correction — change 0487
+
+The retained WSL E3, identity, and capability/timeout result summaries are `NOT_VERIFIED`; exact command/output are missing and several module-qualified node IDs are wrong. Actual current E3 IDs are in the corrected evidence. Owner: Codex for source/evidence reconciliation; designated e2e-runner for a fresh controlled run. Next: run only the corrected temporary-fixture selectors; leave service/capability-dependent cases `NOT_RUN` until their environment gate exists.

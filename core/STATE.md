@@ -291,7 +291,7 @@ The designated e2e-runner found no Windows selector that proves real containment
 
 ## S2 controlled runtime selectors — change 0483
 
-GPT-PM request `a94486c9-f8e2-451e-91d2-4adb1799b8d6`, reply `85eba0d2-3670-5274-a787-58012255f22b`, job `3ff013cd-f5e4-441e-98c5-8c823f62a96f` authorized bounded selectors against temporary test fixtures. Windows E4 cleanup passed 2/2; waiver-boundary tests passed 7/7. WSL E3 store recovery passed 10 cases and two synthetic identity selectors passed. A retained summary says two capability-dependent runner selectors skipped, but exact command/raw output cannot be recovered and the committed module path for one selector is wrong; mark both NOT_VERIFIED and NOT_RUN for acceptance (change 0485). No service activation, capability/credential provisioning, E5/E8, manifest, or production dispatch occurred. `S2-DISPATCH-M01` remains MAJOR/OPEN; S2 remains NOT APPROVED. Evidence: `docs/sdlc/evidence/s2-controlled-runtime-selectors-20261028.md`.
+GPT-PM request `a94486c9-f8e2-451e-91d2-4adb1799b8d6`, reply `85eba0d2-3670-5274-a787-58012255f22b`, job `3ff013cd-f5e4-441e-98c5-8c823f62a96f` authorized bounded selectors against temporary test fixtures. Windows E4 cleanup passed 2/2; waiver-boundary tests passed 7/7. The retained WSL E3, synthetic identity, and capability/timeout summaries are NOT_VERIFIED because raw command/output are unavailable and recorded module paths are invalid for several selectors; the actual current selectors remain NOT_RUN for acceptance (change 0487). No service activation, capability/credential provisioning, E5/E8, manifest, or production dispatch occurred. `S2-DISPATCH-M01` remains MAJOR/OPEN; S2 remains NOT APPROVED. Evidence: `docs/sdlc/evidence/s2-controlled-runtime-selectors-20261028.md`.
 
 ## S2 evidence scope correction — 2026-10-28 (change 0484)
 
@@ -304,3 +304,7 @@ The retained e2e-runner summary says two POSIX runner selectors skipped, but the
 ## S2 dispatch architecture adjudication — 2026-10-28 (change 0486)
 
 GPT-PM confirmed that production dispatch stays disabled/fail-closed until an existing trusted coordinator and authenticated assignment identity are identified. No new scheduler, assignment authority, CLI, queue, spool or validation bypass is authorized. `S2-DISPATCH-M01` remains MAJOR/OPEN and S2 remains NOT APPROVED. Correlated PM Bridge request `fca31d62-2d04-4d22-9753-103b748b5ae9`, reply `73847bec-1421-53e7-8c8d-ffb98ef240e5`, job `a1d2be1d-1d39-4edc-a369-76772cb8587c`. Evidence: `docs/sdlc/evidence/s2-dispatch-architecture-adjudication-20261028.md`.
+
+## S2 WSL selector provenance correction — 2026-10-28 (change 0487)
+
+Further exact-source review found invalid module paths in the retained WSL E3 and synthetic-identity commands as well as the capability-drop command. Exact command/output are unavailable; the retained result summaries (10 passed, 2 passed, 2 skipped) are NOT_VERIFIED and do not count toward acceptance. Current correct E3 IDs and identity module paths are recorded in `docs/sdlc/evidence/s2-controlled-runtime-selectors-20261028.md`; re-run only through the designated test role. No tests or capability provisioning occurred in change 0487.

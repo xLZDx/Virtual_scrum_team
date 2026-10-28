@@ -23,3 +23,8 @@ available. The command recorded in the linked evidence also names the capability
 the wrong module; its definition is in `tests/vst/test_s2_runner_lifecycle.py`. Change 0485
 supersedes the two-skip claim for acceptance: both selectors are `NOT_VERIFIED` and `NOT_RUN`.
 No rerun or capability provisioning is implied.
+
+Change 0487 also supersedes the recorded WSL E3 “10 passed” and synthetic identity “2 passed”
+claims: the saved module-qualified node IDs do not exist under the cited modules, and exact raw
+commands/output are unavailable. Those WSL summaries are `NOT_VERIFIED` and `NOT_RUN` for
+acceptance until a fresh designated run records valid IDs and output.
