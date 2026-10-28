@@ -245,17 +245,19 @@ transient Store errors; no actionable BLOCKER/MAJOR remains in that reviewed sco
 found no BLOCKER/MAJOR and noted a MINOR O(n) full-history grant lookup; no workload evidence supports
 optimization yet. The production owner caller is still absent, so the data path is source-prepared
 but not end-to-end integrated. `S2-DISPATCH-M01` remains MAJOR/OPEN; no runtime pass is claimed.
-Schema upgrade remains opt-in and unapplied. The first focused functional-test attempt at exact
-source HEAD `ec9aefe9444003a65af81f27eaf813b250e25c10` failed at collection due to a missing closing
-parenthesis in the peer-config predicate; zero test cases executed. Codex fixed it and the code
-reviewer rechecked the predicate; functional-test-reviewer owns the rerun. E2E is `NOT_RUN` because
-the production prerequisites are absent; exact reason is in
-`docs/sdlc/evidence/s2-pubsub-e2e-triage-ec9aefe-20261028.md`.
+Schema upgrade remains opt-in and unapplied. The initial focused attempt at source HEAD
+`ec9aefe9444003a65af81f27eaf813b250e25c10` failed during collection with a syntax error; zero tests
+executed. Codex fixed it, code-reviewer re-reviewed, and functional-test-reviewer passed the
+corrected focused suite at source HEAD `61bfe643e52362fbe4c680ade2c3cb150997dedc`: **20 passed,
+0 failed, 0 skipped, 1 pytest-asyncio deprecation warning**. Exact command and contract map:
+`docs/sdlc/evidence/s2-pubsub-functional-run-ec9aefe-20261028.md`. Production E2E is still
+`NOT_RUN` because the required config/credentials, current E5 and active runtime are absent; exact
+reason: `docs/sdlc/evidence/s2-pubsub-e2e-triage-ec9aefe-20261028.md`.
 
 Ordered closure:
 
-1. Functional-test-reviewer reruns the focused source suite after the syntax fix is committed and
-   records each result. E2E remains `NOT_RUN` until its provisioned runtime prerequisites exist.
+1. Codex preserves the focused 20/20 local source result; functional coverage is complete for this
+   bounded contract. E2E remains `NOT_RUN` until its provisioned runtime prerequisites exist.
    Prohibited crash/process-kill/mutation/policy scenarios remain `NOT_RUN`.
 2. Codex prepares a root-owned authenticated owner caller path that does not add assignment
    authority; GPT-PM adjudicates any material architecture change. Until such a caller is deployed,

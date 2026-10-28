@@ -412,8 +412,12 @@ remain unproven. Keep S2 active and S3 unstarted.
 At source commit `ec9aefe9444003a65af81f27eaf813b250e25c10`, functional-test-reviewer attempted the
 focused pub/sub suite, but collection failed with a Python `SyntaxError` in the new peer-config
 predicate; zero test cases executed. Codex added the missing parenthesis, and code-reviewer
-re-reviewed that exact predicate with no further finding. The focused suite retry is pending. The
-assigned e2e-runner recorded production E2E as `NOT_RUN` because current root config/credentials,
-authenticated owner identity, current E5, installed runtime and active services are absent and
-outside the authorized test pass. Evidence: `docs/changes/0511-fix-s2-pubsub-config-syntax.md` and
+re-reviewed that exact predicate with no further finding. At corrected source HEAD
+`61bfe643e52362fbe4c680ade2c3cb150997dedc`, functional-test-reviewer passed the focused suite:
+**20 passed, 0 failed, 0 skipped, 1 pytest-asyncio deprecation warning**, exact command and contract
+map in `docs/sdlc/evidence/s2-pubsub-functional-run-ec9aefe-20261028.md`. This verifies local
+Store/Supervisor and mocked receipt binding only. The assigned e2e-runner recorded production E2E
+as `NOT_RUN` because current root config/credentials, authenticated owner identity, current E5,
+installed runtime and active services are absent and outside the authorized test pass. Evidence:
+`docs/changes/0511-fix-s2-pubsub-config-syntax.md` and
 `docs/sdlc/evidence/s2-pubsub-e2e-triage-ec9aefe-20261028.md`. S2 remains active and S3 unstarted.
