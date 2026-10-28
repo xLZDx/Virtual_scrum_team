@@ -226,3 +226,7 @@ PM Bridge request `7c9fcb10-61cc-4fdd-8292-c2dfbf97ff04` / correlated reply `f34
 ## S2 deployment revision-switch follow-up — 2026-10-28 (change 0479)
 
 The non-blocking reliability-review follow-up is documented: the installer refuses a different runtime selector and does not implement an upgrade/rollback procedure. Any future switch requires a separate reviewed runbook and operator authorization; no switch or service activation occurred here. S2 stays NOT APPROVED per final PM gate 0478. See `docs/changes/0479-document-s2-revision-switch-boundary.md`.
+
+## S2 permitted WSL remainder checked — 2026-10-28 (change 0480)
+
+A read-only selector triage by the designated e2e-runner found no further WSL/POSIX scenario that fits the current safety boundary; no tests were run. Root config/credentials, service activation, worker launch and E5 remain absent or unauthorized, while E4 and restricted selector families stay `NOT_RUN`. The operator owns the exact prerequisite/authorization; Codex coordinates. S2 remains blocked. See `evidence/s2-safe-wsl-remainder-audit-d500-20261028.md`.

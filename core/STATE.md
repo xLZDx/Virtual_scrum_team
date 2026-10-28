@@ -271,3 +271,7 @@ At implementation/test commit `d5001797cb94113efd9a8dc26e4a15f2dc130976`, the fo
 ## S2 revision-switch documentation follow-up — 2026-10-28
 
 Change 0479 closed the non-blocking documentation follow-up from the reliability review. The design now states that the installer does not switch a different existing `/opt/vst-runtime` selector or implement rollback and gives prerequisites for a future separately authorized runbook. No service, selector, helper or configuration state was changed. S2 remains NOT APPROVED under the final GPT-PM gate; units remain inactive. Codex owns future runbook work, GPT-PM its review and the operator privileged deployment authorization. See `docs/changes/0479-document-s2-revision-switch-boundary.md`.
+
+## S2 safe WSL remainder audit — 2026-10-28
+
+The designated e2e-runner reviewed remaining POSIX/WSL candidates at source/test HEAD `d5001797cb94113efd9a8dc26e4a15f2dc130976` and found none that can run within the active restrictions. No test ran. Candidate limits and exact dependencies are in `docs/sdlc/evidence/s2-safe-wsl-remainder-audit-d500-20261028.md`. The operator owns root Runner config/credentials and authorization for worker/service scenarios; Codex coordinates. S2 remains NOT APPROVED; no S3.
