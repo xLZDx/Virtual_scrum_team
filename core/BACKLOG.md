@@ -183,32 +183,46 @@ E8/S2 remains NOT APPROVED. Evidence and limitations are in
 
 Still open for S2, in order:
 
-1. `S2-DISPATCH-M01`: the operator confirmed that no production coordinator callsite or
-   authenticated assignment source exists yet. There is no source path to provide or inspect.
-   Production dispatch remains fail-closed; GPT-PM has prohibited creating a replacement
-   scheduler/authority. GPT-PM must decide whether this acceptance remains a blocker or S2's
-   scope/DoD is formally revised. The operator has no immediate action.
-2. Current root-owned runner configuration, required credentials, signed current-run E5 and
-   provisioned sandbox provenance are absent. The operator has no current action; the operator
-   owns provisioning/attestation only if the environment becomes available and provisioning is
-   separately authorized. Codex coordinates and `e2e-runner` executes only permitted scenarios.
+1. `S2-DISPATCH-M01`: no runnable production coordinator/callsite is established. The operator
+   directs Codex to implement an in-repository coordinator. GPT-PM's correlated decision allows a
+   local AF_UNIX adapter only as a constrained forwarder; it cannot create tasks/leases, enumerate
+   or select arbitrary work, sign grants, or mutate Store. `S2-DISPATCH-M01-AUTH-01` remains MAJOR
+   until the exact authenticated request source is bound to an existing Store-owned task/live
+   lease and the amendment is approved. Production dispatch stays disabled. Codex owns the
+   amendment/implementation; GPT-PM owns architecture adjudication.
+2. Fresh runtime configuration/E5: the dedicated WSL2 exists and has `automount=false`,
+   `interop=false`, and `appendWindowsPath=false`. Current runner/Supervisor/signer configs and
+   runtime manifest are absent; all services are disabled/inactive; the installed worker helper
+   is from older head `d5001797`. Six role-separated 32-byte key files and prior private E5
+   inventory metadata exist, but their provenance was not independently verified this turn and
+   their contents were not read. Historical E5 records are bound to older source heads; fresh
+   current-head E5 remains open. Codex owns exact config/runtime preparation after code review and
+   may generate local service keys under GPT-PM's conditional custody rules. The operator's
+   network-policy attestation authority cannot be impersonated; any independent attestation must
+   be genuinely operator-authorized. Do not enable/start services without distinct runtime
+   authorization and accepted evidence.
 3. Remaining Windows/POSIX containment and E5/E8 system acceptance must be evidenced. Restricted
-   process/crash/kill, STOP, resume/restart, out-of-scope mutation and egress scenarios remain
-   `NOT_RUN` unless their policy gate changes; no waiver is inferred.
-4. After in-scope evidence is complete, Codex coordinates fresh exact-head specialist consensus
-   and GPT-PM final S2 gate. No S3, PR, merge or deployment before that gate.
+   process/crash/kill, STOP, resume/restart, out-of-scope mutation and policy scenarios remain
+   `NOT_RUN`; no waiver is inferred. Egress, host isolation, service restart fencing, and any
+   unobserved property remain `NOT_VERIFIED`.
+4. After in-scope code and evidence are complete, Codex coordinates fresh exact-head specialist
+   consensus and GPT-PM final S2 gate. No S3, PR, merge, or deployment before that gate.
 
-Owners: Codex — bounded implementation/evidence/coordination; GPT-PM — architecture and final
-adjudication; operator — future real-environment provisioning/attestation only if separately
-authorized and actually available. The operator is not expected to provide nonexistent artifacts.
+Owners: Codex — amendment, implementation, evidence and safe WSL preparation; GPT-PM — architecture
+adjudication and final gate; operator — only genuinely independent network-policy attestation or
+other human-only authorization if the accepted contract requires it. The operator is not expected
+to locate nonexistent external artifacts or send secrets in chat.
 
 ## S2 prerequisite absence confirmed — 2026-10-28
 
-The operator clarified that there is no existing production coordinator/authenticated assignment
-source yet and no root-owned runner configuration, credentials, current signed E5, or sandbox
-provenance yet. Do not ask the operator to provide nonexistent paths or paste secrets. Keep
-production dispatch fail-closed and `S2-DISPATCH-M01` MAJOR/OPEN. Codex owns the architecture
-clarification request; GPT-PM decides whether S2 remains blocked or its scope/DoD is formally
-revised. Operator has no immediate action. PM Bridge request `c775dfb6-563b-4c9c-a589-ddd694c359ab`
-is pending. No S3 until the current sprint is formally closed. Evidence:
-`docs/sdlc/evidence/s2-prerequisite-absence-confirmation-20261028.md`.
+The operator clarified that no existing production coordinator/authenticated assignment source is
+available and directed Codex to implement one without creating a second assignment authority.
+GPT-PM's first review (`dd7175f5-40f3-4714-932d-dc44dca55cc2` / reply
+`c064e8f2-eb6d-5945-97e1-f6f6c71d6b92`) returned MODIFY: a local AF_UNIX adapter is acceptable in
+principle but a mandatory request-provenance amendment is required before implementation. The
+amendment is currently being adjudicated under request `9fcaec9d-c344-4388-b79a-1392fb6f4cb4`;
+the PM Bridge wait is uncertain and no correlated final reply is recorded yet. Root service config
+and runtime are absent from the WSL distribution, while role-separated key files and historical
+E5 records from earlier heads exist; see `docs/sdlc/evidence/s2-wsl-provisioning-baseline-20261028.md`.
+Current-head E5 remains unproven. Do not ask the operator to find an external coordinator or send
+secrets. Keep dispatch disabled and S3 unstarted until S2 formally closes.

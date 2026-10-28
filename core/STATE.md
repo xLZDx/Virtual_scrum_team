@@ -2,6 +2,38 @@
 
 Last updated: 2026-10-28. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
 
+## S2 coordinator direction and WSL baseline — 2026-10-28
+
+The operator explicitly directed Codex to implement the missing coordinator and prepare root-owned
+service configuration/current E5; no external coordinator path is expected. GPT-PM reviewed the
+proposal at declared HEAD `70f8953c69276fa9cbc00f2695dde2ca5aded1cc` and returned `MODIFY —
+CONDITIONAL DESIGN`: the local AF_UNIX adapter is acceptable in principle, but an authenticated
+coordinator process alone does not prove an individual request was authorized. `S2-DISPATCH-M01`
+and subfinding `S2-DISPATCH-M01-AUTH-01` remain MAJOR/OPEN, runtime stays disabled, and source
+implementation requires approval of a precise request-provenance amendment. Correlation:
+request `dd7175f5-40f3-4714-932d-dc44dca55cc2`, reply
+`c064e8f2-eb6d-5945-97e1-f6f6c71d6b92`, job `e93fd0e2-2097-4e6d-8728-756d7672a99b`, user turn
+`3ecfb955-de1d-4d63-8e05-173846fa7275`. The amendment was sent as
+`9fcaec9d-c344-4388-b79a-1392fb6f4cb4`; its wait is uncertain and no correlated final reply is
+recorded yet. See change 0508 and the proposal evidence.
+
+Read-only inventory of the dedicated Ubuntu-24.04 WSL2 at repository head
+`e3464a9f5d50156b4b242270c498fb2cffb3b927` found WSL automount/interop disabled and the three
+installed systemd unit files byte-identical to repository templates, but all services disabled and
+inactive. Current `/etc/vst-runner` configuration and `/opt/vst-runtime` source manifest are
+absent. The only installed versioned helper is from older source head `d5001797`; six role-separated
+32-byte HMAC files and one prior private E5 inventory exist with restrictive metadata, but their
+contents were not read and their current provenance was not independently verified. Historical E5
+records bind earlier heads and do not establish fresh current-head acceptance. Full read-only
+evidence is `docs/sdlc/evidence/s2-wsl-provisioning-baseline-20261028.md`.
+
+GPT-PM conditionally permits root-only local service configuration and service-key custody after
+the exact config is reviewed; it does not allow Codex to impersonate independent operator
+attestation or authorize systemd enable/start. Fresh E5 requires an authentic probe identity and
+independent operator-authorized network-policy attestation, plus actual current host evidence.
+Restricted process/crash/STOP/resume/mutation/policy scenarios remain `NOT_RUN`; unobserved
+containment/effectiveness remains `NOT_VERIFIED`. No S3 until S2 closes.
+
 ## S2 Windows ACL and signer boundary design — 2026-10-27
 
 At docs baseline `41cfd5e`, read-only architect and security reviews established that S2.3's Windows ACL requirement cannot be closed by adding an isolated helper: `run_manifest_commands` rejects Windows, worker identity is expressed only as POSIX UID/GID, and the signer requires POSIX `O_NOFOLLOW` and `SO_PEERCRED`. The actual Windows signed-worker, key-open, and signer IPC paths do not exist. The design recommendation is to preserve fail-closed behavior and obtain GPT-PM's platform-scope adjudication; if Windows signed-worker support is required, implement SID/token provisioning, effective-access checks bound to secure key opening, and authenticated signer IPC as one trust-boundary change. Windows VST-011 and VST-015 remain `NOT_VERIFIED`; no source change or test run occurred. See change 0468 and `docs/sdlc/evidence/s2-windows-acl-boundary-design-20261027.md`. S2 remains NOT APPROVED; S3 source work remains deferred.
