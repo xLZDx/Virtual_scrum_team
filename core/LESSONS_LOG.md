@@ -925,3 +925,20 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
   from a symlink mode.
 - Fix status: the current S2 state, decision log, backlog, and preparation evidence now record the
   target mode and withdrawn blocker. Runtime acceptance remains open.
+
+## 2026-10-29 — Keep owner identity distinct from shared socket access (change 0517)
+
+- Kind: DESIGN LESSON.
+- Facts: the provisioning review found the dispatch-owner primary GID reused the shared Supervisor
+  socket GID. The source boundary also needed an exact unit, socket activation contract and
+  immutable runtime entry point before a peer cgroup could be trusted.
+- Root cause: the earlier plan described a user and peer role but did not fully reconcile primary
+  group identity, supplementary socket access, service unit and transport into one contract.
+- Layer that missed or caught it: the plan missed the exact systemd boundary; GPT-PM's adversarial
+  design review identified both major omissions.
+- Rule: define the service identity, supplementary shared-access group, unit/cgroup, socket
+  ownership, executable provenance, request schema, failure behavior and no-retry boundary
+  together; then verify every numeric name/ID just before provisioning.
+- Fix status: a distinct provisional owner primary GID, AF_UNIX socket-activated relay, unit
+  templates and field-level config matrix are in source. They remain pending mapped tests,
+  specialist review and GPT-PM re-review; no account or service was provisioned or activated.

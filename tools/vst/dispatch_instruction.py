@@ -12,6 +12,7 @@ from .contracts import ContractError, canonical_bytes
 
 DISPATCH_INSTRUCTION_DOMAIN = b"VST_S2_DISPATCH_INSTRUCTION_V1\0"
 DISPATCH_INSTRUCTION_PURPOSE = "VST_S2_DISPATCH_INSTRUCTION_V1"
+DISPATCH_INSTRUCTION_TRUST_REGISTRY_PATH = "/etc/vst-runner/dispatch-instruction-trust.json"
 _FIELDS = frozenset({
     "version", "algorithm", "purpose", "request_id", "task_id", "slot",
     "attempt", "epoch", "run_id", "key_id", "expires_at", "signature",

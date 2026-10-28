@@ -169,8 +169,12 @@ try:
             "tools/vst/supervisor.py", "tools/vst/runner_service.py",
             "tools/vst/supervisor_service.py", "tools/vst/execution_grant.py",
             "tools/vst/runner_fence.py", "tools/vst/dispatcher_service.py",
+            "tools/vst/dispatch_instruction.py", "tools/vst/dispatch_owner_client.py",
+            "tools/vst/dispatch_owner_service.py",
             "tools/vst/systemd/vst-runner.service", "tools/vst/systemd/vst-signer.service",
             "tools/vst/systemd/vst-supervisor.service", "tools/vst/systemd/vst-dispatcher.service",
+            "tools/vst/systemd/vst-dispatch-owner.service",
+            "tools/vst/systemd/vst-dispatch-owner.socket",
             "docs/SANDBOX_SPEC.md",
         }
         if not required.issubset(seen):
@@ -255,7 +259,8 @@ if os.path.lexists(runtime_link):
     if (not stat.S_ISLNK(link_info.st_mode) or link_info.st_uid != 0
             or os.readlink(runtime_link) != runtime_dir):
         raise SystemExit("existing runtime selector differs from the requested deployment; no state changed")
-for unit in ("vst-supervisor.service", "vst-signer.service", "vst-runner.service"):
+for unit in ("vst-supervisor.service", "vst-signer.service", "vst-runner.service",
+             "vst-dispatcher.service", "vst-dispatch-owner.service", "vst-dispatch-owner.socket"):
     with open(os.path.join(source_units, unit), "rb") as stream:
         require_root_file(os.path.join(unit_dir, unit), stream.read())
 helper_path = "/usr/local/libexec/vst-s4-worker-exec-" + head

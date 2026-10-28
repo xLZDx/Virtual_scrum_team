@@ -1,6 +1,6 @@
 # Backlog
 
-## S2 — signed dispatch-instruction provenance (change 0516 in progress)
+## S2 — signed dispatch-instruction provenance and owner relay (change 0517 in progress)
 
 GPT-PM's correlated adjudication selects a purpose-specific, operator-authorized signed envelope
 and requires independent verification in the root Supervisor before any durable intent event.
@@ -12,22 +12,32 @@ instruction-signing key generation/reuse, scheduler, account creation, root-conf
 migration application, service activation, real dispatch or E5 attestation is authorized by this
 decision. Source implementation and synthetic-fixture tests are authorized. S2 M01 remains
 MAJOR/OPEN until source review, a real authorized issuer and trust key, runtime evidence, and
-exact-head GPT-PM approval. Evidence: `docs/sdlc/evidence/s2-owner-instruction-provenance-adjudication-20261029.md`.
-Owner: Codex for verifier/client and source evidence; GPT-PM for exact-head design/code adjudication;
-operator for any real signer identity/private-key custody or separately privileged runtime action.
-Next: finish source coding, then designated test-role coverage, specialist review/fixes, and exact
-GPT-PM gate. Keep S3 unstarted.
+exact-head GPT-PM approval. The signed-instruction verifier/client is committed at `3fc010c`;
+the new owner relay, unit/socket templates, installer allowlist and non-secret provisioning-plan
+corrections are current uncommitted change 0517. PM's separate provisioning review returned MODIFY
+with two MAJOR and two MINOR findings; the exact correlation and remediation are in
+`docs/sdlc/evidence/s2-provisioning-plan-adjudication-20261029.md`. No tests or reviews of change
+0517 have run. Evidence: `docs/sdlc/evidence/s2-owner-instruction-provenance-adjudication-20261029.md`
+and `docs/sdlc/evidence/s2-dispatch-owner-service-contract-20261029.md`. Owner: Codex for the relay,
+plan and evidence; functional-test-reviewer/e2e-runner for mapped test authoring/execution after
+coding; GPT-PM for source and provisioning-plan adjudication; operator for any separately
+privileged runtime action and real signer-key custody. Next: finish and commit source, run designated
+mapped tests, review/fix source, then request exact-head code and plan gates. Keep production
+dispatch closed, S2 not approved, and S3 unstarted.
 
-## S2 — root/runtime preparation correction (change 0516 in progress)
+## S2 — root/runtime preparation correction (change 0517 in progress)
 
 Read-only Ubuntu-24.04 inventory confirms services inactive, runtime config absent, and no
-dispatcher/owner/client identities. Proposed UID/GID candidates were free at the observation time
-but are not provisioned or reserved. The runtime symlink points to a root-owned 0755 target; its
+dispatcher/owner/client identities. The 2026-10-29 `getent` rerun also found proposed UIDs 980/981
+and GIDs 982/983/984 absent at that moment; these values are not provisioned or reserved. The
+owner primary GID is now distinct from shared socket GID 984. The runtime symlink points to a root-owned 0755 target; its
 0777 symlink mode is not a permission issue. GPT-PM accepted correction of the mistaken target-mode
 interpretation and withdrew that permission blocker, while runtime acceptance remains unverified.
-No credentials or keys were read. Evidence: `docs/sdlc/evidence/s2-root-runtime-provisioning-plan-20261028.md` and
-GPT-PM correction request `e2ce2445-58d8-4c93-acd9-8bb536767f58`, reply
-`83e0dbcb-e0bd-5ad5-aa37-80198e03c8ba`. Owner: Codex for non-secret plan/config preparation;
+No credentials or keys were read. The exact owner-service template and field-level config matrix
+are not yet accepted by GPT-PM; privileged provisioning remains unauthorized. Evidence:
+`docs/sdlc/evidence/s2-root-runtime-provisioning-plan-20261028.md`,
+`docs/sdlc/evidence/s2-provisioning-plan-adjudication-20261029.md`, and GPT-PM correction request
+`e2ce2445-58d8-4c93-acd9-8bb536767f58`, reply `83e0dbcb-e0bd-5ad5-aa37-80198e03c8ba`. Owner: Codex for non-secret plan/config preparation;
 GPT-PM for exact plan review; operator for any separately authorized privileged provisioning and
 genuine signed E5/network-policy attestation. Next: finish source gate and exact non-secret config
 plan before considering authorized provisioning.

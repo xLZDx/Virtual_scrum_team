@@ -1238,3 +1238,18 @@ govern access to its root-owned `0755` target; the earlier permission blocker is
 permission change occurred and runtime remains unverified. Correlation: request
 `e2ce2445-58d8-4c93-acd9-8bb536767f58`, reply `83e0dbcb-e0bd-5ad5-aa37-80198e03c8ba`.
 Evidence: `docs/sdlc/evidence/s2-root-runtime-provisioning-plan-20261028.md`.
+
+## 2026-10-29 — Correct S2 dispatch-owner provisioning boundary (work in progress)
+
+GPT-PM returned MODIFY on the S2 non-secret provisioning plan. Findings S2-PROV-M01 and
+S2-PROV-M02 require a distinct dispatch-owner primary GID plus an exact non-installed owner service
+and socket contract; two minor findings require complete numeric inventory and a field-level
+configuration matrix. Correlation: request `d4bb9a93-90ec-4a7e-90a1-0f3c463cd18d`, user turn
+`71b96989-1cc9-4d77-8889-357b1e475bbd`, reply `7f061c3b-b73c-4d55-9da7-4d917a789e9a`, job
+`429cd588-f403-48a9-8544-53fae729f6f3`. Codex revised the candidate owner primary GID to 982,
+preserving shared socket GID 984, and added the fixed AF_UNIX owner relay plus non-installed
+systemd service/socket templates. Read-only `getent` checks returned exit 1 with empty output for
+all proposed names and UID/GID values on 2026-10-29; no account/group was created. The revised plan
+and source remain pending tests, specialist review, and GPT-PM re-review. No privileged
+provisioning, key creation, runtime activation, dispatch, migration, E5 attestation, push, PR, or
+merge is authorized by this change.

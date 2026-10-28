@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .contracts import ContractError, canonical_bytes
+from .dispatch_instruction import DISPATCH_INSTRUCTION_TRUST_REGISTRY_PATH
 from .store import StoreError
 
 MAX_SUPERVISOR_MESSAGE_BYTES = 1024 * 1024
@@ -653,7 +654,7 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
     required = {
         "store_path", "anchor_path", "event_key_path", "startup_supervisor_key_path",
         "execution_grant_key_id", "execution_grant_private_key_path", "execution_grant_trust_keys", "openssl_path",
-        "dispatch_instruction_trust_keys",
+        "dispatch_instruction_trust_registry_path",
         "run_id", "probe_nonce", "preflight_record_path", "probe_key_path", "operator_key_path",
         "execution_grant_audience", "generation_record_path", "runner_unit_name",
         "runner_control_group", "runner_lock_path", "systemctl_path", "model_provenance",
@@ -667,6 +668,7 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
     for field in ("store_path", "anchor_path", "event_key_path", "startup_supervisor_key_path",
                   "execution_grant_private_key_path", "probe_key_path", "operator_key_path",
                   "preflight_record_path", "openssl_path", "generation_record_path",
+                  "dispatch_instruction_trust_registry_path",
                   "runner_lock_path", "systemctl_path", "socket_path"):
         if not isinstance(value[field], str) or not os.path.isabs(value[field]):
             raise ContractError(f"Supervisor service {field} must be an absolute path")
@@ -696,7 +698,16 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
     from .execution_grant import _trusted_root_file
     for key_path in trust_keys.values():
         _trusted_root_file(key_path, private=False)
-    dispatch_trust = value["dispatch_instruction_trust_keys"]
+    if value["dispatch_instruction_trust_registry_path"] != DISPATCH_INSTRUCTION_TRUST_REGISTRY_PATH:
+        raise ContractError("Supervisor dispatch-instruction registry path is not fixed")
+    dispatch_registry_stat = os.stat(
+        DISPATCH_INSTRUCTION_TRUST_REGISTRY_PATH, follow_symlinks=False,
+    )
+    if (not stat.S_ISREG(dispatch_registry_stat.st_mode)
+            or dispatch_registry_stat.st_uid != 0 or dispatch_registry_stat.st_gid != 0
+            or stat.S_IMODE(dispatch_registry_stat.st_mode) != 0o644):
+        raise ContractError("Supervisor dispatch-instruction trust registry must be root-owned mode 0644")
+    dispatch_trust = _read_controlled_json(DISPATCH_INSTRUCTION_TRUST_REGISTRY_PATH, max_bytes=65536)
     if (not isinstance(dispatch_trust, dict) or not dispatch_trust
             or any(not isinstance(key_id, str)
                    or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}", key_id)

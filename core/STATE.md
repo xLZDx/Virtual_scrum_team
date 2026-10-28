@@ -493,3 +493,23 @@ matches the recorded 20-pass run. Details and limitations are in
 `docs/sdlc/evidence/s2-pubsub-gpt-pm-source-review-20261028.md`. The bounded source gate is accepted;
 S2 remains active and S3 unstarted. No runtime provisioning, migration, service operation or real
 dispatch occurred.
+
+## S2 dispatch-owner service boundary — 2026-10-29 (change 0517 in progress)
+
+GPT-PM's exact provisioning-plan review returned MODIFY with 0 confirmed BLOCKER, 2 MAJOR and 2
+MINOR findings. The distinct owner primary GID, exact systemd socket/service boundary, complete
+numeric inventory and field-level config matrix are now reflected in the working plan. The new
+source relay accepts only one exact bounded signed instruction, checks the root-controlled public
+registry and fixed systemd cgroup/socket activation, and forwards through the existing
+SupervisorClient; source-controlled unit templates and immutable runtime installer allowlists were
+updated. Exact review and point-in-time inventory are in
+`docs/sdlc/evidence/s2-provisioning-plan-adjudication-20261029.md` and
+`docs/sdlc/evidence/s2-root-runtime-provisioning-plan-20261028.md`.
+
+This is source/design work only. No tests, checks, builds, CI, migration, account/group creation,
+`/etc` write, key operation, service activation, dispatch, E5 attestation, push, PR or merge was
+performed. The new change remains uncommitted and unreviewed. Mapped test work must follow source
+freeze; independent code/security/reliability review and exact-head GPT-PM code/plan review remain
+open. A production issuer and public key, live authenticated OS identity, current source/runtime
+provenance and permitted runtime evidence remain absent/unverified. `S2-DISPATCH-M01` stays
+MAJOR/OPEN, S2 stays NOT APPROVED, and S3 remains unstarted.

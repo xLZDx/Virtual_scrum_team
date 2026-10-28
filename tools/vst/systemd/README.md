@@ -23,6 +23,12 @@ provisioned or started by these files in the current coding pass.
   It does not list tasks or choose work. The separate `dispatch_owner` peer
   submits one exact intent under a root-owned principal mapping; Supervisor
   compares that authenticated principal with the live Store story owner.
+- `vst-dispatch-owner.service` is an unprivileged, socket-activated relay.
+  `vst-dispatch-owner.socket` accepts one bounded AF_UNIX request containing an exact signed
+  dispatch instruction. The relay validates its public signature and forwards the same envelope
+  to root Supervisor, which verifies it independently. It has no Store path, assignment authority,
+  task queue, retry loop, persistent writable data path, runner socket, private key, or network
+  family. Its private temporary directory exists only for bounded OpenSSL verification.
 - A separate `vst-signer` identity serves the signer socket. Its primary GID
   is `988` so only the runner group can connect; its private signing key and
   replay ledger remain signer-owned.
@@ -182,7 +188,7 @@ deployment acceptance.
 ## Installation and verification boundary
 
 `tools/qa/install_wsl_runner_runtime.sh` installs the immutable Python source
-artifact and four unit files. It accepts only matching prior artifacts and
+artifact and six unit files. It accepts only matching prior artifacts and
 refuses to replace mismatched host state; it does not enable or start units.
 `tools/qa/install_wsl_worker_helper.sh` builds the fixed C helper from the same
 committed source revision. These scripts are not run during code completion.
