@@ -2279,7 +2279,7 @@ def run_lifecycle_scenarios(
         report["synthetic_candidate"] = {
             "candidate_head": candidate_head,
             "worker_has_remote_config": bool(git(repository, "remote")),
-            "gate_verdict": decision["verdict"],
+            "synthetic_gate_verdict": decision["verdict"],
             "receipt_retry_returned_same_result": receipt_first == receipt_retry,
             "supervisor_push": pushed,
             "supervisor_pull_request": pr,

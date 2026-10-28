@@ -108,6 +108,8 @@ def test_bounded_synthetic_candidate_report_has_no_worker_remote(lifecycle_repor
 
     assert re.fullmatch(r"[0-9a-f]{40}", candidate["candidate_head"])
     assert candidate["worker_has_remote_config"] is False
+    assert "synthetic_gate_verdict" in candidate
+    assert "gate_verdict" not in candidate
     assert candidate["receipt_retry_returned_same_result"] is True
 
 
