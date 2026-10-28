@@ -284,3 +284,21 @@ suite passed 107/107 on code/test revision `34bd7dc1b085789341b29937655af52e07f2
 Independent re-review, PM re-adjudication and exact-head source approval remain open. No privileged
 writes, service activation, real dispatch, E5, push, PR or merge occurred. `S2-DISPATCH-M01` remains MAJOR/OPEN, S2
 remains NOT APPROVED, and S3 remains unstarted.
+
+## S2 M03 cross-generation outcome recovery — 2026-10-29
+
+GPT-PM returned MODIFY on the historical-result recovery proposal: exact replay from fully
+verified immutable Store history is within the existing M03 scope, with a separate authenticated
+read-only RPC. The route matches the complete original signed envelope and authenticated
+principal, validates accepted event/operation/control history and the external anchor in one read
+snapshot, preserves the original result/generation, and cannot create or authorize new work.
+Current signature expiry or key revocation may not block retrieval of that exact historical fact;
+new admission retains all current checks. An absent/mismatched request and legacy or corrupt
+history fail closed.
+
+Implementation is present in the canonical checkout but unverified. Mapped tests have not yet
+run; fresh code, security, and reliability review remain required. MAJOR
+`S2-PROV-M03-R01` therefore remains OPEN. `S2-DISPATCH-M01` remains MAJOR/OPEN; production
+coordinator, runtime/E5, production credentials/configuration, prohibited scenarios, and exact-head
+GPT-PM acceptance remain separate S2 gates. S3 remains unstarted. Decision evidence:
+`evidence/s2-cross-generation-outcome-recovery-adjudication-20261029.md`.

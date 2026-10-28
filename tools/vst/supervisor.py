@@ -430,6 +430,10 @@ class Supervisor:
             service_generation=generation,
         )
 
+    def replay_dispatch_outcome(self, *, principal: str, instruction: object) -> dict | None:
+        """Observe an exact accepted result without granting current execution authority."""
+        return self.store.replay_dispatch_outcome(principal=principal, instruction=instruction)
+
     def ack_dispatch_intent(
         self, *, principal: str, request_id: str, payload_digest: str, event_seq: int,
         result_sha256: str, service_generation: str,

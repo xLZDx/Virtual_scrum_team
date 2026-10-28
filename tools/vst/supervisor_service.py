@@ -27,6 +27,10 @@ _HEADER = struct.Struct("!I")
 class SupervisorRPCError(RuntimeError):
     """A bounded refusal from the trusted Supervisor RPC endpoint."""
 
+    def __init__(self, message: str, *, kind: str | None = None):
+        super().__init__(message)
+        self.kind = kind
+
 
 @dataclass(frozen=True)
 class SupervisorPeer:
@@ -214,6 +218,15 @@ class AuthenticatedSupervisorAPI:
             return self.supervisor.accept_dispatch_intent(
                 principal=peer.principal, instruction=body["instruction"],
             )
+        if operation == "replay_dispatch_outcome":
+            if (peer is None or peer.role != "dispatch_owner" or not peer.principal
+                    or set(body) != {"instruction"}):
+                raise ContractError("dispatch outcome replay is not authorized")
+            # Historical acceptance is read from verified Store history. This
+            # operation does not validate current expiry or admit new work.
+            return self.supervisor.replay_dispatch_outcome(
+                principal=peer.principal, instruction=body["instruction"],
+            )
         if operation == "ack_dispatch_intent":
             fields = {"request_id", "payload_digest", "event_seq", "result_sha256", "service_generation"}
             if (peer is None or peer.role != "dispatch_owner" or not peer.principal
@@ -352,7 +365,9 @@ class SupervisorClient:
             raise SupervisorRPCError("Supervisor RPC error response is malformed")
         else:
             error = response.get("error")
-            raise SupervisorRPCError(f"Supervisor RPC refused request ({error})")
+            if not isinstance(error, str) or not error:
+                raise SupervisorRPCError("Supervisor RPC refusal is malformed")
+            raise SupervisorRPCError(f"Supervisor RPC refused request ({error})", kind=error)
 
     def submit_dispatch_intent(self, **body: Any) -> dict:
         result = self.call("submit_dispatch_intent", body)
@@ -378,6 +393,14 @@ class SupervisorClient:
                     "task_id", "slot", "attempt", "epoch", "run_id", "request_id",
                 ))):
             raise SupervisorRPCError("Supervisor response differs from signed dispatch instruction")
+        return result
+
+    def replay_dispatch_outcome(self, **body: Any) -> dict | None:
+        if set(body) != {"instruction"}:
+            raise SupervisorRPCError("dispatch outcome replay request is malformed")
+        result = self.call("replay_dispatch_outcome", body)
+        if result is not None and not isinstance(result, dict):
+            raise SupervisorRPCError("Supervisor returned a malformed historical dispatch outcome")
         return result
 
     def ack_dispatch_intent(self, **body: Any) -> dict:
@@ -752,7 +775,9 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
     peers = []
     role_operations = {
         "dispatcher": frozenset({"issue_dispatch_grant", "next_dispatch_intent"}),
-        "dispatch_owner": frozenset({"submit_dispatch_intent", "ack_dispatch_intent"}),
+        "dispatch_owner": frozenset({
+            "submit_dispatch_intent", "replay_dispatch_outcome", "ack_dispatch_intent",
+        }),
         "runnerd": frozenset({
             "claim", "claim_status", "reserve", "complete", "generation",
             "recover", "manifest", "previous_receipt", "no_execution",

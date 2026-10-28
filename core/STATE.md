@@ -530,3 +530,20 @@ author updated coverage for the half-close and lifecycle behavior. Independent s
 re-adjudication remain open. A production issuer/public key, live authenticated OS identity, current source/runtime
 provenance and permitted runtime evidence remain absent/unverified. `S2-DISPATCH-M01` remains
 MAJOR/OPEN, S2 remains NOT APPROVED, and S3 remains unstarted.
+
+## S2 M03 cross-generation outcome recovery — 2026-10-29
+
+GPT-PM adjudicated request `f67c5dd7-5279-42b1-9dc4-94ed4b72b5a1` as MODIFY: the exact
+historical-result replay principle is accepted within existing M03 scope, but must use a separate
+authenticated read-only operation. It must match the original principal and complete signed
+envelope to fully verified Store history, preserve the original result/generation, and perform no
+event append, lease mutation, grant, or Runner launch. Current signature expiry or key revocation
+does not invalidate that already accepted fact; no match never falls through to new admission.
+New admission retains current authorization checks; legacy/integrity failures stay closed.
+Correlated decision and limitations:
+`docs/sdlc/evidence/s2-cross-generation-outcome-recovery-adjudication-20261029.md`.
+
+Source implementation is present but unverified; mapped functional tests and fresh specialist
+reviews are pending. `S2-PROV-M03-R01` remains MAJOR/OPEN. Production coordinator
+(`S2-DISPATCH-M01`), production runtime/E5, exact-head final GPT-PM approval, prohibited selectors,
+and overall S2 acceptance remain open. No S3 work starts before S2 closure.

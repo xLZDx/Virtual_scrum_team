@@ -1223,6 +1223,59 @@ class Store:
             )
             return result
 
+    def replay_dispatch_outcome(self, *, principal: str, instruction: dict) -> dict | None:
+        """Read an exact, previously accepted result without authorizing new work."""
+        from .dispatch_instruction import validate_dispatch_instruction
+
+        _need_str(principal, "principal")
+        instruction = validate_dispatch_instruction(instruction)
+        if not self.reconciliation_complete:
+            raise StoreError("verified Store startup is required for outcome replay", kind="integrity")
+        request_id = instruction["request_id"]
+        with self._read_tx() as conn:
+            # Verify the complete chain, external anchor, operation rows, and
+            # pending/ack protocol in the same read snapshot before returning data.
+            self._verify_control_history_locked(conn)
+            outcome_state, _pending = self._dispatch_outcome_state_locked(conn)
+            if outcome_state == "LEGACY_UNRESOLVED":
+                raise StoreError(
+                    "legacy dispatch history requires separately authorized reconciliation",
+                    kind="integrity",
+                )
+            rows = conn.execute(
+                "SELECT seq, task_id, actor, payload FROM events "
+                "WHERE kind='DISPATCH_INTENT_ACCEPTED' ORDER BY seq"
+            ).fetchall()
+            for row in rows:
+                try:
+                    payload = json.loads(row["payload"])
+                except (TypeError, ValueError) as exc:
+                    raise StoreError("accepted dispatch event is malformed", kind="integrity") from exc
+                payload = self._validate_dispatch_intent_event(
+                    payload, task_id=row["task_id"], actor=row["actor"],
+                )
+                if payload["request_id"] != request_id:
+                    continue
+                if (payload["principal"] != principal
+                        or canonical_bytes(payload["instruction"]) != canonical_bytes(instruction)):
+                    return None
+                operation = conn.execute(
+                    "SELECT operation, payload_sha256, result FROM supervisor_operations "
+                    "WHERE operation_key=?", (f"dispatch-intent:{request_id}",),
+                ).fetchone()
+                if operation is None or operation["operation"] != "dispatch_intent":
+                    raise StoreError("accepted dispatch result is missing", kind="integrity")
+                try:
+                    result = json.loads(operation["result"])
+                except (TypeError, ValueError) as exc:
+                    raise StoreError("accepted dispatch result is malformed", kind="integrity") from exc
+                expected = {"event_seq": int(row["seq"]), **payload}
+                if (operation["payload_sha256"] != payload["payload_digest"]
+                        or result != expected):
+                    raise StoreError("accepted dispatch result differs from verified history", kind="integrity")
+                return result
+        return None
+
     @staticmethod
     def _dispatch_outcome_binding(result: dict) -> dict:
         encoded = canonical_bytes(result).decode("utf-8")

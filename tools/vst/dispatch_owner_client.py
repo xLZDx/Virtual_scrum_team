@@ -23,6 +23,8 @@ class DispatchOwnerClient:
             raise ContractError("dispatch-owner principal is required from local authenticated config")
         if not callable(getattr(transport, "submit_dispatch_intent", None)):
             raise ContractError("dispatch-owner transport does not expose the submit operation")
+        if not callable(getattr(transport, "replay_dispatch_outcome", None)):
+            raise ContractError("dispatch-owner transport does not expose the historical replay operation")
         if not callable(getattr(transport, "ack_dispatch_intent", None)):
             raise ContractError("dispatch-owner transport does not expose the acknowledgement operation")
         self.principal = principal
@@ -31,28 +33,69 @@ class DispatchOwnerClient:
         self.transport = transport
 
     def submit(self, instruction: object) -> dict:
-        verified = verify_dispatch_instruction(
-            instruction, self.trust_registry, expected_principal=self.principal,
-            openssl_path=self.openssl_path,
-        )
+        envelope = validate_dispatch_instruction(instruction)
+        try:
+            verified = verify_dispatch_instruction(
+                envelope, self.trust_registry, expected_principal=self.principal,
+                openssl_path=self.openssl_path,
+            )
+        except ContractError as exc:
+            # An expired/revoked envelope may retrieve only a matching historical
+            # acceptance; a miss never falls through to current admission.
+            result = self._replay_historical(envelope)
+            if result is None:
+                raise
+            return result
         # Preserve the exact parsed envelope: no caller-supplied principal or field projection.
         try:
             result = self.transport.submit_dispatch_intent(instruction=verified["instruction"])
-            if not isinstance(result, dict) or "instruction" not in result:
-                raise ContractError("Supervisor returned a malformed dispatch-intent response")
-            accepted = validate_dispatch_instruction(result["instruction"])
-            if (accepted != verified["instruction"] or result.get("key_id") != accepted["key_id"]
-                    or any(result.get(field) != accepted[field] for field in (
-                        "task_id", "slot", "attempt", "epoch", "run_id", "request_id",
-                    ))):
-                raise ContractError(
-                    "Supervisor response differs from the submitted signed dispatch instruction"
-                )
+            self._validate_result(result, verified["instruction"])
         except Exception as exc:
-            # Once the transport call starts, even an error or malformed reply may follow
-            # a durable append. An exception cannot prove that the request was not accepted.
+            # Once admission RPC starts, recover only by reading the immutable result;
+            # never retry the admission operation after an ambiguous response.
+            try:
+                result = self._replay_historical(verified["instruction"])
+            except DispatchOutcomeUnknown:
+                raise
+            if result is not None:
+                return result
+            if self._is_explicit_refusal(exc):
+                raise
             raise DispatchOutcomeUnknown("Supervisor acceptance is not proven") from exc
         return result
+
+    @staticmethod
+    def _is_explicit_refusal(exc: Exception) -> bool:
+        kind = getattr(exc, "kind", None)
+        if kind in {"argument", "authorization", "budget", "chain", "duplicate", "epoch",
+                    "generation", "lease", "lifecycle", "probe", "refused", "slot"}:
+            return True
+        return False
+
+    def _replay_historical(self, instruction: dict) -> dict | None:
+        try:
+            result = self.transport.replay_dispatch_outcome(instruction=instruction)
+        except Exception as exc:
+            raise DispatchOutcomeUnknown("historical dispatch outcome could not be verified") from exc
+        if result is None:
+            return None
+        try:
+            self._validate_result(result, instruction)
+        except Exception as exc:
+            raise DispatchOutcomeUnknown("historical dispatch outcome differs from the request") from exc
+        return result
+
+    def _validate_result(self, result: object, instruction: dict) -> None:
+        if not isinstance(result, dict) or result.get("principal") != self.principal:
+            raise ContractError("Supervisor response principal differs from the authenticated relay")
+        if "instruction" not in result:
+            raise ContractError("Supervisor returned a malformed dispatch-intent response")
+        accepted = validate_dispatch_instruction(result["instruction"])
+        if (accepted != instruction or result.get("key_id") != accepted["key_id"]
+                or any(result.get(field) != accepted[field] for field in (
+                    "task_id", "slot", "attempt", "epoch", "run_id", "request_id",
+                ))):
+            raise ContractError("Supervisor response differs from the submitted signed dispatch instruction")
 
     def acknowledge_forwarded(self, result: dict) -> dict:
         """Acknowledge only the exact result after the relay's local sendall succeeds."""

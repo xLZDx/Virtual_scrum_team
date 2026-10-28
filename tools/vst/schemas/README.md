@@ -50,16 +50,21 @@ generation, canonical request digest, and principal.
 
 The accepted event, operation result, and `DISPATCH_OWNER_OUTCOME_PENDING` control note commit in
 one Store transaction. Store reconstructs their complete ordered history at startup and inside
-dispatch admission/acknowledgement transactions. A different owner request is refused while one
-result is pending; only an exact same-ID and same-payload replay can retrieve that immutable
-result. Historical accepted events without the pending/acknowledgement protocol are
-`LEGACY_UNRESOLVED` and block normal acceptance and replay until separately authorized
-reconciliation. The Store connection sets `PRAGMA synchronous=FULL` and reads the value back before
-use. An authenticated `dispatch_owner` peer may invoke `ack_dispatch_intent` only after the relay
-successfully forwards the exact result locally. That acknowledgement means relay-forwarded, not
-caller-received, and binds request ID, authenticated principal, payload digest, event sequence,
-canonical result SHA-256, and service generation. Exact duplicate acknowledgement is idempotent;
-conflicting history fails closed.
+dispatch admission, historical replay, and acknowledgement operations. A different owner request
+is refused while one result is pending. An authenticated `dispatch_owner` can call the separate,
+read-only `replay_dispatch_outcome` route to retrieve an immutable result only when request ID,
+principal, and the complete signed envelope match verified Store history. That route verifies the
+event chain and external anchor plus the accepted event, operation result, and pending/ack history
+in one read snapshot. It does not check current signature expiry, current Runner generation, lease,
+or preflight; it creates no event, lease, grant, or execution authorization. A miss never falls
+through to new admission. New work still uses `submit_dispatch_intent` and all current checks.
+Historical accepted events without the pending/acknowledgement protocol are `LEGACY_UNRESOLVED`
+and block ordinary acceptance and replay until separately authorized reconciliation. The Store
+connection sets `PRAGMA synchronous=FULL` and reads the value back before use. The relay invokes
+`ack_dispatch_intent` only after it successfully forwards the exact result locally. That
+acknowledgement means relay-forwarded, not caller-received, and binds request ID, authenticated
+principal, payload digest, event sequence, canonical result SHA-256, and the original service
+generation. Exact duplicate acknowledgement is idempotent; conflicting history fails closed.
 
 The `vst-dispatcher` peer receives only Supervisor-filtered intents through a generation- and
 peer-bound HMAC cursor. It has no direct Store access and cannot enumerate or select tasks. Store

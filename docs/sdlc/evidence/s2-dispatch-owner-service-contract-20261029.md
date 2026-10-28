@@ -25,14 +25,24 @@ E5 attestation.
   failure to observe EOF within the request timeout is refused before Supervisor RPC.
 - `instruction` is the exact v1 signed envelope; no principal, task, lease, worker, command, model,
   artifact, grant, or alternate endpoint is accepted outside that envelope.
-- The owner service validates the signed envelope against the root-owned public trust registry and
-  fixed principal `Codex`, then calls `SupervisorClient.submit_dispatch_intent` at the fixed root
-  socket. Supervisor verifies the same envelope again using its own root configuration.
+- For a currently valid envelope, the owner service validates it against the root-owned public
+  trust registry and fixed principal `Codex`, then calls
+  `SupervisorClient.submit_dispatch_intent` at the fixed root socket. Supervisor verifies the same
+  envelope again using its own root configuration.
+- A separate authenticated `replay_dispatch_outcome` RPC is read-only. It returns an exact
+  historical result only when the authenticated principal and complete signed envelope match a
+  previously accepted result in fully verified Store history. It does not authorize new work or
+  fall through to admission. Expired or revoked current credentials may use this route only to
+  retrieve that exact accepted result; a miss remains a refusal. If a security incident raises
+  doubt about whether the historical acceptance was trustworthy when recorded, this route is not
+  an incident adjudicator; dispatch stays closed pending separately authorized security
+  reconciliation.
 - Success returns the exact bounded Supervisor result. After a complete local `sendall`, the relay
   invokes authenticated `ack_dispatch_intent`; the Store clears the pending admission barrier only
   for that exact result. The acknowledgement means relay-forwarded, not caller-received. The
-  configured `dispatch_owner` peer must have exactly `submit_dispatch_intent` and
-  `ack_dispatch_intent` operations; no other role receives acknowledgement authority. Refusal
+  configured `dispatch_owner` peer must have exactly `submit_dispatch_intent`,
+  `replay_dispatch_outcome`, and `ack_dispatch_intent` operations; no other role receives
+  historical replay or acknowledgement authority. Refusal
   returns only a generic error code.
 - The service processes connections sequentially, with a fixed request timeout and bounded request
   and response sizes. It stores no task state and performs no automatic retries. A client must
@@ -42,11 +52,12 @@ E5 attestation.
   signature and Supervisor's live authority checks are still required for durable acceptance. The
   accepted event, idempotency result, and pending-outcome control note commit atomically. If local
   forwarding or acknowledgement fails, the barrier remains pending, the relay stops, and a
-  different request ID is refused. Exact same-ID, principal, service-generation, and payload replay
-  may return the immutable result. If the generation rotates across restart, the old idempotency
-  payload no longer matches; ordinary replay remains refused pending separately authorized
-  reconciliation. The in-repository Runner generation reader binds the generation to the active
-  `INVOCATION_ID`, so a retry after that identity changes cannot use the old idempotency payload.
+  different request ID is refused. Same-generation exact submission retains its idempotency
+  behavior. After an ambiguous submission or current-generation refusal, the relay may query the
+  separate historical route; Store returns only the exact result from the original generation.
+  Expired or revoked instructions may query this route directly, but absent or mismatched history
+  is refused and never becomes new admission. The in-repository Runner generation reader binds new
+  admission to the active `INVOCATION_ID`; historical replay preserves the original generation.
   The installed restart behavior is not exercised by this source change.
   Store validates the full ordered history at startup and before each new admission/acknowledgement;
   legacy accepted events without this protocol remain unresolved and block ordinary replay.
@@ -82,11 +93,14 @@ E5 attestation.
   cross-reboot admission safety is not established. An orderly service stop is also fenced until
   recovery; only the operator, after the reviewed recovery procedure, may clear the file and reopen
   the socket.
-- Local framing, canonical-JSON, signature, expiry, principal, and trust-registry refusals occur
-  before Supervisor RPC. They return a generic refusal and do not fence admission. Once the verified
-  envelope is passed to `SupervisorClient`, every transport error, explicit error reply, malformed
-  response, timeout, lost connection, or response-binding mismatch is conservatively treated as
-  outcome-unknown: the relay returns `reconciliation_required` when possible and exits with code 75.
+- Local framing and canonical-JSON refusals occur before Supervisor RPC. A malformed envelope is
+  refused. A validly shaped envelope whose current signature, expiry, or key check fails may only
+  query the historical read-only route; a miss is refused and does not call admission. Once a
+  currently verified envelope is passed to `SupervisorClient`, a transport error, malformed
+  response, timeout, lost connection, or response-binding mismatch triggers a read-only history
+  lookup. An exact match recovers the committed result; a lookup error remains outcome-unknown,
+  while an explicit refusal with no exact history remains refused. The relay exits with code 75
+  whenever an outcome cannot be established safely.
   Systemd runs the root `ExecStopPost` fence before the service stop completes. A queued connection
   may remain in the kernel backlog during teardown; the synchronous stop and inactive-state check
   close the listener before any filesystem inspection that could stall. Until that confirmation,
@@ -95,10 +109,12 @@ E5 attestation.
   is inactive at that point; without the latch, a later explicit socket start is not guarded. A
   durable `/etc` latch is required before any future reboot or start. The source contract does not
   prove installed-systemd behavior or storage health.
-- For the new protocol, a pending accepted result can be recovered by retrying only the same signed
-  instruction and request ID. Store returns the immutable result; the relay forwards it and records
-  the exact acknowledgement. A different request remains refused until that acknowledgement is
-  durable. No new ID is generated or automatically retried. Legacy accepted history, malformed or
+- For the new protocol, a pending accepted result can be recovered only by submitting the same
+  signed instruction/request ID through normal admission or querying the separate historical
+  read-only route. Store returns the immutable result only after complete Store/control-history
+  verification; the relay forwards it and records the exact acknowledgement. A different request
+  remains refused until that acknowledgement is durable. No new ID is generated or automatically
+  retried. Legacy accepted history, malformed or
   contradictory controls, or an integrity/anchor failure remain closed for separately authorized
   root reconciliation; ordinary replay cannot clear those states. Clearing the existing systemd
   latch remains a separate privileged operation and is not performed by this source change.
