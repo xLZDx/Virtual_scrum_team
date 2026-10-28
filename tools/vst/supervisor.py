@@ -430,6 +430,17 @@ class Supervisor:
             service_generation=generation,
         )
 
+    def ack_dispatch_intent(
+        self, *, principal: str, request_id: str, payload_digest: str, event_seq: int,
+        result_sha256: str, service_generation: str,
+    ) -> dict:
+        """Persist the authenticated dispatch-owner relay-forwarding acknowledgement."""
+        return self.store.acknowledge_dispatch_intent(
+            principal=principal, request_id=request_id, payload_digest=payload_digest,
+            event_seq=event_seq, result_sha256=result_sha256,
+            service_generation=service_generation,
+        )
+
     @staticmethod
     def _validate_current_dispatch_intent(store: Store, intent: dict, generation: str,
                                          trust_registry: dict, openssl_path: str) -> None:

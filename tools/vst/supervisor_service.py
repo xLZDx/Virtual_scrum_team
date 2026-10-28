@@ -214,6 +214,12 @@ class AuthenticatedSupervisorAPI:
             return self.supervisor.accept_dispatch_intent(
                 principal=peer.principal, instruction=body["instruction"],
             )
+        if operation == "ack_dispatch_intent":
+            fields = {"request_id", "payload_digest", "event_seq", "result_sha256", "service_generation"}
+            if (peer is None or peer.role != "dispatch_owner" or not peer.principal
+                    or set(body) != fields):
+                raise ContractError("dispatch outcome acknowledgement is not authorized")
+            return self.supervisor.ack_dispatch_intent(principal=peer.principal, **body)
         if operation == "next_dispatch_intent":
             if (peer is None or peer.role != "dispatcher" or set(body) != {"cursor"}
                     or (body["cursor"] is not None and not isinstance(body["cursor"], dict))):
@@ -372,6 +378,15 @@ class SupervisorClient:
                     "task_id", "slot", "attempt", "epoch", "run_id", "request_id",
                 ))):
             raise SupervisorRPCError("Supervisor response differs from signed dispatch instruction")
+        return result
+
+    def ack_dispatch_intent(self, **body: Any) -> dict:
+        required = {"request_id", "payload_digest", "event_seq", "result_sha256", "service_generation"}
+        if set(body) != required:
+            raise SupervisorRPCError("dispatch acknowledgement request is malformed")
+        result = self.call("ack_dispatch_intent", body)
+        if result != body:
+            raise SupervisorRPCError("Supervisor acknowledged a different dispatch outcome")
         return result
 
     def next_dispatch_intent(self, cursor: dict | None) -> dict:
@@ -737,7 +752,7 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
     peers = []
     role_operations = {
         "dispatcher": frozenset({"issue_dispatch_grant", "next_dispatch_intent"}),
-        "dispatch_owner": frozenset({"submit_dispatch_intent"}),
+        "dispatch_owner": frozenset({"submit_dispatch_intent", "ack_dispatch_intent"}),
         "runnerd": frozenset({
             "claim", "claim_status", "reserve", "complete", "generation",
             "recover", "manifest", "previous_receipt", "no_execution",

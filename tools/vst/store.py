@@ -117,6 +117,7 @@ import hmac
 import json
 import math
 import os
+import re
 import sqlite3
 import time
 from datetime import datetime, timezone
@@ -157,7 +158,12 @@ STORY_STATES = frozenset({"OPEN", "OWNED"})
 
 # Events written by the store itself, plus the one kind callers may record.
 CALLER_EVENT_KINDS = frozenset({"NOTE"})
-CONTROL_EVENT_KINDS = frozenset({"CONTROL_BREAKER_CONFIG", "CONTROL_PROVIDER_FAILURE", "CONTROL_PROVIDER_SUCCESS", "CONTROL_BREAKER_OVERRIDE", "CONTROL_ACTION_INTENT", "CONTROL_ACTION_COMPLETED", "CONTROL_ACTION_UNKNOWN", "CONTROL_ACTION_RECONCILED"})
+CONTROL_EVENT_KINDS = frozenset({
+    "CONTROL_BREAKER_CONFIG", "CONTROL_PROVIDER_FAILURE", "CONTROL_PROVIDER_SUCCESS",
+    "CONTROL_BREAKER_OVERRIDE", "CONTROL_ACTION_INTENT", "CONTROL_ACTION_COMPLETED",
+    "CONTROL_ACTION_UNKNOWN", "CONTROL_ACTION_RECONCILED",
+    "DISPATCH_OWNER_OUTCOME_PENDING", "DISPATCH_OWNER_OUTCOME_ACKNOWLEDGED",
+})
 LIFECYCLE_ACTION_STATES = {
     "start": ("READY", "RUNNING"),
     "stop_terminate": ("RUNNING", "STOPPING"),
@@ -697,6 +703,12 @@ class Store:
         self._conn.row_factory = sqlite3.Row
         try:
             self._conn.execute("PRAGMA journal_mode=WAL")
+            self._conn.execute("PRAGMA synchronous=FULL")
+            synchronous = self._conn.execute("PRAGMA synchronous").fetchone()[0]
+            if synchronous != 2:
+                raise StoreError(
+                    "Store connection did not retain PRAGMA synchronous=FULL", kind="integrity"
+                )
             self._conn.execute("PRAGMA foreign_keys=ON")
             self._conn.execute("PRAGMA recursive_triggers=ON")
             self._init_schema()
@@ -1107,6 +1119,18 @@ class Store:
         payload_digest = hashlib.sha256(canonical_bytes(caller_payload)).hexdigest()
         operation_key = f"dispatch-intent:{request_id}"
         with self._tx() as conn:
+            self._verify_control_history_locked(conn)
+            outcome_state, pending = self._dispatch_outcome_state_locked(conn)
+            if outcome_state == "LEGACY_UNRESOLVED":
+                raise StoreError(
+                    "legacy dispatch history requires separately authorized reconciliation",
+                    kind="integrity",
+                )
+            if outcome_state == "PENDING" and pending["request_id"] != request_id:
+                raise StoreError(
+                    "a prior dispatch outcome is still awaiting relay acknowledgement",
+                    kind="lifecycle",
+                )
             prior = conn.execute(
                 "SELECT operation, payload_sha256, result FROM supervisor_operations "
                 "WHERE operation_key = ?", (operation_key,),
@@ -1192,7 +1216,210 @@ class Store:
                  "payload_sha256": payload_digest,
                  "result_sha256": hashlib.sha256(encoded.encode("utf-8")).hexdigest()},
             )
+            self._append_control_event_locked(
+                conn, "DISPATCH_OWNER_OUTCOME_PENDING",
+                f"dispatch-owner-outcome:{request_id}:pending",
+                self._dispatch_outcome_binding(result),
+            )
             return result
+
+    @staticmethod
+    def _dispatch_outcome_binding(result: dict) -> dict:
+        encoded = canonical_bytes(result).decode("utf-8")
+        return {
+            "request_id": result["request_id"],
+            "principal": result["principal"],
+            "payload_digest": result["payload_digest"],
+            "event_seq": result["event_seq"],
+            "result_sha256": hashlib.sha256(encoded.encode("utf-8")).hexdigest(),
+            "service_generation": result["service_generation"],
+        }
+
+    def _dispatch_outcome_state_locked(self, conn: sqlite3.Connection) -> tuple[str, dict | None]:
+        """Reconstruct the dispatch admission barrier from the complete event history."""
+        accepted_rows = conn.execute(
+            "SELECT seq, task_id, actor, payload FROM events "
+            "WHERE kind='DISPATCH_INTENT_ACCEPTED' ORDER BY seq"
+        ).fetchall()
+        controls: dict[str, dict[str, list[tuple[int, str, dict]]]] = {}
+        for row in conn.execute(
+            "SELECT seq, task_id, payload FROM events "
+            "WHERE actor='supervisor' AND kind='NOTE' ORDER BY seq"
+        ).fetchall():
+            try:
+                note = json.loads(row["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("dispatch control history contains malformed NOTE", kind="integrity") from exc
+            if not isinstance(note, dict):
+                raise StoreError("dispatch control history NOTE is not an object", kind="integrity")
+            control_type = note.get("_vst_control_type")
+            if control_type not in {
+                "DISPATCH_OWNER_OUTCOME_PENDING", "DISPATCH_OWNER_OUTCOME_ACKNOWLEDGED",
+            }:
+                continue
+            required = {
+                "_vst_control_type", "event_id", "request_id", "principal", "payload_digest",
+                "event_seq", "result_sha256", "service_generation",
+            }
+            if set(note) != required:
+                raise StoreError("dispatch outcome control record fields are malformed", kind="integrity")
+            request_id = note["request_id"]
+            if not isinstance(request_id, str) or not request_id:
+                raise StoreError("dispatch outcome control request id is malformed", kind="integrity")
+            bucket = controls.setdefault(request_id, {"pending": [], "ack": []})
+            key = "pending" if control_type.endswith("PENDING") else "ack"
+            bucket[key].append((int(row["seq"]), row["task_id"], note))
+
+        if not accepted_rows:
+            if controls:
+                raise StoreError("dispatch outcome controls have no accepted event", kind="integrity")
+            return "OPEN", None
+
+        accepted: list[tuple[int, dict, str, int]] = []
+        seen_ids: set[str] = set()
+        for row in accepted_rows:
+            try:
+                raw = json.loads(row["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("accepted dispatch event is malformed", kind="integrity") from exc
+            payload = self._validate_dispatch_intent_event(
+                raw, task_id=row["task_id"], actor=row["actor"],
+            )
+            request_id = payload["request_id"]
+            if request_id in seen_ids:
+                raise StoreError("dispatch request id has duplicate accepted events", kind="integrity")
+            seen_ids.add(request_id)
+            operation_key = f"dispatch-intent:{request_id}"
+            operation = conn.execute(
+                "SELECT operation, payload_sha256, result FROM supervisor_operations "
+                "WHERE operation_key=?", (operation_key,),
+            ).fetchone()
+            if (operation is None or operation["operation"] != "dispatch_intent"
+                    or operation["payload_sha256"] != payload["payload_digest"]):
+                raise StoreError("accepted dispatch lacks matching operation result", kind="integrity")
+            try:
+                result = json.loads(operation["result"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("stored dispatch result is malformed", kind="integrity") from exc
+            event_seq = int(row["seq"])
+            if result != {"event_seq": event_seq, **payload}:
+                raise StoreError("stored dispatch result differs from accepted event", kind="integrity")
+            result_sha256 = hashlib.sha256(operation["result"].encode("utf-8")).hexdigest()
+            operation_notes = conn.execute(
+                "SELECT seq, payload FROM events WHERE task_id=? AND actor='supervisor' "
+                "AND kind='NOTE' ORDER BY seq", (operation_key,),
+            ).fetchall()
+            if len(operation_notes) != 1:
+                raise StoreError("dispatch operation note is missing or duplicated", kind="integrity")
+            try:
+                operation_note = json.loads(operation_notes[0]["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("dispatch operation note is malformed", kind="integrity") from exc
+            if (operation_note != {
+                    "event": "SUPERVISOR_OPERATION", "operation": "dispatch_intent",
+                    "payload_sha256": payload["payload_digest"], "result_sha256": result_sha256,
+                } or int(operation_notes[0]["seq"]) <= event_seq):
+                raise StoreError("dispatch operation note differs from stored result", kind="integrity")
+            accepted.append((event_seq, payload, result_sha256, int(operation_notes[0]["seq"])))
+
+        if set(controls) - seen_ids:
+            raise StoreError("dispatch outcome control has no accepted request", kind="integrity")
+        pending_states: list[tuple[int, dict]] = []
+        legacy = False
+        for event_seq, payload, result_sha256, operation_seq in accepted:
+            request_id = payload["request_id"]
+            bucket = controls.get(request_id, {"pending": [], "ack": []})
+            if not bucket["pending"] and not bucket["ack"]:
+                legacy = True
+                continue
+            if len(bucket["pending"]) != 1 or len(bucket["ack"]) > 1:
+                raise StoreError("dispatch pending or acknowledgement controls are duplicated", kind="integrity")
+            expected = {
+                "request_id": request_id, "principal": payload["principal"],
+                "payload_digest": payload["payload_digest"], "event_seq": event_seq,
+                "result_sha256": result_sha256, "service_generation": payload["service_generation"],
+            }
+            pending_seq, pending_task_id, pending_note = bucket["pending"][0]
+            if (pending_task_id != f"dispatch-owner-outcome:{request_id}:pending"
+                    or pending_note["event_id"] != f"dispatch-owner-outcome:{request_id}:pending"
+                    or {key: pending_note[key] for key in expected} != expected
+                    or not event_seq < operation_seq < pending_seq):
+                raise StoreError("dispatch pending control does not bind the accepted result", kind="integrity")
+            if bucket["ack"]:
+                ack_seq, ack_task_id, ack_note = bucket["ack"][0]
+                if (ack_task_id != f"dispatch-owner-outcome:{request_id}:acknowledged"
+                        or ack_note["event_id"] != f"dispatch-owner-outcome:{request_id}:acknowledged"
+                        or {key: ack_note[key] for key in expected} != expected
+                        or not pending_seq < ack_seq):
+                    raise StoreError("dispatch acknowledgement does not bind its pending result", kind="integrity")
+            else:
+                pending_states.append((event_seq, expected))
+
+        if legacy:
+            if pending_states:
+                raise StoreError("dispatch history mixes legacy and pending protocols", kind="integrity")
+            return "LEGACY_UNRESOLVED", None
+        if len(pending_states) > 1:
+            raise StoreError("multiple dispatch outcomes remain pending", kind="integrity")
+        if pending_states:
+            latest_event_seq = accepted[-1][0]
+            pending_event_seq, binding = pending_states[0]
+            if pending_event_seq != latest_event_seq:
+                raise StoreError("a later dispatch was accepted while an earlier outcome was pending", kind="integrity")
+            return "PENDING", binding
+        return "ACKNOWLEDGED", None
+
+    def acknowledge_dispatch_intent(
+        self, *, principal: str, request_id: str, payload_digest: str, event_seq: int,
+        result_sha256: str, service_generation: str,
+    ) -> dict:
+        """Record authenticated relay forwarding of the exact immutable Supervisor result."""
+        _need_str(principal, "principal")
+        _need_str(request_id, "request_id")
+        _need_str(payload_digest, "payload_digest")
+        _need_int(event_seq, "event_seq", 1)
+        _need_str(result_sha256, "result_sha256")
+        _need_str(service_generation, "service_generation")
+        if (not re.fullmatch(r"[0-9a-f]{32}", request_id)
+                or not re.fullmatch(r"[0-9a-f]{64}", payload_digest)
+                or not re.fullmatch(r"[0-9a-f]{64}", result_sha256)):
+            raise StoreError("dispatch acknowledgement binding is malformed", kind="argument")
+        binding = {
+            "request_id": request_id, "principal": principal, "payload_digest": payload_digest,
+            "event_seq": event_seq, "result_sha256": result_sha256,
+            "service_generation": service_generation,
+        }
+        event_id = f"dispatch-owner-outcome:{request_id}:acknowledged"
+        with self._tx() as conn:
+            self._verify_control_history_locked(conn)
+            state, pending = self._dispatch_outcome_state_locked(conn)
+            if state == "LEGACY_UNRESOLVED":
+                raise StoreError("legacy dispatch history cannot be acknowledged", kind="integrity")
+            existing = []
+            for row in conn.execute(
+                "SELECT payload FROM events WHERE actor='supervisor' AND kind='NOTE' ORDER BY seq"
+            ).fetchall():
+                note = json.loads(row["payload"])
+                if (isinstance(note, dict)
+                        and note.get("_vst_control_type") == "DISPATCH_OWNER_OUTCOME_ACKNOWLEDGED"
+                        and note.get("request_id") == request_id):
+                    existing.append(note)
+            if existing:
+                if (len(existing) != 1 or existing[0].get("event_id") != event_id
+                        or {key: existing[0].get(key) for key in binding} != binding):
+                    raise StoreError("dispatch acknowledgement conflicts with recorded history", kind="integrity")
+                return binding
+            if state == "PENDING":
+                if pending != binding:
+                    raise StoreError("dispatch acknowledgement conflicts with pending outcome", kind="integrity")
+            elif state == "ACKNOWLEDGED":
+                raise StoreError("there is no pending dispatch outcome to acknowledge", kind="lifecycle")
+            else:
+                raise StoreError("there is no pending dispatch outcome to acknowledge", kind="lifecycle")
+            self._append_control_event_locked(
+                conn, "DISPATCH_OWNER_OUTCOME_ACKNOWLEDGED", event_id, binding,
+            )
+            return binding
 
     def read_dispatch_intents(self, *, after_seq: int, limit: int = 64) -> dict:
         """Read a verified event window for the Supervisor's filtered subscription."""
@@ -3187,6 +3414,8 @@ class Store:
             history = self._verified_database_history()
             count, head = history[-1]
             if self._external_anchor is None:
+                with self._read_tx_locked() as conn:
+                    self._dispatch_outcome_state_locked(conn)
                 self._reconciliation_complete = True
                 self._integrity_locked = False
                 self._integrity_lock_reason = None
@@ -3205,6 +3434,8 @@ class Store:
                     checkpoint_count, history[checkpoint_count][1], self._event_key
                 )
                 latest = self._external_anchor.compare_and_append(latest, checkpoint)
+            with self._read_tx_locked() as conn:
+                self._dispatch_outcome_state_locked(conn)
             self._reconciliation_complete = True
             self._integrity_locked = False
             self._integrity_lock_reason = None

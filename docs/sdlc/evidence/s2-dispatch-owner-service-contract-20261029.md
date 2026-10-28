@@ -28,13 +28,23 @@ E5 attestation.
 - The owner service validates the signed envelope against the root-owned public trust registry and
   fixed principal `Codex`, then calls `SupervisorClient.submit_dispatch_intent` at the fixed root
   socket. Supervisor verifies the same envelope again using its own root configuration.
-- Success returns the exact bounded Supervisor result. Refusal returns only a generic error code.
+- Success returns the exact bounded Supervisor result. After a complete local `sendall`, the relay
+  invokes authenticated `ack_dispatch_intent`; the Store clears the pending admission barrier only
+  for that exact result. The acknowledgement means relay-forwarded, not caller-received. The
+  configured `dispatch_owner` peer must have exactly `submit_dispatch_intent` and
+  `ack_dispatch_intent` operations; no other role receives acknowledgement authority. Refusal
+  returns only a generic error code.
 - The service processes connections sequentially, with a fixed request timeout and bounded request
   and response sizes. It stores no task state and performs no automatic retries. A client must
   preserve the original `request_id` when reconciling; Store idempotency binds principal, service
   generation, and the complete signed envelope.
 - The caller's Unix-socket group membership only permits reaching this relay. A valid instruction
-  signature and Supervisor's live authority checks are still required for durable acceptance.
+  signature and Supervisor's live authority checks are still required for durable acceptance. The
+  accepted event, idempotency result, and pending-outcome control note commit atomically. If local
+  forwarding or acknowledgement fails, the barrier remains pending, the relay stops, and a
+  different request ID is refused. Exact same-ID/payload replay may return the immutable result.
+  Store validates the full ordered history at startup and before each new admission/acknowledgement;
+  legacy accepted events without this protocol remain unresolved and block ordinary replay.
 
 ## Local transport and process identity
 
@@ -80,16 +90,13 @@ E5 attestation.
   is inactive at that point; without the latch, a later explicit socket start is not guarded. A
   durable `/etc` latch is required before any future reboot or start. The source contract does not
   prove installed-systemd behavior or storage health.
-- Reconciliation is explicit and must precede reopening. The operator inspects the exact
-  signed `request_id` in the verified Store `DISPATCH_INTENT_ACCEPTED` event and matching
-  `supervisor_operations` record, compares the complete envelope, principal, generation, payload
-  digest and result, then checks the dispatch subscription/grant state. Store commits the dispatch
-  event and idempotency result in one transaction. If present, do not replay it. If absent, do not
-  infer non-acceptance from the transport error; an independently authorized root recovery must
-  recheck current Store health, lease, owner epoch, preflight, expiry and generation before any
-  same-ID retry or replacement signed instruction. Recovery first stops the socket and verifies
-  it is inactive; only after reconciliation does the authorized operator remove the latch and
-  explicitly start the socket as separate logged root actions. No request is automatically replayed.
+- For the new protocol, a pending accepted result can be recovered by retrying only the same signed
+  instruction and request ID. Store returns the immutable result; the relay forwards it and records
+  the exact acknowledgement. A different request remains refused until that acknowledgement is
+  durable. No new ID is generated or automatically retried. Legacy accepted history, malformed or
+  contradictory controls, or an integrity/anchor failure remain closed for separately authorized
+  root reconciliation; ordinary replay cannot clear those states. Clearing the existing systemd
+  latch remains a separate privileged operation and is not performed by this source change.
 
 ## Configuration and source of truth
 
@@ -121,7 +128,7 @@ are tracked separately; this source contract is not runtime proof.
 
 Source acceptance requires review of exact socket activation, bounded single-frame EOF framing,
 config ownership, signature validation, one-request behavior, every relay/socket termination path,
-persistent admission fencing, ambiguous RPC reconciliation, and no retry/state/authority expansion.
+the Store pending/ack barrier, ambiguous RPC recovery, and no retry/state/authority expansion.
 Synthetic-key contract coverage is authored by `functional-test-reviewer` and executed by
 `e2e-runner` only after S2 coding is complete. The production path remains disabled until a genuine
 authorized signer and public key, exact authenticated OS identity, reviewed root configuration,

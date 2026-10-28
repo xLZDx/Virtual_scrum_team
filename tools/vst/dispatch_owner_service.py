@@ -213,6 +213,7 @@ class DispatchOwnerService:
     def _handle(self, conn: socket.socket) -> bool:
         conn.settimeout(REQUEST_TIMEOUT_SEC)
         outcome_unknown = False
+        accepted_result: dict | None = None
         try:
             header = _recv_exact(conn, _HEADER.size)
             length = _HEADER.unpack(header)[0]
@@ -232,6 +233,7 @@ class DispatchOwnerService:
                 outcome_unknown = True
                 response = {"ok": False, "error": "reconciliation_required"}
             else:
+                accepted_result = result
                 response = {"ok": True, "result": result}
         except Exception as exc:
             _LOGGER.warning("dispatch-owner request refused (%s)", type(exc).__name__)
@@ -239,10 +241,20 @@ class DispatchOwnerService:
         encoded = canonical_bytes(response)
         if len(encoded) > MAX_RESPONSE_BYTES:
             encoded = canonical_bytes({"ok": False, "error": "response_too_large"})
+            if accepted_result is not None:
+                outcome_unknown = True
         try:
             conn.sendall(_HEADER.pack(len(encoded)) + encoded)
         except OSError:
-            pass
+            if accepted_result is not None:
+                outcome_unknown = True
+            return outcome_unknown
+        if accepted_result is not None and not outcome_unknown:
+            try:
+                self.client.acknowledge_forwarded(accepted_result)
+            except DispatchOutcomeUnknown as exc:
+                _LOGGER.error("dispatch-owner outcome acknowledgement is unknown (%s)", type(exc).__name__)
+                outcome_unknown = True
         return outcome_unknown
 
 

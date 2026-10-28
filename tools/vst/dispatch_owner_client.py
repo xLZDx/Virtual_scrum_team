@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Mapping
 from typing import Any
 
-from .contracts import ContractError
+from .contracts import ContractError, canonical_bytes
 from .dispatch_instruction import validate_dispatch_instruction, verify_dispatch_instruction
 
 
@@ -22,6 +23,8 @@ class DispatchOwnerClient:
             raise ContractError("dispatch-owner principal is required from local authenticated config")
         if not callable(getattr(transport, "submit_dispatch_intent", None)):
             raise ContractError("dispatch-owner transport does not expose the submit operation")
+        if not callable(getattr(transport, "ack_dispatch_intent", None)):
+            raise ContractError("dispatch-owner transport does not expose the acknowledgement operation")
         self.principal = principal
         self.trust_registry = trust_registry
         self.openssl_path = openssl_path
@@ -50,3 +53,23 @@ class DispatchOwnerClient:
             # a durable append. An exception cannot prove that the request was not accepted.
             raise DispatchOutcomeUnknown("Supervisor acceptance is not proven") from exc
         return result
+
+    def acknowledge_forwarded(self, result: dict) -> dict:
+        """Acknowledge only the exact result after the relay's local sendall succeeds."""
+        if not isinstance(result, dict) or result.get("principal") != self.principal:
+            raise DispatchOutcomeUnknown("Supervisor result principal is not the configured relay identity")
+        try:
+            result_sha256 = hashlib.sha256(canonical_bytes(result)).hexdigest()
+            body = {
+                "request_id": result["request_id"],
+                "payload_digest": result["payload_digest"],
+                "event_seq": result["event_seq"],
+                "result_sha256": result_sha256,
+                "service_generation": result["service_generation"],
+            }
+            acknowledged = self.transport.ack_dispatch_intent(**body)
+            if acknowledged != body:
+                raise ContractError("Supervisor acknowledgement differs from forwarded result")
+        except Exception as exc:
+            raise DispatchOutcomeUnknown("dispatch result was forwarded but acknowledgement is unknown") from exc
+        return body
