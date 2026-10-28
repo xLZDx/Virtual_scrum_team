@@ -37,3 +37,7 @@ Codex owns the correction; the designated e2e-runner owns any fresh test executi
 actual six E3 temporary-fixture selectors and two synthetic identity selectors with exact commands
 and raw results; keep runner capability/service cases `NOT_RUN` until their prerequisites exist.
 S2 remains NOT APPROVED; S3 remains unstarted.
+
+Change 0488 subsequently ran the corrected E3 and identity selectors. Its evidence supersedes the
+`NOT_RUN` status for those eight selectors only; capability/service-dependent selectors remain
+`NOT_RUN`.

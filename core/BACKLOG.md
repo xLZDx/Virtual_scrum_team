@@ -165,3 +165,7 @@ GPT-PM confirmed `S2-DISPATCH-M01` remains MAJOR/OPEN: keep production dispatch 
 ## S2 WSL runtime evidence correction — change 0487
 
 The retained WSL E3, identity, and capability/timeout result summaries are `NOT_VERIFIED`; exact command/output are missing and several module-qualified node IDs are wrong. Actual current E3 IDs are in the corrected evidence. Owner: Codex for source/evidence reconciliation; designated e2e-runner for a fresh controlled run. Next: run only the corrected temporary-fixture selectors; leave service/capability-dependent cases `NOT_RUN` until their environment gate exists.
+
+## S2 corrected WSL E3 and identity selectors — change 0488
+
+The corrected six E3 and two synthetic identity selectors now have 12 passing cases after the one harness-only temporary-root permission issue was fixed and rerun. Exact commands, hashes, and the initial 11-pass/1-setup-failure result are preserved in `docs/sdlc/evidence/s2-corrected-wsl-runtime-selectors-20261028.md`. Owner: Codex for evidence; e2e-runner for execution; functional-test-reviewer for coverage. Next: retain capability/service, real E5, production dispatch and E8 gaps as open; no S3 before S2 closes.

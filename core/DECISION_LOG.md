@@ -1184,3 +1184,7 @@ GPT-PM's correlated architecture adjudication confirmed Option A for `S2-DISPATC
 ## 2026-10-28 — Downgrade WSL selector summaries with invalid provenance (change 0487)
 
 Exact source review found that the recorded module paths for five E3 selectors and both synthetic identity selectors do not match their definitions at source/test commit `d5001797cb94113efd9a8dc26e4a15f2dc130976`. The capability-drop selector is also recorded in the wrong module (change 0485). Since raw invocations/output are unavailable, all three retained WSL summaries are NOT_VERIFIED and do not count as acceptance. Run the actual IDs from the corrected evidence with the designated e2e-runner; do not infer passes from the retained summaries.
+
+## 2026-10-28 — Record corrected WSL E3 and synthetic identity evidence (change 0488)
+
+The designated e2e-runner executed the corrected E3 and synthetic identity selectors at source/test commit `d5001797cb94113efd9a8dc26e4a15f2dc130976`: 11 passed and one failed only because the temporary archive root mode blocked a test child from importing `tools`; the single affected selector then passed after only the disposable root mode changed from `0700` to `0755`. The functional-test-reviewer confirmed 12 unique passing cases after the targeted rerun. Preserve the initial setup failure. Evidence: `docs/sdlc/evidence/s2-corrected-wsl-runtime-selectors-20261028.md`.

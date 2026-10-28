@@ -28,3 +28,7 @@ Change 0487 also supersedes the recorded WSL E3 “10 passed” and synthetic id
 claims: the saved module-qualified node IDs do not exist under the cited modules, and exact raw
 commands/output are unavailable. Those WSL summaries are `NOT_VERIFIED` and `NOT_RUN` for
 acceptance until a fresh designated run records valid IDs and output.
+
+Change 0488 provides that corrected run: 12 unique E3 and synthetic identity cases passed after a
+single harness-only temporary-root permission correction. See the exact commands and retained
+initial setup failure in `docs/sdlc/evidence/s2-corrected-wsl-runtime-selectors-20261028.md`.
