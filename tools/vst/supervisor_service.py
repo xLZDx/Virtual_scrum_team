@@ -34,6 +34,7 @@ class SupervisorPeer:
     gid: int
     cgroup: str
     operations: frozenset[str]
+    principal: str | None = None
 
 
 def _recv_exact(conn: socket.socket, count: int) -> bytes:
@@ -178,7 +179,7 @@ class AuthenticatedSupervisorAPI:
                     or message["operation"] not in peer.operations
                     or not isinstance(message["body"], dict)):
                 raise ContractError("Supervisor RPC operation is not authorized")
-            result = self._dispatch(message["operation"], message["body"])
+            result = self._dispatch(message["operation"], message["body"], peer)
             if not _pidfd_alive(pidfd):
                 raise ContractError("Supervisor RPC peer exited during request")
             response = {"ok": True, "result": result}
@@ -196,14 +197,25 @@ class AuthenticatedSupervisorAPI:
         except OSError:
             return
 
-    def _dispatch(self, operation: str, body: dict) -> Any:
-        if operation == "issue_grant":
-            if set(body) != {
-                "task_id", "slot", "attempt", "epoch", "run_id", "resolved_model",
-                "model_provenance_sha256",
-            }:
-                raise ContractError("grant request fields are invalid")
-            return self.supervisor.issue_execution_grant(**body)
+    def _dispatch(self, operation: str, body: dict, peer: SupervisorPeer | None = None) -> Any:
+        if operation == "submit_dispatch_intent":
+            if (peer is None or peer.role != "dispatch_owner" or not peer.principal
+                    or set(body) != {
+                        "task_id", "slot", "attempt", "epoch", "run_id", "request_id",
+                    }):
+                raise ContractError("dispatch intent request is not authorized")
+            return self.supervisor.accept_dispatch_intent(principal=peer.principal, **body)
+        if operation == "next_dispatch_intent":
+            if (peer is None or peer.role != "dispatcher" or set(body) != {"cursor"}
+                    or (body["cursor"] is not None and not isinstance(body["cursor"], dict))):
+                raise ContractError("dispatch subscription request is not authorized")
+            audience = f"{peer.uid}:{peer.gid}:{peer.cgroup}"
+            return self.supervisor.next_dispatch_intent(cursor=body["cursor"], audience=audience)
+        if operation == "issue_dispatch_grant":
+            if (peer is None or peer.role != "dispatcher" or set(body) != {"request_id"}
+                    or not isinstance(body["request_id"], str)):
+                raise ContractError("dispatch grant request is not authorized")
+            return self.supervisor.issue_dispatch_intent_grant(request_id=body["request_id"])
         if operation == "claim":
             if set(body) != {"grant"} or not isinstance(body["grant"], dict):
                 raise ContractError("claim request fields are invalid")
@@ -327,11 +339,70 @@ class SupervisorClient:
             error = response.get("error")
             raise SupervisorRPCError(f"Supervisor RPC refused request ({error})")
 
-    def issue_grant(self, **body: Any) -> dict:
-        result = self.call("issue_grant", body)
-        if not isinstance(result, dict):
-            raise SupervisorRPCError("Supervisor returned a malformed grant")
+    def submit_dispatch_intent(self, **body: Any) -> dict:
+        result = self.call("submit_dispatch_intent", body)
+        if (not isinstance(result, dict) or set(result) != {
+                "event_seq", "principal", "task_id", "slot", "attempt", "epoch", "run_id",
+                "request_id", "service_generation", "lease_id", "payload_digest", "manifest_digest",
+        } or type(result["event_seq"]) is not int or result["event_seq"] < 1
+                or type(result["lease_id"]) is not int or result["lease_id"] < 1
+                or any(type(result[field]) is not int or result[field] < 1
+                       for field in ("attempt", "epoch"))
+                or any(not isinstance(result[field], str) or not result[field]
+                       for field in ("principal", "task_id", "slot", "run_id", "service_generation"))
+                or not isinstance(result["request_id"], str)
+                or not re.fullmatch(r"[0-9a-f]{32}", result["request_id"])
+                or any(not isinstance(result[field], str) or not _SHA256.fullmatch(result[field])
+                       for field in ("payload_digest", "manifest_digest"))):
+            raise SupervisorRPCError("Supervisor returned a malformed dispatch intent")
         return result
+
+    def next_dispatch_intent(self, cursor: dict | None) -> dict:
+        result = self.call("next_dispatch_intent", {"cursor": cursor})
+        if (not isinstance(result, dict) or set(result) != {"intent", "cursor_after", "cursor_idle"}
+                or (result["intent"] is not None and not isinstance(result["intent"], dict))
+                or not isinstance(result["cursor_after"], dict)
+                or not isinstance(result["cursor_idle"], dict)):
+            raise SupervisorRPCError("Supervisor returned a malformed dispatch subscription result")
+        for name in ("cursor_after", "cursor_idle"):
+            token = result[name]
+            if (set(token) != {"version", "sequence", "service_generation", "audience", "mac"}
+                    or type(token["version"]) is not int or token["version"] != 1
+                    or type(token["sequence"]) is not int or token["sequence"] < 0
+                    or not isinstance(token["service_generation"], str)
+                    or not token["service_generation"]
+                    or not isinstance(token["audience"], str) or not token["audience"]
+                    or not isinstance(token["mac"], str) or not _SHA256.fullmatch(token["mac"])):
+                raise SupervisorRPCError("Supervisor returned a malformed dispatch cursor")
+        intent = result["intent"]
+        if intent is not None:
+            required = {
+                "event_seq", "principal", "task_id", "slot", "attempt", "epoch", "run_id",
+                "request_id", "service_generation", "lease_id", "payload_digest", "manifest_digest",
+            }
+            if (set(intent) != required
+                    or type(intent["event_seq"]) is not int or intent["event_seq"] < 1
+                    or any(not isinstance(intent[field], str) or not intent[field]
+                           for field in ("principal", "task_id", "slot", "run_id", "service_generation"))
+                    or any(type(intent[field]) is not int or intent[field] < 1
+                           for field in ("attempt", "epoch", "lease_id"))
+                    or not isinstance(intent["request_id"], str)
+                    or not re.fullmatch(r"[0-9a-f]{32}", intent["request_id"])
+                    or any(not isinstance(intent[field], str) or not _SHA256.fullmatch(intent[field])
+                           for field in ("payload_digest", "manifest_digest"))
+                    or result["cursor_after"]["sequence"] != intent["event_seq"]):
+                raise SupervisorRPCError("Supervisor returned a malformed dispatch intent")
+        return result
+
+    def issue_dispatch_grant(self, request_id: str) -> dict:
+        result = self.call("issue_dispatch_grant", {"request_id": request_id})
+        if not isinstance(result, dict):
+            raise SupervisorRPCError("Supervisor returned a malformed dispatch grant")
+        try:
+            from .execution_grant import validate_execution_grant
+            return validate_execution_grant(result)
+        except ContractError as exc:
+            raise SupervisorRPCError("Supervisor returned an invalid dispatch grant") from exc
 
     def claim(self, grant: dict) -> dict | None:
         result = self.call("claim", {"grant": grant})
@@ -419,6 +490,7 @@ class SupervisorClient:
 
 DEFAULT_CONFIG_PATH = "/etc/vst-runner/supervisor-service.json"
 _MODEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/+-]{0,127}$")
+_PRINCIPAL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -569,9 +641,12 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
         "execution_grant_audience", "generation_record_path", "runner_unit_name",
         "runner_control_group", "runner_lock_path", "systemctl_path", "model_provenance",
         "socket_path", "socket_gid", "peers",
+        "allow_schema_upgrade",
     }
     if set(value) != required:
         raise ContractError("Supervisor service config fields do not match its schema")
+    if type(value["allow_schema_upgrade"]) is not bool:
+        raise ContractError("Supervisor schema-upgrade authorization must be a boolean")
     for field in ("store_path", "anchor_path", "event_key_path", "startup_supervisor_key_path",
                   "execution_grant_private_key_path", "probe_key_path", "operator_key_path",
                   "preflight_record_path", "openssl_path", "generation_record_path",
@@ -618,7 +693,8 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
         raise ContractError("Supervisor peer policy must be a list")
     peers = []
     role_operations = {
-        "dispatcher": frozenset({"issue_grant"}),
+        "dispatcher": frozenset({"issue_dispatch_grant", "next_dispatch_intent"}),
+        "dispatch_owner": frozenset({"submit_dispatch_intent"}),
         "runnerd": frozenset({
             "claim", "claim_status", "reserve", "complete", "generation",
             "recover", "manifest", "previous_receipt", "no_execution",
@@ -629,35 +705,50 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
         "operator": frozenset({"reconcile_runner_execution"}),
     }
     for item in peers_value:
-        if (not isinstance(item, dict) or set(item) != {"role", "uid", "gid", "cgroup", "operations"}
+        if not isinstance(item, dict):
+            raise ContractError("Supervisor peer policy entry is malformed")
+        role = item.get("role")
+        expected_fields = {"role", "uid", "gid", "cgroup", "operations"}
+        if role == "dispatch_owner":
+            expected_fields.add("principal")
+        if (set(item) != expected_fields
                 or not isinstance(item["role"], str) or not item["role"]
                 or type(item["uid"]) is not int or item["uid"] < 1
                 or type(item["gid"]) is not int or item["gid"] < 1
                 or not isinstance(item["cgroup"], str) or not item["cgroup"].startswith("/")
+                or ".." in item["cgroup"].split("/")
+                or os.path.normpath(item["cgroup"]) != item["cgroup"]
                 or item["role"] not in role_operations
                 or not isinstance(item["operations"], list)
                 or frozenset(item["operations"]) != role_operations[item["role"]]
-                or len(item["operations"]) != len(set(item["operations"]))):
+                or len(item["operations"]) != len(set(item["operations"]))
+                or (role == "dispatch_owner" and (not isinstance(item.get("principal"), str)
+                                                   or not _PRINCIPAL_ID.fullmatch(item["principal"]))):
             raise ContractError("Supervisor peer policy entry is malformed")
         peers.append(SupervisorPeer(
             role=item["role"], uid=item["uid"], gid=item["gid"], cgroup=item["cgroup"],
-            operations=frozenset(item["operations"]),
+            operations=frozenset(item["operations"]), principal=item.get("principal"),
         ))
     roles = {peer.role for peer in peers}
-    required_roles = {"dispatcher", "runnerd", "signer"}
+    required_roles = {"dispatch_owner", "dispatcher", "runnerd", "signer"}
     if not required_roles <= roles or not roles <= set(role_operations):
         raise ContractError("Supervisor peer policy must define dispatcher, runnerd, and signer")
     by_role = {peer.role: peer for peer in peers}
     runner_peer = by_role["runnerd"]
     signer_peer = by_role["signer"]
     dispatcher_peer = by_role["dispatcher"]
+    owner_peer = by_role["dispatch_owner"]
     if (runner_peer.uid != 997 or runner_peer.gid != 988
             or runner_peer.cgroup != value["runner_control_group"]
+            or dispatcher_peer.cgroup != "/system.slice/vst-dispatcher.service"
             or signer_peer.uid in {runner_peer.uid, dispatcher_peer.uid, 999}
             or signer_peer.gid != 988
             or signer_peer.cgroup == runner_peer.cgroup
             or dispatcher_peer.uid in {runner_peer.uid, signer_peer.uid, 999}
             or dispatcher_peer.gid in {988, 989}
+            or owner_peer.uid in {runner_peer.uid, signer_peer.uid, dispatcher_peer.uid, 999}
+            or owner_peer.gid in {runner_peer.gid, signer_peer.gid, dispatcher_peer.gid, 989}
+            or owner_peer.cgroup in {runner_peer.cgroup, signer_peer.cgroup, dispatcher_peer.cgroup}
             or socket_gid == 989):
         raise ContractError("Supervisor peer identities violate fixed runner, dispatcher, or worker separation")
     operator_peer = by_role.get("operator")
@@ -667,6 +758,10 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
             or operator_peer.gid in {runner_peer.gid, signer_peer.gid, dispatcher_peer.gid, 989}
             or operator_peer.cgroup in {runner_peer.cgroup, signer_peer.cgroup, dispatcher_peer.cgroup}):
         raise ContractError("Supervisor operator identity must be independently pinned")
+    if operator_peer is not None and (
+            operator_peer.uid == owner_peer.uid or operator_peer.gid == owner_peer.gid
+            or operator_peer.cgroup == owner_peer.cgroup):
+        raise ContractError("Supervisor owner and operator identities must be independently pinned")
     for path_key in ("store_path", "anchor_path"):
         _validate_root_data_path(value[path_key])
     event_key = _read_root_key(value["event_key_path"])
@@ -706,6 +801,7 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
         supervisor_key=supervisor_key,
         execution_resolution_key=operator_key,
         supervisor_runner_id="persistent-runner-supervisor",
+        allow_schema_upgrade=value["allow_schema_upgrade"],
     )
     supervisor = Supervisor(
         store, operation_backend=None,
@@ -718,6 +814,7 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
         execution_grant_audience=value["execution_grant_audience"],
         service_generation_provider=lambda: _active_runner_generation(value),
         model_provenance_verifier=lambda model, digest: model_provenance.get(model) == digest,
+        model_provenance_digest_provider=lambda model: model_provenance.get(model),
     )
     probe_digest = hashlib.sha256(canonical_bytes(probe)).hexdigest()
     store.ensure_preflight_consumed(run_id, probe_nonce, spec_sha256, probe_digest)

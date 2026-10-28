@@ -1188,3 +1188,18 @@ Exact source review found that the recorded module paths for five E3 selectors a
 ## 2026-10-28 — Record corrected WSL E3 and synthetic identity evidence (change 0488)
 
 The designated e2e-runner executed the corrected E3 and synthetic identity selectors at source/test commit `d5001797cb94113efd9a8dc26e4a15f2dc130976`: 11 passed and one failed only because the temporary archive root mode blocked a test child from importing `tools`; the single affected selector then passed after only the disposable root mode changed from `0700` to `0755`. The functional-test-reviewer confirmed 12 unique passing cases after the targeted rerun. Preserve the initial setup failure. Evidence: `docs/sdlc/evidence/s2-corrected-wsl-runtime-selectors-20261028.md`.
+
+## 2026-10-28 — Accept constrained Store-backed pub/sub source implementation
+
+The operator confirmed there is no existing production coordinator or authenticated assignment
+source and directed Codex to build the bounded coordinator. GPT-PM's later correlated response
+`67045970-e83f-538b-866e-ba97e9d269ec` (request `274a8f94-9438-4f16-8dd4-98a8daf64b37`) ACCEPTS
+the constrained source architecture. This supersedes the earlier point-to-point proposal and
+pending-provenance-amendment status only for the allowed implementation scope. Use the hash-chained
+Store event log plus a Supervisor-filtered AF_UNIX subscription; do not add a general broker, queue,
+task enumeration, scheduler, or assignment authority. Dispatch remains fail-closed until mapped
+owner identity, live Store assignment/lease, and the exact manifest/preflight/generation are checked.
+The decision does not authorize applying schema v6, generating keys, provisioning/activating
+services, executing dispatch, publishing/merging, or claiming S2 acceptance. Migration application
+requires independent review and separate authorization. Keep S2 active and S3 unstarted; leave
+restricted test scenarios `NOT_RUN`.

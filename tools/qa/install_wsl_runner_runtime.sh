@@ -80,7 +80,8 @@ trap '[ -z "$unit_tmp" ] || /bin/rm -f -- "$unit_tmp"; /bin/rm -rf -- "$stage"' 
 /usr/bin/cp -a -- "$bundle_root/docs" "$stage/docs"
 [ -f "$stage/tools/vst/systemd/vst-supervisor.service" ] &&
     [ -f "$stage/tools/vst/systemd/vst-signer.service" ] &&
-    [ -f "$stage/tools/vst/systemd/vst-runner.service" ] || {
+    [ -f "$stage/tools/vst/systemd/vst-runner.service" ] &&
+    [ -f "$stage/tools/vst/systemd/vst-dispatcher.service" ] || {
     echo "source bundle is missing a required systemd unit" >&2; exit 1;
 }
 /usr/bin/chown -R root:root "$stage/tools/vst"
@@ -151,7 +152,7 @@ if path_exists(link):
     info = os.lstat(link)
     if not stat.S_ISLNK(info.st_mode) or info.st_uid != 0 or os.readlink(link) != runtime:
         raise SystemExit("runtime selector exists with different target/type/owner")
-for unit in ("vst-supervisor.service", "vst-signer.service", "vst-runner.service"):
+for unit in ("vst-supervisor.service", "vst-signer.service", "vst-runner.service", "vst-dispatcher.service"):
     source = os.path.join(stage, "tools/vst/systemd", unit)
     dest = os.path.join(unit_dir, unit)
     if path_exists(dest):
@@ -171,7 +172,7 @@ if [ ! -e "$runtime_link" ] && [ ! -L "$runtime_link" ]; then
     /bin/ln -s "$runtime_dir" "$runtime_link"
 fi
 
-for unit in vst-supervisor.service vst-signer.service vst-runner.service; do
+for unit in vst-supervisor.service vst-signer.service vst-runner.service vst-dispatcher.service; do
     unit_path="$unit_dir/$unit"
     if [ ! -e "$unit_path" ] && [ ! -L "$unit_path" ]; then
         unit_tmp=$(/usr/bin/mktemp "$unit_dir/.vst-unit.XXXXXX")

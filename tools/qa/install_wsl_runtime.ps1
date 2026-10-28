@@ -168,8 +168,9 @@ try:
             "tools/vst/runner.py", "tools/vst/signer.py", "tools/vst/store.py",
             "tools/vst/supervisor.py", "tools/vst/runner_service.py",
             "tools/vst/supervisor_service.py", "tools/vst/execution_grant.py",
-            "tools/vst/runner_fence.py", "tools/vst/systemd/vst-runner.service",
-            "tools/vst/systemd/vst-signer.service", "tools/vst/systemd/vst-supervisor.service",
+            "tools/vst/runner_fence.py", "tools/vst/dispatcher_service.py",
+            "tools/vst/systemd/vst-runner.service", "tools/vst/systemd/vst-signer.service",
+            "tools/vst/systemd/vst-supervisor.service", "tools/vst/systemd/vst-dispatcher.service",
             "docs/SANDBOX_SPEC.md",
         }
         if not required.issubset(seen):

@@ -1,8 +1,8 @@
 # S2 persistent runner deployment contract
 
 This directory contains unit templates for the source implementation in
-`tools/vst/runner_service.py`, `tools/vst/supervisor_service.py`, and
-`tools/vst/signer.py`. The templates and installers are preparation only. No
+`tools/vst/runner_service.py`, `tools/vst/supervisor_service.py`,
+`tools/vst/dispatcher_service.py`, and `tools/vst/signer.py`. The templates and installers are preparation only. No
 account, key, unit, runtime directory, database migration, or service has been
 provisioned or started by these files in the current coding pass.
 
@@ -16,17 +16,19 @@ provisioned or started by these files in the current coding pass.
   reads back all Linux capability sets, and sets `no_new_privs` before the gate
   can execute a command.
 - A separate `vst-dispatcher` identity is the only permitted runner-socket
-  peer. It has no cgroup write access and may request grants only through
-  authenticated Supervisor IPC; it never creates or signs grants locally.
-  `dispatch_authorized_manifest_run` is currently a library integration
-  function, not a runnable production dispatcher. No trusted coordinator caller
-  identity or request source is established in this repository, so deployment
-  acceptance remains open until that exact integration contract is authorized.
+  peer. It has no cgroup write access and may request grants only for
+  Supervisor-accepted dispatch intents; it never creates or signs grants
+  locally. `vst-dispatcher.service` consumes only filtered Store-backed intents
+  over authenticated Supervisor IPC and forwards the exact grant to Runner.
+  It does not list tasks or choose work. The separate `dispatch_owner` peer
+  submits one exact intent under a root-owned principal mapping; Supervisor
+  compares that authenticated principal with the live Store story owner.
 - A separate `vst-signer` identity serves the signer socket. Its primary GID
   is `988` so only the runner group can connect; its private signing key and
   replay ledger remain signer-owned.
-- `vst-supervisor-client` is the shared socket-access group for the dispatcher,
-  runner, and signer. It must not include the worker identity.
+- `vst-supervisor-client` is the shared Supervisor-socket access group for the
+  authenticated dispatch owner, dispatcher, runner, and signer. It must not
+  include the worker identity.
 - The root Supervisor alone opens the Store and signs execution grants. RPC
   peers are pinned by UID/GID, exact systemd cgroup, and `SO_PEERPIDFD`.
   The fixed runner peer may claim an exact grant, query that grant's claim
@@ -82,10 +84,14 @@ startup keys, a run-bound preflight record and distinct probe/operator
 verification keys, its exact run ID and nonce, grant key ID/private-key
 path/public-key ring, OpenSSL executable,
 generation snapshot and lock, fixed runner unit/cgroup, socket path and its
-group, plus exact peer UID/GID/cgroup/operation entries for `dispatcher`,
-`runnerd`, and `signer`. The model-provenance map binds each allowed resolved
+group, plus exact peer UID/GID/cgroup/operation entries for `dispatch_owner`,
+`dispatcher`, `runnerd`, and `signer`. The `dispatch_owner` peer also carries
+its root-owned principal mapping. The model-provenance map binds each allowed resolved
 model ID to one SHA-256 digest. Configuration and its parent directories must
 be root-owned and not group/world writable.
+`allow_schema_upgrade` is an explicit boolean and must remain `false` unless the
+schema-v6 migration has received its separate review and application is
+authorized. A v5 Store refuses Supervisor startup while this value is false.
 
 An optional `operator` Supervisor reconciliation peer is inactive by default;
 it exists only when an operator explicitly provisions and configures its peer
@@ -163,7 +169,7 @@ deployment acceptance.
 ## Installation and verification boundary
 
 `tools/qa/install_wsl_runner_runtime.sh` installs the immutable Python source
-artifact and three unit files. It accepts only matching prior artifacts and
+artifact and four unit files. It accepts only matching prior artifacts and
 refuses to replace mismatched host state; it does not enable or start units.
 `tools/qa/install_wsl_worker_helper.sh` builds the fixed C helper from the same
 committed source revision. These scripts are not run during code completion.

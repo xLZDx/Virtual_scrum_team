@@ -183,24 +183,24 @@ E8/S2 remains NOT APPROVED. Evidence and limitations are in
 
 Still open for S2, in order:
 
-1. `S2-DISPATCH-M01`: no runnable production coordinator/callsite is established. The operator
-   directs Codex to implement an in-repository coordinator. GPT-PM's correlated decision allows a
-   local AF_UNIX adapter only as a constrained forwarder; it cannot create tasks/leases, enumerate
-   or select arbitrary work, sign grants, or mutate Store. `S2-DISPATCH-M01-AUTH-01` remains MAJOR
-   until the exact authenticated request source is bound to an existing Store-owned task/live
-   lease and the amendment is approved. Production dispatch stays disabled. Codex owns the
-   amendment/implementation; GPT-PM owns architecture adjudication.
-2. Fresh runtime configuration/E5: the dedicated WSL2 exists and has `automount=false`,
-   `interop=false`, and `appendWindowsPath=false`. Current runner/Supervisor/signer configs and
-   runtime manifest are absent; all services are disabled/inactive; the installed worker helper
-   is from older head `d5001797`. Six role-separated 32-byte key files and prior private E5
-   inventory metadata exist, but their provenance was not independently verified this turn and
-   their contents were not read. Historical E5 records are bound to older source heads; fresh
-   current-head E5 remains open. Codex owns exact config/runtime preparation after code review and
-   may generate local service keys under GPT-PM's conditional custody rules. The operator's
-   network-policy attestation authority cannot be impersonated; any independent attestation must
-   be genuinely operator-authorized. Do not enable/start services without distinct runtime
-   authorization and accepted evidence.
+1. `S2-DISPATCH-M01`: no production owner caller or end-to-end coordinator runtime is established.
+   The operator confirmed those components do not exist and delegated the bounded coordinator
+   implementation to Codex. GPT-PM's later correlated decision accepts a narrow Store-backed
+   pub/sub source path: one owner-authenticated intent, Supervisor filtering, AF_UNIX delivery, and
+   forwarding the exact grant. It forbids a new assignment authority, task/lease creation, arbitrary
+   selection/enumeration, grant signing by the dispatcher, external broker/spool, and automatic
+   retry. Source implementation is in progress; tests and independent review have not completed.
+   Production dispatch remains disabled. Codex owns source completion and permitted integration;
+   GPT-PM owns architecture/final adjudication. The operator has no current action to locate a
+   nonexistent external source.
+2. Root configuration/current E5: the operator confirmed no current root-owned runner/Supervisor
+   configuration, credentials, signed E5, or current sandbox provenance is available. Do not treat
+   historical records or unverified key files as current evidence. Codex owns preparation after
+   source review, but the latest GPT-PM response does not authorize key generation, migration
+   application, or service activation. E5 requires genuine current host inventory and independent
+   network-policy attestation; Codex must not impersonate the operator or infer the attestation.
+   Any human-only attestation/authorization is owned by the operator only if that gate is reached.
+   No secrets are requested in chat.
 3. Remaining Windows/POSIX containment and E5/E8 system acceptance must be evidenced. Restricted
    process/crash/kill, STOP, resume/restart, out-of-scope mutation and policy scenarios remain
    `NOT_RUN`; no waiver is inferred. Egress, host isolation, service restart fencing, and any
@@ -226,3 +226,42 @@ and runtime are absent from the WSL distribution, while role-separated key files
 E5 records from earlier heads exist; see `docs/sdlc/evidence/s2-wsl-provisioning-baseline-20261028.md`.
 Current-head E5 remains unproven. Do not ask the operator to find an external coordinator or send
 secrets. Keep dispatch disabled and S3 unstarted until S2 formally closes.
+
+## S2 pub/sub implementation queue — supersedes “awaiting coordinator source” — 2026-10-28
+
+The operator confirmed the coordinator and authenticated assignment source do not exist and
+delegated their bounded creation to Codex. Do not ask the operator for a nonexistent path. GPT-PM's
+later correlated decision ACCEPTS the narrow source design: request
+`274a8f94-9438-4f16-8dd4-98a8daf64b37`, reply `67045970-e83f-538b-866e-ba97e9d269ec`. It permits one
+owner-authenticated Store intent event and a Supervisor-filtered AF_UNIX subscription. It does not
+authorize a new assignment authority, task/lease creation, grant signing by the dispatcher, external
+broker/spool, automatic retry, migration application, runtime activation, or deployment.
+
+Current source progress: Store event and schema-v6 migration gate; owner-bound Supervisor submit,
+filtered subscription and exact grant-forwarding operations; a dedicated dispatcher service/unit;
+installer and schema contract documentation. The source and project records received a code-reviewer
+and database-reviewer pass. Code-reviewer found and rechecked a fix for cursor advancement after
+transient Store errors; no actionable BLOCKER/MAJOR remains in that reviewed scope. Database-reviewer
+found no BLOCKER/MAJOR and noted a MINOR O(n) full-history grant lookup; no workload evidence supports
+optimization yet. The production owner caller is still absent, so the data path is source-prepared
+but not end-to-end integrated. `S2-DISPATCH-M01` remains MAJOR/OPEN; no runtime pass is claimed.
+Schema upgrade remains opt-in and unapplied. No tests/checks were run in the source-review phase.
+
+Ordered closure:
+
+1. Functional-test-reviewer/e2e-runner define and run mapped tests against the reviewed source.
+   Prohibited crash/process-kill/mutation/policy scenarios remain `NOT_RUN`.
+2. Codex prepares a root-owned authenticated owner caller path that does not add assignment
+   authority; GPT-PM adjudicates any material architecture change. Until such a caller is deployed,
+   the coordinator cannot claim production integration.
+3. GPT-PM owns a separately scoped authorization decision for any root-owned key/config
+   provisioning. Codex owns preparing a non-secret config contract and migration code; the v6
+   migration separately requires independent database review and authorization before application.
+   The operator owns any genuine human network-policy attestation. Runtime stays disabled until
+   those gates and fresh E5 provenance exist.
+4. After exact-head tests/reviews, GPT-PM adjudicates final S2 acceptance. S3 stays unstarted until
+   S2 closes.
+
+Backlog MINOR: grant lookup verifies/scans full append-only history per request ID. Codex owns any
+later bounded optimization, only if measurements show material cost; the next step is to capture
+representative Store sizes/lookup timing after source tests and runtime evidence are available.

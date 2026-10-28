@@ -19,7 +19,10 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable, Mapping
 
-from .contracts import ContractError, canonical_bytes, manifest_sha256, validate_task_manifest
+from .contracts import (
+    ContractError, canonical_bytes, manifest_sha256, validate_receipt,
+    validate_task_manifest,
+)
 from .execution_grant import (
     AmbiguousExecutionAuthorityError, ExecutionAuthority, verify_execution_grant,
 )
@@ -30,6 +33,7 @@ from .supervisor_service import (
 
 MAX_RUNNER_REQUEST_BYTES = 1024 * 1024
 MAX_RUNNER_RESPONSE_BYTES = 8 * 1024 * 1024
+MAX_DISPATCH_TIMEOUT_SEC = 1900.0
 DEFAULT_CONFIG_PATH = "/etc/vst-runner/runner-service.json"
 _HEADER = struct.Struct("!I")
 _WORKER_EXEC_HELPER_PREFIX = "/usr/local/libexec/vst-s4-worker-exec-"
@@ -592,29 +596,38 @@ def dispatch_manifest_run(
     receipt = response.get("receipt")
     if not isinstance(receipt, dict):
         raise ContractError("persistent runner response lacks a receipt")
-    return receipt
+    validated = validate_receipt(receipt)
+    bound_fields = (
+        "task_id", "manifest_sha256", "slot", "attempt", "epoch", "runner_id", "invocation_id",
+    )
+    if any(validated[field] != grant[field] for field in bound_fields):
+        raise ContractError("persistent runner receipt does not match the dispatched grant")
+    return validated
 
 
 def dispatch_authorized_manifest_run(
     *, supervisor_socket: str, runner_socket: str,
-    task_id: str, slot: str, attempt: int, epoch: int, run_id: str,
-    resolved_model: str, model_provenance_sha256: str,
-    artifact_paths: list[str] | None = None, timeout_sec: float = 1900.0,
+    request_id: str, timeout_sec: float = 1900.0,
 ) -> dict:
-    """Request a one-run grant from the root Supervisor, then dispatch it.
+    """Forward one previously accepted intent using its Supervisor-issued grant.
 
-    This is the dispatcher integration path: it never constructs or signs a
-    grant locally, and it submits only the grant returned by authenticated
-    Supervisor IPC to the fixed runner service.
+    The dispatcher cannot choose task, slot, model, or artifact paths here.
+    Supervisor resolves those values from the durable intent, Store, and
+    root-owned model provenance configuration.
     """
+    if not isinstance(request_id, str) or not request_id:
+        raise ContractError("dispatch request id must be non-empty")
     supervisor = SupervisorClient(supervisor_socket)
-    grant = supervisor.issue_grant(
-        task_id=task_id, slot=slot, attempt=attempt, epoch=epoch, run_id=run_id,
-        resolved_model=resolved_model,
-        model_provenance_sha256=model_provenance_sha256,
-    )
+    grant = supervisor.issue_dispatch_grant(request_id)
+    deadline = grant.get("execution_deadline_sec")
+    if type(deadline) is not int or deadline < 1:
+        raise ContractError("Supervisor returned a grant with an invalid execution deadline")
+    if (isinstance(timeout_sec, bool) or not isinstance(timeout_sec, (int, float))
+            or timeout_sec <= 0):
+        raise ContractError("dispatch timeout must be positive")
+    bounded_timeout = min(MAX_DISPATCH_TIMEOUT_SEC, float(timeout_sec), float(deadline + 120))
     return dispatch_manifest_run(
-        runner_socket, grant, artifact_paths=artifact_paths, timeout_sec=timeout_sec,
+        runner_socket, grant, timeout_sec=bounded_timeout,
     )
 
 

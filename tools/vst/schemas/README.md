@@ -4,7 +4,7 @@ Implemented in `tools/vst/contracts.py`, `tools/vst/signing.py`, `tools/vst/gate
 
 Closed enums: `RESULT` = PASS, FAIL, BLOCKED, NOT_RUN, INCONCLUSIVE. `COVERAGE` = FULL, PARTIAL, NOT_COVERED. `VERDICT` = APPROVE, APPROVED_WITH_WAIVER, MODIFY, NO_GO. `RECEIPT_TYPES` = TestRun, StaticAnalysis, IndependentReview, Documentation. Hashes are lowercase hex (head = 40 chars, sha256 = 64). Dates are opaque non-empty strings.
 
-## Persistent runner execution authorization (Store schema v5)
+## Persistent runner execution authorization and dispatch intents (Store schema v6)
 
 The persistent POSIX runner accepts only a signed, short-lived execution grant issued by the root
 Supervisor. The grant binds one manifest `TestRun` slot, task, story epoch, lease/worker, consumed
@@ -33,10 +33,28 @@ fixed attestation statement in the signed record. Evidence bytes are external an
 independently fetched or verified by Store. The focused
 `Supervisor.reconcile_runner_execution` / `Store.reconcile_runner_execution` API has no
 production operator transport or caller in this source change, and no actual operator-signed
-record is claimed. The schema-v5 source migration is additive and is not
-run as part of source preparation. See `tools/vst/execution_grant.py`, `tools/vst/store.py`,
+record is claimed. The schema-v6 source migration preserves historical event bytes and extends the
+closed event-kind constraint; it is not applied to the provisioned WSL Store during source
+preparation. See `tools/vst/execution_grant.py`, `tools/vst/store.py`,
 `tools/vst/supervisor_service.py`, and `tools/vst/runner_service.py`; implementation and runtime
 acceptance remain pending exact-diff testing/review and dedicated WSL evidence.
+
+### Store-backed dispatch pub/sub
+
+`DISPATCH_INTENT_ACCEPTED` is a root-Supervisor-written, hash-chained Store event. The owner peer
+submits only a request ID, task ID, TestRun slot, attempt, epoch, and run ID. Supervisor derives
+the principal from authenticated AF_UNIX peer credentials plus its root-owned mapping; Store
+checks that principal against the live story owner and validates the lease, manifest, preflight,
+receipt position, and budget in the same transaction that commits the event. The event binds the
+derived lease ID, manifest digest, service generation, canonical request digest, and principal.
+
+The `vst-dispatcher` peer receives only Supervisor-filtered intents through a generation- and
+peer-bound HMAC cursor. It has no direct Store access and cannot enumerate or select tasks. Store
+durability supports at-least-once delivery; dispatch grant creation is idempotent by intent ID and
+the existing signed one-use runner claim prevents duplicate execution. Changed owner, lease,
+epoch, manifest, preflight, or generation is rechecked before grant issuance. Ambiguous execution
+does not trigger an automatic dispatcher retry. No external broker, independent queue, task
+scheduler, or assignment authority is part of this contract.
 
 ## TaskManifest (`validate_task_manifest`)
 
@@ -120,9 +138,9 @@ Waiver (gate input, signed by the operator key with `WAIVER_LABEL`): exact keys 
 
 ## Store (`tools/vst/store.py`)
 
-`Store(path, clock=time.time, *, event_key, busy_timeout_sec=30.0)`: one sqlite3 connection per instance, WAL, `foreign_keys` and `recursive_triggers` ON, autocommit with an explicit `BEGIN IMMEDIATE` per mutating method; `_tx` always ends with an explicit COMMIT or ROLLBACK (each public method is atomic). SQLite busy/locked errors become `StoreBusyError` (a `StoreError`, kind `busy`). Context manager closes the connection. `StoreError(message, kind)`; kinds: story, epoch, lease, slot, chain, duplicate, budget, argument, append_only, task, manifest, signature, supervisor, retry, terminal, key, integrity, schema, busy. All keys (`event_key`, worker `key`, `supervisor_key`) are bytes of length >= 32. Every supervisor operation (`acquire_lease`, `charge`, `append_supervisor_receipt`, `supervisor_reap_and_mark`, `mark_budget_exceeded`) refuses a `supervisor_key` equal to the `event_key` (`kind='key'`).
+`Store(path, clock=time.time, *, event_key, busy_timeout_sec=30.0, allow_schema_upgrade=False)`: one sqlite3 connection per instance, WAL, `foreign_keys` and `recursive_triggers` ON, autocommit with an explicit `BEGIN IMMEDIATE` per mutating method; `_tx` always ends with an explicit COMMIT or ROLLBACK (each public method is atomic). SQLite busy/locked errors become `StoreBusyError` (a `StoreError`, kind `busy`). Context manager closes the connection. `StoreError(message, kind)`; kinds: story, epoch, lease, slot, chain, duplicate, budget, argument, append_only, task, manifest, signature, supervisor, retry, terminal, key, integrity, schema, busy. All keys (`event_key`, worker `key`, `supervisor_key`) are bytes of length >= 32. Every supervisor operation (`acquire_lease`, `charge`, `append_supervisor_receipt`, `supervisor_reap_and_mark`, `mark_budget_exceeded`) refuses a `supervisor_key` equal to the `event_key` (`kind='key'`).
 
-Schema: `PRAGMA user_version` = 3 (`SCHEMA_VERSION`; v3 adds `leases.receipt_count` and the `LEASE_EXPIRED_PARTIAL` event kind); a new file is initialised in one transaction, a legacy un-versioned database with tables or any other version is refused (`kind='schema'`). The database file and its `-wal`/`-shm` get `chmod 0o600` (best effort). Integer arguments are bounds-checked (epoch/attempt <= 2^31-1, budget values <= 10^12, slots <= 1024, ttl <= one year, finite).
+Schema: `PRAGMA user_version` = 6 (`SCHEMA_VERSION`). A new file is initialized in one transaction. Existing schema versions 3–5 require the explicit `allow_schema_upgrade=True` opt-in and are upgraded transactionally; the v6 migration extends the closed event-kind constraint while preserving historical event rows, sequence numbers, payload bytes, hashes, and anchor. Unversioned legacy databases and unknown schema versions are refused (`kind='schema'`). Runtime configuration defaults `allow_schema_upgrade` to false; migration application is a separately reviewed/authorized operation. The database file and its `-wal`/`-shm` get `chmod 0o600` (best effort). Integer arguments are bounds-checked (epoch/attempt <= 2^31-1, budget values <= 10^12, slots <= 1024, ttl <= one year, finite).
 
 Tables: `stories(story_id, project_id, phase 1..10, epoch, owner, state in OPEN/OWNED, owner_expires_at)`, `tasks(task_id, story_id, manifest_sha256, retry_cap, manifest)` (append-only; the task/story link is stored once), `leases(lease_id, task_id, story_id, attempt, worker_id, epoch, expires_at, status in LIVE/RELEASED/EXPIRED/FENCED, wrote, marked, receipt_count, UNIQUE(task_id, attempt))` (history; at most one LIVE lease per task via a partial unique index), `slots(slot_no, lease_id, expires_at)` (concurrency slots), `receipts(seq, receipt_id UNIQUE, story_id, task_id, slot, attempt, epoch, receipt_sha256, prev_receipt_sha256, body, UNIQUE(task_id, slot, attempt))`, `events(seq, ts, task_id, actor, kind in EVENT_KINDS, payload, prev_hash, hash)`, `budget(task_id, cap, spent)`, `meta(key, value)` (keyed event anchor).
 

@@ -1,0 +1,32 @@
+[Unit]
+Description=Virtual Scrum Team Store-backed dispatch coordinator
+After=local-fs.target vst-supervisor.service vst-runner.service
+Requires=vst-supervisor.service vst-runner.service
+RequiresMountsFor=/opt/vst-runtime /etc/vst-runner
+
+[Service]
+Type=simple
+User=vst-dispatcher
+Group=vst-dispatcher
+SupplementaryGroups=vst-supervisor-client
+ExecStart=/usr/bin/python3.12 -I -S -c "import sys; sys.path.insert(0, '/opt/vst-runtime'); from tools.vst.dispatcher_service import main; main()" /etc/vst-runner/dispatcher-service.json
+Restart=no
+TimeoutStartSec=30s
+TimeoutStopSec=1900s
+LimitNOFILE=128
+PrivateTmp=yes
+PrivateNetwork=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+ProtectHome=yes
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+NoNewPrivileges=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

@@ -375,3 +375,34 @@ adjudication is pending under PM Bridge request `c775dfb6-563b-4c9c-a589-ddd694c
 coordination, GPT-PM owns the decision, and the operator has no action unless future real provisioning
 or scope expansion is explicitly chosen. Do not start S3. Evidence:
 `docs/sdlc/evidence/s2-prerequisite-absence-confirmation-20261028.md`.
+
+## S2 pub/sub architecture correction and source progress — 2026-10-28
+
+The prior “no coordinator source path” blocker is not a request for the operator to locate a service:
+the operator confirmed that neither the coordinator nor authenticated assignment source exists and
+directed Codex to create the bounded coordinator. GPT-PM then returned **ACCEPT — WITH BINDING
+CONSTRAINTS** for the narrow implementation scope (PM Bridge request
+`274a8f94-9438-4f16-8dd4-98a8daf64b37`, job `232e6309-ea24-405e-b8c6-771215cdde2e`, user turn
+`d82d2124-ec09-4e3b-a321-d767350ed73a`, response `67045970-e83f-538b-866e-ba97e9d269ec`). This
+supersedes the earlier point-to-point proposal and “awaiting amendment” status only for source
+implementation; it does not close `S2-DISPATCH-M01` or approve runtime, migration application,
+key generation, service activation, push/PR/merge, or deployment.
+
+The accepted shape is a typed `DISPATCH_INTENT_ACCEPTED` hash-chained Store event, an owner-bound
+Supervisor operation, and a Supervisor-filtered AF_UNIX pub/sub subscriber. The coordinator only
+forwards that exact intent. It cannot create or choose work, assign tasks, create leases, sign grants,
+or retry ambiguous execution. Working-tree source now includes the event/migration gate, Supervisor
+RPC and dispatcher adapter/unit, with installer and schema-doc updates. Source and project records
+received the actual code/database review pass. Code-reviewer found a cursor-loss MAJOR on transient
+Store errors; Codex changed the loop to propagate busy/integrity/unknown errors and the reviewer
+rechecked that branch with no further actionable BLOCKER/MAJOR. Database-reviewer found no
+BLOCKER/MAJOR; it recorded a MINOR O(n) full-history grant-lookup observation. A source inspection
+also found and corrected a missing `lease_id` selection used by grant-basis validation. No
+tests/checks, migration, WSL change, key/config provisioning, or service activation was performed in
+this continuation. Current worktree changes were already present at turn start except the explicitly
+identified correction and documentation edits; origins of inherited diffs are not attributed.
+
+Next, the source diff is ready for mapped functional-test-reviewer/e2e-runner test authoring and
+execution. The schema-v6 migration still requires independent review and separate authorization
+before application. Root-owned config, fresh signed E5, production owner caller, and runtime dispatch
+remain unproven. Keep S2 active and S3 unstarted.

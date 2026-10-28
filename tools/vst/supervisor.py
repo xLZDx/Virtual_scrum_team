@@ -44,6 +44,7 @@ class Supervisor:
         execution_grant_audience: str = "vst-runner-service-v1",
         service_generation_provider: Callable[[], str] | None = None,
         model_provenance_verifier: Callable[[str, str], bool] | None = None,
+        model_provenance_digest_provider: Callable[[str], str | None] | None = None,
     ):
         if isinstance(failure_threshold, bool) or not isinstance(failure_threshold, int) or failure_threshold < 1:
             raise ValueError("failure_threshold must be a positive integer")
@@ -62,6 +63,7 @@ class Supervisor:
         self.execution_grant_audience = execution_grant_audience
         self.service_generation_provider = service_generation_provider
         self.model_provenance_verifier = model_provenance_verifier
+        self.model_provenance_digest_provider = model_provenance_digest_provider
         self._seen_run_ids = {run_id} if isinstance(run_id, str) else set()
         self._seen_probe_nonces = {probe_nonce} if isinstance(probe_nonce, str) else set()
         self._probe_consumed = False
@@ -319,6 +321,8 @@ class Supervisor:
     def issue_execution_grant(
         self, *, task_id: str, slot: str, attempt: int, epoch: int,
         run_id: str, resolved_model: str, model_provenance_sha256: str,
+        expected_owner: str | None = None,
+        expected_lease_id: int | None = None,
     ) -> dict:
         """Issue a bounded one-run grant with a short claim window."""
         if (not isinstance(self.execution_grant_key_id, str)
@@ -343,6 +347,8 @@ class Supervisor:
         basis = self.store.execution_grant_basis(
             task_id, slot, attempt, epoch, run_id,
             active_service_generation=generation,
+            expected_owner=expected_owner,
+            expected_lease_id=expected_lease_id,
         )
         manifest_timeout = basis.pop("manifest_timeout_sec")
         authority_expires_at = basis.pop("authority_expires_at")
@@ -388,6 +394,111 @@ class Supervisor:
             grant, key_id=self.execution_grant_key_id,
             private_key_path=self.execution_grant_private_key_path,
             openssl_path=self.execution_grant_openssl_path,
+        )
+
+    def accept_dispatch_intent(
+        self, *, principal: str, task_id: str, slot: str, attempt: int,
+        epoch: int, run_id: str, request_id: str,
+    ) -> dict:
+        """Accept one exact request from an authenticated owner peer."""
+        if (self.lifecycle_state != "READY" or self.breaker_state != "CLOSED"
+                or not callable(self.service_generation_provider)):
+            raise StoreError("Supervisor is not admitting dispatch intents", kind="lifecycle")
+        if self.store.sandbox_mode and (run_id != self.run_id or not self._probe_consumed):
+            raise StoreError("dispatch intent must use the consumed current preflight run", kind="probe")
+        generation = self.service_generation_provider()
+        if not isinstance(generation, str) or not generation.strip():
+            raise StoreError("active service generation is unavailable", kind="authorization")
+        return self.store.accept_dispatch_intent(
+            principal=principal, task_id=task_id, slot=slot, attempt=attempt,
+            epoch=epoch, run_id=run_id, request_id=request_id,
+            service_generation=generation,
+        )
+
+    @staticmethod
+    def _validate_current_dispatch_intent(store: Store, intent: dict, generation: str) -> None:
+        if intent.get("service_generation") != generation:
+            raise StoreError("dispatch intent belongs to another service generation", kind="generation")
+        basis = store.execution_grant_basis(
+            intent["task_id"], intent["slot"], intent["attempt"], intent["epoch"],
+            intent["run_id"], active_service_generation=generation,
+            expected_owner=intent["principal"],
+            expected_lease_id=intent["lease_id"],
+        )
+        if basis["manifest_sha256"] != intent["manifest_digest"]:
+            raise StoreError("dispatch intent no longer matches Store authority", kind="lease")
+
+    def next_dispatch_intent(self, *, cursor: dict | None, audience: str) -> dict:
+        """Return at most one current authorized intent and a signed replay cursor."""
+        if (self.lifecycle_state != "READY" or self.breaker_state != "CLOSED"
+                or not callable(self.service_generation_provider)):
+            raise StoreError("Supervisor is not admitting dispatch subscriptions", kind="lifecycle")
+        generation = self.service_generation_provider()
+        if not isinstance(generation, str) or not generation.strip():
+            raise StoreError("active service generation is unavailable", kind="authorization")
+        after_seq = 0 if cursor is None else self.store.verify_dispatch_cursor(
+            cursor, service_generation=generation, audience=audience,
+        )
+        window = self.store.read_dispatch_intents(after_seq=after_seq, limit=256)
+        idle_cursor = self.store.make_dispatch_cursor(
+            sequence=window["high_watermark"], service_generation=generation, audience=audience,
+        )
+        for intent in window["intents"]:
+            try:
+                self._validate_current_dispatch_intent(self.store, intent, generation)
+            except StoreError as exc:
+                if exc.kind not in {
+                    "authorization", "budget", "chain", "duplicate", "epoch", "generation",
+                    "lease", "probe", "retry", "slot", "terminal",
+                }:
+                    # Busy/integrity/unknown failures must not advance the durable replay position.
+                    raise
+                # Old, revoked, or stale intents are historical facts, not delivery authority.
+                continue
+            return {
+                "intent": intent,
+                "cursor_after": self.store.make_dispatch_cursor(
+                    sequence=intent["event_seq"], service_generation=generation,
+                    audience=audience,
+                ),
+                "cursor_idle": idle_cursor,
+            }
+        return {"intent": None, "cursor_after": idle_cursor, "cursor_idle": idle_cursor}
+
+    def issue_dispatch_intent_grant(self, *, request_id: str) -> dict:
+        """Issue or replay the one grant bound to an accepted dispatch intent."""
+        if (self.lifecycle_state != "READY" or self.breaker_state != "CLOSED"
+                or not callable(self.service_generation_provider)):
+            raise StoreError("Supervisor is not admitting dispatch grants", kind="lifecycle")
+        generation = self.service_generation_provider()
+        if not isinstance(generation, str) or not generation:
+            raise StoreError("active service generation is unavailable", kind="authorization")
+        if self.store.sandbox_mode and (self.run_id is None or not self._probe_consumed):
+            raise StoreError("dispatch grant requires this service's consumed preflight", kind="probe")
+        intent = self.store.find_dispatch_intent(request_id)
+        self._validate_current_dispatch_intent(self.store, intent, generation)
+        manifest = self.store.get_manifest(intent["task_id"])
+        model = manifest["model_policy"]
+        if not callable(self.model_provenance_digest_provider):
+            raise StoreError("root model provenance resolver is unavailable", kind="authorization")
+        model_digest = self.model_provenance_digest_provider(model)
+        if not isinstance(model_digest, str) or not _valid_sha256(model_digest):
+            raise StoreError("manifest model policy has no trusted root provenance", kind="authorization")
+        payload = {"request_id": request_id, "service_generation": generation}
+        operation_key = f"dispatch-grant:{request_id}"
+        previous = self.store.lookup_idempotent_operation(
+            operation_key, operation="dispatch_grant", payload=payload, check_payload=True,
+        )
+        if previous is not None:
+            return previous["result"]
+        grant = self.issue_execution_grant(
+            task_id=intent["task_id"], slot=intent["slot"], attempt=intent["attempt"],
+            epoch=intent["epoch"], run_id=intent["run_id"], resolved_model=model,
+            model_provenance_sha256=model_digest, expected_owner=intent["principal"],
+            expected_lease_id=intent["lease_id"],
+        )
+        return self.store.execute_idempotent(
+            operation_key, "dispatch_grant", payload, lambda _conn: grant,
         )
 
     def claim_runner_execution(self, grant: dict) -> dict | None:
