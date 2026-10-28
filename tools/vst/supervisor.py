@@ -435,11 +435,13 @@ class Supervisor:
         result_sha256: str, service_generation: str,
     ) -> dict:
         """Persist the authenticated dispatch-owner relay-forwarding acknowledgement."""
-        return self.store.acknowledge_dispatch_intent(
+        binding = self.store.acknowledge_dispatch_intent(
             principal=principal, request_id=request_id, payload_digest=payload_digest,
             event_seq=event_seq, result_sha256=result_sha256,
             service_generation=service_generation,
         )
+        # Principal is bound from authenticated peer credentials, not echoed as caller input.
+        return {key: value for key, value in binding.items() if key != "principal"}
 
     @staticmethod
     def _validate_current_dispatch_intent(store: Store, intent: dict, generation: str,
