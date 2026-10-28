@@ -200,11 +200,19 @@ class AuthenticatedSupervisorAPI:
     def _dispatch(self, operation: str, body: dict, peer: SupervisorPeer | None = None) -> Any:
         if operation == "submit_dispatch_intent":
             if (peer is None or peer.role != "dispatch_owner" or not peer.principal
-                    or set(body) != {
-                        "task_id", "slot", "attempt", "epoch", "run_id", "request_id",
-                    }):
+                    or set(body) != {"instruction"}):
                 raise ContractError("dispatch intent request is not authorized")
-            return self.supervisor.accept_dispatch_intent(principal=peer.principal, **body)
+            # Verify at the authenticated root RPC boundary; Supervisor repeats this
+            # verification before Store authority checks and append.
+            from .dispatch_instruction import verify_dispatch_instruction
+            verify_dispatch_instruction(
+                body["instruction"], self.supervisor.dispatch_instruction_trust_keys or {},
+                expected_principal=peer.principal,
+                openssl_path=self.supervisor.dispatch_instruction_openssl_path or "",
+            )
+            return self.supervisor.accept_dispatch_intent(
+                principal=peer.principal, instruction=body["instruction"],
+            )
         if operation == "next_dispatch_intent":
             if (peer is None or peer.role != "dispatcher" or set(body) != {"cursor"}
                     or (body["cursor"] is not None and not isinstance(body["cursor"], dict))):
@@ -344,6 +352,7 @@ class SupervisorClient:
         if (not isinstance(result, dict) or set(result) != {
                 "event_seq", "principal", "task_id", "slot", "attempt", "epoch", "run_id",
                 "request_id", "service_generation", "lease_id", "payload_digest", "manifest_digest",
+                "instruction", "key_id",
         } or type(result["event_seq"]) is not int or result["event_seq"] < 1
                 or type(result["lease_id"]) is not int or result["lease_id"] < 1
                 or any(type(result[field]) is not int or result[field] < 1
@@ -355,6 +364,13 @@ class SupervisorClient:
                 or any(not isinstance(result[field], str) or not _SHA256.fullmatch(result[field])
                        for field in ("payload_digest", "manifest_digest"))):
             raise SupervisorRPCError("Supervisor returned a malformed dispatch intent")
+        from .dispatch_instruction import validate_dispatch_instruction
+        instruction = validate_dispatch_instruction(result["instruction"])
+        if (instruction["key_id"] != result["key_id"]
+                or any(instruction[field] != result[field] for field in (
+                    "task_id", "slot", "attempt", "epoch", "run_id", "request_id",
+                ))):
+            raise SupervisorRPCError("Supervisor response differs from signed dispatch instruction")
         return result
 
     def next_dispatch_intent(self, cursor: dict | None) -> dict:
@@ -637,6 +653,7 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
     required = {
         "store_path", "anchor_path", "event_key_path", "startup_supervisor_key_path",
         "execution_grant_key_id", "execution_grant_private_key_path", "execution_grant_trust_keys", "openssl_path",
+        "dispatch_instruction_trust_keys",
         "run_id", "probe_nonce", "preflight_record_path", "probe_key_path", "operator_key_path",
         "execution_grant_audience", "generation_record_path", "runner_unit_name",
         "runner_control_group", "runner_lock_path", "systemctl_path", "model_provenance",
@@ -679,6 +696,21 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
     from .execution_grant import _trusted_root_file
     for key_path in trust_keys.values():
         _trusted_root_file(key_path, private=False)
+    dispatch_trust = value["dispatch_instruction_trust_keys"]
+    if (not isinstance(dispatch_trust, dict) or not dispatch_trust
+            or any(not isinstance(key_id, str)
+                   or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}", key_id)
+                   or not isinstance(entry, dict)
+                   or set(entry) != {"principal", "purpose", "public_key_path"}
+                   or not isinstance(entry["principal"], str)
+                   or not _PRINCIPAL_ID.fullmatch(entry["principal"])
+                   or entry["purpose"] != "VST_S2_DISPATCH_INSTRUCTION_V1"
+                   or not isinstance(entry["public_key_path"], str)
+                   or not os.path.isabs(entry["public_key_path"])
+                   for key_id, entry in dispatch_trust.items())):
+        raise ContractError("Supervisor dispatch-instruction trust registry is malformed")
+    for entry in dispatch_trust.values():
+        _trusted_root_file(entry["public_key_path"], private=False)
     socket_gid = value["socket_gid"]
     if type(socket_gid) is not int or socket_gid < 1:
         raise ContractError("Supervisor service socket group is invalid")
@@ -811,6 +843,8 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
         execution_grant_private_key_path=value["execution_grant_private_key_path"],
         execution_grant_openssl_path=value["openssl_path"],
         execution_grant_trust_keys=trust_keys,
+        dispatch_instruction_trust_keys=dispatch_trust,
+        dispatch_instruction_openssl_path=value["openssl_path"],
         execution_grant_audience=value["execution_grant_audience"],
         service_generation_provider=lambda: _active_runner_generation(value),
         model_provenance_verifier=lambda model, digest: model_provenance.get(model) == digest,

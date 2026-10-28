@@ -890,3 +890,38 @@ An extracted source snapshot under WSL `/tmp` did not survive into a later invoc
 ## 2026-10-28 — Preserve selector invocation provenance (change 0485)
 
 A retained pass/skip summary is not enough to establish selector-level acceptance when the exact invocation and raw output are missing. Verify every module-qualified node ID against its definition before recording a result. If the command cannot be recovered and a node path is wrong, mark the affected selectors `NOT_VERIFIED`/`NOT_RUN`, correct all summaries, and do not infer that the tests ran. Evidence: `docs/sdlc/evidence/s2-controlled-runtime-selectors-20261028.md`.
+## 2026-10-29 — Bind S2 dispatch intent to trusted instruction provenance (change 0516)
+
+- Kind: SHORTCOMING and source correction.
+- Facts: the initial owner-client accepted caller-constructible task fields; focused review found
+  it could submit a request without proving the exact instruction was authorized. The temporary
+  stub failed closed. GPT-PM then authorized a signed envelope with independent root Supervisor
+  verification. A real issuer/key remains absent. See change 0516 and
+  `docs/sdlc/evidence/s2-owner-instruction-provenance-adjudication-20261029.md`.
+- Root cause: the design conflated authenticated process identity and current Store assignment
+  with authorization of the exact requested dispatch.
+- Layer that missed or caught it: initial design missed instruction provenance; focused
+  code-reviewer caught the public constructor gap; GPT-PM defined the exact root verification
+  boundary.
+- Rule: authenticate the exact instruction at the root authority boundary, bind its complete
+  signed identity to the durable event/idempotency record, and keep all clients fail-closed when
+  the issuer or trust configuration is absent.
+- Fix status: source implementation and independent code review completed with no confirmed
+  BLOCKER/MAJOR; mapped functional tests are pending; M01 remains open pending a real issuer/key
+  and runtime evidence.
+
+## 2026-10-29 — Distinguish S2 runtime symlink metadata from target permissions (change 0516)
+
+- Kind: SHORTCOMING and evidence correction.
+- Facts: `/opt/vst-runtime` is a `root:root 0777` symlink to a `root:root 0755` directory; the
+  symlink mode does not control target access. No chmod occurred. GPT-PM withdrew the permission
+  blocker while leaving runtime unverified. See change 0516 and
+  `docs/sdlc/evidence/s2-root-runtime-provisioning-plan-20261028.md`.
+- Root cause: an earlier status described symlink mode without separately stating the dereferenced
+  target metadata.
+- Layer that missed or caught it: the initial status missed the distinction; the read-only WSL
+  stat and GPT-PM correction review caught and reconciled it.
+- Rule: report symlink metadata and target metadata separately; do not infer a permission defect
+  from a symlink mode.
+- Fix status: the current S2 state, decision log, backlog, and preparation evidence now record the
+  target mode and withdrawn blocker. Runtime acceptance remains open.

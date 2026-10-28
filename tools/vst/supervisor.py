@@ -41,6 +41,8 @@ class Supervisor:
         execution_grant_private_key_path: str | None = None,
         execution_grant_openssl_path: str | None = None,
         execution_grant_trust_keys: dict[str, str] | None = None,
+        dispatch_instruction_trust_keys: dict[str, dict[str, str]] | None = None,
+        dispatch_instruction_openssl_path: str | None = None,
         execution_grant_audience: str = "vst-runner-service-v1",
         service_generation_provider: Callable[[], str] | None = None,
         model_provenance_verifier: Callable[[str, str], bool] | None = None,
@@ -60,6 +62,8 @@ class Supervisor:
         self.execution_grant_private_key_path = execution_grant_private_key_path
         self.execution_grant_openssl_path = execution_grant_openssl_path
         self.execution_grant_trust_keys = execution_grant_trust_keys
+        self.dispatch_instruction_trust_keys = dispatch_instruction_trust_keys
+        self.dispatch_instruction_openssl_path = dispatch_instruction_openssl_path
         self.execution_grant_audience = execution_grant_audience
         self.service_generation_provider = service_generation_provider
         self.model_provenance_verifier = model_provenance_verifier
@@ -397,26 +401,49 @@ class Supervisor:
         )
 
     def accept_dispatch_intent(
-        self, *, principal: str, task_id: str, slot: str, attempt: int,
-        epoch: int, run_id: str, request_id: str,
+        self, *, principal: str, instruction: object,
     ) -> dict:
-        """Accept one exact request from an authenticated owner peer."""
+        """Independently verify signed provenance, then ask Store to enforce current authority."""
         if (self.lifecycle_state != "READY" or self.breaker_state != "CLOSED"
                 or not callable(self.service_generation_provider)):
             raise StoreError("Supervisor is not admitting dispatch intents", kind="lifecycle")
+        if (not isinstance(self.dispatch_instruction_trust_keys, dict)
+                or not isinstance(self.dispatch_instruction_openssl_path, str)):
+            raise StoreError("dispatch instruction trust registry is unavailable", kind="authorization")
+        from .dispatch_instruction import verify_dispatch_instruction
+        try:
+            verified = verify_dispatch_instruction(
+                instruction, self.dispatch_instruction_trust_keys,
+                expected_principal=principal,
+                openssl_path=self.dispatch_instruction_openssl_path,
+            )
+        except Exception as exc:
+            raise StoreError("dispatch instruction signature or provenance is invalid", kind="authorization") from exc
+        run_id = verified["instruction"]["run_id"]
         if self.store.sandbox_mode and (run_id != self.run_id or not self._probe_consumed):
             raise StoreError("dispatch intent must use the consumed current preflight run", kind="probe")
         generation = self.service_generation_provider()
         if not isinstance(generation, str) or not generation.strip():
             raise StoreError("active service generation is unavailable", kind="authorization")
         return self.store.accept_dispatch_intent(
-            principal=principal, task_id=task_id, slot=slot, attempt=attempt,
-            epoch=epoch, run_id=run_id, request_id=request_id,
+            principal=verified["principal"], instruction=verified["instruction"],
             service_generation=generation,
         )
 
     @staticmethod
-    def _validate_current_dispatch_intent(store: Store, intent: dict, generation: str) -> None:
+    def _validate_current_dispatch_intent(store: Store, intent: dict, generation: str,
+                                         trust_registry: dict, openssl_path: str) -> None:
+        if ("instruction" not in intent or "key_id" not in intent
+                or intent.get("instruction", {}).get("key_id") != intent.get("key_id")):
+            raise StoreError("dispatch intent lacks signed instruction provenance", kind="authorization")
+        from .dispatch_instruction import verify_dispatch_instruction
+        try:
+            verify_dispatch_instruction(
+                intent["instruction"], trust_registry,
+                expected_principal=intent["principal"], openssl_path=openssl_path,
+            )
+        except Exception as exc:
+            raise StoreError("dispatch intent instruction provenance is no longer valid", kind="authorization") from exc
         if intent.get("service_generation") != generation:
             raise StoreError("dispatch intent belongs to another service generation", kind="generation")
         basis = store.execution_grant_basis(
@@ -445,7 +472,10 @@ class Supervisor:
         )
         for intent in window["intents"]:
             try:
-                self._validate_current_dispatch_intent(self.store, intent, generation)
+                self._validate_current_dispatch_intent(
+                    self.store, intent, generation, self.dispatch_instruction_trust_keys or {},
+                    self.dispatch_instruction_openssl_path or "",
+                )
             except StoreError as exc:
                 if exc.kind not in {
                     "authorization", "budget", "chain", "duplicate", "epoch", "generation",
@@ -476,7 +506,10 @@ class Supervisor:
         if self.store.sandbox_mode and (self.run_id is None or not self._probe_consumed):
             raise StoreError("dispatch grant requires this service's consumed preflight", kind="probe")
         intent = self.store.find_dispatch_intent(request_id)
-        self._validate_current_dispatch_intent(self.store, intent, generation)
+        self._validate_current_dispatch_intent(
+            self.store, intent, generation, self.dispatch_instruction_trust_keys or {},
+            self.dispatch_instruction_openssl_path or "",
+        )
         manifest = self.store.get_manifest(intent["task_id"])
         model = manifest["model_policy"]
         if not callable(self.model_provenance_digest_provider):

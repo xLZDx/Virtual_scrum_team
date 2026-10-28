@@ -123,6 +123,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Iterator
 
 from .contracts import (
+    ContractError,
     SUPERVISOR_SLOT,
     canonical_bytes,
     derive_result,
@@ -1044,7 +1045,7 @@ class Store:
         required = {
             "principal", "task_id", "slot", "attempt", "epoch", "run_id",
             "request_id", "service_generation", "lease_id", "payload_digest",
-            "manifest_digest",
+            "manifest_digest", "instruction", "key_id",
         }
         if (not isinstance(payload, dict) or set(payload) != required
                 or payload.get("task_id") != task_id
@@ -1061,10 +1062,18 @@ class Store:
         if (not isinstance(request_id, str) or len(request_id) != 32
                 or any(ch not in "0123456789abcdef" for ch in request_id)):
             raise StoreError("stored dispatch intent request id is invalid", kind="integrity")
-        caller = {key: payload[key] for key in (
-            "principal", "task_id", "slot", "attempt", "epoch", "run_id",
-            "request_id", "service_generation",
-        )}
+        from .dispatch_instruction import validate_dispatch_instruction
+        try:
+            instruction = validate_dispatch_instruction(payload["instruction"])
+        except ContractError as exc:
+            raise StoreError("stored dispatch instruction envelope is invalid", kind="integrity") from exc
+        if (instruction["key_id"] != payload["key_id"]
+                or any(instruction[key] != payload[key] for key in (
+                    "task_id", "slot", "attempt", "epoch", "run_id", "request_id",
+                ))):
+            raise StoreError("stored dispatch instruction does not match event fields", kind="integrity")
+        caller = {"principal": payload["principal"], "service_generation": payload["service_generation"],
+                  "key_id": payload["key_id"], "instruction": instruction}
         expected = hashlib.sha256(canonical_bytes(caller)).hexdigest()
         for field in ("payload_digest", "manifest_digest"):
             value = payload[field]
@@ -1076,10 +1085,14 @@ class Store:
         return payload
 
     def accept_dispatch_intent(
-        self, *, principal: str, task_id: str, slot: str, attempt: int, epoch: int,
-        run_id: str, request_id: str, service_generation: str,
+        self, *, principal: str, instruction: dict, service_generation: str,
     ) -> dict:
-        """Atomically record one owner-authenticated intent in the Store event chain."""
+        """Record only a signed-envelope intent already verified by root Supervisor."""
+        from .dispatch_instruction import validate_dispatch_instruction
+        instruction = validate_dispatch_instruction(instruction)
+        task_id, slot = instruction["task_id"], instruction["slot"]
+        attempt, epoch = instruction["attempt"], instruction["epoch"]
+        run_id, request_id = instruction["run_id"], instruction["request_id"]
         for value, name in ((principal, "principal"), (task_id, "task_id"),
                             (slot, "slot"), (run_id, "run_id"),
                             (service_generation, "service_generation")):
@@ -1089,11 +1102,8 @@ class Store:
         if (not isinstance(request_id, str) or len(request_id) != 32
                 or any(ch not in "0123456789abcdef" for ch in request_id)):
             raise StoreError("request_id must be 32 lowercase hexadecimal characters", kind="argument")
-        caller_payload = {
-            "principal": principal, "task_id": task_id, "slot": slot,
-            "attempt": attempt, "epoch": epoch, "run_id": run_id,
-            "request_id": request_id, "service_generation": service_generation,
-        }
+        caller_payload = {"principal": principal, "service_generation": service_generation,
+                          "key_id": instruction["key_id"], "instruction": instruction}
         payload_digest = hashlib.sha256(canonical_bytes(caller_payload)).hexdigest()
         operation_key = f"dispatch-intent:{request_id}"
         with self._tx() as conn:
@@ -1160,7 +1170,9 @@ class Store:
             if blocked is not None:
                 raise StoreError(blocked, kind="budget")
             event_payload = {
-                **caller_payload, "lease_id": int(lease["lease_id"]),
+                **caller_payload, "task_id": task_id, "slot": slot, "attempt": attempt,
+                "epoch": epoch, "run_id": run_id, "request_id": request_id,
+                "lease_id": int(lease["lease_id"]),
                 "payload_digest": payload_digest,
                 "manifest_digest": manifest_digest,
             }

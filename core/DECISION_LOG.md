@@ -1215,3 +1215,26 @@ local commands establish their repository provenance. This accepts only the boun
 scope. `S2-DISPATCH-M01` remains MAJOR/OPEN; full S2 and E8 remain NOT APPROVED/NOT ESTABLISHED.
 Runtime prerequisites and prohibited operations remain unchanged; S3 stays unstarted. Evidence:
 `docs/sdlc/evidence/s2-pubsub-gpt-pm-source-review-20261028.md`.
+## 2026-10-29 — Verify signed S2 dispatch instructions at the root Supervisor (change 0516)
+
+GPT-PM selected a purpose-specific, operator-authorized signed dispatch-instruction envelope as
+the provenance source without creating another assignment authority. The root Supervisor must
+independently verify signature, exact schema, key purpose/principal, expiry, Store owner/lease,
+epoch, attempt, slot, run-bound preflight, budget and service generation before appending a durable
+intent. The exact envelope and key identity are bound to hash-chained event/idempotency data; the
+issuer supplies the unique request ID. No unsigned fallback is allowed. The Store remains the sole
+task, assignment and lease authority. Correlation: request
+`7c64c79c-452c-454f-9c55-3143a0fe2976`, reply `4c5606a1-6026-56e3-914b-61c89a7e45a9`, job
+`65d31f0e-ba68-411a-8d9a-aeaa5d6c1f0d`, user turn `820712a7-3927-4abd-b115-8755623ac987`.
+Evidence: `docs/sdlc/evidence/s2-owner-instruction-provenance-adjudication-20261029.md`.
+Source work and synthetic-key tests are authorized. Key generation/reuse, creating a signer,
+account/config provisioning, migration application, runtime activation, real dispatch and E5
+attestation are not authorized. M01 remains MAJOR/OPEN; no real authorized issuer is evidenced.
+
+## 2026-10-29 — Correct WSL runtime symlink permission interpretation (change 0516)
+
+GPT-PM accepted the correction that `/opt/vst-runtime` is a symlink whose `0777` mode does not
+govern access to its root-owned `0755` target; the earlier permission blocker is withdrawn. No
+permission change occurred and runtime remains unverified. Correlation: request
+`e2ce2445-58d8-4c93-acd9-8bb536767f58`, reply `83e0dbcb-e0bd-5ad5-aa37-80198e03c8ba`.
+Evidence: `docs/sdlc/evidence/s2-root-runtime-provisioning-plan-20261028.md`.

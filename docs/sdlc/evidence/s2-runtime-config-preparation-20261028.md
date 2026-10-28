@@ -66,8 +66,24 @@ older than the current Pub/Sub source and is not a current runtime installation 
 - The full S2 flow therefore remains unprovisioned. This inventory does not authorize key
   generation, schema-v6 application, service activation, real dispatch, or an E5 acceptance claim.
 
-## Next action
+## Later clarification and current next action
 
-GPT-PM owns the pending adjudication of the minimum production owner-caller boundary and exact root
-configuration preparation scope (`72e04f7e-aa30-4ee2-b079-1e6ee2e01107`). After that result, Codex
-continues only within the accepted configuration/source boundary. No S3 work is started.
+The initial GPT-PM owner-caller adjudication completed under request
+`72e04f7e-aa30-4ee2-b079-1e6ee2e01107`, reply `f8d49650-0cef-59b5-b373-7569f8a6e1d4`; it retained
+M01 open until an already-authorized task instruction and its provenance exist. A focused client
+review then found that a public caller-constructible object was not provenance. GPT-PM's follow-up
+adjudication (request `7c64c79c-452c-454f-9c55-3143a0fe2976`, reply
+`4c5606a1-6026-56e3-914b-61c89a7e45a9`) authorizes a purpose-specific signed instruction contract
+with independent verification by the root Supervisor. Source work and synthetic-key tests are
+authorized, but not a real signer/key, account creation, root configuration installation,
+migration, service activation, real dispatch, or E5 attestation. See
+`s2-owner-instruction-provenance-adjudication-20261029.md`.
+
+A read-only recheck on 2026-10-29 local time confirmed the runtime target is root-owned mode 0755.
+The `/opt/vst-runtime` symlink's mode 0777 is not a target permission defect. GPT-PM accepted this
+correction and withdrew the permission blocker under request
+`e2ce2445-58d8-4c93-acd9-8bb536767f58`, reply `83e0dbcb-e0bd-5ad5-aa37-80198e03c8ba`. The exact
+read-only observations, candidate identity map, and non-secret provisioning boundary are in
+`s2-root-runtime-provisioning-plan-20261028.md`. Runtime is still unverified; do not create the
+accounts or install config until source acceptance, exact plan review, and required separate
+execution authorization. No S3 work is started.

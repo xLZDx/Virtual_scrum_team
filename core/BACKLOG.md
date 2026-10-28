@@ -1,5 +1,37 @@
 # Backlog
 
+## S2 — signed dispatch-instruction provenance (change 0516 in progress)
+
+GPT-PM's correlated adjudication selects a purpose-specific, operator-authorized signed envelope
+and requires independent verification in the root Supervisor before any durable intent event.
+The Store remains the sole task/assignment/lease authority; the signer may authorize only one exact
+request for already-assigned work. The envelope binds request ID, task, slot, attempt, epoch, run
+ID, key ID, absolute UTC expiry, version, algorithm and purpose. The exact signed bytes and key
+identity must be bound to durable idempotency and the hash-chained event. No unsigned fallback,
+instruction-signing key generation/reuse, scheduler, account creation, root-config installation,
+migration application, service activation, real dispatch or E5 attestation is authorized by this
+decision. Source implementation and synthetic-fixture tests are authorized. S2 M01 remains
+MAJOR/OPEN until source review, a real authorized issuer and trust key, runtime evidence, and
+exact-head GPT-PM approval. Evidence: `docs/sdlc/evidence/s2-owner-instruction-provenance-adjudication-20261029.md`.
+Owner: Codex for verifier/client and source evidence; GPT-PM for exact-head design/code adjudication;
+operator for any real signer identity/private-key custody or separately privileged runtime action.
+Next: finish source coding, then designated test-role coverage, specialist review/fixes, and exact
+GPT-PM gate. Keep S3 unstarted.
+
+## S2 — root/runtime preparation correction (change 0516 in progress)
+
+Read-only Ubuntu-24.04 inventory confirms services inactive, runtime config absent, and no
+dispatcher/owner/client identities. Proposed UID/GID candidates were free at the observation time
+but are not provisioned or reserved. The runtime symlink points to a root-owned 0755 target; its
+0777 symlink mode is not a permission issue. GPT-PM accepted correction of the mistaken target-mode
+interpretation and withdrew that permission blocker, while runtime acceptance remains unverified.
+No credentials or keys were read. Evidence: `docs/sdlc/evidence/s2-root-runtime-provisioning-plan-20261028.md` and
+GPT-PM correction request `e2ce2445-58d8-4c93-acd9-8bb536767f58`, reply
+`83e0dbcb-e0bd-5ad5-aa37-80198e03c8ba`. Owner: Codex for non-secret plan/config preparation;
+GPT-PM for exact plan review; operator for any separately authorized privileged provisioning and
+genuine signed E5/network-policy attestation. Next: finish source gate and exact non-secret config
+plan before considering authorized provisioning.
+
 ## S2 follow-up — Windows ACL/signed-worker platform boundary (2026-10-27)
 
 S2.3 requires Windows ACL key protection, but the signed v2 runner rejects non-POSIX execution and its signer requires POSIX `O_NOFOLLOW` and Unix `SO_PEERCRED`. Read-only architect and security reviews found no safe helper-only ACL fix: there is no Windows worker SID/token contract or authenticated Windows signer IPC path. Design and evidence are in `docs/sdlc/evidence/s2-windows-acl-boundary-design-20261027.md` (change 0468). Windows VST-011 and VST-015 acceptance remain `NOT_VERIFIED`; the current fail-closed behavior is preserved. Owner: GPT-PM for platform-scope adjudication; Codex for follow-up and complete implementation if Windows signed-worker support is selected; `functional-test-reviewer`/`e2e-runner` for tests/runtime after coding. Next: get GPT-PM's scope disposition; if Windows v2 is in scope, define SID/token, secure key-open, and authenticated signer IPC together before source changes. Do not infer acceptance from the separate nested Job Object probe.
