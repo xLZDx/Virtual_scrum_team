@@ -2088,7 +2088,10 @@ if action in ("edit", "crash"):
         os._exit(97)
 elif action == "commit":
     subprocess.run(["git", "add", "--", rel], cwd=root, check=True, stdin=subprocess.DEVNULL, timeout=timeout)
-    subprocess.run(["git", "commit", "-m", content], cwd=root, check=True, stdin=subprocess.DEVNULL, timeout=timeout)
+    subprocess.run(
+        ["git", "commit", "-m", content], cwd=root, check=True,
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, timeout=timeout,
+    )
     print(subprocess.check_output(["git", "rev-parse", "--verify", "HEAD"], cwd=root, text=True, timeout=timeout).strip())
 else:
     raise SystemExit(32)
