@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import json
 import os as host_os
+import hashlib
 import posixpath
+import socket
 import struct
 from types import SimpleNamespace
 
@@ -79,6 +81,295 @@ def _ready_dispatch_fixture(
 def _submit(supervisor, body, dispatch_instruction_keypair, *, principal="Codex"):
     instruction = dispatch_instruction_keypair.sign(body)
     return supervisor.accept_dispatch_intent(principal=principal, instruction=instruction)
+
+
+def _ack_body(result: dict) -> dict:
+    return {
+        "request_id": result["request_id"],
+        "payload_digest": result["payload_digest"],
+        "event_seq": result["event_seq"],
+        "result_sha256": hashlib.sha256(contracts.canonical_bytes(result)).hexdigest(),
+        "service_generation": result["service_generation"],
+    }
+
+
+def test_dispatch_outcome_pending_marker_shares_acceptance_transaction(
+    tmp_path, dispatch_instruction_keypair, monkeypatch,
+):
+    store, supervisor, _manifest, _epoch, _generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
+    original_append = store._append_control_event_locked
+
+    def fail_pending(conn, kind, event_id, payload, *args, **kwargs):
+        if kind == "DISPATCH_OWNER_OUTCOME_PENDING":
+            raise StoreError("injected pending-marker write failure", kind="integrity")
+        return original_append(conn, kind, event_id, payload, *args, **kwargs)
+
+    monkeypatch.setattr(store, "_append_control_event_locked", fail_pending)
+    try:
+        with pytest.raises(StoreError, match="pending-marker"):
+            _submit(supervisor, body, keypair)
+        assert store._conn.execute(
+            "SELECT COUNT(*) FROM events WHERE kind='DISPATCH_INTENT_ACCEPTED'",
+        ).fetchone()[0] == 0
+        assert store._conn.execute(
+            "SELECT COUNT(*) FROM supervisor_operations WHERE operation='dispatch_intent'",
+        ).fetchone()[0] == 0
+        assert store._conn.execute(
+            "SELECT COUNT(*) FROM events WHERE payload LIKE '%DISPATCH_OWNER_OUTCOME_PENDING%'",
+        ).fetchone()[0] == 0
+    finally:
+        store.close()
+
+
+def test_pending_dispatch_allows_exact_replay_and_rejects_different_request_id(
+    tmp_path, dispatch_instruction_keypair,
+):
+    store, supervisor, _manifest, _epoch, _generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
+    try:
+        accepted = _submit(supervisor, body, keypair)
+        assert _submit(supervisor, body, keypair) == accepted
+        replacement = {**body, "request_id": "b" * 32}
+        with pytest.raises(StoreError) as raised:
+            _submit(supervisor, replacement, keypair)
+        assert raised.value.kind == "lifecycle"
+        assert store._conn.execute(
+            "SELECT COUNT(*) FROM events WHERE kind='DISPATCH_INTENT_ACCEPTED'",
+        ).fetchone()[0] == 1
+    finally:
+        store.close()
+
+
+def test_dispatch_outcome_ack_is_exact_idempotent_and_conflicts_fail_closed(
+    tmp_path, dispatch_instruction_keypair,
+):
+    store, supervisor, _manifest, _epoch, _generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
+    try:
+        accepted = _submit(supervisor, body, keypair)
+        ack = _ack_body(accepted)
+        assert supervisor.ack_dispatch_intent(principal="Codex", **ack) == ack
+        assert supervisor.ack_dispatch_intent(principal="Codex", **ack) == ack
+        conflicting = {**ack, "result_sha256": "f" * 64}
+        with pytest.raises(StoreError) as raised:
+            supervisor.ack_dispatch_intent(principal="Codex", **conflicting)
+        assert raised.value.kind == "integrity"
+        with pytest.raises(StoreError) as principal_mismatch:
+            supervisor.ack_dispatch_intent(principal="OtherOwner", **ack)
+        assert principal_mismatch.value.kind == "integrity"
+        notes = [
+            json.loads(row[0]) for row in store._conn.execute(
+                "SELECT payload FROM events WHERE kind='NOTE' AND actor='supervisor' ORDER BY seq",
+            ).fetchall()
+        ]
+        ack_notes = [
+            note for note in notes
+            if note.get("_vst_control_type") == "DISPATCH_OWNER_OUTCOME_ACKNOWLEDGED"
+        ]
+        assert len(ack_notes) == 1
+        assert ack_notes[0]["principal"] == "Codex"
+        assert {key: ack_notes[0][key] for key in ack} == ack
+    finally:
+        store.close()
+
+
+def test_dispatch_owner_ack_rpc_is_restricted_to_authenticated_owner_role(
+    tmp_path, dispatch_instruction_keypair,
+):
+    store, supervisor, _manifest, _epoch, _generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
+    try:
+        accepted = _submit(supervisor, body, keypair)
+        ack = _ack_body(accepted)
+        api = SimpleNamespace(supervisor=supervisor)
+        dispatcher = SupervisorPeer(
+            role="dispatcher", uid=1201, gid=1201,
+            cgroup="/system.slice/vst-dispatcher.service",
+            operations=frozenset({"ack_dispatch_intent"}),
+        )
+        with pytest.raises(ContractError, match="not authorized"):
+            AuthenticatedSupervisorAPI._dispatch(api, "ack_dispatch_intent", ack, dispatcher)
+        owner = SupervisorPeer(
+            role="dispatch_owner", uid=1200, gid=1200,
+            cgroup="/system.slice/vst-owner.service",
+            operations=frozenset({"submit_dispatch_intent", "ack_dispatch_intent"}),
+            principal="Codex",
+        )
+        assert AuthenticatedSupervisorAPI._dispatch(api, "ack_dispatch_intent", ack, owner) == ack
+    finally:
+        store.close()
+
+
+def test_relay_ack_failure_preserves_store_pending_barrier_after_forwarding(
+    tmp_path, dispatch_instruction_keypair,
+):
+    from tools.vst import dispatch_owner_service as owner_service
+
+    keypair = dispatch_instruction_keypair
+    store, supervisor, _manifest, _epoch, _generation, body, _keypair = _ready_dispatch_fixture(
+        tmp_path, keypair,
+    )
+
+    class Transport:
+        def submit_dispatch_intent(self, **kwargs):
+            return supervisor.accept_dispatch_intent(principal="Codex", **kwargs)
+
+        def ack_dispatch_intent(self, **_kwargs):
+            raise StoreError("injected acknowledgement RPC failure", kind="busy")
+
+    config = owner_service.DispatchOwnerServiceConfig(
+        principal="Codex", openssl_path=keypair.openssl_path,
+        trust_registry=keypair.trust_registry,
+    )
+    relay = owner_service.DispatchOwnerService(config, supervisor=Transport())
+    instruction = keypair.sign(body)
+    payload = contracts.canonical_bytes({"instruction": instruction})
+    header = struct.Struct("!I")
+    server, client = socket.socketpair()
+    try:
+        client.sendall(header.pack(len(payload)) + payload)
+        client.shutdown(socket.SHUT_WR)
+        outcome_unknown = relay._handle(server)
+        response_size = header.unpack(client.recv(header.size))[0]
+        response_bytes = bytearray()
+        while len(response_bytes) < response_size:
+            chunk = client.recv(response_size - len(response_bytes))
+            assert chunk
+            response_bytes.extend(chunk)
+        response = json.loads(response_bytes)
+        assert response["ok"] is True
+        assert outcome_unknown is True
+        with store._read_tx() as conn:
+            state, pending = store._dispatch_outcome_state_locked(conn)
+        assert state == "PENDING"
+        assert pending["request_id"] == body["request_id"]
+    finally:
+        server.close()
+        client.close()
+        store.close()
+
+
+def test_pending_dispatch_barrier_survives_store_reopen(
+    tmp_path, dispatch_instruction_keypair,
+):
+    store, _supervisor, _manifest, _epoch, _generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
+    db_path = str(tmp_path / "dispatch.db")
+    _submit(_supervisor, body, keypair)
+    store.close()
+    reopened = Store(db_path, event_key=EVENT_KEY)
+    try:
+        with pytest.raises(StoreError) as generation_mismatch:
+            reopened.accept_dispatch_intent(
+                principal="Codex", instruction=keypair.sign(body),
+                service_generation="generation-after-restart",
+            )
+        assert generation_mismatch.value.kind == "duplicate"
+        with pytest.raises(StoreError) as raised:
+            reopened.accept_dispatch_intent(
+                principal="Codex", instruction=keypair.sign({**body, "request_id": "c" * 32}),
+                service_generation=GENERATION,
+            )
+        assert raised.value.kind == "lifecycle"
+        with reopened._read_tx() as conn:
+            state, pending = reopened._dispatch_outcome_state_locked(conn)
+        assert state == "PENDING"
+        assert pending["request_id"] == body["request_id"]
+        replay = reopened.accept_dispatch_intent(
+            principal="Codex", instruction=keypair.sign(body), service_generation=GENERATION,
+        )
+        assert replay["request_id"] == body["request_id"]
+    finally:
+        reopened.close()
+
+
+def test_legacy_accepted_dispatch_is_unresolved_after_store_reopen(
+    tmp_path, dispatch_instruction_keypair, monkeypatch,
+):
+    store, supervisor, _manifest, _epoch, _generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
+    db_path = str(tmp_path / "dispatch.db")
+    original_append = store._append_control_event_locked
+
+    def skip_pending(conn, kind, event_id, payload, *args, **kwargs):
+        if kind == "DISPATCH_OWNER_OUTCOME_PENDING":
+            return payload
+        return original_append(conn, kind, event_id, payload, *args, **kwargs)
+
+    try:
+        with monkeypatch.context() as patch:
+            patch.setattr(store, "_append_control_event_locked", skip_pending)
+            accepted = _submit(supervisor, body, keypair)
+        assert accepted["request_id"] == body["request_id"]
+        assert store._conn.execute(
+            "SELECT COUNT(*) FROM events WHERE payload LIKE '%DISPATCH_OWNER_OUTCOME_PENDING%'",
+        ).fetchone()[0] == 0
+    finally:
+        store.close()
+
+    reopened = Store(db_path, event_key=EVENT_KEY)
+    try:
+        with pytest.raises(StoreError) as raised:
+            reopened.accept_dispatch_intent(
+                principal="Codex", instruction=keypair.sign(body),
+                service_generation=GENERATION,
+            )
+        assert raised.value.kind == "integrity"
+    finally:
+        reopened.close()
+
+
+@pytest.mark.parametrize("mutation", ["malformed-binding", "ack-before-pending"])
+def test_malformed_or_out_of_order_dispatch_outcome_history_fails_closed(
+    tmp_path, dispatch_instruction_keypair, monkeypatch, mutation,
+):
+    store, supervisor, _manifest, _epoch, _generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
+    db_path = str(tmp_path / "dispatch.db")
+    original_append = store._append_control_event_locked
+
+    def inject_invalid_order(conn, kind, event_id, payload, *args, **kwargs):
+        if kind == "DISPATCH_OWNER_OUTCOME_PENDING":
+            if mutation == "malformed-binding":
+                payload = {**payload, "principal": "forged-principal"}
+            else:
+                original_append(
+                    conn, "DISPATCH_OWNER_OUTCOME_ACKNOWLEDGED",
+                    f"dispatch-owner-outcome:{payload['request_id']}:acknowledged", payload,
+                )
+        return original_append(conn, kind, event_id, payload, *args, **kwargs)
+
+    try:
+        with monkeypatch.context() as patch:
+            patch.setattr(store, "_append_control_event_locked", inject_invalid_order)
+            assert _submit(supervisor, body, keypair)["request_id"] == body["request_id"]
+    finally:
+        store.close()
+
+    reopened = Store(db_path, event_key=EVENT_KEY)
+    try:
+        assert reopened._integrity_locked is True
+        assert reopened.reconciliation_complete is False
+    finally:
+        reopened.close()
+
+
+def test_store_connection_sets_and_verifies_synchronous_full(
+    tmp_path, dispatch_instruction_keypair,
+):
+    store, *_rest = _ready_dispatch_fixture(tmp_path, dispatch_instruction_keypair)
+    try:
+        assert store._conn.execute("PRAGMA synchronous").fetchone()[0] == 2
+    finally:
+        store.close()
 
 
 def test_owner_intent_is_atomically_bound_and_idempotently_replayed(

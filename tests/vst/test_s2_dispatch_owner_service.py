@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import socket
 import struct
@@ -36,14 +37,14 @@ def _service(keypair, supervisor):
     return service_module.DispatchOwnerService(config, supervisor=supervisor)
 
 
-def _exchange(service, raw: bytes, *, half_close: bool = True) -> dict:
+def _exchange(service, raw: bytes, *, half_close: bool = True, include_status: bool = False):
     """Send one framed request through the actual service socket handler."""
     server, client = socket.socketpair()
     try:
         client.sendall(raw)
         if half_close:
             client.shutdown(socket.SHUT_WR)
-        service._handle(server)
+        outcome_unknown = service._handle(server)
         header = client.recv(_HEADER.size)
         assert len(header) == _HEADER.size
         size = _HEADER.unpack(header)[0]
@@ -52,7 +53,8 @@ def _exchange(service, raw: bytes, *, half_close: bool = True) -> dict:
             chunk = client.recv(size - len(response))
             assert chunk
             response.extend(chunk)
-        return json.loads(response)
+        decoded = json.loads(response)
+        return (decoded, outcome_unknown) if include_status else decoded
     finally:
         server.close()
         client.close()
@@ -63,10 +65,12 @@ def _frame(payload: bytes) -> bytes:
 
 
 class _Supervisor:
-    def __init__(self, *, result=None, error=None):
+    def __init__(self, *, result=None, error=None, ack_error=None):
         self.calls = []
+        self.ack_calls = []
         self.result = result
         self.error = error
+        self.ack_error = ack_error
 
     def submit_dispatch_intent(self, **kwargs):
         self.calls.append(kwargs)
@@ -74,11 +78,21 @@ class _Supervisor:
             raise self.error
         return self.result
 
+    def ack_dispatch_intent(self, **kwargs):
+        self.ack_calls.append(kwargs)
+        if self.ack_error is not None:
+            raise self.ack_error
+        return kwargs
+
 
 def _bound_result(envelope, key_id):
     return {
         "instruction": envelope,
         "key_id": key_id,
+        "principal": "Codex",
+        "event_seq": 7,
+        "payload_digest": "a" * 64,
+        "service_generation": "generation-test",
         **{name: envelope[name] for name in (
             "request_id", "task_id", "slot", "attempt", "epoch", "run_id",
         )},
@@ -98,7 +112,43 @@ def test_s2_owner_service_accepts_only_one_bounded_canonical_instruction_frame(
 
     assert response == {"ok": True, "result": _bound_result(envelope, keypair.key_id)}
     assert supervisor.calls == [{"instruction": envelope}]
+    result = _bound_result(envelope, keypair.key_id)
+    assert supervisor.ack_calls == [{
+        "request_id": result["request_id"],
+        "payload_digest": result["payload_digest"],
+        "event_seq": result["event_seq"],
+        "result_sha256": hashlib.sha256(canonical_bytes(result)).hexdigest(),
+        "service_generation": result["service_generation"],
+    }]
     assert len(payload) <= service_module.MAX_REQUEST_BYTES
+
+
+def test_relay_does_not_ack_when_local_response_forwarding_fails(dispatch_instruction_keypair):
+    keypair = dispatch_instruction_keypair
+    envelope = keypair.sign(_fields())
+    supervisor = _Supervisor(result=_bound_result(envelope, keypair.key_id))
+    service = _service(keypair, supervisor)
+    server, client = socket.socketpair()
+    client.sendall(_frame(canonical_bytes({"instruction": envelope})))
+    client.shutdown(socket.SHUT_WR)
+
+    class FailingSend:
+        def settimeout(self, timeout):
+            server.settimeout(timeout)
+
+        def recv(self, size):
+            return server.recv(size)
+
+        def sendall(self, _data):
+            raise OSError("injected local forwarding failure")
+
+    try:
+        assert service._handle(FailingSend()) is True
+        assert len(supervisor.calls) == 1
+        assert supervisor.ack_calls == []
+    finally:
+        server.close()
+        client.close()
 
 
 def test_s2_owner_service_refuses_trailing_second_frame(dispatch_instruction_keypair):
@@ -326,7 +376,7 @@ def test_s2_supervisor_service_requires_fixed_shared_trust_registry_path(monkeyp
             {
                 "role": "dispatch_owner", "uid": 1200, "gid": 1200,
                 "cgroup": "/system.slice/vst-dispatch-owner.service",
-                "operations": ["submit_dispatch_intent"], "principal": "Codex",
+                "operations": ["submit_dispatch_intent", "ack_dispatch_intent"], "principal": "Codex",
             },
             {
                 "role": "dispatcher", "uid": 1201, "gid": 1202,

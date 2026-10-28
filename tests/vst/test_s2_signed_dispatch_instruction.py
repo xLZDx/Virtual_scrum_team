@@ -215,6 +215,9 @@ def test_dispatch_owner_client_forwards_the_exact_signed_envelope(dispatch_instr
                 **_body(),
             }
 
+        def ack_dispatch_intent(self, **kwargs):
+            return kwargs
+
     client = DispatchOwnerClient(
         principal="Codex", trust_registry=keypair.trust_registry,
         openssl_path=keypair.openssl_path, transport=Transport(),
