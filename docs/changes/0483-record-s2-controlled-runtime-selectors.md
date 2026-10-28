@@ -8,10 +8,18 @@ Added focused Windows and WSL test evidence and reconciled S2 state/backlog/deci
 
 ## Affected acceptance and verification
 
-Against source/test revision `d5001797cb94113efd9a8dc26e4a15f2dc130976` (repository HEAD `a94486c9f8e2051e01d2ad2adb1799b8d238ace5`): Windows E4 process cleanup passed 2/2; waiver-boundary selectors passed 7/7; WSL E3 store selectors passed 10 cases; two synthetic POSIX identity selectors passed; two POSIX runner capability/timeout selectors skipped because the provisioned ambient capability profile is absent. An earlier WSL attempt failed during harness setup because `/tmp` did not persist between invocations; it is not a test result. Exact commands/interpreters/limits are in `docs/sdlc/evidence/s2-controlled-runtime-selectors-20261028.md`.
+Against source/test revision `d5001797cb94113efd9a8dc26e4a15f2dc130976` (repository HEAD `a94486c9f8e2051e01d2ad2adb1799b8d238ace5`): Windows E4 process cleanup passed 2/2; waiver-boundary selectors passed 7/7; WSL E3 store selectors passed 10 cases; two synthetic POSIX identity selectors passed. A retained executor summary reported two POSIX runner capability/timeout selectors skipped, but the exact command and raw output are unavailable; change 0485 corrects these outcomes to `NOT_VERIFIED` and `NOT_RUN` for acceptance. An earlier WSL attempt failed during harness setup because `/tmp` did not persist between invocations; it is not a test result. See the linked evidence and correction record 0485.
 
 No production code or test source changed. No systemd/service, capability, credential, E5/E8, manifest, or production dispatch operation occurred. S2 remains NOT APPROVED and `VST-013` partial.
 
 ## Ownership / next step
 
 Codex maintains evidence and coordinates focused reruns. Operator owns separate operational authorization for the dedicated WSL runner capability profile. GPT-PM owns final exact-revision adjudication after acceptance evidence is complete. Keep skipped selectors `NOT_RUN`; do not infer production acceptance from these focused tests.
+
+## Provenance erratum — change 0485
+
+The retained runner summary said two POSIX selectors skipped, but the raw command/output are not
+available. The command recorded in the linked evidence also names the capability-drop node under
+the wrong module; its definition is in `tests/vst/test_s2_runner_lifecycle.py`. Change 0485
+supersedes the two-skip claim for acceptance: both selectors are `NOT_VERIFIED` and `NOT_RUN`.
+No rerun or capability provisioning is implied.

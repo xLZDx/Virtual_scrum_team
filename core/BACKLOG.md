@@ -146,10 +146,14 @@ exception. Next: retain the blocker until a genuinely permitted runtime scenario
 
 ## S2 follow-up after controlled selectors — 2026-10-28 (change 0483)
 
-- POSIX runner capability/timeout behavior remains unverified; focused selectors skipped because the dedicated runner lacks the required provisioned `CAP_SETGID,CAP_SETUID` ambient profile. Operator owns separate operational authorization/profile; Codex coordinates a focused rerun after it exists.
+- POSIX runner capability/timeout behavior remains unverified. Change 0485 found that the exact command/raw output were not retained and the recorded module path for the capability-drop selector is wrong; both selectors remain `NOT_VERIFIED` and `NOT_RUN` for acceptance. The dedicated runner capability profile is also absent. Operator owns any separate operational provisioning; Codex owns evidence correction and coordinates a focused rerun only after a valid safe environment exists.
 - `S2-DISPATCH-M01` remains MAJOR/OPEN because no production coordinator call site exists in the in-scope repository. Codex maintains scoped evidence; operator supplies a named external source if review is requested; GPT-PM adjudicates any new architecture.
 - S2 remains NOT APPROVED pending complete acceptance and exact-revision GPT-PM adjudication. Evidence: `docs/sdlc/evidence/s2-controlled-runtime-selectors-20261028.md`.
 
 ## S2 evidence scope correction — change 0484
 
 Clarified that the 53-selector policy family is S4 acceptance and was not part of the S2 run; no S4 tests or other S4 work occurred in this continuation. Owner: Codex. Next: keep S2 and S4 evidence denominators separate and continue S2 only.
+
+## S2 selector provenance correction — change 0485
+
+The two POSIX runner selector results are `NOT_VERIFIED` and `NOT_RUN` for acceptance: raw invocation/output were not retained, and one logged module path is incorrect. The dedicated capability profile is absent. Owner: Codex for evidence correction and coordination; operator for any separate operational provisioning. Next: retain as open until an exact safe profile and a new e2e-runner invocation produce command/output evidence.
