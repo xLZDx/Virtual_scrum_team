@@ -7,6 +7,7 @@ acceptance.
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 import tempfile
 
@@ -63,7 +64,8 @@ def _synthetic_probe(run_id: str, nonce: str) -> dict:
 @pytest.fixture(scope="module")
 def lifecycle_report():
     """Run once in a disposable root and remove it even when pytest retains tmp_path."""
-    with tempfile.TemporaryDirectory(prefix="s2-e8-synthetic-lifecycle-") as workdir:
+    with tempfile.TemporaryDirectory(prefix="s2-e8-synthetic-lifecycle-") as temp_root:
+        workdir = os.path.join(temp_root, "work")
         yield slice_module.run_lifecycle_scenarios(
             workdir,
             probe_key=PROBE_KEY,

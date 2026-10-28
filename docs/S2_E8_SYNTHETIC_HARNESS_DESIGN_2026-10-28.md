@@ -40,9 +40,9 @@ egress evidence and operator decision required by the S2 plan.
   provider as caller-supplied; synthetic probe fixtures are not host-boundary evidence.
 - Mark candidate comparison, real blocked-egress attempt and operator choice as unavailable in
   the synthetic report. Do not infer these from “no remote configured” or a synthetic attestation.
-- Keep all repositories, databases and files beneath the caller-provided temporary work root.
-  Preserve the public function signature unless implementation review identifies a concrete
-  compatibility issue.
+- Require a fresh, non-existing work directory under the caller-provided temporary parent. Keep all
+  repositories, databases and files beneath that new directory so an existing path cannot be
+  reinitialized or overwritten.
 
 ## Failure modes and boundaries
 

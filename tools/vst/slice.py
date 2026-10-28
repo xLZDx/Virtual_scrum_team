@@ -2136,13 +2136,14 @@ def run_lifecycle_scenarios(
     probe_key: bytes,
     probe_provider: Callable[[str, str], dict],
 ) -> dict[str, dict]:
-    """Run only the safe synthetic candidate and budget flow; this does not establish E8.
+    """Run only the safe synthetic candidate and budget flow in a new work directory.
 
     Crash, process-kill, STOP, resume/restart, out-of-scope mutation, and external-egress scenarios
     are deliberately not invoked. ``probe_provider`` supplies caller-owned fixture data and is not
-    host-isolation evidence.
+    host-isolation evidence. ``workdir`` must not already exist, preventing fixture initialization
+    from overwriting a caller's existing files.
     """
-    os.makedirs(workdir, exist_ok=True)
+    os.mkdir(workdir)
     remote = os.path.join(workdir, "local-bare.git")
     repository = os.path.join(workdir, "worker-repository")
     control = os.path.join(workdir, "control")
