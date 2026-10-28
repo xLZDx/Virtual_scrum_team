@@ -1168,3 +1168,7 @@ depends on termination, which is outside the current authorization. Decision: ru
 containment claim, retain `VST-013` as `PARTIAL / NOT_VERIFIED`, and leave process/descendant cases
 `NOT_RUN`. Owner: Codex records/coordinates; GPT-PM adjudicates alternatives; operator owns any
 scope exception. Evidence: `docs/sdlc/evidence/s2-windows-safe-selector-audit-20261028.md`.
+
+## 2026-10-28 — Keep controlled selector results bounded (change 0483)
+
+Record focused results and preserve skips as unverified. Windows E4 cleanup, WSL E3 store recovery, synthetic identity isolation, and waiver-boundary selectors have runtime results; capability-dependent POSIX runner selectors skipped because the required ambient profile is absent. The initial WSL `/tmp` persistence failure is a harness setup failure, not a test result. No service activation, capability/credential provisioning, E5/E8, manifest, or production dispatch is implied. GPT-PM request `a94486c9-f8e2-451e-91d2-4adb1799b8d6`, reply `85eba0d2-3670-5274-a787-58012255f22b`, job `3ff013cd-f5e4-441e-98c5-8c823f62a96f` authorizes controlled selectors only and leaves `S2-DISPATCH-M01` open. Evidence: `docs/sdlc/evidence/s2-controlled-runtime-selectors-20261028.md`.

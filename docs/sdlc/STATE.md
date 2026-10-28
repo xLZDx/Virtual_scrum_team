@@ -238,3 +238,7 @@ The operator delegated the coordinator-source question to Codex but supplied no 
 ## S2 Windows containment selector audit — 2026-10-28 (change 0482)
 
 The designated `e2e-runner` found no remaining Windows selector that both proves real containment and avoids the current process/descendant-termination restriction. The strict-launch candidate mocks Windows APIs and proves ordering only; the real descendant test depends on termination and remains `NOT_RUN`. No tests ran. `VST-013` stays `PARTIAL / NOT_VERIFIED`; see `evidence/s2-windows-safe-selector-audit-20261028.md`.
+
+## S2 controlled runtime selectors — 2026-10-28 (change 0483)
+
+Under GPT-PM controlled-testing authorization (request `a94486c9-f8e2-451e-91d2-4adb1799b8d6`, reply `85eba0d2-3670-5274-a787-58012255f22b`, job `3ff013cd-f5e4-441e-98c5-8c823f62a96f`), focused selectors ran against source/test commit `d5001797cb94113efd9a8dc26e4a15f2dc130976`. Windows E4 cleanup passed 2/2 and waiver-boundary selectors passed 7/7. WSL E3 store recovery passed 10 cases, two synthetic POSIX identity selectors passed, and two capability-dependent runner selectors skipped because the provisioned ambient capability profile is absent. An earlier WSL `/tmp` persistence issue was a harness setup failure, not test output. Exact commands and limits: `evidence/s2-controlled-runtime-selectors-20261028.md`. No production/service/capability/credential/E5/E8/manifest activity occurred. `VST-013` remains partial; `S2-DISPATCH-M01` remains MAJOR/OPEN; S2 remains NOT APPROVED.

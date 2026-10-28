@@ -880,3 +880,7 @@ ordering but cannot establish real platform containment. A real cleanup selector
 explicit process-termination restriction cannot be used to fill that evidence gap. Keep the
 criterion NOT_VERIFIED and the restricted selector NOT_RUN until an allowed runtime contract is
 identified. Evidence: `docs/sdlc/evidence/s2-windows-safe-selector-audit-20261028.md`.
+
+## 2026-10-28 — Consume ephemeral WSL test roots in one invocation (change 0483)
+
+An extracted source snapshot under WSL `/tmp` did not survive into a later invocation; pytest could not enter the root and no test result was produced. Stream/extract and run focused selectors within one WSL invocation, verify source/test hashes against Git first, and record the failed attempt as a harness setup error. Do not reuse a stale POSIX copy or create a development worktree. Evidence: `docs/sdlc/evidence/s2-controlled-runtime-selectors-20261028.md`.
