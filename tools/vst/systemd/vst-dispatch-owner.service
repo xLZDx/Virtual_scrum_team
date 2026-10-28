@@ -14,7 +14,9 @@ ExecStart=/usr/bin/python3.12 -I -S -c "import sys; sys.path.insert(0, '/opt/vst
 ExecStopPost=+/usr/bin/python3.12 -I -S -c "import sys; sys.path.insert(0, '/opt/vst-runtime'); from tools.vst.dispatch_owner_latch import main; main()"
 Restart=no
 TimeoutStartSec=15s
-TimeoutStopSec=15s
+# ExecStopPost must not be killed while it is confirming socket shutdown or persisting the
+# admission latch; availability yields to the ambiguous-outcome safety fence.
+TimeoutStopSec=infinity
 LimitNOFILE=64
 PrivateTmp=yes
 PrivateNetwork=yes

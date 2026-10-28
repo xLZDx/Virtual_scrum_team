@@ -90,20 +90,67 @@ def test_s2_latch_main_requires_root_before_persistence_or_socket_stop(monkeypat
 
 def test_s2_latch_main_stops_dispatch_socket_even_when_persistence_fails(monkeypatch):
     commands = []
+    results = iter((
+        SimpleNamespace(returncode=0, stdout=""),
+        SimpleNamespace(returncode=0, stdout="inactive\n"),
+    ))
     monkeypatch.setattr(latch_module.os, "geteuid", lambda: 0)
     monkeypatch.setattr(latch_module, "_write_latch", lambda *args: (_ for _ in ()).throw(OSError("disk full")))
     monkeypatch.setattr(latch_module.subprocess, "run", lambda args, **kwargs: (
-        commands.append((args, kwargs)) or SimpleNamespace(returncode=0)
+        commands.append((args, kwargs)) or next(results)
     ))
 
     with pytest.raises(RuntimeError, match="could not be durably fenced"):
         latch_module.main()
 
-    assert len(commands) == 1
-    args, kwargs = commands[0]
-    assert args == [latch_module.SYSTEMCTL_PATH, "--no-block", "stop", "vst-dispatch-owner.socket"]
-    assert kwargs["check"] is False
-    assert kwargs["timeout"] == 10
+    assert [entry[0] for entry in commands] == [
+        [latch_module.SYSTEMCTL_PATH, "stop", latch_module.SOCKET_UNIT],
+        [latch_module.SYSTEMCTL_PATH, "show", "--property=ActiveState", "--value", latch_module.SOCKET_UNIT],
+    ]
+    assert all("--no-block" not in args for args, _kwargs in commands)
+    assert all(kwargs["check"] is False for _args, kwargs in commands)
+    assert all(kwargs["timeout"] == latch_module.SYSTEMCTL_TIMEOUT_SECONDS for _args, kwargs in commands)
+
+
+def test_s2_socket_shutdown_retries_until_stop_and_inactive_state_are_confirmed(monkeypatch):
+    commands = []
+    sleeps = []
+    results = iter((
+        SimpleNamespace(returncode=1, stdout=""),
+        SimpleNamespace(returncode=0, stdout="active\n"),
+        SimpleNamespace(returncode=0, stdout=""),
+        SimpleNamespace(returncode=0, stdout="inactive\n"),
+    ))
+    monkeypatch.setattr(latch_module.subprocess, "run", lambda args, **kwargs: (
+        commands.append((args, kwargs)) or next(results)
+    ))
+    monkeypatch.setattr(latch_module.time, "sleep", sleeps.append)
+
+    latch_module._stop_socket_and_confirm_inactive()
+
+    assert [args[1] for args, _kwargs in commands] == ["stop", "show", "stop", "show"]
+    assert all("--no-block" not in args for args, _kwargs in commands)
+    assert all(kwargs["timeout"] == latch_module.SYSTEMCTL_TIMEOUT_SECONDS for _args, kwargs in commands)
+    assert sleeps == [latch_module.SOCKET_STOP_RETRY_INITIAL_SECONDS]
+
+
+def test_s2_latch_main_confirms_socket_off_before_touching_persistent_latch(monkeypatch):
+    events = []
+    results = iter((
+        SimpleNamespace(returncode=0, stdout=""),
+        SimpleNamespace(returncode=0, stdout="inactive\n"),
+    ))
+    monkeypatch.setattr(latch_module.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(latch_module.subprocess, "run", lambda args, **kwargs: (
+        events.append(("systemctl", args)) or next(results)
+    ))
+    monkeypatch.setattr(latch_module, "_write_latch", lambda *args: events.append(("write_latch", args)))
+
+    latch_module.main()
+
+    assert [event[0] for event in events] == ["systemctl", "systemctl", "write_latch"]
+    assert events[0][1][1] == "stop"
+    assert events[1][1][1] == "show"
 
 
 def test_s2_dispatch_owner_systemd_units_share_latch_condition_and_exec_stop_post():
@@ -118,3 +165,4 @@ def test_s2_dispatch_owner_systemd_units_share_latch_condition_and_exec_stop_pos
     assert condition in socket_unit
     assert "ExecStopPost=+" in service
     assert "tools.vst.dispatch_owner_latch import main; main()" in service
+    assert "TimeoutStopSec=infinity" in service

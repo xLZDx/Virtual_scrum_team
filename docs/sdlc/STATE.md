@@ -269,10 +269,15 @@ GPT-PM's correlated follow-up returned MODIFY with MAJOR `S2-PROV-M03`: `Restart
 prevent an active socket unit from reactivating the owner relay after an ambiguous Supervisor RPC.
 Change 0518 drafts a single-frame EOF contract, classifies unconfirmed post-RPC outcomes as
 reconciliation-required, exits before another request, and adds a root persistent latch through
-`ExecStopPost` plus socket/service startup conditions. The latch requires exact request-ID/Store
-reconciliation before separately authorized reopening. Evidence and request correlation are in
-`evidence/s2-admission-fence-adjudication-20261029.md`; the source contract and provisioning plan
-were updated. Test-source reconciliation, execution, independent review, PM re-adjudication and
-exact-head source approval remain open. No tests/checks/builds, privileged writes, service
+`ExecStopPost` plus socket/service startup conditions. Code/reliability review found the first latch
+draft used an asynchronous socket stop after filesystem access. Change 0522 corrects source order:
+the socket is stopped synchronously and confirmed inactive before `/etc` access; the hook retries
+uncertain stop results with bounded per-call timeouts and capped backoff, and has no systemd stop
+timeout. If persistence fails after confirmed socket shutdown, same-boot admission is closed but
+cross-reboot safety is not established; durable root-controlled `/etc` is required. Exact
+request-ID/Store reconciliation remains required before separately authorized reopening. Evidence
+and request correlation are in `evidence/s2-admission-fence-adjudication-20261029.md`; the source
+contract and provisioning plan were updated. Test-source execution, independent re-review, PM
+re-adjudication and exact-head source approval remain open. No tests/checks/builds, privileged writes, service
 activation, real dispatch, E5, push, PR or merge occurred. `S2-DISPATCH-M01` remains MAJOR/OPEN, S2
 remains NOT APPROVED, and S3 remains unstarted.

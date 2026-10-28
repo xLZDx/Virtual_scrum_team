@@ -41,14 +41,20 @@ error replies and response-binding failures—is treated conservatively as ambig
 `reconciliation_required` when possible, then exits with code 75 without processing another
 connection.
 
-`vst-dispatch-owner.service` now has a root `ExecStopPost` helper. On each termination, including
-normal stop and failure, the helper atomically creates a root-owned persistent admission latch and
-requests that systemd stop the socket unit. Both systemd units and the unprivileged service loader
-refuse while the latch exists. The latch is not automatically cleared. Reopening requires explicit
-Store/request-ID reconciliation and a separately authorized root recovery. A queued connection can
-remain in the kernel backlog until teardown; after latch creation, systemd stops the listener, and a
-racing activation cannot reach Supervisor RPC. Recovery stops the socket and verifies it is
-inactive, reconciles the Store record, then separately clears the latch and starts the socket.
+`vst-dispatch-owner.service` has a root `ExecStopPost` helper. The first draft wrote the persistent
+latch and issued `systemctl --no-block stop`; independent code and reliability reviews found that
+filesystem stalls or a failed latch write could leave the socket active. The corrected source first
+stops the socket synchronously and confirms `ActiveState=inactive`, retrying indeterminate outcomes
+with bounded subprocess timeouts and capped backoff while keeping the service stop hook alive. Only
+then does it inspect `/etc` and persist the root-owned latch. `TimeoutStopSec=infinity` prevents
+systemd from killing this hook while the stop barrier or persistence is unresolved. Both systemd
+units and the unprivileged service loader refuse while a latch exists. The latch is not automatically
+cleared. Reopening requires explicit Store/request-ID reconciliation and separately authorized root
+recovery. A queued connection can remain in the kernel backlog until listener shutdown; no further
+request is handled after the inactive state is confirmed. If latch creation fails, same-boot socket
+shutdown is confirmed but cross-reboot safety is not established; durable root-controlled `/etc` is
+required before any reboot or start. Recovery stops the socket and verifies it is inactive,
+reconciles the Store record, then separately clears the latch and starts the socket.
 
 Store's current implementation writes `DISPATCH_INTENT_ACCEPTED` and the
 `supervisor_operations` idempotency result in the same transaction. Reconciliation must compare the
@@ -58,11 +64,12 @@ error alone is not evidence of non-acceptance; any retry/replacement is an opera
 after independent authorization and fresh checks of Store health, live owner/lease, preflight,
 expiry and generation.
 
-The source draft remains untested and unreviewed. The designated test author has updated mapped
-test sources for the half-close, trailing-frame, unknown-outcome and queued-connection lifecycle;
-they remain unexecuted. The draft does not write the latch or touch a systemd unit in WSL. Specialist
-reviews, focused GPT-PM re-adjudication and exact-head final gates remain open. S2 remains NOT
-APPROVED and S3 remains unstarted.
+The initial source implementation passed 105 focused synthetic tests at commit
+`cec0dbf3249b5734bdae52f644ac790e07d869f8`, but code/reliability review found a fail-open fallback.
+That finding is being corrected in source and mapped test cases before a fresh test run and review.
+No root helper, `/etc` path, or systemd unit was activated in WSL. Specialist re-review, focused
+GPT-PM re-adjudication and exact-head final gates remain open. S2 remains NOT APPROVED and S3
+remains unstarted.
 
 The systemd contract is based on documented `ExecStopPost=` behavior (runs after unexpected service
 exit and receives `$SERVICE_RESULT`, `$EXIT_CODE`, `$EXIT_STATUS`) and the documented `+` command

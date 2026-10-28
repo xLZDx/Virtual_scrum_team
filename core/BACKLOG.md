@@ -1,6 +1,6 @@
 # Backlog
 
-## S2 — signed dispatch-instruction provenance and owner relay (changes 0517–0518 in progress)
+## S2 — signed dispatch-instruction provenance and owner relay (changes 0517–0518, 0522 in progress)
 
 GPT-PM's correlated adjudication selects a purpose-specific, operator-authorized signed envelope
 and requires independent verification in the root Supervisor before any durable intent event.
@@ -17,14 +17,16 @@ owner relay, unit/socket templates, installer allowlist and plan corrections wer
 `978aa5b` (change 0517). GPT-PM's follow-up returned MODIFY with new MAJOR `S2-PROV-M03`: an active
 socket unit can reactivate the relay after an ambiguous Supervisor RPC. The correlated response and
 current remediation design are in `docs/sdlc/evidence/s2-admission-fence-adjudication-20261029.md`.
-Uncommitted change 0518 adds single-frame EOF enforcement, conservative unknown-outcome handling,
-a root `ExecStopPost` persistent admission fence, and updated provisioning/service contracts. M03
-remains OPEN pending mapped tests, direct regression review and focused PM re-adjudication. Test
-sources were updated for the 0518 EOF and lifecycle contract but have not run. Owners:
-Codex for code, plan and evidence; functional-test-reviewer/e2e-runner for mapped test authoring and
-execution after source freeze; GPT-PM for source/plan adjudication; operator for any separately
-privileged runtime action and real signer-key custody. Next: finish 0518, update mapped test source,
-then execute tests, review/fix, and request exact-head code and plan gates. Keep production dispatch
+Change 0518 added single-frame EOF enforcement, conservative unknown-outcome handling, and the first
+root `ExecStopPost` admission fence. Code and reliability reviews found that its asynchronous stop
+and filesystem-before-stop ordering could leave the listener available. Change 0522 corrects this:
+synchronous stop plus confirmed inactive state precedes `/etc` access; the hook retries with bounded
+per-call timeouts/backoff and has no systemd stop timeout. M03 remains OPEN pending rerun of mapped
+tests, direct regression review and focused PM re-adjudication. Test author updated lifecycle cases;
+the executor has not yet run them for 0522. Owners: Codex for source/docs/evidence; functional-test
+reviewer/e2e-runner for mapped test authorship/execution; GPT-PM for adjudication; operator for
+separately privileged runtime action and signer-key custody. Next: finish and commit 0522, execute
+tests, review/fix, then request focused PM and final exact-head gates. Keep production dispatch
 closed, S2 not approved, and S3 unstarted.
 
 ## S2 — root/runtime preparation correction (changes 0517–0518 in progress)

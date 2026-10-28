@@ -53,24 +53,32 @@ E5 attestation.
   config and public dispatch trust registry, and connect to the root Supervisor socket.
 - `Restart=no` alone is not the fail-stop boundary: an active `.socket` unit can reactivate a stopped
   service. `ExecStopPost=+...dispatch_owner_latch.main` therefore runs as root after every service
-  termination, including an unexpected exit or failed start. It atomically creates the persistent
-  root-owned `/etc/vst-runner/dispatch-owner-admission-blocked.json` fence (root:root `0644`), then
-  requests that systemd stop `vst-dispatch-owner.socket`. Both the socket and service units have
-  `ConditionPathExists=!` for that fence, and the unprivileged service loader checks its existence
-  before accepting the inherited descriptor. An orderly service stop is also fenced until recovery;
-  only the operator, after the reviewed recovery procedure, may clear the file and reopen the socket.
+  termination, including an unexpected exit or failed start. It first issues a synchronous socket
+  stop and confirms `ActiveState=inactive`; it retries failed or indeterminate stop/confirmation
+  calls with bounded per-call timeouts and capped backoff, and does not proceed while admission is
+  unconfirmed. Only after this same-boot barrier does it inspect `/etc` and persist the root-owned
+  `/etc/vst-runner/dispatch-owner-admission-blocked.json` fence (root:root `0644`). Both the socket
+  and service units have `ConditionPathExists=!` for that fence, and the unprivileged service loader
+  checks its existence before accepting the inherited descriptor. `TimeoutStopSec=infinity` keeps
+  systemd from killing this safety hook while it confirms socket shutdown or persists the latch;
+  consequently a failed systemctl call or unhealthy `/etc` can hold service stop indefinitely and
+  requires operator-visible recovery. Persistent blocking across reboot requires healthy durable
+  root-controlled `/etc`; if latch creation fails, same-boot socket shutdown is confirmed but
+  cross-reboot admission safety is not established. An orderly service stop is also fenced until
+  recovery; only the operator, after the reviewed recovery procedure, may clear the file and reopen
+  the socket.
 - Local framing, canonical-JSON, signature, expiry, principal, and trust-registry refusals occur
   before Supervisor RPC. They return a generic refusal and do not fence admission. Once the verified
   envelope is passed to `SupervisorClient`, every transport error, explicit error reply, malformed
   response, timeout, lost connection, or response-binding mismatch is conservatively treated as
   outcome-unknown: the relay returns `reconciliation_required` when possible and exits with code 75.
   Systemd runs the root `ExecStopPost` fence before the service stop completes. A queued connection
-  may remain in the kernel backlog during teardown; after the latch is written, systemd stops the
-  socket, while any activation racing with teardown fails the service's latch check before RPC.
-  If stopping the socket fails, the persistent latch still prevents the service from processing a
-  request. If the persistent write fails, the helper still requests a same-boot socket stop and the
-  helper failure remains visible in the journal; host storage integrity is a provisioning/runtime
-  prerequisite, not proven by this source contract.
+  may remain in the kernel backlog during teardown; the synchronous stop and inactive-state check
+  close the listener before any filesystem inspection that could stall. Until that confirmation,
+  the helper remains in `ExecStopPost`, with this unit's stop timeout disabled. If the persistent
+  write fails after the socket is confirmed inactive, the helper fails visibly and the listener
+  stays stopped for this boot; a durable `/etc` latch is still required before any future reboot or
+  start. The source contract does not prove installed-systemd behavior or storage health.
 - Reconciliation is explicit and must precede reopening. The operator inspects the exact
   signed `request_id` in the verified Store `DISPATCH_INTENT_ACCEPTED` event and matching
   `supervisor_operations` record, compares the complete envelope, principal, generation, payload
@@ -102,6 +110,13 @@ Missing, malformed or unavailable trust data keeps service startup/dispatch fail
 key or config value is fabricated in source.
 
 ## Acceptance and review boundary
+
+The initial latch draft persisted `/etc` before stopping the socket and used an asynchronous stop
+request. Code and reliability reviews identified that filesystem stalls or a failed latch write
+could leave the active listener available. The corrected source order is: confirm socket inactive,
+then access/persist the latch; the service stop timeout is disabled so the system manager cannot
+kill the hook while it holds this barrier. Focused synthetic tests and runtime systemd validation
+are tracked separately; this source contract is not runtime proof.
 
 Source acceptance requires review of exact socket activation, bounded single-frame EOF framing,
 config ownership, signature validation, one-request behavior, every relay/socket termination path,

@@ -7,10 +7,14 @@ import logging
 import os
 import stat
 import subprocess
+import time
 
 LATCH_PATH = "/etc/vst-runner/dispatch-owner-admission-blocked.json"
 SOCKET_UNIT = "vst-dispatch-owner.socket"
 SYSTEMCTL_PATH = "/usr/bin/systemctl"
+SYSTEMCTL_TIMEOUT_SECONDS = 10
+SOCKET_STOP_RETRY_INITIAL_SECONDS = 1
+SOCKET_STOP_RETRY_MAX_SECONDS = 30
 _LOGGER = logging.getLogger("vst.dispatch_owner_latch")
 _ALLOWED_RESULTS = frozenset({
     "protocol", "timeout", "exit-code", "signal", "core-dump", "watchdog",
@@ -72,6 +76,43 @@ def _write_latch(result: str, exit_code: str, exit_status: str) -> None:
         os.close(dir_fd)
 
 
+def _stop_socket_and_confirm_inactive() -> None:
+    """Keep the service stop hook alive until socket admission is actually closed."""
+    delay = SOCKET_STOP_RETRY_INITIAL_SECONDS
+    while True:
+        try:
+            stopped = subprocess.run(
+                [SYSTEMCTL_PATH, "stop", SOCKET_UNIT],
+                check=False,
+                timeout=SYSTEMCTL_TIMEOUT_SECONDS,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            state = subprocess.run(
+                [SYSTEMCTL_PATH, "show", "--property=ActiveState", "--value", SOCKET_UNIT],
+                check=False,
+                timeout=SYSTEMCTL_TIMEOUT_SECONDS,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+            )
+            active_state = state.stdout.strip() if state.returncode == 0 else "unknown"
+            if stopped.returncode == 0 and active_state == "inactive":
+                _LOGGER.info("dispatch-owner socket is confirmed inactive")
+                return
+            _LOGGER.critical(
+                "dispatch-owner socket stop is not confirmed (stop=%s, state=%s); retrying",
+                stopped.returncode,
+                active_state,
+            )
+        except Exception:
+            _LOGGER.exception("dispatch-owner socket stop could not be confirmed; retrying")
+        time.sleep(delay)
+        delay = min(delay * 2, SOCKET_STOP_RETRY_MAX_SECONDS)
+
+
 def main() -> None:
     if os.geteuid() != 0:
         raise RuntimeError("dispatch-owner admission fence requires root")
@@ -79,6 +120,9 @@ def main() -> None:
     result = os.environ.get("SERVICE_RESULT", "")
     if result not in _ALLOWED_RESULTS:
         result = "resources"
+    # Close the live admission path before touching /etc: parent stat/open/fsync can block on
+    # unhealthy storage. A confirmed stop protects this boot even if persistence then fails.
+    _stop_socket_and_confirm_inactive()
     latch_error: Exception | None = None
     try:
         _write_latch(
@@ -90,25 +134,6 @@ def main() -> None:
     except Exception as exc:
         latch_error = exc
         _LOGGER.exception("dispatch-owner admission latch could not be persisted")
-    finally:
-        # Any inability to persist the fence still stops the active listener for this
-        # boot. The persistent file blocks activation across service and host restart.
-        try:
-            stopped = subprocess.run(
-                [SYSTEMCTL_PATH, "--no-block", "stop", SOCKET_UNIT],
-                check=False,
-                timeout=10,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-        except Exception:
-            _LOGGER.exception("dispatch-owner socket stop request failed")
-            raise
-        if stopped.returncode != 0:
-            _LOGGER.error("dispatch-owner socket stop request returned %s", stopped.returncode)
-        else:
-            _LOGGER.info("dispatch-owner socket stop requested")
     if latch_error is not None:
         raise RuntimeError("dispatch-owner admission could not be durably fenced") from latch_error
 

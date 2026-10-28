@@ -29,8 +29,11 @@ provisioned or started by these files in the current coding pass.
   to root Supervisor, which verifies it independently. The unprivileged relay has no Store path,
   assignment authority, task queue, retry loop, persistent writable data path, runner socket, private key, or network
   family. Its private temporary directory exists only for bounded OpenSSL verification. Every
-  service termination runs a narrowly scoped root `ExecStopPost` helper that persists an admission
-  fence and stops the socket; startup refuses while the fence exists. Ambiguous Supervisor results
+  service termination runs a narrowly scoped root `ExecStopPost` helper that first synchronously
+  stops the socket and confirms it is inactive, then persists an admission fence; startup refuses
+  while the fence exists. The stop hook has no timeout, so an unconfirmed stop or unhealthy durable
+  `/etc` can hold service shutdown indefinitely. If latch persistence fails after socket shutdown,
+  same-boot admission remains closed but cross-reboot safety is unproven. Ambiguous Supervisor results
   return `reconciliation_required` when possible, then exit without another request. Reopening
   requires independent Store/request-ID reconciliation and a separately authorized root action.
 - A separate `vst-signer` identity serves the signer socket. Its primary GID

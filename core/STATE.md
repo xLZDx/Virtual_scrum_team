@@ -512,15 +512,19 @@ GPT-PM's follow-up plan/source review request `1da9e3cf-2321-4a24-8710-1b80348cd
 socket unit may reactivate the relay after an ambiguous Supervisor RPC. Change 0518 now requires one
 canonical request frame plus write-half-close, classifies all unconfirmed post-RPC results as
 unknown, exits without processing another request, and adds a root persistent admission latch in
-`ExecStopPost` plus socket/service startup fences. It documents Store event/idempotency reconciliation
-by exact request ID and an independently authorized reopening procedure. The PM feedback and
-remediation draft are in `docs/sdlc/evidence/s2-admission-fence-adjudication-20261029.md` and the
-revised service contract.
+`ExecStopPost` plus socket/service startup fences. Code/reliability review found that the first latch
+draft accessed `/etc` and requested asynchronous socket stop. Corrected source synchronously stops
+and confirms the socket inactive before filesystem access; stop-call failures retry with bounded
+timeouts/backoff, and the unit has no stop timeout. It documents Store event/idempotency
+reconciliation by exact request ID and an independently authorized reopening procedure. If latch
+persistence fails after confirmed stop, same-boot admission is closed but cross-reboot safety is
+not established. The PM feedback and remediation draft are in
+`docs/sdlc/evidence/s2-admission-fence-adjudication-20261029.md` and the revised service contract.
 
 This remains source/design work only. No tests, checks, builds, CI, migration, account/group
 creation, `/etc` write, key operation, service activation, dispatch, E5 attestation, push, PR or merge
-was performed. Change 0518 is uncommitted and unreviewed. The test author updated coverage for its
-half-close and lifecycle behavior; tests remain unrun. Independent specialist review and focused PM
+was performed. Change 0518 is committed; corrective change 0522 is in progress. The test author
+updated coverage for its half-close and lifecycle behavior; 0522 tests remain unrun. Independent specialist review and focused PM
 re-adjudication remain open. A production issuer/public key, live authenticated OS identity, current source/runtime
 provenance and permitted runtime evidence remain absent/unverified. `S2-DISPATCH-M01` remains
 MAJOR/OPEN, S2 remains NOT APPROVED, and S3 remains unstarted.
