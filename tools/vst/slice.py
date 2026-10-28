@@ -2247,14 +2247,16 @@ def run_lifecycle_scenarios(
             )
         except StoreError as exc:
             budget_exhausted = exc.kind == "budget"
-        lease_blocked = False
+        lease_budget_blocked = False
         try:
             fixture.store.acquire_lease(
                 fixture.task_id, fixture.story_id, fixture.runner_id, fixture.epoch,
                 3, 600, supervisor_key=SUPERVISOR_KEY,
             )
-        except StoreError:
-            lease_blocked = True
+        except StoreError as exc:
+            if exc.kind != "budget":
+                raise
+            lease_budget_blocked = True
 
         report["scope"] = {
             "environment_scope": "synthetic",
@@ -2297,7 +2299,7 @@ def run_lifecycle_scenarios(
             "remaining_at_exact_cap": exact_budget,
             "overflow_rejected": budget_exhausted,
             "overflow_outcome": "REJECTED" if budget_exhausted else "NOT_REJECTED",
-            "new_lease_rejected": lease_blocked,
+            "new_lease_budget_rejected": lease_budget_blocked,
         }
         return report
     finally:

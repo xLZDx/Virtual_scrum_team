@@ -104,6 +104,7 @@ def test_report_marks_budget_overflow_as_rejected(lifecycle_report):
     assert budget["remaining_at_exact_cap"] == 0
     assert budget["overflow_rejected"] is True
     assert budget["overflow_outcome"] == "REJECTED"
+    assert budget["new_lease_budget_rejected"] is True
 
 
 def test_bounded_synthetic_candidate_report_has_no_worker_remote(lifecycle_report):
