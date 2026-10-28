@@ -42,7 +42,12 @@ E5 attestation.
   signature and Supervisor's live authority checks are still required for durable acceptance. The
   accepted event, idempotency result, and pending-outcome control note commit atomically. If local
   forwarding or acknowledgement fails, the barrier remains pending, the relay stops, and a
-  different request ID is refused. Exact same-ID/payload replay may return the immutable result.
+  different request ID is refused. Exact same-ID, principal, service-generation, and payload replay
+  may return the immutable result. If the generation rotates across restart, the old idempotency
+  payload no longer matches; ordinary replay remains refused pending separately authorized
+  reconciliation. The in-repository Runner generation reader binds the generation to the active
+  `INVOCATION_ID`, so a retry after that identity changes cannot use the old idempotency payload.
+  The installed restart behavior is not exercised by this source change.
   Store validates the full ordered history at startup and before each new admission/acknowledgement;
   legacy accepted events without this protocol remain unresolved and block ordinary replay.
 

@@ -105,10 +105,14 @@ The barrier must survive relay/process/host failure without depending on `ExecSt
    out-of-order records, mismatched operation rows, external-anchor failure, or incomplete startup
    reconciliation fail closed. If the host fails after the acceptance transaction commits, the
    pending event is durable and the next Supervisor start reconstructs it before accepting
-   requests. Replaying the exact request ID returns the immutable result and permits a new
-   acknowledgement; a different request stays refused. If exact replay is unavailable, only
-   separately authorized reconciliation can resolve the barrier. No automatic new request or replay
-   is created.
+   requests. Replaying the exact request ID, authenticated principal, service generation, and
+   signed payload returns the immutable result and permits a new acknowledgement; a different
+   request stays refused. Service generation is part of the idempotency payload and acknowledgement
+   tuple. If a restart rotates the generation, ordinary replay is refused and only separately
+   authorized reconciliation can resolve the barrier. The in-repository generation reader binds
+   `generation` to the current runner `INVOCATION_ID` (`tools/vst/runner_service.py`), so recovery
+   across a generation change is refused by the current idempotency contract. Installed runtime
+   generation behavior is not exercised here. No automatic new request or replay is created.
 
 ### Admission state machine
 
@@ -151,7 +155,7 @@ field mismatch or conflicting repeated acknowledgement is an integrity/authoriza
 | Failure point | Durable state and expected behavior | Focused test |
 |---|---|---|
 | Before the acceptance transaction commits | Neither accepted event nor pending marker exists; no dispatch event has been published; a later request may proceed | Inject transaction failure before commit and assert both records absent |
-| Immediately after transaction commit, before Supervisor reply | Accepted event, idempotency result and pending marker all exist; only same-ID/digest replay is allowed after restart | Reopen/reconcile Store and assert a different request is refused while exact replay returns stored result |
+| Immediately after transaction commit, before Supervisor reply | Accepted event, idempotency result and pending marker all exist; only same-ID/digest/generation replay is allowed after restart | Reopen/reconcile Store and assert a different request is refused while exact replay with the original generation returns stored result |
 | After relay receives result, before forwarding response | Pending marker remains; socket latch is defense in depth; exact replay required | Inject client send failure and assert no acknowledgement event |
 | After response forwarding, before ack transaction commits | Pending marker remains; new request refused; exact retry can forward/ack | Inject ack RPC failure and assert pending survives |
 | Ack transaction commits, ack response is lost | Relay-forwarded ack is durable; it does not claim caller receipt; exact replay remains idempotent | Drop ack response after commit and assert the ack is idempotent and result identity matches |
