@@ -517,13 +517,14 @@ draft accessed `/etc` and requested asynchronous socket stop. Corrected source s
 and confirms the socket inactive before filesystem access; stop-call failures retry with bounded
 timeouts/backoff, and the unit has no stop timeout. It documents Store event/idempotency
 reconciliation by exact request ID and an independently authorized reopening procedure. If latch
-persistence fails after confirmed stop, same-boot admission is closed but cross-reboot safety is
-not established. The PM feedback and remediation draft are in
+persistence fails after confirmed stop, the socket is inactive at that point, but no latch guards a
+later explicit start and cross-reboot safety is not established. The PM feedback and remediation draft are in
 `docs/sdlc/evidence/s2-admission-fence-adjudication-20261029.md` and the revised service contract.
 
 This remains source/design work only. No tests, checks, builds, CI, migration, account/group
 creation, `/etc` write, key operation, service activation, dispatch, E5 attestation, push, PR or merge
-was performed. Change 0518 is committed; corrective change 0522 is in progress. The test author
+was performed. `git diff --check` passed for the corrective source/docs before commit; application
+tests and systemd/runtime validation remain unverified. Change 0518 is committed; corrective change 0522 is in progress. The test author
 updated coverage for its half-close and lifecycle behavior; 0522 tests remain unrun. Independent specialist review and focused PM
 re-adjudication remain open. A production issuer/public key, live authenticated OS identity, current source/runtime
 provenance and permitted runtime evidence remain absent/unverified. `S2-DISPATCH-M01` remains

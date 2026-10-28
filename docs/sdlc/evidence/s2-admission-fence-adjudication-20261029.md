@@ -51,9 +51,9 @@ systemd from killing this hook while the stop barrier or persistence is unresolv
 units and the unprivileged service loader refuse while a latch exists. The latch is not automatically
 cleared. Reopening requires explicit Store/request-ID reconciliation and separately authorized root
 recovery. A queued connection can remain in the kernel backlog until listener shutdown; no further
-request is handled after the inactive state is confirmed. If latch creation fails, same-boot socket
-shutdown is confirmed but cross-reboot safety is not established; durable root-controlled `/etc` is
-required before any reboot or start. Recovery stops the socket and verifies it is inactive,
+request is handled after the inactive state is confirmed. If latch creation fails, the socket is
+inactive at that point, but no latch guards a later explicit start and cross-reboot safety is not
+established; durable root-controlled `/etc` is required before any reboot or start. Recovery stops the socket and verifies it is inactive,
 reconciles the Store record, then separately clears the latch and starts the socket.
 
 Store's current implementation writes `DISPATCH_INTENT_ACCEPTED` and the

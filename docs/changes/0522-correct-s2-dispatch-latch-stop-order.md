@@ -19,10 +19,11 @@ activate the relay even when its service uses `Restart=no`.
   not kill `ExecStopPost` while it is holding the admission barrier or persisting the latch. This
   deliberately trades availability for fail-closed behavior: an unavailable system manager or
   unhealthy `/etc` can hold service shutdown indefinitely and requires operator-visible recovery.
-- Latch persistence follows confirmed same-boot socket shutdown. If the persistent write fails, the
-  listener remains stopped for this boot and the helper reports failure. Cross-reboot safety is not
-  established in that case; healthy durable root-controlled `/etc` remains a hard requirement
-  before reboot/start. No `/etc` write, root helper invocation, systemd activation or runtime
+- Latch persistence follows confirmed socket shutdown. If the persistent write fails, the listener
+  is inactive at that point and the helper reports failure; without the latch, a later explicit
+  socket start is not guarded. Cross-reboot safety is not established in that case; healthy durable
+  root-controlled `/etc` remains a hard requirement before any later start or reboot. No `/etc`
+  write, root helper invocation, systemd activation or runtime
   provisioning occurred in this change.
 - `tests/vst/test_s2_dispatch_owner_latch.py` was updated by `functional-test-reviewer` to cover
   stop-before-storage ordering, inactive-state confirmation, retry after failure/active state,
@@ -37,7 +38,7 @@ activate the relay even when its service uses `Restart=no`.
 |---|---|---|---|
 | Stop command fails, times out, or socket remains active/unknown | Hook stays in `ExecStopPost`; no `/etc` access; no acceptance of successful shutdown | Codex keeps the code fail-closed; operator restores systemd availability; hook retries | Synthetic retry/confirmation test; installed-systemd behavior remains `NOT_RUN` |
 | Parent `stat`, latch open/write, or `fsync` stalls after socket is inactive | Listener is confirmed stopped; systemd does not kill the hook due to `TimeoutStopSec=infinity`; service shutdown may remain pending | Operator repairs durable root-controlled storage; then verifies persistent fence before restart | Test asserts ordering and unit timeout; filesystem-stall runtime scenario `NOT_RUN` |
-| Latch persistence errors after socket stop | Same-boot listener is inactive; helper exits with a visible failure; cross-reboot fence is absent/unproven | Operator must restore `/etc` and ensure the durable fence exists before reboot/start; no automatic reopening | Synthetic persistence-failure test; root filesystem behavior `NOT_RUN` |
+| Latch persistence errors after socket stop | Socket is inactive at confirmation; helper exits visibly, but no latch guards a later explicit start and cross-reboot safety is unproven | Operator must restore `/etc` and ensure the durable fence exists before any later start/reboot; no automatic reopening | Synthetic persistence-failure test; root filesystem behavior `NOT_RUN` |
 | Latch persists successfully | Both service/socket startup conditions and loader reject admission; no automatic retry/reopen | Operator reconciles exact Store request ID and idempotency record before separately authorized recovery | Existing mapped latch/source tests; runtime unit activation `NOT_RUN` |
 
 ## Verification and acceptance

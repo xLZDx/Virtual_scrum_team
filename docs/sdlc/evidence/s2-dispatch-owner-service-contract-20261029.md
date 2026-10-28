@@ -77,8 +77,9 @@ E5 attestation.
   close the listener before any filesystem inspection that could stall. Until that confirmation,
   the helper remains in `ExecStopPost`, with this unit's stop timeout disabled. If the persistent
   write fails after the socket is confirmed inactive, the helper fails visibly and the listener
-  stays stopped for this boot; a durable `/etc` latch is still required before any future reboot or
-  start. The source contract does not prove installed-systemd behavior or storage health.
+  is inactive at that point; without the latch, a later explicit socket start is not guarded. A
+  durable `/etc` latch is required before any future reboot or start. The source contract does not
+  prove installed-systemd behavior or storage health.
 - Reconciliation is explicit and must precede reopening. The operator inspects the exact
   signed `request_id` in the verified Store `DISPATCH_INTENT_ACCEPTED` event and matching
   `supervisor_operations` record, compares the complete envelope, principal, generation, payload
