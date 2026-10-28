@@ -1203,3 +1203,15 @@ The decision does not authorize applying schema v6, generating keys, provisionin
 services, executing dispatch, publishing/merging, or claiming S2 acceptance. Migration application
 requires independent review and separate authorization. Keep S2 active and S3 unstarted; leave
 restricted test scenarios `NOT_RUN`.
+
+## 2026-10-28 — Accept attached Pub/Sub source scope; keep full S2 open
+
+GPT-PM's complete adversarial source review returned `APPROVE — ATTACHED SOURCE SCOPE` with 0
+confirmed BLOCKER/MAJOR findings, request `b2d8f20e-4eb0-4a4c-98ec-13c1c9437279`. Codex verified
+all attached source/test bytes match Git blobs at repository HEAD
+`673479dccc0f37de7d723ede275c46a8f4b4595c`, and the focused test SHA-256 matches the recorded
+20-pass run. GPT-PM did not independently inspect `.git`; its review covers the supplied files, while
+local commands establish their repository provenance. This accepts only the bounded source/test
+scope. `S2-DISPATCH-M01` remains MAJOR/OPEN; full S2 and E8 remain NOT APPROVED/NOT ESTABLISHED.
+Runtime prerequisites and prohibited operations remain unchanged; S3 stays unstarted. Evidence:
+`docs/sdlc/evidence/s2-pubsub-gpt-pm-source-review-20261028.md`.

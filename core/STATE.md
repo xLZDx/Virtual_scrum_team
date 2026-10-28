@@ -435,3 +435,17 @@ focused suite passed 20/20 at source HEAD `61bfe643e52362fbe4c680ade2c3cb150997d
 remains `NOT_RUN`. The code/dataflow review does not close `S2-DISPATCH-M01`; production owner
 caller, root config/credentials, current signed E5, installed runtime and service activation remain
 absent or unproven. No migration, runtime operation or S3 work occurred.
+
+## S2 Pub/Sub GPT-PM source adjudication — 2026-10-28
+
+GPT-PM adversarially reviewed the attached Store/Supervisor/AF_UNIX Pub/Sub source and focused test
+scope under request `b2d8f20e-4eb0-4a4c-98ec-13c1c9437279`: `APPROVE — ATTACHED SOURCE SCOPE`, with
+0 confirmed BLOCKER/MAJOR findings. It explicitly did not approve full S2 and left
+`S2-DISPATCH-M01` `MAJOR / OPEN`; real kernel identity enforcement is `NOT_VERIFIED` and production
+dispatch is `NOT_RUN`. GPT-PM could not independently inspect the Windows checkout, so it did not
+claim independent Git-head verification. Codex then verified that every attached source/test file
+matched its Git blob at `673479dccc0f37de7d723ede275c46a8f4b4595c`; the focused test SHA-256 also
+matches the recorded 20-pass run. Details and limitations are in
+`docs/sdlc/evidence/s2-pubsub-gpt-pm-source-review-20261028.md`. The bounded source gate is accepted;
+S2 remains active and S3 unstarted. No runtime provisioning, migration, service operation or real
+dispatch occurred.

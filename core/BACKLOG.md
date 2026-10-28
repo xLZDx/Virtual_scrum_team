@@ -280,3 +280,17 @@ Supervisor outage also requires manual recovery. The service journal and claim-s
 sequence are documented in `tools/vst/systemd/README.md`; a production recovery runbook and observed
 alerting remain unverified. Codex owns the runbook; e2e-runner may evidence it only after separately
 authorized runtime setup. Keep automatic retries disabled for ambiguous claims.
+
+## S2 bounded Pub/Sub source gate — accepted; runtime gate still open (2026-10-28)
+
+GPT-PM request `b2d8f20e-4eb0-4a4c-98ec-13c1c9437279` approved the attached Store-backed Pub/Sub
+source/test scope with 0 confirmed BLOCKER/MAJOR findings. Codex verified the attached implementation
+and test files against Git blobs at HEAD `673479dccc0f37de7d723ede275c46a8f4b4595c`; the recorded
+focused test file hash matches. Evidence: `docs/sdlc/evidence/s2-pubsub-gpt-pm-source-review-20261028.md`.
+This closes the bounded source-review item only. It does not close `S2-DISPATCH-M01` or S2 and is
+not runtime approval. Full acceptance still depends on an authenticated production owner caller,
+separately reviewed/authorized schema-v6 application, root-owned runtime config and credentials,
+current signed E5 and sandbox provenance, active services, POSIX identity/cgroup proof, and remaining
+Windows/POSIX acceptance. Restricted process/crash/mutation/policy scenarios stay `NOT_RUN` absent
+authorization. Owner: Codex for source/evidence coordination; GPT-PM for gate adjudication; operator
+for genuinely privileged provisioning or human attestation. Do not start S3.
