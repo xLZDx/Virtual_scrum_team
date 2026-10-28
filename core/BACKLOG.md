@@ -183,20 +183,24 @@ E8/S2 remains NOT APPROVED. Evidence and limitations are in
 
 Still open for S2, in order:
 
-1. `S2-DISPATCH-M01`: the repository has no production coordinator callsite or authenticated
-   assignment source. The operator must provide the exact source path before any read-only review
-   outside this repository; GPT-PM has prohibited creating a replacement scheduler/authority.
+1. `S2-DISPATCH-M01`: the operator confirmed that no production coordinator callsite or
+   authenticated assignment source exists yet. There is no source path to provide or inspect.
+   Production dispatch remains fail-closed; GPT-PM has prohibited creating a replacement
+   scheduler/authority. GPT-PM must decide whether this acceptance remains a blocker or S2's
+   scope/DoD is formally revised. The operator has no immediate action.
 2. Current root-owned runner configuration, required credentials, signed current-run E5 and
-   provisioned sandbox provenance are absent. Operator owns provisioning/attestation; Codex
-   coordinates and `e2e-runner` executes only permitted scenarios.
+   provisioned sandbox provenance are absent. The operator has no current action; the operator
+   owns provisioning/attestation only if the environment becomes available and provisioning is
+   separately authorized. Codex coordinates and `e2e-runner` executes only permitted scenarios.
 3. Remaining Windows/POSIX containment and E5/E8 system acceptance must be evidenced. Restricted
    process/crash/kill, STOP, resume/restart, out-of-scope mutation and egress scenarios remain
    `NOT_RUN` unless their policy gate changes; no waiver is inferred.
 4. After in-scope evidence is complete, Codex coordinates fresh exact-head specialist consensus
    and GPT-PM final S2 gate. No S3, PR, merge or deployment before that gate.
 
-Owners: Codex — bounded implementation/evidence/coordination; operator — external coordinator
-source path and real environment/attestation; GPT-PM — architecture and final adjudication.
+Owners: Codex — bounded implementation/evidence/coordination; GPT-PM — architecture and final
+adjudication; operator — future real-environment provisioning/attestation only if separately
+authorized and actually available. The operator is not expected to provide nonexistent artifacts.
 
 ## S2 prerequisite absence confirmed — 2026-10-28
 
