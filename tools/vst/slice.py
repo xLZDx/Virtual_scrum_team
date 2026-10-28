@@ -2186,15 +2186,15 @@ def run_lifecycle_scenarios(
     def make_probe(run: str, run_nonce: str) -> dict:
         return probe_provider(run, run_nonce)
 
-    supervisor = Supervisor(
-        fixture.store, operation_backend=backend, failure_threshold=2,
-        run_id=run_id, probe_nonce=nonce, probe_key=probe_key,
-        operator_key=OPERATOR_KEY,
-    )
     report: dict[str, dict] = {}
     probe_observations: list[dict[str, Any]] = []
 
     try:
+        supervisor = Supervisor(
+            fixture.store, operation_backend=backend, failure_threshold=2,
+            run_id=run_id, probe_nonce=nonce, probe_key=probe_key,
+            operator_key=OPERATOR_KEY,
+        )
         fixture.begin(1, ttl_sec=600)
         initial_probe = make_probe(run_id, nonce)
         initial_properties = initial_probe.get("checked_properties", {})

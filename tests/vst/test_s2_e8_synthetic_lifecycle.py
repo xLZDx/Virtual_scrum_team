@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+import sqlite3
 import tempfile
 
 import pytest
@@ -125,4 +126,36 @@ def test_caller_probe_values_are_not_upgraded_to_environment_egress_evidence(lif
     )
     assert all(run["reported_external_egress_blocked"] is True for run in observations["runs"])
     assert observations["real_environment_egress_verified"] is False
+
+
+def test_store_is_closed_when_supervisor_setup_fails(monkeypatch):
+    captured_fixtures = []
+    fixture_type = slice_module.SliceFixture
+
+    def capture_fixture(*args, **kwargs):
+        fixture = fixture_type(*args, **kwargs)
+        captured_fixtures.append(fixture)
+        return fixture
+
+    monkeypatch.setattr(slice_module, "SliceFixture", capture_fixture)
+    expected_error = RuntimeError("synthetic supervisor setup failure")
+
+    def fail_supervisor(*args, **kwargs):
+        raise expected_error
+
+    monkeypatch.setattr(slice_module, "Supervisor", fail_supervisor)
+
+    with tempfile.TemporaryDirectory(prefix="s2-e8-setup-failure-") as temp_root:
+        workdir = os.path.join(temp_root, "work")
+        with pytest.raises(RuntimeError) as raised:
+            slice_module.run_lifecycle_scenarios(
+                workdir,
+                probe_key=PROBE_KEY,
+                probe_provider=_synthetic_probe,
+            )
+
+    assert raised.value is expected_error
+    assert len(captured_fixtures) == 1
+    with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+        captured_fixtures[0].store._conn.execute("SELECT 1")
 
