@@ -494,7 +494,7 @@ matches the recorded 20-pass run. Details and limitations are in
 S2 remains active and S3 unstarted. No runtime provisioning, migration, service operation or real
 dispatch occurred.
 
-## S2 dispatch-owner service boundary — 2026-10-29 (change 0517 in progress)
+## S2 dispatch-owner service boundary — 2026-10-29 (changes 0517–0518 in progress)
 
 GPT-PM's exact provisioning-plan review returned MODIFY with 0 confirmed BLOCKER, 2 MAJOR and 2
 MINOR findings. The distinct owner primary GID, exact systemd socket/service boundary, complete
@@ -506,10 +506,21 @@ updated. Exact review and point-in-time inventory are in
 `docs/sdlc/evidence/s2-provisioning-plan-adjudication-20261029.md` and
 `docs/sdlc/evidence/s2-root-runtime-provisioning-plan-20261028.md`.
 
-This is source/design work only. No tests, checks, builds, CI, migration, account/group creation,
-`/etc` write, key operation, service activation, dispatch, E5 attestation, push, PR or merge was
-performed. The new change remains uncommitted and unreviewed. Mapped test work must follow source
-freeze; independent code/security/reliability review and exact-head GPT-PM code/plan review remain
-open. A production issuer and public key, live authenticated OS identity, current source/runtime
-provenance and permitted runtime evidence remain absent/unverified. `S2-DISPATCH-M01` stays
-MAJOR/OPEN, S2 stays NOT APPROVED, and S3 remains unstarted.
+GPT-PM's follow-up plan/source review request `1da9e3cf-2321-4a24-8710-1b80348cdd6b` (job
+`aec6fceb-86dd-4953-81e2-cb4f49847d08`, user turn
+`5be19da9-703b-4cb5-b363-469cdf2d7fee`) returned MODIFY with new MAJOR `S2-PROV-M03`: an active
+socket unit may reactivate the relay after an ambiguous Supervisor RPC. Change 0518 now requires one
+canonical request frame plus write-half-close, classifies all unconfirmed post-RPC results as
+unknown, exits without processing another request, and adds a root persistent admission latch in
+`ExecStopPost` plus socket/service startup fences. It documents Store event/idempotency reconciliation
+by exact request ID and an independently authorized reopening procedure. The PM feedback and
+remediation draft are in `docs/sdlc/evidence/s2-admission-fence-adjudication-20261029.md` and the
+revised service contract.
+
+This remains source/design work only. No tests, checks, builds, CI, migration, account/group
+creation, `/etc` write, key operation, service activation, dispatch, E5 attestation, push, PR or merge
+was performed. Change 0518 is uncommitted and unreviewed. The test author updated coverage for its
+half-close and lifecycle behavior; tests remain unrun. Independent specialist review and focused PM
+re-adjudication remain open. A production issuer/public key, live authenticated OS identity, current source/runtime
+provenance and permitted runtime evidence remain absent/unverified. `S2-DISPATCH-M01` remains
+MAJOR/OPEN, S2 remains NOT APPROVED, and S3 remains unstarted.

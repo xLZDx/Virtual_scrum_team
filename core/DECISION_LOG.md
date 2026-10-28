@@ -1253,3 +1253,20 @@ all proposed names and UID/GID values on 2026-10-29; no account/group was create
 and source remain pending tests, specialist review, and GPT-PM re-review. No privileged
 provisioning, key creation, runtime activation, dispatch, migration, E5 attestation, push, PR, or
 merge is authorized by this change.
+
+## 2026-10-29 — Fence S2 dispatch-owner admission after uncertain Supervisor outcomes (change 0518)
+
+GPT-PM's follow-up review returned MODIFY and identified major `S2-PROV-M03`: an active
+`vst-dispatch-owner.socket` can reactivate a service even when its unit has `Restart=no`, allowing
+later submissions while a prior Supervisor response is ambiguous. Correlation: request
+`1da9e3cf-2321-4a24-8710-1b80348cdd6b`, job `aec6fceb-86dd-4953-81e2-cb4f49847d08`, user turn
+`5be19da9-703b-4cb5-b363-469cdf2d7fee`. Codex's source draft requires client write-half-close after
+one canonical frame; treats any unconfirmed outcome after a valid request crosses Supervisor RPC as
+unknown; returns `reconciliation_required` when possible; exits without processing another
+connection; and uses root `ExecStopPost` to persist an admission latch and stop socket activation.
+Both units and the service loader refuse while the latch exists. Reopening requires comparing the
+exact request ID, full instruction, principal, generation, payload digest, transactionally stored
+Store event/idempotency result and grant/subscription state, then a separately authorized recovery.
+The fence is source-only and unreviewed; no root file, systemd unit, key, account, migration or
+service was changed. Focused tests, direct code/reliability review and PM re-adjudication remain
+required. Keep S2 open and S3 unstarted.

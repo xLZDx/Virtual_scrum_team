@@ -19,18 +19,20 @@ from .contracts import ContractError, canonical_bytes
 from .dispatch_instruction import (
     DISPATCH_INSTRUCTION_PURPOSE, DISPATCH_INSTRUCTION_TRUST_REGISTRY_PATH,
 )
-from .dispatch_owner_client import DispatchOwnerClient
+from .dispatch_owner_client import DispatchOutcomeUnknown, DispatchOwnerClient
 from .supervisor_service import SupervisorClient
 
 DEFAULT_CONFIG_PATH = "/etc/vst-runner/dispatch-owner-service.json"
 TRUST_REGISTRY_PATH = DISPATCH_INSTRUCTION_TRUST_REGISTRY_PATH
 SUPERVISOR_SOCKET_PATH = "/run/vst-supervisor/supervisor.sock"
 OWNER_SOCKET_PATH = "/run/vst-supervisor/dispatch-owner.sock"
+DISPATCH_OWNER_ADMISSION_LATCH_PATH = "/etc/vst-runner/dispatch-owner-admission-blocked.json"
 OWNER_PRINCIPAL = "Codex"
 OPENSSL_PATH = "/usr/bin/openssl"
 MAX_REQUEST_BYTES = 64 * 1024
 MAX_RESPONSE_BYTES = 256 * 1024
 REQUEST_TIMEOUT_SEC = 10.0
+OUTCOME_UNKNOWN_EXIT = 75
 _HEADER = struct.Struct("!I")
 _LOGGER = logging.getLogger("vst.dispatch_owner")
 
@@ -90,6 +92,8 @@ def _read_root_json(path: str, *, expected_mode: int, expected_gid: int,
 
 
 def load_dispatch_owner_config(path: str = DEFAULT_CONFIG_PATH) -> "DispatchOwnerServiceConfig":
+    if os.path.lexists(DISPATCH_OWNER_ADMISSION_LATCH_PATH):
+        raise ContractError("dispatch-owner admission is blocked pending reconciliation")
     if os.geteuid() == 0 or os.getgid() < 1:
         raise ContractError("dispatch-owner service must run under its dedicated unprivileged identity")
     try:
@@ -183,6 +187,7 @@ class DispatchOwnerService:
             )),
         )
         self._shutdown = threading.Event()
+        self._outcome_unknown = False
 
     def shutdown(self) -> None:
         self._shutdown.set()
@@ -200,22 +205,34 @@ class DispatchOwnerService:
             except socket.timeout:
                 continue
             with conn:
-                self._handle(conn)
+                if self._handle(conn):
+                    self._outcome_unknown = True
+                    self._shutdown.set()
+                    return
 
-    def _handle(self, conn: socket.socket) -> None:
+    def _handle(self, conn: socket.socket) -> bool:
         conn.settimeout(REQUEST_TIMEOUT_SEC)
+        outcome_unknown = False
         try:
             header = _recv_exact(conn, _HEADER.size)
             length = _HEADER.unpack(header)[0]
             if length < 2 or length > MAX_REQUEST_BYTES:
                 raise ContractError("dispatch-owner request size is invalid")
             payload = _recv_exact(conn, length)
+            if conn.recv(1) != b"":
+                raise ContractError("dispatch-owner connection contains trailing request bytes")
             request = json.loads(payload, object_pairs_hook=_unique_json_object)
             if (not isinstance(request, dict) or set(request) != {"instruction"}
                     or canonical_bytes(request) != payload):
                 raise ContractError("dispatch-owner request does not match the exact envelope")
-            result = self.client.submit(request["instruction"])
-            response = {"ok": True, "result": result}
+            try:
+                result = self.client.submit(request["instruction"])
+            except DispatchOutcomeUnknown as exc:
+                _LOGGER.error("dispatch-owner Supervisor outcome is unknown (%s)", type(exc).__name__)
+                outcome_unknown = True
+                response = {"ok": False, "error": "reconciliation_required"}
+            else:
+                response = {"ok": True, "result": result}
         except Exception as exc:
             _LOGGER.warning("dispatch-owner request refused (%s)", type(exc).__name__)
             response = {"ok": False, "error": "refused"}
@@ -225,7 +242,8 @@ class DispatchOwnerService:
         try:
             conn.sendall(_HEADER.pack(len(encoded)) + encoded)
         except OSError:
-            return
+            pass
+        return outcome_unknown
 
 
 def _recv_exact(conn: socket.socket, count: int) -> bytes:
@@ -267,6 +285,8 @@ def main() -> None:
         service.serve_forever(listener)
     finally:
         listener.close()
+    if service._outcome_unknown:
+        raise SystemExit(OUTCOME_UNKNOWN_EXIT)
 
 
 if __name__ == "__main__":

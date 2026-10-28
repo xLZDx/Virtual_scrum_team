@@ -21,6 +21,7 @@ from tests.vst.e1e4_helpers import (
     EVENT_KEY, FakeClock, SUPERVISOR_KEY, KEY, manifest as base_manifest,
     receipt as signed_receipt,
 )
+from tests.vst.s2_dispatch_instruction_fixtures import DispatchInstructionKeyPair
 
 
 REQUEST_ID = "a" * 32
@@ -28,7 +29,10 @@ GENERATION = "generation-s2-1"
 AUDIENCE = "997:990:/system.slice/vst-dispatcher.service"
 
 
-def _ready_dispatch_fixture(tmp_path, *, model_provenance_digest="d" * 64):
+def _ready_dispatch_fixture(
+    tmp_path, dispatch_instruction_keypair: DispatchInstructionKeyPair, *,
+    model_provenance_digest="d" * 64,
+):
     clock = FakeClock(1000)
     manifest = base_manifest(
         task_id="task-dispatch-1", story_id="story-dispatch-1", project_id="vst",
@@ -55,6 +59,8 @@ def _ready_dispatch_fixture(tmp_path, *, model_provenance_digest="d" * 64):
         execution_grant_private_key_path="unused-test-private-key.pem",
         execution_grant_openssl_path="openssl",
         execution_grant_trust_keys={"test-key": "unused-test-public-key.pem"},
+        dispatch_instruction_trust_keys=dispatch_instruction_keypair.trust_registry,
+        dispatch_instruction_openssl_path=dispatch_instruction_keypair.openssl_path,
         service_generation_provider=lambda: generation["value"],
         model_provenance_verifier=lambda _model, _digest: True,
         model_provenance_digest_provider=lambda _model: model_provenance_digest,
@@ -67,18 +73,23 @@ def _ready_dispatch_fixture(tmp_path, *, model_provenance_digest="d" * 64):
         "run_id": "run-s2-1",
         "request_id": REQUEST_ID,
     }
-    return store, supervisor, manifest, epoch, generation, body
+    return store, supervisor, manifest, epoch, generation, body, dispatch_instruction_keypair
 
 
-def _submit(supervisor, body, *, principal="Codex"):
-    return supervisor.accept_dispatch_intent(principal=principal, **body)
+def _submit(supervisor, body, dispatch_instruction_keypair, *, principal="Codex"):
+    instruction = dispatch_instruction_keypair.sign(body)
+    return supervisor.accept_dispatch_intent(principal=principal, instruction=instruction)
 
 
-def test_owner_intent_is_atomically_bound_and_idempotently_replayed(tmp_path):
-    store, supervisor, manifest, epoch, _generation, body = _ready_dispatch_fixture(tmp_path)
+def test_owner_intent_is_atomically_bound_and_idempotently_replayed(
+    tmp_path, dispatch_instruction_keypair,
+):
+    store, supervisor, manifest, epoch, generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
     try:
-        accepted = _submit(supervisor, body)
-        assert accepted == _submit(supervisor, body)
+        accepted = _submit(supervisor, body, keypair)
+        assert accepted == _submit(supervisor, body, keypair)
         assert accepted["principal"] == "Codex"
         assert accepted["task_id"] == manifest["task_id"]
         assert accepted["slot"] == "tests"
@@ -87,6 +98,8 @@ def test_owner_intent_is_atomically_bound_and_idempotently_replayed(tmp_path):
         )
         assert accepted["request_id"] == REQUEST_ID
         assert accepted["service_generation"] == GENERATION
+        assert accepted["instruction"] == keypair.sign(body)
+        assert accepted["key_id"] == keypair.key_id
         assert accepted["lease_id"] == 1
         assert accepted["manifest_digest"] == contracts.manifest_sha256(manifest)
         assert len(accepted["payload_digest"]) == 64
@@ -103,26 +116,36 @@ def test_owner_intent_is_atomically_bound_and_idempotently_replayed(tmp_path):
             key: value for key, value in accepted.items() if key != "event_seq"
         }
         assert store.verify_event_chain()
+
+        # Replaying identical signed bytes in another generation cannot rebind the request.
+        generation["value"] = "generation-s2-2"
+        with pytest.raises(StoreError) as raised:
+            _submit(supervisor, body, keypair)
+        assert raised.value.kind == "duplicate"
+        assert store._conn.execute(
+            "SELECT COUNT(*) FROM events WHERE kind = 'DISPATCH_INTENT_ACCEPTED'",
+        ).fetchone()[0] == 1
     finally:
         store.close()
 
 
 @pytest.mark.parametrize(
-    ("principal", "slot", "request_id", "expected_kind"),
+    ("principal", "slot", "expected_kind"),
     [
-        ("OtherOwner", "tests", "b" * 32, "epoch"),
-        ("Codex", "static", "c" * 32, "slot"),
-        ("Codex", "tests", "not-a-request-id", "argument"),
+        ("OtherOwner", "tests", "authorization"),
+        ("Codex", "static", "slot"),
     ],
 )
 def test_invalid_owner_slot_or_request_id_cannot_publish_an_intent(
-    tmp_path, principal, slot, request_id, expected_kind,
+    tmp_path, dispatch_instruction_keypair, principal, slot, expected_kind,
 ):
-    store, supervisor, _manifest, _epoch, _generation, body = _ready_dispatch_fixture(tmp_path)
+    store, supervisor, _manifest, _epoch, _generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
     try:
-        invalid = {**body, "slot": slot, "request_id": request_id}
+        invalid = {**body, "slot": slot}
         with pytest.raises(StoreError) as raised:
-            _submit(supervisor, invalid, principal=principal)
+            _submit(supervisor, invalid, keypair, principal=principal)
         assert raised.value.kind == expected_kind
         assert store._conn.execute(
             "SELECT COUNT(*) FROM events WHERE kind = 'DISPATCH_INTENT_ACCEPTED'",
@@ -132,12 +155,28 @@ def test_invalid_owner_slot_or_request_id_cannot_publish_an_intent(
         store.close()
 
 
-def test_reusing_request_id_with_changed_payload_is_refused(tmp_path):
-    store, supervisor, _manifest, _epoch, _generation, body = _ready_dispatch_fixture(tmp_path)
+def test_invalid_request_id_cannot_publish_an_intent(tmp_path, dispatch_instruction_keypair):
+    store, supervisor, _manifest, _epoch, _generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
     try:
-        _submit(supervisor, body)
+        with pytest.raises(ContractError, match="request_id"):
+            _submit(supervisor, {**body, "request_id": "not-a-request-id"}, keypair)
+        assert store._conn.execute(
+            "SELECT COUNT(*) FROM events WHERE kind = 'DISPATCH_INTENT_ACCEPTED'",
+        ).fetchone()[0] == 0
+    finally:
+        store.close()
+
+
+def test_reusing_request_id_with_changed_payload_is_refused(tmp_path, dispatch_instruction_keypair):
+    store, supervisor, _manifest, _epoch, _generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
+    try:
+        _submit(supervisor, body, keypair)
         with pytest.raises(StoreError) as raised:
-            _submit(supervisor, {**body, "slot": "other-tests"})
+            _submit(supervisor, {**body, "slot": "other-tests"}, keypair)
         assert raised.value.kind == "duplicate"
         assert store._conn.execute(
             "SELECT COUNT(*) FROM events WHERE kind = 'DISPATCH_INTENT_ACCEPTED'",
@@ -147,10 +186,14 @@ def test_reusing_request_id_with_changed_payload_is_refused(tmp_path):
         store.close()
 
 
-def test_supervisor_subscription_revalidates_generation_and_live_owner_lease(tmp_path):
-    store, supervisor, _manifest, _epoch, generation, body = _ready_dispatch_fixture(tmp_path)
+def test_supervisor_subscription_revalidates_generation_and_live_owner_lease(
+    tmp_path, dispatch_instruction_keypair,
+):
+    store, supervisor, _manifest, _epoch, generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
     try:
-        accepted = _submit(supervisor, body)
+        accepted = _submit(supervisor, body, keypair)
         current = supervisor.next_dispatch_intent(cursor=None, audience=AUDIENCE)
         assert current["intent"]["request_id"] == REQUEST_ID
         assert current["cursor_after"]["sequence"] == accepted["event_seq"]
@@ -170,10 +213,14 @@ def test_supervisor_subscription_revalidates_generation_and_live_owner_lease(tmp
         store.close()
 
 
-def test_supervisor_subscription_does_not_deliver_after_live_lease_is_released(tmp_path):
-    store, supervisor, manifest, epoch, _generation, body = _ready_dispatch_fixture(tmp_path)
+def test_supervisor_subscription_does_not_deliver_after_live_lease_is_released(
+    tmp_path, dispatch_instruction_keypair,
+):
+    store, supervisor, manifest, epoch, _generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
     try:
-        accepted = _submit(supervisor, body)
+        accepted = _submit(supervisor, body, keypair)
         store.release_lease(manifest["task_id"], "runner-1", epoch)
 
         result = supervisor.next_dispatch_intent(cursor=None, audience=AUDIENCE)
@@ -184,10 +231,14 @@ def test_supervisor_subscription_does_not_deliver_after_live_lease_is_released(t
         store.close()
 
 
-def test_dispatch_cursor_is_bound_to_mac_generation_and_subscriber(tmp_path):
-    store, supervisor, _manifest, _epoch, generation, body = _ready_dispatch_fixture(tmp_path)
+def test_dispatch_cursor_is_bound_to_mac_generation_and_subscriber(
+    tmp_path, dispatch_instruction_keypair,
+):
+    store, supervisor, _manifest, _epoch, generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
     try:
-        accepted = _submit(supervisor, body)
+        accepted = _submit(supervisor, body, keypair)
         token = store.make_dispatch_cursor(
             sequence=accepted["event_seq"],
             service_generation=GENERATION,
@@ -215,10 +266,14 @@ def test_dispatch_cursor_is_bound_to_mac_generation_and_subscriber(tmp_path):
     [StoreBusyError("database busy"), StoreError("event chain damaged", kind="integrity")],
     ids=["busy", "integrity"],
 )
-def test_subscription_propagates_systemic_store_errors_without_advancing_replay(tmp_path, monkeypatch, failure):
-    store, supervisor, _manifest, _epoch, _generation, body = _ready_dispatch_fixture(tmp_path)
+def test_subscription_propagates_systemic_store_errors_without_advancing_replay(
+    tmp_path, monkeypatch, failure, dispatch_instruction_keypair,
+):
+    store, supervisor, _manifest, _epoch, _generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
     try:
-        accepted = _submit(supervisor, body)
+        accepted = _submit(supervisor, body, keypair)
 
         def fail_basis(*_args, **_kwargs):
             raise failure
@@ -234,10 +289,14 @@ def test_subscription_propagates_systemic_store_errors_without_advancing_replay(
         store.close()
 
 
-def test_grant_forwarding_uses_exact_intent_and_replays_one_cached_grant(tmp_path, monkeypatch):
-    store, supervisor, manifest, epoch, _generation, body = _ready_dispatch_fixture(tmp_path)
+def test_grant_forwarding_uses_exact_intent_and_replays_one_cached_grant(
+    tmp_path, monkeypatch, dispatch_instruction_keypair,
+):
+    store, supervisor, manifest, epoch, _generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
     try:
-        _submit(supervisor, body)
+        _submit(supervisor, body, keypair)
         issued = []
         expected = {
             "task_id": manifest["task_id"], "slot": "tests", "attempt": 1,
@@ -259,22 +318,33 @@ def test_grant_forwarding_uses_exact_intent_and_replays_one_cached_grant(tmp_pat
         store.close()
 
 
-def test_supervisor_rpc_derives_principal_from_peer_and_limits_operations(tmp_path):
-    store, supervisor, _manifest, _epoch, _generation, body = _ready_dispatch_fixture(tmp_path)
+def test_supervisor_rpc_derives_principal_from_peer_and_limits_operations(
+    tmp_path, dispatch_instruction_keypair,
+):
+    store, supervisor, _manifest, _epoch, _generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
     try:
         api = SimpleNamespace(supervisor=supervisor)
+        instruction = keypair.sign(body)
         owner = SupervisorPeer(
             role="dispatch_owner", uid=1200, gid=1200,
             cgroup="/system.slice/vst-owner.service",
             operations=frozenset({"submit_dispatch_intent"}), principal="Codex",
         )
-        accepted = AuthenticatedSupervisorAPI._dispatch(api, "submit_dispatch_intent", body, owner)
+        accepted = AuthenticatedSupervisorAPI._dispatch(
+            api, "submit_dispatch_intent", {"instruction": instruction}, owner,
+        )
         assert accepted["principal"] == "Codex"
         assert "principal" not in body
 
         with pytest.raises(ContractError, match="not authorized"):
+            AuthenticatedSupervisorAPI._dispatch(api, "submit_dispatch_intent", body, owner)
+
+        with pytest.raises(ContractError, match="not authorized"):
             AuthenticatedSupervisorAPI._dispatch(
-                api, "submit_dispatch_intent", {**body, "principal": "Attacker"}, owner,
+                api, "submit_dispatch_intent",
+                {"instruction": instruction, "principal": "Attacker"}, owner,
             )
         dispatcher = SupervisorPeer(
             role="dispatcher", uid=1201, gid=1201,
@@ -282,7 +352,9 @@ def test_supervisor_rpc_derives_principal_from_peer_and_limits_operations(tmp_pa
             operations=frozenset({"issue_dispatch_grant", "next_dispatch_intent"}),
         )
         with pytest.raises(ContractError, match="not authorized"):
-            AuthenticatedSupervisorAPI._dispatch(api, "submit_dispatch_intent", body, dispatcher)
+            AuthenticatedSupervisorAPI._dispatch(
+                api, "submit_dispatch_intent", {"instruction": instruction}, dispatcher,
+            )
     finally:
         store.close()
 

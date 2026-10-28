@@ -171,6 +171,7 @@ try:
             "tools/vst/runner_fence.py", "tools/vst/dispatcher_service.py",
             "tools/vst/dispatch_instruction.py", "tools/vst/dispatch_owner_client.py",
             "tools/vst/dispatch_owner_service.py",
+            "tools/vst/dispatch_owner_latch.py",
             "tools/vst/systemd/vst-runner.service", "tools/vst/systemd/vst-signer.service",
             "tools/vst/systemd/vst-supervisor.service", "tools/vst/systemd/vst-dispatcher.service",
             "tools/vst/systemd/vst-dispatch-owner.service",

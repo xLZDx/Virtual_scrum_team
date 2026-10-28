@@ -1,6 +1,6 @@
 # Backlog
 
-## S2 — signed dispatch-instruction provenance and owner relay (change 0517 in progress)
+## S2 — signed dispatch-instruction provenance and owner relay (changes 0517–0518 in progress)
 
 GPT-PM's correlated adjudication selects a purpose-specific, operator-authorized signed envelope
 and requires independent verification in the root Supervisor before any durable intent event.
@@ -12,20 +12,22 @@ instruction-signing key generation/reuse, scheduler, account creation, root-conf
 migration application, service activation, real dispatch or E5 attestation is authorized by this
 decision. Source implementation and synthetic-fixture tests are authorized. S2 M01 remains
 MAJOR/OPEN until source review, a real authorized issuer and trust key, runtime evidence, and
-exact-head GPT-PM approval. The signed-instruction verifier/client is committed at `3fc010c`;
-the new owner relay, unit/socket templates, installer allowlist and non-secret provisioning-plan
-corrections are current uncommitted change 0517. PM's separate provisioning review returned MODIFY
-with two MAJOR and two MINOR findings; the exact correlation and remediation are in
-`docs/sdlc/evidence/s2-provisioning-plan-adjudication-20261029.md`. No tests or reviews of change
-0517 have run. Evidence: `docs/sdlc/evidence/s2-owner-instruction-provenance-adjudication-20261029.md`
-and `docs/sdlc/evidence/s2-dispatch-owner-service-contract-20261029.md`. Owner: Codex for the relay,
-plan and evidence; functional-test-reviewer/e2e-runner for mapped test authoring/execution after
-coding; GPT-PM for source and provisioning-plan adjudication; operator for any separately
-privileged runtime action and real signer-key custody. Next: finish and commit source, run designated
-mapped tests, review/fix source, then request exact-head code and plan gates. Keep production
-dispatch closed, S2 not approved, and S3 unstarted.
+exact-head GPT-PM approval. The signed-instruction verifier/client is committed at `3fc010c`; the
+owner relay, unit/socket templates, installer allowlist and plan corrections were committed as
+`978aa5b` (change 0517). GPT-PM's follow-up returned MODIFY with new MAJOR `S2-PROV-M03`: an active
+socket unit can reactivate the relay after an ambiguous Supervisor RPC. The correlated response and
+current remediation design are in `docs/sdlc/evidence/s2-admission-fence-adjudication-20261029.md`.
+Uncommitted change 0518 adds single-frame EOF enforcement, conservative unknown-outcome handling,
+a root `ExecStopPost` persistent admission fence, and updated provisioning/service contracts. M03
+remains OPEN pending mapped tests, direct regression review and focused PM re-adjudication. Test
+sources were updated for the 0518 EOF and lifecycle contract but have not run. Owners:
+Codex for code, plan and evidence; functional-test-reviewer/e2e-runner for mapped test authoring and
+execution after source freeze; GPT-PM for source/plan adjudication; operator for any separately
+privileged runtime action and real signer-key custody. Next: finish 0518, update mapped test source,
+then execute tests, review/fix, and request exact-head code and plan gates. Keep production dispatch
+closed, S2 not approved, and S3 unstarted.
 
-## S2 — root/runtime preparation correction (change 0517 in progress)
+## S2 — root/runtime preparation correction (changes 0517–0518 in progress)
 
 Read-only Ubuntu-24.04 inventory confirms services inactive, runtime config absent, and no
 dispatcher/owner/client identities. The 2026-10-29 `getent` rerun also found proposed UIDs 980/981
@@ -34,9 +36,11 @@ owner primary GID is now distinct from shared socket GID 984. The runtime symlin
 0777 symlink mode is not a permission issue. GPT-PM accepted correction of the mistaken target-mode
 interpretation and withdrew that permission blocker, while runtime acceptance remains unverified.
 No credentials or keys were read. The exact owner-service template and field-level config matrix
-are not yet accepted by GPT-PM; privileged provisioning remains unauthorized. Evidence:
+resolved the prior plan findings; new major `S2-PROV-M03` requires a persistent admission fence and
+focused re-adjudication. Privileged provisioning remains unauthorized. Evidence:
 `docs/sdlc/evidence/s2-root-runtime-provisioning-plan-20261028.md`,
-`docs/sdlc/evidence/s2-provisioning-plan-adjudication-20261029.md`, and GPT-PM correction request
+`docs/sdlc/evidence/s2-provisioning-plan-adjudication-20261029.md`,
+`docs/sdlc/evidence/s2-admission-fence-adjudication-20261029.md`, and GPT-PM correction request
 `e2ce2445-58d8-4c93-acd9-8bb536767f58`, reply `83e0dbcb-e0bd-5ad5-aa37-80198e03c8ba`. Owner: Codex for non-secret plan/config preparation;
 GPT-PM for exact plan review; operator for any separately authorized privileged provisioning and
 genuine signed E5/network-policy attestation. Next: finish source gate and exact non-secret config

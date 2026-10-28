@@ -24,11 +24,15 @@ provisioned or started by these files in the current coding pass.
   submits one exact intent under a root-owned principal mapping; Supervisor
   compares that authenticated principal with the live Store story owner.
 - `vst-dispatch-owner.service` is an unprivileged, socket-activated relay.
-  `vst-dispatch-owner.socket` accepts one bounded AF_UNIX request containing an exact signed
+  `vst-dispatch-owner.socket` accepts one bounded, single-frame AF_UNIX request containing an exact signed
   dispatch instruction. The relay validates its public signature and forwards the same envelope
-  to root Supervisor, which verifies it independently. It has no Store path, assignment authority,
-  task queue, retry loop, persistent writable data path, runner socket, private key, or network
-  family. Its private temporary directory exists only for bounded OpenSSL verification.
+  to root Supervisor, which verifies it independently. The unprivileged relay has no Store path,
+  assignment authority, task queue, retry loop, persistent writable data path, runner socket, private key, or network
+  family. Its private temporary directory exists only for bounded OpenSSL verification. Every
+  service termination runs a narrowly scoped root `ExecStopPost` helper that persists an admission
+  fence and stops the socket; startup refuses while the fence exists. Ambiguous Supervisor results
+  return `reconciliation_required` when possible, then exit without another request. Reopening
+  requires independent Store/request-ID reconciliation and a separately authorized root action.
 - A separate `vst-signer` identity serves the signer socket. Its primary GID
   is `988` so only the runner group can connect; its private signing key and
   replay ledger remain signer-owned.

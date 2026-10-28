@@ -942,3 +942,20 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Fix status: a distinct provisional owner primary GID, AF_UNIX socket-activated relay, unit
   templates and field-level config matrix are in source. They remain pending mapped tests,
   specialist review and GPT-PM re-review; no account or service was provisioned or activated.
+
+## 2026-10-29 — Socket activation needs its own fail-stop fence (change 0518)
+
+- Kind: RELIABILITY / DESIGN LESSON.
+- Facts: `Restart=no` suppresses automatic service restart but does not deactivate a separate
+  systemd `.socket`; an active socket can start the service again after an ambiguous RPC result.
+- Root cause: the initial relay contract treated service restart policy as admission control and did
+  not model the socket unit's independent lifecycle.
+- Layer that missed or caught it: GPT-PM's focused provisioning/source review found the gap before
+  runtime provisioning or activation.
+- Rule: trace service and socket unit state together. After an unconfirmed durable RPC, stop accepting
+  new requests, persist the fence before teardown completes, block both socket and service startup,
+  and require exact request-ID reconciliation before explicit recovery.
+- Fix status: source draft adds one-frame EOF enforcement, conservative ambiguous-outcome handling,
+  root `ExecStopPost` admission latch and startup conditions. Synthetic tests and independent
+  reliability/security reviews remain open; no runtime activation or privileged filesystem write
+  occurred.

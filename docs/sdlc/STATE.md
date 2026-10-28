@@ -262,3 +262,17 @@ Further exact-source review found invalid module paths in the retained WSL E3 an
 ## S2 corrected WSL runtime selectors — 2026-10-28 (change 0488)
 
 Designated e2e-runner executed the corrected six E3 and two synthetic POSIX identity selectors against source/test commit `d5001797cb94113efd9a8dc26e4a15f2dc130976`; three test-file hashes matched Git. First batch: 11 passed, one failed because the disposable archive root mode `0700` prevented a child identity from importing `tools`. The targeted selector passed after changing only that temporary root to `0755`; functional-test-reviewer confirmed 12 unique cases pass after this harness correction. Exact commands and the initial failure are preserved in `evidence/s2-corrected-wsl-runtime-selectors-20261028.md`. No service, identity, capability, credential or production provisioning occurred. E5, production dispatch, system boundary, capability-dependent selectors and E8 remain open; S2 stays NOT APPROVED.
+
+## S2 dispatch-owner admission fence — 2026-10-29 (change 0518 in progress)
+
+GPT-PM's correlated follow-up returned MODIFY with MAJOR `S2-PROV-M03`: `Restart=no` does not
+prevent an active socket unit from reactivating the owner relay after an ambiguous Supervisor RPC.
+Change 0518 drafts a single-frame EOF contract, classifies unconfirmed post-RPC outcomes as
+reconciliation-required, exits before another request, and adds a root persistent latch through
+`ExecStopPost` plus socket/service startup conditions. The latch requires exact request-ID/Store
+reconciliation before separately authorized reopening. Evidence and request correlation are in
+`evidence/s2-admission-fence-adjudication-20261029.md`; the source contract and provisioning plan
+were updated. Test-source reconciliation, execution, independent review, PM re-adjudication and
+exact-head source approval remain open. No tests/checks/builds, privileged writes, service
+activation, real dispatch, E5, push, PR or merge occurred. `S2-DISPATCH-M01` remains MAJOR/OPEN, S2
+remains NOT APPROVED, and S3 remains unstarted.

@@ -20,7 +20,9 @@ E5 attestation.
 
 ## Request and response boundary
 
-- Input is a bounded, length-prefixed canonical JSON object with exactly one field, `instruction`.
+- Input is one bounded, length-prefixed canonical JSON object with exactly one field,
+  `instruction`; the client must half-close its write side after that frame. Any trailing byte or
+  failure to observe EOF within the request timeout is refused before Supervisor RPC.
 - `instruction` is the exact v1 signed envelope; no principal, task, lease, worker, command, model,
   artifact, grant, or alternate endpoint is accepted outside that envelope.
 - The owner service validates the signed envelope against the root-owned public trust registry and
@@ -28,8 +30,9 @@ E5 attestation.
   socket. Supervisor verifies the same envelope again using its own root configuration.
 - Success returns the exact bounded Supervisor result. Refusal returns only a generic error code.
 - The service processes connections sequentially, with a fixed request timeout and bounded request
-  and response sizes. It stores no task state and performs no retries. A client must preserve the
-  original `request_id` when replaying; Store idempotency binds the complete envelope.
+  and response sizes. It stores no task state and performs no automatic retries. A client must
+  preserve the original `request_id` when reconciling; Store idempotency binds principal, service
+  generation, and the complete signed envelope.
 - The caller's Unix-socket group membership only permits reaching this relay. A valid instruction
   signature and Supervisor's live authority checks are still required for durable acceptance.
 
@@ -48,8 +51,36 @@ E5 attestation.
   capabilities, no private key, and no access to the runner socket. Its private temporary `/tmp`
   is used only by the existing OpenSSL verifier and disappears with the service. It can read only its root-controlled service
   config and public dispatch trust registry, and connect to the root Supervisor socket.
-- `Restart=no`; an ambiguous RPC outcome is not retried by the service. The caller receives a
-  refusal or connection failure and must reconcile using the existing Store/Supervisor evidence.
+- `Restart=no` alone is not the fail-stop boundary: an active `.socket` unit can reactivate a stopped
+  service. `ExecStopPost=+...dispatch_owner_latch.main` therefore runs as root after every service
+  termination, including an unexpected exit or failed start. It atomically creates the persistent
+  root-owned `/etc/vst-runner/dispatch-owner-admission-blocked.json` fence (root:root `0644`), then
+  requests that systemd stop `vst-dispatch-owner.socket`. Both the socket and service units have
+  `ConditionPathExists=!` for that fence, and the unprivileged service loader checks its existence
+  before accepting the inherited descriptor. An orderly service stop is also fenced until recovery;
+  only the operator, after the reviewed recovery procedure, may clear the file and reopen the socket.
+- Local framing, canonical-JSON, signature, expiry, principal, and trust-registry refusals occur
+  before Supervisor RPC. They return a generic refusal and do not fence admission. Once the verified
+  envelope is passed to `SupervisorClient`, every transport error, explicit error reply, malformed
+  response, timeout, lost connection, or response-binding mismatch is conservatively treated as
+  outcome-unknown: the relay returns `reconciliation_required` when possible and exits with code 75.
+  Systemd runs the root `ExecStopPost` fence before the service stop completes. A queued connection
+  may remain in the kernel backlog during teardown; after the latch is written, systemd stops the
+  socket, while any activation racing with teardown fails the service's latch check before RPC.
+  If stopping the socket fails, the persistent latch still prevents the service from processing a
+  request. If the persistent write fails, the helper still requests a same-boot socket stop and the
+  helper failure remains visible in the journal; host storage integrity is a provisioning/runtime
+  prerequisite, not proven by this source contract.
+- Reconciliation is explicit and must precede reopening. The operator inspects the exact
+  signed `request_id` in the verified Store `DISPATCH_INTENT_ACCEPTED` event and matching
+  `supervisor_operations` record, compares the complete envelope, principal, generation, payload
+  digest and result, then checks the dispatch subscription/grant state. Store commits the dispatch
+  event and idempotency result in one transaction. If present, do not replay it. If absent, do not
+  infer non-acceptance from the transport error; an independently authorized root recovery must
+  recheck current Store health, lease, owner epoch, preflight, expiry and generation before any
+  same-ID retry or replacement signed instruction. Recovery first stops the socket and verifies
+  it is inactive; only after reconciliation does the authorized operator remove the latch and
+  explicitly start the socket as separate logged root actions. No request is automatically replayed.
 
 ## Configuration and source of truth
 
@@ -72,8 +103,9 @@ key or config value is fabricated in source.
 
 ## Acceptance and review boundary
 
-Source acceptance requires review of exact socket activation, bounded framing, config ownership,
-signature validation, one-request behavior, error handling, and no retry/state/authority expansion.
+Source acceptance requires review of exact socket activation, bounded single-frame EOF framing,
+config ownership, signature validation, one-request behavior, every relay/socket termination path,
+persistent admission fencing, ambiguous RPC reconciliation, and no retry/state/authority expansion.
 Synthetic-key contract coverage is authored by `functional-test-reviewer` and executed by
 `e2e-runner` only after S2 coding is complete. The production path remains disabled until a genuine
 authorized signer and public key, exact authenticated OS identity, reviewed root configuration,

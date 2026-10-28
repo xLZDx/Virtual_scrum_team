@@ -3,6 +3,7 @@ Description=Virtual Scrum Team signed dispatch-owner relay
 After=local-fs.target vst-supervisor.service
 Requires=vst-supervisor.service
 RequiresMountsFor=/etc/vst-runner /opt/vst-runtime
+ConditionPathExists=!/etc/vst-runner/dispatch-owner-admission-blocked.json
 
 [Service]
 Type=simple
@@ -10,6 +11,7 @@ User=vst-dispatch-owner
 Group=vst-dispatch-owner
 SupplementaryGroups=vst-supervisor-client
 ExecStart=/usr/bin/python3.12 -I -S -c "import sys; sys.path.insert(0, '/opt/vst-runtime'); from tools.vst.dispatch_owner_service import main; main()"
+ExecStopPost=+/usr/bin/python3.12 -I -S -c "import sys; sys.path.insert(0, '/opt/vst-runtime'); from tools.vst.dispatch_owner_latch import main; main()"
 Restart=no
 TimeoutStartSec=15s
 TimeoutStopSec=15s

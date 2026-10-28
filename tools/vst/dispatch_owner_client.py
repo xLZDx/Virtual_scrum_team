@@ -9,6 +9,10 @@ from .contracts import ContractError
 from .dispatch_instruction import validate_dispatch_instruction, verify_dispatch_instruction
 
 
+class DispatchOutcomeUnknown(RuntimeError):
+    """Supervisor was called, but acceptance could not be proven to the relay."""
+
+
 class DispatchOwnerClient:
     """Client-side verifier; Supervisor repeats verification at the trust boundary."""
 
@@ -29,13 +33,20 @@ class DispatchOwnerClient:
             openssl_path=self.openssl_path,
         )
         # Preserve the exact parsed envelope: no caller-supplied principal or field projection.
-        result = self.transport.submit_dispatch_intent(instruction=verified["instruction"])
-        if not isinstance(result, dict) or "instruction" not in result:
-            raise ContractError("Supervisor returned a malformed dispatch-intent response")
-        accepted = validate_dispatch_instruction(result["instruction"])
-        if (accepted != verified["instruction"] or result.get("key_id") != accepted["key_id"]
-                or any(result.get(field) != accepted[field] for field in (
-                    "task_id", "slot", "attempt", "epoch", "run_id", "request_id",
-                ))):
-            raise ContractError("Supervisor response differs from the submitted signed instruction")
+        try:
+            result = self.transport.submit_dispatch_intent(instruction=verified["instruction"])
+            if not isinstance(result, dict) or "instruction" not in result:
+                raise ContractError("Supervisor returned a malformed dispatch-intent response")
+            accepted = validate_dispatch_instruction(result["instruction"])
+            if (accepted != verified["instruction"] or result.get("key_id") != accepted["key_id"]
+                    or any(result.get(field) != accepted[field] for field in (
+                        "task_id", "slot", "attempt", "epoch", "run_id", "request_id",
+                    ))):
+                raise ContractError(
+                    "Supervisor response differs from the submitted signed dispatch instruction"
+                )
+        except Exception as exc:
+            # Once the transport call starts, even an error or malformed reply may follow
+            # a durable append. An exception cannot prove that the request was not accepted.
+            raise DispatchOutcomeUnknown("Supervisor acceptance is not proven") from exc
         return result
