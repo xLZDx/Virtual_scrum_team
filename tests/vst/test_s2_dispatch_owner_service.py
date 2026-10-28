@@ -65,12 +65,14 @@ def _frame(payload: bytes) -> bytes:
 
 
 class _Supervisor:
-    def __init__(self, *, result=None, error=None, ack_error=None):
+    def __init__(self, *, result=None, error=None, ack_error=None, replay_result=None):
         self.calls = []
+        self.replay_calls = []
         self.ack_calls = []
         self.result = result
         self.error = error
         self.ack_error = ack_error
+        self.replay_result = replay_result
 
     def submit_dispatch_intent(self, **kwargs):
         self.calls.append(kwargs)
@@ -83,6 +85,10 @@ class _Supervisor:
         if self.ack_error is not None:
             raise self.ack_error
         return kwargs
+
+    def replay_dispatch_outcome(self, **kwargs):
+        self.replay_calls.append(kwargs)
+        return self.replay_result
 
 
 def _bound_result(envelope, key_id):
@@ -149,6 +155,97 @@ def test_relay_does_not_ack_when_local_response_forwarding_fails(dispatch_instru
     finally:
         server.close()
         client.close()
+
+
+def test_wrong_supervisor_result_principal_is_unknown_not_forwarded_or_acked(
+    dispatch_instruction_keypair,
+):
+    keypair = dispatch_instruction_keypair
+    envelope = keypair.sign(_fields())
+    result = {**_bound_result(envelope, keypair.key_id), "principal": "GPT-PM"}
+    supervisor = _Supervisor(result=result)
+    service = _service(keypair, supervisor)
+
+    response, outcome_unknown = _exchange(
+        service,
+        _frame(canonical_bytes({"instruction": envelope})),
+        include_status=True,
+    )
+
+    assert response == {"ok": False, "error": "reconciliation_required"}
+    assert outcome_unknown is True
+    assert supervisor.calls == [{"instruction": envelope}]
+    assert supervisor.replay_calls == [{"instruction": envelope}]
+    assert supervisor.ack_calls == []
+
+
+@pytest.mark.parametrize("invalidity", ["expired", "revoked"])
+def test_relay_recovers_expired_or_revoked_previously_accepted_result(
+    dispatch_instruction_keypair, invalidity,
+):
+    keypair = dispatch_instruction_keypair
+    if invalidity == "expired":
+        envelope = keypair.sign(_fields(), expires_at="2000-01-01T00:00:00Z")
+        registry = keypair.trust_registry
+    else:
+        envelope = keypair.sign(_fields())
+        registry = {}
+    historical_result = _bound_result(envelope, keypair.key_id)
+    supervisor = _Supervisor(replay_result=historical_result)
+    config = service_module.DispatchOwnerServiceConfig(
+        principal="Codex", openssl_path=keypair.openssl_path,
+        trust_registry=registry,
+    )
+    service = service_module.DispatchOwnerService(config, supervisor=supervisor)
+
+    response, outcome_unknown = _exchange(
+        service,
+        _frame(canonical_bytes({"instruction": envelope})),
+        include_status=True,
+    )
+
+    assert response == {"ok": True, "result": historical_result}
+    assert outcome_unknown is False
+    assert supervisor.calls == []
+    assert supervisor.replay_calls == [{"instruction": envelope}]
+    assert supervisor.ack_calls == [{
+        "request_id": historical_result["request_id"],
+        "payload_digest": historical_result["payload_digest"],
+        "event_seq": historical_result["event_seq"],
+        "result_sha256": hashlib.sha256(canonical_bytes(historical_result)).hexdigest(),
+        "service_generation": historical_result["service_generation"],
+    }]
+
+
+@pytest.mark.parametrize("invalidity", ["expired", "revoked"])
+def test_never_accepted_expired_or_revoked_instruction_never_reaches_admission(
+    dispatch_instruction_keypair, invalidity,
+):
+    keypair = dispatch_instruction_keypair
+    if invalidity == "expired":
+        envelope = keypair.sign(_fields(), expires_at="2000-01-01T00:00:00Z")
+        registry = keypair.trust_registry
+    else:
+        envelope = keypair.sign(_fields())
+        registry = {}
+    supervisor = _Supervisor()
+    config = service_module.DispatchOwnerServiceConfig(
+        principal="Codex", openssl_path=keypair.openssl_path,
+        trust_registry=registry,
+    )
+    service = service_module.DispatchOwnerService(config, supervisor=supervisor)
+
+    response, outcome_unknown = _exchange(
+        service,
+        _frame(canonical_bytes({"instruction": envelope})),
+        include_status=True,
+    )
+
+    assert response == {"ok": False, "error": "refused"}
+    assert outcome_unknown is False
+    assert supervisor.calls == []
+    assert supervisor.replay_calls == [{"instruction": envelope}]
+    assert supervisor.ack_calls == []
 
 
 def test_s2_owner_service_refuses_trailing_second_frame(dispatch_instruction_keypair):
@@ -376,7 +473,9 @@ def test_s2_supervisor_service_requires_fixed_shared_trust_registry_path(monkeyp
             {
                 "role": "dispatch_owner", "uid": 1200, "gid": 1200,
                 "cgroup": "/system.slice/vst-dispatch-owner.service",
-                "operations": ["submit_dispatch_intent", "ack_dispatch_intent"], "principal": "Codex",
+                "operations": [
+                    "submit_dispatch_intent", "replay_dispatch_outcome", "ack_dispatch_intent",
+                ], "principal": "Codex",
             },
             {
                 "role": "dispatcher", "uid": 1201, "gid": 1202,

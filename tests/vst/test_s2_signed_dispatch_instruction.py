@@ -212,11 +212,15 @@ def test_dispatch_owner_client_forwards_the_exact_signed_envelope(dispatch_instr
             return {
                 "instruction": kwargs["instruction"],
                 "key_id": keypair.key_id,
+                "principal": "Codex",
                 **_body(),
             }
 
         def ack_dispatch_intent(self, **kwargs):
             return kwargs
+
+        def replay_dispatch_outcome(self, **kwargs):
+            return None
 
     client = DispatchOwnerClient(
         principal="Codex", trust_registry=keypair.trust_registry,
@@ -249,7 +253,9 @@ def test_rpc_and_supervisor_independently_verify_before_store_acceptance(
     owner = SupervisorPeer(
         role="dispatch_owner", uid=1200, gid=1200,
         cgroup="/system.slice/vst-owner.service",
-        operations=frozenset({"submit_dispatch_intent"}), principal="Codex",
+        operations=frozenset({
+            "submit_dispatch_intent", "replay_dispatch_outcome", "ack_dispatch_intent",
+        }), principal="Codex",
     )
     api = SimpleNamespace(supervisor=supervisor)
     envelope = keypair.sign(body)
@@ -272,7 +278,9 @@ def test_legacy_unsigned_rpc_cannot_publish_an_intent(tmp_path, dispatch_instruc
     owner = SupervisorPeer(
         role="dispatch_owner", uid=1200, gid=1200,
         cgroup="/system.slice/vst-owner.service",
-        operations=frozenset({"submit_dispatch_intent"}), principal="Codex",
+        operations=frozenset({
+            "submit_dispatch_intent", "replay_dispatch_outcome", "ack_dispatch_intent",
+        }), principal="Codex",
     )
     try:
         with pytest.raises(ContractError, match="not authorized"):

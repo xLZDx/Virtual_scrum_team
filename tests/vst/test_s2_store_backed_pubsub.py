@@ -33,7 +33,7 @@ AUDIENCE = "997:990:/system.slice/vst-dispatcher.service"
 
 def _ready_dispatch_fixture(
     tmp_path, dispatch_instruction_keypair: DispatchInstructionKeyPair, *,
-    model_provenance_digest="d" * 64,
+    model_provenance_digest="d" * 64, anchor_path: str | None = None,
 ):
     clock = FakeClock(1000)
     manifest = base_manifest(
@@ -41,6 +41,7 @@ def _ready_dispatch_fixture(
     )
     store = Store(
         str(tmp_path / "dispatch.db"), clock, event_key=EVENT_KEY,
+        anchor_path=anchor_path,
     )
     store.init_slots(1)
     store.open_story(manifest["story_id"], manifest["project_id"], manifest["phase"])
@@ -177,6 +178,85 @@ def test_dispatch_outcome_ack_is_exact_idempotent_and_conflicts_fail_closed(
         store.close()
 
 
+@pytest.mark.parametrize("historical_status", ["expired", "revoked"])
+def test_verified_replay_returns_original_result_for_expired_or_revoked_acceptance(
+    tmp_path, dispatch_instruction_keypair, monkeypatch, historical_status,
+):
+    from datetime import datetime, timezone
+    from tools.vst import dispatch_instruction as instruction_module
+
+    store, supervisor, _manifest, _epoch, _generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
+    if historical_status == "expired":
+        instruction = keypair.sign(body, expires_at="2025-01-01T00:00:00Z")
+        original_verify = instruction_module.verify_dispatch_instruction
+
+        def verify_at_acceptance(*args, **kwargs):
+            kwargs["now"] = datetime(2024, 1, 1, tzinfo=timezone.utc)
+            return original_verify(*args, **kwargs)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(instruction_module, "verify_dispatch_instruction", verify_at_acceptance)
+            accepted = supervisor.accept_dispatch_intent(principal="Codex", instruction=instruction)
+    else:
+        instruction = keypair.sign(body)
+        accepted = supervisor.accept_dispatch_intent(principal="Codex", instruction=instruction)
+        # The key was trusted when the original event was accepted and is now revoked.
+        supervisor.dispatch_instruction_trust_keys = {}
+
+    before_anchor = store.event_anchor()
+    before_operations = store._conn.execute(
+        "SELECT COUNT(*) FROM supervisor_operations",
+    ).fetchone()[0]
+    before_events = store._conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+    try:
+        assert store.replay_dispatch_outcome(principal="Codex", instruction=instruction) == accepted
+        assert accepted["service_generation"] == GENERATION
+        peer = SupervisorPeer(
+            role="dispatch_owner", uid=1200, gid=1200,
+            cgroup="/system.slice/vst-owner.service",
+            operations=frozenset({
+                "submit_dispatch_intent", "replay_dispatch_outcome", "ack_dispatch_intent",
+            }),
+            principal="Codex",
+        )
+        via_rpc = AuthenticatedSupervisorAPI._dispatch(
+            SimpleNamespace(supervisor=supervisor), "replay_dispatch_outcome",
+            {"instruction": instruction}, peer,
+        )
+        assert via_rpc == accepted
+        assert store.event_anchor() == before_anchor
+        assert store._conn.execute("SELECT COUNT(*) FROM events").fetchone()[0] == before_events
+        assert store._conn.execute(
+            "SELECT COUNT(*) FROM supervisor_operations",
+        ).fetchone()[0] == before_operations
+    finally:
+        store.close()
+
+
+def test_replay_rejects_changed_principal_envelope_or_signature(
+    tmp_path, dispatch_instruction_keypair,
+):
+    store, supervisor, _manifest, _epoch, _generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
+    instruction = keypair.sign(body)
+    accepted = supervisor.accept_dispatch_intent(principal="Codex", instruction=instruction)
+    changed_envelope = keypair.sign({**body, "slot": "static"})
+    changed_key_id = {**instruction, "key_id": "different-key"}
+    first = "A" if instruction["signature"][0] != "A" else "B"
+    changed_signature = {**instruction, "signature": first + instruction["signature"][1:]}
+    try:
+        assert store.replay_dispatch_outcome(principal="GPT-PM", instruction=instruction) is None
+        assert store.replay_dispatch_outcome(principal="Codex", instruction=changed_envelope) is None
+        assert store.replay_dispatch_outcome(principal="Codex", instruction=changed_key_id) is None
+        assert store.replay_dispatch_outcome(principal="Codex", instruction=changed_signature) is None
+        assert store.replay_dispatch_outcome(principal="Codex", instruction=instruction) == accepted
+    finally:
+        store.close()
+
+
 def test_dispatch_owner_ack_rpc_is_restricted_to_authenticated_owner_role(
     tmp_path, dispatch_instruction_keypair,
 ):
@@ -190,16 +270,31 @@ def test_dispatch_owner_ack_rpc_is_restricted_to_authenticated_owner_role(
         dispatcher = SupervisorPeer(
             role="dispatcher", uid=1201, gid=1201,
             cgroup="/system.slice/vst-dispatcher.service",
-            operations=frozenset({"ack_dispatch_intent"}),
+            operations=frozenset({"replay_dispatch_outcome", "ack_dispatch_intent"}),
         )
         with pytest.raises(ContractError, match="not authorized"):
             AuthenticatedSupervisorAPI._dispatch(api, "ack_dispatch_intent", ack, dispatcher)
+        instruction = keypair.sign(body)
+        with pytest.raises(ContractError, match="not authorized"):
+            AuthenticatedSupervisorAPI._dispatch(
+                api, "replay_dispatch_outcome", {"instruction": instruction}, dispatcher,
+            )
         owner = SupervisorPeer(
             role="dispatch_owner", uid=1200, gid=1200,
             cgroup="/system.slice/vst-owner.service",
-            operations=frozenset({"submit_dispatch_intent", "ack_dispatch_intent"}),
+            operations=frozenset({
+                "submit_dispatch_intent", "replay_dispatch_outcome", "ack_dispatch_intent",
+            }),
             principal="Codex",
         )
+        assert AuthenticatedSupervisorAPI._dispatch(
+            api, "replay_dispatch_outcome", {"instruction": instruction}, owner,
+        ) == accepted
+        with pytest.raises(ContractError, match="not authorized"):
+            AuthenticatedSupervisorAPI._dispatch(
+                api, "replay_dispatch_outcome",
+                {"instruction": instruction, "principal": "GPT-PM"}, owner,
+            )
         assert AuthenticatedSupervisorAPI._dispatch(api, "ack_dispatch_intent", ack, owner) == ack
     finally:
         store.close()
@@ -218,6 +313,9 @@ def test_relay_ack_failure_preserves_store_pending_barrier_after_forwarding(
     class Transport:
         def submit_dispatch_intent(self, **kwargs):
             return supervisor.accept_dispatch_intent(principal="Codex", **kwargs)
+
+        def replay_dispatch_outcome(self, **kwargs):
+            return supervisor.replay_dispatch_outcome(principal="Codex", **kwargs)
 
         def ack_dispatch_intent(self, **_kwargs):
             raise StoreError("injected acknowledgement RPC failure", kind="busy")
@@ -248,6 +346,75 @@ def test_relay_ack_failure_preserves_store_pending_barrier_after_forwarding(
             state, pending = store._dispatch_outcome_state_locked(conn)
         assert state == "PENDING"
         assert pending["request_id"] == body["request_id"]
+    finally:
+        server.close()
+        client.close()
+        store.close()
+
+
+def test_replay_after_current_admission_refusal_acks_original_generation_without_retry(
+    tmp_path, dispatch_instruction_keypair,
+):
+    from tools.vst import dispatch_owner_service as owner_service
+
+    keypair = dispatch_instruction_keypair
+    store, supervisor, _manifest, _epoch, _generation, body, _keypair = _ready_dispatch_fixture(
+        tmp_path, keypair,
+    )
+    accepted = _submit(supervisor, body, keypair)
+
+    class Transport:
+        def __init__(self):
+            self.submit_calls = []
+            self.replay_calls = []
+            self.ack_calls = []
+
+        def submit_dispatch_intent(self, **kwargs):
+            self.submit_calls.append(kwargs)
+            raise StoreError("current admission refusal", kind="probe")
+
+        def replay_dispatch_outcome(self, **kwargs):
+            self.replay_calls.append(kwargs)
+            return supervisor.replay_dispatch_outcome(principal="Codex", **kwargs)
+
+        def ack_dispatch_intent(self, **kwargs):
+            self.ack_calls.append(kwargs)
+            return supervisor.ack_dispatch_intent(principal="Codex", **kwargs)
+
+    transport = Transport()
+    config = owner_service.DispatchOwnerServiceConfig(
+        principal="Codex", openssl_path=keypair.openssl_path,
+        trust_registry=keypair.trust_registry,
+    )
+    relay = owner_service.DispatchOwnerService(config, supervisor=transport)
+    instruction = keypair.sign(body)
+    payload = contracts.canonical_bytes({"instruction": instruction})
+    header = struct.Struct("!I")
+    server, client = socket.socketpair()
+    try:
+        client.sendall(header.pack(len(payload)) + payload)
+        client.shutdown(socket.SHUT_WR)
+        outcome_unknown = relay._handle(server)
+        response_size = header.unpack(client.recv(header.size))[0]
+        response_bytes = bytearray()
+        while len(response_bytes) < response_size:
+            chunk = client.recv(response_size - len(response_bytes))
+            assert chunk
+            response_bytes.extend(chunk)
+        response = json.loads(response_bytes)
+        assert response == {"ok": True, "result": accepted}
+        assert outcome_unknown is False
+        assert transport.submit_calls == [{"instruction": instruction}]
+        assert transport.replay_calls == [{"instruction": instruction}]
+        assert transport.ack_calls == [_ack_body(accepted)]
+        assert transport.ack_calls[0]["service_generation"] == accepted["service_generation"]
+        assert store._conn.execute(
+            "SELECT COUNT(*) FROM events WHERE kind='DISPATCH_INTENT_ACCEPTED'",
+        ).fetchone()[0] == 1
+        with store._read_tx() as conn:
+            state, pending = store._dispatch_outcome_state_locked(conn)
+        assert state == "ACKNOWLEDGED"
+        assert pending is None
     finally:
         server.close()
         client.close()
@@ -289,6 +456,74 @@ def test_pending_dispatch_barrier_survives_store_reopen(
         reopened.close()
 
 
+def test_supervisor_replays_pending_result_from_original_generation_after_rotation(
+    tmp_path, dispatch_instruction_keypair,
+):
+    store, supervisor, _manifest, _epoch, generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
+    instruction = keypair.sign(body)
+    try:
+        accepted_g1 = supervisor.accept_dispatch_intent(
+            principal="Codex", instruction=instruction,
+        )
+        assert accepted_g1["service_generation"] == GENERATION
+        generation["value"] = "generation-after-restart"
+
+        with pytest.raises(StoreError) as admission:
+            supervisor.accept_dispatch_intent(principal="Codex", instruction=instruction)
+        assert admission.value.kind == "duplicate"
+
+        replayed = supervisor.replay_dispatch_outcome(
+            principal="Codex", instruction=instruction,
+        )
+        assert replayed == accepted_g1
+        assert replayed["service_generation"] == GENERATION
+        assert store._conn.execute(
+            "SELECT COUNT(*) FROM events WHERE kind='DISPATCH_INTENT_ACCEPTED'",
+        ).fetchone()[0] == 1
+        assert supervisor.ack_dispatch_intent(
+            principal="Codex", **_ack_body(replayed),
+        ) == _ack_body(accepted_g1)
+        ack_note = json.loads(store._conn.execute(
+            "SELECT payload FROM events WHERE actor='supervisor' AND kind='NOTE' "
+            "AND payload LIKE '%DISPATCH_OWNER_OUTCOME_ACKNOWLEDGED%'",
+        ).fetchone()[0])
+        assert ack_note["service_generation"] == GENERATION
+        with store._read_tx() as conn:
+            state, pending = store._dispatch_outcome_state_locked(conn)
+        assert state == "ACKNOWLEDGED"
+        assert pending is None
+    finally:
+        store.close()
+
+
+@pytest.mark.skipif(
+    host_os.name != "posix",
+    reason="NOT_RUN: external-anchor reconciliation acceptance requires POSIX file locking",
+)
+def test_replay_refuses_incomplete_external_anchor_reconciliation(
+    tmp_path, dispatch_instruction_keypair,
+):
+    anchor_path = tmp_path / "dispatch.anchor"
+    store, supervisor, _manifest, _epoch, _generation, body, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair, anchor_path=str(anchor_path),
+    )
+    instruction = keypair.sign(body)
+    try:
+        supervisor.accept_dispatch_intent(principal="Codex", instruction=instruction)
+        anchor_lines = anchor_path.read_bytes().splitlines(keepends=True)
+        assert len(anchor_lines) > 1
+        # Keep a valid signed prefix but make it stale relative to the accepted event history.
+        anchor_path.write_bytes(b"".join(anchor_lines[:-1]))
+        with pytest.raises(StoreError) as raised:
+            supervisor.replay_dispatch_outcome(principal="Codex", instruction=instruction)
+        assert raised.value.kind == "integrity"
+        assert store._integrity_locked is True
+    finally:
+        store.close()
+
+
 def test_legacy_accepted_dispatch_is_unresolved_after_store_reopen(
     tmp_path, dispatch_instruction_keypair, monkeypatch,
 ):
@@ -322,6 +557,9 @@ def test_legacy_accepted_dispatch_is_unresolved_after_store_reopen(
                 service_generation=GENERATION,
             )
         assert raised.value.kind == "integrity"
+        with pytest.raises(StoreError) as replay_error:
+            reopened.replay_dispatch_outcome(principal="Codex", instruction=keypair.sign(body))
+        assert replay_error.value.kind == "integrity"
     finally:
         reopened.close()
 
@@ -358,6 +596,9 @@ def test_malformed_or_out_of_order_dispatch_outcome_history_fails_closed(
     try:
         assert reopened._integrity_locked is True
         assert reopened.reconciliation_complete is False
+        with pytest.raises(StoreError) as replay_error:
+            reopened.replay_dispatch_outcome(principal="Codex", instruction=keypair.sign(body))
+        assert replay_error.value.kind == "integrity"
     finally:
         reopened.close()
 
@@ -396,6 +637,11 @@ def test_dispatch_outcome_history_rejects_cross_request_ack_ordering(
     try:
         assert reopened._integrity_locked is True
         assert reopened.reconciliation_complete is False
+        with pytest.raises(StoreError) as replay_error:
+            reopened.replay_dispatch_outcome(
+                principal="Codex", instruction=keypair.sign(body_a),
+            )
+        assert replay_error.value.kind == "integrity"
         with pytest.raises(StoreError) as raised:
             reopened.accept_dispatch_intent(
                 principal="Codex", instruction=keypair.sign({**body_a, "request_id": "e" * 32}),
@@ -665,7 +911,9 @@ def test_supervisor_rpc_derives_principal_from_peer_and_limits_operations(
         owner = SupervisorPeer(
             role="dispatch_owner", uid=1200, gid=1200,
             cgroup="/system.slice/vst-owner.service",
-            operations=frozenset({"submit_dispatch_intent"}), principal="Codex",
+            operations=frozenset({
+                "submit_dispatch_intent", "replay_dispatch_outcome", "ack_dispatch_intent",
+            }), principal="Codex",
         )
         accepted = AuthenticatedSupervisorAPI._dispatch(
             api, "submit_dispatch_intent", {"instruction": instruction}, owner,
