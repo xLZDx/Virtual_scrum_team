@@ -278,8 +278,9 @@ point, but no latch guards a later explicit start and cross-reboot safety is not
 durable root-controlled `/etc` is required. Exact request-ID/Store reconciliation remains required
 before separately authorized reopening. Evidence and request correlation are in
 `evidence/s2-admission-fence-adjudication-20261029.md`; the source contract and provisioning plan
-were updated. `git diff --check` passed for the corrective source/docs before commit; application
-tests, unit validation and runtime behavior remain unverified pending the designated executor.
+were updated. `git diff --check` passed for the corrective source/docs before commit. The focused
+suite passed 107/107 on code/test revision `34bd7dc1b085789341b29937655af52e07f2ddbd`; the later
+`ac64402` changed docs only. Installed-unit validation and runtime behavior remain unverified.
 Independent re-review, PM re-adjudication and exact-head source approval remain open. No privileged
 writes, service activation, real dispatch, E5, push, PR or merge occurred. `S2-DISPATCH-M01` remains MAJOR/OPEN, S2
 remains NOT APPROVED, and S3 remains unstarted.

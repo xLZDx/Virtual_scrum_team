@@ -21,12 +21,13 @@ Change 0518 added single-frame EOF enforcement, conservative unknown-outcome han
 root `ExecStopPost` admission fence. Code and reliability reviews found that its asynchronous stop
 and filesystem-before-stop ordering could leave the listener available. Change 0522 corrects this:
 synchronous stop plus confirmed inactive state precedes `/etc` access; the hook retries with bounded
-per-call timeouts/backoff and has no systemd stop timeout. M03 remains OPEN pending rerun of mapped
-tests, direct regression review and focused PM re-adjudication. Test author updated lifecycle cases;
-the executor has not yet run them for 0522. Owners: Codex for source/docs/evidence; functional-test
-reviewer/e2e-runner for mapped test authorship/execution; GPT-PM for adjudication; operator for
-separately privileged runtime action and signer-key custody. Next: finish and commit 0522, execute
-tests, review/fix, then request focused PM and final exact-head gates. Keep production dispatch
+per-call timeouts/backoff and has no systemd stop timeout. M03 remains OPEN pending direct regression
+review and focused PM re-adjudication. The full mapped suite passed 107/107 at exact code/test
+revision `34bd7dc1b085789341b29937655af52e07f2ddbd`; test-source hashes and the later docs-only HEAD
+are reconciled in `docs/sdlc/evidence/s2-0522-latch-test-run-20261029.md`. Installed systemd behavior
+and runtime remain unverified. Owners: Codex for source/docs/evidence; functional-test-reviewer/e2e-runner for mapped test authorship/execution; GPT-PM for adjudication; operator for
+separately privileged runtime action and signer-key custody. Next: fresh code/reliability/security
+reviews, fix any valid findings, then request focused PM and final exact-head gates. Keep production dispatch
 closed, S2 not approved, and S3 unstarted.
 
 ## S2 — root/runtime preparation correction (changes 0517–0518 in progress)

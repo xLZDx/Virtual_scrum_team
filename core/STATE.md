@@ -521,11 +521,12 @@ persistence fails after confirmed stop, the socket is inactive at that point, bu
 later explicit start and cross-reboot safety is not established. The PM feedback and remediation draft are in
 `docs/sdlc/evidence/s2-admission-fence-adjudication-20261029.md` and the revised service contract.
 
-This remains source/design work only. No tests, checks, builds, CI, migration, account/group
-creation, `/etc` write, key operation, service activation, dispatch, E5 attestation, push, PR or merge
-was performed. `git diff --check` passed for the corrective source/docs before commit; application
-tests and systemd/runtime validation remain unverified. Change 0518 is committed; corrective change 0522 is in progress. The test author
-updated coverage for its half-close and lifecycle behavior; 0522 tests remain unrun. Independent specialist review and focused PM
+This remains source/design work only. The focused synthetic suite and `git diff --check` ran as
+recorded; no build, CI, migration, account/group creation, `/etc` write, key operation, service
+activation, dispatch, E5 attestation, push, PR or merge was performed. The 4-file focused suite
+passed 107/107 at code/test revision `34bd7dc1b085789341b29937655af52e07f2ddbd`.
+Installed systemd/runtime validation remains unverified. Changes 0522/0523 are committed. The test
+author updated coverage for the half-close and lifecycle behavior. Independent specialist review and focused PM
 re-adjudication remain open. A production issuer/public key, live authenticated OS identity, current source/runtime
 provenance and permitted runtime evidence remain absent/unverified. `S2-DISPATCH-M01` remains
 MAJOR/OPEN, S2 remains NOT APPROVED, and S3 remains unstarted.
