@@ -245,11 +245,17 @@ transient Store errors; no actionable BLOCKER/MAJOR remains in that reviewed sco
 found no BLOCKER/MAJOR and noted a MINOR O(n) full-history grant lookup; no workload evidence supports
 optimization yet. The production owner caller is still absent, so the data path is source-prepared
 but not end-to-end integrated. `S2-DISPATCH-M01` remains MAJOR/OPEN; no runtime pass is claimed.
-Schema upgrade remains opt-in and unapplied. No tests/checks were run in the source-review phase.
+Schema upgrade remains opt-in and unapplied. The first focused functional-test attempt at exact
+source HEAD `ec9aefe9444003a65af81f27eaf813b250e25c10` failed at collection due to a missing closing
+parenthesis in the peer-config predicate; zero test cases executed. Codex fixed it and the code
+reviewer rechecked the predicate; functional-test-reviewer owns the rerun. E2E is `NOT_RUN` because
+the production prerequisites are absent; exact reason is in
+`docs/sdlc/evidence/s2-pubsub-e2e-triage-ec9aefe-20261028.md`.
 
 Ordered closure:
 
-1. Functional-test-reviewer/e2e-runner define and run mapped tests against the reviewed source.
+1. Functional-test-reviewer reruns the focused source suite after the syntax fix is committed and
+   records each result. E2E remains `NOT_RUN` until its provisioned runtime prerequisites exist.
    Prohibited crash/process-kill/mutation/policy scenarios remain `NOT_RUN`.
 2. Codex prepares a root-owned authenticated owner caller path that does not add assignment
    authority; GPT-PM adjudicates any material architecture change. Until such a caller is deployed,

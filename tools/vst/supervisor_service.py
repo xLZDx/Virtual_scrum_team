@@ -723,7 +723,7 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
                 or frozenset(item["operations"]) != role_operations[item["role"]]
                 or len(item["operations"]) != len(set(item["operations"]))
                 or (role == "dispatch_owner" and (not isinstance(item.get("principal"), str)
-                                                   or not _PRINCIPAL_ID.fullmatch(item["principal"]))):
+                                                   or not _PRINCIPAL_ID.fullmatch(item["principal"])))):
             raise ContractError("Supervisor peer policy entry is malformed")
         peers.append(SupervisorPeer(
             role=item["role"], uid=item["uid"], gid=item["gid"], cgroup=item["cgroup"],

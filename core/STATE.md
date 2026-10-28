@@ -406,3 +406,14 @@ Next, the source diff is ready for mapped functional-test-reviewer/e2e-runner te
 execution. The schema-v6 migration still requires independent review and separate authorization
 before application. Root-owned config, fresh signed E5, production owner caller, and runtime dispatch
 remain unproven. Keep S2 active and S3 unstarted.
+
+## S2 pub/sub first test attempt — 2026-10-28 (change 0511)
+
+At source commit `ec9aefe9444003a65af81f27eaf813b250e25c10`, functional-test-reviewer attempted the
+focused pub/sub suite, but collection failed with a Python `SyntaxError` in the new peer-config
+predicate; zero test cases executed. Codex added the missing parenthesis, and code-reviewer
+re-reviewed that exact predicate with no further finding. The focused suite retry is pending. The
+assigned e2e-runner recorded production E2E as `NOT_RUN` because current root config/credentials,
+authenticated owner identity, current E5, installed runtime and active services are absent and
+outside the authorized test pass. Evidence: `docs/changes/0511-fix-s2-pubsub-config-syntax.md` and
+`docs/sdlc/evidence/s2-pubsub-e2e-triage-ec9aefe-20261028.md`. S2 remains active and S3 unstarted.
