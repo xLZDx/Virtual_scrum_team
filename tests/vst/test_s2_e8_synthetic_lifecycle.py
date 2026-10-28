@@ -7,6 +7,7 @@ acceptance.
 from __future__ import annotations
 
 import hashlib
+import tempfile
 
 import pytest
 
@@ -59,14 +60,14 @@ def _synthetic_probe(run_id: str, nonce: str) -> dict:
 
 
 @pytest.fixture(scope="module")
-def lifecycle_report(tmp_path_factory):
-    """Run the helper once in a disposable root and share its deterministic report."""
-    workdir = tmp_path_factory.mktemp("s2-e8-synthetic-lifecycle")
-    return slice_module.run_lifecycle_scenarios(
-        str(workdir),
-        probe_key=PROBE_KEY,
-        probe_provider=_synthetic_probe,
-    )
+def lifecycle_report():
+    """Run once in a disposable root and remove it even when pytest retains tmp_path."""
+    with tempfile.TemporaryDirectory(prefix="s2-e8-synthetic-lifecycle-") as workdir:
+        yield slice_module.run_lifecycle_scenarios(
+            workdir,
+            probe_key=PROBE_KEY,
+            probe_provider=_synthetic_probe,
+        )
 
 
 def test_report_explicitly_does_not_claim_real_e8_acceptance(lifecycle_report):
