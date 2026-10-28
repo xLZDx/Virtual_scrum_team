@@ -362,6 +362,50 @@ def test_malformed_or_out_of_order_dispatch_outcome_history_fails_closed(
         reopened.close()
 
 
+def test_dispatch_outcome_history_rejects_cross_request_ack_ordering(
+    tmp_path, dispatch_instruction_keypair, monkeypatch,
+):
+    store, supervisor, _manifest, _epoch, _generation, body_a, keypair = _ready_dispatch_fixture(
+        tmp_path, dispatch_instruction_keypair,
+    )
+    db_path = str(tmp_path / "dispatch.db")
+    try:
+        result_a = _submit(supervisor, body_a, keypair)
+        body_b = {**body_a, "request_id": "d" * 32}
+        with monkeypatch.context() as patch:
+            # Bypass only the admission-state decision so the hash-valid event sequence can
+            # represent the impossible legacy/interleaved history under review.
+            patch.setattr(store, "_dispatch_outcome_state_locked", lambda _conn: ("OPEN", None))
+            result_b = _submit(supervisor, body_b, keypair)
+
+        for result in (result_a, result_b):
+            binding = store._dispatch_outcome_binding(result)
+            with monkeypatch.context() as patch:
+                patch.setattr(
+                    store, "_dispatch_outcome_state_locked",
+                    lambda _conn, value=binding: ("PENDING", value),
+                )
+                supervisor.ack_dispatch_intent(
+                    principal="Codex", **_ack_body(result),
+                )
+        assert store.verify_event_chain()
+    finally:
+        store.close()
+
+    reopened = Store(db_path, event_key=EVENT_KEY)
+    try:
+        assert reopened._integrity_locked is True
+        assert reopened.reconciliation_complete is False
+        with pytest.raises(StoreError) as raised:
+            reopened.accept_dispatch_intent(
+                principal="Codex", instruction=keypair.sign({**body_a, "request_id": "e" * 32}),
+                service_generation=GENERATION,
+            )
+        assert raised.value.kind == "integrity"
+    finally:
+        reopened.close()
+
+
 def test_store_connection_sets_and_verifies_synchronous_full(
     tmp_path, dispatch_instruction_keypair,
 ):
