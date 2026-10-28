@@ -15,7 +15,10 @@ from tools.vst import dispatch_owner_service as service_module
 
 def test_s2_dispatch_owner_loader_refuses_existing_admission_latch(monkeypatch):
     reads = []
-    monkeypatch.setattr(service_module.os, "lexists", lambda path: path == service_module.DISPATCH_OWNER_ADMISSION_LATCH_PATH)
+    monkeypatch.setattr(
+        service_module.os.path, "lexists",
+        lambda path: path == service_module.DISPATCH_OWNER_ADMISSION_LATCH_PATH,
+    )
     monkeypatch.setattr(service_module, "_read_root_json", lambda *args, **kwargs: reads.append(args))
 
     with pytest.raises(ContractError, match="admission is blocked pending reconciliation"):

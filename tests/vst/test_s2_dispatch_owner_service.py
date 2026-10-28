@@ -318,6 +318,35 @@ def test_s2_supervisor_service_requires_fixed_shared_trust_registry_path(monkeyp
         "runner_lock_path": "/run/vst-runner/cgroup-admission.lock",
         "systemctl_path": "/usr/bin/systemctl",
         "dispatch_instruction_trust_registry_path": "/tmp/unshared-registry.json",
+        "run_id": "run-test",
+        "probe_nonce": "nonce-test",
+        "model_provenance": {"gpt-6-luna": "a" * 64},
+        "socket_gid": 1200,
+        "peers": [
+            {
+                "role": "dispatch_owner", "uid": 1200, "gid": 1200,
+                "cgroup": "/system.slice/vst-dispatch-owner.service",
+                "operations": ["submit_dispatch_intent"], "principal": "Codex",
+            },
+            {
+                "role": "dispatcher", "uid": 1201, "gid": 1202,
+                "cgroup": "/system.slice/vst-dispatcher.service",
+                "operations": ["issue_dispatch_grant", "next_dispatch_intent"],
+            },
+            {
+                "role": "runnerd", "uid": 997, "gid": 988,
+                "cgroup": "/system.slice/vst-runner.service",
+                "operations": [
+                    "claim", "claim_status", "reserve", "complete", "generation",
+                    "recover", "manifest", "previous_receipt", "no_execution",
+                ],
+            },
+            {
+                "role": "signer", "uid": 998, "gid": 988,
+                "cgroup": "/system.slice/vst-signer.service",
+                "operations": ["generation", "pending"],
+            },
+        ],
     })
     monkeypatch.setattr(supervisor_service, "_read_controlled_json", lambda *args, **kwargs: config)
     monkeypatch.setattr("tools.vst.execution_grant._trusted_root_file", lambda *args, **kwargs: None)
@@ -414,7 +443,8 @@ def test_s2_owner_service_public_key_requires_root_owner_group_and_mode(
     monkeypatch.setattr(service_module.os, "stat", fake_stat)
     monkeypatch.setattr(service_module.os, "open", lambda path, flags: 13)
     monkeypatch.setattr(service_module.os, "fstat", lambda fd: type("Info", (), {
-        "st_mode": stat.S_IFREG | metadata["mode"], "st_uid": metadata["uid"],
+        "st_mode": (stat.S_IFREG if metadata.get("regular", True) else stat.S_IFDIR)
+        | metadata["mode"], "st_uid": metadata["uid"],
         "st_gid": metadata["gid"], "st_size": 32,
     })())
     monkeypatch.setattr(service_module.os, "close", lambda fd: None)

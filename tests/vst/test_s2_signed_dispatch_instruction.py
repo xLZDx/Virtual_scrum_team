@@ -14,7 +14,7 @@ from tools.vst.dispatch_instruction import (
     validate_dispatch_instruction,
     verify_dispatch_instruction,
 )
-from tools.vst.store import StoreError
+from tools.vst.store import Store, StoreError
 from tools.vst.supervisor_service import AuthenticatedSupervisorAPI, SupervisorPeer
 from tests.vst.s2_dispatch_instruction_fixtures import DispatchInstructionKeyPair
 from tests.vst.test_s2_store_backed_pubsub import (
@@ -143,7 +143,7 @@ def test_expired_signed_instruction_is_refused(dispatch_instruction_keypair):
     [
         ("extra", "fields do not match"),
         ("missing", "fields do not match"),
-        ("noncanonical-time", "canonical UTC"),
+        ("noncanonical-time", "expiry is not canonical"),
         ("wrong-purpose", "algorithm or purpose"),
         ("wrong-algorithm", "algorithm or purpose"),
     ],
@@ -371,9 +371,20 @@ def test_legacy_unsigned_store_event_fails_closed_during_history_replay(
                 conn, body["task_id"], "Codex", "DISPATCH_INTENT_ACCEPTED", legacy_payload,
             )
 
-        with pytest.raises(StoreError, match="event binding is invalid"):
-            store.verify_event_chain()
+        assert store.verify_event_chain()
         with pytest.raises(StoreError):
             supervisor.issue_dispatch_intent_grant(request_id=body["request_id"])
+
+        database_path, event_key = store._path, store._event_key
+        store.close()
+        replayed = Store(database_path, event_key=event_key)
+        try:
+            with pytest.raises(
+                StoreError, match="stored dispatch intent event binding is invalid",
+            ):
+                replayed.startup_reconcile()
+            assert replayed._integrity_locked
+        finally:
+            replayed.close()
     finally:
         store.close()
