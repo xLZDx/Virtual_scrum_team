@@ -157,3 +157,7 @@ Clarified that the 53-selector policy family is S4 acceptance and was not part o
 ## S2 selector provenance correction — change 0485
 
 The two POSIX runner selector results are `NOT_VERIFIED` and `NOT_RUN` for acceptance: raw invocation/output were not retained, and one logged module path is incorrect. The dedicated capability profile is absent. Owner: Codex for evidence correction and coordination; operator for any separate operational provisioning. Next: retain as open until an exact safe profile and a new e2e-runner invocation produce command/output evidence.
+
+## S2 dispatch architecture decision — change 0486
+
+GPT-PM confirmed `S2-DISPATCH-M01` remains MAJOR/OPEN: keep production dispatch fail-closed until an existing trusted coordinator and authenticated caller are identified. No new scheduler, assignment authority, CLI, queue, spool or validation bypass is authorized. Owner: Codex for source review inside this repo; operator for an exact external source path if it exists; GPT-PM for any future architecture decision. Next: do not inspect neighboring checkouts; review only a specifically named source or preserve the blocker. Evidence: `docs/sdlc/evidence/s2-dispatch-architecture-adjudication-20261028.md`.

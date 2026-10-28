@@ -250,3 +250,7 @@ The 53-selector policy family belongs to S4, not this active S2 run. No S4 tests
 ## S2 selector provenance correction — 2026-10-28 (change 0485)
 
 The retained e2e-runner summary says two POSIX runner selectors skipped, but the verbatim command/output are unavailable and the recorded command names `test_runner_drops_uid_change_capabilities_before_worker_command` in the wrong module. Both selector results are therefore NOT_VERIFIED and NOT_RUN for acceptance. Do not infer a skip/pass from the summary. No rerun or capability provisioning occurred. Full correction: `evidence/s2-controlled-runtime-selectors-20261028.md`.
+
+## S2 dispatch architecture adjudication — 2026-10-28 (change 0486)
+
+GPT-PM confirmed that production dispatch stays disabled/fail-closed until an existing trusted coordinator and authenticated assignment identity are identified. No new scheduler, assignment authority, CLI, queue, spool or validation bypass is authorized. `S2-DISPATCH-M01` remains MAJOR/OPEN and S2 remains NOT APPROVED. Correlated PM Bridge request `fca31d62-2d04-4d22-9753-103b748b5ae9`, reply `73847bec-1421-53e7-8c8d-ffb98ef240e5`, job `a1d2be1d-1d39-4edc-a369-76772cb8587c`. Evidence: `evidence/s2-dispatch-architecture-adjudication-20261028.md`.

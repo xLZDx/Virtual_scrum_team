@@ -1176,3 +1176,7 @@ Record focused results and preserve skips as unverified. Windows E4 cleanup, WSL
 ## 2026-10-28 — Keep sprint selector denominators separate (change 0484)
 
 Decision: identify the 53-selector policy family as S4 acceptance, not S2. No S4 test or source work was authorized or performed in this S2 continuation. Keep the corrected S2 evidence and do not advance S4 before S2 closes. Owner: Codex for record accuracy and sprint sequencing.
+
+## 2026-10-28 — Keep S2 production dispatch disabled without an identified coordinator (change 0486)
+
+GPT-PM's correlated architecture adjudication confirmed Option A for `S2-DISPATCH-M01`: dispatch remains disabled/fail-closed until an existing trusted coordinator and authenticated assignment path are identified. No new assignment authority or production CLI/queue/spool is authorized. The decision leaves `S2-DISPATCH-M01` MAJOR/OPEN and S2 NOT APPROVED. Request `fca31d62-2d04-4d22-9753-103b748b5ae9`, reply `73847bec-1421-53e7-8c8d-ffb98ef240e5`, job `a1d2be1d-1d39-4edc-a369-76772cb8587c`. Evidence: `docs/sdlc/evidence/s2-dispatch-architecture-adjudication-20261028.md`.
