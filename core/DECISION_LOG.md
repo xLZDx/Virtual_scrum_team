@@ -1159,3 +1159,12 @@ CLI, spool, or assignment authority. This preserves the existing GPT-PM `NOT APP
 S2-only sequencing. Owner: Codex for the scope-bounded investigation; operator for naming any
 external source; GPT-PM for adjudicating any new architecture. Evidence:
 `docs/sdlc/evidence/s2-coordinator-source-scope-decision-20261028.md`.
+
+## 2026-10-28 — Keep S2 Windows containment unverified when no safe runtime selector exists (change 0482)
+
+The designated e2e-runner's read-only review found that the strict Windows launch-order test mocks
+the platform API and cannot prove real Job Object containment. The E4 descendant-cleanup selector
+depends on termination, which is outside the current authorization. Decision: run neither for the
+containment claim, retain `VST-013` as `PARTIAL / NOT_VERIFIED`, and leave process/descendant cases
+`NOT_RUN`. Owner: Codex records/coordinates; GPT-PM adjudicates alternatives; operator owns any
+scope exception. Evidence: `docs/sdlc/evidence/s2-windows-safe-selector-audit-20261028.md`.

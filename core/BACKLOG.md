@@ -133,3 +133,13 @@ NOT APPROVED. Owner: Codex for scoped review; operator for providing an exact ex
 for adjudicating any new architecture. Next: review the named source read-only if a path is
 provided; otherwise retain the blocker and keep S3 unstarted. Evidence:
 `docs/sdlc/evidence/s2-coordinator-source-scope-decision-20261028.md`.
+
+## S2 Windows containment evidence — change 0482
+
+The designated e2e-runner reviewed the remaining Windows containment selectors at source/test
+commit `d5001797cb94113efd9a8dc26e4a15f2dc130976` and found no permitted selector that proves real
+containment. The strict-launch test mocks Windows APIs; the real descendant test requires
+termination and is prohibited. No tests ran. `VST-013` stays `PARTIAL / NOT_VERIFIED`. Owner:
+Codex coordinates; GPT-PM adjudicates an alternative acceptance path; the operator owns any scope
+exception. Next: retain the blocker until a genuinely permitted runtime scenario exists. Evidence:
+`docs/sdlc/evidence/s2-windows-safe-selector-audit-20261028.md`.

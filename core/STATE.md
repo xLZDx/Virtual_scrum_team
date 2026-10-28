@@ -284,3 +284,7 @@ folder was inspected. `S2-DISPATCH-M01` remains MAJOR/OPEN; production dispatch 
 S2 remains NOT APPROVED. The operator can provide the exact path for the already authorized
 read-only review. Do not create a replacement scheduler, CLI, spool, or assignment authority
 without GPT-PM architecture adjudication. Evidence: `docs/sdlc/evidence/s2-coordinator-source-scope-decision-20261028.md`.
+
+## S2 Windows containment selector audit — 2026-10-28
+
+The designated e2e-runner found no Windows selector that proves real containment without crossing the process/descendant-termination restriction. Mocked strict-launch ordering is not runtime containment evidence; the real descendant selector remains `NOT_RUN`. `VST-013` stays `PARTIAL / NOT_VERIFIED`. Evidence: `docs/sdlc/evidence/s2-windows-safe-selector-audit-20261028.md`.

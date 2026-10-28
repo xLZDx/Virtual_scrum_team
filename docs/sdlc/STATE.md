@@ -234,3 +234,7 @@ A read-only selector triage by the designated e2e-runner found no further WSL/PO
 ## S2 coordinator source-scope decision — 2026-10-28 (change 0481)
 
 The operator delegated the coordinator-source question to Codex but supplied no repository or file path. Codex searched only this repository; existing records and source confirm no production call site is present here. No neighboring checkout or general folder was inspected, and no new scheduler, CLI, spool, or assignment authority was created. `S2-DISPATCH-M01` remains MAJOR/OPEN, the prior exact-head GPT-PM verdict remains `NOT APPROVED`, and S3 has not started. To resume read-only integration review, the operator must identify the exact external source path; if none exists, any proposed new architecture requires GPT-PM adjudication before implementation. Evidence: `evidence/s2-coordinator-source-scope-decision-20261028.md`.
+
+## S2 Windows containment selector audit — 2026-10-28 (change 0482)
+
+The designated `e2e-runner` found no remaining Windows selector that both proves real containment and avoids the current process/descendant-termination restriction. The strict-launch candidate mocks Windows APIs and proves ordering only; the real descendant test depends on termination and remains `NOT_RUN`. No tests ran. `VST-013` stays `PARTIAL / NOT_VERIFIED`; see `evidence/s2-windows-safe-selector-audit-20261028.md`.

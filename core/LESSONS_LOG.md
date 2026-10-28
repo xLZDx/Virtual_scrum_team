@@ -874,3 +874,9 @@ does not identify which external checkout is in scope. Search only the named rep
 an open acceptance blocker when the source is absent, and ask for a concrete path before reading
 another checkout. Do not fill the gap by creating a second assignment authority. Evidence:
 `docs/sdlc/evidence/s2-coordinator-source-scope-decision-20261028.md`.
+
+2026-10-28 — S2 containment evidence lesson (change 0482): a mocked OS API can prove launch
+ordering but cannot establish real platform containment. A real cleanup selector that crosses an
+explicit process-termination restriction cannot be used to fill that evidence gap. Keep the
+criterion NOT_VERIFIED and the restricted selector NOT_RUN until an allowed runtime contract is
+identified. Evidence: `docs/sdlc/evidence/s2-windows-safe-selector-audit-20261028.md`.
