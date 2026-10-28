@@ -1332,6 +1332,7 @@ class Store:
         if set(controls) - seen_ids:
             raise StoreError("dispatch outcome control has no accepted request", kind="integrity")
         pending_states: list[tuple[int, dict]] = []
+        protocol_order: list[tuple[int, int | None]] = []
         legacy = False
         for event_seq, payload, result_sha256, operation_seq in accepted:
             request_id = payload["request_id"]
@@ -1359,13 +1360,23 @@ class Store:
                         or {key: ack_note[key] for key in expected} != expected
                         or not pending_seq < ack_seq):
                     raise StoreError("dispatch acknowledgement does not bind its pending result", kind="integrity")
+                protocol_order.append((event_seq, ack_seq))
             else:
                 pending_states.append((event_seq, expected))
+                protocol_order.append((event_seq, None))
 
         if legacy:
-            if pending_states:
-                raise StoreError("dispatch history mixes legacy and pending protocols", kind="integrity")
+            if protocol_order:
+                raise StoreError("dispatch history mixes legacy and acknowledgement protocols", kind="integrity")
             return "LEGACY_UNRESOLVED", None
+        previous_ack_seq: int | None = None
+        for index, (event_seq, ack_seq) in enumerate(protocol_order):
+            if index and (previous_ack_seq is None or previous_ack_seq >= event_seq):
+                raise StoreError(
+                    "a dispatch was accepted before the previous outcome was acknowledged",
+                    kind="integrity",
+                )
+            previous_ack_seq = ack_seq
         if len(pending_states) > 1:
             raise StoreError("multiple dispatch outcomes remain pending", kind="integrity")
         if pending_states:
