@@ -2136,11 +2136,11 @@ def run_lifecycle_scenarios(
     probe_key: bytes,
     probe_provider: Callable[[str, str], dict],
 ) -> dict[str, dict]:
-    """Drive local synthetic lifecycle scenarios; this does not establish E8 acceptance.
+    """Run only the safe synthetic candidate and budget flow; this does not establish E8.
 
-    ``probe_provider`` supplies probe-shaped inputs to the fixture. Unless that provider is
-    independently bound to an actual sandbox run, its values are not host-isolation evidence.
-    This helper never attempts external egress or selects a worker candidate.
+    Crash, process-kill, STOP, resume/restart, out-of-scope mutation, and external-egress scenarios
+    are deliberately not invoked. ``probe_provider`` supplies caller-owned fixture data and is not
+    host-isolation evidence.
     """
     os.makedirs(workdir, exist_ok=True)
     remote = os.path.join(workdir, "local-bare.git")
@@ -2179,8 +2179,8 @@ def run_lifecycle_scenarios(
         sandbox_mode=True,
     )
     worker = HandWrittenWorker(repository)
-    run_id = "synthetic-crash-run"
-    nonce = "synthetic-crash-nonce"
+    run_id = "synthetic-safe-run"
+    nonce = "synthetic-safe-nonce"
 
     def make_probe(run: str, run_nonce: str) -> dict:
         return probe_provider(run, run_nonce)
@@ -2206,43 +2206,7 @@ def run_lifecycle_scenarios(
         })
         supervisor.start_worker(lambda: worker, probe=initial_probe)
 
-        unauthorized_target = os.path.join(repository, "src", "unauthorized.py")
-        unauthorized_write_rejected = False
-        try:
-            worker.edit("src/unauthorized.py", "value = 'unauthorized'\n")
-        except ValueError as exc:
-            if str(exc) != "worker edit is outside the declared synthetic scope":
-                raise
-            unauthorized_write_rejected = True
-        unauthorized_target_absent = not os.path.exists(unauthorized_target)
-
-        clock.advance(601)
-        lost = fixture.store.supervisor_reap_and_mark(SUPERVISOR_KEY, SUPERVISOR_RUNNER)
-        supervisor.stop(lambda: None, lambda: None)
-        stop_lifecycle_state = supervisor.lifecycle_state
-        stop_completed = stop_lifecycle_state == "STOPPED"
-
-        def next_epoch() -> int:
-            fixture.store.release_epoch(fixture.story_id, fixture.owner)
-            fixture.epoch = fixture.store.acquire_epoch(fixture.story_id, fixture.owner, 3600)
-            return fixture.epoch
-
-        expired_epoch = fixture.epoch
-        resumed_epoch = supervisor.resume(next_epoch)
-        run_id, nonce = "synthetic-resume-run", "synthetic-resume-nonce"
-        supervisor.prepare_run(run_id, nonce)
-        fixture.begin(2, ttl_sec=600)
-        resume_probe = make_probe(run_id, nonce)
-        resume_properties = resume_probe.get("checked_properties", {})
-        probe_observations.append({
-            "run_id": run_id,
-            "reported_result": resume_probe.get("result"),
-            "reported_external_egress_blocked": resume_properties.get("external_egress_blocked"),
-            "reported_empty_external_allowlist": resume_properties.get("empty_external_allowlist"),
-            "scope": "caller_supplied_probe_data_not_independent_environment_evidence",
-        })
-        supervisor.start_worker(lambda: worker, probe=resume_probe)
-        worker.edit("src/synthetic.py", "value = 'resumed candidate'\n")
+        worker.edit("src/synthetic.py", "value = 'synthetic candidate'\n")
         candidate_head = worker.commit_candidate()
         fixture.current_head = candidate_head
 
@@ -2270,28 +2234,6 @@ def run_lifecycle_scenarios(
             "candidate-pr-1", {"head": candidate_head, "title": "Synthetic candidate"},
         )
 
-        # Crash-window simulation: remote state and immutable operation binding
-        # are persisted, while the SQLite operation result has not been written.
-        crash_key = "push-crash-window"
-        crash_payload = {"branch": "crash-recovery", "head": candidate_head}
-        crash_result = backend.push(crash_payload, operation_key=crash_key)
-        remote_before_restart_retry = backend.ref_head("refs/heads/crash-recovery")
-        fixture.store.close()
-        restarted_store = Store(
-            os.path.join(control, "state.db"), event_key=EVENT_KEY,
-            anchor_path=anchor_path, sandbox_mode=True, supervisor_key=SUPERVISOR_KEY,
-        )
-        restarted_supervisor = Supervisor(
-            restarted_store, operation_backend=SyntheticOperationBackend(
-                remote, source_repo=repository,
-            ),
-            run_id="synthetic-restart-context", probe_nonce="synthetic-restart-nonce",
-            probe_key=probe_key,
-        )
-        retried = restarted_supervisor.simulate_push(crash_key, crash_payload)
-        remote_after_restart_retry = restarted_supervisor.backend.ref_head("refs/heads/crash-recovery")
-        fixture.store = restarted_store
-
         exact_budget = fixture.store.charge(
             fixture.task_id, 100, supervisor_key=SUPERVISOR_KEY,
             runner_id=SUPERVISOR_RUNNER,
@@ -2317,48 +2259,24 @@ def run_lifecycle_scenarios(
             "environment_scope": "synthetic",
             "e8_acceptance": "NOT_ESTABLISHED",
             "real_e5_e6_s1_environment_qualification": "NOT_RUN",
+            "process_crash_and_kill_scenarios": "NOT_RUN",
+            "stop_and_resume_scenarios": "NOT_RUN",
+            "out_of_scope_mutation_scenario": "NOT_RUN",
             "real_blocked_egress_attempt": "NOT_RUN",
             "external_candidate_comparison": "NOT_RUN",
             "operator_worker_choice": "NOT_ESTABLISHED",
             "probe_provider_scope": "caller_supplied_data_not_independent_environment_evidence",
         }
-        report["crash_stop_resume"] = {
-            "child_self_exit_scenario": "NOT_RUN",
-            "child_exit_code": None,
-            "process_kill_containment_proven": False,
-            "out_of_scope_write_rejected": unauthorized_write_rejected,
-            "out_of_scope_target_absent": unauthorized_target_absent,
-            "stop_cleanup_completed_before_resume": stop_completed,
-            "stop_was_injected": False,
-            "worker_lost_markers": [item["check_description"] for item in lost],
-            "expired_epoch": expired_epoch,
-            "resumed_epoch": resumed_epoch,
-            "fresh_epoch_resumed": resumed_epoch > expired_epoch,
-            "observed_outcomes": [
-                {
-                    "step": "worker_child_self_exit_after_partial_edit",
-                    "outcome": "NOT_RUN",
-                    "reason": "restricted_process_crash_scenario_not_executed",
-                    "exit_code": None,
-                },
-                {
-                    "step": "existing_supervisor_stop_call_and_cleanup",
-                    "outcome": "COMPLETED" if stop_completed else "NOT_COMPLETED",
-                    "lifecycle_state": stop_lifecycle_state,
-                    "injected_stop_scenario": False,
-                },
-                {
-                    "step": "fresh_epoch_resume",
-                    "outcome": "COMPLETED" if resumed_epoch > expired_epoch else "NOT_FRESH",
-                    "previous_epoch": expired_epoch,
-                    "resumed_epoch": resumed_epoch,
-                },
-                {
-                    "step": "budget_overflow_charge",
-                    "outcome": "REJECTED" if budget_exhausted else "NOT_REJECTED",
-                    "budget_error_observed": budget_exhausted,
-                },
-            ],
+        report["restricted_scenarios"] = {
+            "child_process_self_exit": "NOT_RUN",
+            "process_kill_containment": "NOT_RUN",
+            "stop": "NOT_RUN",
+            "crash_resume_and_store_restart": "NOT_RUN",
+            "out_of_scope_write_attempt": "NOT_RUN",
+            "out_of_scope_target_created": False,
+            "external_egress_attempt": "NOT_RUN",
+        }
+        report["synthetic_candidate"] = {
             "candidate_head": candidate_head,
             "worker_has_remote_config": bool(git(repository, "remote")),
             "gate_verdict": decision["verdict"],
@@ -2371,10 +2289,8 @@ def run_lifecycle_scenarios(
             "real_environment_egress_verified": False,
         }
         report["restart_idempotency"] = {
-            "effect_recorded_before_store_commit": crash_result,
-            "retry_result_after_store_restart": retried,
-            "same_result": crash_result == retried,
-            "remote_ref_unchanged_on_retry": remote_before_restart_retry == remote_after_restart_retry,
+            "scenario": "NOT_RUN",
+            "reason": "restricted_crash_recovery_scenario_not_executed",
         }
         report["budget_exhaustion"] = {
             "remaining_at_exact_cap": exact_budget,

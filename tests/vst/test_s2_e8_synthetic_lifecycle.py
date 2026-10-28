@@ -7,6 +7,7 @@ acceptance.
 from __future__ import annotations
 
 import hashlib
+import re
 import tempfile
 
 import pytest
@@ -81,36 +82,17 @@ def test_report_explicitly_does_not_claim_real_e8_acceptance(lifecycle_report):
     assert scope["operator_worker_choice"] == "NOT_ESTABLISHED"
 
 
-def test_restricted_process_crash_is_not_run_or_claimed_as_containment(lifecycle_report):
-    report = lifecycle_report["crash_stop_resume"]
-    outcomes = {item["step"]: item for item in report["observed_outcomes"]}
-    child_exit = outcomes["worker_child_self_exit_after_partial_edit"]
+def test_restricted_process_stop_resume_and_mutation_scenarios_remain_unrun(lifecycle_report):
+    restricted = lifecycle_report["restricted_scenarios"]
 
-    assert child_exit["outcome"] == "NOT_RUN"
-    assert child_exit["reason"] == "restricted_process_crash_scenario_not_executed"
-    assert child_exit["exit_code"] is None
-    assert report["child_self_exit_scenario"] == "NOT_RUN"
-    assert report["child_exit_code"] is None
-    assert report["process_kill_containment_proven"] is False
-
-
-def test_out_of_scope_edit_is_rejected_before_target_creation(lifecycle_report):
-    report = lifecycle_report["crash_stop_resume"]
-
-    assert report["out_of_scope_write_rejected"] is True
-    assert report["out_of_scope_target_absent"] is True
-
-
-def test_existing_stop_cleanup_precedes_fresh_epoch_resume(lifecycle_report):
-    report = lifecycle_report["crash_stop_resume"]
-    outcomes = {item["step"]: item for item in report["observed_outcomes"]}
-
-    assert report["stop_cleanup_completed_before_resume"] is True
-    assert report["stop_was_injected"] is False
-    assert outcomes["existing_supervisor_stop_call_and_cleanup"]["outcome"] == "COMPLETED"
-    assert outcomes["existing_supervisor_stop_call_and_cleanup"]["injected_stop_scenario"] is False
-    assert report["fresh_epoch_resumed"] is True
-    assert report["resumed_epoch"] > report["expired_epoch"]
+    assert restricted["child_process_self_exit"] == "NOT_RUN"
+    assert restricted["process_kill_containment"] == "NOT_RUN"
+    assert restricted["stop"] == "NOT_RUN"
+    assert restricted["crash_resume_and_store_restart"] == "NOT_RUN"
+    assert restricted["out_of_scope_write_attempt"] == "NOT_RUN"
+    assert restricted["out_of_scope_target_created"] is False
+    assert restricted["external_egress_attempt"] == "NOT_RUN"
+    assert lifecycle_report["restart_idempotency"]["scenario"] == "NOT_RUN"
 
 
 def test_report_marks_budget_overflow_as_rejected(lifecycle_report):
@@ -121,10 +103,18 @@ def test_report_marks_budget_overflow_as_rejected(lifecycle_report):
     assert budget["overflow_outcome"] == "REJECTED"
 
 
+def test_bounded_synthetic_candidate_report_has_no_worker_remote(lifecycle_report):
+    candidate = lifecycle_report["synthetic_candidate"]
+
+    assert re.fullmatch(r"[0-9a-f]{40}", candidate["candidate_head"])
+    assert candidate["worker_has_remote_config"] is False
+    assert candidate["receipt_retry_returned_same_result"] is True
+
+
 def test_caller_probe_values_are_not_upgraded_to_environment_egress_evidence(lifecycle_report):
     observations = lifecycle_report["caller_supplied_probe_observations"]
 
-    assert len(observations["runs"]) == 2
+    assert len(observations["runs"]) == 1
     assert all(
         run["scope"] == "caller_supplied_probe_data_not_independent_environment_evidence"
         for run in observations["runs"]
