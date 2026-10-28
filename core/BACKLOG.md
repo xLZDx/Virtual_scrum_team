@@ -169,3 +169,31 @@ The retained WSL E3, identity, and capability/timeout result summaries are `NOT_
 ## S2 corrected WSL E3 and identity selectors — change 0488
 
 The corrected six E3 and two synthetic identity selectors now have 12 passing cases after the one harness-only temporary-root permission issue was fixed and rerun. Exact commands, hashes, and the initial 11-pass/1-setup-failure result are preserved in `docs/sdlc/evidence/s2-corrected-wsl-runtime-selectors-20261028.md`. Owner: Codex for evidence; e2e-runner for execution; functional-test-reviewer for coverage. Next: retain capability/service, real E5, production dispatch and E8 gaps as open; no S3 before S2 closes.
+
+## S2 bounded synthetic helper — changes 0490–0503
+
+The safe local helper subtask is closed only for its bounded synthetic scope. At exact
+source/test head `0c7c31dc19181b80b6629d6ba0b13b1112eaf6a4`, `e2e-runner` passed 6/6 focused
+selectors; Python review found no remaining issue and the relevant security review found no issue.
+GPT-PM approved only this local helper subtask (request
+`f5ed34f1-34ef-4774-ac47-b4c2ad6b0343`, reply `d708b09a-c960-5a4d-bde4-9370c2e29e81`). Full
+E8/S2 remains NOT APPROVED. Evidence and limitations are in
+`docs/sdlc/evidence/s2-e8-safe-synthetic-run-0c7c31d-20261028.md` and
+`docs/sdlc/evidence/s2-gptpm-synthetic-helper-0c7c31d-20261028.md`.
+
+Still open for S2, in order:
+
+1. `S2-DISPATCH-M01`: the repository has no production coordinator callsite or authenticated
+   assignment source. The operator must provide the exact source path before any read-only review
+   outside this repository; GPT-PM has prohibited creating a replacement scheduler/authority.
+2. Current root-owned runner configuration, required credentials, signed current-run E5 and
+   provisioned sandbox provenance are absent. Operator owns provisioning/attestation; Codex
+   coordinates and `e2e-runner` executes only permitted scenarios.
+3. Remaining Windows/POSIX containment and E5/E8 system acceptance must be evidenced. Restricted
+   process/crash/kill, STOP, resume/restart, out-of-scope mutation and egress scenarios remain
+   `NOT_RUN` unless their policy gate changes; no waiver is inferred.
+4. After in-scope evidence is complete, Codex coordinates fresh exact-head specialist consensus
+   and GPT-PM final S2 gate. No S3, PR, merge or deployment before that gate.
+
+Owners: Codex — bounded implementation/evidence/coordination; operator — external coordinator
+source path and real environment/attestation; GPT-PM — architecture and final adjudication.

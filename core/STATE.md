@@ -312,3 +312,22 @@ Further exact-source review found invalid module paths in the retained WSL E3 an
 ## S2 corrected WSL runtime selectors — 2026-10-28 (change 0488)
 
 Designated e2e-runner executed the corrected six E3 and two synthetic POSIX identity selectors against source/test commit `d5001797cb94113efd9a8dc26e4a15f2dc130976`; three test-file hashes matched Git. First batch: 11 passed, one failed because the disposable archive root mode `0700` prevented a child identity from importing `tools`. The targeted selector passed after changing only that temporary root to `0755`; functional-test-reviewer confirmed 12 unique cases pass after this harness correction. Exact commands and the initial failure are preserved in `docs/sdlc/evidence/s2-corrected-wsl-runtime-selectors-20261028.md`. No service, identity, capability, credential or production provisioning occurred. E5, production dispatch, system boundary, capability-dependent selectors and E8 remain open; S2 stays NOT APPROVED.
+
+## S2 bounded synthetic helper — changes 0490–0503 (2026-10-28)
+
+The safe synthetic helper subtask is closed only for its bounded local scope. At exact source/test
+head `0c7c31dc19181b80b6629d6ba0b13b1112eaf6a4`, `e2e-runner` passed the six focused selectors
+(6 passed, 0 failed, 0 skipped; one non-blocking pytest-asyncio deprecation warning). The helper
+uses a fresh temporary workdir; the regression test confirms Store cleanup after Supervisor setup
+failure. Caller-supplied probe values remain explicitly synthetic. Process/crash/kill, STOP,
+resume/restart, out-of-scope mutation, egress, and real sandbox scenarios remain `NOT_RUN`; E8
+acceptance remains `NOT_ESTABLISHED`. Evidence: `docs/sdlc/evidence/s2-e8-safe-synthetic-run-0c7c31d-20261028.md`.
+
+Python reviewer at `0c7c31d` found no remaining issue; security reviewer at the prior safe-flow
+head found no security issue. GPT-PM approved this bounded helper only: request
+`f5ed34f1-34ef-4774-ac47-b4c2ad6b0343`, reply `d708b09a-c960-5a4d-bde4-9370c2e29e81`, job
+`ab32e225-48d7-4fc3-ac3e-c2d6eb076935`, user turn
+`eb16cd50-8d6a-4f83-8ee6-668518f83a61`. GPT-PM explicitly did not approve full S2/E8, production
+dispatch, PR, merge, deployment or any `NOT_RUN` scenario. The current full-S2 gate remains
+NOT APPROVED; `S2-DISPATCH-M01` remains MAJOR/OPEN. Full exact-head specialist consensus and final
+GPT-PM gate remain outstanding. Do not start S3.
