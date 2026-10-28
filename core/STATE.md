@@ -331,3 +331,15 @@ head found no security issue. GPT-PM approved this bounded helper only: request
 dispatch, PR, merge, deployment or any `NOT_RUN` scenario. The current full-S2 gate remains
 NOT APPROVED; `S2-DISPATCH-M01` remains MAJOR/OPEN. Full exact-head specialist consensus and final
 GPT-PM gate remain outstanding. Do not start S3.
+
+## S2 prerequisite absence confirmed — 2026-10-28
+
+The operator clarified that no existing production coordinator/authenticated assignment source
+exists yet, and that root-owned runner configuration, credentials, current signed E5, and sandbox
+provenance do not exist yet. These are absent project prerequisites, not artifacts the operator is
+being asked to locate. No secret or path was requested or provided. Production dispatch remains
+disabled; `S2-DISPATCH-M01` stays MAJOR/OPEN and S2 stays NOT APPROVED. GPT-PM architecture/scope
+adjudication is pending under PM Bridge request `c775dfb6-563b-4c9c-a589-ddd694c359ab`; Codex owns
+coordination, GPT-PM owns the decision, and the operator has no action unless future real provisioning
+or scope expansion is explicitly chosen. Do not start S3. Evidence:
+`docs/sdlc/evidence/s2-prerequisite-absence-confirmation-20261028.md`.

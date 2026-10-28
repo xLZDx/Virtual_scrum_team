@@ -197,3 +197,14 @@ Still open for S2, in order:
 
 Owners: Codex — bounded implementation/evidence/coordination; operator — external coordinator
 source path and real environment/attestation; GPT-PM — architecture and final adjudication.
+
+## S2 prerequisite absence confirmed — 2026-10-28
+
+The operator clarified that there is no existing production coordinator/authenticated assignment
+source yet and no root-owned runner configuration, credentials, current signed E5, or sandbox
+provenance yet. Do not ask the operator to provide nonexistent paths or paste secrets. Keep
+production dispatch fail-closed and `S2-DISPATCH-M01` MAJOR/OPEN. Codex owns the architecture
+clarification request; GPT-PM decides whether S2 remains blocked or its scope/DoD is formally
+revised. Operator has no immediate action. PM Bridge request `c775dfb6-563b-4c9c-a589-ddd694c359ab`
+is pending. No S3 until the current sprint is formally closed. Evidence:
+`docs/sdlc/evidence/s2-prerequisite-absence-confirmation-20261028.md`.
