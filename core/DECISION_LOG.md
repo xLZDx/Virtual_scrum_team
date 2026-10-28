@@ -1147,3 +1147,15 @@ Change 0479 documents observed no-replace deployment behavior: the installer ref
 ## 2026-10-28 — S2 safe WSL remainder audit (no tests run)
 
 At source/test HEAD `d5001797cb94113efd9a8dc26e4a15f2dc130976`, the designated e2e-runner's read-only selector triage found no further WSL/POSIX test that fits current restrictions. It ran no tests and changed no files. Key/worker scenarios require missing root config/credentials; fixture-write selectors are not separable from the active mutation boundary in this bounded pass; E4 selectors are prohibited; remaining runtime work requires service activation/manifest/E5. Exact reasons are in `docs/sdlc/evidence/s2-safe-wsl-remainder-audit-d500-20261028.md`. Owner: operator for root configuration/credentials and any exact scenario authorization; Codex coordinates; e2e-runner executes only permitted authorized tests. Keep S2 blocked and selectors `NOT_RUN`.
+
+# 2026-10-28 — Keep S2 coordinator-source review in the named repository (change 0481)
+
+Decision: Codex will not inspect neighboring checkouts or general-purpose folders to guess which
+production coordinator the operator meant. The operator's response delegated the decision but did
+not provide an exact source path; the existing read-only authorization applies only once a source is
+identified. The scoped repository already records that no production coordinator call site exists.
+Keep `S2-DISPATCH-M01` MAJOR/OPEN and production dispatch unaccepted; do not create a new scheduler,
+CLI, spool, or assignment authority. This preserves the existing GPT-PM `NOT APPROVED` verdict and
+S2-only sequencing. Owner: Codex for the scope-bounded investigation; operator for naming any
+external source; GPT-PM for adjudicating any new architecture. Evidence:
+`docs/sdlc/evidence/s2-coordinator-source-scope-decision-20261028.md`.

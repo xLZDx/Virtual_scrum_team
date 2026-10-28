@@ -230,3 +230,7 @@ The non-blocking reliability-review follow-up is documented: the installer refus
 ## S2 permitted WSL remainder checked — 2026-10-28 (change 0480)
 
 A read-only selector triage by the designated e2e-runner found no further WSL/POSIX scenario that fits the current safety boundary; no tests were run. Root config/credentials, service activation, worker launch and E5 remain absent or unauthorized, while E4 and restricted selector families stay `NOT_RUN`. The operator owns the exact prerequisite/authorization; Codex coordinates. S2 remains blocked. See `evidence/s2-safe-wsl-remainder-audit-d500-20261028.md`.
+
+## S2 coordinator source-scope decision — 2026-10-28 (change 0481)
+
+The operator delegated the coordinator-source question to Codex but supplied no repository or file path. Codex searched only this repository; existing records and source confirm no production call site is present here. No neighboring checkout or general folder was inspected, and no new scheduler, CLI, spool, or assignment authority was created. `S2-DISPATCH-M01` remains MAJOR/OPEN, the prior exact-head GPT-PM verdict remains `NOT APPROVED`, and S3 has not started. To resume read-only integration review, the operator must identify the exact external source path; if none exists, any proposed new architecture requires GPT-PM adjudication before implementation. Evidence: `evidence/s2-coordinator-source-scope-decision-20261028.md`.

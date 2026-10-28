@@ -1,6 +1,6 @@
 # Virtual Scrum Team - current state (read first)
 
-Last updated: 2026-10-27. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
+Last updated: 2026-10-28. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
 
 ## S2 Windows ACL and signer boundary design — 2026-10-27
 
@@ -275,3 +275,12 @@ Change 0479 closed the non-blocking documentation follow-up from the reliability
 ## S2 safe WSL remainder audit — 2026-10-28
 
 The designated e2e-runner reviewed remaining POSIX/WSL candidates at source/test HEAD `d5001797cb94113efd9a8dc26e4a15f2dc130976` and found none that can run within the active restrictions. No test ran. Candidate limits and exact dependencies are in `docs/sdlc/evidence/s2-safe-wsl-remainder-audit-d500-20261028.md`. The operator owns root Runner config/credentials and authorization for worker/service scenarios; Codex coordinates. S2 remains NOT APPROVED; no S3.
+
+# S2 coordinator source decision — 2026-10-28
+
+Codex resolved the operator's delegation without widening repository scope: the exact source path
+for the existing production coordinator was not supplied, so no neighboring checkout or general
+folder was inspected. `S2-DISPATCH-M01` remains MAJOR/OPEN; production dispatch is not accepted and
+S2 remains NOT APPROVED. The operator can provide the exact path for the already authorized
+read-only review. Do not create a replacement scheduler, CLI, spool, or assignment authority
+without GPT-PM architecture adjudication. Evidence: `docs/sdlc/evidence/s2-coordinator-source-scope-decision-20261028.md`.

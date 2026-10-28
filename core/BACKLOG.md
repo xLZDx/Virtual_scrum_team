@@ -122,3 +122,14 @@ GPT-PM's exact-revision gate returned `NOT APPROVED`: request `7c9fcb10-61cc-4fd
 ## 2026-10-28 — S2 safe WSL remainder (change 0480)
 
 The designated `e2e-runner` read-only audit at source/test HEAD `d5001797cb94113efd9a8dc26e4a15f2dc130976` found no additional WSL selector that can run within the current restrictions. No tests were executed. The key/worker, temporary-write, E4 containment and service-dependent candidates remain `NOT_RUN` or blocked for the exact reasons in `docs/sdlc/evidence/s2-safe-wsl-remainder-audit-d500-20261028.md`. The operator owns root Runner configuration/credentials and any required authorization for those scenarios; Codex coordinates; `e2e-runner` runs only newly authorized selectors. S2 stays blocked and S3 does not start.
+
+# S2 coordinator source path — scope decision (change 0481)
+
+The operator delegated the decision but did not identify an external repository/file. Codex
+searched only `D:\Repo\Virtual_scrum_team`; no production coordinator call site exists in the
+in-scope source/records. Do not search neighboring checkouts and do not create a substitute
+assignment authority. `S2-DISPATCH-M01` remains MAJOR/OPEN and the GPT-PM S2 gate remains
+NOT APPROVED. Owner: Codex for scoped review; operator for providing an exact external path; GPT-PM
+for adjudicating any new architecture. Next: review the named source read-only if a path is
+provided; otherwise retain the blocker and keep S3 unstarted. Evidence:
+`docs/sdlc/evidence/s2-coordinator-source-scope-decision-20261028.md`.
