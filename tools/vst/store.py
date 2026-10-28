@@ -1347,14 +1347,14 @@ class Store:
                 "result_sha256": result_sha256, "service_generation": payload["service_generation"],
             }
             pending_seq, pending_task_id, pending_note = bucket["pending"][0]
-            if (pending_task_id != f"dispatch-owner-outcome:{request_id}:pending"
+            if (pending_task_id != "__control__"
                     or pending_note["event_id"] != f"dispatch-owner-outcome:{request_id}:pending"
                     or {key: pending_note[key] for key in expected} != expected
                     or not event_seq < operation_seq < pending_seq):
                 raise StoreError("dispatch pending control does not bind the accepted result", kind="integrity")
             if bucket["ack"]:
                 ack_seq, ack_task_id, ack_note = bucket["ack"][0]
-                if (ack_task_id != f"dispatch-owner-outcome:{request_id}:acknowledged"
+                if (ack_task_id != "__control__"
                         or ack_note["event_id"] != f"dispatch-owner-outcome:{request_id}:acknowledged"
                         or {key: ack_note[key] for key in expected} != expected
                         or not pending_seq < ack_seq):
