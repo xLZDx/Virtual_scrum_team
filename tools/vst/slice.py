@@ -2185,6 +2185,7 @@ def run_lifecycle_scenarios(
     supervisor = Supervisor(
         fixture.store, operation_backend=backend, failure_threshold=2,
         run_id=run_id, probe_nonce=nonce, probe_key=probe_key,
+        operator_key=OPERATOR_KEY,
     )
     report: dict[str, dict] = {}
     probe_observations: list[dict[str, Any]] = []
@@ -2212,13 +2213,6 @@ def run_lifecycle_scenarios(
             unauthorized_write_rejected = True
         unauthorized_target_absent = not os.path.exists(unauthorized_target)
 
-        child_self_exit_observed = False
-        try:
-            worker.crash_mid_edit()
-        except RuntimeError as exc:
-            if str(exc) != "synthetic worker child exited during edit (exit code 97)":
-                raise
-            child_self_exit_observed = True
         clock.advance(601)
         lost = fixture.store.supervisor_reap_and_mark(SUPERVISOR_KEY, SUPERVISOR_RUNNER)
         supervisor.stop(lambda: None, lambda: None)
@@ -2326,8 +2320,8 @@ def run_lifecycle_scenarios(
             "probe_provider_scope": "caller_supplied_data_not_independent_environment_evidence",
         }
         report["crash_stop_resume"] = {
-            "child_self_exit_observed_during_partial_edit": child_self_exit_observed,
-            "child_exit_code": 97 if child_self_exit_observed else None,
+            "child_self_exit_scenario": "NOT_RUN",
+            "child_exit_code": None,
             "process_kill_containment_proven": False,
             "out_of_scope_write_rejected": unauthorized_write_rejected,
             "out_of_scope_target_absent": unauthorized_target_absent,
@@ -2340,8 +2334,9 @@ def run_lifecycle_scenarios(
             "observed_outcomes": [
                 {
                     "step": "worker_child_self_exit_after_partial_edit",
-                    "outcome": "OBSERVED" if child_self_exit_observed else "NOT_OBSERVED",
-                    "exit_code": 97 if child_self_exit_observed else None,
+                    "outcome": "NOT_RUN",
+                    "reason": "restricted_process_crash_scenario_not_executed",
+                    "exit_code": None,
                 },
                 {
                     "step": "existing_supervisor_stop_call_and_cleanup",

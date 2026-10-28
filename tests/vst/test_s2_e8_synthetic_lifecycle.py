@@ -80,14 +80,16 @@ def test_report_explicitly_does_not_claim_real_e8_acceptance(lifecycle_report):
     assert scope["operator_worker_choice"] == "NOT_ESTABLISHED"
 
 
-def test_child_self_exit_is_not_reported_as_process_kill_containment(lifecycle_report):
+def test_restricted_process_crash_is_not_run_or_claimed_as_containment(lifecycle_report):
     report = lifecycle_report["crash_stop_resume"]
     outcomes = {item["step"]: item for item in report["observed_outcomes"]}
     child_exit = outcomes["worker_child_self_exit_after_partial_edit"]
 
-    assert child_exit["outcome"] == "OBSERVED"
-    assert child_exit["exit_code"] == 97
-    assert report["child_self_exit_observed_during_partial_edit"] is True
+    assert child_exit["outcome"] == "NOT_RUN"
+    assert child_exit["reason"] == "restricted_process_crash_scenario_not_executed"
+    assert child_exit["exit_code"] is None
+    assert report["child_self_exit_scenario"] == "NOT_RUN"
+    assert report["child_exit_code"] is None
     assert report["process_kill_containment_proven"] is False
 
 

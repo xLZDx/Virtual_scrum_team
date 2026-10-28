@@ -3,8 +3,9 @@
 ## Goal
 
 Make the existing local E8 lifecycle harness executable and give it explicit outcomes for the
-synthetic scenarios it can safely prove, without representing those outcomes as real sandbox or
-E8 acceptance. The active source is `tools/vst/slice.py` (`HandWrittenWorker` and
+synthetic scenarios it can safely prove, while restricted process/crash scenarios remain `NOT_RUN`
+and no outcome is represented as real sandbox or E8 acceptance. The active source is
+`tools/vst/slice.py` (`HandWrittenWorker` and
 `run_lifecycle_scenarios`); `tests/vst/test_s2_sandbox_probe.py` currently has six unconditional
 E8 skips because real sandbox evidence is absent.
 
@@ -31,9 +32,9 @@ egress evidence and operator decision required by the S2 plan.
 ## Design
 
 - Extend only `run_lifecycle_scenarios` and its existing synthetic worker helpers.
-- Return explicit booleans/results for child crash observation, STOP completion before resume,
-  fresh-epoch resume, budget rejection and an attempted out-of-scope write rejected before any
-  file is created.
+- Return explicit results for the restricted child-crash scenario (`NOT_RUN`), existing STOP
+  cleanup, fresh-epoch resume, budget rejection and an attempted out-of-scope write rejected before
+  any file is created.
 - Record the probe properties that the supplied signed probe actually asserts, but label the
   provider as caller-supplied; synthetic probe fixtures are not host-boundary evidence.
 - Mark candidate comparison, real blocked-egress attempt and operator choice as unavailable in
@@ -50,6 +51,8 @@ egress evidence and operator decision required by the S2 plan.
   not exist after rejection and confine it to the temporary fixture.
 - A fabricated probe callback could be mistaken for E5; label it caller-supplied and make no
   environment assertion from it.
+- Do not invoke the child's `os._exit(97)` path in this focused run: it is a process/crash scenario
+  outside the accepted S2 runtime scope. Keep process-kill containment unproven.
 - No real network probe, external candidate, persistent service, key or credential is used.
 
 ## Verification plan
