@@ -137,6 +137,19 @@ service cgroup, public grant-key ring, OpenSSL path, audience, and Supervisor
 socket. The worker receives neither the signer group nor the supervisor-client
 group.
 
+## Dispatcher failure handling
+
+`vst-dispatcher.service` uses `Restart=no`. An uncaught Supervisor RPC, Store,
+grant, or runner error stops delivery and is emitted to the service journal; the
+dispatcher does not retry automatically because a runner response can be
+ambiguous. Before any manually authorized restart, the operator must inspect
+the dispatcher/Supervisor/Runner journals and the exact grant's durable claim
+state. `PENDING`, `EXECUTION_RESERVED`, or `INDETERMINATE` is not permission to
+launch again; follow the existing claim reconciliation boundary. A clearly
+pre-launch transient may be recovered only after verifying that no runner
+claim or child execution began. This source note is not a provisioned runbook
+or evidence that journal/claim recovery was exercised in WSL.
+
 ## Isolated Python launch
 
 The systemd units use `python3.12 -I -S -c` and explicitly add the immutable,

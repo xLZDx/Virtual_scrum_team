@@ -421,3 +421,17 @@ as `NOT_RUN` because current root config/credentials, authenticated owner identi
 installed runtime and active services are absent and outside the authorized test pass. Evidence:
 `docs/changes/0511-fix-s2-pubsub-config-syntax.md` and
 `docs/sdlc/evidence/s2-pubsub-e2e-triage-ec9aefe-20261028.md`. S2 remains active and S3 unstarted.
+
+## S2 pub/sub exact-head specialist review — 2026-10-28
+
+At repository HEAD `197140be4b7dad9018426026a71eebedc62ec2dc`, after the 20-pass focused functional
+run, fresh architect and security reviews found no actionable BLOCKER/MAJOR/MINOR in source scope.
+Reliability found no BLOCKER/MAJOR but recorded one MINOR: `Restart=no` means even a transient
+pre-launch RPC error stops delivery until manual restart. Codex documented journal and durable-claim
+inspection before restart in `tools/vst/systemd/README.md`; this remains a preparation note, not a
+tested production runbook or alert. Database review previously found no BLOCKER/MAJOR and one MINOR
+O(n) full-history request lookup. No source changes were made after the focused test commit. The
+focused suite passed 20/20 at source HEAD `61bfe643e52362fbe4c680ade2c3cb150997dedc`; production E2E
+remains `NOT_RUN`. The code/dataflow review does not close `S2-DISPATCH-M01`; production owner
+caller, root config/credentials, current signed E5, installed runtime and service activation remain
+absent or unproven. No migration, runtime operation or S3 work occurred.

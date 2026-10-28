@@ -273,3 +273,10 @@ Ordered closure:
 Backlog MINOR: grant lookup verifies/scans full append-only history per request ID. Codex owns any
 later bounded optimization, only if measurements show material cost; the next step is to capture
 representative Store sizes/lookup timing after source tests and runtime evidence are available.
+
+Backlog MINOR: the dispatcher intentionally uses `Restart=no` and stops on any unhandled delivery
+error. This preserves fail-stop behavior for ambiguous outcomes but means a transient pre-launch
+Supervisor outage also requires manual recovery. The service journal and claim-state inspection
+sequence are documented in `tools/vst/systemd/README.md`; a production recovery runbook and observed
+alerting remain unverified. Codex owns the runbook; e2e-runner may evidence it only after separately
+authorized runtime setup. Keep automatic retries disabled for ambiguous claims.
