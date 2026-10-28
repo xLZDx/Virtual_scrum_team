@@ -2113,7 +2113,7 @@ else:
         completed = self._run("crash", path)
         if completed.returncode != 97:
             raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
-        raise RuntimeError("synthetic worker killed during edit")
+        raise RuntimeError("synthetic worker child exited during edit (exit code 97)")
 
     def commit_candidate(
         self, message: str = "synthetic candidate", *, timeout_sec: float | None = None,
@@ -2133,7 +2133,12 @@ def run_lifecycle_scenarios(
     probe_key: bytes,
     probe_provider: Callable[[str, str], dict],
 ) -> dict[str, dict]:
-    """Drive E8's synthetic fixture using a caller-provided real sandbox probe."""
+    """Drive local synthetic lifecycle scenarios; this does not establish E8 acceptance.
+
+    ``probe_provider`` supplies probe-shaped inputs to the fixture. Unless that provider is
+    independently bound to an actual sandbox run, its values are not host-isolation evidence.
+    This helper never attempts external egress or selects a worker candidate.
+    """
     os.makedirs(workdir, exist_ok=True)
     remote = os.path.join(workdir, "local-bare.git")
     repository = os.path.join(workdir, "worker-repository")
@@ -2182,28 +2187,64 @@ def run_lifecycle_scenarios(
         run_id=run_id, probe_nonce=nonce, probe_key=probe_key,
     )
     report: dict[str, dict] = {}
+    probe_observations: list[dict[str, Any]] = []
+
     try:
         fixture.begin(1, ttl_sec=600)
-        supervisor.start_worker(lambda: worker, probe=make_probe(run_id, nonce))
-        crash_injected = False
+        initial_probe = make_probe(run_id, nonce)
+        initial_properties = initial_probe.get("checked_properties", {})
+        probe_observations.append({
+            "run_id": run_id,
+            "reported_result": initial_probe.get("result"),
+            "reported_external_egress_blocked": initial_properties.get("external_egress_blocked"),
+            "reported_empty_external_allowlist": initial_properties.get("empty_external_allowlist"),
+            "scope": "caller_supplied_probe_data_not_independent_environment_evidence",
+        })
+        supervisor.start_worker(lambda: worker, probe=initial_probe)
+
+        unauthorized_target = os.path.join(repository, "src", "unauthorized.py")
+        unauthorized_write_rejected = False
+        try:
+            worker.edit("src/unauthorized.py", "value = 'unauthorized'\n")
+        except ValueError as exc:
+            if str(exc) != "worker edit is outside the declared synthetic scope":
+                raise
+            unauthorized_write_rejected = True
+        unauthorized_target_absent = not os.path.exists(unauthorized_target)
+
+        child_self_exit_observed = False
         try:
             worker.crash_mid_edit()
-        except RuntimeError:
-            crash_injected = True
+        except RuntimeError as exc:
+            if str(exc) != "synthetic worker child exited during edit (exit code 97)":
+                raise
+            child_self_exit_observed = True
         clock.advance(601)
         lost = fixture.store.supervisor_reap_and_mark(SUPERVISOR_KEY, SUPERVISOR_RUNNER)
         supervisor.stop(lambda: None, lambda: None)
+        stop_lifecycle_state = supervisor.lifecycle_state
+        stop_completed = stop_lifecycle_state == "STOPPED"
 
         def next_epoch() -> int:
             fixture.store.release_epoch(fixture.story_id, fixture.owner)
             fixture.epoch = fixture.store.acquire_epoch(fixture.story_id, fixture.owner, 3600)
             return fixture.epoch
 
+        expired_epoch = fixture.epoch
         resumed_epoch = supervisor.resume(next_epoch)
         run_id, nonce = "synthetic-resume-run", "synthetic-resume-nonce"
         supervisor.prepare_run(run_id, nonce)
         fixture.begin(2, ttl_sec=600)
-        supervisor.start_worker(lambda: worker, probe=make_probe(run_id, nonce))
+        resume_probe = make_probe(run_id, nonce)
+        resume_properties = resume_probe.get("checked_properties", {})
+        probe_observations.append({
+            "run_id": run_id,
+            "reported_result": resume_probe.get("result"),
+            "reported_external_egress_blocked": resume_properties.get("external_egress_blocked"),
+            "reported_empty_external_allowlist": resume_properties.get("empty_external_allowlist"),
+            "scope": "caller_supplied_probe_data_not_independent_environment_evidence",
+        })
+        supervisor.start_worker(lambda: worker, probe=resume_probe)
         worker.edit("src/synthetic.py", "value = 'resumed candidate'\n")
         candidate_head = worker.commit_candidate()
         fixture.current_head = candidate_head
@@ -2275,16 +2316,61 @@ def run_lifecycle_scenarios(
         except StoreError:
             lease_blocked = True
 
+        report["scope"] = {
+            "environment_scope": "synthetic",
+            "e8_acceptance": "NOT_ESTABLISHED",
+            "real_e5_e6_s1_environment_qualification": "NOT_RUN",
+            "real_blocked_egress_attempt": "NOT_RUN",
+            "external_candidate_comparison": "NOT_RUN",
+            "operator_worker_choice": "NOT_ESTABLISHED",
+            "probe_provider_scope": "caller_supplied_data_not_independent_environment_evidence",
+        }
         report["crash_stop_resume"] = {
-            "crash_injected_mid_edit": crash_injected,
+            "child_self_exit_observed_during_partial_edit": child_self_exit_observed,
+            "child_exit_code": 97 if child_self_exit_observed else None,
+            "process_kill_containment_proven": False,
+            "out_of_scope_write_rejected": unauthorized_write_rejected,
+            "out_of_scope_target_absent": unauthorized_target_absent,
+            "stop_cleanup_completed_before_resume": stop_completed,
+            "stop_was_injected": False,
             "worker_lost_markers": [item["check_description"] for item in lost],
+            "expired_epoch": expired_epoch,
             "resumed_epoch": resumed_epoch,
+            "fresh_epoch_resumed": resumed_epoch > expired_epoch,
+            "observed_outcomes": [
+                {
+                    "step": "worker_child_self_exit_after_partial_edit",
+                    "outcome": "OBSERVED" if child_self_exit_observed else "NOT_OBSERVED",
+                    "exit_code": 97 if child_self_exit_observed else None,
+                },
+                {
+                    "step": "existing_supervisor_stop_call_and_cleanup",
+                    "outcome": "COMPLETED" if stop_completed else "NOT_COMPLETED",
+                    "lifecycle_state": stop_lifecycle_state,
+                    "injected_stop_scenario": False,
+                },
+                {
+                    "step": "fresh_epoch_resume",
+                    "outcome": "COMPLETED" if resumed_epoch > expired_epoch else "NOT_FRESH",
+                    "previous_epoch": expired_epoch,
+                    "resumed_epoch": resumed_epoch,
+                },
+                {
+                    "step": "budget_overflow_charge",
+                    "outcome": "REJECTED" if budget_exhausted else "NOT_REJECTED",
+                    "budget_error_observed": budget_exhausted,
+                },
+            ],
             "candidate_head": candidate_head,
             "worker_has_remote_config": bool(git(repository, "remote")),
             "gate_verdict": decision["verdict"],
             "receipt_retry_returned_same_result": receipt_first == receipt_retry,
             "supervisor_push": pushed,
             "supervisor_pull_request": pr,
+        }
+        report["caller_supplied_probe_observations"] = {
+            "runs": probe_observations,
+            "real_environment_egress_verified": False,
         }
         report["restart_idempotency"] = {
             "effect_recorded_before_store_commit": crash_result,
@@ -2295,6 +2381,7 @@ def run_lifecycle_scenarios(
         report["budget_exhaustion"] = {
             "remaining_at_exact_cap": exact_budget,
             "overflow_rejected": budget_exhausted,
+            "overflow_outcome": "REJECTED" if budget_exhausted else "NOT_REJECTED",
             "new_lease_rejected": lease_blocked,
         }
         return report
