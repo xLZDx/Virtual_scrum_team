@@ -24,7 +24,11 @@ The Runner config schema adds required `worker_exec_helper_path`, validated agai
 
 ## Failure and rollback
 
-If archive bytes differ, compilation fails, the exact versioned destination collides, or post-install identity verification fails, refuse before publishing a runtime reference. Never fall back to the old fixed path. A missing/mismatched configured helper prevents service execution. Rollback restores the prior root-owned service configuration/runtime revision explicitly and leaves helper artifacts unchanged.
+If archive bytes differ, compilation fails, the exact versioned destination collides, or post-install identity verification fails, refuse before publishing a runtime reference. Never fall back to the old fixed path. A missing/mismatched configured helper prevents service execution.
+
+The current installer does not implement an upgrade, runtime-selector switch, or rollback. It installs immutable `/opt/vst-runtime-<full-commit>` trees and accepts `/opt/vst-runtime` only when it already points at the exact requested revision. It also refuses mismatching fixed systemd unit files. Re-running it against a different revision on an already-deployed host therefore fails closed; it is not a switch procedure. The exact-head artifact-only installation recorded in change 0476 did not enable or start any unit.
+
+Before a later revision rollout, prepare a separate deployment change and reviewed runbook. It must define the operator-authorized service stop/quiesce sequence, confirm no active or unresolved assignment can survive the cutover, install and verify the immutable runtime/helper artifacts, provision the matching root-owned Runner configuration, and specify the order and failure handling for selector, unit and configuration changes. It must include an abort/rollback path that restores a mutually consistent retained runtime and configuration without replacing or deleting helper artifacts, plus post-switch verification of source/helper identity and service fencing. GPT-PM must review that deployment contract, and runtime execution must use a separately authorized isolated environment. Until then, keep the current selected revision and do not treat a later installer retry as an upgrade.
 
 ## Verification plan
 

@@ -222,3 +222,7 @@ Correlated GPT-PM request `b84e73a1-55ac-47b0-87f8-20261028f003` / reply `fc67f0
 ## S2 final GPT-PM gate — 2026-10-28 (change 0478)
 
 PM Bridge request `7c9fcb10-61cc-4fdd-8292-c2dfbf97ff04` / correlated reply `f347e63d-f691-4561-86d9-95968bb3bb4e` adjudicated repository HEAD `381435a91c8483d7e6a38b2fe5678f4f15a1da76` and implementation/test commit `d5001797cb94113efd9a8dc26e4a15f2dc130976`: **NOT APPROVED**. `S2-HELPER-M01` is closed for source correction and recorded artifact installation only. Existing `S2-DISPATCH-M01` remains MAJOR/OPEN; service/restart qualification, root config/credentials, current signed E5, effective egress and mandatory platform evidence remain open. The six focused-test skips are not passes, and restricted selectors remain `NOT_RUN`. Codex locally verified the exact submitted patch and source ancestry after the GPT-PM response; that closes a provenance note only. No additional unconditional code change was recommended. No S3 work has started. See `evidence/s2-gptpm-final-gate-381435a-20261028.md`.
+
+## S2 deployment revision-switch follow-up — 2026-10-28 (change 0479)
+
+The non-blocking reliability-review follow-up is documented: the installer refuses a different runtime selector and does not implement an upgrade/rollback procedure. Any future switch requires a separate reviewed runbook and operator authorization; no switch or service activation occurred here. S2 stays NOT APPROVED per final PM gate 0478. See `docs/changes/0479-document-s2-revision-switch-boundary.md`.

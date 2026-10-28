@@ -167,6 +167,10 @@ artifact and three unit files. It accepts only matching prior artifacts and
 refuses to replace mismatched host state; it does not enable or start units.
 `tools/qa/install_wsl_worker_helper.sh` builds the fixed C helper from the same
 committed source revision. These scripts are not run during code completion.
+The exact-head artifact-only installation for change 0476 is recorded in
+`docs/sdlc/evidence/s2-versioned-worker-helper-install-d5001797-20261028.md`;
+the three installed units were not enabled or started. This records artifact
+presence only, not service acceptance.
 The one-time `bootstrap` fence action, key provisioning, systemd enable/start,
 database schema upgrade, and all runtime evidence wait until the code and
 security review phase and a cleanly provisioned dedicated WSL host.
