@@ -292,3 +292,7 @@ The designated e2e-runner found no Windows selector that proves real containment
 ## S2 controlled runtime selectors — change 0483
 
 GPT-PM request `a94486c9-f8e2-451e-91d2-4adb1799b8d6`, reply `85eba0d2-3670-5274-a787-58012255f22b`, job `3ff013cd-f5e4-441e-98c5-8c823f62a96f` authorized bounded selectors against temporary test fixtures. Windows E4 cleanup passed 2/2; waiver-boundary tests passed 7/7. WSL E3 store recovery passed 10 cases, two synthetic identity selectors passed, and two capability-dependent runner selectors skipped because the provisioned ambient `CAP_SETGID,CAP_SETUID` profile was absent. No service activation, capability/credential provisioning, E5/E8, manifest, or production dispatch occurred. `S2-DISPATCH-M01` remains MAJOR/OPEN; S2 remains NOT APPROVED. Evidence: `docs/sdlc/evidence/s2-controlled-runtime-selectors-20261028.md`.
+
+## S2 evidence scope correction — 2026-10-28 (change 0484)
+
+The 53-selector policy family belongs to S4 and was not part of this S2 run. No S4 tests or other S4 work were performed. See change 0484 and the corrected S2 evidence.

@@ -884,3 +884,5 @@ identified. Evidence: `docs/sdlc/evidence/s2-windows-safe-selector-audit-2026102
 ## 2026-10-28 — Consume ephemeral WSL test roots in one invocation (change 0483)
 
 An extracted source snapshot under WSL `/tmp` did not survive into a later invocation; pytest could not enter the root and no test result was produced. Stream/extract and run focused selectors within one WSL invocation, verify source/test hashes against Git first, and record the failed attempt as a harness setup error. Do not reuse a stale POSIX copy or create a development worktree. Evidence: `docs/sdlc/evidence/s2-controlled-runtime-selectors-20261028.md`.
+
+2026-10-28 — S2 scope lesson (change 0484): project-wide records may mention several active or prior sprints, but a one-sprint-at-a-time task must not import another sprint's acceptance denominators into the current evidence. Here, the 53-selector policy family belongs to S4 and was not part of S2. Keep evidence and test scope sprint-specific.

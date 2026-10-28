@@ -149,3 +149,7 @@ exception. Next: retain the blocker until a genuinely permitted runtime scenario
 - POSIX runner capability/timeout behavior remains unverified; focused selectors skipped because the dedicated runner lacks the required provisioned `CAP_SETGID,CAP_SETUID` ambient profile. Operator owns separate operational authorization/profile; Codex coordinates a focused rerun after it exists.
 - `S2-DISPATCH-M01` remains MAJOR/OPEN because no production coordinator call site exists in the in-scope repository. Codex maintains scoped evidence; operator supplies a named external source if review is requested; GPT-PM adjudicates any new architecture.
 - S2 remains NOT APPROVED pending complete acceptance and exact-revision GPT-PM adjudication. Evidence: `docs/sdlc/evidence/s2-controlled-runtime-selectors-20261028.md`.
+
+## S2 evidence scope correction — change 0484
+
+Clarified that the 53-selector policy family is S4 acceptance and was not part of the S2 run; no S4 tests or other S4 work occurred in this continuation. Owner: Codex. Next: keep S2 and S4 evidence denominators separate and continue S2 only.
