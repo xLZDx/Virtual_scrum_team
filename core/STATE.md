@@ -2,7 +2,32 @@
 
 Last updated: 2026-10-28. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
 
-## S2 coordinator direction and WSL baseline — 2026-10-28
+## Current S2 coordinator/runtime status — 2026-10-28
+
+The bounded Store-backed Pub/Sub source is implemented in the canonical repository; source and
+focused-test files were reviewed by GPT-PM under request
+`b2d8f20e-4eb0-4a4c-98ec-13c1c9437279` (`APPROVE — ATTACHED SOURCE SCOPE`, 0 confirmed
+BLOCKER/MAJOR). The focused functional suite recorded 20 passed, 0 failed, 0 skipped and one
+pytest-asyncio deprecation warning. Local SHA-256/Git-blob checks linked the reviewed source/test
+files to source HEAD `673479dccc0f37de7d723ede275c46a8f4b4595c`; current repository HEAD
+`126ffcdb855b771f8792dabce59b875e36ea59b4` adds documentation only. The detailed bounded verdict
+and limits are in `docs/sdlc/evidence/s2-pubsub-gpt-pm-source-review-20261028.md`.
+
+Full S2 is still NOT APPROVED and `S2-DISPATCH-M01` remains MAJOR/OPEN: no in-repository upstream
+authenticated owner caller/assignment source exists, so the new dispatcher has no production source
+of exact intents. Do not create another scheduler or assignment authority. The schema-v6 migration
+is unapplied; current root service configuration and source manifest are absent; an older WSL E5
+inventory/role keys were seen only as metadata and do not prove current-head provenance. On the
+latest read-only inventory, Ubuntu-24.04 reports systemd on, automount/interoperability off, services
+inactive, no `/etc/vst-runner` or `/run/vst-runner`, and no `vst-dispatcher` account. The
+`/opt/vst-runtime` symlink points to the older `d5001797...` runtime directory, whose target is
+`root:root 0755`; the symlink itself reports mode `0777`, which does not control target access on
+Linux. No key contents were read. No fresh signed E5, network-policy attestation, real dispatch,
+migration, or service activation is claimed. GPT-PM request
+`72e04f7e-aa30-4ee2-b079-1e6ee2e01107` asks for an exact M01/root-config boundary decision; its
+send is confirmed but the response is still uncertain. S3 remains unstarted.
+
+## Prior S2 coordinator direction and WSL baseline — superseded 2026-10-28
 
 The operator explicitly directed Codex to implement the missing coordinator and prepare root-owned
 service configuration/current E5; no external coordinator path is expected. GPT-PM reviewed the
