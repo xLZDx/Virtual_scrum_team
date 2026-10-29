@@ -1516,3 +1516,14 @@ file size while asserting a hash-mismatch message. The adapter correctly rejecte
 size change earlier. Decision: keep the source guard unchanged and mutate one byte while
 preserving fixture length so the test specifically exercises content-hash detection. Both
 designated suites must rerun at the new HEAD; see change0570.
+
+## 2026-10-30 — Use verified Linux x86-64 peer-pidfd ABI when Python omits the name (0592)
+
+A current read-only runtime inventory found Python 3.12.3 has no socket.SO_PEERPIDFD constant.
+The installed Linux header and upstream Linux v6.6 specify option 77. Resolve that number only
+for the real stdlib socket module on Linux x86-64; preserve actual getsockopt and all existing
+identity/descriptor/liveness checks. Functional-test-reviewer reports 45 focused passes;
+e2e-runner observed an actual kernel pidfd matching peer credentials and a live poll. Independent
+security review found no actionable regression. This concrete compatibility delta justifies
+refreshing the deployment artifact for S2-4; accepted issuer architecture is not reopened.
+Evidence and exact scope: docs/changes/0592-s2-runtime-peer-pidfd-compatibility.md.

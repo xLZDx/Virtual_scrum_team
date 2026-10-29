@@ -10,6 +10,7 @@ import stat
 import struct
 from typing import Any
 
+from .peer_pidfd import peer_pidfd_socket_option
 from .contracts import ContractError, canonical_bytes
 from .dispatch_instruction import validate_dispatch_instruction
 from .dispatch_owner_client import DispatchOutcomeUnknown
@@ -29,7 +30,7 @@ class DispatchOwnerSocketClient:
                  timeout_sec: float = REQUEST_TIMEOUT_SEC) -> None:
         if (os.name != "posix" or not hasattr(socket, "AF_UNIX")
                 or not hasattr(socket, "SO_PEERCRED")
-                or getattr(socket, "SO_PEERPIDFD", None) is None):
+                or peer_pidfd_socket_option(socket) is None):
             raise ContractError("dispatch-owner transport requires POSIX Unix-socket support")
         if socket_path != OWNER_SOCKET_PATH:
             raise ContractError("dispatch-owner socket path is fixed")
@@ -126,7 +127,7 @@ class DispatchOwnerSocketClient:
 
     @staticmethod
     def _peer_pidfd(client: socket.socket, peer_pid: int) -> int:
-        option = getattr(socket, "SO_PEERPIDFD", None)
+        option = peer_pidfd_socket_option(socket)
         if option is None:
             raise ContractError("kernel peer pidfd support is unavailable")
         raw = client.getsockopt(socket.SOL_SOCKET, option, struct.calcsize("i"))

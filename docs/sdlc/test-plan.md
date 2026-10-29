@@ -124,3 +124,17 @@ These cases derive from accepted S2-3 AC-1/4, S2-4 AC-2/3, the fresh-only bootst
 | TP-38 — S2-3/S2-4 AC-2; REQ-005/006; I01-SRC-04/05; issuer service boundary | Assert issuer configuration is absent/default-off by default and exposes no issuance route; when explicitly configured in an isolated RPC fixture, only the exact authenticated `delegated_issuer` role and operation-ID-only request can reach the bounded root operation. Wrong role, extra caller-selected task/policy/key/run fields, malformed operation ID or disabled feature refuses without Store/signing effects. Root policy/key purpose separation and immutable source-derived tuple remain observable. | E1 (identity and capability boundary); E2 (service/RPC isolation); E6 (authority boundary). | RPC integration fixture, planned, not authored/run. Same owner/freeze gate. No real process identity, root policy install, key provisioning or activation. |
 
 **Coverage limits and execution boundary:** These planned cases are source-level or disposable-fixture contracts. They do not prove real process-kill/crash recovery, host filesystem durability under power loss, systemd/PID 1 credentials, production root-key custody, real root signing/provisioning/activation, E5, or a production owner-to-Runner journey. Those remain `NOT_RUN`; process kill/crash, mutation, E8 and restricted policy selectors remain prohibited. Never seed `STARTED`/`UNKNOWN` rows and call that literal runtime crash proof. After source freeze, the functional-test-reviewer and e2e-runner may finalize exact node selectors against stabilized APIs; no E2E/runtime selector is authorized by this planning update. Existing TP-01–TP-28 and historical result records remain unchanged and are not promoted to the current source head.
+
+### TP-39 — S2-4 real peer identity on the configured Python runtime
+
+REQ-003/005: missing Python SO_PEERPIDFD spelling must not be mistaken for absent Linux x86-64
+kernel ABI support. Native positive constants remain preferred; malformed/explicit None values,
+fake adapters without the option and unverified ABIs fail closed. Actual peers must still yield
+real valid pidfds and satisfy the unchanged credential/cgroup/liveness guards.
+
+functional-test-reviewer: 11 new resolver cases plus 34 unchanged transport cases passed in WSL
+(45 total); e2e-runner: real getsockopt returned a pidfd whose fdinfo PID matched SO_PEERCRED,
+with an alive poll. Worktree baseline 5318743, not eventual committed-head execution. Exact
+commands/hashes and limitations: evidence/s2-peer-pidfd-functional-5318743.md and
+evidence/s2-peer-pidfd-runtime-capability-5318743.md. Full services/runtime journey remain
+unexecuted by these tests. Restricted scenarios remain NOT_RUN.

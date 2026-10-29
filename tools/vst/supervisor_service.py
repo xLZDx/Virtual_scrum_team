@@ -16,6 +16,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from .peer_pidfd import peer_pidfd_socket_option
 from .contracts import ContractError, canonical_bytes
 from .dispatch_instruction import DISPATCH_INSTRUCTION_TRUST_REGISTRY_PATH
 from .store import StoreError
@@ -62,7 +63,7 @@ def _recv_exact(conn: socket.socket, count: int) -> bytes:
 
 
 def _peer_pidfd(conn: socket.socket, pid: int, *, require: bool) -> int | None:
-    option = getattr(socket, "SO_PEERPIDFD", None)
+    option = peer_pidfd_socket_option(socket)
     if option is None:
         if require:
             raise ContractError("kernel peer pidfd support is unavailable")
@@ -111,7 +112,7 @@ class AuthenticatedSupervisorAPI:
     ) -> None:
         if os.name != "posix" or not hasattr(socket, "SO_PEERCRED"):
             raise ContractError("Supervisor RPC requires POSIX peer credentials")
-        if require_peer_pidfd and getattr(socket, "SO_PEERPIDFD", None) is None:
+        if require_peer_pidfd and peer_pidfd_socket_option(socket) is None:
             raise ContractError("Supervisor RPC requires kernel peer pidfd support")
         if os.geteuid() != 0:
             raise ContractError("Supervisor RPC server must run as root")
@@ -363,7 +364,7 @@ class SupervisorClient:
     def __init__(self, socket_path: str, *, expected_server_uid: int = 0, timeout_sec: float = 5.0):
         if os.name != "posix" or not hasattr(socket, "SO_PEERCRED"):
             raise ContractError("Supervisor RPC client requires POSIX peer credentials")
-        if getattr(socket, "SO_PEERPIDFD", None) is None:
+        if peer_pidfd_socket_option(socket) is None:
             raise ContractError("Supervisor RPC client requires kernel peer pidfd support")
         if not os.path.isabs(socket_path) or type(expected_server_uid) is not int:
             raise ContractError("Supervisor RPC client configuration is invalid")

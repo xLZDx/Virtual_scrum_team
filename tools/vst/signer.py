@@ -21,6 +21,7 @@ import threading
 from typing import Any, Callable, Mapping
 import sys
 
+from .peer_pidfd import peer_pidfd_socket_option
 from .contracts import ContractError, TRUSTED_PARSER_CATALOG, _validate_repo_path, canonical_bytes
 from .signing import DIFF_GATE_LABEL, MIN_KEY_BYTES, SIGNING_REQUEST_LABEL, sign
 
@@ -162,7 +163,7 @@ class AuthenticatedSigner:
         self.active_service_generation = active_service_generation
         self.pending_grant_checker = pending_grant_checker
         if require_pinned_daemon and (
-            getattr(socket, "SO_PEERPIDFD", None) is None
+            peer_pidfd_socket_option(socket) is None
             or not isinstance(service_cgroup, str) or not service_cgroup.startswith("/")
             or not isinstance(grant_trust_keys, Mapping)
             or not isinstance(grant_openssl_path, str)
@@ -342,7 +343,7 @@ class AuthenticatedSigner:
             return
 
     def _pin_and_check_peer(self, conn: socket.socket, pid: int, uid: int, gid: int) -> int:
-        option = getattr(socket, "SO_PEERPIDFD", None)
+        option = peer_pidfd_socket_option(socket)
         if option is None:
             raise ContractError("kernel peer pidfd support is unavailable")
         raw_pidfd = conn.getsockopt(socket.SOL_SOCKET, option, struct.calcsize("i"))

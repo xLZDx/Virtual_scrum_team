@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable, Mapping
 
+from .peer_pidfd import peer_pidfd_socket_option
 from .contracts import (
     ContractError, canonical_bytes, manifest_sha256, validate_receipt,
     validate_task_manifest,
@@ -203,7 +204,7 @@ class RunnerServiceConfig:
     def validate(self) -> None:
         if os.name != "posix" or not hasattr(socket, "SO_PEERCRED"):
             raise ContractError("persistent runner service requires POSIX peer credentials")
-        if getattr(socket, "SO_PEERPIDFD", None) is None:
+        if peer_pidfd_socket_option(socket) is None:
             raise ContractError("persistent runner service requires kernel peer pidfd support")
         paths = (self.socket_path, self.runtime_dir, self.supervisor_socket,
                  self.generation_record_path, self.repository_root,
