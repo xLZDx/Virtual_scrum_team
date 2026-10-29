@@ -31,8 +31,9 @@ above, with 0 BLOCKER and 0 MAJOR findings in that scope.
 ## Acceptance status
 
 The bounded inactive stage-only preparation and post-stage manifest acceptance are complete for
-this task. Task delivery remains open until this record and the linked evidence/backlog updates are
-committed and normally pushed. The PM decision accepts only the candidate identity record; it does
+this task. Its record and linked evidence were committed as `ae07f8708adcc7ef4f69505477ad6b72e3c912cf`
+and normally pushed to `origin/s2-canonical-continuation`. The PM decision accepts only the
+candidate identity record; it does
 not close S2, approve live runtime transition, or authorize selector/unit mutation, Store, identity,
 keys/E5, dispatch, or production. Preserve TP-10's still-partial refusal-matrix coverage as partial;
 do not represent the review as proving cases not run. Do not begin the next task before this task's

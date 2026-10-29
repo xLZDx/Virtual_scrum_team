@@ -53,6 +53,7 @@ acceptance only**. The exact manifest digest and limits are recorded in
 
 This evidence does not authorize selector mutation, systemd unit writes/reload/start/enable, Store
 access/migration, identity/config creation, production key/E5 work, dispatch, production,
-deployment, or S2 closure. The S2-3 task delivery is open only until its evidence/backlog/change
-record commit is normally pushed. TP-10's broader refusal matrix remains PARTIAL, and the review
+deployment, or S2 closure. The S2-3 evidence/backlog/change record was committed as
+`ae07f8708adcc7ef4f69505477ad6b72e3c912cf` and normally pushed to
+`origin/s2-canonical-continuation`. TP-10's broader refusal matrix remains PARTIAL, and the review
 does not prove its unexecuted cases.
