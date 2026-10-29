@@ -53,6 +53,9 @@ class Supervisor:
         root_dispatch_issuer: dict | None = None,
         root_dispatch_issuer_provider: Callable[[], dict | None] | None = None,
         dispatch_instruction_trust_provider: Callable[[], dict] | None = None,
+        machine_delegation_policy_provider: Callable[[], dict] | None = None,
+        machine_delegation_trust_provider: Callable[[], dict] | None = None,
+        machine_assignment_authorization_provider: Callable[[str], dict] | None = None,
     ):
         if isinstance(failure_threshold, bool) or not isinstance(failure_threshold, int) or failure_threshold < 1:
             raise ValueError("failure_threshold must be a positive integer")
@@ -78,6 +81,9 @@ class Supervisor:
         self.root_dispatch_issuer = root_dispatch_issuer
         self.root_dispatch_issuer_provider = root_dispatch_issuer_provider
         self.dispatch_instruction_trust_provider = dispatch_instruction_trust_provider
+        self.machine_delegation_policy_provider = machine_delegation_policy_provider
+        self.machine_delegation_trust_provider = machine_delegation_trust_provider
+        self.machine_assignment_authorization_provider = machine_assignment_authorization_provider
         if assignment_policy is None:
             self.assignment_policy = None
             self.assignment_policy_sha256 = None
@@ -186,6 +192,87 @@ class Supervisor:
             authority_expires_at=snapshot["authority_expires_at"],
             service_generation=generation,
         )
+
+    def verify_machine_assignment_authorization_v2(self, authorization_id: str, *, peer: Any) -> dict:
+        """Root-only provider and Store comparison for one signed machine authorization.
+
+        This bounded verifier does not issue or activate dispatch. Every provider must be
+        configured from root-controlled sources; absent providers fail closed. The caller
+        cannot supply an operation ID, policy, trust registry, authorization object or Store
+        snapshot. Privileged V2 issuance remains a separately reviewed integration.
+        """
+        from .assignment_basis import validate_policy
+        from .machine_authorization import (
+            compare_assignment_authorization_v2_to_store,
+            validate_authorization_id_v2,
+            verify_assignment_authorization_v2,
+        )
+
+        try:
+            validate_authorization_id_v2(authorization_id)
+        except Exception as exc:
+            raise StoreError("V2 machine authorization ID is malformed", kind="authorization") from exc
+        if (not callable(self.machine_delegation_policy_provider)
+                or not callable(self.machine_delegation_trust_provider)
+                or not callable(self.machine_assignment_authorization_provider)
+                or not callable(self.assignment_policy_provider)
+                or not callable(self.service_generation_provider)
+                or not isinstance(self.dispatch_instruction_openssl_path, str)
+                or not self.dispatch_instruction_openssl_path
+                or self.assignment_policy is None or self.assignment_policy_sha256 is None
+                or not self._probe_consumed or self.lifecycle_state != "READY"
+                or self.breaker_state != "CLOSED"):
+            raise StoreError("V2 machine authorization providers or root authority are unavailable",
+                             kind="authorization")
+        issuer_peer = self.assignment_policy.get("issuer_peer")
+        if (peer is None or peer.role != "delegated_issuer" or not isinstance(issuer_peer, dict)
+                or not isinstance(peer.operations, (set, frozenset))
+                or "issue_root_dispatch_instruction" not in peer.operations
+                or (peer.uid, peer.gid, peer.cgroup) != (
+                    issuer_peer.get("uid"), issuer_peer.get("gid"), issuer_peer.get("cgroup"),
+                )):
+            raise StoreError("V2 machine authorization caller is not the configured issuer peer",
+                             kind="authorization")
+        try:
+            live_assignment_policy, live_assignment_digest = validate_policy(
+                self.assignment_policy_provider(),
+            )
+            if (live_assignment_policy != self.assignment_policy
+                    or live_assignment_digest != self.assignment_policy_sha256):
+                raise StoreError("root assignment policy changed or was revoked", kind="authorization")
+            generation = self.service_generation_provider()
+            if not isinstance(generation, str) or not generation:
+                raise StoreError("active Supervisor service generation is unavailable", kind="integrity")
+            delegation_policy = self.machine_delegation_policy_provider()
+            trust_config = self.machine_delegation_trust_provider()
+            authorization = self.machine_assignment_authorization_provider(authorization_id)
+            if (not isinstance(authorization, dict)
+                    or authorization.get("authorization_id") != authorization_id):
+                raise StoreError("root authorization provider did not return one exact record",
+                                 kind="authorization")
+            verified = verify_assignment_authorization_v2(
+                authorization, delegation_policy, trust_config,
+                openssl_path=self.dispatch_instruction_openssl_path,
+            )
+            record = verified["authorization"]
+            if (delegation_policy.get("project") != "Virtual_scrum_team"
+                    or delegation_policy.get("repository") != live_assignment_policy["repository"]
+                    or delegation_policy.get("sprint_id") != live_assignment_policy["sprint_id"]
+                    or delegation_policy.get("source_head") != live_assignment_policy["source_head"]
+                    or delegation_policy.get("manifest_sha256") != live_assignment_policy["manifest_sha256"]):
+                raise StoreError("V2 delegation scope differs from the active root assignment policy",
+                                 kind="authorization")
+            snapshot = self.store.authenticated_assignment_basis(
+                record["assignment_operation_id"], policy=live_assignment_policy,
+                policy_sha256=live_assignment_digest,
+                active_service_generation=generation, expected_run_id=self.run_id,
+            )
+            return compare_assignment_authorization_v2_to_store(verified, snapshot)
+        except StoreError:
+            raise
+        except Exception as exc:
+            raise StoreError("V2 machine assignment authorization failed closed",
+                             kind="authorization") from exc
 
     def _current_root_dispatch_issuer(self) -> dict:
         """Read root-owned issuer and legacy trust metadata at each authority boundary."""

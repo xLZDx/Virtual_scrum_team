@@ -197,3 +197,16 @@ Codex will not invent an operator signature/waiver or an external coordinator.
   committed as `ae07f8708adcc7ef4f69505477ad6b72e3c912cf` and pushed to
   `origin/s2-canonical-continuation`. This closes only that bounded S2-3 task delivery. TP-10's
   full refusal matrix remains partial; S2-4/S2-5 and the overall S2 gate remain open.
+
+### S2-4 bounded V2 authorization source slice (2026-10-30)
+
+- This is a bounded source/test delivery candidate, not full S2-4 acceptance. GPT-PM request
+  `70c7fd31-463d-47ad-b95b-dd8916d7218c` approved the design clarification only. It did not
+  authorize privileged signing/issuance, production providers/keys/configuration, activation,
+  dispatch, E5 replacement, or S2 closure.
+- Test owner: `functional-test-reviewer`; the primary session did not author or execute tests.
+  Windows command `& 'C:\Python314\python.exe' -m pytest -q tests/vst/test_s2_machine_authorization_v2.py`
+  returned **2 passed, 11 skipped**, exit 0, Python 3.14.3. The skips are POSIX-only synthetic-key/Supervisor cases.
+- Ubuntu-24.04 WSL command: `wsl.exe -d Ubuntu-24.04 -u root -- bash -lc 'set -e; mkdir -p /mnt/d; mountpoint -q /mnt/d || mount -t drvfs D: /mnt/d -o ro; cd /mnt/d/Repo/Virtual_scrum_team; PYTHONDONTWRITEBYTECODE=1 python3 -m pytest -q -p no:cacheprovider tests/vst/test_s2_machine_authorization_v2.py'` returned **13 passed in 0.79s, 0 skipped**, exit 0, no warnings. The read-only mount and test ran in one root process; fixture files stayed under `/root`. Exact file SHA-256 values and iteration history are in `evidence/s2-4-v2-authorization-source-20261030.md`.
+- Final read-only `code-reviewer` and `security-reviewer` reviews found no actionable finding in this bounded diff. They did not run tests. The verifier is not connected to an RPC route; the legacy V1 caller-selected operation-ID route remains a separate open integration item.
+- `git diff --check` returned no output. Production identity/configuration, keys, E5, Store mutation, activation, dispatch, and restricted process-kill/crash/mutation/E8/policy selectors were not exercised. The restricted selectors remain `NOT_RUN`.
