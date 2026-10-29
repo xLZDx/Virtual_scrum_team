@@ -138,3 +138,19 @@ with an alive poll. Worktree baseline 5318743, not eventual committed-head execu
 commands/hashes and limitations: evidence/s2-peer-pidfd-functional-5318743.md and
 evidence/s2-peer-pidfd-runtime-capability-5318743.md. Full services/runtime journey remain
 unexecuted by these tests. Restricted scenarios remain NOT_RUN.
+
+### TP-40 — S2-4 exact runtime-config bundle and truthful command evidence
+
+REQ-003/005/006: validate the exact config/task/policy/bootstrap/model/helper/source hash graph,
+root/role ownership plan, secret exclusion, local-review identity limits and fail-closed
+preflight entrypoint. The exact inline pytest adapter may emit PASS IDs only for genuinely
+successful setup/call/teardown reports; failed, skipped or xfailed items must not manufacture a
+PASS. Exercise the existing trusted parser against captured output and require its exact executed
+ID; a `.PASS` progress-prefix or substring-only assertion is insufficient. Disable bytecode/pytest
+caches so command evidence does not dirty the read-only snapshot.
+
+Actual commands/results and first-run failures are recorded by the designated test role in
+evidence/s2-runtime-config-functional-a600774.md. Unit parsing and diagnostic limits are in
+evidence/s2-runtime-config-unit-verification-a600774.md. A direct UID999 task-command run is
+fixture viability only; actual owner/Store/dispatcher/Runner qualification remains a separate
+run mapped to S2-4 AC-1. Restricted scenarios remain NOT_RUN.

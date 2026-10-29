@@ -1,5 +1,10 @@
 # Virtual Scrum Team - current state (read first)
 
+Current S2 execution state and later delegated technical scope are maintained in
+`docs/sdlc/backlog.md` (current checkpoint) and `docs/sdlc/requirements.md` (current execution
+scope). Dated narratives below are historical; they do not reopen accepted source or generic
+permission decisions superseded by later operator instructions.
+
 Last updated: 2026-10-29. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
 
 ## Current S2 verification and upstream source gate — 2026-10-29

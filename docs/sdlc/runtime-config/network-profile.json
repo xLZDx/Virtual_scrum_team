@@ -1,0 +1,27 @@
+{
+  "environment_id": "Ubuntu-24.04:S2:s2-runtime-20261030-70e93aab84f94c58ab447a3de94e6261",
+  "external_allowlist": [],
+  "kind": "configuration_not_measurement",
+  "personal_human_signature_claimed": false,
+  "probe_address_families": [
+    "AF_UNIX",
+    "AF_INET"
+  ],
+  "probe_expected_gid": 989,
+  "probe_expected_uid": 999,
+  "probe_network_scope": "PrivateNetwork; only loopback interface/routes are allowed",
+  "probe_unit": "vst-sandbox-probe.service",
+  "root_measurement_requirements": [
+    "pin actual service MainPID and InvocationID before and after observations",
+    "observe effective PrivateNetwork and only loopback links/routes in the actual probe namespace",
+    "observe no Windows-drive mounts in actual mount namespace",
+    "observe complete absence of container sockets in actual mount namespace",
+    "hash actual policy and evidence bytes and bind exact run/spec/nonce",
+    "publish no attestation unless every required observed condition holds"
+  ],
+  "runner_address_families": [
+    "AF_UNIX"
+  ],
+  "schema": "VST_S2_MEASURED_NETWORK_PROFILE_V1",
+  "signer_actor": "Codex delegated root policy signer outside Runner and worker processes"
+}

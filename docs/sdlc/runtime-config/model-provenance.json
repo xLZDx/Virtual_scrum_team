@@ -1,0 +1,11 @@
+{
+  "binding_kind": "CONFIGURED_ROLE_MODEL",
+  "configured_model": "gpt-6-luna",
+  "identity_source": "trusted custom-role tool specification and actual role launch in this task",
+  "observed_launch_task": "/root/s2_runtime_qualification_contract",
+  "provider_executed_model": "NOT_VERIFIED",
+  "provider_signed_identity": "NOT_ATTESTED",
+  "role": "functional-test-reviewer",
+  "schema": "VST_CONFIGURED_ROLE_MODEL_BINDING_V1",
+  "scope": "root configuration binds the declared execution model to this artifact; no provider attestation or test result is claimed"
+}

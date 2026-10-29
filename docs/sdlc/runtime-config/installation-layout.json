@@ -1,0 +1,286 @@
+{
+  "configuration_files": [
+    {
+      "destination": "/etc/vst-runner/supervisor-service.json",
+      "gid": 0,
+      "mode": "0600",
+      "source": "supervisor-service.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/runner-service.json",
+      "gid": 988,
+      "mode": "0640",
+      "source": "runner-service.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/signer-service.json",
+      "gid": 988,
+      "mode": "0640",
+      "source": "signer-service.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/dispatcher-service.json",
+      "gid": 983,
+      "mode": "0640",
+      "source": "dispatcher-service.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/dispatch-owner-service.json",
+      "gid": 982,
+      "mode": "0640",
+      "source": "dispatch-owner-service.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/fence.json",
+      "gid": 0,
+      "mode": "0600",
+      "source": "fence.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/assignment-delegation-policy.json",
+      "gid": 0,
+      "mode": "0644",
+      "source": "assignment-delegation-policy.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/dispatch-instruction-trust.json",
+      "gid": 0,
+      "mode": "0644",
+      "source": "dispatch-instruction-trust.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/bootstrap-request.json",
+      "gid": 980,
+      "mode": "0640",
+      "source": "bootstrap-request.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/execution-grant-public.pem",
+      "gid": 0,
+      "mode": "0644",
+      "source": "execution-grant-public.pem",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/dispatch-instruction-public.pem",
+      "gid": 0,
+      "mode": "0644",
+      "source": "dispatch-instruction-public.pem",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/probe-entrypoint.py",
+      "gid": 0,
+      "mode": "0644",
+      "source": "probe-entrypoint.py",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/probe-request.json",
+      "gid": 0,
+      "mode": "0644",
+      "source": "probe-request.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/network-profile.json",
+      "gid": 0,
+      "mode": "0644",
+      "source": "network-profile.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/model-provenance.json",
+      "gid": 0,
+      "mode": "0644",
+      "source": "model-provenance.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/reviewer-registry.json",
+      "gid": 0,
+      "mode": "0644",
+      "source": "reviewer-registry.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/task-manifest.json",
+      "gid": 0,
+      "mode": "0644",
+      "source": "task-manifest.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/reviewer-use-policy.json",
+      "gid": 0,
+      "mode": "0644",
+      "source": "reviewer-use-policy.json",
+      "uid": 0
+    }
+  ],
+  "directories": [
+    {
+      "gid": 0,
+      "mode": "0755",
+      "path": "/etc/vst-runner",
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0755",
+      "path": "/var/lib/vst-runner",
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0700",
+      "path": "/var/lib/vst-runner/private",
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0755",
+      "path": "/var/lib/vst-runner/repository",
+      "uid": 0
+    },
+    {
+      "gid": 988,
+      "mode": "0700",
+      "path": "/var/lib/vst-signer",
+      "uid": 995
+    },
+    {
+      "gid": 985,
+      "mode": "0700",
+      "path": "/var/lib/vst-reviewer",
+      "uid": 993
+    },
+    {
+      "gid": 989,
+      "mode": "0710",
+      "path": "/run/vst-preflight",
+      "uid": 0
+    }
+  ],
+  "dynamic_state_rule": "retain observed bootstrap/issuer response and invocation identity; ambiguous outcome never retries signing or admission",
+  "private_material": [
+    {
+      "destination": "/etc/vst-runner/store-event.key",
+      "gid": 0,
+      "mode": "0600",
+      "staging_file": "store-event.key",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/startup-supervisor.key",
+      "gid": 0,
+      "mode": "0600",
+      "staging_file": "startup-supervisor.key",
+      "uid": 0
+    },
+    {
+      "destination": "/var/lib/vst-signer/receipt.key",
+      "gid": 988,
+      "mode": "0600",
+      "staging_file": "receipt-and-probe.key",
+      "uid": 995
+    },
+    {
+      "destination": "/etc/vst-runner/probe-verification.key",
+      "gid": 0,
+      "mode": "0600",
+      "staging_file": "receipt-and-probe.key",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/network-policy.key",
+      "gid": 0,
+      "mode": "0600",
+      "staging_file": "network-policy.key",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/execution-grant-private.pem",
+      "gid": 0,
+      "mode": "0600",
+      "staging_file": "execution-grant-private.pem",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/dispatch-instruction-private.pem",
+      "gid": 0,
+      "mode": "0600",
+      "staging_file": "dispatch-instruction-private.pem",
+      "uid": 0
+    },
+    {
+      "destination": "/var/lib/vst-reviewer/review.key",
+      "gid": 985,
+      "mode": "0600",
+      "staging_file": "independent-review.key",
+      "uid": 993
+    }
+  ],
+  "private_material_root": "/var/lib/vst-config-preparation/s2-20261030",
+  "runtime_derived_files": [
+    {
+      "gid": 0,
+      "mode": "0600",
+      "path": "/var/lib/vst-runner/private/preflight.json",
+      "source": "actual measured probe and root policy signer for the configured run and nonce; no fabricated PASS",
+      "uid": 0
+    },
+    {
+      "gid": 981,
+      "mode": "0640",
+      "path": "/etc/vst-runner/issuance-request.json",
+      "source": "exact assignment_operation_id from authenticated successful bootstrap response for this run; not a caller-selected replacement",
+      "uid": 0
+    },
+    {
+      "gid": 989,
+      "mode": "0640",
+      "path": "/run/vst-preflight/network-policy-attestation.json",
+      "source": "actual independently observed root policy evidence for the waiting probe MainPID/InvocationID, matching run/spec/nonce; signature only after all actual conditions hold",
+      "uid": 0
+    }
+  ],
+  "runtime_repository_rule": "single fixed deployment snapshot, no development checkout or per-sprint worktree",
+  "state": "CANDIDATE_NOT_INSTALLED",
+  "store_rule": "initialize only the explicitly absent fresh target; refuse existing incompatible Store and preserve all data",
+  "unit_overrides": [
+    {
+      "destination": "/etc/systemd/system/vst-supervisor.service.d/rate-limits.conf",
+      "gid": 0,
+      "mode": "0644",
+      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+      "source": "unit-overrides/vst-supervisor.service.d/rate-limits.conf",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-runner.service.d/rate-limits.conf",
+      "gid": 0,
+      "mode": "0644",
+      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+      "source": "unit-overrides/vst-runner.service.d/rate-limits.conf",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-signer.service.d/rate-limits.conf",
+      "gid": 0,
+      "mode": "0644",
+      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+      "source": "unit-overrides/vst-signer.service.d/rate-limits.conf",
+      "uid": 0
+    }
+  ]
+}

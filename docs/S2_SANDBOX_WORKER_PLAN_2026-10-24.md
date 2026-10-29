@@ -6,6 +6,15 @@ Sources: `docs/DESIGN_BASELINE_AND_IMPLEMENTATION_PLAN_2026-10-24.md` section 4 
 
 Naming note: the blueprint roadmap (section 10) now calls S2 "Isolated worker sandbox" and S3 "Worker pilot", consistent with this plan and the baseline scope. The earlier stale "Planning router" wording has already been corrected in the blueprint; this note records the current alignment.
 
+## Current sequential task checkpoint — 2026-10-30
+
+Use `docs/sdlc/backlog.md`, Current execution checkpoint, as the authoritative ordered queue.
+S2-1 and S2-2 retain their bounded source/test delivery; S2-3 retains inactive stage-only
+acceptance. S2-4 exact runtime inputs are verified, delivery pending (change0595); the actual
+run-bound service journey remains unexecuted. Codex owns technical configuration and evidence
+under the later operator delegation in requirements.md. Deliver each task commit with a normal
+push before the next queue item. S2-5 final acceptance follows S2-4; S3 is not started.
+
 ## 1. Goal
 
 Move the trust roots out of the process that runs commands and prove an isolated worker can run on the S1 control plane. Concretely: (a) close the five trust gaps deferred out of S1; (b) write the sandbox specification first and prove it with a pre-flight probe; (c) put a real (but minimal) worker inside that sandbox and show it survives crash, STOP and resume on one fixture, with the S1 gate still the only acceptance authority.

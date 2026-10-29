@@ -1,0 +1,18 @@
+{
+  "auxiliary_content_inventory_sha256": "42faf63589d480da0b495ed2ba3a1083d1471dd75ff081f03d68d5d988f56997",
+  "auxiliary_digest_definition": "e2e sorted relative-path/type/content records; excludes directory metadata",
+  "git_bundle_bytes": 2377415,
+  "git_bundle_sha256": "90357166e814f2e51d8ed863f6eed743727e7ffd6fad15ac99e5b53e56698d15",
+  "qualification_scope": "existing V1 issuer/dispatch path with the concrete pidfd compatibility correction; configured-role model identity, no provider attestation claimed",
+  "runtime_path": "/opt/vst-runtime-a600774649527ff0b33eb81f4d431f8226119b2c",
+  "runtime_source_head": "a600774649527ff0b33eb81f4d431f8226119b2c",
+  "runtime_transition_manifest_sha256": "6a9db55005044ba306f4135c93fa411a4ce7e0572482b32ed7ecfecbea35e50a",
+  "runtime_tree_digest_definition": "tools.vst.runtime_bundle.tree_sha256 canonical content+metadata records",
+  "runtime_tree_sha256": "6ec90c3ef82478b09f07390c0d3f38f36317efb58976cef4c060dc1968649b12",
+  "sandbox_spec_sha256": "7a0bcaa3eb7ca76b9771e0b7f49892eaa0cfa744ce4e523f5f94b997fed61997",
+  "schema": "VST_S2_DEPLOYMENT_SOURCE_BINDING_V1",
+  "task_repository": "Virtual_scrum_team",
+  "task_repository_destination": "/var/lib/vst-runner/repository",
+  "task_repository_usage": "single read-only runtime deployment snapshot; all development remains in D:/Repo/Virtual_scrum_team",
+  "task_source_head": "a600774649527ff0b33eb81f4d431f8226119b2c"
+}

@@ -22,3 +22,7 @@ tmp/
 
 # Local Claude Code state
 .claude/settings.local.json
+
+# Reviewed non-secret S2 trust anchors; private PEM files remain ignored.
+!docs/sdlc/runtime-config/dispatch-instruction-public.pem
+!docs/sdlc/runtime-config/execution-grant-public.pem

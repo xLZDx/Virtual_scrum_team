@@ -1,0 +1,14 @@
+{
+  "grant_audience": "s2-runtime-qualification",
+  "grant_trust_keys": {
+    "s2-execution-grant-20261030": "/etc/vst-runner/execution-grant-public.pem"
+  },
+  "key_path": "/var/lib/vst-signer/receipt.key",
+  "ledger_path": "/var/lib/vst-signer/signing.sqlite3",
+  "openssl_path": "/usr/bin/openssl",
+  "runner_cgroup": "/system.slice/vst-runner.service",
+  "runner_gid": 988,
+  "runner_uid": 997,
+  "socket_path": "/run/vst-signer/signer.sock",
+  "supervisor_socket": "/run/vst-supervisor/supervisor.sock"
+}

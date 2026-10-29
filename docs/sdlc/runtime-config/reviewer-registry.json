@@ -1,0 +1,10 @@
+{
+  "entries": [
+    {
+      "key_id": "s2-local-independent-review-20261030",
+      "principal": "vst-independent-reviewer"
+    }
+  ],
+  "signature": "7669c0782d22666a361acf4c6154b1ba46b9d0d1ce171ac5e43919884772cbb3",
+  "version": "s2-runtime-reviewers-20261030-v2"
+}

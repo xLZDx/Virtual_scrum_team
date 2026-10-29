@@ -1,0 +1,16 @@
+{
+  "private_material_directory": "/var/lib/vst-config-preparation/s2-20261030",
+  "private_material_directory_mode": "0700",
+  "private_material_owner_uid": 0,
+  "public": {
+    "dispatch-instruction": {
+      "public_file_sha256": "b3586ac2f707058a8933759b8abbf4f5b8b84e7fde70f644d9d77d523b7af162",
+      "public_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAXS7/vuExfpM3Q6DATjGpo5fsnpW0rv+6o6VtuMea8/Y=\n-----END PUBLIC KEY-----\n"
+    },
+    "execution-grant": {
+      "public_file_sha256": "bbf647ee13e5aafdceccfce9bbb41dc9f79f15f4578a19dfb4ddcf11442a45ad",
+      "public_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAoMGJ3v4oD0+agnFUpONnvxz7oN9SnvzxCRWyFOcrP4M=\n-----END PUBLIC KEY-----\n"
+    }
+  },
+  "status": "PREPARED_NOT_INSTALLED"
+}

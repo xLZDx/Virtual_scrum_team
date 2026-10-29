@@ -217,3 +217,16 @@ correlated reply `0477831c-98fa-5e91-8416-5b5b4ff7cacd`, 0 BLOCKER / 0 MAJOR). T
 acceptance remains NOT APPROVED. This decision does not authorize privileged issuer implementation,
 production keys/configuration, activation, dispatch, E5 replacement, runtime acceptance, or S2
 closure. The V1 caller-selected operation-ID route and real owner-to-Runner evidence remain open.
+
+### S2-4 exact configuration preparation — 2026-10-30
+
+Delivered code a600774 corrects the actually observed Python3.12 missing pidfd constant; its
+45 focused passes and real kernel descriptor evidence are in change0592. The exact updated
+runtime/helper was actually staged without selection or activation. The non-secret config
+bundle in runtime-config/ binds that source, official transition tree/helper hashes, isolated
+roles, one exact task/policy, configured model record and real run/nonce.
+
+Designated verification and its initial findings/fixes are linked from change0595. A local
+reviewer witness is explicitly distinct from GPT-PM, and root technical delegation is not a
+claim of personal human signing. No service journey, preflight success or task approval is
+inferred from these preparation artifacts. Current execution order is in backlog.md.

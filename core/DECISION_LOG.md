@@ -1541,3 +1541,13 @@ This is an actual source compatibility update, not reopening accepted issuer arc
 Extend the previous ef-only .gitattributes rule to every s2-runtime-source-plan-*.json artifact.
 The installer requires exact reviewed byte identity, so Git text normalization must not silently
 change it. Preserve the reviewed a600 plan SHA620e4614; no runtime action or JSON value changes.
+
+## 2026-10-30 — Exact existing-runtime configuration and truthful review identity (0595)
+
+Prepare the S2 configuration bundle against delivered source a600774 and its actual strict
+stage-only result. Keep root policy material outside Runner/worker and never commit private
+bytes. Bind the one actual qualification task and measured run/nonce; no unrestricted assignment
+or fabricated PASS is permitted. A local HMAC witness is vst-independent-reviewer, not GPT-PM;
+only a real separately executed review can be recorded, and final PM Bridge approval remains
+separate correlated evidence. Use explicit [Unit] rate-limit drop-ins while retaining the source
+template diagnostic. Full scope, actual verification and deployment limits are in change0595.

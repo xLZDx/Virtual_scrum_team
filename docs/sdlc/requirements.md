@@ -8,15 +8,27 @@ The Agentic_Framework phase-1 record is attached to the already active S2. It do
 
 S2 delivers a bounded, authenticated path for dispatching work that has already been assigned by the existing Store, and establishes the evidence needed to qualify its runner boundary. The Store remains the sole task, assignment, and lease authority. The accepted coordinator path is the existing `DispatchOwnerService`, authenticated Supervisor/Store admission, Store-filtered Pub/Sub, and `StoreBackedDispatcher`. No external coordinator, second scheduler, or assignment authority is required. [S1: `core/STATE.md`, “Current S2 coordinator/runtime adjudication — 2026-10-29”; `core/BACKLOG.md`, “S2 — signed dispatch-instruction provenance and owner relay”.]
 
+## Current delegated execution scope — 2026-10-30
+
+The operator's later explicit GO covers the exact configuration bundle, technical preparation and
+permitted runtime qualification. The global settled-decision rule assigns the concrete technical
+configuration, isolated service material and genuine evidence work to Codex; repeated generic
+permission requests are superseded. Missing artifacts are execution work, not proof of a new
+operator decision. Actual signatures/measurements still must be produced truthfully, with the
+root policy signer outside Runner/worker and its delegated machine actor explicitly identified.
+No personal human signature or successful measurement is inferred from authorization. Existing
+restricted-selector and data-integrity safeguards continue to apply. The ordered current task
+and evidence pointers are in backlog.md; earlier dated decisions retain their historical scope.
+
 ## Scope
 
 **In scope:** source-level signed-instruction verification and owner relay for already-authorized work; fail-closed admission and outcome handling; bounded runtime configuration/evidence under the recorded authorization; truthful S2 acceptance and exact-head review.
 
-**Out of scope:** granting production signing authority, provisioning production issuer/attestor keys, activating production dispatch or E5, migrating an existing Store, running restricted process-kill, crash/recovery, mutation, E8, or policy selectors, or starting S3 before S2 closes. Bounded source preparation for an explicitly machine-labelled delegation contract, pure validators, and read-only measurement collectors is authorized within S2 under the GPT-PM adjudication below. Preparation does not itself authorize signing, replace active E5 verification, or permit activation.
+**Out of scope:** unrestricted dispatch beyond the exact qualification task, impersonation of a personal human signature, fabrication of evidence, migration of an existing Store, restricted process-kill/crash/recovery/mutation-campaign/E8/policy selectors, and starting S3 before S2 acceptance. The current exact technical bundle and permitted qualification proceed under the later operator delegation above; preserve the existing cryptographic verification, role separation, source pins and enforced controls.
 
 ## Requirements
 
-### Machine-delegation adjudication amendment (2026-10-29)
+### Historical machine-delegation adjudication amendment (2026-10-29)
 
 GPT-PM returned `MODIFY` for request `a3e130f0-9aec-4304-b001-388a45c0be55`,
 correlated reply `0b0b8a4d-0816-4146-ba21-71857b5de49d`. The exact harvested response is
@@ -65,8 +77,8 @@ requirement to locate a nonexistent external coordinator or to request another g
 
 | ID | Unknown / missing acceptance evidence | Owner | Next action |
 |---|---|---|---|
-| UNKNOWN-001 | No production issuer delegation policy/key is installed or evidenced. GPT-PM accepts bounded machine issuance in principle, subject to the concrete provenance contract and separate production authority decision. Codex MUST NOT self-authorize production powers or create production keys. | Codex prepares a precise policy and source contract; GPT-PM adjudicates its architecture; operator authorizes the exact production delegation and key custody if activation is later desired. | Implement/review the bounded machine issuer contract and idempotent Store-assignment provenance. Keep production signing held until the exact delegation is authorized, key custody is established, and its trust chain is verified. |
-| UNKNOWN-002 | No production machine-attestor policy, independently verified current run-bound measurement provenance, root configuration, or qualified real owner-to-Runner journey is evidenced. Machine E5 is acceptable only under its explicit versioned trust domain and independent measurement contract; the current human verifier is not silently replaced. | Codex prepares versioned schemas, pure validators and read-only collectors; GPT-PM adjudicates provenance; operator authorizes any concrete production delegation/key custody. | Implement the measurement and verification contract; collect only genuine permitted observations. Keep E5 activation held until independent collector identities, evidence freshness/binding, exact policy, and applicable authority are verified. |
+| UNKNOWN-001 | Concrete isolated service material is prepared in root-controlled WSL staging, with only public fingerprints in the non-secret bundle. Exact installation and real runtime evidence remain execution work; no new generic permission is pending. | Codex owns exact configuration/material handling and observed verification under the existing delegation; GPT-PM adjudicates required final acceptance. | Deliver the verified exact bundle, install only its collision-checked paths/identities, preserve existing Store data and record actual outcomes. Never infer installation or a signature from a prepared policy. |
+| UNKNOWN-002 | Current run-bound preflight and real owner-to-Runner execution are not yet measured. The existing source verifies a run/spec/nonce-bound root-policy signature outside Runner/worker; the prepared execution identifies its delegated machine actor and claims no personal human signature. | Codex coordinates actual isolated observation and technical signing; designated test roles execute permitted qualification; GPT-PM decides final acceptance. | Produce actual namespace/network/mount/socket and service evidence, sign only verified measured facts, and run the exact allowed task. Failure/unknown remains failure/unknown. Preserve restricted selectors as NOT_RUN. |
 | UNKNOWN-003 | Exact-head GPT-PM final approval for the completed S2 code, mapped tests, and relevant specialist reviews is not recorded. | GPT-PM; Codex owns coordination and submission. | After coding and permitted test/review work are complete, submit the exact final revision and correlated evidence for the required gate; any later code change requires a fresh gate. |
 
 ## Traceability and acceptance boundary

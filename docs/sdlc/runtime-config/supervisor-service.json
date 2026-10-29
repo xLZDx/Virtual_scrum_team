@@ -1,0 +1,109 @@
+{
+  "allow_schema_upgrade": false,
+  "anchor_path": "/var/lib/vst-runner/private/store.anchor",
+  "assignment_policy_path": "/etc/vst-runner/assignment-delegation-policy.json",
+  "assignment_policy_sha256": "1859bbf777b12ead6ded46581282a976a746071fc844f4f46a2d5baf6e2072cf",
+  "dispatch_instruction_trust_registry_path": "/etc/vst-runner/dispatch-instruction-trust.json",
+  "event_key_path": "/etc/vst-runner/store-event.key",
+  "execution_grant_audience": "s2-runtime-qualification",
+  "execution_grant_key_id": "s2-execution-grant-20261030",
+  "execution_grant_private_key_path": "/etc/vst-runner/execution-grant-private.pem",
+  "execution_grant_trust_keys": {
+    "s2-execution-grant-20261030": "/etc/vst-runner/execution-grant-public.pem"
+  },
+  "generation_record_path": "/var/lib/vst-runner/generation.json",
+  "model_provenance": {
+    "gpt-6-luna": "a78f908212da5715a951c62d17e2ec720ad6065c13164191d3aef0bf506d6303"
+  },
+  "openssl_path": "/usr/bin/openssl",
+  "operator_key_path": "/etc/vst-runner/network-policy.key",
+  "peers": [
+    {
+      "cgroup": "/system.slice/vst-dispatch-owner.service",
+      "gid": 982,
+      "operations": [
+        "submit_dispatch_intent",
+        "replay_dispatch_outcome",
+        "ack_dispatch_intent"
+      ],
+      "principal": "Codex",
+      "role": "dispatch_owner",
+      "uid": 980
+    },
+    {
+      "cgroup": "/system.slice/vst-dispatcher.service",
+      "gid": 983,
+      "operations": [
+        "issue_dispatch_grant",
+        "next_dispatch_intent"
+      ],
+      "role": "dispatcher",
+      "uid": 981
+    },
+    {
+      "cgroup": "/system.slice/vst-runner.service",
+      "gid": 988,
+      "operations": [
+        "claim",
+        "claim_status",
+        "reserve",
+        "complete",
+        "generation",
+        "recover",
+        "manifest",
+        "previous_receipt",
+        "no_execution"
+      ],
+      "role": "runnerd",
+      "uid": 997
+    },
+    {
+      "cgroup": "/system.slice/vst-signer.service",
+      "gid": 988,
+      "operations": [
+        "generation",
+        "pending"
+      ],
+      "role": "signer",
+      "uid": 995
+    },
+    {
+      "cgroup": "/system.slice/vst-assignment-bootstrap.service",
+      "gid": 980,
+      "operations": [
+        "bootstrap_assignment"
+      ],
+      "role": "assignment_bootstrap",
+      "uid": 978
+    },
+    {
+      "cgroup": "/system.slice/vst-dispatch-issuer.service",
+      "gid": 981,
+      "operations": [
+        "assignment_basis",
+        "issue_root_dispatch_instruction"
+      ],
+      "role": "delegated_issuer",
+      "uid": 979
+    }
+  ],
+  "preflight_record_path": "/var/lib/vst-runner/private/preflight.json",
+  "probe_key_path": "/etc/vst-runner/probe-verification.key",
+  "probe_nonce": "c61b82e21c9943f29ac8f53746528e7a",
+  "root_dispatch_issuer": {
+    "enabled": true,
+    "key_id": "s2-dispatch-instruction-20261030",
+    "maximum_ttl_seconds": 300,
+    "minimum_safety_slack_seconds": 10,
+    "public_key_fingerprint": "b3586ac2f707058a8933759b8abbf4f5b8b84e7fde70f644d9d77d523b7af162"
+  },
+  "run_id": "s2-runtime-20261030-70e93aab84f94c58ab447a3de94e6261",
+  "runner_control_group": "/system.slice/vst-runner.service",
+  "runner_lock_path": "/run/vst-runner/cgroup-admission.lock",
+  "runner_unit_name": "vst-runner.service",
+  "socket_gid": 984,
+  "socket_path": "/run/vst-supervisor/supervisor.sock",
+  "startup_supervisor_key_path": "/etc/vst-runner/startup-supervisor.key",
+  "store_path": "/var/lib/vst-runner/private/store.sqlite3",
+  "systemctl_path": "/usr/bin/systemctl"
+}

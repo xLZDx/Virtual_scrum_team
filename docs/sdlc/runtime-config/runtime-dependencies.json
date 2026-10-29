@@ -1,0 +1,15 @@
+{
+  "executable": "/usr/bin/python3",
+  "executable_sha256": {
+    "/usr/bin/git": "2a8c18fbf43da9f692d75474c72bea9dfd796c260b0f3dfe456376abc3bbd668",
+    "/usr/bin/openssl": "30cc7c491903d6d8bca54406889c0334a167777397458214b5bd498c51b6fd97",
+    "/usr/bin/python3.12": "a92f0f95e883390c7256b2e441484aac06b1002dbe1d924141a77c8d82f96223"
+  },
+  "kernel": "6.6.114.1-microsoft-standard-WSL2",
+  "openssl_version": "OpenSSL 3.0.13 30 Jan 2024 (Library: OpenSSL 3.0.13 30 Jan 2024)",
+  "pytest_file": "/usr/lib/python3/dist-packages/pytest/__init__.py",
+  "pytest_version": "7.4.4",
+  "python": "3.12.3 (main, Jul 15 2026, 23:46:41) [GCC 13.3.0]",
+  "socket_SO_PEERCRED": 17,
+  "socket_SO_PEERPIDFD": null
+}

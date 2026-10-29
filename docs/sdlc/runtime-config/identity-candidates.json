@@ -1,0 +1,132 @@
+{
+  "candidates": {
+    "vst-assignment-bootstrap": {
+      "gid": 980,
+      "name_group": {
+        "record": "",
+        "returncode": 2,
+        "stderr": ""
+      },
+      "name_passwd": {
+        "record": "",
+        "returncode": 2,
+        "stderr": ""
+      },
+      "numeric_group": {
+        "record": "",
+        "returncode": 2,
+        "stderr": ""
+      },
+      "numeric_passwd": {
+        "record": "",
+        "returncode": 2,
+        "stderr": ""
+      },
+      "uid": 978
+    },
+    "vst-dispatch-issuer": {
+      "gid": 981,
+      "name_group": {
+        "record": "",
+        "returncode": 2,
+        "stderr": ""
+      },
+      "name_passwd": {
+        "record": "",
+        "returncode": 2,
+        "stderr": ""
+      },
+      "numeric_group": {
+        "record": "",
+        "returncode": 2,
+        "stderr": ""
+      },
+      "numeric_passwd": {
+        "record": "",
+        "returncode": 2,
+        "stderr": ""
+      },
+      "uid": 979
+    },
+    "vst-dispatch-owner": {
+      "gid": 982,
+      "name_group": {
+        "record": "",
+        "returncode": 2,
+        "stderr": ""
+      },
+      "name_passwd": {
+        "record": "",
+        "returncode": 2,
+        "stderr": ""
+      },
+      "numeric_group": {
+        "record": "",
+        "returncode": 2,
+        "stderr": ""
+      },
+      "numeric_passwd": {
+        "record": "",
+        "returncode": 2,
+        "stderr": ""
+      },
+      "uid": 980
+    },
+    "vst-dispatcher": {
+      "gid": 983,
+      "name_group": {
+        "record": "",
+        "returncode": 2,
+        "stderr": ""
+      },
+      "name_passwd": {
+        "record": "",
+        "returncode": 2,
+        "stderr": ""
+      },
+      "numeric_group": {
+        "record": "",
+        "returncode": 2,
+        "stderr": ""
+      },
+      "numeric_passwd": {
+        "record": "",
+        "returncode": 2,
+        "stderr": ""
+      },
+      "uid": 981
+    }
+  },
+  "observation_only": true,
+  "observed_utc": "2026-10-29T22:55:16.035453+00:00",
+  "shared_socket_group": {
+    "gid": 984,
+    "name": {
+      "record": "",
+      "returncode": 2,
+      "stderr": ""
+    },
+    "numeric": {
+      "record": "",
+      "returncode": 2,
+      "stderr": ""
+    }
+  },
+  "state_paths": {
+    "/var/lib/vst-runner": {
+      "state": "ABSENT"
+    },
+    "/var/lib/vst-runner/repository": {
+      "state": "ABSENT"
+    },
+    "/var/lib/vst-runner/store.anchor": {
+      "state": "ABSENT"
+    },
+    "/var/lib/vst-runner/store.sqlite3": {
+      "state": "ABSENT"
+    },
+    "/var/lib/vst-signer": {
+      "state": "ABSENT"
+    }
+  }
+}

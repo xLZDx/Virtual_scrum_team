@@ -1,0 +1,28 @@
+{
+  "audience": "s2-runtime-qualification",
+  "daemon_gid": 988,
+  "daemon_uid": 997,
+  "dispatcher_cgroup": "/system.slice/vst-dispatcher.service",
+  "dispatcher_gid": 983,
+  "dispatcher_uid": 981,
+  "generation_record_path": "/var/lib/vst-runner/generation.json",
+  "grant_trust_keys": {
+    "s2-execution-grant-20261030": "/etc/vst-runner/execution-grant-public.pem"
+  },
+  "openssl_path": "/usr/bin/openssl",
+  "repository_root": "/var/lib/vst-runner/repository",
+  "runner_id": "s2-ubuntu2404-runner",
+  "runtime_dir": "/run/vst-runner",
+  "service_cgroup": "/system.slice/vst-runner.service",
+  "signer_socket": "/run/vst-signer/signer.sock",
+  "socket_gid": 983,
+  "socket_path": "/run/vst-runner/runner.sock",
+  "supervisor_socket": "/run/vst-supervisor/supervisor.sock",
+  "unit_name": "vst-runner.service",
+  "worker_exec_helper_binary_sha256": "40cca741389d4b711dfca45da2698846a6acc801be006456cc7af207e2dd6353",
+  "worker_exec_helper_head": "a600774649527ff0b33eb81f4d431f8226119b2c",
+  "worker_exec_helper_path": "/usr/local/libexec/vst-s4-worker-exec-a600774649527ff0b33eb81f4d431f8226119b2c",
+  "worker_exec_helper_source_sha256": "ea76231fe4b3ae99902be7be43d3a7a970f9ea28c7b27258097f0ceb9d20d951",
+  "worker_gid": 989,
+  "worker_uid": 999
+}

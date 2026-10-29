@@ -1,0 +1,7 @@
+{
+  "s2-dispatch-instruction-20261030": {
+    "principal": "Codex",
+    "public_key_path": "/etc/vst-runner/dispatch-instruction-public.pem",
+    "purpose": "VST_S2_DISPATCH_INSTRUCTION_V1"
+  }
+}

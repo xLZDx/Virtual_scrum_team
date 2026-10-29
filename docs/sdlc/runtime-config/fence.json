@@ -1,0 +1,14 @@
+{
+  "control_group": "/system.slice/vst-runner.service",
+  "daemon_gid": 988,
+  "daemon_uid": 997,
+  "dispatcher_gid": 983,
+  "dispatcher_uid": 981,
+  "generation_record_path": "/var/lib/vst-runner/generation.json",
+  "ledger_path": "/var/lib/vst-runner/private/fence-ledger.json",
+  "runtime_dir": "/run/vst-runner",
+  "systemctl_path": "/usr/bin/systemctl",
+  "unit_name": "vst-runner.service",
+  "worker_gid": 989,
+  "worker_uid": 999
+}

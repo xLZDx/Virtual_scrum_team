@@ -1,0 +1,429 @@
+{
+  "assignment_policy_sha256": "1859bbf777b12ead6ded46581282a976a746071fc844f4f46a2d5baf6e2072cf",
+  "configuration_installation": [
+    {
+      "destination": "/etc/vst-runner/supervisor-service.json",
+      "gid": 0,
+      "mode": "0600",
+      "source": "supervisor-service.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/runner-service.json",
+      "gid": 988,
+      "mode": "0640",
+      "source": "runner-service.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/signer-service.json",
+      "gid": 988,
+      "mode": "0640",
+      "source": "signer-service.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/dispatcher-service.json",
+      "gid": 983,
+      "mode": "0640",
+      "source": "dispatcher-service.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/dispatch-owner-service.json",
+      "gid": 982,
+      "mode": "0640",
+      "source": "dispatch-owner-service.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/fence.json",
+      "gid": 0,
+      "mode": "0600",
+      "source": "fence.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/assignment-delegation-policy.json",
+      "gid": 0,
+      "mode": "0644",
+      "source": "assignment-delegation-policy.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/dispatch-instruction-trust.json",
+      "gid": 0,
+      "mode": "0644",
+      "source": "dispatch-instruction-trust.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/bootstrap-request.json",
+      "gid": 980,
+      "mode": "0640",
+      "source": "bootstrap-request.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/execution-grant-public.pem",
+      "gid": 0,
+      "mode": "0644",
+      "source": "execution-grant-public.pem",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/dispatch-instruction-public.pem",
+      "gid": 0,
+      "mode": "0644",
+      "source": "dispatch-instruction-public.pem",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/probe-entrypoint.py",
+      "gid": 0,
+      "mode": "0644",
+      "source": "probe-entrypoint.py",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/probe-request.json",
+      "gid": 0,
+      "mode": "0644",
+      "source": "probe-request.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/network-profile.json",
+      "gid": 0,
+      "mode": "0644",
+      "source": "network-profile.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/model-provenance.json",
+      "gid": 0,
+      "mode": "0644",
+      "source": "model-provenance.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/reviewer-registry.json",
+      "gid": 0,
+      "mode": "0644",
+      "source": "reviewer-registry.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/task-manifest.json",
+      "gid": 0,
+      "mode": "0644",
+      "source": "task-manifest.json",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/vst-runner/reviewer-use-policy.json",
+      "gid": 0,
+      "mode": "0644",
+      "source": "reviewer-use-policy.json",
+      "uid": 0
+    }
+  ],
+  "existing_store_migration_authorized": false,
+  "files": [
+    {
+      "path": "assignment-delegation-policy.json",
+      "sha256": "3dde22a446451dac2f6d8882eb2ec11a0297e5b0e1ef3b32d7cda4c1bf6ebc59",
+      "size": 1411
+    },
+    {
+      "path": "bootstrap-request.json",
+      "sha256": "c25869bb519e53a2b564ff3c171d423fed84fb70a46b3be9bc14ceb9485f98a7",
+      "size": 4104
+    },
+    {
+      "path": "deployment-source-manifest.json",
+      "sha256": "f4324fc73a16cc1a47452dc6c694105c755651359e19b7e6aed8f2758edcb84c",
+      "size": 1429
+    },
+    {
+      "path": "dispatch-instruction-public.pem",
+      "sha256": "b3586ac2f707058a8933759b8abbf4f5b8b84e7fde70f644d9d77d523b7af162",
+      "size": 113
+    },
+    {
+      "path": "dispatch-instruction-trust.json",
+      "sha256": "c88d90f75653168b417b15f11d1dc6086433d7d4c948757ac30b967fac8db350",
+      "size": 196
+    },
+    {
+      "path": "dispatch-owner-service.json",
+      "sha256": "1df674c4198df4246ed6490fd1ae9eaadd8a8be18ba54c5852019694de4a99c1",
+      "size": 65
+    },
+    {
+      "path": "dispatcher-service.json",
+      "sha256": "3f35183f011a1bdb4b3ec8fa45480178dc91d6281b26bdc30e3d50185f2842cc",
+      "size": 166
+    },
+    {
+      "path": "execution-grant-public.pem",
+      "sha256": "bbf647ee13e5aafdceccfce9bbb41dc9f79f15f4578a19dfb4ddcf11442a45ad",
+      "size": 113
+    },
+    {
+      "path": "fence.json",
+      "sha256": "8b96cf8d743bd6fc5c4bc51a3a988f7477f7466e6d40748e9462d88dce9da556",
+      "size": 440
+    },
+    {
+      "path": "identity-candidates.json",
+      "sha256": "98afc2ece60025bf079ef47a640d4936387ecc23e8623e485249b2b43824c82e",
+      "size": 2583
+    },
+    {
+      "path": "installation-layout.json",
+      "sha256": "201187c862e095c42b0fa005c3fbd8ffda93dc99f19b5017faad62af80d8fc27",
+      "size": 7671
+    },
+    {
+      "path": "model-provenance.json",
+      "sha256": "a78f908212da5715a951c62d17e2ec720ad6065c13164191d3aef0bf506d6303",
+      "size": 567
+    },
+    {
+      "path": "network-profile.json",
+      "sha256": "dbb0d5cb3566c3d99bcd138f63f50a937b6480a086325422d86ac5f4e8824f75",
+      "size": 1176
+    },
+    {
+      "path": "probe-entrypoint.py",
+      "sha256": "2bb8a72935a003411a57eeb5f70b01f0e6407955dfd0c2abf3981ce3a57e19b1",
+      "size": 1566
+    },
+    {
+      "path": "probe-request.json",
+      "sha256": "e2d7eac542aa1140570527156756a63c4e65904ace07976114a02c64bf730e95",
+      "size": 118
+    },
+    {
+      "path": "public-material.json",
+      "sha256": "32597eb45c6a8152c32810e7e1e769ac98119392f34e3eac4fe2a126275cebc0",
+      "size": 757
+    },
+    {
+      "path": "reviewer-registry-record.json",
+      "sha256": "bc8801ec7a5d6bb8acf3ef2f9b96e41da520f10f3926706479892efb2dcd531a",
+      "size": 524
+    },
+    {
+      "path": "reviewer-registry.json",
+      "sha256": "678dbe279d91ba96fa3b6e79da13c2c2be8270cbc08bbaaae9f7bf724078e6fd",
+      "size": 269
+    },
+    {
+      "path": "reviewer-use-policy.json",
+      "sha256": "a69dfcb56d54aadf7d9b2d966edbf4867145a861b23c2313e03fc0bc36766c97",
+      "size": 875
+    },
+    {
+      "path": "run-binding.json",
+      "sha256": "bc4cbd0e1bc18d147b2d123910906ebf949ae599d750c0e189cffcfdda9012b0",
+      "size": 599
+    },
+    {
+      "path": "runner-service.json",
+      "sha256": "6af0b157c9222ade2b4846e0b2f5802532da5af08470234366d393def4617e83",
+      "size": 1256
+    },
+    {
+      "path": "runtime-dependencies.json",
+      "sha256": "3ad8f7aa5af961e1c81f44d45ae72649f6d09af67313a01078c7ed0898949a18",
+      "size": 704
+    },
+    {
+      "path": "runtime-transition-manifest.json",
+      "sha256": "a25f3351c99053fbdf4fa5212758627ad3ecbbeb6162d9c6d578fd777ed9583b",
+      "size": 3157
+    },
+    {
+      "path": "signer-service.json",
+      "sha256": "4d4d53fccd20d415b13a69b9ad4151eff6c15532ae4a6460a09fc32b2a869ad3",
+      "size": 510
+    },
+    {
+      "path": "supervisor-service.json",
+      "sha256": "b6eecacc4579014a8514707847384be2ff6d54a747ffbfff56333d1e8f884abe",
+      "size": 3524
+    },
+    {
+      "path": "task-manifest.json",
+      "sha256": "1a29b459d21e68d5b8ef434b66a2a2ec9fd8acc427f627417c493d9671ca71ef",
+      "size": 3596
+    },
+    {
+      "path": "unit-overrides/vst-runner.service.d/rate-limits.conf",
+      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+      "size": 51
+    },
+    {
+      "path": "unit-overrides/vst-signer.service.d/rate-limits.conf",
+      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+      "size": 51
+    },
+    {
+      "path": "unit-overrides/vst-supervisor.service.d/rate-limits.conf",
+      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+      "size": 51
+    },
+    {
+      "path": "units/vst-assignment-bootstrap.service",
+      "sha256": "e714fb88699ae07fbd96ccd8758cb58d1db8bcf075d52145c6e8a3ec8931f43f",
+      "size": 1016
+    },
+    {
+      "path": "units/vst-dispatch-issuer.service",
+      "sha256": "d798f141e33d15444afccb1ac26213665571f19e70f1dc61fbd7f60b23140c7d",
+      "size": 1027
+    },
+    {
+      "path": "units/vst-sandbox-probe.service",
+      "sha256": "d80c171238985ffcc7f19c6eac74276c7ea7615ebf85d63391b6f2dbf097f33f",
+      "size": 637
+    }
+  ],
+  "freshness_policy": "identity/path/state collisions reobserved immediately before publishing; stale observations are not reservations",
+  "preserve_existing_store": true,
+  "private_material_policy": "private bytes are retained only in root-controlled WSL preparation, excluded from this bundle; layout maps exact source/destination/mode; no fabricated observation or personal human signature",
+  "project": "Virtual_scrum_team",
+  "qualification_task_scope": "one exact existing allowlisted TestRun via real authenticated owner-to-Runner path; inner Store fixture test remains labeled synthetic",
+  "reviewed_approval_is_not_asserted_by_manifest": true,
+  "runtime_source_head": "a600774649527ff0b33eb81f4d431f8226119b2c",
+  "runtime_transition_sha256": "6a9db55005044ba306f4135c93fa411a4ce7e0572482b32ed7ecfecbea35e50a",
+  "schema": "VST_S2_NON_SECRET_CONFIG_BUNDLE_V1",
+  "selection_before_config": true,
+  "services_started_by_installation": false,
+  "source_binding_sha256": "2451f6d06b93ff34b7c1c0d891c875482ac4b21a71db5c64f7ad6c22d9cb2ba8",
+  "source_head": "a600774649527ff0b33eb81f4d431f8226119b2c",
+  "sprint": "S2",
+  "state": "PREPARED_NOT_INSTALLED",
+  "task_manifest_sha256": "2dc6fce44a3096a0f35afd78baa70a952ae4aa2d8ad0b00f8bac166e10d4fe32",
+  "unit_overrides": [
+    {
+      "destination": "/etc/systemd/system/vst-supervisor.service.d/rate-limits.conf",
+      "gid": 0,
+      "mode": "0644",
+      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+      "source": "unit-overrides/vst-supervisor.service.d/rate-limits.conf",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-runner.service.d/rate-limits.conf",
+      "gid": 0,
+      "mode": "0644",
+      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+      "source": "unit-overrides/vst-runner.service.d/rate-limits.conf",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-signer.service.d/rate-limits.conf",
+      "gid": 0,
+      "mode": "0644",
+      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+      "source": "unit-overrides/vst-signer.service.d/rate-limits.conf",
+      "uid": 0
+    }
+  ],
+  "units": [
+    {
+      "destination": "/etc/systemd/system/vst-dispatch-owner.service",
+      "gid": 0,
+      "mode": "0644",
+      "name": "vst-dispatch-owner.service",
+      "publication": "existing fingerprint-bound bootstrap transition",
+      "sha256": "606aff7a866d0182d891e42df66e26160540372a8120480b13fef10e45fe9cfb",
+      "source": "/opt/vst-runtime-a600774649527ff0b33eb81f4d431f8226119b2c/tools/vst/systemd/vst-dispatch-owner.service",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-dispatch-owner.socket",
+      "gid": 0,
+      "mode": "0644",
+      "name": "vst-dispatch-owner.socket",
+      "publication": "existing fingerprint-bound bootstrap transition",
+      "sha256": "a7855aefc05a04df1b51b798e2cf82c060716d638391573ac0b232de24724b6e",
+      "source": "/opt/vst-runtime-a600774649527ff0b33eb81f4d431f8226119b2c/tools/vst/systemd/vst-dispatch-owner.socket",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-dispatcher.service",
+      "gid": 0,
+      "mode": "0644",
+      "name": "vst-dispatcher.service",
+      "publication": "existing fingerprint-bound bootstrap transition",
+      "sha256": "ed12e2f7d5ee2a7177139682a91d5ba714679497e7c0f50c565b2141302a6c16",
+      "source": "/opt/vst-runtime-a600774649527ff0b33eb81f4d431f8226119b2c/tools/vst/systemd/vst-dispatcher.service",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-runner.service",
+      "gid": 0,
+      "mode": "0644",
+      "name": "vst-runner.service",
+      "publication": "existing fingerprint-bound bootstrap transition",
+      "sha256": "4915925e88b11fdf23fd10af5f3520eb921496dbd9a727743139bc91a9e3b8be",
+      "source": "/opt/vst-runtime-a600774649527ff0b33eb81f4d431f8226119b2c/tools/vst/systemd/vst-runner.service",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-signer.service",
+      "gid": 0,
+      "mode": "0644",
+      "name": "vst-signer.service",
+      "publication": "existing fingerprint-bound bootstrap transition",
+      "sha256": "33ed12ee7174c9136493cfba3cd4176a1c48ac9515afb79d5eb0740ff6d3502d",
+      "source": "/opt/vst-runtime-a600774649527ff0b33eb81f4d431f8226119b2c/tools/vst/systemd/vst-signer.service",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-supervisor.service",
+      "gid": 0,
+      "mode": "0644",
+      "name": "vst-supervisor.service",
+      "publication": "existing fingerprint-bound bootstrap transition",
+      "sha256": "aa64d16b7801f32146808706acffaa0ca9086653e5e3e9f5f5dac1bc07ab822c",
+      "source": "/opt/vst-runtime-a600774649527ff0b33eb81f4d431f8226119b2c/tools/vst/systemd/vst-supervisor.service",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-assignment-bootstrap.service",
+      "gid": 0,
+      "mode": "0644",
+      "name": "vst-assignment-bootstrap.service",
+      "publication": "new absent-only configuration unit; no enable/start during installation",
+      "sha256": "e714fb88699ae07fbd96ccd8758cb58d1db8bcf075d52145c6e8a3ec8931f43f",
+      "source": "units/vst-assignment-bootstrap.service",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-dispatch-issuer.service",
+      "gid": 0,
+      "mode": "0644",
+      "name": "vst-dispatch-issuer.service",
+      "publication": "new absent-only configuration unit; no enable/start during installation",
+      "sha256": "d798f141e33d15444afccb1ac26213665571f19e70f1dc61fbd7f60b23140c7d",
+      "source": "units/vst-dispatch-issuer.service",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-sandbox-probe.service",
+      "gid": 0,
+      "mode": "0644",
+      "name": "vst-sandbox-probe.service",
+      "publication": "new absent-only configuration unit; no enable/start during installation",
+      "sha256": "d80c171238985ffcc7f19c6eac74276c7ea7615ebf85d63391b6f2dbf097f33f",
+      "source": "units/vst-sandbox-probe.service",
+      "uid": 0
+    }
+  ],
+  "unrestricted_dispatch_authorized": false
+}
