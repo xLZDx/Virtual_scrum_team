@@ -35,7 +35,7 @@ _HANDOFF_FIELDS = {
     "schema", "assignment_operation_id", "policy_id", "policy_sha256", "repository",
     "sprint_id", "source_head", "manifest_sha256", "bootstrap_peer", "assignment_principal",
     "bootstrap_request", "task_id", "story_id", "task_manifest_sha256", "slot", "attempt",
-    "epoch", "lease_id", "runner_id", "run_id", "probe_sha256", "issued_at_utc",
+    "epoch", "lease_id", "runner_id", "run_id", "service_generation", "probe_sha256", "issued_at_utc",
     "expires_at_utc", "handoff_sha256",
 }
 _REQUEST_FIELDS = {"schema", "assignment_operation_id"}
@@ -221,6 +221,7 @@ def validate_handoff(value: Any, *, policy: dict, policy_sha256: str, now: datet
     _text(handoff["slot"], "slot", pattern=_ID)
     _text(handoff["runner_id"], "runner_id", pattern=_ID)
     _text(handoff["run_id"], "run_id", pattern=_ID)
+    _text(handoff["service_generation"], "service_generation", pattern=_ID)
     _integer(handoff["attempt"], "attempt", 1)
     _integer(handoff["epoch"], "epoch", 1)
     _integer(handoff["lease_id"], "lease_id", 1)

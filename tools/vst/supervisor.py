@@ -144,7 +144,8 @@ class Supervisor:
         policy = self.assignment_policy
         if (policy is None or self.assignment_policy_sha256 is None
                 or self.service_generation_provider is None
-                or self.assignment_policy_provider is None):
+                or self.assignment_policy_provider is None
+                or not isinstance(self.run_id, str) or not self.run_id.strip()):
             raise StoreError("authenticated assignment-basis source is not provisioned", kind="authorization")
         from .assignment_basis import validate_policy
         try:
@@ -168,6 +169,7 @@ class Supervisor:
         snapshot = self.store.authenticated_assignment_basis(
             operation_id, policy=policy, policy_sha256=self.assignment_policy_sha256,
             active_service_generation=generation,
+            expected_run_id=self.run_id,
         )
         return build_response(
             snapshot["handoff"], policy=policy, policy_sha256=self.assignment_policy_sha256,

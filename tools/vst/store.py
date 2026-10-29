@@ -2097,7 +2097,7 @@ class Store:
 
     def authenticated_assignment_basis(
         self, assignment_operation_id: str, *, policy: dict, policy_sha256: str,
-        active_service_generation: str,
+        active_service_generation: str, expected_run_id: str,
     ) -> dict:
         """Read a verified assignment handoff and live basis in one immutable snapshot."""
         from .assignment_basis import OPERATION, validate_handoff, validate_policy
@@ -2107,6 +2107,7 @@ class Store:
                 or any(char not in "0123456789abcdef" for char in assignment_operation_id)):
             raise StoreError("assignment operation id is malformed", kind="authorization")
         _need_str(active_service_generation, "active_service_generation")
+        _need_str(expected_run_id, "expected_run_id")
         policy, calculated_policy_sha256 = validate_policy(policy)
         if calculated_policy_sha256 != policy_sha256:
             raise StoreError("assignment policy digest does not match policy content", kind="authorization")
@@ -2152,6 +2153,9 @@ class Store:
             )
             if handoff["assignment_operation_id"] != assignment_operation_id:
                 raise StoreError("assignment operation result identity differs", kind="integrity")
+            if (handoff["run_id"] != expected_run_id
+                    or handoff["service_generation"] != active_service_generation):
+                raise StoreError("assignment handoff belongs to a stale Supervisor run or generation", kind="integrity")
             if row["payload_sha256"] != handoff["payload_sha256"]:
                 raise StoreError("assignment operation payload digest differs from canonical request", kind="integrity")
             probe = conn.execute(

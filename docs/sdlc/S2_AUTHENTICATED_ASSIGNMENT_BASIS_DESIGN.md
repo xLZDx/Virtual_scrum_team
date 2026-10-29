@@ -80,6 +80,14 @@ validates request-to-handoff identity and task manifest digest; it does not trus
 and row digest without recomputing the actual payload. This prepares verification only, not a
 writer endpoint or an authenticated historical record.
 
+Freshness correction from the focused negative test: the exact handoff also includes
+`service_generation`, fixed by the authenticated upstream operation, not the issuer request.
+The Store reader requires trusted `expected_run_id` and `active_service_generation` and compares
+both to the handoff inside the same read transaction. Supervisor must supply its configured
+current run ID; absence disables the path. A still-live consumed probe from another Supervisor
+run or a handoff from a prior service generation cannot be relabelled as current authority.
+Old records missing this field are refused; no compatibility fallback is authorized.
+
 The authenticated bootstrap operation writes one completed row through the existing
 `supervisor_operations` table and `Store.execute_idempotent()` transaction, then records the
 existing append-only `SUPERVISOR_OPERATION` NOTE event. No table or migration is added. Operation

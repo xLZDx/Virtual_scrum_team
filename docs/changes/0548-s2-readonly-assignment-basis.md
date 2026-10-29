@@ -47,6 +47,8 @@ recheck current Store authority without creating a nested SQLite transaction.
   repository TaskManifest validator, checks the task/story/slot against the root allowlist,
   recomputes the domain-separated operation key, and recomputes the Store payload digest from the
   request, kernel-mapped bootstrap peer, and policy digest.
+- Change 0549 adds the handoff's required service generation and checks both it and the current
+  Supervisor run ID inside the Store snapshot. Older handoffs are not upgraded.
 
 ## Verification
 
