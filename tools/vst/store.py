@@ -1528,13 +1528,47 @@ class Store:
         dispatch_request_id = key.removeprefix("dispatch-grant:")
         return dispatch_request_id, {"result": result, "payload_sha256": digest}
 
+    def _grant_has_delegated_origin_locked(self, conn: sqlite3.Connection, grant: dict) -> bool:
+        """Classify only for refusal; missing grant links never downgrade delegated work."""
+        from .assignment_basis import OPERATION as ASSIGNMENT_OPERATION
+        task_id = grant.get("task_id") if isinstance(grant, dict) else None
+        if not isinstance(task_id, str) or not task_id:
+            raise StoreError("execution grant task identity is invalid", kind="authorization")
+        self._verify_supervisor_records(conn)
+        for row in conn.execute(
+                "SELECT result FROM supervisor_operations WHERE operation=?",
+                (ASSIGNMENT_OPERATION,)).fetchall():
+            try:
+                handoff = json.loads(row["result"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("authenticated assignment history is malformed", kind="integrity") from exc
+            if not isinstance(handoff, dict):
+                raise StoreError("authenticated assignment history is malformed", kind="integrity")
+            if handoff.get("task_id") == task_id:
+                return True
+        for row in conn.execute(
+                "SELECT task_id, actor, payload FROM events WHERE kind='DISPATCH_INTENT_ACCEPTED'"
+                " AND task_id=? ORDER BY seq", (task_id,)).fetchall():
+            try:
+                event = json.loads(row["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("accepted dispatch history is malformed", kind="integrity") from exc
+            accepted = self._validate_dispatch_intent_event(
+                event, task_id=row["task_id"], actor=row["actor"],
+            )
+            if accepted.get("key_class") == "DELEGATED_V1":
+                return True
+        return False
+
     def dispatch_issuance_target_for_grant(self, grant: dict) -> dict | None:
         """Return the exact delegated instruction/key binding associated with a signed grant."""
         with self._read_tx() as conn:
             self._verify_event_chain_locked(conn)
             source = self._dispatch_grant_source_locked(conn, grant)
             if source is None:
-                raise StoreError("execution grant has no immutable dispatch-grant association", kind="integrity")
+                if self._grant_has_delegated_origin_locked(conn, grant):
+                    raise StoreError("execution grant has no immutable dispatch-grant association", kind="integrity")
+                return None
             request_id, _ = source
             for row in conn.execute(
                 "SELECT task_id, actor, payload FROM events WHERE kind='DISPATCH_INTENT_ACCEPTED' ORDER BY seq",
@@ -1601,7 +1635,9 @@ class Store:
                                                          authority_guard: Callable[[], bool] | None = None) -> None:
         source = self._dispatch_grant_source_locked(conn, grant)
         if source is None:
-            raise StoreError("execution grant lacks an immutable dispatch-grant operation", kind="integrity")
+            if self._grant_has_delegated_origin_locked(conn, grant):
+                raise StoreError("execution grant lacks an immutable dispatch-grant operation", kind="integrity")
+            return
         dispatch_request_id, source_row = source
         accepted = None
         for event_row in conn.execute(
@@ -4092,7 +4128,17 @@ class Store:
         for item in records:
             event = item.get("event")
             normalized.append({"type": event, **{k: v for k, v in item.items() if k != "event"}})
-        result = reduce_issuance_state(row, normalized, completion_verifier=verifier)
+        normalized_row = dict(row)
+        if isinstance(normalized_row.get("result"), str):
+            encoded = normalized_row["result"]
+            try:
+                decoded = json.loads(encoded)
+            except (TypeError, ValueError) as exc:
+                raise StoreError("dispatch issuance operation result is malformed", kind="integrity") from exc
+            if canonical_bytes(decoded).decode("utf-8") != encoded:
+                raise StoreError("dispatch issuance operation result is not canonical", kind="integrity")
+            normalized_row["result"] = decoded
+        result = reduce_issuance_state(normalized_row, normalized, completion_verifier=verifier)
         if result["state"] == "CONFLICT":
             raise StoreError("dispatch issuance journal conflicts: " + result["reason"], kind="integrity")
         return result

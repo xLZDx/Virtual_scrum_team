@@ -1175,3 +1175,15 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
   actual producer-to-consumer positive path. Negative refusals alone do not establish function.
 - Correction: both Store boundaries use the stored handoff and keep independent digest checks.
 - Verification: source edit only; the post-fix positive integration result remains pending.
+
+## 2026-10-29 — Scope new authority requirements to their origin and typed boundary (0563)
+
+- Kind: FAILURE caught by actual legacy and positive integration regressions.
+- Facts: requiring a new dispatch row for every legacy grant broke previous valid flows, while
+  passing SQL result text to a typed reducer blocked new valid issuance. Isolated negative tests
+  did not reveal either compatibility/representation gap.
+- Rule: retain immutable origin facts to prevent downgrade, without imposing new provenance on
+  unrelated legacy authority; convert storage representation at one explicit validated adapter.
+- Correction: both lookup and runner boundaries use a deny-only delegated-origin classifier; the
+  reducer adapter parses canonical JSON. No accepted schema or byte binding is weakened.
+- Verification: source only pending targeted legacy, missing-link and full positive regressions.

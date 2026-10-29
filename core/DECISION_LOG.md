@@ -1441,3 +1441,11 @@ the issuer's strict handoff input. Store now returns the exact validated stored 
 compares that same representation during issuer writes, while retaining derived-digest checks.
 This does not loosen closed schemas. The recorded7/5 result is an old-candidate failure, not
 current acceptance; designated roles rerun after this fix.
+
+## 2026-10-29 — Preserve direct legacy grants without downgrading delegated tasks (0563)
+
+The delegated grant adapter had rejected all legacy/direct grants, including the accepted V5
+fixtures. It now requires exact provenance when immutable handoff/delegated facts identify the
+task and preserves the old direct path otherwise, with all original current guards. Canonical
+SQL JSON is also decoded at the Store-to-pure reducer boundary. The strict pure contract stays
+unchanged. Old92/22/7 and20/16 outcomes are distinct failures at6f4ad200, not post-fix acceptance.
