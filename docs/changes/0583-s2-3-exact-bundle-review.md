@@ -40,6 +40,6 @@ inventory SHA `8910daf3f94d3e88e7de80eb39dc5c6bb65720cbc4b20855ffe2969a63de332b`
 correlated reply is documented in `docs/sdlc/evidence/s2-3-target-inventory-refresh-3cc174e5.md`.
 The five-minute age limit still applies at execution.
 
-The source-plan artifact uses a path-specific `-text` attribute so Git preserves the exact approved
-raw bytes and its SHA-256 across commit/checkout; runtime handoff checks both the raw plan digest
-and the committed Git blob identity before use.
+The source-plan artifact uses path-specific `-text -eol` attributes so Git preserves the exact
+approved raw bytes and SHA-256 across commit/checkout; runtime handoff checks both the raw plan
+digest and the committed Git blob identity before use.
