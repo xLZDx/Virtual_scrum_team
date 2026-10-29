@@ -203,8 +203,18 @@ def _verify_manifest_artifacts(manifest: dict[str, Any]) -> None:
         refuse("staged runtime tree digest differs from reviewed manifest")
     marker_path = os.path.join(runtime, ".vst-runtime-manifest.json")
     marker = json.loads(_read_regular(marker_path, uid=0, mode=0o644, maximum=4096))
-    if marker != {"archive_sha256": manifest["archive_sha256"],
-                  "head": manifest["source_head"], "schema": 1}:
+    expected_marker = {
+        "archive_sha256": manifest["archive_sha256"],
+        "compiler_path": manifest["compiler_path"],
+        "compiler_resolved_path": manifest["compiler_resolved_path"],
+        "compiler_sha256": manifest["compiler_sha256"],
+        "compiler_symlink_target": manifest["compiler_symlink_target"],
+        "head": manifest["source_head"],
+        "inventory_sha256": manifest["target_inventory_sha256"],
+        "plan_sha256": manifest["source_plan_sha256"],
+        "schema": 3,
+    }
+    if marker != expected_marker:
         refuse("runtime marker differs from reviewed manifest")
     spec = os.path.join(runtime, "docs", "SANDBOX_SPEC.md")
     if hashlib.sha256(_read_regular(spec, uid=0, mode=0o644)).hexdigest() != manifest["spec_sha256"]:
@@ -649,7 +659,9 @@ def _parse() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     prepare = sub.add_parser("prepare", help="emit candidate manifest after stage-only")
-    for name in ("source_head", "archive_sha256", "spec_sha256", "helper_head", "helper_source_sha256"):
+    for name in ("source_head", "archive_sha256", "source_plan_sha256",
+                 "target_inventory_sha256", "compiler_sha256", "spec_sha256",
+                 "helper_head", "helper_source_sha256"):
         prepare.add_argument("--" + name.replace("_", "-"), required=True)
     run = sub.add_parser("apply", help="select reviewed staged artifacts without activating services")
     run.add_argument("--manifest", required=True)
@@ -679,6 +691,9 @@ def main() -> int:
             _require_fixed_parents()
             _require_unconfigured_and_inactive()
             value = build_manifest(source_head=args.source_head, archive_sha256=args.archive_sha256,
+                                   source_plan_sha256=args.source_plan_sha256,
+                                   target_inventory_sha256=args.target_inventory_sha256,
+                                   compiler_sha256=args.compiler_sha256,
                                    spec_sha256=args.spec_sha256, helper_head=args.helper_head,
                                    helper_source_sha256=args.helper_source_sha256)
             print(canonical_bytes(value).decode("ascii"))

@@ -13,7 +13,9 @@ from pathlib import Path
 CANONICAL_ROOT = Path("D:/Repo/Virtual_scrum_team")
 ARCHIVE_PATHS = (
     "tools/vst", "tools/qa/install_wsl_runner_runtime.sh",
-    "tools/qa/install_wsl_worker_helper.sh", "tools/qa/worker_exec.c",
+    "tools/qa/install_wsl_worker_helper.sh", "tools/qa/verify_wsl_source_bundle.py",
+    "tools/qa/verify_wsl_runtime_stage.py",
+    "tools/qa/worker_exec.c",
     "docs/SANDBOX_SPEC.md",
 )
 UNITS = (
@@ -56,6 +58,7 @@ def prepare_source_plan(root: Path, expected_head: str) -> dict:
     if not archive:
         raise ValueError("empty source archive")
     files: dict[str, str] = {}
+    archive_members: dict[str, dict[str, object]] = {}
     entries: set[str] = set()
     total = 0
     with tarfile.open(fileobj=io.BytesIO(archive), mode="r:") as stream:
@@ -68,6 +71,8 @@ def prepare_source_plan(root: Path, expected_head: str) -> dict:
             entries.add(name)
             if len(entries) > 50000:
                 raise ValueError("too many archive entries")
+            if member.isdir():
+                archive_members[name] = {"kind": "dir"}
             if member.isreg():
                 total += member.size
                 if member.size < 0 or total > MAX_ARCHIVE_BYTES:
@@ -75,17 +80,25 @@ def prepare_source_plan(root: Path, expected_head: str) -> dict:
                 content = stream.extractfile(member)
                 if content is None:
                     raise ValueError("unreadable archive member")
-                files[name] = hashlib.sha256(content.read()).hexdigest()
+                data = content.read()
+                if len(data) != member.size:
+                    raise ValueError("archive member size differs from its declared size")
+                digest = hashlib.sha256(data).hexdigest()
+                files[name] = digest
+                archive_members[name] = {"kind": "file", "sha256": digest, "size": len(data)}
     required = {"docs/SANDBOX_SPEC.md", "tools/qa/worker_exec.c",
-                "tools/qa/install_wsl_worker_helper.sh", "tools/qa/install_wsl_runner_runtime.sh"}
+                "tools/qa/install_wsl_worker_helper.sh", "tools/qa/install_wsl_runner_runtime.sh",
+                "tools/qa/verify_wsl_source_bundle.py",
+                "tools/qa/verify_wsl_runtime_stage.py"}
     required.update("tools/vst/systemd/" + name for name in UNITS)
     if not required <= files.keys():
         raise ValueError("source archive lacks a required runtime artifact")
     return {
-        "schema": "VST_S2_RUNTIME_SOURCE_PLAN_V1",
+        "schema": "VST_S2_RUNTIME_SOURCE_PLAN_V2",
         "status": "UNSIGNED_REVIEW_CANDIDATE",
         "source_head": expected_head,
         "archive_sha256": hashlib.sha256(archive).hexdigest(),
+        "archive_members": archive_members,
         "sandbox_spec_sha256": files["docs/SANDBOX_SPEC.md"],
         "archive_files": files,
         "unit_sha256": {name: files["tools/vst/systemd/" + name] for name in UNITS},

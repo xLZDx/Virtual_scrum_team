@@ -26,6 +26,8 @@ def required_files() -> dict[str, bytes]:
         "tools/qa/worker_exec.c": b"int main(void) { return 0; }",
         "tools/qa/install_wsl_worker_helper.sh": b"fixed compiler recipe",
         "tools/qa/install_wsl_runner_runtime.sh": b"fixed runtime recipe",
+        "tools/qa/verify_wsl_source_bundle.py": b"source verifier",
+        "tools/qa/verify_wsl_runtime_stage.py": b"stage verifier",
     }
     result.update({f"tools/vst/systemd/{unit}": unit.encode() for unit in plan_module.UNITS})
     return result
@@ -59,7 +61,7 @@ def test_prepare_plan_is_deterministic_and_binds_all_runtime_inputs(
     second = plan_module.prepare_source_plan(root, head)
 
     assert first == second
-    assert first["schema"] == "VST_S2_RUNTIME_SOURCE_PLAN_V1"
+    assert first["schema"] == "VST_S2_RUNTIME_SOURCE_PLAN_V2"
     assert first["status"] == "UNSIGNED_REVIEW_CANDIDATE"
     assert first["source_head"] == head
     assert first["sandbox_spec_sha256"] == __import__("hashlib").sha256(
@@ -76,6 +78,11 @@ def test_prepare_plan_is_deterministic_and_binds_all_runtime_inputs(
     assert first["activation"] == "NOT_AUTHORIZED_BY_THIS_PLAN"
     assert not any(secret in repr(first).lower() for secret in ("private_key", "password", "token"))
     assert set(first["archive_files"]) == set(files)
+    assert first["archive_members"] == {
+        name: {"kind": "file", "sha256": __import__("hashlib").sha256(payload).hexdigest(),
+               "size": len(payload)}
+        for name, payload in files.items()
+    }
     assert not list(root.iterdir())
 
 
@@ -145,6 +152,25 @@ def test_source_plan_rejects_missing_runtime_artifact(
     monkeypatch.setattr(plan_module, "CANONICAL_ROOT", root)
     files = required_files()
     del files["tools/vst/systemd/vst-runner.service"]
+    install_fake_git(monkeypatch, "9" * 40, archive_bytes(files))
+
+    with pytest.raises(ValueError, match="lacks a required runtime artifact"):
+        plan_module.prepare_source_plan(root, "9" * 40)
+
+
+@pytest.mark.parametrize("missing", [
+    "tools/qa/verify_wsl_source_bundle.py",
+    "tools/qa/verify_wsl_runtime_stage.py",
+    "tools/vst/systemd/vst-runner.service",
+])
+def test_source_plan_rejects_missing_required_verifier_or_runtime_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, missing: str,
+) -> None:
+    root = tmp_path.resolve()
+    root.mkdir(exist_ok=True)
+    monkeypatch.setattr(plan_module, "CANONICAL_ROOT", root)
+    files = required_files()
+    del files[missing]
     install_fake_git(monkeypatch, "9" * 40, archive_bytes(files))
 
     with pytest.raises(ValueError, match="lacks a required runtime artifact"):

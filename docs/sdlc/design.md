@@ -54,8 +54,10 @@ Add an explicit `--stage-only` argument to the distro runtime installer and a co
 load it from the fixed full-versioned runtime path so importing it cannot create `__pycache__`
 inside the immutable measured tree. The repository wrapper must disable bytecode before import.
 Default install behavior stays fail-closed and
-unchanged. Stage-only validates the same source archive, host restrictions and immutable tree,
-installs only the absent versioned runtime/helper, and must skip the fixed selector/unit
+unchanged. Stage-only validates the same source archive, host restrictions and immutable tree.
+Before publication it rescans the complete staged runtime tree against the reviewed member map;
+missing, extra, changed, linked, or special files fail closed on fresh and existing destination
+paths. Stage-only installs only the absent versioned runtime/helper and must skip the fixed selector/unit
 collision checks and ALL selector/unit writes. Report `selected=false`; the separate bootstrap
 transition consumes the staged tree, never calls the default installer, and verifies its complete
 tree against the source bundle plus helper identity before mutation. Stage-only is not selection
@@ -63,8 +65,13 @@ or authority to activate anything.
 
 There are two distinct reviewable records. Before staging, a source/staging plan derived from
 the committed archive binds HEAD, archive/spec/unit/helper-source hashes, compile flags and
-requested fixed destinations; compiler identity and any missing prerequisites remain explicit,
-not invented. This reviewed plan and source/test gate are prerequisites to artifact installation.
+requested fixed destinations. The V2 plan records every archive member's path, type, size, and
+SHA-256; the WSL receiver compares every extracted member with that reviewed map before it hands
+the bundle to either installer. A separate non-secret target inventory binds the source HEAD, an
+observation no older than five minutes, and compiler selector/resolved path/metadata/digest.
+Windows checks its pin and freshness, then WSL repeats them after transfer and verifies the actual
+compiler bytes before building the helper. This reviewed plan and source/test gate are prerequisites
+to artifact installation.
 After staging, a separate read-only `prepare` operation binds the actual complete installed tree,
 compiled helper digest/metadata and current old selector/unit baseline. Its exact manifest digest
 must be reviewed before selection. A prepared selection manifest cannot retroactively authorize

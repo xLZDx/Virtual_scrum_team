@@ -26,6 +26,9 @@ HEAD_OLD = "1" * 40
 HEAD_NEW = "2" * 40
 HELPER_HEAD = "3" * 40
 ARCHIVE_SHA = "4" * 64
+SOURCE_PLAN_SHA = "7" * 64
+INVENTORY_SHA = "8" * 64
+COMPILER_SHA = "9" * 64
 SPEC_SHA = "5" * 64
 HELPER_SOURCE_SHA = "6" * 64
 UNITS = bundle.UNITS
@@ -44,7 +47,17 @@ def _make_tree(path: Path, head: str, archive: str, *, unit_tag: bytes) -> None:
     for unit in UNITS:
         _write(path / "tools/vst/systemd" / unit, unit_tag + unit.encode())
     _write(path / "docs/SANDBOX_SPEC.md", b"spec fixture")
-    marker = {"archive_sha256": archive, "head": head, "schema": 1}
+    marker = {
+        "archive_sha256": archive,
+        "compiler_path": "/usr/bin/cc",
+        "compiler_resolved_path": "/usr/bin/x86_64-linux-gnu-gcc-13",
+        "compiler_sha256": COMPILER_SHA,
+        "compiler_symlink_target": "/etc/alternatives/cc",
+        "head": head,
+        "inventory_sha256": INVENTORY_SHA,
+        "plan_sha256": SOURCE_PLAN_SHA,
+        "schema": 3,
+    }
     _write(path / ".vst-runtime-manifest.json", json.dumps(marker, sort_keys=True, separators=(",", ":")).encode())
     for directory in sorted((p for p in path.rglob("*") if p.is_dir()), reverse=True):
         directory.chmod(0o755)
@@ -163,6 +176,9 @@ def host(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     assert (helper_fp["kind"], helper_fp["uid"], helper_fp["gid"], helper_fp["mode"],
             helper_fp["nlink"]) == ("file", 0, 988, 0o4750, 1)
     manifest = bundle.build_manifest(source_head=HEAD_NEW, archive_sha256=ARCHIVE_SHA,
+                                     source_plan_sha256=SOURCE_PLAN_SHA,
+                                     target_inventory_sha256=INVENTORY_SHA,
+                                     compiler_sha256=COMPILER_SHA,
                                      spec_sha256=hashlib.sha256(b"spec fixture").hexdigest(),
                                      helper_head=HELPER_HEAD, helper_source_sha256=HELPER_SOURCE_SHA)
     return SimpleNamespace(root=root, selector=selector, old=old_path, new=new_path,

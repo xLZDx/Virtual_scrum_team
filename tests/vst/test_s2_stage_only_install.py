@@ -94,19 +94,21 @@ def test_embedded_python_programs_are_syntactically_valid():
 
 def test_python_c_sys_argv_matches_host_argument_contract():
     head = "a" * 40
-    digest = "b" * 64
+    plan_digest = "b" * 64
+    inventory_digest = "e" * 64
     transfer_id = "c" * 32
     stage_only = "1"
     result = subprocess.run(
         [sys.executable, "-I", "-S", "-c",
-         "import json,sys; head,digest,transfer_id=sys.argv[1:4]; stage_only=sys.argv[4]; "
+         "import json,sys; head,plan_digest,inventory_digest,transfer_id=sys.argv[1:5]; stage_only=sys.argv[5]; "
          "print(json.dumps(sys.argv))",
-         head, digest, transfer_id, stage_only],
+         head, plan_digest, inventory_digest, transfer_id, stage_only],
         check=True,
         capture_output=True,
         text=True,
     )
-    assert json.loads(result.stdout) == ["-c", head, digest, transfer_id, stage_only]
+    assert json.loads(result.stdout) == ["-c", head, plan_digest, inventory_digest,
+                                         transfer_id, stage_only]
 
 
 def test_stage_guard_accepts_complete_idle_inventory(tmp_path: Path):

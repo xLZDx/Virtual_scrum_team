@@ -2,14 +2,16 @@
 set -eu
 
 usage() {
-    echo "usage: install_wsl_worker_helper.sh EXPECTED_HEAD SOURCE_BUNDLE_ROOT ARCHIVE_SHA256" >&2
+    echo "usage: install_wsl_worker_helper.sh EXPECTED_HEAD SOURCE_BUNDLE_ROOT ARCHIVE_SHA256 PLAN_SHA256 INVENTORY_SHA256" >&2
     exit 2
 }
 
-[ "$#" -eq 3 ] || usage
+[ "$#" -eq 5 ] || usage
 expected_head=$1
 bundle_root=$2
 archive_sha=$3
+plan_sha=$4
+inventory_sha=$5
 
 [ "$(id -u)" -eq 0 ] || { echo "installer must run as root" >&2; exit 1; }
 case "$expected_head" in
@@ -20,6 +22,14 @@ case "$archive_sha" in
     *[!0-9a-f]*|'') echo "archive digest must be a lowercase SHA-256" >&2; exit 1 ;;
 esac
 [ "${#archive_sha}" -eq 64 ] || { echo "archive digest must be 64 hex characters" >&2; exit 1; }
+case "$plan_sha" in
+    *[!0-9a-f]*|'') echo "source plan digest must be a lowercase SHA-256" >&2; exit 1 ;;
+esac
+[ "${#plan_sha}" -eq 64 ] || { echo "source plan digest must be 64 hex characters" >&2; exit 1; }
+case "$inventory_sha" in
+    *[!0-9a-f]*|'') echo "target inventory digest must be a lowercase SHA-256" >&2; exit 1 ;;
+esac
+[ "${#inventory_sha}" -eq 64 ] || { echo "target inventory digest must be 64 hex characters" >&2; exit 1; }
 
 [ "$(/usr/bin/realpath -e -- "$bundle_root")" = "$bundle_root" ] || {
     echo "source bundle path must be canonical" >&2; exit 1;
@@ -30,17 +40,10 @@ esac
 [ "$(/usr/bin/stat -c '%u:%a' "$bundle_root")" = "0:700" ] || {
     echo "source bundle must be a root-owned mode-0700 directory" >&2; exit 1;
 }
-/usr/bin/python3.12 -I -S - "$bundle_root/.vst-source-manifest.json" "$expected_head" "$archive_sha" <<'PY'
-import json, os, stat, sys
-path, head, digest = sys.argv[1:]
-info = os.stat(path, follow_symlinks=False)
-if not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or stat.S_IMODE(info.st_mode) != 0o600:
-    raise SystemExit("source bundle manifest must be a root-owned mode-0600 regular file")
-with open(path, "r", encoding="ascii") as stream:
-    manifest = json.load(stream)
-if manifest != {"archive_sha256": digest, "head": head, "schema": 1}:
-    raise SystemExit("source bundle manifest does not match requested revision and digest")
-PY
+/usr/bin/python3.12 -I -S "$bundle_root/tools/qa/verify_wsl_source_bundle.py" \
+    --root "$bundle_root" --expected-head "$expected_head" \
+    --archive-sha256 "$archive_sha" --plan-sha256 "$plan_sha" \
+    --inventory-sha256 "$inventory_sha"
 
 . /etc/os-release
 [ "${ID:-}" = ubuntu ] && [ "${VERSION_ID:-}" = 24.04 ] || {
@@ -49,6 +52,51 @@ PY
 /bin/grep -qi microsoft /proc/sys/kernel/osrelease || {
     echo "installer requires WSL" >&2; exit 1;
 }
+/usr/bin/python3.12 -I -S - "$bundle_root/.vst-source-manifest.json" "$inventory_sha" <<'PY'
+import hashlib, json, os, re, stat, sys
+manifest_path, expected_inventory_sha = sys.argv[1:]
+with open(manifest_path, "rb") as stream:
+    raw = stream.read(8 * 1024 * 1024 + 1)
+manifest = json.loads(raw)
+if manifest.get("inventory_sha256") != expected_inventory_sha:
+    raise SystemExit("runtime manifest inventory pin differs from the requested value")
+compiler_sha = manifest.get("compiler_sha256")
+if not isinstance(compiler_sha, str) or not re.fullmatch(r"[0-9a-f]{64}", compiler_sha):
+    raise SystemExit("runtime manifest compiler digest is invalid")
+compiler_link = os.lstat("/usr/bin/cc")
+if (not stat.S_ISLNK(compiler_link.st_mode)
+        or os.readlink("/usr/bin/cc") != manifest.get("compiler_symlink_target")):
+    raise SystemExit("compiler selector differs from the reviewed target inventory")
+resolved = os.path.realpath("/usr/bin/cc")
+if resolved != manifest.get("compiler_resolved_path"):
+    raise SystemExit("compiler target is outside the fixed /usr/bin path")
+info = os.lstat(resolved)
+if (not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or info.st_gid != 0
+        or stat.S_IMODE(info.st_mode) != 0o755 or info.st_nlink != 1):
+    raise SystemExit("compiler target is not a root-owned regular 0755 executable")
+digest = hashlib.sha256()
+fd = os.open(resolved, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+try:
+    opened = os.fstat(fd)
+    if ((opened.st_dev, opened.st_ino) != (info.st_dev, info.st_ino)
+            or not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1
+            or opened.st_uid != 0 or opened.st_gid != 0
+            or stat.S_IMODE(opened.st_mode) != 0o755):
+        raise SystemExit("compiler target changed while opening")
+    while True:
+        chunk = os.read(fd, 1024 * 1024)
+        if not chunk:
+            break
+        digest.update(chunk)
+    after = os.fstat(fd)
+    if ((after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)
+            != (opened.st_dev, opened.st_ino, opened.st_size, opened.st_mtime_ns)):
+        raise SystemExit("compiler target changed while hashing")
+finally:
+    os.close(fd)
+if digest.hexdigest() != compiler_sha:
+    raise SystemExit("compiler bytes differ from the reviewed target inventory")
+PY
 /usr/bin/python3.12 -I -S -c 'import configparser; p=configparser.ConfigParser(); p.read("/etc/wsl.conf"); assert p.getboolean("automount", "enabled") is False; assert p.getboolean("interop", "enabled") is False; assert p.getboolean("interop", "appendWindowsPath") is False' || {
     echo "WSL automount and interop must both be disabled" >&2; exit 1;
 }

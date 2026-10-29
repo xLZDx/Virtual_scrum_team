@@ -1,4 +1,4 @@
-"""TP-06/07/19: strict post-staging runtime-selection manifest schema."""
+"""TP-19/22: strict exact-source and post-staging runtime manifest schemas."""
 from __future__ import annotations
 
 import copy
@@ -19,9 +19,15 @@ def valid_manifest() -> dict:
     source_head = "a" * 40
     old_head = "b" * 40
     return {
-        "schema": 1,
+        "schema": 3,
         "repository": "Virtual_scrum_team",
         "archive_sha256": "1" * 64,
+        "source_plan_sha256": "7" * 64,
+        "target_inventory_sha256": "8" * 64,
+        "compiler_path": "/usr/bin/cc",
+        "compiler_resolved_path": "/usr/bin/x86_64-linux-gnu-gcc-13",
+        "compiler_symlink_target": "/etc/alternatives/cc",
+        "compiler_sha256": "9" * 64,
         "source_head": source_head,
         "spec_sha256": "2" * 64,
         "old_runtime_tree_sha256": "3" * 64,
@@ -61,7 +67,10 @@ def test_valid_manifest_has_stable_digest_and_binds_each_unit() -> None:
     assert bundle.manifest_sha256(changed) != first
 
 
-@pytest.mark.parametrize("mutation", ["missing", "unknown", "bad_digest", "bad_head", "bad_path"])
+@pytest.mark.parametrize("mutation", [
+    "missing", "unknown", "bad_digest", "bad_head", "bad_path",
+    "bad_inventory_digest", "bad_compiler_path",
+])
 def test_manifest_rejects_unbound_or_unknown_fields(mutation: str) -> None:
     value = valid_manifest()
     if mutation == "missing":
@@ -72,8 +81,12 @@ def test_manifest_rejects_unbound_or_unknown_fields(mutation: str) -> None:
         value["archive_sha256"] = "not-a-sha"
     elif mutation == "bad_head":
         value["helper_head"] = "A" * 40
-    else:
+    elif mutation == "bad_path":
         value["runtime_path"] = "/opt/vst-runtime/../other"
+    elif mutation == "bad_inventory_digest":
+        value["target_inventory_sha256"] = "invalid"
+    else:
+        value["compiler_resolved_path"] = "/tmp/unreviewed-compiler"
 
     with pytest.raises(ContractError):
         bundle.validate_manifest(value)

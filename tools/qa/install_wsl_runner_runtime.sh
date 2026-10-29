@@ -2,17 +2,19 @@
 set -eu
 
 usage() {
-    echo "usage: install_wsl_runner_runtime.sh EXPECTED_HEAD SOURCE_BUNDLE_ROOT ARCHIVE_SHA256 [--stage-only]" >&2
+    echo "usage: install_wsl_runner_runtime.sh EXPECTED_HEAD SOURCE_BUNDLE_ROOT ARCHIVE_SHA256 PLAN_SHA256 INVENTORY_SHA256 [--stage-only]" >&2
     exit 2
 }
 
-[ "$#" -eq 3 ] || [ "$#" -eq 4 ] || usage
+[ "$#" -eq 5 ] || [ "$#" -eq 6 ] || usage
 expected_head=$1
 bundle_root=$2
 archive_sha=$3
+plan_sha=$4
+inventory_sha=$5
 stage_only=0
-if [ "$#" -eq 4 ]; then
-    [ "$4" = "--stage-only" ] || usage
+if [ "$#" -eq 6 ]; then
+    [ "$6" = "--stage-only" ] || usage
     stage_only=1
 fi
 case "$expected_head" in
@@ -23,6 +25,14 @@ case "$archive_sha" in
     *[!0-9a-f]*|'') echo "archive digest must be a lowercase SHA-256" >&2; exit 1 ;;
 esac
 [ "${#archive_sha}" -eq 64 ] || { echo "archive digest must be 64 hex characters" >&2; exit 1; }
+case "$plan_sha" in
+    *[!0-9a-f]*|'') echo "source plan digest must be a lowercase SHA-256" >&2; exit 1 ;;
+esac
+[ "${#plan_sha}" -eq 64 ] || { echo "source plan digest must be 64 hex characters" >&2; exit 1; }
+case "$inventory_sha" in
+    *[!0-9a-f]*|'') echo "target inventory digest must be a lowercase SHA-256" >&2; exit 1 ;;
+esac
+[ "${#inventory_sha}" -eq 64 ] || { echo "target inventory digest must be 64 hex characters" >&2; exit 1; }
 [ "$(/usr/bin/id -u)" -eq 0 ] || { echo "installer must run as root" >&2; exit 1; }
 
 bundle_root=$(/usr/bin/realpath -e -- "$bundle_root")
@@ -32,17 +42,10 @@ bundle_root=$(/usr/bin/realpath -e -- "$bundle_root")
 [ "$(/usr/bin/stat -c '%u:%a' "$bundle_root")" = "0:700" ] || {
     echo "source bundle must be a root-owned mode-0700 directory" >&2; exit 1;
 }
-/usr/bin/python3.12 -I -S - "$bundle_root/.vst-source-manifest.json" "$expected_head" "$archive_sha" <<'PY'
-import json, os, stat, sys
-path, head, digest = sys.argv[1:]
-info = os.stat(path, follow_symlinks=False)
-if not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or stat.S_IMODE(info.st_mode) != 0o600:
-    raise SystemExit("source bundle manifest must be a root-owned mode-0600 regular file")
-with open(path, "r", encoding="ascii") as stream:
-    manifest = json.load(stream)
-if manifest != {"archive_sha256": digest, "head": head, "schema": 1}:
-    raise SystemExit("source bundle manifest does not match requested revision and digest")
-PY
+/usr/bin/python3.12 -I -S "$bundle_root/tools/qa/verify_wsl_source_bundle.py" \
+    --root "$bundle_root" --expected-head "$expected_head" \
+    --archive-sha256 "$archive_sha" --plan-sha256 "$plan_sha" \
+    --inventory-sha256 "$inventory_sha"
 
 . /etc/os-release
 [ "${ID:-}" = ubuntu ] && [ "${VERSION_ID:-}" = 24.04 ] || {
@@ -175,19 +178,34 @@ trap '[ -z "$unit_tmp" ] || /bin/rm -f -- "$unit_tmp"; /bin/rm -rf -- "$stage"' 
 /usr/bin/chown -R root:root "$stage/docs"
 /usr/bin/find "$stage/docs" -type d -exec /bin/chmod 0755 {} +
 /usr/bin/find "$stage/docs" -type f -exec /bin/chmod 0644 {} +
-/usr/bin/python3.12 -I -S - "$stage/.vst-runtime-manifest.json" "$expected_head" "$archive_sha" <<'PY'
+/usr/bin/python3.12 -I -S - "$stage/.vst-runtime-manifest.json" "$expected_head" "$archive_sha" "$plan_sha" "$inventory_sha" "$bundle_root" <<'PY'
 import json, os, sys
-path, head, digest = sys.argv[1:]
+path, head, digest, plan_digest, inventory_digest, bundle_root = sys.argv[1:]
 fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
 with os.fdopen(fd, "w", encoding="ascii") as stream:
-    json.dump({"archive_sha256": digest, "head": head, "schema": 1}, stream, sort_keys=True, separators=(",", ":"))
+    source_manifest_path = os.path.join(bundle_root, ".vst-source-manifest.json")
+    with open(source_manifest_path, "r", encoding="ascii") as source_stream:
+        source_manifest = json.load(source_stream)
+    json.dump({"archive_sha256": digest,
+               "compiler_path": source_manifest["compiler_path"],
+               "compiler_resolved_path": source_manifest["compiler_resolved_path"],
+               "compiler_sha256": source_manifest["compiler_sha256"],
+               "compiler_symlink_target": source_manifest["compiler_symlink_target"],
+               "head": head, "inventory_sha256": inventory_digest,
+               "plan_sha256": plan_digest, "schema": 3}, stream,
+              sort_keys=True, separators=(",", ":"))
     stream.flush()
     os.fsync(stream.fileno())
+os.chmod(path, 0o644)
 PY
 /bin/chmod 0755 "$stage"
-/usr/bin/python3.12 -I -S - "$stage" "$runtime_dir" "$runtime_link" "$unit_dir" "$expected_head" "$archive_sha" "$stage_only" <<'PY'
+/usr/bin/python3.12 -I -S "$bundle_root/tools/qa/verify_wsl_runtime_stage.py" \
+    --stage "$stage" --source-manifest "$bundle_root/.vst-source-manifest.json" \
+    --expected-head "$expected_head" --archive-sha256 "$archive_sha" \
+    --plan-sha256 "$plan_sha" --inventory-sha256 "$inventory_sha"
+/usr/bin/python3.12 -I -S - "$stage" "$runtime_dir" "$runtime_link" "$unit_dir" "$expected_head" "$archive_sha" "$stage_only" "$plan_sha" "$bundle_root" <<'PY'
 import hashlib, json, os, stat, sys
-stage, runtime, link, unit_dir, head, digest, stage_only = sys.argv[1:]
+stage, runtime, link, unit_dir, head, digest, stage_only, plan_sha, bundle_root = sys.argv[1:]
 stage_only = stage_only == "1"
 def path_exists(path): return os.path.lexists(path)
 def scan(root, installed=False):
@@ -208,13 +226,29 @@ def scan(root, installed=False):
                     raise SystemExit("existing runtime directory has unexpected owner/mode: " + path)
                 result[rel] = ("dir", None)
             elif stat.S_ISREG(info.st_mode):
-                if installed and (info.st_uid != 0 or stat.S_IMODE(info.st_mode) != 0o644):
+                if installed and (info.st_uid != 0 or stat.S_IMODE(info.st_mode) != 0o644 or info.st_nlink != 1):
                     raise SystemExit("existing runtime file has unexpected owner/mode: " + path)
                 with open(path, "rb") as stream: digest_value = hashlib.sha256(stream.read()).hexdigest()
                 result[rel] = ("file", digest_value)
             else:
                 raise SystemExit("runtime path contains an unexpected file type: " + path)
     return result
+with open(os.path.join(bundle_root, ".vst-source-manifest.json"), "r", encoding="ascii") as stream:
+    source_manifest = json.load(stream)
+expected_runtime = {
+    name: (entry["kind"], entry.get("sha256"))
+    for name, entry in source_manifest["archive_members"].items()
+    if name in ("tools", "tools/vst", "docs")
+    or name.startswith("tools/vst/") or name.startswith("docs/")
+}
+if not expected_runtime:
+    raise SystemExit("reviewed source manifest has no runtime entries")
+staged_tree = scan(stage, installed=True)
+if sorted(os.listdir(stage)) != [".vst-runtime-manifest.json", "docs", "tools"]:
+    raise SystemExit("staged runtime has unexpected or missing top-level entries")
+staged_tree.pop(".vst-runtime-manifest.json", None)
+if staged_tree != expected_runtime:
+    raise SystemExit("staged runtime tree differs from exact reviewed source manifest")
 if path_exists(runtime):
     info = os.lstat(runtime)
     marker = os.path.join(runtime, ".vst-runtime-manifest.json")
@@ -226,7 +260,16 @@ if path_exists(runtime):
     if not stat.S_ISREG(marker_info.st_mode) or marker_info.st_uid != 0 or stat.S_IMODE(marker_info.st_mode) != 0o644:
         raise SystemExit("runtime destination manifest has unexpected owner, mode, or type")
     with open(marker, "r", encoding="ascii") as stream: manifest = json.load(stream)
-    if manifest != {"archive_sha256": digest, "head": head, "schema": 1}:
+    expected_marker = {
+        "archive_sha256": digest,
+        "compiler_path": source_manifest["compiler_path"],
+        "compiler_resolved_path": source_manifest["compiler_resolved_path"],
+        "compiler_sha256": source_manifest["compiler_sha256"],
+        "compiler_symlink_target": source_manifest["compiler_symlink_target"],
+        "head": head, "inventory_sha256": inventory_sha,
+        "plan_sha256": plan_sha, "schema": 3,
+    }
+    if manifest != expected_marker:
         raise SystemExit("runtime destination manifest differs from requested head/digest")
     for subtree in ("tools/vst", "docs"):
         subtree_info = os.lstat(os.path.join(runtime, subtree.split("/", 1)[0]))

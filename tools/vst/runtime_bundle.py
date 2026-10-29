@@ -15,7 +15,7 @@ from typing import Any
 
 from .contracts import ContractError, canonical_bytes
 
-SCHEMA = 1
+SCHEMA = 3
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 UNITS = (
@@ -31,7 +31,9 @@ PARENTS = {
     HELPER_BASE: (0, 0, 0o755),
 }
 MANIFEST_FIELDS = frozenset({
-    "schema", "repository", "archive_sha256", "source_head", "spec_sha256", "old_runtime_tree_sha256",
+    "schema", "repository", "archive_sha256", "source_plan_sha256",
+    "target_inventory_sha256", "compiler_path", "compiler_resolved_path",
+    "compiler_symlink_target", "compiler_sha256", "source_head", "spec_sha256", "old_runtime_tree_sha256",
     "runtime_path", "runtime_tree_sha256", "helper_path", "helper_head",
     "helper_source_sha256", "helper_binary_sha256", "helper_gid", "helper_mode",
     "helper_nlink", "old_selector", "units", "parents",
@@ -90,16 +92,22 @@ def _entry(value: object, name: str, *, allow_absent: bool) -> dict[str, Any]:
 def validate_manifest(value: object) -> dict[str, Any]:
     """Validate the exact canonical field set; this does not authorize its digest."""
     if not isinstance(value, dict) or set(value) != MANIFEST_FIELDS:
-        _fail("manifest fields do not match schema 1")
+        _fail("manifest fields do not match schema 3")
     if type(value["schema"]) is not int or value["schema"] != SCHEMA:
         _fail("unsupported schema")
     if value["repository"] != "Virtual_scrum_team":
         _fail("repository identity is invalid")
     _head(value["source_head"], "source_head")
     _head(value["helper_head"], "helper_head")
-    for key in ("archive_sha256", "spec_sha256", "runtime_tree_sha256", "old_runtime_tree_sha256",
+    for key in ("archive_sha256", "source_plan_sha256", "target_inventory_sha256", "compiler_sha256",
+                "spec_sha256", "runtime_tree_sha256", "old_runtime_tree_sha256",
                 "helper_source_sha256", "helper_binary_sha256"):
         _digest(value[key], key)
+    if (value["compiler_path"] != "/usr/bin/cc"
+            or value["compiler_symlink_target"] != "/etc/alternatives/cc"
+            or not isinstance(value["compiler_resolved_path"], str)
+            or not re.fullmatch(r"/usr/bin/[A-Za-z0-9._+-]+", value["compiler_resolved_path"])):
+        _fail("compiler identity differs from the fixed reviewed target")
     expected_runtime = "/opt/vst-runtime-" + value["source_head"]
     expected_helper = HELPER_BASE + "/vst-s4-worker-exec-" + value["helper_head"]
     if value["runtime_path"] != expected_runtime or value["helper_path"] != expected_helper:
@@ -201,12 +209,16 @@ def tree_sha256(root: str) -> str:
     return hashlib.sha256(canonical_bytes(records)).hexdigest()
 
 
-def build_manifest(*, source_head: str, archive_sha256: str, spec_sha256: str,
+def build_manifest(*, source_head: str, archive_sha256: str, source_plan_sha256: str,
+                   target_inventory_sha256: str, compiler_sha256: str, spec_sha256: str,
                    helper_head: str, helper_source_sha256: str) -> dict[str, Any]:
     """Build a review candidate after stage-only; caller must review its digest before selection."""
     _head(source_head, "source_head")
     _head(helper_head, "helper_head")
-    for value, name in ((archive_sha256, "archive_sha256"), (spec_sha256, "spec_sha256"),
+    for value, name in ((archive_sha256, "archive_sha256"), (source_plan_sha256, "source_plan_sha256"),
+                        (target_inventory_sha256, "target_inventory_sha256"),
+                        (compiler_sha256, "compiler_sha256"),
+                        (spec_sha256, "spec_sha256"),
                         (helper_source_sha256, "helper_source_sha256")):
         _digest(value, name)
     runtime_path = "/opt/vst-runtime-" + source_head
@@ -217,7 +229,16 @@ def build_manifest(*, source_head: str, archive_sha256: str, spec_sha256: str,
         _fail("stage-only helper is absent")
     marker_path = os.path.join(runtime_path, ".vst-runtime-manifest.json")
     marker = _read_small_json(marker_path)
-    if marker != {"archive_sha256": archive_sha256, "head": source_head, "schema": 1}:
+    if (not isinstance(marker, dict)
+            or set(marker) != {"archive_sha256", "compiler_path", "compiler_resolved_path",
+                               "compiler_sha256", "compiler_symlink_target", "head",
+                               "inventory_sha256", "plan_sha256", "schema"}
+            or marker["archive_sha256"] != archive_sha256
+            or marker["compiler_sha256"] != compiler_sha256
+            or marker["head"] != source_head
+            or marker["inventory_sha256"] != target_inventory_sha256
+            or marker["plan_sha256"] != source_plan_sha256
+            or marker["schema"] != 3):
         _fail("staged runtime source marker does not match the candidate")
     spec_path = os.path.join(runtime_path, "docs", "SANDBOX_SPEC.md")
     spec_info = _fingerprint(spec_path)
@@ -243,6 +264,12 @@ def build_manifest(*, source_head: str, archive_sha256: str, spec_sha256: str,
         _fail("staged worker helper metadata differs from reviewed root:vst-runner 4750 contract")
     value = {
         "schema": SCHEMA, "repository": "Virtual_scrum_team", "archive_sha256": archive_sha256,
+        "source_plan_sha256": source_plan_sha256,
+        "target_inventory_sha256": target_inventory_sha256,
+        "compiler_path": marker["compiler_path"],
+        "compiler_resolved_path": marker["compiler_resolved_path"],
+        "compiler_symlink_target": marker["compiler_symlink_target"],
+        "compiler_sha256": compiler_sha256,
         "source_head": source_head, "spec_sha256": spec_sha256, "runtime_path": runtime_path,
         "runtime_tree_sha256": tree_sha256(runtime_path), "old_runtime_tree_sha256": old_tree_digest,
         "helper_path": helper_path,
@@ -289,12 +316,26 @@ def load_canonical_manifest(path: str) -> dict[str, Any]:
 
 def _read_small_json(path: str) -> object:
     info = os.lstat(path)
-    if not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or stat.S_IMODE(info.st_mode) != 0o644:
+    if (not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or info.st_gid != 0
+            or stat.S_IMODE(info.st_mode) != 0o644 or info.st_nlink != 1):
         _fail("staged source marker must be root-owned mode-0644 regular file")
     if info.st_size > 4096:
         _fail("staged source marker exceeds its bound")
-    with open(path, "rb") as stream:
-        raw = stream.read(4097)
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        opened = os.fstat(fd)
+        if ((opened.st_dev, opened.st_ino) != (info.st_dev, info.st_ino)
+                or not stat.S_ISREG(opened.st_mode) or opened.st_uid != 0 or opened.st_gid != 0
+                or stat.S_IMODE(opened.st_mode) != 0o644 or opened.st_nlink != 1):
+            _fail("staged source marker changed while opening")
+        raw = os.read(fd, 4097)
+        after = os.fstat(fd)
+        if ((after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)
+                != (opened.st_dev, opened.st_ino, opened.st_size, opened.st_mtime_ns)
+                or len(raw) != opened.st_size or len(raw) > 4096):
+            _fail("staged source marker changed while reading")
+    finally:
+        os.close(fd)
     try:
         def pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
             result: dict[str, Any] = {}
