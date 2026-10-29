@@ -629,3 +629,18 @@ security, reliability, and database reviews at declared evidence HEAD
 Production coordinator
 (`S2-DISPATCH-M01`), production runtime/E5, exact-head final GPT-PM approval, prohibited selectors,
 and overall S2 acceptance remain open. No S3 work starts before S2 closure.
+
+## Current S2 source authorization — 2026-10-29 / change0556
+
+Current authoritative continuation: S2 remains active; S3–S5 implementation waits for S2 closure.
+Bootstrap source0552 and pure issuer contract0553 are committed. Corrected issuer design0554
+passed actual DB/security design rechecks; GPT-PM request c7a8e23e-91f5-489c-a096-c813d84c3b12,
+reply7c3e4eb6-3300-5c5b-ba5c-85aaa10d0487, authorizes bounded integrated SOURCE including
+default-off root-Supervisor signing code. That source is now being implemented by Codex.
+No external production coordinator/person is required. Historical sections above describe
+their then-current evidence and must not reintroduce a superseded source HOLD.
+
+Runtime/private-key provisioning/real signing/enablement/E5 and final exact-head acceptance remain
+open; forbidden process/crash/mutation/policy selectors remain NOT_RUN. Headless Windows collector
+profile repair0555 is source-only and has not yet been executed. All in-scope S2 coding precedes
+final test-role execution. No push/PR/merge is claimed.

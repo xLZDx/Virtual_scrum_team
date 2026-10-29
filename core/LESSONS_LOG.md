@@ -1104,3 +1104,14 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Rule: pin executable, environment, module roots and child-window behavior independently, retain
   collector profile provenance, and preserve UNKNOWN until complete evidence actually exists.
 - Verification: source-only, not runtime or test acceptance; no post-edit command was collected.
+
+## 2026-10-29 — Preserve exact grant provenance instead of matching only its task (change0556)
+
+- Kind: SUCCESS / contract clarification before integrated implementation.
+- Facts: GPT-PM's complete source sweep confirmed implementation readiness and pointed out that
+  execution grants have independent random request/grant/invocation IDs. Task/slot/attempt alone
+  cannot prove the grant originated from the completed issuer operation.
+- Rule: retain exact signed-byte association through the immutable dispatch_grant operation,
+  repeat it on replay and durable runner admission, and distinguish SOURCE GO from runtime.
+- Verification: correlated architecture/SOURCE decision only; integrated source tests and actual
+  runtime are not established by that response.

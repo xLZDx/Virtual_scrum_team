@@ -1390,3 +1390,11 @@ The raw read-only collector now supports explicit fixed PowerShell5 or opt-in Po
 profiles, hidden child creation, fixed OS runtime roots and system module paths, and absolute
 WSL executable invocation. It never silently falls back or reports normalized policy PASS.
 The prior startup error is inherited evidence; this code has not run or been tested yet.
+
+## 2026-10-29 — Implement the accepted I01 integrated source contract (change0556)
+
+GPT-PM request c7a8e23e-91f5-489c-a096-c813d84c3b12/reply7c3e4eb6-3300-5c5b-ba5c-85aaa10d0487
+returned bounded integrated SOURCE GO and I01 implementation-ready. Codex implements the
+specialized issuer journal, default-off root signing code and exact grant-provenance/snapshot
+guards. Actual keys, signing, enablement, E5 and final S2 approval remain held. The five explicit
+SRC conditions and complete correlated reply are linked from change0556; no duplicate send.

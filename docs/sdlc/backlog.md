@@ -2,6 +2,23 @@
 
 Sprint identity: Agentic_Framework sprint `39b7cc253f5d`, mapped to the already active project sprint **S2**. This is a tracking association, not a new sprint. S3 remains unstarted.
 
+## Current source update — change0556
+
+The fresh-only authenticated assignment bootstrap is implemented in change0552 (`45dcf47`);
+the detached issuance/verifier contract is change0553 (`e44f48d`). GPT-PM request
+`c7a8e23e-91f5-489c-a096-c813d84c3b12`, correlated reply
+`7c3e4eb6-3300-5c5b-ba5c-85aaa10d0487`, returned **GO for bounded integrated SOURCE** and
+accepted the corrected I01 design as implementation-ready. This supersedes the earlier source
+HOLD for the issuer; it does not supersede runtime, key provisioning, real signing, E5, forbidden
+selector or final S2 gates. Codex is implementing the specialized journal, root-Supervisor v1
+issuer and transaction-bound admission/grant/runner guards. There is no missing external
+coordinator or unassigned owner. Required I01-SRC-01 through I01-SRC-05 are recorded in
+`evidence/s2-i01-integrated-source-adjudication-20261029.md` and design change0554.
+
+The historical schema-v5 fixture item below is resolved by change0551 and its designated
+six-case fixture evidence; it is not a current product blocker. Final S2 tests still wait until
+all in-scope coding is complete. Historical story/epic rows retain their original evidence scope.
+
 ## Sprint goal
 
 Deliver and qualify the existing Store-authorized signed dispatch path through the real Runner boundary, while preserving fail-closed behavior and keeping production dispatch disabled until the required runtime evidence and exact-head approval exist.
@@ -105,7 +122,7 @@ S2-1 and S2-2 are ready and already accepted for their bounded source/test scope
 
 ### Focused test maintenance note
 
-Codex owns reconciling the exploratory selector `test_pre_0473_schema_v5_pending_recovery_event_survives_fresh_reconciliation_and_allows_only_authorized_successor` in `tests/vst/test_s2_persistent_runner_service.py`. It assumes a Store with `PRAGMA user_version == 5`, while both baseline `9c1be0f` and current source declare schema version 6. The selector is outside TP-26/27 acceptance and was excluded from the final focused assignment-basis run; do not silently change its historical fixture or count its failure against the accepted S2 candidate tests. Next step: keep a true schema-v5 fixture for that migration-history regression or explicitly retire/remap it, then run only that selector.
+Historical item, resolved in change0551: Codex reconciled the exploratory selector `test_pre_0473_schema_v5_pending_recovery_event_survives_fresh_reconciliation_and_allows_only_authorized_successor` in `tests/vst/test_s2_persistent_runner_service.py`. It assumes a Store with `PRAGMA user_version == 5`, while both baseline `9c1be0f` and current source declare schema version 6. The selector is outside TP-26/27 acceptance and was excluded from the final focused assignment-basis run; do not silently change its historical fixture or count its failure against the accepted S2 candidate tests. Resolution: the designated functional-test reviewer restored a true schema-v5 fixture and reported six passing cases over two selectors; see `evidence/s2-legacy-v5-fixture-run-20261029.md`. Include its permitted regression only after the final S2 code freeze.
 
 ## Required evidence references
 
