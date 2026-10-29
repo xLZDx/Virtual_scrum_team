@@ -25,17 +25,23 @@ remain: a matching schema-3 marker passes, while changed inventory digest or sou
 
 ## Verification status
 
-- The extraction correction is committed with this record before its next execution.
-- The exact committed-source rerun of the direct selection is pending. No pass is inferred from the
-  test-extractor failure or from the earlier 54-case overlay run.
+- The extraction correction is committed at `043980f64b4cc2ac7c42719251f2fb8258660377` before the
+  successful rerun.
+- The designated `e2e-runner` executed
+  `python -m pytest -q tests/vst/test_s2_stage_only_install.py -k existing_runtime` from exact
+  `git show HEAD` inputs in Ubuntu 24.04 WSL, Python 3.12.3, pytest 7.4.4: **4 passed, 8 deselected,
+  0 skipped**, exit 0. Input hashes matched before and after execution.
+- Run ID `3ec0a90d53d142829ce7e5d05a184602`; manifest SHA-256
+  `96f3b9c736ecd63536a811514cb80ad0f43be8199c0dc4eae3b40c4910eea4a1`; archive SHA-256
+  `478beda7ad1ecc5123fa7df67f549c70767f289da8dba2f716a56196ea3d9433`. Full input hashes are in
+  `docs/sdlc/evidence/s2-3-existing-runtime-regression-043980f.md`.
+- No pass is inferred from the earlier test-extractor failure or the separate 54-case overlay run.
 - The runtime product fix remains limited to passing/unpacking the existing target-inventory digest;
   no stage, selection, service, Store, key, E5, or production action is authorized.
 
 ## Next actions
 
-1. Run `python -m pytest -q tests/vst/test_s2_stage_only_install.py -k existing_runtime` through
-   `e2e-runner` against the new committed HEAD and preserve exact input hashes.
-2. If the direct cases pass, update the verification and backlog records and send GPT-PM a focused
-   exact-head re-review of M-S2-3-03.
-3. Keep S2-3 current until the required exact package review and only conditionally authorized
+1. Send GPT-PM a focused exact-head re-review of M-S2-3-03 using the committed source and direct
+   regression evidence.
+2. Keep S2-3 current until the required exact package review and only conditionally authorized
    stage-only evidence are complete; do not begin S2-4.

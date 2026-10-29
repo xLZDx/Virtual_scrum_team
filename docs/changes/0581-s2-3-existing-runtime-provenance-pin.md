@@ -28,22 +28,25 @@
 - The product fix and initial regression are committed at `eb649d7a4b83549076b9076389315c3b34e31813`.
   The first exact-commit direct test attempt failed before the assertions because the test helper
   selected the wrong embedded shell heredoc; this test-extractor defect is corrected and tracked in
-  `docs/changes/0582-s2-3-existing-runtime-test-extractor.md`. The focused direct result remains
-  pending against the corrected committed extractor. No result is inferred from the previous
-  54-case run, which was bound to the pre-f34 working-tree overlay and did not cover this branch.
+  `docs/changes/0582-s2-3-existing-runtime-test-extractor.md`. After that correction was committed,
+  the designated `e2e-runner` executed the direct selection on HEAD
+  `043980f64b4cc2ac7c42719251f2fb8258660377`: **4 passed, 8 deselected, 0 skipped** in Ubuntu
+  24.04 WSL, Python 3.12.3, pytest 7.4.4. Inputs came from `git show` and pre/post SHA-256 checks
+  matched. The exact run/hash record is
+  `docs/sdlc/evidence/s2-3-existing-runtime-regression-043980f.md`. No result is inferred from the
+  previous 54-case run, which was bound to the pre-f34 overlay and did not cover this branch.
 - Static review by `code-reviewer` verified that both the marker-writer and existing-runtime
   verifier invocations pass and unpack `inventory_sha` in matching positions. This is not a test
   result or GPT-PM approval.
-- GPT-PM's `MODIFY` disposition remains open until the direct committed-source regression is
-  evidenced and a focused exact-head re-review closes M-S2-3-03.
+- GPT-PM's `MODIFY` disposition remains open until a focused exact-head re-review closes
+  M-S2-3-03.
 
 ## Next actions
 
-1. Commit the corrected test extractor and linked status/change record as a follow-up to the
-   committed product fix.
-2. Execute the focused test against that committed tree through `e2e-runner`; preserve the exact
-   command, commit, environment, result and input hashes.
-3. If it passes, submit a new GPT-PM review focused only on M-S2-3-03 and the direct regression;
-   do not reopen the two resolved findings without contradictory evidence.
-4. Do not stage, select, activate services, or proceed to S2-4 until the exact package gates and
+1. Submit a new GPT-PM review of committed HEAD `043980f`, focused only on M-S2-3-03 and the direct
+   regression.
+2. If approved, generate the exact source plan and fresh source-head-bound target inventory for
+   the intended stage-only source revision.
+3. Continue only after the exact package review; do not reopen the two resolved findings without
+   contradictory evidence. Do not stage, select, activate services, or proceed to S2-4 until the exact package gates and
    fresh source-bound target inventory are satisfied.
