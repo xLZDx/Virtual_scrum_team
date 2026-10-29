@@ -74,8 +74,9 @@ not approve the full S2 sprint, runtime, production identity, E5, activation or 
 selectors. Full disposition and limitations are in
 `docs/sdlc/evidence/s2-1-coverage-adjudication-f92b750e.md`.
 
-Codex is recording and delivering this decision with the affected task documents and
-change record 0586. S2-2 remains queued until the S2-1 task commit is pushed successfully.
+Codex recorded this decision and synchronized the affected task documents in pushed commit
+`e332ec4` (change record 0586). S2-1 task delivery is complete; S2-2 is now the next queued
+task. The separate S2 runtime and full-sprint acceptance limits above remain unchanged.
 
 
 ## S2 post-functional source reviews — current at d3f326f
