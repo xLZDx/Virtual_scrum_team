@@ -25,6 +25,50 @@ No test/check/build/provisioning/activation was performed for this review. GPT-P
 reply is MODIFY (exact correlated evidence in s2-machine-authority-adjudication-20261029.md), not
 overall S2 approval. Final exact-head code gate remains open. No approval files were hand-written.
 
+## S2 exact-head code-coverage adjudication — current through 242f5d5
+
+GPT-PM request `4986ec77-698e-4dd0-bdd9-7ca5c6281a46` reviewed base
+`6117ba24b08a260b42402db6da0bf767864e1c04` through HEAD
+`242f5d56f5b48603141d148d71d724bec7fb2b37`. The 5,876,444-byte input was
+SHA-256 `f7685bce6b5e30c0e266f7e4eebf009d1f64ad9d8f6c4583a90241fbf9488b42`.
+The correlated reply (job `c6ea42b2-462e-41a1-83a2-1632850c22c8`, reply
+`541aa937-3513-570e-8b25-daaa99ae0854`) resolved S2-REVIEW-01 and found no confirmed
+BLOCKER/MAJOR in the AF parser correction, but retained S2-REVIEW-02 as MAJOR/HOLD:
+complete adversarial coverage of every changed source/test integration path was not
+independently established. No exact-head approval was granted; Phase 8 remains unaccepted.
+
+### Review coverage evidence
+
+- The prior full-range S2 source audit is recorded in
+  `docs/sdlc/evidence/s2-frozen-source-reviews-d3f326f-20261029.md`. It documents actual
+  database-, security- and code-reviewer work through `d3f326f37a40936402d3933d5266e0ffb01017f0`,
+  including the Store/issuance, dispatcher, Supervisor/RPC, Runner/sandbox, grant and
+  trust-boundary integrations. It is inherited evidence from that review, not a new review
+  performed in this turn.
+- The current code-reviewer delta audit compared `d3f326f` to `242f5d5` and read all six
+  changed `tools/` and `tests/` paths in full: `tools/af_attachment_review.mjs`,
+  `tools/verify_s2_review_source_fidelity.py`, `tests/vst/test_af_attachment_review.mjs`,
+  `tests/af/test_s2_attachment_adapter_e2e.mjs`,
+  `tests/af/test_s2_review_source_fidelity.py`, and
+  `tests/vst/test_s2_store_backed_pubsub.py`. It found no confirmed B/M in those deltas.
+  The reviewer ran no tests and edited no files.
+- A prior exact-range evidence note,
+  `docs/sdlc/evidence/s2-af-correlated-reply-parser-20261029.md`, records a code-reviewer
+  inventory and review of the 74 changed `tests/` and `tools/` paths in the exact range,
+  including the 30 changed test/helper paths. This record is supplied for GPT-PM to assess
+  together with the baseline and delta reports; it is not represented as work performed in
+  the current turn.
+- The focused exact-commit functional test is reported separately: 38/38 at code HEAD
+  `0da595e6574856ed0c85a181941e822031b80787`. Review reports are not test results, and
+  test reports are not GPT-PM approval.
+
+### Current disposition and next action
+
+The new PM result does not identify a code defect. It leaves an evidence-sufficiency
+decision open. Codex will submit the path-mapped baseline-plus-delta evidence for a fresh
+exact-head GPT-PM adjudication. Do not hand-write the approval, push without a valid
+correlated approval, or begin S2-2 before S2-1 is delivered.
+
 
 ## S2 post-functional source reviews — current at d3f326f
 
