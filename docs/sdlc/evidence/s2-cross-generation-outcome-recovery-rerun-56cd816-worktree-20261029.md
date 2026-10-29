@@ -22,6 +22,15 @@ wsl.exe -d Ubuntu-24.04 --user root -- sh -lc 'set -eu; if ! mountpoint -q /mnt/
   - `tests/vst/test_s2_dispatch_owner_service.py`: `fc7e194cb45700446438c776281be789f8ad0551edc5c506887af35af020df71`
   - `tests/vst/test_s2_dispatch_owner_latch.py`: `dd747aa5c42cf4745197c77b0138c2e71bdd9690ed3d779d00969142382d35f1`
 
+## Commit binding
+
+After the run, commit `dcb5d63c19eeb63f2f17fce0add510937688e819` was created. Its
+`tests/vst/test_s2_store_backed_pubsub.py` blob (`da70c3b9a01c697bec8011f2814c4217fdf6688b`)
+was read back from Git and SHA-256 checked as
+`435262304ca08fef9ed371748fa8184086ada46a8f016b4751a997db37f228e7`, matching the file executed
+by this run. The result is therefore bound to that committed test blob, while the other three
+selected test files were unchanged at the tested code head.
+
 ## Fixture correction and acceptance mapping
 
 The preceding current-code-head run `s2-1-current-regression-run-56cd816-20261029.md` returned 129 passed and one failure. `test_pending_dispatch_barrier_survives_store_reopen` directly called `Store.accept_dispatch_intent` without the trusted synthetic public-key fingerprint now required by the legacy API path. It failed authorization before reaching the intended service-generation duplicate assertion. The production Supervisor computes and supplies this fingerprint.

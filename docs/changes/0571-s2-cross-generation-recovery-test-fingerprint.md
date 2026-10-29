@@ -15,7 +15,7 @@ The current `Store.accept_dispatch_intent` legacy path requires a trusted public
 
 ## Verification
 
-`e2e-runner` executed the four focused S2-1 files in Ubuntu 24.04 WSL, Python 3.12.3, pytest 7.4.4, on code HEAD `56cd816b1b03b39c3f4b4a70ecf00d96ef95d321` with the exact test worktree hashes recorded in `docs/sdlc/evidence/s2-cross-generation-outcome-recovery-rerun-56cd816-worktree-20261029.md`: **130 passed, 0 failed**, exit 0. The run record is worktree-bound and requires matching the committed Git blob to the recorded file hash before claiming commit-bound proof. Restricted selectors were not run.
+`e2e-runner` executed the four focused S2-1 files in Ubuntu 24.04 WSL, Python 3.12.3, pytest 7.4.4, on code HEAD `56cd816b1b03b39c3f4b4a70ecf00d96ef95d321` with the exact test worktree hashes recorded in `docs/sdlc/evidence/s2-cross-generation-outcome-recovery-rerun-56cd816-worktree-20261029.md`: **130 passed, 0 failed**, exit 0. Commit `dcb5d63c19eeb63f2f17fce0add510937688e819` contains the corrected test blob; its read-back Git blob and SHA-256 match the executed file. Restricted selectors were not run.
 
 ## Closure boundary
 

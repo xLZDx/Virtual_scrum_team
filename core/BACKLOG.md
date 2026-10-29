@@ -28,9 +28,11 @@ specialist reviewers found no valid BLOCKER/MAJOR, and GPT-PM returned ACCEPT un
 At code HEAD `56cd816b1b03b39c3f4b4a70ecf00d96ef95d321`, the same four-file WSL selection
 initially found a stale direct-Store fixture missing the now-required synthetic `key_fingerprint`;
 the test fixture was corrected without weakening its duplicate/lifecycle/replay assertions, and
-the rerun passed 130/130. This is current-worktree evidence until the test change is committed;
-commands, hashes, environment and limits are in
+the rerun passed 130/130. Commit `dcb5d63c19eeb63f2f17fce0add510937688e819` contains the exact
+test blob executed by that rerun (SHA-256 `435262304ca08fef9ed371748fa8184086ada46a8f016b4751a997db37f228e7`);
+commands, environment and limits are in
 `docs/sdlc/evidence/s2-cross-generation-outcome-recovery-rerun-56cd816-worktree-20261029.md`.
+Exact-head GPT-PM approval and normal push remain pending.
 
 This is source/test closure only. GPT-PM's correlated coordinator adjudication confirms the
 existing `DispatchOwnerService` + authenticated Supervisor/Store admission + filtered Pub/Sub +
