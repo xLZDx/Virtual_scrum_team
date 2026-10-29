@@ -15,11 +15,12 @@ The AF review for GPT-PM request `4fb1b534-e56e-46da-8a0c-1a0366d9597e` was mark
 - Owner: `functional-test-reviewer` (`gpt-6-luna`, medium).
 - Command: `node --test tests/vst/test_af_attachment_review.mjs`.
 - Result: 38 passed, 0 failed, 0 cancelled, 0 skipped; duration 139463.6885 ms.
-- Revision at run: worktree HEAD `74fdbf6aaf79e558d8b62da826879937e48e9c4a`; production and test changes were uncommitted. Exact committed-head rerun remains required.
+- Pre-commit revision: worktree HEAD `74fdbf6aaf79e558d8b62da826879937e48e9c4a`; production and test changes were uncommitted.
 - Environment: Windows NT 10.0.26300.0; PowerShell; Node v24.13.1; Git 2.53.0.windows.1.
 - Test SHA-256: `5FA69F2F34722AD96FEFAF2A2C8A98C9B18D29298F5E726FDDC0BEFBC30FAEA1`.
 - Adapter SHA-256: `1933B1775C87E21088C82BC435B36C056A1795E306334716B26724E07DD08631`.
 - During the run, the tester discarded an initial result produced by a process with stale in-memory source, confirmed the current source enforcement, started a fresh Node process, and recorded only this final 38/38 result. No production or documentation files were edited by the tester.
+- The exact committed-head rerun then passed 38/38 at `0da595e6574856ed0c85a181941e822031b80787` in 149843.3314 ms, with identical test/adapter file hashes. Before/after `git hash-object` matched both paths to `HEAD`; no tracked files changed during the run. Exact committed-run evidence is in change 0578.
 
 ## Review
 
@@ -27,4 +28,4 @@ The AF review for GPT-PM request `4fb1b534-e56e-46da-8a0c-1a0366d9597e` was mark
 
 ## Remaining acceptance
 
-After this task commit, `functional-test-reviewer` reruns the focused suite on the exact committed HEAD. Codex then refreshes local `docs/sdlc/verify-evidence.json` and submits one fresh exact-head GPT-PM review through the corrected adapter. No approval file may be written manually. Push only after the actual correlated approval and required AF verification succeed. S2-2 must not start first. Runtime, production identity, root configuration, current E5 and restricted selectors remain independently unproven or `NOT_RUN`.
+The exact committed-head test at `0da595e6574856ed0c85a181941e822031b80787` passed 38/38 and its evidence is recorded in change 0578. The accompanying evidence refresh records the current code/test review scope and the prior GPT-PM hold without converting either into approval. Codex refreshes local `docs/sdlc/verify-evidence.json` and submits one fresh exact-head GPT-PM review through the corrected adapter. No approval file may be written manually. Push only after the actual correlated approval and required AF verification succeed. S2-2 must not start first. Runtime, production identity, root configuration, current E5 and restricted selectors remain independently unproven or `NOT_RUN`.
