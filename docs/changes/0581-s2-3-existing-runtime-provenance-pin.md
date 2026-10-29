@@ -25,10 +25,12 @@
 
 ## Verification
 
-- The direct POSIX test result is pending. The code and regression must be committed first, then
-  executed by the designated `e2e-runner` against that committed source. No result is inferred from
-  the previous 54-case run, which was bound to the pre-f34 working-tree overlay and did not cover
-  this existing-runtime branch.
+- The product fix and initial regression are committed at `eb649d7a4b83549076b9076389315c3b34e31813`.
+  The first exact-commit direct test attempt failed before the assertions because the test helper
+  selected the wrong embedded shell heredoc; this test-extractor defect is corrected and tracked in
+  `docs/changes/0582-s2-3-existing-runtime-test-extractor.md`. The focused direct result remains
+  pending against the corrected committed extractor. No result is inferred from the previous
+  54-case run, which was bound to the pre-f34 working-tree overlay and did not cover this branch.
 - Static review by `code-reviewer` verified that both the marker-writer and existing-runtime
   verifier invocations pass and unpack `inventory_sha` in matching positions. This is not a test
   result or GPT-PM approval.
@@ -37,8 +39,9 @@
 
 ## Next actions
 
-1. Commit this fix, its focused test and linked evidence/status updates as the current S2-3 task.
-2. Execute the focused test against the committed tree through `e2e-runner`; preserve the exact
+1. Commit the corrected test extractor and linked status/change record as a follow-up to the
+   committed product fix.
+2. Execute the focused test against that committed tree through `e2e-runner`; preserve the exact
    command, commit, environment, result and input hashes.
 3. If it passes, submit a new GPT-PM review focused only on M-S2-3-03 and the direct regression;
    do not reopen the two resolved findings without contradictory evidence.

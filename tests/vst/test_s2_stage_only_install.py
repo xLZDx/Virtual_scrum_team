@@ -116,8 +116,31 @@ def test_python_c_sys_argv_matches_host_argument_contract():
 def _runner_main_python() -> str:
     shell = (ROOT / "tools/qa/install_wsl_runner_runtime.sh").read_text(encoding="utf-8")
     snippets = re.findall(r"<<'PY'\r?\n(.*?)\r?\nPY", shell, re.DOTALL)
-    assert len(snippets) >= 2
-    return snippets[1]
+    for snippet in snippets:
+        try:
+            module = ast.parse(snippet)
+        except SyntaxError:
+            continue
+        unpacks_inventory = any(
+            isinstance(node, ast.Assign)
+            and node.targets and isinstance(node.targets[0], ast.Tuple)
+            and any(isinstance(item, ast.Name) and item.id == "inventory_sha"
+                    for item in node.targets[0].elts)
+            for node in module.body
+        )
+        checks_existing_runtime = any(
+            isinstance(node, ast.If)
+            and isinstance(node.test, ast.Call)
+            and isinstance(node.test.func, ast.Name)
+            and node.test.func.id == "path_exists"
+            and len(node.test.args) == 1
+            and isinstance(node.test.args[0], ast.Name)
+            and node.test.args[0].id == "runtime"
+            for node in module.body
+        )
+        if unpacks_inventory and checks_existing_runtime:
+            return snippet
+    raise AssertionError("runtime-validation heredoc with inventory pin was not found")
 
 
 def test_runner_existing_runtime_argv_pins_inventory_at_matching_position() -> None:
