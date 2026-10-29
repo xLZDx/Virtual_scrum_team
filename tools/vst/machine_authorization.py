@@ -335,7 +335,7 @@ def verify_assignment_authorization(
     verified_policy = verify_policy(policy, config, openssl_path=openssl_path, now=current)
     policy_record = verified_policy["policy"]
     for field in ("policy_id", "project", "repository", "sprint_id", "manifest_sha256",
-                  "machine_key_id", "key_purpose", "revocation_id"):
+                  "machine_key_id", "key_purpose"):
         assignment_field = "issuer_key_id" if field == "machine_key_id" else (
             "issuer_key_purpose" if field == "key_purpose" else field)
         if record[assignment_field] != policy_record[field]:
