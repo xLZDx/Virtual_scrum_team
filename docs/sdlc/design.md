@@ -42,8 +42,18 @@ Config examples produced at this stage are explicitly non-installable templates:
 
 ### Staging and journal implementation contract
 
+Use two different manifests. The reviewed pre-stage source plan binds source HEAD, archive,
+sandbox spec, helper source/build recipe, shipped unit bytes and fixed target paths. It does not
+claim installed-runtime or compiler-result provenance. After stage-only finishes, a read-only
+target-host `prepare` emits a second canonical manifest with the actual complete new tree and
+helper binary digests plus the exact old selector/unit/runtime baseline. GPT-PM must review that
+second manifest's digest before selector mutation; a locally calculated digest is not approval.
+
 Add an explicit `--stage-only` argument to the distro runtime installer and a corresponding
-`-StageOnly` argument to the Windows handoff. Default install behavior stays fail-closed and
+`-StageOnly` argument to the Windows handoff. Launch the selector with Python `-B -I -S` and
+load it from the fixed full-versioned runtime path so importing it cannot create `__pycache__`
+inside the immutable measured tree. The repository wrapper must disable bytecode before import.
+Default install behavior stays fail-closed and
 unchanged. Stage-only validates the same source archive, host restrictions and immutable tree,
 installs only the absent versioned runtime/helper, and must skip the fixed selector/unit
 collision checks and ALL selector/unit writes. Report `selected=false`; the separate bootstrap
