@@ -15,7 +15,7 @@ The S2-1 exact-head GPT-PM request completed and returned a correlated reply, bu
 - Owner: `functional-test-reviewer` (`gpt-6-luna`, medium).
 - Command: `node --test tests/vst/test_af_attachment_review.mjs`.
 - Result: 38 passed, 0 failed, 0 cancelled, 0 skipped; duration 167146.7255 ms.
-- Revision at run: worktree HEAD `206a746fdae942fd6ab6f36c882bb0c3d18ec539`; the adapter and test changes were present but uncommitted. A post-commit rerun is required for exact committed-head evidence.
+- Pre-commit run revision: worktree HEAD `206a746fdae942fd6ab6f36c882bb0c3d18ec539`; adapter and tests were present but uncommitted. The exact committed-head rerun subsequently passed at `6952469312cd4701bbdb93cea4ce4f197516b5d2` (38 passed, 0 failed/cancelled/skipped; 222609.4192 ms); full details are in `docs/sdlc/evidence/s2-af-correlated-reply-parser-20261029.md`.
 - Environment: Windows NT 10.0.26300.0; PowerShell; Node v24.13.1; Git 2.53.0.windows.1.
 - Test SHA-256: `D772051C88F0831FB7C7110B8DBA289CA9C02558C106B3043DD98B7DDAD2E6F3`.
 - Adapter SHA-256: `6DDF6DA1E351BCD4FAD7FBBF362D284F0F9CBEBE301BB96DF90121B3B1425796`.
@@ -29,4 +29,4 @@ The S2-1 exact-head GPT-PM request completed and returned a correlated reply, bu
 
 ## Remaining acceptance
 
-S2-1 remains current. After this commit, `functional-test-reviewer` must rerun the focused test command on the exact committed HEAD. Codex then updates the local AF evidence packet and requests a fresh exact-head GPT-PM review through the corrected adapter. Push only after the actual correlated approval and any enforced AF verification succeed; never write approval files manually or bypass hooks. No S2-2 work begins before S2-1 push succeeds. Runtime, production identity, root configuration, current E5, and restricted selectors remain separately unproven or `NOT_RUN`.
+S2-1 remains current. The exact committed-head test rerun at `6952469312cd4701bbdb93cea4ce4f197516b5d2` passed 38/38. Codex now updates the local AF evidence packet and requests a fresh exact-head GPT-PM review through the corrected adapter. Push only after the actual correlated approval and any enforced AF verification succeed; never write approval files manually or bypass hooks. No S2-2 work begins before S2-1 push succeeds. Runtime, production identity, root configuration, current E5, and restricted selectors remain separately unproven or `NOT_RUN`.
