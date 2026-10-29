@@ -1495,3 +1495,15 @@ test plan: `docs/sdlc/S2_AF_ATTACHMENT_REVIEW_CONTRACT.md` and
 `docs/sdlc/S2_AF_ATTACHMENT_TEST_PLAN.md`; implementation SHA at freeze:
 `9cdb51192e8fcb037cedd8980cd819b35fbc76c02f076adcb0071f3d3ab1b54e`. Formal
 approval and designated tests remain pending.
+
+## 2026-10-29 — Correct the attachment E2E fixture without reclassifying the source (0569)
+
+The first committed E2E attempt at HEAD `00cd67b7a07d299081e8c3356de8465698c4de58`
+returned 0/2 passing because the test harness referenced an undefined imported binding and
+trimmed the native diff's terminal LF. The actual native dump-only path ran; the loopback
+adapter test did not reach its transport assertions. A separate functional process was
+observed terminal but its full result was lost with its unretained execution session ID.
+Decision: fix the E2E fixture only, preserve the product adapter unchanged, and rerun both
+test-owner commands at a new exact committed HEAD before accepting any result. Evidence and
+scope are recorded in change0569; neither the initial E2E failure nor partial functional
+stdout is an adapter acceptance verdict.

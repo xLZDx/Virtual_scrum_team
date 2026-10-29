@@ -3,8 +3,12 @@
 Sprint: 39b7cc253f5d
 
 State: adapter implementation is frozen at SHA-256
-`9cdb51192e8fcb037cedd8980cd819b35fbc76c02f076adcb0071f3d3ab1b54e`; functional and
-E2E test files are authored and execution has not started.
+`9cdb51192e8fcb037cedd8980cd819b35fbc76c02f076adcb0071f3d3ab1b54e`. The first E2E
+attempt at HEAD `00cd67b7a07d299081e8c3356de8465698c4de58` failed on test-harness defects
+(undefined fixture import and an omitted terminal LF); those test-only defects are corrected
+in change0569 and require rerun. The first functional command's process reached terminal,
+but its session output/exit code was lost; it is unverified and must be rerun. No result is
+accepted until both exact reruns complete and are recorded.
 
 Source contract: `docs/sdlc/S2_AF_ATTACHMENT_REVIEW_CONTRACT.md`, SHA-256
 `4e4b97fc1eff2e1005c9a82eb9af768a9b493c80e71d18e16e6069eef81ca4ae`.
@@ -12,8 +16,9 @@ Source contract: `docs/sdlc/S2_AF_ATTACHMENT_REVIEW_CONTRACT.md`, SHA-256
 This plan defines falsifiable source-fixture coverage for the project-owned
 `tools/af_attachment_review.mjs` adapter. It does not authorize framework or PM Bridge
 changes, live AF requests, a new checkout, production staging, key/configuration changes,
-or service activation. The functional and E2E roles authored separate test files; neither
-has run a test command yet.
+or service activation. The functional and E2E roles authored separate test files. Execution
+evidence remains incomplete as recorded above; do not infer a pass from a live-process
+observation or partial stdout.
 
 ## Boundaries and test layers
 

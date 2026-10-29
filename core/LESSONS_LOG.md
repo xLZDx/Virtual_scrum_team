@@ -1232,3 +1232,12 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Layer that caught it: durable PM Bridge job metadata showed null reply/correlation; GPT-PM retained HOLD rather than approval.
 - Rule: bind immutable full prompt bytes to a stable request identity before send, recover only that durable request, and require the daemon attachment manifest plus correlated reply before exposing a verdict to AF. Keep the AF tool as sole approval writer.
 - Fix status: project adapter source is frozen at SHA `9cdb51192e8fcb037cedd8980cd819b35fbc76c02f076adcb0071f3d3ab1b54e`; designated functional/E2E tests and fresh specialist review are pending. S2 and runtime acceptance remain open.
+
+## 2026-10-29 — Retain the test process handle and compare native bytes (0569)
+
+- Kind: VERIFICATION FAILURE (the test harness did not produce complete acceptance evidence).
+- Facts: the E2E command returned 0/2 because of a wrong fixture import and one omitted LF in expected prompt construction. The functional Node process was observed terminal, but its full result and exit code were unavailable after the session ID was lost. See `docs/changes/0569-s2-attachment-e2e-fixture-fix.md`.
+- Root cause: the E2E fixture used a trimming helper for a byte-sensitive prompt, and the execution wrapper omitted the returned session handle when the process outlived its initial wait.
+- Layer that caught it: actual E2E test run and same-process terminal observation.
+- Rule: preserve raw command bytes for prompt comparisons and always retain/poll the original process session ID; a partial stdout fragment or terminal PID observation without exit evidence is not a test result.
+- Fix status: E2E test-only correction is committed by this change; both exact designated tests still need complete reruns. Production source status is unchanged.

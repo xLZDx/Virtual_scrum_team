@@ -667,3 +667,14 @@ review request exceeded the JSON body limit before GPT contact; a separate attac
 without durable reply correlation remains non-approving. Use the existing supported attachment
 transport through the project hook; AF remains the sole approval writer. Do not start S3 before
 S2's exact-head evidence, required review and acceptance gates are closed.
+
+## 2026-10-29 — S2 attachment test harness correction (0569)
+
+S2 remains the only active sprint; Agentic_Framework is at hard phase8 for sprint ID
+`39b7cc253f5d`. Product adapter source remains SHA
+`9cdb51192e8fcb037cedd8980cd819b35fbc76c02f076adcb0071f3d3ab1b54e`. At source/test HEAD
+`00cd67b7a07d299081e8c3356de8465698c4de58`, the first E2E command returned 0/2 because of
+two fixture defects; the functional process became terminal but its complete output/exit
+code were lost. The E2E-only fix is recorded in change0569 and both test-owner commands
+must rerun at the new committed head. No adapter acceptance, formal PM-GPT approval,
+runtime/E5, push/PR/merge, or S2 closure is claimed. S3–S5 remain queued.

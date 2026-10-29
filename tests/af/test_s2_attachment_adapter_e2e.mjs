@@ -187,7 +187,7 @@ test("AF attachment adapter sends >4 MiB canonical input through the authenticat
     ...clientModule,
     ...routingModule,
     ...identityModule,
-    ...verdictModule,
+    ...verdictModuleLoaded,
     ...wireModule,
     resolveIdentityAssertedBinding: async () => ({ identityBinding: { projectId, conversationId } }),
     isOrchestratorActive: async () => active,
@@ -287,7 +287,10 @@ test("native review.js dump-only mode writes the exact canonical prompt and exit
 
   const actualBytes = fs.readFileSync(dumpPath);
   const actualHash = sha256(actualBytes);
-  const diff = git(repo, ["diff", `${baseSha}...${headSha}`, "--", ".", ":(exclude)reports"]);
+  const diff = execFileSync("git", ["-C", repo, "diff", `${baseSha}...${headSha}`, "--", ".", ":(exclude)reports"], {
+    encoding: "utf8",
+    windowsHide: true,
+  });
   const scopeBlock =
     `Scope of THIS round -- read before reviewing:\n${scopeNote}\n\n` +
     "Findings outside that scope are still welcome, but mark them explicitly as out-of-scope " +
