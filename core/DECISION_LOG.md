@@ -1398,3 +1398,11 @@ returned bounded integrated SOURCE GO and I01 implementation-ready. Codex implem
 specialized issuer journal, default-off root signing code and exact grant-provenance/snapshot
 guards. Actual keys, signing, enablement, E5 and final S2 approval remain held. The five explicit
 SRC conditions and complete correlated reply are linked from change0556; no duplicate send.
+
+## 2026-10-29 — Map issuer falsifiers before final S2 execution (changes0558/0559)
+
+Actual functional-test-reviewer planned TP-29 through TP-38 against accepted bootstrap/I01
+contracts; actual e2e-runner prepared exact historical candidate node IDs and platform/runtime
+limits. The original E1–E8/D1–D2 denominator is retained. Candidate counts are NOT_VERIFIED,
+new test code waits for the complete source freeze, and forbidden scenarios remain NOT_RUN.
+No test, collection, build, check, CI or runtime action was run by either planning assignment.

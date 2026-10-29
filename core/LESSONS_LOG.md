@@ -1115,3 +1115,13 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
   repeat it on replay and durable runner admission, and distinguish SOURCE GO from runtime.
 - Verification: correlated architecture/SOURCE decision only; integrated source tests and actual
   runtime are not established by that response.
+
+## 2026-10-29 — Distinguish negative journal fixtures from real crash evidence (0558/0559)
+
+- Kind: SUCCESS / test-contract preparation.
+- Facts: test roles mapped immutable signing state, exact grant provenance, replay and current
+  authority falsifiers to the original epics without executing tests during coding.
+- Rule: a seeded or malformed journal fixture tests a predicate; it does not prove live crash,
+  process cleanup, E5 or E8 behavior. Static node candidates are not collected/executed coverage.
+- Verification: planning artifacts only; final allowed node collection/execution follows complete
+  S2 source/delivery-tree freeze, with platform skips reported as NOT_RUN.
