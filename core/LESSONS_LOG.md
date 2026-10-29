@@ -1207,3 +1207,13 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
   crash/termination remains NOT_RUN; names alone neither authorize nor prohibit it.
 - Rule: retain exact command, source/test hashes, platform and evidence layer;
   overlapping component counts cannot become a whole-sprint percentage.
+
+## 2026-10-29 — Review snapshot contents and preserve diagnostic limits (0566)
+
+- Kind: scope/provenance correction.
+- Facts: an incremental review after a snapshot port can omit the newly imported
+  implementation. Codex required full new source and transport trust coverage,
+  obtained actual expanded review, and retained the limited initial summary.
+- Rule: source consensus is scoped manual evidence, never installed runtime proof.
+  Host module discovery alone does not prove the required cmdlet can execute;
+  unavailable/unnormalized collection remains UNKNOWN without invented error codes.

@@ -24,3 +24,21 @@ held until its candidate schemas are corrected; that independent hold does not s
 No test/check/build/provisioning/activation was performed for this review. GPT-PM's architecture
 reply is MODIFY (exact correlated evidence in s2-machine-authority-adjudication-20261029.md), not
 overall S2 approval. Final exact-head code gate remains open. No approval files were hand-written.
+
+
+## S2 post-functional source reviews — current at d3f326f
+
+Sprint: 39b7cc253f5d
+
+Actual fresh-context database-reviewer, security-reviewer and code-reviewer ran
+on gpt-6-luna medium after designated tests completed. Full declared new S2 source
+was compared with origin/main, including bootstrap/issuer integration already in
+the snapshot port; the small later fix delta alone was insufficient. Security
+finished the additional owner/dispatcher/Runner/signer/latch/fence trust surfaces.
+No confirmed code BLOCKER/MAJOR remains in those reviewed scopes. Detailed evidence
+and manual-review limits are in
+[evidence/s2-frozen-source-reviews-d3f326f-20261029.md](evidence/s2-frozen-source-reviews-d3f326f-20261029.md).
+Reviewers ran no tests/checks/build/CI and wrote no source. Prior design/runtime
+HOLD statements are historical; current source implementation/review is established,
+while installed trust, service behavior, genuine current E5 and final Phase8 remain
+separate. This record is not GPT approval and writes no approval artifact.

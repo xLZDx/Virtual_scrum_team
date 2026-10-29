@@ -1464,3 +1464,11 @@ and WSL, including full delegated reservation and existing E7 lifecycle contract
 Exact commands/hashes and old failures are retained in the public role reports.
 Fresh specialist and GPT gates remain pending; real runtime/E5 and restricted
 scenarios are not promoted by these fixture passes. See change0565.
+
+## 2026-10-29 — Submit reviewed source without inventing runtime acceptance (0566)
+
+DB, security and general/reliability roles completed the full declared S2 source
+slice atd3f326f with zero confirmed code BLOCKER/MAJOR. PS7host observation remained
+UNKNOWN because its fixed firewall cmdlet was unavailable; no policy/E5 PASS is
+inferred. Exact package and bounded runtime proposal go to GPT-PM, with no external
+coordinator dependency and no invented operator signature/waiver. See change0566.

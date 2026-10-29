@@ -135,3 +135,35 @@ across overlapping groups or revisions.
    owns any genuine scoped waiver or restriction change. A waiver cannot erase FAIL.
 6. Only after acceptance and fresh exact-head GPT approval may Codex push/open the
    single S2 PR. S3–S5 remain ordered behind S2 closure. No self-written approval.
+
+
+### Frozen-source specialist consensus and live observation
+
+All three actual fresh-context reviewers completed their declared full new S2
+source surfaces at d3f326f37a40936402d3933d5266e0ffb01017f0. Confirmed code
+BLOCKER:0; MAJOR:0. See
+`evidence/s2-frozen-source-reviews-d3f326f-20261029.md` for roles, exact scopes,
+base, line evidence, initial capacity rejection and corrected security-scope sweep.
+These findings do not claim an exhaustive generic audit or runtime acceptance.
+
+The six committed test blobs at d3f326f match the exact SHA-256 overlays recorded
+for current67d1d55 execution. The only tools/vst or tools/qa path changed between
+those commits is tools/vst/schemas/README.md; product source did not change.
+
+Permitted live Windows collection was actually attempted with fixed PS7, no fallback.
+`Get-NetFirewallProfile` is unavailable in that restricted PS7 context although the
+NetSecurity2.0.0.0 module is discoverable. An explicit native import also failed;
+its precise exception is UNKNOWN, not an asserted permission error or source bug.
+No complete snapshot/counts exist; normalization remains unsupported. Raw host data
+is private and not part of this packet. Public sanitized record:
+`evidence/s2-windows-live-observations-d3f326f-20261029.md`.
+
+Requested GPT-PM adjudication is the exact code package and residual acceptance,
+not a claim that S2 is fully done. If a bounded runtime step is authorized, state
+its exact scope separately: stage an immutable versioned tree and helper from the
+reviewed source/compiler recipe only, preserve the selected old runtime and units,
+collect post-stage fingerprints, then review that transition manifest before any
+selector/config/keys/service signing or activation. No source-plan JSON grants
+permission. Existing compiler/path inventory is dated evidence and must be refreshed
+for the actual stage. Genuine E5 and restricted-case disposition remain explicit;
+Codex will not invent an operator signature/waiver or an external coordinator.
