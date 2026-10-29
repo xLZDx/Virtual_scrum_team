@@ -41,7 +41,9 @@ remain: a matching schema-3 marker passes, while changed inventory digest or sou
 
 ## Next actions
 
-1. Send GPT-PM a focused exact-head re-review of M-S2-3-03 using the committed source and direct
-   regression evidence.
-2. Keep S2-3 current until the required exact package review and only conditionally authorized
-   stage-only evidence are complete; do not begin S2-4.
+1. Focused exact-head GPT-PM review `17aa39d9-fb95-4d27-ba94-858fe1cc954d` approved HEAD
+   `ef465cd8790518e405164c82ec1598f843ae8a58` and closed M-S2-3-03; exact reply and limits are
+   recorded in `docs/sdlc/evidence/s2-3-review-m-s2-3-03-17aa39d9.md`.
+2. Keep S2-3 current while Codex creates a fresh exact source plan and source-head-bound WSL
+   inventory, obtains exact-bundle review, and completes only the separately authorized stage-only
+   and post-stage manifest review. Do not begin S2-4 yet.

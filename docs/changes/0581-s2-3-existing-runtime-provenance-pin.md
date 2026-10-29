@@ -38,15 +38,16 @@
 - Static review by `code-reviewer` verified that both the marker-writer and existing-runtime
   verifier invocations pass and unpack `inventory_sha` in matching positions. This is not a test
   result or GPT-PM approval.
-- GPT-PM's `MODIFY` disposition remains open until a focused exact-head re-review closes
-  M-S2-3-03.
+- Focused exact-head GPT-PM request `17aa39d9-fb95-4d27-ba94-858fe1cc954d` approved HEAD
+  `ef465cd8790518e405164c82ec1598f843ae8a58` and closed M-S2-3-03. Exact reply and boundary:
+  `docs/sdlc/evidence/s2-3-review-m-s2-3-03-17aa39d9.md`.
 
 ## Next actions
 
-1. Submit a new GPT-PM review of committed HEAD `043980f`, focused only on M-S2-3-03 and the direct
-   regression.
-2. If approved, generate the exact source plan and fresh source-head-bound target inventory for
-   the intended stage-only source revision.
-3. Continue only after the exact package review; do not reopen the two resolved findings without
-   contradictory evidence. Do not stage, select, activate services, or proceed to S2-4 until the exact package gates and
-   fresh source-bound target inventory are satisfied.
+1. Generate the exact source plan and fresh source-head-bound target inventory for reviewed source
+   HEAD `ef465cd8790518e405164c82ec1598f843ae8a58`.
+2. Obtain a fresh GPT-PM decision on the exact immutable source plan and target inventory before
+   the separately bounded stage-only operation.
+3. After stage-only, obtain the required read-only complete staged-tree/helper manifest and its
+   separate GPT-PM review. Do not select, activate services, open/migrate an existing Store, use
+   production keys/E5, or proceed to S2-4 based on the focused M-S2-3-03 approval.
