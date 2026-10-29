@@ -1,5 +1,7 @@
 # Change 0575: accept a correlated PM reply header in the S2-1 adapter
 
+> Follow-up: persisted PM Bridge job output also includes the `ChatGPT said:` transport wrapper before `REQUEST_ID`. Change 0577 adds exact-wrapper handling, mandatory matching-ID enforcement and a regression fixture for that stored reply shape; the 38/38 result below validates the inner-header-only revision, not the wrapper extension.
+
 ## Why
 
 The S2-1 exact-head GPT-PM request completed and returned a correlated reply, but the local AF adapter required `VERDICT` on line one. The reply format placed its matching `REQUEST_ID` first, so the adapter rejected the review as `NOT_RUN` / `UNRECOGNIZED`, wrote no receipt, and could not preserve the actual PM disposition. This blocked the ordered S2-1 task; it did not indicate an authorization to self-approve or bypass the exact-head gate.

@@ -364,6 +364,14 @@ test("AFAT-10: correlated REQUEST_ID header is accepted only once before the ver
     () => validateTopLevelVerdict(`Preamble\nREQUEST_ID: ${UUID}\nVERDICT: APPROVE`, parse, UUID),
     /begin with/,
   );
+  assert.throws(
+    () => validateTopLevelVerdict("ChatGPT said:\n\nVERDICT: APPROVE", parse, UUID),
+    /REQUEST_ID|begin with/,
+  );
+  assert.throws(
+    () => validateTopLevelVerdict(`Assistant said:\n\nREQUEST_ID: ${UUID}\n\nVERDICT: APPROVE`, parse, UUID),
+    /begin with/,
+  );
 });
 
 test("AFAT-10: runAdapter binds a matching leading REQUEST_ID to the persisted intent", async (t) => {
@@ -373,6 +381,8 @@ test("AFAT-10: runAdapter binds a matching leading REQUEST_ID to the persisted i
     prompt: promptFor(repo),
     jobMutation(job) {
       const reply = [
+        "ChatGPT said:",
+        "",
         `REQUEST_ID: ${job.requestId}`,
         "",
         "VERDICT: APPROVE",
@@ -390,7 +400,7 @@ test("AFAT-10: runAdapter binds a matching leading REQUEST_ID to the persisted i
   assert.equal(result.final, true);
   assert.equal(result.reviewRequestId, harness.observedIntent.requestId);
   assert.equal(send.body.requestId, harness.observedIntent.requestId);
-  assert.match(result.reply, new RegExp(`^REQUEST_ID: ${harness.observedIntent.requestId}\\n\\nVERDICT: APPROVE`));
+  assert.match(result.reply, new RegExp(`^ChatGPT said:\\n\\nREQUEST_ID: ${harness.observedIntent.requestId}\\n\\nVERDICT: APPROVE`));
 });
 
 test("AFAT-10: runAdapter rejects a mismatched leading REQUEST_ID without emitting an acceptance receipt", async (t) => {
@@ -400,6 +410,8 @@ test("AFAT-10: runAdapter rejects a mismatched leading REQUEST_ID without emitti
     prompt: promptFor(repo),
     jobMutation(job) {
       const reply = [
+        "ChatGPT said:",
+        "",
         `REQUEST_ID: ${OTHER_UUID}`,
         "VERDICT: APPROVE",
         `REVIEW_INPUT_SHA256:${job.sendSnapshot.attachments[0].sha256}`,

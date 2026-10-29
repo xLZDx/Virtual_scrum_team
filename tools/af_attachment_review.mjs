@@ -198,17 +198,22 @@ export function parseAcknowledgements(reply, expected) {
 
 export function validateTopLevelVerdict(reply, parseVerdict, expectedRequestId) {
   const lines = String(reply ?? "").split(/\r?\n/);
-  let verdictIndex = 0;
-  const requestIdHeader = /^REQUEST_ID: ([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(lines[0] ?? "");
+  const bridgeWrapper = lines[0] === "ChatGPT said:" && lines[1] === "";
+  let verdictIndex = bridgeWrapper ? 2 : 0;
+  const requestIdHeader = /^REQUEST_ID: ([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(lines[verdictIndex] ?? "");
+  if (bridgeWrapper && !requestIdHeader) {
+    throw new Error("GPT Bridge wrapper must be followed by its correlated REQUEST_ID");
+  }
   if (requestIdHeader) {
     if (!expectedRequestId || requestIdHeader[1] !== expectedRequestId) {
       throw new Error("GPT reply leading REQUEST_ID does not match the persisted request identity");
     }
-    verdictIndex = lines[1] === "" ? 2 : 1;
+    verdictIndex += 1;
+    if (lines[verdictIndex] === "") verdictIndex += 1;
   }
   const verdictLine = lines[verdictIndex] ?? "";
   if (!/^VERDICT: [^\r\n]+$/.test(verdictLine)) {
-    throw new Error("GPT reply must begin with one unquoted top-level VERDICT line, optionally after its matching REQUEST_ID");
+    throw new Error("GPT reply must begin with one unquoted top-level VERDICT line, optionally after the Bridge wrapper and its matching REQUEST_ID");
   }
   const parsed = parseVerdict(reply);
   if (!parsed?.found || parsed.verdictCount !== 1 || verdictLine !== `VERDICT: ${String(parsed.line ?? "").trim()}`) {
