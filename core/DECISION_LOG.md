@@ -1535,3 +1535,9 @@ Exact source map and fresh target inventory/verified compiler are recorded in ch
 Commit these input bytes as required by the installer, then execute within its enforced
 freshness window; no relaxed digest, age, target-state or no-replace checks are permitted.
 This is an actual source compatibility update, not reopening accepted issuer architecture.
+
+## 2026-10-30 — Preserve all source-plan artifact bytes (0594)
+
+Extend the previous ef-only .gitattributes rule to every s2-runtime-source-plan-*.json artifact.
+The installer requires exact reviewed byte identity, so Git text normalization must not silently
+change it. Preserve the reviewed a600 plan SHA620e4614; no runtime action or JSON value changes.

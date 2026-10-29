@@ -5,3 +5,4 @@
 *.yml text eol=lf
 *.yaml text eol=lf
 /docs/sdlc/evidence/s2-runtime-source-plan-ef465cd8790518e405164c82ec1598f843ae8a58.json -text -eol
+/docs/sdlc/evidence/s2-runtime-source-plan-*.json -text -eol
