@@ -2,7 +2,42 @@
 
 Last updated: 2026-10-29. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
 
-## Current S2 coordinator/runtime status — 2026-10-29
+## Current S2 coordinator/runtime adjudication — 2026-10-29
+
+GPT-PM accepted the existing bounded coordinator architecture at declared repository HEAD
+`20fda2cbf26274192652a1c829a19f6b1844e9c4`: signed `DispatchOwnerService` ingress, authenticated
+Supervisor/Store admission, Store-filtered Pub/Sub and `StoreBackedDispatcher` form the complete
+source path. Correlated request `4c9dbf2b-c220-4b14-9df6-91efbcd53b22`, reply
+`8053ccbc-d74b-417d-b762-44b364d71303`, job `8c47c9ef-7193-4a98-a150-c1b5efb6b0d0`, user turn
+`09039316-22db-4c80-9d24-52bbd3d96379`. No external coordinator, second scheduler, or assignment
+authority is required. GPT-PM confirmed `S2-DISPATCH-M01` remains open only for real production
+integration: authorized instruction issuance/trust key, authenticated owner identity and root
+configuration, and a qualified real owner-to-Runner journey.
+
+The operator is the sole human owner; service accounts are technical isolation identities. GPT-PM
+recognized the operator's existing authorization for bounded autonomous work in the dedicated
+Ubuntu-24.04 WSL, subject to conditional technical gates. Correlated request
+`eb6da1cc-029b-4754-b463-1eb31f79ea97`, reply `03cbad69-5e1a-4563-b08f-c63bdeeccdc7`, job
+`01c12be0-6c0a-43b1-a79a-450e548c99ea`, user turn `99532f45-ff14-4d43-920b-14d2b9a02aeb`.
+GPT-PM authorized collision rechecks, a non-secret config bundle, authentic probe/host observations,
+and permitted mapped E2E; service identities, root-owned config, exact artifact install, fresh
+schema-v6 Store, purpose-bound local service keys and exact unit activation are conditional on the
+source/test gate and exact reviewed bundle. Existing Store migration needs a separate gate.
+Production instruction-issuer authority/key and an operator-root-signed network-policy attestation
+must not be generated or impersonated by Codex. Restricted selectors remain `NOT_RUN`.
+
+This turn added a transport-only `DispatchOwnerSocketClient` for already signed exact envelopes.
+GPT-PM accepted the source/test scope and resolved transport M01/M02 at source/test level under
+request `b0f60d46-42b7-486a-b2f0-5d2253780f55`; the operator-pasted decision is in PM Bridge's
+inbound log. The functional-test reviewer reported 33 passed / 1 Windows-only skip; `e2e-runner`
+passed the focused WSL run 34/34, including a real AF_UNIX socketpair and actual owner handler.
+Peer credentials, pidfd and filesystem metadata remain mocked; installed systemd identity and
+production runtime are unverified. This is source/test closure only. S2 remains `NOT APPROVED`;
+production M01, current signed E5, service/runtime qualification and final exact-head gate remain
+open. Full correlations and exact boundaries:
+`docs/sdlc/evidence/s2-coordinator-runtime-adjudication-20261029.md`.
+
+## Prior S2 coordinator/runtime status — 2026-10-29
 
 The bounded Store-backed Pub/Sub source is implemented in the canonical repository; source and
 focused-test files were reviewed by GPT-PM under request

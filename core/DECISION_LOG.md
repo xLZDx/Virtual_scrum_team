@@ -1285,3 +1285,25 @@ This does not close overall S2. `S2-DISPATCH-M01` remains MAJOR/OPEN; production
 issuer/identity/root configuration, installed systemd/runtime behavior, E5, prohibited selectors,
 and final overall exact-head GPT-PM approval remain unresolved. No production service, credentials,
 or real dispatch was enabled.
+
+## 2026-10-29 — Confirm S2 coordinator architecture and conditional runtime authorization
+
+GPT-PM confirmed the already implemented `DispatchOwnerService` + authenticated Supervisor/Store
+admission + filtered Pub/Sub + `StoreBackedDispatcher` is the accepted bounded coordinator path;
+no external coordinator or second assignment authority is required. M01 remains a real-production
+integration MAJOR, not an architecture-selection question. The sole human operator's prior GO and
+dedicated WSL selection were recognized as authorization for bounded autonomous provisioning,
+conditional on exact source/test review, an immutable reviewed non-secret configuration bundle,
+fresh identity collision checks, and the identified technical gates. Production issuer authority
+and a purported independent operator E5 signature may not be invented. Full decisions and
+limitations: `docs/sdlc/evidence/s2-coordinator-runtime-adjudication-20261029.md`.
+
+## 2026-10-29 — Accept dispatch-owner transport source scope (change 0538)
+
+The transport-only client now half-closes the request, authenticates the fixed root/systemd socket
+endpoint before sending, and binds the response to the expected principal and exact envelope.
+GPT-PM accepted the source/test scope under request `b0f60d46-42b7-486a-b2f0-5d2253780f55`;
+transport M01/M02 are resolved. Read-only code/security/test-mapping reviews found no actionable
+findings. The designated test roles reported Windows 33 passed / 1 POSIX-only skip, and WSL 34
+passed / 0 skipped, exit 0, with a real socketpair and actual owner handler. Installed kernel peer
+identity, production runtime/E5 and overall S2 remain open. See change 0538 and its linked evidence.

@@ -26,14 +26,27 @@ specialist reviewers found no valid BLOCKER/MAJOR, and GPT-PM returned ACCEPT un
 `d16dbf96-54f8-4c96-8fa7-2b24445f85d9`. Correlated evidence:
 `docs/sdlc/evidence/s2-cross-generation-outcome-recovery-exact-source-review-20261029.md`.
 
-This is source/test closure only. `S2-DISPATCH-M01` remains MAJOR/OPEN because the repository has
-no production coordinator/issuer/assignment identity. Production identities/root configuration,
-installed runtime/E5, prohibited selectors, and final overall exact-head approval remain open.
-Owners: Codex for source, records, and coordination; GPT-PM for architecture/final gate; operator
-for genuinely privileged provisioning and signer-key custody. Next: resolve the coordinator
-architecture with GPT-PM, obtain authorized runtime identity/configuration and E5 provenance, then
-complete allowed S2 evidence and final exact-head review. Keep production dispatch closed and S3
-unstarted.
+This is source/test closure only. GPT-PM's correlated coordinator adjudication confirms the
+existing `DispatchOwnerService` + authenticated Supervisor/Store admission + filtered Pub/Sub +
+`StoreBackedDispatcher` is the accepted bounded coordinator architecture; no external coordinator,
+second scheduler, or assignment authority is needed. `S2-DISPATCH-M01` remains MAJOR/OPEN only for
+production integration: an authorized production instruction issuer/trust key, provisioned owner
+identity and root configuration, current E5/runtime evidence, and a qualified real owner-to-Runner
+journey are not established. This is not a request for another human user or an external path.
+
+GPT-PM recognized the operator's existing autonomous authorization for bounded Ubuntu-24.04 WSL
+preparation/provisioning, subject to exact source/test review and a reviewed immutable non-secret
+configuration bundle. Fresh v6 Store initialization is conditionally allowed; an existing Store
+migration has a separate gate. Distinct local service keys are conditionally allowed, but production
+instruction-issuer authority/key and a purported operator E5 signature may not be invented or
+impersonated. Restricted selectors remain `NOT_RUN`. Owners: Codex for source, exact config and
+permitted evidence; GPT-PM for technical and final-gate adjudication; operator as the sole human
+owner for genuine independent attestation/key-custody actions that cannot be produced by Codex.
+Next: commit the accepted transport-only source/test scope with its detailed change record, then
+prepare the exact immutable non-secret bundle for review and continue through conditional WSL gates
+without asking for a nonexistent coordinator. Keep production dispatch closed and S3 unstarted until
+full S2 acceptance. Full correlation and scope:
+`docs/sdlc/evidence/s2-coordinator-runtime-adjudication-20261029.md`.
 
 ## S2 — root/runtime preparation correction (changes 0517–0518 in progress)
 
