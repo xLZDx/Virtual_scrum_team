@@ -2513,7 +2513,8 @@ class Store:
             if any(basis[key] != value for key, value in exact.items()):
                 raise StoreError("live assignment basis differs from authenticated handoff", kind="integrity")
             return {
-                "handoff": handoff, "basis": basis,
+                # Validation enriches local metadata; consumers need the exact stored wire object.
+                "handoff": result, "basis": basis,
                 "authority_expires_at": min(
                     basis["authority_expires_at"],
                     datetime.strptime(handoff["expires_at_utc"], "%Y-%m-%dT%H:%M:%SZ")
@@ -3947,7 +3948,7 @@ class Store:
         handoff = validate_handoff(
             handoff_result, policy=policy, policy_sha256=policy_sha256, now=now_utc,
         )
-        if handoff != intent["handoff"] or row["payload_sha256"] != handoff["payload_sha256"]:
+        if handoff_result != intent["handoff"] or row["payload_sha256"] != handoff["payload_sha256"]:
             raise StoreError("root issuance handoff differs from current immutable assignment", kind="integrity")
         probe = conn.execute(
             "SELECT probe_sha256 FROM supervisor_probes WHERE run_id=?", (handoff["run_id"],),

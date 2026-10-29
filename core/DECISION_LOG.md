@@ -1433,3 +1433,11 @@ live root providers for enabled delegated issuance, including write-boundary gua
 read or OpenSSL is moved into SQL. Historical43/3/6 and39/6 results remain evidence at e987a24,
 not acceptance of this fix. Tests were paused and old command processes confirmed terminal
 before the source batch; designated roles resume at the new frozen revision.
+
+## 2026-10-29 — Return canonical handoff bytes to the issuer (0562)
+
+The real in-process POSIX integration failed because local validation metadata escaped into
+the issuer's strict handoff input. Store now returns the exact validated stored handoff and
+compares that same representation during issuer writes, while retaining derived-digest checks.
+This does not loosen closed schemas. The recorded7/5 result is an old-candidate failure, not
+current acceptance; designated roles rerun after this fix.

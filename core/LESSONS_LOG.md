@@ -1164,3 +1164,14 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
   source, and do not mistake cached-object mutation tests for file-backed revocation coverage.
 - Correction: exact identity field plus mandatory live issuer/trust providers; new verification
   remains pending. Preserve lost-output commands as NOT_RECORDED, not inferred green dots.
+
+## 2026-10-29 — Separate canonical protocol objects from enriched validation views (0562)
+
+- Kind: FAILURE caught by actual E2E fixture integration.
+- Facts: isolated freeze/reducer tests passed, but the real Store-to-Supervisor handoff carried
+  a derived payload digest and failed the downstream exact schema. The same enriched-vs-stored
+  equality would also reject the transaction path after the first error was fixed.
+- Rule: keep one canonical wire identity; attach validation metadata separately and test the
+  actual producer-to-consumer positive path. Negative refusals alone do not establish function.
+- Correction: both Store boundaries use the stored handoff and keep independent digest checks.
+- Verification: source edit only; the post-fix positive integration result remains pending.
