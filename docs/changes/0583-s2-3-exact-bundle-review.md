@@ -43,3 +43,10 @@ The five-minute age limit still applies at execution.
 The source-plan artifact uses path-specific `-text -eol` attributes so Git preserves the exact
 approved raw bytes and SHA-256 across commit/checkout; runtime handoff checks both the raw plan
 digest and the committed Git blob identity before use.
+
+The second refreshed inventory expired before staging and was not used. GPT-PM request
+`5f47ce5d-3db2-4f22-9e72-cad81a139c9c` approved replacement inventory SHA
+`a3b6ea38103edfb0d25cab8ef3c2e405d8bcb2d08c0d16194668b4860095d054` at observation time
+`2026-10-29T21:14:10Z`; the correlated verification occurred 49 seconds later. The reply and exact
+scope are recorded in `docs/sdlc/evidence/s2-3-target-inventory-refresh-5f47ce5d.md`. The new
+inventory has not yet been used; verify freshness and all current blobs before stage-only.

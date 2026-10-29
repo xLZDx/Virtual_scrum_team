@@ -42,3 +42,10 @@ The first reviewed inventory expired before execution and was not used. GPT-PM r
 plan/archive and exact stage-only scope. The fresh inventory and correlated decision are recorded in
 `s2-3-target-inventory-refresh-3cc174e5.md`; execution still requires the five-minute freshness
 check.
+
+The second inventory replacement also expired before staging and was not used. GPT-PM request
+`5f47ce5d-3db2-4f22-9e72-cad81a139c9c` approved inventory SHA
+`a3b6ea38103edfb0d25cab8ef3c2e405d8bcb2d08c0d16194668b4860095d054` as a further replacement,
+retaining the source plan/archive and the same conditional stage-only authorization. The exact
+reply, freshness check, and limits are recorded in
+`s2-3-target-inventory-refresh-5f47ce5d.md`.
