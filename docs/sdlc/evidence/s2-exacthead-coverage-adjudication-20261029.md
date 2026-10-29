@@ -38,3 +38,19 @@ The reviewer explicitly limited its conclusion to this six-file delta. It did no
 - No production runtime, Store migration, real key/signing, E5, service activation, crash/mutation campaign or restricted selector is proven by this source review.
 - Codex owns maintaining the evidence packet and requesting re-adjudication. GPT-PM owns deciding whether it resolves S2-REVIEW-02. A fresh correlated exact-head review is required; do not hand-write an approval or push without the actual accepted review result.
 - S2-2 remains queued behind S2-1 delivery.
+
+## Follow-up GPT-PM adjudication — current S2-1 HEAD
+
+- Request ID: `f92b750e-485d-4f97-8c28-3bb2b8bfc3db`.
+- Submitted HEAD: `57c734e60787a9db14bb888116d7e808bc46970e`.
+- Correlated verdict: `APPROVE — S2-REVIEW-02 resolved for S2-1 source/test acceptance`.
+- GPT-PM accepted the inherited baseline plus six-path delta review as sufficient
+  adversarial coverage for the declared S2-1 paths; no new BLOCKER/MAJOR was confirmed.
+- GPT-PM accepted the reported absence of S2-1-path changes between `242f5d5` and
+  `57c734e` for this narrow decision, while explicitly noting it did not independently
+  reproduce the Git-object comparison. The decision does not certify unrelated S2-3
+  changes, runtime, E5, restricted selectors or complete S2 acceptance; test results remain
+  reported evidence, not tests executed by GPT-PM.
+- Decision details and acceptance limits: `s2-1-coverage-adjudication-f92b750e.md`.
+- S2-1 source/test acceptance is now accepted. S2-1 delivery remains current until this
+  decision and affected task records are committed and normally pushed; S2-2 stays queued.

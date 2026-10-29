@@ -62,12 +62,20 @@ independently established. No exact-head approval was granted; Phase 8 remains u
   `0da595e6574856ed0c85a181941e822031b80787`. Review reports are not test results, and
   test reports are not GPT-PM approval.
 
-### Current disposition and next action
+### Superseding S2-1 disposition — current through 57c734e
 
-The new PM result does not identify a code defect. It leaves an evidence-sufficiency
-decision open. Codex will submit the path-mapped baseline-plus-delta evidence for a fresh
-exact-head GPT-PM adjudication. Do not hand-write the approval, push without a valid
-correlated approval, or begin S2-2 before S2-1 is delivered.
+The historical hold above was resolved for S2-1 source/test acceptance by correlated
+GPT-PM request `f92b750e-485d-4f97-8c28-3bb2b8bfc3db` at submitted HEAD
+`57c734e60787a9db14bb888116d7e808bc46970e`. GPT-PM accepted the baseline-plus-delta
+coverage evidence for `S2-REVIEW-02` and reported no new confirmed BLOCKER/MAJOR. It
+accepted the reported six-path continuity comparison but explicitly did not independently
+reproduce it or execute tests. The decision is limited to S2-1 source/test coverage and does
+not approve the full S2 sprint, runtime, production identity, E5, activation or restricted
+selectors. Full disposition and limitations are in
+`docs/sdlc/evidence/s2-1-coverage-adjudication-f92b750e.md`.
+
+Codex is recording and delivering this decision with the affected task documents and
+change record 0586. S2-2 remains queued until the S2-1 task commit is pushed successfully.
 
 
 ## S2 post-functional source reviews — current at d3f326f
