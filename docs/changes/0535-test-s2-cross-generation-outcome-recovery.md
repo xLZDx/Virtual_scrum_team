@@ -35,6 +35,8 @@ Coverage maps to `S2-PROV-M03-R01` and the read-only recovery contract:
   0 failed**, exit 0. Exact command, environment, hashes, and limits are in
   `docs/sdlc/evidence/s2-cross-generation-outcome-recovery-test-run-20261029.md`.
 - The external-anchor selector is POSIX-only; it ran in the authorized WSL environment.
-- M03 and overall S2 remain open until the exact run and fresh specialist reviews pass. Production
-  coordinator, runtime/E5, root configuration/credentials, prohibited selectors, and the final
-  exact-head GPT-PM gate remain separate.
+- The exact run and fresh specialist reviews passed. GPT-PM request
+  `d16dbf96-54f8-4c96-8fa7-2b24445f85d9` closed `S2-PROV-M03-R01` for source/test scope; see
+  `docs/sdlc/evidence/s2-cross-generation-outcome-recovery-exact-source-review-20261029.md`.
+  Overall S2 remains open: production coordinator, runtime/E5, root configuration/credentials,
+  prohibited selectors, and the final exact-head GPT-PM gate remain separate.

@@ -1267,6 +1267,21 @@ connection; and uses root `ExecStopPost` to persist an admission latch and stop 
 Both units and the service loader refuse while the latch exists. Reopening requires comparing the
 exact request ID, full instruction, principal, generation, payload digest, transactionally stored
 Store event/idempotency result and grant/subscription state, then a separately authorized recovery.
-The fence is source-only and unreviewed; no root file, systemd unit, key, account, migration or
-service was changed. Focused tests, direct code/reliability review and PM re-adjudication remain
-required. Keep S2 open and S3 unstarted.
+No root file, systemd unit, key, account, migration or service was changed. Keep production
+dispatch closed and S3 unstarted.
+
+## 2026-10-29 — Close S2 M03 R01 for source/test scope (change 0537)
+
+GPT-PM adjudicated exact implementation request `d16dbf96-54f8-4c96-8fa7-2b24445f85d9` as
+`ACCEPT — SOURCE/TEST SCOPE`, with zero new confirmed BLOCKER and zero new confirmed MAJOR.
+`S2-PROV-M03-R01` is `RESOLVED — SOURCE` at source/test HEAD
+`c855ca4f2888d7288b006973950e4c6d28023b63`. The focused four-file run passed 130/130; independent
+code, security, reliability and database reviewers reported no valid BLOCKER/MAJOR. Full
+correlation, limitations, and the fact that GPT-PM did not independently verify the declared
+evidence-only HEAD relationship are in
+`docs/sdlc/evidence/s2-cross-generation-outcome-recovery-exact-source-review-20261029.md`.
+
+This does not close overall S2. `S2-DISPATCH-M01` remains MAJOR/OPEN; production coordinator,
+issuer/identity/root configuration, installed systemd/runtime behavior, E5, prohibited selectors,
+and final overall exact-head GPT-PM approval remain unresolved. No production service, credentials,
+or real dispatch was enabled.

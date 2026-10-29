@@ -41,8 +41,12 @@ The Store outcome barrier remains separate from Runner claim/reservation recover
 - Mapped focused functional tests at exact follow-up HEAD
   `c855ca4f2888d7288b006973950e4c6d28023b63`: **130 passed, 0 failed**; exact commands, hashes,
   and limits are in `docs/sdlc/evidence/s2-cross-generation-outcome-recovery-test-run-20261029.md`.
-  Fresh code/security/reliability reviews are pending, so M03 remains unverified for closure.
+  Fresh code, security, reliability and database reviews found no valid BLOCKER/MAJOR. GPT-PM
+  request `d16dbf96-54f8-4c96-8fa7-2b24445f85d9` returned ACCEPT — SOURCE/TEST SCOPE and closed
+  `S2-PROV-M03-R01`; see
+  `docs/sdlc/evidence/s2-cross-generation-outcome-recovery-exact-source-review-20261029.md`.
 - No production identity, root configuration, key, service, runtime/E5, real dispatch, prohibited
   selector, push, PR, or merge was performed by this change.
-- M03 remains MAJOR/OPEN; `S2-DISPATCH-M01`, runtime/E5, production configuration, prohibited
-  selectors, and exact-head S2 approval remain open. S3 remains unstarted.
+- `S2-PROV-M03-R01` is closed for source/test scope. Overall S2 remains NOT APPROVED;
+  `S2-DISPATCH-M01`, runtime/E5, production configuration, prohibited selectors, and the final
+  exact-head S2 gate remain open. S3 remains unstarted.

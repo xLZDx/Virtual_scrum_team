@@ -24,4 +24,6 @@ run after the source and test commits.
   protected untracked `docs/sdlc/evidence/s2-functional-test-run.md`.
 - This is synthetic source-level evidence only. Production identity/configuration, coordinator,
   installed runtime/E5, prohibited selectors, Windows containment, and full S2 are not accepted.
-  Fresh specialist review remains pending; M03 remains MAJOR/OPEN.
+  GPT-PM later closed `S2-PROV-M03-R01` for source/test scope; see
+  `docs/sdlc/evidence/s2-cross-generation-outcome-recovery-exact-source-review-20261029.md`.
+  Overall S2 remains NOT APPROVED.

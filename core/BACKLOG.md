@@ -1,6 +1,6 @@
 # Backlog
 
-## S2 — signed dispatch-instruction provenance and owner relay (changes 0517–0518, 0522 in progress)
+## S2 — signed dispatch-instruction provenance and owner relay (source implemented; runtime open)
 
 GPT-PM's correlated adjudication selects a purpose-specific, operator-authorized signed envelope
 and requires independent verification in the root Supervisor before any durable intent event.
@@ -17,37 +17,46 @@ owner relay, unit/socket templates, installer allowlist and plan corrections wer
 `978aa5b` (change 0517). GPT-PM's follow-up returned MODIFY with new MAJOR `S2-PROV-M03`: an active
 socket unit can reactivate the relay after an ambiguous Supervisor RPC. The correlated response and
 current remediation design are in `docs/sdlc/evidence/s2-admission-fence-adjudication-20261029.md`.
-Change 0518 added single-frame EOF enforcement, conservative unknown-outcome handling, and the first
-root `ExecStopPost` admission fence. Code and reliability reviews found that its asynchronous stop
-and filesystem-before-stop ordering could leave the listener available. Change 0522 corrects this:
-synchronous stop plus confirmed inactive state precedes `/etc` access; the hook retries with bounded
-per-call timeouts/backoff and has no systemd stop timeout. M03 remains OPEN pending direct regression
-review and focused PM re-adjudication. The full mapped suite passed 107/107 at exact code/test
-revision `34bd7dc1b085789341b29937655af52e07f2ddbd`; test-source hashes and the later docs-only HEAD
-are reconciled in `docs/sdlc/evidence/s2-0522-latch-test-run-20261029.md`. Installed systemd behavior
-and runtime remain unverified. Owners: Codex for source/docs/evidence; functional-test-reviewer/e2e-runner for mapped test authorship/execution; GPT-PM for adjudication; operator for
-separately privileged runtime action and signer-key custody. Next: fresh code/reliability/security
-reviews, fix any valid findings, then request focused PM and final exact-head gates. Keep production dispatch
-closed, S2 not approved, and S3 unstarted.
+Change 0518 added single-frame EOF enforcement, conservative unknown-outcome handling, and the
+root `ExecStopPost` admission fence. Change 0522 corrects the stop ordering; installed systemd
+behavior remains unverified. The subsequent MAJOR `S2-PROV-M03-R01` generation-recovery gap is
+**CLOSED — SOURCE/TEST** at source/test HEAD
+`c855ca4f2888d7288b006973950e4c6d28023b63`: the focused suite passed 130/130, four fresh
+specialist reviewers found no valid BLOCKER/MAJOR, and GPT-PM returned ACCEPT under request
+`d16dbf96-54f8-4c96-8fa7-2b24445f85d9`. Correlated evidence:
+`docs/sdlc/evidence/s2-cross-generation-outcome-recovery-exact-source-review-20261029.md`.
+
+This is source/test closure only. `S2-DISPATCH-M01` remains MAJOR/OPEN because the repository has
+no production coordinator/issuer/assignment identity. Production identities/root configuration,
+installed runtime/E5, prohibited selectors, and final overall exact-head approval remain open.
+Owners: Codex for source, records, and coordination; GPT-PM for architecture/final gate; operator
+for genuinely privileged provisioning and signer-key custody. Next: resolve the coordinator
+architecture with GPT-PM, obtain authorized runtime identity/configuration and E5 provenance, then
+complete allowed S2 evidence and final exact-head review. Keep production dispatch closed and S3
+unstarted.
 
 ## S2 — root/runtime preparation correction (changes 0517–0518 in progress)
 
 Read-only Ubuntu-24.04 inventory confirms services inactive, runtime config absent, and no
 dispatcher/owner/client identities. The 2026-10-29 `getent` rerun also found proposed UIDs 980/981
 and GIDs 982/983/984 absent at that moment; these values are not provisioned or reserved. The
-owner primary GID is now distinct from shared socket GID 984. The runtime symlink points to a root-owned 0755 target; its
-0777 symlink mode is not a permission issue. GPT-PM accepted correction of the mistaken target-mode
-interpretation and withdrew that permission blocker, while runtime acceptance remains unverified.
-No credentials or keys were read. The exact owner-service template and field-level config matrix
-resolved the prior plan findings; new major `S2-PROV-M03` requires a persistent admission fence and
-focused re-adjudication. Privileged provisioning remains unauthorized. Evidence:
+owner primary GID is now distinct from shared socket GID 984. The runtime symlink points to a
+root-owned 0755 target; its 0777 symlink mode is not a permission issue. GPT-PM accepted correction
+of the mistaken target-mode interpretation and withdrew that permission blocker, while runtime
+acceptance remains unverified. No credentials or keys were read. The exact owner-service template
+and field-level config matrix resolved the prior plan findings. The persistent admission fence and
+cross-generation history replay are implemented; `S2-PROV-M03-R01` is CLOSED for source/test scope
+under change 0537. Privileged production/service provisioning and runtime acceptance remain
+unverified. Evidence:
 `docs/sdlc/evidence/s2-root-runtime-provisioning-plan-20261028.md`,
 `docs/sdlc/evidence/s2-provisioning-plan-adjudication-20261029.md`,
 `docs/sdlc/evidence/s2-admission-fence-adjudication-20261029.md`, and GPT-PM correction request
-`e2ce2445-58d8-4c93-acd9-8bb536767f58`, reply `83e0dbcb-e0bd-5ad5-aa37-80198e03c8ba`. Owner: Codex for non-secret plan/config preparation;
-GPT-PM for exact plan review; operator for any separately authorized privileged provisioning and
-genuine signed E5/network-policy attestation. Next: finish source gate and exact non-secret config
-plan before considering authorized provisioning.
+`e2ce2445-58d8-4c93-acd9-8bb536767f58`, reply `83e0dbcb-e0bd-5ad5-aa37-80198e03c8ba`; M03 closure
+evidence is in `docs/sdlc/evidence/s2-cross-generation-outcome-recovery-exact-source-review-20261029.md`.
+Owner: Codex for non-secret plan/config preparation; GPT-PM for architecture/final gate; operator
+for any separately privileged provisioning and genuine signed E5/network-policy attestation. Next:
+resolve the coordinator architecture, then establish the exact authorized runtime identity/config
+and E5 source before runtime acceptance.
 
 ## S2 follow-up — Windows ACL/signed-worker platform boundary (2026-10-27)
 
