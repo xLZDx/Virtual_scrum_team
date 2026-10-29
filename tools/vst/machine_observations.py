@@ -73,14 +73,22 @@ def _source_sha256() -> str:
     return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
-def _run_fixed(argv: tuple[str, ...], *, name: str) -> tuple[str, dict[str, Any] | None]:
+def _run_fixed(argv: tuple[str, ...], *, name: str,
+               windows_module_path: str | None = None) -> tuple[str, dict[str, Any] | None]:
     """Run a constant argv with no shell and bounded time/output."""
     if not argv or not os.path.isabs(argv[0]):
         return "", {"command": name, "status": "UNSUPPORTED", "reason": "fixed executable unavailable"}
     try:
+        windows = os.name == "nt"
         process = subprocess.Popen(
             list(argv), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            cwd="/", env={"LC_ALL": "C", "PATH": ""}, close_fds=True,
+            cwd=(r"C:\Windows\System32" if windows and windows_module_path is not None else "/"),
+            env=({"SystemRoot": r"C:\Windows", "WINDIR": r"C:\Windows",
+                  "SystemDrive": "C:", "PATH": "", "TEMP": r"C:\Windows\Temp",
+                  "TMP": r"C:\Windows\Temp", "PSModulePath": windows_module_path}
+                 if windows and windows_module_path is not None
+                 else {"LC_ALL": "C", "PATH": ""}),
+            close_fds=True, creationflags=(subprocess.CREATE_NO_WINDOW if windows else 0),
         )
     except OSError:
         return "", {"command": name, "status": "UNKNOWN", "reason": "command unavailable"}
@@ -161,9 +169,14 @@ def _windows_raw_template() -> dict[str, Any]:
     }
 
 
-def collect_windows_observations() -> dict[str, Any]:
-    """Capture a bounded raw Windows firewall snapshot; normalization remains UNKNOWN."""
+def collect_windows_observations(*, profile: str = "windows-powershell-5") -> dict[str, Any]:
+    """Capture bounded raw Windows output using an explicitly selected PowerShell profile.
+
+    The PowerShell 7 profile is opt-in and has distinct provenance. Neither profile normalizes
+    effective policy or can produce a PASS.
+    """
     raw = _windows_raw_template()
+    raw["raw_command_outputs"] = {"collector_profile": str(profile)}
     if os.name != "nt":
         raw["errors"] = [{"command": "Windows effective-policy collector", "status": "UNSUPPORTED",
                           "reason": "collector requires Windows"}]
@@ -193,12 +206,32 @@ $snapshot.wsl = & wsl.exe --list --verbose 2>&1
 $snapshot.wslExitCode = $LASTEXITCODE
 $snapshot | ConvertTo-Json -Depth 8 -Compress
 '''
-    executable = r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+    executables = {
+        "windows-powershell-5": r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe",
+        "powershell-7": r"C:\Program Files\PowerShell\7\pwsh.exe",
+    }
+    module_paths = {
+        "windows-powershell-5": r"C:\Windows\System32\WindowsPowerShell\v1.0\Modules",
+        "powershell-7": (
+            r"C:\Program Files\PowerShell\7\Modules;"
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\Modules"
+        ),
+    }
+    if not isinstance(profile, str) or profile not in executables:
+        raw["errors"] = [{"command": "Windows effective-policy collector",
+                          "status": "UNSUPPORTED", "reason": "unknown explicit collector profile"}]
+        return raw
+    executable = executables[profile]
+    # Keep the script fixed and use an absolute executable path for WSL. PATH remains empty.
+    script = script.replace("wsl.exe --list", r"C:\Windows\System32\wsl.exe --list")
     output, error = _run_fixed((executable, "-NoLogo", "-NoProfile", "-NonInteractive",
                                 "-ExecutionPolicy", "Restricted", "-Command", script),
-                               name="Windows ActiveStore/WSL-HyperV read-only snapshot")
+                               name="Windows ActiveStore/WSL-HyperV read-only snapshot",
+                               windows_module_path=module_paths[profile])
     if output:
-        raw["raw_command_outputs"] = {"powershell_snapshot": output}
+        raw["raw_command_outputs"] = {"collector_profile": profile, "powershell_snapshot": output}
+    else:
+        raw["raw_command_outputs"] = {"collector_profile": profile}
     raw["errors"] = ([error] if error else []) + [{
         "command": "Windows observation normalizer", "status": "UNKNOWN",
         "reason": "complete effective-rule, endpoint, path and Windows-WSL correlation normalization is not implemented",

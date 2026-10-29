@@ -1093,3 +1093,14 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Correction: pure mandatory verifier was committed0553; the design now specifies grant replay and
   runner claim/reservation boundaries. Database/security targeted rechecks found no remaining
   design-level major finding. Implementation, final tests and runtime evidence remain separate.
+
+## 2026-10-29 — A no-profile shell still needs a bounded module path (change0555)
+
+- Kind: SHORTCOMING caught during source integration.
+- Facts: the raw Windows collector omitted managed-runtime environment fields and explicit hidden
+  process flags; separate approved evidence recorded startup failure. NoProfile alone does not
+  bound module auto-discovery, so source now pins system-only module roots. PowerShell7 also needs
+  the Windows system module root to discover Windows-only cmdlets.
+- Rule: pin executable, environment, module roots and child-window behavior independently, retain
+  collector profile provenance, and preserve UNKNOWN until complete evidence actually exists.
+- Verification: source-only, not runtime or test acceptance; no post-edit command was collected.

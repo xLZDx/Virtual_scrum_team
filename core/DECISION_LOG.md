@@ -1383,3 +1383,10 @@ database/security rechecks at e44f48dc found both design MAJORs resolved and rec
 SOURCE implementation. This is a design recommendation pending GPT-PM I01 adjudication, not
 production signing, provisioning, runtime or sprint approval. Existing S2 remains phase7 hard;
 no next/pm-review/self-approval was executed. See change0554 and its linked recheck evidence.
+
+## 2026-10-29 — Make Windows observation runtime explicit and headless (change0555)
+
+The raw read-only collector now supports explicit fixed PowerShell5 or opt-in PowerShell7
+profiles, hidden child creation, fixed OS runtime roots and system module paths, and absolute
+WSL executable invocation. It never silently falls back or reports normalized policy PASS.
+The prior startup error is inherited evidence; this code has not run or been tested yet.
