@@ -2,14 +2,19 @@
 set -eu
 
 usage() {
-    echo "usage: install_wsl_runner_runtime.sh EXPECTED_HEAD SOURCE_BUNDLE_ROOT ARCHIVE_SHA256" >&2
+    echo "usage: install_wsl_runner_runtime.sh EXPECTED_HEAD SOURCE_BUNDLE_ROOT ARCHIVE_SHA256 [--stage-only]" >&2
     exit 2
 }
 
-[ "$#" -eq 3 ] || usage
+[ "$#" -eq 3 ] || [ "$#" -eq 4 ] || usage
 expected_head=$1
 bundle_root=$2
 archive_sha=$3
+stage_only=0
+if [ "$#" -eq 4 ]; then
+    [ "$4" = "--stage-only" ] || usage
+    stage_only=1
+fi
 case "$expected_head" in
     *[!0-9a-f]*|'') echo "expected head must be a full lowercase commit id" >&2; exit 1 ;;
 esac
@@ -65,6 +70,84 @@ with open("/proc/self/mountinfo", encoding="ascii") as stream:
             raise SystemExit("Windows-drive mount is visible; refusing runtime install")
 PY
 
+if [ "$stage_only" -eq 1 ]; then
+    /usr/bin/python3.12 -I -S - <<'PY'
+import os, subprocess
+
+for path in ("/etc/vst-runner", "/run/vst-supervisor", "/run/vst-runner"):
+    if os.path.lexists(path):
+        raise SystemExit("stage-only requires absent runtime configuration/socket paths: " + path)
+
+units = (
+    "vst-supervisor.service", "vst-signer.service", "vst-runner.service",
+    "vst-dispatcher.service", "vst-dispatch-owner.service", "vst-dispatch-owner.socket",
+)
+for unit in units:
+    load_state = subprocess.run(
+        ["/usr/bin/systemctl", "show", "--property=LoadState", "--value", unit],
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        check=False, text=True,
+    )
+    active_state = subprocess.run(
+        ["/usr/bin/systemctl", "show", "--property=ActiveState", "--value", unit],
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        check=False, text=True,
+    )
+    if (load_state.returncode == 0 and load_state.stdout.strip() == "not-found"
+            and active_state.returncode in (0, 1)
+            and active_state.stdout.strip() in ("", "inactive")):
+        continue
+    if (load_state.returncode != 0 or load_state.stdout.strip() != "loaded"
+            or active_state.returncode != 0 or active_state.stdout.strip() != "inactive"):
+        raise SystemExit("stage-only requires each S2 unit to be loaded-inactive or not-found: " + unit)
+
+jobs = subprocess.run(
+    ["/usr/bin/systemctl", "list-jobs", "--no-legend", "--plain"],
+    stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    check=False, text=True,
+)
+if jobs.returncode != 0:
+    raise SystemExit("cannot establish systemd job inventory")
+affected = set(units)
+for line in jobs.stdout.splitlines():
+    fields = line.split()
+    if len(fields) < 4 or not fields[0].isdigit():
+        raise SystemExit("cannot parse complete systemd job inventory")
+    if fields[1] in affected:
+        raise SystemExit("stage-only requires no systemd job for S2 unit: " + fields[1])
+
+for unit in units:
+    control_group = subprocess.run(
+        ["/usr/bin/systemctl", "show", "--property=ControlGroup", "--value", unit],
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        check=False, text=True,
+    )
+    if control_group.returncode == 1 and not control_group.stdout.strip():
+        continue
+    if control_group.returncode != 0:
+        raise SystemExit("cannot establish S2 unit cgroup: " + unit)
+    relative = control_group.stdout.strip().lstrip("/")
+    if not relative:
+        continue
+    cgroup = os.path.join("/sys/fs/cgroup", relative)
+    if not os.path.isdir(cgroup):
+        raise SystemExit("cannot inspect S2 unit cgroup: " + unit)
+    for current, directories, _files in os.walk(cgroup, followlinks=False):
+        if os.path.islink(current):
+            raise SystemExit("S2 cgroup inventory contains a symlink")
+        try:
+            with open(os.path.join(current, "cgroup.events"), encoding="ascii") as stream:
+                events = dict(line.split() for line in stream if line.strip())
+        except (OSError, ValueError) as exc:
+            raise SystemExit("cannot read S2 cgroup population state: " + unit) from exc
+        if events.get("populated") != "0":
+            raise SystemExit("stage-only requires empty S2 service cgroups: " + unit)
+        for directory in directories:
+            if os.path.islink(os.path.join(current, directory)):
+                raise SystemExit("S2 cgroup inventory contains a symlink")
+PY
+fi
+
 runtime_dir="/opt/vst-runtime-$expected_head"
 runtime_link=/opt/vst-runtime
 unit_dir=/etc/systemd/system
@@ -102,9 +185,10 @@ with os.fdopen(fd, "w", encoding="ascii") as stream:
     os.fsync(stream.fileno())
 PY
 /bin/chmod 0755 "$stage"
-/usr/bin/python3.12 -I -S - "$stage" "$runtime_dir" "$runtime_link" "$unit_dir" "$expected_head" "$archive_sha" <<'PY'
+/usr/bin/python3.12 -I -S - "$stage" "$runtime_dir" "$runtime_link" "$unit_dir" "$expected_head" "$archive_sha" "$stage_only" <<'PY'
 import hashlib, json, os, stat, sys
-stage, runtime, link, unit_dir, head, digest = sys.argv[1:]
+stage, runtime, link, unit_dir, head, digest, stage_only = sys.argv[1:]
+stage_only = stage_only == "1"
 def path_exists(path): return os.path.lexists(path)
 def scan(root, installed=False):
     result = {}
@@ -150,20 +234,21 @@ if path_exists(runtime):
             raise SystemExit("runtime top-level directory has unexpected owner/mode")
         if scan(os.path.join(stage, subtree)) != scan(os.path.join(runtime, subtree), installed=True):
             raise SystemExit("runtime destination differs from requested source: " + subtree)
-if path_exists(link):
-    info = os.lstat(link)
-    if not stat.S_ISLNK(info.st_mode) or info.st_uid != 0 or os.readlink(link) != runtime:
-        raise SystemExit("runtime selector exists with different target/type/owner")
-for unit in ("vst-supervisor.service", "vst-signer.service", "vst-runner.service",
-             "vst-dispatcher.service", "vst-dispatch-owner.service", "vst-dispatch-owner.socket"):
-    source = os.path.join(stage, "tools/vst/systemd", unit)
-    dest = os.path.join(unit_dir, unit)
-    if path_exists(dest):
-        info = os.lstat(dest)
-        if not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or stat.S_IMODE(info.st_mode) != 0o644:
-            raise SystemExit("systemd unit exists with unexpected type/owner/mode: " + dest)
-        with open(source, "rb") as a, open(dest, "rb") as b:
-            if a.read() != b.read(): raise SystemExit("systemd unit bytes differ: " + dest)
+if not stage_only:
+    if path_exists(link):
+        info = os.lstat(link)
+        if not stat.S_ISLNK(info.st_mode) or info.st_uid != 0 or os.readlink(link) != runtime:
+            raise SystemExit("runtime selector exists with different target/type/owner")
+    for unit in ("vst-supervisor.service", "vst-signer.service", "vst-runner.service",
+                 "vst-dispatcher.service", "vst-dispatch-owner.service", "vst-dispatch-owner.socket"):
+        source = os.path.join(stage, "tools/vst/systemd", unit)
+        dest = os.path.join(unit_dir, unit)
+        if path_exists(dest):
+            info = os.lstat(dest)
+            if not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or stat.S_IMODE(info.st_mode) != 0o644:
+                raise SystemExit("systemd unit exists with unexpected type/owner/mode: " + dest)
+            with open(source, "rb") as a, open(dest, "rb") as b:
+                if a.read() != b.read(): raise SystemExit("systemd unit bytes differ: " + dest)
 PY
 if [ ! -e "$runtime_dir" ] && [ ! -L "$runtime_dir" ]; then
     /usr/bin/mv -Tn -- "$stage" "$runtime_dir"
@@ -171,6 +256,14 @@ if [ ! -e "$runtime_dir" ] && [ ! -L "$runtime_dir" ]; then
         echo "runtime path changed during no-overwrite install; inspect state before retry" >&2; exit 1;
     }
 fi
+if [ "$stage_only" -eq 1 ]; then
+    echo "staged immutable runtime revision $expected_head from the verified source bundle"
+    echo "runtime_dir=$runtime_dir"
+    echo "selected=false"
+    echo "systemd_units_installed=0"
+    exit 0
+fi
+
 if [ ! -e "$runtime_link" ] && [ ! -L "$runtime_link" ]; then
     /bin/ln -s "$runtime_dir" "$runtime_link"
 fi

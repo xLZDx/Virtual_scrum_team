@@ -6,7 +6,9 @@ param(
 
     [Parameter(Mandatory = $true)]
     [ValidateNotNullOrEmpty()]
-    [string]$Distribution
+    [string]$Distribution,
+
+    [switch]$StageOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -77,9 +79,11 @@ $bootstrap = @'
 import atexit, configparser, hashlib, io, json, os, platform, re, stat, subprocess, sys, tarfile
 
 head, expected_digest, transfer_id = sys.argv[1:4]
+stage_only = sys.argv[4] == "1"
 if (not re.fullmatch(r"[0-9a-f]{40}", head)
         or not re.fullmatch(r"[0-9a-f]{64}", expected_digest)
-        or not re.fullmatch(r"[0-9a-f]{32}", transfer_id)):
+        or not re.fullmatch(r"[0-9a-f]{32}", transfer_id)
+        or sys.argv[4] not in ("0", "1")):
     raise SystemExit("invalid source revision or archive digest")
 if os.geteuid() != 0 or platform.system() != "Linux":
     raise SystemExit("WSL runtime installer requires root on Linux")
@@ -112,6 +116,78 @@ with open("/proc/self/mountinfo", encoding="ascii") as stream:
         drive_source = bool(re.match(r"^[A-Za-z]:[\\/]?$", source))
         if fs_type == "drvfs" or (fs_type == "9p" and (drive_source or "aname=drvfs" in super_options)):
             raise SystemExit("Windows-drive mount is visible; refusing source deployment")
+
+if stage_only:
+    # Stage-only is restricted to the reviewed unconfigured bootstrap host. This
+    # preflight is observational; it does not create directories or change units.
+    for path in ("/etc/vst-runner", "/run/vst-supervisor", "/run/vst-runner"):
+        if os.path.lexists(path):
+            raise SystemExit("stage-only requires absent runtime configuration/socket paths: " + path)
+    units = (
+        "vst-supervisor.service", "vst-signer.service", "vst-runner.service",
+        "vst-dispatcher.service", "vst-dispatch-owner.service", "vst-dispatch-owner.socket",
+    )
+    for unit in units:
+        load_state = subprocess.run(
+            ["/usr/bin/systemctl", "show", "--property=LoadState", "--value", unit],
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            check=False, text=True,
+        )
+        active_state = subprocess.run(
+            ["/usr/bin/systemctl", "show", "--property=ActiveState", "--value", unit],
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            check=False, text=True,
+        )
+        if (load_state.returncode == 0 and load_state.stdout.strip() == "not-found"
+                and active_state.returncode in (0, 1)
+                and active_state.stdout.strip() in ("", "inactive")):
+            continue
+        if (load_state.returncode != 0 or load_state.stdout.strip() != "loaded"
+                or active_state.returncode != 0 or active_state.stdout.strip() != "inactive"):
+            raise SystemExit("stage-only requires each S2 unit to be loaded-inactive or not-found: " + unit)
+    jobs = subprocess.run(
+        ["/usr/bin/systemctl", "list-jobs", "--no-legend", "--plain"],
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        check=False, text=True,
+    )
+    if jobs.returncode != 0:
+        raise SystemExit("cannot establish systemd job inventory")
+    affected = set(units)
+    for line in jobs.stdout.splitlines():
+        fields = line.split()
+        if len(fields) < 4 or not fields[0].isdigit():
+            raise SystemExit("cannot parse complete systemd job inventory")
+        if fields[1] in affected:
+            raise SystemExit("stage-only requires no systemd job for S2 unit: " + fields[1])
+    for unit in units:
+        control_group = subprocess.run(
+            ["/usr/bin/systemctl", "show", "--property=ControlGroup", "--value", unit],
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            check=False, text=True,
+        )
+        if control_group.returncode == 1 and not control_group.stdout.strip():
+            continue  # not loaded: no unit cgroup exists
+        if control_group.returncode != 0:
+            raise SystemExit("cannot establish S2 unit cgroup: " + unit)
+        relative = control_group.stdout.strip().lstrip("/")
+        if not relative:
+            continue
+        cgroup = os.path.join("/sys/fs/cgroup", relative)
+        if not os.path.isdir(cgroup):
+            raise SystemExit("cannot inspect S2 unit cgroup: " + unit)
+        for current, directories, _files in os.walk(cgroup, followlinks=False):
+            if os.path.islink(current):
+                raise SystemExit("S2 cgroup inventory contains a symlink")
+            try:
+                with open(os.path.join(current, "cgroup.events"), encoding="ascii") as stream:
+                    events = dict(line.split() for line in stream if line.strip())
+            except (OSError, ValueError) as exc:
+                raise SystemExit("cannot read S2 cgroup population state: " + unit) from exc
+            if events.get("populated") != "0":
+                raise SystemExit("stage-only requires empty S2 service cgroups: " + unit)
+            for directory in directories:
+                if os.path.islink(os.path.join(current, directory)):
+                    raise SystemExit("S2 cgroup inventory contains a symlink")
 
 maximum_archive = 64 * 1024 * 1024
 payload = sys.stdin.buffer.read(maximum_archive + 1)
@@ -255,15 +331,17 @@ if os.path.lexists(runtime_dir):
     installed_docs = source_tree(os.path.join(runtime_dir, "docs"), installed=True)
     if expected_docs != installed_docs:
         raise SystemExit("existing runtime specification differs from requested archive; no state changed")
-if os.path.lexists(runtime_link):
-    link_info = os.lstat(runtime_link)
-    if (not stat.S_ISLNK(link_info.st_mode) or link_info.st_uid != 0
-            or os.readlink(runtime_link) != runtime_dir):
-        raise SystemExit("existing runtime selector differs from the requested deployment; no state changed")
-for unit in ("vst-supervisor.service", "vst-signer.service", "vst-runner.service",
-             "vst-dispatcher.service", "vst-dispatch-owner.service", "vst-dispatch-owner.socket"):
-    with open(os.path.join(source_units, unit), "rb") as stream:
-        require_root_file(os.path.join(unit_dir, unit), stream.read())
+if not stage_only:
+if not stage_only:
+    if os.path.lexists(runtime_link):
+        link_info = os.lstat(runtime_link)
+        if (not stat.S_ISLNK(link_info.st_mode) or link_info.st_uid != 0
+                or os.readlink(runtime_link) != runtime_dir):
+            raise SystemExit("existing runtime selector differs from the requested deployment; no state changed")
+    for unit in ("vst-supervisor.service", "vst-signer.service", "vst-runner.service",
+                 "vst-dispatcher.service", "vst-dispatch-owner.service", "vst-dispatch-owner.socket"):
+        with open(os.path.join(source_units, unit), "rb") as stream:
+            require_root_file(os.path.join(unit_dir, unit), stream.read())
 helper_path = "/usr/local/libexec/vst-s4-worker-exec-" + head
 for directory in ("/opt", unit_dir, "/usr/local/libexec"):
     info = os.lstat(directory)
@@ -278,6 +356,8 @@ if os.path.lexists(helper_path):
 
 worker = ["/bin/sh", os.path.join(stage, "tools/qa/install_wsl_worker_helper.sh"), head, stage, digest]
 runtime = ["/bin/sh", os.path.join(stage, "tools/qa/install_wsl_runner_runtime.sh"), head, stage, digest]
+if stage_only:
+    runtime.append("--stage-only")
 for command in (worker, runtime):
     completed = subprocess.run(command, stdin=subprocess.DEVNULL, check=False)
     if completed.returncode != 0:
@@ -295,7 +375,8 @@ $wslStart.RedirectStandardOutput = $true
 $wslStart.RedirectStandardError = $true
 foreach ($argument in @(
     '--distribution', $Distribution, '--user', 'root', '--exec', '/usr/bin/python3.12',
-    '-I', '-S', '-c', $bootstrap, $ExpectedHead, $archiveSha256, $transferId
+    '-I', '-S', '-c', $bootstrap, $ExpectedHead, $archiveSha256, $transferId,
+    $(if ($StageOnly.IsPresent) { '1' } else { '0' })
 )) {
     [void]$wslStart.ArgumentList.Add($argument)
 }
@@ -318,3 +399,6 @@ if ($stderr) { Write-Warning $stderr.TrimEnd() }
 Write-Output "source_head=$ExpectedHead"
 Write-Output "source_archive_sha256=$archiveSha256"
 Write-Output 'source_transfer=stdin; no Windows-drive mount or second checkout used'
+if ($StageOnly.IsPresent) {
+    Write-Output 'runtime_stage_only=true; selector_unchanged=true; systemd_units_installed=0'
+}
