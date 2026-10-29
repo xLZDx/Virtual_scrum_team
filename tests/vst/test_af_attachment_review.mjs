@@ -18,6 +18,7 @@ import {
 
 const sha256 = (value) => crypto.createHash("sha256").update(value).digest("hex");
 const UUID = "f1b3a0cd-1c44-4c60-a153-c397e41fe223";
+const OTHER_UUID = "f1b3a0cd-1c44-4c60-a153-c397e41fe224";
 const PROJECT_ID = "virtual_scrum_team-test";
 const CONVERSATION_ID = "conversation-test-01";
 
@@ -338,6 +339,93 @@ test("AFAT-10: verdict must be a single top-level first line before native verdi
   assert.throws(() => validateTopLevelVerdict("Quoted: VERDICT: APPROVE\n", parse), /begin with/);
   assert.throws(() => validateTopLevelVerdict("VERDICT: APPROVE\nVERDICT: BLOCKER\n", parse), /repeated/);
   assert.equal(validateTopLevelVerdict("VERDICT: HOLD\n", parse).severity, "UNRECOGNIZED");
+});
+
+test("AFAT-10: correlated REQUEST_ID header is accepted only once before the verdict", () => {
+  const parse = (reply) => verdictParser(reply);
+  const matching = `REQUEST_ID: ${UUID}\nVERDICT: APPROVE\nNo findings.`;
+  const matchingWithBlankLine = `REQUEST_ID: ${UUID}\n\nVERDICT: APPROVE\nNo findings.`;
+
+  assert.equal(validateTopLevelVerdict(matching, parse, UUID).severity, "APPROVE");
+  assert.equal(validateTopLevelVerdict(matchingWithBlankLine, parse, UUID).severity, "APPROVE");
+  assert.throws(
+    () => validateTopLevelVerdict(`REQUEST_ID: ${OTHER_UUID}\nVERDICT: APPROVE`, parse, UUID),
+    /does not match/,
+  );
+  assert.throws(
+    () => validateTopLevelVerdict(`REQUEST_ID: ${UUID}\nREQUEST_ID: ${UUID}\nVERDICT: APPROVE`, parse, UUID),
+    /begin with/,
+  );
+  assert.throws(
+    () => validateTopLevelVerdict(`REQUEST_ID: not-a-uuid\nVERDICT: APPROVE`, parse, UUID),
+    /begin with/,
+  );
+  assert.throws(
+    () => validateTopLevelVerdict(`Preamble\nREQUEST_ID: ${UUID}\nVERDICT: APPROVE`, parse, UUID),
+    /begin with/,
+  );
+});
+
+test("AFAT-10: runAdapter binds a matching leading REQUEST_ID to the persisted intent", async (t) => {
+  const repo = makeRepo(t);
+  const harness = makeHarness({
+    repo,
+    prompt: promptFor(repo),
+    jobMutation(job) {
+      const reply = [
+        `REQUEST_ID: ${job.requestId}`,
+        "",
+        "VERDICT: APPROVE",
+        `REVIEW_INPUT_SHA256:${job.sendSnapshot.attachments[0].sha256}`,
+        `REVIEW_HEAD:${repo.headSha}`,
+        `REVIEW_REQUEST_ID:${job.requestId}`,
+      ].join("\n");
+      return { ...job, result: { ...job.result, reply } };
+    },
+  });
+
+  const result = await withDebugDumpDisabled(() => runAdapter(adapterArgs(repo), harness.adapterOptions));
+  const send = harness.calls.find((call) => call.endpoint === "/send_and_await");
+  assert.ok(send);
+  assert.equal(result.final, true);
+  assert.equal(result.reviewRequestId, harness.observedIntent.requestId);
+  assert.equal(send.body.requestId, harness.observedIntent.requestId);
+  assert.match(result.reply, new RegExp(`^REQUEST_ID: ${harness.observedIntent.requestId}\\n\\nVERDICT: APPROVE`));
+});
+
+test("AFAT-10: runAdapter rejects a mismatched leading REQUEST_ID without emitting an acceptance receipt", async (t) => {
+  const repo = makeRepo(t);
+  const harness = makeHarness({
+    repo,
+    prompt: promptFor(repo),
+    jobMutation(job) {
+      const reply = [
+        `REQUEST_ID: ${OTHER_UUID}`,
+        "VERDICT: APPROVE",
+        `REVIEW_INPUT_SHA256:${job.sendSnapshot.attachments[0].sha256}`,
+        `REVIEW_HEAD:${repo.headSha}`,
+        `REVIEW_REQUEST_ID:${job.requestId}`,
+      ].join("\n");
+      return { ...job, result: { ...job.result, reply } };
+    },
+  });
+  const output = [];
+  const originalLog = console.log;
+  console.log = (...args) => output.push(args.join(" "));
+  try {
+    await withDebugDumpDisabled(() => assert.rejects(
+      runAdapter(adapterArgs(repo), harness.adapterOptions),
+      /leading REQUEST_ID does not match/,
+    ));
+  } finally {
+    console.log = originalLog;
+  }
+
+  assert.equal(harness.sendCount, 1);
+  assert.equal(harness.job.requestId, harness.observedIntent.requestId);
+  assert.equal(output.length, 0, "rejected correlation must not emit the success/receipt JSON");
+  const artifacts = fs.readdirSync(path.join(repo.cwd, "docs", "sdlc", ".pm-review"));
+  assert.equal(artifacts.some((name) => /receipt|approval/i.test(name)), false);
 });
 
 test("AFAT-10/11: a HOLD response is returned as non-final and cannot become an approval", async (t) => {

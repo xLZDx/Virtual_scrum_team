@@ -1,5 +1,7 @@
 # Change 0574: remediate S2-1 exact-head source-fidelity review gap
 
+> Continuation note: this change record also tracks the narrow AF correlated-reply parser correction discovered during S2-1 re-adjudication. Exact committed-head verification and a fresh GPT-PM decision remain open.
+
 ## Why
 
 The S2-1 fixture correction and source/test acceptance are already committed, but the enforced normal push path still needs exact-head code approval. GPT-PM reviewed the full-range attachment for HEAD `2befed5` and returned `MAJOR/HOLD` because the generated review input replaces code expressions with `[REDACTED]`. This is an evidence-fidelity blocker, not a confirmed defect in the S2-1 correction.
@@ -26,4 +28,4 @@ The S2-1 fixture correction and source/test acceptance are already committed, bu
 
 ## Closure boundary
 
-S2-1 remains the current task. The controlled source-fidelity procedure and independent assessment are complete; GPT-PM re-adjudication is still required. Do not disable or bypass secret redaction. After GPT-PM grants valid exact-head approval, complete any required AF verification and ordinary push. S2-2 must remain untouched until that push succeeds.
+S2-1 remains the current task. The controlled source-fidelity procedure and independent assessment are complete; the first correlated re-adjudication (`4fb1b534-e56e-46da-8a0c-1a0366d9597e`) exposed an AF adapter interoperability defect: its real reply began with a matching `REQUEST_ID` header, while the adapter required a first-line `VERDICT`. The narrow correction and tester report are recorded in `docs/sdlc/evidence/s2-af-correlated-reply-parser-20261029.md`; the run used the current pre-commit worktree at HEAD `206a746`, so an exact committed-head rerun remains required. GPT-PM's substantive disposition remains `MAJOR/HOLD` for S2-REVIEW-02; no approval exists. Do not disable or bypass secret redaction. After committed-head verification and fresh exact-head GPT-PM approval, complete any required AF verification and ordinary push. S2-2 must remain untouched until that push succeeds.

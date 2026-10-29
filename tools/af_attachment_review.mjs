@@ -196,11 +196,22 @@ export function parseAcknowledgements(reply, expected) {
   return true;
 }
 
-export function validateTopLevelVerdict(reply, parseVerdict) {
-  const firstLine = String(reply ?? "").split(/\r?\n/, 1)[0];
-  if (!/^VERDICT: [^\r\n]+$/.test(firstLine)) throw new Error("GPT reply must begin with one unquoted top-level VERDICT line");
+export function validateTopLevelVerdict(reply, parseVerdict, expectedRequestId) {
+  const lines = String(reply ?? "").split(/\r?\n/);
+  let verdictIndex = 0;
+  const requestIdHeader = /^REQUEST_ID: ([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(lines[0] ?? "");
+  if (requestIdHeader) {
+    if (!expectedRequestId || requestIdHeader[1] !== expectedRequestId) {
+      throw new Error("GPT reply leading REQUEST_ID does not match the persisted request identity");
+    }
+    verdictIndex = lines[1] === "" ? 2 : 1;
+  }
+  const verdictLine = lines[verdictIndex] ?? "";
+  if (!/^VERDICT: [^\r\n]+$/.test(verdictLine)) {
+    throw new Error("GPT reply must begin with one unquoted top-level VERDICT line, optionally after its matching REQUEST_ID");
+  }
   const parsed = parseVerdict(reply);
-  if (!parsed?.found || parsed.verdictCount !== 1 || firstLine !== `VERDICT: ${String(parsed.line ?? "").trim()}`) {
+  if (!parsed?.found || parsed.verdictCount !== 1 || verdictLine !== `VERDICT: ${String(parsed.line ?? "").trim()}`) {
     throw new Error("GPT reply contains a missing, repeated, echoed, or conflicting VERDICT line");
   }
   return parsed;
@@ -384,7 +395,7 @@ async function runAdapter(argv, { bridgeLoader = loadBridge, nativeDump = runNat
   intent = { ...intent, phase: "succeeded", jobId: durable.jobId, replyId: proof.replyId };
   atomicJson(intentPath, intent);
 
-  const parsed = validateTopLevelVerdict(proof.reply, bridge.parseVerdict);
+  const parsed = validateTopLevelVerdict(proof.reply, bridge.parseVerdict, intent.requestId);
   const finalDecision = bridge.decideReviewFinal({ requestedFinal: args.final, reviewStatus: "RAN", reply: proof.reply, parsedVerdict: parsed, truncated, correlated: true });
   const result = {
     ok: true, error: null, review_status: "RAN", round: 1,
