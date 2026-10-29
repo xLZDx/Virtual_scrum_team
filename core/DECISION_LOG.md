@@ -1320,3 +1320,16 @@ returned MODIFY. Candidate source preparation is permitted; production signing, 
 and activation remain held. Preserve both actual trust findings OPEN pending focused adjudication.
 Evidence and independent review: change 0539, `docs/sdlc/review-record.md`, and the exact reply in
 `docs/sdlc/evidence/s2-machine-authority-adjudication-20261029.md`.
+
+## 2026-10-29 — Record bounded S2 verification and retain actual runtime gates
+
+Changes 0540–0549 implement and correct stage-only installation, unsigned source plan, exact
+bootstrap manifest/selection/recovery, detached machine contracts and read-only authenticated
+assignment basis. Actual designated roles verified the separate focused commands recorded in
+change 0550 and `docs/sdlc/verify-evidence.md`; no primary-session test execution is claimed.
+Source/security/database reviews resolved the valid code findings for these bounded components.
+The explored schema-v5 assertion predates this continuation and remains a named backlog item.
+The future authenticated writer's fresh-only atomic contract passed focused DB/security design
+rechecks; source authorization was requested from GPT-PM, not self-issued. No production keys,
+Store migration, runtime selection, E5 acceptance, service activation or sprint closure occurred.
+Sprints continue in the operator's requested order, with S2 still active.

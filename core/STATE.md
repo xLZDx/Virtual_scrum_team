@@ -2,6 +2,27 @@
 
 Last updated: 2026-10-29. Re-verify volatile facts (`git log --oneline -1`, `git status`) before trusting them.
 
+## Current S2 verification and upstream source gate — 2026-10-29
+
+Bounded runtime staging/selection source and read-only authenticated assignment basis are
+implemented. The journal ordinary-I/O recovery corrections are in `5724ba8`; basis source and
+current run/generation fence are in `c2b1cd2` / `3d5f6c2`. Actual test roles report separate
+commands: source-plan/bundle/candidate contracts WSL 36 passed; journal/staging WSL 16 passed;
+new basis plus two current Store regressions Windows 23 and WSL 23 passed. These are source and
+synthetic filesystem/Store results, not one full suite or live deployment. Evidence and exact
+revision/hash limits: `docs/sdlc/verify-evidence.md`.
+
+Independent runtime code recheck resolved both valid journal MAJORs; fresh security/database
+reviews found no reachable BLOCKER/MAJOR in the bounded read API. The remaining authenticated
+assignment writer is not implemented. Fresh-only atomic transaction design now resolves the
+reported DB/security design gaps; GPT-PM SOURCE decision was requested under
+`8b6b69f3-9b39-491b-a948-03c497870b5d`. This is not final approval. Machine E5 still returns only
+UNKNOWN; current human E5 and production authority/configuration gates remain unchanged.
+Source/runtime review records are in `docs/sdlc/evidence/s2-source-and-writer-design-review-20261029.md`.
+
+The operator confirmed sequential S2 → S3 → S4 → S5 completion. S2 remains active at framework
+phase 7 (sprint ID `39b7cc253f5d`); S3 implementation is not started by this continuation.
+
 ## S2 runtime bootstrap implementation in progress — 2026-10-29
 
 At continuation baseline `9c1be0fbe42b48f7a9cd547be36af23413fcfc8e`, Agentic_Framework

@@ -103,6 +103,10 @@ S2-1 and S2-2 are ready and already accepted for their bounded source/test scope
 | S2-4 | Carried — genuine provenance/runtime evidence incomplete | `S2-DISPATCH-M01` is MAJOR/OPEN. Codex owns machine-contract correction, bounded preparation and measurements; GPT-PM owns contract review; operator owns exact production policy authorization and reserved custody/human-signature actions. Current human E5 is unchanged. Restricted selectors remain `NOT_RUN`. |
 | S2-5 | Carried — final gate pending | No final exact-head GPT-PM approval for full S2 is recorded. Codex coordinates the submission after S2-3/S2-4 and reviews complete. |
 
+### Focused test maintenance note
+
+Codex owns reconciling the exploratory selector `test_pre_0473_schema_v5_pending_recovery_event_survives_fresh_reconciliation_and_allows_only_authorized_successor` in `tests/vst/test_s2_persistent_runner_service.py`. It assumes a Store with `PRAGMA user_version == 5`, while both baseline `9c1be0f` and current source declare schema version 6. The selector is outside TP-26/27 acceptance and was excluded from the final focused assignment-basis run; do not silently change its historical fixture or count its failure against the accepted S2 candidate tests. Next step: keep a true schema-v5 fixture for that migration-history regression or explicitly retire/remap it, then run only that selector.
+
 ## Required evidence references
 
 - Requirements and current limitation register: `docs/sdlc/requirements.md`.

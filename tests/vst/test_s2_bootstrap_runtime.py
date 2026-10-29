@@ -199,8 +199,10 @@ def test_recovery_restores_old_selector_and_units_and_retains_new_files(host):
     for unit in UNITS:
         assert (host.units / unit).read_bytes() == b"old:" + unit.encode()
     retained = host.units / ".vst-bootstrap-retained"
-    assert all((retained / (unit + "-new-" + host.digest[:16])).read_bytes()
-               == (host.new / "tools/vst/systemd" / unit).read_bytes() for unit in UNITS)
+    for unit in UNITS:
+        copies = list(retained.glob(unit + "-new-" + host.digest[:16] + "-*"))
+        assert len(copies) == 1
+        assert copies[0].read_bytes() == (host.new / "tools/vst/systemd" / unit).read_bytes()
     assert host.new.exists()
 
 
@@ -236,6 +238,67 @@ def test_interrupted_apply_is_recovered_from_actual_fingerprints(host, monkeypat
     runtime.recover(host.digest[:32], host.digest)
     assert os.readlink(host.selector) == "/opt/vst-runtime-" + HEAD_OLD
     assert all((host.units / unit).read_bytes() == b"old:" + unit.encode() for unit in UNITS)
+
+
+def test_partial_journal_state_write_does_not_strand_next_apply(host, monkeypatch):
+    original_write = runtime.os.write
+    injected = False
+
+    def partial_state_write(fd: int, data: bytes) -> int:
+        nonlocal injected
+        opened_path = os.readlink(f"/proc/self/fd/{fd}")
+        if not injected and "/.state-" in opened_path:
+            injected = True
+            original_write(fd, data[:max(1, len(data) // 2)])
+            raise OSError("injected ordinary exception during journal state write")
+        return original_write(fd, data)
+
+    monkeypatch.setattr(runtime.os, "write", partial_state_write)
+    with pytest.raises(OSError, match="during journal state write"):
+        runtime.apply(host.manifest, host.digest)
+    assert injected
+
+    monkeypatch.setattr(runtime.os, "write", original_write)
+    runtime.apply(host.manifest, host.digest)
+    state = json.loads((host.journal / host.digest[:32] / "state.json").read_bytes())
+    assert state["status"] == "complete"
+    assert os.readlink(host.selector) == "/opt/vst-runtime-" + HEAD_NEW
+
+
+def test_partial_retained_copy_does_not_strand_recovery(host, monkeypatch):
+    runtime.apply(host.manifest, host.digest)
+    original_write = runtime.os.write
+    injected = False
+
+    def partial_retained_write(fd: int, data: bytes) -> int:
+        nonlocal injected
+        opened_path = os.readlink(f"/proc/self/fd/{fd}")
+        if not injected and "/.vst-bootstrap-retained/" in opened_path:
+            injected = True
+            original_write(fd, data[:max(1, len(data) // 2)])
+            raise OSError("injected ordinary exception during retained copy")
+        return original_write(fd, data)
+
+    monkeypatch.setattr(runtime.os, "write", partial_retained_write)
+    with pytest.raises(OSError, match="during retained copy"):
+        runtime.recover(host.digest[:32], host.digest)
+    assert injected
+
+    monkeypatch.setattr(runtime.os, "write", original_write)
+    runtime.recover(host.digest[:32], host.digest)
+    assert os.readlink(host.selector) == "/opt/vst-runtime-" + HEAD_OLD
+    retained = host.units / ".vst-bootstrap-retained"
+    for unit in UNITS:
+        assert (host.units / unit).read_bytes() == b"old:" + unit.encode()
+        copies = list(retained.glob(unit + "-new-" + host.digest[:16] + "-*"))
+        expected = (host.new / "tools/vst/systemd" / unit).read_bytes()
+        if unit == UNITS[0]:
+            # The injected partial artifact is retained; retry uses a fresh exclusive name.
+            assert len(copies) == 2
+            assert any(copy.read_bytes() == expected[:max(1, len(expected) // 2)] for copy in copies)
+        else:
+            assert len(copies) == 1
+        assert any(copy.read_bytes() == expected for copy in copies)
 
 
 def test_runtime_manifest_rejects_unknown_fields_and_wrong_old_tree(host):

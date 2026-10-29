@@ -229,3 +229,130 @@ delegation policy and any reserved production action. The external per-task oper
 is retired from the proposed contract under this decision; the authenticated assignment writer
 and final trusted production policy remain to be reviewed and authorized. S2-MACHINE-E5-M01,
 current E5 v1, production dispatch, overall S2 closure and exact-head approval are unchanged.
+
+## Fresh-only bootstrap transaction correction (design only; disabled)
+
+This section narrows step 3 above. It is a proposed source contract, not implementation,
+authorization, or evidence that a new endpoint is allowed. The earlier four-operation wording
+must not be read as permission to compose the four public Store methods. Before any writer code,
+security and database reviewers must approve this transaction boundary and GPT-PM must issue a
+source GO. The production policy still needs the separately required exact authorization.
+
+### Eligibility is one new assignment, not adoption or recovery
+
+The only eligible transition is creation of one exact assignment pinned by the root-owned policy:
+`story_id`, `task_id`, project and phase, canonical manifest digest and contents, and one declared
+`TestRun` slot. The request identifies that policy tuple; it cannot widen it. The manifest's
+`cost_cap` and `retry_cap` are fixed by its pinned digest, and `register_task` seeds the task budget
+row from `cost_cap` (`tools/vst/store.py:1937-1972`). This design does not add a caller-selectable
+budget override.
+
+Eligibility is checked inside the write transaction against the same SQLite connection: the
+operation key is new; the story and task IDs have no rows; the task has no lease, receipt, terminal
+marker, or prior attempt; the requested slot is in both the pinned assignment and manifest and is
+typed `TestRun`; attempt is exactly 1; Store reconciliation and event-chain verification are
+healthy; and trusted Supervisor state supplies the current run, consumed probe, and service
+generation. Any existing story/task/lease/receipt, noninitial attempt, expired assignment, prior
+generation, legacy ownership, or existing operation is ineligible. In particular, this does not
+adopt an unowned legacy story, refresh an expired lease/assignment, continue a new generation,
+retry work, or act as a scheduler. A duplicate completed operation is handled only by the
+idempotency rule below; it does not re-enter eligibility or reacquire anything.
+
+### Minimum trusted policy inputs and identities
+
+Extend the strict, closed root policy schema only with fields needed to make this one transition
+deterministic: for the exact allowed assignment, `project_id` and `phase`; and at policy scope,
+`owner_principal`, `worker_id`/`runner_id` (one configured identity with a specified mapping, not
+two caller aliases), `owner_ttl_seconds`, and `lease_ttl_seconds`. Keep the assignment's exact
+task/story/manifest digest/TestRun-slot allowlist. Reject unknown or missing keys, duplicate
+assignment tuples, invalid types, nonfinite/nonpositive TTLs, and TTLs above a documented local
+maximum. `owner_ttl_seconds` is passed to the existing epoch transition; `lease_ttl_seconds` to
+lease creation. The budget cap remains the pinned manifest `cost_cap`; attempt budget is fixed at
+1 and retry policy at the pinned manifest. Do not accept principal, worker/runner identity, owner,
+epoch/generation, expiry, either TTL, budget values, run, probe, or policy digest from the RPC
+caller. A request may carry only the fixed operation/request identifier and the exact assignment
+tuple selectors needed to locate the one policy entry, plus its canonical manifest if required by
+the existing RPC contract; compare every value to root policy before writing.
+
+The kernel-authenticated peer (UID/GID/cgroup and process identity as already established by the
+Supervisor transport) selects the single optional `assignment_bootstrap` role. That role alone
+may invoke `bootstrap_assignment`; it is not a new authority class, scheduler, generic Store API,
+or substitute for `delegated_issuer`. The trusted Supervisor derives the source principal and
+current run/probe/service-generation values and checks them again in the Store callback immediately
+before commit. The handoff records the fixed `owner_principal`, `runner_id`, epoch and lease
+identifiers/expiry, assignment tuple, manifest digest, run, probe and service generation. The
+response and stored handoff must contain the same committed values. A caller-supplied event actor
+string is never identity evidence. This change provides no signing key, key distribution, policy
+provisioning, service activation, or E5/runtime authority.
+
+### One transaction; preserve existing public APIs
+
+The current public `open_story` (`store.py:1633-1648`), `acquire_epoch`
+(`1654-1665`), `register_task` (`1937-1972`), and `acquire_lease` (`2192-2300`) each own a
+`self._tx()` transaction. Calling those public methods from an idempotent callback would nest
+transactions and is prohibited. Implementation may extract connection-taking private locked
+primitives from their existing bodies, preserving validation, events, return values, and public
+wrappers. `_acquire_epoch_locked(conn, ...)` already exists (`1668-1717`); reuse it. Do not create
+a second transaction abstraction or make a public method conditionally accept a connection.
+
+One `Store.execute_idempotent` invocation owns the sole transaction. Its callback receives `conn`
+(`store.py:3633-3663`) and invokes only connection-taking primitives. It creates the new story,
+registers the pinned task and initial budget, acquires epoch 2 from the just-created epoch-1 story,
+creates the attempt-1 lease and slot claim, and writes the complete handoff row/result. The
+operation record and linked `SUPERVISOR_OPERATION` NOTE event are already written by
+`execute_idempotent` on that same connection. Consequently, story/task/budget/epoch/lease/slot,
+handoff/result, operation journal and event either commit together or roll back together. Do not
+commit intermediate rows or perform network, signing, runtime launch, or other external effects
+inside the callback.
+
+The fresh preconditions are deliberately sufficient to make `acquire_lease`'s historical
+commit-before-raise branches unreachable: there is no previous lease or failed attempt, so retry
+exhaustion cannot hold; the budget row is just seeded with `spent = 0` and cap equal to the pinned
+manifest `cost_cap`, so `spent > cap` and an existing budget marker cannot hold; and attempt 1 is
+the only valid first attempt. Prove these predicates under the transaction before invoking the
+lease primitive. If that proof fails, refuse and roll back. Do not remove, reorder, or change the
+legacy public `acquire_lease` behavior that commits a signed retry/budget marker and raises after
+commit (`2192-2300`); the new path must avoid those branches, not weaken their semantics. Extracted
+locked helpers must not catch such errors and turn them into success.
+
+### Idempotency, reconciliation and fail-closed errors
+
+Use one domain-separated operation name and stable operation key derived from the authenticated
+bootstrap request identity. `execute_idempotent` already hashes the canonical payload, returns the
+stored JSON result for the same operation and payload, and refuses a key reused with different
+operation or payload (`store.py:3633-3659`). For a duplicate exact completed request, return that
+exact committed result without calling the callback, refreshing TTLs, incrementing epoch, or
+reacquiring a slot. Conflicting payloads refuse. If the journal/anchor cannot establish whether a
+first commit completed, use the existing operation reconciliation contract and return
+`INCONCLUSIVE`/failure closed; never generate a new key, synthesize a result, or start a second
+assignment. Any malformed/missing handoff or event, stale generation/run/probe, changed policy,
+failed integrity check, or mismatch between committed result and handoff fails closed. The
+read-only `assignment_basis` remains the independent way to verify the resulting committed
+provenance; it is not itself a writer approval.
+
+### Eligibility and failure matrix for the later implementation
+
+| Case | Required result |
+|---|---|
+| Exact root policy tuple; absent story/task/history; attempt 1; live trusted run/probe/generation; healthy Store | One atomic initial assignment and a read-back-verifiable handoff |
+| Same operation key and byte-equivalent canonical payload after commit | Return the exact stored result; no row/event/lease/TTL change |
+| Same operation key with different operation or payload | Duplicate conflict; no write |
+| Existing story or task, lease, receipt, terminal marker, or noninitial attempt | Refuse as ineligible; no adoption or refresh |
+| Unknown policy tuple, wrong manifest digest/content, undeclared/non-`TestRun` slot, or caller attempts trusted-field override | Refuse before mutation |
+| Wrong peer role/UID/GID/cgroup, absent policy, policy digest drift/expiry, or invalid TTL/config | Refuse before mutation |
+| Run/probe/generation changes before the transaction's final trusted-state check | Roll back all assignment writes |
+| No Store slot, stale row/fence, unexpected validation/SQL/event failure | Roll back all rows and operation event |
+| Retry/budget marker condition is encountered despite fresh proof | Treat as invariant violation; transaction rolls back; preserve public legacy semantics |
+| Commit/anchor outcome cannot be reconciled, or stored handoff/result/event disagree | Inconclusive/fail closed; never infer success or retry under a new key |
+
+The later focused test plan belongs to the designated `functional-test-reviewer` and
+`e2e-runner`, after implementation is complete: (1) one valid single-transaction bootstrap and
+read-only basis verification; (2) same-key/same-payload exact-result replay with unchanged row
+counts and TTL; (3) conflicting payload; (4) each existing-row/history exclusion; (5) peer,
+policy, manifest, slot, attempt, TTL and caller-override rejection; (6) Store slot exhaustion and
+injected failure at each write boundary proving complete rollback; (7) trusted run/probe/generation
+change before commit; (8) simulated retry/budget invariant violation with rollback and a separate
+regression proving the public `acquire_lease` still commits its legacy marker before raising; and
+(9) uncertain anchor/commit reconciliation and mismatched handoff/event/result. These are planned,
+not run. No endpoint is approved by this design; only fresh independent security/database review
+and GPT-PM source GO can authorize a code batch.
