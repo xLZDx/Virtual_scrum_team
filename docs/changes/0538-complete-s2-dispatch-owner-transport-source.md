@@ -22,9 +22,12 @@ conservative ambiguous-outcome handling.
 ## Review and evidence
 
 GPT-PM request `b0f60d46-42b7-486a-b2f0-5d2253780f55` accepted the attached source/test scope and
-resolved transport M01 (missing EOF) and M02 (unauthenticated endpoint). Its operator-pasted
-response was recorded through PM Bridge; original job correlation remains uncertain. Read-only
-code, security and test-mapping reviewers found no actionable remaining findings.
+resolved transport M01 (missing EOF) and M02 (unauthenticated endpoint). A later read-only PM
+Bridge job-status query recovered the stored correlation: job `68efb4e6-a296-4fd7-bcfc-2c6fe2568d5c`,
+reply `d555b078-5647-46eb-bfc1-dd99654d634f`, `correlated=true`. The job lifecycle is marked
+uncertain because the parked wait deadline elapsed, while the stored reply contains the exact
+request ID and ACCEPT verdict. Read-only code, security and test-mapping reviewers found no
+actionable remaining findings.
 
 The functional-test role reported Windows 33 passed / 1 POSIX-only skip. The E2E role ran the same
 focused file in Ubuntu-24.04 WSL as root: 34 passed, 0 skipped, 0 failed, exit 0. The first WSL
@@ -40,4 +43,7 @@ fixture. Actual systemd peer identity, production issuer/custody, root runtime c
 owner-to-Runner integration, E5 and final S2 approval remain open. No privileged provisioning,
 service activation, migration, production dispatch, push, PR or merge occurred in this change.
 
-Next: prepare the immutable non-secret runtime configuration bundle for the conditional WSL gate.
+Delivery reconciliation: the source and change record were included in already-pushed commit
+`e987a24483a5130298a28cccd2efd08f457aab9a`, a large mixed S2 import rather than an isolated task
+commit. Its exact source/test blobs are verified against that commit; see change record 0588 for
+the delivery limits and current task order. This historical commit is not rewritten.

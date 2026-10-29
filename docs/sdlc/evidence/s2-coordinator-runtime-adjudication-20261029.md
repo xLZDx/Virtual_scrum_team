@@ -25,9 +25,12 @@ MODIFY with two findings: missing request half-close and unauthenticated socket 
 fixed both, added systemd PID1/root peer checks and response-to-envelope binding, and added mapped
 tests. The later correlated source/test decision (request
 `b0f60d46-42b7-486a-b2f0-5d2253780f55`) returned ACCEPT, resolved both transport findings, and
-preserved production M01 as open. The operator pasted the response; Codex recorded it in PM Bridge's
-inbound log under the exact request ID. The send-and-await job did not expose a durable reply ID in
-its status.
+preserved production M01 as open. A current PM Bridge job-status lookup recovered the durable
+correlation: job `68efb4e6-a296-4fd7-bcfc-2c6fe2568d5c`, reply
+`d555b078-5647-46eb-bfc1-dd99654d634f`, `correlated=true`. The job lifecycle is `uncertain` because
+the parked wait deadline elapsed; the recovered stored reply contains the exact request ID and
+ACCEPT verdict. The initial send-and-await return did not expose the reply ID, which is why this
+later status reconciliation was needed.
 
 The designated functional-test reviewer reported 33 passed and 1 Windows skip. The designated
 `e2e-runner` then ran `python3 -m pytest -q -rs
