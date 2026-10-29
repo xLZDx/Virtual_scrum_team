@@ -26,12 +26,13 @@ All JSON objects below use the repository's canonical JSON encoding, reject dupl
 
 ### Operator delegation policy
 
-Use a new exact schema, `VST_S2_MACHINE_DELEGATION_POLICY_V1`. Its signature purpose is `VST_S2_MACHINE_DELEGATION_POLICY_V1`, trusted only through a new root-owned config path `/etc/vst-runner/machine-delegation-trust.json`. Candidate trust-config schema is `VST_S2_MACHINE_DELEGATION_TRUST_CONFIG_V1`: exact fields `schema`, `operator_authorities`, `machine_principals`, `revocations`. Each operator authority has exactly `key_id`, `purpose`, `public_key_path`; purpose is `VST_S2_MACHINE_DELEGATION_POLICY_V1` or `VST_S2_ASSIGNMENT_AUTHORIZATION_V1` and uses a distinct key ID/key. Each machine entry has exactly `principal`, `key_id`, `purpose`, `public_key_path`, `policy_sha256`, `not_before`, `expires_at`. Revocations are exact `revocation_id`, `revoked_at`, `reason_code` records. The verifier rejects duplicate IDs, unknown fields, duplicate keys, paths not root-owned and non-regular, symlinked or group/world-writable files, wrong purpose/key-ID combinations, expired or revoked keys. No such signing purpose/config is currently present; this is a candidate path and contract only.
+Use a new exact schema, `VST_S2_MACHINE_DELEGATION_POLICY_V1`. Its signature purpose is `VST_S2_MACHINE_DELEGATION_POLICY_V1`, trusted only through a new root-owned config path `/etc/vst-runner/machine-delegation-trust.json`. Candidate trust-config schema is `VST_S2_MACHINE_DELEGATION_TRUST_CONFIG_V1`: exact fields `schema`, `operator_authorities`, `machine_principals`, `revocations`. Each operator authority has exactly `key_id`, `purpose`, `public_key_path`, `revocation_id`; purpose is `VST_S2_MACHINE_DELEGATION_POLICY_V1` or `VST_S2_ASSIGNMENT_AUTHORIZATION_V1` and uses a distinct key ID/key. Each machine entry has exactly `principal`, `key_id`, `purpose`, `public_key_path`, `policy_sha256`, `not_before`, `expires_at`, `revocation_id`. Revocations are exact `revocation_id`, `revoked_at`, `reason_code` records. Key revocation is represented by the registry entry's explicit `revocation_id`; no caller-selected revocation lookup is trusted. The verifier rejects duplicate IDs, unknown fields, duplicate keys, paths not root-owned and non-regular, symlinked or group/world-writable files, wrong purpose/key-ID combinations, expired or revoked keys. No such signing purpose/config is currently present; this is a candidate path and contract only.
 
 ```json
 {
   "schema": "VST_S2_MACHINE_DELEGATION_POLICY_V1",
   "policy_id": "stable-policy-id",
+  "operator_key_id": "new-policy-authority-key-id",
   "project": "Virtual_scrum_team",
   "repository": "https://github.com/xLZDx/Virtual_scrum_team",
   "sprint_id": "39b7cc253f5d",
@@ -55,7 +56,16 @@ The policy's signed `manifest_sha256` freezes the non-secret sprint scope. The m
 
 ### Immutable external assignment authorization
 
-The exact `VST_S2_ASSIGNMENT_AUTHORIZATION_V1` field set is `schema`, `authorization_id`, `project`, `repository`, `sprint_id`, `manifest_sha256`, `task_id`, `story_id`, `principal`, `slot`, `attempt`, `epoch`, `lease_id`, `run_id`, `request_id`, `policy_id`, `policy_sha256`, `issuer_key_id`, `issuer_key_purpose`, `issued_at`, `expires_at`, `revocation_id`, and `signature`. The signature purpose is the new `VST_S2_ASSIGNMENT_AUTHORIZATION_V1`, using the new operator authority public key pinned by `/etc/vst-runner/machine-delegation-trust.json`. This purpose, key, configuration and record do not currently exist. The immutable signed record is external to the Store; do not claim that it is an existing Store event. The root Supervisor verifies it and cross-checks every assignment field against a read-only snapshot of the current Store owner/lease state before allowing issue-once signing.
+Schema clarification for bounded validator implementation: add `authorization_key_id` to the
+exact assignment field set below for the new operator signing key. `issuer_key_id` remains the
+intended delegated machine issuer and must match the policy; it is not the operator key.
+Policy `operator_key_id` selects only the purpose-pinned operator delegation key. Each trust key
+has an explicit revocation ID; verification checks that ID and each record's revocation ID
+against the configured revocation records. For the observation role,
+`freshness_seconds` is an exact integer in 1..3600 (booleans rejected). These clarifications grant
+no production authority; the validator change record specifies the executable exact schema.
+
+The exact `VST_S2_ASSIGNMENT_AUTHORIZATION_V1` field set is `schema`, `authorization_id`, `project`, `repository`, `sprint_id`, `manifest_sha256`, `task_id`, `story_id`, `principal`, `slot`, `attempt`, `epoch`, `lease_id`, `run_id`, `request_id`, `policy_id`, `policy_sha256`, `authorization_key_id`, `issuer_key_id`, `issuer_key_purpose`, `issued_at`, `expires_at`, `revocation_id`, and `signature`. The signature purpose is the new `VST_S2_ASSIGNMENT_AUTHORIZATION_V1`, using the new operator authority public key pinned by `/etc/vst-runner/machine-delegation-trust.json`. This purpose, key, configuration and record do not currently exist. The immutable signed record is external to the Store; do not claim that it is an existing Store event. The root Supervisor would verify it and cross-check every assignment field against a read-only snapshot of the current Store owner/lease state before allowing issue-once signing; this is a proposed integration, not an existing callsite.
 
 - authorization ID and digest, project, repository, sprint, manifest digest and task/story identity;
 - principal `Codex`, slot, attempt, epoch, lease identity, run ID, request ID and bounded expiry;
