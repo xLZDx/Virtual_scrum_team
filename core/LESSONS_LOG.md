@@ -1197,3 +1197,13 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
   unreserved PENDING claim, never to a task-wide or state-wide bypass.
 - Verification: designated roles must prove positive reserve and continued rejection
   of duplicates and other unresolved claims at the new frozen source revision.
+
+## 2026-10-29 — Classify fixture bodies rather than process-shaped names (0565)
+
+- Kind: verification correction by actual designated test roles.
+- Facts: some tests named restart/timeout use disposable Store reopen or inject a
+  timeout before child creation; local bare-Git/fake-PR fixtures make no network call.
+  These permitted source cases passed after explicit body review. Actual worker
+  crash/termination remains NOT_RUN; names alone neither authorize nor prohibit it.
+- Rule: retain exact command, source/test hashes, platform and evidence layer;
+  overlapping component counts cannot become a whole-sprint percentage.

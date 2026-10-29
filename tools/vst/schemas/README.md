@@ -74,6 +74,40 @@ epoch, manifest, preflight, or generation is rechecked before grant issuance. Am
 does not trigger an automatic dispatcher retry. No external broker, independent queue, task
 scheduler, or assignment authority is part of this contract.
 
+### Bounded fresh assignment and delegated root issuance
+
+`assignment_basis.py` defines the closed, root-policy-bound fresh-assignment request
+and immutable handoff. The Store/Supervisor bootstrap accepts only an absent task
+and story at the initial attempt, with the configured manifest, budget, slots and
+separate authenticated bootstrap identity. It commits the assignment, lease,
+handoff operation and event together. Exact replay is observation of that result;
+it cannot renew authority or silently replace a previous assignment.
+
+`dispatch_issuance.py` freezes the canonical v1 instruction and reduces the immutable
+issuance history. `root_dispatch_issuer.py` is the default-off signing adapter.
+A frozen intent precedes STARTED; signing runs outside the SQL transaction at most
+once for that intent. An ambiguous outcome is UNKNOWN and cannot automatically
+sign again. COMPLETED requires verification of the exact canonical instruction
+bytes, signature, configured key class and public-key fingerprint. Structural
+startup validation alone does not establish cryptographic authority.
+
+The existing Supervisor exposes the operation-ID-only delegated-issuer route, not
+a new scheduler or signing daemon. New dispatch, its exact replay, grant persistence
+and replay, and Runner claim/reservation bind the completed issuance to the exact
+accepted instruction and signed execution-grant bytes. Current root policy, key
+registry, generation and execution authority are rechecked at write boundaries.
+Live configuration providers must be present when issuance is enabled; cached
+configuration cannot override revocation. Historical receipt lookup grants no
+execution authority. Existing legacy/direct grants preserve their prior guards;
+a verified delegated-origin task cannot fall back to that path if its immutable
+dispatch-grant association is missing.
+
+Reservation revalidates the current basis after matching the persisted claim. Only
+the exact current claim with its sole PENDING event is exempted from the predecessor
+continuation guard. Other unresolved executions still block it. Duplicate claim
+or reservation never grants another launch. These are implemented source contracts,
+not proof of installed keys, root policy, current E5, or active runtime services.
+
 ## TaskManifest (`validate_task_manifest`)
 
 | Field | Type / rule |

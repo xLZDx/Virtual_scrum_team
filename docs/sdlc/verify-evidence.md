@@ -82,3 +82,56 @@ hidden or counted as new-feature coverage. Codex owns its backlog reconciliation
 Current human E5 verifier is unchanged; unsigned machine observations always remain UNKNOWN.
 No production signing key/service, Store migration, dispatch activation, push, PR or merge is
 claimed by this record.
+
+
+## Post-integration current source verification — 2026-10-29
+
+Sprint: 39b7cc253f5d
+
+Source freeze: `67d1d55e5556c6936516f3404202faecba1e6707` on
+`s2-canonical-continuation` in `D:\Repo\Virtual_scrum_team`.
+The earlier writer-HOLD matrix above is historical and superseded for SOURCE by
+GPT-PM's I01 SOURCE GO and the implementation/fixes through change 0564. It remains
+correct that installed runtime, current E5 and final Phase 8 are not thereby proven.
+No existing external coordinator is required: the bounded assignment/issuer source
+is implemented in Store/Supervisor and the operation-ID-only authenticated route.
+
+### Current permitted evidence
+
+The actual functional and E2E roles are `gpt-6-luna`, medium effort. Their public
+records retain exact commands, overlay hashes, environment, failed prior revisions
+and current results. Tests are synthetic source/Store/RPC or explicit dedicated-WSL
+permission boundaries, not production service activation. Results must not be added
+across overlapping groups or revisions.
+
+| Current selection | Source / result | Evidence and limit | Owner / next acceptance |
+|---|---|---|---|
+| Four functional modules, Windows | 67d1d55: 62 passed, 6 skipped | `evidence/s2-final-functional-e987a24-20261029.md`; six POSIX-only signed-key fixture cases are not Windows passes. | Codex reviews exact evidence; POSIX counterpart below. |
+| Same four functional modules, WSL | 67d1d55: 68 passed | E2E reported terminal success with exact overlay hashes, including private-root fixture correction. | Codex reconciles the final E2E public command record. |
+| Full delegated issue-to-reservation path and negative integration controls | 67d1d55 WSL: 26 passed | Completed issuance, admission/replay, exact grant persistence/replay, claim/reserve, duplicate refusal, live revocation and missing-link refusal. | Codex obtains fresh independent source reviews. |
+| Legacy schema-v5 and TP28 regressions | 67d1d55 WSL: 7 passed | Current legacy/direct compatibility remains permitted without delegated downgrade. | Codex retains separate exact selector evidence. |
+| POSIX anchor and worker/reviewer identity boundary | 67d1d55 WSL: 10 passed | Dedicated existing WSL fixture only; not production credentials or Windows ACL proof. | Codex preserves the platform limitation. |
+| Windows allowed E1/E3/E6 and integration selection | 67d1d55: 97 passed, 26 skipped | E2E current report; skips are 25 POSIX-only integration cases and one POSIX reviewer case. | Codex maps each allowed result to original acceptance; no skip promoted. |
+| Bundle/source plan/bootstrap/stage-only fixture groups | Prior 8beffcc: WSL 36 passed; Windows 28 passed, 8 skipped | Product paths and test modules unchanged by Store-only 0564. Historical scoped evidence, not a claim of a new run or installed bundle. | Codex includes source/blob identity in review; GPT-PM reviews exact staging candidate later. |
+| Additional allowed E7 pub/sub, owner and idempotency contracts | 67d1d55: Windows 40 passed / 17 skipped; WSL 35 passed; separate WSL latch 7 passed | Exact nodes and fixtures in both public role reports. Windows POSIX skips have an explicitly separate WSL counterpart, not a Windows pass. | Codex obtains independent review; no real service/process operation is inferred. |
+| Allowed E7 lifecycle, breaker and simulated recovery contracts | 67d1d55 Windows: 34 passed across six exact invocations | Source-inspected callbacks, synthetic keys, disposable SQLite and in-process threads. Real process recovery is NOT_RUN. | Local bare-Git/fake-PR fixture and pre-spawn injected timeout also passed; actual termination, remote providers and runtime remain NOT_RUN. |
+
+### Remaining real acceptance and ordered closure
+
+1. Allowed E7 regression mapping and current public records are complete for the
+   permitted source scope. Codex commits the package with change record 0565; the
+   source/test blobs, not an invented cumulative count, identify this evidence.
+2. Codex launches fresh actual general-code, database and security/reliability reviews
+   for the exact source package. Fix all confirmed code BLOCKER/MAJOR findings in a
+   focused batch and run only designated direct regressions.
+3. Codex prepares the exact final non-secret source staging plan and current target/
+   compiler metadata. GPT-PM adjudicates the bounded source/runtime package before
+   any actual staging, key/policy installation, runtime signing or service activation.
+4. Current E5 still requires genuine run-bound evidence under the accepted contract.
+   Operator owns any reserved human attestation; Codex owns permitted preparation and
+   collection. No signature, policy installation or activation is inferred here.
+5. Restricted actual termination/crash/mutation/E8 scenarios remain NOT_RUN. Codex
+   supplies exact remaining scope; GPT-PM adjudicates acceptance and the operator
+   owns any genuine scoped waiver or restriction change. A waiver cannot erase FAIL.
+6. Only after acceptance and fresh exact-head GPT approval may Codex push/open the
+   single S2 PR. S3–S5 remain ordered behind S2 closure. No self-written approval.

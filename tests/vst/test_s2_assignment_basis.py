@@ -44,6 +44,8 @@ def _policy(manifest: dict) -> dict:
         "allowed_assignments": [{
             "story_id": manifest["story_id"],
             "task_id": manifest["task_id"],
+            "project_id": manifest["project_id"],
+            "phase": manifest["phase"],
             "task_manifest_sha256": contracts.manifest_sha256(manifest),
             "test_run_slots": ["tests"],
         }],
@@ -57,6 +59,9 @@ def _policy(manifest: dict) -> dict:
         },
         "allowed_bootstrap_operations": ["open_story", "register_task", "acquire_epoch", "acquire_lease"],
         "maximum_handoff_ttl_seconds": 300,
+        "runner_id": "runner-1",
+        "owner_ttl_seconds": 1800,
+        "lease_ttl_seconds": 1200,
         "valid_from_utc": datetime.fromtimestamp(now - 60, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "expires_at_utc": datetime.fromtimestamp(now + 3600, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "revocation_id": "synthetic-revocation-1",
@@ -123,6 +128,8 @@ def _readiness(manifest: dict, *, store_mutation: str | None = None,
         "bootstrap_request": copy.deepcopy(request),
         "task_id": manifest["task_id"],
         "story_id": manifest["story_id"],
+        "project_id": manifest["project_id"],
+        "phase": manifest["phase"],
         "task_manifest_sha256": contracts.manifest_sha256(manifest),
         "slot": "tests",
         "attempt": 1,
@@ -159,6 +166,8 @@ def _readiness(manifest: dict, *, store_mutation: str | None = None,
         handoff["assignment_principal"] = "caller-selected"
     elif journal_mutation == "changed_bootstrap_manifest":
         handoff["bootstrap_request"]["task_manifest"]["scope"] = ["other.py"]
+    elif journal_mutation == "unknown_handoff_field":
+        handoff["unreviewed"] = "must not be stripped"
     body = {key: value for key, value in handoff.items() if key != "handoff_sha256"}
     handoff["handoff_sha256"] = hashlib.sha256(contracts.canonical_bytes(body)).hexdigest()
     payload = {
@@ -248,6 +257,23 @@ def test_assignment_basis_reads_verified_handoff_and_live_basis_without_store_mu
         store.close()
 
 
+def test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment():
+    store, _supervisor, policy, policy_sha, operation_id, stored_handoff = _readiness(base_manifest())
+    try:
+        snapshot = store.authenticated_assignment_basis(
+            operation_id, policy=policy, policy_sha256=policy_sha,
+            active_service_generation=GENERATION, expected_run_id=RUN_ID,
+        )
+        assert snapshot["handoff"] == stored_handoff
+        assert "payload_sha256" not in snapshot["handoff"]
+        persisted = store._conn.execute(
+            "SELECT result FROM supervisor_operations WHERE operation_key=?", (operation_id,),
+        ).fetchone()["result"]
+        assert contracts.canonical_bytes(snapshot["handoff"]).decode("utf-8") == persisted
+    finally:
+        store.close()
+
+
 def test_verified_database_history_preserves_each_event_prefix_without_writing():
     store, _supervisor, _policy_obj, _policy_sha, _operation_id, _handoff = _readiness(base_manifest())
     try:
@@ -287,7 +313,7 @@ def test_assignment_basis_refuses_operation_row_with_noncanonical_payload_bindin
 
 @pytest.mark.parametrize("journal_mutation", [
     "wrong_task_manifest_digest", "wrong_policy_digest", "wrong_assignment_principal",
-    "changed_bootstrap_manifest",
+    "changed_bootstrap_manifest", "unknown_handoff_field",
 ])
 def test_assignment_basis_refuses_handoff_that_breaks_exact_source_bindings(journal_mutation):
     store, supervisor, _policy_obj, _policy_sha, operation_id, _handoff = _readiness(

@@ -644,3 +644,12 @@ Runtime/private-key provisioning/real signing/enablement/E5 and final exact-head
 open; forbidden process/crash/mutation/policy selectors remain NOT_RUN. Headless Windows collector
 profile repair0555 is source-only and has not yet been executed. All in-scope S2 coding precedes
 final test-role execution. No push/PR/merge is claimed.
+
+## 2026-10-29 — S2 current source verification checkpoint (0565)
+
+S2 remains current; S3–S5 are queued. Source67d1d55 and designated role reports
+establish bounded fixture regressions, including root-issued grant claim/reserve,
+legacy/direct compatibility and permitted E7 source behavior. Fresh independent
+specialist review is next. Source GO is not runtime or final approval; current E5,
+restricted-case disposition and delivery remain separate. The canonical checkout
+and existing S2 branch are used; historical mixed work remains in existing refs.

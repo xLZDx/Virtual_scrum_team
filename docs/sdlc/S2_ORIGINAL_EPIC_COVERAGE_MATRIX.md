@@ -12,6 +12,42 @@ The original plan defines semantic denominators (the complete listed cases for e
 
 `PASS` below means only the named test behavior passed at the cited source/test revision. It does not imply current-head acceptance, a provisioned system, real authorization, or production-runtime evidence. `NOT_RUN` is not a failure and cannot be promoted to pass; skipped tests remain unverified.
 
+## Current implementation overlay — 2026-10-29
+
+The original matrix below is retained as its historical reconciliation at 6a6d788.
+It is not the current source verdict. S2 delivery now uses the existing
+`s2-canonical-continuation` branch in the canonical checkout; change 0560 records
+its selected S2 snapshot port and withheld S3/S4 paths. Full prior history remains
+in the existing source branches. No new worktree was created.
+
+The previously unresolved assignment source now has implemented bounded fresh
+bootstrap (0552) and integrated root issuance (0557), with explicit GPT-PM SOURCE
+GO in `evidence/s2-i01-integrated-source-adjudication-20261029.md`. This is not
+runtime authorization or Phase 8 approval. Post-integration fixes 0561–0564 address
+live config/key providers, canonical handoff representation, stored issuance JSON,
+legacy/direct compatibility without delegated downgrade, and own-PENDING reservation.
+Thus the historical E7 sentence about a missing writer must not be read as a demand
+for an external coordinator. Source implementation exists; tests, independent review
+and real runtime evidence are separate acceptance obligations.
+
+Current source freeze is `67d1d55e5556c6936516f3404202faecba1e6707`.
+The functional owner reports 62 passed / 6 Windows POSIX-only skips on four modules
+at this revision, with exact test hashes in
+`evidence/s2-final-functional-e987a24-20261029.md`. This bounded set covers TP-26–38
+contracts and is not the original epic denominator. The E2E owner is rerunning
+positive issuance through reservation and the allowed epic selectors; its current
+record is `evidence/s2-final-e2e-e987a24-20261029.md`. Counts on different heads or
+overlapping Windows/POSIX selections must not be summed.
+
+| Acceptance group | Current state | Evidence / remaining acceptance | Owner / next action |
+|---|---|---|---|
+| E1/E2/E3/E6/E7 and D1/D2 allowed source behavior | Implementation plus bounded current functional evidence; final E2E/review pending | Current four-module result does not cover the full original denominator. Earlier failed candidates remain failed historical runs. | Codex coordinates exact allowed selector evidence, fixes valid defects and obtains independent reviews. |
+| Fresh bootstrap and delegated root issuance | Implemented; exact current positive reservation rerun pending | SOURCE GO and changes 0552–0564; no external coordinator requirement remains. | Codex completes regressions; GPT-PM adjudicates exact final package. |
+| E4 real containment and E8 bake-off restrictions | NOT_RUN for restricted scenarios | Actual termination/crash/mutation/worker comparison are excluded; mocks and skips cannot close them. | Codex keeps exact exclusions; operator owns any actual scoped waiver/permission change, GPT-PM owns closure adjudication. |
+| E5 current sandbox/runtime trust | NOT_VERIFIED | Historical signed per-run E5 and unsigned OS metadata do not establish the current runtime, installed trust or fresh run-bound signature. | Codex prepares the bounded runtime package after source review; operator owns genuine reserved attestation, GPT-PM the runtime gate. |
+| Schema contract documentation | Updated in worktree; not runtime proof | README now describes bootstrap, once-only issuance, exact grant association, live providers and current-claim reservation. | Codex includes it in the next documented evidence commit. |
+| S2 delivery | Not closed, pushed or merged by this overlay | Fresh specialist consensus and exact-head GPT approval still required. | Codex finishes S2 first; S3–S5 remain queued. |
+
 ## Original epic and deferred-item matrix
 
 | ID / plain-language acceptance | Original denominator and required failing boundary | Existing focused test sets and strongest located evidence | Reconciled state, remaining acceptance, owner, next step |

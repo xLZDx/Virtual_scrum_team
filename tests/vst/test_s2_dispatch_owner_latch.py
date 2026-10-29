@@ -46,7 +46,7 @@ def test_s2_admission_latch_creation_is_exclusive_durable_root_root_and_0644(mon
 
     monkeypatch.setattr(latch_module.os, "stat", fake_stat)
     monkeypatch.setattr(latch_module.os, "open", fake_open)
-    monkeypatch.setattr(latch_module.os, "fchown", lambda fd, uid, gid: events.append(("fchown", fd, uid, gid)))
+    monkeypatch.setattr(latch_module.os, "fchown", lambda fd, uid, gid: events.append(("fchown", fd, uid, gid)), raising=False)
     monkeypatch.setattr(latch_module.os, "fchmod", lambda fd, mode: events.append(("fchmod", fd, mode)))
     monkeypatch.setattr(latch_module.os, "write", fake_write)
     monkeypatch.setattr(latch_module.os, "fsync", lambda fd: events.append(("fsync", fd)))
@@ -57,7 +57,8 @@ def test_s2_admission_latch_creation_is_exclusive_durable_root_root_and_0644(mon
     latch_open = next(event for event in events if event[0] == "open" and event[1] == latch_module.LATCH_PATH)
     assert latch_open[2] & os.O_CREAT
     assert latch_open[2] & os.O_EXCL
-    assert latch_open[2] & getattr(os, "O_NOFOLLOW", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        assert latch_open[2] & os.O_NOFOLLOW
     assert latch_open[3] == (0o644,)
     assert ("fchown", latch_open[4], 0, 0) in events
     assert ("fchmod", latch_open[4], 0o644) in events
@@ -78,7 +79,7 @@ def test_s2_admission_latch_creation_is_exclusive_durable_root_root_and_0644(mon
 
 def test_s2_latch_main_requires_root_before_persistence_or_socket_stop(monkeypatch):
     calls = []
-    monkeypatch.setattr(latch_module.os, "geteuid", lambda: 1001)
+    monkeypatch.setattr(latch_module.os, "geteuid", lambda: 1001, raising=False)
     monkeypatch.setattr(latch_module, "_write_latch", lambda *args: calls.append(args))
     monkeypatch.setattr(latch_module.subprocess, "run", lambda *args, **kwargs: calls.append(args))
 
@@ -94,7 +95,7 @@ def test_s2_latch_main_stops_dispatch_socket_even_when_persistence_fails(monkeyp
         SimpleNamespace(returncode=0, stdout=""),
         SimpleNamespace(returncode=0, stdout="inactive\n"),
     ))
-    monkeypatch.setattr(latch_module.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(latch_module.os, "geteuid", lambda: 0, raising=False)
     monkeypatch.setattr(latch_module, "_write_latch", lambda *args: (_ for _ in ()).throw(OSError("disk full")))
     monkeypatch.setattr(latch_module.subprocess, "run", lambda args, **kwargs: (
         commands.append((args, kwargs)) or next(results)
@@ -140,7 +141,7 @@ def test_s2_latch_main_confirms_socket_off_before_touching_persistent_latch(monk
         SimpleNamespace(returncode=0, stdout=""),
         SimpleNamespace(returncode=0, stdout="inactive\n"),
     ))
-    monkeypatch.setattr(latch_module.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(latch_module.os, "geteuid", lambda: 0, raising=False)
     monkeypatch.setattr(latch_module.subprocess, "run", lambda args, **kwargs: (
         events.append(("systemctl", args)) or next(results)
     ))

@@ -1456,3 +1456,11 @@ The delegated authority basis accepts a reservation-only exact grant identity af
 Store has matched the persisted claim and its sole PENDING state. Other claims still
 block continuation; normal admission and replay receive no exemption. See
 [change 0564](../docs/changes/0564-s2-reserve-own-pending-claim.md).
+
+## 2026-10-29 — Freeze bounded S2 verification separately from runtime acceptance (0565)
+
+Current source67d1d55 has designated functional/E2E source evidence across Windows
+and WSL, including full delegated reservation and existing E7 lifecycle contracts.
+Exact commands/hashes and old failures are retained in the public role reports.
+Fresh specialist and GPT gates remain pending; real runtime/E5 and restricted
+scenarios are not promoted by these fixture passes. See change0565.

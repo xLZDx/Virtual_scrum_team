@@ -5,8 +5,12 @@ import base64
 import copy
 import datetime as dt
 import hashlib
+import io
 import os
 import subprocess
+import tempfile
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -174,9 +178,24 @@ def sign_object(value: dict, *, private_path: str, domain: str) -> None:
         value["signature"] = base64.urlsafe_b64encode(stream.read()).decode("ascii").rstrip("=")
 
 
-def signed_fixture(tmp_path):
-    policy_private, policy_public = write_ed25519_keypair(tmp_path, "policy")
-    assignment_private, assignment_public = write_ed25519_keypair(tmp_path, "assignment")
+@pytest.fixture
+def root_key_dir():
+    """Create disposable keys beneath a private root-owned ancestor, never `/tmp`."""
+    if os.name != "posix" or not hasattr(os, "geteuid") or os.geteuid() != 0:
+        pytest.skip("root-owned disposable key directory is unavailable")
+    root = Path("/root")
+    root_info = root.stat()
+    if root_info.st_uid != 0 or root_info.st_mode & 0o022:
+        pytest.skip("/root is not a private root-controlled fixture ancestor")
+    with tempfile.TemporaryDirectory(prefix="vst-machine-keys-", dir=str(root)) as directory:
+        fixture_dir = Path(directory)
+        fixture_dir.chmod(0o700)
+        yield fixture_dir
+
+
+def signed_fixture(directory):
+    policy_private, policy_public = write_ed25519_keypair(directory, "policy")
+    assignment_private, assignment_public = write_ed25519_keypair(directory, "assignment")
     policy = valid_policy()
     sign_object(policy, private_path=policy_private, domain=OP_POLICY_PURPOSE)
     config = trust_config(policy)
@@ -189,9 +208,9 @@ def signed_fixture(tmp_path):
 
 @pytest.mark.skipif(os.name != "posix", reason="OpenSSL key verification requires POSIX root-controlled paths")
 def test_signed_assignment_binds_current_store_snapshot_and_separate_purposes(
-    tmp_path,
+    root_key_dir,
 ) -> None:
-    policy, assignment, config = signed_fixture(tmp_path)
+    policy, assignment, config = signed_fixture(root_key_dir)
 
     result = authorization.verify_assignment_authorization(
         assignment, policy, config, valid_snapshot(), openssl_path="/usr/bin/openssl",
@@ -216,8 +235,8 @@ def test_signed_assignment_binds_current_store_snapshot_and_separate_purposes(
 
 @pytest.mark.skipif(os.name != "posix", reason="OpenSSL key verification requires POSIX root-controlled paths")
 @pytest.mark.parametrize("mutation", ["bad_signature", "wrong_purpose", "revoked"])
-def test_assignment_signature_purpose_and_revocation_fail_closed(tmp_path, mutation: str) -> None:
-    policy, assignment, config = signed_fixture(tmp_path)
+def test_assignment_signature_purpose_and_revocation_fail_closed(root_key_dir, mutation: str) -> None:
+    policy, assignment, config = signed_fixture(root_key_dir)
     if mutation == "bad_signature":
         assignment["signature"] = base64.urlsafe_b64encode(bytes([1]) * 64).decode("ascii").rstrip("=")
         expected_error = "signature verification failed"
@@ -241,8 +260,8 @@ def test_assignment_signature_purpose_and_revocation_fail_closed(tmp_path, mutat
 
 
 @pytest.mark.skipif(os.name != "posix", reason="OpenSSL key verification requires POSIX root-controlled paths")
-def test_policy_rejects_a_bad_operator_signature(tmp_path) -> None:
-    policy, _assignment, config = signed_fixture(tmp_path)
+def test_policy_rejects_a_bad_operator_signature(root_key_dir) -> None:
+    policy, _assignment, config = signed_fixture(root_key_dir)
     policy["signature"] = base64.urlsafe_b64encode(bytes([1]) * 64).decode("ascii").rstrip("=")
 
     with pytest.raises(ContractError, match="signature verification failed"):
@@ -250,8 +269,8 @@ def test_policy_rejects_a_bad_operator_signature(tmp_path) -> None:
 
 
 @pytest.mark.skipif(os.name != "posix", reason="OpenSSL key verification requires POSIX root-controlled paths")
-def test_signed_assignment_rejects_changed_store_snapshot(tmp_path) -> None:
-    policy, assignment, config = signed_fixture(tmp_path)
+def test_signed_assignment_rejects_changed_store_snapshot(root_key_dir) -> None:
+    policy, assignment, config = signed_fixture(root_key_dir)
     snapshot = valid_snapshot()
     snapshot["owner_principal"] = "different-principal"
 
@@ -360,3 +379,97 @@ def test_observation_schema_rejects_boolean_identity_and_omitted_fields() -> Non
             "run-1", HEAD, "3" * 64, invalid_shape, wsl_observation(),
             nonce="4" * 32, now=NOW,
         )
+
+
+class _CompletedCollectorProcess:
+    def __init__(self, output: bytes = b'{"fixture":true}'):
+        self.stdout = io.BytesIO(output)
+        self.stderr = io.BytesIO(b"")
+        self.returncode = 0
+
+    def poll(self):
+        return self.returncode
+
+    def wait(self, timeout=None):
+        return self.returncode
+
+    def kill(self):
+        raise AssertionError("bounded collector fixture should not be killed")
+
+
+@pytest.mark.parametrize("profile, executable, module_path", [
+    ("windows-powershell-5",
+     r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe",
+     r"C:\Windows\System32\WindowsPowerShell\v1.0\Modules"),
+    ("powershell-7", r"C:\Program Files\PowerShell\7\pwsh.exe",
+     r"C:\Program Files\PowerShell\7\Modules;C:\Windows\System32\WindowsPowerShell\v1.0\Modules"),
+])
+def test_windows_collector_uses_selected_profile_minimal_environment_and_no_window(
+    monkeypatch, profile: str, executable: str, module_path: str,
+) -> None:
+    calls = []
+    monkeypatch.setattr(observations, "os", SimpleNamespace(name="nt", path=SimpleNamespace(isabs=lambda _value: True)))
+    monkeypatch.setattr(observations.subprocess, "CREATE_NO_WINDOW", 0x08000000, raising=False)
+
+    def popen(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return _CompletedCollectorProcess()
+
+    monkeypatch.setattr(observations.subprocess, "Popen", popen)
+    raw = observations.collect_windows_observations(profile=profile)
+
+    assert len(calls) == 1
+    argv, kwargs = calls[0]
+    assert argv[0] == executable
+    assert argv[1:6] == ["-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Restricted"]
+    assert kwargs["cwd"] == r"C:\Windows\System32"
+    assert kwargs["stdin"] is subprocess.DEVNULL
+    assert kwargs["close_fds"] is True
+    assert kwargs["creationflags"] == 0x08000000
+    assert kwargs["env"] == {
+        "SystemRoot": r"C:\Windows", "WINDIR": r"C:\Windows", "SystemDrive": "C:",
+        "PATH": "", "TEMP": r"C:\Windows\Temp", "TMP": r"C:\Windows\Temp",
+        "PSModulePath": module_path,
+    }
+    assert "USERPROFILE" not in kwargs["env"]
+    assert "PYTHONPATH" not in kwargs["env"]
+    assert r"C:\Windows\System32\wsl.exe --list" in argv[-1]
+    assert raw["raw_command_outputs"]["collector_profile"] == profile
+    assert raw["collection_complete"] is False
+    assert all(error["status"] == "UNKNOWN" for error in raw["errors"])
+    assert "PASS" not in str(raw)
+
+
+def test_unknown_windows_collector_profile_runs_no_command_and_stays_unsupported(monkeypatch) -> None:
+    calls = []
+    monkeypatch.setattr(observations, "os", SimpleNamespace(name="nt", path=SimpleNamespace(isabs=lambda _value: True)))
+    monkeypatch.setattr(observations.subprocess, "Popen", lambda *args, **kwargs: calls.append(args))
+
+    raw = observations.collect_windows_observations(profile="unreviewed-profile")
+
+    assert calls == []
+    assert raw["raw_command_outputs"]["collector_profile"] == "unreviewed-profile"
+    assert raw["errors"][0]["status"] == "UNSUPPORTED"
+    assert raw["collection_complete"] is False
+    assert "PASS" not in str(raw)
+
+
+def test_missing_selected_windows_profile_is_unknown_without_profile_fallback(monkeypatch) -> None:
+    calls = []
+    monkeypatch.setattr(observations, "os", SimpleNamespace(name="nt", path=SimpleNamespace(isabs=lambda _value: True)))
+    monkeypatch.setattr(observations.subprocess, "CREATE_NO_WINDOW", 0x08000000, raising=False)
+
+    def missing_executable(argv, **kwargs):
+        calls.append((argv, kwargs))
+        raise FileNotFoundError("synthetic missing PowerShell 5 executable")
+
+    monkeypatch.setattr(observations.subprocess, "Popen", missing_executable)
+    raw = observations.collect_windows_observations(profile="windows-powershell-5")
+
+    assert len(calls) == 1
+    assert calls[0][0][0] == r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+    assert raw["raw_command_outputs"] == {"collector_profile": "windows-powershell-5"}
+    assert raw["errors"][0]["status"] == "UNKNOWN"
+    assert "timed out" not in raw["errors"][0]["reason"]
+    assert raw["collection_complete"] is False
+    assert "PASS" not in str(raw)
