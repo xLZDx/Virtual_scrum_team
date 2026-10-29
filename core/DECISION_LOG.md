@@ -1424,3 +1424,12 @@ old refs/commits or creating a worktree. S3 pilot/adapter/tests and the S4 QA pi
 shared S2-required epoch/lookup/timeout primitives are explicitly retained. Four S3-only Store
 wrappers are withheld. See the full path/blob manifest and change0560. No verification ran during
 assembly; the assembled source is the next test target, not accepted runtime.
+
+## 2026-10-29 — Correct the first assembled-source issuer falsifiers (0561)
+
+The actual test roles found missing frozen assignment identity and cached rather than current
+root trust/config metadata. The batch now binds assignment_operation_id and wires mandatory
+live root providers for enabled delegated issuance, including write-boundary guards. No PEM
+read or OpenSSL is moved into SQL. Historical43/3/6 and39/6 results remain evidence at e987a24,
+not acceptance of this fix. Tests were paused and old command processes confirmed terminal
+before the source batch; designated roles resume at the new frozen revision.

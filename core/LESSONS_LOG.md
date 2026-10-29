@@ -1150,3 +1150,17 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Correction: separate candidate/pilot features from common infrastructure, retain S2 dependencies,
   and verify the assembled tree through the designated roles before calling it accepted.
 - Verification: Git/source assembly only; test collection/execution and runtime remain NOT_RUN.
+
+## 2026-10-29 — Closed schemas need positive paths and independent current providers (0561)
+
+- Kind: FAILURE caught in the first final functional cycle.
+- Facts: pure source declared assignment_operation_id mandatory but omitted it when freezing, so
+  every positive issuer failed closed. Live policy/generation existed, but key/config revocation
+  only inspected cached dictionaries. These were real source gaps, not harmless fixture failures.
+- Root cause: structural source review did not execute the positive freeze path, and provider
+  coverage was inconsistent across authority dimensions.
+- Layer: designated functional tests and contract inspection caught both before runtime.
+- Rule: prove the complete positive path; independently reload each required root authority
+  source, and do not mistake cached-object mutation tests for file-backed revocation coverage.
+- Correction: exact identity field plus mandatory live issuer/trust providers; new verification
+  remains pending. Preserve lost-output commands as NOT_RECORDED, not inferred green dots.

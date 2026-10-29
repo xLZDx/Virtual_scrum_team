@@ -239,6 +239,7 @@ def freeze_issuance_intent(
         raise ContractError("internal unsigned dispatch contract drift")
     frozen = {
         "schema": "VST_S2_ROOT_DISPATCH_ISSUANCE_INTENT_V1",
+        "assignment_operation_id": valid_handoff["assignment_operation_id"],
         **identity,
         "payload_sha256": "",  # filled over the immutable, unsigned payload below
         "handoff": valid_handoff,

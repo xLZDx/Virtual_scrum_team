@@ -630,6 +630,37 @@ def _read_controlled_json(path: str, *, max_bytes: int = 262144) -> dict:
     return value
 
 
+def _current_root_dispatch_issuer_config(config_path: str, openssl_path: str) -> dict | None:
+    """Reload issuer metadata from its root-controlled source for each authority check."""
+    root_config = _read_controlled_json(config_path)
+    raw = root_config.get("root_dispatch_issuer")
+    if raw is None:
+        return None
+    fields = {"enabled", "key_id", "public_key_fingerprint",
+              "maximum_ttl_seconds", "minimum_safety_slack_seconds"}
+    if not isinstance(raw, dict) or set(raw) != fields or type(raw.get("enabled")) is not bool:
+        raise ContractError("live root dispatch issuer configuration is malformed")
+    return {
+        **raw,
+        "private_key_path": "/etc/vst-runner/dispatch-instruction-private.pem",
+        "public_key_path": "/etc/vst-runner/dispatch-instruction-public.pem",
+        "openssl_path": openssl_path,
+        "signer": {
+            "key_id": raw.get("key_id"), "key_class": "DELEGATED_V1",
+            "purpose": "VST_S2_DISPATCH_INSTRUCTION_V1",
+            "public_key_fingerprint": raw.get("public_key_fingerprint"),
+        },
+    }
+
+
+def _current_dispatch_instruction_trust_registry() -> dict:
+    info = os.stat(DISPATCH_INSTRUCTION_TRUST_REGISTRY_PATH, follow_symlinks=False)
+    if (not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or info.st_gid != 0
+            or stat.S_IMODE(info.st_mode) != 0o644):
+        raise ContractError("live dispatch-instruction trust registry is unsafe")
+    return _read_controlled_json(DISPATCH_INSTRUCTION_TRUST_REGISTRY_PATH, max_bytes=65536)
+
+
 def _read_root_key(path: str) -> bytes:
     if not isinstance(path, str) or not os.path.isabs(path):
         raise ContractError("Supervisor secret key path must be absolute")
@@ -1060,6 +1091,12 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
             lambda: _read_controlled_json(POLICY_PATH, max_bytes=65536)
         ) if assignment_policy is not None else None,
         root_dispatch_issuer=root_dispatch_issuer,
+        root_dispatch_issuer_provider=(
+            lambda: _current_root_dispatch_issuer_config(path, value["openssl_path"])
+        ) if root_dispatch_issuer is not None and root_dispatch_issuer["enabled"] else None,
+        dispatch_instruction_trust_provider=(
+            _current_dispatch_instruction_trust_registry
+        ) if root_dispatch_issuer is not None and root_dispatch_issuer["enabled"] else None,
     )
     probe_digest = hashlib.sha256(canonical_bytes(probe)).hexdigest()
     store.ensure_preflight_consumed(run_id, probe_nonce, spec_sha256, probe_digest)

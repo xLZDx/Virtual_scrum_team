@@ -51,6 +51,8 @@ class Supervisor:
         assignment_policy: dict | None = None,
         assignment_policy_provider: Callable[[], dict] | None = None,
         root_dispatch_issuer: dict | None = None,
+        root_dispatch_issuer_provider: Callable[[], dict | None] | None = None,
+        dispatch_instruction_trust_provider: Callable[[], dict] | None = None,
     ):
         if isinstance(failure_threshold, bool) or not isinstance(failure_threshold, int) or failure_threshold < 1:
             raise ValueError("failure_threshold must be a positive integer")
@@ -74,6 +76,8 @@ class Supervisor:
         self.model_provenance_digest_provider = model_provenance_digest_provider
         self.assignment_policy_provider = assignment_policy_provider
         self.root_dispatch_issuer = root_dispatch_issuer
+        self.root_dispatch_issuer_provider = root_dispatch_issuer_provider
+        self.dispatch_instruction_trust_provider = dispatch_instruction_trust_provider
         if assignment_policy is None:
             self.assignment_policy = None
             self.assignment_policy_sha256 = None
@@ -83,6 +87,10 @@ class Supervisor:
         self._seen_run_ids = {run_id} if isinstance(run_id, str) else set()
         self._seen_probe_nonces = {probe_nonce} if isinstance(probe_nonce, str) else set()
         self._probe_consumed = False
+        if root_dispatch_issuer is not None and root_dispatch_issuer.get("enabled") is True:
+            if (not callable(root_dispatch_issuer_provider)
+                    or not callable(dispatch_instruction_trust_provider)):
+                raise ValueError("delegated dispatch requires live root issuer and trust registry providers")
         if store.sandbox_mode and (
             not isinstance(run_id, str) or not run_id.strip()
             or not isinstance(probe_nonce, str) or not probe_nonce.strip()
@@ -179,11 +187,27 @@ class Supervisor:
             service_generation=generation,
         )
 
+    def _current_root_dispatch_issuer(self) -> dict:
+        """Read root-owned issuer and legacy trust metadata at each authority boundary."""
+        configured = self.root_dispatch_issuer
+        if (not isinstance(configured, dict) or configured.get("enabled") is not True
+                or not callable(self.root_dispatch_issuer_provider)
+                or not callable(self.dispatch_instruction_trust_provider)):
+            raise StoreError("live root dispatch issuer configuration is unavailable", kind="authorization")
+        try:
+            current = self.root_dispatch_issuer_provider()
+            current_trust = self.dispatch_instruction_trust_provider()
+        except Exception as exc:
+            raise StoreError("root dispatch trust configuration is unreadable", kind="authorization") from exc
+        if (not isinstance(current, dict) or current.get("enabled") is not True
+                or current != configured or not isinstance(current_trust, dict)
+                or current_trust != self.dispatch_instruction_trust_keys):
+            raise StoreError("root dispatch issuer or trust registry changed", kind="authorization")
+        return configured
+
     def issue_root_dispatch_instruction(self, *, assignment_operation_id: str) -> dict:
         """Issue only for the exact root-authenticated assignment operation ID."""
-        config = self.root_dispatch_issuer
-        if not isinstance(config, dict) or config.get("enabled") is not True:
-            raise StoreError("root dispatch issuer is disabled or unconfigured", kind="authorization")
+        config = self._current_root_dispatch_issuer()
         policy = self.assignment_policy
         if (policy is None or self.assignment_policy_provider is None
                 or not callable(self.service_generation_provider) or not self._probe_consumed
@@ -206,6 +230,7 @@ class Supervisor:
             snapshot["authority_expires_at"], timezone.utc,
         ).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
         def authority_provider(intent: dict) -> dict:
+            self._current_root_dispatch_issuer()
             latest_policy, latest_digest = validate_policy(self.assignment_policy_provider())
             latest_generation = self.service_generation_provider()
             if (latest_policy != intent["policy"] or latest_digest != intent["policy_sha256"]
@@ -214,6 +239,7 @@ class Supervisor:
             return {"policy": latest_policy, "policy_sha256": latest_digest,
                     "generation": latest_generation, "run_id": self.run_id}
         def before_sign(intent: dict) -> bool:
+            self._current_root_dispatch_issuer()
             latest_policy, latest_digest = validate_policy(self.assignment_policy_provider())
             latest_generation = self.service_generation_provider()
             if (latest_policy != current_policy or latest_digest != policy_sha256
@@ -574,6 +600,8 @@ class Supervisor:
         binding = self.store.dispatch_key_class_binding(key_id)
         issuer = self.root_dispatch_issuer if isinstance(self.root_dispatch_issuer, dict) else None
         delegated_key = issuer is not None and key_id == issuer.get("key_id")
+        if delegated_key:
+            issuer = self._current_root_dispatch_issuer()
         if binding is not None and binding.get("key_class") == "DELEGATED_V1" and not delegated_key:
             raise StoreError("delegated dispatch key cannot fall back to the legacy trust registry",
                              kind="authorization")
@@ -622,6 +650,7 @@ class Supervisor:
                                  kind="authorization")
             def authority_guard() -> bool:
                 try:
+                    self._current_root_dispatch_issuer()
                     latest_policy, latest_digest = validate_policy(self.assignment_policy_provider())
                     now_utc = datetime.now(timezone.utc)
                     valid_from = datetime.strptime(
@@ -696,7 +725,7 @@ class Supervisor:
             raise StoreError("dispatch intent lacks signed instruction provenance", kind="authorization")
         from .dispatch_instruction import verify_dispatch_instruction
         if intent.get("key_class") == "DELEGATED_V1":
-            issuer = self.root_dispatch_issuer
+            issuer = self._current_root_dispatch_issuer()
             if (not isinstance(issuer, dict) or issuer.get("enabled") is not True
                     or intent.get("key_id") != issuer.get("key_id")
                     or intent.get("key_fingerprint") != issuer.get("public_key_fingerprint")):
@@ -846,6 +875,7 @@ class Supervisor:
     def _dispatch_authority_guard(self, proof: Any, generation: str) -> Callable[[], bool]:
         def check() -> bool:
             try:
+                self._current_root_dispatch_issuer()
                 from .assignment_basis import validate_policy
                 current_policy, digest = validate_policy(self.assignment_policy_provider())
                 now_utc = datetime.now(timezone.utc)
@@ -869,7 +899,7 @@ class Supervisor:
         target = self.store.dispatch_issuance_target_for_grant(grant)
         if target is None:
             return None
-        issuer = self.root_dispatch_issuer
+        issuer = self._current_root_dispatch_issuer()
         if (not isinstance(issuer, dict) or issuer.get("enabled") is not True
                 or target["key_id"] != issuer.get("key_id")
                 or target["key_fingerprint"] != issuer.get("public_key_fingerprint")):
