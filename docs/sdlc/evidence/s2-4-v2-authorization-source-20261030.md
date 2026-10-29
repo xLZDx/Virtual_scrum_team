@@ -107,3 +107,15 @@ ordered backlog permits them.
 - The approval permits preparation of a separately gated issuer-integration task. It does not
   authorize privileged signing implementation, key/config provisioning, service activation,
   dispatch, Store migration, E5 replacement, runtime acceptance, or S2 closure.
+
+## Continuation correction — change 0591
+
+The prior paragraphs describe this V2-specific review scope. They must not be used to claim that
+an existing issuer implementation is absent: I01 bounded integrated SOURCE was authorized under
+request `c7a8e23e-91f5-489c-a096-c813d84c3b12`, and the existing root V1 issuer is present in the
+bounded source/test revision approved at `c97836029a5d94ff84dee5cb15d1757efd5525c3` (request
+`8fc2e0ba-07c9-49fc-b6b0-fac897e4408b`). The separate V2 validator/comparison slice was approved
+at `aa349632` and delivered through `e09c78b`. No new V2 signing integration becomes a mandatory
+S2 prerequisite merely because preparation is permitted. The current task queue in backlog.md
+supersedes this record's earlier next-proposal recommendation. Production configuration/key
+provenance, current E5 and real runtime remain separately unverified under REQ-005.

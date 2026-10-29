@@ -1,5 +1,9 @@
 # Backlog
 
+Current S2 execution order and accepted-source/runtime distinction: `docs/sdlc/backlog.md`,
+"Current execution checkpoint — 2026-10-30". Dated entries below are historical and do not
+reopen subsequently accepted issuer source or repeat already completed task pushes.
+
 ## S2 — signed dispatch-instruction provenance and owner relay (source implemented; runtime open)
 
 GPT-PM's correlated adjudication selects a purpose-specific, operator-authorized signed envelope
