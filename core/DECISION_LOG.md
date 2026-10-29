@@ -1374,3 +1374,12 @@ the callback to the runtime verifier or add signing, persistence, concurrency/cr
 admission, delivery, key access, or activation. The exact source change and remaining acceptance
 are recorded in `docs/changes/0553-s2-pure-dispatch-issuance-contract.md`. Tests, checks, build,
 runtime and independent review remain NOT_RUN.
+
+## 2026-10-29 — Correct the root issuer contract after actual design review (change0554)
+
+The root-Supervisor/v1 proposal now requires verified signed completion and a single-connection
+current delegated predicate through grant persistence/replay and runner claim/reservation. Actual
+database/security rechecks at e44f48dc found both design MAJORs resolved and recommended bounded
+SOURCE implementation. This is a design recommendation pending GPT-PM I01 adjudication, not
+production signing, provisioning, runtime or sprint approval. Existing S2 remains phase7 hard;
+no next/pm-review/self-approval was executed. See change0554 and its linked recheck evidence.

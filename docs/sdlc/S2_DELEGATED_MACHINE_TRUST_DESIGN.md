@@ -12,6 +12,19 @@ external-record schema and its disconnected validator below are retained as cand
 they are not an active Supervisor contract. The upstream writer and production issuer remain
 unimplemented and must not be claimed as accepted.
 
+**Root dispatch issuer supersession (bounded):** for the dispatch-issuance choice and crash-state
+contract only, the later GPT-PM ruling `MODIFY` (request
+`8b6b69f3-9b39-491b-a948-03c497870b5d`, reply
+`b1728c67-3bc2-4db5-9fbf-6b359a73ad82`) prefers the existing root Supervisor and unchanged
+signed v1 instruction format. Use
+[`S2_ROOT_BOUND_DISPATCH_ISSUER_DESIGN.md`](S2_ROOT_BOUND_DISPATCH_ISSUER_DESIGN.md) for the
+corrected append-only crash-consistent issuance protocol and explicit delegated-key enforcement.
+This supersedes the separate issuer daemon/v2 dispatch-format proposal below only. It does not
+supersede the selected authenticated assignment-basis design, authorize private-key signing,
+provisioning or activation, close `S2-MACHINE-ISSUER-I01`, or change the existing human E5
+contract. The daemon/v2 material below is retained as historical candidate context, not the active
+dispatch design.
+
 ## Decision and boundary
 
 This candidate proposes two separately versioned, purpose-bound machine contracts: one for issuance of an already-authorized S2 assignment and one for collecting E5 host-policy observations. The operator remains the sole human delegation authority. The repository has no established operator assignment-delegation signing purpose or trust configuration for this contract. A policy could become effective only after a new, purpose-separated operator authority key and root-owned trust configuration are explicitly provisioned and the operator signs its canonical bytes. Codex may author the candidate and compute its digest, but may not sign it, claim the operator approved it, or provision a key. The signed delegation states machine identity, exact role, scope, policy digest, validity, and revocation identity.

@@ -1081,3 +1081,15 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
   require the runtime adapter to bind the verifier to the trusted key registry before it can
   satisfy completion acceptance.
 - Verification: source only; tests, checks, build and runtime remain NOT_RUN.
+
+## 2026-10-29 — Recheck authority at the transaction which creates permission (change0554)
+
+- Kind: SHORTCOMING caught by independent design review.
+- Facts: the earlier issuer proposal validated structure without mandatory cryptographic completion
+  proof, and described delegated provenance and grant basis in separate snapshots. Both gaps were
+  found before integrated signing source or activation.
+- Rule: bind exact verified bytes to the root signer, and check current authority on the connection
+  which persists the permission; a delivered hint or historical replay cannot replace that check.
+- Correction: pure mandatory verifier was committed0553; the design now specifies grant replay and
+  runner claim/reservation boundaries. Database/security targeted rechecks found no remaining
+  design-level major finding. Implementation, final tests and runtime evidence remain separate.
