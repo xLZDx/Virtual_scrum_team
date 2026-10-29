@@ -27,14 +27,17 @@ _POLICY_FIELDS = {
     "schema", "policy_id", "repository", "sprint_id", "source_head", "manifest_sha256",
     "owner_principal", "allowed_assignments", "bootstrap_peer", "issuer_peer",
     "allowed_bootstrap_operations", "maximum_handoff_ttl_seconds", "valid_from_utc",
-    "expires_at_utc", "revocation_id",
+    "expires_at_utc", "revocation_id", "runner_id", "owner_ttl_seconds", "lease_ttl_seconds",
 }
-_ASSIGNMENT_FIELDS = {"story_id", "task_id", "task_manifest_sha256", "test_run_slots"}
+_ASSIGNMENT_FIELDS = {
+    "story_id", "task_id", "project_id", "phase", "task_manifest_sha256", "test_run_slots",
+}
 _PEER_FIELDS = {"role", "uid", "gid", "cgroup"}
 _HANDOFF_FIELDS = {
     "schema", "assignment_operation_id", "policy_id", "policy_sha256", "repository",
     "sprint_id", "source_head", "manifest_sha256", "bootstrap_peer", "assignment_principal",
-    "bootstrap_request", "task_id", "story_id", "task_manifest_sha256", "slot", "attempt",
+    "bootstrap_request", "task_id", "story_id", "project_id", "phase",
+    "task_manifest_sha256", "slot", "attempt",
     "epoch", "lease_id", "runner_id", "run_id", "service_generation", "probe_sha256", "issued_at_utc",
     "expires_at_utc", "handoff_sha256",
 }
@@ -43,6 +46,7 @@ _BOOTSTRAP_REQUEST_FIELDS = {
     "schema", "request_id", "story_id", "task_id", "task_manifest", "slot", "attempt", "run_id",
 }
 _REQUEST_ID = re.compile(r"^[0-9a-f]{32}$")
+MAX_ASSIGNMENT_TTL_SECONDS = 3600
 _RESPONSE_FIELDS = {
     "schema", "assignment_operation_id", "handoff_sha256", "policy_id", "policy_sha256",
     "repository", "sprint_id", "source_head", "manifest_sha256", "task_id", "story_id",
@@ -106,19 +110,34 @@ def validate_policy(value: Any) -> tuple[dict, str]:
     _text(policy["source_head"], "source_head", pattern=_HEAD)
     _text(policy["manifest_sha256"], "manifest_sha256", pattern=_SHA)
     _text(policy["revocation_id"], "revocation_id", pattern=_ID)
+    _text(policy["runner_id"], "runner_id", pattern=_ID)
+    for field in ("owner_ttl_seconds", "lease_ttl_seconds"):
+        ttl = policy[field]
+        if type(ttl) is not int or ttl < 1 or ttl > MAX_ASSIGNMENT_TTL_SECONDS:
+            raise ContractError(f"{field} must be an integer in [1, {MAX_ASSIGNMENT_TTL_SECONDS}]")
+    if policy["lease_ttl_seconds"] > policy["owner_ttl_seconds"]:
+        raise ContractError("lease_ttl_seconds cannot exceed owner_ttl_seconds")
     assignments = policy["allowed_assignments"]
     if not isinstance(assignments, list) or not assignments:
         raise ContractError("assignment policy must contain a non-empty assignment allowlist")
     seen: set[tuple[str, str]] = set()
+    seen_story_ids: set[str] = set()
+    seen_task_ids: set[str] = set()
     for entry in assignments:
         entry = _object(entry, _ASSIGNMENT_FIELDS, "allowed assignment")
         story = _text(entry["story_id"], "story_id", pattern=_ID)
         task = _text(entry["task_id"], "task_id", pattern=_ID)
+        _text(entry["project_id"], "project_id", pattern=_ID)
+        _integer(entry["phase"], "phase", 1, 10)
         _text(entry["task_manifest_sha256"], "task_manifest_sha256", pattern=_SHA)
         key = (story, task)
         if key in seen:
             raise ContractError("assignment policy contains a duplicate story/task pair")
+        if story in seen_story_ids or task in seen_task_ids:
+            raise ContractError("assignment policy reuses a story or task identifier")
         seen.add(key)
+        seen_story_ids.add(story)
+        seen_task_ids.add(task)
         slots = entry["test_run_slots"]
         if (not isinstance(slots, list) or not slots or any(
                 not isinstance(slot, str) or not _ID.fullmatch(slot) for slot in slots)
@@ -126,7 +145,7 @@ def validate_policy(value: Any) -> tuple[dict, str]:
             raise ContractError("assignment slots must be unique non-empty TestRun slot names")
     bootstrap = _peer(policy["bootstrap_peer"], "assignment_bootstrap")
     issuer = _peer(policy["issuer_peer"], "delegated_issuer")
-    if ((bootstrap["uid"], bootstrap["gid"]) == (issuer["uid"], issuer["gid"])
+    if (bootstrap["uid"] == issuer["uid"] or bootstrap["gid"] == issuer["gid"]
             or bootstrap["cgroup"] == issuer["cgroup"]):
         raise ContractError("assignment peers must have distinct process identities")
     expected_ops = ["open_story", "register_task", "acquire_epoch", "acquire_lease"]
@@ -157,6 +176,8 @@ def validate_bootstrap_request(value: Any, *, policy: dict) -> dict:
     task_id = _text(request["task_id"], "task_id", pattern=_ID)
     slot = _text(request["slot"], "slot", pattern=_ID)
     _integer(request["attempt"], "attempt", 1)
+    if request["attempt"] != 1:
+        raise ContractError("fresh assignment bootstrap only permits attempt 1")
     run_id = _text(request["run_id"], "run_id", pattern=_ID)
     manifest = validate_task_manifest(request["task_manifest"])
     if (manifest["task_id"] != task_id or manifest["story_id"] != story_id
@@ -166,6 +187,8 @@ def validate_bootstrap_request(value: Any, *, policy: dict) -> dict:
                if entry["task_id"] == task_id and entry["story_id"] == story_id]
     if len(allowed) != 1 or allowed[0]["task_manifest_sha256"] != manifest_sha256(manifest):
         raise ContractError("bootstrap request task is outside the root assignment allowlist")
+    if manifest["project_id"] != allowed[0]["project_id"] or manifest["phase"] != allowed[0]["phase"]:
+        raise ContractError("bootstrap request project or phase differs from root assignment")
     test_run_slots = {
         entry["slot"] for entry in manifest["required_receipts"]
         if entry["receipt_type"] == "TestRun"
@@ -218,6 +241,8 @@ def validate_handoff(value: Any, *, policy: dict, policy_sha256: str, now: datet
     bootstrap_request = validate_bootstrap_request(handoff["bootstrap_request"], policy=policy)
     _text(handoff["task_id"], "task_id", pattern=_ID)
     _text(handoff["story_id"], "story_id", pattern=_ID)
+    _text(handoff["project_id"], "project_id", pattern=_ID)
+    _integer(handoff["phase"], "phase", 1, 10)
     _text(handoff["slot"], "slot", pattern=_ID)
     _text(handoff["runner_id"], "runner_id", pattern=_ID)
     _text(handoff["run_id"], "run_id", pattern=_ID)
@@ -227,6 +252,9 @@ def validate_handoff(value: Any, *, policy: dict, policy_sha256: str, now: datet
     _integer(handoff["lease_id"], "lease_id", 1)
     if (bootstrap_request["task_id"] != handoff["task_id"]
             or bootstrap_request["story_id"] != handoff["story_id"]
+            or bootstrap_request["task_manifest"]["project_id"] != handoff["project_id"]
+            or bootstrap_request["task_manifest"]["phase"] != handoff["phase"]
+            or handoff["runner_id"] != policy["runner_id"]
             or manifest_sha256(bootstrap_request["task_manifest"]) != handoff["task_manifest_sha256"]
             or bootstrap_request["slot"] != handoff["slot"]
             or bootstrap_request["attempt"] != handoff["attempt"]
@@ -236,7 +264,9 @@ def validate_handoff(value: Any, *, policy: dict, policy_sha256: str, now: datet
         raise ContractError("assignment handoff differs from its canonical bootstrap request identity")
     allowed = [entry for entry in policy["allowed_assignments"]
                if entry["task_id"] == handoff["task_id"] and entry["story_id"] == handoff["story_id"]]
-    if len(allowed) != 1 or allowed[0]["task_manifest_sha256"] != handoff["task_manifest_sha256"]:
+    if (len(allowed) != 1 or allowed[0]["task_manifest_sha256"] != handoff["task_manifest_sha256"]
+            or allowed[0]["project_id"] != handoff["project_id"]
+            or allowed[0]["phase"] != handoff["phase"]):
         raise ContractError("assignment handoff is outside the root assignment allowlist")
     if handoff["slot"] not in allowed[0]["test_run_slots"]:
         raise ContractError("assignment handoff slot is outside the root assignment allowlist")

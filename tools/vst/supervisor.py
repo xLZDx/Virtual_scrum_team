@@ -177,6 +177,42 @@ class Supervisor:
             service_generation=generation,
         )
 
+    def bootstrap_assignment(self, request: dict, *, peer: Any) -> dict:
+        """Create one exact fresh assignment for the kernel-authenticated bootstrap peer."""
+        from .assignment_basis import validate_bootstrap_request, validate_policy
+
+        policy = self.assignment_policy
+        if (policy is None or self.assignment_policy_sha256 is None
+                or self.assignment_policy_provider is None
+                or self.service_generation_provider is None
+                or not isinstance(self.run_id, str) or not self.run_id.strip()
+                or not self._probe_consumed):
+            raise StoreError("authenticated assignment bootstrap is not provisioned", kind="authorization")
+        current_policy, current_digest = validate_policy(self.assignment_policy_provider())
+        if current_digest != self.assignment_policy_sha256 or current_policy != policy:
+            raise StoreError("root assignment policy changed or was revoked", kind="authorization")
+        if self.lifecycle_state != "READY" or self.breaker_state != "CLOSED":
+            raise StoreError("Supervisor is not available for assignment bootstrap", kind="provider")
+        peer_policy = {
+            "role": getattr(peer, "role", None), "uid": getattr(peer, "uid", None),
+            "gid": getattr(peer, "gid", None), "cgroup": getattr(peer, "cgroup", None),
+        }
+        if (peer_policy != policy["bootstrap_peer"]
+                or getattr(peer, "operations", None) != frozenset({"bootstrap_assignment"})):
+            raise StoreError("authenticated peer is not the root-configured assignment bootstrap role",
+                             kind="authorization")
+        validate_bootstrap_request(request, policy=policy)
+        generation = self.service_generation_provider()
+        if not isinstance(generation, str) or not generation:
+            raise StoreError("active service generation is unavailable", kind="integrity")
+        return self.store.bootstrap_assignment(
+            request, policy=policy, policy_sha256=self.assignment_policy_sha256,
+            bootstrap_peer=peer_policy, expected_run_id=self.run_id,
+            active_service_generation=generation,
+            policy_provider=self.assignment_policy_provider,
+            generation_provider=self.service_generation_provider,
+        )
+
     def _apply_reconciled_state(self, action: str, completed: bool) -> None:
         states = {
             ("start", True): "RUNNING", ("start", False): "READY",

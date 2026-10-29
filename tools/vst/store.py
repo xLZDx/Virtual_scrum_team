@@ -1636,15 +1636,24 @@ class Store:
         _need_str(project_id, "project_id")
         _need_int(phase, "phase", 1, 10)
         with self._tx() as conn:
-            if conn.execute(
-                "SELECT 1 FROM stories WHERE story_id = ?", (story_id,)
-            ).fetchone():
-                raise StoreError(f"story {story_id!r} already exists", kind="story")
-            conn.execute(
-                "INSERT INTO stories (story_id, project_id, phase, epoch, owner, state) "
-                "VALUES (?, ?, ?, 1, NULL, 'OPEN')",
-                (story_id, project_id, phase),
-            )
+            return self._open_story_locked(conn, story_id, project_id, phase)
+
+    def _open_story_locked(
+        self, conn: sqlite3.Connection, story_id: str, project_id: str, phase: int,
+    ) -> int:
+        """Create a new unowned story on the caller's transaction."""
+        _need_str(story_id, "story_id")
+        _need_str(project_id, "project_id")
+        _need_int(phase, "phase", 1, 10)
+        if conn.execute(
+            "SELECT 1 FROM stories WHERE story_id = ?", (story_id,)
+        ).fetchone():
+            raise StoreError(f"story {story_id!r} already exists", kind="story")
+        conn.execute(
+            "INSERT INTO stories (story_id, project_id, phase, epoch, owner, state) "
+            "VALUES (?, ?, ?, 1, NULL, 'OPEN')",
+            (story_id, project_id, phase),
+        )
         return 1
 
     def current_epoch(self, story_id: str) -> int:
@@ -1673,6 +1682,7 @@ class Store:
         ttl: float,
         *,
         expected_epoch: int | None = None,
+        reap_expired: bool = True,
     ) -> int:
         """Existing epoch transition, shared by direct and idempotent APIs."""
         now = self._now()
@@ -1685,9 +1695,10 @@ class Store:
                 f"story {story_id!r} is owned by live owner {story['owner']!r}",
                 kind="epoch",
             )
-        # Reap expired leases first so they become EXPIRED (markable as
-        # WORKER_LOST), not FENCED, before the still-live ones are fenced.
-        self._reap_locked(conn, now)
+        # Reap on established public transitions. A fresh-only caller may
+        # disable this because its precondition proves the story has no history.
+        if reap_expired:
+            self._reap_locked(conn, now)
         new_epoch = int(story["epoch"]) + 1
         if new_epoch > MAX_COUNTER:
             raise StoreError("epoch counter exhausted", kind="epoch")
@@ -1945,36 +1956,47 @@ class Store:
         valid = validate_task_manifest(manifest)
         digest = manifest_sha256(valid)
         with self._tx() as conn:
-            story = self._story_row(conn, valid["story_id"])
-            if story["project_id"] != valid["project_id"]:
-                raise StoreError("manifest project_id differs from the story", kind="story")
-            existing = conn.execute(
-                "SELECT manifest_sha256 FROM tasks WHERE task_id = ?", (valid["task_id"],)
-            ).fetchone()
-            if existing is not None:
-                if existing["manifest_sha256"] != digest:
-                    raise StoreError(
-                        f"task {valid['task_id']!r} is registered with a different manifest",
-                        kind="manifest",
-                    )
-            else:
-                _need_int(valid["cost_cap"], "cost_cap", 0, MAX_BUDGET)
-                conn.execute(
-                    "INSERT INTO tasks (task_id, story_id, manifest_sha256, retry_cap, manifest) "
-                    "VALUES (?, ?, ?, ?, ?)",
-                    (
-                        valid["task_id"], valid["story_id"], digest,
-                        valid["retry_cap"], canonical_bytes(valid).decode("utf-8"),
-                    ),
+            return self._register_task_locked(conn, valid, digest)
+
+    def _register_task_locked(
+        self, conn: sqlite3.Connection, valid: dict, digest: str | None = None,
+    ) -> str:
+        """Register a validated task and seed its exact manifest budget in one transaction."""
+        valid = validate_task_manifest(valid)
+        actual_digest = manifest_sha256(valid)
+        if digest is not None and digest != actual_digest:
+            raise StoreError("task manifest digest differs from its canonical content", kind="manifest")
+        digest = actual_digest
+        story = self._story_row(conn, valid["story_id"])
+        if story["project_id"] != valid["project_id"]:
+            raise StoreError("manifest project_id differs from the story", kind="story")
+        existing = conn.execute(
+            "SELECT manifest_sha256 FROM tasks WHERE task_id = ?", (valid["task_id"],)
+        ).fetchone()
+        if existing is not None:
+            if existing["manifest_sha256"] != digest:
+                raise StoreError(
+                    f"task {valid['task_id']!r} is registered with a different manifest",
+                    kind="manifest",
                 )
-                conn.execute(
-                    "INSERT INTO budget (task_id, cap, spent) VALUES (?, ?, 0)",
-                    (valid["task_id"], valid["cost_cap"]),
-                )
-                self._record_event_locked(
-                    conn, valid["task_id"], "store", "TASK_REGISTERED",
-                    {"manifest_sha256": digest, "story_id": valid["story_id"]},
-                )
+        else:
+            _need_int(valid["cost_cap"], "cost_cap", 0, MAX_BUDGET)
+            conn.execute(
+                "INSERT INTO tasks (task_id, story_id, manifest_sha256, retry_cap, manifest) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (
+                    valid["task_id"], valid["story_id"], digest,
+                    valid["retry_cap"], canonical_bytes(valid).decode("utf-8"),
+                ),
+            )
+            conn.execute(
+                "INSERT INTO budget (task_id, cap, spent) VALUES (?, ?, 0)",
+                (valid["task_id"], valid["cost_cap"]),
+            )
+            self._record_event_locked(
+                conn, valid["task_id"], "store", "TASK_REGISTERED",
+                {"manifest_sha256": digest, "story_id": valid["story_id"]},
+            )
         return digest
 
     def get_manifest(self, task_id: str) -> dict:
@@ -2309,6 +2331,300 @@ class Store:
                 "must be marked by supervisor_reap_and_mark first",
                 kind="lease",
             )
+
+    def _acquire_initial_assignment_lease_locked(
+        self, conn: sqlite3.Connection, *, task_id: str, story_id: str, worker_id: str,
+        epoch: int, ttl_sec: float, expected_manifest_sha256: str, now: float,
+    ) -> tuple[int, float]:
+        """Create only a proven fresh attempt-1 lease, never writing retry/budget markers."""
+        story = self._story_row(conn, story_id)
+        task = self._task_row(conn, task_id)
+        if (task["story_id"] != story_id or task["manifest_sha256"] != expected_manifest_sha256
+                or story["state"] != "OWNED" or story["owner"] != "Codex"
+                or int(story["epoch"]) != epoch or story["owner_expires_at"] is None
+                or float(story["owner_expires_at"]) <= now):
+            raise StoreError("fresh assignment lost its task, owner, or epoch fence", kind="epoch")
+        if conn.execute(
+            "SELECT 1 FROM leases WHERE task_id = ? OR story_id = ?", (task_id, story_id),
+        ).fetchone() is not None:
+            raise StoreError("fresh assignment already has lease history", kind="lease")
+        if conn.execute("SELECT 1 FROM receipts WHERE task_id = ?", (task_id,)).fetchone() is not None:
+            raise StoreError("fresh assignment already has receipt history", kind="lease")
+        if conn.execute("SELECT 1 FROM events WHERE task_id = ? AND kind IN "
+                        "('RETRY_EXHAUSTED', 'BUDGET_EXCEEDED') LIMIT 1", (task_id,)).fetchone():
+            raise StoreError("fresh assignment already has a terminal marker", kind="budget")
+        budget = conn.execute(
+            "SELECT cap, spent FROM budget WHERE task_id = ?", (task_id,),
+        ).fetchone()
+        manifest = validate_task_manifest(json.loads(task["manifest"]))
+        if (budget is None or int(budget["cap"]) != manifest["cost_cap"]
+                or int(budget["spent"]) != 0):
+            raise StoreError("fresh assignment budget does not match its pinned manifest", kind="budget")
+        prior = conn.execute(
+            "SELECT 1 FROM leases WHERE task_id = ? OR story_id = ? ORDER BY attempt DESC LIMIT 1",
+            (task_id, story_id),
+        ).fetchone()
+        if prior is not None or self._terminal_marker(conn, task_id) is not None:
+            raise StoreError("fresh assignment has prior lease or terminal history", kind="lease")
+        if self._budget_block_locked(conn, task_id) is not None or self._retry_exhausted(conn, task):
+            raise StoreError("fresh assignment proof does not exclude retry or budget marker branches",
+                             kind="integrity")
+        free_slot = conn.execute(
+            "SELECT slot_no FROM slots WHERE lease_id IS NULL ORDER BY slot_no LIMIT 1",
+        ).fetchone()
+        if free_slot is None:
+            raise StoreError("no free slot for fresh assignment", kind="slot")
+        lease_expires_at = now + _need_ttl(ttl_sec)
+        cursor = conn.execute(
+            "INSERT INTO leases (task_id, story_id, attempt, worker_id, epoch, "
+            "expires_at, status, wrote, marked) VALUES (?, ?, 1, ?, ?, ?, 'LIVE', 0, 0)",
+            (task_id, story_id, worker_id, epoch, lease_expires_at),
+        )
+        lease_id = int(cursor.lastrowid)
+        claimed = conn.execute(
+            "UPDATE slots SET lease_id = ?, expires_at = ? WHERE slot_no = ? AND lease_id IS NULL",
+            (lease_id, lease_expires_at, int(free_slot["slot_no"])),
+        )
+        if claimed.rowcount != 1:
+            raise StoreError("fresh assignment slot claim lost", kind="slot")
+        self._record_event_locked(
+            conn, task_id, worker_id, "LEASE_ACQUIRED",
+            {"attempt": 1, "epoch": epoch, "lease_id": lease_id},
+        )
+        return lease_id, lease_expires_at
+
+    def bootstrap_assignment(
+        self, request: dict, *, policy: dict, policy_sha256: str,
+        bootstrap_peer: dict, expected_run_id: str, active_service_generation: str,
+        policy_provider: Callable[[], dict], generation_provider: Callable[[], str],
+    ) -> dict:
+        """Atomically create one fresh policy-pinned assignment and its immutable handoff."""
+        from .assignment_basis import (
+            HANDOFF_SCHEMA, assignment_operation_id,
+            validate_bootstrap_request, validate_handoff, validate_policy,
+        )
+
+        policy, computed_policy_sha256 = validate_policy(policy)
+        if computed_policy_sha256 != policy_sha256:
+            raise StoreError("assignment policy digest differs from its content", kind="authorization")
+        if bootstrap_peer != policy["bootstrap_peer"]:
+            raise StoreError("authenticated bootstrap peer differs from root policy", kind="authorization")
+        if not callable(policy_provider) or not callable(generation_provider):
+            raise StoreError("trusted policy and generation providers are required", kind="authorization")
+        normalized_request = validate_bootstrap_request(request, policy=policy)
+        if normalized_request["run_id"] != expected_run_id:
+            raise StoreError("bootstrap request run differs from current Supervisor run", kind="authorization")
+        _need_str(expected_run_id, "expected_run_id")
+        _need_str(active_service_generation, "active_service_generation")
+        op_key = assignment_operation_id(normalized_request, policy_sha256=policy_sha256)
+        payload = {
+            "request": normalized_request, "bootstrap_peer": bootstrap_peer,
+            "policy_sha256": policy_sha256,
+        }
+        if not self.reconciliation_complete:
+            raise StoreError("Store reconciliation is required before assignment bootstrap", kind="integrity")
+
+        def create(conn: sqlite3.Connection) -> dict:
+            self._verify_event_chain_locked(conn)
+            self._verify_supervisor_records(conn)
+            now = self._now()
+            wall_now = datetime.fromtimestamp(now, timezone.utc)
+            valid_from = datetime.strptime(policy["valid_from_utc"], "%Y-%m-%dT%H:%M:%SZ").replace(
+                tzinfo=timezone.utc,
+            )
+            policy_expiry = datetime.strptime(policy["expires_at_utc"], "%Y-%m-%dT%H:%M:%SZ").replace(
+                tzinfo=timezone.utc,
+            )
+            if not valid_from <= wall_now < policy_expiry:
+                raise StoreError("assignment policy is not currently valid", kind="authorization")
+            if generation_provider() != active_service_generation:
+                raise StoreError("Supervisor generation changed before assignment commit", kind="integrity")
+            probe = conn.execute(
+                "SELECT probe_sha256 FROM supervisor_probes WHERE run_id = ?",
+                (expected_run_id,),
+            ).fetchone()
+            if probe is None:
+                raise StoreError("current Supervisor run has no consumed preflight", kind="probe")
+
+            story_id = normalized_request["story_id"]
+            task_id = normalized_request["task_id"]
+            manifest = normalized_request["task_manifest"]
+            assignment = next(
+                item for item in policy["allowed_assignments"]
+                if item["story_id"] == story_id and item["task_id"] == task_id
+            )
+            digest = manifest_sha256(manifest)
+            if (assignment["task_manifest_sha256"] != digest
+                    or assignment["project_id"] != manifest["project_id"]
+                    or assignment["phase"] != manifest["phase"]):
+                raise StoreError("requested assignment differs from the root policy tuple",
+                                 kind="authorization")
+            if (conn.execute("SELECT 1 FROM stories WHERE story_id = ?", (story_id,)).fetchone()
+                    or conn.execute("SELECT 1 FROM tasks WHERE task_id = ?", (task_id,)).fetchone()):
+                raise StoreError("bootstrap only creates absent story and task rows", kind="story")
+            if (conn.execute("SELECT 1 FROM leases WHERE task_id = ? OR story_id = ?",
+                             (task_id, story_id)).fetchone()
+                    or conn.execute("SELECT 1 FROM receipts WHERE task_id = ?", (task_id,)).fetchone()
+                    or conn.execute("SELECT 1 FROM events WHERE task_id IN (?, ?) LIMIT 1",
+                                    (story_id, task_id)).fetchone()):
+                raise StoreError("bootstrap refuses existing assignment history", kind="lease")
+            if (conn.execute("SELECT 1 FROM budget WHERE task_id = ?", (task_id,)).fetchone()
+                    or self._terminal_marker(conn, task_id) is not None):
+                raise StoreError("bootstrap refuses existing budget or terminal history", kind="budget")
+            for operation_row in conn.execute(
+                    "SELECT result FROM supervisor_operations WHERE operation = ?",
+                    (HANDOFF_SCHEMA,)).fetchall():
+                try:
+                    prior_handoff = json.loads(operation_row["result"])
+                except (TypeError, ValueError) as exc:
+                    raise StoreError("prior authenticated assignment result is malformed",
+                                     kind="integrity") from exc
+                if (not isinstance(prior_handoff, dict)
+                        or prior_handoff.get("task_id") == task_id
+                        or prior_handoff.get("story_id") == story_id):
+                    raise StoreError("bootstrap refuses existing assignment handoff history",
+                                     kind="story")
+
+            if self._open_story_locked(conn, story_id, manifest["project_id"], manifest["phase"]) != 1:
+                raise StoreError("new assignment story did not start at epoch 1", kind="integrity")
+            registered_digest = self._register_task_locked(conn, manifest, digest)
+            epoch = self._acquire_epoch_locked(
+                conn, story_id, policy["owner_principal"], policy["owner_ttl_seconds"],
+                expected_epoch=1, reap_expired=False,
+            )
+            if epoch != 2 or registered_digest != digest:
+                raise StoreError("fresh assignment epoch or manifest invariant failed", kind="integrity")
+            lease_id, lease_expiry = self._acquire_initial_assignment_lease_locked(
+                conn, task_id=task_id, story_id=story_id, worker_id=policy["runner_id"],
+                epoch=epoch, ttl_sec=policy["lease_ttl_seconds"],
+                expected_manifest_sha256=digest, now=self._now(),
+            )
+            story = self._story_row(conn, story_id)
+            if (story["owner_expires_at"] is None
+                    or float(story["owner_expires_at"]) <= self._now()):
+                raise StoreError("fresh assignment owner authority expired before handoff",
+                                 kind="epoch")
+
+            def canonical_second(timestamp: float) -> datetime:
+                return datetime.fromtimestamp(timestamp, timezone.utc).replace(microsecond=0)
+
+            issued = canonical_second(self._now())
+            maximum_handoff_expiry = issued.timestamp() + policy["maximum_handoff_ttl_seconds"]
+            expires = canonical_second(min(
+                maximum_handoff_expiry, policy_expiry.timestamp(),
+                float(story["owner_expires_at"]), lease_expiry,
+            ))
+            if expires <= issued:
+                raise StoreError("fresh assignment has no positive handoff lifetime", kind="lease")
+            current_policy, current_policy_sha256 = validate_policy(policy_provider())
+            if current_policy_sha256 != policy_sha256 or current_policy != policy:
+                raise StoreError("root assignment policy changed before assignment commit",
+                                 kind="authorization")
+            if generation_provider() != active_service_generation:
+                raise StoreError("Supervisor generation changed before assignment commit",
+                                 kind="integrity")
+            current_probe = conn.execute(
+                "SELECT probe_sha256 FROM supervisor_probes WHERE run_id = ?",
+                (expected_run_id,),
+            ).fetchone()
+            if current_probe is None or current_probe["probe_sha256"] != probe["probe_sha256"]:
+                raise StoreError("current preflight changed before assignment commit", kind="probe")
+            result = {
+                "schema": HANDOFF_SCHEMA,
+                "assignment_operation_id": op_key,
+                "policy_id": policy["policy_id"], "policy_sha256": policy_sha256,
+                "repository": policy["repository"], "sprint_id": policy["sprint_id"],
+                "source_head": policy["source_head"], "manifest_sha256": policy["manifest_sha256"],
+                "bootstrap_peer": bootstrap_peer, "assignment_principal": policy["owner_principal"],
+                "bootstrap_request": normalized_request,
+                "task_id": task_id, "story_id": story_id, "project_id": manifest["project_id"],
+                "phase": manifest["phase"], "task_manifest_sha256": digest,
+                "slot": normalized_request["slot"], "attempt": 1, "epoch": epoch,
+                "lease_id": lease_id, "runner_id": policy["runner_id"],
+                "run_id": expected_run_id, "service_generation": active_service_generation,
+                "probe_sha256": probe["probe_sha256"],
+                "issued_at_utc": issued.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "expires_at_utc": expires.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            }
+            result["handoff_sha256"] = hashlib.sha256(canonical_bytes(result)).hexdigest()
+            return result
+
+        def before_commit(conn: sqlite3.Connection, result: dict) -> None:
+            self._verify_event_chain_locked(conn, verify_external_anchor=False)
+            self._verify_supervisor_records(conn)
+            current_policy, current_policy_sha256 = validate_policy(policy_provider())
+            if current_policy_sha256 != policy_sha256 or current_policy != policy:
+                raise StoreError("root assignment policy changed before assignment commit",
+                                 kind="authorization")
+            if generation_provider() != active_service_generation:
+                raise StoreError("Supervisor generation changed before assignment commit",
+                                 kind="integrity")
+            handoff = validate_handoff(
+                result, policy=policy, policy_sha256=policy_sha256,
+                now=datetime.fromtimestamp(self._now(), timezone.utc),
+            )
+            if (handoff["run_id"] != expected_run_id
+                    or handoff["service_generation"] != active_service_generation):
+                raise StoreError("fresh assignment trusted state changed before commit",
+                                 kind="integrity")
+            current_probe = conn.execute(
+                "SELECT probe_sha256 FROM supervisor_probes WHERE run_id = ?",
+                (expected_run_id,),
+            ).fetchone()
+            if current_probe is None or current_probe["probe_sha256"] != handoff["probe_sha256"]:
+                raise StoreError("current preflight changed before assignment commit", kind="probe")
+            story = self._story_row(conn, handoff["story_id"])
+            lease = conn.execute(
+                "SELECT lease_id, epoch, status, expires_at, worker_id FROM leases "
+                "WHERE task_id = ? AND attempt = 1",
+                (handoff["task_id"],),
+            ).fetchone()
+            if (story["owner"] != policy["owner_principal"]
+                    or int(story["epoch"]) != handoff["epoch"]
+                    or story["owner_expires_at"] is None
+                    or float(story["owner_expires_at"]) <= self._now()
+                    or lease is None or int(lease["lease_id"]) != handoff["lease_id"]
+                    or int(lease["epoch"]) != handoff["epoch"] or lease["status"] != LEASE_LIVE
+                    or lease["worker_id"] != policy["runner_id"]
+                    or float(lease["expires_at"]) <= self._now()):
+                raise StoreError("fresh assignment authority changed before commit", kind="epoch")
+
+        result = self.execute_idempotent(
+            op_key, HANDOFF_SCHEMA, payload, create, before_commit=before_commit,
+        )
+        # Re-read the committed journal so an uncertain anchor or mismatched result is never
+        # reported as success. For an exact replay, use its own issue time to validate history
+        # without treating it as refreshed authority.
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            self._verify_supervisor_records(conn)
+            stored = conn.execute(
+                "SELECT operation, payload_sha256, result FROM supervisor_operations WHERE operation_key = ?",
+                (op_key,),
+            ).fetchone()
+            if (stored is None or stored["operation"] != HANDOFF_SCHEMA
+                    or stored["payload_sha256"] != hashlib.sha256(canonical_bytes(payload)).hexdigest()
+                    or stored["result"] != canonical_bytes(result).decode("utf-8")):
+                raise StoreError("assignment operation result cannot be durably verified", kind="integrity")
+        current_policy, current_policy_sha256 = validate_policy(policy_provider())
+        if current_policy_sha256 != policy_sha256 or current_policy != policy:
+            raise StoreError("root assignment policy changed or was revoked", kind="authorization")
+        if generation_provider() != active_service_generation:
+            raise StoreError("Supervisor generation changed before assignment response", kind="integrity")
+        issued_at = datetime.strptime(result["issued_at_utc"], "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=timezone.utc,
+        )
+        verified = validate_handoff(
+            result, policy=policy, policy_sha256=policy_sha256, now=issued_at,
+        )
+        if verified["payload_sha256"] != stored["payload_sha256"]:
+            raise StoreError("assignment operation payload differs from its authenticated handoff",
+                             kind="integrity")
+        if (verified["run_id"] != expected_run_id
+                or verified["service_generation"] != active_service_generation):
+            raise StoreError("assignment replay belongs to a stale Supervisor run or generation",
+                             kind="integrity")
+        return result
 
     @staticmethod
     def _failed_attempts_locked(conn: sqlite3.Connection, task_id: str) -> int:
@@ -3165,7 +3481,9 @@ class Store:
                     return False
                 raise
 
-    def _verify_event_chain_locked(self, conn: sqlite3.Connection) -> bool:
+    def _verify_event_chain_locked(
+        self, conn: sqlite3.Connection, *, verify_external_anchor: bool = True,
+    ) -> bool:
         """Verify chain and configured external anchor on the caller's snapshot."""
         rows = conn.execute(
             "SELECT ts, task_id, actor, kind, payload, prev_hash, hash "
@@ -3190,7 +3508,7 @@ class Store:
             if exc.kind == "integrity":
                 self._integrity_locked = True
             raise
-        if self._external_anchor is not None:
+        if verify_external_anchor and self._external_anchor is not None:
             try:
                 latest = self._external_anchor.read_latest()
             except AnchorError as exc:
@@ -3631,7 +3949,9 @@ class Store:
             raise
 
     def execute_idempotent(
-        self, operation_key: str, operation: str, payload: Any, effect: Callable[[], Any]
+        self, operation_key: str, operation: str, payload: Any,
+        effect: Callable[[sqlite3.Connection], Any],
+        *, before_commit: Callable[[sqlite3.Connection, Any], None] | None = None,
     ) -> Any:
         """Run an internal Store effect atomically with its idempotency record.
 
@@ -3667,6 +3987,8 @@ class Store:
                     "result_sha256": hashlib.sha256(encoded.encode("utf-8")).hexdigest(),
                 },
             )
+            if before_commit is not None:
+                before_commit(conn, result)
             return result
 
     def lookup_idempotent_operation(

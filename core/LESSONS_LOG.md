@@ -1052,3 +1052,19 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
   checks, build, runtime collection, or activation. One accidental `git diff --check` invocation
   with no output was reported by the implementer; it was not independently reproduced and is not
   verification evidence.
+
+## 2026-10-29 — Preserve source and verification boundaries in S2 batches 0552–0553
+
+- Kind: SUCCESS / scope and evidence reconciliation.
+- Facts: 0552 is authorized fresh-only authenticated bootstrap source; 0553 is pure detached
+  issuance validation source with an injected completion verifier contract. Neither source batch
+  establishes runtime acceptance, test success, key access, signing, persistence, provisioning,
+  or activation. The single accidentally reported `git diff --check` invocation is recorded as
+  a process slip, not a check result or failed product behavior; it was not independently run in
+  this coordination pass.
+- Root cause: implementation and coordination were performed in separate passes, so the initial
+  change records' “No commit was created” wording needed to be scoped to the coding pass before
+  the linked commit workflow.
+- Rule: distinguish the state at the end of implementation from later coordination actions, and
+  do not convert an incidental command or source presence into functional/runtime evidence.
+- Verification: no tests, checks, build, or runtime action was performed in this pass.

@@ -32,6 +32,15 @@ class SupervisorRPCError(RuntimeError):
         self.kind = kind
 
 
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ContractError("Supervisor RPC JSON contains a duplicate object key")
+        result[key] = value
+    return result
+
+
 @dataclass(frozen=True)
 class SupervisorPeer:
     role: str
@@ -178,7 +187,9 @@ class AuthenticatedSupervisorAPI:
             length = _HEADER.unpack(header)[0]
             if length < 2 or length > MAX_SUPERVISOR_MESSAGE_BYTES:
                 raise ContractError("Supervisor RPC request size is invalid")
-            message = json.loads(_recv_exact(conn, length))
+            message = json.loads(
+                _recv_exact(conn, length), object_pairs_hook=_unique_json_object,
+            )
             if (not isinstance(message, dict) or set(message) != {"operation", "body"}
                     or not isinstance(message["operation"], str)
                     or message["operation"] not in peer.operations
@@ -203,6 +214,16 @@ class AuthenticatedSupervisorAPI:
             return
 
     def _dispatch(self, operation: str, body: dict, peer: SupervisorPeer | None = None) -> Any:
+        if operation == "bootstrap_assignment":
+            from .assignment_basis import validate_bootstrap_request
+            if (peer is None or peer.role != "assignment_bootstrap"
+                    or peer.operations != frozenset({"bootstrap_assignment"})):
+                raise ContractError("assignment-bootstrap request is not authorized")
+            policy = self.supervisor.assignment_policy
+            if policy is None:
+                raise ContractError("assignment-bootstrap policy is not provisioned")
+            validate_bootstrap_request(body, policy=policy)
+            return self.supervisor.bootstrap_assignment(body, peer=peer)
         if operation == "assignment_basis":
             from .assignment_basis import validate_request
             if (peer is None or peer.role != "delegated_issuer"
@@ -810,6 +831,7 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
     }
     if assignment_policy is not None:
         role_operations["delegated_issuer"] = frozenset({"assignment_basis"})
+        role_operations["assignment_bootstrap"] = frozenset({"bootstrap_assignment"})
     for item in peers_value:
         if not isinstance(item, dict):
             raise ContractError("Supervisor peer policy entry is malformed")
@@ -835,11 +857,14 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
             role=item["role"], uid=item["uid"], gid=item["gid"], cgroup=item["cgroup"],
             operations=frozenset(item["operations"]), principal=item.get("principal"),
         ))
+    if (not peers or len({peer.role for peer in peers}) != len(peers)
+            or len({(peer.uid, peer.gid) for peer in peers}) != len(peers)):
+        raise ContractError("Supervisor peer identities or roles are duplicated")
     roles = {peer.role for peer in peers}
     required_roles = {"dispatch_owner", "dispatcher", "runnerd", "signer"}
     if not required_roles <= roles or not roles <= set(role_operations):
         raise ContractError("Supervisor peer policy must define dispatcher, runnerd, and signer")
-    if ("delegated_issuer" in roles) != (assignment_policy is not None):
+    if "delegated_issuer" in roles and assignment_policy is None:
         raise ContractError("delegated issuer requires its exact pinned root assignment policy")
     by_role = {peer.role: peer for peer in peers}
     runner_peer = by_role["runnerd"]
@@ -847,17 +872,40 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
     dispatcher_peer = by_role["dispatcher"]
     owner_peer = by_role["dispatch_owner"]
     if assignment_policy is not None:
-        issuer_peer = by_role["delegated_issuer"]
-        expected_issuer = assignment_policy["issuer_peer"]
-        if (issuer_peer.uid != expected_issuer["uid"] or issuer_peer.gid != expected_issuer["gid"]
-                or issuer_peer.cgroup != expected_issuer["cgroup"]
-                or expected_issuer["role"] != "delegated_issuer"):
-            raise ContractError("delegated issuer peer differs from the root assignment policy")
-        if (issuer_peer.uid in {runner_peer.uid, signer_peer.uid, dispatcher_peer.uid, owner_peer.uid, 999}
-                or issuer_peer.gid in {runner_peer.gid, signer_peer.gid, dispatcher_peer.gid, owner_peer.gid, 989}
-                or issuer_peer.cgroup in {runner_peer.cgroup, signer_peer.cgroup, dispatcher_peer.cgroup,
-                                          owner_peer.cgroup}):
-            raise ContractError("delegated issuer identity is not independently pinned")
+        issuer_peer = by_role.get("delegated_issuer")
+        if issuer_peer is not None:
+            expected_issuer = assignment_policy["issuer_peer"]
+            if (issuer_peer.uid != expected_issuer["uid"] or issuer_peer.gid != expected_issuer["gid"]
+                    or issuer_peer.cgroup != expected_issuer["cgroup"]
+                    or expected_issuer["role"] != "delegated_issuer"):
+                raise ContractError("delegated issuer peer differs from the root assignment policy")
+            if (issuer_peer.uid in {runner_peer.uid, signer_peer.uid, dispatcher_peer.uid, owner_peer.uid, 999}
+                    or issuer_peer.gid in {runner_peer.gid, signer_peer.gid, dispatcher_peer.gid, owner_peer.gid, 989}
+                    or issuer_peer.cgroup in {runner_peer.cgroup, signer_peer.cgroup, dispatcher_peer.cgroup,
+                                              owner_peer.cgroup}):
+                raise ContractError("delegated issuer identity is not independently pinned")
+        bootstrap_peer = by_role.get("assignment_bootstrap")
+        if bootstrap_peer is not None:
+            issuer_uids = {issuer_peer.uid} if issuer_peer is not None else set()
+            issuer_gids = {issuer_peer.gid} if issuer_peer is not None else set()
+            issuer_cgroups = {issuer_peer.cgroup} if issuer_peer is not None else set()
+            expected_bootstrap = assignment_policy["bootstrap_peer"]
+            if (bootstrap_peer.uid != expected_bootstrap["uid"]
+                    or bootstrap_peer.gid != expected_bootstrap["gid"]
+                    or bootstrap_peer.cgroup != expected_bootstrap["cgroup"]
+                    or expected_bootstrap["role"] != "assignment_bootstrap"):
+                raise ContractError("assignment bootstrap peer differs from root policy")
+            reserved_uids = {runner_peer.uid, signer_peer.uid, dispatcher_peer.uid, owner_peer.uid, 999}
+            reserved_gids = {
+                runner_peer.gid, signer_peer.gid, dispatcher_peer.gid, owner_peer.gid, 989,
+            }
+            reserved_cgroups = {
+                runner_peer.cgroup, signer_peer.cgroup, dispatcher_peer.cgroup, owner_peer.cgroup,
+            }
+            if (bootstrap_peer.uid in reserved_uids | issuer_uids
+                    or bootstrap_peer.gid in reserved_gids | issuer_gids
+                    or bootstrap_peer.cgroup in reserved_cgroups | issuer_cgroups):
+                raise ContractError("assignment bootstrap identity is not independently pinned")
     if (runner_peer.uid != 997 or runner_peer.gid != 988
             or runner_peer.cgroup != value["runner_control_group"]
             or dispatcher_peer.cgroup != "/system.slice/vst-dispatcher.service"
@@ -882,6 +930,13 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
             operator_peer.uid == owner_peer.uid or operator_peer.gid == owner_peer.gid
             or operator_peer.cgroup == owner_peer.cgroup):
         raise ContractError("Supervisor owner and operator identities must be independently pinned")
+    if operator_peer is not None and assignment_policy is not None:
+        for role_name in ("delegated_issuer", "assignment_bootstrap"):
+            peer = by_role.get(role_name)
+            if peer is not None and (
+                    operator_peer.uid == peer.uid or operator_peer.gid == peer.gid
+                    or operator_peer.cgroup == peer.cgroup):
+                raise ContractError("Supervisor operator identity must differ from assignment peers")
     for path_key in ("store_path", "anchor_path"):
         _validate_root_data_path(value[path_key])
     event_key = _read_root_key(value["event_key_path"])

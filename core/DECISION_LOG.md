@@ -1349,3 +1349,17 @@ recorded by the designated functional-test reviewer; it is not final-head S2 acc
 Machine observations remain unsigned and E5 UNKNOWN. See `docs/sdlc/verify-evidence.md` and
 change 0551 for exact boundaries. S2 remains NOT APPROVED, and the requested sequence keeps S3–S5
 behind S2 acceptance.
+
+## 2026-10-29 — Record S2 source batches 0552 and 0553
+
+Change 0552 implements the GPT-PM-authorized fresh-only authenticated assignment bootstrap
+source. The authorization and its boundaries are recorded in
+`docs/sdlc/evidence/s2-bootstrap-source-and-root-issuer-adjudication-20261029.md`. Change 0553
+implements only the detached pure dispatch-issuance contract following the authorized root-bound
+design and its follow-up correction: a completion is accepted only through an injected verifier
+that validates the frozen signer binding, domain-prefixed signing bytes, and signature, and the
+started event is validated before either UNKNOWN or completion is returned. These source batches
+do not implement a signer, Store issuance journal, provisioning, activation, or E5 evidence.
+The accidental `git diff --check` reported by the implementer remains non-verification evidence.
+Tests, checks, build and runtime acceptance remain NOT_RUN by task instruction. See changes 0552
+and 0553 for exact code paths and remaining acceptance.
