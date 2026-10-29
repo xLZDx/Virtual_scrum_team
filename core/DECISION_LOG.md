@@ -1472,3 +1472,9 @@ slice atd3f326f with zero confirmed code BLOCKER/MAJOR. PS7host observation rema
 UNKNOWN because its fixed firewall cmdlet was unavailable; no policy/E5 PASS is
 inferred. Exact package and bounded runtime proposal go to GPT-PM, with no external
 coordinator dependency and no invented operator signature/waiver. See change0566.
+
+## 2026-10-29 — Reconcile framework artifact layout with canonical change records (0567)
+
+The first formal PM command refused locally for a missing phase6 wildcard record,
+not a GPT verdict. Added a factual sprint-stamped implementation summary linking
+0560–0566. Existing detailed records remain canonical; no code or authority changed.

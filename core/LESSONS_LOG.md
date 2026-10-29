@@ -1217,3 +1217,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Rule: source consensus is scoped manual evidence, never installed runtime proof.
   Host module discovery alone does not prove the required cmdlet can execute;
   unavailable/unnormalized collection remains UNKNOWN without invented error codes.
+
+## 2026-10-29 — Distinguish local preflight refusal from a remote review (0567)
+
+- Facts: formal review was not sent because phase6 expected a different record path.
+- Correction: create the missing factual linked summary; keep exact source identity,
+  runtime limits and correlated approval discipline rather than inventing a verdict.
