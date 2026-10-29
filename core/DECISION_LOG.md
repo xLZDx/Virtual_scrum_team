@@ -1307,3 +1307,16 @@ transport M01/M02 are resolved. Read-only code/security/test-mapping reviews fou
 findings. The designated test roles reported Windows 33 passed / 1 POSIX-only skip, and WSL 34
 passed / 0 skipped, exit 0, with a real socketpair and actual owner handler. Installed kernel peer
 identity, production runtime/E5 and overall S2 remain open. See change 0538 and its linked evidence.
+
+## 2026-10-29 — Continue existing S2 with bounded bootstrap implementation
+
+At baseline `9c1be0f`, actual architect/code-reviewer agents accepted the corrected bootstrap-only
+staging and selector/unit design for implementation. Explicit stage-only installation is separate
+from selection; write-ahead recovery compares every old/new fingerprint and refuses unknown bytes.
+Store stays unopened and services inactive. Framework sprint `39b7cc253f5d` tracks existing S2
+and reached phase 6; no new product sprint or checkout was created. Machine-trust adjudication
+request `a3e130f0-9aec-4304-b001-388a45c0be55`, reply `0b0b8a4d-0816-4146-ba21-71857b5de49d`,
+returned MODIFY. Candidate source preparation is permitted; production signing, E5 replacement
+and activation remain held. Preserve both actual trust findings OPEN pending focused adjudication.
+Evidence and independent review: change 0539, `docs/sdlc/review-record.md`, and the exact reply in
+`docs/sdlc/evidence/s2-machine-authority-adjudication-20261029.md`.
