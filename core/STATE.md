@@ -653,3 +653,17 @@ legacy/direct compatibility and permitted E7 source behavior. Fresh independent
 specialist review is next. Source GO is not runtime or final approval; current E5,
 restricted-case disposition and delivery remain separate. The canonical checkout
 and existing S2 branch are used; historical mixed work remains in existing refs.
+
+## 2026-10-29 — S2 attachment-backed final-review transport (0568)
+
+The project-owned AF adapter `tools/af_attachment_review.mjs` is frozen at SHA
+`9cdb51192e8fcb037cedd8980cd819b35fbc76c02f076adcb0071f3d3ab1b54e`; its source and test
+contract are recorded in change0568. Agentic_Framework is hard-enabled on the existing
+`s2-canonical-continuation` branch at phase8 (PM-GPT review and approve), sprint ID
+`39b7cc253f5d`. The implementation commit must precede exact-head designated tests; test
+roles are authoring isolated fixtures, and execution is still NOT_RUN. No PM-GPT approval,
+runtime activation, E5, restricted selector, push, PR or merge is claimed. The earlier native
+review request exceeded the JSON body limit before GPT contact; a separate attachment delivery
+without durable reply correlation remains non-approving. Use the existing supported attachment
+transport through the project hook; AF remains the sole approval writer. Do not start S3 before
+S2's exact-head evidence, required review and acceptance gates are closed.

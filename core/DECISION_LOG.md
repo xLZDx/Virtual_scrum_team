@@ -1478,3 +1478,20 @@ coordinator dependency and no invented operator signature/waiver. See change0566
 The first formal PM command refused locally for a missing phase6 wildcard record,
 not a GPT verdict. Added a factual sprint-stamped implementation summary linking
 0560–0566. Existing detailed records remain canonical; no code or authority changed.
+
+## 2026-10-29 — Preserve the full S2 review input through PM Bridge attachments (0568)
+
+At HEAD `62bb632909205fe21a6b61b4ac5b56dbc8176285`, AF's native full prompt was
+5,634,022 bytes and failed before GPT-PM because the PM Bridge JSON body limit is
+4,194,304 bytes. A prior attachment send proved exact bytes were delivered but its
+recovered reply had no durable reply ID/correlation, so it was not approval. Decision:
+implement only a VST-owned `AF_PM_REVIEW_JS` adapter around the already-supported
+authenticated file-attachment transport. Keep the full native prompt immutable,
+bind it to exact HEAD/base and a persisted request ID, and accept only the actual
+durable attachment manifest plus correlated reply and exact acknowledgments. The AF
+CLI remains the sole approval writer. Do not modify the neighbor framework/bridge,
+truncate or split the input, or infer runtime/staging/E5 authorization. Contract and
+test plan: `docs/sdlc/S2_AF_ATTACHMENT_REVIEW_CONTRACT.md` and
+`docs/sdlc/S2_AF_ATTACHMENT_TEST_PLAN.md`; implementation SHA at freeze:
+`9cdb51192e8fcb037cedd8980cd819b35fbc76c02f076adcb0071f3d3ab1b54e`. Formal
+approval and designated tests remain pending.

@@ -1223,3 +1223,12 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Facts: formal review was not sent because phase6 expected a different record path.
 - Correction: create the missing factual linked summary; keep exact source identity,
   runtime limits and correlated approval discipline rather than inventing a verdict.
+
+## 2026-10-29 — Attachment delivery is not a correlated review (0568)
+
+- Kind: FAILURE/RECOVERY (the full input was delivered, but the available recovered response could not satisfy the approval contract).
+- Facts: the original AF request failed locally at the 4 MiB HTTP body limit; a separate supported attachment send preserved the exact 5,634,022-byte input, but the recovered peek lacked durable `replyId` and correlation. Evidence and the exact input hash are in `docs/sdlc/S2_AF_ATTACHMENT_REVIEW_CONTRACT.md`.
+- Root cause: transport success and a matching reply claim do not prove that AF received a complete correlated answer to its exact full input.
+- Layer that caught it: durable PM Bridge job metadata showed null reply/correlation; GPT-PM retained HOLD rather than approval.
+- Rule: bind immutable full prompt bytes to a stable request identity before send, recover only that durable request, and require the daemon attachment manifest plus correlated reply before exposing a verdict to AF. Keep the AF tool as sole approval writer.
+- Fix status: project adapter source is frozen at SHA `9cdb51192e8fcb037cedd8980cd819b35fbc76c02f076adcb0071f3d3ab1b54e`; designated functional/E2E tests and fresh specialist review are pending. S2 and runtime acceptance remain open.
