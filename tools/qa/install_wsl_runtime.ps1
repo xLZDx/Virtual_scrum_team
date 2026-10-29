@@ -332,7 +332,6 @@ if os.path.lexists(runtime_dir):
     if expected_docs != installed_docs:
         raise SystemExit("existing runtime specification differs from requested archive; no state changed")
 if not stage_only:
-if not stage_only:
     if os.path.lexists(runtime_link):
         link_info = os.lstat(runtime_link)
         if (not stat.S_ISLNK(link_info.st_mode) or link_info.st_uid != 0
