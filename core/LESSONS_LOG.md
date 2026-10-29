@@ -1068,3 +1068,16 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Rule: distinguish the state at the end of implementation from later coordination actions, and
   do not convert an incidental command or source presence into functional/runtime evidence.
 - Verification: no tests, checks, build, or runtime action was performed in this pass.
+
+## 2026-10-29 — Keep pure issuance validation separate from signing (change 0553)
+
+- Kind: SUCCESS / authority boundary.
+- Facts: the detached issuance module validates immutable intent and journal event shapes. A
+  completion is accepted only when an injected callback returns the literal boolean `True` for
+  the frozen signer binding, domain-prefixed signing bytes, and decoded signature. The module
+  neither holds keys nor invokes a signer, and it does not establish the callback's root-pinned
+  key provenance by itself.
+- Rule: keep pure contract validation separate from runtime signing and durable journal authority;
+  require the runtime adapter to bind the verifier to the trusted key registry before it can
+  satisfy completion acceptance.
+- Verification: source only; tests, checks, build and runtime remain NOT_RUN.

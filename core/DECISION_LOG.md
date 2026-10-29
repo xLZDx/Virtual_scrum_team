@@ -1363,3 +1363,14 @@ do not implement a signer, Store issuance journal, provisioning, activation, or 
 The accidental `git diff --check` reported by the implementer remains non-verification evidence.
 Tests, checks, build and runtime acceptance remain NOT_RUN by task instruction. See changes 0552
 and 0553 for exact code paths and remaining acceptance.
+
+## 2026-10-29 — Record pure S2 dispatch issuance source (change 0553)
+
+Change 0553 adds `tools/vst/dispatch_issuance.py` as a detached pure contract. Its completion
+reducer requires an injected verifier over the frozen signer binding, unchanged domain-prefixed
+signing bytes, and decoded signature; only literal `True` permits completion. It validates the
+closed signing-started event before returning either UNKNOWN or completion. This does not wire
+the callback to the runtime verifier or add signing, persistence, concurrency/crash handling,
+admission, delivery, key access, or activation. The exact source change and remaining acceptance
+are recorded in `docs/changes/0553-s2-pure-dispatch-issuance-contract.md`. Tests, checks, build,
+runtime and independent review remain NOT_RUN.
