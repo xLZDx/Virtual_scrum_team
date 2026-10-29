@@ -9,9 +9,9 @@
   `s2-canonical-continuation`.
 - The baseline tracked worktree was clean. Pre-existing untracked PM Bridge artifacts and
   the baseline plan/inventory artifacts were preserved.
-- Current source code and regression tests are local, uncommitted changes. No S2-3 stage,
-  runtime selection, systemd installation/activation, Store operation, key operation, or E5
-  attestation was performed in this task slice.
+- The source/tests and this record were committed as `f34cefd0827f631466e66b39a03b1d999c770388`.
+  That commit is not yet accepted or pushed. No S2-3 stage, runtime selection, systemd
+  installation/activation, Store operation, key operation, or E5 attestation was performed.
 
 ## Acceptance addressed
 
@@ -75,18 +75,24 @@ this task.
   no blocker was found. This is static review, not runtime proof.
 - `git diff --check` completed without whitespace errors; Git warned that
   `docs/sdlc/verify-evidence.md` will be normalized from CRLF to LF on a future Git write.
-- GPT-PM re-review is pending; the prior `MODIFY` is not approval.
+- Exact-head GPT-PM review request `d4577012-d47b-4b43-b598-bfcbb8d064c9` returned `MODIFY` on
+  commit `f34cefd0827f631466e66b39a03b1d999c770388`. It confirmed both original MAJOR findings
+  resolved, and found M-S2-3-03 in the existing-runtime verification branch: `inventory_sha` was
+  referenced but omitted from the embedded Python argument list/unpacking. The focused fix and
+  required direct matching/mismatching marker regression are recorded in
+  `docs/changes/0581-s2-3-existing-runtime-provenance-pin.md`. S2-3 remains open; the 54-case test
+  result above does not cover this branch and was not run against commit f34.
 - The actual WSL target inventory must be recollected with the final source HEAD, include
   `source_head` and `observed_utc`, and remain within the five-minute window at stage time.
 
 ## Remaining acceptance and next actions
 
-1. Freeze this task's source and record its final source HEAD; the passing run is bound to the
-   pre-commit baseline and must not be presented as a committed-head run.
-2. Commit source, focused tests, required documentation, and this detailed record together. Obtain
-   the fresh correlated GPT-PM exact-head verdict for that commit before normal push; the earlier
-   `MODIFY` is not approval.
-3. Generate a new exact source plan and fresh source-head-bound WSL inventory. Obtain a fresh
+1. Finish the direct existing-runtime regression and argument fix tracked in change record 0581;
+   execute that direct regression against its committed source via `e2e-runner`.
+2. Obtain a focused correlated GPT-PM exact-head re-review of only M-S2-3-03 and its direct
+   regression; the current `MODIFY` is not approval.
+3. After code review acceptance, generate a new exact source plan and fresh source-head-bound WSL
+   inventory. Obtain a fresh
    correlated GPT-PM verdict for the exact bundle before running only the previously authorized
    stage-only operation.
 4. After stage-only, create the complete runtime/helper manifest and obtain its separate review.

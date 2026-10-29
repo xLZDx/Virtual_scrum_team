@@ -203,9 +203,9 @@ PY
     --stage "$stage" --source-manifest "$bundle_root/.vst-source-manifest.json" \
     --expected-head "$expected_head" --archive-sha256 "$archive_sha" \
     --plan-sha256 "$plan_sha" --inventory-sha256 "$inventory_sha"
-/usr/bin/python3.12 -I -S - "$stage" "$runtime_dir" "$runtime_link" "$unit_dir" "$expected_head" "$archive_sha" "$stage_only" "$plan_sha" "$bundle_root" <<'PY'
+/usr/bin/python3.12 -I -S - "$stage" "$runtime_dir" "$runtime_link" "$unit_dir" "$expected_head" "$archive_sha" "$stage_only" "$plan_sha" "$inventory_sha" "$bundle_root" <<'PY'
 import hashlib, json, os, stat, sys
-stage, runtime, link, unit_dir, head, digest, stage_only, plan_sha, bundle_root = sys.argv[1:]
+stage, runtime, link, unit_dir, head, digest, stage_only, plan_sha, inventory_sha, bundle_root = sys.argv[1:]
 stage_only = stage_only == "1"
 def path_exists(path): return os.path.lexists(path)
 def scan(root, installed=False):

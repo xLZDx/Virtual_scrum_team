@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -109,6 +111,133 @@ def test_python_c_sys_argv_matches_host_argument_contract():
     )
     assert json.loads(result.stdout) == ["-c", head, plan_digest, inventory_digest,
                                          transfer_id, stage_only]
+
+
+def _runner_main_python() -> str:
+    shell = (ROOT / "tools/qa/install_wsl_runner_runtime.sh").read_text(encoding="utf-8")
+    snippets = re.findall(r"<<'PY'\r?\n(.*?)\r?\nPY", shell, re.DOTALL)
+    assert len(snippets) >= 2
+    return snippets[1]
+
+
+def test_runner_existing_runtime_argv_pins_inventory_at_matching_position() -> None:
+    shell = (ROOT / "tools/qa/install_wsl_runner_runtime.sh").read_text(encoding="utf-8")
+    assert re.search(
+        r"""python3\.12 -I -S - "\$stage" "\$runtime_dir" "\$runtime_link" "\$unit_dir" "\$expected_head" "\$archive_sha" "\$stage_only" "\$plan_sha" "\$inventory_sha" "\$bundle_root" <<'PY'""",
+        shell,
+    )
+    module = ast.parse(_runner_main_python())
+    assignments = [node for node in module.body if isinstance(node, ast.Assign)
+                   and node.targets and isinstance(node.targets[0], ast.Tuple)]
+    unpack = next(node for node in assignments
+                  if any(isinstance(item, ast.Name) and item.id == "inventory_sha"
+                         for item in node.targets[0].elts))
+    names = [item.id for item in unpack.targets[0].elts]
+    assert names == ["stage", "runtime", "link", "unit_dir", "head", "digest",
+                     "stage_only", "plan_sha", "inventory_sha", "bundle_root"]
+
+
+def _existing_runtime_branch() -> ast.Module:
+    module = ast.parse(_runner_main_python())
+    index = next(
+        index for index, node in enumerate(module.body)
+        if isinstance(node, ast.If)
+        and isinstance(node.test, ast.Call)
+        and isinstance(node.test.func, ast.Name)
+        and node.test.func.id == "path_exists"
+        and len(node.test.args) == 1
+        and isinstance(node.test.args[0], ast.Name)
+        and node.test.args[0].id == "runtime"
+    )
+    return ast.Module(body=module.body[:index + 1], type_ignores=[])
+
+
+def _write_fixture_file(path: Path, payload: bytes, mode: int = 0o644) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(payload)
+    path.chmod(mode)
+
+
+def _run_existing_runtime_branch(tmp_path: Path, marker_changes: dict | None = None) -> None:
+    head = "a" * 40
+    archive_sha = "b" * 64
+    plan_sha = "c" * 64
+    inventory_sha = "d" * 64
+    compiler_sha = "e" * 64
+    compiler = {
+        "compiler_path": "/usr/bin/cc",
+        "compiler_resolved_path": "/usr/bin/x86_64-linux-gnu-gcc-13",
+        "compiler_sha256": compiler_sha,
+        "compiler_symlink_target": "/etc/alternatives/cc",
+    }
+    source_files = {
+        "tools/vst/runtime.py": b"runtime fixture",
+        "docs/SANDBOX_SPEC.md": b"sandbox fixture",
+    }
+    members = {
+        "tools": {"kind": "dir"},
+        "tools/vst": {"kind": "dir"},
+        "docs": {"kind": "dir"},
+        **{
+            name: {"kind": "file", "sha256": hashlib.sha256(payload).hexdigest(), "size": len(payload)}
+            for name, payload in source_files.items()
+        },
+    }
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    (bundle_root / ".vst-source-manifest.json").write_text(
+        json.dumps({"archive_members": members, **compiler}, sort_keys=True), encoding="ascii")
+    stage = tmp_path / "stage"
+    runtime = tmp_path / "runtime"
+    for root in (stage, runtime):
+        root.mkdir(mode=0o755)
+        for name, payload in source_files.items():
+            _write_fixture_file(root / name, payload)
+        for directory in (root / "tools", root / "tools/vst", root / "docs"):
+            directory.mkdir(parents=True, exist_ok=True)
+            directory.chmod(0o755)
+        root.chmod(0o755)
+    expected_marker = {
+        "archive_sha256": archive_sha,
+        **compiler,
+        "head": head,
+        "inventory_sha256": inventory_sha,
+        "plan_sha256": plan_sha,
+        "schema": 3,
+    }
+    _write_fixture_file(stage / ".vst-runtime-manifest.json",
+                        json.dumps(expected_marker, sort_keys=True).encode("ascii"))
+    actual_marker = {**expected_marker, **(marker_changes or {})}
+    _write_fixture_file(runtime / ".vst-runtime-manifest.json",
+                        json.dumps(actual_marker, sort_keys=True).encode("ascii"))
+    argv = ["-", str(stage), str(runtime), str(tmp_path / "selector"), str(tmp_path / "units"),
+            head, archive_sha, "1", plan_sha, inventory_sha, str(bundle_root)]
+    previous_argv = sys.argv
+    sys.argv = argv
+    try:
+        exec(compile(_existing_runtime_branch(), "existing-runtime-guard", "exec"), {})
+    finally:
+        sys.argv = previous_argv
+
+
+@pytest.mark.skipif(
+    os.name != "posix" or getattr(os, "geteuid", lambda: 1)() != 0,
+    reason="existing-runtime validator requires root-owned POSIX fixtures",
+)
+def test_existing_runtime_accepts_matching_schema_three_provenance(tmp_path: Path) -> None:
+    assert _run_existing_runtime_branch(tmp_path) is None
+
+
+@pytest.mark.parametrize("field", ["inventory_sha256", "head"])
+@pytest.mark.skipif(
+    os.name != "posix" or getattr(os, "geteuid", lambda: 1)() != 0,
+    reason="existing-runtime validator requires root-owned POSIX fixtures",
+)
+def test_existing_runtime_refuses_mismatched_schema_three_identity(
+    tmp_path: Path, field: str,
+) -> None:
+    with pytest.raises(SystemExit, match="runtime destination manifest differs"):
+        _run_existing_runtime_branch(tmp_path, {field: "f" * (40 if field == "head" else 64)})
 
 
 def test_stage_guard_accepts_complete_idle_inventory(tmp_path: Path):
