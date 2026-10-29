@@ -1,0 +1,1590 @@
+diff --git a/tests/vst/test_e4_runner.py b/tests/vst/test_e4_runner.py
+index 3ce0624..66844cc 100644
+--- a/tests/vst/test_e4_runner.py
++++ b/tests/vst/test_e4_runner.py
+@@ -19,8 +19,10 @@ import hmac
+ import inspect
+ import json
+ import os
++import shutil
+ import subprocess
+ import sys
++import tempfile
+ import time
+ 
+ import pytest
+@@ -618,6 +620,82 @@ def test_timeout_kills_the_whole_process_tree(work, tmp_path):
+     assert os.path.getsize(beat) == size, "grandchild survived the timeout kill"
+ 
+ 
++def test_posix_worker_timeout_kills_descendant_across_uid_boundary():
++    """VST-013 / E4.1: the runner must clean up worker descendants across UIDs."""
++    if os.name != "posix":
++        pytest.skip("POSIX process-group acceptance runs only inside the provisioned sandbox distro")
++
++    import pwd
++    try:
++        runner_account = pwd.getpwnam("vst-runner")
++        worker_account = pwd.getpwnam("vst-worker")
++    except KeyError as exc:
++        pytest.skip(f"provisioned S2 runner/worker account is unavailable: {exc}")
++    if os.geteuid() != runner_account.pw_uid:
++        pytest.skip("must run as the provisioned vst-runner identity")
++    try:
++        with open("/proc/self/status", encoding="ascii") as status_file:
++            cap_eff_line = next(line for line in status_file if line.startswith("CapEff:"))
++    except (OSError, StopIteration) as exc:
++        pytest.skip(f"runner effective capabilities are unavailable: {exc}")
++    cap_eff = int(cap_eff_line.split(":", 1)[1].strip(), 16)
++    required_caps = (1 << 6) | (1 << 7)  # CAP_SETGID and CAP_SETUID for Popen identity switch
++    if cap_eff & required_caps != required_caps:
++        pytest.skip("runner lacks the provisioned CAP_SETGID/CAP_SETUID profile")
++    if not os.path.isfile("/usr/bin/setpriv"):
++        pytest.skip("the approved fixed-path /usr/bin/setpriv helper is unavailable")
++
++    # Use a unique child of the sandbox's private tmpfs; the runner-created
++    # directory is shared only so the switched worker can write its marker.
++    if not os.path.isdir("/tmp") or os.stat("/tmp").st_mode & 0o1777 != 0o1777:
++        pytest.skip("sandbox /tmp is not the expected private, sticky temporary filesystem")
++    work = tempfile.mkdtemp(prefix="vst-s2-posix-cleanup-", dir="/tmp")
++    os.chmod(work, 0o777)
++    beat = os.path.join(work, "descendant-beat.txt")
++    grandchild = (
++        "import time\n"
++        "deadline = time.monotonic() + 6\n"
++        "while time.monotonic() < deadline:\n"
++        f"    with open({beat!r}, 'a', encoding='ascii') as stream: stream.write('x')\n"
++        "    time.sleep(0.1)\n"
++    )
++    parent = (
++        "import os, subprocess, sys, time\n"
++        f"subprocess.Popen([sys.executable, '-c', {grandchild!r}],"
++        " stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
++        f"deadline = time.monotonic() + 2\nwhile not os.path.exists({beat!r}) and time.monotonic() < deadline:\n"
++        "    time.sleep(0.02)\n"
++        "print('WORKER_UID', os.geteuid(), flush=True)\n"
++        "time.sleep(3.2)\n"
++    )
++
++    try:
++        code, stdout, info = runner._run_one(
++            pycmd(parent),
++            work,
++            3,
++            {"PATH": "/usr/bin:/bin", "PYTHONIOENCODING": "utf-8"},
++            4096,
++            worker_uid=worker_account.pw_uid,
++            worker_gid=worker_account.pw_gid,
++        )
++
++        assert f"WORKER_UID {worker_account.pw_uid}" in stdout
++        assert info["timed_out"] is True
++        assert info["capture_incomplete"] is False, f"runner did not confirm cleanup: {info!r}"
++        assert code == runner.EXIT_TIMEOUT
++        assert os.path.exists(beat), "worker descendant never started; test proves nothing"
++        final_size = os.path.getsize(beat)
++        deadline = time.monotonic() + 0.8
++        while time.monotonic() < deadline:
++            assert os.path.getsize(beat) == final_size, (
++                "worker descendant survived POSIX process-group timeout cleanup"
++            )
++            time.sleep(0.05)
++    finally:
++        shutil.rmtree(work, ignore_errors=True)
++
++
+ def test_overall_deadline_stops_later_commands_without_running_them(work):
+     marker = os.path.join(work, "second-ran.txt")
+     slow = pycmd("import time; time.sleep(60)")
+diff --git a/tests/vst/test_s2_runner_lifecycle.py b/tests/vst/test_s2_runner_lifecycle.py
+index 679aa42..a0017d7 100644
+--- a/tests/vst/test_s2_runner_lifecycle.py
++++ b/tests/vst/test_s2_runner_lifecycle.py
+@@ -524,6 +524,103 @@ def _synthetic_git_source(tmp_path, *, filename="candidate.txt"):
+     )
+ 
+ 
++class _FakeBoundedGitStream:
++    def __init__(self, *, fail_read=False):
++        self.fail_read = fail_read
++        self.closed = False
++
++    def read(self, _size):
++        if self.fail_read:
++            raise OSError("injected pipe read failure")
++        return b""
++
++    def close(self):
++        self.closed = True
++
++
++class _FakeBoundedGitProcess:
++    def __init__(self, *, fail_stdout_read=False):
++        self.stdout = _FakeBoundedGitStream(fail_read=fail_stdout_read)
++        self.stderr = _FakeBoundedGitStream()
++        self._finished = threading.Event()
++        self.waited = False
++
++    def poll(self):
++        return -9 if self._finished.is_set() else None
++
++    def kill(self):
++        self._finished.set()
++
++    def wait(self, timeout=None):
++        if not self._finished.wait(timeout):
++            raise subprocess.TimeoutExpired(["fake-bounded-git"], timeout)
++        self.waited = True
++        return -9
++
++
++def _bare_bounded_git_backend(tmp_path):
++    from tools.vst.slice import SyntheticOperationBackend
++
++    return SyntheticOperationBackend(
++        str(tmp_path / "unused-target.git"),
++        source_repo=str(tmp_path / "unused-source"),
++        command_timeout_sec=1,
++    )
++
++
++def test_bounded_git_reader_start_failure_kills_reaps_and_closes(monkeypatch, tmp_path):
++    """VST-017: startup failure cannot bypass bounded child cleanup."""
++    from tools.vst import slice as slice_module
++
++    backend = _bare_bounded_git_backend(tmp_path)
++    process = _FakeBoundedGitProcess()
++    monkeypatch.setattr(slice_module.subprocess, "Popen", lambda *args, **kwargs: process)
++
++    def fail_thread_start(_thread):
++        raise RuntimeError("injected reader startup failure")
++
++    monkeypatch.setattr(slice_module.threading.Thread, "start", fail_thread_start)
++    with pytest.raises(RuntimeError, match="injected reader startup failure"):
++        backend._run_bounded_git(["git", "--version"], env={})
++
++    assert process.poll() == -9 and process.waited
++    assert process.stdout.closed and process.stderr.closed
++
++
++def test_bounded_git_thread_constructor_failure_kills_reaps_and_closes(monkeypatch, tmp_path):
++    """VST-017: reader thread construction failure cannot bypass child cleanup."""
++    from tools.vst import slice as slice_module
++
++    backend = _bare_bounded_git_backend(tmp_path)
++    process = _FakeBoundedGitProcess()
++    monkeypatch.setattr(slice_module.subprocess, "Popen", lambda *args, **kwargs: process)
++
++    def fail_thread_constructor(*args, **kwargs):
++        raise MemoryError("injected thread construction failure")
++
++    monkeypatch.setattr(slice_module.threading, "Thread", fail_thread_constructor)
++    with pytest.raises(MemoryError, match="injected thread construction failure"):
++        backend._run_bounded_git(["git", "--version"], env={})
++
++    assert process.poll() == -9 and process.waited
++    assert process.stdout.closed and process.stderr.closed
++
++
++def test_bounded_git_reader_failure_kills_reaps_and_fails_closed(monkeypatch, tmp_path):
++    """VST-017: pipe read failure cannot produce a successful partial result."""
++    from tools.vst import slice as slice_module
++
++    backend = _bare_bounded_git_backend(tmp_path)
++    process = _FakeBoundedGitProcess(fail_stdout_read=True)
++    monkeypatch.setattr(slice_module.subprocess, "Popen", lambda *args, **kwargs: process)
++
++    with pytest.raises(RuntimeError, match="stdout capture failed"):
++        backend._run_bounded_git(["git", "--version"], env={})
++
++    assert process.poll() == -9 and process.waited
++    assert process.stdout.closed and process.stderr.closed
++
++
+ def test_hook_free_publication_transfers_source_only_commit_without_running_pre_push(tmp_path, monkeypatch):
+     from tools.vst import slice as slice_module
+ 
+@@ -1417,6 +1514,588 @@ def test_posix_launch_keeps_session_based_compatibility_path(monkeypatch):
+     assert "posix_group_cleanup" in events
+ 
+ 
++def _posix_runner_os(monkeypatch):
++    posix_os = SimpleNamespace(**vars(os))
++    posix_os.name = "posix"
++    monkeypatch.setattr(runner, "os", posix_os)
++    monkeypatch.setattr(runner, "_POSIX_CGROUP_CLEANUP_FAILED", threading.Event())
++    return posix_os
++
++
++class _ObservedCgroup:
++    def __init__(self, events, *, attach_error=None, cleanup_result=True, kill_pid=False):
++        self.events = events
++        self.attach_error = attach_error
++        self.cleanup_result = cleanup_result
++        self.kill_pid = kill_pid
++        self.pid = None
++
++    def attach(self, pid):
++        self.events.append("attach")
++        self.pid = pid
++        if self.attach_error:
++            raise self.attach_error
++
++    def kill_and_remove(self, timeout=10.0):
++        self.events.append("kill_and_remove")
++        if self.kill_pid and self.pid is not None:
++            try:
++                os.kill(self.pid, runner.signal.SIGKILL)
++            except ProcessLookupError:
++                pass
++        if not self.cleanup_result:
++            runner._POSIX_CGROUP_CLEANUP_FAILED.set()
++        return self.cleanup_result
++
++
++def test_distinct_uid_worker_refuses_launch_when_delegated_cgroup_is_unavailable(monkeypatch):
++    _posix_runner_os(monkeypatch)
++    calls = []
++
++    def unavailable():
++        raise OSError("no delegated cgroup")
++
++    monkeypatch.setattr(runner._DelegatedCgroup, "create", unavailable)
++    monkeypatch.setattr(runner.subprocess, "Popen", lambda *a, **k: calls.append((a, k)))
++    code, output, info = runner._run_one(
++        ["synthetic-command"], ".", 1, {"PATH": "/usr/bin"}, 1024,
++        worker_uid=1001, worker_gid=1001,
++    )
++
++    assert code == runner.EXIT_CAPTURE_INCOMPLETE
++    assert output == ""
++    assert info["capture_incomplete"] is True
++    assert "no delegated cgroup" in info["posix_cgroup_refused"]
++    assert calls == []
++
++
++def test_distinct_uid_launch_preserves_expired_absolute_deadline_at_admission(monkeypatch):
++    _posix_runner_os(monkeypatch)
++    monkeypatch.setattr(runner, "_POSIX_CGROUP_RUN_LOCK", threading.Lock())
++    monkeypatch.setattr(runner.time, "monotonic", lambda: 200.0)
++    downstream_calls = []
++    scope = _ObservedCgroup([])
++
++    def create_scope():
++        downstream_calls.append("cgroup_create")
++        return scope
++
++    def unexpected_popen(*_args, **_kwargs):
++        downstream_calls.append("popen")
++        raise OSError("unexpected Popen after expired deadline")
++
++    monkeypatch.setattr(runner._DelegatedCgroup, "create", create_scope)
++    monkeypatch.setattr(runner.subprocess, "Popen", unexpected_popen)
++
++    code, output, info = runner._run_one(
++        ["synthetic-command"], ".", 1, {"PATH": "/worker/bin"}, 1024,
++        worker_uid=1001, worker_gid=1001, _deadline_at=199.0,
++    )
++
++    assert code == runner.EXIT_TIMEOUT
++    assert output == ""
++    assert info["timed_out"] is True
++    assert info["skipped_by_deadline"] is True
++    assert info["admission_wait_expired"] is True
++    assert info["capture_incomplete"] is False
++    assert downstream_calls == []
++
++
++class _GateChild:
++    def __init__(self, events, reader, *, timeout_once=False):
++        self.pid = 4243
++        self.stdout = io.BytesIO(b"synthetic stdout")
++        self.stderr = io.BytesIO(b"")
++        self.returncode = 0
++        self.events = events
++        self.reader = reader
++        self.timeout_once = timeout_once
++        self.wait_count = 0
++
++    def wait(self, timeout=None):
++        self.events.append("wait")
++        self.wait_count += 1
++        if self.timeout_once and self.wait_count == 1:
++            raise subprocess.TimeoutExpired("gate-child", timeout)
++        self.reader.join(timeout=2)
++        return self.returncode
++
++    def poll(self):
++        return self.returncode if not self.reader.is_alive() and self.wait_count else None
++
++
++def _install_gate_popen(monkeypatch, events, *, timeout_once=False):
++    def fake_popen(argv, **kwargs):
++        assert kwargs["env"] == {"PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C"}
++        assert kwargs["pass_fds"]
++        script_at = argv.index("-c")
++        env_fd = os.dup(int(argv[script_at + 2]))
++        gate_fd = os.dup(int(argv[script_at + 3]))
++
++        def read_gate():
++            env_data = bytearray()
++            while True:
++                chunk = os.read(env_fd, 65536)
++                if not chunk:
++                    break
++                env_data.extend(chunk)
++            events.append(("worker_env_loaded", json.loads(env_data) if env_data else {}))
++            release = os.read(gate_fd, 1)
++            if release == b"1":
++                events.append("exec_after_gate")
++            else:
++                events.append("gate_closed_without_exec")
++            os.close(env_fd)
++            os.close(gate_fd)
++
++        reader = threading.Thread(target=read_gate, daemon=True)
++        reader.start()
++        return _GateChild(events, reader, timeout_once=timeout_once)
++
++    monkeypatch.setattr(runner.subprocess, "Popen", fake_popen)
++    monkeypatch.setattr(
++        runner, "_write_pipe_before_deadline",
++        lambda fd, data, _deadline, _proc: runner.os.write(fd, data),
++    )
++
++
++def test_distinct_uid_cgroup_gate_orders_attach_environment_and_exec(monkeypatch):
++    posix_os = _posix_runner_os(monkeypatch)
++    events = []
++    scope = _ObservedCgroup(events)
++    monkeypatch.setattr(runner._DelegatedCgroup, "create", lambda: scope)
++    _install_gate_popen(monkeypatch, events)
++    real_write = os.write
++
++    def observed_write(fd, data):
++        if data == b"1":
++            events.append("gate_released")
++        return real_write(fd, data)
++
++    posix_os.write = observed_write
++    worker_env = {"PATH": "/worker/bin", "VST_SENTINEL": "payload"}
++    code, output, info = runner._run_one(
++        ["synthetic-command", "argument"], ".", 1, worker_env, 1024,
++        worker_uid=1001, worker_gid=1001,
++    )
++
++    assert code == 0
++    assert output == "synthetic stdout"
++    assert info["capture_incomplete"] is False
++    assert events.index("attach") < events.index("gate_released") < events.index("exec_after_gate")
++    loaded_env = next(value for event in events if isinstance(event, tuple)
++                      for name, value in [event] if name == "worker_env_loaded")
++    assert loaded_env == worker_env
++    assert events[-1] == "kill_and_remove"
++
++
++def test_distinct_uid_attach_failure_closes_gate_without_exec(monkeypatch):
++    _posix_runner_os(monkeypatch)
++    events = []
++    scope = _ObservedCgroup(events, attach_error=OSError("attach denied"))
++    monkeypatch.setattr(runner._DelegatedCgroup, "create", lambda: scope)
++    _install_gate_popen(monkeypatch, events)
++
++    code, output, info = runner._run_one(
++        ["synthetic-command"], ".", 1, {"PATH": "/worker/bin"}, 1024,
++        worker_uid=1001, worker_gid=1001,
++    )
++
++    assert code == runner.EXIT_CAPTURE_INCOMPLETE
++    assert output == ""
++    assert info["capture_incomplete"] is True
++    assert "attach denied" in info["posix_cgroup_refused"]
++    assert "gate_closed_without_exec" in events
++    assert "exec_after_gate" not in events
++
++
++@pytest.mark.parametrize("scenario", ["normal_exit", "timeout"])
++def test_distinct_uid_cgroup_gate_cleans_scope_on_exit_and_timeout(monkeypatch, scenario):
++    _posix_runner_os(monkeypatch)
++    events = []
++    scope = _ObservedCgroup(events)
++    monkeypatch.setattr(runner._DelegatedCgroup, "create", lambda: scope)
++    _install_gate_popen(monkeypatch, events, timeout_once=(scenario == "timeout"))
++    real_write = os.write
++    runner.os.write = lambda fd, data: real_write(fd, data)
++    timeout = 0.001 if scenario == "timeout" else 1
++
++    code, _output, info = runner._run_one(
++        ["synthetic-command"], ".", timeout, {"PATH": "/worker/bin"}, 1024,
++        worker_uid=1001, worker_gid=1001,
++    )
++
++    assert "kill_and_remove" in events
++    assert info["capture_incomplete"] is False
++    assert info["timed_out"] is (scenario == "timeout")
++    assert code == (runner.EXIT_TIMEOUT if scenario == "timeout" else 0)
++
++
++def test_distinct_uid_cgroup_cleanup_failure_is_non_approving(monkeypatch):
++    _posix_runner_os(monkeypatch)
++    events = []
++    scope = _ObservedCgroup(events, cleanup_result=False)
++    monkeypatch.setattr(runner._DelegatedCgroup, "create", lambda: scope)
++    _install_gate_popen(monkeypatch, events)
++    real_write = os.write
++    runner.os.write = lambda fd, data: real_write(fd, data)
++
++    code, _output, info = runner._run_one(
++        ["synthetic-command"], ".", 1, {"PATH": "/worker/bin"}, 1024,
++        worker_uid=1001, worker_gid=1001,
++    )
++
++    assert code == runner.EXIT_CAPTURE_INCOMPLETE
++    assert info["capture_incomplete"] is True
++    assert events.count("kill_and_remove") == 2  # immediate attempt plus finally retry
++
++
++def test_unconfirmed_cgroup_cleanup_latches_later_distinct_uid_launches(monkeypatch):
++    _posix_runner_os(monkeypatch)
++    events = []
++    scope = _ObservedCgroup(events, cleanup_result=False)
++    monkeypatch.setattr(runner._DelegatedCgroup, "create", lambda: scope)
++    _install_gate_popen(monkeypatch, events)
++    runner.os.write = lambda fd, data: os.write(fd, data)
++
++    first_code, _output, first_info = runner._run_one(
++        ["synthetic-command", "first"], ".", 1, {"PATH": "/worker/bin"}, 1024,
++        worker_uid=1001, worker_gid=1001,
++    )
++    assert first_code == runner.EXIT_CAPTURE_INCOMPLETE
++    assert first_info["capture_incomplete"] is True
++    assert runner._POSIX_CGROUP_CLEANUP_FAILED.is_set()
++
++    later_calls = []
++    monkeypatch.setattr(
++        runner._DelegatedCgroup, "create",
++        lambda: later_calls.append("cgroup_create"),
++    )
++    monkeypatch.setattr(
++        runner.subprocess, "Popen",
++        lambda *args, **kwargs: later_calls.append("popen"),
++    )
++    second_code, second_output, second_info = runner._run_one(
++        ["synthetic-command", "second"], ".", 1, {"PATH": "/worker/bin"}, 1024,
++        worker_uid=1001, worker_gid=1001,
++    )
++
++    assert second_code == runner.EXIT_CAPTURE_INCOMPLETE
++    assert second_output == ""
++    assert second_info["capture_incomplete"] is True
++    assert "prior cleanup was not confirmed" in second_info["posix_cgroup_refused"]
++    assert later_calls == []
++
++
++def test_concurrent_distinct_uid_launch_waits_for_cleanup_latch_admission(monkeypatch):
++    _posix_runner_os(monkeypatch)
++
++    class ObservedLock:
++        """Expose when the second launch has reached the serialized boundary."""
++        def __init__(self):
++            self._lock = threading.Lock()
++            self._guard = threading.Lock()
++            self._entries = 0
++            self.second_waiting = threading.Event()
++
++        def acquire(self, timeout=-1):
++            with self._guard:
++                self._entries += 1
++                if self._entries == 2:
++                    self.second_waiting.set()
++            return self._lock.acquire(timeout=timeout)
++
++        def release(self):
++            self._lock.release()
++
++    run_lock = ObservedLock()
++    monkeypatch.setattr(runner, "_POSIX_CGROUP_RUN_LOCK", run_lock)
++    cleanup_entered = threading.Event()
++    finish_cleanup = threading.Event()
++    events = []
++
++    class BlockingFailedCleanupCgroup:
++        def attach(self, pid):
++            events.append(("attach", pid))
++
++        def kill_and_remove(self, timeout=10.0):
++            events.append("cleanup_started")
++            if not cleanup_entered.is_set():
++                cleanup_entered.set()
++                assert finish_cleanup.wait(timeout=5)
++            runner._POSIX_CGROUP_CLEANUP_FAILED.set()
++            events.append("cleanup_unconfirmed")
++            return False
++
++    scope = BlockingFailedCleanupCgroup()
++    created = []
++
++    def create_scope():
++        created.append("cgroup_create")
++        return scope
++
++    monkeypatch.setattr(runner._DelegatedCgroup, "create", create_scope)
++    _install_gate_popen(monkeypatch, events)
++    original_popen = runner.subprocess.Popen
++    popen_calls = []
++
++    def observed_popen(argv, **kwargs):
++        popen_calls.append(argv)
++        return original_popen(argv, **kwargs)
++
++    monkeypatch.setattr(runner.subprocess, "Popen", observed_popen)
++    results = {}
++
++    def run(command):
++        results[command] = runner._run_one(
++            ["synthetic-command", command], ".", 2,
++            {"PATH": "/worker/bin"}, 1024,
++            worker_uid=1001, worker_gid=1001,
++        )
++
++    first = threading.Thread(target=run, args=("first",), daemon=True)
++    second = threading.Thread(target=run, args=("second",), daemon=True)
++    first.start()
++    try:
++        assert cleanup_entered.wait(timeout=5)
++        second.start()
++        assert run_lock.second_waiting.wait(timeout=5)
++
++        # The first command is still inside unconfirmed cgroup cleanup. The
++        # second must not reach cgroup creation or Popen while that state is
++        # unresolved.
++        assert not finish_cleanup.is_set()
++        assert created == ["cgroup_create"]
++        assert len(popen_calls) == 1
++
++        finish_cleanup.set()
++        first.join(timeout=5)
++        second.join(timeout=5)
++    finally:
++        finish_cleanup.set()
++        first.join(timeout=5)
++        if second.ident is not None:
++            second.join(timeout=5)
++
++    assert not first.is_alive()
++    assert not second.is_alive()
++    first_code, _first_output, first_info = results["first"]
++    second_code, second_output, second_info = results["second"]
++    assert first_code == runner.EXIT_CAPTURE_INCOMPLETE
++    assert first_info["capture_incomplete"] is True
++    assert second_code == runner.EXIT_CAPTURE_INCOMPLETE
++    assert second_output == ""
++    assert second_info["capture_incomplete"] is True
++    assert "prior cleanup was not confirmed" in second_info["posix_cgroup_refused"]
++    assert created == ["cgroup_create"]
++    assert len(popen_calls) == 1
++    assert events.count("cleanup_unconfirmed") == 2
++
++
++def test_distinct_uid_launch_skips_after_lock_wait_exhausts_command_budget(monkeypatch):
++    _posix_runner_os(monkeypatch)
++
++    class ObservedLock:
++        def __init__(self):
++            self._lock = threading.Lock()
++            self._guard = threading.Lock()
++            self._acquire_calls = 0
++            self.waiting_launch = threading.Event()
++
++        def acquire(self, timeout=-1):
++            with self._guard:
++                self._acquire_calls += 1
++                if self._acquire_calls == 2:
++                    self.waiting_launch.set()
++            return self._lock.acquire(timeout=timeout)
++
++        def release(self):
++            self._lock.release()
++
++    run_lock = ObservedLock()
++    monkeypatch.setattr(runner, "_POSIX_CGROUP_RUN_LOCK", run_lock)
++    assert run_lock.acquire()
++    downstream_calls = []
++    monkeypatch.setattr(
++        runner._DelegatedCgroup, "create",
++        lambda: downstream_calls.append("cgroup_create"),
++    )
++    monkeypatch.setattr(
++        runner.subprocess, "Popen",
++        lambda *args, **kwargs: downstream_calls.append("popen"),
++    )
++    results = []
++
++    def queued_launch():
++        results.append(runner._run_one(
++            ["synthetic-command"], ".", 0.05,
++            {"PATH": "/worker/bin"}, 1024,
++            worker_uid=1001, worker_gid=1001,
++        ))
++
++    launch = threading.Thread(target=queued_launch, daemon=True)
++    try:
++        launch.start()
++        assert run_lock.waiting_launch.wait(timeout=2)
++        launch.join(timeout=2)
++    finally:
++        run_lock.release()
++        launch.join(timeout=2)
++
++    assert not launch.is_alive()
++    assert len(results) == 1
++    code, output, info = results[0]
++    assert code == runner.EXIT_TIMEOUT
++    assert output == ""
++    assert info["timed_out"] is True
++    assert info["skipped_by_deadline"] is True
++    assert info["admission_wait_expired"] is True
++    assert info["capture_incomplete"] is False
++    assert downstream_calls == []
++
++
++@pytest.mark.parametrize("cleanup_result", [True, False])
++def test_distinct_uid_gate_environment_timeout_cleans_scope_and_refuses_exec(
++    monkeypatch, cleanup_result,
++):
++    _posix_runner_os(monkeypatch)
++    events = []
++    scope = _ObservedCgroup(events, cleanup_result=cleanup_result)
++    monkeypatch.setattr(runner._DelegatedCgroup, "create", lambda: scope)
++    deadline_handoff = runner._write_pipe_before_deadline
++    _install_gate_popen(monkeypatch, events)
++    monkeypatch.setattr(runner, "_write_pipe_before_deadline", deadline_handoff)
++
++    class GateHandoffTimeoutClock:
++        """Expire only at pipe handoff, after admission and the initial guard."""
++        def __init__(self):
++            self.values = iter((100.0, 100.0, 100.0, 100.0, 102.0))
++            self.calls = 0
++
++        def monotonic(self):
++            self.calls += 1
++            try:
++                return next(self.values)
++            except StopIteration as exc:
++                raise AssertionError("unexpected monotonic clock read") from exc
++
++    clock = GateHandoffTimeoutClock()
++    monkeypatch.setattr(runner.time, "monotonic", clock.monotonic)
++    monkeypatch.setattr(runner.select, "select", lambda *_a: ([], [], []))
++
++    code, output, info = runner._run_one(
++        ["synthetic-command"], ".", 1, {"PATH": "/worker/bin"}, 1024,
++        worker_uid=1001, worker_gid=1001,
++    )
++
++    assert output == ""
++    assert info["timed_out"] is True
++    assert info["posix_gate_timeout"] is True
++    assert info["capture_incomplete"] is (not cleanup_result)
++    assert code == (runner.EXIT_TIMEOUT if cleanup_result else runner.EXIT_CAPTURE_INCOMPLETE)
++    assert clock.calls == 5
++    assert events.count("kill_and_remove") == 1
++    assert "attach" not in events
++    assert "gate_closed_without_exec" in events
++    assert "exec_after_gate" not in events
++
++
++def test_run_and_sign_stops_after_incomplete_cleanup_and_records_later_command_not_run(
++    monkeypatch, tmp_path,
++):
++    commands = [["synthetic-command", "first"], ["synthetic-command", "second"]]
++    manifest = base_manifest(allowed_commands=[{"slot": "tests", "argv": argv} for argv in commands])
++    launched = []
++
++    def incomplete(argv, *_args, **_kwargs):
++        launched.append(argv)
++        return runner.EXIT_CAPTURE_INCOMPLETE, "", {
++            "stdout_truncated": False, "stderr_truncated": False,
++            "timed_out": False, "capture_incomplete": True, "job_object": False,
++        }
++
++    monkeypatch.setattr(runner, "_run_one", incomplete)
++    report = {}
++    receipt = runner.run_and_sign(
++        manifest=manifest, slot="tests", attempt=1, epoch=1,
++        candidate_head="a" * 40, resolved_model="synthetic", invocation_id="inv-s2-stop",
++        runner_id="runner-s2", key=KEY, commands=commands, expected_test_ids=["t1", "t2"],
++        test_result_parser=lambda _output: ([], [], []), covered_acceptance=["AC-1"],
++        artifact_paths=[], prev_receipt_sha256=None, cwd=str(tmp_path),
++        created_at="2026-10-27T00:00:00Z", timeout_sec=30, deadline_sec=30, report=report,
++    )
++
++    assert launched == [commands[0]]
++    assert receipt["result"] == "INCONCLUSIVE"
++    assert receipt["executed_test_ids"] == []
++    assert [entry["exit_code"] for entry in receipt["commands"]] == [
++        runner.EXIT_CAPTURE_INCOMPLETE, runner.EXIT_CAPTURE_INCOMPLETE,
++    ]
++    assert report["capture_incomplete"] is True
++    assert report["commands"][1]["skipped_after_capture_incomplete"] is True
++
++
++def test_run_manifest_commands_stops_after_incomplete_cleanup_and_records_later_command_not_run(
++    monkeypatch, tmp_path,
++):
++    import tools.vst.sandbox as sandbox
++    import tools.vst.signer as signer
++
++    _posix_runner_os(monkeypatch)
++    manifest, _registry, _reviewer_key, _keys = _authority_fixture()
++    parser_id, parser_version, parser_digest = next(iter(contracts.TRUSTED_PARSER_CATALOG))
++    commands = [["synthetic-command", "first"], ["synthetic-command", "second"]]
++    manifest["allowed_commands"] = [{"slot": "tests", "argv": argv} for argv in commands]
++    manifest["mandatory_commands"] = [
++        {"slot": "tests", "argv": argv, "parser_id": parser_id,
++         "parser_version": parser_version, "parser_sha256": parser_digest}
++        for argv in commands
++    ]
++    monkeypatch.setattr(sandbox, "require_distinct_worker_identity", lambda _uid: None)
++    monkeypatch.setattr(sandbox, "require_runner_can_access_signer", lambda _socket: None)
++    monkeypatch.setattr(sandbox, "require_worker_cannot_access_signer", lambda *_a, **_k: None)
++    monkeypatch.setattr(signer, "authorize_runner_over_socket", lambda _socket: None)
++    monkeypatch.setattr(
++        signer, "sign_diff_over_socket",
++        lambda _socket, _request_id, evidence: sign(evidence, SIGNER_KEY, DIFF_GATE_LABEL),
++    )
++    monkeypatch.setattr(
++        signer, "sign_over_socket",
++        lambda _socket, request: sign(request, SIGNER_KEY, SIGNING_REQUEST_LABEL),
++    )
++    monkeypatch.setattr(runner, "_derive_head", lambda _cwd: "a" * 40)
++    monkeypatch.setattr(runner, "_diff_paths", lambda *_a: (b"", [], [], []))
++    launched = []
++
++    def incomplete(argv, *_args, **_kwargs):
++        launched.append(argv)
++        return runner.EXIT_CAPTURE_INCOMPLETE, "", {
++            "stdout_truncated": False, "stderr_truncated": False,
++            "timed_out": False, "capture_incomplete": True, "job_object": False,
++        }
++
++    monkeypatch.setattr(runner, "_run_one", incomplete)
++    report = {}
++    receipt = runner.run_manifest_commands(
++        manifest=manifest, slot="tests", attempt=1, epoch=1, resolved_model="synthetic",
++        invocation_id="inv-s2-stop-v2", runner_id="runner-s2", signer_socket="unused",
++        cwd=str(tmp_path), worker_uid=1001, worker_gid=1001,
++        created_at="2026-10-27T00:00:00Z", timeout_sec=30, deadline_sec=30, report=report,
++    )
++
++    assert launched == [commands[0]]
++    assert receipt["result"] == "INCONCLUSIVE"
++    assert receipt["executed_test_ids"] == []
++    assert [entry["exit_code"] for entry in receipt["commands"]] == [
++        runner.EXIT_CAPTURE_INCOMPLETE, runner.EXIT_CAPTURE_INCOMPLETE,
++    ]
++    assert receipt["parser_results"][1]["parser_result"] == {
++        "executed_test_ids": [], "skipped_test_ids": [], "xfail_test_ids": [],
++    }
++    assert report["capture_incomplete"] is True
++    assert report["commands"][1]["skipped_after_capture_incomplete"] is True
++
++
+ @pytest.mark.skipif(os.name == "nt", reason="NOT_RUN: POSIX account and Unix-socket permissions are unavailable on Windows")
+ def test_posix_worker_cannot_read_signer_or_key_file():
+     """Drop a child to the provisioned worker identity; all key/socket data is disposable."""
+@@ -1527,6 +2206,57 @@ if denied != len(paths) or not socket_denied:
+         shutil.rmtree(fixture_root)
+ 
+ 
++@pytest.mark.skipif(os.name == "nt", reason="NOT_RUN: POSIX worker capabilities require the provisioned WSL sandbox")
++def test_runner_drops_uid_change_capabilities_before_worker_command():
++    """VST-011: actual runner launch drops capabilities before the worker command."""
++    import pwd
++
++    runner_account = pwd.getpwnam("vst-runner")
++    worker_account = pwd.getpwnam("vst-worker")
++    signer_account = pwd.getpwnam("vst-signer")
++    if os.geteuid() != runner_account.pw_uid:
++        pytest.skip("requires runner UID with the provisioned ambient capability profile")
++
++    cap_setgid_setuid = (1 << 6) | (1 << 7)
++    with open("/proc/self/status", encoding="ascii") as status_file:
++        current_status = {
++            line.split(":", 1)[0]: line.split(":", 1)[1].strip()
++            for line in status_file
++            if ":" in line
++        }
++    if int(current_status.get("CapAmb", "0"), 16) & cap_setgid_setuid != cap_setgid_setuid:
++        pytest.skip("requires runner AmbientCapabilities=CAP_SETGID,CAP_SETUID")
++
++    child = r'''import json, os, sys
++status = {}
++with open("/proc/self/status", encoding="ascii") as stream:
++    for line in stream:
++        if line.startswith(("CapEff:", "CapPrm:", "CapInh:", "CapAmb:")):
++            name, value = line.split(":", 1)
++            status[name] = value.strip()
++try:
++    os.setuid(int(sys.argv[1]))
++    can_change_uid = True
++except PermissionError:
++    can_change_uid = False
++print(json.dumps({"caps": status, "can_change_uid": can_change_uid}))
++if can_change_uid or any(int(value, 16) != 0 for value in status.values()):
++    raise SystemExit(2)
++'''
++    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
++    code, output, info = runner._run_one(
++        [sys.executable, "-c", child, str(signer_account.pw_uid)],
++        repo_root, 5, {"PATH": os.environ.get("PATH", ""), "PYTHONIOENCODING": "utf-8"},
++        4096, worker_uid=worker_account.pw_uid, worker_gid=worker_account.pw_gid,
++    )
++
++    assert code == 0, f"worker capability probe failed: {output!r} {info!r}"
++    result = json.loads(output)
++    assert result["can_change_uid"] is False
++    assert set(result["caps"]) == {"CapEff", "CapPrm", "CapInh", "CapAmb"}
++    assert all(int(value, 16) == 0 for value in result["caps"].values())
++
++
+ @pytest.mark.parametrize("scenario", [
+     "posix_process_group_cleanup",
+     "post_exit_descendant_cleanup",
+diff --git a/tests/vst/test_s2_store_lifecycle.py b/tests/vst/test_s2_store_lifecycle.py
+index 4ac26a2..5988a2a 100644
+--- a/tests/vst/test_s2_store_lifecycle.py
++++ b/tests/vst/test_s2_store_lifecycle.py
+@@ -37,6 +37,23 @@ def test_anchor_compare_append_is_idempotent_and_rejects_same_count_fork(tmp_pat
+         anchor.compare_and_append(signed, fork)
+ 
+ 
++@pytest.mark.skipif(os.name != "posix", reason="NOT_RUN: FileExternalAnchor requires POSIX sandbox")
++def test_anchor_append_separates_valid_tail_without_final_newline(tmp_path):
++    """VST-012: recover a valid final checkpoint without its terminating LF."""
++    anchor_path = tmp_path / "anchor-without-final-lf.jsonl"
++    anchor = FileExternalAnchor(str(anchor_path), EVENT)
++    genesis = signed_checkpoint(0, GENESIS_HASH, EVENT)
++    anchor_path.write_bytes(json.dumps(genesis, separators=(",", ":")).encode("utf-8"))
++
++    assert anchor.read_latest() == genesis
++    successor = signed_checkpoint(1, "a" * 64, EVENT)
++    assert anchor.compare_and_append(genesis, successor) == successor
++
++    lines = anchor_path.read_bytes().splitlines()
++    assert [json.loads(line) for line in lines] == [genesis, successor]
++    assert anchor.read_latest() == successor
++
++
+ @pytest.mark.skipif(os.name != "posix", reason="NOT_RUN: external anchor restore detection requires POSIX sandbox")
+ def test_external_anchor_detects_restored_older_database_and_locks_writes(tmp_path):
+     db, anchor_path = tmp_path / "state.db", tmp_path / "anchor.jsonl"
+diff --git a/tools/vst/lifecycle.py b/tools/vst/lifecycle.py
+index f13f87f..3a6db33 100644
+--- a/tools/vst/lifecycle.py
++++ b/tools/vst/lifecycle.py
+@@ -199,6 +199,17 @@ class FileExternalAnchor:
+                             raise AnchorError("same checkpoint count has a different head")
+                         raise AnchorError("external checkpoint compare-and-append conflict")
+                     stream.seek(0, os.SEEK_END)
++                    end = stream.tell()
++                    if end:
++                        stream.seek(end - 1, os.SEEK_SET)
++                        if stream.read(1) != b"\n":
++                            # A crash may leave a complete JSON record without
++                            # its final newline. Separate it durably before the
++                            # next record so recovery never merges two objects.
++                            stream.seek(0, os.SEEK_END)
++                            stream.write(b"\n")
++                            stream.flush()
++                            os.fsync(stream.fileno())
+                     stream.write(canonical_bytes(checkpoint) + b"\n")
+                     stream.flush()
+                     os.fsync(stream.fileno())
+diff --git a/tools/vst/runner.py b/tools/vst/runner.py
+index 9953378..26b55c4 100644
+--- a/tools/vst/runner.py
++++ b/tools/vst/runner.py
+@@ -38,9 +38,10 @@ Execution (subprocess.Popen, shell=False):
+   then resumes its primary thread. Assignment or resume failure terminates and
+   refuses the command before it executes. On EVERY exit path the runner calls
+   TerminateJobObject and then CloseHandle. Non-strict Windows callers retain the
+-  legacy best-effort taskkill fallback. POSIX: the process group
+-  (the child is started in its own session) is killed with SIGKILL on timeout
+-  and after a normal exit. Timeout exit code -1.
++  legacy best-effort taskkill fallback. Distinct-UID POSIX worker launches use
++  a runner-delegated cgroup-v2 scope, killed and confirmed empty on every exit
++  path. Same-UID compatibility calls retain process-group cleanup. Timeout
++  exit code -1.
+ - capture completeness: after both pipes were joined, a reader thread that is
+   still alive, a read error of any kind (any Exception in the reader), or a root
+   process that is still running 10 s after the kill, means the captured output
+@@ -66,10 +67,13 @@ Standard library only; no network.
+ 
+ from __future__ import annotations
+ 
++import functools
+ import hashlib
++import json
+ import logging
+ import os
+ import re
++import select
+ import signal
+ import subprocess
+ import threading
+@@ -216,6 +220,157 @@ def _hash_artifacts(paths: list[str], cwd: str) -> dict[str, str]:
+ # ------------------------------------------------------------------- execution
+ 
+ 
++_POSIX_GATE = (
++    "import json, os, sys\n"
++    "env_fd, gate_fd = int(sys.argv[1]), int(sys.argv[2])\n"
++    "chunks = []\n"
++    "while True:\n"
++    " chunk = os.read(env_fd, 65536)\n"
++    " if not chunk: break\n"
++    " chunks.append(chunk)\n"
++    "os.close(env_fd)\n"
++    "worker_env = json.loads(b''.join(chunks))\n"
++    "if os.read(gate_fd, 1) != b'1': sys.exit(125)\n"
++    "os.close(gate_fd)\n"
++    "argv = sys.argv[3:]\n"
++    "os.execvpe(argv[0], argv, worker_env)\n"
++)
++_POSIX_CGROUP_CLEANUP_FAILED = threading.Event()
++_POSIX_CGROUP_RUN_LOCK = threading.Lock()
++
++
++def _serialize_distinct_uid_launch(function: Callable) -> Callable:
++    """Serialize distinct-UID workers without exceeding their admission budget."""
++    @functools.wraps(function)
++    def wrapped(*args, **kwargs):
++        if (
++            os.name != "nt"
++            and kwargs.get("worker_uid") is not None
++            and kwargs.get("worker_gid") is not None
++        ):
++            requested_limit = args[2] if len(args) > 2 else kwargs["limit_sec"]
++            deadline = kwargs.get("_deadline_at")
++            if deadline is None:
++                deadline = time.monotonic() + max(0.0, float(requested_limit))
++            remaining = deadline - time.monotonic()
++            if remaining <= 0 or not _POSIX_CGROUP_RUN_LOCK.acquire(timeout=remaining):
++                return EXIT_TIMEOUT, "", {
++                    "stdout_truncated": False,
++                    "stderr_truncated": False,
++                    "timed_out": True,
++                    "capture_incomplete": False,
++                    "job_object": False,
++                    "skipped_by_deadline": True,
++                    "admission_wait_expired": True,
++                }
++            try:
++                remaining = deadline - time.monotonic()
++                if remaining <= 0:
++                    return EXIT_TIMEOUT, "", {
++                        "stdout_truncated": False,
++                        "stderr_truncated": False,
++                        "timed_out": True,
++                        "capture_incomplete": False,
++                        "job_object": False,
++                        "skipped_by_deadline": True,
++                        "admission_wait_expired": True,
++                    }
++                kwargs["_deadline_at"] = deadline
++                return function(*args, **kwargs)
++            finally:
++                _POSIX_CGROUP_RUN_LOCK.release()
++        return function(*args, **kwargs)
++    return wrapped
++
++
++def _write_pipe_before_deadline(fd: int, data: bytes, deadline: float, proc) -> None:
++    """Send gate environment data without blocking beyond command admission time."""
++    os.set_blocking(fd, False)
++    view = memoryview(data)
++    while view:
++        if proc.poll() is not None:
++            raise OSError("POSIX exec gate exited before environment handoff")
++        remaining = deadline - time.monotonic()
++        if remaining <= 0:
++            raise subprocess.TimeoutExpired("POSIX exec gate", 0)
++        _readable, writable, _exceptional = select.select([], [fd], [], min(remaining, 0.05))
++        if not writable:
++            continue
++        try:
++            written = os.write(fd, view[:65536])
++        except BlockingIOError:
++            continue
++        if written <= 0:
++            raise OSError("POSIX exec gate environment pipe closed")
++        view = view[written:]
++
++
++class _DelegatedCgroup:
++    """A unique kill scope below the runner's delegated cgroup-v2 subtree."""
++
++    def __init__(self, path: str) -> None:
++        self.path = path
++        self._closed = False
++
++    @classmethod
++    def create(cls) -> "_DelegatedCgroup":
++        with open("/proc/self/cgroup", encoding="ascii") as stream:
++            entries = [line.rstrip("\n").split(":", 2) for line in stream]
++        unified = next(
++            (entry[2] for entry in entries
++             if len(entry) == 3 and entry[:2] == ["0", ""]),
++            None,
++        )
++        if not unified or ".." in unified.split("/"):
++            raise OSError("unified cgroup-v2 delegation is unavailable")
++        parent = os.path.realpath(os.path.join("/sys/fs/cgroup", unified.lstrip("/")))
++        root = os.path.realpath("/sys/fs/cgroup")
++        if os.path.commonpath((root, parent)) != root:
++            raise OSError("runner cgroup path escaped the cgroup-v2 mount")
++        path = os.path.join(parent, f"vst-command-{os.getpid()}-{uuid.uuid4().hex}")
++        os.mkdir(path, 0o700)
++        scope = cls(path)
++        try:
++            for name in ("cgroup.procs", "cgroup.events", "cgroup.kill"):
++                if not os.path.isfile(os.path.join(path, name)):
++                    raise OSError(f"delegated cgroup control is missing: {name}")
++            for name in ("cgroup.procs", "cgroup.kill"):
++                fd = os.open(os.path.join(path, name), os.O_WRONLY)
++                os.close(fd)
++        except BaseException:
++            try:
++                os.rmdir(path)
++            except OSError:
++                pass
++            raise
++        return scope
++
++    def attach(self, pid: int) -> None:
++        with open(os.path.join(self.path, "cgroup.procs"), "w", encoding="ascii") as stream:
++            stream.write(f"{pid}\n")
++
++    def kill_and_remove(self, timeout: float = 10.0) -> bool:
++        if self._closed:
++            return True
++        try:
++            with open(os.path.join(self.path, "cgroup.kill"), "w", encoding="ascii") as stream:
++                stream.write("1\n")
++            deadline = time.monotonic() + timeout
++            while time.monotonic() < deadline:
++                with open(os.path.join(self.path, "cgroup.events"), encoding="ascii") as stream:
++                    events = dict(line.split() for line in stream if line.strip())
++                if events.get("populated") == "0":
++                    os.rmdir(self.path)
++                    self._closed = True
++                    return True
++                time.sleep(0.02)
++        except (OSError, ValueError):
++            _POSIX_CGROUP_CLEANUP_FAILED.set()
++            return False
++        _POSIX_CGROUP_CLEANUP_FAILED.set()
++        return False
++
++
+ class _Capture:
+     """Reads one pipe in a thread, keeping at most `cap` bytes."""
+ 
+@@ -512,12 +667,14 @@ def _resume_suspended_primary_thread(pid: int) -> bool:
+         k32.CloseHandle(snapshot)
+ 
+ 
++@_serialize_distinct_uid_launch
+ def _run_one(
+     argv: list[str], cwd: str, limit_sec: float, env: dict[str, str], cap: int,
+     *, require_job_object: bool = False, worker_uid: int | None = None,
+-    worker_gid: int | None = None,
++    worker_gid: int | None = None, _deadline_at: float | None = None,
+ ) -> tuple[int, str, dict]:
+     """Run one argv without a shell; return (exit_code, stdout_text, info)."""
++    command_deadline = _deadline_at if _deadline_at is not None else time.monotonic() + limit_sec
+     info = {
+         "stdout_truncated": False,
+         "stderr_truncated": False,
+@@ -525,24 +682,132 @@ def _run_one(
+         "capture_incomplete": False,
+         "job_object": False,
+     }
++    if command_deadline <= time.monotonic():
++        return EXIT_TIMEOUT, "", {
++            **info,
++            "timed_out": True,
++            "skipped_by_deadline": True,
++            "admission_wait_expired": True,
++        }
++    cgroup: _DelegatedCgroup | None = None
++    gate_release_fd: int | None = None
++    env_read: int | None = None
++    gate_read: int | None = None
++    env_write: int | None = None
+     try:
++        # The trusted runner may carry ambient SETUID/SETGID capabilities so
++        # Popen can switch to the worker identity. Drop ambient and inheritable
++        # capabilities in a trusted system helper before the requested command
++        # is exec'd. The unit also sets no_new_privs; repeat it at this boundary
++        # so file capabilities cannot restore privilege for the worker.
++        child_argv = argv
++        child_env = env
++        pass_fds: tuple[int, ...] = ()
++        if os.name != "nt" and worker_uid is not None and worker_gid is not None:
++            if _POSIX_CGROUP_CLEANUP_FAILED.is_set():
++                return EXIT_CAPTURE_INCOMPLETE, "", {
++                    **info, "capture_incomplete": True,
++                    "posix_cgroup_refused": "a prior cleanup was not confirmed in this runner process",
++                }
++            try:
++                cgroup = _DelegatedCgroup.create()
++            except OSError as exc:
++                return EXIT_CAPTURE_INCOMPLETE, "", {
++                    **info, "capture_incomplete": True,
++                    "posix_cgroup_refused": str(exc),
++                }
++            env_read, env_write = os.pipe()
++            gate_read, gate_release_fd = os.pipe()
++            gate_child_argv = ["/usr/bin/python3", "-I", "-S", "-c", _POSIX_GATE,
++                               str(env_read), str(gate_read), *argv]
++            child_argv = [
++                "/usr/bin/setpriv",
++                "--inh-caps=-all",
++                "--ambient-caps=-all",
++                "--no-new-privs",
++                "--",
++                *gate_child_argv,
++            ]
++            child_env = {"PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C"}
++            pass_fds = (env_read, gate_read)
+         proc = subprocess.Popen(
+-            argv,
++            child_argv,
+             shell=False,
+             stdin=subprocess.DEVNULL,
+             stdout=subprocess.PIPE,
+             stderr=subprocess.PIPE,
+             cwd=cwd,
+-            env=env,
++            env=child_env,
+             bufsize=0,
++            pass_fds=pass_fds,
+             **({"user": worker_uid, "group": worker_gid, "extra_groups": ()}
+                if worker_uid is not None and worker_gid is not None else {}),
+             **_spawn_kwargs(suspended=os.name == "nt" and require_job_object),
+         )
+     except OSError:
++        for fd in (env_read, gate_read, env_write, gate_release_fd):
++            if fd is not None:
++                try:
++                    os.close(fd)
++                except OSError:
++                    pass
++        cgroup_clean = cgroup is None or cgroup.kill_and_remove()
+         # Missing executable, missing/invalid cwd, no permission, or any other
+         # OS-level failure to start. Non-OSError exceptions propagate.
++        if not cgroup_clean:
++            return EXIT_CAPTURE_INCOMPLETE, "", {
++                **info, "capture_incomplete": True,
++                "posix_cgroup_cleanup_failed": True,
++            }
+         return EXIT_MISSING_EXECUTABLE, "", info
++    if cgroup is not None:
++        os.close(env_read)
++        env_read = None
++        os.close(gate_read)
++        gate_read = None
++        try:
++            payload = json.dumps(env, separators=(",", ":")).encode("utf-8")
++            env_pipe = os.fdopen(env_write, "wb")
++            env_write = None
++            with env_pipe as stream:
++                _write_pipe_before_deadline(stream.fileno(), payload, command_deadline, proc)
++            cgroup.attach(proc.pid)
++        except subprocess.TimeoutExpired:
++            info["timed_out"] = True
++            if gate_release_fd is not None:
++                os.close(gate_release_fd)
++                gate_release_fd = None
++            cleanup_confirmed = cgroup.kill_and_remove()
++            try:
++                proc.wait(timeout=10)
++            except subprocess.TimeoutExpired:
++                cleanup_confirmed = False
++            for stream in (proc.stdout, proc.stderr):
++                if stream is not None:
++                    stream.close()
++            info["capture_incomplete"] = not cleanup_confirmed
++            info["posix_gate_timeout"] = True
++            return (
++                EXIT_CAPTURE_INCOMPLETE if not cleanup_confirmed else EXIT_TIMEOUT,
++                "", info,
++            )
++        except (OSError, TypeError, ValueError) as exc:
++            info["posix_cgroup_refused"] = str(exc)
++            if env_write is not None:
++                os.close(env_write)
++                env_write = None
++            if gate_release_fd is not None:
++                os.close(gate_release_fd)
++                gate_release_fd = None
++            cgroup.kill_and_remove()
++            try:
++                proc.wait(timeout=10)
++            except subprocess.TimeoutExpired:
++                pass
++            for stream in (proc.stdout, proc.stderr):
++                if stream is not None:
++                    stream.close()
++            return EXIT_CAPTURE_INCOMPLETE, "", {**info, "capture_incomplete": True}
+     job: _JobObject | None = None
+     out: _Capture | None = None
+     err: _Capture | None = None
+@@ -556,6 +821,11 @@ def _run_one(
+             cleanup_failed = True
+             _kill_tree(proc)  # best-effort fallback when Win32 cleanup is unconfirmed
+ 
++    def cleanup_cgroup() -> None:
++        nonlocal cleanup_failed
++        if cgroup is not None and not cgroup.kill_and_remove():
++            cleanup_failed = True
++
+     try:
+         # Windows: put the child in a kill-on-close Job Object right away so every
+         # descendant dies on any exit path, even after the root has exited. Strict
+@@ -594,13 +864,23 @@ def _run_one(
+             return EXIT_CAPTURE_INCOMPLETE, "", {**info, "capture_incomplete": True}
+         out = _Capture(proc.stdout, cap)
+         err = _Capture(proc.stderr, cap)
++        if gate_release_fd is not None:
++            if command_deadline > time.monotonic():
++                os.write(gate_release_fd, b"1")
++                os.close(gate_release_fd)
++                gate_release_fd = None
++            else:
++                info["timed_out"] = True
+         try:
+-            proc.wait(timeout=limit_sec)
++            proc.wait(timeout=max(0.0, command_deadline - time.monotonic()))
+         except subprocess.TimeoutExpired:
+             info["timed_out"] = True
+             if job is not None:
+                 cleanup_job()
+-            _kill_tree(proc)  # taskkill /T /F fallback (also the no-job path)
++            if cgroup is not None:
++                cleanup_cgroup()
++            else:
++                _kill_tree(proc)  # taskkill /T /F fallback (also the no-job path)
+             try:
+                 proc.wait(timeout=10)
+             except subprocess.TimeoutExpired:
+@@ -608,6 +888,8 @@ def _run_one(
+         else:
+             if job is not None:
+                 cleanup_job()
++            elif cgroup is not None:
++                cleanup_cgroup()  # also kills descendants after normal root exit
+             elif os.name == "nt":
+                 _taskkill_tree(proc.pid)  # no job: best effort, failures ignored
+             else:
+@@ -619,10 +901,18 @@ def _run_one(
+     finally:
+         if job is not None:
+             cleanup_job()  # idempotent; covers unexpected exceptions
+-        if not completed:
++        if cgroup is not None:
++            cleanup_cgroup()  # retry an unconfirmed kill/removal before reporting
++        elif not completed:
+             # ANY exception (including a failed reader-thread start): kill the
+-            # whole tree (process group on POSIX, taskkill /T on Windows).
++            # process group or Windows tree as applicable.
+             _kill_tree(proc)
++        if gate_release_fd is not None:
++            try:
++                os.close(gate_release_fd)
++            except OSError:
++                pass
++            gate_release_fd = None
+         for capture in (out, err):
+             if capture is not None:
+                 capture.finish()
+@@ -809,7 +1099,10 @@ def run_and_sign(
+ 
+     If `report` is a dict it is filled with {"commands": [{"stdout_truncated",
+     "stderr_truncated", "timed_out", "capture_incomplete", "job_object",
+-    "skipped_by_deadline"}, ...], "capture_incomplete": bool}. "job_object" is
++    "skipped_by_deadline", optional "skipped_after_capture_incomplete"}, ...],
++    "capture_incomplete": bool}. Commands after unconfirmed tree cleanup are
++    recorded as not run; no later command is launched in the same run.
++    "job_object" is
+     True only if the command ran inside a Windows Job Object (always False on
+     POSIX, for commands skipped by the deadline and for -2 start failures).
+     """
+@@ -828,9 +1121,19 @@ def run_and_sign(
+     recorded: list[dict] = []
+     outputs: list[str] = []
+     infos: list[dict] = []
++    stop_after_capture_incomplete = False
+     for argv in argvs:
+-        remaining = deadline_at - time.monotonic()
+-        if remaining <= 0:
++        now = time.monotonic()
++        remaining = deadline_at - now
++        if stop_after_capture_incomplete:
++            exit_code, stdout = EXIT_CAPTURE_INCOMPLETE, ""
++            info = {
++                "stdout_truncated": False, "stderr_truncated": False,
++                "timed_out": False, "capture_incomplete": True,
++                "job_object": False, "skipped_by_deadline": False,
++                "skipped_after_capture_incomplete": True,
++            }
++        elif remaining <= 0:
+             recorded.append({"argv": list(argv), "exit_code": EXIT_TIMEOUT})
+             outputs.append("")
+             infos.append(
+@@ -839,14 +1142,19 @@ def run_and_sign(
+                  "job_object": False, "skipped_by_deadline": True}
+             )
+             continue
+-        exit_code, stdout, info = _run_one(
+-            list(argv), cwd, min(float(per_command), remaining), env, max_output_bytes,
+-            require_job_object=True,
+-        )
+-        info["skipped_by_deadline"] = False
++        else:
++            exit_code, stdout, info = _run_one(
++                list(argv), cwd, min(float(per_command), remaining), env, max_output_bytes,
++                require_job_object=True,
++                _deadline_at=min(deadline_at, now + float(per_command)),
++            )
++            if not info.get("admission_wait_expired"):
++                info["skipped_by_deadline"] = False
+         recorded.append({"argv": list(argv), "exit_code": exit_code})
+         outputs.append(stdout)
+         infos.append(info)
++        if exit_code == EXIT_CAPTURE_INCOMPLETE or info["capture_incomplete"]:
++            stop_after_capture_incomplete = True
+     if report is not None:
+         report["commands"] = infos
+         report["capture_incomplete"] = any(info["capture_incomplete"] for info in infos)
+@@ -1039,13 +1347,23 @@ def run_manifest_commands(
+     commands: list[dict] = []
+     parser_results: list[dict] = []
+     infos: list[dict] = []
++    stop_after_capture_incomplete = False
+     for item in pinned:
+         parser_key = (item["parser_id"], item["parser_version"], item["parser_sha256"])
+         parser = TRUSTED_PARSER_CATALOG.get(parser_key)
+         if parser is None:
+             raise ContractError("manifest parser is not present in trusted built-in catalog")
+-        remaining = deadline_at - time.monotonic()
+-        if remaining <= 0:
++        now = time.monotonic()
++        remaining = deadline_at - now
++        if stop_after_capture_incomplete:
++            exit_code, stdout = EXIT_CAPTURE_INCOMPLETE, ""
++            info = {
++                "stdout_truncated": False, "stderr_truncated": False,
++                "timed_out": False, "capture_incomplete": True,
++                "job_object": False, "skipped_by_deadline": False,
++                "skipped_after_capture_incomplete": True,
++            }
++        elif remaining <= 0:
+             exit_code, stdout = EXIT_TIMEOUT, ""
+             info = {"stdout_truncated": False, "stderr_truncated": False, "timed_out": False,
+                     "capture_incomplete": False, "job_object": False, "skipped_by_deadline": True}
+@@ -1054,8 +1372,10 @@ def run_manifest_commands(
+                 item["argv"], cwd, min(float(per_command), remaining), env,
+                 max_output_bytes, require_job_object=True,
+                 worker_uid=worker_uid, worker_gid=worker_gid,
++                _deadline_at=min(deadline_at, now + float(per_command)),
+             )
+-            info["skipped_by_deadline"] = False
++            if not info.get("admission_wait_expired"):
++                info["skipped_by_deadline"] = False
+         parsed = parser(stdout)
+         if (not isinstance(parsed, tuple) or len(parsed) != 3 or
+                 any(not isinstance(group, list) or any(not isinstance(x, str) for x in group) for group in parsed)):
+@@ -1069,6 +1389,8 @@ def run_manifest_commands(
+                               "xfail_test_ids": xfail},
+         })
+         infos.append(info)
++        if exit_code == EXIT_CAPTURE_INCOMPLETE or info["capture_incomplete"]:
++            stop_after_capture_incomplete = True
+     candidate_head = _derive_head(cwd)
+     executed_all = [test_id for result in parser_results for test_id in result["parser_result"]["executed_test_ids"]]
+     skipped_all = [test_id for result in parser_results for test_id in result["parser_result"]["skipped_test_ids"]]
+diff --git a/tools/vst/schemas/README.md b/tools/vst/schemas/README.md
+index 3f70605..6196b05 100644
+--- a/tools/vst/schemas/README.md
++++ b/tools/vst/schemas/README.md
+@@ -113,9 +113,11 @@ Tables: `stories(story_id, project_id, phase 1..10, epoch, owner, state in OPEN/
+ 
+ Execution: `subprocess.Popen(shell=False)`, stdin from the null device, started in its own process group (POSIX) / process group without a window (Windows). The child gets a minimal explicit environment: the allowlisted names `ENV_ALLOWLIST` (PATH, PATHEXT, SYSTEMROOT, SYSTEMDRIVE, WINDIR, TEMP, TMP, TMPDIR, LANG, LC_ALL) copied from the runner process, `PYTHONIOENCODING=utf-8` and the caller's explicit `extra_env`; nothing else is inherited. `extra_env` is an allowlist: every name must fully match `VST_[A-Z0-9_]+` (case-sensitive); anything else is rejected with `ContractError` (a `ValueError`) before anything runs. stdout and stderr are read by threads and capped at `max_output_bytes` each (excess drained and dropped).
+ 
++For distinct-UID POSIX runs, the trusted runner invokes `/usr/bin/setpriv` with a fixed sanitized environment, starts an isolated exec gate, and moves that gate into a unique child of its delegated cgroup-v2 subtree before releasing the allowlisted command. The intended worker environment is transferred as data over a separate pipe, and the handoff is bounded by the command deadline. Distinct-UID launches are serialized within one runner process; lock wait consumes the command's remaining budget, and an expired queued launch returns timeout without spawning. Cgroup creation, attachment, `cgroup.kill`, and `populated 0` cleanup must be confirmed; otherwise the result is non-approving, later commands in the same manifest run are recorded as not run, and the current runner process refuses future distinct-UID launches. A replacement runner must not be admitted until the outer service/sandbox has stopped or fenced any leftover scope. If the helper or delegated scope is unavailable, the command does not execute. Same-UID compatibility launches retain process-group cleanup and do not satisfy the S2 all-descendant guarantee. The exact provisioned sandbox still requires runtime acceptance evidence.
++
+ Process-tree containment: on Windows the child is assigned to a Job Object with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`. Strict callers create it suspended and require successful assignment before resuming; if setup fails, they refuse to run the command. Cleanup calls `TerminateJobObject` and then `CloseHandle`, checking both Win32 return values. A false result or exception marks capture incomplete, triggers a best-effort `taskkill /PID <pid> /T /F` fallback, and forces exit code -4 so the command cannot be accepted as successful; a failed `CloseHandle` is retried during final cleanup. Compatibility callers may continue without a Job Object after assignment failure, with the existing `taskkill` fallback best effort. On POSIX the process group is killed with `os.killpg(SIGKILL)` on timeout and after a normal exit.
+ 
+-Recorded exit codes: the process exit code; -1 timeout or deadline reached (commands not started before the deadline are recorded as -1 without running); -2 missing executable / cwd / permission / any `OSError` at start (non-OSError exceptions propagate); -3 `EXIT_OUTPUT_TRUNCATED` when either stream exceeded the cap (fail-closed: the result derives to FAIL); -4 `EXIT_CAPTURE_INCOMPLETE` when a reader thread is still alive after the join, a pipe read failed with any exception, the root process survived the kill for 10 s, or strict Windows Job Object cleanup was not confirmed (takes precedence over -1 and -3; fail-closed, derives to FAIL). If `report` is a dict it receives `{"commands": [{stdout_truncated, stderr_truncated, timed_out, capture_incomplete, job_object, skipped_by_deadline}, ...], "capture_incomplete": bool}`; `job_object` is True only when the command ran inside a Windows Job Object. On any exception the process tree is killed and the pipes are closed after the readers are joined.
++Recorded exit codes: the process exit code; -1 timeout or deadline reached (commands not started before the deadline are recorded as -1 without running); -2 missing executable / cwd / permission / any `OSError` at start (non-OSError exceptions propagate); -3 `EXIT_OUTPUT_TRUNCATED` when either stream exceeded the cap (fail-closed: the result derives to FAIL); -4 `EXIT_CAPTURE_INCOMPLETE` when a reader thread is still alive after the join, a pipe read failed with any exception, the root process survived the kill for 10 s, cgroup cleanup was not confirmed, or strict Windows Job Object cleanup was not confirmed (takes precedence over -1 and -3; fail-closed, derives to FAIL). After -4, the current run does not launch later commands; those entries have exit code -4 and report flag `skipped_after_capture_incomplete=true`. If `report` is a dict it receives `{"commands": [{stdout_truncated, stderr_truncated, timed_out, capture_incomplete, job_object, skipped_by_deadline, optional skipped_after_capture_incomplete}, ...], "capture_incomplete": bool}`; `job_object` is True only when the command ran inside a Windows Job Object. On any exception the process tree is killed and the pipes are closed after the readers are joined.
+ 
+ Then stdout of all commands is joined and given to the injected parser (`(executed, skipped, xfail)`), the TestRun receipt (with `manifest_sha256`) is built, `result = derive_result(receipt)`, signed with `signing.sign` and validated. Artifacts are hashed AFTER the commands (relative to `cwd`; the path as given is the key in `artifact_digests`); a missing, non-regular, symlinked or escaping artifact gets the all-zero digest (FAIL). The key is a plain argument: never written, logged, passed to a child or read from the worker cwd. Helpers: `file_sha256(path)`, `artifact_digests(paths)`, `build_environment(extra_env)`, `contained_artifact_path(cwd, rel)`.
+ 
+@@ -140,10 +142,10 @@ Synthetic vertical slice: no real project, no network; exactly one scenario (`re
+ 
+ - Event-chain edit, deletion and tail truncation are detected through the keyed HMAC chain and keyed anchor row. A per-run external anchor is supported, but rollback to an older internally consistent database copy is not detected when the matching external checkpoint is also unavailable or rolled back; compromise of `event_key` defeats the local authenticity boundary.
+ - The HMAC proves origin within the machine trust boundary (the holder of the key signed the receipt); it does not prove that the test run was honest or that recorded stdout, test ids or digests are true.
+-- S2 per-run WSL evidence demonstrates runner/signer separation for the recorded `run_manifest_commands` execution. It is not a persistent production deployment or a claim that every host/runtime is qualified. The operator attestation and sanitized runtime evidence are in `docs/sdlc/evidence/s2-e5-operator-attestation.json` and `s2-e5-runmanifest-wsl-280e2d0.md`.
++- S2 per-run WSL evidence demonstrates runner/signer separation for the recorded `run_manifest_commands` execution. The exact source/test-head `f0bbac8` probe passed all seven recorded checks; its run-bound attestation and limits are in `docs/sdlc/evidence/s2-e5-operator-attestation-f0bbac8-20261026.json` and `s2-e5-runmanifest-wsl-f0bbac8-20261026.md` (change 0339). This is not a persistent production deployment or a claim that every host/runtime is qualified. The older `280e2d0` run remains historical evidence only.
+ - Reviewer receipts are authenticated with keys in the operator-signed registry and bound to the manifest, but the registry maps normalized principal strings to keys; it does not independently establish a human's real-world identity.
+ - After an epoch takeover, receipts from earlier epochs remain as history only; they never satisfy a slot in the new epoch.
+-- POSIX file/socket boundaries and selected WSL unit limits were exercised in the recorded WSL run. Windows Job Object nesting and prohibited process-kill/kill-table scenarios remain unverified (`NOT_RUN`). Full E8 crash/resume bake-off is also `NOT_RUN`; the current lifecycle fixture terminates a child process.
++- The exact-head POSIX runtime subset and the run-bound WSL probe are recorded in `s2-permitted-posix-runtime-evidence-f0bbac8-20261026.md` and `s2-e5-runmanifest-wsl-f0bbac8-20261026.md`. These prove only the listed fixtures and one per-run environment: Windows Job Object nesting, full process-group/descendant containment, prohibited process-kill/kill-table scenarios, and full E8 crash/resume remain unverified or `NOT_RUN`; a bounded fixture cleanup is not platform containment proof.
+ - The store's database/WAL/SHM permission hardening uses best-effort `chmod`; Windows ACL behavior was not established by the recorded WSL evidence.
+-- Simulated push/pull-request operations persist an append-only `PENDING` intent and later a completion event; their local Git subprocesses have finite command timeouts. A timeout remains pending and requires same-key/same-payload retry against the backend's durable idempotency binding. This updated path is pending a designated-agent regression run on its new code head.
+-- The synthetic Git backend receives an explicit candidate source repository and local bare target. It transfers the exact requested commit and reachable objects as a pack, imports it into the target, and updates refs with compare-and-swap; it does not run `git push`, remote helpers, or source hooks. The worker has no backend publish method or target credential. This hook-avoidance revision awaits its designated security regression run.
++- Simulated push/pull-request operations persist an append-only `PENDING` intent and later a completion event; their local Git subprocesses have finite command timeouts. The safe exact-head runner-lifecycle remainder at `f0bbac8` passed 56 selected cases, including the idempotent push/pull and hook-free publication fixtures. The distinct local-Git timeout/restart selector was excluded by policy and remains `NOT_RUN`; it must not be inferred from the other passes. Bounded Git subprocess setup, reader-start, and read failures now fall inside cleanup handling that kills/reaps the child and fails closed. See `s2-permitted-posix-runtime-evidence-f0bbac8-20261026.md` for the prior run and later S2 change records for the correction.
++- The synthetic Git backend receives an explicit candidate source repository and local bare target. It transfers the exact requested commit and reachable objects as a pack, imports it into the target, and updates refs with compare-and-swap; it does not run `git push`, remote helpers, or source hooks. The worker has no backend publish method or target credential. The hook-free fixture passed in the safe exact-head runner-lifecycle remainder, but this is a local bare-target test, not evidence of a real remote publication boundary or Windows/POSIX process containment; those platform limits remain open.
+diff --git a/tools/vst/slice.py b/tools/vst/slice.py
+index 2e69a63..fe2acfe 100644
+--- a/tools/vst/slice.py
++++ b/tools/vst/slice.py
+@@ -1306,52 +1306,102 @@ class SyntheticOperationBackend:
+     ) -> tuple[bytes, bytes, int]:
+         """Run trusted Git plumbing with fixed-size output capture and timeout."""
+         output_limit = self._MAX_PREFLIGHT_OUTPUT_BYTES if output_limit is None else output_limit
+-        process = subprocess.Popen(
+-            command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+-            stderr=subprocess.PIPE, env=env, bufsize=0,
+-        )
+         outputs = {"stdout": bytearray(), "stderr": bytearray()}
+         overflow = {"stdout": False, "stderr": False}
++        reader_errors: dict[str, BaseException | None] = {"stdout": None, "stderr": None}
++        readers: list[threading.Thread] = []
++        process: subprocess.Popen | None = None
+ 
+         def drain(name: str, stream) -> None:
+-            while True:
+-                chunk = stream.read(4096)
+-                if not chunk:
+-                    return
+-                remaining = output_limit - len(outputs[name])
+-                if remaining > 0:
+-                    outputs[name].extend(chunk[:remaining])
+-                if len(chunk) > remaining:
+-                    overflow[name] = True
++            try:
++                while True:
++                    chunk = stream.read(4096)
++                    if not chunk:
++                        return
++                    remaining = output_limit - len(outputs[name])
++                    if remaining > 0:
++                        outputs[name].extend(chunk[:remaining])
++                    if len(chunk) > remaining:
++                        overflow[name] = True
++            except BaseException as exc:  # preserve every capture failure
++                reader_errors[name] = exc
++                try:
++                    if process is not None:
++                        process.kill()
++                except OSError:
++                    # The parent wait has its own deadline and repeats kill
++                    # and reap if this first cleanup attempt fails.
++                    pass
++
++        def kill_and_reap() -> None:
++            child = process
++            if child is None:
++                return
++            if child.poll() is None:
++                try:
++                    child.kill()
++                except OSError as exc:
++                    if child.poll() is None:
++                        raise RuntimeError(
++                            "bounded Git process could not be killed after capture failure"
++                        ) from exc
++            try:
++                child.wait(timeout=1)
++            except (subprocess.TimeoutExpired, OSError) as exc:
++                raise RuntimeError(
++                    "bounded Git process could not be reaped after capture failure"
++                ) from exc
++
++        def cleanup() -> None:
++            cleanup_error: BaseException | None = None
++            try:
++                kill_and_reap()
++            except BaseException as exc:
++                cleanup_error = exc
++            child = process
++            if child is not None:
++                for reader in readers:
++                    if reader.ident is not None:
++                        try:
++                            reader.join(timeout=1)
++                        except BaseException as exc:
++                            if cleanup_error is None:
++                                cleanup_error = exc
++                for stream in (child.stdout, child.stderr):
++                    if stream is not None:
++                        try:
++                            stream.close()
++                        except BaseException as exc:
++                            if cleanup_error is None:
++                                cleanup_error = exc
++            if cleanup_error is not None:
++                raise RuntimeError("bounded Git process cleanup was incomplete") from cleanup_error
++
++        process = subprocess.Popen(
++            command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
++            stderr=subprocess.PIPE, env=env, bufsize=0,
++        )
+ 
+-        readers = [
+-            threading.Thread(target=drain, args=(name, stream), daemon=True)
+-            for name, stream in (("stdout", process.stdout), ("stderr", process.stderr))
+-        ]
+-        for reader in readers:
+-            reader.start()
+         try:
+-            returncode = process.wait(timeout=self.command_timeout_sec)
++            child = process
++            assert child is not None
++            for name, stream in (("stdout", child.stdout), ("stderr", child.stderr)):
++                reader = threading.Thread(target=drain, args=(name, stream), daemon=True)
++                readers.append(reader)
++                reader.start()
++            returncode = child.wait(timeout=self.command_timeout_sec)
+         except subprocess.TimeoutExpired as exc:
+-            try:
+-                process.kill()
+-            except OSError:
+-                pass
+-            try:
+-                process.wait(timeout=1)
+-            except (subprocess.TimeoutExpired, OSError) as reap_error:
+-                raise TimeoutError("bounded Git preflight process could not be reaped") from reap_error
+             raise TimeoutError("bounded Git preflight command exceeded its time limit") from exc
+         finally:
+-            for reader in readers:
+-                reader.join(timeout=1)
+-            for stream in (process.stdout, process.stderr):
+-                if stream is not None:
+-                    stream.close()
++            cleanup()
+         if any(overflow.values()):
+             raise RuntimeError("bounded Git command output exceeded its limit")
+         if any(reader.is_alive() for reader in readers):
+             raise RuntimeError("bounded Git preflight output reader did not finish")
++        failed_reader = next(((name, error) for name, error in reader_errors.items() if error is not None), None)
++        if failed_reader is not None:
++            name, error = failed_reader
++            raise RuntimeError(f"bounded Git preflight {name} capture failed") from error
+         return bytes(outputs["stdout"]), bytes(outputs["stderr"]), returncode
+ 
+     @staticmethod

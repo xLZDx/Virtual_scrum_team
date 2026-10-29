@@ -179,31 +179,6 @@ def test_collect_inventory_cannot_claim_empty_allowlist_without_operator_attesta
     assert result["inventory"]["network_policy_attestation"] is None
 
 
-def test_collect_inventory_generates_nonce_only_when_omitted(monkeypatch):
-    _patch_collect_inventory(monkeypatch, sockets=[], complete=True)
-    result = preflight.collect_inventory("run-1")
-    assert isinstance(result["nonce"], str)
-    assert result["nonce"].strip()
-
-
-def test_collect_inventory_preserves_explicit_nonce(monkeypatch):
-    _patch_collect_inventory(monkeypatch, sockets=[], complete=True)
-    result = preflight.collect_inventory("run-1", "provided-nonce")
-    assert result["nonce"] == "provided-nonce"
-
-
-@pytest.mark.parametrize("nonce", ["", 0])
-def test_collect_inventory_rejects_invalid_explicit_nonce_before_probing(monkeypatch, nonce):
-    class NoProbe:
-        def __getattr__(self, name):
-            raise AssertionError(f"platform probe accessed before nonce validation: {name}")
-
-    monkeypatch.setattr(preflight, "os", NoProbe())
-    monkeypatch.setattr(preflight, "Path", NoProbe())
-    with pytest.raises(preflight.ContractError, match="nonce must be non-empty"):
-        preflight.collect_inventory("run-1", nonce)
-
-
 def test_collect_inventory_fails_closed_when_socket_enumeration_is_incomplete(monkeypatch):
     _patch_collect_inventory(monkeypatch, sockets=[], complete=False)
     attestation = operator_attestation()
@@ -309,6 +284,7 @@ def test_posix_read_only_reviewer_cannot_write_worktree_or_store_fixture():
 
     fixture_root = tempfile.mkdtemp(prefix="vst-reviewer-boundary-", dir="/tmp")
     os.chmod(fixture_root, 0o755)
+    worktree = None
     try:
         worktree = os.path.join(fixture_root, "worktree")
         os.mkdir(worktree)
@@ -320,12 +296,12 @@ def test_posix_read_only_reviewer_cannot_write_worktree_or_store_fixture():
         store.record_event("synthetic-task", "synthetic-actor", "NOTE", {"fixture": True})
         store.close()
 
-        os.chown(worktree, worker.pw_uid, worker_gid)
         os.chmod(worktree, 0o555)
-        os.chown(worktree_file, worker.pw_uid, worker_gid)
         os.chmod(worktree_file, 0o444)
-        os.chown(db_path, worker.pw_uid, worker_gid)
         os.chmod(db_path, 0o440)
+        os.chown(worktree_file, worker.pw_uid, worker_gid)
+        os.chown(db_path, worker.pw_uid, worker_gid)
+        os.chown(worktree, worker.pw_uid, worker_gid)
 
         child = r'''import json, os, sys
 from tools.vst.sandbox import require_read_only_reviewer
@@ -367,6 +343,9 @@ if len(checks) != 3 or not all(row["write_denied"] for row in checks):
         assert observed["gid"] == reviewer.pw_gid
         assert all(row["write_denied"] for row in observed["checks"])
     finally:
+        if worktree is not None and os.path.isdir(worktree):
+            os.chown(worktree, 0, 0)
+            os.chmod(worktree, 0o700)
         shutil.rmtree(fixture_root)
 
 

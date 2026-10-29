@@ -1,0 +1,38 @@
+[Unit]
+Description=Virtual Scrum Team manifest receipt signer
+After=local-fs.target vst-supervisor.service
+Requires=vst-supervisor.service
+RequiresMountsFor=/var/lib/vst-signer /etc/vst-runner
+
+[Service]
+Type=simple
+User=vst-signer
+Group=vst-runner
+SupplementaryGroups=vst-supervisor-client
+RuntimeDirectory=vst-signer
+RuntimeDirectoryMode=0710
+RuntimeDirectoryPreserve=restart
+StateDirectory=vst-signer
+StateDirectoryMode=0700
+ExecStart=/usr/bin/python3.12 -I -S -c "import sys; sys.path.insert(0, '/opt/vst-runtime'); from tools.vst.signer import main; main()" /etc/vst-runner/signer-service.json
+Restart=on-failure
+RestartSec=2s
+StartLimitIntervalSec=60s
+StartLimitBurst=3
+TimeoutStartSec=30s
+TimeoutStopSec=15s
+LimitNOFILE=128
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ReadWritePaths=/var/lib/vst-signer /run/vst-signer
+NoNewPrivileges=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

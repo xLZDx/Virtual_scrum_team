@@ -199,6 +199,17 @@ class FileExternalAnchor:
                             raise AnchorError("same checkpoint count has a different head")
                         raise AnchorError("external checkpoint compare-and-append conflict")
                     stream.seek(0, os.SEEK_END)
+                    end = stream.tell()
+                    if end:
+                        stream.seek(end - 1, os.SEEK_SET)
+                        if stream.read(1) != b"\n":
+                            # A crash may leave a complete JSON record without
+                            # its final newline. Separate it durably before the
+                            # next record so recovery never merges two objects.
+                            stream.seek(0, os.SEEK_END)
+                            stream.write(b"\n")
+                            stream.flush()
+                            os.fsync(stream.fileno())
                     stream.write(canonical_bytes(checkpoint) + b"\n")
                     stream.flush()
                     os.fsync(stream.fileno())

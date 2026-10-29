@@ -1,0 +1,48 @@
+[Unit]
+Description=Virtual Scrum Team persistent manifest runner
+After=local-fs.target vst-supervisor.service
+Requires=vst-supervisor.service
+RequiresMountsFor=/opt/vst-runtime /etc/vst-runner
+
+[Service]
+Type=simple
+User=vst-runner
+Group=vst-runner
+SupplementaryGroups=vst-dispatcher vst-supervisor-client
+RuntimeDirectory=vst-runner
+RuntimeDirectoryMode=0710
+RuntimeDirectoryPreserve=restart
+Delegate=yes
+ProtectControlGroups=no
+ExecStartPre=+/usr/bin/python3.12 -I -S -c "import sys; sys.path.insert(0, '/opt/vst-runtime'); from tools.vst.runner_fence import main; sys.argv=['runner_fence','start']; main()"
+ExecStart=/usr/bin/python3.12 -I -S -c "import sys; sys.path.insert(0, '/opt/vst-runtime'); from tools.vst.runner_service import main; main()" /etc/vst-runner/runner-service.json
+ExecStopPost=+/usr/bin/python3.12 -I -S -c "import sys; sys.path.insert(0, '/opt/vst-runtime'); from tools.vst.runner_fence import main; sys.argv=['runner_fence','stop']; main()"
+KillMode=control-group
+SendSIGKILL=no
+Restart=on-failure
+RestartSec=2s
+StartLimitIntervalSec=60s
+StartLimitBurst=3
+TimeoutStartSec=30s
+TimeoutStopSec=1900s
+TasksMax=256
+LimitNOFILE=128
+PrivateTmp=yes
+PrivateNetwork=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+ProtectHome=yes
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=no
+ReadWritePaths=/run/vst-runner /sys/fs/cgroup/system.slice/vst-runner.service
+CapabilityBoundingSet=CAP_SETUID CAP_SETGID
+AmbientCapabilities=
+NoNewPrivileges=no
+RestrictSUIDSGID=no
+LockPersonality=yes
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

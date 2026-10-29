@@ -1306,52 +1306,102 @@ class SyntheticOperationBackend:
     ) -> tuple[bytes, bytes, int]:
         """Run trusted Git plumbing with fixed-size output capture and timeout."""
         output_limit = self._MAX_PREFLIGHT_OUTPUT_BYTES if output_limit is None else output_limit
+        outputs = {"stdout": bytearray(), "stderr": bytearray()}
+        overflow = {"stdout": False, "stderr": False}
+        reader_errors: dict[str, BaseException | None] = {"stdout": None, "stderr": None}
+        readers: list[threading.Thread] = []
+        process: subprocess.Popen | None = None
+
+        def drain(name: str, stream) -> None:
+            try:
+                while True:
+                    chunk = stream.read(4096)
+                    if not chunk:
+                        return
+                    remaining = output_limit - len(outputs[name])
+                    if remaining > 0:
+                        outputs[name].extend(chunk[:remaining])
+                    if len(chunk) > remaining:
+                        overflow[name] = True
+            except BaseException as exc:  # preserve every capture failure
+                reader_errors[name] = exc
+                try:
+                    if process is not None:
+                        process.kill()
+                except OSError:
+                    # The parent wait has its own deadline and repeats kill
+                    # and reap if this first cleanup attempt fails.
+                    pass
+
+        def kill_and_reap() -> None:
+            child = process
+            if child is None:
+                return
+            if child.poll() is None:
+                try:
+                    child.kill()
+                except OSError as exc:
+                    if child.poll() is None:
+                        raise RuntimeError(
+                            "bounded Git process could not be killed after capture failure"
+                        ) from exc
+            try:
+                child.wait(timeout=1)
+            except (subprocess.TimeoutExpired, OSError) as exc:
+                raise RuntimeError(
+                    "bounded Git process could not be reaped after capture failure"
+                ) from exc
+
+        def cleanup() -> None:
+            cleanup_error: BaseException | None = None
+            try:
+                kill_and_reap()
+            except BaseException as exc:
+                cleanup_error = exc
+            child = process
+            if child is not None:
+                for reader in readers:
+                    if reader.ident is not None:
+                        try:
+                            reader.join(timeout=1)
+                        except BaseException as exc:
+                            if cleanup_error is None:
+                                cleanup_error = exc
+                for stream in (child.stdout, child.stderr):
+                    if stream is not None:
+                        try:
+                            stream.close()
+                        except BaseException as exc:
+                            if cleanup_error is None:
+                                cleanup_error = exc
+            if cleanup_error is not None:
+                raise RuntimeError("bounded Git process cleanup was incomplete") from cleanup_error
+
         process = subprocess.Popen(
             command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, env=env, bufsize=0,
         )
-        outputs = {"stdout": bytearray(), "stderr": bytearray()}
-        overflow = {"stdout": False, "stderr": False}
 
-        def drain(name: str, stream) -> None:
-            while True:
-                chunk = stream.read(4096)
-                if not chunk:
-                    return
-                remaining = output_limit - len(outputs[name])
-                if remaining > 0:
-                    outputs[name].extend(chunk[:remaining])
-                if len(chunk) > remaining:
-                    overflow[name] = True
-
-        readers = [
-            threading.Thread(target=drain, args=(name, stream), daemon=True)
-            for name, stream in (("stdout", process.stdout), ("stderr", process.stderr))
-        ]
-        for reader in readers:
-            reader.start()
         try:
-            returncode = process.wait(timeout=self.command_timeout_sec)
+            child = process
+            assert child is not None
+            for name, stream in (("stdout", child.stdout), ("stderr", child.stderr)):
+                reader = threading.Thread(target=drain, args=(name, stream), daemon=True)
+                readers.append(reader)
+                reader.start()
+            returncode = child.wait(timeout=self.command_timeout_sec)
         except subprocess.TimeoutExpired as exc:
-            try:
-                process.kill()
-            except OSError:
-                pass
-            try:
-                process.wait(timeout=1)
-            except (subprocess.TimeoutExpired, OSError) as reap_error:
-                raise TimeoutError("bounded Git preflight process could not be reaped") from reap_error
             raise TimeoutError("bounded Git preflight command exceeded its time limit") from exc
         finally:
-            for reader in readers:
-                reader.join(timeout=1)
-            for stream in (process.stdout, process.stderr):
-                if stream is not None:
-                    stream.close()
+            cleanup()
         if any(overflow.values()):
             raise RuntimeError("bounded Git command output exceeded its limit")
         if any(reader.is_alive() for reader in readers):
             raise RuntimeError("bounded Git preflight output reader did not finish")
+        failed_reader = next(((name, error) for name, error in reader_errors.items() if error is not None), None)
+        if failed_reader is not None:
+            name, error = failed_reader
+            raise RuntimeError(f"bounded Git preflight {name} capture failed") from error
         return bytes(outputs["stdout"]), bytes(outputs["stderr"]), returncode
 
     @staticmethod
@@ -2016,9 +2066,12 @@ class HandWrittenWorker:
         self.repository = os.path.realpath(repository)
         self.allowed_paths = frozenset(allowed_paths)
 
-    def _run(self, action: str, path: str, content: str = "") -> subprocess.CompletedProcess:
+    def _run(
+        self, action: str, path: str, content: str = "", timeout_sec: float | None = None,
+    ) -> subprocess.CompletedProcess:
         worker_code = r'''import os, subprocess, sys
-repo, action, rel, content = sys.argv[1:5]
+repo, action, rel, content, timeout_text = sys.argv[1:6]
+timeout = float(timeout_text) if timeout_text else None
 if rel.startswith(("/", "\\")) or ".." in rel.replace("\\", "/").split("/"):
     raise SystemExit(30)
 root = os.path.realpath(repo)
@@ -2034,22 +2087,26 @@ if action in ("edit", "crash"):
     if action == "crash":
         os._exit(97)
 elif action == "commit":
-    subprocess.run(["git", "add", "--", rel], cwd=root, check=True, stdin=subprocess.DEVNULL)
-    subprocess.run(["git", "commit", "-m", content], cwd=root, check=True, stdin=subprocess.DEVNULL)
-    print(subprocess.check_output(["git", "rev-parse", "--verify", "HEAD"], cwd=root, text=True).strip())
+    subprocess.run(["git", "add", "--", rel], cwd=root, check=True, stdin=subprocess.DEVNULL, timeout=timeout)
+    subprocess.run(
+        ["git", "commit", "-m", content], cwd=root, check=True,
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, timeout=timeout,
+    )
+    print(subprocess.check_output(["git", "rev-parse", "--verify", "HEAD"], cwd=root, text=True, timeout=timeout).strip())
 else:
     raise SystemExit(32)
 '''
         return subprocess.run(
-            [sys.executable, "-I", "-c", worker_code, self.repository, action, path, content],
+            [sys.executable, "-I", "-c", worker_code, self.repository, action, path, content,
+             "" if timeout_sec is None else str(timeout_sec)],
             cwd=self.repository, env=build_environment(), stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, timeout=timeout_sec,
         )
 
-    def edit(self, path: str, content: str) -> None:
+    def edit(self, path: str, content: str, *, timeout_sec: float | None = None) -> None:
         if path not in self.allowed_paths or path.startswith(("/", "\\")) or ".." in path.split("/"):
             raise ValueError("worker edit is outside the declared synthetic scope")
-        completed = self._run("edit", path, content)
+        completed = self._run("edit", path, content, timeout_sec)
         if completed.returncode:
             raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
 
@@ -2059,12 +2116,14 @@ else:
         completed = self._run("crash", path)
         if completed.returncode != 97:
             raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
-        raise RuntimeError("synthetic worker killed during edit")
+        raise RuntimeError("synthetic worker child exited during edit (exit code 97)")
 
-    def commit_candidate(self, message: str = "synthetic candidate") -> str:
+    def commit_candidate(
+        self, message: str = "synthetic candidate", *, timeout_sec: float | None = None,
+    ) -> str:
         heads = []
         for path in sorted(self.allowed_paths):
-            completed = self._run("commit", path, message)
+            completed = self._run("commit", path, message, timeout_sec)
             if completed.returncode:
                 raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
             heads.append(completed.stdout.decode("ascii").strip())
@@ -2077,8 +2136,14 @@ def run_lifecycle_scenarios(
     probe_key: bytes,
     probe_provider: Callable[[str, str], dict],
 ) -> dict[str, dict]:
-    """Drive E8's synthetic fixture using a caller-provided real sandbox probe."""
-    os.makedirs(workdir, exist_ok=True)
+    """Run only the safe synthetic candidate and budget flow in a new work directory.
+
+    Crash, process-kill, STOP, resume/restart, out-of-scope mutation, and external-egress scenarios
+    are deliberately not invoked. ``probe_provider`` supplies caller-owned fixture data and is not
+    host-isolation evidence. ``workdir`` must not already exist, preventing fixture initialization
+    from overwriting a caller's existing files.
+    """
+    os.mkdir(workdir)
     remote = os.path.join(workdir, "local-bare.git")
     repository = os.path.join(workdir, "worker-repository")
     control = os.path.join(workdir, "control")
@@ -2115,40 +2180,34 @@ def run_lifecycle_scenarios(
         sandbox_mode=True,
     )
     worker = HandWrittenWorker(repository)
-    run_id = "synthetic-crash-run"
-    nonce = "synthetic-crash-nonce"
+    run_id = "synthetic-safe-run"
+    nonce = "synthetic-safe-nonce"
 
     def make_probe(run: str, run_nonce: str) -> dict:
         return probe_provider(run, run_nonce)
 
-    supervisor = Supervisor(
-        fixture.store, operation_backend=backend, failure_threshold=2,
-        run_id=run_id, probe_nonce=nonce, probe_key=probe_key,
-    )
     report: dict[str, dict] = {}
+    probe_observations: list[dict[str, Any]] = []
+
     try:
+        supervisor = Supervisor(
+            fixture.store, operation_backend=backend, failure_threshold=2,
+            run_id=run_id, probe_nonce=nonce, probe_key=probe_key,
+            operator_key=OPERATOR_KEY,
+        )
         fixture.begin(1, ttl_sec=600)
-        supervisor.start_worker(lambda: worker, probe=make_probe(run_id, nonce))
-        crash_injected = False
-        try:
-            worker.crash_mid_edit()
-        except RuntimeError:
-            crash_injected = True
-        clock.advance(601)
-        lost = fixture.store.supervisor_reap_and_mark(SUPERVISOR_KEY, SUPERVISOR_RUNNER)
-        supervisor.stop(lambda: None, lambda: None)
+        initial_probe = make_probe(run_id, nonce)
+        initial_properties = initial_probe.get("checked_properties", {})
+        probe_observations.append({
+            "run_id": run_id,
+            "reported_result": initial_probe.get("result"),
+            "reported_external_egress_blocked": initial_properties.get("external_egress_blocked"),
+            "reported_empty_external_allowlist": initial_properties.get("empty_external_allowlist"),
+            "scope": "caller_supplied_probe_data_not_independent_environment_evidence",
+        })
+        supervisor.start_worker(lambda: worker, probe=initial_probe)
 
-        def next_epoch() -> int:
-            fixture.store.release_epoch(fixture.story_id, fixture.owner)
-            fixture.epoch = fixture.store.acquire_epoch(fixture.story_id, fixture.owner, 3600)
-            return fixture.epoch
-
-        resumed_epoch = supervisor.resume(next_epoch)
-        run_id, nonce = "synthetic-resume-run", "synthetic-resume-nonce"
-        supervisor.prepare_run(run_id, nonce)
-        fixture.begin(2, ttl_sec=600)
-        supervisor.start_worker(lambda: worker, probe=make_probe(run_id, nonce))
-        worker.edit("src/synthetic.py", "value = 'resumed candidate'\n")
+        worker.edit("src/synthetic.py", "value = 'synthetic candidate'\n")
         candidate_head = worker.commit_candidate()
         fixture.current_head = candidate_head
 
@@ -2176,28 +2235,6 @@ def run_lifecycle_scenarios(
             "candidate-pr-1", {"head": candidate_head, "title": "Synthetic candidate"},
         )
 
-        # Crash-window simulation: remote state and immutable operation binding
-        # are persisted, while the SQLite operation result has not been written.
-        crash_key = "push-crash-window"
-        crash_payload = {"branch": "crash-recovery", "head": candidate_head}
-        crash_result = backend.push(crash_payload, operation_key=crash_key)
-        remote_before_restart_retry = backend.ref_head("refs/heads/crash-recovery")
-        fixture.store.close()
-        restarted_store = Store(
-            os.path.join(control, "state.db"), event_key=EVENT_KEY,
-            anchor_path=anchor_path, sandbox_mode=True, supervisor_key=SUPERVISOR_KEY,
-        )
-        restarted_supervisor = Supervisor(
-            restarted_store, operation_backend=SyntheticOperationBackend(
-                remote, source_repo=repository,
-            ),
-            run_id="synthetic-restart-context", probe_nonce="synthetic-restart-nonce",
-            probe_key=probe_key,
-        )
-        retried = restarted_supervisor.simulate_push(crash_key, crash_payload)
-        remote_after_restart_retry = restarted_supervisor.backend.ref_head("refs/heads/crash-recovery")
-        fixture.store = restarted_store
-
         exact_budget = fixture.store.charge(
             fixture.task_id, 100, supervisor_key=SUPERVISOR_KEY,
             runner_id=SUPERVISOR_RUNNER,
@@ -2210,36 +2247,59 @@ def run_lifecycle_scenarios(
             )
         except StoreError as exc:
             budget_exhausted = exc.kind == "budget"
-        lease_blocked = False
+        lease_budget_blocked = False
         try:
             fixture.store.acquire_lease(
                 fixture.task_id, fixture.story_id, fixture.runner_id, fixture.epoch,
                 3, 600, supervisor_key=SUPERVISOR_KEY,
             )
-        except StoreError:
-            lease_blocked = True
+        except StoreError as exc:
+            if exc.kind != "budget":
+                raise
+            lease_budget_blocked = True
 
-        report["crash_stop_resume"] = {
-            "crash_injected_mid_edit": crash_injected,
-            "worker_lost_markers": [item["check_description"] for item in lost],
-            "resumed_epoch": resumed_epoch,
+        report["scope"] = {
+            "environment_scope": "synthetic",
+            "e8_acceptance": "NOT_ESTABLISHED",
+            "real_e5_e6_s1_environment_qualification": "NOT_RUN",
+            "process_crash_and_kill_scenarios": "NOT_RUN",
+            "stop_and_resume_scenarios": "NOT_RUN",
+            "out_of_scope_mutation_scenario": "NOT_RUN",
+            "real_blocked_egress_attempt": "NOT_RUN",
+            "external_candidate_comparison": "NOT_RUN",
+            "operator_worker_choice": "NOT_ESTABLISHED",
+            "probe_provider_scope": "caller_supplied_data_not_independent_environment_evidence",
+        }
+        report["restricted_scenarios"] = {
+            "child_process_self_exit": "NOT_RUN",
+            "process_kill_containment": "NOT_RUN",
+            "stop": "NOT_RUN",
+            "crash_resume_and_store_restart": "NOT_RUN",
+            "out_of_scope_write_attempt": "NOT_RUN",
+            "out_of_scope_target_created": False,
+            "external_egress_attempt": "NOT_RUN",
+        }
+        report["synthetic_candidate"] = {
             "candidate_head": candidate_head,
             "worker_has_remote_config": bool(git(repository, "remote")),
-            "gate_verdict": decision["verdict"],
+            "synthetic_gate_verdict": decision["verdict"],
             "receipt_retry_returned_same_result": receipt_first == receipt_retry,
             "supervisor_push": pushed,
             "supervisor_pull_request": pr,
         }
+        report["caller_supplied_probe_observations"] = {
+            "runs": probe_observations,
+            "real_environment_egress_verified": False,
+        }
         report["restart_idempotency"] = {
-            "effect_recorded_before_store_commit": crash_result,
-            "retry_result_after_store_restart": retried,
-            "same_result": crash_result == retried,
-            "remote_ref_unchanged_on_retry": remote_before_restart_retry == remote_after_restart_retry,
+            "scenario": "NOT_RUN",
+            "reason": "restricted_crash_recovery_scenario_not_executed",
         }
         report["budget_exhaustion"] = {
             "remaining_at_exact_cap": exact_budget,
             "overflow_rejected": budget_exhausted,
-            "new_lease_rejected": lease_blocked,
+            "overflow_outcome": "REJECTED" if budget_exhausted else "NOT_REJECTED",
+            "new_lease_budget_rejected": lease_budget_blocked,
         }
         return report
     finally:

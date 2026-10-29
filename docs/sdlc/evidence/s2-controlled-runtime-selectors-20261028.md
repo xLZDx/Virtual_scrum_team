@@ -1,0 +1,30 @@
+# S2 controlled runtime selectors — 2026-10-28
+
+## Authorization and source identity
+
+GPT-PM controlled-test decision: request `a94486c9-f8e2-451e-91d2-4adb1799b8d6`, reply `85eba0d2-3670-5274-a787-58012255f22b`, job `3ff013cd-f5e4-441e-98c5-8c823f62a96f`. It authorizes the listed controlled selectors only, keeps `S2-DISPATCH-M01` MAJOR/OPEN, and does not authorize a new authority, production activation, real credentials, or E5 fabrication.
+
+Test source revision: `d5001797cb94113efd9a8dc26e4a15f2dc130976`. Repository HEAD during runs: `a94486c9f8e2051e01d2ad2adb1799b8d238ace5`; the source revision is an ancestor; intervening HEAD changes are documentation only, with no test or executable source changes. The WSL archive was streamed from this exact Git revision and its source/test file hashes were checked against Git before tests. No development worktree or clone was created.
+
+## Windows
+
+CPython 3.14.3, `C:\Python314\python.exe`; pytest 8.4.2.
+
+1. `C:\Python314\python.exe -m pytest -q -rs -p no:cacheprovider tests/vst/test_e4_runner.py::test_timeout_kills_the_whole_process_tree tests/vst/test_e4_runner.py::test_stray_descendant_is_killed_after_the_root_command_exited_normally` — **2 passed**, 0 failed, exit 0, 12.47 s. This is focused test-created process cleanup evidence; production service behavior remains unproven.
+2. `C:\Python314\python.exe -m pytest -q -rs -p no:cacheprovider tests/vst/test_s2_contract_gate.py::test_v2_waiver_scope_never_includes_failure_or_review_rejection tests/vst/test_s2_contract_gate.py::test_v2_waiver_allows_only_named_non_execution_results` — **7 passed**, 0 failed, exit 0, 0.89 s. This is policy-boundary test evidence, not a waiver or approval.
+
+Both runs emitted one `pytest_asyncio` deprecation warning about `asyncio.get_event_loop_policy`.
+
+## WSL controlled selectors
+
+WSL distro `Ubuntu-24.04`; Python 3.12.3; pytest 7.4.4. Existing `/opt/vst-s2/source` had hash mismatches and was not used. A unique disposable archive was extracted to `/tmp/vst-s2-d500-5223c710` and consumed in one WSL invocation because `/tmp` did not persist across separate invocations. No systemd, service, sudo, capability, account, key, credential, or identity provisioning occurred.
+
+1. The retained executor summary reports six E3 store selectors passed in 10 cases, but the verbatim command/output are unavailable and five of the six recorded node IDs do not exist in the referenced module at source/test revision `d5001797cb94113efd9a8dc26e4a15f2dc130976`. The actual definitions at that revision are `tests/vst/test_s2_store_lifecycle.py::test_anchor_compare_append_is_idempotent_and_rejects_same_count_fork`, `::test_anchor_append_separates_valid_tail_without_final_newline`, `::test_external_anchor_detects_restored_older_database_and_locks_writes`, `::test_exactly_one_event_ahead_is_recovered_before_mutation`, `::test_multi_event_transaction_recovers_suffix_after_one_checkpoint_append`, and `::test_invalid_external_anchor_suffix_fails_closed`. Thus the recorded 10-pass result is **NOT_VERIFIED** and contributes no current acceptance; the six actual selectors remain **NOT_RUN** pending a fresh exact invocation.
+2. The retained executor summary reports two synthetic identity selectors passed, but the verbatim command/output are unavailable and both recorded node IDs are under the wrong module. At source/test revision `d5001797cb94113efd9a8dc26e4a15f2dc130976`, `test_posix_worker_cannot_read_signer_or_key_file` is in `tests/vst/test_s2_runner_lifecycle.py`, while `test_posix_read_only_reviewer_cannot_write_worktree_or_store_fixture` is in `tests/vst/test_s2_sandbox_probe.py`. The reported two-pass result is **NOT_VERIFIED** and contributes no current acceptance; both selectors remain **NOT_RUN** pending exact evidence. No real key/credential was used or created by any currently verifiable action.
+3. The retained executor summary reports two runner capability/timeout selectors skipped because the dedicated runner capability profile was absent, but the verbatim command/output were not retained. The recorded module is wrong for `test_runner_drops_uid_change_capabilities_before_worker_command`, whose definition is in `tests/vst/test_s2_runner_lifecycle.py`; the cross-UID timeout selector is in `tests/vst/test_e4_runner.py`. Both reported outcomes are **NOT_VERIFIED** and contribute no acceptance; both remain **NOT_RUN** pending a valid profile and exact evidence. No capability was added.
+
+The first WSL harness attempt extracted the archive in one invocation and tried to use it in another. The later invocation could not change directory because `/tmp` was ephemeral; pytest found no tests and exited 4. This was a **harness setup failure**, not a test result. The successful one-invocation archive-and-test run above resolved the harness issue.
+
+## Acceptance limits
+
+Windows E4 cleanup and waiver-boundary selectors have focused runtime evidence. The historical WSL E3 and identity summaries remain unverified because their recorded commands had wrong module paths. Corrected selectors were later run with exact source/test hashes; see `s2-corrected-wsl-runtime-selectors-20261028.md` (change 0488), which records 12 passed cases after a targeted temporary-root permissions correction. The capability-dependent runner/timeout selectors remain `NOT_VERIFIED` and `NOT_RUN`; their dedicated `AmbientCapabilities=CAP_SETGID,CAP_SETUID` profile was not provisioned. `VST-013` remains partial. No full suite, E5 probe, E8 bake-off, manifest execution, production dispatch, service activation, persistent runner configuration, real credential, or capability provisioning occurred. The 53-selector policy family belongs to S4 and was not part of this S2 run; no S4 tests or other S4 work were performed. `S2-DISPATCH-M01` remains MAJOR/OPEN and S2 remains NOT APPROVED. Codex owns evidence correction; the operator owns any separately required operational capability-profile provisioning; GPT-PM owns final exact-revision adjudication.

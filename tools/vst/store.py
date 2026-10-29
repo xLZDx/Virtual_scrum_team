@@ -6,9 +6,10 @@ transaction with an explicit COMMIT or ROLLBACK; SQLite "busy"/"locked"
 errors become the distinct StoreBusyError (a StoreError with kind 'busy').
 journal_mode is WAL, foreign_keys and recursive_triggers are ON.
 
-Schema versioning: PRAGMA user_version is SCHEMA_VERSION (4). A new file is
-initialised inside one transaction; a legacy un-versioned database that already
-has tables, or any other version, is refused with StoreError(kind='schema').
+Schema versioning: PRAGMA user_version is SCHEMA_VERSION (6). A new file is
+initialised inside one transaction; supported v3-v5 layouts are upgraded
+additively, while un-versioned legacy tables and unknown versions are refused
+with StoreError(kind='schema').
 The database file (and its -wal/-shm files) get mode 0o600 on a best-effort
 basis (os.chmod failures are ignored).
 
@@ -116,12 +117,14 @@ import hmac
 import json
 import math
 import os
+import re
 import sqlite3
 import time
 from datetime import datetime, timezone
 from typing import Any, Callable, Iterator
 
 from .contracts import (
+    ContractError,
     SUPERVISOR_SLOT,
     canonical_bytes,
     derive_result,
@@ -133,7 +136,7 @@ from .contracts import (
 from .signing import MIN_KEY_BYTES, OPERATOR_MANUAL_OVERRIDE_LABEL, RECEIPT_V2_LABEL, sign, verify
 from .lifecycle import AnchorError, FileExternalAnchor, signed_checkpoint
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 6
 GENESIS_HASH = "0" * 64
 DEFAULT_OWNER_TTL_SEC = 3600.0
 SUPERVISOR_RUNNER_ID = "store-supervisor"
@@ -142,6 +145,9 @@ MAX_COUNTER = 2**31 - 1
 MAX_BUDGET = 10**12
 MAX_SLOTS = 1024
 MAX_TTL_SEC = 366 * 24 * 3600
+RUNNER_PRESPAWN_NO_EXECUTION_REASON = "PRESPAWN_REFUSAL"
+RUNNER_PRESPAWN_REASON_CODES = frozenset({"RUNNER_PRESPAWN_FAILURE"})
+RUNNER_AUTHORITY_COMPLETION_MARGIN_SEC = 5.0
 
 LEASE_LIVE = "LIVE"
 LEASE_RELEASED = "RELEASED"
@@ -152,7 +158,12 @@ STORY_STATES = frozenset({"OPEN", "OWNED"})
 
 # Events written by the store itself, plus the one kind callers may record.
 CALLER_EVENT_KINDS = frozenset({"NOTE"})
-CONTROL_EVENT_KINDS = frozenset({"CONTROL_BREAKER_CONFIG", "CONTROL_PROVIDER_FAILURE", "CONTROL_PROVIDER_SUCCESS", "CONTROL_BREAKER_OVERRIDE", "CONTROL_ACTION_INTENT", "CONTROL_ACTION_COMPLETED", "CONTROL_ACTION_UNKNOWN", "CONTROL_ACTION_RECONCILED"})
+CONTROL_EVENT_KINDS = frozenset({
+    "CONTROL_BREAKER_CONFIG", "CONTROL_PROVIDER_FAILURE", "CONTROL_PROVIDER_SUCCESS",
+    "CONTROL_BREAKER_OVERRIDE", "CONTROL_ACTION_INTENT", "CONTROL_ACTION_COMPLETED",
+    "CONTROL_ACTION_UNKNOWN", "CONTROL_ACTION_RECONCILED",
+    "DISPATCH_OWNER_OUTCOME_PENDING", "DISPATCH_OWNER_OUTCOME_ACKNOWLEDGED",
+})
 LIFECYCLE_ACTION_STATES = {
     "start": ("READY", "RUNNING"),
     "stop_terminate": ("RUNNING", "STOPPING"),
@@ -163,6 +174,17 @@ LIFECYCLE_ACTION_STATES = {
 }
 SUPERVISOR_ACTIONS = frozenset({"manual_override"})
 ACTION_RESOLUTION_LABEL = b"vst-lifecycle-resolution-v1\0"
+RUNNER_EXECUTION_RESOLUTION_LABEL = b"vst-runner-execution-resolution-v1\0"
+RUNNER_EXECUTION_RESOLUTION_OUTCOMES = frozenset({
+    "NO_EXECUTION_PROVEN", "EFFECTS_RESOLVED",
+    "EFFECTS_UNRESOLVED", "RECONCILIATION_REJECTED",
+})
+RUNNER_EXECUTION_RESOLUTION_ATTESTATIONS = {
+    "NO_EXECUTION_PROVEN": "operator-attests-no-child-launch-for-grant",
+    "EFFECTS_RESOLVED": "operator-attests-all-effects-resolved-for-grant",
+    "EFFECTS_UNRESOLVED": "operator-attests-effects-unresolved-for-grant",
+    "RECONCILIATION_REJECTED": "operator-rejects-reconciliation-for-grant",
+}
 EVENT_KINDS = frozenset(
     {
         "EPOCH_ACQUIRED",
@@ -171,6 +193,7 @@ EVENT_KINDS = frozenset(
         "PHASE_SET",
         "TASK_REGISTERED",
         "LEASE_ACQUIRED",
+        "DISPATCH_INTENT_ACCEPTED",
         "LEASE_RELEASED",
         "LEASE_EXPIRED",
         "LEASE_EXPIRED_PARTIAL",
@@ -193,12 +216,52 @@ TERMINAL_MARKERS = ("BUDGET_EXCEEDED", "RETRY_EXHAUSTED")
 SUPERVISOR_RECEIPT_PREFIX = "sup-"
 
 _EVENT_LABEL = b"vst-event-v1\0"
+_DISPATCH_CURSOR_LABEL = b"vst-dispatch-cursor-v1\0"
 _ANCHOR_LABEL = b"vst-anchor-v1\0"
 _ANCHOR_KEY = "events_anchor"
 
 
 def _sql_list(values: Any) -> str:
     return ", ".join("'" + value + "'" for value in sorted(values))
+
+
+def _runner_execution_schema_statements() -> tuple[str, ...]:
+    """Append-only identities and lifecycle events for manifest-run claims."""
+    return (
+        """CREATE TABLE runner_execution_claims (
+            grant_id TEXT PRIMARY KEY,
+            invocation_id TEXT NOT NULL UNIQUE,
+            request_id TEXT NOT NULL UNIQUE,
+            task_id TEXT NOT NULL REFERENCES tasks(task_id),
+            slot TEXT NOT NULL,
+            runner_id TEXT NOT NULL,
+            attempt INT NOT NULL CHECK (attempt >= 1),
+            epoch INT NOT NULL CHECK (epoch >= 1),
+            run_id TEXT NOT NULL REFERENCES supervisor_probes(run_id),
+            service_generation TEXT NOT NULL,
+            manifest_sha256 TEXT NOT NULL,
+            payload_sha256 TEXT NOT NULL,
+            grant_body TEXT NOT NULL,
+            claimed_at REAL NOT NULL,
+            UNIQUE (task_id, slot, attempt)
+        )""",
+        """CREATE TABLE runner_execution_events (
+            seq INTEGER PRIMARY KEY AUTOINCREMENT,
+            grant_id TEXT NOT NULL REFERENCES runner_execution_claims(grant_id),
+            state TEXT NOT NULL CHECK (state IN ('PENDING', 'EXECUTION_RESERVED', 'COMPLETE', 'INDETERMINATE', 'RECONCILED')),
+            payload TEXT NOT NULL,
+            created_at REAL NOT NULL,
+            UNIQUE (grant_id, state)
+        )""",
+        """CREATE TRIGGER runner_execution_claims_no_update BEFORE UPDATE ON runner_execution_claims
+        BEGIN SELECT RAISE(ABORT, 'runner execution claims are append-only'); END""",
+        """CREATE TRIGGER runner_execution_claims_no_delete BEFORE DELETE ON runner_execution_claims
+        BEGIN SELECT RAISE(ABORT, 'runner execution claims are append-only'); END""",
+        """CREATE TRIGGER runner_execution_events_no_update BEFORE UPDATE ON runner_execution_events
+        BEGIN SELECT RAISE(ABORT, 'runner execution events are append-only'); END""",
+        """CREATE TRIGGER runner_execution_events_no_delete BEFORE DELETE ON runner_execution_events
+        BEGIN SELECT RAISE(ABORT, 'runner execution events are append-only'); END""",
+    )
 
 
 def _schema_statements() -> tuple[str, ...]:
@@ -268,6 +331,7 @@ def _schema_statements() -> tuple[str, ...]:
             spent INT NOT NULL DEFAULT 0 CHECK (spent >= 0)
         )""",
         "CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
+        *_runner_execution_schema_statements(),
         """CREATE TABLE supervisor_operations (
             operation_key TEXT PRIMARY KEY,
             operation TEXT NOT NULL,
@@ -403,6 +467,169 @@ def _valid_action_resolution(event: dict, key: bytes | None) -> bool:
     return verify(record, bytes(key), ACTION_RESOLUTION_LABEL)
 
 
+def _valid_runner_execution_resolution(
+    event: dict, claim: sqlite3.Row, key: bytes | None, predecessor_state: str,
+) -> bool:
+    record = event.get("resolution")
+    if (not isinstance(key, (bytes, bytearray)) or len(key) < MIN_KEY_BYTES
+            or not isinstance(record, dict)):
+        return False
+    expected_fields = {
+        "version", "resolution_id", "outcome", "attestation", "evidence_sha256", "actor", "key_id",
+        "grant_id", "grant_sha256", "request_id", "invocation_id", "task_id", "slot",
+        "attempt", "epoch", "run_id", "service_generation", "predecessor_state", "signature",
+    }
+    if (set(record) != expected_fields or type(record.get("version")) is not int
+            or record.get("version") != 1):
+        return False
+    if (not isinstance(record.get("resolution_id"), str)
+            or not record["resolution_id"].strip() or len(record["resolution_id"]) > 128
+            or record.get("actor") != "operator"
+            or record.get("key_id") != hashlib.sha256(bytes(key)).hexdigest()
+            or not isinstance(record.get("outcome"), str)
+            or record.get("outcome") not in RUNNER_EXECUTION_RESOLUTION_OUTCOMES
+            or record.get("attestation") != RUNNER_EXECUTION_RESOLUTION_ATTESTATIONS.get(record.get("outcome"))
+            or record.get("predecessor_state") != predecessor_state):
+        return False
+    for name in ("evidence_sha256", "grant_sha256"):
+        digest = record.get(name)
+        if (not isinstance(digest, str) or len(digest) != 64
+                or any(character not in "0123456789abcdef" for character in digest)):
+            return False
+    bindings = {
+        "grant_id": "grant_id", "grant_sha256": "payload_sha256",
+        "request_id": "request_id", "invocation_id": "invocation_id",
+        "task_id": "task_id", "slot": "slot", "attempt": "attempt",
+        "epoch": "epoch", "run_id": "run_id", "service_generation": "service_generation",
+    }
+    if any(record.get(record_name) != claim[claim_name]
+           for record_name, claim_name in bindings.items()):
+        return False
+    for field in ("attempt", "epoch"):
+        if not _is_int(record.get(field)):
+            return False
+    allowed_predecessors = {
+        "NO_EXECUTION_PROVEN": {"PENDING"},
+        "EFFECTS_RESOLVED": {"EXECUTION_RESERVED"},
+        "EFFECTS_UNRESOLVED": {"PENDING", "EXECUTION_RESERVED"},
+        "RECONCILIATION_REJECTED": {"PENDING", "EXECUTION_RESERVED"},
+    }
+    if (predecessor_state not in {"PENDING", "EXECUTION_RESERVED"}
+            or predecessor_state not in allowed_predecessors[record["outcome"]]):
+        return False
+    if (event.get("event") != "RUNNER_EXECUTION_RECONCILED"
+            or event.get("state") != "RECONCILED"
+            or event.get("grant_id") != claim["grant_id"]
+            or event.get("payload_sha256") != claim["payload_sha256"]
+            or event.get("predecessor_state") != predecessor_state):
+        return False
+    return verify(record, bytes(key), RUNNER_EXECUTION_RESOLUTION_LABEL)
+
+
+def _valid_runner_prespawn_no_execution_event(event: dict, claim: sqlite3.Row) -> bool:
+    """Validate the terminal claim that proves no child reservation occurred."""
+    reason = event.get("reason") if isinstance(event, dict) else None
+    # Schema-v5 stores written before change 0473 can contain this exact recovery
+    # event. A PENDING predecessor is conclusively pre-spawn because reservation
+    # is durable before child creation. Keep accepting only the old closed shape;
+    # the event remains bound to the claim ID/digest and authenticated by the
+    # append-only supervisor history chain.
+    legacy_recovery_fields = {
+        "event", "state", "grant_id", "payload_sha256", "reason",
+        "predecessor_state", "recovery_service_generation",
+    }
+    if (reason == "PREDECESSOR_GENERATION_STOPPED"
+            and isinstance(event, dict) and set(event) == legacy_recovery_fields):
+        recovery_generation = event.get("recovery_service_generation")
+        return (
+            event.get("event") == "RUNNER_EXECUTION_INDETERMINATE"
+            and event.get("state") == "INDETERMINATE"
+            and event.get("predecessor_state") == "PENDING"
+            and isinstance(recovery_generation, str)
+            and bool(recovery_generation)
+            and recovery_generation != claim["service_generation"]
+            and event.get("grant_id") == claim["grant_id"]
+            and event.get("payload_sha256") == claim["payload_sha256"]
+        )
+    expected_fields = {
+        "event", "state", "grant_id", "payload_sha256", "reason",
+        "terminal_disposition", "predecessor_state", "request_id", "invocation_id",
+        "task_id", "slot", "runner_id", "attempt", "epoch", "run_id",
+        "service_generation",
+    }
+    if reason == RUNNER_PRESPAWN_NO_EXECUTION_REASON:
+        expected_fields.add("reason_code")
+    elif reason == "PREDECESSOR_GENERATION_STOPPED":
+        expected_fields.add("recovery_service_generation")
+    if (not isinstance(event, dict) or set(event) != expected_fields
+            or event.get("event") != "RUNNER_EXECUTION_INDETERMINATE"
+            or event.get("state") != "INDETERMINATE"
+            or event.get("terminal_disposition") != "NO_EXECUTION"
+            or (reason == RUNNER_PRESPAWN_NO_EXECUTION_REASON
+                and event.get("reason_code") not in RUNNER_PRESPAWN_REASON_CODES)
+            or (reason == "PREDECESSOR_GENERATION_STOPPED"
+                and (not isinstance(event.get("recovery_service_generation"), str)
+                     or event.get("recovery_service_generation") == claim["service_generation"]))
+            or reason not in {RUNNER_PRESPAWN_NO_EXECUTION_REASON, "PREDECESSOR_GENERATION_STOPPED"}
+            or event.get("predecessor_state") != "PENDING"):
+        return False
+    bindings = {
+        "grant_id": "grant_id", "payload_sha256": "payload_sha256",
+        "request_id": "request_id", "invocation_id": "invocation_id",
+        "task_id": "task_id", "slot": "slot", "runner_id": "runner_id",
+        "attempt": "attempt", "epoch": "epoch", "run_id": "run_id",
+        "service_generation": "service_generation",
+    }
+    return all(event.get(event_name) == claim[claim_name]
+               for event_name, claim_name in bindings.items())
+
+
+def _valid_predecessor_generation_stopped_event(
+    event: dict, claim: sqlite3.Row, predecessor_state: str,
+) -> bool:
+    """Validate a generation-stop event against its exact predecessor and claim."""
+    legacy_fields = {
+        "event", "state", "grant_id", "payload_sha256", "reason",
+        "predecessor_state", "recovery_service_generation",
+    }
+    current_fields = legacy_fields | {
+        "request_id", "invocation_id", "task_id", "slot", "runner_id",
+        "attempt", "epoch", "run_id", "service_generation",
+    }
+    if predecessor_state not in {"PENDING", "EXECUTION_RESERVED"}:
+        return False
+    recovery_generation = event.get("recovery_service_generation") if isinstance(event, dict) else None
+    if (not isinstance(event, dict)
+            or event.get("event") != "RUNNER_EXECUTION_INDETERMINATE"
+            or event.get("state") != "INDETERMINATE"
+            or event.get("reason") != "PREDECESSOR_GENERATION_STOPPED"
+            or event.get("predecessor_state") != predecessor_state
+            or not isinstance(recovery_generation, str)
+            or not recovery_generation
+            or recovery_generation == claim["service_generation"]):
+        return False
+    if predecessor_state == "PENDING":
+        return _valid_runner_prespawn_no_execution_event(event, claim)
+    if event.get("terminal_disposition") is not None:
+        return False
+    fields = frozenset(event)
+    if fields not in {frozenset(legacy_fields), frozenset(current_fields)}:
+        return False
+    if (event.get("grant_id") != claim["grant_id"]
+            or event.get("payload_sha256") != claim["payload_sha256"]):
+        return False
+    if fields == frozenset(current_fields):
+        bindings = {
+            "request_id": "request_id", "invocation_id": "invocation_id",
+            "task_id": "task_id", "slot": "slot", "runner_id": "runner_id",
+            "attempt": "attempt", "epoch": "epoch", "run_id": "run_id",
+            "service_generation": "service_generation",
+        }
+        return all(event.get(event_name) == claim[claim_name]
+                   for event_name, claim_name in bindings.items())
+    return True
+
+
 def _iso(now: float) -> str:
     return datetime.fromtimestamp(now, timezone.utc).isoformat()
 
@@ -435,7 +662,9 @@ class Store:
         anchor_path: str | None = None,
         sandbox_mode: bool = False,
         supervisor_key: bytes | None = None,
+        execution_resolution_key: bytes | None = None,
         supervisor_runner_id: str = "store-startup-supervisor",
+        allow_schema_upgrade: bool = False,
     ) -> None:
         self._event_key = _need_key(event_key, "event_key")
         if not isinstance(path, str) or not path:
@@ -448,7 +677,18 @@ class Store:
         if sandbox_mode and supervisor_key is None:
             raise StoreError("sandbox mode requires a supervisor key for startup reconciliation", kind="key")
         self._startup_supervisor_key = None if supervisor_key is None else self._need_supervisor_key(supervisor_key)
+        self._execution_resolution_key = (
+            None if execution_resolution_key is None
+            else _need_key(execution_resolution_key, "execution_resolution_key")
+        )
+        if (self._execution_resolution_key is not None
+                and (self._execution_resolution_key == self._event_key
+                     or self._execution_resolution_key == self._startup_supervisor_key)):
+            raise StoreError("execution resolution key must be distinct from Store keys", kind="key")
         self._startup_supervisor_runner_id = _need_str(supervisor_runner_id, "supervisor_runner_id")
+        if type(allow_schema_upgrade) is not bool:
+            raise StoreError("allow_schema_upgrade must be a boolean", kind="argument")
+        self._allow_schema_upgrade = allow_schema_upgrade
         self._external_anchor = (
             FileExternalAnchor(anchor_path, self._event_key) if anchor_path else None
         )
@@ -463,6 +703,12 @@ class Store:
         self._conn.row_factory = sqlite3.Row
         try:
             self._conn.execute("PRAGMA journal_mode=WAL")
+            self._conn.execute("PRAGMA synchronous=FULL")
+            synchronous = self._conn.execute("PRAGMA synchronous").fetchone()[0]
+            if synchronous != 2:
+                raise StoreError(
+                    "Store connection did not retain PRAGMA synchronous=FULL", kind="integrity"
+                )
             self._conn.execute("PRAGMA foreign_keys=ON")
             self._conn.execute("PRAGMA recursive_triggers=ON")
             self._init_schema()
@@ -495,6 +741,11 @@ class Store:
     def _init_schema(self) -> None:
         with self._tx() as conn:
             version = conn.execute("PRAGMA user_version").fetchone()[0]
+            if version in (3, 4, 5) and not self._allow_schema_upgrade:
+                raise StoreError(
+                    f"schema version {version} requires an explicitly authorized upgrade to {SCHEMA_VERSION}",
+                    kind="schema",
+                )
             if version == 0:
                 legacy = conn.execute(
                     "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'stories'"
@@ -536,12 +787,48 @@ class Store:
                     "CREATE TRIGGER supervisor_probes_no_delete BEFORE DELETE ON supervisor_probes "
                     "BEGIN SELECT RAISE(ABORT, 'supervisor probes are append-only'); END"
                 )
-                conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
-            elif version != SCHEMA_VERSION:
+                for statement in _runner_execution_schema_statements():
+                    conn.execute(statement)
+            elif version == 4:
+                # Add the one-invocation runner authorization ledger without
+                # rewriting prior task, lease, receipt, or event history.
+                for statement in _runner_execution_schema_statements():
+                    conn.execute(statement)
+            elif version not in (5, SCHEMA_VERSION):
                 raise StoreError(
                     f"schema version {version} is not supported (expected {SCHEMA_VERSION})",
                     kind="schema",
                 )
+            if version in (3, 4, 5):
+                self._migrate_events_v5_to_v6(conn)
+                conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+
+    @staticmethod
+    def _migrate_events_v5_to_v6(conn: sqlite3.Connection) -> None:
+        """Extend the event-kind constraint without rewriting historical event bytes."""
+        for trigger in ("events_no_update", "events_no_delete"):
+            conn.execute(f"DROP TRIGGER IF EXISTS {trigger}")
+        conn.execute("ALTER TABLE events RENAME TO events_v5")
+        conn.execute(
+            "CREATE TABLE events ("
+            "seq INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL NOT NULL, task_id TEXT NOT NULL, "
+            "actor TEXT NOT NULL, kind TEXT NOT NULL CHECK (kind IN ("
+            f"{_sql_list(EVENT_KINDS)})), payload TEXT NOT NULL, prev_hash TEXT NOT NULL, "
+            "hash TEXT NOT NULL)"
+        )
+        conn.execute(
+            "INSERT INTO events (seq, ts, task_id, actor, kind, payload, prev_hash, hash) "
+            "SELECT seq, ts, task_id, actor, kind, payload, prev_hash, hash FROM events_v5 ORDER BY seq"
+        )
+        conn.execute("DROP TABLE events_v5")
+        conn.execute(
+            "CREATE TRIGGER events_no_update BEFORE UPDATE ON events "
+            "BEGIN SELECT RAISE(ABORT, 'events are append-only'); END"
+        )
+        conn.execute(
+            "CREATE TRIGGER events_no_delete BEFORE DELETE ON events "
+            "BEGIN SELECT RAISE(ABORT, 'events are append-only'); END"
+        )
 
     # ------------------------------------------------------------ lifecycle
 
@@ -733,7 +1020,7 @@ class Store:
 
     def _record_event_locked(
         self, conn: sqlite3.Connection, task_id: str, actor: str, kind: str, payload: Any
-    ) -> None:
+    ) -> int:
         if kind not in EVENT_KINDS:
             raise StoreError(f"unknown event kind {kind!r}", kind="argument")
         count, prev_hash = self._anchor_state(conn)
@@ -745,7 +1032,7 @@ class Store:
             "payload": canonical_bytes(payload).decode("utf-8"),
         }
         new_hash = self._event_mac(prev_hash, fields)
-        conn.execute(
+        cursor = conn.execute(
             "INSERT INTO events (ts, task_id, actor, kind, payload, prev_hash, hash) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
             (
@@ -763,6 +1050,989 @@ class Store:
             "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             (_ANCHOR_KEY, json.dumps(anchor, sort_keys=True)),
         )
+        return int(cursor.lastrowid)
+
+    @staticmethod
+    def _validate_dispatch_intent_event(payload: Any, *, task_id: str, actor: str) -> dict:
+        required = {
+            "principal", "task_id", "slot", "attempt", "epoch", "run_id",
+            "request_id", "service_generation", "lease_id", "payload_digest",
+            "manifest_digest", "instruction", "key_id",
+        }
+        delegated_fields = {"key_class", "key_fingerprint", "issuance_operation_key",
+                            "issuance_envelope_sha256"}
+        if (not isinstance(payload, dict) or frozenset(payload) not in {frozenset(required),
+                                                                        frozenset(required | delegated_fields)}
+                or payload.get("task_id") != task_id
+                or payload.get("principal") != actor
+                or not isinstance(actor, str) or not actor):
+            raise StoreError("stored dispatch intent event binding is invalid", kind="integrity")
+        for field in ("slot", "run_id", "service_generation"):
+            if not isinstance(payload[field], str) or not payload[field].strip():
+                raise StoreError("stored dispatch intent string field is invalid", kind="integrity")
+        for field in ("attempt", "epoch", "lease_id"):
+            if type(payload[field]) is not int or payload[field] < 1:
+                raise StoreError("stored dispatch intent integer field is invalid", kind="integrity")
+        request_id = payload["request_id"]
+        if (not isinstance(request_id, str) or len(request_id) != 32
+                or any(ch not in "0123456789abcdef" for ch in request_id)):
+            raise StoreError("stored dispatch intent request id is invalid", kind="integrity")
+        from .dispatch_instruction import validate_dispatch_instruction
+        try:
+            instruction = validate_dispatch_instruction(payload["instruction"])
+        except ContractError as exc:
+            raise StoreError("stored dispatch instruction envelope is invalid", kind="integrity") from exc
+        if (instruction["key_id"] != payload["key_id"]
+                or any(instruction[key] != payload[key] for key in (
+                    "task_id", "slot", "attempt", "epoch", "run_id", "request_id",
+                ))):
+            raise StoreError("stored dispatch instruction does not match event fields", kind="integrity")
+        caller = {"principal": payload["principal"], "service_generation": payload["service_generation"],
+                  "key_id": payload["key_id"], "instruction": instruction}
+        if "key_class" in payload:
+            if (payload["key_class"] != "DELEGATED_V1"
+                    or payload["issuance_envelope_sha256"] != hashlib.sha256(canonical_bytes(instruction)).hexdigest()
+                    or not isinstance(payload["issuance_operation_key"], str)
+                    or not isinstance(payload["key_fingerprint"], str)
+                    or len(payload["key_fingerprint"]) != 64):
+                raise StoreError("stored delegated dispatch binding is malformed", kind="integrity")
+            caller.update({"key_class": payload["key_class"],
+                           "key_fingerprint": payload["key_fingerprint"],
+                           "issuance_operation_key": payload["issuance_operation_key"],
+                           "issuance_envelope_sha256": payload["issuance_envelope_sha256"]})
+        expected = hashlib.sha256(canonical_bytes(caller)).hexdigest()
+        for field in ("payload_digest", "manifest_digest"):
+            value = payload[field]
+            if (not isinstance(value, str) or len(value) != 64
+                    or any(ch not in "0123456789abcdef" for ch in value)):
+                raise StoreError("stored dispatch intent digest is invalid", kind="integrity")
+        if payload["payload_digest"] != expected:
+            raise StoreError("stored dispatch intent canonical digest does not verify", kind="integrity")
+        return payload
+
+    def _bind_dispatch_key_class_locked(self, conn: sqlite3.Connection, *, key_id: str,
+                                        key_class: str, purpose: str,
+                                        fingerprint: str) -> None:
+        from .dispatch_issuance import _SHA256, _ID
+        if (not isinstance(key_id, str) or not _ID.fullmatch(key_id)
+                or key_class not in {"LEGACY_V1", "DELEGATED_V1"}
+                or purpose != "VST_S2_DISPATCH_INSTRUCTION_V1"
+                or not isinstance(fingerprint, str) or not _SHA256.fullmatch(fingerprint)):
+            raise StoreError("dispatch key class binding is invalid", kind="authorization")
+        task_id = "dispatch-key-class:" + key_id
+        rows = conn.execute(
+            "SELECT actor, payload FROM events WHERE task_id=? AND kind='NOTE' ORDER BY seq", (task_id,),
+        ).fetchall()
+        if len(rows) > 1:
+            raise StoreError("dispatch key class has multiple immutable bindings", kind="integrity")
+        binding = {"event": "SUPERVISOR_DISPATCH_KEY_CLASS_BOUND", "key_id": key_id,
+                   "key_class": key_class, "purpose": purpose,
+                   "public_key_fingerprint": fingerprint}
+        if rows:
+            try:
+                prior = json.loads(rows[0]["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("dispatch key class binding is malformed", kind="integrity") from exc
+            if rows[0]["actor"] != "supervisor" or prior != binding:
+                raise StoreError("dispatch key class cannot be changed", kind="integrity")
+            return
+        self._record_event_locked(conn, task_id, "supervisor", "NOTE", binding)
+
+    def _require_dispatch_key_class_locked(self, conn: sqlite3.Connection, *, key_id: str,
+                                           key_class: str, purpose: str,
+                                           fingerprint: str) -> None:
+        task_id = "dispatch-key-class:" + key_id
+        rows = conn.execute(
+            "SELECT actor, payload FROM events WHERE task_id=? AND kind='NOTE' ORDER BY seq", (task_id,),
+        ).fetchall()
+        expected = {"event": "SUPERVISOR_DISPATCH_KEY_CLASS_BOUND", "key_id": key_id,
+                    "key_class": key_class, "purpose": purpose,
+                    "public_key_fingerprint": fingerprint}
+        if (len(rows) != 1 or rows[0]["actor"] != "supervisor"
+                or json.loads(rows[0]["payload"]) != expected):
+            raise StoreError("dispatch key class binding is absent or changed", kind="integrity")
+
+    def dispatch_key_class_binding(self, key_id: str) -> dict | None:
+        task_id = "dispatch-key-class:" + key_id
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            rows = conn.execute(
+                "SELECT actor, payload FROM events WHERE task_id=? AND kind='NOTE' ORDER BY seq",
+                (task_id,),
+            ).fetchall()
+            if not rows:
+                return None
+            if len(rows) != 1 or rows[0]["actor"] != "supervisor":
+                raise StoreError("dispatch key class has invalid journal multiplicity", kind="integrity")
+            try:
+                value = json.loads(rows[0]["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("dispatch key class journal is malformed", kind="integrity") from exc
+            if (not isinstance(value, dict) or value.get("event") != "SUPERVISOR_DISPATCH_KEY_CLASS_BOUND"
+                    or value.get("key_id") != key_id):
+                raise StoreError("dispatch key class journal identity is invalid", kind="integrity")
+            return value
+
+    def _validate_dispatch_current_locked(self, conn: sqlite3.Connection, *, principal: str,
+                                          task_id: str, slot: str, attempt: int, epoch: int,
+                                          run_id: str, now: float) -> tuple[sqlite3.Row, dict, sqlite3.Row]:
+        task = self._task_row(conn, task_id)
+        self._guard_runner_task_continuation_locked(conn, task_id)
+        manifest = validate_task_manifest(json.loads(task["manifest"]))
+        if manifest_sha256(manifest) != task["manifest_sha256"]:
+            raise StoreError("registered manifest digest is inconsistent", kind="integrity")
+        declared = {item["slot"]: item["receipt_type"] for item in manifest["required_receipts"]}
+        if declared.get(slot) != "TestRun":
+            raise StoreError("dispatch intent slot is not a manifest TestRun slot", kind="slot")
+        story = self._story_row(conn, task["story_id"])
+        if (story["state"] != "OWNED" or story["owner"] != principal
+                or int(story["epoch"]) != epoch or story["owner_expires_at"] is None
+                or float(story["owner_expires_at"]) <= now):
+            raise StoreError("authenticated principal does not hold the live task owner epoch", kind="epoch")
+        lease = conn.execute(
+            "SELECT lease_id, epoch, status, expires_at FROM leases WHERE task_id=? AND attempt=?",
+            (task_id, attempt),
+        ).fetchone()
+        if (lease is None or int(lease["epoch"]) != epoch or lease["status"] != LEASE_LIVE
+                or float(lease["expires_at"]) <= now):
+            raise StoreError("dispatch intent has no matching live lease", kind="lease")
+        if not self.reconciliation_complete:
+            raise StoreError("Store startup reconciliation is required for dispatch intent", kind="integrity")
+        if conn.execute("SELECT 1 FROM supervisor_probes WHERE run_id=?", (run_id,)).fetchone() is None:
+            raise StoreError("dispatch intent requires a consumed run-bound preflight", kind="probe")
+        last = conn.execute(
+            "SELECT attempt FROM receipts WHERE task_id=? AND slot=? ORDER BY attempt DESC LIMIT 1",
+            (task_id, slot),
+        ).fetchone()
+        expected = 1 if last is None else int(last["attempt"]) + 1
+        if (attempt != expected or not self._runner_receipt_gap_is_eligible_locked(
+                conn, task_id, slot, expected - 1, attempt)):
+            raise StoreError("dispatch intent attempt is not eligible for this receipt slot", kind="chain")
+        if conn.execute(
+            "SELECT 1 FROM receipts WHERE task_id=? AND slot=? AND attempt=?",
+            (task_id, slot, attempt),
+        ).fetchone() is not None:
+            raise StoreError("dispatch intent attempt already has a receipt", kind="duplicate")
+        blocked = self._budget_block_locked(conn, task_id)
+        if blocked is not None:
+            raise StoreError(blocked, kind="budget")
+        return task, manifest, lease
+
+    def _validate_dispatch_issuance_proof_locked(self, conn: sqlite3.Connection, *,
+                                                proof: Any, instruction: dict,
+                                                principal: str, service_generation: str) -> dict:
+        from .root_dispatch_issuer import is_verified_issuance_context
+        from .dispatch_issuance import canonical_sha256, validate_frozen_intent
+        if not is_verified_issuance_context(proof):
+            raise StoreError("delegated dispatch lacks a root-verified issuance context", kind="authorization")
+        intent = validate_frozen_intent(proof.intent)
+        handoff, policy = intent["handoff"], intent["policy"]
+        if (proof.envelope != instruction
+                or proof.fingerprint != intent["signer"]["public_key_fingerprint"]
+                or intent["signer"]["key_class"] != "DELEGATED_V1"
+                or intent["signer"]["purpose"] != "VST_S2_DISPATCH_INSTRUCTION_V1"
+                or policy["owner_principal"] != principal
+                or intent["service_generation"] != service_generation
+                or any(instruction[name] != intent["unsigned"][name] for name in intent["unsigned"])):
+            raise StoreError("delegated dispatch proof does not match exact current request", kind="authorization")
+        operation = conn.execute(
+            "SELECT operation_key, operation, payload_sha256, result FROM supervisor_operations WHERE operation_key=?",
+            (intent["operation_key"],),
+        ).fetchone()
+        if operation is None:
+            raise StoreError("delegated dispatch issuance row is missing", kind="integrity")
+        events = self._dispatch_issuance_records_locked(conn, intent["operation_key"])
+        self._verify_dispatch_issuance_structure(operation, events)
+        if (events[-1].get("event") != "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED"
+                or events[-1].get("envelope") != instruction
+                or canonical_sha256(intent) != canonical_sha256(events[0]["intent"])):
+            raise StoreError("delegated dispatch proof no longer matches durable issuance records", kind="integrity")
+        self._require_dispatch_key_class_locked(
+            conn, key_id=intent["signer"]["key_id"], key_class="DELEGATED_V1",
+            purpose=intent["signer"]["purpose"], fingerprint=proof.fingerprint,
+        )
+        expected = {"task_id": handoff["task_id"], "slot": handoff["slot"],
+                    "attempt": handoff["attempt"], "epoch": handoff["epoch"],
+                    "run_id": handoff["run_id"]}
+        if any(instruction[key] != value for key, value in expected.items()):
+            raise StoreError("delegated dispatch tuple differs from its authenticated handoff", kind="authorization")
+        return intent
+
+    def accept_dispatch_intent(
+        self, *, principal: str, instruction: dict, service_generation: str,
+        key_class: str = "LEGACY_V1", key_fingerprint: str | None = None,
+        issuance_proof: Any = None, authority_guard: Callable[[], bool] | None = None,
+    ) -> dict:
+        """Record only a signed-envelope intent already verified by root Supervisor."""
+        from .dispatch_instruction import validate_dispatch_instruction
+        instruction = validate_dispatch_instruction(instruction)
+        task_id, slot = instruction["task_id"], instruction["slot"]
+        attempt, epoch = instruction["attempt"], instruction["epoch"]
+        run_id, request_id = instruction["run_id"], instruction["request_id"]
+        for value, name in ((principal, "principal"), (task_id, "task_id"),
+                            (slot, "slot"), (run_id, "run_id"),
+                            (service_generation, "service_generation")):
+            _need_str(value, name)
+        _need_int(attempt, "attempt", 1)
+        _need_int(epoch, "epoch", 1)
+        if (not isinstance(request_id, str) or len(request_id) != 32
+                or any(ch not in "0123456789abcdef" for ch in request_id)):
+            raise StoreError("request_id must be 32 lowercase hexadecimal characters", kind="argument")
+        caller_payload = {"principal": principal, "service_generation": service_generation,
+                          "key_id": instruction["key_id"], "instruction": instruction}
+        if key_class == "DELEGATED_V1":
+            if issuance_proof is None:
+                raise StoreError("delegated dispatch requires verified issuance provenance", kind="authorization")
+            caller_payload.update({
+                "key_class": "DELEGATED_V1", "key_fingerprint": key_fingerprint,
+                "issuance_operation_key": issuance_proof.intent["operation_key"],
+                "issuance_envelope_sha256": hashlib.sha256(canonical_bytes(instruction)).hexdigest(),
+            })
+        elif key_class != "LEGACY_V1":
+            raise StoreError("dispatch key class is unknown", kind="authorization")
+        payload_digest = hashlib.sha256(canonical_bytes(caller_payload)).hexdigest()
+        operation_key = f"dispatch-intent:{request_id}"
+        with self._tx() as conn:
+            self._verify_control_history_locked(conn)
+            self._verify_supervisor_records(conn)
+            outcome_state, pending = self._dispatch_outcome_state_locked(conn)
+            if outcome_state == "LEGACY_UNRESOLVED":
+                raise StoreError(
+                    "legacy dispatch history requires separately authorized reconciliation",
+                    kind="integrity",
+                )
+            if outcome_state == "PENDING" and pending["request_id"] != request_id:
+                raise StoreError(
+                    "a prior dispatch outcome is still awaiting relay acknowledgement",
+                    kind="lifecycle",
+                )
+            if key_class == "DELEGATED_V1":
+                if authority_guard is None or authority_guard() is not True:
+                    raise StoreError("delegated root policy/generation changed at admission write", kind="authorization")
+                delegated_intent = self._validate_dispatch_issuance_proof_locked(
+                    conn, proof=issuance_proof, instruction=instruction,
+                    principal=principal, service_generation=service_generation,
+                )
+            else:
+                delegated_intent = None
+                if not isinstance(key_fingerprint, str):
+                    raise StoreError("legacy dispatch key fingerprint is unavailable", kind="authorization")
+                self._bind_dispatch_key_class_locked(
+                    conn, key_id=instruction["key_id"], key_class=key_class,
+                    purpose="VST_S2_DISPATCH_INSTRUCTION_V1", fingerprint=key_fingerprint,
+                )
+            prior = conn.execute(
+                "SELECT operation, payload_sha256, result FROM supervisor_operations "
+                "WHERE operation_key = ?", (operation_key,),
+            ).fetchone()
+            if prior is not None:
+                if (prior["operation"] != "dispatch_intent"
+                        or prior["payload_sha256"] != payload_digest):
+                    raise StoreError("dispatch request id was reused with a different payload", kind="duplicate")
+                try:
+                    result = json.loads(prior["result"])
+                except (TypeError, ValueError) as exc:
+                    raise StoreError("stored dispatch intent result is invalid", kind="integrity") from exc
+                if not isinstance(result, dict) or result.get("service_generation") != service_generation:
+                    raise StoreError("dispatch intent belongs to another service generation", kind="duplicate")
+                if delegated_intent is not None:
+                    self._validate_dispatch_current_locked(
+                        conn, principal=principal, task_id=task_id, slot=slot,
+                        attempt=attempt, epoch=epoch, run_id=run_id, now=self._now(),
+                    )
+                    if (result.get("issuance_operation_key") != delegated_intent["operation_key"]
+                            or result.get("issuance_envelope_sha256") !=
+                            hashlib.sha256(canonical_bytes(instruction)).hexdigest()):
+                        raise StoreError("dispatch replay differs from its immutable issuance binding",
+                                         kind="integrity")
+                return result
+
+            now = self._now()
+            task, manifest, lease = self._validate_dispatch_current_locked(
+                conn, principal=principal, task_id=task_id, slot=slot,
+                attempt=attempt, epoch=epoch, run_id=run_id, now=now,
+            )
+            manifest_digest = manifest_sha256(manifest)
+            event_payload = {
+                **caller_payload, "task_id": task_id, "slot": slot, "attempt": attempt,
+                "epoch": epoch, "run_id": run_id, "request_id": request_id,
+                "lease_id": int(lease["lease_id"]),
+                "payload_digest": payload_digest,
+                "manifest_digest": manifest_digest,
+            }
+            event_seq = self._record_event_locked(
+                conn, task_id, principal, "DISPATCH_INTENT_ACCEPTED", event_payload,
+            )
+            result = {"event_seq": event_seq, **event_payload}
+            encoded = canonical_bytes(result).decode("utf-8")
+            conn.execute(
+                "INSERT INTO supervisor_operations(operation_key, operation, payload_sha256, result) "
+                "VALUES (?, 'dispatch_intent', ?, ?)",
+                (operation_key, payload_digest, encoded),
+            )
+            self._record_event_locked(
+                conn, operation_key, "supervisor", "NOTE",
+                {"event": "SUPERVISOR_OPERATION", "operation": "dispatch_intent",
+                 "payload_sha256": payload_digest,
+                 "result_sha256": hashlib.sha256(encoded.encode("utf-8")).hexdigest()},
+            )
+            self._append_control_event_locked(
+                conn, "DISPATCH_OWNER_OUTCOME_PENDING",
+                f"dispatch-owner-outcome:{request_id}:pending",
+                self._dispatch_outcome_binding(result),
+            )
+            return result
+
+    def validate_delegated_dispatch_snapshot(self, *, intent: dict, proof: Any,
+                                             principal: str, generation: str,
+                                             current_policy: dict) -> dict:
+        """Verify issuance and every live Store predicate in one read snapshot."""
+        instruction = intent.get("instruction")
+        if not isinstance(instruction, dict):
+            raise StoreError("delegated dispatch snapshot lacks its instruction", kind="authorization")
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            self._verify_control_history_locked(conn)
+            self._verify_supervisor_records(conn)
+            issuance = self._validate_dispatch_issuance_proof_locked(
+                conn, proof=proof, instruction=instruction, principal=principal,
+                service_generation=generation,
+            )
+            if (current_policy != issuance["policy"]
+                    or intent.get("issuance_operation_key") != issuance["operation_key"]
+                    or intent.get("issuance_envelope_sha256") !=
+                    hashlib.sha256(canonical_bytes(instruction)).hexdigest()):
+                raise StoreError("delegated dispatch snapshot differs from its root issuance", kind="integrity")
+            accepted_rows = conn.execute(
+                "SELECT task_id, actor, payload FROM events WHERE kind='DISPATCH_INTENT_ACCEPTED' "
+                "AND task_id=? ORDER BY seq", (instruction["task_id"],),
+            ).fetchall()
+            accepted = None
+            for row in accepted_rows:
+                try:
+                    payload = json.loads(row["payload"])
+                except (TypeError, ValueError) as exc:
+                    raise StoreError("accepted delegated dispatch record is malformed", kind="integrity") from exc
+                if isinstance(payload, dict) and payload.get("request_id") == instruction["request_id"]:
+                    accepted = self._validate_dispatch_intent_event(
+                        payload, task_id=row["task_id"], actor=row["actor"],
+                    )
+                    break
+            if (accepted is None or accepted.get("issuance_operation_key") != issuance["operation_key"]
+                    or accepted.get("issuance_envelope_sha256") != hashlib.sha256(
+                        canonical_bytes(instruction)).hexdigest()):
+                raise StoreError("accepted dispatch is not joined to its exact issuance", kind="integrity")
+            basis = self._execution_grant_basis_locked(
+                conn, instruction["task_id"], instruction["slot"], instruction["attempt"],
+                instruction["epoch"], instruction["run_id"],
+                active_service_generation=generation, expected_owner=principal,
+                expected_lease_id=accepted["lease_id"], now=self._now(),
+            )
+            if basis["manifest_sha256"] != accepted["manifest_digest"]:
+                raise StoreError("delegated dispatch manifest authority changed", kind="manifest")
+            return basis
+
+    def _assert_delegated_dispatch_use_locked(self, conn: sqlite3.Connection, *,
+                                              dispatch_request_id: str,
+                                              proof: Any,
+                                              generation: str,
+                                              grant: dict | None = None,
+                                              check_current: bool = True) -> dict:
+        self._verify_supervisor_records(conn)
+        rows = conn.execute(
+            "SELECT task_id, actor, payload FROM events WHERE kind='DISPATCH_INTENT_ACCEPTED' "
+            "ORDER BY seq",
+        ).fetchall()
+        accepted = None
+        for row in rows:
+            try:
+                candidate = json.loads(row["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("accepted dispatch event is malformed", kind="integrity") from exc
+            if isinstance(candidate, dict) and candidate.get("request_id") == dispatch_request_id:
+                accepted = self._validate_dispatch_intent_event(
+                    candidate, task_id=row["task_id"], actor=row["actor"],
+                )
+                break
+        if accepted is None or accepted.get("key_class") != "DELEGATED_V1":
+            raise StoreError("delegated grant has no delegated accepted-dispatch record", kind="integrity")
+        instruction = accepted["instruction"]
+        issuance = self._validate_dispatch_issuance_proof_locked(
+            conn, proof=proof, instruction=instruction, principal=accepted["principal"],
+            service_generation=generation,
+        )
+        envelope_digest = hashlib.sha256(canonical_bytes(instruction)).hexdigest()
+        if (accepted["issuance_operation_key"] != issuance["operation_key"]
+                or accepted["issuance_envelope_sha256"] != envelope_digest
+                or accepted["key_fingerprint"] != proof.fingerprint):
+            raise StoreError("dispatch grant lost its exact issuance association", kind="integrity")
+        if check_current:
+            basis = self._execution_grant_basis_locked(
+                conn, accepted["task_id"], accepted["slot"], accepted["attempt"],
+                accepted["epoch"], accepted["run_id"], active_service_generation=generation,
+                expected_owner=accepted["principal"], expected_lease_id=accepted["lease_id"],
+                now=self._now(),
+            )
+            if basis["manifest_sha256"] != accepted["manifest_digest"]:
+                raise StoreError("delegated dispatch current manifest differs", kind="manifest")
+            if grant is not None and any(grant.get(field) != value for field, value in {
+                "task_id": accepted["task_id"], "slot": accepted["slot"],
+                "attempt": accepted["attempt"], "epoch": accepted["epoch"],
+                "run_id": accepted["run_id"], "service_generation": generation,
+                "manifest_sha256": accepted["manifest_digest"],
+            }.items()):
+                raise StoreError("execution grant tuple differs from its delegated dispatch", kind="integrity")
+        return accepted
+
+    def _dispatch_grant_source_locked(self, conn: sqlite3.Connection, grant: dict) -> tuple[str, dict] | None:
+        matches = []
+        for row in conn.execute(
+            "SELECT operation_key, operation, payload_sha256, result FROM supervisor_operations "
+            "WHERE operation='dispatch_grant'",
+        ).fetchall():
+            try:
+                result = json.loads(row["result"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("dispatch grant operation result is malformed", kind="integrity") from exc
+            if isinstance(result, dict) and canonical_bytes(result) == canonical_bytes(grant):
+                try:
+                    digest = hashlib.sha256(canonical_bytes(result)).hexdigest()
+                    notes = conn.execute(
+                        "SELECT payload FROM events WHERE task_id=? AND kind='NOTE' ORDER BY seq",
+                        (row["operation_key"],),
+                    ).fetchall()
+                    event = json.loads(notes[0]["payload"]) if len(notes) == 1 else None
+                except (TypeError, ValueError) as exc:
+                    raise StoreError("dispatch grant operation journal is malformed", kind="integrity") from exc
+                if (digest != hashlib.sha256(canonical_bytes(grant)).hexdigest()
+                        or not isinstance(event, dict)
+                        or event.get("event") != "SUPERVISOR_OPERATION"
+                        or event.get("operation") != "dispatch_grant"
+                        or event.get("payload_sha256") != row["payload_sha256"]
+                        or event.get("result_sha256") != hashlib.sha256(
+                            canonical_bytes(result).decode("utf-8").encode("utf-8"),
+                        ).hexdigest()):
+                    raise StoreError("dispatch grant operation differs from its immutable note", kind="integrity")
+                payload = row["payload_sha256"]
+                matches.append((row["operation_key"], result, payload))
+        if len(matches) > 1:
+            raise StoreError("execution grant is bound to multiple dispatch requests", kind="integrity")
+        if not matches:
+            return None
+        key, result, digest = matches[0]
+        note_row = conn.execute(
+            "SELECT payload FROM events WHERE task_id=? AND kind='NOTE'", (key,),
+        ).fetchone()
+        # The operation payload itself is not stored in the result row. Its source
+        # request is recovered from the stable dispatch-grant:<request_id> key.
+        dispatch_request_id = key.removeprefix("dispatch-grant:")
+        return dispatch_request_id, {"result": result, "payload_sha256": digest}
+
+    def dispatch_issuance_target_for_grant(self, grant: dict) -> dict | None:
+        """Return the exact delegated instruction/key binding associated with a signed grant."""
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            source = self._dispatch_grant_source_locked(conn, grant)
+            if source is None:
+                raise StoreError("execution grant has no immutable dispatch-grant association", kind="integrity")
+            request_id, _ = source
+            for row in conn.execute(
+                "SELECT task_id, actor, payload FROM events WHERE kind='DISPATCH_INTENT_ACCEPTED' ORDER BY seq",
+            ).fetchall():
+                try:
+                    payload = json.loads(row["payload"])
+                except (TypeError, ValueError) as exc:
+                    raise StoreError("accepted dispatch record is malformed", kind="integrity") from exc
+                if isinstance(payload, dict) and payload.get("request_id") == request_id:
+                    accepted = self._validate_dispatch_intent_event(
+                        payload, task_id=row["task_id"], actor=row["actor"],
+                    )
+                    if accepted.get("key_class") != "DELEGATED_V1":
+                        return None
+                    return {"instruction": accepted["instruction"],
+                            "key_id": accepted["key_id"],
+                            "key_fingerprint": accepted["key_fingerprint"],
+                            "principal": accepted["principal"],
+                            "issuance_operation_key": accepted["issuance_operation_key"],
+                            "issuance_envelope_sha256": accepted["issuance_envelope_sha256"]}
+            raise StoreError("dispatch grant points to a missing accepted dispatch", kind="integrity")
+
+    def _validate_dispatch_grant_authority_locked(self, conn: sqlite3.Connection, *,
+                                                  grant: dict,
+                                                  dispatch_request_id: str,
+                                                  proof: Any,
+                                                  generation: str,
+                                                  current: bool,
+                                                  expected_operation_payload: dict | None = None) -> dict:
+        accepted = self._assert_delegated_dispatch_use_locked(
+            conn, dispatch_request_id=dispatch_request_id, proof=proof,
+            generation=generation, grant=grant if current else None,
+            check_current=current,
+        )
+        key = f"dispatch-grant:{dispatch_request_id}"
+        row = conn.execute(
+            "SELECT operation, payload_sha256, result FROM supervisor_operations WHERE operation_key=?",
+            (key,),
+        ).fetchone()
+        if row is None or row["operation"] != "dispatch_grant":
+            raise StoreError("delegated execution grant lacks dispatch-grant operation", kind="integrity")
+        try:
+            stored_result = json.loads(row["result"])
+        except (TypeError, ValueError) as exc:
+            raise StoreError("delegated dispatch grant result is malformed", kind="integrity") from exc
+        if canonical_bytes(stored_result) != canonical_bytes(grant):
+            raise StoreError("execution grant differs from its exact dispatch-grant operation", kind="integrity")
+        exact_payload = {
+            "request_id": dispatch_request_id,
+            "service_generation": generation,
+            "issuance_operation_key": accepted["issuance_operation_key"],
+            "issuance_envelope_sha256": accepted["issuance_envelope_sha256"],
+        }
+        expected = exact_payload if expected_operation_payload is None else expected_operation_payload
+        if expected != exact_payload or row["payload_sha256"] != hashlib.sha256(
+                canonical_bytes(exact_payload)).hexdigest():
+            raise StoreError("dispatch-grant operation payload lost its issuance association", kind="integrity")
+        return accepted
+
+    def _maybe_validate_delegated_execution_grant_locked(self, conn: sqlite3.Connection, *,
+                                                         grant: dict, proof: Any,
+                                                         generation: str,
+                                                         current: bool,
+                                                         authority_guard: Callable[[], bool] | None = None) -> None:
+        source = self._dispatch_grant_source_locked(conn, grant)
+        if source is None:
+            raise StoreError("execution grant lacks an immutable dispatch-grant operation", kind="integrity")
+        dispatch_request_id, source_row = source
+        accepted = None
+        for event_row in conn.execute(
+            "SELECT task_id, actor, payload FROM events WHERE kind='DISPATCH_INTENT_ACCEPTED' ORDER BY seq",
+        ).fetchall():
+            try:
+                payload = json.loads(event_row["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("accepted dispatch record is malformed", kind="integrity") from exc
+            if isinstance(payload, dict) and payload.get("request_id") == dispatch_request_id:
+                accepted = self._validate_dispatch_intent_event(
+                    payload, task_id=event_row["task_id"], actor=event_row["actor"],
+                )
+                break
+        if accepted is None:
+            raise StoreError("execution grant dispatch operation has no accepted request", kind="integrity")
+        if accepted.get("key_class") != "DELEGATED_V1":
+            legacy_payload = {"request_id": dispatch_request_id,
+                              "service_generation": accepted["service_generation"]}
+            if (hashlib.sha256(canonical_bytes(legacy_payload)).hexdigest() != source_row["payload_sha256"]
+                    or any(grant.get(field) != value for field, value in {
+                        "task_id": accepted["task_id"], "slot": accepted["slot"],
+                        "attempt": accepted["attempt"], "epoch": accepted["epoch"],
+                        "run_id": accepted["run_id"],
+                        "service_generation": accepted["service_generation"],
+                        "manifest_sha256": accepted["manifest_digest"],
+                    }.items())):
+                raise StoreError("execution grant does not match its accepted legacy dispatch", kind="integrity")
+            return
+        if proof is None and not current:
+            expected_payload = {
+                "request_id": dispatch_request_id,
+                "service_generation": accepted["service_generation"],
+                "issuance_operation_key": accepted["issuance_operation_key"],
+                "issuance_envelope_sha256": accepted["issuance_envelope_sha256"],
+            }
+            row = conn.execute(
+                "SELECT operation, payload_sha256, result FROM supervisor_operations "
+                "WHERE operation_key=?", (f"dispatch-grant:{dispatch_request_id}",),
+            ).fetchone()
+            if (row is None or row["operation"] != "dispatch_grant"
+                    or row["payload_sha256"] != hashlib.sha256(canonical_bytes(expected_payload)).hexdigest()
+                    or canonical_bytes(json.loads(row["result"])) != canonical_bytes(grant)):
+                raise StoreError("historical delegated grant observation lost its immutable association",
+                                 kind="integrity")
+            return
+        if proof is None:
+            raise StoreError("delegated execution grant lacks root-verified provenance", kind="authorization")
+        if current and (authority_guard is None or authority_guard() is not True):
+            raise StoreError("delegated root policy/generation changed at execution boundary",
+                             kind="authorization")
+        expected_payload = {
+            "request_id": dispatch_request_id,
+            "service_generation": generation,
+            "issuance_operation_key": accepted["issuance_operation_key"],
+            "issuance_envelope_sha256": accepted["issuance_envelope_sha256"],
+        }
+        self._validate_dispatch_grant_authority_locked(
+            conn, grant=grant, dispatch_request_id=dispatch_request_id,
+            proof=proof, generation=generation, current=current,
+            expected_operation_payload=expected_payload,
+        )
+
+    def replay_dispatch_outcome(self, *, principal: str, instruction: dict) -> dict | None:
+        """Read an exact, previously accepted result without authorizing new work."""
+        from .dispatch_instruction import validate_dispatch_instruction
+
+        _need_str(principal, "principal")
+        instruction = validate_dispatch_instruction(instruction)
+        if not self.reconciliation_complete:
+            raise StoreError("verified Store startup is required for outcome replay", kind="integrity")
+        request_id = instruction["request_id"]
+        with self._read_tx() as conn:
+            # Verify the complete chain, external anchor, operation rows, and
+            # pending/ack protocol in the same read snapshot before returning data.
+            self._verify_control_history_locked(conn)
+            outcome_state, _pending = self._dispatch_outcome_state_locked(conn)
+            if outcome_state == "LEGACY_UNRESOLVED":
+                raise StoreError(
+                    "legacy dispatch history requires separately authorized reconciliation",
+                    kind="integrity",
+                )
+            rows = conn.execute(
+                "SELECT seq, task_id, actor, payload FROM events "
+                "WHERE kind='DISPATCH_INTENT_ACCEPTED' ORDER BY seq"
+            ).fetchall()
+            for row in rows:
+                try:
+                    payload = json.loads(row["payload"])
+                except (TypeError, ValueError) as exc:
+                    raise StoreError("accepted dispatch event is malformed", kind="integrity") from exc
+                payload = self._validate_dispatch_intent_event(
+                    payload, task_id=row["task_id"], actor=row["actor"],
+                )
+                if payload["request_id"] != request_id:
+                    continue
+                if (payload["principal"] != principal
+                        or canonical_bytes(payload["instruction"]) != canonical_bytes(instruction)):
+                    return None
+                operation = conn.execute(
+                    "SELECT operation, payload_sha256, result FROM supervisor_operations "
+                    "WHERE operation_key=?", (f"dispatch-intent:{request_id}",),
+                ).fetchone()
+                if operation is None or operation["operation"] != "dispatch_intent":
+                    raise StoreError("accepted dispatch result is missing", kind="integrity")
+                try:
+                    result = json.loads(operation["result"])
+                except (TypeError, ValueError) as exc:
+                    raise StoreError("accepted dispatch result is malformed", kind="integrity") from exc
+                expected = {"event_seq": int(row["seq"]), **payload}
+                if (operation["payload_sha256"] != payload["payload_digest"]
+                        or result != expected):
+                    raise StoreError("accepted dispatch result differs from verified history", kind="integrity")
+                return result
+        return None
+
+    @staticmethod
+    def _dispatch_outcome_binding(result: dict) -> dict:
+        encoded = canonical_bytes(result).decode("utf-8")
+        return {
+            "request_id": result["request_id"],
+            "principal": result["principal"],
+            "payload_digest": result["payload_digest"],
+            "event_seq": result["event_seq"],
+            "result_sha256": hashlib.sha256(encoded.encode("utf-8")).hexdigest(),
+            "service_generation": result["service_generation"],
+        }
+
+    def _dispatch_outcome_state_locked(self, conn: sqlite3.Connection) -> tuple[str, dict | None]:
+        """Reconstruct the dispatch admission barrier from the complete event history."""
+        accepted_rows = conn.execute(
+            "SELECT seq, task_id, actor, payload FROM events "
+            "WHERE kind='DISPATCH_INTENT_ACCEPTED' ORDER BY seq"
+        ).fetchall()
+        controls: dict[str, dict[str, list[tuple[int, str, dict]]]] = {}
+        for row in conn.execute(
+            "SELECT seq, task_id, payload FROM events "
+            "WHERE actor='supervisor' AND kind='NOTE' ORDER BY seq"
+        ).fetchall():
+            try:
+                note = json.loads(row["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("dispatch control history contains malformed NOTE", kind="integrity") from exc
+            if not isinstance(note, dict):
+                raise StoreError("dispatch control history NOTE is not an object", kind="integrity")
+            control_type = note.get("_vst_control_type")
+            if control_type not in {
+                "DISPATCH_OWNER_OUTCOME_PENDING", "DISPATCH_OWNER_OUTCOME_ACKNOWLEDGED",
+            }:
+                continue
+            required = {
+                "_vst_control_type", "event_id", "request_id", "principal", "payload_digest",
+                "event_seq", "result_sha256", "service_generation",
+            }
+            if set(note) != required:
+                raise StoreError("dispatch outcome control record fields are malformed", kind="integrity")
+            request_id = note["request_id"]
+            if (not isinstance(request_id, str) or not request_id
+                    or not isinstance(note["principal"], str) or not note["principal"]
+                    or not isinstance(note["service_generation"], str) or not note["service_generation"]
+                    or type(note["event_seq"]) is not int or note["event_seq"] < 1
+                    or not isinstance(note["payload_digest"], str)
+                    or not re.fullmatch(r"[0-9a-f]{64}", note["payload_digest"])
+                    or not isinstance(note["result_sha256"], str)
+                    or not re.fullmatch(r"[0-9a-f]{64}", note["result_sha256"])):
+                raise StoreError("dispatch outcome control request id is malformed", kind="integrity")
+            bucket = controls.setdefault(request_id, {"pending": [], "ack": []})
+            key = "pending" if control_type.endswith("PENDING") else "ack"
+            bucket[key].append((int(row["seq"]), row["task_id"], note))
+
+        if not accepted_rows:
+            if controls:
+                raise StoreError("dispatch outcome controls have no accepted event", kind="integrity")
+            return "OPEN", None
+
+        accepted: list[tuple[int, dict, str, int]] = []
+        seen_ids: set[str] = set()
+        for row in accepted_rows:
+            try:
+                raw = json.loads(row["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("accepted dispatch event is malformed", kind="integrity") from exc
+            payload = self._validate_dispatch_intent_event(
+                raw, task_id=row["task_id"], actor=row["actor"],
+            )
+            request_id = payload["request_id"]
+            if request_id in seen_ids:
+                raise StoreError("dispatch request id has duplicate accepted events", kind="integrity")
+            seen_ids.add(request_id)
+            operation_key = f"dispatch-intent:{request_id}"
+            operation = conn.execute(
+                "SELECT operation, payload_sha256, result FROM supervisor_operations "
+                "WHERE operation_key=?", (operation_key,),
+            ).fetchone()
+            if (operation is None or operation["operation"] != "dispatch_intent"
+                    or operation["payload_sha256"] != payload["payload_digest"]):
+                raise StoreError("accepted dispatch lacks matching operation result", kind="integrity")
+            try:
+                result = json.loads(operation["result"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("stored dispatch result is malformed", kind="integrity") from exc
+            event_seq = int(row["seq"])
+            if result != {"event_seq": event_seq, **payload}:
+                raise StoreError("stored dispatch result differs from accepted event", kind="integrity")
+            result_sha256 = hashlib.sha256(operation["result"].encode("utf-8")).hexdigest()
+            operation_notes = conn.execute(
+                "SELECT seq, payload FROM events WHERE task_id=? AND actor='supervisor' "
+                "AND kind='NOTE' ORDER BY seq", (operation_key,),
+            ).fetchall()
+            if len(operation_notes) != 1:
+                raise StoreError("dispatch operation note is missing or duplicated", kind="integrity")
+            try:
+                operation_note = json.loads(operation_notes[0]["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("dispatch operation note is malformed", kind="integrity") from exc
+            if (operation_note != {
+                    "event": "SUPERVISOR_OPERATION", "operation": "dispatch_intent",
+                    "payload_sha256": payload["payload_digest"], "result_sha256": result_sha256,
+                } or int(operation_notes[0]["seq"]) <= event_seq):
+                raise StoreError("dispatch operation note differs from stored result", kind="integrity")
+            accepted.append((event_seq, payload, result_sha256, int(operation_notes[0]["seq"])))
+
+        if set(controls) - seen_ids:
+            raise StoreError("dispatch outcome control has no accepted request", kind="integrity")
+        pending_states: list[tuple[int, dict]] = []
+        protocol_order: list[tuple[int, int | None]] = []
+        legacy = False
+        for event_seq, payload, result_sha256, operation_seq in accepted:
+            request_id = payload["request_id"]
+            bucket = controls.get(request_id, {"pending": [], "ack": []})
+            if not bucket["pending"] and not bucket["ack"]:
+                legacy = True
+                continue
+            if len(bucket["pending"]) != 1 or len(bucket["ack"]) > 1:
+                raise StoreError("dispatch pending or acknowledgement controls are duplicated", kind="integrity")
+            expected = {
+                "request_id": request_id, "principal": payload["principal"],
+                "payload_digest": payload["payload_digest"], "event_seq": event_seq,
+                "result_sha256": result_sha256, "service_generation": payload["service_generation"],
+            }
+            pending_seq, pending_task_id, pending_note = bucket["pending"][0]
+            if (pending_task_id != "__control__"
+                    or pending_note["event_id"] != f"dispatch-owner-outcome:{request_id}:pending"
+                    or {key: pending_note[key] for key in expected} != expected
+                    or not event_seq < operation_seq < pending_seq):
+                raise StoreError("dispatch pending control does not bind the accepted result", kind="integrity")
+            if bucket["ack"]:
+                ack_seq, ack_task_id, ack_note = bucket["ack"][0]
+                if (ack_task_id != "__control__"
+                        or ack_note["event_id"] != f"dispatch-owner-outcome:{request_id}:acknowledged"
+                        or {key: ack_note[key] for key in expected} != expected
+                        or not pending_seq < ack_seq):
+                    raise StoreError("dispatch acknowledgement does not bind its pending result", kind="integrity")
+                protocol_order.append((event_seq, ack_seq))
+            else:
+                pending_states.append((event_seq, expected))
+                protocol_order.append((event_seq, None))
+
+        if legacy:
+            if protocol_order:
+                raise StoreError("dispatch history mixes legacy and acknowledgement protocols", kind="integrity")
+            return "LEGACY_UNRESOLVED", None
+        previous_ack_seq: int | None = None
+        for index, (event_seq, ack_seq) in enumerate(protocol_order):
+            if index and (previous_ack_seq is None or previous_ack_seq >= event_seq):
+                raise StoreError(
+                    "a dispatch was accepted before the previous outcome was acknowledged",
+                    kind="integrity",
+                )
+            previous_ack_seq = ack_seq
+        if len(pending_states) > 1:
+            raise StoreError("multiple dispatch outcomes remain pending", kind="integrity")
+        if pending_states:
+            latest_event_seq = accepted[-1][0]
+            pending_event_seq, binding = pending_states[0]
+            if pending_event_seq != latest_event_seq:
+                raise StoreError("a later dispatch was accepted while an earlier outcome was pending", kind="integrity")
+            return "PENDING", binding
+        return "ACKNOWLEDGED", None
+
+    def acknowledge_dispatch_intent(
+        self, *, principal: str, request_id: str, payload_digest: str, event_seq: int,
+        result_sha256: str, service_generation: str,
+    ) -> dict:
+        """Record authenticated relay forwarding of the exact immutable Supervisor result."""
+        _need_str(principal, "principal")
+        _need_str(request_id, "request_id")
+        _need_str(payload_digest, "payload_digest")
+        _need_int(event_seq, "event_seq", 1)
+        _need_str(result_sha256, "result_sha256")
+        _need_str(service_generation, "service_generation")
+        if (not re.fullmatch(r"[0-9a-f]{32}", request_id)
+                or not re.fullmatch(r"[0-9a-f]{64}", payload_digest)
+                or not re.fullmatch(r"[0-9a-f]{64}", result_sha256)):
+            raise StoreError("dispatch acknowledgement binding is malformed", kind="argument")
+        binding = {
+            "request_id": request_id, "principal": principal, "payload_digest": payload_digest,
+            "event_seq": event_seq, "result_sha256": result_sha256,
+            "service_generation": service_generation,
+        }
+        event_id = f"dispatch-owner-outcome:{request_id}:acknowledged"
+        with self._tx() as conn:
+            self._verify_control_history_locked(conn)
+            state, pending = self._dispatch_outcome_state_locked(conn)
+            if state == "LEGACY_UNRESOLVED":
+                raise StoreError("legacy dispatch history cannot be acknowledged", kind="integrity")
+            existing = []
+            for row in conn.execute(
+                "SELECT payload FROM events WHERE actor='supervisor' AND kind='NOTE' ORDER BY seq"
+            ).fetchall():
+                note = json.loads(row["payload"])
+                if (isinstance(note, dict)
+                        and note.get("_vst_control_type") == "DISPATCH_OWNER_OUTCOME_ACKNOWLEDGED"
+                        and note.get("request_id") == request_id):
+                    existing.append(note)
+            if existing:
+                if (len(existing) != 1 or existing[0].get("event_id") != event_id
+                        or {key: existing[0].get(key) for key in binding} != binding):
+                    raise StoreError("dispatch acknowledgement conflicts with recorded history", kind="integrity")
+                return binding
+            if state == "PENDING":
+                if pending != binding:
+                    raise StoreError("dispatch acknowledgement conflicts with pending outcome", kind="integrity")
+            elif state == "ACKNOWLEDGED":
+                raise StoreError("there is no pending dispatch outcome to acknowledge", kind="lifecycle")
+            else:
+                raise StoreError("there is no pending dispatch outcome to acknowledge", kind="lifecycle")
+            self._append_control_event_locked(
+                conn, "DISPATCH_OWNER_OUTCOME_ACKNOWLEDGED", event_id, binding,
+            )
+            return binding
+
+    def read_dispatch_intents(self, *, after_seq: int, limit: int = 64) -> dict:
+        """Read a verified event window for the Supervisor's filtered subscription."""
+        _need_int(after_seq, "after_seq", 0)
+        _need_int(limit, "limit", 1, 256)
+        # Startup reconciliation verifies the complete chain. The single root
+        # writer appends new rows through _record_event_locked, so polling must
+        # not rescan the full historical log on every idle tick.
+        if not self.reconciliation_complete:
+            raise StoreError("verified Store startup is required for dispatch replay", kind="integrity")
+        with self._read_tx() as conn:
+            rows = conn.execute(
+                "SELECT seq, task_id, actor, kind, payload FROM events "
+                "WHERE seq > ? ORDER BY seq LIMIT ?",
+                (after_seq, limit),
+            ).fetchall()
+            high_watermark = int(rows[-1]["seq"]) if rows else after_seq
+        intents = []
+        for row in rows:
+            if row["kind"] != "DISPATCH_INTENT_ACCEPTED":
+                continue
+            try:
+                payload = json.loads(row["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("stored dispatch intent payload is invalid", kind="integrity") from exc
+            valid = self._validate_dispatch_intent_event(
+                payload, task_id=row["task_id"], actor=row["actor"],
+            )
+            intents.append({"event_seq": int(row["seq"]), **valid})
+        return {"high_watermark": high_watermark, "intents": intents}
+
+    def find_dispatch_intent(self, request_id: str, *, principal: str | None = None) -> dict:
+        """Find one exact intent after verifying its event-chain provenance."""
+        _need_str(request_id, "request_id")
+        if principal is not None:
+            _need_str(principal, "principal")
+        if not self.reconciliation_complete or not self.verify_event_chain():
+            raise StoreError("verified Store history is required for dispatch lookup", kind="integrity")
+        with self._read_tx() as conn:
+            rows = conn.execute(
+                "SELECT seq, task_id, actor, payload FROM events "
+                "WHERE kind = 'DISPATCH_INTENT_ACCEPTED' ORDER BY seq",
+            ).fetchall()
+        found = None
+        for row in rows:
+            try:
+                payload = json.loads(row["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("stored dispatch intent payload is invalid", kind="integrity") from exc
+            payload = self._validate_dispatch_intent_event(
+                payload, task_id=row["task_id"], actor=row["actor"],
+            )
+            if payload.get("request_id") == request_id:
+                if principal is not None and row["actor"] != principal:
+                    raise StoreError("dispatch intent principal does not match its event actor", kind="integrity")
+                if found is not None:
+                    raise StoreError("dispatch request id has multiple accepted events", kind="integrity")
+                found = {"event_seq": int(row["seq"]), **payload}
+        if found is None:
+            raise StoreError("dispatch intent was not accepted by Supervisor", kind="authorization")
+        return found
+
+    def make_dispatch_cursor(self, *, sequence: int, service_generation: str, audience: str) -> dict:
+        """Create a peer- and generation-bound cursor token for the Supervisor RPC."""
+        _need_int(sequence, "sequence", 0)
+        _need_str(service_generation, "service_generation")
+        _need_str(audience, "audience")
+        body = {"version": 1, "sequence": sequence,
+                "service_generation": service_generation, "audience": audience}
+        mac = hmac.new(
+            self._event_key, _DISPATCH_CURSOR_LABEL + canonical_bytes(body), hashlib.sha256,
+        ).hexdigest()
+        return {**body, "mac": mac}
+
+    def verify_dispatch_cursor(
+        self, cursor: Any, *, service_generation: str, audience: str,
+    ) -> int:
+        """Verify an opaque cursor; callers cannot forge forward/rewind tokens."""
+        fields = {"version", "sequence", "service_generation", "audience", "mac"}
+        if not isinstance(cursor, dict) or set(cursor) != fields:
+            raise StoreError("dispatch cursor fields are invalid", kind="cursor")
+        if (type(cursor["version"]) is not int or cursor["version"] != 1
+                or type(cursor["sequence"]) is not int or cursor["sequence"] < 0
+                or cursor["service_generation"] != service_generation
+                or cursor["audience"] != audience
+                or not isinstance(cursor["mac"], str)
+                or len(cursor["mac"]) != 64
+                or any(ch not in "0123456789abcdef" for ch in cursor["mac"])):
+            raise StoreError("dispatch cursor binding is invalid", kind="cursor")
+        body = {key: cursor[key] for key in fields - {"mac"}}
+        expected = hmac.new(
+            self._event_key, _DISPATCH_CURSOR_LABEL + canonical_bytes(body), hashlib.sha256,
+        ).hexdigest()
+        if not hmac.compare_digest(cursor["mac"], expected):
+            raise StoreError("dispatch cursor authentication failed", kind="cursor")
+        with self._read_tx() as conn:
+            maximum = int(conn.execute("SELECT COALESCE(MAX(seq), 0) FROM events").fetchone()[0])
+        if cursor["sequence"] > maximum:
+            raise StoreError("dispatch cursor advances beyond committed Store history", kind="cursor")
+        return int(cursor["sequence"])
 
     def _reap_locked(self, conn: sqlite3.Connection, now: float) -> list[sqlite3.Row]:
         rows = conn.execute(
@@ -808,15 +2078,24 @@ class Store:
         _need_str(project_id, "project_id")
         _need_int(phase, "phase", 1, 10)
         with self._tx() as conn:
-            if conn.execute(
-                "SELECT 1 FROM stories WHERE story_id = ?", (story_id,)
-            ).fetchone():
-                raise StoreError(f"story {story_id!r} already exists", kind="story")
-            conn.execute(
-                "INSERT INTO stories (story_id, project_id, phase, epoch, owner, state) "
-                "VALUES (?, ?, ?, 1, NULL, 'OPEN')",
-                (story_id, project_id, phase),
-            )
+            return self._open_story_locked(conn, story_id, project_id, phase)
+
+    def _open_story_locked(
+        self, conn: sqlite3.Connection, story_id: str, project_id: str, phase: int,
+    ) -> int:
+        """Create a new unowned story on the caller's transaction."""
+        _need_str(story_id, "story_id")
+        _need_str(project_id, "project_id")
+        _need_int(phase, "phase", 1, 10)
+        if conn.execute(
+            "SELECT 1 FROM stories WHERE story_id = ?", (story_id,)
+        ).fetchone():
+            raise StoreError(f"story {story_id!r} already exists", kind="story")
+        conn.execute(
+            "INSERT INTO stories (story_id, project_id, phase, epoch, owner, state) "
+            "VALUES (?, ?, ?, 1, NULL, 'OPEN')",
+            (story_id, project_id, phase),
+        )
         return 1
 
     def current_epoch(self, story_id: str) -> int:
@@ -835,43 +2114,59 @@ class Store:
         _need_str(owner, "owner")
         ttl = _need_ttl(ttl_sec)
         with self._tx() as conn:
-            now = self._now()
-            story = self._story_row(conn, story_id)
-            expires = story["owner_expires_at"]
-            if story["owner"] is not None and expires is not None and expires > now:
-                raise StoreError(
-                    f"story {story_id!r} is owned by live owner {story['owner']!r}",
-                    kind="epoch",
-                )
-            # Reap expired leases first so they become EXPIRED (markable as
-            # WORKER_LOST), not FENCED, before the still-live ones are fenced.
+            return self._acquire_epoch_locked(conn, story_id, owner, ttl)
+
+    def _acquire_epoch_locked(
+        self,
+        conn: sqlite3.Connection,
+        story_id: str,
+        owner: str,
+        ttl: float,
+        *,
+        expected_epoch: int | None = None,
+        reap_expired: bool = True,
+    ) -> int:
+        """Existing epoch transition, shared by direct and idempotent APIs."""
+        now = self._now()
+        story = self._story_row(conn, story_id)
+        if expected_epoch is not None and int(story["epoch"]) != expected_epoch:
+            raise StoreError("epoch acquisition has a stale expected fence", kind="epoch")
+        expires = story["owner_expires_at"]
+        if story["owner"] is not None and expires is not None and expires > now:
+            raise StoreError(
+                f"story {story_id!r} is owned by live owner {story['owner']!r}",
+                kind="epoch",
+            )
+        # Reap on established public transitions. A fresh-only caller may
+        # disable this because its precondition proves the story has no history.
+        if reap_expired:
             self._reap_locked(conn, now)
-            new_epoch = int(story["epoch"]) + 1
-            if new_epoch > MAX_COUNTER:
-                raise StoreError("epoch counter exhausted", kind="epoch")
+        new_epoch = int(story["epoch"]) + 1
+        if new_epoch > MAX_COUNTER:
+            raise StoreError("epoch counter exhausted", kind="epoch")
+        conn.execute(
+            "UPDATE stories SET epoch = ?, owner = ?, owner_expires_at = ?, "
+            "state = 'OWNED' WHERE story_id = ?",
+            (new_epoch, owner, now + ttl, story_id),
+        )
+        old = conn.execute(
+            "SELECT lease_id, task_id, attempt FROM leases "
+            "WHERE story_id = ? AND status = 'LIVE' ORDER BY lease_id",
+            (story_id,),
+        ).fetchall()
+        for row in old:
             conn.execute(
-                "UPDATE stories SET epoch = ?, owner = ?, owner_expires_at = ?, "
-                "state = 'OWNED' WHERE story_id = ?",
-                (new_epoch, owner, now + ttl, story_id),
+                "UPDATE leases SET status = 'FENCED' WHERE lease_id = ?",
+                (row["lease_id"],),
             )
-            old = conn.execute(
-                "SELECT lease_id, task_id, attempt FROM leases "
-                "WHERE story_id = ? AND status = 'LIVE' ORDER BY lease_id",
-                (story_id,),
-            ).fetchall()
-            for row in old:
-                conn.execute(
-                    "UPDATE leases SET status = 'FENCED' WHERE lease_id = ?",
-                    (row["lease_id"],),
-                )
-                self._free_slot(conn, row["lease_id"])
-                self._record_event_locked(
-                    conn, row["task_id"], "store", "LEASE_FENCED",
-                    {"attempt": row["attempt"], "new_epoch": new_epoch},
-                )
+            self._free_slot(conn, row["lease_id"])
             self._record_event_locked(
-                conn, story_id, owner, "EPOCH_ACQUIRED", {"epoch": new_epoch}
+                conn, row["task_id"], "store", "LEASE_FENCED",
+                {"attempt": row["attempt"], "new_epoch": new_epoch},
             )
+        self._record_event_locked(
+            conn, story_id, owner, "EPOCH_ACQUIRED", {"epoch": new_epoch}
+        )
         return new_epoch
 
     def renew_epoch(self, story_id: str, owner: str, ttl_sec: float) -> None:
@@ -973,41 +2268,258 @@ class Store:
         valid = validate_task_manifest(manifest)
         digest = manifest_sha256(valid)
         with self._tx() as conn:
-            story = self._story_row(conn, valid["story_id"])
-            if story["project_id"] != valid["project_id"]:
-                raise StoreError("manifest project_id differs from the story", kind="story")
-            existing = conn.execute(
-                "SELECT manifest_sha256 FROM tasks WHERE task_id = ?", (valid["task_id"],)
-            ).fetchone()
-            if existing is not None:
-                if existing["manifest_sha256"] != digest:
-                    raise StoreError(
-                        f"task {valid['task_id']!r} is registered with a different manifest",
-                        kind="manifest",
-                    )
-            else:
-                _need_int(valid["cost_cap"], "cost_cap", 0, MAX_BUDGET)
-                conn.execute(
-                    "INSERT INTO tasks (task_id, story_id, manifest_sha256, retry_cap, manifest) "
-                    "VALUES (?, ?, ?, ?, ?)",
-                    (
-                        valid["task_id"], valid["story_id"], digest,
-                        valid["retry_cap"], canonical_bytes(valid).decode("utf-8"),
-                    ),
+            return self._register_task_locked(conn, valid, digest)
+
+    def _register_task_locked(
+        self, conn: sqlite3.Connection, valid: dict, digest: str | None = None,
+    ) -> str:
+        """Register a validated task and seed its exact manifest budget in one transaction."""
+        valid = validate_task_manifest(valid)
+        actual_digest = manifest_sha256(valid)
+        if digest is not None and digest != actual_digest:
+            raise StoreError("task manifest digest differs from its canonical content", kind="manifest")
+        digest = actual_digest
+        story = self._story_row(conn, valid["story_id"])
+        if story["project_id"] != valid["project_id"]:
+            raise StoreError("manifest project_id differs from the story", kind="story")
+        existing = conn.execute(
+            "SELECT manifest_sha256 FROM tasks WHERE task_id = ?", (valid["task_id"],)
+        ).fetchone()
+        if existing is not None:
+            if existing["manifest_sha256"] != digest:
+                raise StoreError(
+                    f"task {valid['task_id']!r} is registered with a different manifest",
+                    kind="manifest",
                 )
-                conn.execute(
-                    "INSERT INTO budget (task_id, cap, spent) VALUES (?, ?, 0)",
-                    (valid["task_id"], valid["cost_cap"]),
-                )
-                self._record_event_locked(
-                    conn, valid["task_id"], "store", "TASK_REGISTERED",
-                    {"manifest_sha256": digest, "story_id": valid["story_id"]},
-                )
+        else:
+            _need_int(valid["cost_cap"], "cost_cap", 0, MAX_BUDGET)
+            conn.execute(
+                "INSERT INTO tasks (task_id, story_id, manifest_sha256, retry_cap, manifest) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (
+                    valid["task_id"], valid["story_id"], digest,
+                    valid["retry_cap"], canonical_bytes(valid).decode("utf-8"),
+                ),
+            )
+            conn.execute(
+                "INSERT INTO budget (task_id, cap, spent) VALUES (?, ?, 0)",
+                (valid["task_id"], valid["cost_cap"]),
+            )
+            self._record_event_locked(
+                conn, valid["task_id"], "store", "TASK_REGISTERED",
+                {"manifest_sha256": digest, "story_id": valid["story_id"]},
+            )
         return digest
 
     def get_manifest(self, task_id: str) -> dict:
         """The registered manifest of a task (deep copy from the stored JSON)."""
         return json.loads(self._task_row(self._conn, task_id)["manifest"])
+
+    def get_manifest_by_digest(self, task_id: str, digest: str) -> dict:
+        """Return only the immutable registered manifest named by its digest."""
+        _need_str(task_id, "task_id")
+        _need_str(digest, "manifest_sha256")
+        if not self.reconciliation_complete or not self.verify_event_chain():
+            raise StoreError("verified Store history is required for manifest lookup", kind="integrity")
+        with self._read_tx() as conn:
+            task = self._task_row(conn, task_id)
+            if task["manifest_sha256"] != digest:
+                raise StoreError("manifest digest is not registered for the task", kind="manifest")
+            manifest = validate_task_manifest(json.loads(task["manifest"]))
+            if manifest_sha256(manifest) != digest:
+                raise StoreError("registered manifest digest is inconsistent", kind="integrity")
+            return manifest
+
+    def previous_receipt_sha256(self, task_id: str, slot: str) -> str | None:
+        """Read the current receipt-chain tip for one registered task slot."""
+        _need_str(task_id, "task_id")
+        _need_str(slot, "slot")
+        if not self.reconciliation_complete or not self.verify_event_chain():
+            raise StoreError("verified Store history is required for receipt lookup", kind="integrity")
+        with self._read_tx() as conn:
+            self._task_row(conn, task_id)
+            row = conn.execute(
+                "SELECT receipt_sha256 FROM receipts WHERE task_id = ? AND slot = ? ORDER BY attempt DESC LIMIT 1",
+                (task_id, slot),
+            ).fetchone()
+            return None if row is None else str(row["receipt_sha256"])
+
+    def execution_grant_basis(
+        self, task_id: str, slot: str, attempt: int, epoch: int, run_id: str,
+        *, active_service_generation: str, expected_owner: str | None = None,
+        expected_lease_id: int | None = None,
+    ) -> dict:
+        """Return a read-only snapshot for grant signing; claim rechecks it atomically."""
+        for value, name in ((task_id, "task_id"), (slot, "slot"), (run_id, "run_id"),
+                            (active_service_generation, "active_service_generation")):
+            _need_str(value, name)
+        _need_int(attempt, "attempt", 1, MAX_COUNTER)
+        _need_int(epoch, "epoch", 1, MAX_COUNTER)
+        if expected_lease_id is not None:
+            _need_int(expected_lease_id, "expected_lease_id", 1)
+        if not self.reconciliation_complete or not self.verify_event_chain():
+            raise StoreError("verified Store reconciliation is required before grant issuance", kind="integrity")
+        with self._read_tx() as conn:
+            return self._execution_grant_basis_locked(
+                conn, task_id, slot, attempt, epoch, run_id,
+                active_service_generation=active_service_generation,
+                expected_owner=expected_owner, expected_lease_id=expected_lease_id,
+                now=self._now(),
+            )
+
+    def _execution_grant_basis_locked(
+        self, conn: sqlite3.Connection, task_id: str, slot: str, attempt: int, epoch: int, run_id: str,
+        *, active_service_generation: str, expected_owner: str | None = None,
+        expected_lease_id: int | None = None, now: float,
+    ) -> dict:
+        """Derive grant authority from an already-open read snapshot."""
+        task = self._task_row(conn, task_id)
+        self._guard_runner_task_continuation_locked(conn, task_id)
+        story = self._story_row(conn, task["story_id"])
+        if (int(story["epoch"]) != epoch or story["state"] != "OWNED"
+                or story["owner"] is None or story["owner_expires_at"] is None
+                or float(story["owner_expires_at"]) <= now):
+            raise StoreError("grant has no current live story owner/epoch", kind="epoch")
+        if expected_owner is not None and story["owner"] != expected_owner:
+            raise StoreError("grant caller is not the current story owner", kind="authorization")
+        manifest = validate_task_manifest(json.loads(task["manifest"]))
+        digest = manifest_sha256(manifest)
+        if digest != task["manifest_sha256"]:
+            raise StoreError("registered manifest digest is inconsistent", kind="integrity")
+        if {entry["slot"]: entry["receipt_type"] for entry in manifest["required_receipts"]}.get(slot) != "TestRun":
+            raise StoreError("grant slot is not a manifest TestRun slot", kind="slot")
+        lease = conn.execute(
+            "SELECT lease_id, epoch, status, expires_at, worker_id "
+            "FROM leases WHERE task_id = ? AND attempt = ?",
+            (task_id, attempt),
+        ).fetchone()
+        if (lease is None or int(lease["epoch"]) != epoch or lease["status"] != LEASE_LIVE
+                or float(lease["expires_at"]) <= now):
+            raise StoreError("grant has no current live lease", kind="lease")
+        if expected_lease_id is not None and int(lease["lease_id"]) != expected_lease_id:
+            raise StoreError("grant lease differs from its accepted dispatch intent", kind="lease")
+        last_receipt = conn.execute(
+            "SELECT attempt FROM receipts WHERE task_id = ? AND slot = ? ORDER BY attempt DESC LIMIT 1",
+            (task_id, slot),
+        ).fetchone()
+        expected_attempt = 1 if last_receipt is None else int(last_receipt["attempt"]) + 1
+        if not self._runner_receipt_gap_is_eligible_locked(
+                conn, task_id, slot, expected_attempt - 1, attempt):
+            raise StoreError("receipt attempt gap lacks a verified successor disposition", kind="chain")
+        if conn.execute(
+            "SELECT 1 FROM receipts WHERE task_id = ? AND slot = ? AND attempt = ?",
+            (task_id, slot, attempt),
+        ).fetchone() is not None:
+            raise StoreError("grant attempt already has a receipt", kind="duplicate")
+        if conn.execute(
+            "SELECT 1 FROM supervisor_probes WHERE run_id = ?", (run_id,)
+        ).fetchone() is None:
+            raise StoreError("grant requires a consumed run-bound preflight", kind="probe")
+        blocked = self._budget_block_locked(conn, task_id)
+        if blocked is not None:
+            raise StoreError(blocked, kind="budget")
+        return {
+            "task_id": task_id, "slot": slot, "attempt": attempt,
+            "epoch": epoch, "run_id": run_id, "manifest_sha256": digest,
+            "manifest_timeout_sec": int(manifest["timeout_sec"]),
+            "runner_id": lease["worker_id"],
+            "authority_expires_at": min(
+                float(story["owner_expires_at"]), float(lease["expires_at"]),
+            ),
+            "service_generation": active_service_generation,
+        }
+
+    def authenticated_assignment_basis(
+        self, assignment_operation_id: str, *, policy: dict, policy_sha256: str,
+        active_service_generation: str, expected_run_id: str,
+    ) -> dict:
+        """Read a verified assignment handoff and live basis in one immutable snapshot."""
+        from .assignment_basis import OPERATION, validate_handoff, validate_policy
+
+        if (not isinstance(assignment_operation_id, str)
+                or len(assignment_operation_id) != 64
+                or any(char not in "0123456789abcdef" for char in assignment_operation_id)):
+            raise StoreError("assignment operation id is malformed", kind="authorization")
+        _need_str(active_service_generation, "active_service_generation")
+        _need_str(expected_run_id, "expected_run_id")
+        policy, calculated_policy_sha256 = validate_policy(policy)
+        if calculated_policy_sha256 != policy_sha256:
+            raise StoreError("assignment policy digest does not match policy content", kind="authorization")
+        if not self.reconciliation_complete:
+            raise StoreError("verified Store reconciliation is required", kind="integrity")
+        with self._read_tx() as conn:
+            now = self._now()
+            self._verify_event_chain_locked(conn)
+            self._verify_supervisor_records(conn)
+            row = conn.execute(
+                "SELECT operation, payload_sha256, result FROM supervisor_operations WHERE operation_key = ?",
+                (assignment_operation_id,),
+            ).fetchone()
+            if row is None or row["operation"] != OPERATION:
+                raise StoreError("authenticated assignment handoff was not found", kind="authorization")
+            operation_events = conn.execute(
+                "SELECT actor, kind, payload FROM events WHERE task_id = ? AND kind = 'NOTE'",
+                (assignment_operation_id,),
+            ).fetchall()
+            matched_events = []
+            for event_row in operation_events:
+                try:
+                    event_payload = json.loads(event_row["payload"])
+                except (TypeError, ValueError) as exc:
+                    raise StoreError("authenticated assignment event is malformed", kind="integrity") from exc
+                if isinstance(event_payload, dict) and event_payload.get("event") == "SUPERVISOR_OPERATION":
+                    matched_events.append((event_row, event_payload))
+            if (len(matched_events) != 1 or matched_events[0][0]["actor"] != "supervisor"
+                    or set(matched_events[0][1]) != {
+                        "event", "operation", "payload_sha256", "result_sha256",
+                    }
+                    or matched_events[0][1].get("operation") != OPERATION):
+                raise StoreError("authenticated assignment event identity is invalid", kind="integrity")
+            try:
+                result = json.loads(row["result"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("authenticated assignment result is malformed", kind="integrity") from exc
+            if row["result"] != canonical_bytes(result).decode("utf-8"):
+                raise StoreError("authenticated assignment result is not canonical", kind="integrity")
+            handoff = validate_handoff(
+                result, policy=policy, policy_sha256=policy_sha256,
+                now=datetime.fromtimestamp(now, timezone.utc),
+            )
+            if handoff["assignment_operation_id"] != assignment_operation_id:
+                raise StoreError("assignment operation result identity differs", kind="integrity")
+            if (handoff["run_id"] != expected_run_id
+                    or handoff["service_generation"] != active_service_generation):
+                raise StoreError("assignment handoff belongs to a stale Supervisor run or generation", kind="integrity")
+            if row["payload_sha256"] != handoff["payload_sha256"]:
+                raise StoreError("assignment operation payload digest differs from canonical request", kind="integrity")
+            probe = conn.execute(
+                "SELECT probe_sha256 FROM supervisor_probes WHERE run_id = ?",
+                (handoff["run_id"],),
+            ).fetchone()
+            if probe is None or probe["probe_sha256"] != handoff["probe_sha256"]:
+                raise StoreError("assignment handoff is not bound to its consumed probe", kind="integrity")
+            basis = self._execution_grant_basis_locked(
+                conn, handoff["task_id"], handoff["slot"], handoff["attempt"], handoff["epoch"],
+                handoff["run_id"], active_service_generation=active_service_generation,
+                expected_owner=policy["owner_principal"], expected_lease_id=handoff["lease_id"],
+                now=now,
+            )
+            exact = {
+                "task_id": handoff["task_id"], "slot": handoff["slot"],
+                "attempt": handoff["attempt"], "epoch": handoff["epoch"],
+                "run_id": handoff["run_id"], "manifest_sha256": handoff["task_manifest_sha256"],
+                "runner_id": handoff["runner_id"],
+            }
+            if any(basis[key] != value for key, value in exact.items()):
+                raise StoreError("live assignment basis differs from authenticated handoff", kind="integrity")
+            return {
+                "handoff": handoff, "basis": basis,
+                "authority_expires_at": min(
+                    basis["authority_expires_at"],
+                    datetime.strptime(handoff["expires_at_utc"], "%Y-%m-%dT%H:%M:%SZ")
+                    .replace(tzinfo=timezone.utc).timestamp(),
+                ),
+            }
 
     # --------------------------------------------------------------- leases
 
@@ -1060,6 +2572,7 @@ class Store:
                 raise StoreError(
                     f"task {task_id!r} belongs to story {task['story_id']!r}", kind="story"
                 )
+            self._guard_runner_task_continuation_locked(conn, task_id)
             prior = conn.execute(
                 "SELECT * FROM leases WHERE task_id = ? ORDER BY attempt DESC LIMIT 1",
                 (task_id,),
@@ -1130,6 +2643,300 @@ class Store:
                 "must be marked by supervisor_reap_and_mark first",
                 kind="lease",
             )
+
+    def _acquire_initial_assignment_lease_locked(
+        self, conn: sqlite3.Connection, *, task_id: str, story_id: str, worker_id: str,
+        epoch: int, ttl_sec: float, expected_manifest_sha256: str, now: float,
+    ) -> tuple[int, float]:
+        """Create only a proven fresh attempt-1 lease, never writing retry/budget markers."""
+        story = self._story_row(conn, story_id)
+        task = self._task_row(conn, task_id)
+        if (task["story_id"] != story_id or task["manifest_sha256"] != expected_manifest_sha256
+                or story["state"] != "OWNED" or story["owner"] != "Codex"
+                or int(story["epoch"]) != epoch or story["owner_expires_at"] is None
+                or float(story["owner_expires_at"]) <= now):
+            raise StoreError("fresh assignment lost its task, owner, or epoch fence", kind="epoch")
+        if conn.execute(
+            "SELECT 1 FROM leases WHERE task_id = ? OR story_id = ?", (task_id, story_id),
+        ).fetchone() is not None:
+            raise StoreError("fresh assignment already has lease history", kind="lease")
+        if conn.execute("SELECT 1 FROM receipts WHERE task_id = ?", (task_id,)).fetchone() is not None:
+            raise StoreError("fresh assignment already has receipt history", kind="lease")
+        if conn.execute("SELECT 1 FROM events WHERE task_id = ? AND kind IN "
+                        "('RETRY_EXHAUSTED', 'BUDGET_EXCEEDED') LIMIT 1", (task_id,)).fetchone():
+            raise StoreError("fresh assignment already has a terminal marker", kind="budget")
+        budget = conn.execute(
+            "SELECT cap, spent FROM budget WHERE task_id = ?", (task_id,),
+        ).fetchone()
+        manifest = validate_task_manifest(json.loads(task["manifest"]))
+        if (budget is None or int(budget["cap"]) != manifest["cost_cap"]
+                or int(budget["spent"]) != 0):
+            raise StoreError("fresh assignment budget does not match its pinned manifest", kind="budget")
+        prior = conn.execute(
+            "SELECT 1 FROM leases WHERE task_id = ? OR story_id = ? ORDER BY attempt DESC LIMIT 1",
+            (task_id, story_id),
+        ).fetchone()
+        if prior is not None or self._terminal_marker(conn, task_id) is not None:
+            raise StoreError("fresh assignment has prior lease or terminal history", kind="lease")
+        if self._budget_block_locked(conn, task_id) is not None or self._retry_exhausted(conn, task):
+            raise StoreError("fresh assignment proof does not exclude retry or budget marker branches",
+                             kind="integrity")
+        free_slot = conn.execute(
+            "SELECT slot_no FROM slots WHERE lease_id IS NULL ORDER BY slot_no LIMIT 1",
+        ).fetchone()
+        if free_slot is None:
+            raise StoreError("no free slot for fresh assignment", kind="slot")
+        lease_expires_at = now + _need_ttl(ttl_sec)
+        cursor = conn.execute(
+            "INSERT INTO leases (task_id, story_id, attempt, worker_id, epoch, "
+            "expires_at, status, wrote, marked) VALUES (?, ?, 1, ?, ?, ?, 'LIVE', 0, 0)",
+            (task_id, story_id, worker_id, epoch, lease_expires_at),
+        )
+        lease_id = int(cursor.lastrowid)
+        claimed = conn.execute(
+            "UPDATE slots SET lease_id = ?, expires_at = ? WHERE slot_no = ? AND lease_id IS NULL",
+            (lease_id, lease_expires_at, int(free_slot["slot_no"])),
+        )
+        if claimed.rowcount != 1:
+            raise StoreError("fresh assignment slot claim lost", kind="slot")
+        self._record_event_locked(
+            conn, task_id, worker_id, "LEASE_ACQUIRED",
+            {"attempt": 1, "epoch": epoch, "lease_id": lease_id},
+        )
+        return lease_id, lease_expires_at
+
+    def bootstrap_assignment(
+        self, request: dict, *, policy: dict, policy_sha256: str,
+        bootstrap_peer: dict, expected_run_id: str, active_service_generation: str,
+        policy_provider: Callable[[], dict], generation_provider: Callable[[], str],
+    ) -> dict:
+        """Atomically create one fresh policy-pinned assignment and its immutable handoff."""
+        from .assignment_basis import (
+            HANDOFF_SCHEMA, assignment_operation_id,
+            validate_bootstrap_request, validate_handoff, validate_policy,
+        )
+
+        policy, computed_policy_sha256 = validate_policy(policy)
+        if computed_policy_sha256 != policy_sha256:
+            raise StoreError("assignment policy digest differs from its content", kind="authorization")
+        if bootstrap_peer != policy["bootstrap_peer"]:
+            raise StoreError("authenticated bootstrap peer differs from root policy", kind="authorization")
+        if not callable(policy_provider) or not callable(generation_provider):
+            raise StoreError("trusted policy and generation providers are required", kind="authorization")
+        normalized_request = validate_bootstrap_request(request, policy=policy)
+        if normalized_request["run_id"] != expected_run_id:
+            raise StoreError("bootstrap request run differs from current Supervisor run", kind="authorization")
+        _need_str(expected_run_id, "expected_run_id")
+        _need_str(active_service_generation, "active_service_generation")
+        op_key = assignment_operation_id(normalized_request, policy_sha256=policy_sha256)
+        payload = {
+            "request": normalized_request, "bootstrap_peer": bootstrap_peer,
+            "policy_sha256": policy_sha256,
+        }
+        if not self.reconciliation_complete:
+            raise StoreError("Store reconciliation is required before assignment bootstrap", kind="integrity")
+
+        def create(conn: sqlite3.Connection) -> dict:
+            self._verify_event_chain_locked(conn)
+            self._verify_supervisor_records(conn)
+            now = self._now()
+            wall_now = datetime.fromtimestamp(now, timezone.utc)
+            valid_from = datetime.strptime(policy["valid_from_utc"], "%Y-%m-%dT%H:%M:%SZ").replace(
+                tzinfo=timezone.utc,
+            )
+            policy_expiry = datetime.strptime(policy["expires_at_utc"], "%Y-%m-%dT%H:%M:%SZ").replace(
+                tzinfo=timezone.utc,
+            )
+            if not valid_from <= wall_now < policy_expiry:
+                raise StoreError("assignment policy is not currently valid", kind="authorization")
+            if generation_provider() != active_service_generation:
+                raise StoreError("Supervisor generation changed before assignment commit", kind="integrity")
+            probe = conn.execute(
+                "SELECT probe_sha256 FROM supervisor_probes WHERE run_id = ?",
+                (expected_run_id,),
+            ).fetchone()
+            if probe is None:
+                raise StoreError("current Supervisor run has no consumed preflight", kind="probe")
+
+            story_id = normalized_request["story_id"]
+            task_id = normalized_request["task_id"]
+            manifest = normalized_request["task_manifest"]
+            assignment = next(
+                item for item in policy["allowed_assignments"]
+                if item["story_id"] == story_id and item["task_id"] == task_id
+            )
+            digest = manifest_sha256(manifest)
+            if (assignment["task_manifest_sha256"] != digest
+                    or assignment["project_id"] != manifest["project_id"]
+                    or assignment["phase"] != manifest["phase"]):
+                raise StoreError("requested assignment differs from the root policy tuple",
+                                 kind="authorization")
+            if (conn.execute("SELECT 1 FROM stories WHERE story_id = ?", (story_id,)).fetchone()
+                    or conn.execute("SELECT 1 FROM tasks WHERE task_id = ?", (task_id,)).fetchone()):
+                raise StoreError("bootstrap only creates absent story and task rows", kind="story")
+            if (conn.execute("SELECT 1 FROM leases WHERE task_id = ? OR story_id = ?",
+                             (task_id, story_id)).fetchone()
+                    or conn.execute("SELECT 1 FROM receipts WHERE task_id = ?", (task_id,)).fetchone()
+                    or conn.execute("SELECT 1 FROM events WHERE task_id IN (?, ?) LIMIT 1",
+                                    (story_id, task_id)).fetchone()):
+                raise StoreError("bootstrap refuses existing assignment history", kind="lease")
+            if (conn.execute("SELECT 1 FROM budget WHERE task_id = ?", (task_id,)).fetchone()
+                    or self._terminal_marker(conn, task_id) is not None):
+                raise StoreError("bootstrap refuses existing budget or terminal history", kind="budget")
+            for operation_row in conn.execute(
+                    "SELECT result FROM supervisor_operations WHERE operation = ?",
+                    (HANDOFF_SCHEMA,)).fetchall():
+                try:
+                    prior_handoff = json.loads(operation_row["result"])
+                except (TypeError, ValueError) as exc:
+                    raise StoreError("prior authenticated assignment result is malformed",
+                                     kind="integrity") from exc
+                if (not isinstance(prior_handoff, dict)
+                        or prior_handoff.get("task_id") == task_id
+                        or prior_handoff.get("story_id") == story_id):
+                    raise StoreError("bootstrap refuses existing assignment handoff history",
+                                     kind="story")
+
+            if self._open_story_locked(conn, story_id, manifest["project_id"], manifest["phase"]) != 1:
+                raise StoreError("new assignment story did not start at epoch 1", kind="integrity")
+            registered_digest = self._register_task_locked(conn, manifest, digest)
+            epoch = self._acquire_epoch_locked(
+                conn, story_id, policy["owner_principal"], policy["owner_ttl_seconds"],
+                expected_epoch=1, reap_expired=False,
+            )
+            if epoch != 2 or registered_digest != digest:
+                raise StoreError("fresh assignment epoch or manifest invariant failed", kind="integrity")
+            lease_id, lease_expiry = self._acquire_initial_assignment_lease_locked(
+                conn, task_id=task_id, story_id=story_id, worker_id=policy["runner_id"],
+                epoch=epoch, ttl_sec=policy["lease_ttl_seconds"],
+                expected_manifest_sha256=digest, now=self._now(),
+            )
+            story = self._story_row(conn, story_id)
+            if (story["owner_expires_at"] is None
+                    or float(story["owner_expires_at"]) <= self._now()):
+                raise StoreError("fresh assignment owner authority expired before handoff",
+                                 kind="epoch")
+
+            def canonical_second(timestamp: float) -> datetime:
+                return datetime.fromtimestamp(timestamp, timezone.utc).replace(microsecond=0)
+
+            issued = canonical_second(self._now())
+            maximum_handoff_expiry = issued.timestamp() + policy["maximum_handoff_ttl_seconds"]
+            expires = canonical_second(min(
+                maximum_handoff_expiry, policy_expiry.timestamp(),
+                float(story["owner_expires_at"]), lease_expiry,
+            ))
+            if expires <= issued:
+                raise StoreError("fresh assignment has no positive handoff lifetime", kind="lease")
+            current_policy, current_policy_sha256 = validate_policy(policy_provider())
+            if current_policy_sha256 != policy_sha256 or current_policy != policy:
+                raise StoreError("root assignment policy changed before assignment commit",
+                                 kind="authorization")
+            if generation_provider() != active_service_generation:
+                raise StoreError("Supervisor generation changed before assignment commit",
+                                 kind="integrity")
+            current_probe = conn.execute(
+                "SELECT probe_sha256 FROM supervisor_probes WHERE run_id = ?",
+                (expected_run_id,),
+            ).fetchone()
+            if current_probe is None or current_probe["probe_sha256"] != probe["probe_sha256"]:
+                raise StoreError("current preflight changed before assignment commit", kind="probe")
+            result = {
+                "schema": HANDOFF_SCHEMA,
+                "assignment_operation_id": op_key,
+                "policy_id": policy["policy_id"], "policy_sha256": policy_sha256,
+                "repository": policy["repository"], "sprint_id": policy["sprint_id"],
+                "source_head": policy["source_head"], "manifest_sha256": policy["manifest_sha256"],
+                "bootstrap_peer": bootstrap_peer, "assignment_principal": policy["owner_principal"],
+                "bootstrap_request": normalized_request,
+                "task_id": task_id, "story_id": story_id, "project_id": manifest["project_id"],
+                "phase": manifest["phase"], "task_manifest_sha256": digest,
+                "slot": normalized_request["slot"], "attempt": 1, "epoch": epoch,
+                "lease_id": lease_id, "runner_id": policy["runner_id"],
+                "run_id": expected_run_id, "service_generation": active_service_generation,
+                "probe_sha256": probe["probe_sha256"],
+                "issued_at_utc": issued.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "expires_at_utc": expires.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            }
+            result["handoff_sha256"] = hashlib.sha256(canonical_bytes(result)).hexdigest()
+            return result
+
+        def before_commit(conn: sqlite3.Connection, result: dict) -> None:
+            self._verify_event_chain_locked(conn, verify_external_anchor=False)
+            self._verify_supervisor_records(conn)
+            current_policy, current_policy_sha256 = validate_policy(policy_provider())
+            if current_policy_sha256 != policy_sha256 or current_policy != policy:
+                raise StoreError("root assignment policy changed before assignment commit",
+                                 kind="authorization")
+            if generation_provider() != active_service_generation:
+                raise StoreError("Supervisor generation changed before assignment commit",
+                                 kind="integrity")
+            handoff = validate_handoff(
+                result, policy=policy, policy_sha256=policy_sha256,
+                now=datetime.fromtimestamp(self._now(), timezone.utc),
+            )
+            if (handoff["run_id"] != expected_run_id
+                    or handoff["service_generation"] != active_service_generation):
+                raise StoreError("fresh assignment trusted state changed before commit",
+                                 kind="integrity")
+            current_probe = conn.execute(
+                "SELECT probe_sha256 FROM supervisor_probes WHERE run_id = ?",
+                (expected_run_id,),
+            ).fetchone()
+            if current_probe is None or current_probe["probe_sha256"] != handoff["probe_sha256"]:
+                raise StoreError("current preflight changed before assignment commit", kind="probe")
+            story = self._story_row(conn, handoff["story_id"])
+            lease = conn.execute(
+                "SELECT lease_id, epoch, status, expires_at, worker_id FROM leases "
+                "WHERE task_id = ? AND attempt = 1",
+                (handoff["task_id"],),
+            ).fetchone()
+            if (story["owner"] != policy["owner_principal"]
+                    or int(story["epoch"]) != handoff["epoch"]
+                    or story["owner_expires_at"] is None
+                    or float(story["owner_expires_at"]) <= self._now()
+                    or lease is None or int(lease["lease_id"]) != handoff["lease_id"]
+                    or int(lease["epoch"]) != handoff["epoch"] or lease["status"] != LEASE_LIVE
+                    or lease["worker_id"] != policy["runner_id"]
+                    or float(lease["expires_at"]) <= self._now()):
+                raise StoreError("fresh assignment authority changed before commit", kind="epoch")
+
+        result = self.execute_idempotent(
+            op_key, HANDOFF_SCHEMA, payload, create, before_commit=before_commit,
+        )
+        # Re-read the committed journal so an uncertain anchor or mismatched result is never
+        # reported as success. For an exact replay, use its own issue time to validate history
+        # without treating it as refreshed authority.
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            self._verify_supervisor_records(conn)
+            stored = conn.execute(
+                "SELECT operation, payload_sha256, result FROM supervisor_operations WHERE operation_key = ?",
+                (op_key,),
+            ).fetchone()
+            if (stored is None or stored["operation"] != HANDOFF_SCHEMA
+                    or stored["payload_sha256"] != hashlib.sha256(canonical_bytes(payload)).hexdigest()
+                    or stored["result"] != canonical_bytes(result).decode("utf-8")):
+                raise StoreError("assignment operation result cannot be durably verified", kind="integrity")
+        current_policy, current_policy_sha256 = validate_policy(policy_provider())
+        if current_policy_sha256 != policy_sha256 or current_policy != policy:
+            raise StoreError("root assignment policy changed or was revoked", kind="authorization")
+        if generation_provider() != active_service_generation:
+            raise StoreError("Supervisor generation changed before assignment response", kind="integrity")
+        issued_at = datetime.strptime(result["issued_at_utc"], "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=timezone.utc,
+        )
+        verified = validate_handoff(
+            result, policy=policy, policy_sha256=policy_sha256, now=issued_at,
+        )
+        if verified["payload_sha256"] != stored["payload_sha256"]:
+            raise StoreError("assignment operation payload differs from its authenticated handoff",
+                             kind="integrity")
+        if (verified["run_id"] != expected_run_id
+                or verified["service_generation"] != active_service_generation):
+            raise StoreError("assignment replay belongs to a stale Supervisor run or generation",
+                             kind="integrity")
+        return result
 
     @staticmethod
     def _failed_attempts_locked(conn: sqlite3.Connection, task_id: str) -> int:
@@ -1325,7 +3132,7 @@ class Store:
         conn: sqlite3.Connection,
         receipt: dict,
         story_id: str,
-        key: bytes,
+        key: bytes | None,
         *,
         supervisor: bool,
     ) -> str:
@@ -1358,7 +3165,7 @@ class Store:
                     kind="slot",
                 )
         is_v2 = valid.get("contract_version") == 2
-        if not is_v2 and not verify(valid, key):
+        if not is_v2 and (key is None or not verify(valid, key)):
             raise StoreError("invalid receipt signature", kind="signature")
         if is_v2 and valid["receipt_type"] == "TestRun":
             # The runner key is deliberately not available to the store. The
@@ -1366,7 +3173,7 @@ class Store:
             if valid["signature"] != valid["runner_attestation"]["signature"]:
                 raise StoreError("TestRun signature does not match runner attestation", kind="signature")
         elif is_v2 and valid["receipt_type"] != "IndependentReview":
-            if not verify(valid, key, RECEIPT_V2_LABEL):
+            if key is None or not verify(valid, key, RECEIPT_V2_LABEL):
                 raise StoreError("invalid v2 receipt signature", kind="signature")
         if derive_result(valid) != valid["result"]:
             raise StoreError("receipt result does not match the derived result", kind="signature")
@@ -1416,9 +3223,18 @@ class Store:
             (valid["task_id"], valid["slot"]),
         ).fetchone()
         expected_attempt = 1 if last is None else last["attempt"] + 1
-        if valid["attempt"] != expected_attempt:
+        persistent_runner_receipt = (
+            valid["receipt_type"] == "TestRun"
+            and valid.get("contract_version") == 2
+            and isinstance(valid.get("runner_attestation"), dict)
+        )
+        if (valid["attempt"] != expected_attempt
+                and not (persistent_runner_receipt and self._runner_receipt_gap_is_eligible_locked(
+                    conn, valid["task_id"], valid["slot"], expected_attempt - 1, valid["attempt"],
+                ))):
             raise StoreError(
-                f"attempt {valid['attempt']} breaks the chain; expected {expected_attempt}",
+                f"attempt {valid['attempt']} breaks the chain or lacks a verified successor disposition; "
+                f"expected {expected_attempt}",
                 kind="chain",
             )
         expected_prev = None if last is None else last["receipt_sha256"]
@@ -1546,6 +3362,11 @@ class Store:
         from .gate import evaluate as gate_evaluator
 
         _need_str(task_id, "task_id")
+        if "verified_successor_attempts" in gate_options:
+            raise StoreError(
+                "runner successor eligibility is supplied only by verified Store history",
+                kind="authorization",
+            )
         if not self._reconciliation_complete or self._integrity_locked:
             raise StoreError("startup reconciliation is incomplete or integrity-locked", kind="integrity")
         with self._read_tx() as conn:
@@ -1579,11 +3400,29 @@ class Store:
             ).fetchone()
             if task_row is None:
                 raise StoreError(f"unknown task {task_id!r}", kind="task")
+            # Evaluate receipts and execution lifecycle from this same SQLite
+            # snapshot. A stale PASS receipt cannot mask a newer ambiguous run.
+            self._guard_runner_task_continuation_locked(conn, task_id)
             manifest = json.loads(task_row["manifest"])
             body_rows = conn.execute(
                 "SELECT body, receipt_sha256 FROM receipts WHERE task_id = ? ORDER BY seq", (task_id,)
             ).fetchall()
             receipts = [json.loads(row["body"]) for row in body_rows]
+            verified_successor_attempts: dict[str, set[int]] = {}
+            slot_types = {
+                item["slot"]: item["receipt_type"]
+                for item in manifest["required_receipts"]
+            }
+            for slot in slot_types:
+                through_attempt = max(
+                    (receipt["attempt"] for receipt in receipts if receipt["slot"] == slot),
+                    default=0,
+                )
+                verified_successor_attempts[slot] = (
+                    self._verified_runner_successor_attempts_locked(
+                        conn, task_id, slot, through_attempt,
+                    )
+                )
             row_shas = {row["receipt_sha256"] for row in body_rows}
             event_shas: set[str] = set()
             for event in conn.execute(
@@ -1598,7 +3437,9 @@ class Store:
                 self._integrity_locked = True
                 raise StoreError("receipt rows do not match the event chain", kind="integrity")
             return gate_evaluator(
-                manifest, receipts, current_head, current_epoch, worker_key, **gate_options
+                manifest, receipts, current_head, current_epoch, worker_key,
+                verified_successor_attempts=verified_successor_attempts,
+                **gate_options,
             )
 
     # --------------------------------------------------------------- events
@@ -1945,45 +3786,50 @@ class Store:
         cannot produce a false tamper result.
         """
         with self._read_tx() as conn:
-            rows = conn.execute(
-                "SELECT ts, task_id, actor, kind, payload, prev_hash, hash "
-                "FROM events ORDER BY seq"
-            ).fetchall()
-            prev_hash = GENESIS_HASH
-            for row in rows:
-                fields = {
-                    "ts": row["ts"],
-                    "task_id": row["task_id"],
-                    "actor": row["actor"],
-                    "kind": row["kind"],
-                    "payload": row["payload"],
-                }
-                expected = self._event_mac(prev_hash, fields)
-                if row["prev_hash"] != prev_hash or not hmac.compare_digest(
-                    row["hash"].encode("utf-8"), expected.encode("utf-8")
-                ):
-                    self._integrity_locked = True
-                    return False
-                prev_hash = row["hash"]
             try:
-                self._anchor_state(conn)
+                return self._verify_event_chain_locked(conn)
             except StoreError as exc:
                 if exc.kind == "integrity":
-                    self._integrity_locked = True
                     return False
                 raise
-            count = len(rows)
-            if self._external_anchor is not None:
-                try:
-                    latest = self._external_anchor.read_latest()
-                except AnchorError:
-                    self._integrity_locked = True
-                    return False
-                expected = signed_checkpoint(count, prev_hash, self._event_key)
-                if latest != expected:
-                    self._integrity_locked = True
-                    return False
-            return True
+
+    def _verify_event_chain_locked(
+        self, conn: sqlite3.Connection, *, verify_external_anchor: bool = True,
+    ) -> bool:
+        """Verify chain and configured external anchor on the caller's snapshot."""
+        rows = conn.execute(
+            "SELECT ts, task_id, actor, kind, payload, prev_hash, hash "
+            "FROM events ORDER BY seq"
+        ).fetchall()
+        prev_hash = GENESIS_HASH
+        for row in rows:
+            fields = {
+                "ts": row["ts"], "task_id": row["task_id"], "actor": row["actor"],
+                "kind": row["kind"], "payload": row["payload"],
+            }
+            expected = self._event_mac(prev_hash, fields)
+            if row["prev_hash"] != prev_hash or not hmac.compare_digest(
+                row["hash"].encode("utf-8"), expected.encode("utf-8")
+            ):
+                self._integrity_locked = True
+                raise StoreError("event chain does not verify", kind="integrity")
+            prev_hash = row["hash"]
+        try:
+            self._anchor_state(conn)
+        except StoreError as exc:
+            if exc.kind == "integrity":
+                self._integrity_locked = True
+            raise
+        if verify_external_anchor and self._external_anchor is not None:
+            try:
+                latest = self._external_anchor.read_latest()
+            except AnchorError as exc:
+                self._integrity_locked = True
+                raise StoreError(str(exc), kind="integrity") from exc
+            if latest != signed_checkpoint(len(rows), prev_hash, self._event_key):
+                self._integrity_locked = True
+                raise StoreError("external checkpoint mismatch", kind="integrity")
+        return True
 
     def event_anchor(self) -> tuple[int, str]:
         """Verified (event count, head hash) of the log, for external anchoring.
@@ -2007,6 +3853,352 @@ class Store:
     @property
     def reconciliation_complete(self) -> bool:
         return self._reconciliation_complete and not self._integrity_locked
+
+    def reserve_dispatch_issuance(self, intent: dict, *, authority_snapshot: dict) -> dict:
+        """Durably reserve one frozen root dispatch issuance before signer entry."""
+        from .dispatch_issuance import (
+            ISSUANCE_OPERATION, validate_frozen_intent,
+        )
+        frozen = validate_frozen_intent(intent)
+        if not isinstance(authority_snapshot, dict):
+            raise StoreError("root issuance authority snapshot is unavailable", kind="authorization")
+        key = frozen["operation_key"]
+        with self._tx() as conn:
+            self._verify_event_chain_locked(conn)
+            self._verify_supervisor_records(conn)
+            self._assert_issuance_current_locked(
+                conn, frozen, authority_snapshot=authority_snapshot, now=self._now(),
+            )
+            for prior_row in conn.execute(
+                "SELECT * FROM supervisor_operations WHERE operation=?",
+                (ISSUANCE_OPERATION,),
+            ).fetchall():
+                prior_events = self._dispatch_issuance_records_locked(conn, prior_row["operation_key"])
+                if not prior_events:
+                    raise StoreError("dispatch issuance operation lacks its immutable intent", kind="integrity")
+                self._verify_dispatch_issuance_structure(prior_row, prior_events)
+                prior_intent = prior_events[0]["intent"]
+                if (prior_intent["request_id"] == frozen["request_id"]
+                        and prior_row["operation_key"] != key):
+                    raise StoreError("truncated dispatch request ID collides across full identities",
+                                     kind="integrity")
+            row = conn.execute(
+                "SELECT operation_key, operation, payload_sha256, result "
+                "FROM supervisor_operations WHERE operation_key=?", (key,),
+            ).fetchone()
+            if row is None:
+                self._bind_dispatch_key_class_locked(
+                    conn, key_id=frozen["signer"]["key_id"], key_class="DELEGATED_V1",
+                    purpose=frozen["signer"]["purpose"],
+                    fingerprint=frozen["signer"]["public_key_fingerprint"],
+                )
+                conn.execute(
+                    "INSERT INTO supervisor_operations(operation_key, operation, payload_sha256, result) "
+                    "VALUES (?, ?, ?, ?)",
+                    (key, ISSUANCE_OPERATION, frozen["payload_sha256"],
+                     canonical_bytes({"_vst_state": "PENDING"}).decode("utf-8")),
+                )
+                self._record_event_locked(conn, key, "supervisor", "NOTE", {
+                    "event": "SUPERVISOR_DISPATCH_ISSUANCE_INTENT",
+                    "type": "SUPERVISOR_DISPATCH_ISSUANCE_INTENT",
+                    "operation_key": key, "operation": ISSUANCE_OPERATION,
+                    "payload_sha256": frozen["payload_sha256"], "intent": frozen,
+                })
+                return {"state": "PENDING", "intent": frozen, "envelope": None,
+                        "may_sign": False}
+            records = self._dispatch_issuance_records_locked(conn, key)
+            if records and records[0].get("intent") != frozen:
+                raise StoreError("dispatch issuance identity conflicts with its immutable reservation",
+                                 kind="integrity")
+            self._verify_dispatch_issuance_structure(row, records)
+            state = records[-1].get("event") if records else None
+            return {"state": "VERIFY_REQUIRED" if state == "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED"
+                    else "PENDING" if state == "SUPERVISOR_DISPATCH_ISSUANCE_INTENT"
+                    else "UNKNOWN", "intent": frozen,
+                    "envelope": records[-1].get("envelope") if state ==
+                    "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED" else None,
+                    "may_sign": False}
+
+    def _assert_issuance_current_locked(self, conn: sqlite3.Connection, intent: dict, *,
+                                        authority_snapshot: dict, now: float) -> None:
+        self._verify_supervisor_records(conn)
+        from .assignment_basis import OPERATION as ASSIGNMENT_OPERATION, validate_handoff, validate_policy
+        if (set(authority_snapshot) != {"policy", "policy_sha256", "generation", "run_id"}
+                or authority_snapshot["policy"] != intent["policy"]
+                or authority_snapshot["policy_sha256"] != intent["policy_sha256"]
+                or authority_snapshot["generation"] != intent["service_generation"]
+                or authority_snapshot["run_id"] != intent["handoff"]["run_id"]):
+            raise StoreError("root issuance policy or generation changed", kind="authorization")
+        policy, policy_sha256 = validate_policy(authority_snapshot["policy"])
+        if policy_sha256 != intent["policy_sha256"]:
+            raise StoreError("root issuance policy digest changed", kind="authorization")
+        handoff_id = intent["assignment_operation_id"]
+        row = conn.execute(
+            "SELECT operation, payload_sha256, result FROM supervisor_operations WHERE operation_key=?",
+            (handoff_id,),
+        ).fetchone()
+        if row is None or row["operation"] != ASSIGNMENT_OPERATION:
+            raise StoreError("root issuance assignment handoff is missing", kind="authorization")
+        try:
+            handoff_result = json.loads(row["result"])
+        except (TypeError, ValueError) as exc:
+            raise StoreError("root issuance assignment handoff is malformed", kind="integrity") from exc
+        now_utc = datetime.fromtimestamp(now, timezone.utc)
+        handoff = validate_handoff(
+            handoff_result, policy=policy, policy_sha256=policy_sha256, now=now_utc,
+        )
+        if handoff != intent["handoff"] or row["payload_sha256"] != handoff["payload_sha256"]:
+            raise StoreError("root issuance handoff differs from current immutable assignment", kind="integrity")
+        probe = conn.execute(
+            "SELECT probe_sha256 FROM supervisor_probes WHERE run_id=?", (handoff["run_id"],),
+        ).fetchone()
+        if probe is None or probe["probe_sha256"] != handoff["probe_sha256"]:
+            raise StoreError("root issuance preflight probe is no longer current", kind="probe")
+        basis = self._execution_grant_basis_locked(
+            conn, handoff["task_id"], handoff["slot"], handoff["attempt"], handoff["epoch"],
+            handoff["run_id"], active_service_generation=authority_snapshot["generation"],
+            expected_owner=policy["owner_principal"], expected_lease_id=handoff["lease_id"], now=now,
+        )
+        expected = {
+            "manifest_sha256": handoff["task_manifest_sha256"],
+            "task_id": handoff["task_id"], "slot": handoff["slot"],
+            "attempt": handoff["attempt"], "epoch": handoff["epoch"],
+            "run_id": handoff["run_id"], "runner_id": handoff["runner_id"],
+        }
+        if any(basis.get(name) != value for name, value in expected.items()):
+            raise StoreError("root issuance current execution basis changed", kind="authorization")
+        frozen_expiry = datetime.strptime(
+            intent["unsigned"]["expires_at"], "%Y-%m-%dT%H:%M:%SZ",
+        ).replace(tzinfo=timezone.utc).timestamp()
+        authority_expiry = min(
+            float(basis["authority_expires_at"]),
+            datetime.strptime(handoff["expires_at_utc"], "%Y-%m-%dT%H:%M:%SZ")
+            .replace(tzinfo=timezone.utc).timestamp(),
+            datetime.strptime(policy["expires_at_utc"], "%Y-%m-%dT%H:%M:%SZ")
+            .replace(tzinfo=timezone.utc).timestamp(),
+        )
+        if frozen_expiry > authority_expiry or frozen_expiry <= now:
+            raise StoreError("root dispatch instruction no longer fits current authority lifetime",
+                             kind="authorization")
+
+    def existing_dispatch_issuance(self, assignment_operation_id: str) -> dict | None:
+        """Read the immutable frozen intent before deriving any retry-time fields."""
+        import hashlib
+        from .dispatch_issuance import OPERATION_KEY_DOMAIN, validate_frozen_intent
+        _need_str(assignment_operation_id, "assignment_operation_id")
+        digest = hashlib.sha256(OPERATION_KEY_DOMAIN + canonical_bytes({
+            "assignment_operation_id": assignment_operation_id,
+        })).hexdigest()
+        operation_key = "dispatch-issue:" + digest
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            row = conn.execute(
+                "SELECT operation_key, operation, payload_sha256, result "
+                "FROM supervisor_operations WHERE operation_key=?", (operation_key,),
+            ).fetchone()
+            if row is None:
+                return None
+            events = self._dispatch_issuance_records_locked(conn, operation_key)
+            self._verify_dispatch_issuance_structure(row, events)
+            intent = validate_frozen_intent(events[0]["intent"])
+            if intent["assignment_operation_id"] != assignment_operation_id:
+                raise StoreError("dispatch issuance assignment identity changed", kind="integrity")
+            return intent
+
+    def assert_dispatch_issuance_authority(self, intent: dict, *, authority_snapshot: dict) -> None:
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            self._assert_issuance_current_locked(
+                conn, intent, authority_snapshot=authority_snapshot, now=self._now(),
+            )
+
+    def verify_dispatch_issuance_completion(self, operation_key: str, verifier) -> dict:
+        """Verify an immutable completion outside SQL; the caller must recheck authority before use."""
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            row = conn.execute(
+                "SELECT operation_key, operation, payload_sha256, result "
+                "FROM supervisor_operations WHERE operation_key=?", (operation_key,),
+            ).fetchone()
+            if row is None:
+                raise StoreError("dispatch issuance reservation is missing", kind="integrity")
+            self._verify_dispatch_issuance_structure(row, self._dispatch_issuance_records_locked(conn, operation_key))
+            row_value = {name: row[name] for name in
+                         ("operation_key", "operation", "payload_sha256", "result")}
+            records = self._dispatch_issuance_records_locked(conn, operation_key)
+        reduced = self._reduce_dispatch_issuance(row_value, records, verifier)
+        if reduced["state"] != "COMPLETED":
+            raise StoreError("dispatch issuance completion signature is not verified", kind="integrity")
+        return reduced
+
+    def dispatch_issuance_for_envelope(self, envelope: dict, verifier) -> dict:
+        """Find one exact immutable issuance completion, verify outside SQL, and return it."""
+        from .dispatch_instruction import validate_dispatch_instruction
+        exact = validate_dispatch_instruction(envelope)
+        matches = []
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            rows = conn.execute(
+                "SELECT * FROM supervisor_operations WHERE operation=?",
+                ("VST_S2_ROOT_DISPATCH_ISSUE_V1",),
+            ).fetchall()
+            for row in rows:
+                events = self._dispatch_issuance_records_locked(conn, row["operation_key"])
+                self._verify_dispatch_issuance_structure(row, events)
+                if (events[-1].get("event") == "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED"
+                        and events[-1].get("envelope") == exact):
+                    matches.append((
+                        {name: row[name] for name in
+                         ("operation_key", "operation", "payload_sha256", "result")}, events,
+                    ))
+        if len(matches) != 1:
+            raise StoreError("dispatch instruction does not have one exact issuance completion",
+                             kind="authorization")
+        row_value, events = matches[0]
+        result = self._reduce_dispatch_issuance(row_value, events, verifier)
+        if result["state"] != "COMPLETED":
+            raise StoreError("dispatch issuance signature verification failed", kind="authorization")
+        return result
+
+    @staticmethod
+    def _dispatch_issuance_records_locked(conn: sqlite3.Connection, operation_key: str) -> list[dict]:
+        rows = conn.execute(
+            "SELECT actor, payload FROM events WHERE task_id=? AND kind='NOTE' ORDER BY seq",
+            (operation_key,),
+        ).fetchall()
+        records = []
+        for row in rows:
+            try:
+                payload = json.loads(row["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("dispatch issuance note is malformed", kind="integrity") from exc
+            event = payload.get("event") if isinstance(payload, dict) else None
+            if event in {
+                "SUPERVISOR_DISPATCH_ISSUANCE_INTENT",
+                "SUPERVISOR_DISPATCH_ISSUANCE_SIGNING_STARTED",
+                "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED",
+                "SUPERVISOR_DISPATCH_ISSUANCE_UNKNOWN",
+            }:
+                if row["actor"] != "supervisor":
+                    raise StoreError("dispatch issuance journal actor is not root Supervisor", kind="integrity")
+                records.append(payload)
+        return records
+
+    @staticmethod
+    def _reduce_dispatch_issuance(row: dict, records: list[dict], verifier=None) -> dict:
+        from .dispatch_issuance import reduce_issuance_state
+        normalized = []
+        for item in records:
+            event = item.get("event")
+            normalized.append({"type": event, **{k: v for k, v in item.items() if k != "event"}})
+        result = reduce_issuance_state(row, normalized, completion_verifier=verifier)
+        if result["state"] == "CONFLICT":
+            raise StoreError("dispatch issuance journal conflicts: " + result["reason"], kind="integrity")
+        return result
+
+    def start_dispatch_issuance(self, operation_key: str, intent_sha256: str, *,
+                                authority_snapshot: dict) -> bool:
+        """Claim the sole signer invocation right with a fresh locked authority check."""
+        with self._tx() as conn:
+            self._verify_event_chain_locked(conn)
+            self._verify_supervisor_records(conn)
+            row = conn.execute(
+                "SELECT operation_key, operation, payload_sha256, result "
+                "FROM supervisor_operations WHERE operation_key=?", (operation_key,),
+            ).fetchone()
+            if row is None:
+                raise StoreError("dispatch issuance reservation is missing", kind="integrity")
+            records = self._dispatch_issuance_records_locked(conn, operation_key)
+            if len(records) != 1 or records[0].get("event") != "SUPERVISOR_DISPATCH_ISSUANCE_INTENT":
+                raise StoreError("dispatch issuance cannot claim signer after journal divergence", kind="integrity")
+            intent = records[0]["intent"]
+            from .dispatch_issuance import canonical_sha256
+            if canonical_sha256(intent) != intent_sha256:
+                raise StoreError("dispatch issuance intent changed before signer claim", kind="integrity")
+            if (row["operation"] != "VST_S2_ROOT_DISPATCH_ISSUE_V1"
+                    or row["payload_sha256"] != intent["payload_sha256"]
+                    or row["result"] != canonical_bytes({"_vst_state": "PENDING"}).decode("utf-8")):
+                raise StoreError("dispatch issuance operation row is invalid", kind="integrity")
+            self._assert_issuance_current_locked(
+                conn, intent, authority_snapshot=authority_snapshot, now=self._now(),
+            )
+            self._record_event_locked(conn, operation_key, "supervisor", "NOTE", {
+                "event": "SUPERVISOR_DISPATCH_ISSUANCE_SIGNING_STARTED",
+                "type": "SUPERVISOR_DISPATCH_ISSUANCE_SIGNING_STARTED",
+                "operation_key": operation_key, "intent_sha256": intent_sha256,
+                "unsigned_sha256": intent["unsigned_sha256"],
+            })
+            return True
+
+    def complete_dispatch_issuance(self, operation_key: str, intent_sha256: str,
+                                   envelope: dict, verifier, *, authority_snapshot: dict) -> dict:
+        """Persist a signed envelope only after external root-key verification."""
+        from .dispatch_issuance import canonical_sha256
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            row = conn.execute(
+                "SELECT operation_key, operation, payload_sha256, result "
+                "FROM supervisor_operations WHERE operation_key=?", (operation_key,),
+            ).fetchone()
+            if row is None:
+                raise StoreError("dispatch issuance reservation is missing", kind="integrity")
+            records = self._dispatch_issuance_records_locked(conn, operation_key)
+            if len(records) != 2 or records[-1].get("event") != "SUPERVISOR_DISPATCH_ISSUANCE_SIGNING_STARTED":
+                raise StoreError("dispatch issuance signer claim is missing or already terminal", kind="integrity")
+            intent = records[0].get("intent")
+            if canonical_sha256(intent) != intent_sha256:
+                raise StoreError("dispatch issuance intent changed before completion", kind="integrity")
+            row_value = {name: row[name] for name in
+                         ("operation_key", "operation", "payload_sha256", "result")}
+            captured_records = records
+            completion = {
+                "event": "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED",
+                "type": "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED",
+                "operation_key": operation_key, "intent_sha256": intent_sha256,
+                "unsigned_sha256": intent["unsigned_sha256"], "envelope": envelope,
+                "envelope_sha256": canonical_sha256(envelope),
+            }
+        # The root verifier (including key file reads and OpenSSL) runs outside SQL.
+        reduced = self._reduce_dispatch_issuance(row_value, [*captured_records, completion], verifier)
+        if reduced["state"] != "COMPLETED":
+            raise StoreError("dispatch signer completion did not verify", kind="integrity")
+        with self._tx() as conn:
+            self._verify_event_chain_locked(conn)
+            self._assert_issuance_current_locked(
+                conn, captured_records[0]["intent"],
+                authority_snapshot=authority_snapshot, now=self._now(),
+            )
+            current = conn.execute(
+                "SELECT operation_key, operation, payload_sha256, result "
+                "FROM supervisor_operations WHERE operation_key=?", (operation_key,),
+            ).fetchone()
+            current_records = self._dispatch_issuance_records_locked(conn, operation_key)
+            if (current is None
+                    or {name: current[name] for name in row_value} != row_value
+                    or canonical_bytes(current_records) != canonical_bytes(captured_records)):
+                raise StoreError("dispatch issuance journal changed during signature verification", kind="integrity")
+            self._record_event_locked(conn, operation_key, "supervisor", "NOTE", completion)
+            return reduced
+
+    def mark_dispatch_issuance_unknown(self, operation_key: str, intent_sha256: str,
+                                       error_class: str) -> None:
+        """Record an ambiguous signer outcome; this identity can never be signed again."""
+        from .dispatch_issuance import canonical_sha256
+        with self._tx() as conn:
+            self._verify_event_chain_locked(conn)
+            records = self._dispatch_issuance_records_locked(conn, operation_key)
+            if len(records) != 2 or records[-1].get("event") != "SUPERVISOR_DISPATCH_ISSUANCE_SIGNING_STARTED":
+                return
+            intent = records[0].get("intent")
+            if canonical_sha256(intent) != intent_sha256:
+                raise StoreError("dispatch issuance intent changed before UNKNOWN record", kind="integrity")
+            self._record_event_locked(conn, operation_key, "supervisor", "NOTE", {
+                "event": "SUPERVISOR_DISPATCH_ISSUANCE_UNKNOWN",
+                "type": "SUPERVISOR_DISPATCH_ISSUANCE_UNKNOWN",
+                "operation_key": operation_key, "intent_sha256": intent_sha256,
+                "unsigned_sha256": intent["unsigned_sha256"],
+                "error_class": error_class,
+            })
 
     def _verified_database_history(self) -> list[tuple[int, str]]:
         """Return every verified `(event_count, head)` prefix in the DB chain."""
@@ -2043,8 +4235,11 @@ class Store:
         external_intents: dict[str, list[dict]] = {}
         external_completions: dict[str, list[dict]] = {}
         external_unknown: dict[str, list[dict]] = {}
+        issuance_events: dict[str, list[dict]] = {}
+        dispatch_class_events: dict[str, list[tuple[str, dict]]] = {}
         event_probes: dict[str, dict] = {}
-        for row in conn.execute("SELECT task_id, payload FROM events WHERE kind = 'NOTE'").fetchall():
+        runner_chain_events: dict[str, list[dict]] = {}
+        for row in conn.execute("SELECT task_id, actor, payload FROM events WHERE kind = 'NOTE'").fetchall():
             try:
                 payload = json.loads(row["payload"])
             except (ValueError, TypeError) as exc:
@@ -2059,14 +4254,64 @@ class Store:
                 external_completions.setdefault(row["task_id"], []).append(payload)
             elif payload.get("event") == "SUPERVISOR_EXTERNAL_OPERATION_UNKNOWN":
                 external_unknown.setdefault(row["task_id"], []).append(payload)
+            elif payload.get("event") in {
+                "SUPERVISOR_DISPATCH_ISSUANCE_INTENT",
+                "SUPERVISOR_DISPATCH_ISSUANCE_SIGNING_STARTED",
+                "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED",
+                "SUPERVISOR_DISPATCH_ISSUANCE_UNKNOWN",
+            }:
+                if row["actor"] != "supervisor":
+                    raise StoreError("dispatch issuance event was not written by root Supervisor",
+                                     kind="integrity")
+                issuance_events.setdefault(row["task_id"], []).append(payload)
+            elif payload.get("event") == "SUPERVISOR_DISPATCH_KEY_CLASS_BOUND":
+                dispatch_class_events.setdefault(row["task_id"], []).append((row["actor"], payload))
+            elif row["task_id"].startswith("dispatch-key-class:"):
+                raise StoreError("dispatch key-class journal contains an unknown NOTE family",
+                                 kind="integrity")
             elif payload.get("event") == "PREFLIGHT_CONSUMED":
                 event_probes[row["task_id"]] = payload
+            elif payload.get("event") in {
+                    "RUNNER_EXECUTION_PENDING", "RUNNER_EXECUTION_RESERVED", "RUNNER_EXECUTION_COMPLETE",
+                    "RUNNER_EXECUTION_INDETERMINATE", "RUNNER_EXECUTION_RECONCILED"}:
+                runner_chain_events.setdefault(row["task_id"], []).append(payload)
         external_keys = set(external_intents)
-        if (set(operations) != set(event_operations) | external_keys
+        issuance_keys = set(issuance_events)
+        if (set(operations) != set(event_operations) | external_keys | issuance_keys
                 or external_keys & set(event_operations)
+                or issuance_keys & (set(event_operations) | external_keys)
                 or (set(external_completions) | set(external_unknown)) - external_keys
                 or set(probes) != set(event_probes)):
             raise StoreError("supervisor records differ from their append-only events", kind="integrity")
+        class_bindings: dict[str, dict] = {}
+        for task_id, bindings in dispatch_class_events.items():
+            if len(bindings) != 1:
+                raise StoreError("dispatch key class binding has multiple immutable events", kind="integrity")
+            actor, binding = bindings[0]
+            key_id = task_id.removeprefix("dispatch-key-class:")
+            if (actor != "supervisor" or not task_id.startswith("dispatch-key-class:")
+                    or binding != {
+                        "event": "SUPERVISOR_DISPATCH_KEY_CLASS_BOUND", "key_id": key_id,
+                        "key_class": binding.get("key_class"), "purpose": "VST_S2_DISPATCH_INSTRUCTION_V1",
+                        "public_key_fingerprint": binding.get("public_key_fingerprint"),
+                    } or binding.get("key_class") not in {"LEGACY_V1", "DELEGATED_V1"}
+                    or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}", key_id)
+                    or not isinstance(binding.get("public_key_fingerprint"), str)
+                    or not re.fullmatch(r"[0-9a-f]{64}", binding["public_key_fingerprint"])):
+                raise StoreError("dispatch key class binding is malformed", kind="integrity")
+            class_bindings[key_id] = binding
+        for issuance_key, events in issuance_events.items():
+            if not events or not isinstance(events[0].get("intent"), dict):
+                raise StoreError("dispatch issuance lacks its immutable intent", kind="integrity")
+            signer = events[0]["intent"].get("signer", {})
+            binding = class_bindings.get(signer.get("key_id"))
+            if (binding is None or binding.get("key_class") != "DELEGATED_V1"
+                    or binding.get("purpose") != signer.get("purpose")
+                    or binding.get("public_key_fingerprint") != signer.get("public_key_fingerprint")
+                    or events[0].get("operation_key") != issuance_key
+                    or events[0].get("payload_sha256") != events[0]["intent"].get("payload_sha256")):
+                raise StoreError("dispatch issuance differs from its immutable delegated key binding",
+                                 kind="integrity")
         for operation_key, row in operations.items():
             try:
                 result = json.loads(row["result"])
@@ -2079,6 +4324,11 @@ class Store:
                         or event.get("payload_sha256") != row["payload_sha256"]
                         or event.get("result_sha256") != result_digest):
                     raise StoreError("supervisor operation record does not match its event", kind="integrity")
+                continue
+
+            issuance = issuance_events.get(operation_key)
+            if issuance is not None:
+                self._verify_dispatch_issuance_structure(row, issuance)
                 continue
 
             intents = external_intents.get(operation_key, [])
@@ -2118,12 +4368,302 @@ class Store:
                         or unknown.get("payload_sha256") != row["payload_sha256"]
                         or isinstance(attempt, bool) or not isinstance(attempt, int) or attempt < 1):
                     raise StoreError("external operation outcome does not match its intent", kind="integrity")
+        dispatch_operations = {
+            key: row for key, row in operations.items()
+            if row["operation"] == "dispatch_intent"
+        }
+        dispatch_events: dict[str, dict] = {}
+        for row in conn.execute(
+            "SELECT seq, task_id, actor, payload FROM events "
+            "WHERE kind = 'DISPATCH_INTENT_ACCEPTED' ORDER BY seq",
+        ).fetchall():
+            try:
+                payload = json.loads(row["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("dispatch intent event is malformed", kind="integrity") from exc
+            payload = self._validate_dispatch_intent_event(
+                payload, task_id=row["task_id"], actor=row["actor"],
+            )
+            operation_key = f"dispatch-intent:{payload['request_id']}"
+            if operation_key in dispatch_events:
+                raise StoreError("dispatch request id has multiple events", kind="integrity")
+            operation = dispatch_operations.get(operation_key)
+            if operation is None or operation["payload_sha256"] != payload["payload_digest"]:
+                raise StoreError("dispatch event lacks its matching idempotency record", kind="integrity")
+            try:
+                result = json.loads(operation["result"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("dispatch idempotency result is malformed", kind="integrity") from exc
+            if result != {"event_seq": int(row["seq"]), **payload}:
+                raise StoreError("dispatch idempotency result differs from its event", kind="integrity")
+            class_binding = class_bindings.get(payload["key_id"])
+            expected_class = payload.get("key_class", "LEGACY_V1")
+            if ((class_binding is None and expected_class == "DELEGATED_V1")
+                    or (class_binding is not None and (
+                        class_binding.get("key_class") != expected_class
+                        or class_binding.get("purpose") != "VST_S2_DISPATCH_INSTRUCTION_V1"))):
+                raise StoreError("accepted dispatch lacks its immutable key-class binding", kind="integrity")
+            if payload.get("key_class") == "DELEGATED_V1":
+                binding = class_binding
+                issue_events = issuance_events.get(payload.get("issuance_operation_key"), [])
+                if (binding is None or binding.get("key_class") != "DELEGATED_V1"
+                        or binding.get("public_key_fingerprint") != payload.get("key_fingerprint")
+                        or not issue_events
+                        or issue_events[-1].get("event") != "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED"
+                        or issue_events[-1].get("envelope") != payload["instruction"]
+                        or payload.get("issuance_envelope_sha256") != hashlib.sha256(
+                            canonical_bytes(payload["instruction"])).hexdigest()):
+                    raise StoreError("accepted delegated dispatch is not joined to its exact issuance",
+                                     kind="integrity")
+            dispatch_events[operation_key] = payload
+        if set(dispatch_events) != set(dispatch_operations):
+            raise StoreError("dispatch idempotency records differ from accepted events", kind="integrity")
         for run_id, row in probes.items():
             event = event_probes[run_id]
             if (event.get("nonce") != row["nonce"]
                     or event.get("spec_sha256") != row["spec_sha256"]
                     or event.get("probe_sha256") != row["probe_sha256"]):
                 raise StoreError("supervisor probe record does not match its event", kind="integrity")
+
+        runner_claims = {
+            row["grant_id"]: row
+            for row in conn.execute("SELECT * FROM runner_execution_claims").fetchall()
+        }
+        runner_table_events: dict[str, list[dict]] = {}
+        for row in conn.execute(
+                "SELECT grant_id, state, payload FROM runner_execution_events ORDER BY seq").fetchall():
+            try:
+                event = json.loads(row["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("runner execution side event is malformed", kind="integrity") from exc
+            if not isinstance(event, dict) or event.get("state") != row["state"]:
+                raise StoreError("runner execution side event state is invalid", kind="integrity")
+            runner_table_events.setdefault(row["grant_id"], []).append(event)
+        if set(runner_claims) != set(runner_table_events) or set(runner_claims) != set(runner_chain_events):
+            raise StoreError("runner execution claims differ from their append-only events", kind="integrity")
+        event_name = {
+            "PENDING": "RUNNER_EXECUTION_PENDING",
+            "EXECUTION_RESERVED": "RUNNER_EXECUTION_RESERVED",
+            "COMPLETE": "RUNNER_EXECUTION_COMPLETE",
+            "INDETERMINATE": "RUNNER_EXECUTION_INDETERMINATE",
+            "RECONCILED": "RUNNER_EXECUTION_RECONCILED",
+        }
+        runner_resolution_ids: set[str] = set()
+        for grant_id, claim in runner_claims.items():
+            try:
+                grant = json.loads(claim["grant_body"])
+                canonical_grant = canonical_bytes(grant)
+            except (TypeError, ValueError) as exc:
+                raise StoreError("runner execution grant record is malformed", kind="integrity") from exc
+            if (hashlib.sha256(canonical_grant).hexdigest() != claim["payload_sha256"]
+                    or grant.get("grant_id") != claim["grant_id"]
+                    or grant.get("invocation_id") != claim["invocation_id"]
+                    or grant.get("request_id") != claim["request_id"]
+                    or grant.get("task_id") != claim["task_id"]
+                    or grant.get("slot") != claim["slot"]
+                    or grant.get("runner_id") != claim["runner_id"]
+                    or grant.get("attempt") != claim["attempt"]
+                    or grant.get("epoch") != claim["epoch"]
+                    or grant.get("run_id") != claim["run_id"]
+                    or grant.get("service_generation") != claim["service_generation"]
+                    or grant.get("manifest_sha256") != claim["manifest_sha256"]):
+                raise StoreError("runner execution claim differs from its signed grant", kind="integrity")
+            side_events = runner_table_events[grant_id]
+            chain_events = runner_chain_events[grant_id]
+            states = tuple(event.get("state") for event in side_events)
+            if (states not in {
+                    ("PENDING",),
+                    ("PENDING", "EXECUTION_RESERVED"),
+                    ("PENDING", "INDETERMINATE"),
+                    ("PENDING", "EXECUTION_RESERVED", "COMPLETE"),
+                    ("PENDING", "EXECUTION_RESERVED", "INDETERMINATE"),
+                    ("PENDING", "INDETERMINATE", "RECONCILED"),
+                    ("PENDING", "EXECUTION_RESERVED", "INDETERMINATE", "RECONCILED"),
+                } or len(chain_events) != len(side_events)):
+                raise StoreError("runner execution lifecycle event sequence is invalid", kind="integrity")
+            for side, chained in zip(side_events, chain_events):
+                if (side.get("event") != event_name.get(side.get("state"))
+                        or canonical_bytes(side) != canonical_bytes(chained)
+                        or side.get("grant_id") != grant_id
+                        or side.get("payload_sha256") != claim["payload_sha256"]):
+                    raise StoreError("runner execution side event differs from hash-chained event", kind="integrity")
+            pending = side_events[0]
+            if (pending.get("invocation_id") != claim["invocation_id"]
+                    or pending.get("request_id") != claim["request_id"]
+                    or pending.get("task_id") != claim["task_id"]
+                    or pending.get("slot") != claim["slot"]
+                    or pending.get("runner_id") != claim["runner_id"]
+                    or pending.get("attempt") != claim["attempt"]
+                    or pending.get("epoch") != claim["epoch"]
+                    or pending.get("run_id") != claim["run_id"]
+                    or pending.get("service_generation") != claim["service_generation"]):
+                raise StoreError("runner execution pending event differs from its claim", kind="integrity")
+            if len(side_events) >= 2 and side_events[1]["state"] == "EXECUTION_RESERVED":
+                reserved = side_events[1]
+                if (reserved.get("grant_id") != claim["grant_id"]
+                        or reserved.get("payload_sha256") != claim["payload_sha256"]
+                        or reserved.get("service_generation") != claim["service_generation"]
+                        or reserved.get("invocation_id") != claim["invocation_id"]
+                        or reserved.get("request_id") != claim["request_id"]):
+                    raise StoreError("execution reservation differs from its claim", kind="integrity")
+            terminal = side_events[-1] if len(side_events) > 1 else None
+            if terminal is not None and terminal["state"] == "COMPLETE":
+                receipt = terminal.get("receipt")
+                if (not isinstance(receipt, dict)
+                        or receipt_sha256(receipt) != terminal.get("receipt_sha256")):
+                    raise StoreError("completed runner receipt digest is invalid", kind="integrity")
+            indeterminate_indexes = [
+                index for index, event in enumerate(side_events)
+                if event["state"] == "INDETERMINATE"
+            ]
+            if len(indeterminate_indexes) > 1:
+                raise StoreError("runner execution has multiple indeterminate transitions", kind="integrity")
+            if indeterminate_indexes:
+                indeterminate_index = indeterminate_indexes[0]
+                indeterminate = side_events[indeterminate_index]
+                if indeterminate_index < 1:
+                    raise StoreError("indeterminate runner claim lacks its predecessor state", kind="integrity")
+                predecessor_state = side_events[indeterminate_index - 1]["state"]
+                if indeterminate.get("reason") == RUNNER_PRESPAWN_NO_EXECUTION_REASON:
+                    if (predecessor_state != "PENDING"
+                            or indeterminate.get("terminal_disposition") != "NO_EXECUTION"
+                            or not _valid_runner_prespawn_no_execution_event(indeterminate, claim)):
+                        raise StoreError("runner pre-spawn terminal event does not match its claim", kind="integrity")
+                elif indeterminate.get("reason") == "PREDECESSOR_GENERATION_STOPPED":
+                    expected_index = 1 if predecessor_state == "PENDING" else 2
+                    if (indeterminate_index != expected_index
+                            or not _valid_predecessor_generation_stopped_event(
+                                indeterminate, claim, predecessor_state,
+                            )):
+                        raise StoreError("indeterminate runner claim lacks a predecessor-generation fence", kind="integrity")
+                elif indeterminate.get("reason") == "AUTHORITY_CHANGED_BEFORE_COMPLETION":
+                    observed_generation = indeterminate.get("observed_service_generation")
+                    if (not isinstance(observed_generation, str) or not observed_generation
+                            or predecessor_state != "EXECUTION_RESERVED"
+                            or indeterminate.get("predecessor_state") != predecessor_state
+                            or "terminal_disposition" in indeterminate
+                            or indeterminate_index != 2):
+                        raise StoreError("indeterminate runner completion lacks authority evidence", kind="integrity")
+                else:
+                    raise StoreError("indeterminate runner event has no recognized reason", kind="integrity")
+                if terminal is not None and terminal["state"] == "RECONCILED":
+                    if indeterminate_index != len(side_events) - 2 or not _valid_runner_execution_resolution(
+                        terminal, claim, self._execution_resolution_key,
+                        indeterminate.get("predecessor_state"),
+                    ):
+                        raise StoreError("runner execution reconciliation is invalid or unauthenticated", kind="integrity")
+                    resolution_id = terminal["resolution"]["resolution_id"]
+                    if resolution_id in runner_resolution_ids:
+                        raise StoreError("runner execution resolution id is reused", kind="integrity")
+                    runner_resolution_ids.add(resolution_id)
+        self._verify_runner_receipt_chains_locked(conn)
+
+    @staticmethod
+    def _verify_dispatch_issuance_structure(row: sqlite3.Row, events: list[dict]) -> None:
+        """Check issuer journal shape without treating startup as crypto verification."""
+        from .dispatch_instruction import validate_dispatch_instruction
+        from .dispatch_issuance import ISSUANCE_OPERATION, canonical_sha256, validate_frozen_intent
+        if row["operation"] != ISSUANCE_OPERATION:
+            raise StoreError("dispatch issuance uses the wrong operation family", kind="integrity")
+        try:
+            result = json.loads(row["result"])
+        except (TypeError, ValueError) as exc:
+            raise StoreError("dispatch issuance operation result is malformed", kind="integrity") from exc
+        if result != {"_vst_state": "PENDING"}:
+            raise StoreError("dispatch issuance operation result is not immutable pending state", kind="integrity")
+        types = [event.get("event") for event in events]
+        allowed = [
+            ["SUPERVISOR_DISPATCH_ISSUANCE_INTENT"],
+            ["SUPERVISOR_DISPATCH_ISSUANCE_INTENT", "SUPERVISOR_DISPATCH_ISSUANCE_SIGNING_STARTED"],
+            ["SUPERVISOR_DISPATCH_ISSUANCE_INTENT", "SUPERVISOR_DISPATCH_ISSUANCE_SIGNING_STARTED",
+             "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED"],
+            ["SUPERVISOR_DISPATCH_ISSUANCE_INTENT", "SUPERVISOR_DISPATCH_ISSUANCE_SIGNING_STARTED",
+             "SUPERVISOR_DISPATCH_ISSUANCE_UNKNOWN"],
+        ]
+        if types not in allowed:
+            raise StoreError("dispatch issuance event order or multiplicity is invalid", kind="integrity")
+        intent_event = events[0]
+        if set(intent_event) != {"event", "type", "operation_key", "operation", "payload_sha256", "intent"}:
+            raise StoreError("dispatch issuance intent event fields are invalid", kind="integrity")
+        try:
+            intent = validate_frozen_intent(intent_event["intent"])
+        except Exception as exc:
+            raise StoreError("dispatch issuance frozen intent is invalid", kind="integrity") from exc
+        key = intent["operation_key"]
+        if (intent_event.get("operation_key") != key or intent_event.get("type") != types[0]
+                or intent_event.get("operation") != ISSUANCE_OPERATION
+                or intent_event.get("payload_sha256") != intent["payload_sha256"]
+                or row["operation_key"] != key or row["payload_sha256"] != intent["payload_sha256"]):
+            raise StoreError("dispatch issuance intent differs from its operation row", kind="integrity")
+        intent_digest = canonical_sha256(intent)
+        for event in events[1:]:
+            if (event.get("type") != event.get("event") or event.get("operation_key") != key
+                    or event.get("intent_sha256") != intent_digest
+                    or event.get("unsigned_sha256") != intent["unsigned_sha256"]):
+                raise StoreError("dispatch issuance progress event differs from its intent", kind="integrity")
+        if len(events) > 1:
+            started = events[1]
+            if set(started) != {"event", "type", "operation_key", "intent_sha256", "unsigned_sha256"}:
+                raise StoreError("dispatch issuance STARTED event fields are invalid", kind="integrity")
+        if types[-1] == "SUPERVISOR_DISPATCH_ISSUANCE_UNKNOWN":
+            unknown = events[-1]
+            if (set(unknown) != {"event", "type", "operation_key", "intent_sha256",
+                                 "unsigned_sha256", "error_class"}
+                    or not isinstance(unknown["error_class"], str)
+                    or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}", unknown["error_class"])):
+                raise StoreError("dispatch issuance UNKNOWN event fields are invalid", kind="integrity")
+        if types[-1] == "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED":
+            completed = events[-1]
+            if set(completed) != {"event", "type", "operation_key", "intent_sha256",
+                                  "unsigned_sha256", "envelope", "envelope_sha256"}:
+                raise StoreError("dispatch issuance completion event fields are invalid", kind="integrity")
+            try:
+                envelope = validate_dispatch_instruction(completed["envelope"])
+            except Exception as exc:
+                raise StoreError("dispatch issuance completion envelope is malformed", kind="integrity") from exc
+            unsigned = {name: value for name, value in envelope.items() if name != "signature"}
+            if (unsigned != intent["unsigned"]
+                    or completed.get("envelope_sha256") != canonical_sha256(envelope)):
+                raise StoreError("dispatch issuance completion differs from its frozen unsigned bytes", kind="integrity")
+            # Startup validates structure only. A root-owned verifier must bind
+            # this envelope and fingerprint before any delegated use.
+
+    def _verify_runner_receipt_chains_locked(self, conn: sqlite3.Connection) -> None:
+        """Replay receipt attempt and digest links against verified successor proofs."""
+        tips: dict[tuple[str, str], tuple[int, str | None]] = {}
+        rows = conn.execute(
+            "SELECT task_id, slot, attempt, receipt_sha256, prev_receipt_sha256, body "
+            "FROM receipts ORDER BY task_id, slot, seq"
+        ).fetchall()
+        for row in rows:
+            key = (row["task_id"], row["slot"])
+            previous_attempt, previous_sha = tips.get(key, (0, None))
+            try:
+                receipt = json.loads(row["body"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("receipt row is malformed during history replay", kind="integrity") from exc
+            if (not isinstance(receipt, dict)
+                    or receipt.get("task_id") != row["task_id"]
+                    or receipt.get("slot") != row["slot"]
+                    or receipt.get("attempt") != int(row["attempt"])
+                    or receipt_sha256(receipt) != row["receipt_sha256"]
+                    or receipt.get("prev_receipt_sha256") != row["prev_receipt_sha256"]
+                    or row["prev_receipt_sha256"] != previous_sha):
+                raise StoreError("receipt digest chain differs during history replay", kind="integrity")
+            expected_attempt = previous_attempt + 1
+            if int(row["attempt"]) != expected_attempt:
+                persistent_runner_receipt = (
+                    receipt.get("receipt_type") == "TestRun"
+                    and receipt.get("contract_version") == 2
+                    and isinstance(receipt.get("runner_attestation"), dict)
+                )
+                if (not persistent_runner_receipt
+                        or not self._runner_receipt_gap_is_eligible_locked(
+                            conn, row["task_id"], row["slot"], previous_attempt,
+                            int(row["attempt"]),
+                        )):
+                    raise StoreError("receipt history contains an ineligible attempt gap", kind="integrity")
+            tips[key] = (int(row["attempt"]), row["receipt_sha256"])
 
     def _sync_external_anchor(self) -> None:
         if self._external_anchor is None:
@@ -2170,6 +4710,8 @@ class Store:
             history = self._verified_database_history()
             count, head = history[-1]
             if self._external_anchor is None:
+                with self._read_tx_locked() as conn:
+                    self._dispatch_outcome_state_locked(conn)
                 self._reconciliation_complete = True
                 self._integrity_locked = False
                 self._integrity_lock_reason = None
@@ -2188,6 +4730,8 @@ class Store:
                     checkpoint_count, history[checkpoint_count][1], self._event_key
                 )
                 latest = self._external_anchor.compare_and_append(latest, checkpoint)
+            with self._read_tx_locked() as conn:
+                self._dispatch_outcome_state_locked(conn)
             self._reconciliation_complete = True
             self._integrity_locked = False
             self._integrity_lock_reason = None
@@ -2205,7 +4749,10 @@ class Store:
             raise
 
     def execute_idempotent(
-        self, operation_key: str, operation: str, payload: Any, effect: Callable[[], Any]
+        self, operation_key: str, operation: str, payload: Any,
+        effect: Callable[[sqlite3.Connection], Any],
+        *, before_commit: Callable[[sqlite3.Connection, Any], None] | None = None,
+        on_replay: Callable[[sqlite3.Connection, Any], None] | None = None,
     ) -> Any:
         """Run an internal Store effect atomically with its idempotency record.
 
@@ -2223,7 +4770,10 @@ class Store:
             if row is not None:
                 if row["operation"] != operation or row["payload_sha256"] != payload_digest:
                     raise StoreError("idempotency key reused with different operation or payload", kind="duplicate")
-                return json.loads(row["result"])
+                result = json.loads(row["result"])
+                if on_replay is not None:
+                    on_replay(conn, result)
+                return result
             result = effect(conn)
             try:
                 encoded = canonical_bytes(result).decode("utf-8")
@@ -2241,7 +4791,927 @@ class Store:
                     "result_sha256": hashlib.sha256(encoded.encode("utf-8")).hexdigest(),
                 },
             )
+            if before_commit is not None:
+                before_commit(conn, result)
             return result
+
+    def lookup_idempotent_operation(
+        self,
+        operation_key: str,
+        *,
+        operation: str | None = None,
+        payload: Any = None,
+        check_payload: bool = False,
+        validate_result: Callable[[sqlite3.Connection, Any], None] | None = None,
+    ) -> dict | None:
+        """Read a durable operation result and its completion/uncertainty state.
+
+        Supplying ``operation`` and setting ``check_payload`` binds the lookup to
+        the exact operation and canonical payload digest. External operations
+        remain PENDING until a matching completion is recorded; an unresolved
+        external failure is reported as INCONCLUSIVE, never as success.
+        """
+        _need_str(operation_key, "operation_key")
+        if operation is not None:
+            _need_str(operation, "operation")
+        if check_payload and operation is None:
+            raise StoreError("payload-bound operation lookup requires an operation", kind="argument")
+        expected_digest = hashlib.sha256(canonical_bytes(payload)).hexdigest() if check_payload else None
+        if not self.verify_event_chain():
+            raise StoreError("event chain failed verification during operation lookup", kind="integrity")
+        with self._read_tx() as conn:
+            row = conn.execute(
+                "SELECT operation, payload_sha256, result FROM supervisor_operations WHERE operation_key = ?",
+                (operation_key,),
+            ).fetchone()
+            if row is None:
+                return None
+            if operation is not None and row["operation"] != operation:
+                raise StoreError("idempotency key reused for a different operation", kind="duplicate")
+            if expected_digest is not None and row["payload_sha256"] != expected_digest:
+                raise StoreError("idempotency key reused with different payload", kind="duplicate")
+            try:
+                stored_result = json.loads(row["result"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("stored idempotent operation result is invalid", kind="integrity") from exc
+            pending = {"_vst_state": "PENDING"}
+            if row["result"] != canonical_bytes(pending).decode("utf-8"):
+                if validate_result is not None:
+                    validate_result(conn, stored_result)
+                return {
+                    "operation": row["operation"],
+                    "payload_sha256": row["payload_sha256"],
+                    "state": "COMPLETED",
+                    "result": stored_result,
+                }
+
+            completed = None
+            inconclusive = False
+            error_types: list[str] = []
+            rows = conn.execute(
+                "SELECT payload FROM events WHERE task_id = ? AND actor = 'supervisor' AND kind = 'NOTE' ORDER BY seq",
+                (operation_key,),
+            ).fetchall()
+            for event_row in rows:
+                try:
+                    event = json.loads(event_row["payload"])
+                except (TypeError, ValueError) as exc:
+                    raise StoreError("stored operation event is invalid", kind="integrity") from exc
+                if event.get("operation_key") != operation_key:
+                    continue
+                if event.get("event") == "SUPERVISOR_EXTERNAL_OPERATION_UNKNOWN":
+                    if (event.get("operation") != row["operation"]
+                            or event.get("payload_sha256") != row["payload_sha256"]):
+                        raise StoreError("external operation uncertainty binding is invalid", kind="integrity")
+                    inconclusive = True
+                    error_type = event.get("error_type")
+                    if isinstance(error_type, str) and error_type not in error_types:
+                        error_types.append(error_type)
+                elif event.get("event") == "SUPERVISOR_EXTERNAL_OPERATION_COMPLETED":
+                    if (event.get("operation") != row["operation"]
+                            or event.get("payload_sha256") != row["payload_sha256"]):
+                        raise StoreError("external operation completion binding is invalid", kind="integrity")
+                    result = event.get("result")
+                    encoded = canonical_bytes(result).decode("utf-8")
+                    if hashlib.sha256(encoded.encode("utf-8")).hexdigest() != event.get("result_sha256"):
+                        raise StoreError("external operation result digest is invalid", kind="integrity")
+                    if completed is not None and canonical_bytes(completed) != canonical_bytes(result):
+                        raise StoreError("external operation has conflicting completion records", kind="integrity")
+                    completed = result
+            if completed is not None:
+                if validate_result is not None:
+                    validate_result(conn, completed)
+                return {
+                    "operation": row["operation"],
+                    "payload_sha256": row["payload_sha256"],
+                    "state": "COMPLETED",
+                    "result": completed,
+                }
+            return {
+                "operation": row["operation"],
+                "payload_sha256": row["payload_sha256"],
+                "state": "INCONCLUSIVE" if inconclusive else "PENDING",
+                "result": None,
+                "error_types": error_types,
+            }
+
+    def _runner_execution_states_locked(self, conn: sqlite3.Connection, grant_id: str) -> list[dict]:
+        rows = conn.execute(
+            "SELECT state, payload FROM runner_execution_events WHERE grant_id = ? ORDER BY seq",
+            (grant_id,),
+        ).fetchall()
+        states = []
+        for row in rows:
+            try:
+                payload = json.loads(row["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("runner execution event is malformed", kind="integrity") from exc
+            if not isinstance(payload, dict) or payload.get("state") != row["state"]:
+                raise StoreError("runner execution event state is inconsistent", kind="integrity")
+            states.append(payload)
+        if not states or states[0].get("state") != "PENDING":
+            raise StoreError("runner execution record lacks its PENDING claim", kind="integrity")
+        sequence = tuple(state.get("state") for state in states)
+        if sequence not in {
+                ("PENDING",),
+                ("PENDING", "EXECUTION_RESERVED"),
+                ("PENDING", "INDETERMINATE"),
+                ("PENDING", "EXECUTION_RESERVED", "COMPLETE"),
+                ("PENDING", "EXECUTION_RESERVED", "INDETERMINATE"),
+                ("PENDING", "INDETERMINATE", "RECONCILED"),
+                ("PENDING", "EXECUTION_RESERVED", "INDETERMINATE", "RECONCILED"),
+        }:
+            raise StoreError("runner execution lifecycle is invalid", kind="integrity")
+        indeterminate_indexes = [
+            index for index, state in enumerate(states)
+            if state.get("state") == "INDETERMINATE"
+        ]
+        if len(indeterminate_indexes) > 1:
+            raise StoreError("runner execution has multiple indeterminate transitions", kind="integrity")
+        claim = None
+        if indeterminate_indexes:
+            indeterminate_index = indeterminate_indexes[0]
+            if indeterminate_index < 1:
+                raise StoreError("indeterminate runner claim lacks its predecessor state", kind="integrity")
+            claim = conn.execute(
+                "SELECT * FROM runner_execution_claims WHERE grant_id = ?", (grant_id,)
+            ).fetchone()
+            indeterminate = states[indeterminate_index]
+            predecessor_state = states[indeterminate_index - 1]["state"]
+            reason = indeterminate.get("reason")
+            if reason == RUNNER_PRESPAWN_NO_EXECUTION_REASON:
+                if (claim is None or indeterminate_index != 1 or predecessor_state != "PENDING"
+                        or not _valid_runner_prespawn_no_execution_event(indeterminate, claim)):
+                    raise StoreError("runner pre-spawn terminal event does not match its claim", kind="integrity")
+            elif reason == "PREDECESSOR_GENERATION_STOPPED":
+                expected_index = 1 if predecessor_state == "PENDING" else 2
+                if (claim is None or indeterminate_index != expected_index
+                        or not _valid_predecessor_generation_stopped_event(
+                            indeterminate, claim, predecessor_state,
+                        )):
+                    raise StoreError("indeterminate runner claim lacks a predecessor-generation fence", kind="integrity")
+            elif reason == "AUTHORITY_CHANGED_BEFORE_COMPLETION":
+                observed_generation = indeterminate.get("observed_service_generation")
+                if (indeterminate_index != 2 or predecessor_state != "EXECUTION_RESERVED"
+                        or indeterminate.get("predecessor_state") != predecessor_state
+                        or not isinstance(observed_generation, str) or not observed_generation
+                        or "terminal_disposition" in indeterminate):
+                    raise StoreError("runner execution completion lacks authority evidence", kind="integrity")
+            else:
+                raise StoreError("indeterminate runner event has no recognized reason", kind="integrity")
+
+        if states[-1]["state"] == "RECONCILED":
+            indeterminate = states[-2]
+            predecessor_state = indeterminate.get("predecessor_state")
+            if (claim is None or indeterminate.get("state") != "INDETERMINATE"
+                    or not _valid_runner_execution_resolution(
+                        states[-1], claim, self._execution_resolution_key, predecessor_state,
+                    )):
+                raise StoreError("runner execution resolution is invalid or unauthenticated", kind="integrity")
+        return states
+
+    def _runner_attempt_successor_eligibility_locked(
+        self, conn: sqlite3.Connection, task_id: str, slot: str, attempt: int,
+    ) -> str | None:
+        """Return the verified terminal disposition that permits a successor attempt.
+
+        The evidence is bound to one exact claim and its lease identity. Reconciled
+        EFFECTS_RESOLVED is eligible only from EXECUTION_RESERVED and only after
+        validating the signed resolution record; generic INDETERMINATE and other
+        signed outcomes never authorize a successor.
+        """
+        claim = conn.execute(
+            "SELECT * FROM runner_execution_claims WHERE task_id = ? AND slot = ? AND attempt = ?",
+            (task_id, slot, attempt),
+        ).fetchone()
+        if claim is None:
+            return None
+        lease = conn.execute(
+            "SELECT epoch, worker_id FROM leases WHERE task_id = ? AND attempt = ?",
+            (task_id, attempt),
+        ).fetchone()
+        if (lease is None or int(lease["epoch"]) != int(claim["epoch"])
+                or lease["worker_id"] != claim["runner_id"]):
+            return None
+        states = self._runner_execution_states_locked(conn, claim["grant_id"])
+        terminal = states[-1]
+        if (terminal["state"] == "INDETERMINATE"
+                and terminal.get("predecessor_state") == "PENDING"
+                and _valid_runner_prespawn_no_execution_event(terminal, claim)):
+            return "NO_EXECUTION_PROVEN"
+        if terminal["state"] != "RECONCILED":
+            return None
+        predecessor_state = terminal.get("predecessor_state")
+        if not _valid_runner_execution_resolution(
+                terminal, claim, self._execution_resolution_key, predecessor_state):
+            return None
+        resolution = terminal.get("resolution")
+        if (resolution.get("outcome") == "NO_EXECUTION_PROVEN"
+                and predecessor_state == "PENDING"):
+            return "NO_EXECUTION_PROVEN"
+        if (resolution.get("outcome") == "EFFECTS_RESOLVED"
+                and predecessor_state == "EXECUTION_RESERVED"):
+            return "EFFECTS_RESOLVED"
+        return None
+
+    def _verified_runner_successor_attempts_locked(
+        self, conn: sqlite3.Connection, task_id: str, slot: str, through_attempt: int,
+    ) -> set[int]:
+        return {
+            attempt for attempt in range(1, through_attempt + 1)
+            if self._runner_attempt_successor_eligibility_locked(conn, task_id, slot, attempt)
+        }
+
+    def _runner_receipt_gap_is_eligible_locked(
+        self, conn: sqlite3.Connection, task_id: str, slot: str,
+        previous_receipt_attempt: int, successor_attempt: int,
+    ) -> bool:
+        """Verify each missing attempt between this receipt tip and its successor."""
+        if successor_attempt <= previous_receipt_attempt:
+            return False
+        if successor_attempt == previous_receipt_attempt + 1:
+            return True
+        return all(
+            self._runner_attempt_successor_eligibility_locked(conn, task_id, slot, attempt) is not None
+            for attempt in range(previous_receipt_attempt + 1, successor_attempt)
+        )
+
+    def _guard_runner_task_continuation_locked(
+        self, conn: sqlite3.Connection, task_id: str,
+    ) -> None:
+        """Block successors until every earlier execution has verified successor eligibility."""
+        claims = conn.execute(
+            "SELECT grant_id, task_id, slot, attempt FROM runner_execution_claims WHERE task_id = ? ORDER BY attempt",
+            (task_id,),
+        ).fetchall()
+        for claim_row in claims:
+            states = self._runner_execution_states_locked(conn, claim_row["grant_id"])
+            state = states[-1]["state"]
+            if state == "COMPLETE":
+                continue
+            if self._runner_attempt_successor_eligibility_locked(
+                    conn, claim_row["task_id"], claim_row["slot"], int(claim_row["attempt"])):
+                continue
+            raise StoreError(
+                f"prior runner execution {claim_row['grant_id']!r} is {state} and blocks continuation",
+                kind="lifecycle",
+            )
+
+    def completed_runner_execution_receipt(self, grant: dict) -> dict | None:
+        """Return an exact historical COMPLETE receipt without granting execution authority."""
+        from .execution_grant import validate_execution_grant
+        valid = validate_execution_grant(grant)
+        digest = hashlib.sha256(canonical_bytes(valid)).hexdigest()
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            self._verify_supervisor_records(conn)
+            row = conn.execute(
+                "SELECT * FROM runner_execution_claims WHERE grant_id=?", (valid["grant_id"],),
+            ).fetchone()
+            if row is None or row["payload_sha256"] != digest:
+                return None
+            try:
+                stored = json.loads(row["grant_body"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("stored runner grant is malformed", kind="integrity") from exc
+            if canonical_bytes(stored) != canonical_bytes(valid):
+                return None
+            states = self._runner_execution_states_locked(conn, valid["grant_id"])
+            terminal = states[-1]
+            if terminal["state"] != "COMPLETE":
+                return None
+            self._maybe_validate_delegated_execution_grant_locked(
+                conn, grant=valid, proof=None,
+                generation=valid["service_generation"], current=False,
+            )
+            receipt = terminal.get("receipt")
+            if not isinstance(receipt, dict):
+                raise StoreError("completed runner receipt is missing", kind="integrity")
+            return dict(receipt)
+
+    def claim_runner_execution(
+        self, grant: dict, *, active_service_generation: str,
+        dispatch_issuance_proof: Any = None,
+        authority_guard: Callable[[], bool] | None = None,
+    ) -> dict | None:
+        """Atomically recheck current Store authority and claim a grant as PENDING.
+
+        The authenticated Supervisor IPC is the authorization boundary for this
+        method. Its caller must provide the generation obtained from the trusted
+        lifecycle fence, not from the runner request. This method does not verify
+        Ed25519; the daemon verifies the signature and the Store independently
+        rechecks every current task/lease/preflight/budget fence before child
+        creation.
+
+        Returns None for a newly claimed run, or the exact stored receipt for a
+        duplicate COMPLETE grant. PENDING, EXECUTION_RESERVED, INDETERMINATE,
+        and RECONCILED grants are never replayed or reclaimed.
+        """
+        if not self.reconciliation_complete:
+            raise StoreError("startup reconciliation must complete before runner admission", kind="integrity")
+        if not self.verify_event_chain():
+            raise StoreError("event chain failed verification before runner admission", kind="integrity")
+        from .execution_grant import MAX_EXECUTION_DEADLINE_SEC, validate_execution_grant
+
+        try:
+            valid = validate_execution_grant(grant)
+        except Exception as exc:
+            raise StoreError("execution grant is malformed", kind="authorization") from exc
+        _need_str(active_service_generation, "active_service_generation")
+        if valid["service_generation"] != active_service_generation:
+            raise StoreError("execution grant belongs to a stale service generation", kind="authorization")
+        grant_bytes = canonical_bytes(valid)
+        grant_digest = hashlib.sha256(grant_bytes).hexdigest()
+        with self._tx() as conn:
+            self._verify_event_chain_locked(conn)
+            self._verify_supervisor_records(conn)
+            now = self._now()
+            collision = conn.execute(
+                "SELECT * FROM runner_execution_claims WHERE grant_id = ? OR invocation_id = ? "
+                "OR request_id = ? OR (task_id = ? AND slot = ? AND attempt = ?)",
+                (valid["grant_id"], valid["invocation_id"], valid["request_id"],
+                 valid["task_id"], valid["slot"], valid["attempt"]),
+            ).fetchone()
+            if collision is not None:
+                identity_matches = (
+                    collision["grant_id"] == valid["grant_id"]
+                    and collision["invocation_id"] == valid["invocation_id"]
+                    and collision["request_id"] == valid["request_id"]
+                    and collision["task_id"] == valid["task_id"]
+                    and collision["runner_id"] == valid["runner_id"]
+                    and collision["run_id"] == valid["run_id"]
+                    and collision["slot"] == valid["slot"]
+                    and int(collision["attempt"]) == valid["attempt"]
+                    and collision["payload_sha256"] == grant_digest
+                )
+                if not identity_matches:
+                    raise StoreError("execution grant, invocation, request, or attempt was already claimed", kind="duplicate")
+                states = self._runner_execution_states_locked(conn, valid["grant_id"])
+                terminal = states[-1]
+                self._maybe_validate_delegated_execution_grant_locked(
+                    conn, grant=valid, proof=dispatch_issuance_proof,
+                    generation=active_service_generation,
+                    current=terminal["state"] != "COMPLETE",
+                    authority_guard=authority_guard,
+                )
+                if terminal["state"] == "COMPLETE":
+                    receipt = terminal.get("receipt")
+                    if not isinstance(receipt, dict):
+                        raise StoreError("completed runner receipt is missing", kind="integrity")
+                    return dict(receipt)
+                raise StoreError(f"execution grant is non-replayable ({terminal['state']})", kind="lifecycle")
+
+            self._maybe_validate_delegated_execution_grant_locked(
+                conn, grant=valid, proof=dispatch_issuance_proof,
+                generation=active_service_generation, current=True,
+                authority_guard=authority_guard,
+            )
+
+            if (valid["issued_at"] > now + 5.0 or valid["claim_expires_at"] <= now
+                    or valid["expires_at"] <= now):
+                raise StoreError("execution grant claim window or run deadline expired", kind="authorization")
+
+            task = self._task_row(conn, valid["task_id"])
+            self._guard_runner_task_continuation_locked(conn, valid["task_id"])
+            story = self._story_row(conn, task["story_id"])
+            if (int(story["epoch"]) != valid["epoch"] or story["state"] != "OWNED"
+                    or story["owner"] is None or story["owner_expires_at"] is None
+                    or float(story["owner_expires_at"]) <= now):
+                raise StoreError("execution grant has no current live story owner/epoch", kind="epoch")
+            manifest = json.loads(task["manifest"])
+            if (task["manifest_sha256"] != valid["manifest_sha256"]
+                    or manifest_sha256(manifest) != valid["manifest_sha256"]):
+                raise StoreError("execution grant manifest is no longer registered", kind="manifest")
+            declared_slots = {
+                entry["slot"]: entry["receipt_type"] for entry in manifest["required_receipts"]
+            }
+            if declared_slots.get(valid["slot"]) != "TestRun":
+                raise StoreError("execution grant slot is not a manifest TestRun slot", kind="slot")
+            if (int(manifest["timeout_sec"]) > MAX_EXECUTION_DEADLINE_SEC
+                    or valid["execution_deadline_sec"] != int(manifest["timeout_sec"])):
+                raise StoreError("execution grant does not cover the full manifest run window", kind="authorization")
+            lease = conn.execute(
+                "SELECT epoch, status, expires_at, worker_id FROM leases WHERE task_id = ? AND attempt = ?",
+                (valid["task_id"], valid["attempt"]),
+            ).fetchone()
+            if (lease is None or int(lease["epoch"]) != valid["epoch"]
+                    or lease["status"] != LEASE_LIVE or float(lease["expires_at"]) <= now
+                    or lease["worker_id"] != valid["runner_id"]):
+                raise StoreError("execution grant has no current live lease", kind="lease")
+            authority_expires_at = min(
+                float(story["owner_expires_at"]), float(lease["expires_at"]),
+            )
+            if authority_expires_at - now < (
+                    valid["execution_deadline_sec"] + RUNNER_AUTHORITY_COMPLETION_MARGIN_SEC):
+                raise StoreError("execution grant exceeds the remaining owner/lease authority window", kind="authorization")
+            last_receipt = conn.execute(
+                "SELECT attempt FROM receipts WHERE task_id = ? AND slot = ? ORDER BY attempt DESC LIMIT 1",
+                (valid["task_id"], valid["slot"]),
+            ).fetchone()
+            previous_receipt_attempt = 0 if last_receipt is None else int(last_receipt["attempt"])
+            if not self._runner_receipt_gap_is_eligible_locked(
+                    conn, valid["task_id"], valid["slot"], previous_receipt_attempt, valid["attempt"]):
+                raise StoreError("receipt attempt gap lacks a verified successor disposition", kind="chain")
+            if conn.execute(
+                "SELECT 1 FROM receipts WHERE task_id = ? AND slot = ? AND attempt = ?",
+                (valid["task_id"], valid["slot"], valid["attempt"]),
+            ).fetchone() is not None:
+                raise StoreError("execution attempt already has a receipt", kind="duplicate")
+            if conn.execute(
+                "SELECT 1 FROM supervisor_probes WHERE run_id = ?", (valid["run_id"],)
+            ).fetchone() is None:
+                raise StoreError("execution grant has no consumed run-bound preflight", kind="probe")
+            blocked = self._budget_block_locked(conn, valid["task_id"])
+            if blocked is not None:
+                raise StoreError(blocked, kind="budget")
+            try:
+                conn.execute(
+                    "INSERT INTO runner_execution_claims "
+                    "(grant_id, invocation_id, request_id, task_id, slot, runner_id, attempt, epoch, run_id, "
+                    "service_generation, manifest_sha256, payload_sha256, grant_body, claimed_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (valid["grant_id"], valid["invocation_id"], valid["request_id"],
+                     valid["task_id"], valid["slot"], valid["runner_id"],
+                     valid["attempt"], valid["epoch"], valid["run_id"],
+                     valid["service_generation"], valid["manifest_sha256"], grant_digest,
+                     grant_bytes.decode("utf-8"), now),
+                )
+            except sqlite3.IntegrityError as exc:
+                raise StoreError("execution grant identity was concurrently claimed", kind="duplicate") from exc
+            event = {
+                "event": "RUNNER_EXECUTION_PENDING", "state": "PENDING",
+                "grant_id": valid["grant_id"], "invocation_id": valid["invocation_id"],
+                "request_id": valid["request_id"], "task_id": valid["task_id"],
+                "slot": valid["slot"], "runner_id": valid["runner_id"], "attempt": valid["attempt"],
+                "epoch": valid["epoch"], "service_generation": valid["service_generation"],
+                "run_id": valid["run_id"],
+                "payload_sha256": grant_digest,
+            }
+            conn.execute(
+                "INSERT INTO runner_execution_events(grant_id, state, payload, created_at) "
+                "VALUES (?, 'PENDING', ?, ?)",
+                (valid["grant_id"], canonical_bytes(event).decode("utf-8"), now),
+            )
+            self._record_event_locked(conn, valid["grant_id"], "supervisor", "NOTE", event)
+        return None
+
+    def mark_runner_prespawn_no_execution(
+        self, grant: dict, *, active_service_generation: str, reason_code: str,
+    ) -> dict:
+        """Terminalize an exact PENDING claim after the runner proves no spawn occurred.
+
+        This is only called by the authenticated runner daemon. Child creation is
+        impossible before EXECUTION_RESERVED, so a still-PENDING claim is a
+        conclusive pre-spawn state. The transaction rejects any concurrent or
+        previously committed reservation.
+        """
+        from .execution_grant import validate_execution_grant
+
+        try:
+            valid = validate_execution_grant(grant)
+        except Exception as exc:
+            raise StoreError("execution grant is malformed", kind="authorization") from exc
+        _need_str(active_service_generation, "active_service_generation")
+        if valid["service_generation"] != active_service_generation:
+            raise StoreError("execution claim belongs to a different service generation", kind="authorization")
+        if (not isinstance(reason_code, str)
+                or reason_code not in RUNNER_PRESPAWN_REASON_CODES):
+            raise StoreError("runner pre-spawn reason code is not recognized", kind="argument")
+        if not self.reconciliation_complete or not self.verify_event_chain():
+            raise StoreError("verified Store history is required for pre-spawn terminalization", kind="integrity")
+        digest = hashlib.sha256(canonical_bytes(valid)).hexdigest()
+        with self._tx() as conn:
+            claim = conn.execute(
+                "SELECT * FROM runner_execution_claims WHERE grant_id = ?", (valid["grant_id"],)
+            ).fetchone()
+            if (claim is None or claim["payload_sha256"] != digest
+                    or claim["service_generation"] != active_service_generation
+                    or claim["request_id"] != valid["request_id"]
+                    or claim["invocation_id"] != valid["invocation_id"]
+                    or claim["task_id"] != valid["task_id"]
+                    or claim["slot"] != valid["slot"]
+                    or int(claim["attempt"]) != valid["attempt"]
+                    or int(claim["epoch"]) != valid["epoch"]
+                    or claim["run_id"] != valid["run_id"]):
+                raise StoreError("pre-spawn terminalization does not match the exact claim", kind="integrity")
+            states = self._runner_execution_states_locked(conn, valid["grant_id"])
+            if len(states) != 1 or states[0]["state"] != "PENDING":
+                raise StoreError("claim is no longer an unreserved PENDING execution", kind="lifecycle")
+            event = {
+                "event": "RUNNER_EXECUTION_INDETERMINATE", "state": "INDETERMINATE",
+                "grant_id": claim["grant_id"], "payload_sha256": claim["payload_sha256"],
+                "reason": RUNNER_PRESPAWN_NO_EXECUTION_REASON,
+                "terminal_disposition": "NO_EXECUTION",
+                "reason_code": reason_code, "predecessor_state": "PENDING",
+                "request_id": claim["request_id"], "invocation_id": claim["invocation_id"],
+                "task_id": claim["task_id"], "slot": claim["slot"],
+                "runner_id": claim["runner_id"], "attempt": int(claim["attempt"]),
+                "epoch": int(claim["epoch"]), "run_id": claim["run_id"],
+                "service_generation": claim["service_generation"],
+            }
+            conn.execute(
+                "INSERT INTO runner_execution_events(grant_id, state, payload, created_at) "
+                "VALUES (?, 'INDETERMINATE', ?, ?)",
+                (valid["grant_id"], canonical_bytes(event).decode("utf-8"), self._now()),
+            )
+            self._record_event_locked(conn, valid["grant_id"], "supervisor", "NOTE", event)
+        return {
+            "state": "NO_EXECUTION", "grant_id": valid["grant_id"],
+            "payload_sha256": digest, "service_generation": active_service_generation,
+        }
+
+    def verify_pending_runner_execution(
+        self, grant: dict, *, active_service_generation: str,
+    ) -> bool:
+        """Read-only signer-side check that a grant is pending/reserved and current."""
+        from .execution_grant import validate_execution_grant
+
+        try:
+            valid = validate_execution_grant(grant)
+        except Exception as exc:
+            raise StoreError("execution grant is malformed", kind="authorization") from exc
+        _need_str(active_service_generation, "active_service_generation")
+        if not self.reconciliation_complete or not self.verify_event_chain():
+            raise StoreError("verified Store history is required for signer admission", kind="integrity")
+        now = self._now()
+        with self._read_tx() as conn:
+            row = conn.execute(
+                "SELECT * FROM runner_execution_claims WHERE grant_id = ?", (valid["grant_id"],)
+            ).fetchone()
+            if row is None:
+                return False
+            digest = hashlib.sha256(canonical_bytes(valid)).hexdigest()
+            if (row["payload_sha256"] != digest
+                    or row["service_generation"] != active_service_generation
+                    or valid["service_generation"] != active_service_generation
+                    or valid["expires_at"] <= now
+                    or float(row["claimed_at"]) > float(valid["claim_expires_at"])
+                    or valid["issued_at"] > now + 5.0):
+                return False
+            states = self._runner_execution_states_locked(conn, valid["grant_id"])
+            if states[-1]["state"] not in {"PENDING", "EXECUTION_RESERVED"}:
+                return False
+            task = self._task_row(conn, valid["task_id"])
+            story = self._story_row(conn, task["story_id"])
+            lease = conn.execute(
+                "SELECT epoch, status, expires_at, worker_id FROM leases "
+                "WHERE task_id = ? AND attempt = ?",
+                (valid["task_id"], valid["attempt"]),
+            ).fetchone()
+            return not (
+                int(story["epoch"]) != valid["epoch"] or story["state"] != "OWNED"
+                or story["owner"] is None or story["owner_expires_at"] is None
+                or float(story["owner_expires_at"]) <= now
+                or lease is None or int(lease["epoch"]) != valid["epoch"]
+                or lease["status"] != LEASE_LIVE or float(lease["expires_at"]) <= now
+                or lease["worker_id"] != valid["runner_id"]
+                or min(float(story["owner_expires_at"]), float(lease["expires_at"])) - now < (
+                    valid["execution_deadline_sec"] + RUNNER_AUTHORITY_COMPLETION_MARGIN_SEC
+                )
+                or self._budget_block_locked(conn, valid["task_id"]) is not None
+            )
+
+    def runner_execution_claim_status(
+        self, grant: dict, *, active_service_generation: str,
+    ) -> dict:
+        """Return state only for this exact grant under its original live generation."""
+        from .execution_grant import validate_execution_grant
+
+        try:
+            valid = validate_execution_grant(grant)
+        except Exception as exc:
+            raise StoreError("execution grant is malformed", kind="authorization") from exc
+        _need_str(active_service_generation, "active_service_generation")
+        if valid["service_generation"] != active_service_generation:
+            raise StoreError("execution claim belongs to a different service generation", kind="authorization")
+        if not self.reconciliation_complete or not self.verify_event_chain():
+            raise StoreError("verified Store history is required for claim status", kind="integrity")
+        digest = hashlib.sha256(canonical_bytes(valid)).hexdigest()
+        with self._read_tx() as conn:
+            row = conn.execute(
+                "SELECT * FROM runner_execution_claims WHERE grant_id = ?", (valid["grant_id"],)
+            ).fetchone()
+            if row is None:
+                return {"state": "NOT_FOUND", "service_generation": active_service_generation}
+            if (row["payload_sha256"] != digest
+                    or row["service_generation"] != active_service_generation
+                    or row["invocation_id"] != valid["invocation_id"]
+                    or row["request_id"] != valid["request_id"]
+                    or row["task_id"] != valid["task_id"]
+                    or row["slot"] != valid["slot"]
+                    or int(row["attempt"]) != valid["attempt"]):
+                raise StoreError("execution claim status does not match the exact grant", kind="integrity")
+            states = self._runner_execution_states_locked(conn, valid["grant_id"])
+            if states[-1]["state"] == "PENDING":
+                now = self._now()
+                if (valid["expires_at"] <= now
+                        or now + valid["execution_deadline_sec"] > valid["expires_at"]):
+                    raise StoreError(
+                        "pending execution claim is no longer recoverable within its signed run window",
+                        kind="authorization",
+                    )
+            result = {"state": states[-1]["state"], "service_generation": row["service_generation"]}
+            if (states[-1]["state"] == "INDETERMINATE"
+                    and states[-1].get("reason") == RUNNER_PRESPAWN_NO_EXECUTION_REASON):
+                result["reason_code"] = states[-1]["reason_code"]
+            if states[-1]["state"] == "COMPLETE":
+                receipt = states[-1].get("receipt")
+                if not isinstance(receipt, dict):
+                    raise StoreError("completed runner receipt is missing", kind="integrity")
+                result["receipt"] = dict(receipt)
+            return result
+
+    def reserve_runner_execution(
+        self, grant: dict, *, active_service_generation: str,
+        dispatch_issuance_proof: Any = None,
+        authority_guard: Callable[[], bool] | None = None,
+    ) -> dict:
+        """Atomically reserve the one permitted launch after rechecking authority."""
+        from .execution_grant import MAX_EXECUTION_DEADLINE_SEC, validate_execution_grant
+
+        try:
+            valid = validate_execution_grant(grant)
+        except Exception as exc:
+            raise StoreError("execution grant is malformed", kind="authorization") from exc
+        _need_str(active_service_generation, "active_service_generation")
+        if valid["service_generation"] != active_service_generation:
+            raise StoreError("execution grant belongs to a stale service generation", kind="authorization")
+        if not self.reconciliation_complete or not self.verify_event_chain():
+            raise StoreError("verified Store history is required for execution reservation", kind="integrity")
+        digest = hashlib.sha256(canonical_bytes(valid)).hexdigest()
+        with self._tx() as conn:
+            self._verify_event_chain_locked(conn)
+            self._verify_supervisor_records(conn)
+            now = self._now()
+            row = conn.execute(
+                "SELECT * FROM runner_execution_claims WHERE grant_id = ?", (valid["grant_id"],)
+            ).fetchone()
+            if (row is None or row["payload_sha256"] != digest
+                    or row["service_generation"] != active_service_generation
+                    or row["invocation_id"] != valid["invocation_id"]
+                    or row["request_id"] != valid["request_id"]
+                    or row["task_id"] != valid["task_id"]
+                    or row["slot"] != valid["slot"]
+                    or int(row["attempt"]) != valid["attempt"]):
+                raise StoreError("execution reservation does not match the exact claimed grant", kind="integrity")
+            states = self._runner_execution_states_locked(conn, valid["grant_id"])
+            if len(states) != 1 or states[0]["state"] != "PENDING":
+                raise StoreError("execution grant is not an unreserved PENDING claim", kind="lifecycle")
+            self._maybe_validate_delegated_execution_grant_locked(
+                conn, grant=valid, proof=dispatch_issuance_proof,
+                generation=active_service_generation, current=True,
+                authority_guard=authority_guard,
+            )
+            if (valid["issued_at"] > now + 5.0 or valid["expires_at"] <= now
+                    or now + valid["execution_deadline_sec"] > valid["expires_at"]
+                    or valid["execution_deadline_sec"] > MAX_EXECUTION_DEADLINE_SEC):
+                raise StoreError("execution grant lacks its full bounded run window at reservation", kind="authorization")
+            task = self._task_row(conn, valid["task_id"])
+            story = self._story_row(conn, task["story_id"])
+            if (task["manifest_sha256"] != valid["manifest_sha256"]
+                    or manifest_sha256(json.loads(task["manifest"])) != valid["manifest_sha256"]):
+                raise StoreError("execution grant manifest is no longer registered", kind="manifest")
+            manifest = json.loads(task["manifest"])
+            declared_slots = {
+                entry["slot"]: entry["receipt_type"] for entry in manifest["required_receipts"]
+            }
+            if (declared_slots.get(valid["slot"]) != "TestRun"
+                    or int(manifest["timeout_sec"]) > MAX_EXECUTION_DEADLINE_SEC
+                    or valid["execution_deadline_sec"] != int(manifest["timeout_sec"])):
+                raise StoreError("execution grant no longer matches its manifest run contract", kind="authorization")
+            if (int(story["epoch"]) != valid["epoch"] or story["state"] != "OWNED"
+                    or story["owner"] is None or story["owner_expires_at"] is None
+                    or float(story["owner_expires_at"]) <= now):
+                raise StoreError("execution grant has no current live story owner/epoch", kind="epoch")
+            lease = conn.execute(
+                "SELECT epoch, status, expires_at, worker_id FROM leases "
+                "WHERE task_id = ? AND attempt = ?", (valid["task_id"], valid["attempt"]),
+            ).fetchone()
+            if (lease is None or int(lease["epoch"]) != valid["epoch"]
+                    or lease["status"] != LEASE_LIVE or float(lease["expires_at"]) <= now
+                    or lease["worker_id"] != valid["runner_id"]):
+                raise StoreError("execution grant has no current live lease", kind="lease")
+            authority_expires_at = min(
+                float(story["owner_expires_at"]), float(lease["expires_at"]),
+            )
+            if authority_expires_at - now < (
+                    valid["execution_deadline_sec"] + RUNNER_AUTHORITY_COMPLETION_MARGIN_SEC):
+                raise StoreError("execution reservation exceeds the remaining owner/lease authority window", kind="authorization")
+            last_receipt = conn.execute(
+                "SELECT attempt FROM receipts WHERE task_id = ? AND slot = ? ORDER BY attempt DESC LIMIT 1",
+                (valid["task_id"], valid["slot"]),
+            ).fetchone()
+            previous_receipt_attempt = 0 if last_receipt is None else int(last_receipt["attempt"])
+            if not self._runner_receipt_gap_is_eligible_locked(
+                    conn, valid["task_id"], valid["slot"], previous_receipt_attempt, valid["attempt"]):
+                raise StoreError("receipt attempt gap lacks a verified successor disposition", kind="chain")
+            if self._budget_block_locked(conn, valid["task_id"]) is not None:
+                raise StoreError("execution budget is blocked before launch reservation", kind="budget")
+            event = {
+                "event": "RUNNER_EXECUTION_RESERVED", "state": "EXECUTION_RESERVED",
+                "grant_id": valid["grant_id"], "payload_sha256": digest,
+                "invocation_id": valid["invocation_id"], "request_id": valid["request_id"],
+                "service_generation": active_service_generation,
+            }
+            conn.execute(
+                "INSERT INTO runner_execution_events(grant_id, state, payload, created_at) "
+                "VALUES (?, 'EXECUTION_RESERVED', ?, ?)",
+                (valid["grant_id"], canonical_bytes(event).decode("utf-8"), now),
+            )
+            self._record_event_locked(conn, valid["grant_id"], "supervisor", "NOTE", event)
+        return {
+            "state": "EXECUTION_RESERVED", "grant_id": valid["grant_id"],
+            "payload_sha256": digest, "service_generation": active_service_generation,
+        }
+
+    def complete_runner_execution(
+        self, grant: dict, receipt: dict, *, active_service_generation: str,
+    ) -> None:
+        """Persist receipt only if the lease, epoch, budget, and generation remain current."""
+        from .execution_grant import validate_execution_grant
+
+        try:
+            valid = validate_execution_grant(grant)
+            valid_receipt = validate_receipt(receipt)
+        except Exception as exc:
+            raise StoreError("runner execution completion is malformed", kind="validation") from exc
+        if not self.reconciliation_complete or not self.verify_event_chain():
+            raise StoreError("verified Store history is required for runner completion", kind="integrity")
+        _need_str(active_service_generation, "active_service_generation")
+        digest = hashlib.sha256(canonical_bytes(valid)).hexdigest()
+        authority_changed = False
+        with self._tx() as conn:
+            row = conn.execute(
+                "SELECT * FROM runner_execution_claims WHERE grant_id = ?", (valid["grant_id"],)
+            ).fetchone()
+            if row is None or row["payload_sha256"] != digest:
+                raise StoreError("runner execution completion does not match its exact claim", kind="integrity")
+            states = self._runner_execution_states_locked(conn, valid["grant_id"])
+            if (len(states) != 2 or states[0]["state"] != "PENDING"
+                    or states[1]["state"] != "EXECUTION_RESERVED"):
+                raise StoreError("runner execution claim is not durably reserved", kind="lifecycle")
+            if (valid_receipt["task_id"] != valid["task_id"]
+                    or valid_receipt["manifest_sha256"] != valid["manifest_sha256"]
+                    or valid_receipt["slot"] != valid["slot"]
+                    or valid_receipt["attempt"] != valid["attempt"]
+                    or valid_receipt["epoch"] != valid["epoch"]
+                    or valid_receipt["invocation_id"] != valid["invocation_id"]
+                    or valid_receipt["runner_id"] != valid["runner_id"]
+                    or valid_receipt["resolved_model"] != valid["resolved_model"]
+                    or valid_receipt["runner_attestation"]["request"]["request_id"] != valid["request_id"]):
+                raise StoreError("runner receipt differs from its execution grant", kind="integrity")
+            now = self._now()
+            task = self._task_row(conn, valid["task_id"])
+            story = self._story_row(conn, task["story_id"])
+            lease = conn.execute(
+                "SELECT epoch, status, expires_at, worker_id FROM leases "
+                "WHERE task_id = ? AND attempt = ?",
+                (valid["task_id"], valid["attempt"]),
+            ).fetchone()
+            authority_changed = (
+                valid["service_generation"] != active_service_generation
+                or int(story["epoch"]) != valid["epoch"] or story["state"] != "OWNED"
+                or story["owner"] is None or story["owner_expires_at"] is None
+                or float(story["owner_expires_at"]) <= now
+                or lease is None or int(lease["epoch"]) != valid["epoch"]
+                or lease["status"] != LEASE_LIVE or float(lease["expires_at"]) <= now
+                or lease["worker_id"] != valid["runner_id"]
+                or self._budget_block_locked(conn, valid["task_id"]) is not None
+            )
+            if authority_changed:
+                event = {
+                    "event": "RUNNER_EXECUTION_INDETERMINATE", "state": "INDETERMINATE",
+                    "grant_id": valid["grant_id"], "payload_sha256": digest,
+                    "reason": "AUTHORITY_CHANGED_BEFORE_COMPLETION",
+                    "predecessor_state": "EXECUTION_RESERVED",
+                    "observed_service_generation": active_service_generation,
+                }
+                state = "INDETERMINATE"
+            else:
+                # Persistent runner TestRun receipts must enter the same
+                # receipt/hash chain consumed by gates and retries. The v2
+                # TestRun branch validates the embedded runner attestation
+                # shape here; cryptographic trust is checked by the gate.
+                self._append_locked(
+                    conn, valid_receipt, str(task["story_id"]), None, supervisor=False,
+                )
+                event = {
+                    "event": "RUNNER_EXECUTION_COMPLETE", "state": "COMPLETE",
+                    "grant_id": valid["grant_id"], "payload_sha256": digest,
+                    "receipt": valid_receipt,
+                    "receipt_sha256": receipt_sha256(valid_receipt),
+                }
+                state = "COMPLETE"
+            conn.execute(
+                "INSERT INTO runner_execution_events(grant_id, state, payload, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (valid["grant_id"], state, canonical_bytes(event).decode("utf-8"), now),
+            )
+            self._record_event_locked(conn, valid["grant_id"], "supervisor", "NOTE", event)
+        if authority_changed:
+            raise StoreError("execution authority changed before completion; no receipt was returned", kind="authorization")
+
+    def mark_pending_runner_executions_indeterminate(self, *, current_service_generation: str) -> int:
+        """Terminalize predecessor PENDING/reserved grants without reclaiming them."""
+        if not self.reconciliation_complete:
+            raise StoreError("startup reconciliation must complete before runner recovery", kind="integrity")
+        if not self.verify_event_chain():
+            raise StoreError("event chain failed verification during runner recovery", kind="integrity")
+        _need_str(current_service_generation, "current_service_generation")
+        marked = 0
+        with self._tx() as conn:
+            rows = conn.execute(
+                "SELECT claim.* FROM runner_execution_claims claim "
+                "WHERE NOT EXISTS (SELECT 1 FROM runner_execution_events terminal "
+                "WHERE terminal.grant_id = claim.grant_id AND terminal.state IN "
+                "('COMPLETE', 'INDETERMINATE', 'RECONCILED')) "
+                "AND claim.service_generation != ? ORDER BY claim.grant_id",
+                (current_service_generation,),
+            ).fetchall()
+            now = self._now()
+            for row in rows:
+                states = self._runner_execution_states_locked(conn, row["grant_id"])
+                predecessor_state = states[-1]["state"]
+                if predecessor_state not in {"PENDING", "EXECUTION_RESERVED"}:
+                    raise StoreError("predecessor runner claim has an invalid recovery state", kind="integrity")
+                event = {
+                    "event": "RUNNER_EXECUTION_INDETERMINATE", "state": "INDETERMINATE",
+                    "grant_id": row["grant_id"], "payload_sha256": row["payload_sha256"],
+                    "reason": "PREDECESSOR_GENERATION_STOPPED",
+                    "predecessor_state": predecessor_state,
+                    "recovery_service_generation": current_service_generation,
+                    "request_id": row["request_id"], "invocation_id": row["invocation_id"],
+                    "task_id": row["task_id"], "slot": row["slot"],
+                    "runner_id": row["runner_id"], "attempt": int(row["attempt"]),
+                    "epoch": int(row["epoch"]), "run_id": row["run_id"],
+                    "service_generation": row["service_generation"],
+                }
+                if predecessor_state == "PENDING":
+                    event["terminal_disposition"] = "NO_EXECUTION"
+                conn.execute(
+                    "INSERT INTO runner_execution_events(grant_id, state, payload, created_at) "
+                    "VALUES (?, 'INDETERMINATE', ?, ?)",
+                    (row["grant_id"], canonical_bytes(event).decode("utf-8"), now),
+                )
+                self._record_event_locked(conn, row["grant_id"], "supervisor", "NOTE", event)
+                marked += 1
+        return marked
+
+    def reconcile_runner_execution(self, resolution_record: dict) -> dict:
+        """Append an operator-attested resolution for one exact INDETERMINATE grant."""
+        key = self._execution_resolution_key
+        if key is None:
+            raise StoreError("trusted execution-resolution key is unavailable", kind="authorization")
+        if (not self.reconciliation_complete or not self.verify_event_chain()):
+            raise StoreError("verified Store history is required for execution reconciliation", kind="integrity")
+        if not isinstance(resolution_record, dict):
+            raise StoreError("execution resolution record must be an object", kind="authorization")
+        grant_id = resolution_record.get("grant_id")
+        _need_str(grant_id, "grant_id")
+        with self._tx() as conn:
+            self._verify_supervisor_records(conn)
+            claim = conn.execute(
+                "SELECT * FROM runner_execution_claims WHERE grant_id = ?", (grant_id,)
+            ).fetchone()
+            if claim is None:
+                raise StoreError("execution resolution names an unknown grant", kind="task")
+            states = self._runner_execution_states_locked(conn, grant_id)
+            if states[-1]["state"] != "INDETERMINATE":
+                raise StoreError("only an unresolved INDETERMINATE grant may be reconciled", kind="lifecycle")
+            predecessor_state = states[-1].get("predecessor_state")
+            event = {
+                "event": "RUNNER_EXECUTION_RECONCILED", "state": "RECONCILED",
+                "grant_id": grant_id, "payload_sha256": claim["payload_sha256"],
+                "predecessor_state": predecessor_state,
+                "resolution": dict(resolution_record),
+            }
+            if not _valid_runner_execution_resolution(event, claim, key, predecessor_state):
+                raise StoreError(
+                    "operator execution resolution signature or exact-grant binding is invalid",
+                    kind="authorization",
+                )
+            resolution_id = resolution_record["resolution_id"]
+            for row in conn.execute(
+                "SELECT payload FROM runner_execution_events WHERE state = 'RECONCILED'"
+            ).fetchall():
+                prior_event = json.loads(row["payload"])
+                prior_record = prior_event.get("resolution") if isinstance(prior_event, dict) else None
+                if isinstance(prior_record, dict) and prior_record.get("resolution_id") == resolution_id:
+                    raise StoreError("execution resolution id is already used", kind="duplicate")
+            now = self._now()
+            conn.execute(
+                "INSERT INTO runner_execution_events(grant_id, state, payload, created_at) "
+                "VALUES (?, 'RECONCILED', ?, ?)",
+                (grant_id, canonical_bytes(event).decode("utf-8"), now),
+            )
+            self._record_event_locked(conn, grant_id, "supervisor", "NOTE", event)
+        return {
+            "grant_id": grant_id, "state": "RECONCILED",
+            "outcome": resolution_record["outcome"],
+            "continuation_allowed": resolution_record["outcome"] in {
+                "NO_EXECUTION_PROVEN", "EFFECTS_RESOLVED",
+            },
+        }
 
     def execute_external_idempotent(
         self, operation_key: str, operation: str, payload: Any, effect: Callable[[], Any]
@@ -2401,6 +5871,50 @@ class Store:
                     "spec_sha256": spec_sha256, "probe_sha256": probe_sha256,
                 },
             )
+
+    def ensure_preflight_consumed(
+        self, run_id: str, nonce: str, spec_sha256: str, probe_sha256: str,
+    ) -> bool:
+        """Consume an exact verified run probe, allowing idempotent service restart only.
+
+        Returns True when this call appended the first consumption record and
+        False when the same immutable run/nonce/digest tuple was already stored.
+        A reused run ID or nonce with different evidence remains a hard failure.
+        """
+        if not self.reconciliation_complete or not self.verify_event_chain():
+            raise StoreError(
+                "verified Store history is required before preflight consumption",
+                kind="integrity",
+            )
+        for value, name in ((run_id, "run_id"), (nonce, "nonce")):
+            _need_str(value, name)
+        for value, name in ((spec_sha256, "spec_sha256"), (probe_sha256, "probe_sha256")):
+            if not isinstance(value, str) or len(value) != 64 or any(
+                char not in "0123456789abcdef" for char in value
+            ):
+                raise StoreError(f"{name}: must be a lowercase SHA-256 digest", kind="argument")
+        with self._tx() as conn:
+            existing = conn.execute(
+                "SELECT run_id, nonce, spec_sha256, probe_sha256 FROM supervisor_probes "
+                "WHERE run_id = ? OR nonce = ?", (run_id, nonce),
+            ).fetchall()
+            if existing:
+                if (len(existing) == 1 and existing[0]["run_id"] == run_id
+                        and existing[0]["nonce"] == nonce
+                        and existing[0]["spec_sha256"] == spec_sha256
+                        and existing[0]["probe_sha256"] == probe_sha256):
+                    return False
+                raise StoreError("preflight run id or nonce was already consumed", kind="duplicate")
+            conn.execute(
+                "INSERT INTO supervisor_probes(run_id, nonce, spec_sha256, probe_sha256) "
+                "VALUES (?, ?, ?, ?)", (run_id, nonce, spec_sha256, probe_sha256),
+            )
+            self._record_event_locked(
+                conn, run_id, "supervisor", "NOTE",
+                {"event": "PREFLIGHT_CONSUMED", "nonce": nonce,
+                 "spec_sha256": spec_sha256, "probe_sha256": probe_sha256},
+            )
+        return True
 
     # --------------------------------------------------------------- budget
 

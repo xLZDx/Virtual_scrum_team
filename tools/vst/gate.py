@@ -370,12 +370,18 @@ def _group_by_slot(
     return grouped, supervisor
 
 
-def _chain_intact(slot: str, chain: list[dict], hard: list[str]) -> bool:
+def _chain_intact(
+    slot: str, chain: list[dict], hard: list[str],
+    verified_successor_attempts: set[int] | None = None,
+) -> bool:
     attempts = [r["attempt"] for r in chain]
-    if attempts != list(range(1, len(chain) + 1)):
+    present = set(attempts)
+    skipped = set(range(1, max(attempts, default=0) + 1)) - present
+    if (len(present) != len(attempts)
+            or not skipped <= (verified_successor_attempts or set())):
         hard.append(
             f"attempt chain broken for slot {slot!r}: attempts {attempts} "
-            f"are not consecutive from 1"
+            "have an unproven gap"
         )
         return False
     for previous, current in zip(chain, chain[1:]):
@@ -619,6 +625,7 @@ def evaluate(
     parser_catalog: dict | None = None,
     signer_key: bytes | None = None,
     event_key: bytes | None = None,
+    verified_successor_attempts: dict[str, set[int]] | None = None,
 ) -> dict:
     """Compute the GateDecision for one task candidate. See module docstring.
 
@@ -633,6 +640,14 @@ def evaluate(
     fatal = False
     if parser_catalog is not None and parser_catalog != TRUSTED_PARSER_CATALOG:
         hard.append("parser_catalog must be the trusted built-in catalog")
+    if verified_successor_attempts is not None and (
+            not isinstance(verified_successor_attempts, dict)
+            or any(not isinstance(slot, str) or not isinstance(attempts, set)
+                   or any(not _is_int(attempt) or attempt < 1 for attempt in attempts)
+                   for slot, attempts in verified_successor_attempts.items())):
+        hard.append("verified_successor_attempts: malformed Store evidence")
+        fatal = True
+        verified_successor_attempts = None
 
     task_id = manifest.get("task_id") if isinstance(manifest, dict) else None
 
@@ -763,7 +778,11 @@ def evaluate(
                     f"history attempt at other head: {slot} attempt "
                     f"{earlier['attempt']}"
                 )
-        if not _chain_intact(slot, chain, hard):
+        verified_gaps = (
+            verified_successor_attempts.get(slot, set())
+            if isinstance(verified_successor_attempts, dict) else set()
+        )
+        if not _chain_intact(slot, chain, hard, verified_gaps):
             continue
         latest = chain[-1]
         if latest["candidate_head"] != current_head:
