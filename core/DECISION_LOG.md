@@ -1527,3 +1527,11 @@ e2e-runner observed an actual kernel pidfd matching peer credentials and a live 
 security review found no actionable regression. This concrete compatibility delta justifies
 refreshing the deployment artifact for S2-4; accepted issuer architecture is not reopened.
 Evidence and exact scope: docs/changes/0592-s2-runtime-peer-pidfd-compatibility.md.
+
+## 2026-10-30 — Pin actual stage inputs for the pidfd-compatible runtime (0593)
+
+Use the existing strict stage-only protocol for source a600774649527ff0b33eb81f4d431f8226119b2c.
+Exact source map and fresh target inventory/verified compiler are recorded in change0593.
+Commit these input bytes as required by the installer, then execute within its enforced
+freshness window; no relaxed digest, age, target-state or no-replace checks are permitted.
+This is an actual source compatibility update, not reopening accepted issuer architecture.
