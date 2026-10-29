@@ -14,6 +14,7 @@ import pytest
 from tools.vst import contracts
 from tools.vst.contracts import ContractError
 from tools.vst.runner_service import dispatch_manifest_run
+from tools.vst.root_dispatch_issuer import public_key_fingerprint
 from tools.vst.store import Store, StoreBusyError, StoreError
 from tools.vst.supervisor import Supervisor
 from tools.vst.supervisor_service import (
@@ -436,12 +437,14 @@ def test_pending_dispatch_barrier_survives_store_reopen(
             reopened.accept_dispatch_intent(
                 principal="Codex", instruction=keypair.sign(body),
                 service_generation="generation-after-restart",
+                key_fingerprint=public_key_fingerprint(keypair.public_key_path),
             )
         assert generation_mismatch.value.kind == "duplicate"
         with pytest.raises(StoreError) as raised:
             reopened.accept_dispatch_intent(
                 principal="Codex", instruction=keypair.sign({**body, "request_id": "c" * 32}),
                 service_generation=GENERATION,
+                key_fingerprint=public_key_fingerprint(keypair.public_key_path),
             )
         assert raised.value.kind == "lifecycle"
         with reopened._read_tx() as conn:
@@ -450,6 +453,7 @@ def test_pending_dispatch_barrier_survives_store_reopen(
         assert pending["request_id"] == body["request_id"]
         replay = reopened.accept_dispatch_intent(
             principal="Codex", instruction=keypair.sign(body), service_generation=GENERATION,
+            key_fingerprint=public_key_fingerprint(keypair.public_key_path),
         )
         assert replay["request_id"] == body["request_id"]
     finally:
