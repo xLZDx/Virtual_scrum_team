@@ -155,7 +155,10 @@ function makeHarness({ repo, prompt, capability = true, jobMutation = (job) => j
         },
       };
       job = jobMutation(job);
-      if (mutateAttachmentAfterSend) fs.writeFileSync(filePath, "changed after send", "utf8");
+      if (mutateAttachmentAfterSend) {
+        bytes[0] ^= 1;
+        fs.writeFileSync(filePath, bytes);
+      }
       return { ok: true, job };
     },
   };
@@ -283,7 +286,7 @@ test("AFAT-03/04: concurrent identical inputs have one durable send claim", asyn
 test("AFAT-07: local attachment changes after the send are detected before acceptance", async (t) => {
   const repo = makeRepo(t);
   const harness = makeHarness({ repo, prompt: promptFor(repo), mutateAttachmentAfterSend: true });
-  await withDebugDumpDisabled(() => assert.rejects(runAdapter(adapterArgs(repo), harness.adapterOptions), /attachment bytes do not match/));
+  await withDebugDumpDisabled(() => assert.rejects(runAdapter(adapterArgs(repo), harness.adapterOptions), /review attachment bytes do not match/));
   assert.equal(harness.sendCount, 1);
 });
 

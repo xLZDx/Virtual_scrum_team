@@ -1241,3 +1241,12 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Layer that caught it: actual E2E test run and same-process terminal observation.
 - Rule: preserve raw command bytes for prompt comparisons and always retain/poll the original process session ID; a partial stdout fragment or terminal PID observation without exit evidence is not a test result.
 - Fix status: E2E test-only correction is committed by this change; both exact designated tests still need complete reruns. Production source status is unchanged.
+
+## 2026-10-29 — Make tamper fixtures fail at the intended integrity layer (0570)
+
+- Kind: TEST FIX (the product rejected the mutated file at a stricter earlier guard than the test expected).
+- Facts: 34/35 functional cases passed at HEAD `7b12776365607a6d1daf17c0c5631820cb641ff9`; the post-send fixture changed file size, so the adapter rejected it before comparing the expected hash. The E2E suite passed 2/2 at that head. See change0570.
+- Root cause: the fixture changed two integrity properties (length and bytes) while asserting only the hash error.
+- Layer that caught it: exact focused functional run.
+- Rule: mutate only the property a test intends to falsify; assert the earliest permitted fail-closed result when deliberately changing multiple properties.
+- Fix status: the test now flips one byte at unchanged length. Both suites need a complete rerun at the new exact HEAD; no product-source change.

@@ -1507,3 +1507,12 @@ Decision: fix the E2E fixture only, preserve the product adapter unchanged, and 
 test-owner commands at a new exact committed HEAD before accepting any result. Evidence and
 scope are recorded in change0569; neither the initial E2E failure nor partial functional
 stdout is an adapter acceptance verdict.
+
+## 2026-10-29 — Refine the attachment tamper fixture to preserve file size (0570)
+
+At exact HEAD `7b12776365607a6d1daf17c0c5631820cb641ff9`, the E2E suite passed 2/2. The
+functional suite passed 34/35; the sole failure was its post-send tamper fixture changing
+file size while asserting a hash-mismatch message. The adapter correctly rejected the
+size change earlier. Decision: keep the source guard unchanged and mutate one byte while
+preserving fixture length so the test specifically exercises content-hash detection. Both
+designated suites must rerun at the new HEAD; see change0570.

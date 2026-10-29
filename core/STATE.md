@@ -678,3 +678,13 @@ two fixture defects; the functional process became terminal but its complete out
 code were lost. The E2E-only fix is recorded in change0569 and both test-owner commands
 must rerun at the new committed head. No adapter acceptance, formal PM-GPT approval,
 runtime/E5, push/PR/merge, or S2 closure is claimed. S3–S5 remain queued.
+
+## 2026-10-29 — S2 attachment focused-test checkpoint (0570)
+
+At HEAD `7b12776365607a6d1daf17c0c5631820cb641ff9`, the corrected E2E suite passed 2/2;
+the functional suite returned 34/35 because its tamper fixture changed file size while
+expecting a hash-specific message. The adapter correctly failed closed at the earlier size
+check. Change0570 makes the fixture mutate same-length bytes, without production changes.
+Both test-owner suites must rerun at the new exact HEAD. The older run with lost functional
+session output is not accepted. S2 remains phase8 and unapproved; no runtime/E5, restricted
+selectors, push/PR/merge, or S3 work is claimed.

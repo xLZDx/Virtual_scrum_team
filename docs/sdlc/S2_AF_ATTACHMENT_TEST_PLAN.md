@@ -3,12 +3,12 @@
 Sprint: 39b7cc253f5d
 
 State: adapter implementation is frozen at SHA-256
-`9cdb51192e8fcb037cedd8980cd819b35fbc76c02f076adcb0071f3d3ab1b54e`. The first E2E
-attempt at HEAD `00cd67b7a07d299081e8c3356de8465698c4de58` failed on test-harness defects
-(undefined fixture import and an omitted terminal LF); those test-only defects are corrected
-in change0569 and require rerun. The first functional command's process reached terminal,
-but its session output/exit code was lost; it is unverified and must be rerun. No result is
-accepted until both exact reruns complete and are recorded.
+`9cdb51192e8fcb037cedd8980cd819b35fbc76c02f076adcb0071f3d3ab1b54e`. At HEAD
+`7b12776365607a6d1daf17c0c5631820cb641ff9`, the E2E suite passed 2/2. The functional
+suite returned 34/35; its sole failure was an overly narrow test expectation: the adapter
+correctly rejected a post-send attachment size change before reaching hash comparison. A
+same-size byte-tamper fixture correction is recorded in change0570. Both suites require rerun at the
+new committed HEAD before the evidence is accepted.
 
 Source contract: `docs/sdlc/S2_AF_ATTACHMENT_REVIEW_CONTRACT.md`, SHA-256
 `4e4b97fc1eff2e1005c9a82eb9af768a9b493c80e71d18e16e6069eef81ca4ae`.
@@ -16,9 +16,9 @@ Source contract: `docs/sdlc/S2_AF_ATTACHMENT_REVIEW_CONTRACT.md`, SHA-256
 This plan defines falsifiable source-fixture coverage for the project-owned
 `tools/af_attachment_review.mjs` adapter. It does not authorize framework or PM Bridge
 changes, live AF requests, a new checkout, production staging, key/configuration changes,
-or service activation. The functional and E2E roles authored separate test files. Execution
-evidence remains incomplete as recorded above; do not infer a pass from a live-process
-observation or partial stdout.
+or service activation. The functional and E2E roles authored separate test files. The first
+functional run at the prior source head lost its session output; only the complete runs at
+the current committed head can satisfy acceptance.
 
 ## Boundaries and test layers
 
