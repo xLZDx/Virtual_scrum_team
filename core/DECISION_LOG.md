@@ -1406,3 +1406,12 @@ contracts; actual e2e-runner prepared exact historical candidate node IDs and pl
 limits. The original E1–E8/D1–D2 denominator is retained. Candidate counts are NOT_VERIFIED,
 new test code waits for the complete source freeze, and forbidden scenarios remain NOT_RUN.
 No test, collection, build, check, CI or runtime action was run by either planning assignment.
+
+## 2026-10-29 — Commit integrated default-off issuer source (change0557)
+
+Codex implemented I01's specialized issuance journal, frozen once-only signer, exact signed-grant
+association, immutable key classes and transaction-bound current-authority checks through runner
+claim/reservation. The worker's first checkpoint was partial; continuation filled the declared
+SRC-01/02/04 and class-binding gaps before this commit. No test, check, build, key or runtime action
+was executed. Preserve source-only status pending S2 delivery-tree assembly, the permitted final
+test phase and independent exact-source reviews. Real crash/kill scenarios remain NOT_RUN.

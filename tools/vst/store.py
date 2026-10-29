@@ -1059,7 +1059,10 @@ class Store:
             "request_id", "service_generation", "lease_id", "payload_digest",
             "manifest_digest", "instruction", "key_id",
         }
-        if (not isinstance(payload, dict) or set(payload) != required
+        delegated_fields = {"key_class", "key_fingerprint", "issuance_operation_key",
+                            "issuance_envelope_sha256"}
+        if (not isinstance(payload, dict) or frozenset(payload) not in {frozenset(required),
+                                                                        frozenset(required | delegated_fields)}
                 or payload.get("task_id") != task_id
                 or payload.get("principal") != actor
                 or not isinstance(actor, str) or not actor):
@@ -1086,6 +1089,17 @@ class Store:
             raise StoreError("stored dispatch instruction does not match event fields", kind="integrity")
         caller = {"principal": payload["principal"], "service_generation": payload["service_generation"],
                   "key_id": payload["key_id"], "instruction": instruction}
+        if "key_class" in payload:
+            if (payload["key_class"] != "DELEGATED_V1"
+                    or payload["issuance_envelope_sha256"] != hashlib.sha256(canonical_bytes(instruction)).hexdigest()
+                    or not isinstance(payload["issuance_operation_key"], str)
+                    or not isinstance(payload["key_fingerprint"], str)
+                    or len(payload["key_fingerprint"]) != 64):
+                raise StoreError("stored delegated dispatch binding is malformed", kind="integrity")
+            caller.update({"key_class": payload["key_class"],
+                           "key_fingerprint": payload["key_fingerprint"],
+                           "issuance_operation_key": payload["issuance_operation_key"],
+                           "issuance_envelope_sha256": payload["issuance_envelope_sha256"]})
         expected = hashlib.sha256(canonical_bytes(caller)).hexdigest()
         for field in ("payload_digest", "manifest_digest"):
             value = payload[field]
@@ -1096,8 +1110,158 @@ class Store:
             raise StoreError("stored dispatch intent canonical digest does not verify", kind="integrity")
         return payload
 
+    def _bind_dispatch_key_class_locked(self, conn: sqlite3.Connection, *, key_id: str,
+                                        key_class: str, purpose: str,
+                                        fingerprint: str) -> None:
+        from .dispatch_issuance import _SHA256, _ID
+        if (not isinstance(key_id, str) or not _ID.fullmatch(key_id)
+                or key_class not in {"LEGACY_V1", "DELEGATED_V1"}
+                or purpose != "VST_S2_DISPATCH_INSTRUCTION_V1"
+                or not isinstance(fingerprint, str) or not _SHA256.fullmatch(fingerprint)):
+            raise StoreError("dispatch key class binding is invalid", kind="authorization")
+        task_id = "dispatch-key-class:" + key_id
+        rows = conn.execute(
+            "SELECT actor, payload FROM events WHERE task_id=? AND kind='NOTE' ORDER BY seq", (task_id,),
+        ).fetchall()
+        if len(rows) > 1:
+            raise StoreError("dispatch key class has multiple immutable bindings", kind="integrity")
+        binding = {"event": "SUPERVISOR_DISPATCH_KEY_CLASS_BOUND", "key_id": key_id,
+                   "key_class": key_class, "purpose": purpose,
+                   "public_key_fingerprint": fingerprint}
+        if rows:
+            try:
+                prior = json.loads(rows[0]["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("dispatch key class binding is malformed", kind="integrity") from exc
+            if rows[0]["actor"] != "supervisor" or prior != binding:
+                raise StoreError("dispatch key class cannot be changed", kind="integrity")
+            return
+        self._record_event_locked(conn, task_id, "supervisor", "NOTE", binding)
+
+    def _require_dispatch_key_class_locked(self, conn: sqlite3.Connection, *, key_id: str,
+                                           key_class: str, purpose: str,
+                                           fingerprint: str) -> None:
+        task_id = "dispatch-key-class:" + key_id
+        rows = conn.execute(
+            "SELECT actor, payload FROM events WHERE task_id=? AND kind='NOTE' ORDER BY seq", (task_id,),
+        ).fetchall()
+        expected = {"event": "SUPERVISOR_DISPATCH_KEY_CLASS_BOUND", "key_id": key_id,
+                    "key_class": key_class, "purpose": purpose,
+                    "public_key_fingerprint": fingerprint}
+        if (len(rows) != 1 or rows[0]["actor"] != "supervisor"
+                or json.loads(rows[0]["payload"]) != expected):
+            raise StoreError("dispatch key class binding is absent or changed", kind="integrity")
+
+    def dispatch_key_class_binding(self, key_id: str) -> dict | None:
+        task_id = "dispatch-key-class:" + key_id
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            rows = conn.execute(
+                "SELECT actor, payload FROM events WHERE task_id=? AND kind='NOTE' ORDER BY seq",
+                (task_id,),
+            ).fetchall()
+            if not rows:
+                return None
+            if len(rows) != 1 or rows[0]["actor"] != "supervisor":
+                raise StoreError("dispatch key class has invalid journal multiplicity", kind="integrity")
+            try:
+                value = json.loads(rows[0]["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("dispatch key class journal is malformed", kind="integrity") from exc
+            if (not isinstance(value, dict) or value.get("event") != "SUPERVISOR_DISPATCH_KEY_CLASS_BOUND"
+                    or value.get("key_id") != key_id):
+                raise StoreError("dispatch key class journal identity is invalid", kind="integrity")
+            return value
+
+    def _validate_dispatch_current_locked(self, conn: sqlite3.Connection, *, principal: str,
+                                          task_id: str, slot: str, attempt: int, epoch: int,
+                                          run_id: str, now: float) -> tuple[sqlite3.Row, dict, sqlite3.Row]:
+        task = self._task_row(conn, task_id)
+        self._guard_runner_task_continuation_locked(conn, task_id)
+        manifest = validate_task_manifest(json.loads(task["manifest"]))
+        if manifest_sha256(manifest) != task["manifest_sha256"]:
+            raise StoreError("registered manifest digest is inconsistent", kind="integrity")
+        declared = {item["slot"]: item["receipt_type"] for item in manifest["required_receipts"]}
+        if declared.get(slot) != "TestRun":
+            raise StoreError("dispatch intent slot is not a manifest TestRun slot", kind="slot")
+        story = self._story_row(conn, task["story_id"])
+        if (story["state"] != "OWNED" or story["owner"] != principal
+                or int(story["epoch"]) != epoch or story["owner_expires_at"] is None
+                or float(story["owner_expires_at"]) <= now):
+            raise StoreError("authenticated principal does not hold the live task owner epoch", kind="epoch")
+        lease = conn.execute(
+            "SELECT lease_id, epoch, status, expires_at FROM leases WHERE task_id=? AND attempt=?",
+            (task_id, attempt),
+        ).fetchone()
+        if (lease is None or int(lease["epoch"]) != epoch or lease["status"] != LEASE_LIVE
+                or float(lease["expires_at"]) <= now):
+            raise StoreError("dispatch intent has no matching live lease", kind="lease")
+        if not self.reconciliation_complete:
+            raise StoreError("Store startup reconciliation is required for dispatch intent", kind="integrity")
+        if conn.execute("SELECT 1 FROM supervisor_probes WHERE run_id=?", (run_id,)).fetchone() is None:
+            raise StoreError("dispatch intent requires a consumed run-bound preflight", kind="probe")
+        last = conn.execute(
+            "SELECT attempt FROM receipts WHERE task_id=? AND slot=? ORDER BY attempt DESC LIMIT 1",
+            (task_id, slot),
+        ).fetchone()
+        expected = 1 if last is None else int(last["attempt"]) + 1
+        if (attempt != expected or not self._runner_receipt_gap_is_eligible_locked(
+                conn, task_id, slot, expected - 1, attempt)):
+            raise StoreError("dispatch intent attempt is not eligible for this receipt slot", kind="chain")
+        if conn.execute(
+            "SELECT 1 FROM receipts WHERE task_id=? AND slot=? AND attempt=?",
+            (task_id, slot, attempt),
+        ).fetchone() is not None:
+            raise StoreError("dispatch intent attempt already has a receipt", kind="duplicate")
+        blocked = self._budget_block_locked(conn, task_id)
+        if blocked is not None:
+            raise StoreError(blocked, kind="budget")
+        return task, manifest, lease
+
+    def _validate_dispatch_issuance_proof_locked(self, conn: sqlite3.Connection, *,
+                                                proof: Any, instruction: dict,
+                                                principal: str, service_generation: str) -> dict:
+        from .root_dispatch_issuer import is_verified_issuance_context
+        from .dispatch_issuance import canonical_sha256, validate_frozen_intent
+        if not is_verified_issuance_context(proof):
+            raise StoreError("delegated dispatch lacks a root-verified issuance context", kind="authorization")
+        intent = validate_frozen_intent(proof.intent)
+        handoff, policy = intent["handoff"], intent["policy"]
+        if (proof.envelope != instruction
+                or proof.fingerprint != intent["signer"]["public_key_fingerprint"]
+                or intent["signer"]["key_class"] != "DELEGATED_V1"
+                or intent["signer"]["purpose"] != "VST_S2_DISPATCH_INSTRUCTION_V1"
+                or policy["owner_principal"] != principal
+                or intent["service_generation"] != service_generation
+                or any(instruction[name] != intent["unsigned"][name] for name in intent["unsigned"])):
+            raise StoreError("delegated dispatch proof does not match exact current request", kind="authorization")
+        operation = conn.execute(
+            "SELECT operation_key, operation, payload_sha256, result FROM supervisor_operations WHERE operation_key=?",
+            (intent["operation_key"],),
+        ).fetchone()
+        if operation is None:
+            raise StoreError("delegated dispatch issuance row is missing", kind="integrity")
+        events = self._dispatch_issuance_records_locked(conn, intent["operation_key"])
+        self._verify_dispatch_issuance_structure(operation, events)
+        if (events[-1].get("event") != "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED"
+                or events[-1].get("envelope") != instruction
+                or canonical_sha256(intent) != canonical_sha256(events[0]["intent"])):
+            raise StoreError("delegated dispatch proof no longer matches durable issuance records", kind="integrity")
+        self._require_dispatch_key_class_locked(
+            conn, key_id=intent["signer"]["key_id"], key_class="DELEGATED_V1",
+            purpose=intent["signer"]["purpose"], fingerprint=proof.fingerprint,
+        )
+        expected = {"task_id": handoff["task_id"], "slot": handoff["slot"],
+                    "attempt": handoff["attempt"], "epoch": handoff["epoch"],
+                    "run_id": handoff["run_id"]}
+        if any(instruction[key] != value for key, value in expected.items()):
+            raise StoreError("delegated dispatch tuple differs from its authenticated handoff", kind="authorization")
+        return intent
+
     def accept_dispatch_intent(
         self, *, principal: str, instruction: dict, service_generation: str,
+        key_class: str = "LEGACY_V1", key_fingerprint: str | None = None,
+        issuance_proof: Any = None, authority_guard: Callable[[], bool] | None = None,
     ) -> dict:
         """Record only a signed-envelope intent already verified by root Supervisor."""
         from .dispatch_instruction import validate_dispatch_instruction
@@ -1116,10 +1280,21 @@ class Store:
             raise StoreError("request_id must be 32 lowercase hexadecimal characters", kind="argument")
         caller_payload = {"principal": principal, "service_generation": service_generation,
                           "key_id": instruction["key_id"], "instruction": instruction}
+        if key_class == "DELEGATED_V1":
+            if issuance_proof is None:
+                raise StoreError("delegated dispatch requires verified issuance provenance", kind="authorization")
+            caller_payload.update({
+                "key_class": "DELEGATED_V1", "key_fingerprint": key_fingerprint,
+                "issuance_operation_key": issuance_proof.intent["operation_key"],
+                "issuance_envelope_sha256": hashlib.sha256(canonical_bytes(instruction)).hexdigest(),
+            })
+        elif key_class != "LEGACY_V1":
+            raise StoreError("dispatch key class is unknown", kind="authorization")
         payload_digest = hashlib.sha256(canonical_bytes(caller_payload)).hexdigest()
         operation_key = f"dispatch-intent:{request_id}"
         with self._tx() as conn:
             self._verify_control_history_locked(conn)
+            self._verify_supervisor_records(conn)
             outcome_state, pending = self._dispatch_outcome_state_locked(conn)
             if outcome_state == "LEGACY_UNRESOLVED":
                 raise StoreError(
@@ -1130,6 +1305,21 @@ class Store:
                 raise StoreError(
                     "a prior dispatch outcome is still awaiting relay acknowledgement",
                     kind="lifecycle",
+                )
+            if key_class == "DELEGATED_V1":
+                if authority_guard is None or authority_guard() is not True:
+                    raise StoreError("delegated root policy/generation changed at admission write", kind="authorization")
+                delegated_intent = self._validate_dispatch_issuance_proof_locked(
+                    conn, proof=issuance_proof, instruction=instruction,
+                    principal=principal, service_generation=service_generation,
+                )
+            else:
+                delegated_intent = None
+                if not isinstance(key_fingerprint, str):
+                    raise StoreError("legacy dispatch key fingerprint is unavailable", kind="authorization")
+                self._bind_dispatch_key_class_locked(
+                    conn, key_id=instruction["key_id"], key_class=key_class,
+                    purpose="VST_S2_DISPATCH_INSTRUCTION_V1", fingerprint=key_fingerprint,
                 )
             prior = conn.execute(
                 "SELECT operation, payload_sha256, result FROM supervisor_operations "
@@ -1145,54 +1335,24 @@ class Store:
                     raise StoreError("stored dispatch intent result is invalid", kind="integrity") from exc
                 if not isinstance(result, dict) or result.get("service_generation") != service_generation:
                     raise StoreError("dispatch intent belongs to another service generation", kind="duplicate")
+                if delegated_intent is not None:
+                    self._validate_dispatch_current_locked(
+                        conn, principal=principal, task_id=task_id, slot=slot,
+                        attempt=attempt, epoch=epoch, run_id=run_id, now=self._now(),
+                    )
+                    if (result.get("issuance_operation_key") != delegated_intent["operation_key"]
+                            or result.get("issuance_envelope_sha256") !=
+                            hashlib.sha256(canonical_bytes(instruction)).hexdigest()):
+                        raise StoreError("dispatch replay differs from its immutable issuance binding",
+                                         kind="integrity")
                 return result
 
             now = self._now()
-            task = self._task_row(conn, task_id)
-            self._guard_runner_task_continuation_locked(conn, task_id)
-            manifest = validate_task_manifest(json.loads(task["manifest"]))
+            task, manifest, lease = self._validate_dispatch_current_locked(
+                conn, principal=principal, task_id=task_id, slot=slot,
+                attempt=attempt, epoch=epoch, run_id=run_id, now=now,
+            )
             manifest_digest = manifest_sha256(manifest)
-            if manifest_digest != task["manifest_sha256"]:
-                raise StoreError("registered manifest digest is inconsistent", kind="integrity")
-            declared = {item["slot"]: item["receipt_type"] for item in manifest["required_receipts"]}
-            if declared.get(slot) != "TestRun":
-                raise StoreError("dispatch intent slot is not a manifest TestRun slot", kind="slot")
-            story = self._story_row(conn, task["story_id"])
-            if (story["state"] != "OWNED" or story["owner"] != principal
-                    or int(story["epoch"]) != epoch or story["owner_expires_at"] is None
-                    or float(story["owner_expires_at"]) <= now):
-                raise StoreError("authenticated principal does not hold the live task owner epoch", kind="epoch")
-            lease = conn.execute(
-                "SELECT lease_id, epoch, status, expires_at FROM leases "
-                "WHERE task_id = ? AND attempt = ?", (task_id, attempt),
-            ).fetchone()
-            if (lease is None or int(lease["epoch"]) != epoch or lease["status"] != LEASE_LIVE
-                    or float(lease["expires_at"]) <= now):
-                raise StoreError("dispatch intent has no matching live lease", kind="lease")
-            if not self.reconciliation_complete:
-                raise StoreError("Store startup reconciliation is required for dispatch intent", kind="integrity")
-            if conn.execute(
-                "SELECT 1 FROM supervisor_probes WHERE run_id = ?", (run_id,),
-            ).fetchone() is None:
-                raise StoreError("dispatch intent requires a consumed run-bound preflight", kind="probe")
-            last_receipt = conn.execute(
-                "SELECT attempt FROM receipts WHERE task_id = ? AND slot = ? ORDER BY attempt DESC LIMIT 1",
-                (task_id, slot),
-            ).fetchone()
-            expected_attempt = 1 if last_receipt is None else int(last_receipt["attempt"]) + 1
-            if (attempt != expected_attempt
-                    or not self._runner_receipt_gap_is_eligible_locked(
-                        conn, task_id, slot, expected_attempt - 1, attempt,
-                    )):
-                raise StoreError("dispatch intent attempt is not eligible for this receipt slot", kind="chain")
-            if conn.execute(
-                "SELECT 1 FROM receipts WHERE task_id = ? AND slot = ? AND attempt = ?",
-                (task_id, slot, attempt),
-            ).fetchone() is not None:
-                raise StoreError("dispatch intent attempt already has a receipt", kind="duplicate")
-            blocked = self._budget_block_locked(conn, task_id)
-            if blocked is not None:
-                raise StoreError(blocked, kind="budget")
             event_payload = {
                 **caller_payload, "task_id": task_id, "slot": slot, "attempt": attempt,
                 "epoch": epoch, "run_id": run_id, "request_id": request_id,
@@ -1222,6 +1382,288 @@ class Store:
                 self._dispatch_outcome_binding(result),
             )
             return result
+
+    def validate_delegated_dispatch_snapshot(self, *, intent: dict, proof: Any,
+                                             principal: str, generation: str,
+                                             current_policy: dict) -> dict:
+        """Verify issuance and every live Store predicate in one read snapshot."""
+        instruction = intent.get("instruction")
+        if not isinstance(instruction, dict):
+            raise StoreError("delegated dispatch snapshot lacks its instruction", kind="authorization")
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            self._verify_control_history_locked(conn)
+            self._verify_supervisor_records(conn)
+            issuance = self._validate_dispatch_issuance_proof_locked(
+                conn, proof=proof, instruction=instruction, principal=principal,
+                service_generation=generation,
+            )
+            if (current_policy != issuance["policy"]
+                    or intent.get("issuance_operation_key") != issuance["operation_key"]
+                    or intent.get("issuance_envelope_sha256") !=
+                    hashlib.sha256(canonical_bytes(instruction)).hexdigest()):
+                raise StoreError("delegated dispatch snapshot differs from its root issuance", kind="integrity")
+            accepted_rows = conn.execute(
+                "SELECT task_id, actor, payload FROM events WHERE kind='DISPATCH_INTENT_ACCEPTED' "
+                "AND task_id=? ORDER BY seq", (instruction["task_id"],),
+            ).fetchall()
+            accepted = None
+            for row in accepted_rows:
+                try:
+                    payload = json.loads(row["payload"])
+                except (TypeError, ValueError) as exc:
+                    raise StoreError("accepted delegated dispatch record is malformed", kind="integrity") from exc
+                if isinstance(payload, dict) and payload.get("request_id") == instruction["request_id"]:
+                    accepted = self._validate_dispatch_intent_event(
+                        payload, task_id=row["task_id"], actor=row["actor"],
+                    )
+                    break
+            if (accepted is None or accepted.get("issuance_operation_key") != issuance["operation_key"]
+                    or accepted.get("issuance_envelope_sha256") != hashlib.sha256(
+                        canonical_bytes(instruction)).hexdigest()):
+                raise StoreError("accepted dispatch is not joined to its exact issuance", kind="integrity")
+            basis = self._execution_grant_basis_locked(
+                conn, instruction["task_id"], instruction["slot"], instruction["attempt"],
+                instruction["epoch"], instruction["run_id"],
+                active_service_generation=generation, expected_owner=principal,
+                expected_lease_id=accepted["lease_id"], now=self._now(),
+            )
+            if basis["manifest_sha256"] != accepted["manifest_digest"]:
+                raise StoreError("delegated dispatch manifest authority changed", kind="manifest")
+            return basis
+
+    def _assert_delegated_dispatch_use_locked(self, conn: sqlite3.Connection, *,
+                                              dispatch_request_id: str,
+                                              proof: Any,
+                                              generation: str,
+                                              grant: dict | None = None,
+                                              check_current: bool = True) -> dict:
+        self._verify_supervisor_records(conn)
+        rows = conn.execute(
+            "SELECT task_id, actor, payload FROM events WHERE kind='DISPATCH_INTENT_ACCEPTED' "
+            "ORDER BY seq",
+        ).fetchall()
+        accepted = None
+        for row in rows:
+            try:
+                candidate = json.loads(row["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("accepted dispatch event is malformed", kind="integrity") from exc
+            if isinstance(candidate, dict) and candidate.get("request_id") == dispatch_request_id:
+                accepted = self._validate_dispatch_intent_event(
+                    candidate, task_id=row["task_id"], actor=row["actor"],
+                )
+                break
+        if accepted is None or accepted.get("key_class") != "DELEGATED_V1":
+            raise StoreError("delegated grant has no delegated accepted-dispatch record", kind="integrity")
+        instruction = accepted["instruction"]
+        issuance = self._validate_dispatch_issuance_proof_locked(
+            conn, proof=proof, instruction=instruction, principal=accepted["principal"],
+            service_generation=generation,
+        )
+        envelope_digest = hashlib.sha256(canonical_bytes(instruction)).hexdigest()
+        if (accepted["issuance_operation_key"] != issuance["operation_key"]
+                or accepted["issuance_envelope_sha256"] != envelope_digest
+                or accepted["key_fingerprint"] != proof.fingerprint):
+            raise StoreError("dispatch grant lost its exact issuance association", kind="integrity")
+        if check_current:
+            basis = self._execution_grant_basis_locked(
+                conn, accepted["task_id"], accepted["slot"], accepted["attempt"],
+                accepted["epoch"], accepted["run_id"], active_service_generation=generation,
+                expected_owner=accepted["principal"], expected_lease_id=accepted["lease_id"],
+                now=self._now(),
+            )
+            if basis["manifest_sha256"] != accepted["manifest_digest"]:
+                raise StoreError("delegated dispatch current manifest differs", kind="manifest")
+            if grant is not None and any(grant.get(field) != value for field, value in {
+                "task_id": accepted["task_id"], "slot": accepted["slot"],
+                "attempt": accepted["attempt"], "epoch": accepted["epoch"],
+                "run_id": accepted["run_id"], "service_generation": generation,
+                "manifest_sha256": accepted["manifest_digest"],
+            }.items()):
+                raise StoreError("execution grant tuple differs from its delegated dispatch", kind="integrity")
+        return accepted
+
+    def _dispatch_grant_source_locked(self, conn: sqlite3.Connection, grant: dict) -> tuple[str, dict] | None:
+        matches = []
+        for row in conn.execute(
+            "SELECT operation_key, operation, payload_sha256, result FROM supervisor_operations "
+            "WHERE operation='dispatch_grant'",
+        ).fetchall():
+            try:
+                result = json.loads(row["result"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("dispatch grant operation result is malformed", kind="integrity") from exc
+            if isinstance(result, dict) and canonical_bytes(result) == canonical_bytes(grant):
+                try:
+                    digest = hashlib.sha256(canonical_bytes(result)).hexdigest()
+                    notes = conn.execute(
+                        "SELECT payload FROM events WHERE task_id=? AND kind='NOTE' ORDER BY seq",
+                        (row["operation_key"],),
+                    ).fetchall()
+                    event = json.loads(notes[0]["payload"]) if len(notes) == 1 else None
+                except (TypeError, ValueError) as exc:
+                    raise StoreError("dispatch grant operation journal is malformed", kind="integrity") from exc
+                if (digest != hashlib.sha256(canonical_bytes(grant)).hexdigest()
+                        or not isinstance(event, dict)
+                        or event.get("event") != "SUPERVISOR_OPERATION"
+                        or event.get("operation") != "dispatch_grant"
+                        or event.get("payload_sha256") != row["payload_sha256"]
+                        or event.get("result_sha256") != hashlib.sha256(
+                            canonical_bytes(result).decode("utf-8").encode("utf-8"),
+                        ).hexdigest()):
+                    raise StoreError("dispatch grant operation differs from its immutable note", kind="integrity")
+                payload = row["payload_sha256"]
+                matches.append((row["operation_key"], result, payload))
+        if len(matches) > 1:
+            raise StoreError("execution grant is bound to multiple dispatch requests", kind="integrity")
+        if not matches:
+            return None
+        key, result, digest = matches[0]
+        note_row = conn.execute(
+            "SELECT payload FROM events WHERE task_id=? AND kind='NOTE'", (key,),
+        ).fetchone()
+        # The operation payload itself is not stored in the result row. Its source
+        # request is recovered from the stable dispatch-grant:<request_id> key.
+        dispatch_request_id = key.removeprefix("dispatch-grant:")
+        return dispatch_request_id, {"result": result, "payload_sha256": digest}
+
+    def dispatch_issuance_target_for_grant(self, grant: dict) -> dict | None:
+        """Return the exact delegated instruction/key binding associated with a signed grant."""
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            source = self._dispatch_grant_source_locked(conn, grant)
+            if source is None:
+                raise StoreError("execution grant has no immutable dispatch-grant association", kind="integrity")
+            request_id, _ = source
+            for row in conn.execute(
+                "SELECT task_id, actor, payload FROM events WHERE kind='DISPATCH_INTENT_ACCEPTED' ORDER BY seq",
+            ).fetchall():
+                try:
+                    payload = json.loads(row["payload"])
+                except (TypeError, ValueError) as exc:
+                    raise StoreError("accepted dispatch record is malformed", kind="integrity") from exc
+                if isinstance(payload, dict) and payload.get("request_id") == request_id:
+                    accepted = self._validate_dispatch_intent_event(
+                        payload, task_id=row["task_id"], actor=row["actor"],
+                    )
+                    if accepted.get("key_class") != "DELEGATED_V1":
+                        return None
+                    return {"instruction": accepted["instruction"],
+                            "key_id": accepted["key_id"],
+                            "key_fingerprint": accepted["key_fingerprint"],
+                            "principal": accepted["principal"],
+                            "issuance_operation_key": accepted["issuance_operation_key"],
+                            "issuance_envelope_sha256": accepted["issuance_envelope_sha256"]}
+            raise StoreError("dispatch grant points to a missing accepted dispatch", kind="integrity")
+
+    def _validate_dispatch_grant_authority_locked(self, conn: sqlite3.Connection, *,
+                                                  grant: dict,
+                                                  dispatch_request_id: str,
+                                                  proof: Any,
+                                                  generation: str,
+                                                  current: bool,
+                                                  expected_operation_payload: dict | None = None) -> dict:
+        accepted = self._assert_delegated_dispatch_use_locked(
+            conn, dispatch_request_id=dispatch_request_id, proof=proof,
+            generation=generation, grant=grant if current else None,
+            check_current=current,
+        )
+        key = f"dispatch-grant:{dispatch_request_id}"
+        row = conn.execute(
+            "SELECT operation, payload_sha256, result FROM supervisor_operations WHERE operation_key=?",
+            (key,),
+        ).fetchone()
+        if row is None or row["operation"] != "dispatch_grant":
+            raise StoreError("delegated execution grant lacks dispatch-grant operation", kind="integrity")
+        try:
+            stored_result = json.loads(row["result"])
+        except (TypeError, ValueError) as exc:
+            raise StoreError("delegated dispatch grant result is malformed", kind="integrity") from exc
+        if canonical_bytes(stored_result) != canonical_bytes(grant):
+            raise StoreError("execution grant differs from its exact dispatch-grant operation", kind="integrity")
+        exact_payload = {
+            "request_id": dispatch_request_id,
+            "service_generation": generation,
+            "issuance_operation_key": accepted["issuance_operation_key"],
+            "issuance_envelope_sha256": accepted["issuance_envelope_sha256"],
+        }
+        expected = exact_payload if expected_operation_payload is None else expected_operation_payload
+        if expected != exact_payload or row["payload_sha256"] != hashlib.sha256(
+                canonical_bytes(exact_payload)).hexdigest():
+            raise StoreError("dispatch-grant operation payload lost its issuance association", kind="integrity")
+        return accepted
+
+    def _maybe_validate_delegated_execution_grant_locked(self, conn: sqlite3.Connection, *,
+                                                         grant: dict, proof: Any,
+                                                         generation: str,
+                                                         current: bool,
+                                                         authority_guard: Callable[[], bool] | None = None) -> None:
+        source = self._dispatch_grant_source_locked(conn, grant)
+        if source is None:
+            raise StoreError("execution grant lacks an immutable dispatch-grant operation", kind="integrity")
+        dispatch_request_id, source_row = source
+        accepted = None
+        for event_row in conn.execute(
+            "SELECT task_id, actor, payload FROM events WHERE kind='DISPATCH_INTENT_ACCEPTED' ORDER BY seq",
+        ).fetchall():
+            try:
+                payload = json.loads(event_row["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("accepted dispatch record is malformed", kind="integrity") from exc
+            if isinstance(payload, dict) and payload.get("request_id") == dispatch_request_id:
+                accepted = self._validate_dispatch_intent_event(
+                    payload, task_id=event_row["task_id"], actor=event_row["actor"],
+                )
+                break
+        if accepted is None:
+            raise StoreError("execution grant dispatch operation has no accepted request", kind="integrity")
+        if accepted.get("key_class") != "DELEGATED_V1":
+            legacy_payload = {"request_id": dispatch_request_id,
+                              "service_generation": accepted["service_generation"]}
+            if (hashlib.sha256(canonical_bytes(legacy_payload)).hexdigest() != source_row["payload_sha256"]
+                    or any(grant.get(field) != value for field, value in {
+                        "task_id": accepted["task_id"], "slot": accepted["slot"],
+                        "attempt": accepted["attempt"], "epoch": accepted["epoch"],
+                        "run_id": accepted["run_id"],
+                        "service_generation": accepted["service_generation"],
+                        "manifest_sha256": accepted["manifest_digest"],
+                    }.items())):
+                raise StoreError("execution grant does not match its accepted legacy dispatch", kind="integrity")
+            return
+        if proof is None and not current:
+            expected_payload = {
+                "request_id": dispatch_request_id,
+                "service_generation": accepted["service_generation"],
+                "issuance_operation_key": accepted["issuance_operation_key"],
+                "issuance_envelope_sha256": accepted["issuance_envelope_sha256"],
+            }
+            row = conn.execute(
+                "SELECT operation, payload_sha256, result FROM supervisor_operations "
+                "WHERE operation_key=?", (f"dispatch-grant:{dispatch_request_id}",),
+            ).fetchone()
+            if (row is None or row["operation"] != "dispatch_grant"
+                    or row["payload_sha256"] != hashlib.sha256(canonical_bytes(expected_payload)).hexdigest()
+                    or canonical_bytes(json.loads(row["result"])) != canonical_bytes(grant)):
+                raise StoreError("historical delegated grant observation lost its immutable association",
+                                 kind="integrity")
+            return
+        if proof is None:
+            raise StoreError("delegated execution grant lacks root-verified provenance", kind="authorization")
+        if current and (authority_guard is None or authority_guard() is not True):
+            raise StoreError("delegated root policy/generation changed at execution boundary",
+                             kind="authorization")
+        expected_payload = {
+            "request_id": dispatch_request_id,
+            "service_generation": generation,
+            "issuance_operation_key": accepted["issuance_operation_key"],
+            "issuance_envelope_sha256": accepted["issuance_envelope_sha256"],
+        }
+        self._validate_dispatch_grant_authority_locked(
+            conn, grant=grant, dispatch_request_id=dispatch_request_id,
+            proof=proof, generation=generation, current=current,
+            expected_operation_payload=expected_payload,
+        )
 
     def replay_dispatch_outcome(self, *, principal: str, instruction: dict) -> dict | None:
         """Read an exact, previously accepted result without authorizing new work."""
@@ -3542,6 +3984,352 @@ class Store:
     def reconciliation_complete(self) -> bool:
         return self._reconciliation_complete and not self._integrity_locked
 
+    def reserve_dispatch_issuance(self, intent: dict, *, authority_snapshot: dict) -> dict:
+        """Durably reserve one frozen root dispatch issuance before signer entry."""
+        from .dispatch_issuance import (
+            ISSUANCE_OPERATION, validate_frozen_intent,
+        )
+        frozen = validate_frozen_intent(intent)
+        if not isinstance(authority_snapshot, dict):
+            raise StoreError("root issuance authority snapshot is unavailable", kind="authorization")
+        key = frozen["operation_key"]
+        with self._tx() as conn:
+            self._verify_event_chain_locked(conn)
+            self._verify_supervisor_records(conn)
+            self._assert_issuance_current_locked(
+                conn, frozen, authority_snapshot=authority_snapshot, now=self._now(),
+            )
+            for prior_row in conn.execute(
+                "SELECT * FROM supervisor_operations WHERE operation=?",
+                (ISSUANCE_OPERATION,),
+            ).fetchall():
+                prior_events = self._dispatch_issuance_records_locked(conn, prior_row["operation_key"])
+                if not prior_events:
+                    raise StoreError("dispatch issuance operation lacks its immutable intent", kind="integrity")
+                self._verify_dispatch_issuance_structure(prior_row, prior_events)
+                prior_intent = prior_events[0]["intent"]
+                if (prior_intent["request_id"] == frozen["request_id"]
+                        and prior_row["operation_key"] != key):
+                    raise StoreError("truncated dispatch request ID collides across full identities",
+                                     kind="integrity")
+            row = conn.execute(
+                "SELECT operation_key, operation, payload_sha256, result "
+                "FROM supervisor_operations WHERE operation_key=?", (key,),
+            ).fetchone()
+            if row is None:
+                self._bind_dispatch_key_class_locked(
+                    conn, key_id=frozen["signer"]["key_id"], key_class="DELEGATED_V1",
+                    purpose=frozen["signer"]["purpose"],
+                    fingerprint=frozen["signer"]["public_key_fingerprint"],
+                )
+                conn.execute(
+                    "INSERT INTO supervisor_operations(operation_key, operation, payload_sha256, result) "
+                    "VALUES (?, ?, ?, ?)",
+                    (key, ISSUANCE_OPERATION, frozen["payload_sha256"],
+                     canonical_bytes({"_vst_state": "PENDING"}).decode("utf-8")),
+                )
+                self._record_event_locked(conn, key, "supervisor", "NOTE", {
+                    "event": "SUPERVISOR_DISPATCH_ISSUANCE_INTENT",
+                    "type": "SUPERVISOR_DISPATCH_ISSUANCE_INTENT",
+                    "operation_key": key, "operation": ISSUANCE_OPERATION,
+                    "payload_sha256": frozen["payload_sha256"], "intent": frozen,
+                })
+                return {"state": "PENDING", "intent": frozen, "envelope": None,
+                        "may_sign": False}
+            records = self._dispatch_issuance_records_locked(conn, key)
+            if records and records[0].get("intent") != frozen:
+                raise StoreError("dispatch issuance identity conflicts with its immutable reservation",
+                                 kind="integrity")
+            self._verify_dispatch_issuance_structure(row, records)
+            state = records[-1].get("event") if records else None
+            return {"state": "VERIFY_REQUIRED" if state == "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED"
+                    else "PENDING" if state == "SUPERVISOR_DISPATCH_ISSUANCE_INTENT"
+                    else "UNKNOWN", "intent": frozen,
+                    "envelope": records[-1].get("envelope") if state ==
+                    "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED" else None,
+                    "may_sign": False}
+
+    def _assert_issuance_current_locked(self, conn: sqlite3.Connection, intent: dict, *,
+                                        authority_snapshot: dict, now: float) -> None:
+        self._verify_supervisor_records(conn)
+        from .assignment_basis import OPERATION as ASSIGNMENT_OPERATION, validate_handoff, validate_policy
+        if (set(authority_snapshot) != {"policy", "policy_sha256", "generation", "run_id"}
+                or authority_snapshot["policy"] != intent["policy"]
+                or authority_snapshot["policy_sha256"] != intent["policy_sha256"]
+                or authority_snapshot["generation"] != intent["service_generation"]
+                or authority_snapshot["run_id"] != intent["handoff"]["run_id"]):
+            raise StoreError("root issuance policy or generation changed", kind="authorization")
+        policy, policy_sha256 = validate_policy(authority_snapshot["policy"])
+        if policy_sha256 != intent["policy_sha256"]:
+            raise StoreError("root issuance policy digest changed", kind="authorization")
+        handoff_id = intent["assignment_operation_id"]
+        row = conn.execute(
+            "SELECT operation, payload_sha256, result FROM supervisor_operations WHERE operation_key=?",
+            (handoff_id,),
+        ).fetchone()
+        if row is None or row["operation"] != ASSIGNMENT_OPERATION:
+            raise StoreError("root issuance assignment handoff is missing", kind="authorization")
+        try:
+            handoff_result = json.loads(row["result"])
+        except (TypeError, ValueError) as exc:
+            raise StoreError("root issuance assignment handoff is malformed", kind="integrity") from exc
+        now_utc = datetime.fromtimestamp(now, timezone.utc)
+        handoff = validate_handoff(
+            handoff_result, policy=policy, policy_sha256=policy_sha256, now=now_utc,
+        )
+        if handoff != intent["handoff"] or row["payload_sha256"] != handoff["payload_sha256"]:
+            raise StoreError("root issuance handoff differs from current immutable assignment", kind="integrity")
+        probe = conn.execute(
+            "SELECT probe_sha256 FROM supervisor_probes WHERE run_id=?", (handoff["run_id"],),
+        ).fetchone()
+        if probe is None or probe["probe_sha256"] != handoff["probe_sha256"]:
+            raise StoreError("root issuance preflight probe is no longer current", kind="probe")
+        basis = self._execution_grant_basis_locked(
+            conn, handoff["task_id"], handoff["slot"], handoff["attempt"], handoff["epoch"],
+            handoff["run_id"], active_service_generation=authority_snapshot["generation"],
+            expected_owner=policy["owner_principal"], expected_lease_id=handoff["lease_id"], now=now,
+        )
+        expected = {
+            "manifest_sha256": handoff["task_manifest_sha256"],
+            "task_id": handoff["task_id"], "slot": handoff["slot"],
+            "attempt": handoff["attempt"], "epoch": handoff["epoch"],
+            "run_id": handoff["run_id"], "runner_id": handoff["runner_id"],
+        }
+        if any(basis.get(name) != value for name, value in expected.items()):
+            raise StoreError("root issuance current execution basis changed", kind="authorization")
+        frozen_expiry = datetime.strptime(
+            intent["unsigned"]["expires_at"], "%Y-%m-%dT%H:%M:%SZ",
+        ).replace(tzinfo=timezone.utc).timestamp()
+        authority_expiry = min(
+            float(basis["authority_expires_at"]),
+            datetime.strptime(handoff["expires_at_utc"], "%Y-%m-%dT%H:%M:%SZ")
+            .replace(tzinfo=timezone.utc).timestamp(),
+            datetime.strptime(policy["expires_at_utc"], "%Y-%m-%dT%H:%M:%SZ")
+            .replace(tzinfo=timezone.utc).timestamp(),
+        )
+        if frozen_expiry > authority_expiry or frozen_expiry <= now:
+            raise StoreError("root dispatch instruction no longer fits current authority lifetime",
+                             kind="authorization")
+
+    def existing_dispatch_issuance(self, assignment_operation_id: str) -> dict | None:
+        """Read the immutable frozen intent before deriving any retry-time fields."""
+        import hashlib
+        from .dispatch_issuance import OPERATION_KEY_DOMAIN, validate_frozen_intent
+        _need_str(assignment_operation_id, "assignment_operation_id")
+        digest = hashlib.sha256(OPERATION_KEY_DOMAIN + canonical_bytes({
+            "assignment_operation_id": assignment_operation_id,
+        })).hexdigest()
+        operation_key = "dispatch-issue:" + digest
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            row = conn.execute(
+                "SELECT operation_key, operation, payload_sha256, result "
+                "FROM supervisor_operations WHERE operation_key=?", (operation_key,),
+            ).fetchone()
+            if row is None:
+                return None
+            events = self._dispatch_issuance_records_locked(conn, operation_key)
+            self._verify_dispatch_issuance_structure(row, events)
+            intent = validate_frozen_intent(events[0]["intent"])
+            if intent["assignment_operation_id"] != assignment_operation_id:
+                raise StoreError("dispatch issuance assignment identity changed", kind="integrity")
+            return intent
+
+    def assert_dispatch_issuance_authority(self, intent: dict, *, authority_snapshot: dict) -> None:
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            self._assert_issuance_current_locked(
+                conn, intent, authority_snapshot=authority_snapshot, now=self._now(),
+            )
+
+    def verify_dispatch_issuance_completion(self, operation_key: str, verifier) -> dict:
+        """Verify an immutable completion outside SQL; the caller must recheck authority before use."""
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            row = conn.execute(
+                "SELECT operation_key, operation, payload_sha256, result "
+                "FROM supervisor_operations WHERE operation_key=?", (operation_key,),
+            ).fetchone()
+            if row is None:
+                raise StoreError("dispatch issuance reservation is missing", kind="integrity")
+            self._verify_dispatch_issuance_structure(row, self._dispatch_issuance_records_locked(conn, operation_key))
+            row_value = {name: row[name] for name in
+                         ("operation_key", "operation", "payload_sha256", "result")}
+            records = self._dispatch_issuance_records_locked(conn, operation_key)
+        reduced = self._reduce_dispatch_issuance(row_value, records, verifier)
+        if reduced["state"] != "COMPLETED":
+            raise StoreError("dispatch issuance completion signature is not verified", kind="integrity")
+        return reduced
+
+    def dispatch_issuance_for_envelope(self, envelope: dict, verifier) -> dict:
+        """Find one exact immutable issuance completion, verify outside SQL, and return it."""
+        from .dispatch_instruction import validate_dispatch_instruction
+        exact = validate_dispatch_instruction(envelope)
+        matches = []
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            rows = conn.execute(
+                "SELECT * FROM supervisor_operations WHERE operation=?",
+                ("VST_S2_ROOT_DISPATCH_ISSUE_V1",),
+            ).fetchall()
+            for row in rows:
+                events = self._dispatch_issuance_records_locked(conn, row["operation_key"])
+                self._verify_dispatch_issuance_structure(row, events)
+                if (events[-1].get("event") == "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED"
+                        and events[-1].get("envelope") == exact):
+                    matches.append((
+                        {name: row[name] for name in
+                         ("operation_key", "operation", "payload_sha256", "result")}, events,
+                    ))
+        if len(matches) != 1:
+            raise StoreError("dispatch instruction does not have one exact issuance completion",
+                             kind="authorization")
+        row_value, events = matches[0]
+        result = self._reduce_dispatch_issuance(row_value, events, verifier)
+        if result["state"] != "COMPLETED":
+            raise StoreError("dispatch issuance signature verification failed", kind="authorization")
+        return result
+
+    @staticmethod
+    def _dispatch_issuance_records_locked(conn: sqlite3.Connection, operation_key: str) -> list[dict]:
+        rows = conn.execute(
+            "SELECT actor, payload FROM events WHERE task_id=? AND kind='NOTE' ORDER BY seq",
+            (operation_key,),
+        ).fetchall()
+        records = []
+        for row in rows:
+            try:
+                payload = json.loads(row["payload"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("dispatch issuance note is malformed", kind="integrity") from exc
+            event = payload.get("event") if isinstance(payload, dict) else None
+            if event in {
+                "SUPERVISOR_DISPATCH_ISSUANCE_INTENT",
+                "SUPERVISOR_DISPATCH_ISSUANCE_SIGNING_STARTED",
+                "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED",
+                "SUPERVISOR_DISPATCH_ISSUANCE_UNKNOWN",
+            }:
+                if row["actor"] != "supervisor":
+                    raise StoreError("dispatch issuance journal actor is not root Supervisor", kind="integrity")
+                records.append(payload)
+        return records
+
+    @staticmethod
+    def _reduce_dispatch_issuance(row: dict, records: list[dict], verifier=None) -> dict:
+        from .dispatch_issuance import reduce_issuance_state
+        normalized = []
+        for item in records:
+            event = item.get("event")
+            normalized.append({"type": event, **{k: v for k, v in item.items() if k != "event"}})
+        result = reduce_issuance_state(row, normalized, completion_verifier=verifier)
+        if result["state"] == "CONFLICT":
+            raise StoreError("dispatch issuance journal conflicts: " + result["reason"], kind="integrity")
+        return result
+
+    def start_dispatch_issuance(self, operation_key: str, intent_sha256: str, *,
+                                authority_snapshot: dict) -> bool:
+        """Claim the sole signer invocation right with a fresh locked authority check."""
+        with self._tx() as conn:
+            self._verify_event_chain_locked(conn)
+            self._verify_supervisor_records(conn)
+            row = conn.execute(
+                "SELECT operation_key, operation, payload_sha256, result "
+                "FROM supervisor_operations WHERE operation_key=?", (operation_key,),
+            ).fetchone()
+            if row is None:
+                raise StoreError("dispatch issuance reservation is missing", kind="integrity")
+            records = self._dispatch_issuance_records_locked(conn, operation_key)
+            if len(records) != 1 or records[0].get("event") != "SUPERVISOR_DISPATCH_ISSUANCE_INTENT":
+                raise StoreError("dispatch issuance cannot claim signer after journal divergence", kind="integrity")
+            intent = records[0]["intent"]
+            from .dispatch_issuance import canonical_sha256
+            if canonical_sha256(intent) != intent_sha256:
+                raise StoreError("dispatch issuance intent changed before signer claim", kind="integrity")
+            if (row["operation"] != "VST_S2_ROOT_DISPATCH_ISSUE_V1"
+                    or row["payload_sha256"] != intent["payload_sha256"]
+                    or row["result"] != canonical_bytes({"_vst_state": "PENDING"}).decode("utf-8")):
+                raise StoreError("dispatch issuance operation row is invalid", kind="integrity")
+            self._assert_issuance_current_locked(
+                conn, intent, authority_snapshot=authority_snapshot, now=self._now(),
+            )
+            self._record_event_locked(conn, operation_key, "supervisor", "NOTE", {
+                "event": "SUPERVISOR_DISPATCH_ISSUANCE_SIGNING_STARTED",
+                "type": "SUPERVISOR_DISPATCH_ISSUANCE_SIGNING_STARTED",
+                "operation_key": operation_key, "intent_sha256": intent_sha256,
+                "unsigned_sha256": intent["unsigned_sha256"],
+            })
+            return True
+
+    def complete_dispatch_issuance(self, operation_key: str, intent_sha256: str,
+                                   envelope: dict, verifier, *, authority_snapshot: dict) -> dict:
+        """Persist a signed envelope only after external root-key verification."""
+        from .dispatch_issuance import canonical_sha256
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            row = conn.execute(
+                "SELECT operation_key, operation, payload_sha256, result "
+                "FROM supervisor_operations WHERE operation_key=?", (operation_key,),
+            ).fetchone()
+            if row is None:
+                raise StoreError("dispatch issuance reservation is missing", kind="integrity")
+            records = self._dispatch_issuance_records_locked(conn, operation_key)
+            if len(records) != 2 or records[-1].get("event") != "SUPERVISOR_DISPATCH_ISSUANCE_SIGNING_STARTED":
+                raise StoreError("dispatch issuance signer claim is missing or already terminal", kind="integrity")
+            intent = records[0].get("intent")
+            if canonical_sha256(intent) != intent_sha256:
+                raise StoreError("dispatch issuance intent changed before completion", kind="integrity")
+            row_value = {name: row[name] for name in
+                         ("operation_key", "operation", "payload_sha256", "result")}
+            captured_records = records
+            completion = {
+                "event": "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED",
+                "type": "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED",
+                "operation_key": operation_key, "intent_sha256": intent_sha256,
+                "unsigned_sha256": intent["unsigned_sha256"], "envelope": envelope,
+                "envelope_sha256": canonical_sha256(envelope),
+            }
+        # The root verifier (including key file reads and OpenSSL) runs outside SQL.
+        reduced = self._reduce_dispatch_issuance(row_value, [*captured_records, completion], verifier)
+        if reduced["state"] != "COMPLETED":
+            raise StoreError("dispatch signer completion did not verify", kind="integrity")
+        with self._tx() as conn:
+            self._verify_event_chain_locked(conn)
+            self._assert_issuance_current_locked(
+                conn, captured_records[0]["intent"],
+                authority_snapshot=authority_snapshot, now=self._now(),
+            )
+            current = conn.execute(
+                "SELECT operation_key, operation, payload_sha256, result "
+                "FROM supervisor_operations WHERE operation_key=?", (operation_key,),
+            ).fetchone()
+            current_records = self._dispatch_issuance_records_locked(conn, operation_key)
+            if (current is None
+                    or {name: current[name] for name in row_value} != row_value
+                    or canonical_bytes(current_records) != canonical_bytes(captured_records)):
+                raise StoreError("dispatch issuance journal changed during signature verification", kind="integrity")
+            self._record_event_locked(conn, operation_key, "supervisor", "NOTE", completion)
+            return reduced
+
+    def mark_dispatch_issuance_unknown(self, operation_key: str, intent_sha256: str,
+                                       error_class: str) -> None:
+        """Record an ambiguous signer outcome; this identity can never be signed again."""
+        from .dispatch_issuance import canonical_sha256
+        with self._tx() as conn:
+            self._verify_event_chain_locked(conn)
+            records = self._dispatch_issuance_records_locked(conn, operation_key)
+            if len(records) != 2 or records[-1].get("event") != "SUPERVISOR_DISPATCH_ISSUANCE_SIGNING_STARTED":
+                return
+            intent = records[0].get("intent")
+            if canonical_sha256(intent) != intent_sha256:
+                raise StoreError("dispatch issuance intent changed before UNKNOWN record", kind="integrity")
+            self._record_event_locked(conn, operation_key, "supervisor", "NOTE", {
+                "event": "SUPERVISOR_DISPATCH_ISSUANCE_UNKNOWN",
+                "type": "SUPERVISOR_DISPATCH_ISSUANCE_UNKNOWN",
+                "operation_key": operation_key, "intent_sha256": intent_sha256,
+                "unsigned_sha256": intent["unsigned_sha256"],
+                "error_class": error_class,
+            })
+
     def _verified_database_history(self) -> list[tuple[int, str]]:
         """Return every verified `(event_count, head)` prefix in the DB chain."""
         with self._read_tx() as conn:
@@ -3577,9 +4365,11 @@ class Store:
         external_intents: dict[str, list[dict]] = {}
         external_completions: dict[str, list[dict]] = {}
         external_unknown: dict[str, list[dict]] = {}
+        issuance_events: dict[str, list[dict]] = {}
+        dispatch_class_events: dict[str, list[tuple[str, dict]]] = {}
         event_probes: dict[str, dict] = {}
         runner_chain_events: dict[str, list[dict]] = {}
-        for row in conn.execute("SELECT task_id, payload FROM events WHERE kind = 'NOTE'").fetchall():
+        for row in conn.execute("SELECT task_id, actor, payload FROM events WHERE kind = 'NOTE'").fetchall():
             try:
                 payload = json.loads(row["payload"])
             except (ValueError, TypeError) as exc:
@@ -3594,6 +4384,21 @@ class Store:
                 external_completions.setdefault(row["task_id"], []).append(payload)
             elif payload.get("event") == "SUPERVISOR_EXTERNAL_OPERATION_UNKNOWN":
                 external_unknown.setdefault(row["task_id"], []).append(payload)
+            elif payload.get("event") in {
+                "SUPERVISOR_DISPATCH_ISSUANCE_INTENT",
+                "SUPERVISOR_DISPATCH_ISSUANCE_SIGNING_STARTED",
+                "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED",
+                "SUPERVISOR_DISPATCH_ISSUANCE_UNKNOWN",
+            }:
+                if row["actor"] != "supervisor":
+                    raise StoreError("dispatch issuance event was not written by root Supervisor",
+                                     kind="integrity")
+                issuance_events.setdefault(row["task_id"], []).append(payload)
+            elif payload.get("event") == "SUPERVISOR_DISPATCH_KEY_CLASS_BOUND":
+                dispatch_class_events.setdefault(row["task_id"], []).append((row["actor"], payload))
+            elif row["task_id"].startswith("dispatch-key-class:"):
+                raise StoreError("dispatch key-class journal contains an unknown NOTE family",
+                                 kind="integrity")
             elif payload.get("event") == "PREFLIGHT_CONSUMED":
                 event_probes[row["task_id"]] = payload
             elif payload.get("event") in {
@@ -3601,11 +4406,42 @@ class Store:
                     "RUNNER_EXECUTION_INDETERMINATE", "RUNNER_EXECUTION_RECONCILED"}:
                 runner_chain_events.setdefault(row["task_id"], []).append(payload)
         external_keys = set(external_intents)
-        if (set(operations) != set(event_operations) | external_keys
+        issuance_keys = set(issuance_events)
+        if (set(operations) != set(event_operations) | external_keys | issuance_keys
                 or external_keys & set(event_operations)
+                or issuance_keys & (set(event_operations) | external_keys)
                 or (set(external_completions) | set(external_unknown)) - external_keys
                 or set(probes) != set(event_probes)):
             raise StoreError("supervisor records differ from their append-only events", kind="integrity")
+        class_bindings: dict[str, dict] = {}
+        for task_id, bindings in dispatch_class_events.items():
+            if len(bindings) != 1:
+                raise StoreError("dispatch key class binding has multiple immutable events", kind="integrity")
+            actor, binding = bindings[0]
+            key_id = task_id.removeprefix("dispatch-key-class:")
+            if (actor != "supervisor" or not task_id.startswith("dispatch-key-class:")
+                    or binding != {
+                        "event": "SUPERVISOR_DISPATCH_KEY_CLASS_BOUND", "key_id": key_id,
+                        "key_class": binding.get("key_class"), "purpose": "VST_S2_DISPATCH_INSTRUCTION_V1",
+                        "public_key_fingerprint": binding.get("public_key_fingerprint"),
+                    } or binding.get("key_class") not in {"LEGACY_V1", "DELEGATED_V1"}
+                    or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}", key_id)
+                    or not isinstance(binding.get("public_key_fingerprint"), str)
+                    or not re.fullmatch(r"[0-9a-f]{64}", binding["public_key_fingerprint"])):
+                raise StoreError("dispatch key class binding is malformed", kind="integrity")
+            class_bindings[key_id] = binding
+        for issuance_key, events in issuance_events.items():
+            if not events or not isinstance(events[0].get("intent"), dict):
+                raise StoreError("dispatch issuance lacks its immutable intent", kind="integrity")
+            signer = events[0]["intent"].get("signer", {})
+            binding = class_bindings.get(signer.get("key_id"))
+            if (binding is None or binding.get("key_class") != "DELEGATED_V1"
+                    or binding.get("purpose") != signer.get("purpose")
+                    or binding.get("public_key_fingerprint") != signer.get("public_key_fingerprint")
+                    or events[0].get("operation_key") != issuance_key
+                    or events[0].get("payload_sha256") != events[0]["intent"].get("payload_sha256")):
+                raise StoreError("dispatch issuance differs from its immutable delegated key binding",
+                                 kind="integrity")
         for operation_key, row in operations.items():
             try:
                 result = json.loads(row["result"])
@@ -3618,6 +4454,11 @@ class Store:
                         or event.get("payload_sha256") != row["payload_sha256"]
                         or event.get("result_sha256") != result_digest):
                     raise StoreError("supervisor operation record does not match its event", kind="integrity")
+                continue
+
+            issuance = issuance_events.get(operation_key)
+            if issuance is not None:
+                self._verify_dispatch_issuance_structure(row, issuance)
                 continue
 
             intents = external_intents.get(operation_key, [])
@@ -3685,6 +4526,25 @@ class Store:
                 raise StoreError("dispatch idempotency result is malformed", kind="integrity") from exc
             if result != {"event_seq": int(row["seq"]), **payload}:
                 raise StoreError("dispatch idempotency result differs from its event", kind="integrity")
+            class_binding = class_bindings.get(payload["key_id"])
+            expected_class = payload.get("key_class", "LEGACY_V1")
+            if ((class_binding is None and expected_class == "DELEGATED_V1")
+                    or (class_binding is not None and (
+                        class_binding.get("key_class") != expected_class
+                        or class_binding.get("purpose") != "VST_S2_DISPATCH_INSTRUCTION_V1"))):
+                raise StoreError("accepted dispatch lacks its immutable key-class binding", kind="integrity")
+            if payload.get("key_class") == "DELEGATED_V1":
+                binding = class_binding
+                issue_events = issuance_events.get(payload.get("issuance_operation_key"), [])
+                if (binding is None or binding.get("key_class") != "DELEGATED_V1"
+                        or binding.get("public_key_fingerprint") != payload.get("key_fingerprint")
+                        or not issue_events
+                        or issue_events[-1].get("event") != "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED"
+                        or issue_events[-1].get("envelope") != payload["instruction"]
+                        or payload.get("issuance_envelope_sha256") != hashlib.sha256(
+                            canonical_bytes(payload["instruction"])).hexdigest()):
+                    raise StoreError("accepted delegated dispatch is not joined to its exact issuance",
+                                     kind="integrity")
             dispatch_events[operation_key] = payload
         if set(dispatch_events) != set(dispatch_operations):
             raise StoreError("dispatch idempotency records differ from accepted events", kind="integrity")
@@ -3828,6 +4688,76 @@ class Store:
                     runner_resolution_ids.add(resolution_id)
         self._verify_runner_receipt_chains_locked(conn)
 
+    @staticmethod
+    def _verify_dispatch_issuance_structure(row: sqlite3.Row, events: list[dict]) -> None:
+        """Check issuer journal shape without treating startup as crypto verification."""
+        from .dispatch_instruction import validate_dispatch_instruction
+        from .dispatch_issuance import ISSUANCE_OPERATION, canonical_sha256, validate_frozen_intent
+        if row["operation"] != ISSUANCE_OPERATION:
+            raise StoreError("dispatch issuance uses the wrong operation family", kind="integrity")
+        try:
+            result = json.loads(row["result"])
+        except (TypeError, ValueError) as exc:
+            raise StoreError("dispatch issuance operation result is malformed", kind="integrity") from exc
+        if result != {"_vst_state": "PENDING"}:
+            raise StoreError("dispatch issuance operation result is not immutable pending state", kind="integrity")
+        types = [event.get("event") for event in events]
+        allowed = [
+            ["SUPERVISOR_DISPATCH_ISSUANCE_INTENT"],
+            ["SUPERVISOR_DISPATCH_ISSUANCE_INTENT", "SUPERVISOR_DISPATCH_ISSUANCE_SIGNING_STARTED"],
+            ["SUPERVISOR_DISPATCH_ISSUANCE_INTENT", "SUPERVISOR_DISPATCH_ISSUANCE_SIGNING_STARTED",
+             "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED"],
+            ["SUPERVISOR_DISPATCH_ISSUANCE_INTENT", "SUPERVISOR_DISPATCH_ISSUANCE_SIGNING_STARTED",
+             "SUPERVISOR_DISPATCH_ISSUANCE_UNKNOWN"],
+        ]
+        if types not in allowed:
+            raise StoreError("dispatch issuance event order or multiplicity is invalid", kind="integrity")
+        intent_event = events[0]
+        if set(intent_event) != {"event", "type", "operation_key", "operation", "payload_sha256", "intent"}:
+            raise StoreError("dispatch issuance intent event fields are invalid", kind="integrity")
+        try:
+            intent = validate_frozen_intent(intent_event["intent"])
+        except Exception as exc:
+            raise StoreError("dispatch issuance frozen intent is invalid", kind="integrity") from exc
+        key = intent["operation_key"]
+        if (intent_event.get("operation_key") != key or intent_event.get("type") != types[0]
+                or intent_event.get("operation") != ISSUANCE_OPERATION
+                or intent_event.get("payload_sha256") != intent["payload_sha256"]
+                or row["operation_key"] != key or row["payload_sha256"] != intent["payload_sha256"]):
+            raise StoreError("dispatch issuance intent differs from its operation row", kind="integrity")
+        intent_digest = canonical_sha256(intent)
+        for event in events[1:]:
+            if (event.get("type") != event.get("event") or event.get("operation_key") != key
+                    or event.get("intent_sha256") != intent_digest
+                    or event.get("unsigned_sha256") != intent["unsigned_sha256"]):
+                raise StoreError("dispatch issuance progress event differs from its intent", kind="integrity")
+        if len(events) > 1:
+            started = events[1]
+            if set(started) != {"event", "type", "operation_key", "intent_sha256", "unsigned_sha256"}:
+                raise StoreError("dispatch issuance STARTED event fields are invalid", kind="integrity")
+        if types[-1] == "SUPERVISOR_DISPATCH_ISSUANCE_UNKNOWN":
+            unknown = events[-1]
+            if (set(unknown) != {"event", "type", "operation_key", "intent_sha256",
+                                 "unsigned_sha256", "error_class"}
+                    or not isinstance(unknown["error_class"], str)
+                    or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}", unknown["error_class"])):
+                raise StoreError("dispatch issuance UNKNOWN event fields are invalid", kind="integrity")
+        if types[-1] == "SUPERVISOR_DISPATCH_ISSUANCE_COMPLETED":
+            completed = events[-1]
+            if set(completed) != {"event", "type", "operation_key", "intent_sha256",
+                                  "unsigned_sha256", "envelope", "envelope_sha256"}:
+                raise StoreError("dispatch issuance completion event fields are invalid", kind="integrity")
+            try:
+                envelope = validate_dispatch_instruction(completed["envelope"])
+            except Exception as exc:
+                raise StoreError("dispatch issuance completion envelope is malformed", kind="integrity") from exc
+            unsigned = {name: value for name, value in envelope.items() if name != "signature"}
+            if (unsigned != intent["unsigned"]
+                    or completed.get("envelope_sha256") != canonical_sha256(envelope)):
+                raise StoreError("dispatch issuance completion differs from its frozen unsigned bytes", kind="integrity")
+            # Startup validates structure only. A root-owned verifier must bind
+            # this envelope and fingerprint before any delegated use.
+
     def _verify_runner_receipt_chains_locked(self, conn: sqlite3.Connection) -> None:
         """Replay receipt attempt and digest links against verified successor proofs."""
         tips: dict[tuple[str, str], tuple[int, str | None]] = {}
@@ -3952,6 +4882,7 @@ class Store:
         self, operation_key: str, operation: str, payload: Any,
         effect: Callable[[sqlite3.Connection], Any],
         *, before_commit: Callable[[sqlite3.Connection, Any], None] | None = None,
+        on_replay: Callable[[sqlite3.Connection, Any], None] | None = None,
     ) -> Any:
         """Run an internal Store effect atomically with its idempotency record.
 
@@ -3969,7 +4900,10 @@ class Store:
             if row is not None:
                 if row["operation"] != operation or row["payload_sha256"] != payload_digest:
                     raise StoreError("idempotency key reused with different operation or payload", kind="duplicate")
-                return json.loads(row["result"])
+                result = json.loads(row["result"])
+                if on_replay is not None:
+                    on_replay(conn, result)
+                return result
             result = effect(conn)
             try:
                 encoded = canonical_bytes(result).decode("utf-8")
@@ -3998,6 +4932,7 @@ class Store:
         operation: str | None = None,
         payload: Any = None,
         check_payload: bool = False,
+        validate_result: Callable[[sqlite3.Connection, Any], None] | None = None,
     ) -> dict | None:
         """Read a durable operation result and its completion/uncertainty state.
 
@@ -4031,6 +4966,8 @@ class Store:
                 raise StoreError("stored idempotent operation result is invalid", kind="integrity") from exc
             pending = {"_vst_state": "PENDING"}
             if row["result"] != canonical_bytes(pending).decode("utf-8"):
+                if validate_result is not None:
+                    validate_result(conn, stored_result)
                 return {
                     "operation": row["operation"],
                     "payload_sha256": row["payload_sha256"],
@@ -4072,6 +5009,8 @@ class Store:
                         raise StoreError("external operation has conflicting completion records", kind="integrity")
                     completed = result
             if completed is not None:
+                if validate_result is not None:
+                    validate_result(conn, completed)
                 return {
                     "operation": row["operation"],
                     "payload_sha256": row["payload_sha256"],
@@ -4248,8 +5187,42 @@ class Store:
                 kind="lifecycle",
             )
 
+    def completed_runner_execution_receipt(self, grant: dict) -> dict | None:
+        """Return an exact historical COMPLETE receipt without granting execution authority."""
+        from .execution_grant import validate_execution_grant
+        valid = validate_execution_grant(grant)
+        digest = hashlib.sha256(canonical_bytes(valid)).hexdigest()
+        with self._read_tx() as conn:
+            self._verify_event_chain_locked(conn)
+            self._verify_supervisor_records(conn)
+            row = conn.execute(
+                "SELECT * FROM runner_execution_claims WHERE grant_id=?", (valid["grant_id"],),
+            ).fetchone()
+            if row is None or row["payload_sha256"] != digest:
+                return None
+            try:
+                stored = json.loads(row["grant_body"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("stored runner grant is malformed", kind="integrity") from exc
+            if canonical_bytes(stored) != canonical_bytes(valid):
+                return None
+            states = self._runner_execution_states_locked(conn, valid["grant_id"])
+            terminal = states[-1]
+            if terminal["state"] != "COMPLETE":
+                return None
+            self._maybe_validate_delegated_execution_grant_locked(
+                conn, grant=valid, proof=None,
+                generation=valid["service_generation"], current=False,
+            )
+            receipt = terminal.get("receipt")
+            if not isinstance(receipt, dict):
+                raise StoreError("completed runner receipt is missing", kind="integrity")
+            return dict(receipt)
+
     def claim_runner_execution(
-        self, grant: dict, *, active_service_generation: str
+        self, grant: dict, *, active_service_generation: str,
+        dispatch_issuance_proof: Any = None,
+        authority_guard: Callable[[], bool] | None = None,
     ) -> dict | None:
         """Atomically recheck current Store authority and claim a grant as PENDING.
 
@@ -4280,6 +5253,8 @@ class Store:
         grant_bytes = canonical_bytes(valid)
         grant_digest = hashlib.sha256(grant_bytes).hexdigest()
         with self._tx() as conn:
+            self._verify_event_chain_locked(conn)
+            self._verify_supervisor_records(conn)
             now = self._now()
             collision = conn.execute(
                 "SELECT * FROM runner_execution_claims WHERE grant_id = ? OR invocation_id = ? "
@@ -4303,12 +5278,24 @@ class Store:
                     raise StoreError("execution grant, invocation, request, or attempt was already claimed", kind="duplicate")
                 states = self._runner_execution_states_locked(conn, valid["grant_id"])
                 terminal = states[-1]
+                self._maybe_validate_delegated_execution_grant_locked(
+                    conn, grant=valid, proof=dispatch_issuance_proof,
+                    generation=active_service_generation,
+                    current=terminal["state"] != "COMPLETE",
+                    authority_guard=authority_guard,
+                )
                 if terminal["state"] == "COMPLETE":
                     receipt = terminal.get("receipt")
                     if not isinstance(receipt, dict):
                         raise StoreError("completed runner receipt is missing", kind="integrity")
                     return dict(receipt)
                 raise StoreError(f"execution grant is non-replayable ({terminal['state']})", kind="lifecycle")
+
+            self._maybe_validate_delegated_execution_grant_locked(
+                conn, grant=valid, proof=dispatch_issuance_proof,
+                generation=active_service_generation, current=True,
+                authority_guard=authority_guard,
+            )
 
             if (valid["issued_at"] > now + 5.0 or valid["claim_expires_at"] <= now
                     or valid["expires_at"] <= now):
@@ -4566,6 +5553,8 @@ class Store:
 
     def reserve_runner_execution(
         self, grant: dict, *, active_service_generation: str,
+        dispatch_issuance_proof: Any = None,
+        authority_guard: Callable[[], bool] | None = None,
     ) -> dict:
         """Atomically reserve the one permitted launch after rechecking authority."""
         from .execution_grant import MAX_EXECUTION_DEADLINE_SEC, validate_execution_grant
@@ -4581,6 +5570,8 @@ class Store:
             raise StoreError("verified Store history is required for execution reservation", kind="integrity")
         digest = hashlib.sha256(canonical_bytes(valid)).hexdigest()
         with self._tx() as conn:
+            self._verify_event_chain_locked(conn)
+            self._verify_supervisor_records(conn)
             now = self._now()
             row = conn.execute(
                 "SELECT * FROM runner_execution_claims WHERE grant_id = ?", (valid["grant_id"],)
@@ -4596,6 +5587,11 @@ class Store:
             states = self._runner_execution_states_locked(conn, valid["grant_id"])
             if len(states) != 1 or states[0]["state"] != "PENDING":
                 raise StoreError("execution grant is not an unreserved PENDING claim", kind="lifecycle")
+            self._maybe_validate_delegated_execution_grant_locked(
+                conn, grant=valid, proof=dispatch_issuance_proof,
+                generation=active_service_generation, current=True,
+                authority_guard=authority_guard,
+            )
             if (valid["issued_at"] > now + 5.0 or valid["expires_at"] <= now
                     or now + valid["execution_deadline_sec"] > valid["expires_at"]
                     or valid["execution_deadline_sec"] > MAX_EXECUTION_DEADLINE_SEC):

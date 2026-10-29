@@ -1125,3 +1125,16 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
   process cleanup, E5 or E8 behavior. Static node candidates are not collected/executed coverage.
 - Verification: planning artifacts only; final allowed node collection/execution follows complete
   S2 source/delivery-tree freeze, with platform skips reported as NOT_RUN.
+
+## 2026-10-29 — Continue a partial source checkpoint to the accepted mechanism (change0557)
+
+- Kind: SHORTCOMING corrected during authorized implementation.
+- Facts: the initial worker checkpoint added a signer/journal but disabled delegated admission
+  because the grant and runner links were not complete. That was accurately reported as partial.
+  Codex continued the same task and filled the required authority paths instead of accepting the
+  smaller disabled feature as completion. Source review also caught a config variable used before
+  initialization and replay which recomputed frozen expiry; both were corrected during coding.
+- Rule: a fail-closed placeholder is safe but is not the accepted integrated outcome. Preserve
+  stable operation identity and frozen bytes on retry, then carry exact grant provenance across
+  every permission-creating write boundary.
+- Verification: implementation handoff and diff only; no source test or runtime PASS is claimed.

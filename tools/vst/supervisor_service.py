@@ -227,10 +227,23 @@ class AuthenticatedSupervisorAPI:
         if operation == "assignment_basis":
             from .assignment_basis import validate_request
             if (peer is None or peer.role != "delegated_issuer"
-                    or peer.operations != frozenset({"assignment_basis"})):
+                    or "assignment_basis" not in peer.operations):
                 raise ContractError("assignment-basis request is not authorized")
             operation_id = validate_request(body)
             return self.supervisor.assignment_basis(assignment_operation_id=operation_id)
+        if operation == "issue_root_dispatch_instruction":
+            from .assignment_basis import REQUEST_SCHEMA, validate_request
+            if (peer is None or peer.role != "delegated_issuer"
+                    or "issue_root_dispatch_instruction" not in peer.operations
+                    or set(body) != {"assignment_operation_id"}):
+                raise ContractError("root dispatch issuance request is not authorized")
+            operation_id = validate_request({
+                "schema": REQUEST_SCHEMA,
+                "assignment_operation_id": body["assignment_operation_id"],
+            })
+            return self.supervisor.issue_root_dispatch_instruction(
+                assignment_operation_id=operation_id,
+            )
         if operation == "submit_dispatch_intent":
             if (peer is None or peer.role != "dispatch_owner" or not peer.principal
                     or set(body) != {"instruction"}):
@@ -727,9 +740,45 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
         "socket_path", "socket_gid", "peers",
         "allow_schema_upgrade",
     }
-    if set(value) != required:
-        if set(value) != required | {"assignment_policy_path", "assignment_policy_sha256"}:
-            raise ContractError("Supervisor service config fields do not match its schema")
+    optional_keys = {"assignment_policy_path", "assignment_policy_sha256", "root_dispatch_issuer"}
+    if (not required <= set(value) or set(value) - required - optional_keys
+            or ("assignment_policy_path" in value) != ("assignment_policy_sha256" in value)):
+        raise ContractError("Supervisor service config fields do not match its schema")
+    root_dispatch_issuer = None
+    if "root_dispatch_issuer" in value:
+        issuer = value["root_dispatch_issuer"]
+        issuer_fields = {"enabled", "key_id", "public_key_fingerprint",
+                         "maximum_ttl_seconds", "minimum_safety_slack_seconds"}
+        if not isinstance(issuer, dict) or set(issuer) != issuer_fields or type(issuer["enabled"]) is not bool:
+            raise ContractError("root dispatch issuer configuration is malformed")
+        if (not isinstance(issuer["key_id"], str)
+                or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}", issuer["key_id"])
+                or issuer["key_id"] == value["execution_grant_key_id"]
+                or not isinstance(issuer["public_key_fingerprint"], str)
+                or not _SHA256.fullmatch(issuer["public_key_fingerprint"])
+                or type(issuer["maximum_ttl_seconds"]) is not int
+                or issuer["maximum_ttl_seconds"] < 1
+                or type(issuer["minimum_safety_slack_seconds"]) is not int
+                or issuer["minimum_safety_slack_seconds"] < 1):
+            raise ContractError("root dispatch issuer limits or identity are invalid")
+        private_path = "/etc/vst-runner/dispatch-instruction-private.pem"
+        public_path = "/etc/vst-runner/dispatch-instruction-public.pem"
+        from .execution_grant import _trusted_root_file
+        from .root_dispatch_issuer import public_key_fingerprint
+        if issuer["enabled"]:
+            _trusted_root_file(private_path, private=True)
+            _trusted_root_file(public_path, private=False)
+            if public_key_fingerprint(public_path) != issuer["public_key_fingerprint"]:
+                raise ContractError("root dispatch public key does not match its configured fingerprint")
+        root_dispatch_issuer = {
+            **issuer, "private_key_path": private_path, "public_key_path": public_path,
+            "openssl_path": value["openssl_path"],
+            "signer": {
+                "key_id": issuer["key_id"], "key_class": "DELEGATED_V1",
+                "purpose": "VST_S2_DISPATCH_INSTRUCTION_V1",
+                "public_key_fingerprint": issuer["public_key_fingerprint"],
+            },
+        }
     assignment_policy = None
     if "assignment_policy_path" in value:
         from .assignment_basis import POLICY_PATH, validate_policy
@@ -778,6 +827,11 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
     from .execution_grant import _trusted_root_file
     for key_path in trust_keys.values():
         _trusted_root_file(key_path, private=False)
+    if root_dispatch_issuer is not None and root_dispatch_issuer["enabled"]:
+        from .root_dispatch_issuer import public_key_fingerprint
+        if root_dispatch_issuer["public_key_fingerprint"] in {
+                public_key_fingerprint(key_path) for key_path in trust_keys.values()}:
+            raise ContractError("root dispatch key must be distinct from execution-grant trust keys")
     if value["dispatch_instruction_trust_registry_path"] != DISPATCH_INSTRUCTION_TRUST_REGISTRY_PATH:
         raise ContractError("Supervisor dispatch-instruction registry path is not fixed")
     dispatch_registry_stat = os.stat(
@@ -830,7 +884,11 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
         "operator": frozenset({"reconcile_runner_execution"}),
     }
     if assignment_policy is not None:
-        role_operations["delegated_issuer"] = frozenset({"assignment_basis"})
+        role_operations["delegated_issuer"] = frozenset(
+            {"assignment_basis", "issue_root_dispatch_instruction"}
+            if root_dispatch_issuer is not None and root_dispatch_issuer["enabled"]
+            else {"assignment_basis"}
+        )
         role_operations["assignment_bootstrap"] = frozenset({"bootstrap_assignment"})
     for item in peers_value:
         if not isinstance(item, dict):
@@ -943,6 +1001,11 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
     supervisor_key = _read_root_key(value["startup_supervisor_key_path"])
     if event_key == supervisor_key:
         raise ContractError("Store event and startup supervisor keys must be distinct")
+    if root_dispatch_issuer is not None and root_dispatch_issuer["enabled"]:
+        dispatch_private = _read_root_key(root_dispatch_issuer["private_key_path"])
+        execution_private = _read_root_key(value["execution_grant_private_key_path"])
+        if dispatch_private in {event_key, execution_private}:
+            raise ContractError("root dispatch private key must be distinct from Store and execution keys")
     run_id, probe_nonce = value["run_id"], value["probe_nonce"]
     if (not isinstance(run_id, str) or not run_id.strip()
             or not isinstance(probe_nonce, str) or not probe_nonce.strip()):
@@ -996,6 +1059,7 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
         assignment_policy_provider=(
             lambda: _read_controlled_json(POLICY_PATH, max_bytes=65536)
         ) if assignment_policy is not None else None,
+        root_dispatch_issuer=root_dispatch_issuer,
     )
     probe_digest = hashlib.sha256(canonical_bytes(probe)).hexdigest()
     store.ensure_preflight_consumed(run_id, probe_nonce, spec_sha256, probe_digest)

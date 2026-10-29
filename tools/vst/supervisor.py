@@ -50,6 +50,7 @@ class Supervisor:
         model_provenance_digest_provider: Callable[[str], str | None] | None = None,
         assignment_policy: dict | None = None,
         assignment_policy_provider: Callable[[], dict] | None = None,
+        root_dispatch_issuer: dict | None = None,
     ):
         if isinstance(failure_threshold, bool) or not isinstance(failure_threshold, int) or failure_threshold < 1:
             raise ValueError("failure_threshold must be a positive integer")
@@ -72,6 +73,7 @@ class Supervisor:
         self.model_provenance_verifier = model_provenance_verifier
         self.model_provenance_digest_provider = model_provenance_digest_provider
         self.assignment_policy_provider = assignment_policy_provider
+        self.root_dispatch_issuer = root_dispatch_issuer
         if assignment_policy is None:
             self.assignment_policy = None
             self.assignment_policy_sha256 = None
@@ -176,6 +178,72 @@ class Supervisor:
             authority_expires_at=snapshot["authority_expires_at"],
             service_generation=generation,
         )
+
+    def issue_root_dispatch_instruction(self, *, assignment_operation_id: str) -> dict:
+        """Issue only for the exact root-authenticated assignment operation ID."""
+        config = self.root_dispatch_issuer
+        if not isinstance(config, dict) or config.get("enabled") is not True:
+            raise StoreError("root dispatch issuer is disabled or unconfigured", kind="authorization")
+        policy = self.assignment_policy
+        if (policy is None or self.assignment_policy_provider is None
+                or not callable(self.service_generation_provider) or not self._probe_consumed
+                or self.lifecycle_state != "READY" or self.breaker_state != "CLOSED"):
+            raise StoreError("root dispatch issuance authority is unavailable", kind="authorization")
+        from .assignment_basis import validate_policy
+        current_policy, policy_sha256 = validate_policy(self.assignment_policy_provider())
+        if current_policy != policy or policy_sha256 != self.assignment_policy_sha256:
+            raise StoreError("root assignment policy changed or was revoked", kind="authorization")
+        generation = self.service_generation_provider()
+        if not isinstance(generation, str) or not generation:
+            raise StoreError("active service generation is unavailable", kind="authorization")
+        snapshot = self.store.authenticated_assignment_basis(
+            assignment_operation_id, policy=current_policy, policy_sha256=policy_sha256,
+            active_service_generation=generation, expected_run_id=self.run_id,
+        )
+        from .root_dispatch_issuer import issue_frozen_dispatch
+        now = datetime.now(timezone.utc)
+        authority_expiry = datetime.fromtimestamp(
+            snapshot["authority_expires_at"], timezone.utc,
+        ).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
+        def authority_provider(intent: dict) -> dict:
+            latest_policy, latest_digest = validate_policy(self.assignment_policy_provider())
+            latest_generation = self.service_generation_provider()
+            if (latest_policy != intent["policy"] or latest_digest != intent["policy_sha256"]
+                    or latest_generation != intent["service_generation"]):
+                raise StoreError("root issuance policy or generation changed", kind="authorization")
+            return {"policy": latest_policy, "policy_sha256": latest_digest,
+                    "generation": latest_generation, "run_id": self.run_id}
+        def before_sign(intent: dict) -> bool:
+            latest_policy, latest_digest = validate_policy(self.assignment_policy_provider())
+            latest_generation = self.service_generation_provider()
+            if (latest_policy != current_policy or latest_digest != policy_sha256
+                    or latest_generation != generation):
+                return False
+            latest_snapshot = self.store.authenticated_assignment_basis(
+                assignment_operation_id, policy=latest_policy, policy_sha256=latest_digest,
+                active_service_generation=latest_generation, expected_run_id=self.run_id,
+            )
+            latest_expiry = datetime.fromtimestamp(
+                latest_snapshot["authority_expires_at"], timezone.utc,
+            ).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
+            return (
+                latest_snapshot["handoff"] == intent["handoff"]
+                and min(latest_expiry, latest_policy["expires_at_utc"],
+                        latest_snapshot["handoff"]["expires_at_utc"])
+                >= intent["unsigned"]["expires_at"]
+            )
+        try:
+            return issue_frozen_dispatch(
+                self.store, handoff=snapshot["handoff"], policy=current_policy,
+                policy_sha256=policy_sha256, authority_expires_at_utc=authority_expiry,
+                signer=config["signer"], private_key_path=config["private_key_path"],
+                public_key_path=config["public_key_path"], openssl_path=config["openssl_path"],
+                issuer_max_ttl_seconds=config["maximum_ttl_seconds"],
+                minimum_safety_slack_seconds=config["minimum_safety_slack_seconds"], now=now,
+                authority_provider=authority_provider, before_sign=before_sign,
+            )
+        except Exception as exc:
+            raise StoreError("root dispatch issuance failed closed", kind="authorization") from exc
 
     def bootstrap_assignment(self, request: dict, *, peer: Any) -> dict:
         """Create one exact fresh assignment for the kernel-authenticated bootstrap peer."""
@@ -497,13 +565,91 @@ class Supervisor:
         if (self.lifecycle_state != "READY" or self.breaker_state != "CLOSED"
                 or not callable(self.service_generation_provider)):
             raise StoreError("Supervisor is not admitting dispatch intents", kind="lifecycle")
+        from .dispatch_instruction import validate_dispatch_instruction, verify_dispatch_instruction
+        try:
+            candidate = validate_dispatch_instruction(instruction)
+        except Exception as exc:
+            raise StoreError("dispatch instruction is malformed", kind="authorization") from exc
+        key_id = candidate["key_id"]
+        binding = self.store.dispatch_key_class_binding(key_id)
+        issuer = self.root_dispatch_issuer if isinstance(self.root_dispatch_issuer, dict) else None
+        delegated_key = issuer is not None and key_id == issuer.get("key_id")
+        if binding is not None and binding.get("key_class") == "DELEGATED_V1" and not delegated_key:
+            raise StoreError("delegated dispatch key cannot fall back to the legacy trust registry",
+                             kind="authorization")
+        if delegated_key:
+            if issuer.get("enabled") is not True:
+                raise StoreError("delegated dispatch issuer is disabled; legacy fallback is forbidden",
+                                 kind="authorization")
+            policy = self.assignment_policy
+            if (policy is None or self.assignment_policy_provider is None
+                    or not callable(self.service_generation_provider)):
+                raise StoreError("delegated dispatch policy provider is unavailable", kind="authorization")
+            from .assignment_basis import validate_policy
+            current_policy, policy_digest = validate_policy(self.assignment_policy_provider())
+            if current_policy != policy or policy_digest != self.assignment_policy_sha256:
+                raise StoreError("root assignment policy changed or was revoked", kind="authorization")
+            if principal != current_policy["owner_principal"]:
+                raise StoreError("delegated dispatch principal differs from root policy", kind="authorization")
+            from .root_dispatch_issuer import verify_issued_instruction
+            root_registry = {key_id: {
+                "principal": principal, "purpose": "VST_S2_DISPATCH_INSTRUCTION_V1",
+                "public_key_path": issuer["public_key_path"],
+            }}
+            try:
+                verified = verify_dispatch_instruction(
+                    candidate, root_registry, expected_principal=principal,
+                    openssl_path=issuer["openssl_path"],
+                )
+                proof = verify_issued_instruction(
+                    self.store, candidate, key_id=key_id,
+                    public_key_path=issuer["public_key_path"],
+                    fingerprint=issuer["public_key_fingerprint"],
+                    openssl_path=issuer["openssl_path"],
+                )
+            except Exception as exc:
+                raise StoreError("delegated dispatch issuance is invalid", kind="authorization") from exc
+            generation = self.service_generation_provider()
+            snapshot = self.store.authenticated_assignment_basis(
+                proof.intent["assignment_operation_id"], policy=current_policy,
+                policy_sha256=policy_digest, active_service_generation=generation,
+                expected_run_id=self.run_id,
+            )
+            if (snapshot["handoff"] != proof.intent["handoff"]
+                    or proof.intent["policy"] != current_policy
+                    or proof.intent["policy_sha256"] != policy_digest):
+                raise StoreError("delegated issuance no longer matches the current assignment basis",
+                                 kind="authorization")
+            def authority_guard() -> bool:
+                try:
+                    latest_policy, latest_digest = validate_policy(self.assignment_policy_provider())
+                    now_utc = datetime.now(timezone.utc)
+                    valid_from = datetime.strptime(
+                        latest_policy["valid_from_utc"], "%Y-%m-%dT%H:%M:%SZ",
+                    ).replace(tzinfo=timezone.utc)
+                    expires = datetime.strptime(
+                        latest_policy["expires_at_utc"], "%Y-%m-%dT%H:%M:%SZ",
+                    ).replace(tzinfo=timezone.utc)
+                    return (latest_policy == current_policy and latest_digest == policy_digest
+                            and self.service_generation_provider() == generation
+                            and self.run_id == proof.intent["handoff"]["run_id"]
+                            and self._probe_consumed and valid_from <= now_utc < expires)
+                except Exception:
+                    return False
+            return self.store.accept_dispatch_intent(
+                principal=verified["principal"], instruction=verified["instruction"],
+                service_generation=generation, key_class="DELEGATED_V1",
+                key_fingerprint=issuer["public_key_fingerprint"], issuance_proof=proof,
+                authority_guard=authority_guard,
+            )
         if (not isinstance(self.dispatch_instruction_trust_keys, dict)
                 or not isinstance(self.dispatch_instruction_openssl_path, str)):
             raise StoreError("dispatch instruction trust registry is unavailable", kind="authorization")
-        from .dispatch_instruction import verify_dispatch_instruction
+        if binding is not None and binding.get("key_class") != "LEGACY_V1":
+            raise StoreError("dispatch key class is not trusted as legacy", kind="authorization")
         try:
             verified = verify_dispatch_instruction(
-                instruction, self.dispatch_instruction_trust_keys,
+                candidate, self.dispatch_instruction_trust_keys,
                 expected_principal=principal,
                 openssl_path=self.dispatch_instruction_openssl_path,
             )
@@ -515,9 +661,15 @@ class Supervisor:
         generation = self.service_generation_provider()
         if not isinstance(generation, str) or not generation.strip():
             raise StoreError("active service generation is unavailable", kind="authorization")
+        entry = self.dispatch_instruction_trust_keys.get(key_id)
+        from .root_dispatch_issuer import public_key_fingerprint
+        try:
+            fingerprint = public_key_fingerprint(entry["public_key_path"])
+        except Exception as exc:
+            raise StoreError("legacy dispatch key fingerprint is unavailable", kind="authorization") from exc
         return self.store.accept_dispatch_intent(
             principal=verified["principal"], instruction=verified["instruction"],
-            service_generation=generation,
+            service_generation=generation, key_class="LEGACY_V1", key_fingerprint=fingerprint,
         )
 
     def replay_dispatch_outcome(self, *, principal: str, instruction: object) -> dict | None:
@@ -537,13 +689,41 @@ class Supervisor:
         # Principal is bound from authenticated peer credentials, not echoed as caller input.
         return {key: value for key, value in binding.items() if key != "principal"}
 
-    @staticmethod
-    def _validate_current_dispatch_intent(store: Store, intent: dict, generation: str,
-                                         trust_registry: dict, openssl_path: str) -> None:
+    def _validate_current_dispatch_intent(self, intent: dict, generation: str,
+                                          trust_registry: dict, openssl_path: str) -> dict | None:
         if ("instruction" not in intent or "key_id" not in intent
                 or intent.get("instruction", {}).get("key_id") != intent.get("key_id")):
             raise StoreError("dispatch intent lacks signed instruction provenance", kind="authorization")
         from .dispatch_instruction import verify_dispatch_instruction
+        if intent.get("key_class") == "DELEGATED_V1":
+            issuer = self.root_dispatch_issuer
+            if (not isinstance(issuer, dict) or issuer.get("enabled") is not True
+                    or intent.get("key_id") != issuer.get("key_id")
+                    or intent.get("key_fingerprint") != issuer.get("public_key_fingerprint")):
+                raise StoreError("delegated dispatch key class is unavailable or changed", kind="authorization")
+            from .assignment_basis import validate_policy
+            from .root_dispatch_issuer import verify_issued_instruction
+            if not callable(self.assignment_policy_provider):
+                raise StoreError("delegated dispatch root policy is unavailable", kind="authorization")
+            current_policy, policy_digest = validate_policy(self.assignment_policy_provider())
+            if current_policy != self.assignment_policy or policy_digest != self.assignment_policy_sha256:
+                raise StoreError("delegated dispatch root policy changed", kind="authorization")
+            try:
+                proof = verify_issued_instruction(
+                    self.store, intent["instruction"], key_id=issuer["key_id"],
+                    public_key_path=issuer["public_key_path"],
+                    fingerprint=issuer["public_key_fingerprint"],
+                    openssl_path=issuer["openssl_path"],
+                )
+            except Exception as exc:
+                raise StoreError("delegated dispatch issuance verification failed", kind="authorization") from exc
+            basis = self.store.validate_delegated_dispatch_snapshot(
+                intent=intent, proof=proof, principal=intent["principal"],
+                generation=generation, current_policy=current_policy,
+            )
+            if basis["manifest_sha256"] != intent["manifest_digest"]:
+                raise StoreError("delegated dispatch intent no longer matches Store authority", kind="lease")
+            return proof
         try:
             verify_dispatch_instruction(
                 intent["instruction"], trust_registry,
@@ -553,7 +733,7 @@ class Supervisor:
             raise StoreError("dispatch intent instruction provenance is no longer valid", kind="authorization") from exc
         if intent.get("service_generation") != generation:
             raise StoreError("dispatch intent belongs to another service generation", kind="generation")
-        basis = store.execution_grant_basis(
+        basis = self.store.execution_grant_basis(
             intent["task_id"], intent["slot"], intent["attempt"], intent["epoch"],
             intent["run_id"], active_service_generation=generation,
             expected_owner=intent["principal"],
@@ -561,6 +741,7 @@ class Supervisor:
         )
         if basis["manifest_sha256"] != intent["manifest_digest"]:
             raise StoreError("dispatch intent no longer matches Store authority", kind="lease")
+        return None
 
     def next_dispatch_intent(self, *, cursor: dict | None, audience: str) -> dict:
         """Return at most one current authorized intent and a signed replay cursor."""
@@ -580,7 +761,7 @@ class Supervisor:
         for intent in window["intents"]:
             try:
                 self._validate_current_dispatch_intent(
-                    self.store, intent, generation, self.dispatch_instruction_trust_keys or {},
+                    intent, generation, self.dispatch_instruction_trust_keys or {},
                     self.dispatch_instruction_openssl_path or "",
                 )
             except StoreError as exc:
@@ -613,8 +794,8 @@ class Supervisor:
         if self.store.sandbox_mode and (self.run_id is None or not self._probe_consumed):
             raise StoreError("dispatch grant requires this service's consumed preflight", kind="probe")
         intent = self.store.find_dispatch_intent(request_id)
-        self._validate_current_dispatch_intent(
-            self.store, intent, generation, self.dispatch_instruction_trust_keys or {},
+        delegated_proof = self._validate_current_dispatch_intent(
+            intent, generation, self.dispatch_instruction_trust_keys or {},
             self.dispatch_instruction_openssl_path or "",
         )
         manifest = self.store.get_manifest(intent["task_id"])
@@ -625,9 +806,28 @@ class Supervisor:
         if not isinstance(model_digest, str) or not _valid_sha256(model_digest):
             raise StoreError("manifest model policy has no trusted root provenance", kind="authorization")
         payload = {"request_id": request_id, "service_generation": generation}
+        if delegated_proof is not None:
+            payload.update({
+                "issuance_operation_key": delegated_proof.intent["operation_key"],
+                "issuance_envelope_sha256": hashlib.sha256(
+                    canonical_bytes(delegated_proof.envelope),
+                ).hexdigest(),
+            })
         operation_key = f"dispatch-grant:{request_id}"
+        def validate_grant(conn, grant):
+            if delegated_proof is None:
+                return
+            if not self._dispatch_authority_guard(delegated_proof, generation)():
+                raise StoreError("delegated root policy/generation changed at grant boundary",
+                                 kind="authorization")
+            self.store._validate_dispatch_grant_authority_locked(
+                conn, grant=grant, dispatch_request_id=request_id,
+                proof=delegated_proof, generation=generation, current=True,
+                expected_operation_payload=payload,
+            )
         previous = self.store.lookup_idempotent_operation(
             operation_key, operation="dispatch_grant", payload=payload, check_payload=True,
+            validate_result=validate_grant if delegated_proof is not None else None,
         )
         if previous is not None:
             return previous["result"]
@@ -639,7 +839,65 @@ class Supervisor:
         )
         return self.store.execute_idempotent(
             operation_key, "dispatch_grant", payload, lambda _conn: grant,
+            before_commit=validate_grant if delegated_proof is not None else None,
+            on_replay=validate_grant if delegated_proof is not None else None,
         )
+
+    def _dispatch_authority_guard(self, proof: Any, generation: str) -> Callable[[], bool]:
+        def check() -> bool:
+            try:
+                from .assignment_basis import validate_policy
+                current_policy, digest = validate_policy(self.assignment_policy_provider())
+                now_utc = datetime.now(timezone.utc)
+                valid_from = datetime.strptime(
+                    current_policy["valid_from_utc"], "%Y-%m-%dT%H:%M:%SZ",
+                ).replace(tzinfo=timezone.utc)
+                expires = datetime.strptime(
+                    current_policy["expires_at_utc"], "%Y-%m-%dT%H:%M:%SZ",
+                ).replace(tzinfo=timezone.utc)
+                return (current_policy == proof.intent["policy"]
+                        and digest == proof.intent["policy_sha256"]
+                        and self.service_generation_provider() == generation
+                        and proof.intent["service_generation"] == generation
+                        and self.run_id == proof.intent["handoff"]["run_id"]
+                        and self._probe_consumed and valid_from <= now_utc < expires)
+            except Exception:
+                return False
+        return check
+
+    def _dispatch_issuance_proof_for_grant(self, grant: dict) -> Any:
+        target = self.store.dispatch_issuance_target_for_grant(grant)
+        if target is None:
+            return None
+        issuer = self.root_dispatch_issuer
+        if (not isinstance(issuer, dict) or issuer.get("enabled") is not True
+                or target["key_id"] != issuer.get("key_id")
+                or target["key_fingerprint"] != issuer.get("public_key_fingerprint")):
+            raise StoreError("delegated grant key class is disabled or changed", kind="authorization")
+        from .assignment_basis import validate_policy
+        if not callable(self.assignment_policy_provider):
+            raise StoreError("delegated grant root policy is unavailable", kind="authorization")
+        current_policy, digest = validate_policy(self.assignment_policy_provider())
+        if current_policy != self.assignment_policy or digest != self.assignment_policy_sha256:
+            raise StoreError("delegated grant root policy changed", kind="authorization")
+        if current_policy["owner_principal"] != target["principal"]:
+            raise StoreError("delegated grant principal differs from root policy", kind="authorization")
+        from .root_dispatch_issuer import verify_issued_instruction
+        try:
+            proof = verify_issued_instruction(
+                self.store, target["instruction"], key_id=target["key_id"],
+                public_key_path=issuer["public_key_path"], fingerprint=target["key_fingerprint"],
+                openssl_path=issuer["openssl_path"],
+            )
+        except Exception as exc:
+            raise StoreError("delegated grant issuance proof is invalid", kind="authorization") from exc
+        if (proof.intent["operation_key"] != target["issuance_operation_key"]
+                or hashlib.sha256(canonical_bytes(target["instruction"])).hexdigest()
+                != target["issuance_envelope_sha256"]
+                or proof.intent["policy"] != current_policy
+                or proof.intent["policy_sha256"] != digest):
+            raise StoreError("delegated grant lost its exact issuance or policy binding", kind="integrity")
+        return proof
 
     def claim_runner_execution(self, grant: dict) -> dict | None:
         """Supervisor IPC endpoint: recheck active generation and Store state before dispatch."""
@@ -651,8 +909,16 @@ class Supervisor:
         # An expired grant may retrieve its exact already-completed receipt;
         # Store rejects any expired grant that has no matching COMPLETE claim.
         self._verify_issued_execution_grant(grant, generation, allow_expired=True)
+        completed_receipt = self.store.completed_runner_execution_receipt(grant)
+        if completed_receipt is not None:
+            return completed_receipt
+        issuance_proof = self._dispatch_issuance_proof_for_grant(grant)
+        authority_guard = (None if issuance_proof is None else
+                           self._dispatch_authority_guard(issuance_proof, generation))
         return self.store.claim_runner_execution(
             grant, active_service_generation=generation,
+            dispatch_issuance_proof=issuance_proof,
+            authority_guard=authority_guard,
         )
 
     def runner_execution_claim_status(self, grant: dict) -> dict:
@@ -687,8 +953,13 @@ class Supervisor:
         if not isinstance(generation, str) or not generation:
             raise StoreError("active service generation is unavailable", kind="authorization")
         self._verify_issued_execution_grant(grant, generation)
+        issuance_proof = self._dispatch_issuance_proof_for_grant(grant)
+        authority_guard = (None if issuance_proof is None else
+                           self._dispatch_authority_guard(issuance_proof, generation))
         return self.store.reserve_runner_execution(
             grant, active_service_generation=generation,
+            dispatch_issuance_proof=issuance_proof,
+            authority_guard=authority_guard,
         )
 
     def verify_pending_runner_execution(self, grant: dict) -> bool:
