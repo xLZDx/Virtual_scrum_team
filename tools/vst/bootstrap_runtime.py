@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import ctypes
 import hashlib
 import json
 import os
@@ -30,6 +31,7 @@ SYSTEMCTL = "/usr/bin/systemctl"
 CGROUP_ROOT = "/sys/fs/cgroup"
 SYSTEM_SLICE = "/sys/fs/cgroup/system.slice"
 MAX_FILE = 64 * 1024 * 1024
+PREPARING_PREFIX = ".preparing-"
 
 
 def refuse(message: str) -> None:
@@ -274,39 +276,65 @@ def _prepare_journal(manifest: dict[str, Any], digest: str) -> tuple[str, dict[s
     root = _safe_journal_root(create=True)
     txid = digest[:32]
     directory = os.path.join(root, txid)
-    try:
-        os.mkdir(directory, 0o700)
-    except FileExistsError:
+    if os.path.lexists(directory):
         refuse("journal already exists; inspect or recover it explicitly")
+    preparation = os.path.join(root, PREPARING_PREFIX + txid + "-" + secrets.token_hex(12))
+    try:
+        os.mkdir(preparation, 0o700)
+    except FileExistsError:
+        refuse("unique preparation directory unexpectedly exists")
     _sync_dir(root)
     snapshots: dict[str, Any] = {}
-    try:
-        for unit in UNITS:
-            path = os.path.join(UNIT_DIR, unit)
-            fp = manifest["units"][unit]["old"]
-            if fp["kind"] == "file":
-                raw = _read_regular(path, uid=0, mode=fp["mode"])
-                name = "old-" + unit
-                _write_exclusive(os.path.join(directory, name), raw, 0o600)
-                snapshots[unit] = name
-            else:
-                snapshots[unit] = None
-        state = {
-            "schema": 1, "manifest_sha256": digest, "status": "prepared",
-            "old_selector": manifest["old_selector"], "new_selector": manifest["runtime_path"],
-            "units": {unit: {"old": manifest["units"][unit]["old"],
-                              "new": manifest["units"][unit]["new"],
-                              "snapshot": snapshots[unit], "state": "pending"}
-                      for unit in UNITS},
-            "selector_state": "pending",
-        }
-        _write_exclusive(os.path.join(directory, "manifest.json"), canonical_bytes(manifest) + b"\n", 0o600)
-        _journal_state(directory, state)
-        _sync_dir(directory)
-        return directory, state
-    except BaseException:
-        # Preserve the partial journal and snapshots for explicit inspection/recovery.
-        raise
+    # Persist the exact transition identity and snapshot plan before snapshot I/O. This
+    # directory is not a recovery journal until atomically published under its txid.
+    _write_exclusive(os.path.join(preparation, "manifest.json"), canonical_bytes(manifest) + b"\n", 0o600)
+    prep_state = {"schema": 1, "manifest_sha256": digest, "txid": txid,
+                  "status": "preparing",
+                  "snapshot_plan": {unit: ("old-" + unit if manifest["units"][unit]["old"]["kind"] == "file" else None)
+                                    for unit in UNITS}}
+    _write_exclusive(os.path.join(preparation, "state.json"), canonical_bytes(prep_state) + b"\n", 0o600)
+    _sync_dir(preparation)
+    for unit in UNITS:
+        path = os.path.join(UNIT_DIR, unit)
+        fp = manifest["units"][unit]["old"]
+        if fp["kind"] == "file":
+            raw = _read_regular(path, uid=0, mode=fp["mode"])
+            if hashlib.sha256(raw).hexdigest() != fp["sha256"] or len(raw) != fp["size"]:
+                refuse("old unit changed while preparing its recovery snapshot: " + unit)
+            name = "old-" + unit
+            _write_exclusive(os.path.join(preparation, name), raw, 0o600)
+            snapshots[unit] = name
+        else:
+            snapshots[unit] = None
+    _sync_dir(preparation)
+    state = {
+        "schema": 1, "manifest_sha256": digest, "status": "prepared",
+        "old_selector": manifest["old_selector"], "new_selector": manifest["runtime_path"],
+        "units": {unit: {"old": manifest["units"][unit]["old"],
+                          "new": manifest["units"][unit]["new"],
+                          "snapshot": snapshots[unit], "state": "pending"}
+                  for unit in UNITS},
+        "selector_state": "pending",
+    }
+    # Final journal state and directory entry are durable before publication.
+    _journal_state(preparation, state)
+    _rename_noreplace(preparation, directory)
+    _sync_dir(root)
+    return directory, state
+
+
+def _rename_noreplace(source: str, destination: str) -> None:
+    """Publish a prepared journal without replacing any existing path."""
+    libc = ctypes.CDLL(None, use_errno=True)
+    operation = getattr(libc, "renameat2", None)
+    if operation is None:
+        refuse("kernel libc does not expose renameat2 no-replace publication")
+    operation.argtypes = (ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint)
+    operation.restype = ctypes.c_int
+    result = operation(-100, os.fsencode(source), -100, os.fsencode(destination), 1)  # AT_FDCWD, RENAME_NOREPLACE
+    if result != 0:
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error), destination)
 
 
 def _require_no_pending_journal() -> None:
@@ -315,6 +343,13 @@ def _require_no_pending_journal() -> None:
         names = [entry.name for entry in entries]
     for name in names:
         if name == ".lock":
+            continue
+        if re.fullmatch(r"\.preparing-[0-9a-f]{32}-[0-9a-f]{24}", name):
+            directory = os.path.join(root, name)
+            info = os.lstat(directory)
+            if not stat.S_ISDIR(info.st_mode) or info.st_uid != 0 or stat.S_IMODE(info.st_mode) != 0o700:
+                refuse("unpublished preparation entry has unexpected metadata")
+            # It has never been armed for path mutation. Retain it and allow a fresh prepare.
             continue
         if not re.fullmatch(r"[0-9a-f]{32}", name):
             refuse("unexpected entry in transition journal root")
@@ -556,16 +591,17 @@ def _restore_one(directory: str, journal_state: dict[str, Any], state: dict[str,
         if hashlib.sha256(new_bytes).hexdigest() != new["sha256"] or len(new_bytes) != new["size"]:
             refuse("selected unit changed while preserving it")
         retained = _retained_dir()
-        retained_path = os.path.join(retained, os.path.basename(path) + "-new-" + journal_state["manifest_sha256"][:16])
-        if os.path.lexists(retained_path):
-            retained_info = os.lstat(retained_path)
-            prior = _read_regular(retained_path, uid=0, mode=0o600)
-            if (not stat.S_ISREG(retained_info.st_mode)
-                    or hashlib.sha256(prior).hexdigest() != new["sha256"] or len(prior) != new["size"]):
-                refuse("retained selected unit differs from the reviewed new fingerprint")
-        else:
-            _write_exclusive(retained_path, new_bytes, 0o600)
-            _sync_dir(retained)
+        # Each recovery attempt gets a fresh no-replace name. A failed partial copy
+        # stays retained; it cannot poison the next attempt or overwrite another file.
+        retained_path = os.path.join(
+            retained,
+            os.path.basename(path) + "-new-" + journal_state["manifest_sha256"][:16]
+            + "-" + secrets.token_hex(8),
+        )
+        _write_exclusive(retained_path, new_bytes, 0o600)
+        if hashlib.sha256(_read_regular(retained_path, uid=0, mode=0o600)).hexdigest() != new["sha256"]:
+            refuse("retained copy of selected unit failed verification")
+        _sync_dir(retained)
         _atomic_file(path, raw)
         os.chown(path, old["uid"], old["gid"])
         os.chmod(path, old["mode"])
