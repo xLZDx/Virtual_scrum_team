@@ -5,6 +5,10 @@ Request: `4b2e7e61-c0bd-407d-9b2c-b9078da5f7d9`. Source: successful PM Bridge se
 
 ## Exact response
 
+Persisted PM Bridge correlation subsequently verified: job
+`bb7d72a5-6525-4831-bb02-92421660298a`, reply `dd91f9f4-728f-44ee-8e88-6762280569f1`,
+status `succeeded`, `correlated=true`. The response text below is unchanged.
+
 ChatGPT said:
 
 REQUEST_ID: 4b2e7e61-c0bd-407d-9b2c-b9078da5f7d9

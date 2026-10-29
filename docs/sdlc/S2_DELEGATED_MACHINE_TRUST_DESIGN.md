@@ -4,6 +4,14 @@ Sprint: Agentic_Framework `39b7cc253f5d`, mapped to the active project sprint S2
 Status: candidate source design; it has not passed independent review or GPT-PM verification, and neither machine signer is active.
 Decision source: GPT-PM correlated architecture ruling, request `a3e130f0-9aec-4304-b001-388a45c0be55`, reply `0b0b8a4d-0816-4146-ba21-71857b5de49d`; full record: `docs/sdlc/evidence/s2-machine-authority-adjudication-20261029.md`.
 
+**Active assignment-provenance design:** the later GPT-PM ruling `MODIFY — ALTERNATIVE ACCEPTED
+IN PRINCIPLE` (request `4b2e7e61-c0bd-407d-9b2c-b9078da5f7d9`) retires the candidate external
+per-task operator-signed record. Use `docs/sdlc/S2_AUTHENTICATED_ASSIGNMENT_BASIS_DESIGN.md` for
+the selected Store-backed provenance and bounded read-only `assignment_basis` API. The older
+external-record schema and its disconnected validator below are retained as candidate-history;
+they are not an active Supervisor contract. The upstream writer and production issuer remain
+unimplemented and must not be claimed as accepted.
+
 ## Decision and boundary
 
 This candidate proposes two separately versioned, purpose-bound machine contracts: one for issuance of an already-authorized S2 assignment and one for collecting E5 host-policy observations. The operator remains the sole human delegation authority. The repository has no established operator assignment-delegation signing purpose or trust configuration for this contract. A policy could become effective only after a new, purpose-separated operator authority key and root-owned trust configuration are explicitly provisioned and the operator signs its canonical bytes. Codex may author the candidate and compute its digest, but may not sign it, claim the operator approved it, or provision a key. The signed delegation states machine identity, exact role, scope, policy digest, validity, and revocation identity.

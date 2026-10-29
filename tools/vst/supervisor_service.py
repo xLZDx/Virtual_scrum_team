@@ -203,6 +203,13 @@ class AuthenticatedSupervisorAPI:
             return
 
     def _dispatch(self, operation: str, body: dict, peer: SupervisorPeer | None = None) -> Any:
+        if operation == "assignment_basis":
+            from .assignment_basis import validate_request
+            if (peer is None or peer.role != "delegated_issuer"
+                    or peer.operations != frozenset({"assignment_basis"})):
+                raise ContractError("assignment-basis request is not authorized")
+            operation_id = validate_request(body)
+            return self.supervisor.assignment_basis(assignment_operation_id=operation_id)
         if operation == "submit_dispatch_intent":
             if (peer is None or peer.role != "dispatch_owner" or not peer.principal
                     or set(body) != {"instruction"}):
@@ -700,7 +707,21 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
         "allow_schema_upgrade",
     }
     if set(value) != required:
-        raise ContractError("Supervisor service config fields do not match its schema")
+        if set(value) != required | {"assignment_policy_path", "assignment_policy_sha256"}:
+            raise ContractError("Supervisor service config fields do not match its schema")
+    assignment_policy = None
+    if "assignment_policy_path" in value:
+        from .assignment_basis import POLICY_PATH, validate_policy
+        if value["assignment_policy_path"] != POLICY_PATH:
+            raise ContractError("assignment delegation policy path is not fixed")
+        if not isinstance(value["assignment_policy_sha256"], str) or not _SHA256.fullmatch(
+                value["assignment_policy_sha256"]):
+            raise ContractError("assignment policy digest pin is malformed")
+        assignment_policy, policy_digest = validate_policy(
+            _read_controlled_json(POLICY_PATH, max_bytes=65536),
+        )
+        if policy_digest != value["assignment_policy_sha256"]:
+            raise ContractError("assignment policy does not match its root configuration digest pin")
     if type(value["allow_schema_upgrade"]) is not bool:
         raise ContractError("Supervisor schema-upgrade authorization must be a boolean")
     for field in ("store_path", "anchor_path", "event_key_path", "startup_supervisor_key_path",
@@ -787,6 +808,8 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
         # enables it by default; it receives only signed reconciliation.
         "operator": frozenset({"reconcile_runner_execution"}),
     }
+    if assignment_policy is not None:
+        role_operations["delegated_issuer"] = frozenset({"assignment_basis"})
     for item in peers_value:
         if not isinstance(item, dict):
             raise ContractError("Supervisor peer policy entry is malformed")
@@ -816,11 +839,25 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
     required_roles = {"dispatch_owner", "dispatcher", "runnerd", "signer"}
     if not required_roles <= roles or not roles <= set(role_operations):
         raise ContractError("Supervisor peer policy must define dispatcher, runnerd, and signer")
+    if ("delegated_issuer" in roles) != (assignment_policy is not None):
+        raise ContractError("delegated issuer requires its exact pinned root assignment policy")
     by_role = {peer.role: peer for peer in peers}
     runner_peer = by_role["runnerd"]
     signer_peer = by_role["signer"]
     dispatcher_peer = by_role["dispatcher"]
     owner_peer = by_role["dispatch_owner"]
+    if assignment_policy is not None:
+        issuer_peer = by_role["delegated_issuer"]
+        expected_issuer = assignment_policy["issuer_peer"]
+        if (issuer_peer.uid != expected_issuer["uid"] or issuer_peer.gid != expected_issuer["gid"]
+                or issuer_peer.cgroup != expected_issuer["cgroup"]
+                or expected_issuer["role"] != "delegated_issuer"):
+            raise ContractError("delegated issuer peer differs from the root assignment policy")
+        if (issuer_peer.uid in {runner_peer.uid, signer_peer.uid, dispatcher_peer.uid, owner_peer.uid, 999}
+                or issuer_peer.gid in {runner_peer.gid, signer_peer.gid, dispatcher_peer.gid, owner_peer.gid, 989}
+                or issuer_peer.cgroup in {runner_peer.cgroup, signer_peer.cgroup, dispatcher_peer.cgroup,
+                                          owner_peer.cgroup}):
+            raise ContractError("delegated issuer identity is not independently pinned")
     if (runner_peer.uid != 997 or runner_peer.gid != 988
             or runner_peer.cgroup != value["runner_control_group"]
             or dispatcher_peer.cgroup != "/system.slice/vst-dispatcher.service"
@@ -900,6 +937,10 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
         service_generation_provider=lambda: _active_runner_generation(value),
         model_provenance_verifier=lambda model, digest: model_provenance.get(model) == digest,
         model_provenance_digest_provider=lambda model: model_provenance.get(model),
+        assignment_policy=assignment_policy,
+        assignment_policy_provider=(
+            lambda: _read_controlled_json(POLICY_PATH, max_bytes=65536)
+        ) if assignment_policy is not None else None,
     )
     probe_digest = hashlib.sha256(canonical_bytes(probe)).hexdigest()
     store.ensure_preflight_consumed(run_id, probe_nonce, spec_sha256, probe_digest)

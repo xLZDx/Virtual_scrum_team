@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import math
 import uuid
+from datetime import datetime, timezone
 from typing import Any, Callable
 
 from .contracts import canonical_bytes
@@ -47,6 +48,8 @@ class Supervisor:
         service_generation_provider: Callable[[], str] | None = None,
         model_provenance_verifier: Callable[[str, str], bool] | None = None,
         model_provenance_digest_provider: Callable[[str], str | None] | None = None,
+        assignment_policy: dict | None = None,
+        assignment_policy_provider: Callable[[], dict] | None = None,
     ):
         if isinstance(failure_threshold, bool) or not isinstance(failure_threshold, int) or failure_threshold < 1:
             raise ValueError("failure_threshold must be a positive integer")
@@ -68,6 +71,13 @@ class Supervisor:
         self.service_generation_provider = service_generation_provider
         self.model_provenance_verifier = model_provenance_verifier
         self.model_provenance_digest_provider = model_provenance_digest_provider
+        self.assignment_policy_provider = assignment_policy_provider
+        if assignment_policy is None:
+            self.assignment_policy = None
+            self.assignment_policy_sha256 = None
+        else:
+            from .assignment_basis import validate_policy
+            self.assignment_policy, self.assignment_policy_sha256 = validate_policy(assignment_policy)
         self._seen_run_ids = {run_id} if isinstance(run_id, str) else set()
         self._seen_probe_nonces = {probe_nonce} if isinstance(probe_nonce, str) else set()
         self._probe_consumed = False
@@ -122,6 +132,48 @@ class Supervisor:
                 if event.get("action") in _LIFECYCLE_ACTIONS and self._valid_resolution_event(event):
                     self._apply_reconciled_state(event["action"], event["completed"])
                     self.lifecycle_action_id = event.get("group_id") if self.lifecycle_state in {"STOPPING", "ROLLING_BACK"} else None
+
+    def assignment_basis(self, *, assignment_operation_id: str) -> dict:
+        """Return the current read-only basis for one root-policy assignment handoff."""
+        from .assignment_basis import build_response, validate_request
+
+        operation_id = validate_request({
+            "schema": "VST_S2_ASSIGNMENT_BASIS_REQUEST_V1",
+            "assignment_operation_id": assignment_operation_id,
+        })
+        policy = self.assignment_policy
+        if (policy is None or self.assignment_policy_sha256 is None
+                or self.service_generation_provider is None
+                or self.assignment_policy_provider is None):
+            raise StoreError("authenticated assignment-basis source is not provisioned", kind="authorization")
+        from .assignment_basis import validate_policy
+        try:
+            current_policy, current_policy_sha256 = validate_policy(self.assignment_policy_provider())
+        except (OSError, ValueError, TypeError) as exc:
+            raise StoreError("root assignment policy is unreadable or invalid", kind="authorization") from exc
+        if (current_policy_sha256 != self.assignment_policy_sha256
+                or current_policy != policy):
+            raise StoreError("root assignment policy changed or was revoked", kind="authorization")
+        policy = current_policy
+        if self.lifecycle_state != "READY" or self.breaker_state != "CLOSED":
+            raise StoreError("Supervisor is not available for assignment-basis reads", kind="provider")
+        now = datetime.now(timezone.utc)
+        valid_from = datetime.strptime(policy["valid_from_utc"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        expires = datetime.strptime(policy["expires_at_utc"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        if not valid_from <= now < expires:
+            raise StoreError("assignment delegation policy is not currently valid", kind="authorization")
+        generation = self.service_generation_provider()
+        if not isinstance(generation, str) or not generation:
+            raise StoreError("active Supervisor service generation is unavailable", kind="integrity")
+        snapshot = self.store.authenticated_assignment_basis(
+            operation_id, policy=policy, policy_sha256=self.assignment_policy_sha256,
+            active_service_generation=generation,
+        )
+        return build_response(
+            snapshot["handoff"], policy=policy, policy_sha256=self.assignment_policy_sha256,
+            authority_expires_at=snapshot["authority_expires_at"],
+            service_generation=generation,
+        )
 
     def _apply_reconciled_state(self, action: str, completed: bool) -> None:
         states = {
