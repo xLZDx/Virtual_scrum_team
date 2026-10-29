@@ -1437,7 +1437,8 @@ class Store:
                                               proof: Any,
                                               generation: str,
                                               grant: dict | None = None,
-                                              check_current: bool = True) -> dict:
+                                              check_current: bool = True,
+                                              reservation_grant_id: str | None = None) -> dict:
         self._verify_supervisor_records(conn)
         rows = conn.execute(
             "SELECT task_id, actor, payload FROM events WHERE kind='DISPATCH_INTENT_ACCEPTED' "
@@ -1471,7 +1472,7 @@ class Store:
                 conn, accepted["task_id"], accepted["slot"], accepted["attempt"],
                 accepted["epoch"], accepted["run_id"], active_service_generation=generation,
                 expected_owner=accepted["principal"], expected_lease_id=accepted["lease_id"],
-                now=self._now(),
+                now=self._now(), reservation_grant_id=reservation_grant_id,
             )
             if basis["manifest_sha256"] != accepted["manifest_digest"]:
                 raise StoreError("delegated dispatch current manifest differs", kind="manifest")
@@ -1597,11 +1598,12 @@ class Store:
                                                   proof: Any,
                                                   generation: str,
                                                   current: bool,
-                                                  expected_operation_payload: dict | None = None) -> dict:
+                                                  expected_operation_payload: dict | None = None,
+                                                  reservation_grant_id: str | None = None) -> dict:
         accepted = self._assert_delegated_dispatch_use_locked(
             conn, dispatch_request_id=dispatch_request_id, proof=proof,
             generation=generation, grant=grant if current else None,
-            check_current=current,
+            check_current=current, reservation_grant_id=reservation_grant_id,
         )
         key = f"dispatch-grant:{dispatch_request_id}"
         row = conn.execute(
@@ -1632,7 +1634,8 @@ class Store:
                                                          grant: dict, proof: Any,
                                                          generation: str,
                                                          current: bool,
-                                                         authority_guard: Callable[[], bool] | None = None) -> None:
+                                                         authority_guard: Callable[[], bool] | None = None,
+                                                         reservation_grant_id: str | None = None) -> None:
         source = self._dispatch_grant_source_locked(conn, grant)
         if source is None:
             if self._grant_has_delegated_origin_locked(conn, grant):
@@ -1699,6 +1702,7 @@ class Store:
             conn, grant=grant, dispatch_request_id=dispatch_request_id,
             proof=proof, generation=generation, current=current,
             expected_operation_payload=expected_payload,
+            reservation_grant_id=reservation_grant_id,
         )
 
     def replay_dispatch_outcome(self, *, principal: str, instruction: dict) -> dict | None:
@@ -2407,10 +2411,13 @@ class Store:
         self, conn: sqlite3.Connection, task_id: str, slot: str, attempt: int, epoch: int, run_id: str,
         *, active_service_generation: str, expected_owner: str | None = None,
         expected_lease_id: int | None = None, now: float,
+        reservation_grant_id: str | None = None,
     ) -> dict:
         """Derive grant authority from an already-open read snapshot."""
         task = self._task_row(conn, task_id)
-        self._guard_runner_task_continuation_locked(conn, task_id)
+        self._guard_runner_task_continuation_locked(
+            conn, task_id, reservation_grant_id=reservation_grant_id,
+        )
         story = self._story_row(conn, task["story_id"])
         if (int(story["epoch"]) != epoch or story["state"] != "OWNED"
                 or story["owner"] is None or story["owner_expires_at"] is None
@@ -5084,7 +5091,8 @@ class Store:
         )
 
     def _guard_runner_task_continuation_locked(
-        self, conn: sqlite3.Connection, task_id: str,
+        self, conn: sqlite3.Connection, task_id: str, *,
+        reservation_grant_id: str | None = None,
     ) -> None:
         """Block successors until every earlier execution has verified successor eligibility."""
         claims = conn.execute(
@@ -5094,6 +5102,12 @@ class Store:
         for claim_row in claims:
             states = self._runner_execution_states_locked(conn, claim_row["grant_id"])
             state = states[-1]["state"]
+            # Only reserve_runner_execution supplies this identity, after matching
+            # the entire persisted claim and proving its sole state is PENDING.
+            # It is this execution, not a predecessor or permission to reclaim it.
+            if (claim_row["grant_id"] == reservation_grant_id
+                    and len(states) == 1 and state == "PENDING"):
+                continue
             if state == "COMPLETE":
                 continue
             if self._runner_attempt_successor_eligibility_locked(
@@ -5508,6 +5522,7 @@ class Store:
                 conn, grant=valid, proof=dispatch_issuance_proof,
                 generation=active_service_generation, current=True,
                 authority_guard=authority_guard,
+                reservation_grant_id=valid["grant_id"],
             )
             if (valid["issued_at"] > now + 5.0 or valid["expires_at"] <= now
                     or now + valid["execution_deadline_sec"] > valid["expires_at"]

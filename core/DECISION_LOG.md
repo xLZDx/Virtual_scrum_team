@@ -1449,3 +1449,10 @@ fixtures. It now requires exact provenance when immutable handoff/delegated fact
 task and preserves the old direct path otherwise, with all original current guards. Canonical
 SQL JSON is also decoded at the Store-to-pure reducer boundary. The strict pure contract stays
 unchanged. Old92/22/7 and20/16 outcomes are distinct failures at6f4ad200, not post-fix acceptance.
+
+## 2026-10-29 — Distinguish current reservation from predecessor execution (0564)
+
+The delegated authority basis accepts a reservation-only exact grant identity after
+Store has matched the persisted claim and its sole PENDING state. Other claims still
+block continuation; normal admission and replay receive no exemption. See
+[change 0564](../docs/changes/0564-s2-reserve-own-pending-claim.md).

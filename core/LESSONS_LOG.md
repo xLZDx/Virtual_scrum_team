@@ -1187,3 +1187,13 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Correction: both lookup and runner boundaries use a deny-only delegated-origin classifier; the
   reducer adapter parses canonical JSON. No accepted schema or byte binding is weakened.
 - Verification: source only pending targeted legacy, missing-link and full positive regressions.
+
+## 2026-10-29 — Revalidate authority without rejecting the operation itself (0564)
+
+- Kind: FAILURE caught by the genuine positive E2E issuer-to-reservation path.
+- Evidence: 8beffcc WSL run reached claim but reserve rejected its own PENDING claim;
+  the corrected negative fixture run recorded 31 passed and one failed.
+- Correction: narrow the predecessor guard exception to the exact already-matched
+  unreserved PENDING claim, never to a task-wide or state-wide bypass.
+- Verification: designated roles must prove positive reserve and continued rejection
+  of duplicates and other unresolved claims at the new frozen source revision.
