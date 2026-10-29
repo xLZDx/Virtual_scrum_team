@@ -49,8 +49,11 @@ run. These checks do not prove installed runtime or production behavior.
 
 ## Acceptance boundary and follow-up
 
-The bounded source slice is ready for task delivery after exact-head GPT-PM code review and normal
-push. Full S2-4 remains **OPEN / not accepted** because:
+GPT-PM approved the bounded source/test slice at exact code HEAD
+`aa3496322ca7b05955dd60dfee7decd8056f34ee` (request
+`b53d89ab-aca1-4432-87d3-5b139592f575`, correlated reply
+`0477831c-98fa-5e91-8416-5b5b4ff7cacd`, 0 BLOCKER / 0 MAJOR). Full S2-4 remains **OPEN / not
+accepted** because:
 
 1. The verifier is not connected to a production or RPC issuance route.
 2. The legacy V1 caller-selected operation-ID route remains an integration finding and must be

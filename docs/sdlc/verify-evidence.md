@@ -210,3 +210,10 @@ Codex will not invent an operator signature/waiver or an external coordinator.
 - Ubuntu-24.04 WSL command: `wsl.exe -d Ubuntu-24.04 -u root -- bash -lc 'set -e; mkdir -p /mnt/d; mountpoint -q /mnt/d || mount -t drvfs D: /mnt/d -o ro; cd /mnt/d/Repo/Virtual_scrum_team; PYTHONDONTWRITEBYTECODE=1 python3 -m pytest -q -p no:cacheprovider tests/vst/test_s2_machine_authorization_v2.py'` returned **13 passed in 0.79s, 0 skipped**, exit 0, no warnings. The read-only mount and test ran in one root process; fixture files stayed under `/root`. Exact file SHA-256 values and iteration history are in `evidence/s2-4-v2-authorization-source-20261030.md`.
 - Final read-only `code-reviewer` and `security-reviewer` reviews found no actionable finding in this bounded diff. They did not run tests. The verifier is not connected to an RPC route; the legacy V1 caller-selected operation-ID route remains a separate open integration item.
 - `git diff --check` returned no output. Production identity/configuration, keys, E5, Store mutation, activation, dispatch, and restricted process-kill/crash/mutation/E8/policy selectors were not exercised. The restricted selectors remain `NOT_RUN`.
+
+Exact-head bounded-source decision: GPT-PM returned **APPROVE** for source/test scope at code HEAD
+`aa3496322ca7b05955dd60dfee7decd8056f34ee` (request `b53d89ab-aca1-4432-87d3-5b139592f575`,
+correlated reply `0477831c-98fa-5e91-8416-5b5b4ff7cacd`, 0 BLOCKER / 0 MAJOR). The full S2-4
+acceptance remains NOT APPROVED. This decision does not authorize privileged issuer implementation,
+production keys/configuration, activation, dispatch, E5 replacement, runtime acceptance, or S2
+closure. The V1 caller-selected operation-ID route and real owner-to-Runner evidence remain open.

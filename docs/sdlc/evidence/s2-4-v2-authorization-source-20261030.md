@@ -89,3 +89,21 @@ issuer integration. Current human E5 remains mandatory. Production identity/conf
 current run-bound provenance, and a real owner-to-Runner journey remain unproven. Restricted
 scenarios stay `NOT_RUN`. S2-5 and S3 do not start until this active task is delivered and the
 ordered backlog permits them.
+
+## Exact-head GPT-PM code decision
+
+- Review request: `b53d89ab-aca1-4432-87d3-5b139592f575`; durable job:
+  `5ab58c00-1f88-4e4e-b393-1d3cdff2f7d8`; correlated user turn:
+  `ab51b798-259d-4b63-bb8e-d64ea144350e`; correlated reply:
+  `0477831c-98fa-5e91-8416-5b5b4ff7cacd`; `correlated=true`.
+- Exact reviewed code HEAD: `aa3496322ca7b05955dd60dfee7decd8056f34ee`.
+- Verdict: **APPROVE — bounded S2-4 source/test task accepted**, 0 BLOCKER and 0 MAJOR in the
+  requested scope. GPT-PM accepted the attached file hashes and reported Windows 2 passed/11
+  skipped and Ubuntu-24.04 WSL 13 passed/0 skipped. The review did not independently execute tests.
+- Full S2-4 is explicitly **NOT APPROVED**. The V1 caller-selected operation-ID route, V2 issuance
+  journal/downstream admission integration, production key/trust configuration, runtime signer
+  binding, dispatch activation, current machine E5 and real owner-to-Runner journey remain outside
+  the verdict. Current human E5 stays mandatory and restricted selectors remain unqualified.
+- The approval permits preparation of a separately gated issuer-integration task. It does not
+  authorize privileged signing implementation, key/config provisioning, service activation,
+  dispatch, Store migration, E5 replacement, runtime acceptance, or S2 closure.
