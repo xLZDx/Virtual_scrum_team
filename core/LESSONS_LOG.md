@@ -959,3 +959,96 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
   root `ExecStopPost` admission latch and startup conditions. Synthetic tests and independent
   reliability/security reviews remain open; no runtime activation or privileged filesystem write
   occurred.
+
+## 2026-10-29 — Record continuation lessons without rewriting history
+
+- Kind: SHORTCOMING (coordinator workflow).
+- Facts: the original attached program requires a lessons entry with each coherent commit.
+  The continuation `9c1be0f..6a6d788` added detailed change records and decision entries but no
+  change to this lessons file (`git log --oneline 9c1be0f..HEAD -- core/LESSONS_LOG.md` returned
+  no entries). Full original-scope reconciliation exposed that omission in the current pass.
+- Root cause: the continuation followed the current workflow summary without reconciling every
+  original delivery requirement into the local commit checklist.
+- Layer: coordinator completion/provenance ledger missed it; original-request audit caught it.
+- Rule: before each next commit inspect explicit paths and include its change record, decision
+  and factual lessons entries plus generated registry. Preserve old commits; do not rewrite
+  history to create an appearance that the missing entry existed earlier.
+- Correction: record these facts now and carry the explicit ledger into subsequent commits.
+
+## 2026-10-29 — Validate history dimensions before accepting current assignment authority
+
+- Kind: FAILURE caught by focused source tests (changes 0545 and 0549).
+- Facts: the candidate validator conflated assignment and policy revocation IDs; later the new
+  basis API accepted a still-live handoff/probe from another Supervisor run and stamped the
+  current service generation. Test owners reproduced both defects on disposable fixtures.
+- Root cause: the first implementation checked current values within one dimension but omitted
+  independent record identity and the transition between runs/generations.
+- Layer: implementer self-review missed the boundaries; coordinator coverage review and actual
+  functional-test-reviewer negative cases caught them before provisioning.
+- Rule: distinguish record revocation IDs, bind current run AND generation in the immutable
+  handoff and same Store snapshot, and reject old records rather than relabel them as current.
+- Verification: fix `3d5f6c2`; exact assignment-basis plus two Store regressions passed 23 in
+  Windows and 23 in WSL, as recorded in s2-assignment-basis-functional-run-20261029.md.
+
+## 2026-10-29 — Journal preparation and retention writes must be retryable
+
+- Kind: FAILURE caught by independent code review (change 0547).
+- Facts: partial journal preparation and a partial deterministic retained-copy write stranded
+  retries without changing all target files. Source review identified both; ordinary I/O
+  exception tests reproduced them. Private never-armed preparation directories and fresh
+  exclusive retention names fixed them while preserving every partial artifact.
+- Root cause: the first journal modeled rename boundaries but not write failure before
+  publication or while retaining the selected bytes.
+- Layer: initial source tests omitted these I/O points; code-reviewer and E2E follow-up caught
+  them. A separate argv-index claim was disproved and explicitly retracted; no speculative
+  source fix was made for that claim.
+- Rule: publish only complete durable journals, retain incomplete preparations without arming
+  them, and let recovery retry without deleting or trusting partial copies.
+- Verification: WSL 16-case journal/staging run at c2b1cd2, including both retries and actual
+  harmless Python argv mapping; source recheck resolved both MAJORs.
+
+## 2026-10-29 — Keep operational observations separate from E5 authority
+
+- Kind: SHORTCOMING / evidence limitation.
+- Facts: the fixed WindowsPowerShell collector returned startup error 8009001d. A separate hidden
+  PowerShell 7 metadata path is explicitly independent, not a replacement signed collector.
+  WSL collected observations but its /run raw artifact did not survive a later invocation;
+  the E2E role reported the loss rather than claiming durable evidence.
+- Root cause: host/runtime assumptions and ephemeral storage lifecycle were not guaranteed.
+- Layer: actual bounded read-only collection caught them; no policy PASS was fabricated.
+- Rule: preserve raw canonical bytes through the authorized courier into private evidence,
+  record collector identity and transport boundary, retain errors, and keep unsigned or
+  incomplete observations UNKNOWN. A smoke probe or profile snapshot is not comprehensive E5.
+
+## 2026-10-29 — Apply current scope and ownership over stale process text
+
+- Kind: SUCCESS / instruction reconciliation.
+- Facts: the original program's older model/worktree rules differ from the operator's current
+  gpt-6-luna model policy and canonical-checkout-only instruction. Current actual role launches
+  used the named allowed profiles; no sprint worktree was created. Current source work is S2;
+  later sprint implementation waits for S2 acceptance.
+- Rule: preserve real isolation, authority and data safeguards; superseded process text does
+  not create a new owner, missing external coordinator, or generic operator approval request.
+  New machine authority still needs its exact reviewed contract and genuine policy provenance.
+
+## 2026-10-29 — Keep S2 denominators and evidence layers explicit (change 0551)
+
+- Kind: SUCCESS / evidence reconciliation.
+- Facts: the original S2 plan has E1–E8 plus deferred D1–D2; later S2-1 through S2-5 stories do
+  not erase that acceptance denominator. Component runs belong to different source revisions and
+  overlap, so their counts cannot be summed into one current-head total. A repaired historical
+  schema-v5 fixture produced a designated functional-test-reviewer report of 6 passing cases over
+  two focused selectors, while unsigned machine observations remain E5 UNKNOWN. GPT-PM's
+  recovered reply authorized bounded bootstrap source and returned MODIFY for issuer design; it
+  did not authorize production signing, provisioning, activation, or full S2 acceptance.
+- Root cause: continuation evidence accumulated across separate requests and revisions, making
+  it easy to confuse a component result or recovered decision with overall sprint acceptance.
+- Layer: evidence/coordination ledger; original-denominator reconciliation and explicit layer
+  labels reduce accidental promotion of partial evidence.
+- Rule: map each original requirement to its source revision, exact result, remaining acceptance,
+  owner and next step; preserve `NOT_RUN`/`UNKNOWN`, and do not combine overlapping results.
+- Verification: the focused fixture run is recorded separately in
+  `docs/sdlc/evidence/s2-legacy-v5-fixture-run-20261029.md`; this documentation pass ran no tests,
+  checks, build, runtime collection, or activation. One accidental `git diff --check` invocation
+  with no output was reported by the implementer; it was not independently reproduced and is not
+  verification evidence.

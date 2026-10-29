@@ -12,6 +12,22 @@ assignment API: `c2b1cd2`; current run/generation correction: `3d5f6c2048238a79f
 Later documentation changes do not imply these tests executed at a different source revision.
 The primary agent coordinated tests and assessed coverage but did not author or execute them.
 
+Reconciliation addendum (2026-10-29): the complete original epic/deferred-item denominator and
+the 0552/0553 decision boundary are mapped in [S2 original epic coverage reconciliation](S2_ORIGINAL_EPIC_COVERAGE_MATRIX.md).
+The corrected historical schema-v5 fixture has its own two-selector result in
+[s2-legacy-v5-fixture-run-20261029.md](evidence/s2-legacy-v5-fixture-run-20261029.md); it is
+maintenance evidence and does not combine with the component rows below or establish final-head
+S2 acceptance. GPT-PM's recovered correlated source reply and exact limits are recorded in
+[the bootstrap and issuer adjudication](evidence/s2-bootstrap-source-and-root-issuer-adjudication-20261029.md).
+Unsigned host/guest observations remain UNKNOWN as detailed in
+[s2-machine-observations-20261029.md](evidence/s2-machine-observations-20261029.md). The root-bound
+issuer design is linked separately at [S2_ROOT_BOUND_DISPATCH_ISSUER_DESIGN.md](S2_ROOT_BOUND_DISPATCH_ISSUER_DESIGN.md);
+it is design/source preparation only and does not close its issuance-state finding.
+
+The implementer reported one accidental `git diff --check` invocation during this continuation
+with no output. This report was not independently reproduced and is not a test, build, runtime,
+or acceptance result. It does not alter the exact commands and owners reported below.
+
 | Actual role / model / effort | Source and command scope | Recorded result | Boundary |
 |---|---|---|---|
 | functional-test-reviewer / gpt-6-luna / medium | Three new runtime-bundle/source-plan/machine-contract test files; exact source/hash references in s2-bootstrap-functional-run-20261029.md | Windows 30 passed / 6 POSIX skips; WSL 36 passed, exit 0 | Real synthetic Ed25519 keys and public verification in WSL; detached candidate contracts, no production authority |

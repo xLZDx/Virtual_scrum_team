@@ -9,6 +9,7 @@ import stat
 import pytest
 
 from tools.vst import contracts
+from tools.vst import store as store_module
 from tools.vst.runner_service import (
     _verify_worker_exec_helper,
     _versioned_worker_exec_helper_path,
@@ -58,6 +59,16 @@ def _grant(manifest: dict, *, deadline: int = 600, now: float = 1000.0) -> dict:
 
 EXECUTION_RESOLUTION_KEY = b"execution-resolution-test-key-0123456789"
 
+# Exact event-kind set from tools/vst/store.py at 7120e2c^ (schema v5, before
+# DISPATCH_INTENT_ACCEPTED was added by the v5-to-v6 migration). Keep this
+# historical fixture explicit so a current schema cannot masquerade as v5.
+PRE_0473_SCHEMA_V5_EVENT_KINDS = frozenset({
+    "EPOCH_ACQUIRED", "EPOCH_RENEWED", "EPOCH_RELEASED", "PHASE_SET",
+    "TASK_REGISTERED", "LEASE_ACQUIRED", "LEASE_RELEASED", "LEASE_EXPIRED",
+    "LEASE_EXPIRED_PARTIAL", "LEASE_FENCED", "RECEIPT_APPENDED",
+    "BUDGET_EXCEEDED", "BUDGET_BLOCKED", "NOTE",
+})
+
 
 def _store_with_claim_basis(
     manifest: dict, clock: FakeClock, *, execution_resolution_key: bytes | None = None,
@@ -80,6 +91,34 @@ def _store_with_claim_basis(
         supervisor_key=SUPERVISOR_KEY,
     )
     store.ensure_preflight_consumed("run-1", "nonce-1", "a" * 64, "b" * 64)
+    return store
+
+
+def _store_with_pre_0473_schema_v5_claim_basis(
+    manifest: dict, clock: FakeClock, *, db_path: str,
+):
+    """Create the historical v5 DDL before seeding the legacy recovery event."""
+    assert store_module.SCHEMA_VERSION == 6
+    assert store_module.EVENT_KINDS == PRE_0473_SCHEMA_V5_EVENT_KINDS | {
+        "DISPATCH_INTENT_ACCEPTED",
+    }
+    version, event_kinds = store_module.SCHEMA_VERSION, store_module.EVENT_KINDS
+    store_module.SCHEMA_VERSION = 5
+    store_module.EVENT_KINDS = PRE_0473_SCHEMA_V5_EVENT_KINDS
+    try:
+        store = _store_with_claim_basis(
+            manifest, clock, story_ttl_sec=3600, lease_ttl_sec=3600,
+            db_path=db_path,
+        )
+    finally:
+        store_module.SCHEMA_VERSION = version
+        store_module.EVENT_KINDS = event_kinds
+    with store._read_tx() as conn:
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 5
+        events_ddl = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='events'"
+        ).fetchone()[0]
+    assert "DISPATCH_INTENT_ACCEPTED" not in events_ddl
     return store
 
 
@@ -245,8 +284,8 @@ def test_pre_0473_schema_v5_pending_recovery_event_survives_fresh_reconciliation
     manifest, *_ = _authority_fixture()
     clock = FakeClock(1000)
     db_path = str(tmp_path / "pre-0473-schema-v5.sqlite3")
-    writer = _store_with_claim_basis(
-        manifest, clock, story_ttl_sec=3600, lease_ttl_sec=3600, db_path=db_path,
+    writer = _store_with_pre_0473_schema_v5_claim_basis(
+        manifest, clock, db_path=db_path,
     )
     reader = None
     try:
@@ -269,7 +308,11 @@ def test_pre_0473_schema_v5_pending_recovery_event_survives_fresh_reconciliation
         reader = Store(
             db_path, clock, event_key=EVENT_KEY,
             execution_resolution_key=EXECUTION_RESOLUTION_KEY,
+            allow_schema_upgrade=True,
         )
+        with reader._read_tx() as conn:
+            assert conn.execute("PRAGMA user_version").fetchone()[0] == 6
+        _assert_raw_store_event_chain_is_valid(reader)
         assert reader.reconciliation_complete
         assert reader.runner_execution_claim_status(
             predecessor, active_service_generation="generation-1",
@@ -324,7 +367,9 @@ def test_pre_0473_schema_v5_pending_recovery_event_rejects_malformed_or_mismatch
     manifest, *_ = _authority_fixture()
     clock = FakeClock(1000)
     db_path = str(tmp_path / "malformed-pre-0473-schema-v5.sqlite3")
-    store = _store_with_claim_basis(manifest, clock, db_path=db_path)
+    store = _store_with_pre_0473_schema_v5_claim_basis(
+        manifest, clock, db_path=db_path,
+    )
     reader = None
     try:
         grant = _grant(manifest, now=clock())
@@ -340,7 +385,11 @@ def test_pre_0473_schema_v5_pending_recovery_event_rejects_malformed_or_mismatch
         reader = Store(
             db_path, clock, event_key=EVENT_KEY,
             execution_resolution_key=EXECUTION_RESOLUTION_KEY,
+            allow_schema_upgrade=True,
         )
+        with reader._read_tx() as conn:
+            assert conn.execute("PRAGMA user_version").fetchone()[0] == 6
+        _assert_raw_store_event_chain_is_valid(reader)
         assert not reader.reconciliation_complete
         with pytest.raises(StoreError) as error:
             reader.runner_execution_claim_status(

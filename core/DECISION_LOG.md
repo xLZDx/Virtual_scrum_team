@@ -1333,3 +1333,19 @@ The future authenticated writer's fresh-only atomic contract passed focused DB/s
 rechecks; source authorization was requested from GPT-PM, not self-issued. No production keys,
 Store migration, runtime selection, E5 acceptance, service activation or sprint closure occurred.
 Sprints continue in the operator's requested order, with S2 still active.
+
+## 2026-10-29 — Reconcile S2 original epics, bootstrap ruling and current evidence (change 0551)
+
+The original S2 E1–E8 and D1–D2 denominator is mapped in
+`docs/sdlc/S2_ORIGINAL_EPIC_COVERAGE_MATRIX.md`; later consolidated S2 stories do not replace
+those acceptance items. GPT-PM's recovered correlated reply
+(`8b6b69f3-9b39-491b-a948-03c497870b5d`, reply
+`b1728c67-3bc2-4db5-9fbf-6b359a73ad82`) authorized only bounded fresh-only bootstrap source and
+returned MODIFY on root-bound v1 issuance, with crash-consistency finding I01 still requiring
+review. The source preparation does not authorize signing, key provisioning, migration, runtime,
+E5, or final S2 approval. The historical schema-v5 fixture evidence is a separate focused
+6-selector-case pass (one base case plus five malformed variants across the two selectors),
+recorded by the designated functional-test reviewer; it is not final-head S2 acceptance.
+Machine observations remain unsigned and E5 UNKNOWN. See `docs/sdlc/verify-evidence.md` and
+change 0551 for exact boundaries. S2 remains NOT APPROVED, and the requested sequence keeps S3–S5
+behind S2 acceptance.
