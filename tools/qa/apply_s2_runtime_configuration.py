@@ -20,7 +20,7 @@ INVENTORY_SCHEMA = "VST_S2_RUNTIME_CONFIG_TARGET_INVENTORY_V1"
 CONFIG_ROOT = "/etc/vst-runner"
 SYSTEMD_ROOT = "/etc/systemd/system"
 RUNTIME_SOURCE_HEAD = "80c2b81deac364ed6466600fd46af47aafe805e2"
-BUNDLE_MANIFEST_SHA256 = "388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45"
+BUNDLE_MANIFEST_SHA256 = "05530c73ea583f0f7f60963ba9e196082dfb7abf92f86f0a0e2a0ae9ad10f91f"
 INSTALLATION_LAYOUT_SHA256 = "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19"
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 _HEX40 = re.compile(r"^[0-9a-f]{40}$")
@@ -200,7 +200,7 @@ def build_payload(
 _REMOTE = r'''import base64, fcntl, hashlib, json, os, platform, re, stat, subprocess, sys, tempfile
 from datetime import datetime, timezone
 
-BUNDLE_SHA256 = "388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45"
+BUNDLE_SHA256 = "05530c73ea583f0f7f60963ba9e196082dfb7abf92f86f0a0e2a0ae9ad10f91f"
 LAYOUT_SHA256 = "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19"
 SOURCE_HEAD = "80c2b81deac364ed6466600fd46af47aafe805e2"
 

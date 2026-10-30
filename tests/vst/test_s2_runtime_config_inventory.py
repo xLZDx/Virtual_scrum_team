@@ -12,6 +12,7 @@ import pytest
 
 from tools.qa import verify_s2_runtime_config_inventory as inventory
 from tools.qa import apply_s2_runtime_configuration as applier
+from tools.qa import collect_s2_runtime_config_inventory as collector
 
 
 _load_pinned_baseline_fingerprints = inventory._previous_installed_fingerprints
@@ -22,15 +23,38 @@ EXPECTED_REPO_HEAD = subprocess.run(
 VALIDATOR_PATH = "tools/qa/verify_s2_runtime_config_inventory.py"
 APPLIER_PATH = "tools/qa/apply_s2_runtime_configuration.py"
 EXPECTED_HELPER_SHA256 = "aafd67378416c869ef527d08a39c97a24831f3c67cebd7bf57d171354e5e1387"
-EXPECTED_APPLIER_SHA256 = hashlib.sha256(
-    inventory._git_blob(EXPECTED_REPO_HEAD, APPLIER_PATH)).hexdigest()
+WORKTREE_APPLIER_SHA256 = hashlib.sha256(Path(applier.__file__).read_bytes()).hexdigest()
+EXPECTED_APPLIER_SHA256 = WORKTREE_APPLIER_SHA256
 WORKTREE_VALIDATOR_SHA256 = hashlib.sha256(Path(inventory.__file__).read_bytes()).hexdigest()
+EXPECTED_PREVIOUS_CONFIG_HEAD = "7d1d16f6348e6c00a5a568b5cfbc8caf309194b9"
+EXPECTED_PREVIOUS_BUNDLE_SHA256 = "388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45"
+EXPECTED_PREVIOUS_FINGERPRINTS_SHA256 = "e116dd237401d0f89d3ac706a883e19f53bda0bdba5f853afc153f3fc5eac095"
+EXPECTED_CONSUMED_IDENTITIES = (
+    ("e520e04f58ad5e6a431a3a20b0efb87c",
+     "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910",
+     "0aac24fec9a2a5c53c5e9da21cbb4a42"),
+    ("212a23e66ee94a7d87355b11e07e34fe",
+     "s2-runtime-20261030-334296bd0779488d837a27e283b50b6a",
+     "b57520d076e1acd355d310ed18364907"),
+    ("3e56a61c5b1e45aea089c305b25e3187",
+     "s2-runtime-20261030-87d47f635f1c4231ab052a074dba4be8",
+     "0d2bb2c5f977478a924f7ec6629a339d"),
+    ("c63842aefcf74f57af70a1b2f93b8271",
+     "s2-runtime-20261030-8102de64e7b4472ca2b5d2d56ed48510",
+     "5f5820a7cfc348cfa89de31af6c6d1a7"),
+)
 try:
     COMMITTED_VALIDATOR_MATCHES_WORKTREE = (
         inventory._git_blob(EXPECTED_REPO_HEAD, VALIDATOR_PATH)
         == Path(inventory.__file__).read_bytes())
 except inventory.InventoryError:
     COMMITTED_VALIDATOR_MATCHES_WORKTREE = False
+try:
+    COMMITTED_APPLIER_MATCHES_WORKTREE = (
+        inventory._git_blob(EXPECTED_REPO_HEAD, APPLIER_PATH)
+        == Path(applier.__file__).read_bytes())
+except inventory.InventoryError:
+    COMMITTED_APPLIER_MATCHES_WORKTREE = False
 
 
 @pytest.fixture(scope="module")
@@ -40,19 +64,42 @@ def baseline_fingerprints() -> dict[str, dict[str, object]]:
     return fingerprints
 
 
+def test_consumed_predecessor_pins_all_26_installed_fingerprints(
+        baseline_fingerprints) -> None:
+    assert inventory.PREVIOUS_CONFIG_HEAD == EXPECTED_PREVIOUS_CONFIG_HEAD
+    assert inventory.PREVIOUS_BUNDLE_SHA256 == EXPECTED_PREVIOUS_BUNDLE_SHA256
+    assert (inventory.CONSUMED_REQUEST_ID, inventory.CONSUMED_RUN_ID,
+            inventory.CONSUMED_NONCE) == EXPECTED_CONSUMED_IDENTITIES[0]
+    assert (inventory.BASELINE_REQUEST_ID, inventory.BASELINE_RUN_ID,
+            inventory.BASELINE_NONCE) == EXPECTED_CONSUMED_IDENTITIES[0]
+    assert set(inventory.HISTORIC_CONSUMED_IDENTITIES) == set(EXPECTED_CONSUMED_IDENTITIES[1:])
+
+    canonical_fingerprints = json.dumps(
+        baseline_fingerprints, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    assert hashlib.sha256(canonical_fingerprints).hexdigest() == (
+        EXPECTED_PREVIOUS_FINGERPRINTS_SHA256)
+    bootstrap = baseline_fingerprints["/etc/vst-runner/bootstrap-request.json"]
+    assert bootstrap["size"] == 4104
+    assert bootstrap["sha256"] == (
+        "df0d5701e6a356d43224208cd9a099183e12404967f5133838bd978e0b7834c1")
+
+
 @pytest.fixture(autouse=True)
 def use_pinned_baseline(monkeypatch, baseline_fingerprints) -> None:
     monkeypatch.setattr(inventory, "_previous_installed_fingerprints",
                         lambda: baseline_fingerprints)
-    if not COMMITTED_VALIDATOR_MATCHES_WORKTREE:
+    if not COMMITTED_VALIDATOR_MATCHES_WORKTREE or not COMMITTED_APPLIER_MATCHES_WORKTREE:
         committed_source_sha256 = inventory._committed_source_sha256
 
         def candidate_validator_sha256(expected_repo_head: str, relative_path: str) -> str:
             if relative_path == VALIDATOR_PATH:
                 return WORKTREE_VALIDATOR_SHA256
+            if relative_path == APPLIER_PATH and not COMMITTED_APPLIER_MATCHES_WORKTREE:
+                return WORKTREE_APPLIER_SHA256
             return committed_source_sha256(expected_repo_head, relative_path)
 
         monkeypatch.setattr(inventory, "_committed_source_sha256", candidate_validator_sha256)
+    _use_candidate_config_blobs(monkeypatch)
 
 
 @pytest.fixture
@@ -119,6 +166,126 @@ def _validate(value: dict[str, object]):
     return inventory.validate_inventory(
         value, expected_repo_head=EXPECTED_REPO_HEAD,
         expected_helper_sha256=EXPECTED_HELPER_SHA256, now=NOW)
+
+
+def _use_candidate_config_blobs(monkeypatch, overrides: dict[str, bytes] | None = None) -> None:
+    read_committed = inventory._git_blob
+    candidate_overrides = overrides or {}
+
+    def read_candidate(commit: str, relative_path: str) -> bytes:
+        prefix = "docs/sdlc/runtime-config/"
+        if commit == EXPECTED_REPO_HEAD and relative_path.startswith(prefix):
+            name = relative_path.removeprefix(prefix)
+            if name in candidate_overrides:
+                return candidate_overrides[name]
+            return (inventory.REPO / relative_path).read_bytes()
+        return read_committed(commit, relative_path)
+
+    monkeypatch.setattr(inventory, "_git_blob", read_candidate)
+
+
+def test_candidate_config_identity_and_bundle_pins_match_exact_inputs(monkeypatch) -> None:
+    consumed_identity = {
+        "run_id": "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910",
+        "request_id": "e520e04f58ad5e6a431a3a20b0efb87c",
+        "nonce": "0aac24fec9a2a5c53c5e9da21cbb4a42",
+    }
+    candidate_identity = {
+        "run_id": collector.RUN_ID,
+        "request_id": collector.REQUEST_ID,
+        "nonce": collector.NONCE,
+    }
+    assert candidate_identity == {
+        "run_id": inventory.RUN_ID,
+        "request_id": inventory.REQUEST_ID,
+        "nonce": inventory.NONCE,
+    }
+    assert len(set(candidate_identity.values())) == len(candidate_identity)
+    assert set(candidate_identity.values()).isdisjoint(consumed_identity.values())
+
+    bundle_dir = inventory.REPO / "docs/sdlc/runtime-config"
+    identity_inputs = {
+        "bootstrap-request.json", "network-profile.json", "probe-request.json",
+        "run-binding.json", "supervisor-service.json",
+    }
+    bundle_raw = (bundle_dir / "bundle-manifest.json").read_bytes()
+    bundle = json.loads(bundle_raw)
+    member_records = {item["path"]: item for item in bundle["files"]}
+    assert identity_inputs <= set(member_records)
+
+    input_values = {
+        name: json.loads((bundle_dir / name).read_bytes()) for name in identity_inputs
+    }
+    assert input_values["bootstrap-request.json"]["request_id"] == collector.REQUEST_ID
+    assert input_values["bootstrap-request.json"]["run_id"] == collector.RUN_ID
+    assert input_values["network-profile.json"]["environment_id"] == (
+        f"Ubuntu-24.04:S2:{collector.RUN_ID}")
+    assert input_values["probe-request.json"] == {
+        "nonce": collector.NONCE, "run_id": collector.RUN_ID,
+    }
+    assert input_values["run-binding.json"]["run_id"] == collector.RUN_ID
+    assert input_values["run-binding.json"]["probe_nonce"] == collector.NONCE
+    assert input_values["supervisor-service.json"]["run_id"] == collector.RUN_ID
+    assert input_values["supervisor-service.json"]["probe_nonce"] == collector.NONCE
+
+    for relative in identity_inputs:
+        raw = (bundle_dir / relative).read_bytes()
+        assert len(raw) == member_records[relative]["size"], relative
+        assert hashlib.sha256(raw).hexdigest() == member_records[relative]["sha256"], relative
+
+    layout_raw = (bundle_dir / "installation-layout.json").read_bytes()
+    bundle_digest = hashlib.sha256(bundle_raw).hexdigest()
+    layout_digest = hashlib.sha256(layout_raw).hexdigest()
+    assert {
+        collector.BUNDLE_SHA,
+        inventory.CANDIDATE_BUNDLE_SHA256,
+        applier.BUNDLE_MANIFEST_SHA256,
+    } == {bundle_digest}
+    assert {
+        collector.LAYOUT_SHA,
+        inventory.CANDIDATE_LAYOUT_SHA256,
+        applier.INSTALLATION_LAYOUT_SHA256,
+    } == {layout_digest}
+    _use_candidate_config_blobs(monkeypatch)
+    inventory._validate_candidate_identity(EXPECTED_REPO_HEAD)
+
+
+@pytest.mark.parametrize("mismatch", ["member", "identity", "consumed_reuse"])
+def test_candidate_identity_rejects_member_or_identity_mismatch(monkeypatch, mismatch) -> None:
+    _use_candidate_config_blobs(monkeypatch)
+    if mismatch == "member":
+        original_git_blob = inventory._git_blob
+
+        def tampered_member(commit: str, relative_path: str) -> bytes:
+            if relative_path.endswith("/bootstrap-request.json"):
+                return original_git_blob(commit, relative_path) + b" "
+            return original_git_blob(commit, relative_path)
+
+        monkeypatch.setattr(inventory, "_git_blob", tampered_member)
+        expected_error = "candidate config differs from its bundle member"
+    elif mismatch == "identity":
+        monkeypatch.setattr(inventory, "REQUEST_ID", "f" * 32)
+        expected_error = "candidate run/request/nonce identities are not cross-bound"
+    else:
+        monkeypatch.setattr(inventory, "RUN_ID", inventory.CONSUMED_RUN_ID)
+        expected_error = "reuses a consumed identity"
+
+    with pytest.raises(inventory.InventoryError, match=expected_error):
+        inventory._validate_candidate_identity(EXPECTED_REPO_HEAD)
+
+
+@pytest.mark.parametrize(
+    ("constant_name", "tuple_index"),
+    [("REQUEST_ID", 0), ("RUN_ID", 1), ("NONCE", 2)],
+)
+@pytest.mark.parametrize("consumed_index", range(len(EXPECTED_CONSUMED_IDENTITIES)))
+def test_candidate_identity_rejects_each_consumed_tuple_component(
+        monkeypatch, constant_name, tuple_index, consumed_index) -> None:
+    consumed_tuple = EXPECTED_CONSUMED_IDENTITIES[consumed_index]
+    monkeypatch.setattr(inventory, constant_name, consumed_tuple[tuple_index])
+
+    with pytest.raises(inventory.InventoryError, match="reuses a consumed identity"):
+        inventory._validate_candidate_identity(EXPECTED_REPO_HEAD)
 
 
 def test_complete_inventory_accepts_exact_read_only_nine_p_mount(valid_inventory) -> None:
@@ -272,6 +439,14 @@ def test_pinned_baseline_rejects_mismatched_consumed_identity(monkeypatch) -> No
 def test_apply_payload_preserves_validated_canonical_octal_mode(
         valid_inventory, tmp_path, monkeypatch) -> None:
     _validate(valid_inventory)
+    committed_git_blob = applier._git_blob
+
+    def candidate_bundle_blob(commit: str, relative_path: str) -> bytes:
+        if relative_path.startswith("docs/sdlc/runtime-config/"):
+            return (inventory.REPO / relative_path).read_bytes()
+        return committed_git_blob(commit, relative_path)
+
+    monkeypatch.setattr(applier, "_git_blob", candidate_bundle_blob)
     valid_inventory["captured_utc"] = datetime.now(timezone.utc).isoformat()
     raw_inventory = json.dumps(valid_inventory, sort_keys=True, separators=(",", ":")).encode()
     inventory_path = tmp_path / "runtime-inventory.json"

@@ -16,18 +16,35 @@ REPO = Path(__file__).resolve().parents[2]
 INVENTORY_SCHEMA = "VST_S2_RUNTIME_CONFIG_TARGET_INVENTORY_V1"
 SOURCE_HEAD = "80c2b81deac364ed6466600fd46af47aafe805e2"
 IMPLEMENTATION_HEAD = "6fb47d966814005ea51992c37d8af342a7cb4219"
-PREVIOUS_CONFIG_HEAD = "069be3b5193595c06a39ac72237452625b7514f4"
-PREVIOUS_BUNDLE_SHA256 = "03d9c692bf058ca61570d2a954a0faf6c088100e4036d38d88afb26b08d25e0a"
+PREVIOUS_CONFIG_HEAD = "7d1d16f6348e6c00a5a568b5cfbc8caf309194b9"
+PREVIOUS_BUNDLE_SHA256 = "388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45"
 PREVIOUS_LAYOUT_SHA256 = "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19"
-CANDIDATE_BUNDLE_SHA256 = "388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45"
+CANDIDATE_BUNDLE_SHA256 = "05530c73ea583f0f7f60963ba9e196082dfb7abf92f86f0a0e2a0ae9ad10f91f"
 CANDIDATE_LAYOUT_SHA256 = PREVIOUS_LAYOUT_SHA256
-RUN_ID = "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910"
-REQUEST_ID = "e520e04f58ad5e6a431a3a20b0efb87c"
-NONCE = "0aac24fec9a2a5c53c5e9da21cbb4a42"
+RUN_ID = "s2-runtime-20261030-1977eaba61274396b6b58d069c5cede2"
+REQUEST_ID = "98b38065170f468c9943aa8f22160ff9"
+NONCE = "a2a0dcab58b9451281ff0a7b079d4aa2"
+CONSUMED_RUN_ID = "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910"
+CONSUMED_REQUEST_ID = "e520e04f58ad5e6a431a3a20b0efb87c"
+CONSUMED_NONCE = "0aac24fec9a2a5c53c5e9da21cbb4a42"
+# Keep all one-shot identities observed in the accepted config-history contract. A
+# candidate must never revive an older run/request/nonce just because the immediately
+# previous attempt has since changed.
+HISTORIC_CONSUMED_IDENTITIES = (
+    ("212a23e66ee94a7d87355b11e07e34fe",
+     "s2-runtime-20261030-334296bd0779488d837a27e283b50b6a",
+     "b57520d076e1acd355d310ed18364907"),
+    ("3e56a61c5b1e45aea089c305b25e3187",
+     "s2-runtime-20261030-87d47f635f1c4231ab052a074dba4be8",
+     "0d2bb2c5f977478a924f7ec6629a339d"),
+    ("c63842aefcf74f57af70a1b2f93b8271",
+     "s2-runtime-20261030-8102de64e7b4472ca2b5d2d56ed48510",
+     "5f5820a7cfc348cfa89de31af6c6d1a7"),
+)
 RUNTIME_PATH = "/opt/vst-runtime-" + SOURCE_HEAD
-BASELINE_RUN_ID = "s2-runtime-20261030-334296bd0779488d837a27e283b50b6a"
-BASELINE_REQUEST_ID = "212a23e66ee94a7d87355b11e07e34fe"
-BASELINE_NONCE = "b57520d076e1acd355d310ed18364907"
+BASELINE_RUN_ID = "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910"
+BASELINE_REQUEST_ID = "e520e04f58ad5e6a431a3a20b0efb87c"
+BASELINE_NONCE = "0aac24fec9a2a5c53c5e9da21cbb4a42"
 UNITS = (
     "vst-assignment-bootstrap.service",
     "vst-dispatch-issuer.service",
@@ -116,6 +133,54 @@ def _previous_installed_fingerprints() -> dict[str, dict[str, Any]]:
             "sha256": _sha(raw),
         }
     return expected
+
+
+def _validate_candidate_identity(expected_repo_head: str) -> None:
+    consumed_identities = tuple(dict.fromkeys((
+        (CONSUMED_REQUEST_ID, CONSUMED_RUN_ID, CONSUMED_NONCE),
+        (BASELINE_REQUEST_ID, BASELINE_RUN_ID, BASELINE_NONCE),
+        *HISTORIC_CONSUMED_IDENTITIES,
+    )))
+    if any(
+        REQUEST_ID == request_id or RUN_ID == run_id or NONCE == nonce
+        for request_id, run_id, nonce in consumed_identities
+    ):
+        raise InventoryError("candidate run/request/nonce reuses a consumed identity")
+
+    bundle_raw = _git_blob(expected_repo_head, "docs/sdlc/runtime-config/bundle-manifest.json")
+    if _sha(bundle_raw) != CANDIDATE_BUNDLE_SHA256:
+        raise InventoryError("candidate bundle differs from its exact SHA-256 pin")
+    bundle = json.loads(bundle_raw)
+    if (bundle.get("schema") != "VST_S2_NON_SECRET_CONFIG_BUNDLE_V1"
+            or bundle.get("state") != "PREPARED_NOT_INSTALLED"
+            or bundle.get("runtime_source_head") != SOURCE_HEAD
+            or not isinstance(bundle.get("files"), list)):
+        raise InventoryError("candidate bundle schema/state/source is invalid")
+    records = {item.get("path"): item for item in bundle["files"] if isinstance(item, dict)}
+
+    def candidate_json(name: str) -> dict[str, Any]:
+        raw = _git_blob(expected_repo_head, "docs/sdlc/runtime-config/" + name)
+        record = records.get(name)
+        if (not isinstance(record, dict) or type(record.get("size")) is not int
+                or record["size"] != len(raw) or record.get("sha256") != _sha(raw)):
+            raise InventoryError("candidate config differs from its bundle member: " + name)
+        value = json.loads(raw)
+        if not isinstance(value, dict):
+            raise InventoryError("candidate config is not a JSON object: " + name)
+        return value
+
+    bootstrap = candidate_json("bootstrap-request.json")
+    probe = candidate_json("probe-request.json")
+    network = candidate_json("network-profile.json")
+    binding = candidate_json("run-binding.json")
+    supervisor = candidate_json("supervisor-service.json")
+    if (bootstrap.get("run_id") != RUN_ID or bootstrap.get("request_id") != REQUEST_ID
+            or probe.get("run_id") != RUN_ID or probe.get("nonce") != NONCE
+            or network.get("environment_id") != "Ubuntu-24.04:S2:" + RUN_ID
+            or binding.get("run_id") != RUN_ID or binding.get("probe_nonce") != NONCE
+            or binding.get("state") != "PREPARATION_NOT_EXECUTION"
+            or supervisor.get("run_id") != RUN_ID or supervisor.get("probe_nonce") != NONCE):
+        raise InventoryError("candidate run/request/nonce identities are not cross-bound")
 
 
 def _regular_file_fingerprint(value: Any, destination: str) -> dict[str, Any]:
@@ -288,6 +353,7 @@ def validate_inventory(
     if age < -30 or age > 300:
         raise InventoryError("target inventory is outside the five-minute freshness window")
 
+    _validate_candidate_identity(expected_repo_head)
     validate_mount_observation(inventory.get("mount"))
     expected_validator_sha256 = _committed_source_sha256(
         expected_repo_head, "tools/qa/verify_s2_runtime_config_inventory.py")

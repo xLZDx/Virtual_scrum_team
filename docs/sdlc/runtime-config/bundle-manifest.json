@@ -137,7 +137,7 @@
     },
     {
       "path": "bootstrap-request.json",
-      "sha256": "df0d5701e6a356d43224208cd9a099183e12404967f5133838bd978e0b7834c1",
+      "sha256": "42bd2cd8a6965b036636fd0f5f91a831f1f34d923ed5d990d2c79cf41e2bde47",
       "size": 4104
     },
     {
@@ -192,7 +192,7 @@
     },
     {
       "path": "network-profile.json",
-      "sha256": "380b14dcdfe50dd7969175cb3b4f619e7f0ece93c53f8a9f4d1bed94c57fd757",
+      "sha256": "cff397ec99dad5ec290bc6a1c085cc870b5f0dff131abc3fc06b1d8b9b86aeab",
       "size": 1176
     },
     {
@@ -202,7 +202,7 @@
     },
     {
       "path": "probe-request.json",
-      "sha256": "23e8d0c52b11fe2fbbd916429cd495d34bb80b1ba58d1681e450b3fc46c35dd5",
+      "sha256": "0cc4a298ced1ba7e5251c3864ec58a0121e928185db33e49296967c1c8be3564",
       "size": 118
     },
     {
@@ -227,7 +227,7 @@
     },
     {
       "path": "run-binding.json",
-      "sha256": "5d0360e96752d4f73a5db48c025b4b0a5f09e8aadd35a3f72c7d46f416fcf3f0",
+      "sha256": "5387427fd09951801ced543f45327920b2e8968ec412cf280f5008308a173abd",
       "size": 587
     },
     {
@@ -252,7 +252,7 @@
     },
     {
       "path": "supervisor-service.json",
-      "sha256": "cab6537ebaa4b568814cf8660586144ce640af086ea3e9a908d4981c17c05e60",
+      "sha256": "42a80e23f49890787af8bbed97c3a02348eb1009a94b24ea66b9134668c4855d",
       "size": 3462
     },
     {

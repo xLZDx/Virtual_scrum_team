@@ -14,7 +14,6 @@
 <main>
   <header>
     <h1>Virtual Scrum Team — status across all sprints and gates</h1>
-    <p class="lede">Snapshot: 30 October 2026. Runtime evidence source HEAD: <code>7d1d16f6348e6c00a5a568b5cfbc8caf309194b9</code>. Latest one-shot authorization <code>8ee40d1a</code> is consumed; root preflight stopped qualification. Charts come first: overall program, sprints, then all 40 canonical tasks; explanations and evidence follow below.</p>
   </header>
 
 <!-- report-conform:begin -->
@@ -42,7 +41,7 @@
   <dl>
     <dt>Project</dt><dd>Virtual_scrum_team</dd>
     <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-canonical-continuation @ 7d1d16f</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-canonical-continuation @ 055e913</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
@@ -68,9 +67,24 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   <section class="panel" id="portfolio-dashboard" aria-labelledby="portfolio-title">
     <h2 id="portfolio-title">Whole program — task status first</h2>
-    <p class="chart-note">First: one overall bar for 40 canonical IDs in the register, then S0–S5 sprint bars and all 40 task IDs. The separate S2-1–S2-5 delivery queue follows and is not added to the denominator of 40.</p>
     <div class="progress" role="img" aria-label="Of 40 register items: 4 closed, 26 partial, 10 open"><span style="width:10%;background:var(--green)"></span><span style="width:65%;background:var(--blue)"></span><span style="width:25%;background:var(--gray)"></span></div>
     <div class="legend"><span><i class="swatch"></i>Closed: 4/40 (10%)</span><span><i class="swatch" style="background:var(--blue)"></i>Partial / in progress: 26/40 (65%)</span><span><i class="swatch" style="background:var(--gray)"></i>Open / not started: 10/40 (25%)</span></div>
     <h3 style="margin-top:22px">By sprint</h3>
@@ -83,7 +97,6 @@
       <div class="sprint-row"><span class="sprint-name">S5 · AEVE receipt</span><div class="sprint-bar" role="img" aria-label="One prepared task is blocked before implementation"><span class="bar-open" style="width:100%">PREPARED / BLOCKED</span></div><span class="sprint-count">0/1 implemented</span></div>
     </div>
     <h3 style="margin-top:22px">Every register task · 40 bars</h3>
-    <p class="chart-note">Each row is an ID from <code>core/BACKLOG.md</code>. Color encodes the recorded state; no within-task percentage is invented. S0/S1 closure is shown as sprint status because their task denominator is absent. Unassigned project items are grouped separately. The 40-item total excludes S2-1–S2-5 delivery tasks to avoid counting related acceptance work twice.</p>
     <div id="program-task-bars">
 <div class="task-group"><h4>S2 · VST-009–020 and VST-025–026 · 14</h4>
 <div class="task-bar-row status-partial" title="implemented; focused tests passed; security/reliability/database reviews found no code-level MAJOR/BLOCKER; full required specialist consensus and exact-head GPT-PM gate pending"><span class="task-bar-name"><b>VST-009</b> · S2 E1: authenticated reviewer key, distinct from the worker key; verify IndependentReview receipts with it</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
@@ -183,7 +196,7 @@
         <tr><td><b>S2-1</b><br>Fail-closed instruction, Store admission and recovery</td><td class="ok">Delivered: bounded source/test scope</td><td>Backlog links pushed commit <code>e332ec4</code> and baseline-plus-delta acceptance. This is source/test acceptance, not production runtime.</td><td>None within that bounded task. Reopen only for a concrete regression.</td><td>Codex: preserve the accepted baseline without reimplementation.</td></tr>
         <tr><td><b>S2-2</b><br>Owner transport to the Store-backed dispatcher</td><td class="ok">Delivered: bounded source/test scope</td><td>Backlog links pushed commit <code>e987a24</code> and a prior WSL report of 34 passed; some system boundaries were mocked.</td><td>Real system qualification belongs to S2-4, not a rewrite of S2-2.</td><td>Codex: treat this as accepted baseline unless a defect is established.</td></tr>
         <tr><td><b>S2-3</b><br>Immutable non-secret bundle and stage-only preparation</td><td class="ok">Delivered in bounded scope</td><td>Backlog records pushed <code>ae07f870</code>, the bundle/inventory and stage-only result.</td><td>A separate TP-10 item is marked partial; that does not invalidate the accepted stage-only scope.</td><td>Codex: use the pinned bundle in the current qualification.</td></tr>
-        <tr><td><b>S2-4 / S2-4.12b—c</b><br>Runtime/E5 and Owner→Runner path</td><td class="active">In progress; apply and 17 preflight checks passed, then runtime HOLD</td><td>At HEAD <code>7d1d16f</code>, collector/validator/status and apply (exit 0: four files installed, 22 already exact) are recorded. Launcher SHA <code>5b03f670…1389db</code> passed GPT-PM exact-source review <code>d8e9f261…</code>. Authorization <code>8ee40d1a</code> was consumed; all 17 fresh checks passed, but root preflight exited 2: <code>probe namespace exposes an unapproved Windows or host mount</code>.</td><td>The probe ran only as the preflight stage; VST services, bootstrap, Owner→Runner claim/probe and the exact TestRun selector did not run. Analyze the refusal and prepare a narrow safe code/config correction; do not repeat the consumed authorization.</td><td>Codex identifies the exact predicate from in-scope source/evidence without weakening mount isolation, then gets focused review and a separate runtime authorization. After acceptance, deliver S2-4 evidence/docs/commit/push before S2-5. Outcome: <code>s2-runtime-qual-8ee40d1a-outcome-20261030.md</code>.</td></tr>
+        <tr><td><b>S2-4 / S2-4.12b—c</b><br>Runtime/E5 and Owner→Runner</td><td class="active">In progress; predecessor corrected, re-review pending</td><td>Diagnostic fix is pushed at <code>055e913</code>. Fresh candidate run <code>1977eaba…</code>, bundle SHA <code>05530c73…10f91f</code>. GPT-PM <code>bbf54c64</code> reported MAJOR-01; Codex corrected predecessor to <code>7d1d16f</code>, bundle <code>388e6bb…</code> and tuple <code>e520…/2b5e…/0aac…</code>.</td><td>Functional-test-reviewer reports 70 focused tests passed and exact normalized fingerprints for all 26 prior destinations. Python and security re-reviews pass; only GPT-PM re-adjudication is pending. Fresh-candidate runtime NOT_RUN.</td><td>Codex closes review/delivery and exact-head test; GPT-PM provides focused verdict, then separate bounded runtime authorization. S2-5 stays queued.</td></tr>
         <tr><td><b>S2-5</b><br>Final S2 acceptance</td><td class="pending">Not started</td><td>Backlog places the exact-head final decision after S2-4.</td><td>Reconcile every S2 criterion/evidence and obtain the final verdict. S2 remains NOT APPROVED.</td><td>Codex: assemble evidence after S2-4; GPT-PM: decide final acceptance.</td></tr>
       </tbody>
     </table></div>
@@ -210,7 +223,7 @@
         <tr><td><code>8ee40d1a…</code></td><td>After 17 PASS checks, root preflight ran and exited 2: <code>probe namespace exposes an unapproved Windows or host mount</code>.</td><td>Service, bootstrap, claim/probe and TestRun did not run; temporary D: read-only mount was verified and removed.</td><td class="pending">One-shot authorization consumed; do not retry. Identify exact cause without weakening fail-closed rejection. Evidence: <code>s2-runtime-qual-8ee40d1a-outcome-20261030.md</code>.</td></tr>
       </tbody>
     </table></div>
-    <p class="callout danger"><b>Current boundary:</b> configuration apply is proven. In the latest run, all 17 fresh checks passed, then preflight was invoked and exited 2, refusing an unapproved Windows/host mount in the namespace. Service, claim/probe and TestRun did not run. Authorization <code>8ee40d1a</code> is consumed; do not retry. Identify the exact cause without weakening the fail-closed boundary, obtain source review, then request separate authorization. Production activation was not performed.</p>
+    <p class="callout danger"><b>Current boundary:</b> previous runtime authorization <code>8ee40d1a</code> was consumed after mount preflight refusal; service, bootstrap, Owner→Runner and TestRun did not run. A new inactive config candidate is prepared and awaits exact-source review; no fresh runtime authorization was requested. Do not retry the old authorization, weaken fail-closed checks or activate production.</p>
   </section>
 
   <section class="panel" aria-labelledby="all-gates">
@@ -219,7 +232,7 @@
     <div class="scroll"><table><thead><tr><th>Sprint / gate</th><th>Status</th><th>Evidence</th><th>Remaining acceptance</th><th>Owner / next step</th></tr></thead><tbody>
       <tr><td><b>S0 + S1</b><br>Baseline plan and VST control plane</td><td class="ok">Closed / merged</td><td><code>core/STATE.md</code>: GPT-PM final gate at <code>abc0d50</code>; PR 1 merged into <code>origin/main</code> as <code>d5cd7f5</code> on 24 October.</td><td>No open S0/S1 task is listed in the current backlog; historical criteria were not re-audited in this snapshot.</td><td>Codex preserves accepted work; reopen only for a concrete defect.</td></tr>
       <tr><td><b>S2 / REQ-001—004</b><br>Signed instruction, Store authority, owner transport, fail-closed recovery and bounded StageOnly preparation</td><td class="ok">Accepted in bounded source/test scope</td><td>Backlog marks S2-1/2/3 delivered and pushed: <code>e332ec4</code>, <code>e987a24</code>, <code>ae07f87</code>; bounded reviews/tests are linked from <code>docs/sdlc/verify-evidence.md</code>.</td><td>This does not establish complete runtime, production dispatch or every historical S2 selector.</td><td>Codex preserves the accepted baseline; reopen only for a proven acceptance delta.</td></tr>
-      <tr><td><b>S2 / REQ-005 and S2-DISPATCH-M01</b><br>Runtime identity, exact config, current E5 and real Owner→Runner path</td><td class="active">OPEN / IN PROGRESS</td><td>Collector/validator/status and apply exit 0 (four files installed, 22 exact) are evidenced at HEAD <code>7d1d16f</code>. In the latest authorized run, 17 checks passed; the run-bound preflight probe exited 2 due to a Windows/host mount. Evidence: <code>s2-runtime-qual-8ee40d1a-outcome-20261030.md</code>.</td><td>Preflight failed; service, claim/probe and TestRun remain NOT_RUN. Runtime/E5 acceptance is open.</td><td>Codex analyzes the exact refusal and prepares a safe correction without weakening isolation; then GPT-PM reviews source and a separate runtime authorization is required. S2-5 remains queued.</td></tr>
+      <tr><td><b>S2 / REQ-005 and S2-DISPATCH-M01</b><br>Runtime identity, exact config, current E5 and real Owner→Runner path</td><td class="active">OPEN / IN PROGRESS</td><td>GPT-PM MAJOR-01 was corrected against exact attempt evidence. `functional-test-reviewer`: 70 focused tests pass on worktree candidate; normalized predecessor fingerprints match all 26 destinations. Record: <code>0621-s2-4-fresh-runtime-identity-candidate.md</code>.</td><td>Python/security re-review and GPT-PM re-adjudication pending; source changes remain uncommitted. Fresh-candidate runtime is NOT_RUN.</td><td>Codex completes reviews/delivery/exact-head test; GPT-PM gives focused verdict and separate runtime authorization. S2-5 stays queued.</td></tr>
       <tr><td><b>S2 / REQ-006</b><br>Final exact-head sprint acceptance</td><td class="pending">Not passed</td><td>Code approval <code>PMG-20261030-7d1d16f6</code> covers only code scope at current HEAD.</td><td>No final decision for complete S2 acceptance and no complete fresh gate evidence.</td><td>After runtime closure, Codex assembles the exact packet; GPT-PM decides S2 acceptance.</td></tr>
       <tr><td><b>S2 / restricted selectors</b><br>Process kill, crash/recovery, mutation, E8 and S4/policy selectors</td><td class="gray">NOT_RUN</td><td>Restrictions remain explicit in backlog/test plan; NOT_RUN is not PASS.</td><td>These scenarios are outside the currently authorized runtime attempt.</td><td>Codex preserves NOT_RUN and does not expand scope.</td></tr>
       <tr><td><b>S3 / G01—G02</b><br>Candidate identity, licenses, dependencies and provenance</td><td class="active">Partially audited; gate open</td><td><code>core/BACKLOG.md</code> records a read-only Temporal audit: server v1.32.1 and SDK 1.34.0 are provisional comparators; some release metadata/CI was observed.</td><td>Some version/license and source-to-artifact provenance remains NOT_VERIFIED; dependency/profile/runtime choice is not closed.</td><td>Codex continues scoped technical reconciliation when S3 is current; GPT-PM adjudicates architecture; operator retains genuinely reserved legal/acquisition decisions.</td></tr>
@@ -241,7 +254,7 @@
       <tr><td><b>S0</b></td><td class="ok">Closed with S1</td><td>PR 1 includes the S0/S1 baseline; no open S0 backlog item appears in the current execution checkpoint.</td><td><code>core/STATE.md</code>, merge history on 24 October.</td></tr>
       <tr><td><b>S1</b></td><td class="ok">Merged</td><td>Control-plane core passed its exact gate and merged as PR 1; historical suite totals were not recomputed.</td><td><code>core/STATE.md</code>, merge <code>d5cd7f5</code>.</td></tr>
       <tr><td><b>S2-1—S2-3</b></td><td class="ok">Delivered in bounded scope</td><td>Source/test and StageOnly acceptance are recorded; this does not imply broader runtime/restricted evidence.</td><td><code>docs/sdlc/backlog.md</code> and <code>verify-evidence.md</code>.</td></tr>
-      <tr><td><b>S2-4</b> (subtasks 4.1—4.12c)</td><td class="active">IN PROGRESS; apply passed, latest runtime attempt HOLD at root preflight</td><td>GPT-PM exact-source review `d8e9f261` approved launcher SHA `5b03f670…1389db`; one-shot authorization `8ee40d1a` was used and consumed.</td><td>Preflight failed; service, claim/probe and TestRun are NOT_RUN. Runtime/E5 remains open; S2-5 stays queued.</td></tr>
+      <tr><td><b>S2-4</b> (subtasks 4.1—4.12c)</td><td class="active">IN PROGRESS; MAJOR-01 accepted by GPT-PM</td><td>GPT-PM ACCEPT request <code>24c2372b</code> / reply <code>e8448c22</code>: predecessor corrected to `7d1d16f` / bundle `388e6bb…` / tuple `e520…/2b5e…/0aac…`; 70 focused tests and Python/security re-reviews PASS. Test inputs include uncommitted candidate blobs, so this is not committed exact-HEAD evidence.</td><td>Candidate commit/push and exact-head test rerun remain. Fresh runtime NOT_RUN; prior `8ee40d1a` is consumed and cannot be retried.</td></tr>
       <tr><td><b>S2-5</b></td><td class="pending">OPEN / not started</td><td>Full S2 exact-head review and acceptance after earlier S2 criteria close.</td><td><code>docs/sdlc/backlog.md</code>, current 30 October.</td></tr>
       <tr><td><b>S3 / VST-027—031</b></td><td class="pending">S3 NOT STARTED; local adapter contract has scoped approval; others partial/open</td><td>VST-028 audit/licensing/provenance; VST-029 common runtime fixture; VST-030 sandbox proof; VST-031 comparison/decision remain open.</td><td><code>core/BACKLOG.md</code> and S3 plan; details dated 26–27 October and historical.</td></tr>
       <tr><td><b>S4 / VST-032—040</b></td><td class="active">Implementation and test evidence partial; S4 INCONCLUSIVE</td><td>Registry/runner/categories have older report-bound passes; 53 policy selectors remain NOT_RUN; AC-17 in-run same-identity integrity is NOT_VERIFIED; exact-head verdict REJECT.</td><td><code>core/BACKLOG.md</code>, <code>core/STATE.md</code>, candidate heads <code>621ddc01</code>/<code>1e75d5b</code>; historical.</td></tr>
@@ -269,16 +282,32 @@
       <li><a href="../docs/sdlc/backlog.md">S2 ordered backlog</a>, especially the current execution checkpoint and S2 disposition.</li>
       <li><a href="../docs/sdlc/requirements.md">Requirements REQ-001—REQ-006</a>.</li>
       <li><a href="../docs/changes/0617-s2-runtime-inventory-source-pins.md">S2-4.12b change record: source pins and collector acceptance</a> and <a href="../docs/changes/0618-s2-4.12b-review-baseline-reconciliation.md">review-baseline reconciliation</a>.</li>
-      <li>Fresh attempts are under <code>docs/sdlc/evidence/s2-runtime-qual-*</code>. Snapshot branch/origin: <code>s2-canonical-continuation</code>, HEAD <code>7d1d16f6348e6c00a5a568b5cfbc8caf309194b9</code>, ahead/behind <code>0/0</code>.</li>
+      <li>Fresh attempts are under <code>docs/sdlc/evidence/s2-runtime-qual-*</code>. Committed branch HEAD: <code>s2-canonical-continuation @ 055e913c69fd6c33f4290b4c71be1048a2582b32</code>; fresh candidate remains uncommitted.</li>
       <li>Current apply record: <a href="../docs/sdlc/evidence/s2-runtime-qual-7f3f3b3c-s2-runtime-20261030-2b5e04a3.attempt.json">7f3f3b3c</a>; post-apply access stop: <a href="../docs/sdlc/evidence/s2-runtime-qual-d71586a1-s2-runtime-20261030-2b5e04a3.attempt.json">d71586a1</a>.</li>
       <li>PowerShell launch stop before WSL: <a href="../docs/sdlc/evidence/s2-runtime-qual-c8c6ecb5-s2-runtime-20261030-2b5e04a3.attempt.json">attempt c8c6ecb5</a>.</li>
       <li>cmd.exe command-quoting stop before Python: <a href="../docs/sdlc/evidence/s2-runtime-qual-b3a9b780-host-launch-20261030.md">attempt b3a9b780</a>.</li>
       <li><a href="../docs/sdlc/evidence/s2-runtime-qual-dc6f1448-outcome-20261030.md">Attempt dc6f1448: WinError 206 before WSL</a>; <a href="../docs/sdlc/evidence/s2-runtime-qual-dc22ee55-decisions-20261030.md">stdin review</a>; <a href="../docs/sdlc/evidence/s2-runtime-qual-8ee40d1a-outcome-20261030.md">latest 8ee40d1a outcome: HOLD at preflight mount check</a>.</li>
       <li>S3/S4/S5 status is partly based on <code>core/STATE.md</code> records dated 27 October; those records predate this Git snapshot and need refresh when each sprint becomes current. The 33.3% figure is not an accepted weighted program-completion percentage.</li>
     </ul>
-    <p class="foot">Report and continuation owner: Codex. GPT-PM owns technical adjudication and the final S2 decision. e2e-runner is an execution role, not a separate project owner. This is an interim checkpoint; update it after apply reaches a verified outcome or exact stop condition.</p>
+    <p class="foot">Report and continuation owner: Codex. GPT-PM owns technical adjudication and the final S2 decision. e2e-runner is an execution role, not a separate project owner. This is an interim checkpoint. The S2-4 candidate is awaiting exact-source review; refresh after its accepted delivery or the next runtime stop condition.</p>
   </section>
 </main>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

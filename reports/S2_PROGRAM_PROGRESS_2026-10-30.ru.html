@@ -14,8 +14,7 @@
 <main>
   <header>
     <h1>Virtual Scrum Team — состояние программы и всех спринтов</h1>
-    <p class="muted">Срез: 2026-10-30 · ветка: <code>s2-canonical-continuation</code> · исходная ревизия runtime evidence: <code>7d1d16f6348e6c00a5a568b5cfbc8caf309194b9</code> · разрешение <code>8ee40d1a</code> исчерпано; preflight остановил qualification</p>
-    <p class="lede">Срез на 30 октября 2026 года. Сначала показаны общая полоса программы, спринты и задачи; пояснения и доказательства — ниже. Текущий последовательный пункт — S2-4; S2-5 и дальнейшие спринты не начаты.</p>
+    <p class="muted">Срез: 2026-10-30 · исходный кодовый HEAD: <code>055e913c69fd6c33f4290b4c71be1048a2582b32</code> · runtime-прогон <code>8ee40d1a</code> был на <code>7d1d16f</code> и остановился на preflight; разрешение исчерпано</p>
   </header>
 
 <!-- report-conform:begin -->
@@ -43,7 +42,7 @@
   <dl>
     <dt>Проект</dt><dd>Virtual_scrum_team</dd>
     <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-canonical-continuation @ 7d1d16f</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-canonical-continuation @ 055e913</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
@@ -69,9 +68,24 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   <section class="panel" id="portfolio-dashboard" aria-labelledby="portfolio-title">
     <h2 id="portfolio-title">Вся программа — сначала статусы задач</h2>
-    <p class="chart-note">Сначала общая полоса по 40 каноническим ID из реестра, затем полосы S0–S5, затем все 40 ID задач; отдельная очередь S2-1—S2-5 показана ниже и не прибавляется к знаменателю 40.</p>
     <div class="progress" role="img" aria-label="По 40 пунктам реестра: 4 закрыты, 26 частично выполнены, 10 открыты"><span style="width:10%;background:var(--green)"></span><span style="width:65%;background:var(--blue)"></span><span style="width:25%;background:var(--gray)"></span></div>
     <div class="legend"><span><i class="swatch"></i>Закрыто: 4/40 (10%)</span><span><i class="swatch" style="background:var(--blue)"></i>Частично / в работе: 26/40 (65%)</span><span><i class="swatch" style="background:var(--gray)"></i>Открыто / не начато: 10/40 (25%)</span></div>
     <h3 style="margin-top:22px">По спринтам</h3>
@@ -84,7 +98,6 @@
       <div class="sprint-row"><span class="sprint-name">S5 · AEVE receipt</span><div class="sprint-bar" role="img" aria-label="1 подготовленная задача заблокирована до реализации"><span class="bar-open" style="width:100%">ПОДГОТОВЛЕН / БЛОКИРОВАН</span></div><span class="sprint-count">0/1 реализовано</span></div>
     </div>
     <h3 style="margin-top:22px">Все задачи реестра · 40 полос</h3>
-    <p class="chart-note">Каждая строка — отдельный ID из <code>core/BACKLOG.md</code>. Цвет отмечает записанное состояние, а не придуманный процент внутри задачи. S0/S1 имеют статус закрытия спринта, но их task denominator в источнике отсутствует. Вспомогательные пункты без указанного спринта вынесены отдельно. Числа общего backlog не включают delivery-задачи S2-1—S2-5, чтобы не считать одни и те же acceptance items повторно.</p>
     <div id="program-task-bars">
 <div class="task-group"><h4>S2 · элементы VST-009–020 и VST-025–026 · 14</h4>
 <div class="task-bar-row status-partial" title="implemented; focused tests passed; security/reliability/database reviews found no code-level MAJOR/BLOCKER; full required specialist consensus and exact-head GPT-PM gate pending"><span class="task-bar-name"><b>VST-009</b> · S2 E1: authenticated reviewer key, distinct from the worker key; verify IndependentReview receipts with it</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
@@ -184,7 +197,7 @@
         <tr><td><b>S2-1</b><br>Fail-closed инструкция, Store admission и recovery</td><td class="ok">Доставлен: ограниченный source/test scope</td><td>Backlog ссылается на pushed <code>e332ec4</code> и принятие baseline-plus-delta. Это source/test принятие, не production runtime.</td><td>В рамках этой ограниченной задачи нет. Не переоткрывать без конкретной регрессии.</td><td>Codex: оставить принятую базу без повторной реализации.</td></tr>
         <tr><td><b>S2-2</b><br>Owner transport к Store-backed dispatcher</td><td class="ok">Доставлен: ограниченный source/test scope</td><td>Backlog ссылается на pushed <code>e987a24</code> и ранее записанный WSL результат 34 passed; часть границы была mocked.</td><td>Реальная системная квалификация относится к S2-4, а не к повторному написанию S2-2.</td><td>Codex: учитывать это как принятую основу; не повторять без дефекта.</td></tr>
         <tr><td><b>S2-3</b><br>Immutable non-secret bundle и stage-only подготовка</td><td class="ok">Доставлен в ограниченном scope</td><td>Backlog указывает pushed <code>ae07f870</code>, bundle/inventory и результат stage-only.</td><td>Отдельный пункт TP-10 помечен partial; он не равен провалу принятого stage-only scope.</td><td>Codex: использовать закреплённый bundle в текущей квалификации.</td></tr>
-        <tr><td><b>S2-4 / S2-4.12b—c</b><br>Текущий runtime/E5 и Owner→Runner путь</td><td class="active">В работе; apply и 17 preflight-проверок PASS, затем runtime HOLD</td><td>На HEAD <code>7d1d16f</code> collector/validator/status и apply (exit 0: 4 файла установлены, 22 уже совпадали) подтверждены. Launcher SHA <code>5b03f670…1389db</code> прошёл exact-source review GPT-PM <code>d8e9f261…</code>. Разрешение <code>8ee40d1a</code> использовано; 17 свежих проверок PASS, но root preflight завершился exit 2: <code>probe namespace exposes an unapproved Windows or host mount</code>.</td><td>Probe был запущен только как часть preflight; VST-сервисы, bootstrap, Owner→Runner claim/probe и точный TestRun selector не запускались. Нужны анализ отказа и узкий безопасный code/config delta; повтор разрешения запрещён.</td><td>Codex: установить точную причину отказа по исходнику и evidence, не ослабляя проверку mount boundaries; затем focused review и новое отдельное runtime-разрешение. После acceptance закрыть S2-4 с evidence/docs/commit/push до S2-5. Outcome: <code>s2-runtime-qual-8ee40d1a-outcome-20261030.md</code>.</td></tr>
+        <tr><td><b>S2-4 / S2-4.12b—c</b><br>Runtime/E5 и Owner→Runner</td><td class="active">В работе; исправлен predecessor, re-review ожидается</td><td>Diagnostic fix в <code>055e913</code>. Fresh candidate run <code>1977eaba…</code>, bundle SHA <code>05530c73…10f91f</code>. GPT-PM <code>bbf54c64</code> указал MAJOR-01; Codex перевёл predecessor на <code>7d1d16f</code>, bundle <code>388e6bb…</code>, tuple <code>e520…/2b5e…/0aac…</code>.</td><td>Functional-test-reviewer сообщает 70 focused tests PASS и совпадение нормализованных fingerprints для всех 26 файлов predecessor. Python и security re-review PASS; ожидается только GPT-PM re-adjudication. Runtime свежего кандидата NOT_RUN.</td><td>Codex завершает проверку/доставку и exact-head test; test reviewer подтвердил worktree suite; GPT-PM выносит focused verdict, затем — отдельную ограниченную runtime authorization. S2-5 не начинать до S2-4.</td></tr>
         <tr><td><b>S2-5</b><br>Финальная приёмка S2</td><td class="pending">Не начат</td><td>Backlog ставит финальную exact-head оценку после S2-4.</td><td>Сопоставить все S2 критерии и доказательства; получить итоговый verdict. S2 пока NOT APPROVED.</td><td>Codex: собрать доказательства после S2-4; GPT-PM: вынести финальное решение.</td></tr>
       </tbody>
     </table></div>
@@ -211,7 +224,7 @@
         <tr><td><code>8ee40d1a…</code></td><td>После 17 PASS preflight был вызван и отказал exit 2: <code>probe namespace exposes an unapproved Windows or host mount</code>.</td><td>Сервис, bootstrap, claim/probe и TestRun не запускались; временный D: read-only mount проверен и снят.</td><td class="pending">Разрешение исчерпано; не повторять. Выяснить точную причину без ослабления fail-closed проверки. Evidence: <code>s2-runtime-qual-8ee40d1a-outcome-20261030.md</code>.</td></tr>
       </tbody>
     </table></div>
-    <p class="callout danger"><b>Текущая граница:</b> configuration apply доказан. В последнем запуске 17 свежих checks прошли, затем preflight был вызван и завершился exit 2, отказав из-за неразрешённого Windows/host mount в namespace. Сервис, claim/probe и TestRun не запускались. Разрешение <code>8ee40d1a</code> исчерпано; повтор запрещён. Следующий шаг — найти причину, сохранить fail-closed границу, пройти source review и получить отдельное разрешение. Production activation не выполнялась.</p>
+    <p class="callout danger"><b>Текущая граница:</b> последний runtime запуск <code>8ee40d1a</code> отказал на mount preflight и исчерпан; сервис, bootstrap, Owner→Runner и TestRun тогда не запускались. Подготовлен новый неисполняемый config candidate; его source review ещё ожидается, свежая runtime авторизация не запрашивалась. Не повторять старое разрешение, не ослаблять fail-closed и не активировать production.</p>
   </section>
 
   <section class="panel" aria-labelledby="all-gates">
@@ -220,7 +233,7 @@
     <div class="scroll"><table><thead><tr><th>Спринт / gate</th><th>Статус</th><th>Что доказано</th><th>Что осталось</th><th>Владелец / следующий шаг</th></tr></thead><tbody>
       <tr><td><b>S0 + S1</b><br>Базовый контрольный план и VST control plane</td><td class="ok">Закрыты / слиты</td><td><code>core/STATE.md</code>: GPT-PM final gate на <code>abc0d50</code>; PR 1 объединён в <code>origin/main</code> как <code>d5cd7f5</code> 24 октября.</td><td>В текущем backlog открытых задач S0/S1 не указано; свежий повторный аудит исторических критериев не проводился.</td><td>Исторический gate принят. Не переоткрывать без конкретного дефекта.</td></tr>
       <tr><td><b>S2 / REQ-001—004</b><br>Подписанная инструкция, Store authority, owner transport, fail-closed recovery и ограниченная StageOnly подготовка</td><td class="ok">Приняты в ограниченном source/test scope</td><td>Backlog фиксирует S2-1/2/3 как доставленные и запушенные: <code>e332ec4</code>, <code>e987a24</code>, <code>ae07f87</code>; bounded reviews/tests указаны в <code>docs/sdlc/verify-evidence.md</code>.</td><td>Это не доказательство полного runtime, production dispatch или закрытия всех исторических S2 selector rows.</td><td>Codex сохраняет принятый baseline; новый код только при конкретной acceptance-дельте.</td></tr>
-      <tr><td><b>S2 / REQ-005 и S2-DISPATCH-M01</b><br>Runtime identity, точный config, текущий E5 и реальный Owner→Runner путь</td><td class="active">OPEN / IN PROGRESS</td><td>Collector/validator/status и apply exit 0 (4 файла установлены, 22 точны) доказаны на HEAD <code>7d1d16f</code>. В последнем разрешённом запуске 17 проверок PASS; run-bound preflight-probe отказал exit 2 из-за Windows/host mount. Evidence: <code>s2-runtime-qual-8ee40d1a-outcome-20261030.md</code>.</td><td>Preflight не прошёл; сервис, claim/probe и TestRun остаются NOT_RUN. Runtime/E5 acceptance открыта.</td><td>Codex анализирует точный отказ и готовит исправление без ослабления границ; затем GPT-PM review и отдельное runtime authorization. S2-5 остаётся в очереди.</td></tr>
+      <tr><td><b>S2 / REQ-005 и S2-DISPATCH-M01</b><br>Runtime identity, точный config, текущий E5 и реальный Owner→Runner путь</td><td class="active">OPEN / IN PROGRESS</td><td>GPT-PM finding MAJOR-01 исправлен по exact attempt evidence. `functional-test-reviewer`: 70 focused tests PASS на worktree-кандидате; нормализованные predecessor fingerprints совпали по всем 26 destinations. Record: <code>0621-s2-4-fresh-runtime-identity-candidate.md</code>.</td><td>Python/security re-review и GPT-PM re-adjudication ещё pending; изменения не закоммичены. Runtime для fresh candidate NOT_RUN.</td><td>Codex завершает re-review, delivery и exact-head test. GPT-PM выносит focused verdict и затем отдельную ограниченную runtime authorization. S2-5 остаётся в очереди.</td></tr>
       <tr><td><b>S2 / REQ-006</b><br>Финальная exact-head приёмка спринта</td><td class="pending">Не пройдена</td><td>Кодовый PM approval <code>PMG-20261030-7d1d16f6</code> относится только к текущему code scope/HEAD.</td><td>Нет итогового решения по полной S2 acceptance и свежего полного набора gate-доказательств.</td><td>После runtime closure Codex собирает точный пакет; GPT-PM принимает или отклоняет S2 целиком.</td></tr>
       <tr><td><b>S2 / ограниченные selectors</b><br>Process-kill, crash/recovery, mutation, E8 и S4 policy selector family</td><td class="gray">NOT_RUN</td><td>Ограничения явно сохраняются в текущем backlog/test plan; NOT_RUN не считается PASS.</td><td>Эти сценарии не входят в текущую разрешённую runtime попытку.</td><td>Codex сохраняет NOT_RUN; решения не расширять в этом отчёте.</td></tr>
       <tr><td><b>S3 / G01—G02</b><br>Идентичность кандидата, лицензии, зависимости и provenance</td><td class="active">Частично проверены; gate открыт</td><td>В <code>core/BACKLOG.md</code> записан read-only audit Temporal: сервер v1.32.1 и SDK 1.34.0 — только provisional comparator; часть release metadata/CI наблюдалась.</td><td>Некоторые версии/лицензии и source-to-artifact provenance остаются NOT_VERIFIED; полный dependency/profile/runtime выбор не закрыт.</td><td>Codex продолжает scoped техническую сверку, когда S3 станет текущим; GPT-PM — архитектурная adjudication; operator сохраняет только реально зарезервированные legal/acquisition решения.</td></tr>
@@ -242,7 +255,7 @@
       <tr><td><b>S0</b></td><td class="ok">Закрыт с S1</td><td>PR 1 содержит S0+S1 baseline; нового S0 backlog в текущем execution checkpoint нет.</td><td><code>core/STATE.md</code>, история merge от 24 октября.</td></tr>
       <tr><td><b>S1</b></td><td class="ok">Слит</td><td>Control-plane core прошёл exact gate и merged PR1; подробные исторические suite totals не пересчитывались.</td><td><code>core/STATE.md</code>, history merged as <code>d5cd7f5</code>.</td></tr>
       <tr><td><b>S2-1</b>—<b>S2-3</b></td><td class="ok">Доставлены в bounded scope</td><td>Source/test и StageOnly acceptance приняты; broader runtime/restricted evidence не подразумевается.</td><td><code>docs/sdlc/backlog.md</code> и <code>verify-evidence.md</code>.</td></tr>
-      <tr><td><b>S2-4</b> (subtasks 4.1—4.12c)</td><td class="active">IN PROGRESS; apply passed, latest runtime attempt HOLD at root preflight</td><td>Collector/validator/status/apply and 17 fresh protocol checks are PASS. GPT-PM reviewed exact launcher SHA `5b03f670…1389db`; one-shot authorization `8ee40d1a` is consumed. Root preflight returned exit 2 refusing an unapproved Windows/host mount.</td><td>Service, Owner-to-Runner claim/probe and report-bound TestRun are NOT_RUN. No retry. S2-5 stays queued.</td></tr>
+      <tr><td><b>S2-4</b> (subtasks 4.1—4.12c)</td><td class="active">IN PROGRESS; MAJOR-01 принят GPT-PM</td><td>GPT-PM ACCEPT request <code>24c2372b</code> / reply <code>e8448c22</code>: predecessor corrected to `7d1d16f` / bundle `388e6bb…` / tuple `e520…/2b5e…/0aac…`; 70 focused tests and Python/security re-review PASS. Test inputs include uncommitted candidate blobs, so not exact-committed-HEAD proof.</td><td>Candidate commit/push and exact-head test rerun remain. Fresh runtime NOT_RUN; old `8ee40d1a` consumed and cannot be retried.</td></tr>
       <tr><td><b>S2-5</b></td><td class="pending">OPEN / not started</td><td>Полная S2 exact-head review и acceptance после закрытия предыдущих S2 criteria.</td><td><code>docs/sdlc/backlog.md</code>, current 30 Oct.</td></tr>
       <tr><td><b>S3 / VST-027—031</b></td><td class="pending">S3 NOT STARTED; локальный adapter contract имеет scoped approval; остальное partial/open</td><td>VST-028 audit/licensing/provenance; VST-029 common runtime fixture; VST-030 sandbox proof; VST-031 comparison/decision остаются незакрытыми.</td><td><code>core/BACKLOG.md</code> и S3 plan; подробные записи 26–27 Oct, исторические.</td></tr>
       <tr><td><b>S4 / VST-032—040</b></td><td class="active">Implementation and test evidence partial; S4 INCONCLUSIVE</td><td>Registry/runner/categories имеют старые report-bound passes; 53 policy selectors remain NOT_RUN; AC-17 in-run same-identity integrity NOT_VERIFIED; exact-head verdict REJECT.</td><td><code>core/BACKLOG.md</code>, <code>core/STATE.md</code>, candidate heads 621ddc01/1e75d5b, historical.</td></tr>
@@ -277,12 +290,28 @@
       <li><a href="../docs/sdlc/evidence/s2-runtime-qual-c8c6ecb5-s2-runtime-20261030-2b5e04a3.attempt.json">Attempt record c8c6ecb5: PowerShell отказал до запуска WSL</a>.</li>
       <li><a href="../docs/sdlc/evidence/s2-runtime-qual-b3a9b780-host-launch-20261030.md">Attempt b3a9b780: cmd.exe не запустил Python; WSL не стартовал</a>.</li>
       <li><a href="../docs/sdlc/evidence/s2-runtime-qual-dc6f1448-outcome-20261030.md">Attempt dc6f1448: WinError 206 до старта WSL</a>; <a href="../docs/sdlc/evidence/s2-runtime-qual-dc22ee55-decisions-20261030.md">stdin review</a>; <a href="../docs/sdlc/evidence/s2-runtime-qual-8ee40d1a-outcome-20261030.md">последний outcome 8ee40d1a: HOLD на preflight mount check</a>.</li>
-      <li>Свежие попытки в <code>docs/sdlc/evidence/s2-runtime-qual-*</code>. Ветка и origin на момент среза: <code>s2-canonical-continuation</code>, HEAD <code>7d1d16f6348e6c00a5a568b5cfbc8caf309194b9</code>, ahead/behind <code>0/0</code>.</li>
+      <li>Свежие попытки в <code>docs/sdlc/evidence/s2-runtime-qual-*</code>. Коммитнутый HEAD ветки: <code>s2-canonical-continuation @ 055e913c69fd6c33f4290b4c71be1048a2582b32</code>; свежий candidate не закоммичен.</li>
       <li>Статус S3/S4/S5 частично основан на записях <code>core/STATE.md</code> от 27 октября; эти записи устарее текущего Git-среза и требуют обновления на своей очереди. Цифра 33,3% не является принятым весовым процентом программы.</li>
     </ul>
     <p class="foot">Владелец отчёта и последовательной работы: Codex; GPT-PM принимает архитектурные и точные gate-решения; оператор остаётся владельцем только действий, прямо зарезервированных за человеком. Текущий scope остаётся S2; S3—S5 ещё не начаты по очереди. Детальные S3—S5 статусы старше текущего Git-среза и должны быть перепроверены при переходе к каждому спринту.</p>
   </section>
 </main>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
