@@ -195,6 +195,20 @@ def test_environment_collector_fails_closed_for_unlisted_host_mount(monkeypatch)
     assert result["result"] == "FAIL"
 
 
+def test_environment_collector_rejects_overlay_at_unapproved_prefixed_modules_path(monkeypatch):
+    overlay_mount = (
+        "2 1 0:2 / /srv/unapproved/usr/lib/modules ro,relatime "
+        "- overlay none ro,lowerdir=/modules"
+    )
+    _patch_collection_environment(monkeypatch, mounts=[overlay_mount])
+
+    result = preflight.collect_inventory()
+
+    assert result["checked_properties"]["no_unapproved_host_mounts"] is False
+    assert result["inventory"]["unapproved_host_mounts"] == [overlay_mount]
+    assert result["result"] == "FAIL"
+
+
 def test_environment_collector_accepts_systemd_inaccessible_directory_mount_for_masked_wsl_path(
         monkeypatch):
     masked_mount = (

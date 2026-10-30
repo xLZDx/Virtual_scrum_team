@@ -562,7 +562,12 @@ def run_once(input_path: Path, output_path: Path, *, root: Path) -> int:
             _write_record(fd, initial)
             raise QualificationError("WSL did not return a valid one-shot evidence record") from exc
         if not isinstance(protocol, dict) or protocol.get("schema") != "VST_S2_RUNTIME_QUALIFICATION_PROTOCOL_V1":
-            initial.update(state="INDETERMINATE", exit_code=result.returncode, retry="PROHIBITED")
+            initial.update(
+                state="INDETERMINATE", exit_code=result["exit_code"],
+                stdout_bytes=stdout["bytes"], stdout_sha256=stdout["sha256"],
+                stderr_bytes=stderr["bytes"], stderr_sha256=stderr["sha256"],
+                retry="PROHIBITED",
+            )
             _write_record(fd, initial)
             raise QualificationError("WSL returned an unrecognized protocol record")
         initial.update(

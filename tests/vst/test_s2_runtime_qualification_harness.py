@@ -8,8 +8,12 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import ast
+import pathlib
+import re
 import tarfile
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -88,6 +92,41 @@ def _write_input(root: Path, value: dict | bytes) -> tuple[Path, Path]:
     else:
         input_path.write_text(json.dumps(value), encoding="utf-8")
     return input_path, output_path
+
+
+def _wsl_prestart_functions():
+    """Load only the exact WSL mount-preflight functions, without running its protocol."""
+    source_path = Path(__file__).resolve().parents[2] / WSL_HELPER
+    tree = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
+    wanted = {"Hold", "stop", "_decode_mountinfo", "_prestart_inventory"}
+    nodes = [node for node in tree.body
+             if ((isinstance(node, ast.ClassDef) or isinstance(node, ast.FunctionDef))
+                 and node.name in wanted)]
+    assert {node.name for node in nodes} == wanted
+    module = ast.Module(body=nodes, type_ignores=[])
+    namespace = {
+        "hashlib": hashlib,
+        "os": SimpleNamespace(geteuid=lambda: 0),
+        "pathlib": pathlib,
+        "re": re,
+        "R": {"prestart": {}},
+    }
+    exec(compile(module, str(source_path), "exec"), namespace)
+    return namespace
+
+
+def _approved_mountinfo() -> str:
+    return "\n".join((
+        "36 25 8:1 / / rw,relatime - ext4 /dev/sda1 rw,errors=remount-ro",
+        "37 36 0:4 / /proc rw,nosuid,nodev,noexec,relatime - proc proc rw",
+        "38 36 0:5 / /sys rw,nosuid,nodev,noexec,relatime - sysfs sysfs rw",
+        "39 36 0:6 / /dev rw,nosuid - devtmpfs devtmpfs rw,size=65536k",
+        "40 39 0:8 / /dev/pts rw,nosuid,noexec,relatime - devpts devpts rw,gid=5,mode=620",
+        "41 36 0:30 / /sys/fs/cgroup rw,nosuid,nodev,noexec,relatime - cgroup2 cgroup2 rw",
+        "42 36 0:27 / /run rw,nosuid,nodev - tmpfs tmpfs rw,size=65536k",
+        "43 36 8:1 /run/systemd/inaccessible/dir /mnt rw,nosuid,nodev - ext4 /dev/sda1 rw",
+        "44 36 0:44 / /usr/lib/modules rw,relatime - overlay none rw,lowerdir=/modules,ro",
+    ))
 
 
 @pytest.mark.parametrize("invalid", ["un correlated", "oversized"])
@@ -291,3 +330,90 @@ def test_run_once_starts_one_mock_wsl_child_and_persists_terminal_hold(
     assert attempt["stdout_sha256"] == _sha(FAILURE_PROTOCOL)
     assert attempt["stderr_sha256"] == _sha(b"synthetic stderr")
     assert capsys.readouterr().out
+
+
+def test_wsl_mount_allowlist_accepts_only_expected_mounts(monkeypatch):
+    functions = _wsl_prestart_functions()
+    rows, windows_mounts, unapproved_mounts = functions["_decode_mountinfo"](
+        _approved_mountinfo())
+
+    assert len(rows) == 9
+    assert windows_mounts == []
+    assert unapproved_mounts == []
+
+
+@pytest.mark.parametrize(("label", "extra", "reason"), [
+    ("unknown host filesystem",
+     "80 36 8:2 / /srv/host rw,relatime - ext4 /dev/sdb1 rw",
+     "unapproved host mount detected"),
+    ("Windows drive under /mnt",
+     "80 36 0:55 / /mnt/c rw,relatime - 9p C:\\ aname=drvfs;path=C:\\;symlinkroot=/mnt/",
+     "Windows drive mount detected"),
+    ("unsupported proc source",
+     "80 36 0:4 / /proc/host rw,relatime - proc hostproc rw",
+     "unapproved host mount detected"),
+    ("mismatched bind mount root",
+     "80 36 8:1 /etc /srv/host rw,relatime - ext4 /dev/sda1 rw",
+     "unapproved host mount detected"),
+    ("overlay with an unapproved prefixed target",
+     "80 36 0:55 / /srv/unapproved/usr/lib/modules ro,relatime - overlay none ro,lowerdir=/modules",
+     "unapproved host mount detected"),
+])
+def test_wsl_prestart_refuses_unapproved_mounts(monkeypatch, label, extra, reason):
+    functions = _wsl_prestart_functions()
+    mountinfo = _approved_mountinfo() + "\n" + extra
+
+    original_read_text = pathlib.Path.read_text
+
+    def read_text(path, *args, **kwargs):
+        if path.as_posix() == "/proc/self/mountinfo":
+            return mountinfo
+        return original_read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(pathlib.Path, "read_text", read_text)
+    with pytest.raises(functions["Hold"]):
+        functions["_prestart_inventory"]({})
+
+    assert functions["R"]["terminal"] == "HOLD", label
+    assert reason in functions["R"]["reason"], label
+
+
+def test_unknown_protocol_persists_indeterminate_record_without_retry(
+        monkeypatch, tmp_path):
+    script = b"# mocked exact WSL protocol source\n"
+    unknown_protocol = b'{"schema":"VST_S2_RUNTIME_QUALIFICATION_PROTOCOL_V999"}'
+    value = _auth_input(streamed_wsl=script)
+    input_path, output_path = _write_input(tmp_path, value)
+    monkeypatch.setattr(harness, "verify_source_pins", lambda *_args: None)
+    monkeypatch.setattr(harness, "refuse_historical_identity", lambda *_args: None)
+    monkeypatch.setattr(harness, "_load_wsl_script", lambda: script)
+
+    calls = []
+
+    def one_wsl_attempt(_script):
+        calls.append(True)
+        return {
+            "exit_code": 2,
+            "timed_out": False,
+            "writer_error": None,
+            "stdout": {"bytes": len(unknown_protocol), "sha256": _sha(unknown_protocol),
+                       "prefix": unknown_protocol, "truncated": False},
+            "stderr": {"bytes": 0, "sha256": _sha(b""),
+                       "prefix": b"", "truncated": False},
+        }
+
+    monkeypatch.setattr(harness, "_run_bounded_wsl", one_wsl_attempt)
+
+    with pytest.raises(harness.QualificationError, match="unrecognized protocol"):
+        harness.run_once(input_path, output_path, root=tmp_path)
+
+    attempt = json.loads(output_path.read_text(encoding="utf-8"))
+    assert len(calls) == 1
+    assert attempt["state"] == "INDETERMINATE"
+    assert attempt["exit_code"] == 2
+    assert attempt["stdout_bytes"] == len(unknown_protocol)
+    assert attempt["stdout_sha256"] == _sha(unknown_protocol)
+    assert attempt["stderr_bytes"] == 0
+    assert attempt["stderr_sha256"] == _sha(b"")
+    assert attempt["retry"] == "PROHIBITED"
+    assert attempt["retry_cap"] == 0

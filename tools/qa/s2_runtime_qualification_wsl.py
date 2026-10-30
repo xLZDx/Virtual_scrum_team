@@ -143,28 +143,84 @@ def stop(reason: str) -> None:
     raise Hold()
 
 
-def _decode_mountinfo(raw: str) -> tuple[list[dict], list[str]]:
+def _decode_mountinfo(raw: str) -> tuple[list[dict], list[str], list[dict]]:
     rows = []
-    blocked = []
+    windows_mounts = []
+    unapproved_mounts = []
+    decoded = []
     for number, line in enumerate(raw.splitlines(), 1):
         before, separator, after = line.partition(" - ")
         left, right = before.split(), after.split()
-        if separator != " - " or len(left) < 6 or len(right) < 3:
+        if separator != " - " or len(left) < 6 or len(right) < 3 or len(line) > 16384:
             raise ValueError("mountinfo row is malformed")
         def unescape(value):
             return value.replace("\\040", " ").replace("\\011", "\t").replace("\\012", "\n").replace("\\134", "\\")
         mountpoint = unescape(left[4])
-        fstype = right[0]
+        mount_root = unescape(left[3])
+        device = left[2]
+        fstype = right[0].lower()
         source = unescape(right[1])
-        full = unescape(line)
+        mount_options = left[5].split(",")
+        super_options = right[2].split(",") if len(right) > 2 else []
+        all_options = mount_options + super_options
         row = {"mountpoint": mountpoint, "filesystem": fstype,
-               "source": source, "line_sha256": hashlib.sha256(line.encode()).hexdigest()}
+               "source": source, "device": device, "mount_root": mount_root,
+               "mount_options": mount_options,
+               "line_sha256": hashlib.sha256(line.encode()).hexdigest()}
         rows.append(row)
-        if (fstype.lower() == "drvfs"
-                or re.match(r"^/mnt/[A-Za-z](?:/|$)", mountpoint)
-                or re.search(r"aname=drvfs|path=[A-Za-z]:", full, re.IGNORECASE)):
-            blocked.append(str(number))
-    return rows, blocked
+        wsl_drvfs_9p = fstype == "9p" and re.search(
+            r"(?:^|[;,])aname=drvfs(?:$|[;,])", ",".join(all_options), re.IGNORECASE,
+        ) is not None
+        if (fstype == "drvfs" or wsl_drvfs_9p
+                or re.fullmatch(r"[A-Za-z]:\\?", source)):
+            windows_mounts.append(row)
+        decoded.append((number, row, device, mount_root, source, all_options))
+
+    roots = [item for item in decoded if item[1]["mountpoint"] == "/"]
+    if len(roots) != 1:
+        raise ValueError("mount namespace must expose exactly one root filesystem")
+    _root_number, root_row, root_device, _root_mount, _root_source, _root_options = roots[0]
+    root_filesystem = root_row["filesystem"]
+    systemd_masked_wsl_paths = {
+        "/init", "/home", "/mnt", "/root", "/run/WSL", "/usr/lib/wsl",
+        "/tmp/.X11-unix",
+    }
+    for number, row, device, mount_root, source, mount_options in decoded:
+        target = row["mountpoint"]
+        filesystem = row["filesystem"]
+        wsl_path = (target == "/mnt" or target.startswith("/mnt/")
+                    or target in systemd_masked_wsl_paths)
+        valid_source = False
+        if filesystem in {"proc", "sysfs", "devtmpfs", "devpts", "tmpfs", "ramfs",
+                          "cgroup2", "mqueue"}:
+            permitted_roots = {"/"}
+            if target == "/proc/sys":
+                permitted_roots.add("/sys")
+            if target == "/proc/sysrq-trigger":
+                permitted_roots.add("/sysrq-trigger")
+            valid_source = mount_root in permitted_roots and source == filesystem
+        elif target in systemd_masked_wsl_paths:
+            valid_source = (device == root_device and filesystem == root_filesystem
+                            and mount_root == "/run/systemd/inaccessible/dir")
+        elif target in {"/tmp", "/var/tmp"}:
+            private_parent = "/tmp/systemd-private-" if target == "/tmp" else "/var/tmp/systemd-private-"
+            valid_source = (device == root_device and filesystem == root_filesystem
+                            and mount_root.startswith(private_parent)
+                            and "vst-sandbox-probe.service" in mount_root
+                            and mount_root.endswith("/tmp"))
+        elif target == "/usr/lib/modules" or target.startswith("/usr/lib/modules/"):
+            valid_source = (filesystem == "overlay" and source == "none" and mount_root == "/"
+                            and "ro" in mount_options)
+        else:
+            valid_source = (device == root_device and filesystem == root_filesystem
+                            and mount_root == target)
+            if target in {"/usr", "/boot", "/etc", "/var", "/opt"}:
+                valid_source = valid_source and "ro" in mount_options
+        if target == "/":
+            valid_source = mount_root == "/" and device == root_device
+        if not valid_source or (wsl_path and target not in systemd_masked_wsl_paths):
+            unapproved_mounts.append({"row": number, **row})
+    return rows, windows_mounts, unapproved_mounts
 
 
 def _secure_bytes(path: str, maximum: int = 8 * 1024 * 1024) -> bytes:
@@ -282,15 +338,18 @@ def _prestart_inventory(identity: dict) -> dict:
         stop("launcher is not root in the selected WSL distribution")
     try:
         mountinfo = pathlib.Path("/proc/self/mountinfo").read_text(encoding="utf-8")
-        mount_rows, windows_mounts = _decode_mountinfo(mountinfo)
+        mount_rows, windows_mounts, unapproved_mounts = _decode_mountinfo(mountinfo)
     except Exception as exc:
         stop("complete mount inventory is unavailable: " + type(exc).__name__)
     R["prestart"]["mount_inventory"] = {
         "rows": mount_rows, "row_count": len(mount_rows),
+        "unapproved_host_mounts": unapproved_mounts,
         "sha256": hashlib.sha256(mountinfo.encode()).hexdigest(),
     }
     if windows_mounts:
         stop("Windows drive mount detected in complete mount inventory")
+    if unapproved_mounts:
+        stop("unapproved host mount detected in complete mount inventory")
     if len(mountinfo.encode()) > 8 * 1024 * 1024 or len(mount_rows) < 4:
         stop("mount inventory is outside expected bounds")
 

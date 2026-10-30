@@ -269,7 +269,7 @@ def collect_inventory() -> dict[str, Any]:
                             and mount_root.startswith(private_parent)
                             and "vst-sandbox-probe.service" in mount_root
                             and mount_root.endswith("/tmp"))
-        elif target.endswith("/usr/lib/modules") or target.startswith("/usr/lib/modules/"):
+        elif target == "/usr/lib/modules" or target.startswith("/usr/lib/modules/"):
             valid_source = (filesystem == "overlay" and source == "none" and mount_root == "/"
                             and "ro" in mount_options)
         else:
