@@ -24,9 +24,9 @@ SYSTEMD_ROOT = "/etc/systemd/system"
 TASK_REPOSITORY_ROOT = "/var/lib/vst-runner/repository"
 TASK_REPOSITORY_ARCHIVE_FORMAT = "canonical-git-tree-tar-v1"
 MAX_APPLY_PAYLOAD_BYTES = 16 * 1024 * 1024
-RUNTIME_SOURCE_HEAD = "80c2b81deac364ed6466600fd46af47aafe805e2"
-BUNDLE_MANIFEST_SHA256 = "2d0c7bcfdd92b3cffa3c9e1344d87f5d34cc690d65006298087d897cf5635d8c"
-INSTALLATION_LAYOUT_SHA256 = "f403052cb26e6d635d7566fe25337e4c3fa18bf83c778dc600b807689b405d8f"
+RUNTIME_SOURCE_HEAD = "ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
+BUNDLE_MANIFEST_SHA256 = "d03306788fc4e5090527483dc0412f055822d738ce13a08e11245afe2e9368e4"
+INSTALLATION_LAYOUT_SHA256 = "b34b5dfb9d43c10e24294dc9e89bf890ed6e303a9f9c5cd5e7dec560f727e9b2"
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 _HEX40 = re.compile(r"^[0-9a-f]{40}$")
 
@@ -342,9 +342,9 @@ def build_payload(
 _REMOTE = r'''import base64, fcntl, hashlib, io, json, os, platform, re, shutil, stat, subprocess, sys, tarfile, tempfile
 from datetime import datetime, timezone
 
-BUNDLE_SHA256 = "2d0c7bcfdd92b3cffa3c9e1344d87f5d34cc690d65006298087d897cf5635d8c"
-LAYOUT_SHA256 = "f403052cb26e6d635d7566fe25337e4c3fa18bf83c778dc600b807689b405d8f"
-SOURCE_HEAD = "80c2b81deac364ed6466600fd46af47aafe805e2"
+BUNDLE_SHA256 = "d03306788fc4e5090527483dc0412f055822d738ce13a08e11245afe2e9368e4"
+LAYOUT_SHA256 = "b34b5dfb9d43c10e24294dc9e89bf890ed6e303a9f9c5cd5e7dec560f727e9b2"
+SOURCE_HEAD = "ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
 TASK_REPOSITORY_ROOT = "/var/lib/vst-runner/repository"
 TASK_REPOSITORY_ARCHIVE_FORMAT = "canonical-git-tree-tar-v1"
 

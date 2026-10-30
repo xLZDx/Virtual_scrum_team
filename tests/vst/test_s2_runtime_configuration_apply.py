@@ -58,11 +58,11 @@ def _inventory() -> dict:
         "schema": APPLY.INVENTORY_SCHEMA,
         "captured_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "boot_id": "270cd88b-183f-426c-8add-872d9e98bcec",
-        "source_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
+        "source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
         "runtime_selector": {
             "state": "PRESENT",
             "kind": "symlink",
-            "link_target": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2",
+            "link_target": "/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
         },
         "configuration_files": files,
     }
@@ -98,7 +98,7 @@ def test_payload_contains_exact_non_secret_candidate_and_pins_current_state(tmp_
     expected.update(item["destination"] for item in bundle["units"] if item["publication"].startswith("new absent-only"))
 
     assert payload["schema"] == "VST_S2_RUNTIME_CONFIG_APPLY_V1"
-    assert len(payload["files"]) == 26
+    assert len(payload["files"]) == 25
     assert {item["destination"] for item in payload["files"]} == expected
     assert "selected_runtime_path" not in json.loads(path.read_bytes())
     assert payload["selected_runtime_path"] == json.loads(path.read_bytes())["runtime_selector"]["link_target"]
@@ -112,6 +112,7 @@ def test_payload_contains_exact_non_secret_candidate_and_pins_current_state(tmp_
     assert {name for _, name in git_blobs} == {
         "docs/sdlc/runtime-config/bundle-manifest.json",
         "docs/sdlc/runtime-config/installation-layout.json",
+        "docs/sdlc/runtime-config/deployment-source-manifest.json",
         *("docs/sdlc/runtime-config/" + item["source"] for item in
           list(bundle["configuration_installation"]) + list(layout["unit_overrides"]) + [
               item for item in bundle["units"] if item["publication"].startswith("new absent-only")

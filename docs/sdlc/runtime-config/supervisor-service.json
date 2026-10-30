@@ -2,7 +2,7 @@
   "allow_schema_upgrade": false,
   "anchor_path": "/var/lib/vst-runner/private/store.anchor",
   "assignment_policy_path": "/etc/vst-runner/assignment-delegation-policy.json",
-  "assignment_policy_sha256": "d84fc710f22b73727772ec86dd98b23097f8baaab90828468919ef178b930153",
+  "assignment_policy_sha256": "3edf5006f8a9f7b43bca7468109ed4bc0fef67b39a3f06f93e12243250c25683",
   "dispatch_instruction_trust_registry_path": "/etc/vst-runner/dispatch-instruction-trust.json",
   "event_key_path": "/etc/vst-runner/store-event.key",
   "execution_grant_audience": "s2-runtime-qualification",
@@ -87,7 +87,7 @@
       "uid": 979
     }
   ],
-  "probe_nonce": "a2a0dcab58b9451281ff0a7b079d4aa2",
+  "probe_nonce": "1fd3cb4e69e54bc6aa5e63458ae82818",
   "root_dispatch_issuer": {
     "enabled": true,
     "key_id": "s2-dispatch-instruction-20261030",
@@ -95,7 +95,7 @@
     "minimum_safety_slack_seconds": 10,
     "public_key_fingerprint": "b3586ac2f707058a8933759b8abbf4f5b8b84e7fde70f644d9d77d523b7af162"
   },
-  "run_id": "s2-runtime-20261030-1977eaba61274396b6b58d069c5cede2",
+  "run_id": "s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e",
   "runner_control_group": "/system.slice/vst-runner.service",
   "runner_lock_path": "/run/vst-runner/cgroup-admission.lock",
   "runner_unit_name": "vst-runner.service",

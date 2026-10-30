@@ -5,7 +5,7 @@
       "project_id": "Virtual_scrum_team",
       "story_id": "S2-4",
       "task_id": "S2-4-runtime-owner-runner-qualification",
-      "task_manifest_sha256": "c9dc31dce7419214d88a4da5dd645f5905ef01f8640154d357143f73afdcc860",
+      "task_manifest_sha256": "f00e05e42822d383acd7cd74a149872abeed745f04014933261fbb3d6515be2f",
       "test_run_slots": [
         "runtime-tests"
       ]
@@ -31,7 +31,7 @@
     "uid": 979
   },
   "lease_ttl_seconds": 1800,
-  "manifest_sha256": "3ca978c4fbd731f14bb5a0d78afa184f3273ade30601b0d0b28f9efe7273bde3",
+  "manifest_sha256": "c98a53370128403dffd4b44c33235eda793095b74a9a08d9dd30a5bcdd9539e0",
   "maximum_handoff_ttl_seconds": 300,
   "owner_principal": "Codex",
   "owner_ttl_seconds": 3600,
@@ -40,7 +40,7 @@
   "revocation_id": "s2-runtime-qualification-20261030-v1",
   "runner_id": "s2-ubuntu2404-runner",
   "schema": "VST_S2_ASSIGNMENT_DELEGATION_POLICY_V1",
-  "source_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
+  "source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
   "sprint_id": "39b7cc253f5d",
   "valid_from_utc": "2026-10-29T23:02:41Z"
 }

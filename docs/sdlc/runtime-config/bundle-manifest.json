@@ -1,5 +1,5 @@
 {
-  "assignment_policy_sha256": "d84fc710f22b73727772ec86dd98b23097f8baaab90828468919ef178b930153",
+  "assignment_policy_sha256": "3edf5006f8a9f7b43bca7468109ed4bc0fef67b39a3f06f93e12243250c25683",
   "configuration_installation": [
     {
       "destination": "/etc/vst-runner/supervisor-service.json",
@@ -125,168 +125,168 @@
   "files": [
     {
       "path": "assignment-delegation-policy.json",
-      "sha256": "3dabe39f15ee280d1fac78c83989ce71ec868410b665fa26e199378f27deb427",
-      "size": 1411
+      "size": 1411,
+      "sha256": "c42e9c8423d98800b37c3c77e2d9b21f6e551fd9ce9da41c62dedfdc72584c4b"
     },
     {
       "path": "bootstrap-request.json",
-      "sha256": "42bd2cd8a6965b036636fd0f5f91a831f1f34d923ed5d990d2c79cf41e2bde47",
-      "size": 4104
+      "size": 4104,
+      "sha256": "55d65c2a1227292bdfb8d118b41288afd3249f00adfb011ebb20f5b536c949e9"
     },
     {
       "path": "deployment-source-manifest.json",
-      "sha256": "229d2bb2853af3493e6833177f69aa65ecc25e0ec6a3e2d61ec17bf2cf8d71a4",
-      "size": 1585
+      "size": 1585,
+      "sha256": "7ddcbe5b4a27ebf3988c8cd0994852070274cf00829843793922392c9dbeb70b"
     },
     {
       "path": "dispatch-instruction-public.pem",
-      "sha256": "b3586ac2f707058a8933759b8abbf4f5b8b84e7fde70f644d9d77d523b7af162",
-      "size": 113
+      "size": 113,
+      "sha256": "b3586ac2f707058a8933759b8abbf4f5b8b84e7fde70f644d9d77d523b7af162"
     },
     {
       "path": "dispatch-instruction-trust.json",
-      "sha256": "c88d90f75653168b417b15f11d1dc6086433d7d4c948757ac30b967fac8db350",
-      "size": 196
+      "size": 196,
+      "sha256": "c88d90f75653168b417b15f11d1dc6086433d7d4c948757ac30b967fac8db350"
     },
     {
       "path": "dispatch-owner-service.json",
-      "sha256": "1df674c4198df4246ed6490fd1ae9eaadd8a8be18ba54c5852019694de4a99c1",
-      "size": 65
+      "size": 65,
+      "sha256": "1df674c4198df4246ed6490fd1ae9eaadd8a8be18ba54c5852019694de4a99c1"
     },
     {
       "path": "dispatcher-service.json",
-      "sha256": "3f35183f011a1bdb4b3ec8fa45480178dc91d6281b26bdc30e3d50185f2842cc",
-      "size": 166
+      "size": 166,
+      "sha256": "3f35183f011a1bdb4b3ec8fa45480178dc91d6281b26bdc30e3d50185f2842cc"
     },
     {
       "path": "execution-grant-public.pem",
-      "sha256": "bbf647ee13e5aafdceccfce9bbb41dc9f79f15f4578a19dfb4ddcf11442a45ad",
-      "size": 113
+      "size": 113,
+      "sha256": "bbf647ee13e5aafdceccfce9bbb41dc9f79f15f4578a19dfb4ddcf11442a45ad"
     },
     {
       "path": "fence.json",
-      "sha256": "8b96cf8d743bd6fc5c4bc51a3a988f7477f7466e6d40748e9462d88dce9da556",
-      "size": 440
+      "size": 440,
+      "sha256": "8b96cf8d743bd6fc5c4bc51a3a988f7477f7466e6d40748e9462d88dce9da556"
     },
     {
       "path": "identity-candidates.json",
-      "sha256": "7b681374a2467ef3186ce9ee159e6cbb0cb7ad56d034fcd6ad6a202f95cf4c2a",
-      "size": 2742
+      "size": 2742,
+      "sha256": "7b681374a2467ef3186ce9ee159e6cbb0cb7ad56d034fcd6ad6a202f95cf4c2a"
     },
     {
       "path": "installation-layout.json",
-      "sha256": "f403052cb26e6d635d7566fe25337e4c3fa18bf83c778dc600b807689b405d8f",
-      "size": 7424
+      "size": 7465,
+      "sha256": "b34b5dfb9d43c10e24294dc9e89bf890ed6e303a9f9c5cd5e7dec560f727e9b2"
     },
     {
       "path": "model-provenance.json",
-      "sha256": "a78f908212da5715a951c62d17e2ec720ad6065c13164191d3aef0bf506d6303",
-      "size": 567
+      "size": 567,
+      "sha256": "a78f908212da5715a951c62d17e2ec720ad6065c13164191d3aef0bf506d6303"
     },
     {
       "path": "network-profile.json",
-      "sha256": "a0843d1d1d36864aed240120e247c80e443e0a19852a1a947b0dc8ea1d6cfbdb",
-      "size": 970
+      "size": 970,
+      "sha256": "ced1eac30f9ceb2ee7a6213340934cfa77fe3f9025cf9fbc6c3918328573c94b"
     },
     {
       "path": "probe-entrypoint.py",
-      "sha256": "6c106e7f34e7f1320b8507fddcac5ebad1be6e67e613019894ebcc66ce2b92ba",
-      "size": 700
+      "size": 700,
+      "sha256": "6c106e7f34e7f1320b8507fddcac5ebad1be6e67e613019894ebcc66ce2b92ba"
     },
     {
       "path": "public-material.json",
-      "sha256": "32597eb45c6a8152c32810e7e1e769ac98119392f34e3eac4fe2a126275cebc0",
-      "size": 757
+      "size": 798,
+      "sha256": "62f989253fecd8ba0a0df988b7ff1259364700f5885ca3d091f1dede5ee9e08b"
     },
     {
       "path": "reviewer-registry-record.json",
-      "sha256": "bc8801ec7a5d6bb8acf3ef2f9b96e41da520f10f3926706479892efb2dcd531a",
-      "size": 524
+      "size": 524,
+      "sha256": "bc8801ec7a5d6bb8acf3ef2f9b96e41da520f10f3926706479892efb2dcd531a"
     },
     {
       "path": "reviewer-registry.json",
-      "sha256": "678dbe279d91ba96fa3b6e79da13c2c2be8270cbc08bbaaae9f7bf724078e6fd",
-      "size": 269
+      "size": 269,
+      "sha256": "678dbe279d91ba96fa3b6e79da13c2c2be8270cbc08bbaaae9f7bf724078e6fd"
     },
     {
       "path": "reviewer-use-policy.json",
-      "sha256": "a69dfcb56d54aadf7d9b2d966edbf4867145a861b23c2313e03fc0bc36766c97",
-      "size": 875
+      "size": 875,
+      "sha256": "a69dfcb56d54aadf7d9b2d966edbf4867145a861b23c2313e03fc0bc36766c97"
     },
     {
       "path": "run-binding.json",
-      "sha256": "5387427fd09951801ced543f45327920b2e8968ec412cf280f5008308a173abd",
-      "size": 587
+      "size": 628,
+      "sha256": "35dc351973e02efe096d13f2deca586a2c7ebcf13688616ad9b2818229cecc76"
     },
     {
       "path": "runner-service.json",
-      "sha256": "2121baaf8598b80c139ba452eeab11760c8b0240d0e177220e9e792545c70579",
-      "size": 1256
+      "size": 1256,
+      "sha256": "bfeb5389f44205861567cd3e9432d69c2e85ff8f5e3508dafe10f22fa1b29082"
     },
     {
       "path": "runtime-dependencies.json",
-      "sha256": "3ad8f7aa5af961e1c81f44d45ae72649f6d09af67313a01078c7ed0898949a18",
-      "size": 704
+      "size": 704,
+      "sha256": "3ad8f7aa5af961e1c81f44d45ae72649f6d09af67313a01078c7ed0898949a18"
     },
     {
       "path": "runtime-transition-manifest.json",
-      "sha256": "7e642a4c36a33e5d5aebbbfb180d6ef646a8cbbae4ed046147eef40f73b47c1a",
-      "size": 3524
+      "size": 4851,
+      "sha256": "4282ee53bd5dac7994a4ead58872e713a5d60f15cc87c3995f9bc6e83a954b5d"
     },
     {
       "path": "signer-service.json",
-      "sha256": "4d4d53fccd20d415b13a69b9ad4151eff6c15532ae4a6460a09fc32b2a869ad3",
-      "size": 510
+      "size": 510,
+      "sha256": "4d4d53fccd20d415b13a69b9ad4151eff6c15532ae4a6460a09fc32b2a869ad3"
     },
     {
       "path": "supervisor-service.json",
-      "sha256": "7d98b2a7f66a14153b9e497cb117f5138ae537669d68b55222a94a418debecd9",
-      "size": 3389
+      "size": 3389,
+      "sha256": "a1ef4b153de89e6dcab39bd9f587459bb8b09dc8c06ea12c47076c4b4b0fd351"
     },
     {
       "path": "task-manifest.json",
-      "sha256": "9c1f6f11f7e92294a3bad3425febfae2ef432d269e53aa6ff0ce3bb3e895296a",
-      "size": 3596
+      "size": 3596,
+      "sha256": "65e591a2214c653502da8228fdcd5ec88f2ed27d7ed47f74a7839063eff1c61e"
     },
     {
       "path": "unit-overrides/vst-runner.service.d/host-paths.conf",
-      "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
-      "size": 153
+      "size": 153,
+      "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062"
     },
     {
       "path": "unit-overrides/vst-runner.service.d/rate-limits.conf",
-      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
-      "size": 51
+      "size": 51,
+      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590"
     },
     {
       "path": "unit-overrides/vst-sandbox-probe.service.d/host-paths.conf",
-      "sha256": "39ae210045c73880409b2c799146dce9c1f582d952f9a52705874b39579a8ec1",
-      "size": 138
+      "size": 138,
+      "sha256": "39ae210045c73880409b2c799146dce9c1f582d952f9a52705874b39579a8ec1"
     },
     {
       "path": "unit-overrides/vst-signer.service.d/rate-limits.conf",
-      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
-      "size": 51
+      "size": 51,
+      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590"
     },
     {
       "path": "unit-overrides/vst-supervisor.service.d/rate-limits.conf",
-      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
-      "size": 51
+      "size": 51,
+      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590"
     },
     {
       "path": "units/vst-assignment-bootstrap.service",
-      "sha256": "e714fb88699ae07fbd96ccd8758cb58d1db8bcf075d52145c6e8a3ec8931f43f",
-      "size": 1016
+      "size": 1016,
+      "sha256": "e714fb88699ae07fbd96ccd8758cb58d1db8bcf075d52145c6e8a3ec8931f43f"
     },
     {
       "path": "units/vst-dispatch-issuer.service",
-      "sha256": "d798f141e33d15444afccb1ac26213665571f19e70f1dc61fbd7f60b23140c7d",
-      "size": 1027
+      "size": 1027,
+      "sha256": "d798f141e33d15444afccb1ac26213665571f19e70f1dc61fbd7f60b23140c7d"
     },
     {
       "path": "units/vst-sandbox-probe.service",
-      "sha256": "d80c171238985ffcc7f19c6eac74276c7ea7615ebf85d63391b6f2dbf097f33f",
-      "size": 637
+      "size": 637,
+      "sha256": "d80c171238985ffcc7f19c6eac74276c7ea7615ebf85d63391b6f2dbf097f33f"
     }
   ],
   "freshness_policy": "identity/path/state collisions reobserved immediately before publishing; stale observations are not reservations",
@@ -295,16 +295,16 @@
   "project": "Virtual_scrum_team",
   "qualification_task_scope": "one exact existing allowlisted TestRun via real authenticated owner-to-Runner path; inner Store fixture test remains labeled synthetic",
   "reviewed_approval_is_not_asserted_by_manifest": true,
-  "runtime_source_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
-  "runtime_transition_sha256": "dc516f6b7053ec48bf96aaa3ddb3042d87d57f8f7199284e27e98f8203cc7935",
+  "runtime_source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
+  "runtime_transition_sha256": "fafaf93158fee300f1b62ea53e8712e8c600b89a7d0b350399de62989cddcc52",
   "schema": "VST_S2_NON_SECRET_CONFIG_BUNDLE_V1",
   "selection_before_config": true,
   "services_started_by_installation": false,
-  "source_binding_sha256": "4b84fd419049c25148af740014ec1c6fb2eb9d07f3983ad7e1ea4afbd692f6cd",
-  "source_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
+  "source_binding_sha256": "c98a53370128403dffd4b44c33235eda793095b74a9a08d9dd30a5bcdd9539e0",
+  "source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
   "sprint": "S2",
   "state": "PREPARED_NOT_INSTALLED",
-  "task_manifest_sha256": "c9dc31dce7419214d88a4da5dd645f5905ef01f8640154d357143f73afdcc860",
+  "task_manifest_sha256": "f00e05e42822d383acd7cd74a149872abeed745f04014933261fbb3d6515be2f",
   "unit_overrides": [
     {
       "destination": "/etc/systemd/system/vst-supervisor.service.d/rate-limits.conf",
@@ -355,7 +355,7 @@
       "name": "vst-dispatch-owner.service",
       "publication": "existing fingerprint-bound bootstrap transition",
       "sha256": "606aff7a866d0182d891e42df66e26160540372a8120480b13fef10e45fe9cfb",
-      "source": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2/tools/vst/systemd/vst-dispatch-owner.service",
+      "source": "/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071/tools/vst/systemd/vst-dispatch-owner.service",
       "uid": 0
     },
     {
@@ -365,7 +365,7 @@
       "name": "vst-dispatch-owner.socket",
       "publication": "existing fingerprint-bound bootstrap transition",
       "sha256": "a7855aefc05a04df1b51b798e2cf82c060716d638391573ac0b232de24724b6e",
-      "source": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2/tools/vst/systemd/vst-dispatch-owner.socket",
+      "source": "/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071/tools/vst/systemd/vst-dispatch-owner.socket",
       "uid": 0
     },
     {
@@ -375,7 +375,7 @@
       "name": "vst-dispatcher.service",
       "publication": "existing fingerprint-bound bootstrap transition",
       "sha256": "ed12e2f7d5ee2a7177139682a91d5ba714679497e7c0f50c565b2141302a6c16",
-      "source": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2/tools/vst/systemd/vst-dispatcher.service",
+      "source": "/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071/tools/vst/systemd/vst-dispatcher.service",
       "uid": 0
     },
     {
@@ -385,7 +385,7 @@
       "name": "vst-runner.service",
       "publication": "existing fingerprint-bound bootstrap transition",
       "sha256": "4915925e88b11fdf23fd10af5f3520eb921496dbd9a727743139bc91a9e3b8be",
-      "source": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2/tools/vst/systemd/vst-runner.service",
+      "source": "/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071/tools/vst/systemd/vst-runner.service",
       "uid": 0
     },
     {
@@ -395,7 +395,7 @@
       "name": "vst-signer.service",
       "publication": "existing fingerprint-bound bootstrap transition",
       "sha256": "33ed12ee7174c9136493cfba3cd4176a1c48ac9515afb79d5eb0740ff6d3502d",
-      "source": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2/tools/vst/systemd/vst-signer.service",
+      "source": "/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071/tools/vst/systemd/vst-signer.service",
       "uid": 0
     },
     {
@@ -405,7 +405,7 @@
       "name": "vst-supervisor.service",
       "publication": "existing fingerprint-bound bootstrap transition",
       "sha256": "a6abfeaffede037a2a9ecd439a145ffc9917972531f0cb7a1e1e420da6a5a6eb",
-      "source": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2/tools/vst/systemd/vst-supervisor.service",
+      "source": "/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071/tools/vst/systemd/vst-supervisor.service",
       "uid": 0
     },
     {

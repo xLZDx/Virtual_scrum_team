@@ -2,16 +2,16 @@
 import datetime, hashlib, json, os, stat, subprocess, sys
 
 REPO = "/mnt/d/Repo/Virtual_scrum_team"
-RUN_ID = "s2-runtime-20261030-1977eaba61274396b6b58d069c5cede2"
-REQUEST_ID = "98b38065170f468c9943aa8f22160ff9"
-NONCE = "a2a0dcab58b9451281ff0a7b079d4aa2"
-RUNTIME = "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2"
+RUN_ID = "s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e"
+REQUEST_ID = "ba3faaadb50447b79df509619b6ee010"
+NONCE = "1fd3cb4e69e54bc6aa5e63458ae82818"
+RUNTIME = "/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
 CAPTURE_SHA = "befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119"
-APPLIER_SHA = "f39ee75e7d273fa28d2fa800becc99a2c0b4147f92a238f30462e52367334dcf"
-VALIDATOR_SHA = "46b29192b4dd5ac177d610215a6ac92922b6e1fd500f838315380e8c4c687351"
-BUNDLE_SHA = "2d0c7bcfdd92b3cffa3c9e1344d87f5d34cc690d65006298087d897cf5635d8c"
-LAYOUT_SHA = "f403052cb26e6d635d7566fe25337e4c3fa18bf83c778dc600b807689b405d8f"
-IMPLEMENTATION_HEAD = "6fb47d966814005ea51992c37d8af342a7cb4219"
+APPLIER_SHA = "d5230e7f247a374c4ce3050824de8fe988e51b5be320f6e0e6ffb2c89f6bee53"
+VALIDATOR_SHA = "548058437dba2059f6efc67e4de1a21f9f1bec52d9af0d14211996d03eef97d2"
+BUNDLE_SHA = "d03306788fc4e5090527483dc0412f055822d738ce13a08e11245afe2e9368e4"
+LAYOUT_SHA = "b34b5dfb9d43c10e24294dc9e89bf890ed6e303a9f9c5cd5e7dec560f727e9b2"
+IMPLEMENTATION_HEAD = "16549bb8f10113b2f05f41b3aa390bad80dab97e"
 UNITS = [
     "vst-assignment-bootstrap.service", "vst-dispatch-issuer.service",
     "vst-dispatch-owner.service", "vst-dispatch-owner.socket",
@@ -278,7 +278,7 @@ def main():
         "layout": ("docs/sdlc/runtime-config/installation-layout.json", LAYOUT_SHA),
     }
     source_identity = {"repo_head": head, "implementation_source_commit": IMPLEMENTATION_HEAD,
-                       "runtime_source_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
+                       "runtime_source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
                        "runtime_capture_sha256": CAPTURE_SHA, "applier_sha256": APPLIER_SHA,
                        "validator_sha256": VALIDATOR_SHA, "bundle_manifest_sha256": BUNDLE_SHA,
                        "installation_layout_sha256": LAYOUT_SHA}
@@ -369,7 +369,7 @@ def main():
     sockets={p:os.path.lexists(p) for p in CONTAINER_SOCKETS}
     inventory_fields={
         "schema":"VST_S2_RUNTIME_CONFIG_TARGET_INVENTORY_V1",
-        "captured_utc":utc(),"source_head":"80c2b81deac364ed6466600fd46af47aafe805e2",
+        "captured_utc":utc(),"source_head":"ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
         "boot_id":boot,"mount":mount,"source_identity":source_identity,
         "configuration_files":configuration_files,"observations":observations,
     }

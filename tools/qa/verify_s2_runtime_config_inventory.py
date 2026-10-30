@@ -14,16 +14,17 @@ from typing import Any
 
 REPO = Path(__file__).resolve().parents[2]
 INVENTORY_SCHEMA = "VST_S2_RUNTIME_CONFIG_TARGET_INVENTORY_V1"
-SOURCE_HEAD = "80c2b81deac364ed6466600fd46af47aafe805e2"
-IMPLEMENTATION_HEAD = "6fb47d966814005ea51992c37d8af342a7cb4219"
+SOURCE_HEAD = "ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
+PREVIOUS_SOURCE_HEAD = "80c2b81deac364ed6466600fd46af47aafe805e2"
+IMPLEMENTATION_HEAD = "16549bb8f10113b2f05f41b3aa390bad80dab97e"
 PREVIOUS_CONFIG_HEAD = "7d1d16f6348e6c00a5a568b5cfbc8caf309194b9"
 PREVIOUS_BUNDLE_SHA256 = "388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45"
 PREVIOUS_LAYOUT_SHA256 = "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19"
-CANDIDATE_BUNDLE_SHA256 = "2d0c7bcfdd92b3cffa3c9e1344d87f5d34cc690d65006298087d897cf5635d8c"
-CANDIDATE_LAYOUT_SHA256 = "f403052cb26e6d635d7566fe25337e4c3fa18bf83c778dc600b807689b405d8f"
-RUN_ID = "s2-runtime-20261030-1977eaba61274396b6b58d069c5cede2"
-REQUEST_ID = "98b38065170f468c9943aa8f22160ff9"
-NONCE = "a2a0dcab58b9451281ff0a7b079d4aa2"
+CANDIDATE_BUNDLE_SHA256 = "d03306788fc4e5090527483dc0412f055822d738ce13a08e11245afe2e9368e4"
+CANDIDATE_LAYOUT_SHA256 = "b34b5dfb9d43c10e24294dc9e89bf890ed6e303a9f9c5cd5e7dec560f727e9b2"
+RUN_ID = "s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e"
+REQUEST_ID = "ba3faaadb50447b79df509619b6ee010"
+NONCE = "1fd3cb4e69e54bc6aa5e63458ae82818"
 CONSUMED_RUN_ID = "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910"
 CONSUMED_REQUEST_ID = "e520e04f58ad5e6a431a3a20b0efb87c"
 CONSUMED_NONCE = "0aac24fec9a2a5c53c5e9da21cbb4a42"
@@ -96,7 +97,7 @@ def _previous_installed_fingerprints() -> dict[str, dict[str, Any]]:
     bundle = json.loads(bundle_raw)
     layout = json.loads(layout_raw)
     if (bundle.get("state") != "PREPARED_NOT_INSTALLED"
-            or bundle.get("runtime_source_head") != SOURCE_HEAD):
+            or bundle.get("runtime_source_head") != PREVIOUS_SOURCE_HEAD):
         raise InventoryError("consumed-run bundle is not the pinned S2 runtime candidate")
     bundle_records = {record["path"]: record for record in bundle["files"]}
     bootstrap = json.loads(_git_blob(
