@@ -185,11 +185,17 @@ Private bytes were excluded. Evidence and exact command are in
 `docs/changes/0609-s2-runtime-config-install.md` and
 `docs/sdlc/evidence/s2-runtime-config-post-install-20261030T033734Z.json`.
 
-**Next ordered S2-4.12 — current-run E5 and one permitted owner-to-Runner qualification.** Start
-only the configured probe/Supervisor path after exact run evidence is generated, preserve the
-single run/request identity, and record actual authenticated ingress, Store intent, Runner result
-and receipt. No restricted process/crash/mutation/E8/policy selectors are included. S2-5 remains
-queued until this allowed runtime journey is accepted.
+**Current ordered subtask S2-4.12a — root-measured probe capture implementation.** The helper and
+focused synthetic coverage are complete: 53 passed; the security and reliability reviewers found
+no remaining MAJOR. The exact-head GPT-PM code review and normal push are the remaining delivery
+actions for this subtask. No live WSL/Runner evidence is claimed here.
+
+**Next ordered subtask S2-4.12b — one fresh current-run E5 and owner-to-Runner qualification.**
+Begin only after 4.12a is approved and pushed. The interrupted attempt's run/request/nonce are
+retired; GPT-PM must authorize a new exact run binding before the single allowed probe/assignment
+journey. Preserve `retry_cap: 0` and the one permitted assignment-basis selector. Restricted
+process/crash/mutation/E8/policy selectors remain `NOT_RUN`. S2-5 stays queued until this runtime
+journey is accepted.
 
 ### S2-5 — Exact-head gate and sprint decision
 
