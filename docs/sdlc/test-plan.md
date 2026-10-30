@@ -159,7 +159,23 @@ timeouts for nested systemd commands, deadline exhaustion, worker-first late val
 the consumed tuple before marker creation. This is source/fixture evidence, not runtime proof. The
 separately authorized attempt for run
 `s2-runtime-20261030-334296bd0779488d837a27e283b50b6a` consumed its durable claim and failed before
-root preflight; no TestRun occurred. That tuple is retired. The next candidate
-`s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910` remains preparation-only and has no runtime
-authorization. Actual owner/Store/dispatcher/Runner qualification remains open for S2-4 AC-1.
-Restricted scenarios remain NOT_RUN.
+root preflight; no TestRun occurred. That tuple is retired. Candidate
+`s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910` later received two bounded inventory
+authorizations (request `c84a91af-1ce6-4a55-9ce7-eed30c64ba66` and replacement request
+`9357ee74-c0ac-4ed4-9568-1b4a192bf874`); the first inventory failed before collection and the second
+was incomplete. Neither reached configuration apply, root preflight, claim/probe, or TestRun. Both
+inventory invocations are consumed and the candidate remains unapplied/unclaimed. Actual
+owner/Store/dispatcher/Runner qualification remains open for S2-4 AC-1. Restricted scenarios
+remain NOT_RUN.
+
+The worker identity-settling subtask's final focused helper/config suite reports 93 passed at
+pre-delivery HEAD `002e361`; it does not prove runtime behavior. The permitted candidate's first
+inventory attempt failed before collection with `D_MOUNT_NOT_9P_RO`. A separately authorized
+replacement read-only inventory verified D: / 9p / `ro,relatime` and returned exit 0, but omitted
+required PID1 identity, `vst-runner`, systemd-version, exact 26-file baseline comparison, and
+verbatim JSON persistence. The full result is `evidence/s2-runtime-owner-runner-qualification-9357ee74.json`.
+The dedicated inventory-validator test reports 22 passed, one existing deprecation warning; this is
+code-level fail-closed evidence only. Neither attempt reached configuration apply, root preflight,
+probe/claim, or TestRun. Both inventory authorizations are consumed; the candidate remains
+unapplied/unclaimed. A fresh exact-head runtime authorization is required before the e2e-runner
+performs another inventory. Restricted process/crash/mutation/E8/policy selectors remain NOT_RUN.

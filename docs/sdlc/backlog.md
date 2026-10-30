@@ -217,18 +217,44 @@ creation. Security and final code reviews passed. GPT-PM exact-head review reque
 `7e63f76e-4454-4b9d-80ad-c8ce77f607f6` returned HOLD because its declared helper digest was stale:
 request `d324c810…` versus actual committed/worktree helper bytes `0f3b7b6f…` (55,295 bytes).
 Direct Git-blob/worktree comparison matches the latter; the mismatch is in the request metadata,
-not evidence of a source defect. GPT-PM found no other actionable issue. Codex corrected the
-canonical digest record and will request a focused exact-digest follow-up before push. Detailed change record:
+not evidence of a source defect. GPT-PM's exact-source follow-up request
+`d5ba635a-dac4-45ab-9fed-6fae692d104a` approved implementation HEAD
+`1b5dd9d7a639b629465ac6fcf29e300ba80c18ca`; that task was normally pushed to
+`origin/s2-canonical-continuation` (output `002e361..1b5dd9d`). This approval covers the worker
+identity-settling implementation only, not the new inventory validator. Detailed change record:
 `docs/changes/0615-s2-4.12b-worker-identity-settle.md`.
 
-The unapproved, preparation-only next candidate is run
+**Current subtask update — fail-closed inventory validation.** The designated functional-test-reviewer
+reports 22 passed, one existing pytest-asyncio deprecation warning for
+`tests/vst/test_s2_runtime_config_inventory.py`; code and security reviewers found no remaining
+concrete issue in the validator. It requires the exact 26-file consumed-run baseline, complete fresh
+WSL/PID1/account/unit/source evidence, a read-only D: 9p mount, and the exact runtime symlink shape
+before apply. The authorized replacement inventory request `9357ee74-c0ac-4ed4-9568-1b4a192bf874`
+and correlated reply `6d0a5e51-1809-5420-8c45-9ebc6beb9ec4` are recorded in
+`docs/sdlc/evidence/s2-runtime-owner-runner-qualification-9357ee74.json`. That read-only result
+exited 0 but was incomplete: PID1 namespaces/start identity, `vst-runner` identity, systemd version,
+baseline fingerprint comparison, and verbatim inventory persistence were missing. No apply,
+preflight, claim/probe, or TestRun occurred. Both inventory authorizations are consumed. The new
+validator code review and focused test pass do not authorize another runtime invocation. Detailed
+record: `docs/changes/0616-s2-runtime-inventory-validator.md`.
+
+The candidate tuple remains unapplied and unclaimed. Before another target command, Codex must
+finish exact-head GPT-PM source review, commit and normally push this validator task, then obtain a
+new correlated runtime authorization for the pushed head and exact source pins. `e2e-runner` then
+owns the one authorized complete inventory/apply/preflight/test sequence. S2-4 remains IN PROGRESS;
+S2-5 is queued and S3 unstarted.
+
+The candidate tuple remains unapplied and unclaimed: run
 `s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910`, request
 `e520e04f58ad5e6a431a3a20b0efb87c`, nonce `0aac24fec9a2a5c53c5e9da21cbb4a42`, bundle SHA-256
-`388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45`. It has not been applied or
-authorized for runtime. After source review/push, Codex requests one separate correlated runtime
-authorization for this exact tuple and hashes; only the permitted single selector may follow a
-successful root capture. The prior installation remains bound to the consumed run. S2-4 remains
-IN PROGRESS, S2-5 is queued, and S3 is unstarted.
+`388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45`. Runtime request
+`c84a91af-1ce6-4a55-9ce7-eed30c64ba66` authorized one inventory, and replacement request
+`9357ee74-c0ac-4ed4-9568-1b4a192bf874` authorized one corrected read-only inventory. Both inventory
+invocations are used; the first failed before collection, and the second was incomplete. Neither
+authorized path reached apply, root capture, claim/probe, or TestRun. Their exact-head scope is the
+old HEAD `1b5dd9d7a639b629465ac6fcf29e300ba80c18ca`; the validator changes the code HEAD, so a new
+correlated runtime authorization is required after this task is pushed. The prior installation
+remains bound to the consumed run. S2-4 remains IN PROGRESS, S2-5 is queued, and S3 is unstarted.
 
 ### S2-5 — Exact-head gate and sprint decision
 

@@ -1,0 +1,50 @@
+{
+  "schema": "VST_S2_RUNTIME_OWNER_RUNNER_QUALIFICATION_V1",
+  "recorded_utc": "2026-10-30T06:54:04Z",
+  "authorization": {
+    "request_id": "c84a91af-1ce6-4a55-9ce7-eed30c64ba66",
+    "correlated_reply_id": "9ae0bea2-5b71-5ed3-a43b-7a279f73bc45",
+    "decision": "AUTHORIZE",
+    "repo_head": "1b5dd9d7a639b629465ac6fcf29e300ba80c18ca",
+    "implementation_source_commit": "6fb47d966814005ea51992c37d8af342a7cb4219",
+    "helper_sha256": "0f3b7b6fe11798ebc806a55bd4d6f687e7974b6f4394b2065e15defab8255083",
+    "applier_sha256": "ac512db996eff8ca8572a1bcf14e9a14081cb77b621bff7a7369a10df8bcf52d",
+    "bundle_manifest_sha256": "388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45",
+    "installation_layout_sha256": "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19",
+    "runtime_selector": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2",
+    "run_id": "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910",
+    "bootstrap_request_id": "e520e04f58ad5e6a431a3a20b0efb87c",
+    "nonce": "0aac24fec9a2a5c53c5e9da21cbb4a42",
+    "retry_cap": 0,
+    "maximum_test_run_executions": 1,
+    "sole_test_selector": "tests/vst/test_s2_assignment_basis.py::test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment"
+  },
+  "inventory_attempt": {
+    "state": "FAILED_BEFORE_COMPLETE_INVENTORY",
+    "started_utc": "2026-10-30T06:53:59Z",
+    "top_level_command": "PowerShell: $script | wsl.exe -d Ubuntu-24.04 -u root --exec /usr/bin/python3.12 -I -B -S -",
+    "first_target_operations": [
+      "Check /mnt/d mountpoint; if absent, temporarily mount exact D: using mount -t drvfs D: /mnt/d -o ro.",
+      "Read findmnt -n -o FSTYPE,OPTIONS --target /mnt/d and verify source checkout HEAD, helper/applier hashes, manifest/layout hashes, 26 destination fingerprints, WSL/systemd readiness, identities, units, runtime selector, Store/preflight/attestation and sockets."
+    ],
+    "exit_code": 1,
+    "observed_error": "D_MOUNT_NOT_9P_RO",
+    "observed_tool_output": ["D_MOUNT_NOT_9P_RO", "EXIT=1"],
+    "result": "No inventory JSON emitted; destination fingerprint collection was not reached.",
+    "stdout_stderr_capture": "The exec result showed combined PowerShell tool output; separate WSL stdout/stderr were not preserved by the command wrapper."
+  },
+  "subsequent_steps": {
+    "configuration_apply": "NOT_RUN",
+    "root_preflight": "NOT_RUN",
+    "probe_or_claim": "NOT_RUN",
+    "report_bound_test_run": "NOT_RUN",
+    "retry": "PROHIBITED_BY_AUTHORIZATION",
+    "disposition": "Stop after the sole inventory attempt failed."
+  },
+  "safety": {
+    "persistent_wsl_configuration_changed": false,
+    "persistent_vst_services_started_or_enabled": false,
+    "production_signing_or_private_key_export": false,
+    "network_or_policy_or_mutation_selector": false
+  }
+}
