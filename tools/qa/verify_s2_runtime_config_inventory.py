@@ -47,6 +47,7 @@ CONTAINER_SOCKETS = (
 )
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
+BOOT_ID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 
 class InventoryError(ValueError):
@@ -122,12 +123,12 @@ def _regular_file_fingerprint(value: Any, destination: str) -> dict[str, Any]:
         raise InventoryError("previously installed destination is not present: " + destination)
     if value.get("kind") != "regular":
         raise InventoryError("previously installed destination is not a regular file: " + destination)
-    mode = value.get("mode")
-    if isinstance(mode, str):
-        try:
-            mode = int(mode, 8)
-        except ValueError as exc:
-            raise InventoryError("configuration mode is invalid: " + destination) from exc
+    mode_text = value.get("mode")
+    if not isinstance(mode_text, str) or not re.fullmatch(r"[0-7]{4,}", mode_text):
+        raise InventoryError("configuration mode must be canonical octal text: " + destination)
+    mode = int(mode_text, 8)
+    if mode_text != f"{mode:04o}":
+        raise InventoryError("configuration mode is not canonical octal text: " + destination)
     fields = (value.get("uid"), value.get("gid"), mode, value.get("size"))
     if any(type(field) is not int or field < 0 for field in fields):
         raise InventoryError("configuration ownership/mode/size is incomplete: " + destination)
@@ -203,8 +204,7 @@ def _validate_readiness(value: Any) -> None:
             or not value["systemd_version"].strip()):
         raise InventoryError("WSL/systemd readiness is missing, unstable, or unexpected")
     boot_id = value.get("boot_id")
-    if not isinstance(boot_id, str) or not re.fullmatch(
-            r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", boot_id):
+    if not isinstance(boot_id, str) or not BOOT_ID.fullmatch(boot_id):
         raise InventoryError("WSL boot ID is missing or malformed")
 
     pid1 = value.get("pid1")
@@ -280,7 +280,13 @@ def validate_inventory(
     validate_mount_observation(inventory.get("mount"))
     _validate_source_identity(inventory.get("source_identity"), expected_repo_head,
                               expected_helper_sha256)
-    _validate_readiness(inventory.get("readiness"))
+    readiness = inventory.get("readiness")
+    _validate_readiness(readiness)
+    inventory_boot_id = inventory.get("boot_id")
+    if (not isinstance(inventory_boot_id, str) or not BOOT_ID.fullmatch(inventory_boot_id)
+            or not isinstance(readiness, dict)
+            or inventory_boot_id != readiness.get("boot_id")):
+        raise InventoryError("top-level inventory boot ID is missing or differs from readiness")
 
     files = inventory.get("configuration_files")
     expected = _previous_installed_fingerprints()

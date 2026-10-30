@@ -174,8 +174,9 @@ inventory attempt failed before collection with `D_MOUNT_NOT_9P_RO`. A separatel
 replacement read-only inventory verified D: / 9p / `ro,relatime` and returned exit 0, but omitted
 required PID1 identity, `vst-runner`, systemd-version, exact 26-file baseline comparison, and
 verbatim JSON persistence. The full result is `evidence/s2-runtime-owner-runner-qualification-9357ee74.json`.
-The dedicated inventory-validator test reports 22 passed, one existing deprecation warning; this is
-code-level fail-closed evidence only. Neither attempt reached configuration apply, root preflight,
+The dedicated inventory-validator test now reports 29 passed, one existing deprecation warning,
+including validator-to-payload integration and the remote octal-mode parse contract; this is
+code-level fail-closed evidence only. Neither target attempt reached configuration apply, root preflight,
 probe/claim, or TestRun. Both inventory authorizations are consumed; the candidate remains
 unapplied/unclaimed. A fresh exact-head runtime authorization is required before the e2e-runner
 performs another inventory. Restricted process/crash/mutation/E8/policy selectors remain NOT_RUN.

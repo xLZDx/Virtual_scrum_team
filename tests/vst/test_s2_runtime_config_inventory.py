@@ -1,18 +1,21 @@
 from __future__ import annotations
 
 import copy
+import base64
+import hashlib
 import json
 from datetime import datetime, timezone
 
 import pytest
 
 from tools.qa import verify_s2_runtime_config_inventory as inventory
+from tools.qa import apply_s2_runtime_configuration as applier
 
 
 _load_pinned_baseline_fingerprints = inventory._previous_installed_fingerprints
 NOW = datetime(2026, 10, 30, 12, 0, tzinfo=timezone.utc)
-EXPECTED_REPO_HEAD = "1" * 40
-EXPECTED_HELPER_SHA256 = "a" * 64
+EXPECTED_REPO_HEAD = "1b5dd9d7a639b629465ac6fcf29e300ba80c18ca"
+EXPECTED_HELPER_SHA256 = "0f3b7b6fe11798ebc806a55bd4d6f687e7974b6f4394b2065e15defab8255083"
 
 
 @pytest.fixture(scope="module")
@@ -33,6 +36,7 @@ def valid_inventory(baseline_fingerprints) -> dict[str, object]:
     return {
         "schema": inventory.INVENTORY_SCHEMA,
         "source_head": inventory.SOURCE_HEAD,
+        "boot_id": "11111111-2222-3333-4444-555555555555",
         "captured_utc": NOW.isoformat(),
         "mount": {
             "source": {"command": "/usr/bin/findmnt -n -o SOURCE --target /mnt/d",
@@ -77,7 +81,8 @@ def valid_inventory(baseline_fingerprints) -> dict[str, object]:
             },
         },
         "configuration_files": {
-            destination: {**fingerprint, "state": "PRESENT", "kind": "regular"}
+            destination: {**fingerprint, "state": "PRESENT", "kind": "regular",
+                          "mode": f"{fingerprint['mode']:04o}"}
             for destination, fingerprint in copy.deepcopy(baseline_fingerprints).items()
         },
         "runtime_selector": {"state": "PRESENT", "kind": "symlink",
@@ -139,6 +144,17 @@ def test_inventory_rejects_missing_or_malformed_systemd_or_worker_identity(
         _validate(valid_inventory)
 
 
+@pytest.mark.parametrize("change", ["missing", "mismatch"])
+def test_inventory_requires_top_level_boot_id_to_match_readiness(valid_inventory, change) -> None:
+    if change == "missing":
+        del valid_inventory["boot_id"]
+    else:
+        valid_inventory["boot_id"] = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+
+    with pytest.raises(inventory.InventoryError):
+        _validate(valid_inventory)
+
+
 @pytest.mark.parametrize("change", ["missing", "wrong_kind", "extra_key"])
 def test_inventory_rejects_incomplete_or_noncanonical_runtime_selector(
         valid_inventory, change) -> None:
@@ -166,6 +182,21 @@ def test_inventory_requires_exact_26_baseline_fingerprints(valid_inventory, chan
         files[destination]["sha256"] = "0" * 64
 
     with pytest.raises(inventory.InventoryError, match="exactly all 26|differs from consumed-run baseline"):
+        _validate(valid_inventory)
+
+
+@pytest.mark.parametrize("mode_value", ["integer", "noncanonical_unpadded", "noncanonical_prefix"])
+def test_inventory_rejects_noncanonical_octal_file_mode(valid_inventory, mode_value) -> None:
+    destination = next(iter(valid_inventory["configuration_files"]))
+    mode = valid_inventory["configuration_files"][destination]["mode"]
+    if mode_value == "integer":
+        valid_inventory["configuration_files"][destination]["mode"] = int(mode, 8)
+    elif mode_value == "noncanonical_unpadded":
+        valid_inventory["configuration_files"][destination]["mode"] = mode.lstrip("0")
+    else:
+        valid_inventory["configuration_files"][destination]["mode"] = "0o" + mode
+
+    with pytest.raises(inventory.InventoryError):
         _validate(valid_inventory)
 
 
@@ -205,3 +236,58 @@ def test_pinned_baseline_rejects_mismatched_consumed_identity(monkeypatch) -> No
 
     with pytest.raises(inventory.InventoryError, match="baseline identity is inconsistent"):
         _load_pinned_baseline_fingerprints()
+
+
+def test_apply_payload_preserves_validated_canonical_octal_mode(
+        valid_inventory, tmp_path, monkeypatch) -> None:
+    _validate(valid_inventory)
+    valid_inventory["captured_utc"] = datetime.now(timezone.utc).isoformat()
+    raw_inventory = json.dumps(valid_inventory, sort_keys=True, separators=(",", ":")).encode()
+    inventory_path = tmp_path / "runtime-inventory.json"
+    inventory_path.write_bytes(raw_inventory)
+    original_git_blob = applier._git_blob
+
+    def committed_validator_from_worktree(commit: str, relative_path: str) -> bytes:
+        if relative_path == "tools/qa/verify_s2_runtime_config_inventory.py":
+            return inventory.Path(inventory.__file__).read_bytes()
+        return original_git_blob(commit, relative_path)
+
+    monkeypatch.setattr(applier, "_git_blob", committed_validator_from_worktree)
+
+    payload_bytes = applier.build_payload(
+        inventory_path, hashlib.sha256(raw_inventory).hexdigest(), EXPECTED_REPO_HEAD,
+        expected_repo_head=EXPECTED_REPO_HEAD,
+        expected_helper_sha256=EXPECTED_HELPER_SHA256)
+    payload = json.loads(payload_bytes)
+    payload_inventory = json.loads(base64.b64decode(payload["inventory_b64"]))
+    assert payload["expected_boot_id"] == payload_inventory["boot_id"]
+    assert payload_inventory == valid_inventory
+
+    payload_files = payload["files"]
+    if isinstance(payload_files, list):
+        payload_files = {item["destination"]: item for item in payload_files}
+    for destination, observed in payload_inventory["configuration_files"].items():
+        parsed_mode = int(observed["mode"], 8)
+        assert parsed_mode == payload_files[destination]["expected_current"]["mode"]
+
+
+def test_apply_payload_rejects_validator_blob_that_differs_from_worktree(
+        valid_inventory, tmp_path, monkeypatch) -> None:
+    valid_inventory["captured_utc"] = datetime.now(timezone.utc).isoformat()
+    raw_inventory = json.dumps(valid_inventory, sort_keys=True, separators=(",", ":")).encode()
+    inventory_path = tmp_path / "runtime-inventory.json"
+    inventory_path.write_bytes(raw_inventory)
+    original_git_blob = applier._git_blob
+
+    def mismatched_validator_blob(commit: str, relative_path: str) -> bytes:
+        if relative_path == "tools/qa/verify_s2_runtime_config_inventory.py":
+            return b"# not the committed validator source"
+        return original_git_blob(commit, relative_path)
+
+    monkeypatch.setattr(applier, "_git_blob", mismatched_validator_blob)
+
+    with pytest.raises(ValueError):
+        applier.build_payload(
+            inventory_path, hashlib.sha256(raw_inventory).hexdigest(), EXPECTED_REPO_HEAD,
+            expected_repo_head=EXPECTED_REPO_HEAD,
+            expected_helper_sha256=EXPECTED_HELPER_SHA256)

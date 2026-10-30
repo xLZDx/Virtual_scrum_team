@@ -225,18 +225,23 @@ identity-settling implementation only, not the new inventory validator. Detailed
 `docs/changes/0615-s2-4.12b-worker-identity-settle.md`.
 
 **Current subtask update — fail-closed inventory validation.** The designated functional-test-reviewer
-reports 22 passed, one existing pytest-asyncio deprecation warning for
+reports 29 passed, one existing pytest-asyncio deprecation warning for
 `tests/vst/test_s2_runtime_config_inventory.py`; code and security reviewers found no remaining
-concrete issue in the validator. It requires the exact 26-file consumed-run baseline, complete fresh
-WSL/PID1/account/unit/source evidence, a read-only D: 9p mount, and the exact runtime symlink shape
-before apply. The authorized replacement inventory request `9357ee74-c0ac-4ed4-9568-1b4a192bf874`
+concrete issue in the validator/applier path. It requires the exact 26-file consumed-run baseline,
+complete fresh WSL/PID1/account/unit/source evidence, a read-only D: 9p mount, canonical octal mode
+strings, matching top-level/readiness boot IDs, and the exact runtime symlink shape before apply.
+The privileged applier checks and executes the verifier source from the exact committed Git blob and
+validates the same inventory bytes before payload construction. GPT-PM request
+`c21b6374-653d-46c5-9732-fcc810a81be5` held earlier HEAD `4f9887fc03d773c7159c87b105093a3a751cc3b0`
+for the boot-ID and mode integration gaps; both have been corrected and need a new exact-head GPT-PM review. The
+authorized replacement inventory request `9357ee74-c0ac-4ed4-9568-1b4a192bf874`
 and correlated reply `6d0a5e51-1809-5420-8c45-9ebc6beb9ec4` are recorded in
 `docs/sdlc/evidence/s2-runtime-owner-runner-qualification-9357ee74.json`. That read-only result
 exited 0 but was incomplete: PID1 namespaces/start identity, `vst-runner` identity, systemd version,
 baseline fingerprint comparison, and verbatim inventory persistence were missing. No apply,
 preflight, claim/probe, or TestRun occurred. Both inventory authorizations are consumed. The new
-validator code review and focused test pass do not authorize another runtime invocation. Detailed
-record: `docs/changes/0616-s2-runtime-inventory-validator.md`.
+corrected source still needs exact-head GPT-PM approval and push. Detailed record:
+`docs/changes/0616-s2-runtime-inventory-validator.md`.
 
 The candidate tuple remains unapplied and unclaimed. Before another target command, Codex must
 finish exact-head GPT-PM source review, commit and normally push this validator task, then obtain a

@@ -20,15 +20,35 @@ The designated `functional-test-reviewer` ran only:
 
 ```text
 python -m pytest -q tests/vst/test_s2_runtime_config_inventory.py
-22 passed, 1 existing pytest-asyncio deprecation warning; exit 0
+29 passed, 1 existing pytest-asyncio deprecation warning; exit 0
 ```
+The test role reports Python 3.14.3 and Git HEAD `4f9887fc03d773c7159c87b105093a3a751cc3b0`; the corrected
+validator/applier integration and expanded tests were working-tree changes not yet committed at that
+head.
 
-The test role added fail-closed cases for boolean PID 1 IDs, missing/wrong `kind`, and extra selector fields. The code reviewer confirmed the PID type, fingerprint-shape, and exact-selector fixes. The security reviewer confirmed the validator refuses an incomplete selector and that its refusal path is read-only; no remaining concrete finding was reported. Tests were not run by the primary agent.
+The test role added fail-closed cases for boolean PID 1 IDs, missing/wrong `kind`, and extra selector
+fields. GPT-PM exact-head request `c21b6374-653d-46c5-9732-fcc810a81be5` returned HOLD on HEAD
+`4f9887fc03d773c7159c87b105093a3a751cc3b0`, identifying missing top-level/readiness boot-ID
+correlation and integer-mode acceptance. The follow-up working-tree change requires exact boot-ID
+equality and canonical octal mode strings. It also makes the privileged applier load the validator
+source from the same exact Git HEAD after checking worktree equality, and validates the same
+SHA-pinned inventory bytes before payload construction. The code and security reviewers confirmed
+the fixes close the reported defects. The test role now covers boot-ID mismatch/missing, integer and
+noncanonical modes, successful `build_payload()` integration with the root-side `int(mode, 8)`
+contract, and refusal when validator bytes differ from the Git blob. Tests were not run by the
+primary agent.
 
 Earlier source/test evidence for the worker-settling implementation remains in `docs/changes/0615-s2-4.12b-worker-identity-settle.md`; it is not runtime acceptance. GPT-PM exact-source approval and normal push for that earlier implementation are recorded at HEAD `1b5dd9d7a639b629465ac6fcf29e300ba80c18ca`; that approval does not cover this new validator.
 
 ## Current disposition and next action
 
-This validator and its focused tests are implemented and reviewed; S2-4 runtime acceptance remains open. The candidate tuple is still unclaimed and unapplied, but both read-only inventory authorizations have been consumed. The next allowed sequence is: finish this task's exact-head GPT-PM code review, commit and normally push this validator task, obtain a new correlated GPT-PM runtime authorization bound to the resulting HEAD and pinned hashes, then have `e2e-runner` produce and persist one complete inventory, run this validator, and stop at the authorization's exact condition boundary. If the inventory is incomplete or the authorized conditions fail, record the exact result and do not retry without a new authorization.
+The corrected validator/applier integration and focused tests are implemented and locally reviewed;
+S2-4 runtime acceptance remains open. The corrected source is not yet committed or pushed and needs a
+fresh exact-head GPT-PM code decision. The candidate tuple is still unclaimed and unapplied, but both
+read-only inventory authorizations have been consumed. After code approval, commit/push this
+correction, obtain a new correlated GPT-PM runtime authorization bound to the resulting HEAD and
+pinned hashes, then have `e2e-runner` produce and persist one complete inventory, run this validator,
+and stop at the authorization's exact condition boundary. If the inventory is incomplete or
+authorized conditions fail, record the exact result and do not retry without a new authorization.
 
 The prior incomplete inventory evidence remains immutable in `docs/sdlc/evidence/s2-runtime-owner-runner-qualification-9357ee74.json`. No S2-5 or later sprint work is included.

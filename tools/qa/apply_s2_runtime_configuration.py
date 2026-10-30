@@ -47,6 +47,36 @@ def _git_blob(commit: str, relative_path: str) -> bytes:
     return result.stdout
 
 
+def _current_inventory_validation_identity() -> tuple[str, str]:
+    head = subprocess.run(
+        ["git", "-C", str(REPO), "rev-parse", "HEAD"],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, text=True,
+    )
+    repo_head = head.stdout.strip()
+    if head.returncode or not _HEX40.fullmatch(repo_head):
+        raise ValueError("cannot establish the exact committed inventory-validation HEAD")
+    helper_path = "tools/vst/preflight_host_capture.py"
+    committed_helper = _git_blob(repo_head, helper_path)
+    working_helper = (REPO / helper_path).read_bytes()
+    if committed_helper != working_helper:
+        raise ValueError("runtime helper differs from the committed inventory-validation HEAD")
+    return repo_head, _sha(committed_helper)
+
+
+def _load_committed_inventory_validator(repo_head: str):
+    relative_path = "tools/qa/verify_s2_runtime_config_inventory.py"
+    committed_source = _git_blob(repo_head, relative_path)
+    working_path = REPO / relative_path
+    if working_path.read_bytes() != committed_source:
+        raise ValueError("runtime inventory validator differs from the exact committed Git blob")
+    namespace = {"__file__": str(working_path), "__name__": "_vst_s2_inventory_validator"}
+    exec(compile(committed_source, str(working_path), "exec", dont_inherit=True), namespace)
+    validator = namespace.get("validate_inventory")
+    if not callable(validator):
+        raise ValueError("committed runtime inventory validator has no validation entry point")
+    return validator
+
+
 def _inventory_fingerprint(value: dict[str, Any]) -> dict[str, Any]:
     state = value.get("state")
     if state in ("absent", "ABSENT"):
@@ -63,7 +93,10 @@ def _inventory_fingerprint(value: dict[str, Any]) -> dict[str, Any]:
             "mode": mode, "size": value.get("size"), "sha256": value.get("sha256")}
 
 
-def build_payload(inventory_path: Path, expected_inventory_sha256: str, source_commit: str) -> bytes:
+def build_payload(
+        inventory_path: Path, expected_inventory_sha256: str, source_commit: str, *,
+        expected_repo_head: str | None = None,
+        expected_helper_sha256: str | None = None) -> bytes:
     if not _HEX64.fullmatch(expected_inventory_sha256):
         raise ValueError("expected inventory digest must be lowercase SHA-256")
     if not _HEX40.fullmatch(source_commit):
@@ -76,6 +109,15 @@ def build_payload(inventory_path: Path, expected_inventory_sha256: str, source_c
     if _sha(inventory_bytes) != expected_inventory_sha256:
         raise ValueError("target inventory differs from its exact SHA-256 pin")
     inventory = json.loads(inventory_bytes)
+    if (expected_repo_head is None) != (expected_helper_sha256 is None):
+        raise ValueError("inventory validator HEAD and helper digest must be supplied together")
+    if expected_repo_head is not None and expected_helper_sha256 is not None:
+        validate_inventory = _load_committed_inventory_validator(expected_repo_head)
+        validate_inventory(
+            inventory,
+            expected_repo_head=expected_repo_head,
+            expected_helper_sha256=expected_helper_sha256,
+        )
     if (not isinstance(inventory, dict)
             or inventory.get("schema") != INVENTORY_SCHEMA
             or inventory.get("source_head", inventory.get("runtime_source_head")) != RUNTIME_SOURCE_HEAD
@@ -405,7 +447,12 @@ def main() -> int:
         if (committed_tool.returncode or working_tool.returncode
                 or committed_tool.stdout.strip() != working_tool.stdout.strip()):
             raise ValueError("installer source differs from the exact committed Git blob")
-        payload = build_payload(args.inventory, args.inventory_sha256, args.source_commit)
+        expected_repo_head, expected_helper_sha256 = _current_inventory_validation_identity()
+        payload = build_payload(
+            args.inventory, args.inventory_sha256, args.source_commit,
+            expected_repo_head=expected_repo_head,
+            expected_helper_sha256=expected_helper_sha256,
+        )
         digest = _sha(payload)
         wsl = subprocess.run(
             ["wsl.exe", "--distribution", args.distribution, "--user", "root", "--exec",
