@@ -113,15 +113,26 @@ These criteria make the existing requirements testable; they do not add product 
 
 **Delivered S2-4.6 — bounded StageOnly publication:** GPT-PM request `7d4bd70e-ebbc-4b98-ac3b-fe6b84825fca` approved source plan SHA-256 `90b88d12f571b0e9bc3744e4f9aff723ee2c0740f5895108726b8e52da2b1a5d` and fresh target inventory SHA-256 `8ede4656da3c18eda730873524534892c58ac0c9056885a3cbd59045a66ff733`. The normal installer ran at about `2026-10-30T02:13Z`, exit 0: it published the immutable `f685cc9` runtime and helper with `selected=false`, `systemd_units_installed=0`. Read-only post-stage verification at `2026-10-30T02:17:23.380934+00:00` matched the complete runtime tree and marker to the pinned plan; helper SHA-256 `3e7fe2ed0006b9e86ceb08f41071ac6a69b547bb2fe603255a3763643ce2cf91`, owner/mode `root:vst-runner 0:988 4750`. Selector still points to `a600774`; nine units are inactive; no jobs/cgroups, Store, run record, or runtime sockets; config directory and unit/drop-in metadata are unchanged. Detailed record: `docs/changes/0602-s2-stage-only-refreshed-inputs.md`. This closes only inactive source publication. Next ordered task remains S2-4 permitted current-run qualification and owner-to-Runner evidence; S2-4 and S2-5 remain open.
 
-**S2-4.7 — permit runtime selection beside existing safe configuration.** The target contains a root-owned,
-non-writable `/etc/vst-runner`; the selector now validates only that directory's metadata and leaves its files and
-Store untouched. It continues to require absent `/run` service paths, inactive units, no pending jobs, and empty
-cgroups. Focused results: Windows 12 passed/2 POSIX-only skipped; WSL Python 3.12 ran the two POSIX selector cases
-2/2; the code reviewer found no actionable BLOCKER/MAJOR. Evidence: `docs/changes/0603-s2-existing-config-runtime-selection.md`.
-The selector has not been applied. A separate, still-uncommitted runtime configuration candidate contains a stale
-`a600774` source pin and is excluded from this task commit. Next: commit/push this selector fix, prepare an exact
-source plan and fresh target inventory for the resulting source, stage it, then rebind and run the permitted S2-4
-path. The real owner-to-Runner journey, current runtime evidence and S2-5 exact-head decision remain open.
+**Delivered S2-4.7 — permit runtime selection beside existing safe configuration.** The selector validates only the
+existing root-owned `/etc/vst-runner` directory metadata and leaves its files and Store untouched. It continues to
+require absent `/run` service paths, inactive units, no pending jobs, and empty cgroups. Focused results: Windows
+12 passed/2 POSIX-only skipped; WSL Python 3.12 ran the two POSIX selector cases 2/2; the code reviewer found no
+actionable BLOCKER/MAJOR. Commit `80c2b81deac364ed6466600fd46af47aafe805e2` was normally pushed to
+`origin/s2-canonical-continuation`. Evidence: `docs/changes/0603-s2-existing-config-runtime-selection.md`. The
+selector has not been applied. A separate runtime configuration candidate still pins `a600774` and remains
+uncommitted; it is not an activation input.
+
+**S2-4.8 — exact source and target inputs for the selector fix.** Source plan for committed source
+`80c2b81deac364ed6466600fd46af47aafe805e2` is `docs/sdlc/evidence/s2-runtime-source-plan-80c2b81deac364ed6466600fd46af47aafe805e2.json`
+(SHA-256 `01818efcd23bc20a3a4b408921d7342f5e5f95adc16ad86fe7b2a3b7176e2344`). A fresh read-only Ubuntu-24.04
+inventory at `2026-10-30T02:43:06Z` is
+`docs/sdlc/evidence/s2-runtime-target-inventory-80c2b81deac364ed6466600fd46af47aafe805e2.json` (SHA-256
+`ef7fc473efc734ae2e5be1b4e0181f4bf2d70939c045f2a720301fcae119412d`). It confirms the selector still points
+to `a600774`, all nine S2 units are inactive, no jobs are pending, Store and current preflight are absent, and
+the root-owned compiler identity is present. No private bytes were read or hashed; no target mutation occurred.
+Detailed record: `docs/changes/0604-s2-runtime-inputs-80c2b81.md`. Next: publish these exact inputs, then run only
+the bounded StageOnly publication for `80c2b81`; current E5 and the real owner-to-Runner journey remain open.
+Restricted process-kill, crash/recovery, mutation, E8, and policy selectors remain `NOT_RUN`.
 
 ### S2-5 — Exact-head gate and sprint decision
 

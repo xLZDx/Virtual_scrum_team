@@ -45,7 +45,7 @@ configuration directory prevented the current qualification from advancing.
 ## Remaining
 
 No runtime selection, configuration installation, service start, bootstrap request, test task,
-Store write, or dispatch was performed. Next: publish this selector change, create an exact
-source plan and fresh target inventory for its committed revision, then continue the permitted
-runtime qualification. Restricted process-kill, crash/recovery, mutation, E8 and policy selectors
-remain `NOT_RUN`.
+Store write, or dispatch was performed. This selector fix was committed and normally pushed as
+`80c2b81deac364ed6466600fd46af47aafe805e2`. The next ordered task captures an exact source plan
+and fresh target inventory for that revision before StageOnly publication. Restricted process-kill,
+crash/recovery, mutation, E8 and policy selectors remain `NOT_RUN`.
