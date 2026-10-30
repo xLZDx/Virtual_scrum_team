@@ -65,8 +65,9 @@ isolation.
 
 ## Acceptance disposition
 
-- **S2-4.1 source/test contract:** focused acceptance passes in the working tree; commit and normal
-  push are pending.
+- **S2-4.1 source/test contract:** delivered in commit
+  `8acd56ccb37e888a64b4f5898864bb07599683d0`; normal push output was
+  `473e559..8acd56c` to `origin/s2-canonical-continuation`.
 - **S2-4 runtime acceptance:** remains `IN PROGRESS`. Root capture, current E5, service activation,
   Store/API startup, and a real owner-to-Runner result are not proven by this change.
 - **Restricted scenarios:** process-kill, crash/recovery, mutation, E8, and policy selectors remain
