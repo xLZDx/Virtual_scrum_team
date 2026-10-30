@@ -1,8 +1,8 @@
 """Functional contract for the local synthetic E8 lifecycle report.
 
-These tests exercise repository fixtures only. A signed fixture probe is supplied so the
-supervisor's existing protocol path can run, but it is not evidence of host isolation or E8
-acceptance.
+These tests exercise repository fixtures only. An unsigned root-captured synthetic probe is
+supplied so the supervisor's protocol path can run, but it is not evidence of host isolation or
+E8 acceptance.
 """
 from __future__ import annotations
 
@@ -16,7 +16,6 @@ import pytest
 
 from tools.vst import preflight, slice as slice_module
 
-PROBE_KEY = b"s2-e8-synthetic-probe-key-0123456789"
 CHECKED_PROPERTIES = {
     "automount_disabled": True,
     "interop_disabled": True,
@@ -45,21 +44,28 @@ def _synthetic_probe(run_id: str, nonce: str) -> dict:
         },
         slice_module.OPERATOR_KEY,
     )
-    return preflight.sign_inventory(
-        {
-            "run_id": run_id,
-            "spec_sha256": spec_sha256,
-            "nonce": nonce,
-            "checked_properties": dict(CHECKED_PROPERTIES),
-            "result": "PASS",
-            "inventory": {
-                "fixture": True,
-                "container_socket_inventory_complete": True,
-                "network_policy_attestation": attestation,
-            },
+    return {
+        "run_id": run_id,
+        "spec_sha256": spec_sha256,
+        "nonce": nonce,
+        "checked_properties": dict(CHECKED_PROPERTIES),
+        "result": "PASS",
+        "inventory": {
+            "mount_table": [],
+            "windows_drive_mounts": [],
+            "wsl_interop_present": False,
+            "wsl_interop_enabled": False,
+            "uid": 1001,
+            "gid": 1001,
+            "container_socket_paths_present": [],
+            "container_socket_inventory_complete": True,
+            "blocked_egress_target": ["198.51.100.1", 9],
+            "blocked_egress_probe_scope": "single reserved-target smoke probe; does not prove egress policy",
+            "network_policy_attestation": attestation,
+            "environment_variable_names": [],
+            "observed_at_monotonic_ns": 1,
         },
-        PROBE_KEY,
-    )
+    }
 
 
 @pytest.fixture(scope="module")
@@ -69,7 +75,6 @@ def lifecycle_report():
         workdir = os.path.join(temp_root, "work")
         yield slice_module.run_lifecycle_scenarios(
             workdir,
-            probe_key=PROBE_KEY,
             probe_provider=_synthetic_probe,
         )
 
@@ -151,7 +156,6 @@ def test_store_is_closed_when_supervisor_setup_fails(monkeypatch):
         with pytest.raises(RuntimeError) as raised:
             slice_module.run_lifecycle_scenarios(
                 workdir,
-                probe_key=PROBE_KEY,
                 probe_provider=_synthetic_probe,
             )
 

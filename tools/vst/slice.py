@@ -2133,7 +2133,6 @@ else:
 def run_lifecycle_scenarios(
     workdir: str,
     *,
-    probe_key: bytes,
     probe_provider: Callable[[str, str], dict],
 ) -> dict[str, dict]:
     """Run only the safe synthetic candidate and budget flow in a new work directory.
@@ -2192,7 +2191,7 @@ def run_lifecycle_scenarios(
     try:
         supervisor = Supervisor(
             fixture.store, operation_backend=backend, failure_threshold=2,
-            run_id=run_id, probe_nonce=nonce, probe_key=probe_key,
+            run_id=run_id, probe_nonce=nonce,
             operator_key=OPERATOR_KEY,
         )
         fixture.begin(1, ttl_sec=600)

@@ -398,12 +398,10 @@ def test_record_event_rejects_caller_forged_reserved_control_note(tmp_path):
 
 
 def test_supervisor_consumes_a_synthetic_probe_once_for_one_run(tmp_path):
-    """Protocol fixture only; these booleans do not claim a real sandbox result."""
+    """Root-captured protocol fixture only; fields do not claim a real sandbox result."""
     import hashlib
-    from tools.vst.preflight import PROBE_LABEL, SPEC_PATH
-    from tools.vst.signing import sign
+    from tools.vst.preflight import SPEC_PATH
 
-    probe_key = b"s2-probe-once-key-0123456789-abcdef"
     operator_key = b"s2-operator-once-key-0123456789-abcdef"
     spec_sha = hashlib.sha256(SPEC_PATH.read_bytes()).hexdigest()
     from tools.vst.preflight import sign_network_policy_attestation
@@ -423,16 +421,23 @@ def test_supervisor_consumes_a_synthetic_probe_once_for_one_run(tmp_path):
         "run_id": "unit-run-1", "spec_sha256": spec_sha, "nonce": "unit-nonce-1",
         "checked_properties": checks, "result": "PASS",
         "inventory": {
-            "fixture": True, "container_socket_inventory_complete": True,
+            "mount_table": [], "windows_drive_mounts": [],
+            "wsl_interop_present": False, "wsl_interop_enabled": False,
+            "uid": 1001, "gid": 1001,
+            "container_socket_paths_present": [], "container_socket_inventory_complete": True,
+            "blocked_egress_target": ["198.51.100.1", 9],
+            "blocked_egress_probe_scope": "single reserved-target smoke probe; does not prove egress policy",
             "network_policy_attestation": attestation,
+            "environment_variable_names": [], "observed_at_monotonic_ns": 1,
         },
     }
-    probe = {**body, "signature": sign(body, probe_key, PROBE_LABEL)}
+    probe = body
+    assert "signature" not in probe
     with Store(str(tmp_path / "probe-once.db"), event_key=EVENT_KEY) as store:
         store.sandbox_mode = True  # exercise run-bound supervisor logic, not host isolation
         supervisor = Supervisor(
             store, operation_backend=object(), run_id="unit-run-1",
-            probe_nonce="unit-nonce-1", probe_key=probe_key, operator_key=operator_key,
+            probe_nonce="unit-nonce-1", operator_key=operator_key,
         )
         starts = []
         assert supervisor.start_worker(lambda: starts.append("first"), probe=probe) is None
@@ -445,7 +450,7 @@ def test_supervisor_consumes_a_synthetic_probe_once_for_one_run(tmp_path):
         assert starts == ["first"]
         restarted = Supervisor(
             store, operation_backend=object(), run_id="unit-run-1",
-            probe_nonce="unit-nonce-1", probe_key=probe_key, operator_key=operator_key,
+            probe_nonce="unit-nonce-1", operator_key=operator_key,
         )
         with pytest.raises(StoreError, match="already consumed"):
             restarted.start_worker(lambda: starts.append("restart-reuse"), probe=probe)

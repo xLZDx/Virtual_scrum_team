@@ -444,12 +444,12 @@ def test_s2_owner_service_loader_uses_fixed_shared_registry_path_and_permissions
     assert service_module.TRUST_REGISTRY_PATH == "/etc/vst-runner/dispatch-instruction-trust.json"
 
 
-def test_s2_supervisor_service_requires_fixed_shared_trust_registry_path(monkeypatch):
+def _supervisor_service_schema_candidate():
     from tools.vst import supervisor_service
 
     path_fields = {
         "store_path", "anchor_path", "event_key_path", "startup_supervisor_key_path",
-        "execution_grant_private_key_path", "probe_key_path", "operator_key_path",
+        "execution_grant_private_key_path", "operator_key_path",
         "preflight_record_path", "openssl_path", "generation_record_path",
         "dispatch_instruction_trust_registry_path", "runner_lock_path", "systemctl_path",
         "socket_path",
@@ -497,10 +497,24 @@ def test_s2_supervisor_service_requires_fixed_shared_trust_registry_path(monkeyp
             },
         ],
     })
+    return supervisor_service, config
+
+
+def test_s2_supervisor_service_requires_fixed_shared_trust_registry_path(monkeypatch):
+    supervisor_service, config = _supervisor_service_schema_candidate()
     monkeypatch.setattr(supervisor_service, "_read_controlled_json", lambda *args, **kwargs: config)
     monkeypatch.setattr("tools.vst.execution_grant._trusted_root_file", lambda *args, **kwargs: None)
 
     with pytest.raises(ContractError, match="registry path is not fixed"):
+        supervisor_service.load_supervisor_service()
+
+
+def test_s2_supervisor_service_rejects_removed_probe_key_path(monkeypatch):
+    supervisor_service, config = _supervisor_service_schema_candidate()
+    config["probe_key_path"] = "/etc/vst-runner/removed-probe-key"
+    monkeypatch.setattr(supervisor_service, "_read_controlled_json", lambda *args, **kwargs: config)
+
+    with pytest.raises(ContractError, match="config fields do not match its schema"):
         supervisor_service.load_supervisor_service()
 
 

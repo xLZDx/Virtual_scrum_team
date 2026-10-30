@@ -1,6 +1,6 @@
 # Operator guide: provision the S2 worker sandbox
 
-Status: dedicated Ubuntu-24.04 WSL2 provisioned and accepted for the recorded per-run E5 correlation; persistent production deployment is not claimed. The operator selected WSL2 and delegated autonomous execution to Codex. The final signed inventory and attestation passed for one fresh run, but this does not waive remaining E4/E8 limits or qualify other environments. See `docs/sdlc/evidence/s2-e5-operator-attestation.json` and `docs/sdlc/evidence/s2-e5-runmanifest-wsl-280e2d0.md`.
+Status: dedicated Ubuntu-24.04 WSL2 provisioned and accepted for the recorded per-run E5 correlation; persistent production deployment is not claimed. The operator selected WSL2 and delegated autonomous execution to Codex. Historical signed inventory and attestation passed for one fresh run; the active acceptance now requires a root-captured run-bound inventory and a genuine root-signed network-policy attestation, not a probe signature. This does not waive remaining E4/E8 limits or qualify other environments. See `docs/sdlc/evidence/s2-e5-operator-attestation.json` and `docs/sdlc/evidence/s2-e5-runmanifest-wsl-280e2d0.md`.
 
 ## Recommended setup
 
@@ -17,9 +17,9 @@ For this delegated run, the operator is the accountable task owner and Codex is 
 5. Keep all six S2 trust roots pairwise distinct: worker, supervisor, operator, event, reviewer, and runner-signer. The runner's OS identity is separate from the signer key root; only that runner identity may use signer IPC. Store keys outside the worker mount. The signer key must be readable only by the signer identity (POSIX mode `0600`). Place the Unix signer socket under a signer-owned directory with traversal restricted to the runner group (directory `0710`; socket group-owned by the runner group with mode `0660`). Do not copy signer or operator credentials into the worker environment.
 6. Ensure there is no Docker/Podman/container-engine socket, host socket, or host path exposed to the worker. Mount only a per-run workspace. Provide only short-lived, run-scoped credentials required by the fixture and remove them during cleanup.
 7. Set and record CPU quota, memory ceiling, process-count limit, disk quota, and wall-clock deadline before any worker run. Missing limits block launch. Verify the host's process containment behavior; unsupported Windows Job Object nesting must refuse execution.
-8. From the provisioned target, execute the repository's standard-library pre-flight probe using the actual sandbox configuration and a fresh run ID and nonce, supplying the signed network-policy attestation. Preserve its runner-signed inventory, operator-signed attestation, exact command, interpreter/version, probe output, spec SHA-256, run ID, nonce, environment identity, and code HEAD. Do not substitute a hand-written or synthetic inventory. If any socket inventory source cannot be enumerated, launch is refused.
-9. Confirm that the probe records all required properties in `docs/SANDBOX_SPEC.md`: mount table, interop state, user/group identity, container socket paths, denied external target, successful local loopback canary, and environment variable names. A reachable external endpoint, failed loopback, root UID, exposed host path/socket, missing field, invalid signature, or stale run binding is a failed pre-flight.
-10. Return the private provisioning evidence and signed inventory to the project coordinator. The coordinator records only non-sensitive identifiers and hashes in the repository, verifies the signature and binding, and leaves every unproven property `NOT_RUN`.
+8. From the provisioned target, execute the repository's standard-library pre-flight probe using the actual sandbox configuration and a fresh run ID and nonce, supplying the root-signed network-policy attestation. Preserve the exact unsigned probe JSON and separately signed attestation, exact command, interpreter/version, probe output, spec SHA-256, run ID, nonce, environment identity, and code HEAD in the root-owned preflight path. Do not substitute a hand-written or synthetic inventory. If any socket inventory source cannot be enumerated, launch is refused.
+9. Confirm that the probe records all required properties in `docs/SANDBOX_SPEC.md`: mount table, interop state, user/group identity, container socket paths, denied external target, successful local loopback canary, and environment variable names. A reachable external endpoint, failed loopback, root UID, exposed host path/socket, missing field, invalid root network-policy signature, or stale run binding is a failed pre-flight.
+10. Preserve the root-captured unsigned inventory and separately signed network-policy attestation. The coordinator records only non-sensitive identifiers and hashes in the repository and leaves every unproven property `NOT_RUN`.
 
 ## Acceptance record
 
@@ -31,7 +31,7 @@ The handoff must contain:
 - User/group and key/socket permission evidence, with secret material withheld.
 - Resource limits and evidence of their enforcement.
 - Evidence that no host drive, host credential store, container socket, or unapproved path is mounted into the worker.
-- Fresh signed probe inventory bound to run ID, nonce, `docs/SANDBOX_SPEC.md` digest, and exact code HEAD.
+- Fresh root-captured probe inventory bound to run ID, nonce, `docs/SANDBOX_SPEC.md` digest, and exact code HEAD; a probe signature is not required.
 - Operator-root-signed network-policy attestation bound to the same run ID, nonce and spec digest; policy and evidence hashes are retained, while sensitive evidence remains private.
 - Explicit result for process containment and reviewer read-only enforcement.
 
@@ -42,4 +42,4 @@ The recorded E5 per-run acceptance is documented above; this guide alone does no
 - Contract: [`SANDBOX_SPEC.md`](SANDBOX_SPEC.md)
 - S2 acceptance: [`S2_SANDBOX_WORKER_PLAN_2026-10-24.md`](S2_SANDBOX_WORKER_PLAN_2026-10-24.md), sections 3-6 and 10
 - Probe implementation: `tools/vst/preflight.py`
-- Probe receipt contract: `tools/vst/contracts.py` and `tools/vst/schemas/`
+- Probe inventory validation: `tools/vst/preflight.py`; the operator network-policy attestation remains signed.

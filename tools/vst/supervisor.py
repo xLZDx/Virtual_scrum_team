@@ -36,7 +36,6 @@ class Supervisor:
         manual_override_recorder: Callable[[dict], None] | None = None,
         run_id: str | None = None,
         probe_nonce: str | None = None,
-        probe_key: bytes | None = None,
         operator_key: bytes | None = None,
         execution_grant_key_id: str | None = None,
         execution_grant_private_key_path: str | None = None,
@@ -65,7 +64,6 @@ class Supervisor:
         self.manual_override_recorder = manual_override_recorder
         self.run_id = run_id
         self.probe_nonce = probe_nonce
-        self.probe_key = probe_key
         self.operator_key = operator_key
         self.execution_grant_key_id = execution_grant_key_id
         self.execution_grant_private_key_path = execution_grant_private_key_path
@@ -100,11 +98,9 @@ class Supervisor:
         if store.sandbox_mode and (
             not isinstance(run_id, str) or not run_id.strip()
             or not isinstance(probe_nonce, str) or not probe_nonce.strip()
-            or not isinstance(probe_key, (bytes, bytearray)) or len(probe_key) < 32
             or not isinstance(operator_key, (bytes, bytearray)) or len(operator_key) < 32
-            or bytes(operator_key) == bytes(probe_key)
         ):
-            raise ValueError("sandbox supervisor requires trusted run id, nonce and probe verification key")
+            raise ValueError("sandbox supervisor requires trusted run id, nonce and operator verification key")
         if operator_key is not None and bytes(operator_key) == store._event_key:
             raise ValueError("operator_key must differ from the event key")
         grant_settings = (
@@ -552,16 +548,15 @@ class Supervisor:
         if self.breaker_state != "CLOSED":
             raise StoreError("provider breaker is open; worker start refused", kind="provider")
         if self.store.sandbox_mode:
-            from .preflight import SPEC_PATH, verify_fresh_probe, verify_network_policy_attestation
+            from .preflight import SPEC_PATH, validate_fresh_probe, verify_network_policy_attestation
 
             if self._probe_consumed:
                 raise StoreError("preflight probe has already authorized a worker start", kind="probe")
             spec_sha256 = hashlib.sha256(SPEC_PATH.read_bytes()).hexdigest()
-            if not verify_fresh_probe(
-                probe, run_id=self.run_id, spec_sha256=spec_sha256,
-                nonce=self.probe_nonce, key=bytes(self.probe_key),
+            if not validate_fresh_probe(
+                probe, run_id=self.run_id, spec_sha256=spec_sha256, nonce=self.probe_nonce,
             ):
-                raise StoreError("fresh passing signed preflight is required for this run", kind="probe")
+                raise StoreError("fresh passing root-captured preflight is required for this run", kind="probe")
             attestation = probe["inventory"].get("network_policy_attestation")
             if not verify_network_policy_attestation(
                 attestation, run_id=self.run_id, spec_sha256=spec_sha256,

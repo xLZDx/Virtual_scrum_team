@@ -1,4 +1,4 @@
-"""S2 signed probe protocol checks; fixtures are not host-isolation evidence."""
+"""S2 root-captured probe contract checks; fixtures are not host-isolation evidence."""
 from __future__ import annotations
 
 import hashlib
@@ -8,7 +8,6 @@ from types import SimpleNamespace
 import pytest
 
 from tools.vst import preflight
-from tools.vst.signing import sign
 from tools.vst.store import Store, StoreError
 from tools.vst.supervisor import Supervisor
 
@@ -17,8 +16,6 @@ SUPERVISOR_KEY = b"s2-supervisor-root-key-0123456789-abcdef"
 OPERATOR_KEY = b"s2-operator-root-key-0123456789-abcdef"
 EVENT_KEY = b"s2-event-root-key-0123456789-abcdef"
 REVIEWER_KEY = b"s2-reviewer-root-key-0123456789-abcdef"
-PROBE_SIGNER_KEY = b"s2-runner-signer-root-key-0123456789"
-KEY = PROBE_SIGNER_KEY
 _DEFAULT_ATTESTATION = object()
 PROPERTIES = {
     "automount_disabled", "interop_disabled", "no_container_socket", "non_root",
@@ -51,28 +48,39 @@ def valid_probe(attestation=_DEFAULT_ATTESTATION):
         "checked_properties": {name: True for name in PROPERTIES},
         "result": "PASS",
         "inventory": {
+            "mount_table": ["rootfs / ext4 rw,relatime 0 0"],
+            "windows_drive_mounts": [],
+            "wsl_interop_present": False,
+            "wsl_interop_enabled": False,
             "uid": 1001,
+            "gid": 1001,
             "container_socket_paths_present": [],
             "container_socket_inventory_complete": True,
+            "blocked_egress_target": ["198.51.100.1", 9],
+            "blocked_egress_probe_scope": "single reserved-target smoke probe; does not prove egress policy",
             "network_policy_attestation": attestation,
+            "environment_variable_names": [],
+            "observed_at_monotonic_ns": 1,
         },
     }
-    return preflight.sign_inventory(body, PROBE_SIGNER_KEY)
+    # No Runner/probe signature: the Supervisor accepts only this exact record
+    # from its root-owned preflight path and verifies the separate root policy attestation.
+    return body
 
 
-def test_six_sandbox_trust_roots_are_pairwise_distinct():
-    roots = [WORKER_KEY, SUPERVISOR_KEY, OPERATOR_KEY, EVENT_KEY, REVIEWER_KEY, PROBE_SIGNER_KEY]
+def test_five_sandbox_trust_roots_are_pairwise_distinct():
+    roots = [WORKER_KEY, SUPERVISOR_KEY, OPERATOR_KEY, EVENT_KEY, REVIEWER_KEY]
     assert all(len(key) >= 32 for key in roots)
-    assert len(set(roots)) == 6
+    assert len(set(roots)) == 5
 
 
 def test_probe_and_operator_attestation_bind_run_spec_nonce_and_every_check():
     probe = valid_probe()
     args = dict(
         run_id="run-1", spec_sha256=probe["spec_sha256"], nonce="nonce-1",
-        key=PROBE_SIGNER_KEY,
     )
-    assert preflight.verify_fresh_probe(probe, **args)
+    assert "signature" not in probe
+    assert preflight.validate_fresh_probe(probe, **args)
     attestation = probe["inventory"]["network_policy_attestation"]
     operator_args = dict(
         run_id="run-1", spec_sha256=probe["spec_sha256"], nonce="nonce-1", key=OPERATOR_KEY,
@@ -82,10 +90,10 @@ def test_probe_and_operator_attestation_bind_run_spec_nonce_and_every_check():
         {**probe, "run_id": "other"}, {**probe, "nonce": "other"},
         {**probe, "spec_sha256": "0" * 64}, {**probe, "result": "FAIL"},
     ):
-        assert not preflight.verify_fresh_probe(changed, **args)
+        assert not preflight.validate_fresh_probe(changed, **args)
     for name in sorted(PROPERTIES):
         bad = {**probe, "checked_properties": {**probe["checked_properties"], name: False}}
-        assert not preflight.verify_fresh_probe(bad, **args), name
+        assert not preflight.validate_fresh_probe(bad, **args), name
     for bad_args in (
         {**operator_args, "run_id": "other"},
         {**operator_args, "nonce": "other"},
@@ -95,12 +103,89 @@ def test_probe_and_operator_attestation_bind_run_spec_nonce_and_every_check():
         assert not preflight.verify_network_policy_attestation(attestation, **bad_args)
 
 
-def test_sign_inventory_rejects_incomplete_or_extra_contract_fields():
+@pytest.mark.parametrize(
+    "mutate",
+    ["missing_run_id", "missing_inventory", "extra_field", "extra_signature",
+     "missing_check", "non_boolean_check", "missing_inventory_field", "extra_inventory_field"],
+)
+def test_probe_inventory_requires_exact_unambiguous_schema_without_signature(mutate):
     probe = valid_probe()
-    unsigned = {key: value for key, value in probe.items() if key != "signature"}
-    assert preflight.sign_inventory(unsigned, PROBE_SIGNER_KEY)["signature"]
-    with pytest.raises(Exception, match="fields do not match"):
-        preflight.sign_inventory({**unsigned, "unexpected": True}, PROBE_SIGNER_KEY)
+    assert preflight.validate_fresh_probe(
+        probe, run_id="run-1", spec_sha256=probe["spec_sha256"], nonce="nonce-1",
+    )
+    bad = {**probe, "inventory": dict(probe["inventory"]),
+           "checked_properties": dict(probe["checked_properties"])}
+    if mutate == "missing_run_id":
+        bad.pop("run_id")
+    elif mutate == "missing_inventory":
+        bad.pop("inventory")
+    elif mutate == "extra_field":
+        bad["unexpected"] = True
+    elif mutate == "extra_signature":
+        bad["signature"] = "a" * 64
+    elif mutate == "missing_check":
+        bad["checked_properties"].pop("loopback_canary")
+    elif mutate == "non_boolean_check":
+        bad["checked_properties"]["loopback_canary"] = 1
+    elif mutate == "missing_inventory_field":
+        bad["inventory"].pop("mount_table")
+    elif mutate == "extra_inventory_field":
+        bad["inventory"]["unexpected"] = True
+    assert not preflight.validate_fresh_probe(
+        bad, run_id="run-1", spec_sha256=probe["spec_sha256"], nonce="nonce-1",
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("uid", 0), ("container_socket_inventory_complete", False),
+     ("container_socket_paths_present", ["/run/docker.sock"]),
+     ("wsl_interop_enabled", True),
+     ("windows_drive_mounts", ["C:\\ /mnt/c drvfs rw 0 0"]),
+     ("mount_table", [1]),
+     ("blocked_egress_target", ["203.0.113.1", 9]),
+     ("blocked_egress_probe_scope", "unbounded network evidence"),
+     ("environment_variable_names", [1]),
+     ("observed_at_monotonic_ns", True)],
+    ids=["root-uid", "incomplete-socket-inventory", "present-container-socket",
+         "interop-enabled", "windows-drive-mount", "malformed-mount-row",
+         "wrong-blocked-target", "wrong-target-scope", "malformed-environment-name",
+         "invalid-observation-time"],
+)
+def test_probe_inventory_rejects_root_or_unverified_socket_boundary(field, value):
+    probe = valid_probe()
+    bad = {**probe, "inventory": {**probe["inventory"], field: value}}
+    assert not preflight.validate_fresh_probe(
+        bad, run_id="run-1", spec_sha256=probe["spec_sha256"], nonce="nonce-1",
+    )
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    ["wrong_run", "wrong_spec", "wrong_nonce", "missing_field", "extra_field",
+     "bad_signature", "wrong_key", "nonempty_allowlist"],
+)
+def test_root_network_policy_attestation_rejects_invalid_binding_or_signature(mutate):
+    probe = valid_probe()
+    attestation = dict(probe["inventory"]["network_policy_attestation"])
+    args = dict(run_id="run-1", spec_sha256=probe["spec_sha256"], nonce="nonce-1", key=OPERATOR_KEY)
+    if mutate == "wrong_run":
+        attestation = operator_attestation(run_id="other")
+    elif mutate == "wrong_spec":
+        attestation = operator_attestation(spec_sha256="0" * 64)
+    elif mutate == "wrong_nonce":
+        attestation = operator_attestation(nonce="other")
+    elif mutate == "missing_field":
+        attestation.pop("evidence_sha256")
+    elif mutate == "extra_field":
+        attestation["unexpected"] = True
+    elif mutate == "bad_signature":
+        attestation["signature"] = "0" * 64
+    elif mutate == "wrong_key":
+        args["key"] = b"wrong-operator-key-0123456789-abcdef"
+    elif mutate == "nonempty_allowlist":
+        attestation = operator_attestation(empty_external_allowlist=False)
+    assert not preflight.verify_network_policy_attestation(attestation, **args)
 
 
 def _supervisor(tmp_path):
@@ -111,7 +196,6 @@ def _supervisor(tmp_path):
         operation_backend=object(),
         run_id="run-1",
         probe_nonce="nonce-1",
-        probe_key=PROBE_SIGNER_KEY,
         operator_key=OPERATOR_KEY,
     )
     return store, supervisor
@@ -123,6 +207,42 @@ def test_supervisor_accepts_a_valid_synthetic_operator_attestation(tmp_path):
     try:
         assert supervisor.start_worker(lambda: started.append(True) or "started", probe=valid_probe()) == "started"
         assert started == [True]
+    finally:
+        store.close()
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ["wrong_run", "wrong_spec", "wrong_nonce", "missing_field", "extra_field",
+     "failed_check", "root_uid", "incomplete_socket_inventory", "present_socket"],
+)
+def test_supervisor_refuses_invalid_root_captured_probe_before_worker_start(tmp_path, mutation):
+    probe = valid_probe()
+    if mutation == "wrong_run":
+        probe["run_id"] = "other"
+    elif mutation == "wrong_spec":
+        probe["spec_sha256"] = "0" * 64
+    elif mutation == "wrong_nonce":
+        probe["nonce"] = "other"
+    elif mutation == "missing_field":
+        probe.pop("inventory")
+    elif mutation == "extra_field":
+        probe["signature"] = "a" * 64
+    elif mutation == "failed_check":
+        probe["checked_properties"]["external_egress_blocked"] = False
+    elif mutation == "root_uid":
+        probe["inventory"]["uid"] = 0
+    elif mutation == "incomplete_socket_inventory":
+        probe["inventory"]["container_socket_inventory_complete"] = False
+    elif mutation == "present_socket":
+        probe["inventory"]["container_socket_paths_present"] = ["/run/docker.sock"]
+
+    store, supervisor = _supervisor(tmp_path)
+    started = []
+    try:
+        with pytest.raises(StoreError, match="fresh passing root-captured preflight"):
+            supervisor.start_worker(lambda: started.append(True), probe=probe)
+        assert started == []
     finally:
         store.close()
 
@@ -143,7 +263,7 @@ def test_supervisor_refuses_untrusted_operator_attestation_before_worker_start(t
     store, supervisor = _supervisor(tmp_path)
     started = []
     try:
-        with pytest.raises(StoreError, match="fresh passing signed preflight|operator-root-signed"):
+        with pytest.raises(StoreError, match="fresh passing root-captured preflight|operator-root-signed"):
             supervisor.start_worker(lambda: started.append(True), probe=valid_probe(attestation))
         assert not started
     finally:

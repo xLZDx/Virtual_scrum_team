@@ -2508,7 +2508,7 @@ def test_posix_worker_cannot_read_signer_or_key_file():
         os.mkdir(keys_dir)
         os.chmod(keys_dir, 0o700)
         key_paths = []
-        for role in ("worker", "supervisor", "operator", "event", "reviewer", "probe-signer"):
+        for role in ("worker", "supervisor", "operator", "event", "reviewer", "runner-signer"):
             key_path = os.path.join(keys_dir, role + ".key")
             with open(key_path, "wb") as stream:
                 stream.write(b"synthetic-only-key-fixture")

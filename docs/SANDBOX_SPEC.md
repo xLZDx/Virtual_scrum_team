@@ -68,15 +68,21 @@ also records Windows interop state,
 user and group identity, container socket paths,
 blocked-target smoke-probe result, sandbox-local loopback result, and
 environment variable names. It binds the inventory to the run ID, a fresh
-nonce, and this file's SHA-256 digest. The trusted runner signs the inventory;
-the operator separately signs the network-policy attestation with a distinct
-operator-only key. The operator key is never copied to the runner, worker, or
-analyzer. All six trust roots (worker, supervisor, operator, event, reviewer,
-runner-signer) remain pairwise distinct. Socket discovery spans known engine
+nonce, and this file's SHA-256 digest. The operator separately signs the
+network-policy attestation with a distinct
+operator-only key. The probe inventory itself is not cryptographically signed.
+The root Supervisor accepts it only from its root-owned mode-0600 preflight file,
+checks the exact run/spec/nonce and all required measurements, and independently
+verifies the operator-signed network-policy attestation. The root-controlled
+systemd unit and the root capture of its exact invocation are the provenance
+boundary for the inventory. The operator key is never copied to the runner,
+worker, or analyzer. All six receipt and policy trust roots (worker, supervisor,
+operator, event, reviewer, runner-signer) remain pairwise distinct. Socket discovery spans known engine
 endpoints, numeric per-user runtime directories, and `/proc/net/unix`; inability
 to enumerate a required source fails closed.
-The supervisor may start a worker only when the signature verifies, the probe
-is fresh and bound to the same run and spec digest, and every check passes.
+The supervisor may start a worker only when the root-captured inventory is
+fresh and bound to the same run and spec digest, every check passes, and the
+operator-signed network-policy attestation verifies.
 An enabled automount or interop setting, present container socket, root UID,
 reachable external target, failed loopback canary, missing inventory field,
 or stale run binding blocks launch.

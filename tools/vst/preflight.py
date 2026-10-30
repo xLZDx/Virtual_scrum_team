@@ -11,9 +11,6 @@ from pathlib import Path
 from typing import Any
 
 from .contracts import ContractError
-from .signing import sign
-
-PROBE_LABEL = b"vst-sandbox-probe-v2\0"
 SPEC_PATH = Path(__file__).resolve().parents[2] / "docs" / "SANDBOX_SPEC.md"
 BLOCKED_EGRESS_TARGET = ("198.51.100.1", 9)
 CONTAINER_SOCKETS = (
@@ -208,15 +205,6 @@ def collect_inventory(run_id: str, nonce: str | None = None, *,
     }
 
 
-def sign_inventory(inventory: dict[str, Any], runner_key: bytes) -> dict[str, Any]:
-    required = {"run_id", "spec_sha256", "nonce", "checked_properties", "result", "inventory"}
-    if not isinstance(inventory, dict) or set(inventory) != required:
-        raise ContractError("probe inventory fields do not match contract")
-    signed = dict(inventory)
-    signed["signature"] = sign(inventory, runner_key, PROBE_LABEL)
-    return signed
-
-
 def sign_network_policy_attestation(attestation: dict[str, Any], operator_key: bytes) -> dict[str, Any]:
     """Operator-side helper; keep the operator root outside runner/worker processes."""
     from .signing import OPERATOR_NETWORK_POLICY_LABEL, sign
@@ -230,35 +218,50 @@ def sign_network_policy_attestation(attestation: dict[str, Any], operator_key: b
     return signed
 
 
-def sign_inventory_with_service(inventory: dict[str, Any], *, signer_socket: str) -> dict[str, Any]:
-    """Return an inventory signed by the authenticated runner-only signer."""
-    from .signer import sign_probe_over_socket
-    required = {"run_id", "spec_sha256", "nonce", "checked_properties", "result", "inventory"}
-    if not isinstance(inventory, dict) or set(inventory) != required:
-        raise ContractError("probe inventory fields do not match contract")
-    signed = dict(inventory)
-    signed["signature"] = sign_probe_over_socket(signer_socket, inventory["nonce"], inventory)
-    return signed
-
-
-def verify_fresh_probe(probe: dict[str, Any], *, run_id: str, spec_sha256: str, nonce: str, key: bytes) -> bool:
-    from .signing import verify
+def validate_fresh_probe(probe: dict[str, Any], *, run_id: str, spec_sha256: str, nonce: str) -> bool:
+    """Validate exact measured inventory; trust comes from the root-owned input path, not a probe signature."""
     if not isinstance(probe, dict):
         return False
+    if set(probe) != {"run_id", "spec_sha256", "nonce", "checked_properties", "result", "inventory"}:
+        return False
     checks = probe.get("checked_properties")
+    inventory = probe.get("inventory")
     expected_checks = {
         "automount_disabled", "interop_disabled", "no_container_socket", "non_root",
         "external_egress_blocked", "loopback_canary", "empty_external_allowlist",
+    }
+    inventory_fields = {
+        "mount_table", "windows_drive_mounts", "wsl_interop_present", "wsl_interop_enabled",
+        "uid", "gid", "container_socket_paths_present", "container_socket_inventory_complete",
+        "blocked_egress_target", "blocked_egress_probe_scope", "network_policy_attestation",
+        "environment_variable_names", "observed_at_monotonic_ns",
     }
     return (
         probe.get("run_id") == run_id and probe.get("spec_sha256") == spec_sha256
         and probe.get("nonce") == nonce and probe.get("result") == "PASS"
         and isinstance(checks, dict) and set(checks) == expected_checks
         and all(value is True for value in checks.values())
-        and isinstance(probe.get("inventory"), dict)
-        and probe["inventory"].get("container_socket_inventory_complete") is True
-        and isinstance(probe["inventory"].get("network_policy_attestation"), dict)
-        and verify(probe, key, PROBE_LABEL)
+        and isinstance(inventory, dict) and set(inventory) == inventory_fields
+        and isinstance(inventory.get("mount_table"), list)
+        and all(isinstance(line, str) for line in inventory["mount_table"])
+        and isinstance(inventory.get("windows_drive_mounts"), list)
+        and all(isinstance(line, str) for line in inventory["windows_drive_mounts"])
+        and not inventory["windows_drive_mounts"]
+        and type(inventory.get("wsl_interop_present")) is bool
+        and inventory.get("wsl_interop_enabled") is False
+        and type(inventory.get("uid")) is int and inventory["uid"] > 0
+        and type(inventory.get("gid")) is int and inventory["gid"] >= 0
+        and inventory.get("container_socket_paths_present") == []
+        and inventory.get("container_socket_inventory_complete") is True
+        and inventory.get("blocked_egress_target") == list(BLOCKED_EGRESS_TARGET)
+        and inventory.get("blocked_egress_probe_scope") == (
+            "single reserved-target smoke probe; does not prove egress policy"
+        )
+        and isinstance(inventory.get("network_policy_attestation"), dict)
+        and isinstance(inventory.get("environment_variable_names"), list)
+        and all(isinstance(name, str) for name in inventory["environment_variable_names"])
+        and type(inventory.get("observed_at_monotonic_ns")) is int
+        and inventory["observed_at_monotonic_ns"] > 0
     )
 
 

@@ -94,8 +94,8 @@ not silently recreate the baseline.
 
 The root Supervisor configuration at `/etc/vst-runner/supervisor-service.json`
 contains absolute paths for the Store, external anchor, root-only event and
-startup keys, a run-bound preflight record and distinct probe/operator
-verification keys, its exact run ID and nonce, grant key ID/private-key
+startup keys, a root-owned run-bound preflight record and an operator
+verification key, its exact run ID and nonce, grant key ID/private-key
 path/public-key ring, OpenSSL executable,
 generation snapshot and lock, fixed runner unit/cgroup, socket path and its
 group, plus exact peer UID/GID/cgroup/operation entries for `dispatch_owner`,
@@ -111,14 +111,15 @@ An optional `operator` Supervisor reconciliation peer is inactive by default;
 it exists only when an operator explicitly provisions and configures its peer
 identity and transport. Deployment does not generate operator credentials.
 
-At startup, the root service verifies the configured probe signature and
-operator network-policy attestation against the installed
+At startup, the root service reads the root-owned mode-0600 measured probe JSON
+and verifies its exact run/spec/nonce, required checks and operator network-policy
+attestation against the installed
 `docs/SANDBOX_SPEC.md` digest, then idempotently records that exact run/nonce
 tuple in the append-only Store only after startup reconciliation and event-chain
 verification succeed, before exposing its socket. An integrity-locked Store
 refuses even that preflight write. A restart may confirm
 the same tuple; any changed run, nonce, spec digest, or probe digest refuses
-startup. The record and symmetric verification keys are root-owned mode `0600`;
+startup. The record and service verification keys are root-owned mode `0600`;
 the operator key is not copied into runner, worker, or reviewer identities.
 
 The runner configuration at `/etc/vst-runner/runner-service.json` contains the

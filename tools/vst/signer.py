@@ -25,7 +25,6 @@ from .peer_pidfd import peer_pidfd_socket_option
 from .contracts import ContractError, TRUSTED_PARSER_CATALOG, _validate_repo_path, canonical_bytes
 from .signing import DIFF_GATE_LABEL, MIN_KEY_BYTES, SIGNING_REQUEST_LABEL, sign
 
-PROBE_LABEL = b"vst-sandbox-probe-v2\0"
 MAX_REQUEST_BYTES = 1024 * 1024
 MAX_SIGNER_RESPONSE_BYTES = 4096
 SIGNER_SOCKET_TIMEOUT_SEC = 10.0
@@ -259,7 +258,7 @@ class AuthenticatedSigner:
                 conn.sendall(canonical_bytes({"authorized": True}))
                 return
             encoded_message = canonical_bytes(wire_message)
-            if isinstance(message, dict) and message.get("purpose") in {"diff_gate", "probe"}:
+            if isinstance(message, dict) and message.get("purpose") == "diff_gate":
                 purpose = message["purpose"]
                 if set(message) != {"purpose", "request_id", "body"}:
                     raise ContractError("typed signing request has unknown or missing fields")
@@ -281,26 +280,8 @@ class AuthenticatedSigner:
                         any(not isinstance(path, str) or not path for path in body["changed_paths"]) or
                         len(body["changed_paths"]) != len(set(body["changed_paths"]))):
                         raise ContractError("diff signing body is malformed")
-                if purpose == "probe" and set(body) != {
-                    "run_id", "spec_sha256", "nonce", "checked_properties", "result", "inventory"
-                }:
-                    raise ContractError("probe signing body has unknown or missing fields")
-                if purpose == "probe" and (
-                    not isinstance(body["run_id"], str) or not body["run_id"] or
-                    not isinstance(body["nonce"], str) or not body["nonce"] or
-                    not isinstance(body["spec_sha256"], str) or not re.fullmatch(r"[0-9a-f]{64}", body["spec_sha256"]) or
-                    body["result"] not in {"PASS", "FAIL"} or
-                    not isinstance(body["checked_properties"], dict) or
-                    set(body["checked_properties"]) != {
-                        "automount_disabled", "interop_disabled", "no_container_socket",
-                        "non_root", "external_egress_blocked", "loopback_canary",
-                        "empty_external_allowlist",
-                    } or
-                    any(not isinstance(value, bool) for value in body["checked_properties"].values()) or
-                    not isinstance(body["inventory"], dict)):
-                    raise ContractError("probe signing body is malformed")
                 encoded = encoded_message
-                signature = sign(body, self.key, DIFF_GATE_LABEL if purpose == "diff_gate" else PROBE_LABEL)
+                signature = sign(body, self.key, DIFF_GATE_LABEL)
                 request_id = message["request_id"]
             else:
                 request = validate_signing_request(message)
@@ -548,31 +529,6 @@ def sign_diff_over_socket(
         response = _recv_signer_response(client)
     if not isinstance(response, dict) or set(response) != {"signature"}:
         raise ContractError("signer rejected diff request")
-    signature = response["signature"]
-    if not isinstance(signature, str) or len(signature) != hashlib.sha256().digest_size * 2:
-        raise ContractError("signer returned malformed signature")
-    return signature
-
-
-def sign_probe_over_socket(socket_path: str, request_id: str, inventory: dict[str, Any]) -> str:
-    """Ask the authenticated signer to sign the exact run-bound probe body."""
-    if not isinstance(request_id, str) or not request_id:
-        raise ContractError("request_id must be non-empty")
-    expected = {"run_id", "spec_sha256", "nonce", "checked_properties", "result", "inventory"}
-    if not isinstance(inventory, dict) or set(inventory) != expected:
-        raise ContractError("probe body has unknown or missing fields")
-    message = {"purpose": "probe", "request_id": request_id, "body": inventory}
-    payload = canonical_bytes(message)
-    if len(payload) > MAX_REQUEST_BYTES:
-        raise ContractError("probe signing request exceeds size limit")
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
-        client.settimeout(SIGNER_SOCKET_TIMEOUT_SEC)
-        client.connect(socket_path)
-        client.sendall(payload)
-        client.shutdown(socket.SHUT_WR)
-        response = _recv_signer_response(client)
-    if not isinstance(response, dict) or set(response) != {"signature"}:
-        raise ContractError("signer rejected probe request")
     signature = response["signature"]
     if not isinstance(signature, str) or len(signature) != hashlib.sha256().digest_size * 2:
         raise ContractError("signer returned malformed signature")

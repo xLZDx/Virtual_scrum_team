@@ -766,7 +766,7 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
         "store_path", "anchor_path", "event_key_path", "startup_supervisor_key_path",
         "execution_grant_key_id", "execution_grant_private_key_path", "execution_grant_trust_keys", "openssl_path",
         "dispatch_instruction_trust_registry_path",
-        "run_id", "probe_nonce", "preflight_record_path", "probe_key_path", "operator_key_path",
+        "run_id", "probe_nonce", "preflight_record_path", "operator_key_path",
         "execution_grant_audience", "generation_record_path", "runner_unit_name",
         "runner_control_group", "runner_lock_path", "systemctl_path", "model_provenance",
         "socket_path", "socket_gid", "peers",
@@ -827,7 +827,7 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
     if type(value["allow_schema_upgrade"]) is not bool:
         raise ContractError("Supervisor schema-upgrade authorization must be a boolean")
     for field in ("store_path", "anchor_path", "event_key_path", "startup_supervisor_key_path",
-                  "execution_grant_private_key_path", "probe_key_path", "operator_key_path",
+                  "execution_grant_private_key_path", "operator_key_path",
                   "preflight_record_path", "openssl_path", "generation_record_path",
                   "dispatch_instruction_trust_registry_path",
                   "runner_lock_path", "systemctl_path", "socket_path"):
@@ -1046,15 +1046,14 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
     if not stat.S_ISREG(probe_file.st_mode) or probe_file.st_uid != 0 or stat.S_IMODE(probe_file.st_mode) != 0o600:
         raise ContractError("Supervisor preflight record must be root-owned mode 0600")
     probe = _read_controlled_json(value["preflight_record_path"], max_bytes=1024 * 1024)
-    probe_key = _read_root_key(value["probe_key_path"])
     operator_key = _read_root_key(value["operator_key_path"])
-    if len({event_key, supervisor_key, probe_key, operator_key}) != 4:
-        raise ContractError("Store, startup-supervisor, probe, and operator keys must be distinct")
-    from .preflight import SPEC_PATH, verify_fresh_probe, verify_network_policy_attestation
+    if len({event_key, supervisor_key, operator_key}) != 3:
+        raise ContractError("Store, startup-supervisor, and operator keys must be distinct")
+    from .preflight import SPEC_PATH, validate_fresh_probe, verify_network_policy_attestation
 
     spec_sha256 = hashlib.sha256(SPEC_PATH.read_bytes()).hexdigest()
-    if not verify_fresh_probe(
-        probe, run_id=run_id, spec_sha256=spec_sha256, nonce=probe_nonce, key=probe_key,
+    if not validate_fresh_probe(
+        probe, run_id=run_id, spec_sha256=spec_sha256, nonce=probe_nonce,
     ):
         raise ContractError("root service preflight record is invalid or not bound to this run")
     if not verify_network_policy_attestation(
@@ -1076,7 +1075,7 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
     supervisor = Supervisor(
         store, operation_backend=None,
         run_id=run_id, probe_nonce=probe_nonce,
-        probe_key=probe_key, operator_key=operator_key,
+        operator_key=operator_key,
         execution_grant_key_id=value["execution_grant_key_id"],
         execution_grant_private_key_path=value["execution_grant_private_key_path"],
         execution_grant_openssl_path=value["openssl_path"],
