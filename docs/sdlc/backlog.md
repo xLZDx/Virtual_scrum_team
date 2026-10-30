@@ -310,6 +310,11 @@ one-shot runtime authorization bound to that pushed HEAD and pins. Execute no fu
 command under the consumed requests.
 S2-4 remains IN PROGRESS; S2-5 remains queued; S3 is unstarted.
 
+The active AF push gate's `start_head` had pointed to `20fda2c` on the other
+`s4-canonical-continuation` branch, not an ancestor of the S2 branch. Codex corrected this single
+pointer to the previous delivered S2 HEAD `2e6a796`, preserving sprint ID and phase history. This
+keeps the required exact-head review scoped to the current S2 continuation.
+
 ### S2-5 — Exact-head gate and sprint decision
 
 1. **Given** completed source, mapped test, permitted runtime, and relevant specialist-review evidence, **When** final approval is requested, **Then** GPT-PM's approval names/correlates to the exact final Git head and evidence set. (REQ-006)

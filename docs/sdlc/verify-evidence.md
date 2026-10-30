@@ -242,6 +242,11 @@ closure. The V1 caller-selected operation-ID route and real owner-to-Runner evid
   normally, then request a fresh one-shot runtime
   authorization. Neither consumed authorization can be reused; no apply, preflight, claim/probe,
   or TestRun occurred under them.
+- Review-range correction: tracked AF `start_head` previously pointed to
+  `20fda2cbf262...` on `s4-canonical-continuation`, which is not an ancestor of this S2 branch. It
+  now points to previous delivered S2 HEAD `2e6a796eaa04664812cf1266322b083f18770fa1`, so the exact
+  review can cover only the current S2 continuation. See change record
+  `docs/changes/0618-s2-4.12b-review-baseline-reconciliation.md`.
 
 ### S2-4 exact configuration preparation — 2026-10-30
 

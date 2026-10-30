@@ -1,0 +1,84 @@
+{
+  "tested_head": "adda2692451217e7de469d3102ac7cd3b4b35cee",
+  "runs": [
+    {
+      "command": "python -m pytest -q tests/vst/test_s2_runtime_inventory_collector.py",
+      "total": 52,
+      "passed": 52,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "tested_head": "adda2692451217e7de469d3102ac7cd3b4b35cee",
+      "log": "Functional-test-reviewer; Python 3.14.3; exit 0; 52 passed, 1 existing pytest-asyncio deprecation warning in 22.58s. Covers production assemble_inventory through real validate_inventory, plus missing and contradictory values for all eight readiness fields.",
+      "test_blobs": {
+        "tests/vst/test_s2_runtime_inventory_collector.py": "16e9cb9fdb6835593c9fee5dee905e7c659af238d9ec7969306411f9740ff21b"
+      },
+      "source_blobs": {
+        "tools/qa/collect_s2_runtime_config_inventory.py": "453fe70732c7309158cab7a0876b6bb7347b895056969ef87dbf988dd8cfa838"
+      }
+    }
+  ],
+  "latest_test_execution": {
+    "tested_head": "adda2692451217e7de469d3102ac7cd3b4b35cee",
+    "command": "python -m pytest -q tests/vst/test_s2_runtime_inventory_collector.py",
+    "total": 52,
+    "passed": 52,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "log": "Functional-test-reviewer; Python 3.14.3; exit 0; 52 passed, 1 existing pytest-asyncio deprecation warning in 22.58s.",
+    "test_blobs": {
+      "tests/vst/test_s2_runtime_inventory_collector.py": "16e9cb9fdb6835593c9fee5dee905e7c659af238d9ec7969306411f9740ff21b"
+    },
+    "source_blobs": {
+      "tools/qa/collect_s2_runtime_config_inventory.py": "453fe70732c7309158cab7a0876b6bb7347b895056969ef87dbf988dd8cfa838"
+    }
+  },
+  "not_run": [
+    {
+      "item": "Fresh permitted WSL target inventory and conditional runtime qualification",
+      "reason": "The prior one-shot authorizations were consumed by collector serialization refusals on older HEADs. Obtain a new correlated authorization for the pushed corrected HEAD, then e2e-runner performs the committed collector and validator once; no apply, preflight, claim, probe, or TestRun is claimed here."
+    },
+    {
+      "item": "Restricted process-kill, crash/recovery, mutation, E8, and S4/policy selectors",
+      "reason": "These scenarios remain explicitly NOT_RUN and are outside this task's permitted runtime sequence."
+    }
+  ],
+  "findings": {
+    "open_blocker": 0,
+    "open_major": 0
+  },
+  "reviewers": [
+    {
+      "role": "functional-test-reviewer",
+      "model": "gpt-6-luna",
+      "effort": "inherited; no explicit override recorded",
+      "verdict": "52 focused collector-to-real-validator tests passed at exact HEAD adda269."
+    },
+    {
+      "role": "code-reviewer",
+      "model": "gpt-6-luna",
+      "effort": "inherited; no explicit override recorded",
+      "verdict": "MAJOR-01 remediation and integration-test contract re-reviewed; no actionable B/M findings."
+    },
+    {
+      "role": "security-reviewer",
+      "model": "gpt-6-luna",
+      "effort": "inherited; no explicit override recorded",
+      "verdict": "No actionable B/M finding in the collector assembler delta; test execution not performed."
+    }
+  ],
+  "reviewers_waived_reason": "Not applicable; specialist reviewers are listed above.",
+  "resolved_prior_finding": {
+    "request_id": "cf7a9515-0cd8-47d2-a0cb-1c351a3ef1e0",
+    "finding": "MAJOR-01: six validator-required fields were absent inside readiness.",
+    "resolution": "assemble_inventory writes all top-level and nested copies from the same captured values; real validator integration tests cover valid, missing, and contradictory values."
+  },
+  "review_base_reconciliation": {
+    "previous_start_head": "20fda2cbf26274192652a1c829a19f6b1844e9c4",
+    "previous_start_head_is_ancestor": false,
+    "corrected_start_head": "2e6a796eaa04664812cf1266322b083f18770fa1",
+    "corrected_start_head_is_ancestor": true,
+    "reason": "The previous tracked AF baseline belonged to another branch and made a scoped S2 exact-head review impossible."
+  }
+}
