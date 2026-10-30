@@ -1,0 +1,302 @@
+{
+  "bundle_manifest_sha256": "d03306788fc4e5090527483dc0412f055822d738ce13a08e11245afe2e9368e4",
+  "committed_head": "de1c2561080750d1c39af29c3efe0f0c70e40e61",
+  "disposition": "COMPLETE",
+  "host_finished_utc": "2026-10-30T22:56:21.743041+00:00",
+  "host_started_utc": "2026-10-30T22:56:16.626971+00:00",
+  "installation_layout_sha256": "b34b5dfb9d43c10e24294dc9e89bf890ed6e303a9f9c5cd5e7dec560f727e9b2",
+  "limitations": [
+    "Only committed private_material and configuration_installation destinations were in scope.",
+    "Only content SHA-256 values and file metadata were retained; no file contents or private config values were emitted.",
+    "The committed candidate identity is represented by HEAD and manifest hashes."
+  ],
+  "operation": "single read-only inventory; no mkdir/copy/write/install/config/selector/service/test/run_once",
+  "pm_decision_id": "S2-4-PRIVATE-STAGING-20261031-01",
+  "pm_request_id": "c0a44c5e-10de-470f-a1ae-c3584d95ac91",
+  "probe": {
+    "distro": "Ubuntu-24.04",
+    "entries": {
+      "/etc/vst-runner/assignment-delegation-policy.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": 420,
+        "nlink": 1,
+        "sha256": "3dabe39f15ee280d1fac78c83989ce71ec868410b665fa26e199378f27deb427",
+        "size": 1411,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/bootstrap-request.json": {
+        "gid": 980,
+        "kind": "regular",
+        "mode": 416,
+        "nlink": 1,
+        "sha256": "df0d5701e6a356d43224208cd9a099183e12404967f5133838bd978e0b7834c1",
+        "size": 4104,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/dispatch-instruction-private.pem": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": 384,
+        "nlink": 1,
+        "sha256": "599fb79a48213afd84c2a4bdf7ad03e5df74e7c90820fd25f33cbefe35c3029b",
+        "size": 119,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/dispatch-instruction-public.pem": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": 420,
+        "nlink": 1,
+        "sha256": "b3586ac2f707058a8933759b8abbf4f5b8b84e7fde70f644d9d77d523b7af162",
+        "size": 113,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/dispatch-instruction-trust.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": 420,
+        "nlink": 1,
+        "sha256": "c88d90f75653168b417b15f11d1dc6086433d7d4c948757ac30b967fac8db350",
+        "size": 196,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/dispatch-owner-service.json": {
+        "gid": 982,
+        "kind": "regular",
+        "mode": 416,
+        "nlink": 1,
+        "sha256": "1df674c4198df4246ed6490fd1ae9eaadd8a8be18ba54c5852019694de4a99c1",
+        "size": 65,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/dispatcher-service.json": {
+        "gid": 983,
+        "kind": "regular",
+        "mode": 416,
+        "nlink": 1,
+        "sha256": "3f35183f011a1bdb4b3ec8fa45480178dc91d6281b26bdc30e3d50185f2842cc",
+        "size": 166,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/execution-grant-private.pem": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": 384,
+        "nlink": 1,
+        "sha256": "01206de74509f464fce19db773efbdcccd05f09d747b5cb6d95f7d6fa133a21e",
+        "size": 119,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/execution-grant-public.pem": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": 420,
+        "nlink": 1,
+        "sha256": "bbf647ee13e5aafdceccfce9bbb41dc9f79f15f4578a19dfb4ddcf11442a45ad",
+        "size": 113,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/fence.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": 384,
+        "nlink": 1,
+        "sha256": "8b96cf8d743bd6fc5c4bc51a3a988f7477f7466e6d40748e9462d88dce9da556",
+        "size": 440,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/model-provenance.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": 420,
+        "nlink": 1,
+        "sha256": "a78f908212da5715a951c62d17e2ec720ad6065c13164191d3aef0bf506d6303",
+        "size": 567,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/network-policy.key": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": 384,
+        "nlink": 1,
+        "sha256": "35eddb5c19fe58b4c9935f5234d862296d44a52c3a8d1b794e508a0ee3a1668b",
+        "size": 32,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/network-profile.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": 420,
+        "nlink": 1,
+        "sha256": "380b14dcdfe50dd7969175cb3b4f619e7f0ece93c53f8a9f4d1bed94c57fd757",
+        "size": 1176,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/probe-entrypoint.py": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": 420,
+        "nlink": 1,
+        "sha256": "2bb8a72935a003411a57eeb5f70b01f0e6407955dfd0c2abf3981ce3a57e19b1",
+        "size": 1566,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/reviewer-registry.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": 420,
+        "nlink": 1,
+        "sha256": "678dbe279d91ba96fa3b6e79da13c2c2be8270cbc08bbaaae9f7bf724078e6fd",
+        "size": 269,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/reviewer-use-policy.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": 420,
+        "nlink": 1,
+        "sha256": "a69dfcb56d54aadf7d9b2d966edbf4867145a861b23c2313e03fc0bc36766c97",
+        "size": 875,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/runner-service.json": {
+        "gid": 988,
+        "kind": "regular",
+        "mode": 416,
+        "nlink": 1,
+        "sha256": "2121baaf8598b80c139ba452eeab11760c8b0240d0e177220e9e792545c70579",
+        "size": 1256,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/signer-service.json": {
+        "gid": 988,
+        "kind": "regular",
+        "mode": 416,
+        "nlink": 1,
+        "sha256": "4d4d53fccd20d415b13a69b9ad4151eff6c15532ae4a6460a09fc32b2a869ad3",
+        "size": 510,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/startup-supervisor.key": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": 384,
+        "nlink": 1,
+        "sha256": "1fae003a9b46afa1eeeabbd2cd3af10fb6beaa4e16991fbe72f831cb33376b89",
+        "size": 32,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/store-event.key": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": 384,
+        "nlink": 1,
+        "sha256": "d1c94eecd37246740498c88dedd09a3d85c26b5744781b040f1d1e9ad66f562a",
+        "size": 32,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/supervisor-service.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": 384,
+        "nlink": 1,
+        "sha256": "cab6537ebaa4b568814cf8660586144ce640af086ea3e9a908d4981c17c05e60",
+        "size": 3462,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/task-manifest.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": 420,
+        "nlink": 1,
+        "sha256": "9c1f6f11f7e92294a3bad3425febfae2ef432d269e53aa6ff0ce3bb3e895296a",
+        "size": 3596,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/var/lib/vst-reviewer/review.key": {
+        "gid": 985,
+        "kind": "regular",
+        "mode": 384,
+        "nlink": 1,
+        "sha256": "ba48996c3630ebda3138a78d4b0c69482205d6d82a0dfdc924412a46d8e0db9f",
+        "size": 32,
+        "state": "PRESENT",
+        "uid": 993
+      },
+      "/var/lib/vst-signer/receipt.key": {
+        "gid": 988,
+        "kind": "regular",
+        "mode": 384,
+        "nlink": 1,
+        "sha256": "deb6094ed83c23820fedbc67c0676a73022fb6f98237b80310208cd2c5e01233",
+        "size": 32,
+        "state": "PRESENT",
+        "uid": 995
+      }
+    },
+    "euid": 0,
+    "finished_utc": "2026-10-30T22:56:21.715651+00:00",
+    "schema": "VST_S2_PRIVATE_CONFIG_READONLY_INVENTORY_V1",
+    "started_utc": "2026-10-30T22:56:21.699933+00:00",
+    "terminal": "COMPLETE"
+  },
+  "schema": "VST_S2_PRIVATE_CONFIG_READONLY_INVENTORY_EVIDENCE_V1",
+  "scope": {
+    "configuration_installation_destinations": [
+      "/etc/vst-runner/assignment-delegation-policy.json",
+      "/etc/vst-runner/bootstrap-request.json",
+      "/etc/vst-runner/dispatch-instruction-public.pem",
+      "/etc/vst-runner/dispatch-instruction-trust.json",
+      "/etc/vst-runner/dispatch-owner-service.json",
+      "/etc/vst-runner/dispatcher-service.json",
+      "/etc/vst-runner/execution-grant-public.pem",
+      "/etc/vst-runner/fence.json",
+      "/etc/vst-runner/model-provenance.json",
+      "/etc/vst-runner/network-profile.json",
+      "/etc/vst-runner/probe-entrypoint.py",
+      "/etc/vst-runner/reviewer-registry.json",
+      "/etc/vst-runner/reviewer-use-policy.json",
+      "/etc/vst-runner/runner-service.json",
+      "/etc/vst-runner/signer-service.json",
+      "/etc/vst-runner/supervisor-service.json",
+      "/etc/vst-runner/task-manifest.json"
+    ],
+    "private_material_destinations": [
+      "/etc/vst-runner/dispatch-instruction-private.pem",
+      "/etc/vst-runner/execution-grant-private.pem",
+      "/etc/vst-runner/network-policy.key",
+      "/etc/vst-runner/startup-supervisor.key",
+      "/etc/vst-runner/store-event.key",
+      "/var/lib/vst-reviewer/review.key",
+      "/var/lib/vst-signer/receipt.key"
+    ]
+  },
+  "scope_path_count": 24,
+  "wsl_exit_code": 0,
+  "wsl_stderr_bytes": 0,
+  "wsl_stderr_present": false,
+  "wsl_timed_out": false
+}
