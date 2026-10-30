@@ -609,6 +609,32 @@ S2-5 is queued and must not start yet.
   `8ee40d1a` authorization is never reused. Keep S2-4 active until runtime acceptance and delivery
   are recorded; only then advance to S2-5.
 
+### Latest S2-4 source-pin follow-up — runtime not run (2026-10-30)
+
+GPT-PM's one-shot request `a1333e6f-716a-4ea7-9c21-c792142b1992` returned HOLD because it could not
+independently verify the exact runtime execution chain, including host launcher binding. Exact
+source inspection then found that the qualification launcher tried to read
+`tools/qa/run_s2_runtime_qualification.py` and `tools/qa/s2_runtime_qualification_wsl.py` from
+runtime source HEAD `80c2b81deac364ed6466600fd46af47aafe805e2`; both paths are absent from that Git
+tree. The launcher now pins those two files separately under `qualification_source_head`, requires
+that head to equal the current repository HEAD, verifies the exact committed blobs and worktree
+bytes, and keeps runtime-archive pin coverage exact.
+
+The designated `functional-test-reviewer` ran the five focused source-pin selectors at HEAD
+`16549bb8f10113b2f05f41b3aa390bad80dab97e`: **5 passed, 0 failed**, exit 0, one pytest-asyncio
+deprecation warning. Git/WSL boundaries were mocked. Exact command, file hashes and limitations:
+`evidence/s2-4-qualification-head-pins-20261030.json` and `.txt`. Read-only `code-reviewer` and
+`security-reviewer` found no material findings; neither ran tests. `git diff --check` passed.
+Detailed change record: `docs/changes/0625-s2-4-qualification-source-head-binding.md`.
+
+This focused source-pin criterion is implemented, tested and reviewed, but the change is not yet
+committed/pushed. S2-4 remains **IN PROGRESS**: no fresh current-run E5 result, real Owner-to-Runner
+result, or report-bound TestRun exists. The request returned HOLD and no runtime was executed.
+Owner: Codex. Next: commit this task-local delta and normal-push it through the enforced hook; then
+request a fresh correlated one-shot GPT-PM decision bound to the pushed qualification HEAD. Only
+`e2e-runner` may execute the authorized bounded runtime scope. Do not reuse consumed authorization
+`8ee40d1a`; S2-5 stays queued.
+
 ### Focused test maintenance note
 
 Historical item, resolved in change0551: Codex reconciled the exploratory selector `test_pre_0473_schema_v5_pending_recovery_event_survives_fresh_reconciliation_and_allows_only_authorized_successor` in `tests/vst/test_s2_persistent_runner_service.py`. It assumes a Store with `PRAGMA user_version == 5`, while both baseline `9c1be0f` and current source declare schema version 6. The selector is outside TP-26/27 acceptance and was excluded from the final focused assignment-basis run; do not silently change its historical fixture or count its failure against the accepted S2 candidate tests. Resolution: the designated functional-test reviewer restored a true schema-v5 fixture and reported six passing cases over two selectors; see `evidence/s2-legacy-v5-fixture-run-20261029.md`. Include its permitted regression only after the final S2 code freeze.

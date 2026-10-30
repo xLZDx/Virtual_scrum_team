@@ -1,0 +1,17 @@
+S2-4 qualification launcher exact-HEAD binding
+Date: 2026-10-30
+Project: D:\Repo\Virtual_scrum_team
+Execution role: functional-test-reviewer
+Execution HEAD: 16549bb8f10113b2f05f41b3aa390bad80dab97e
+
+Acceptance gap addressed
+The previous launcher checked the two host qualification files as if they belonged to runtime source HEAD 80c2b81deac364ed6466600fd46af47aafe805e2. A direct Git object check showed those paths are absent at that runtime HEAD. The changed launcher now binds the runtime archive to runtime_source_head and the host qualification launchers to a separately authorized qualification_source_head, which must equal the current repository HEAD. Each launcher is compared with its exact committed Git blob and safe working-file bytes before use.
+
+Exact focused command
+python -B -m pytest -p no:cacheprovider tests/vst/test_s2_runtime_qualification_harness.py::test_closed_identity_schema_requires_qualification_source_head tests/vst/test_s2_runtime_qualification_harness.py::test_qualification_source_pins_cover_exactly_the_two_launcher_paths tests/vst/test_s2_runtime_qualification_harness.py::test_source_pin_verification_accepts_exact_archive_and_rejects_worktree_drift tests/vst/test_s2_runtime_qualification_harness.py::test_wrong_expected_qualification_head_refuses_before_attempt_or_wsl tests/vst/test_s2_runtime_qualification_harness.py::test_run_once_starts_one_mock_wsl_child_and_persists_terminal_hold
+
+Result: 5 passed, 0 failed, exit 0; one pytest-asyncio deprecation warning. The exact warning body and raw stdout/stderr were not retained in the agent execution report. Test file SHA-256: b55b584aff6ae098b218ee0b2b3f8af931cbd324a52432e2648a9068cd100125. Implementation file SHA-256: e4fbf5b25e9359007b9640c06f7da304b545ec02a13f7464a7b693970b65dd47.
+
+The five selected cases cover the required qualification HEAD, exact launcher pin set, separation of runtime archive pins, committed blob/worktree equality and fail-closed refusal on a wrong expected HEAD before attempt creation or WSL invocation. Git and WSL boundaries are mocked. No runtime, live WSL, service, authorization consumption, or candidate identity was exercised; all remain NOT_RUN.
+
+The designated test agent reports it edited only the test file and found the implementation file already modified in the shared worktree. This record preserves that provenance and does not claim the parent agent authored the pre-existing implementation edit.

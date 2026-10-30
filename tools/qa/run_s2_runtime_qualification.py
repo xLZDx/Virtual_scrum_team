@@ -37,11 +37,11 @@ AUTH_FIELDS = frozenset({
 })
 TOP_FIELDS = frozenset({"schema", "authorization", "identity", "source_pins"})
 IDENTITY_FIELDS = frozenset({
-    "runtime_source_head", "run_id", "bootstrap_request_id",
+    "runtime_source_head", "qualification_source_head", "run_id", "bootstrap_request_id",
     "nonce", "runtime_selector", "bundle_sha256", "config_bundle_sha256",
     "task_manifest_sha256", "selector_test_id", "config_sha256",
 })
-SOURCE_MAP_FIELDS = frozenset({"runtime"})
+SOURCE_MAP_FIELDS = frozenset({"runtime", "qualification"})
 REQUIRED_RUNTIME_PINS = frozenset({
     "tools/vst/assignment_basis.py", "tools/vst/contracts.py",
     "tools/vst/dispatch_instruction.py", "tools/vst/dispatch_issuance.py",
@@ -50,6 +50,8 @@ REQUIRED_RUNTIME_PINS = frozenset({
     "tools/vst/root_dispatch_issuer.py", "tools/vst/runner.py",
     "tools/vst/runner_service.py", "tools/vst/store.py",
     "tools/vst/supervisor.py", "tools/vst/supervisor_service.py",
+})
+REQUIRED_QUALIFICATION_PINS = frozenset({
     "tools/qa/run_s2_runtime_qualification.py",
     "tools/qa/s2_runtime_qualification_wsl.py",
 })
@@ -237,6 +239,8 @@ def validate_input(value: Any) -> dict[str, Any]:
 
     identity = _exact_object(record["identity"], IDENTITY_FIELDS, "identity")
     runtime_head = _head(identity["runtime_source_head"], "identity.runtime_source_head")
+    qualification_head = _head(
+        identity["qualification_source_head"], "identity.qualification_source_head")
     run_id = identity["run_id"]
     if not isinstance(run_id, str) or not OPAQUE_ID.fullmatch(run_id):
         raise QualificationError("identity.run_id is malformed")
@@ -274,7 +278,11 @@ def validate_input(value: Any) -> dict[str, Any]:
 
     source_pins = _exact_object(record["source_pins"], SOURCE_MAP_FIELDS, "source_pins")
     pins: dict[str, dict[str, str]] = {}
-    for source_name, expected_head in (("runtime", runtime_head),):
+    expected_heads = {
+        "runtime": runtime_head,
+        "qualification": qualification_head,
+    }
+    for source_name, expected_head in expected_heads.items():
         source_map = source_pins[source_name]
         if not isinstance(source_map, dict) or not 1 <= len(source_map) <= 512:
             raise QualificationError(f"source_pins.{source_name} is missing or too large")
@@ -282,9 +290,12 @@ def validate_input(value: Any) -> dict[str, Any]:
         for path, digest in source_map.items():
             canonical = _relative_git_path(path, f"source_pins.{source_name} path")
             pins[source_name][canonical] = _digest(digest, f"source_pins.{source_name}.{canonical}")
-        required_paths = REQUIRED_RUNTIME_PINS
+        required_paths = (REQUIRED_RUNTIME_PINS if source_name == "runtime"
+                          else REQUIRED_QUALIFICATION_PINS)
         if not required_paths <= pins[source_name].keys():
             raise QualificationError(f"source_pins.{source_name} omits a required implementation file")
+        if source_name == "qualification" and pins[source_name].keys() != REQUIRED_QUALIFICATION_PINS:
+            raise QualificationError("qualification source pins must cover exactly the two launcher files")
         # The HEAD is consumed below during exact blob verification; retaining it
         # here makes the identity association explicit in the normalized result.
         if not HEX40.fullmatch(expected_head):
@@ -325,20 +336,18 @@ def verify_source_pins(root: Path, validated: dict[str, Any]) -> None:
             member.name: hashlib.sha256(bundle.extractfile(member).read()).hexdigest()
             for member in bundle.getmembers() if member.isfile()
         }
-    launcher_paths = {
-        "tools/qa/run_s2_runtime_qualification.py",
-        "tools/qa/s2_runtime_qualification_wsl.py",
-    }
-    archive_pins = {path: digest for path, digest in validated["source_pins"]["runtime"].items()
-                    if path not in launcher_paths}
+    archive_pins = validated["source_pins"]["runtime"]
     if runtime_files != archive_pins:
         raise QualificationError("runtime source pins do not exactly cover the reviewed source archive")
-    for path in launcher_paths:
-        expected = validated["source_pins"]["runtime"][path]
-        blob = _git(root, "show", f"{identity['runtime_source_head']}:{path}")
+    qualification_head = identity["qualification_source_head"]
+    resolved_head = _git(root, "rev-parse", "--verify", "HEAD", maximum=1024)
+    if resolved_head.decode("ascii", "strict").strip() != qualification_head:
+        raise QualificationError("qualification source HEAD differs from the authorized exact repository HEAD")
+    for path, expected in validated["source_pins"]["qualification"].items():
+        blob = _git(root, "show", f"{qualification_head}:{path}")
         working = _read_bounded_regular(root / Path(*path.split("/")), maximum=MAX_WSL_SCRIPT_BYTES)
         if hashlib.sha256(blob).hexdigest() != expected or working != blob:
-            raise QualificationError("streamed launcher source differs from its exact committed Git blob")
+            raise QualificationError("qualification launcher differs from its exact committed Git blob")
 
 
 def refuse_historical_identity(root: Path, validated: dict[str, Any]) -> None:
@@ -495,9 +504,9 @@ def run_once(input_path: Path, output_path: Path, *, root: Path) -> int:
     verify_source_pins(root, validated)
     refuse_historical_identity(root, validated)
     wsl_code = _load_wsl_script()
-    if hashlib.sha256(wsl_code).hexdigest() != validated["source_pins"]["runtime"][
+    if hashlib.sha256(wsl_code).hexdigest() != validated["source_pins"]["qualification"][
             "tools/qa/s2_runtime_qualification_wsl.py"]:
-        raise QualificationError("streamed WSL protocol differs from its exact source pin")
+        raise QualificationError("streamed WSL protocol differs from its exact qualification source pin")
     # The only dynamic protocol data is embedded as canonical, bounded JSON in
     # the streamed Python source. It never crosses a shell or command-line parser.
     compact = json.dumps(validated, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
@@ -512,7 +521,7 @@ def run_once(input_path: Path, output_path: Path, *, root: Path) -> int:
         "authorization_request_id": validated["authorization"]["request_id"],
         "authorization_reply_id": validated["authorization"]["reply_id"],
         "identity": {key: validated["identity"][key] for key in (
-            "runtime_source_head", "run_id", "bootstrap_request_id",
+            "runtime_source_head", "qualification_source_head", "run_id", "bootstrap_request_id",
             "nonce", "runtime_selector", "bundle_sha256", "config_bundle_sha256",
             "task_manifest_sha256", "selector_test_id",
         )},

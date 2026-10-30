@@ -17,6 +17,7 @@ from tools.qa import run_s2_runtime_qualification as harness
 
 
 RUNTIME_HEAD = "1" * 40
+QUALIFICATION_HEAD = "b" * 40
 HEX = "a" * 64
 WSL_HELPER = "tools/qa/s2_runtime_qualification_wsl.py"
 OUTER_HELPER = "tools/qa/run_s2_runtime_qualification.py"
@@ -38,7 +39,6 @@ def _auth_input(*, streamed_wsl: bytes = b"# mocked WSL helper\n") -> dict:
         ensure_ascii=True, allow_nan=False,
     ).encode("ascii"))
     source_hashes = {path: HEX for path in harness.REQUIRED_RUNTIME_PINS}
-    source_hashes[WSL_HELPER] = _sha(streamed_wsl)
     return {
         "schema": "VST_S2_RUNTIME_AUTH_INPUT_V1",
         "authorization": {
@@ -55,6 +55,7 @@ def _auth_input(*, streamed_wsl: bytes = b"# mocked WSL helper\n") -> dict:
         },
         "identity": {
             "runtime_source_head": RUNTIME_HEAD,
+            "qualification_source_head": QUALIFICATION_HEAD,
             "run_id": "run-0123456789abcdef",
             "bootstrap_request_id": "4" * 32,
             "nonce": "5" * 32,
@@ -68,7 +69,13 @@ def _auth_input(*, streamed_wsl: bytes = b"# mocked WSL helper\n") -> dict:
             ),
             "config_sha256": config_hashes,
         },
-        "source_pins": {"runtime": source_hashes},
+        "source_pins": {
+            "runtime": source_hashes,
+            "qualification": {
+                OUTER_HELPER: HEX,
+                WSL_HELPER: _sha(streamed_wsl),
+            },
+        },
     }
 
 
@@ -105,6 +112,23 @@ def test_bounded_or_unauthorized_input_refuses_before_wsl(monkeypatch, tmp_path,
     assert not output_path.exists()
 
 
+def test_closed_identity_schema_requires_qualification_source_head():
+    value = _auth_input()
+    del value["identity"]["qualification_source_head"]
+
+    with pytest.raises(harness.QualificationError, match="identity.*fields"):
+        harness.validate_input(value)
+
+
+def test_qualification_source_pins_cover_exactly_the_two_launcher_paths():
+    value = _auth_input()
+    value["source_pins"]["qualification"]["tools/qa/unapproved.py"] = HEX
+
+    with pytest.raises(harness.QualificationError,
+                       match="qualification source pins must cover exactly the two launcher files"):
+        harness.validate_input(value)
+
+
 def test_source_pin_verification_accepts_exact_archive_and_rejects_worktree_drift(
         monkeypatch, tmp_path):
     launchers = {OUTER_HELPER, WSL_HELPER}
@@ -128,8 +152,13 @@ def test_source_pin_verification_accepts_exact_archive_and_rejects_worktree_drif
     value["identity"]["bundle_sha256"] = _sha(archive_bytes)
     for path, data in archived_files.items():
         value["source_pins"]["runtime"][path] = _sha(data)
+    value["source_pins"]["qualification"] = {
+        path: _sha(data) for path, data in launcher_files.items()
+    }
+    assert not (set(value["source_pins"]["runtime"]) & launchers)
+    assert set(value["source_pins"]["runtime"]) == set(archived_files)
+    assert set(value["source_pins"]["qualification"]) == launchers
     for path, data in launcher_files.items():
-        value["source_pins"]["runtime"][path] = _sha(data)
         target = tmp_path / Path(*path.split("/"))
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(data)
@@ -137,11 +166,15 @@ def test_source_pin_verification_accepts_exact_archive_and_rejects_worktree_drif
 
     def fake_git(_root, *args, **_kwargs):
         if args[0] == "rev-parse":
+            revision = args[-1]
+            if revision == "HEAD":
+                return (QUALIFICATION_HEAD + "\n").encode("ascii")
             return (RUNTIME_HEAD + "\n").encode("ascii")
         if args[0] == "archive":
             return archive_bytes
         if args[0] == "show":
-            path = args[1].split(":", 1)[1]
+            revision, path = args[1].split(":", 1)
+            assert revision == QUALIFICATION_HEAD
             return launcher_files[path]
         pytest.fail(f"unexpected Git command: {args!r}")
 
@@ -151,6 +184,55 @@ def test_source_pin_verification_accepts_exact_archive_and_rejects_worktree_drif
     (tmp_path / Path(*WSL_HELPER.split("/"))).write_bytes(b"tampered helper\n")
     with pytest.raises(harness.QualificationError, match="differs from its exact committed Git blob"):
         harness.verify_source_pins(tmp_path, validated)
+
+
+def test_wrong_expected_qualification_head_refuses_before_attempt_or_wsl(
+        monkeypatch, tmp_path):
+    archived_files = {
+        path: ("pinned source " + path).encode("utf-8")
+        for path in harness.REQUIRED_RUNTIME_PINS
+    }
+    archive_buffer = io.BytesIO()
+    with tarfile.open(fileobj=archive_buffer, mode="w:") as archive:
+        for name, data in archived_files.items():
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            archive.addfile(info, io.BytesIO(data))
+    archive_bytes = archive_buffer.getvalue()
+    launcher_files = {
+        OUTER_HELPER: b"# committed outer launcher\n",
+        WSL_HELPER: b"# committed WSL launcher\n",
+    }
+    value = _auth_input(streamed_wsl=launcher_files[WSL_HELPER])
+    value["identity"]["bundle_sha256"] = _sha(archive_bytes)
+    value["source_pins"]["runtime"] = {
+        path: _sha(data) for path, data in archived_files.items()
+    }
+    value["source_pins"]["qualification"] = {
+        path: _sha(data) for path, data in launcher_files.items()
+    }
+    value["identity"]["qualification_source_head"] = "c" * 40
+    input_path, output_path = _write_input(tmp_path, value)
+    wsl_calls = []
+
+    def fake_git(_root, *args, **_kwargs):
+        if args[0] == "rev-parse":
+            revision = args[-1]
+            return ((QUALIFICATION_HEAD if revision == "HEAD" else RUNTIME_HEAD)
+                    + "\n").encode("ascii")
+        if args[0] == "archive":
+            return archive_bytes
+        pytest.fail(f"unexpected Git command: {args!r}")
+
+    monkeypatch.setattr(harness, "_git", fake_git)
+    monkeypatch.setattr(harness, "_run_bounded_wsl", lambda *_args: wsl_calls.append(True))
+
+    with pytest.raises(harness.QualificationError,
+                       match="qualification source HEAD differs from the authorized exact repository HEAD"):
+        harness.run_once(input_path, output_path, root=tmp_path)
+
+    assert not output_path.exists()
+    assert wsl_calls == []
 
 
 def test_run_once_starts_one_mock_wsl_child_and_persists_terminal_hold(
