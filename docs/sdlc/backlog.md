@@ -193,12 +193,16 @@ HEAD `19338baebc865bbc9fabec45115340a629c61807` (reply
 succeeded. Local diff verification confirmed the reviewed four-file scope. This does not claim
 live WSL/Runner evidence.
 
-**Next ordered subtask S2-4.12b — one fresh current-run E5 and owner-to-Runner qualification.**
-Begin only after 4.12a is approved and pushed. The interrupted attempt's run/request/nonce are
-retired; GPT-PM must authorize a new exact run binding before the single allowed probe/assignment
-journey. Preserve `retry_cap: 0` and the one permitted assignment-basis selector. Restricted
-process/crash/mutation/E8/policy selectors remain `NOT_RUN`. S2-5 stays queued until this runtime
-journey is accepted.
+**Current ordered subtask S2-4.12b — one fresh current-run E5 and owner-to-Runner qualification.**
+The new non-secret run binding and installer pins are implemented and the focused local bundle/apply
+suite reports 22 passed; code/security reviewers found no actionable finding. The fresh binding is
+`s2-runtime-20261030-8102de64e7b4472ca2b5d2d56ed48510` with request
+`c63842aefcf74f57af70a1b2f93b8271` and nonce `5f5820a7cfc348cfa89de31af6c6d1a7`; its task
+manifest retains `retry_cap: 0` and the single allowed assignment-basis selector. The previous
+attempt identities are retired. Runtime application, root capture, and owner-to-Runner TestRun are
+still `NOT_RUN`. Next: exact-head code approval and normal push; then a separate correlated
+authorization bound to this fresh identity before the single permitted runtime journey. Restricted
+process/crash/mutation/E8/policy selectors remain `NOT_RUN`. S2-5 stays queued.
 
 ### S2-5 — Exact-head gate and sprint decision
 

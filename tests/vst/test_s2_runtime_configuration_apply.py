@@ -22,6 +22,18 @@ APPLY = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(APPLY)
 
 
+@pytest.fixture(autouse=True)
+def candidate_runtime_config_blobs(monkeypatch):
+    read_blob = APPLY._git_blob
+
+    def read_candidate(commit, relative_path):
+        if relative_path.startswith("docs/sdlc/runtime-config/"):
+            return (ROOT / relative_path).read_bytes()
+        return read_blob(commit, relative_path)
+
+    monkeypatch.setattr(APPLY, "_git_blob", read_candidate)
+
+
 def _sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -63,13 +75,15 @@ def _write_inventory(tmp_path: Path, inventory: dict) -> tuple[Path, str]:
     return path, _sha(raw)
 
 
-def test_payload_contains_exact_non_secret_candidates_and_pins_current_state(tmp_path, monkeypatch):
+def test_payload_contains_exact_non_secret_candidate_and_pins_current_state(tmp_path, monkeypatch):
     path, digest = _write_inventory(tmp_path, _inventory())
     git_blobs = []
     read_blob = APPLY._git_blob
 
     def record_git_blob(commit, relative_path):
         git_blobs.append((commit, relative_path))
+        if relative_path.startswith("docs/sdlc/runtime-config/"):
+            return (ROOT / relative_path).read_bytes()
         return read_blob(commit, relative_path)
 
     monkeypatch.setattr(APPLY, "_git_blob", record_git_blob)
@@ -109,6 +123,38 @@ def test_payload_contains_exact_non_secret_candidates_and_pins_current_state(tmp
         assert item["expected_current"]["state"] == "file"
         assert b"PRIVATE KEY" not in candidate
         assert "private" not in item["destination"].lower()
+
+
+def test_installer_pins_current_candidate_in_local_and_root_checks():
+    bundle_bytes = (BUNDLE / "bundle-manifest.json").read_bytes()
+    layout_bytes = (BUNDLE / "installation-layout.json").read_bytes()
+    bundle_digest = _sha(bundle_bytes)
+    layout_digest = _sha(layout_bytes)
+
+    assert bundle_digest == APPLY.BUNDLE_MANIFEST_SHA256
+    assert layout_digest == APPLY.INSTALLATION_LAYOUT_SHA256
+    assert f'BUNDLE_SHA256 = "{bundle_digest}"' in APPLY._REMOTE
+    assert f'LAYOUT_SHA256 = "{layout_digest}"' in APPLY._REMOTE
+
+
+def test_payload_refuses_bundle_bytes_that_do_not_match_the_pinned_digest(
+    tmp_path, monkeypatch
+):
+    path, digest = _write_inventory(tmp_path, _inventory())
+    read_blob = APPLY._git_blob
+    pinned_bundle = (BUNDLE / "bundle-manifest.json").read_bytes()
+
+    def changed_bundle(commit, relative_path):
+        if relative_path == "docs/sdlc/runtime-config/bundle-manifest.json":
+            return pinned_bundle + b" "
+        if relative_path.startswith("docs/sdlc/runtime-config/"):
+            return (ROOT / relative_path).read_bytes()
+        return read_blob(commit, relative_path)
+
+    monkeypatch.setattr(APPLY, "_git_blob", changed_bundle)
+
+    with pytest.raises(ValueError, match="committed config bundle differs"):
+        APPLY.build_payload(path, digest, SOURCE_COMMIT)
 
 
 def test_payload_rejects_changed_inventory_digest_before_transfer(tmp_path):

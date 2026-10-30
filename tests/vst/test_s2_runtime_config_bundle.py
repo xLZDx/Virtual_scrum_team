@@ -12,6 +12,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -247,6 +248,43 @@ def test_public_material_matches_standalone_public_keys_and_probe_run_binding():
     assert network_profile["environment_id"] == f"Ubuntu-24.04:S2:{run_binding['run_id']}"
     assert run_binding["runtime_source_head"] == SOURCE_HEAD
     assert run_binding["state"] == "PREPARATION_NOT_EXECUTION"
+
+
+def test_fresh_runtime_identity_is_crossbound_and_single_selector_only():
+    run_binding = _json("run-binding.json")
+    probe_request = _json("probe-request.json")
+    bootstrap = _json("bootstrap-request.json")
+    supervisor = _json("supervisor-service.json")
+    network = _json("network-profile.json")
+    task = _json("task-manifest.json")
+
+    run_id = run_binding["run_id"]
+    nonce = run_binding["probe_nonce"]
+    request_id = bootstrap["request_id"]
+    retired_run = "s2-runtime-20261030-87d47f635f1c4231ab052a074dba4be8"
+    retired_nonce = "0d2bb2c5f977478a924f7ec6629a339d"
+    retired_request = "3e56a61c5b1e45aea089c305b25e3187"
+
+    assert run_id and run_id != retired_run
+    assert re.fullmatch(r"[0-9a-f]{32}", nonce) and nonce != retired_nonce
+    assert re.fullmatch(r"[0-9a-f]{32}", request_id) and request_id != retired_request
+    assert probe_request == {"run_id": run_id, "nonce": nonce}
+    assert bootstrap["run_id"] == run_id
+    assert supervisor["run_id"] == run_id
+    assert supervisor["probe_nonce"] == nonce
+    assert network["environment_id"] == f"Ubuntu-24.04:S2:{run_id}"
+    assert task["task_id"] == "S2-4-runtime-owner-runner-qualification"
+    assert task["retry_cap"] == 0
+    assert task["required_tests"] == [
+        {
+            "acceptance": ["REQ-003"],
+            "slot": "runtime-tests",
+            "test_id": (
+                "tests/vst/test_s2_assignment_basis.py::"
+                "test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment"
+            ),
+        }
+    ]
 
 
 @pytest.fixture

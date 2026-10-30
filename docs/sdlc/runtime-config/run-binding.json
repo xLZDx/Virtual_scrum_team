@@ -1,10 +1,10 @@
 {
   "control_source_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
   "policy_signer_actor": "Codex root process under existing operator delegation; no personal human signature is asserted",
-  "prepared_utc": "2026-10-30T03:08:20Z",
+  "prepared_utc": "2026-10-30T04:40:19Z",
   "private_material_directory": "/var/lib/vst-config-preparation/s2-20261030",
-  "probe_nonce": "0d2bb2c5f977478a924f7ec6629a339d",
-  "run_id": "s2-runtime-20261030-87d47f635f1c4231ab052a074dba4be8",
+  "probe_nonce": "5f5820a7cfc348cfa89de31af6c6d1a7",
+  "run_id": "s2-runtime-20261030-8102de64e7b4472ca2b5d2d56ed48510",
   "runtime_source_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
   "state": "PREPARATION_NOT_EXECUTION",
   "target_distribution": "Ubuntu-24.04"
