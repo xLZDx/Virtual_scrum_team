@@ -153,13 +153,24 @@ functional-test reviewer reports `python -m pytest -q tests/vst/test_s2_runtime_
 runtime selection, configuration installation, or service start occurred. Exact record:
 `docs/changes/0606-s2-runtime-config-80c2b81.md`.
 
-**Next ordered S2-4.11 — verify existing unit drop-ins and apply the bounded runtime/config transition.**
-The recorded target inventory says the two candidate host-path drop-in destinations already exist
-as root-owned 153-byte files, but has no content hashes. Codex first compares their exact bytes to
-the bundle and refuses mismatch/unknown content; then it may use the reviewed transition to select
-the staged runtime and install only absent or byte-identical configuration. Runtime selection and
-service configuration are not yet applied. Current-run evidence and the one permitted
-owner-to-Runner journey remain open.
+**Delivered ordered preparation S2-4.11a — build and test the pinned non-secret config applier.**
+`tools/qa/apply_s2_runtime_configuration.py` reads all bundle sources from an exact committed Git
+revision, pins the bundle/layout digests, and lets WSL independently verify the exact 26
+destination map, metadata, content hashes, fresh target inventory and selected runtime. It refuses
+unknown target bytes, excludes private key material, applies only while the nine relevant units
+are inactive, atomically replaces approved regular files, reloads systemd and confirms
+loaded-inactive unit state. The focused functional-test reviewer reports 9 passed with one existing
+pytest-asyncio deprecation warning; these are local payload-contract tests, not WSL installation or
+runtime proof. Security review found no remaining concrete issue. Evidence and scope:
+`docs/changes/0607-s2-runtime-config-applier.md`.
+
+**Next ordered S2-4.11b — select the staged runtime, then install and verify exact configuration.**
+The WSL target snapshot at `03:24:02Z` found 19/26 paths already equal to the candidate and seven
+known config differences. The two host-path drop-ins match byte-for-byte; all three
+absent-only candidate units already exist with exact candidate bytes. No service was started and
+the selector was still on `a600774` at that snapshot. Next, apply the existing reviewed inactive
+runtime transition, obtain a fresh post-selection inventory, and run the pinned config applier.
+The current-run E5 and one permitted owner-to-Runner journey remain open.
 
 ### S2-5 — Exact-head gate and sprint decision
 
