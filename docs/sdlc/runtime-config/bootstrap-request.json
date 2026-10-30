@@ -1,7 +1,7 @@
 {
   "attempt": 1,
-  "request_id": "212a23e66ee94a7d87355b11e07e34fe",
-  "run_id": "s2-runtime-20261030-334296bd0779488d837a27e283b50b6a",
+  "request_id": "e520e04f58ad5e6a431a3a20b0efb87c",
+  "run_id": "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910",
   "schema": "VST_S2_ASSIGNMENT_BOOTSTRAP_REQUEST_V1",
   "slot": "runtime-tests",
   "story_id": "S2-4",

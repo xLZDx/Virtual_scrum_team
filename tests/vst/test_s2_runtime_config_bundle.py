@@ -261,13 +261,23 @@ def test_fresh_runtime_identity_is_crossbound_and_single_selector_only():
     run_id = run_binding["run_id"]
     nonce = run_binding["probe_nonce"]
     request_id = bootstrap["request_id"]
-    retired_run = "s2-runtime-20261030-87d47f635f1c4231ab052a074dba4be8"
-    retired_nonce = "0d2bb2c5f977478a924f7ec6629a339d"
-    retired_request = "3e56a61c5b1e45aea089c305b25e3187"
+    consumed_identities = {
+        ("3e56a61c5b1e45aea089c305b25e3187",
+         "s2-runtime-20261030-87d47f635f1c4231ab052a074dba4be8",
+         "0d2bb2c5f977478a924f7ec6629a339d"),
+        ("c63842aefcf74f57af70a1b2f93b8271",
+         "s2-runtime-20261030-8102de64e7b4472ca2b5d2d56ed48510",
+         "5f5820a7cfc348cfa89de31af6c6d1a7"),
+        ("212a23e66ee94a7d87355b11e07e34fe",
+         "s2-runtime-20261030-334296bd0779488d837a27e283b50b6a",
+         "b57520d076e1acd355d310ed18364907"),
+    }
 
-    assert run_id and run_id != retired_run
-    assert re.fullmatch(r"[0-9a-f]{32}", nonce) and nonce != retired_nonce
-    assert re.fullmatch(r"[0-9a-f]{32}", request_id) and request_id != retired_request
+    assert run_id and all(run_id != consumed_run for _, consumed_run, _ in consumed_identities)
+    assert re.fullmatch(r"[0-9a-f]{32}", nonce)
+    assert all(nonce != consumed_nonce for _, _, consumed_nonce in consumed_identities)
+    assert re.fullmatch(r"[0-9a-f]{32}", request_id)
+    assert all(request_id != consumed_request for consumed_request, _, _ in consumed_identities)
     assert probe_request == {"run_id": run_id, "nonce": nonce}
     assert bootstrap["run_id"] == run_id
     assert supervisor["run_id"] == run_id

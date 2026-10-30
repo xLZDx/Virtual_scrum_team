@@ -151,6 +151,15 @@ caches so command evidence does not dirty the read-only snapshot.
 
 Actual commands/results and first-run failures are recorded by the designated test role in
 evidence/s2-runtime-config-functional-a600774.md. Unit parsing and diagnostic limits are in
-evidence/s2-runtime-config-unit-verification-a600774.md. A direct UID999 task-command run is
-fixture viability only; actual owner/Store/dispatcher/Runner qualification remains a separate
-run mapped to S2-4 AC-1. Restricted scenarios remain NOT_RUN.
+evidence/s2-runtime-config-unit-verification-a600774.md. At baseline HEAD
+`002e3617d51ed782fb46a63e9d7266696a6298e8`, the functional-test-reviewer ran the final focused helper/config
+suite after the bounded root-to-worker identity-settling change, shared-deadline fix and retired-tuple
+regression: 93 passed, one existing pytest-asyncio deprecation warning. Coverage includes decreasing
+timeouts for nested systemd commands, deadline exhaustion, worker-first late validation, and refusing
+the consumed tuple before marker creation. This is source/fixture evidence, not runtime proof. The
+separately authorized attempt for run
+`s2-runtime-20261030-334296bd0779488d837a27e283b50b6a` consumed its durable claim and failed before
+root preflight; no TestRun occurred. That tuple is retired. The next candidate
+`s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910` remains preparation-only and has no runtime
+authorization. Actual owner/Store/dispatcher/Runner qualification remains open for S2-4 AC-1.
+Restricted scenarios remain NOT_RUN.

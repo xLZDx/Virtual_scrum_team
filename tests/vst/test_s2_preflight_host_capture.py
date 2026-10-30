@@ -236,6 +236,263 @@ def test_process_identity_rejects_each_unpinned_uid_or_gid_position(
     assert "expected uid=[999, 999, 999, 999], gid=[989, 989, 989, 989]" in str(error.value)
 
 
+def _probe_identity(*, uid=None, gid=None, start_ticks=9,
+                    cgroup="/system.slice/vst-sandbox-probe.service"):
+    return {"pid": 123, "start_ticks": start_ticks,
+            "uid": uid if uid is not None else [999, 999, 999, 999],
+            "gid": gid if gid is not None else [989, 989, 989, 989],
+            "net_ns_inode": 33, "mount_ns_inode": 44, "cgroup": cgroup}
+
+
+def _patch_probe_identity_wait(monkeypatch, identities, *, unit_states=None,
+                               generations=None):
+    invocation = "a" * 32
+    boot = {"boot_id": "boot-a", "pid": 1, "start_ticks": 7,
+            "net_ns_inode": 3, "mount_ns_inode": 4}
+    clock = [0.0]
+    identity_iter = iter(identities)
+    unit_iter = iter(unit_states or [])
+    generation_iter = iter(generations or [])
+    unit_calls = []
+    generation_calls = []
+
+    def process(_pid, **_kwargs):
+        return next(identity_iter)
+
+    def show(unit_name, **_kwargs):
+        unit_calls.append(unit_name)
+        if unit_name != capture.PROBE_UNIT:
+            return _unit()
+        try:
+            return next(unit_iter)
+        except StopIteration:
+            return _unit(active="activating", pid="123", invocation=invocation)
+
+    def generation(**_kwargs):
+        generation_calls.append(True)
+        try:
+            return next(generation_iter)
+        except StopIteration:
+            return boot
+
+    monkeypatch.setattr(capture, "_process_identity", process)
+    monkeypatch.setattr(capture, "_systemctl_show", show)
+    monkeypatch.setattr(capture, "_systemd_ready", generation)
+    return {"invocation": invocation, "boot": boot, "clock": clock,
+            "unit_calls": unit_calls, "generation_calls": generation_calls,
+            "sleep": lambda seconds: clock.__setitem__(0, clock[0] + seconds),
+            "monotonic": lambda: clock[0]}
+
+
+def test_wait_for_probe_worker_identity_accepts_only_same_root_to_worker_transition(monkeypatch) -> None:
+    state = _patch_probe_identity_wait(monkeypatch, [
+        _probe_identity(uid=[0, 0, 0, 0], gid=[0, 0, 0, 0]),
+        _probe_identity(),
+    ])
+
+    identity = capture._wait_for_probe_worker_identity(
+        123, state["invocation"], state["boot"], run=lambda *_a, **_kw: _result(),
+        monotonic=state["monotonic"], sleep=state["sleep"])
+
+    assert identity == _probe_identity()
+    assert state["clock"][0] == pytest.approx(0.05)
+    assert state["unit_calls"] == [capture.PROBE_UNIT, capture.PROBE_UNIT]
+    assert state["generation_calls"] == [True, True]
+
+
+def test_wait_for_probe_worker_identity_fails_closed_when_root_never_settles(monkeypatch) -> None:
+    root = _probe_identity(uid=[0, 0, 0, 0], gid=[0, 0, 0, 0])
+    state = _patch_probe_identity_wait(monkeypatch, [root] * 200)
+
+    with pytest.raises(ContractError, match="did not settle to the configured worker"):
+        capture._wait_for_probe_worker_identity(
+            123, state["invocation"], state["boot"], run=lambda *_a, **_kw: _result(),
+            monotonic=state["monotonic"], sleep=state["sleep"])
+
+    assert state["clock"][0] == pytest.approx(5.0)
+    assert state["generation_calls"]
+
+
+def test_wait_for_probe_worker_identity_passes_decreasing_nested_command_timeouts(
+        monkeypatch) -> None:
+    boot = {"boot_id": "boot-a", "pid": 1, "start_ticks": 7,
+            "net_ns_inode": 3, "mount_ns_inode": 4}
+    invocation = "a" * 32
+    identities = iter([
+        _probe_identity(uid=[0, 0, 0, 0], gid=[0, 0, 0, 0]),
+        _probe_identity(),
+    ])
+    clock = [0.0]
+    command_timeouts = []
+    properties = "".join((
+        "LoadState=loaded\n", "ActiveState=activating\n", "SubState=start\n",
+        "Result=success\n", "MainPID=123\n", f"InvocationID={invocation}\n",
+        "ControlGroup=/system.slice/vst-sandbox-probe.service\n",
+        "PrivateNetwork=yes\n",
+    ))
+
+    def run(argv, *, timeout, **_kwargs):
+        command_timeouts.append(timeout)
+        clock[0] += 0.1
+        if argv[1] == "show":
+            stdout = properties
+        elif argv[1] == "is-system-running":
+            stdout = "running\n"
+        else:
+            stdout = ""
+        return _result(stdout)
+
+    monkeypatch.setattr(capture, "_process_identity", lambda _pid, **_kwargs: next(identities))
+    monkeypatch.setattr(capture, "_pid1_identity", lambda: boot)
+    monkeypatch.setattr(capture.os.path, "lexists", lambda _path: False)
+    identity = capture._wait_for_probe_worker_identity(
+        123, invocation, boot, run=run, monotonic=lambda: clock[0],
+        sleep=lambda seconds: clock.__setitem__(0, clock[0] + seconds))
+
+    assert identity == _probe_identity()
+    assert len(command_timeouts) == 6
+    assert all(timeout > 0 for timeout in command_timeouts)
+    assert all(later < earlier for earlier, later in zip(command_timeouts, command_timeouts[1:]))
+
+
+def test_wait_for_probe_worker_identity_fails_closed_when_nested_command_exhausts_deadline(
+        monkeypatch) -> None:
+    boot = {"boot_id": "boot-a", "pid": 1, "start_ticks": 7,
+            "net_ns_inode": 3, "mount_ns_inode": 4}
+    clock = [0.0]
+    command_timeouts = []
+
+    def run(_argv, *, timeout, **_kwargs):
+        command_timeouts.append(timeout)
+        clock[0] += timeout
+        return _result("LoadState=loaded\nActiveState=activating\nSubState=start\n"
+                       "Result=success\nMainPID=123\nInvocationID=" + "a" * 32 + "\n"
+                       "ControlGroup=/system.slice/vst-sandbox-probe.service\n"
+                       "PrivateNetwork=yes\n")
+
+    root = _probe_identity(uid=[0, 0, 0, 0], gid=[0, 0, 0, 0])
+    monkeypatch.setattr(capture, "_process_identity", lambda _pid, **_kwargs: root)
+    monkeypatch.setattr(capture, "_pid1_identity", lambda: boot)
+    monkeypatch.setattr(capture.os.path, "lexists", lambda _path: False)
+
+    with pytest.raises(ContractError, match="did not settle before its deadline"):
+        capture._wait_for_probe_worker_identity(
+            123, "a" * 32, boot, run=run, monotonic=lambda: clock[0], sleep=lambda _seconds: None)
+
+    assert clock[0] == pytest.approx(5.0)
+    assert command_timeouts == [5.0]
+
+
+def test_wait_for_probe_worker_identity_fails_closed_when_worker_validation_exceeds_deadline(
+        monkeypatch) -> None:
+    boot = {"boot_id": "boot-a", "pid": 1, "start_ticks": 7,
+            "net_ns_inode": 3, "mount_ns_inode": 4}
+    clock = [0.0]
+    command_timeouts = []
+    properties = "".join((
+        "LoadState=loaded\n", "ActiveState=activating\n", "SubState=start\n",
+        "Result=success\n", "MainPID=123\n", f"InvocationID={'a' * 32}\n",
+        "ControlGroup=/system.slice/vst-sandbox-probe.service\n",
+        "PrivateNetwork=yes\n",
+    ))
+
+    def run(argv, *, timeout, **_kwargs):
+        command_timeouts.append(timeout)
+        elapsed = min(1.7, timeout)
+        clock[0] += elapsed
+        if argv[1] == "show":
+            stdout = properties
+        elif argv[1] == "is-system-running":
+            stdout = "running\n"
+        else:
+            stdout = ""
+        return _result(stdout)
+
+    def pid1_identity_after_deadline():
+        clock[0] += 0.01
+        return boot
+
+    worker = _probe_identity()
+    monkeypatch.setattr(capture, "_process_identity", lambda _pid, **_kwargs: worker)
+    monkeypatch.setattr(capture, "_pid1_identity", pid1_identity_after_deadline)
+    monkeypatch.setattr(capture.os.path, "lexists", lambda _path: False)
+
+    with pytest.raises(ContractError, match="did not settle to the configured worker"):
+        capture._wait_for_probe_worker_identity(
+            123, "a" * 32, boot, run=run, monotonic=lambda: clock[0], sleep=lambda _seconds: None)
+
+    assert clock[0] == pytest.approx(5.01)
+    assert command_timeouts == pytest.approx([5.0, 3.3, 1.6])
+
+
+@pytest.mark.parametrize("uid,gid", [
+    ([1000, 1000, 1000, 1000], [989, 989, 989, 989]),
+    ([999, 999, 999, 999], [1000, 1000, 1000, 1000]),
+    ([0, 0, 999, 999], [0, 0, 989, 989]),
+])
+def test_wait_for_probe_worker_identity_rejects_any_other_credentials_immediately(
+        monkeypatch, uid, gid) -> None:
+    state = _patch_probe_identity_wait(monkeypatch, [_probe_identity(uid=uid, gid=gid)])
+
+    with pytest.raises(ContractError, match="identity differs from the configured worker"):
+        capture._wait_for_probe_worker_identity(
+            123, state["invocation"], state["boot"], run=lambda *_a, **_kw: _result(),
+            monotonic=state["monotonic"], sleep=state["sleep"])
+
+    assert state["clock"][0] == 0
+    assert state["unit_calls"] == []
+
+
+@pytest.mark.parametrize("change", ["start_ticks", "cgroup", "main_pid", "invocation", "boot"])
+def test_wait_for_probe_worker_identity_rejects_identity_change_during_transition(
+        monkeypatch, change) -> None:
+    root = _probe_identity(uid=[0, 0, 0, 0], gid=[0, 0, 0, 0])
+    worker = _probe_identity()
+    units = []
+    generations = []
+    if change == "start_ticks":
+        worker["start_ticks"] += 1
+        error = "PID changed"
+    elif change == "cgroup":
+        error = "outside its exact systemd cgroup"
+    elif change == "main_pid":
+        units = [_unit(active="activating", pid="123", invocation="a" * 32),
+                 _unit(active="activating", pid="124", invocation="a" * 32)]
+        error = "PID, invocation, or systemd generation changed"
+    elif change == "invocation":
+        units = [_unit(active="activating", pid="123", invocation="a" * 32),
+                 _unit(active="activating", pid="123", invocation="b" * 32)]
+        error = "PID, invocation, or systemd generation changed"
+    else:
+        generations = [
+            {"boot_id": "boot-a", "pid": 1, "start_ticks": 7,
+             "net_ns_inode": 3, "mount_ns_inode": 4},
+            {"boot_id": "boot-b", "pid": 1, "start_ticks": 7,
+             "net_ns_inode": 3, "mount_ns_inode": 4},
+        ]
+        error = "PID, invocation, or systemd generation changed"
+
+    identities = [root, worker]
+    if change == "cgroup":
+        identities = [root]
+    state = _patch_probe_identity_wait(monkeypatch, identities,
+                                       unit_states=units, generations=generations)
+    if change == "cgroup":
+        process = iter([root])
+
+        def outside_cgroup(_pid, **_kwargs):
+            try:
+                return next(process)
+            except StopIteration:
+                raise ContractError("probe process is outside its exact systemd cgroup")
+        monkeypatch.setattr(capture, "_process_identity", outside_cgroup)
+
+    with pytest.raises(ContractError, match=error):
+        capture._wait_for_probe_worker_identity(
+            123, state["invocation"], state["boot"], run=lambda *_a, **_kw: _result(),
+            monotonic=state["monotonic"], sleep=state["sleep"])
+
+
 def test_network_observation_accepts_only_loopback_addresses_and_routes() -> None:
     responses = [
         json.dumps([{"ifname": "lo", "flags": ["LOOPBACK", "UP"], "addr_info": [
@@ -618,7 +875,8 @@ def _patch_run_probe_prerequisites(monkeypatch, *, unit_states=None, systemd_sta
                                           "gid": [989, 989, 989, 989],
                                           "net_ns_inode": 33, "mount_ns_inode": 44,
                                           "cgroup": "/system.slice/vst-sandbox-probe.service"}] * 10)
-    monkeypatch.setattr(capture, "_process_identity", lambda _pid: next(identity_values))
+    monkeypatch.setattr(capture, "_process_identity",
+                        lambda _pid, **_kwargs: next(identity_values))
     monkeypatch.setattr(capture, "_network_observation", lambda *_a, **_kw: {
         "addresses": [{"ifname": "lo"}], "routes_v4": [], "routes_v6": []})
     monkeypatch.setattr(capture, "_mount_and_socket_observation", lambda _pid: {
@@ -702,7 +960,8 @@ def test_run_probe_rejects_systemd_generation_change_before_attestation(monkeypa
     state = _patch_run_probe_prerequisites(monkeypatch, unit_states=[
         _unit(), _unit(active="activating", pid="123", invocation=invocation),
         _unit(active="activating", pid="123", invocation=invocation),
-    ], systemd_states=[first, first, changed])
+        _unit(active="activating", pid="123", invocation=invocation),
+    ], systemd_states=[first, first, first, changed])
     with pytest.raises(ContractError, match="boot or systemd generation changed"):
         capture.run_probe(**state["args"], sleep=lambda _seconds: None)
     assert len(state["start_calls"]) == 1
@@ -719,6 +978,7 @@ def test_run_probe_rejects_worker_identity_drift_before_attestation(monkeypatch)
     changed = {**identity, "mount_ns_inode": 45}
     state = _patch_run_probe_prerequisites(monkeypatch, unit_states=[
         _unit(), _unit(active="activating", pid="123", invocation=invocation),
+        _unit(active="activating", pid="123", invocation=invocation),
     ], identities=[identity, changed])
     with pytest.raises(ContractError, match="PID, cgroup, namespace, or invocation changed"):
         capture.run_probe(**state["args"], sleep=lambda _seconds: None)
@@ -730,6 +990,7 @@ def test_run_probe_rejects_interrupted_invocation_without_capture_or_downstream_
     invocation = "c" * 32
     state = _patch_run_probe_prerequisites(monkeypatch, unit_states=[
         _unit(), _unit(active="activating", pid="123", invocation=invocation),
+        _unit(active="activating", pid="123", invocation=invocation),
         _unit(active="activating", pid="123", invocation=invocation),
         _unit(active="activating", pid="123", invocation=invocation),
         _unit(active="activating", pid="123", invocation=invocation),
@@ -748,6 +1009,7 @@ def test_run_probe_rejects_invocation_replacement_before_attestation(monkeypatch
     replacement = "b" * 32
     state = _patch_run_probe_prerequisites(monkeypatch, unit_states=[
         _unit(), _unit(active="activating", pid="123", invocation=invocation),
+        _unit(active="activating", pid="123", invocation=invocation),
         _unit(active="activating", pid="123", invocation=replacement),
     ])
     with pytest.raises(ContractError, match="PID, cgroup, namespace, or invocation changed"):
@@ -796,6 +1058,25 @@ def test_attempt_claim_retires_socket_mismatch_run_identity_before_marker_creati
             "c63842aefcf74f57af70a1b2f93b8271",
             "s2-runtime-20261030-8102de64e7b4472ca2b5d2d56ed48510",
             "5f5820a7cfc348cfa89de31af6c6d1a7", "4" * 64,
+            {"preflight_record_path": str(private_dir / "preflight.json")},
+        )
+
+    assert list(private_dir.iterdir()) == []
+
+
+def test_attempt_claim_retires_latest_consumed_identity_before_marker_creation(
+        tmp_path, monkeypatch) -> None:
+    private_dir = tmp_path / "private"
+    private_dir.mkdir(mode=0o700)
+    real_stat = os.stat
+    monkeypatch.setattr(capture.os, "stat", lambda path, **_kw: SimpleNamespace(
+        st_uid=0, st_gid=0, st_mode=0o40700) if pathlib.Path(path) == private_dir else real_stat(path))
+
+    with pytest.raises(ContractError, match="permanently retired"):
+        capture._claim_attempt(
+            "212a23e66ee94a7d87355b11e07e34fe",
+            "s2-runtime-20261030-334296bd0779488d837a27e283b50b6a",
+            "b57520d076e1acd355d310ed18364907", "4" * 64,
             {"preflight_record_path": str(private_dir / "preflight.json")},
         )
 

@@ -193,50 +193,38 @@ HEAD `19338baebc865bbc9fabec45115340a629c61807` (reply
 succeeded. Local diff verification confirmed the reviewed four-file scope. This does not claim
 live WSL/Runner evidence.
 
-**Current ordered subtask S2-4.12b — one fresh current-run E5 and owner-to-Runner qualification.**
-The non-secret bundle and installer were approved and pushed in `0c97e03`; its exact-head approval
-is recorded in request `8f4c362c-e87e-474e-b73c-3183401f2d6e` / reply
-`ac001ce4-8a51-5557-b106-76c66ff11d95`. The run binding is
-`s2-runtime-20261030-8102de64e7b4472ca2b5d2d56ed48510`, bootstrap request
-`c63842aefcf74f57af70a1b2f93b8271`, nonce `5f5820a7cfc348cfa89de31af6c6d1a7`; the manifest
-keeps `retry_cap: 0` and exactly one assignment-basis selector.
+**Current ordered subtask S2-4.12b — bounded worker identity settling and one current-run qualification.**
+The prior one-use authorization for run `s2-runtime-20261030-334296bd0779488d837a27e283b50b6a`,
+request `212a23e66ee94a7d87355b11e07e34fe`, nonce `b57520d076e1acd355d310ed18364907` was consumed.
+Its exact runtime error was UID/GID arrays `[0,0,0,0]` instead of configured `[999,999,999,999]`
+and `[989,989,989,989]`; no root preflight record, Store, bootstrap, Supervisor, Runner, network
+attestation, or TestRun was produced. The correlated evidence is
+`docs/sdlc/evidence/s2-runtime-owner-runner-qualification-20261030-334296bd.json` (SHA-256
+`94229746889b17186e0a421babeef87afd69e7c99136d57204c0590508292732`). A later journal/unit
+observation showed the configured worker identity 999:989. A systemd credential-transition race is
+plausible, not proven; do not report it as the established cause. The consumed identity is now
+permanently retired and cannot be retried.
 
-The authorized 26-file configuration installation succeeded once; all destinations matched the
-bundle and daemon-reload completed without starting or enabling services. GPT-PM authorized one
-root-captured runtime attempt (request `bd3463de-0137-4702-89a8-d4d571f5f25e` / reply
-`c246964e-2445-5bfd-a61b-82171d28c624`) and a temporary read-only host DrvFS mount solely for exact
-source verification (request `0b6c9eb0-3fa6-4a4a-9128-97a3921f7543`). The first helper invocation
-refused before claim because systemd socket units omit `MainPID`; fix `8917e54` was reviewed by
-security, code reviewer, and GPT-PM (request `29178c2e-e189-4b0e-8c13-ec990747fa8e`) and pushed.
-The corrected same attempt passed fresh preconditions, created its durable one-use claim, and then
-failed with `probe process identity differs from the configured worker`. The claim is consumed; no
-probe attestation, root preflight record, Store, bootstrap, Supervisor, Runner, or TestRun evidence
-was produced. The four-value UID/GID arrays at failure were not retained, so the field-level cause
-is `NOT_VERIFIED`; journald only records effective UID/GID 999:989. No retry or replacement identity
-is authorized by the consumed attempt.
+The current source candidate waits at most five seconds for only the exact same-process root-to-worker
+credential transition while pinning PID start time, cgroup, invocation, systemd generation and boot
+identity; all other mismatches and timeout remain fail-closed. Review found that nested subprocesses
+could exceed the advertised wall-clock bound; the current code now passes one remaining monotonic
+deadline to every nested systemd command and checks expiry even when the first sample is already the
+worker identity. The functional-test-reviewer reran the focused suite on the final code: 93 passed,
+one existing pytest-asyncio deprecation warning. Coverage includes declining command timeouts,
+deadline exhaustion, worker-first late validation, and refusal of the consumed tuple before marker
+creation. Security and final code reviews passed; exact-head GPT-PM source approval remains pending.
+Detailed change record:
+`docs/changes/0615-s2-4.12b-worker-identity-settle.md`.
 
-The code changes are delivered in pushed commits `8917e54` (socket-unit property handling) and
-`ac92d0e` (non-secret UID/GID mismatch diagnostics). The consumed run tuple is now permanently
-retired in the current helper candidate. That candidate also prepares one distinct, non-secret
-runtime binding: run `s2-runtime-20261030-334296bd0779488d837a27e283b50b6a`, bootstrap request
-`212a23e66ee94a7d87355b11e07e34fe`, nonce `b57520d076e1acd355d310ed18364907`; its bundle digest
-is `03d9c692bf058ca61570d2a954a0faf6c088100e4036d38d88afb26b08d25e0a`. It keeps `retry_cap: 0`
-and the same sole assignment-basis selector. The previous 26-file configuration remains installed
-for the consumed run; the new candidate has not been applied.
-
-The functional-test-reviewer ran the three focused helper/config suites: 79 passed, with one existing
-pytest-asyncio deprecation warning. Independent code and security reviews found no actionable
-finding; all 34 bundle hashes and both installer pins match. GPT-PM approved the exact candidate
-HEAD `069be3b5193595c06a39ac72237452625b7514f4` for normal push (request
-`f4b7008d-2a49-4c1e-88f1-9a37876d4c10`, correlated reply
-`82ba7c80-21c4-50b5-be25-6a3afb6b85d8`); normal push to `origin/s2-canonical-continuation`
-succeeded. That approval was source-only. GPT-PM must separately authorize the new tuple before a
-fresh inventory, any configuration application, or probe. Do not reuse the consumed tuple,
-reinstall the candidate early, or start another selector. Details:
-`docs/changes/0612-s2-4.12b-socket-unit-mainpid.md`,
-`docs/changes/0613-s2-4.12b-process-identity-diagnostics.md`, and
-`docs/changes/0614-s2-4.12b-retired-run-and-fresh-binding.md`. S2-4 remains open, S2-5 is queued,
-and S3 remains unstarted.
+The unapproved, preparation-only next candidate is run
+`s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910`, request
+`e520e04f58ad5e6a431a3a20b0efb87c`, nonce `0aac24fec9a2a5c53c5e9da21cbb4a42`, bundle SHA-256
+`388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45`. It has not been applied or
+authorized for runtime. After source review/push, Codex requests one separate correlated runtime
+authorization for this exact tuple and hashes; only the permitted single selector may follow a
+successful root capture. The prior installation remains bound to the consumed run. S2-4 remains
+IN PROGRESS, S2-5 is queued, and S3 is unstarted.
 
 ### S2-5 — Exact-head gate and sprint decision
 

@@ -57,6 +57,9 @@ RETIRED_RUN_IDENTITIES = {
     ("c63842aefcf74f57af70a1b2f93b8271",
      "s2-runtime-20261030-8102de64e7b4472ca2b5d2d56ed48510",
      "5f5820a7cfc348cfa89de31af6c6d1a7"),
+    ("212a23e66ee94a7d87355b11e07e34fe",
+     "s2-runtime-20261030-334296bd0779488d837a27e283b50b6a",
+     "b57520d076e1acd355d310ed18364907"),
 }
 INVOCATION_ID = re.compile(r"^[0-9a-f]{32}$")
 RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
@@ -83,12 +86,15 @@ def _run(argv: list[str], *, timeout: float = 5.0,
     return result
 
 
-def _systemctl_show(unit: str, *, run: Callable[..., Any] = subprocess.run) -> dict[str, str]:
+def _systemctl_show(unit: str, *, run: Callable[..., Any] = subprocess.run,
+                    deadline: float | None = None,
+                    monotonic: Callable[[], float] = time.monotonic) -> dict[str, str]:
     if not re.fullmatch(r"[a-z0-9][a-z0-9_.@-]{0,127}", unit):
         raise ContractError("invalid systemd unit name")
+    timeout = 5.0 if deadline is None else _remaining_timeout(deadline, monotonic)
     raw = _run([SYSTEMCTL, "show", unit,
                 "--property=LoadState,ActiveState,SubState,Result,MainPID,InvocationID,ControlGroup,PrivateNetwork"],
-               run=run).stdout
+               timeout=timeout, run=run).stdout
     values: dict[str, str] = {}
     for line in raw.splitlines():
         key, separator, value = line.partition("=")
@@ -107,11 +113,16 @@ def _systemctl_show(unit: str, *, run: Callable[..., Any] = subprocess.run) -> d
 
 
 def _systemd_ready(*, run: Callable[..., Any] = subprocess.run,
-                   allow_probe_start_job: bool = False) -> dict[str, Any]:
-    state = _run([SYSTEMCTL, "is-system-running"], run=run).stdout.strip()
+                   allow_probe_start_job: bool = False,
+                   deadline: float | None = None,
+                   monotonic: Callable[[], float] = time.monotonic) -> dict[str, Any]:
+    state_timeout = 5.0 if deadline is None else _remaining_timeout(deadline, monotonic)
+    state = _run([SYSTEMCTL, "is-system-running"], timeout=state_timeout, run=run).stdout.strip()
     if state != "running":
         raise ContractError("systemd is not in the running state")
-    jobs = _run([SYSTEMCTL, "list-jobs", "--no-legend", "--plain"], run=run).stdout.strip()
+    jobs_timeout = 5.0 if deadline is None else _remaining_timeout(deadline, monotonic)
+    jobs = _run([SYSTEMCTL, "list-jobs", "--no-legend", "--plain"], timeout=jobs_timeout,
+                run=run).stdout.strip()
     if jobs not in ("", "No jobs running."):
         rows = [line.split() for line in jobs.splitlines()]
         valid_probe_job = (allow_probe_start_job and len(rows) == 1 and len(rows[0]) == 4
@@ -223,7 +234,7 @@ def _host_environment_observation(*, run: Callable[..., Any] = subprocess.run) -
             "systemd_version": systemd_match.group(1)}
 
 
-def _process_identity(pid: int) -> dict[str, Any]:
+def _process_identity(pid: int, *, require_worker: bool = True) -> dict[str, Any]:
     if type(pid) is not int or pid <= 1:
         raise ContractError("probe MainPID is missing or invalid")
     root = Path(f"/proc/{pid}")
@@ -241,18 +252,79 @@ def _process_identity(pid: int) -> dict[str, Any]:
         mount_ns = os.stat(root / "ns/mnt").st_ino
     except (OSError, ValueError, StopIteration, IndexError) as exc:
         raise ContractError("probe process identity cannot be established") from exc
-    if uid_values != [999, 999, 999, 999] or gid_values != [989, 989, 989, 989]:
+    if not any(line.rsplit(":", 1)[-1] == "/system.slice/vst-sandbox-probe.service"
+               for line in cgroup.splitlines()):
+        raise ContractError("probe process is outside its exact systemd cgroup")
+    if require_worker and (uid_values != [999, 999, 999, 999]
+                           or gid_values != [989, 989, 989, 989]):
         raise ContractError(
             "probe process identity differs from the configured worker "
             f"(uid={uid_values!r}, gid={gid_values!r}; "
             "expected uid=[999, 999, 999, 999], gid=[989, 989, 989, 989])")
-    if not any(line.rsplit(":", 1)[-1] == "/system.slice/vst-sandbox-probe.service"
-               for line in cgroup.splitlines()):
-        raise ContractError("probe process is outside its exact systemd cgroup")
     return {"pid": pid, "start_ticks": start_ticks, "uid": uid_values,
             "gid": gid_values,
             "net_ns_inode": net_ns, "mount_ns_inode": mount_ns,
             "cgroup": "/system.slice/vst-sandbox-probe.service"}
+
+
+def _remaining_timeout(deadline: float, monotonic: Callable[[], float]) -> float:
+    remaining = deadline - monotonic()
+    if remaining <= 0:
+        raise ContractError("probe process identity did not settle before its deadline")
+    return remaining
+
+
+def _wait_for_probe_worker_identity(
+        pid: int, invocation: str, boot_identity: dict[str, Any], *,
+        run: Callable[..., Any], monotonic: Callable[[], float],
+        sleep: Callable[[float], None]) -> dict[str, Any]:
+    """Wait only for systemd's exact root-to-worker credential setup transition."""
+    deadline = monotonic() + 5.0
+    start_ticks: int | None = None
+    while True:
+        identity = _process_identity(pid, require_worker=False)
+        if start_ticks is None:
+            start_ticks = identity["start_ticks"]
+        elif identity["start_ticks"] != start_ticks:
+            raise ContractError("probe PID changed during worker identity setup")
+
+        if identity["uid"] == [999, 999, 999, 999] and identity["gid"] == [989, 989, 989, 989]:
+            props = _systemctl_show(PROBE_UNIT, run=run, deadline=deadline,
+                                    monotonic=monotonic)
+            if (props["ActiveState"] != "activating" or props["MainPID"] != str(pid)
+                    or props["InvocationID"] != invocation
+                    or _systemd_ready(run=run, allow_probe_start_job=True,
+                                       deadline=deadline, monotonic=monotonic) != boot_identity):
+                raise ContractError("probe PID, invocation, or systemd generation changed during identity setup")
+            if monotonic() >= deadline:
+                raise ContractError(
+                    "probe process identity did not settle to the configured worker "
+                    f"(uid={identity['uid']!r}, gid={identity['gid']!r}; "
+                    "expected uid=[999, 999, 999, 999], gid=[989, 989, 989, 989])")
+            return identity
+
+        # A freshly forked systemd service may still be dropping root credentials. No
+        # other identity mismatch is transient or accepted; the original identity
+        # check remains fail-closed if this exact tuple does not settle before deadline.
+        if identity["uid"] != [0, 0, 0, 0] or identity["gid"] != [0, 0, 0, 0]:
+            raise ContractError(
+                "probe process identity differs from the configured worker "
+                f"(uid={identity['uid']!r}, gid={identity['gid']!r}; "
+                "expected uid=[999, 999, 999, 999], gid=[989, 989, 989, 989])")
+        props = _systemctl_show(PROBE_UNIT, run=run, deadline=deadline,
+                                monotonic=monotonic)
+        if (props["ActiveState"] != "activating" or props["MainPID"] != str(pid)
+                or props["InvocationID"] != invocation
+                or _systemd_ready(run=run, allow_probe_start_job=True,
+                                   deadline=deadline, monotonic=monotonic) != boot_identity):
+            raise ContractError("probe PID, invocation, or systemd generation changed during identity setup")
+        remaining = deadline - monotonic()
+        if remaining <= 0:
+            raise ContractError(
+                "probe process identity did not settle to the configured worker "
+                f"(uid={identity['uid']!r}, gid={identity['gid']!r}; "
+                "expected uid=[999, 999, 999, 999], gid=[989, 989, 989, 989])")
+        sleep(min(0.05, remaining))
 
 
 def _network_observation(pid: int, *, run: Callable[..., Any] = subprocess.run) -> dict[str, Any]:
@@ -779,7 +851,8 @@ def run_probe(run_id: str, nonce: str, *, request_id: str, expected_head: str,
         if (props["PrivateNetwork"] != "yes"
                 or props["ControlGroup"] != "/system.slice/vst-sandbox-probe.service"):
             raise ContractError("probe systemd isolation properties differ from the pinned unit")
-        identity_before = _process_identity(pid)
+        identity_before = _wait_for_probe_worker_identity(
+            pid, invocation, boot_before, run=run, monotonic=monotonic, sleep=sleep)
         if (identity_before["net_ns_inode"] == boot_before["net_ns_inode"]
                 or identity_before["mount_ns_inode"] == boot_before["mount_ns_inode"]):
             raise ContractError("probe is not isolated in distinct network and mount namespaces")
