@@ -91,6 +91,7 @@ class Supervisor:
         self._seen_run_ids = {run_id} if isinstance(run_id, str) else set()
         self._seen_probe_nonces = {probe_nonce} if isinstance(probe_nonce, str) else set()
         self._probe_consumed = False
+        self._worker_start_consumed = False
         if root_dispatch_issuer is not None and root_dispatch_issuer.get("enabled") is True:
             if (not callable(root_dispatch_issuer_provider)
                     or not callable(dispatch_instruction_trust_provider)):
@@ -548,26 +549,12 @@ class Supervisor:
         if self.breaker_state != "CLOSED":
             raise StoreError("provider breaker is open; worker start refused", kind="provider")
         if self.store.sandbox_mode:
-            from .preflight import SPEC_PATH, validate_fresh_probe, verify_network_policy_attestation
-
-            if self._probe_consumed:
-                raise StoreError("preflight probe has already authorized a worker start", kind="probe")
-            spec_sha256 = hashlib.sha256(SPEC_PATH.read_bytes()).hexdigest()
-            if not validate_fresh_probe(
-                probe, run_id=self.run_id, spec_sha256=spec_sha256, nonce=self.probe_nonce,
-            ):
-                raise StoreError("fresh passing root-captured preflight is required for this run", kind="probe")
-            attestation = probe["inventory"].get("network_policy_attestation")
-            if not verify_network_policy_attestation(
-                attestation, run_id=self.run_id, spec_sha256=spec_sha256,
-                nonce=self.probe_nonce, key=bytes(self.operator_key),
-            ):
-                raise StoreError("operator-root-signed network policy attestation is required", kind="probe")
-            probe_digest = hashlib.sha256(canonical_bytes(probe)).hexdigest()
-            self.store.consume_preflight(self.run_id, self.probe_nonce, spec_sha256, probe_digest)
+            if not self._probe_consumed:
+                raise StoreError("sandbox worker start requires the Supervisor-owned runtime observation", kind="probe")
+            if self._worker_start_consumed:
+                raise StoreError("sandbox run has already consumed its one worker start", kind="probe")
+            self._worker_start_consumed = True
         next_state, _ = transition(self.lifecycle_state, "START")
-        if self.store.sandbox_mode:
-            self._probe_consumed = True
         result = self._perform("start", start, action_id, group_id=action_id)
         self.lifecycle_state = next_state
         return result
@@ -587,6 +574,7 @@ class Supervisor:
         self._seen_run_ids.add(run_id)
         self._seen_probe_nonces.add(nonce)
         self._probe_consumed = False
+        self._worker_start_consumed = False
 
     def issue_execution_grant(
         self, *, task_id: str, slot: str, attempt: int, epoch: int,

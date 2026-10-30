@@ -5,11 +5,13 @@ from __future__ import annotations
 import argparse
 import base64
 import hashlib
+import io
 import json
 import os
 import re
 import subprocess
 import sys
+import tarfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -19,9 +21,12 @@ BUNDLE = REPO / "docs/sdlc/runtime-config"
 INVENTORY_SCHEMA = "VST_S2_RUNTIME_CONFIG_TARGET_INVENTORY_V1"
 CONFIG_ROOT = "/etc/vst-runner"
 SYSTEMD_ROOT = "/etc/systemd/system"
+TASK_REPOSITORY_ROOT = "/var/lib/vst-runner/repository"
+TASK_REPOSITORY_ARCHIVE_FORMAT = "canonical-git-tree-tar-v1"
+MAX_APPLY_PAYLOAD_BYTES = 16 * 1024 * 1024
 RUNTIME_SOURCE_HEAD = "80c2b81deac364ed6466600fd46af47aafe805e2"
-BUNDLE_MANIFEST_SHA256 = "05530c73ea583f0f7f60963ba9e196082dfb7abf92f86f0a0e2a0ae9ad10f91f"
-INSTALLATION_LAYOUT_SHA256 = "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19"
+BUNDLE_MANIFEST_SHA256 = "2d0c7bcfdd92b3cffa3c9e1344d87f5d34cc690d65006298087d897cf5635d8c"
+INSTALLATION_LAYOUT_SHA256 = "f403052cb26e6d635d7566fe25337e4c3fa18bf83c778dc600b807689b405d8f"
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 _HEX40 = re.compile(r"^[0-9a-f]{40}$")
 
@@ -47,6 +52,113 @@ def _git_blob(commit: str, relative_path: str) -> bytes:
     return result.stdout
 
 
+def _build_task_source_archive(commit: str) -> bytes:
+    if not _HEX40.fullmatch(commit):
+        raise ValueError("task source commit must be a full lowercase Git object id")
+    tree = subprocess.run(
+        ["git", "-C", str(REPO), "--no-replace-objects", "ls-tree", "-rz",
+         "--full-tree", "-r", commit],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+    )
+    if tree.returncode:
+        raise ValueError("cannot enumerate the pinned task-source Git tree")
+    records: list[tuple[str, str, bytes]] = []
+    directories = {"task-source"}
+    seen: set[str] = set()
+    for raw_record in tree.stdout.split(b"\0"):
+        if not raw_record:
+            continue
+        metadata, separator, raw_path = raw_record.partition(b"\t")
+        fields = metadata.split(b" ")
+        if not separator or len(fields) != 3 or fields[1] != b"blob":
+            raise ValueError("task source contains an unsupported Git tree entry")
+        mode, object_id = fields[0], fields[2]
+        if mode not in (b"100644", b"100755") or not re.fullmatch(rb"[0-9a-f]{40}", object_id):
+            raise ValueError("task source contains a symlink, submodule, or unsupported file mode")
+        try:
+            relative = raw_path.decode("utf-8", errors="strict")
+        except UnicodeDecodeError as exc:
+            raise ValueError("task source path is not portable UTF-8") from exc
+        parts = relative.split("/")
+        if (not relative or relative.startswith("/") or "\\" in relative
+                or any(part in ("", ".", "..") for part in parts)):
+            raise ValueError("task source contains a path outside the portable repository root")
+        if relative in seen:
+            raise ValueError("task source contains a duplicate path")
+        seen.add(relative)
+        for count in range(1, len(parts)):
+            directories.add("task-source/" + "/".join(parts[:count]))
+        records.append((relative, mode.decode("ascii"), object_id))
+    if not records or len(records) + len(directories) > 4096:
+        raise ValueError("task source has an empty or oversized Git tree")
+
+    request = b"".join(object_id + b"\n" for _relative, _mode, object_id in records)
+    blobs = subprocess.run(
+        ["git", "-C", str(REPO), "--no-replace-objects", "cat-file", "--batch"],
+        input=request, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+    )
+    if blobs.returncode:
+        raise ValueError("cannot read the exact pinned task-source blobs")
+    content_by_path: dict[str, tuple[int, bytes]] = {}
+    cursor = 0
+    total = 0
+    for relative, mode, object_id in records:
+        header_end = blobs.stdout.find(b"\n", cursor)
+        if header_end < 0:
+            raise ValueError("Git returned a truncated task-source blob header")
+        header = blobs.stdout[cursor:header_end].split(b" ")
+        if len(header) != 3 or header[0] != object_id or header[1] != b"blob":
+            raise ValueError("Git returned a task-source blob with the wrong identity")
+        try:
+            size = int(header[2])
+        except ValueError as exc:
+            raise ValueError("Git returned a task-source blob with an invalid size") from exc
+        if size < 0 or size > 8 * 1024 * 1024:
+            raise ValueError("task-source file exceeds the fixed per-file limit")
+        start = header_end + 1
+        end = start + size
+        if end >= len(blobs.stdout) or blobs.stdout[end:end + 1] != b"\n":
+            raise ValueError("Git returned a truncated task-source blob")
+        data = blobs.stdout[start:end]
+        total += size
+        if total > 32 * 1024 * 1024:
+            raise ValueError("task-source Git tree exceeds the fixed expanded-size limit")
+        content_by_path[relative] = (0o755 if mode == "100755" else 0o644, data)
+        cursor = end + 1
+    if cursor != len(blobs.stdout):
+        raise ValueError("Git returned unexpected trailing task-source bytes")
+
+    output = io.BytesIO()
+    try:
+        with tarfile.open(fileobj=output, mode="w", format=tarfile.USTAR_FORMAT) as archive:
+            directory_order = sorted(directories, key=lambda value: (value.count("/"), value))
+            for name in directory_order:
+                info = tarfile.TarInfo(name)
+                info.type = tarfile.DIRTYPE
+                info.mode = 0o755
+                info.uid = info.gid = 0
+                info.uname = info.gname = ""
+                info.mtime = 0
+                info.size = 0
+                archive.addfile(info)
+            for relative, _mode, _object_id in records:
+                file_mode, data = content_by_path[relative]
+                info = tarfile.TarInfo("task-source/" + relative)
+                info.type = tarfile.REGTYPE
+                info.mode = file_mode
+                info.uid = info.gid = 0
+                info.uname = info.gname = ""
+                info.mtime = 0
+                info.size = len(data)
+                archive.addfile(info, io.BytesIO(data))
+    except (OSError, tarfile.TarError) as exc:
+        raise ValueError("task-source paths cannot be represented in the fixed USTAR format") from exc
+    archive_bytes = output.getvalue()
+    if len(archive_bytes) > MAX_APPLY_PAYLOAD_BYTES:
+        raise ValueError("canonical task-source archive exceeds the fixed transfer limit")
+    return archive_bytes
+
+
 def _current_inventory_validation_identity() -> tuple[str, str]:
     head = subprocess.run(
         ["git", "-C", str(REPO), "rev-parse", "HEAD"],
@@ -55,12 +167,12 @@ def _current_inventory_validation_identity() -> tuple[str, str]:
     repo_head = head.stdout.strip()
     if head.returncode or not _HEX40.fullmatch(repo_head):
         raise ValueError("cannot establish the exact committed inventory-validation HEAD")
-    helper_path = "tools/vst/preflight_host_capture.py"
-    committed_helper = _git_blob(repo_head, helper_path)
-    working_helper = (REPO / helper_path).read_bytes()
-    if committed_helper != working_helper:
-        raise ValueError("runtime helper differs from the committed inventory-validation HEAD")
-    return repo_head, _sha(committed_helper)
+    capture_path = "tools/vst/preflight_capture.py"
+    committed_capture = _git_blob(repo_head, capture_path)
+    working_capture = (REPO / capture_path).read_bytes()
+    if committed_capture != working_capture:
+        raise ValueError("runtime capture implementation differs from the committed inventory-validation HEAD")
+    return repo_head, _sha(committed_capture)
 
 
 def _load_committed_inventory_validator(repo_head: str):
@@ -96,7 +208,7 @@ def _inventory_fingerprint(value: dict[str, Any]) -> dict[str, Any]:
 def build_payload(
         inventory_path: Path, expected_inventory_sha256: str, source_commit: str, *,
         expected_repo_head: str | None = None,
-        expected_helper_sha256: str | None = None) -> bytes:
+        expected_capture_sha256: str | None = None) -> bytes:
     if not _HEX64.fullmatch(expected_inventory_sha256):
         raise ValueError("expected inventory digest must be lowercase SHA-256")
     if not _HEX40.fullmatch(source_commit):
@@ -109,14 +221,14 @@ def build_payload(
     if _sha(inventory_bytes) != expected_inventory_sha256:
         raise ValueError("target inventory differs from its exact SHA-256 pin")
     inventory = json.loads(inventory_bytes)
-    if (expected_repo_head is None) != (expected_helper_sha256 is None):
-        raise ValueError("inventory validator HEAD and helper digest must be supplied together")
-    if expected_repo_head is not None and expected_helper_sha256 is not None:
+    if (expected_repo_head is None) != (expected_capture_sha256 is None):
+        raise ValueError("inventory validator HEAD and runtime capture digest must be supplied together")
+    if expected_repo_head is not None and expected_capture_sha256 is not None:
         validate_inventory = _load_committed_inventory_validator(expected_repo_head)
         validate_inventory(
             inventory,
             expected_repo_head=expected_repo_head,
-            expected_helper_sha256=expected_helper_sha256,
+            expected_capture_sha256=expected_capture_sha256,
         )
     if (not isinstance(inventory, dict)
             or inventory.get("schema") != INVENTORY_SCHEMA
@@ -141,11 +253,29 @@ def build_payload(
         raise ValueError("configuration bundle is not a pinned S2 preparation candidate")
 
     records = {item["path"]: item for item in bundle["files"]}
+    deployment_source_bytes = _git_blob(
+        source_commit, "docs/sdlc/runtime-config/deployment-source-manifest.json")
+    deployment_source_record = records.get("deployment-source-manifest.json")
+    if (not isinstance(deployment_source_record, dict)
+            or deployment_source_record.get("size") != len(deployment_source_bytes)
+            or deployment_source_record.get("sha256") != _sha(deployment_source_bytes)):
+        raise ValueError("deployment source binding differs from the pinned bundle")
+    deployment_source = json.loads(deployment_source_bytes)
+    task_source_head = deployment_source.get("task_source_head")
+    archive = _build_task_source_archive(task_source_head)
+    archive_sha256 = deployment_source.get("task_source_archive_sha256")
+    archive_bytes = deployment_source.get("task_source_archive_bytes")
+    if (deployment_source.get("task_source_archive_format") != TASK_REPOSITORY_ARCHIVE_FORMAT
+            or task_source_head != source_head
+            or type(archive_bytes) is not int or archive_bytes != len(archive)
+            or not _HEX64.fullmatch(str(archive_sha256 or ""))
+            or _sha(archive) != archive_sha256):
+        raise ValueError("task-source archive differs from the exact deployment source binding")
     entries = list(bundle["configuration_installation"]) + list(layout["unit_overrides"])
     entries += [item for item in bundle["units"]
                 if item["publication"] == "new absent-only configuration unit; no enable/start during installation"]
-    if len(entries) != 26 or len({item["destination"] for item in entries}) != len(entries):
-        raise ValueError("configuration bundle does not contain the exact 26 unique destinations")
+    if len(entries) != 25 or len({item["destination"] for item in entries}) != len(entries):
+        raise ValueError("configuration bundle does not contain the exact 25 unique destinations")
 
     files: list[dict[str, Any]] = []
     inventory_map = inventory["configuration_files"]
@@ -192,21 +322,35 @@ def build_payload(
         "installation_layout_sha256": INSTALLATION_LAYOUT_SHA256,
         "bundle_manifest_b64": base64.b64encode(bundle_bytes).decode("ascii"),
         "installation_layout_b64": base64.b64encode(layout_bytes).decode("ascii"),
+        "deployment_source_manifest_sha256": _sha(deployment_source_bytes),
+        "deployment_source_manifest_b64": base64.b64encode(deployment_source_bytes).decode("ascii"),
+        "task_source_snapshot": {
+            "head": task_source_head,
+            "format": TASK_REPOSITORY_ARCHIVE_FORMAT,
+            "size": len(archive),
+            "sha256": archive_sha256,
+            "archive_b64": base64.b64encode(archive).decode("ascii"),
+        },
         "files": files,
     }
-    return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("ascii")
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("ascii")
+    if len(encoded) > MAX_APPLY_PAYLOAD_BYTES:
+        raise ValueError("configuration and task-source snapshot exceed the fixed transfer limit")
+    return encoded
 
 
-_REMOTE = r'''import base64, fcntl, hashlib, json, os, platform, re, stat, subprocess, sys, tempfile
+_REMOTE = r'''import base64, fcntl, hashlib, io, json, os, platform, re, shutil, stat, subprocess, sys, tarfile, tempfile
 from datetime import datetime, timezone
 
-BUNDLE_SHA256 = "05530c73ea583f0f7f60963ba9e196082dfb7abf92f86f0a0e2a0ae9ad10f91f"
-LAYOUT_SHA256 = "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19"
+BUNDLE_SHA256 = "2d0c7bcfdd92b3cffa3c9e1344d87f5d34cc690d65006298087d897cf5635d8c"
+LAYOUT_SHA256 = "f403052cb26e6d635d7566fe25337e4c3fa18bf83c778dc600b807689b405d8f"
 SOURCE_HEAD = "80c2b81deac364ed6466600fd46af47aafe805e2"
+TASK_REPOSITORY_ROOT = "/var/lib/vst-runner/repository"
+TASK_REPOSITORY_ARCHIVE_FORMAT = "canonical-git-tree-tar-v1"
 
 expected_sha = sys.argv[1]
-raw = sys.stdin.buffer.read(2 * 1024 * 1024 + 1)
-if len(raw) > 2 * 1024 * 1024 or hashlib.sha256(raw).hexdigest() != expected_sha:
+raw = sys.stdin.buffer.read(16 * 1024 * 1024 + 1)
+if len(raw) > 16 * 1024 * 1024 or hashlib.sha256(raw).hexdigest() != expected_sha:
     raise SystemExit("configuration transfer digest/size invalid")
 try:
     p = json.loads(raw)
@@ -214,7 +358,7 @@ except (UnicodeDecodeError, json.JSONDecodeError) as exc:
     raise SystemExit("configuration transfer is invalid JSON") from exc
 if os.geteuid() != 0 or platform.system() != "Linux":
     raise SystemExit("configuration apply requires root on Linux")
-if (p.get("schema") != "VST_S2_RUNTIME_CONFIG_APPLY_V1" or len(p.get("files", [])) != 26
+if (p.get("schema") != "VST_S2_RUNTIME_CONFIG_APPLY_V1" or len(p.get("files", [])) != 25
         or p.get("source_head") != SOURCE_HEAD):
     raise SystemExit("configuration transfer schema/count invalid")
 bundle_raw = base64.b64decode(p.get("bundle_manifest_b64", ""), validate=True)
@@ -228,6 +372,231 @@ bundle, layout = json.loads(bundle_raw), json.loads(layout_raw)
 if bundle.get("runtime_source_head") != SOURCE_HEAD or bundle.get("state") != "PREPARED_NOT_INSTALLED":
     raise SystemExit("pinned bundle source/state is invalid")
 manifest_files = {item["path"]: item for item in bundle["files"]}
+deployment_source_raw = base64.b64decode(p.get("deployment_source_manifest_b64", ""), validate=True)
+deployment_source_digest = p.get("deployment_source_manifest_sha256")
+deployment_source_record = manifest_files.get("deployment-source-manifest.json")
+if (not isinstance(deployment_source_record, dict)
+        or len(deployment_source_raw) != deployment_source_record.get("size")
+        or hashlib.sha256(deployment_source_raw).hexdigest() != deployment_source_record.get("sha256")
+        or hashlib.sha256(deployment_source_raw).hexdigest() != deployment_source_digest):
+    raise SystemExit("deployment source binding differs from the pinned bundle")
+deployment_source = json.loads(deployment_source_raw)
+snapshot = p.get("task_source_snapshot")
+if (not isinstance(snapshot, dict)
+        or deployment_source.get("task_source_head") != SOURCE_HEAD
+        or deployment_source.get("task_repository_destination") != TASK_REPOSITORY_ROOT
+        or deployment_source.get("task_source_archive_format") != TASK_REPOSITORY_ARCHIVE_FORMAT
+        or snapshot.get("head") != SOURCE_HEAD
+        or snapshot.get("format") != TASK_REPOSITORY_ARCHIVE_FORMAT):
+    raise SystemExit("task-source snapshot identity differs from its exact source binding")
+snapshot_raw = base64.b64decode(snapshot.get("archive_b64", ""), validate=True)
+if (type(snapshot.get("size")) is not int
+        or snapshot.get("size") != len(snapshot_raw)
+        or snapshot.get("size") != deployment_source.get("task_source_archive_bytes")
+        or snapshot.get("sha256") != deployment_source.get("task_source_archive_sha256")
+        or hashlib.sha256(snapshot_raw).hexdigest() != snapshot.get("sha256")):
+    raise SystemExit("task-source snapshot bytes differ from the exact source binding")
+
+def read_task_snapshot(archive_raw):
+    try:
+        archive = tarfile.open(fileobj=io.BytesIO(archive_raw), mode="r:")
+    except (tarfile.TarError, OSError) as exc:
+        raise SystemExit("task-source snapshot is not a valid tar archive") from exc
+    entries = {}
+    total = 0
+    try:
+        members = archive.getmembers()
+        if not members or len(members) > 4096:
+            raise SystemExit("task-source snapshot member count is invalid")
+        for member in members:
+            name = member.name
+            if "\x00" in name or "\\" in name or name.startswith("/"):
+                raise SystemExit("task-source snapshot contains an unsafe path")
+            parts = name.rstrip("/").split("/")
+            if not parts or parts[0] != "task-source" or any(
+                    part in ("", ".", "..") for part in parts):
+                raise SystemExit("task-source snapshot path escapes the pinned root")
+            relative = "/".join(parts[1:])
+            if relative in entries:
+                raise SystemExit("task-source snapshot contains a duplicate path")
+            if member.isdir():
+                if member.mode & ~0o777:
+                    raise SystemExit("task-source snapshot directory mode is unsafe")
+                entries[relative] = {"kind": "directory", "mode": 0o555}
+            elif member.isfile():
+                if (member.mode & ~0o777
+                        or type(member.size) is not int or member.size < 0
+                        or member.size > 8 * 1024 * 1024):
+                    raise SystemExit("task-source snapshot file metadata is unsafe")
+                total += member.size
+                if total > 32 * 1024 * 1024:
+                    raise SystemExit("task-source snapshot expands beyond its size limit")
+                stream = archive.extractfile(member)
+                if stream is None:
+                    raise SystemExit("task-source snapshot file content is unavailable")
+                data = stream.read(member.size + 1)
+                if len(data) != member.size:
+                    raise SystemExit("task-source snapshot file size differs from its tar header")
+                entries[relative] = {
+                    "kind": "file", "mode": 0o555 if member.mode & 0o111 else 0o444,
+                    "executable": bool(member.mode & 0o111),
+                    "size": len(data), "sha256": hashlib.sha256(data).hexdigest(),
+                    "data": data,
+                }
+            else:
+                raise SystemExit("task-source snapshot contains a link or special file")
+    finally:
+        archive.close()
+    if entries.get("") != {"kind": "directory", "mode": 0o555}:
+        raise SystemExit("task-source snapshot root directory is missing")
+    for relative, item in entries.items():
+        if not relative:
+            continue
+        parent = relative.rpartition("/")[0]
+        if parent not in entries or entries[parent].get("kind") != "directory":
+            raise SystemExit("task-source snapshot contains a missing directory parent")
+    return entries
+
+snapshot_entries = read_task_snapshot(snapshot_raw)
+
+def snapshot_matches(root, expected):
+    try:
+        root_info = os.lstat(root)
+    except FileNotFoundError:
+        return False
+    if (not stat.S_ISDIR(root_info.st_mode) or stat.S_ISLNK(root_info.st_mode)
+            or root_info.st_uid != 0 or root_info.st_gid != 0
+            or stat.S_IMODE(root_info.st_mode) != 0o555):
+        return False
+    actual = {""}
+    for current, directories, files_in_dir in os.walk(root, topdown=True, followlinks=False):
+        relative_root = os.path.relpath(current, root)
+        if relative_root == ".": relative_root = ""
+        for name in directories:
+            path = os.path.join(current, name)
+            info = os.lstat(path)
+            relative = "/".join(filter(None, (relative_root, name)))
+            item = expected.get(relative)
+            if (item is None or item.get("kind") != "directory"
+                    or not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode)
+                    or info.st_uid != 0 or info.st_gid != 0
+                    or stat.S_IMODE(info.st_mode) != item["mode"]):
+                return False
+            actual.add(relative)
+        for name in files_in_dir:
+            path = os.path.join(current, name)
+            info = os.lstat(path)
+            relative = "/".join(filter(None, (relative_root, name)))
+            item = expected.get(relative)
+            if (item is None or item.get("kind") != "file"
+                    or not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode)
+                    or info.st_nlink != 1 or info.st_uid != 0 or info.st_gid != 0
+                    or stat.S_IMODE(info.st_mode) != item["mode"]
+                    or info.st_size != item["size"]):
+                return False
+            digest = hashlib.sha256()
+            with open(path, "rb") as stream:
+                for chunk in iter(lambda: stream.read(65536), b""): digest.update(chunk)
+            if digest.hexdigest() != item["sha256"]:
+                return False
+            actual.add(relative)
+    return actual == set(expected)
+
+def install_task_snapshot(root, expected):
+    parent = os.path.dirname(root)
+    parent_parent = os.path.dirname(parent)
+    parent_parent_info = os.lstat(parent_parent)
+    if (not stat.S_ISDIR(parent_parent_info.st_mode) or stat.S_ISLNK(parent_parent_info.st_mode)
+            or parent_parent_info.st_uid != 0 or stat.S_IMODE(parent_parent_info.st_mode) & 0o022):
+        raise SystemExit("task-source snapshot parent is not root-controlled")
+    try:
+        parent_info = os.lstat(parent)
+    except FileNotFoundError:
+        os.mkdir(parent, 0o755)
+        os.chown(parent, 0, 0)
+        os.chmod(parent, 0o755)
+        parent_info = os.lstat(parent)
+        parent_fd = os.open(parent_parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+                            | getattr(os, "O_NOFOLLOW", 0))
+        try: os.fsync(parent_fd)
+        finally: os.close(parent_fd)
+    if (not stat.S_ISDIR(parent_info.st_mode) or stat.S_ISLNK(parent_info.st_mode)
+            or parent_info.st_uid != 0 or parent_info.st_gid != 0
+            or stat.S_IMODE(parent_info.st_mode) != 0o755):
+        raise SystemExit("task-source snapshot parent has unexpected owner or mode")
+    try:
+        os.lstat(root)
+    except FileNotFoundError:
+        pass
+    else:
+        if snapshot_matches(root, expected):
+            return "already-exact"
+        raise SystemExit("existing task-source snapshot differs from the pinned source; refusing overwrite")
+    stage = tempfile.mkdtemp(prefix=".vst-task-source-", dir=parent)
+    try:
+        directories = sorted((path for path, item in expected.items()
+                              if path and item["kind"] == "directory"),
+                             key=lambda path: (path.count("/"), path))
+        for relative in directories:
+            path = os.path.join(stage, *relative.split("/"))
+            os.makedirs(path, mode=0o755, exist_ok=True)
+            info = os.lstat(path)
+            if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode):
+                raise SystemExit("task-source snapshot path conflicts with a directory")
+        for relative, item in expected.items():
+            if not relative or item["kind"] != "file":
+                continue
+            path = os.path.join(stage, *relative.split("/"))
+            fd_file = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL
+                              | getattr(os, "O_NOFOLLOW", 0), 0o600)
+            try:
+                view = memoryview(item["data"])
+                while view:
+                    written = os.write(fd_file, view)
+                    if written <= 0: raise SystemExit("task-source snapshot write made no progress")
+                    view = view[written:]
+                os.fchown(fd_file, 0, 0)
+                os.fchmod(fd_file, item["mode"])
+                os.fsync(fd_file)
+            finally:
+                os.close(fd_file)
+        for relative in sorted(directories, key=lambda path: (-path.count("/"), path)):
+            path = os.path.join(stage, *relative.split("/"))
+            os.chown(path, 0, 0)
+            os.chmod(path, 0o555)
+            dir_fd = os.open(path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+                             | getattr(os, "O_NOFOLLOW", 0))
+            try: os.fsync(dir_fd)
+            finally: os.close(dir_fd)
+        os.chown(stage, 0, 0)
+        os.chmod(stage, 0o555)
+        stage_fd = os.open(stage, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+                           | getattr(os, "O_NOFOLLOW", 0))
+        try: os.fsync(stage_fd)
+        finally: os.close(stage_fd)
+        if not snapshot_matches(stage, expected):
+            raise SystemExit("staged task-source snapshot failed its read-only verification")
+        try:
+            os.rename(stage, root)
+        except FileExistsError as exc:
+            raise SystemExit("task-source snapshot appeared during provisioning; no overwrite occurred") from exc
+        parent_fd = os.open(parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+                            | getattr(os, "O_NOFOLLOW", 0))
+        try: os.fsync(parent_fd)
+        finally: os.close(parent_fd)
+    except BaseException:
+        if os.path.isdir(stage) and not os.path.islink(stage):
+            for current, dirs, _files in os.walk(stage, topdown=False, followlinks=False):
+                for name in dirs:
+                    candidate = os.path.join(current, name)
+                    if not os.path.islink(candidate): os.chmod(candidate, 0o700)
+            os.chmod(stage, 0o700)
+            shutil.rmtree(stage)
+        raise
+    if not snapshot_matches(root, expected):
+        raise SystemExit("installed task-source snapshot differs from its pinned archive")
+    return "installed"
+
 expected_entries = list(bundle["configuration_installation"]) + list(layout["unit_overrides"])
 expected_entries += [item for item in bundle["units"] if item["publication"].startswith("new absent-only configuration unit")]
 expected = {}
@@ -238,8 +607,8 @@ for entry in expected_entries:
         "uid": entry["uid"], "gid": entry["gid"], "mode": mode,
         "size": source["size"], "sha256": source["sha256"], "source": entry["source"],
     }
-if len(expected) != 26:
-    raise SystemExit("pinned manifest destination map is not the exact 26-file set")
+if len(expected) != 25:
+    raise SystemExit("pinned manifest destination map is not the exact 25-file set")
 inventory_raw = base64.b64decode(p.get("inventory_b64", ""), validate=True)
 if hashlib.sha256(inventory_raw).hexdigest() != p.get("inventory_sha256"):
     raise SystemExit("target inventory differs from its exact SHA-256 pin")
@@ -255,7 +624,7 @@ if age < -30 or age > 300:
 if inventory.get("runtime_selector", {}).get("link_target") != p.get("selected_runtime_path"):
     raise SystemExit("inventory does not identify the selected candidate runtime")
 received = {item.get("destination"): item for item in p["files"]}
-if len(received) != 26 or set(received) != set(expected):
+if len(received) != 25 or set(received) != set(expected):
     raise SystemExit("configuration payload destination set differs from the pinned manifest")
 for path, contract in expected.items():
     item = received[path]
@@ -376,6 +745,7 @@ if (not stat.S_ISREG(lock_info.st_mode) or lock_info.st_uid != 0 or lock_info.st
         or stat.S_IMODE(lock_info.st_mode) != 0o600 or lock_info.st_nlink != 1):
     raise SystemExit("configuration apply lock is unsafe")
 fcntl.flock(fd, fcntl.LOCK_EX)
+task_source_snapshot_result = install_task_snapshot(TASK_REPOSITORY_ROOT, snapshot_entries)
 results = []
 for item in p["files"]:
     path = item["destination"]
@@ -422,6 +792,8 @@ for unit in units:
         raise SystemExit("post-reload unit state is not loaded-inactive: " + unit)
 print(json.dumps({"schema":"VST_S2_RUNTIME_CONFIG_APPLY_RESULT_V1", "source_head":p["source_head"],
                   "inventory_sha256":p["inventory_sha256"], "boot_id":p["expected_boot_id"],
+                  "task_source_snapshot":{"head":snapshot["head"], "sha256":snapshot["sha256"],
+                      "destination":TASK_REPOSITORY_ROOT, "result":task_source_snapshot_result},
                   "daemon_reload":"success", "files":results}, sort_keys=True, separators=(",",":")))
 '''
 
@@ -447,11 +819,11 @@ def main() -> int:
         if (committed_tool.returncode or working_tool.returncode
                 or committed_tool.stdout.strip() != working_tool.stdout.strip()):
             raise ValueError("installer source differs from the exact committed Git blob")
-        expected_repo_head, expected_helper_sha256 = _current_inventory_validation_identity()
+        expected_repo_head, expected_capture_sha256 = _current_inventory_validation_identity()
         payload = build_payload(
             args.inventory, args.inventory_sha256, args.source_commit,
             expected_repo_head=expected_repo_head,
-            expected_helper_sha256=expected_helper_sha256,
+            expected_capture_sha256=expected_capture_sha256,
         )
         digest = _sha(payload)
         wsl = subprocess.run(

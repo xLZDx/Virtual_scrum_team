@@ -70,8 +70,8 @@ three bundle pins. No runtime command was run for this check.
   `e520… / 2b5e… / 0aac…`. The formerly expected `212a… / 334296… / b575…` remains in the replay
   denial set. The test owner reran the focused three-file suite against this corrected worktree
   candidate: **70 passed**, one deprecation warning, 5.78 s. It verifies the exact predecessor pins
-  and each consumed run/request/nonce component. Candidate blobs are uncommitted, so this is
-  worktree evidence, not committed exact-HEAD evidence; repeat after the task commit.
+  and each consumed run/request/nonce component. At that time candidate blobs were uncommitted, so
+  this first result was worktree evidence only.
 - GPT-PM re-adjudication — **ACCEPT; MAJOR-01 RESOLVED; commit eligible**. Correlation: request
   `24c2372b-5cf8-4144-a690-d22a65db90e0`, job `86b484fa-5597-4cc2-bfbb-225c8560e2db`, user turn
   `3a5905f4-6638-4cac-9e36-30ea7612a7d1`, reply `e8448c22-a258-51a4-af4c-fed00e545f51`,
@@ -86,6 +86,11 @@ three bundle pins. No runtime command was run for this check.
 - Runtime preflight, bootstrap, issuer, Supervisor/Runner/dispatch, claim/probe and TestRun —
   **NOT_RUN**.
 
+- After commit `aedf712c07eb0cc531852d18443faa497e19bb2d` was pushed, the test owner ran the same
+  three-file command at that exact HEAD: **70 passed**, 1 `pytest-asyncio` deprecation warning,
+  15.14 s. The agent confirmed no source/test edits. This closes the exact-committed-HEAD test gap
+  for this correction; it does not prove runtime acceptance.
+
 ## Next action
 
 The predecessor correction uses the exact 26 observed destination fingerprints and installed
@@ -94,8 +99,8 @@ bootstrap identity recorded by runtime attempt
 read-only comparison normalizing its `PRESENT/regular/octal-mode` representation to the verifier's
 `file/integer-mode` representation matched all 26 destination entries. The immediate consumed
 tuple is now the predecessor baseline, and the older baseline tuple remains denied for replay.
-GPT-PM accepted the focused MAJOR-01 correction as commit-eligible. Next, commit and normally push
-the reviewed source/config candidate; then have the test owner repeat acceptance against committed
-exact HEAD. Request a fresh one-shot authorization bound to that pushed HEAD. Only `e2e-runner` may
-execute the authorized scope. If preflight fails, preserve the refusal and stop; no broad retry,
-bypass, restricted selector or production action is included.
+GPT-PM accepted the focused MAJOR-01 correction as commit-eligible; commit `aedf712c` is pushed and
+the test owner confirmed 70/70 at its exact HEAD. Next, request a new one-shot authorization bound
+to the pushed code and the fresh candidate identities. Only `e2e-runner` may execute the authorized
+scope. If preflight fails, preserve the refusal and stop; no broad retry, bypass, restricted
+selector or production action is included.

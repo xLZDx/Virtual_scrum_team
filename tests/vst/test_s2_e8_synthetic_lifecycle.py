@@ -6,16 +6,14 @@ E8 acceptance.
 """
 from __future__ import annotations
 
-import hashlib
 import os
 import re
 import sqlite3
 import tempfile
-import time
 
 import pytest
 
-from tools.vst import preflight, slice as slice_module
+from tools.vst import slice as slice_module
 
 CHECKED_PROPERTIES = {
     "automount_disabled": True,
@@ -29,43 +27,13 @@ CHECKED_PROPERTIES = {
 
 
 def _synthetic_probe(run_id: str, nonce: str) -> dict:
-    """Build a protocol-valid probe fixture with explicitly synthetic provenance."""
-    spec_sha256 = hashlib.sha256(preflight.SPEC_PATH.read_bytes()).hexdigest()
-    attestation = preflight.sign_network_policy_attestation(
-        {
-            "run_id": run_id,
-            "spec_sha256": spec_sha256,
-            "nonce": nonce,
-            "environment_id": "synthetic-test-fixture-only",
-            "policy_sha256": "a" * 64,
-            "evidence_sha256": "b" * 64,
-            "empty_external_allowlist": True,
-            "no_container_socket": True,
-            "no_unapproved_host_paths": True,
-        },
-        slice_module.OPERATOR_KEY,
-    )
+    """Caller-owned synthetic values intentionally cannot authorize real observation."""
+    del run_id, nonce
     return {
-        "run_id": run_id,
-        "spec_sha256": spec_sha256,
-        "nonce": nonce,
+        "schema": "SYNTHETIC_CALLER_DATA_ONLY",
         "checked_properties": dict(CHECKED_PROPERTIES),
         "result": "PASS",
-        "inventory": {
-            "mount_table": [],
-            "windows_drive_mounts": [],
-            "wsl_interop_present": False,
-            "wsl_interop_enabled": False,
-            "uid": 1001,
-            "gid": 1001,
-            "container_socket_paths_present": [],
-            "container_socket_inventory_complete": True,
-            "blocked_egress_target": ["198.51.100.1", 9],
-            "blocked_egress_probe_scope": "single reserved-target smoke probe; does not prove egress policy",
-            "network_policy_attestation": attestation,
-            "environment_variable_names": [],
-            "observed_at_monotonic_ns": time.monotonic_ns(),
-        },
+        "inventory": {"provenance": "caller-supplied synthetic fixture"},
     }
 
 

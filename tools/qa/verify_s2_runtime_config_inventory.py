@@ -19,8 +19,8 @@ IMPLEMENTATION_HEAD = "6fb47d966814005ea51992c37d8af342a7cb4219"
 PREVIOUS_CONFIG_HEAD = "7d1d16f6348e6c00a5a568b5cfbc8caf309194b9"
 PREVIOUS_BUNDLE_SHA256 = "388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45"
 PREVIOUS_LAYOUT_SHA256 = "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19"
-CANDIDATE_BUNDLE_SHA256 = "05530c73ea583f0f7f60963ba9e196082dfb7abf92f86f0a0e2a0ae9ad10f91f"
-CANDIDATE_LAYOUT_SHA256 = PREVIOUS_LAYOUT_SHA256
+CANDIDATE_BUNDLE_SHA256 = "2d0c7bcfdd92b3cffa3c9e1344d87f5d34cc690d65006298087d897cf5635d8c"
+CANDIDATE_LAYOUT_SHA256 = "f403052cb26e6d635d7566fe25337e4c3fa18bf83c778dc600b807689b405d8f"
 RUN_ID = "s2-runtime-20261030-1977eaba61274396b6b58d069c5cede2"
 REQUEST_ID = "98b38065170f468c9943aa8f22160ff9"
 NONCE = "a2a0dcab58b9451281ff0a7b079d4aa2"
@@ -101,12 +101,12 @@ def _previous_installed_fingerprints() -> dict[str, dict[str, Any]]:
     bundle_records = {record["path"]: record for record in bundle["files"]}
     bootstrap = json.loads(_git_blob(
         PREVIOUS_CONFIG_HEAD, "docs/sdlc/runtime-config/bootstrap-request.json"))
-    probe = json.loads(_git_blob(
-        PREVIOUS_CONFIG_HEAD, "docs/sdlc/runtime-config/probe-request.json"))
+    previous_supervisor = json.loads(_git_blob(
+        PREVIOUS_CONFIG_HEAD, "docs/sdlc/runtime-config/supervisor-service.json"))
     if (bootstrap.get("request_id") != BASELINE_REQUEST_ID
             or bootstrap.get("run_id") != BASELINE_RUN_ID
-            or probe.get("nonce") != BASELINE_NONCE
-            or probe.get("run_id") != BASELINE_RUN_ID):
+            or previous_supervisor.get("probe_nonce") != BASELINE_NONCE
+            or previous_supervisor.get("run_id") != BASELINE_RUN_ID):
         raise InventoryError("pinned consumed-run baseline identity is inconsistent")
     entries = list(bundle["configuration_installation"]) + list(layout["unit_overrides"])
     entries += [item for item in bundle["units"]
@@ -170,17 +170,29 @@ def _validate_candidate_identity(expected_repo_head: str) -> None:
         return value
 
     bootstrap = candidate_json("bootstrap-request.json")
-    probe = candidate_json("probe-request.json")
     network = candidate_json("network-profile.json")
     binding = candidate_json("run-binding.json")
     supervisor = candidate_json("supervisor-service.json")
+    deployment_source = candidate_json("deployment-source-manifest.json")
+    layout = candidate_json("installation-layout.json")
     if (bootstrap.get("run_id") != RUN_ID or bootstrap.get("request_id") != REQUEST_ID
-            or probe.get("run_id") != RUN_ID or probe.get("nonce") != NONCE
             or network.get("environment_id") != "Ubuntu-24.04:S2:" + RUN_ID
             or binding.get("run_id") != RUN_ID or binding.get("probe_nonce") != NONCE
             or binding.get("state") != "PREPARATION_NOT_EXECUTION"
             or supervisor.get("run_id") != RUN_ID or supervisor.get("probe_nonce") != NONCE):
         raise InventoryError("candidate run/request/nonce identities are not cross-bound")
+    archive_size = deployment_source.get("task_source_archive_bytes")
+    archive_sha = deployment_source.get("task_source_archive_sha256")
+    snapshot_parent = next((item for item in layout.get("directories", [])
+                            if item.get("path") == "/var/lib/vst-runner"), None)
+    if (deployment_source.get("task_source_head") != SOURCE_HEAD
+            or deployment_source.get("task_repository_destination") != "/var/lib/vst-runner/repository"
+            or deployment_source.get("task_source_archive_format") != "canonical-git-tree-tar-v1"
+            or type(archive_size) is not int or not 1 <= archive_size <= 16 * 1024 * 1024
+            or not isinstance(archive_sha, str) or not HEX64.fullmatch(archive_sha)
+            or snapshot_parent != {"path": "/var/lib/vst-runner", "uid": 0, "gid": 0, "mode": "0755"}
+            or "read-only snapshot" not in layout.get("runtime_repository_rule", "")):
+        raise InventoryError("candidate lacks its exact read-only task-source snapshot contract")
 
 
 def _regular_file_fingerprint(value: Any, destination: str) -> dict[str, Any]:
@@ -240,14 +252,14 @@ def validate_mount_observation(mount: Any) -> None:
 
 
 def _validate_source_identity(
-        value: Any, expected_repo_head: str, expected_helper_sha256: str,
+        value: Any, expected_repo_head: str, expected_capture_sha256: str,
         expected_validator_sha256: str, expected_applier_sha256: str) -> None:
     if not isinstance(value, dict):
         raise InventoryError("source identity evidence is missing")
     expected = {
         "repo_head": expected_repo_head,
         "implementation_source_commit": IMPLEMENTATION_HEAD,
-        "helper_sha256": expected_helper_sha256,
+        "runtime_capture_sha256": expected_capture_sha256,
         "validator_sha256": expected_validator_sha256,
         "applier_sha256": expected_applier_sha256,
         "bundle_manifest_sha256": CANDIDATE_BUNDLE_SHA256,
@@ -314,10 +326,8 @@ def _validate_readiness(value: Any) -> None:
 
     if value.get("runtime_selector") != RUNTIME_PATH:
         raise InventoryError("selected runtime path differs from the pinned S2 runtime")
-    if value.get("store_present") is not False or value.get("preflight_present") is not False:
-        raise InventoryError("Store or preflight state is not the expected unused state")
-    if value.get("attestation_present") is not False:
-        raise InventoryError("unexpected prior root attestation is present")
+    if value.get("store_present") is not False:
+        raise InventoryError("Store is not the expected unused state")
     sockets = value.get("container_sockets")
     if not isinstance(sockets, dict) or set(sockets) != set(CONTAINER_SOCKETS):
         raise InventoryError("container socket inventory is incomplete")
@@ -331,12 +341,12 @@ def _validate_readiness(value: Any) -> None:
 
 
 def validate_inventory(
-        inventory: Any, *, expected_repo_head: str, expected_helper_sha256: str,
+        inventory: Any, *, expected_repo_head: str, expected_capture_sha256: str,
         now: datetime | None = None) -> dict[str, Any]:
     if not HEX40.fullmatch(expected_repo_head):
         raise InventoryError("expected repository HEAD must be a full lowercase Git object ID")
-    if not HEX64.fullmatch(expected_helper_sha256):
-        raise InventoryError("expected helper digest must be lowercase SHA-256")
+    if not HEX64.fullmatch(expected_capture_sha256):
+        raise InventoryError("expected runtime capture digest must be lowercase SHA-256")
     if not isinstance(inventory, dict) or inventory.get("schema") != INVENTORY_SCHEMA:
         raise InventoryError("target inventory schema is invalid")
     if inventory.get("source_head") != SOURCE_HEAD:
@@ -360,7 +370,7 @@ def validate_inventory(
     expected_applier_sha256 = _committed_source_sha256(
         expected_repo_head, "tools/qa/apply_s2_runtime_configuration.py")
     _validate_source_identity(inventory.get("source_identity"), expected_repo_head,
-                              expected_helper_sha256, expected_validator_sha256,
+                              expected_capture_sha256, expected_validator_sha256,
                               expected_applier_sha256)
     readiness = inventory.get("readiness")
     _validate_readiness(readiness)
@@ -371,9 +381,24 @@ def validate_inventory(
         raise InventoryError("top-level inventory boot ID is missing or differs from readiness")
 
     files = inventory.get("configuration_files")
-    expected = _previous_installed_fingerprints()
+    previous = _previous_installed_fingerprints()
+    candidate_bundle = json.loads(_git_blob(
+        expected_repo_head, "docs/sdlc/runtime-config/bundle-manifest.json"))
+    candidate_layout = json.loads(_git_blob(
+        expected_repo_head, "docs/sdlc/runtime-config/installation-layout.json"))
+    candidate_entries = (list(candidate_bundle["configuration_installation"])
+                         + list(candidate_layout["unit_overrides"])
+                         + [item for item in candidate_bundle["units"]
+                            if item["publication"].startswith(
+                                "new absent-only configuration unit")])
+    candidate_destinations = {item["destination"] for item in candidate_entries}
+    if len(candidate_entries) != 25 or len(candidate_destinations) != 25:
+        raise InventoryError("candidate bundle does not contain the exact 25 destination set")
+    if not candidate_destinations.issubset(previous):
+        raise InventoryError("candidate adds a destination absent from the consumed baseline")
+    expected = {path: previous[path] for path in candidate_destinations}
     if not isinstance(files, dict) or set(files) != set(expected):
-        raise InventoryError("inventory must contain exactly all 26 configured destinations")
+        raise InventoryError("inventory must contain exactly all 25 configured destinations")
     for destination, expected_fingerprint in expected.items():
         actual = _regular_file_fingerprint(files[destination], destination)
         if actual != expected_fingerprint:
@@ -405,7 +430,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("inventory", type=Path)
     parser.add_argument("--expected-sha256", required=True)
     parser.add_argument("--expected-head", required=True)
-    parser.add_argument("--helper-sha256", required=True)
+    parser.add_argument("--capture-sha256", required=True)
     args = parser.parse_args(argv)
     if not HEX64.fullmatch(args.expected_sha256):
         parser.error("--expected-sha256 must be lowercase SHA-256")
@@ -414,7 +439,7 @@ def main(argv: list[str] | None = None) -> int:
         raise InventoryError("inventory bytes differ from their exact SHA-256 pin")
     inventory = json.loads(raw)
     result = validate_inventory(inventory, expected_repo_head=args.expected_head,
-                                expected_helper_sha256=args.helper_sha256)
+                                expected_capture_sha256=args.capture_sha256)
     print("PASS: complete S2 runtime inventory " + json.dumps(result, sort_keys=True))
     return 0
 

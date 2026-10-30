@@ -10,7 +10,11 @@
   "sandbox_spec_sha256": "7a0bcaa3eb7ca76b9771e0b7f49892eaa0cfa744ce4e523f5f94b997fed61997",
   "schema": "VST_S2_DEPLOYMENT_SOURCE_BINDING_V1",
   "task_repository": "Virtual_scrum_team",
+  "task_repository_after_apply": "Root-owned, non-writable, exact task-source snapshot at task_repository_destination; never a development checkout or per-sprint worktree.",
   "task_repository_destination": "/var/lib/vst-runner/repository",
   "task_repository_usage": "single read-only runtime deployment snapshot; all development remains in D:/Repo/Virtual_scrum_team",
+  "task_source_archive_bytes": 7802880,
+  "task_source_archive_format": "canonical-git-tree-tar-v1",
+  "task_source_archive_sha256": "c442a770c5580032b85006fa4522db81770955f7db2a2435c5e1d0e4bfcf3284",
   "task_source_head": "80c2b81deac364ed6466600fd46af47aafe805e2"
 }

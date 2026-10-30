@@ -117,6 +117,7 @@
       "state": "ABSENT"
     },
     "/var/lib/vst-runner/repository": {
+      "phase": "pre-apply inventory only; the configuration apply atomically installs the exact pinned read-only task-source snapshot before any unit starts",
       "state": "ABSENT"
     },
     "/var/lib/vst-runner/store.anchor": {

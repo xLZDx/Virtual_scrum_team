@@ -24,7 +24,6 @@ REVIEWER_LABEL = b"vst-independent-review-v2\0"
 REVIEWER_REGISTRY_LABEL = b"vst-reviewer-registry-v2\0"
 DIFF_GATE_LABEL = b"vst-diff-gate-v2\0"
 SIGNING_REQUEST_LABEL = b"vst-runner-signing-request-v2\0"
-OPERATOR_NETWORK_POLICY_LABEL = b"vst-operator-network-policy-v1\0"
 OPERATOR_MANUAL_OVERRIDE_LABEL = b"vst-operator-manual-override-v1\0"
 MIN_KEY_BYTES = 32
 

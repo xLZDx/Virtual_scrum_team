@@ -398,63 +398,71 @@ def test_record_event_rejects_caller_forged_reserved_control_note(tmp_path):
         store.close()
 
 
-def test_supervisor_consumes_a_synthetic_probe_once_for_one_run(tmp_path):
-    """Root-captured protocol fixture only; fields do not claim a real sandbox result."""
-    import hashlib
-    from tools.vst.preflight import SPEC_PATH
+def test_preflight_consumption_survives_restart_for_the_exact_observation(tmp_path):
+    store_path = str(tmp_path / "runtime-store.db")
+    run_id, nonce = "unit-run-1", "unit-nonce-1"
+    spec_sha, observation_sha = "a" * 64, "b" * 64
 
+    with Store(store_path, event_key=EVENT_KEY) as store:
+        assert store.ensure_preflight_consumed(run_id, nonce, spec_sha, observation_sha) is True
+        assert store._conn.execute(
+            "SELECT run_id, nonce, spec_sha256, probe_sha256 FROM supervisor_probes"
+        ).fetchall()[0][:] == (run_id, nonce, spec_sha, observation_sha)
+
+    with Store(store_path, event_key=EVENT_KEY) as restarted:
+        restarted.require_existing_preflight_consumed(run_id, nonce, spec_sha, observation_sha)
+        assert restarted._conn.execute("SELECT COUNT(*) FROM supervisor_probes").fetchone()[0] == 1
+        assert restarted._conn.execute(
+            "SELECT COUNT(*) FROM events WHERE task_id = ? AND kind = 'NOTE'", (run_id,)
+        ).fetchone()[0] == 1
+
+
+@pytest.mark.parametrize("changed", ["run", "nonce", "spec", "source_config_hash"])
+def test_preflight_restart_refuses_absent_or_mismatched_consumed_tuple(tmp_path, changed):
+    store_path = str(tmp_path / f"runtime-store-{changed}.db")
+    expected = ["unit-run-1", "unit-nonce-1", "a" * 64, "b" * 64]
+    with Store(store_path, event_key=EVENT_KEY) as store:
+        assert store.ensure_preflight_consumed(*expected) is True
+
+    actual = list(expected)
+    indexes = {"run": 0, "nonce": 1, "spec": 2, "source_config_hash": 3}
+    actual[indexes[changed]] = (
+        "different-run" if changed == "run" else
+        "different-nonce" if changed == "nonce" else
+        "c" * 64
+    )
+    with Store(store_path, event_key=EVENT_KEY) as restarted:
+        with pytest.raises(StoreError, match="exact existing consumed observation tuple"):
+            restarted.require_existing_preflight_consumed(*actual)
+
+
+def test_existing_store_without_consumed_observation_cannot_enter_recovery(tmp_path):
+    store_path = str(tmp_path / "unconsumed-existing-store.db")
+    with Store(store_path, event_key=EVENT_KEY) as store:
+        store.record_event("unrelated-task", "fixture", "NOTE", {"history": "exists"})
+
+    with Store(store_path, event_key=EVENT_KEY) as restarted:
+        with pytest.raises(StoreError, match="exact existing consumed observation tuple"):
+            restarted.require_existing_preflight_consumed(
+                "unit-run-1", "unit-nonce-1", "a" * 64, "b" * 64,
+            )
+
+
+def test_supervisor_worker_start_is_one_shot_after_verified_store_consumption(tmp_path):
     operator_key = b"s2-operator-once-key-0123456789-abcdef"
-    spec_sha = hashlib.sha256(SPEC_PATH.read_bytes()).hexdigest()
-    from tools.vst.preflight import sign_network_policy_attestation
-    attestation_body = {
-        "run_id": "unit-run-1", "spec_sha256": spec_sha, "nonce": "unit-nonce-1",
-        "environment_id": "synthetic-fixture-only", "policy_sha256": "a" * 64,
-        "evidence_sha256": "b" * 64, "empty_external_allowlist": True,
-        "no_container_socket": True, "no_unapproved_host_paths": True,
-    }
-    attestation = sign_network_policy_attestation(attestation_body, operator_key)
-    checks = {
-        "automount_disabled": True, "interop_disabled": True, "no_container_socket": True,
-        "non_root": True, "external_egress_blocked": True, "loopback_canary": True,
-        "empty_external_allowlist": True,
-    }
-    body = {
-        "run_id": "unit-run-1", "spec_sha256": spec_sha, "nonce": "unit-nonce-1",
-        "checked_properties": checks, "result": "PASS",
-        "inventory": {
-            "mount_table": [], "windows_drive_mounts": [],
-            "wsl_interop_present": False, "wsl_interop_enabled": False,
-            "uid": 1001, "gid": 1001,
-            "container_socket_paths_present": [], "container_socket_inventory_complete": True,
-            "blocked_egress_target": ["198.51.100.1", 9],
-            "blocked_egress_probe_scope": "single reserved-target smoke probe; does not prove egress policy",
-            "network_policy_attestation": attestation,
-            "environment_variable_names": [], "observed_at_monotonic_ns": time.monotonic_ns(),
-        },
-    }
-    probe = body
-    assert "signature" not in probe
-    with Store(str(tmp_path / "probe-once.db"), event_key=EVENT_KEY) as store:
-        store.sandbox_mode = True  # exercise run-bound supervisor logic, not host isolation
+    with Store(str(tmp_path / "worker-start-once.db"), event_key=EVENT_KEY) as store:
+        store.sandbox_mode = True
+        store.ensure_preflight_consumed("unit-run-1", "unit-nonce-1", "a" * 64, "b" * 64)
         supervisor = Supervisor(
             store, operation_backend=object(), run_id="unit-run-1",
             probe_nonce="unit-nonce-1", operator_key=operator_key,
         )
+        # Production sets this only after the observation has been persisted and verified.
+        supervisor._probe_consumed = True
         starts = []
-        assert supervisor.start_worker(lambda: starts.append("first"), probe=probe) is None
-        assert starts == ["first"]
-        assert store._conn.execute(
-            "SELECT COUNT(*) FROM supervisor_probes WHERE run_id = ?", ("unit-run-1",)
-        ).fetchone()[0] == 1
-        with pytest.raises(StoreError, match="already authorized"):
-            supervisor.start_worker(lambda: starts.append("duplicate"), probe=probe)
-        assert starts == ["first"]
-        restarted = Supervisor(
-            store, operation_backend=object(), run_id="unit-run-1",
-            probe_nonce="unit-nonce-1", operator_key=operator_key,
-        )
-        with pytest.raises(StoreError, match="already consumed"):
-            restarted.start_worker(lambda: starts.append("restart-reuse"), probe=probe)
+        supervisor.start_worker(lambda: starts.append("first"))
+        with pytest.raises(StoreError, match="already consumed its one worker start"):
+            supervisor.start_worker(lambda: starts.append("duplicate"))
         assert starts == ["first"]
 
 

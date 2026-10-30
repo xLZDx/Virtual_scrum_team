@@ -31,13 +31,11 @@ from tools.vst.contracts import (
     manifest_sha256,
     validate_task_manifest,
 )
+from tools.qa import apply_s2_runtime_configuration as applier
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BUNDLE_DIR = REPO_ROOT / "docs" / "sdlc" / "runtime-config"
-SOURCE_HEAD = "80c2b81deac364ed6466600fd46af47aafe805e2"
-
-
 def _json(name: str) -> dict:
     return json.loads((BUNDLE_DIR / name).read_text(encoding="utf-8"))
 
@@ -58,12 +56,14 @@ def test_bundle_manifest_covers_every_payload_with_exact_bytes_and_safe_scope():
         and path.name not in {"bundle-manifest.json", "README.md"}
     }
 
-    assert len(records) == 34
+    assert len(records) == len(payload_paths)
     assert payload_paths == set(records)
+    assert "probe-request.json" not in records
+    assert not any("probe-request" in relative for relative in records)
     assert len(bundle["units"]) == 9
     assert bundle["schema"] == "VST_S2_NON_SECRET_CONFIG_BUNDLE_V1"
     assert bundle["state"] == "PREPARED_NOT_INSTALLED"
-    assert bundle["source_head"] == bundle["runtime_source_head"] == SOURCE_HEAD
+    assert bundle["source_head"] == bundle["runtime_source_head"]
     assert bundle["existing_store_migration_authorized"] is False
     assert bundle["preserve_existing_store"] is True
     assert bundle["unrestricted_dispatch_authorized"] is False
@@ -95,6 +95,19 @@ def test_bundle_manifest_covers_every_payload_with_exact_bytes_and_safe_scope():
         "unit-overrides/vst-runner.service.d/host-paths.conf",
         "unit-overrides/vst-sandbox-probe.service.d/host-paths.conf",
     }
+    expected_host_path_override_bytes = {
+        "unit-overrides/vst-runner.service.d/host-paths.conf": (
+            b"[Service]\n"
+            b"InaccessiblePaths=-/init -/home -/mnt -/root -/usr/lib/wsl -/run/WSL -/tmp/.X11-unix\n"
+            b"ProtectHome=no\n"
+            b"TemporaryFileSystem=/run/user:ro,mode=0755\n"
+        ),
+        "unit-overrides/vst-sandbox-probe.service.d/host-paths.conf": (
+            b"[Service]\n"
+            b"InaccessiblePaths=-/init -/home -/mnt -/root -/usr/lib/wsl -/run/WSL -/tmp/.X11-unix\n"
+            b"TemporaryFileSystem=/run/user:ro,mode=0755\n"
+        ),
+    }
     assert {item["source"] for item in overrides} == (
         expected_rate_limit_overrides | expected_host_path_overrides
     )
@@ -110,12 +123,7 @@ def test_bundle_manifest_covers_every_payload_with_exact_bytes_and_safe_scope():
         if item["source"] in expected_rate_limit_overrides:
             assert data == b"[Unit]\nStartLimitIntervalSec=60s\nStartLimitBurst=3\n"
         else:
-            assert data == (
-                b"[Service]\n"
-                b"InaccessiblePaths=-/init -/home -/mnt -/root -/usr/lib/wsl -/run/WSL -/tmp/.X11-unix\n"
-                b"ProtectHome=no\n"
-                b"TemporaryFileSystem=/run/user:ro,mode=0755\n"
-            )
+            assert data == expected_host_path_override_bytes[item["source"]]
         expected_destination = expected_destinations.get(
             item["source"],
             "/etc/systemd/system/" + item["source"].removeprefix("unit-overrides/"),
@@ -142,7 +150,7 @@ def test_actual_task_policy_and_bootstrap_validators_accept_only_crossbound_cand
 
     validated_task = validate_task_manifest(task)
     assert manifest_sha256(validated_task) == bundle["task_manifest_sha256"]
-    assert task["base_head"] == policy["source_head"] == SOURCE_HEAD
+    assert task["base_head"] == policy["source_head"] == bundle["source_head"]
     assert policy["manifest_sha256"] == bundle["source_binding_sha256"]
 
     validated_policy, policy_digest = validate_policy(policy)
@@ -218,13 +226,35 @@ def test_model_and_reviewer_registry_digests_bind_the_declared_artifacts():
     assert _sha256(canonical_bytes(transition)) == bundle["runtime_transition_sha256"]
     assert source["runtime_transition_manifest_sha256"] == bundle["runtime_transition_sha256"]
     assert source["runtime_tree_sha256"] == transition["runtime_tree_sha256"]
-    assert source["runtime_source_head"] == source["task_source_head"] == SOURCE_HEAD
+    assert source["runtime_source_head"] == source["task_source_head"] == bundle["source_head"]
+
+
+def test_task_source_snapshot_manifest_pins_canonical_archive_and_layout():
+    source = _json("deployment-source-manifest.json")
+    bundle = _json("bundle-manifest.json")
+    layout = _json("installation-layout.json")
+
+    assert source["task_source_head"] == bundle["source_head"]
+    assert source["task_repository_destination"] == "/var/lib/vst-runner/repository"
+    assert source["task_source_archive_format"] == applier.TASK_REPOSITORY_ARCHIVE_FORMAT
+    assert type(source["task_source_archive_bytes"]) is int
+    assert source["task_source_archive_bytes"] > 0
+    assert re.fullmatch(r"[0-9a-f]{64}", source["task_source_archive_sha256"])
+    assert hashlib.sha256(canonical_bytes(source)).hexdigest() == bundle["source_binding_sha256"]
+    assert all(term in source["task_repository_after_apply"]
+               for term in ("Root-owned", "non-writable", "snapshot"))
+    assert "D:/Repo/Virtual_scrum_team" in source["task_repository_usage"]
+    assert "/var/lib/vst-runner/repository" in layout["runtime_repository_rule"]
+    assert "never a development checkout or per-sprint worktree" in layout["runtime_repository_rule"]
+
+    archived = applier._build_task_source_archive(source["task_source_head"])
+    assert len(archived) == source["task_source_archive_bytes"]
+    assert _sha256(archived) == source["task_source_archive_sha256"]
 
 
 def test_public_material_matches_standalone_public_keys_and_probe_run_binding():
     public = _json("public-material.json")["public"]
     run_binding = _json("run-binding.json")
-    probe_request = _json("probe-request.json")
     bootstrap_request = _json("bootstrap-request.json")
     supervisor = _json("supervisor-service.json")
     network_profile = _json("network-profile.json")
@@ -238,21 +268,16 @@ def test_public_material_matches_standalone_public_keys_and_probe_run_binding():
         assert public[key]["public_file_sha256"] == _sha256(data)
         assert b"PRIVATE KEY" not in data
 
-    assert probe_request == {
-        "run_id": run_binding["run_id"],
-        "nonce": run_binding["probe_nonce"],
-    }
     assert bootstrap_request["run_id"] == run_binding["run_id"]
     assert supervisor["run_id"] == run_binding["run_id"]
     assert supervisor["probe_nonce"] == run_binding["probe_nonce"]
     assert network_profile["environment_id"] == f"Ubuntu-24.04:S2:{run_binding['run_id']}"
-    assert run_binding["runtime_source_head"] == SOURCE_HEAD
+    assert run_binding["runtime_source_head"] == _json("bundle-manifest.json")["source_head"]
     assert run_binding["state"] == "PREPARATION_NOT_EXECUTION"
 
 
 def test_fresh_runtime_identity_is_crossbound_and_single_selector_only():
     run_binding = _json("run-binding.json")
-    probe_request = _json("probe-request.json")
     bootstrap = _json("bootstrap-request.json")
     supervisor = _json("supervisor-service.json")
     network = _json("network-profile.json")
@@ -278,13 +303,50 @@ def test_fresh_runtime_identity_is_crossbound_and_single_selector_only():
     assert all(nonce != consumed_nonce for _, _, consumed_nonce in consumed_identities)
     assert re.fullmatch(r"[0-9a-f]{32}", request_id)
     assert all(request_id != consumed_request for consumed_request, _, _ in consumed_identities)
-    assert probe_request == {"run_id": run_id, "nonce": nonce}
     assert bootstrap["run_id"] == run_id
     assert supervisor["run_id"] == run_id
     assert supervisor["probe_nonce"] == nonce
     assert network["environment_id"] == f"Ubuntu-24.04:S2:{run_id}"
     assert task["task_id"] == "S2-4-runtime-owner-runner-qualification"
     assert task["retry_cap"] == 0
+    assert "probe-request.json" not in {
+        item["path"] for item in _json("bundle-manifest.json")["files"]
+    }
+    assert not any("probe_request" in key or "probe-request" in key
+                   for key in supervisor)
+
+
+def test_runtime_bundle_pins_exact_probe_unit_and_supervisor_notify_ordering():
+    bundle = _json("bundle-manifest.json")
+    task = _json("task-manifest.json")
+    network = _json("network-profile.json")
+    supervisor_config = _json("supervisor-service.json")
+    probe_unit = (BUNDLE_DIR / "units" / "vst-sandbox-probe.service").read_text(encoding="utf-8")
+    supervisor_unit = (REPO_ROOT / "tools" / "vst" / "systemd" / "vst-supervisor.service").read_text(
+        encoding="utf-8"
+    )
+    unit_records = {item["name"]: item for item in bundle["units"]}
+    file_records = {item["path"]: item for item in bundle["files"]}
+
+    assert network["probe_unit"] == "vst-sandbox-probe.service"
+    assert "vst-sandbox-probe.service" in unit_records
+    assert probe_unit.startswith("[Unit]\n")
+    assert "Type=oneshot\n" in probe_unit
+    assert "User=vst-worker\nGroup=vst-worker\n" in probe_unit
+    assert "ExecStart=/usr/bin/python3.12 -I -S /etc/vst-runner/probe-entrypoint.py\n" in probe_unit
+    assert "Restart=no\nTimeoutStartSec=90s\n" in probe_unit
+    assert "PrivateNetwork=yes\n" in probe_unit
+    assert supervisor_unit.startswith("[Unit]\n")
+    assert "Type=notify\nNotifyAccess=main\n" in supervisor_unit
+    assert "Before=vst-runner.service\n" in supervisor_unit
+    assert "TimeoutStartSec=360s\n" in supervisor_unit
+    assert "RuntimeDirectoryPreserve=restart\n" in supervisor_unit
+    assert _sha256(probe_unit.encode()) == unit_records["vst-sandbox-probe.service"]["sha256"]
+    assert "probe_key_path" not in supervisor_config
+    assert "probe_request_path" not in supervisor_config
+    assert "preflight_record_path" not in supervisor_config
+    assert "probe-request.json" not in file_records
+    assert not any("probe-request" in path for path in file_records)
     assert task["required_tests"] == [
         {
             "acceptance": ["REQ-003"],
@@ -299,9 +361,8 @@ def test_fresh_runtime_identity_is_crossbound_and_single_selector_only():
 
 @pytest.fixture
 def probe_entrypoint(monkeypatch):
-    # Import the candidate module without using its configured runtime path as
-    # a host input; all file, identity, clock and collector boundaries are then
-    # controlled by each test below.
+    # Import the bundled entrypoint as code; it should emit only the direct
+    # observation supplied by the isolated runtime collector.
     monkeypatch.setattr(sys, "path", list(sys.path))
     spec = importlib.util.spec_from_file_location(
         "s2_probe_candidate", BUNDLE_DIR / "probe-entrypoint.py"
@@ -312,65 +373,43 @@ def probe_entrypoint(monkeypatch):
     return module
 
 
-def test_probe_entrypoint_rejects_wrong_worker_identity_before_reading(probe_entrypoint):
+def test_probe_entrypoint_rejects_wrong_worker_identity_before_collection(probe_entrypoint):
     probe = probe_entrypoint
     probe.os = SimpleNamespace(
         geteuid=lambda: 998,
         getegid=lambda: 989,
     )
-    probe._read_root_controlled_json = lambda *args, **kwargs: pytest.fail(
-        "identity mismatch must stop before reading the request"
-    )
     probe.collect_inventory = lambda *args, **kwargs: pytest.fail(
-        "identity mismatch must not collect an inventory"
+        "identity mismatch must stop before collecting the observation"
     )
 
     with pytest.raises(ContractError, match="configured isolated worker identity"):
         probe.main()
 
 
-@pytest.mark.parametrize("bad_request", [{"run_id": "run-only"}, {"run_id": "r", "nonce": "n", "extra": 1}])
-def test_probe_entrypoint_rejects_malformed_request_without_attestation_or_probe(
-    probe_entrypoint, bad_request
+def test_probe_entrypoint_emits_direct_observation_without_request_or_attestation(
+    probe_entrypoint, capsys,
 ):
     probe = probe_entrypoint
     probe.os = SimpleNamespace(geteuid=lambda: 999, getegid=lambda: 989)
-    reads = []
+    observation = {"schema": "VST_S2_RUNTIME_OBSERVATION_V1", "result": "PASS"}
+    collections = []
+    probe.collect_inventory = lambda: (collections.append(True), observation)[1]
 
-    def read_json(path, *, max_bytes):
-        reads.append(path)
-        return bad_request
-
-    probe._read_root_controlled_json = read_json
-    probe.collect_inventory = lambda *args, **kwargs: pytest.fail(
-        "malformed request must not reach the collector"
-    )
-
-    with pytest.raises(ContractError, match="request fields"):
-        probe.main()
-    assert reads == [probe.REQUEST_PATH]
+    assert probe.main() == 0
+    assert json.loads(capsys.readouterr().out) == observation
+    assert collections == [True]
+    assert not hasattr(probe, "REQUEST_PATH")
+    assert not hasattr(probe, "_read_root_controlled_json")
 
 
-def test_probe_entrypoint_times_out_closed_without_collector_or_network(probe_entrypoint):
+def test_probe_entrypoint_propagates_environment_refusal_as_nonzero(probe_entrypoint, capsys):
     probe = probe_entrypoint
     probe.os = SimpleNamespace(geteuid=lambda: 999, getegid=lambda: 989)
-    reads = []
+    probe.collect_inventory = lambda: {"schema": "VST_S2_RUNTIME_OBSERVATION_V1", "result": "FAIL"}
 
-    def read_json(path, *, max_bytes):
-        reads.append(path)
-        return {"run_id": "qualification-run", "nonce": "qualification-nonce"}
-
-    ticks = iter((0.0, 60.0))
-    probe._read_root_controlled_json = read_json
-    probe.os.path = SimpleNamespace(lexists=lambda path: False)
-    probe.time = SimpleNamespace(monotonic=lambda: next(ticks), sleep=lambda _: pytest.fail("no real wait"))
-    probe.collect_inventory = lambda *args, **kwargs: pytest.fail(
-        "missing attestation must not reach the collector or network probe"
-    )
-
-    with pytest.raises(ContractError, match="not published before the deadline"):
-        probe.main()
-    assert reads == [probe.REQUEST_PATH]
+    assert probe.main() == 1
+    assert json.loads(capsys.readouterr().out)["result"] == "FAIL"
 
 
 def test_manifest_pytest_adapter_emits_pass_only_after_all_three_reports_pass(tmp_path):

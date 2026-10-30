@@ -5978,6 +5978,57 @@ class Store:
             )
         return True
 
+    def require_existing_preflight_consumed(
+        self, run_id: str, nonce: str, spec_sha256: str, probe_sha256: str,
+    ) -> None:
+        """Require the exact previously accepted observation without writing state."""
+        for value, name in ((run_id, "run_id"), (nonce, "nonce")):
+            _need_str(value, name)
+        for value, name in ((spec_sha256, "spec_sha256"), (probe_sha256, "probe_sha256")):
+            if not isinstance(value, str) or len(value) != 64 or any(
+                char not in "0123456789abcdef" for char in value
+            ):
+                raise StoreError(f"{name}: must be a lowercase SHA-256 digest", kind="argument")
+        if not self.reconciliation_complete:
+            raise StoreError(
+                "verified Store reconciliation is required before runtime recovery",
+                kind="integrity",
+            )
+        with self._read_tx() as conn:
+            existing = conn.execute(
+                "SELECT run_id, nonce, spec_sha256, probe_sha256 FROM supervisor_probes "
+                "WHERE run_id = ? OR nonce = ?", (run_id, nonce),
+            ).fetchall()
+            events = conn.execute(
+                "SELECT actor, payload FROM events WHERE task_id = ? AND kind = 'NOTE'",
+                (run_id,),
+            ).fetchall()
+        if (len(existing) != 1 or existing[0]["run_id"] != run_id
+                or existing[0]["nonce"] != nonce
+                or existing[0]["spec_sha256"] != spec_sha256
+                or existing[0]["probe_sha256"] != probe_sha256):
+            raise StoreError(
+                "runtime recovery requires the exact existing consumed observation tuple",
+                kind="integrity",
+            )
+        matching_events = []
+        for row in events:
+            try:
+                payload = json.loads(row["payload"])
+            except (ValueError, TypeError) as exc:
+                raise StoreError("runtime recovery NOTE event is malformed", kind="integrity") from exc
+            if isinstance(payload, dict) and payload.get("event") == "PREFLIGHT_CONSUMED":
+                matching_events.append((row["actor"], payload))
+        expected_event = {
+            "event": "PREFLIGHT_CONSUMED", "nonce": nonce,
+            "spec_sha256": spec_sha256, "probe_sha256": probe_sha256,
+        }
+        if matching_events != [("supervisor", expected_event)]:
+            raise StoreError(
+                "runtime recovery requires one exact hash-chained Supervisor PASS event",
+                kind="integrity",
+            )
+
     # --------------------------------------------------------------- budget
 
     def set_budget(self, task_id: str, cap: int) -> None:

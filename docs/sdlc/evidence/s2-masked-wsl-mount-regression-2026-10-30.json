@@ -1,0 +1,48 @@
+{
+  "task": "S2-4 masked WSL backing mount probe regression",
+  "date": "2026-10-30",
+  "repository": "D:\\Repo\\Virtual_scrum_team",
+  "source_head": "aedf712c07eb0cc531852d18443faa497e19bb2d",
+  "source_worktree": {
+    "clean": false,
+    "relevant_dirty_source_and_config": [
+      "tools/vst/preflight.py",
+      "tools/vst/systemd/vst-supervisor.service",
+      "docs/sdlc/runtime-config/unit-overrides/vst-sandbox-probe.service.d/host-paths.conf"
+    ],
+    "limitation": "HEAD identifies the committed base only. The regression ran against the currently dirty source/config worktree; these changes are from the in-progress S2-4 source task and are not represented by HEAD."
+  },
+  "environment": {
+    "platform": "Windows",
+    "shell": "PowerShell",
+    "python": "Python 3.14.3"
+  },
+  "command": "C:\\Python314\\python.exe -m pytest -q -rs -p no:cacheprovider tests/vst/test_s2_sandbox_probe.py::test_environment_collector_accepts_systemd_inaccessible_directory_mount_for_masked_wsl_path tests/vst/test_s2_sandbox_probe.py::test_environment_collector_classifies_windows_drive_mounts tests/vst/test_s2_sandbox_probe.py::test_environment_collector_fails_closed_for_unlisted_host_mount",
+  "exit_code": 0,
+  "result": "5 passed, 1 warning, 0 skipped; 0.32 seconds",
+  "warning": "pytest_asyncio reports asyncio.get_event_loop_policy is deprecated and scheduled for removal in Python 3.16.",
+  "test_cases": [
+    {
+      "id": "test_environment_collector_accepts_systemd_inaccessible_directory_mount_for_masked_wsl_path",
+      "meaning": "A same-root-device/filesystem bind mount rooted at /run/systemd/inaccessible/dir for the masked /mnt target is accepted and absent from unapproved_host_mounts."
+    },
+    {
+      "id": "test_environment_collector_classifies_windows_drive_mounts[2 1 0:2 / /mnt/wslg rw - ext4 /dev/host rw-True]",
+      "meaning": "Unrelated WSLg mount is not mislabeled as a Windows drive."
+    },
+    {
+      "id": "test_environment_collector_classifies_windows_drive_mounts[2 1 0:2 / /mnt/c rw - 9p C:\\ aname=drvfs;path=C:\\ rw-False]",
+      "meaning": "WSL drvfs 9p mount is rejected as a Windows drive and unapproved host mount."
+    },
+    {
+      "id": "test_environment_collector_classifies_windows_drive_mounts[2 1 0:2 / /mnt/c rw - drvfs C:\\ rw-False]",
+      "meaning": "Direct drvfs mount is rejected as a Windows drive and unapproved host mount."
+    },
+    {
+      "id": "test_environment_collector_fails_closed_for_unlisted_host_mount",
+      "meaning": "A host-backed ext4 mount outside the approved masks fails closed."
+    }
+  ],
+  "full_output": "docs/sdlc/evidence/s2-masked-wsl-mount-regression-2026-10-30.txt",
+  "scope_note": "Only these three safe focused selectors were run. No broader suite, runtime, e2e, process-kill, crash, mutation, policy, or S2-5 selector was run."
+}

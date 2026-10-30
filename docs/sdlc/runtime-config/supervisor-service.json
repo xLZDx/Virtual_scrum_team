@@ -87,7 +87,6 @@
       "uid": 979
     }
   ],
-  "preflight_record_path": "/var/lib/vst-runner/private/preflight.json",
   "probe_nonce": "a2a0dcab58b9451281ff0a7b079d4aa2",
   "root_dispatch_issuer": {
     "enabled": true,

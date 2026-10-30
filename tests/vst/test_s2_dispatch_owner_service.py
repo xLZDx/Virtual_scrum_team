@@ -7,6 +7,7 @@ import os
 import socket
 import struct
 import stat
+from types import SimpleNamespace
 from io import StringIO
 
 import pytest
@@ -16,6 +17,7 @@ from tools.vst import dispatch_owner_service as service_module
 
 
 _HEADER = struct.Struct("!I")
+_TEST_O_NOFOLLOW = getattr(os, "O_NOFOLLOW", 0x20000)
 
 
 def _fields() -> dict:
@@ -335,27 +337,34 @@ def test_s2_owner_service_refuses_truncated_header_or_body(
     ],
     ids=["nonroot-owner", "wrong-group", "wrong-mode", "oversized-file"],
 )
+@pytest.mark.skipif(os.name != "posix", reason="NOT_RUN: root-owned no-follow file checks require POSIX")
 def test_s2_owner_service_root_json_reader_enforces_owner_group_mode_and_size(
     monkeypatch, tmp_path, file_metadata,
 ):
     actual = tmp_path / "actual.json"
     actual.write_text('{"principal":"Codex"}', encoding="utf-8")
     real_open = service_module.os.open
+    real_stat = service_module.os.stat
     real_read = service_module.os.read
     real_close = service_module.os.close
     fake_path = "/etc/vst-runner/dispatch-owner-service.json"
 
     def fake_stat(path, *, follow_symlinks=True):
-        assert path.startswith("/")
-        return type("Info", (), {
-            "st_mode": stat.S_IFDIR | 0o755,
-            "st_uid": 0,
-            "st_gid": 0,
-        })()
+        if path == "/etc/vst-runner":
+            return type("Info", (), {
+                "st_mode": stat.S_IFDIR | 0o755,
+                "st_uid": 0,
+                "st_gid": 0,
+                "st_size": 0,
+                "st_atime": 0,
+                "st_mtime": 0,
+                "st_ctime": 0,
+            })()
+        return real_stat(path, follow_symlinks=follow_symlinks)
 
     def fake_open(path, flags):
         assert path == fake_path
-        assert flags & os.O_NOFOLLOW
+        assert flags & _TEST_O_NOFOLLOW
         return real_open(str(actual), os.O_RDONLY)
 
     def fake_fstat(fd):
@@ -366,11 +375,10 @@ def test_s2_owner_service_root_json_reader_enforces_owner_group_mode_and_size(
             "st_size": file_metadata["size"],
         })()
 
-    monkeypatch.setattr(service_module.os, "stat", fake_stat)
-    monkeypatch.setattr(service_module.os, "open", fake_open)
-    monkeypatch.setattr(service_module.os, "fstat", fake_fstat)
-    monkeypatch.setattr(service_module.os, "read", real_read)
-    monkeypatch.setattr(service_module.os, "close", real_close)
+    monkeypatch.setattr(service_module, "os", SimpleNamespace(
+        stat=fake_stat, open=fake_open, fstat=fake_fstat, read=real_read,
+        close=real_close, O_NOFOLLOW=_TEST_O_NOFOLLOW, name="posix", path=os.path,
+    ))
 
     with pytest.raises(ContractError, match="owner, mode, or size"):
         service_module._read_root_json(
@@ -378,32 +386,39 @@ def test_s2_owner_service_root_json_reader_enforces_owner_group_mode_and_size(
         )
 
 
+@pytest.mark.skipif(os.name != "posix", reason="NOT_RUN: root-owned no-follow file checks require POSIX")
 def test_s2_owner_service_root_json_reader_accepts_exact_config_metadata(monkeypatch, tmp_path):
     actual = tmp_path / "actual.json"
     actual.write_text('{"principal":"Codex"}', encoding="utf-8")
     real_open = service_module.os.open
+    real_stat = service_module.os.stat
     real_read = service_module.os.read
     real_close = service_module.os.close
     fake_path = "/etc/vst-runner/dispatch-owner-service.json"
 
     def fake_stat(path, *, follow_symlinks=True):
-        return type("Info", (), {
-            "st_mode": stat.S_IFDIR | 0o755, "st_uid": 0, "st_gid": 0,
-        })()
+        if path == "/etc/vst-runner":
+            return type("Info", (), {
+                "st_mode": stat.S_IFDIR | 0o755, "st_uid": 0, "st_gid": 0,
+                "st_size": 0, "st_atime": 0, "st_mtime": 0, "st_ctime": 0,
+            })()
+        return real_stat(path, follow_symlinks=follow_symlinks)
 
-    monkeypatch.setattr(service_module.os, "stat", fake_stat)
-    monkeypatch.setattr(service_module.os, "open", lambda path, flags: real_open(str(actual), os.O_RDONLY))
-    monkeypatch.setattr(service_module.os, "fstat", lambda fd: type("Info", (), {
+    monkeypatch.setattr(service_module, "os", SimpleNamespace(
+        stat=fake_stat,
+        open=lambda path, flags: real_open(str(actual), os.O_RDONLY),
+        fstat=lambda fd: type("Info", (), {
         "st_mode": stat.S_IFREG | 0o640, "st_uid": 0, "st_gid": 1501, "st_size": 21,
-    })())
-    monkeypatch.setattr(service_module.os, "read", real_read)
-    monkeypatch.setattr(service_module.os, "close", real_close)
+        })(), read=real_read, close=real_close, O_NOFOLLOW=_TEST_O_NOFOLLOW,
+        name="posix", path=os.path,
+    ))
 
     assert service_module._read_root_json(
         fake_path, expected_mode=0o640, expected_gid=1501, max_bytes=65536,
     ) == {"principal": "Codex"}
 
 
+@pytest.mark.skipif(os.name != "posix", reason="NOT_RUN: systemd cgroup and uid/gid identity checks require POSIX")
 def test_s2_owner_service_loader_uses_fixed_shared_registry_path_and_permissions(
     monkeypatch,
 ):
@@ -450,7 +465,7 @@ def _supervisor_service_schema_candidate():
     path_fields = {
         "store_path", "anchor_path", "event_key_path", "startup_supervisor_key_path",
         "execution_grant_private_key_path", "operator_key_path",
-        "preflight_record_path", "openssl_path", "generation_record_path",
+        "openssl_path", "generation_record_path",
         "dispatch_instruction_trust_registry_path", "runner_lock_path", "systemctl_path",
         "socket_path",
     }
@@ -500,6 +515,7 @@ def _supervisor_service_schema_candidate():
     return supervisor_service, config
 
 
+@pytest.mark.skipif(os.name != "posix", reason="NOT_RUN: supervisor absolute-path identity uses POSIX runtime paths")
 def test_s2_supervisor_service_requires_fixed_shared_trust_registry_path(monkeypatch):
     supervisor_service, config = _supervisor_service_schema_candidate()
     monkeypatch.setattr(supervisor_service, "_read_controlled_json", lambda *args, **kwargs: config)
@@ -509,13 +525,80 @@ def test_s2_supervisor_service_requires_fixed_shared_trust_registry_path(monkeyp
         supervisor_service.load_supervisor_service()
 
 
-def test_s2_supervisor_service_rejects_removed_probe_key_path(monkeypatch):
+def test_s2_supervisor_service_rejects_detached_probe_request_or_key_path(monkeypatch):
     supervisor_service, config = _supervisor_service_schema_candidate()
-    config["probe_key_path"] = "/etc/vst-runner/removed-probe-key"
-    monkeypatch.setattr(supervisor_service, "_read_controlled_json", lambda *args, **kwargs: config)
+    for obsolete in ("probe_key_path", "probe_request_path", "preflight_record_path"):
+        candidate = {**config, obsolete: "/etc/vst-runner/obsolete-handoff"}
+        monkeypatch.setattr(
+            supervisor_service, "_read_controlled_json",
+            lambda *args, _candidate=candidate, **kwargs: _candidate,
+        )
 
-    with pytest.raises(ContractError, match="config fields do not match its schema"):
-        supervisor_service.load_supervisor_service()
+        with pytest.raises(ContractError, match="config fields do not match its schema"):
+            supervisor_service.load_supervisor_service()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="systemd Unix-domain listener ordering requires POSIX")
+def test_supervisor_notifies_systemd_only_after_bound_listener_is_listening(monkeypatch):
+    import posixpath
+    from types import SimpleNamespace
+    from tools.vst import supervisor_service
+
+    events = []
+    monkeypatch.setattr(supervisor_service, "os", SimpleNamespace(
+        name="posix", path=SimpleNamespace(
+            dirname=posixpath.dirname, isabs=posixpath.isabs, lexists=lambda _path: False,
+        ),
+        geteuid=lambda: 0,
+    ))
+    api = supervisor_service.AuthenticatedSupervisorAPI(
+        SimpleNamespace(_probe_consumed=True), "/run/vst-supervisor/supervisor.sock",
+        peers=(supervisor_service.SupervisorPeer(
+            role="runnerd", uid=997, gid=988,
+            cgroup="/system.slice/vst-runner.service", operations=frozenset({"claim"}),
+        ),),
+        socket_gid=984, require_peer_pidfd=False,
+    )
+
+    class FakeServer:
+        def bind(self, path):
+            events.append(("bind", path))
+
+        def listen(self, backlog):
+            events.append(("listen", backlog))
+
+        def settimeout(self, timeout):
+            events.append(("timeout", timeout))
+
+        def close(self):
+            events.append(("close",))
+
+    server = FakeServer()
+    monkeypatch.setattr(supervisor_service, "socket", SimpleNamespace(
+        AF_UNIX=socket.AF_UNIX, SOCK_STREAM=socket.SOCK_STREAM,
+        SO_PEERCRED=socket.SO_PEERCRED, socket=lambda *_args: server,
+    ))
+    monkeypatch.setattr(supervisor_service, "os", SimpleNamespace(
+        name="posix", path=SimpleNamespace(dirname=posixpath.dirname, lexists=lambda _path: False),
+        stat=lambda *_args, **_kwargs: SimpleNamespace(
+            st_mode=stat.S_IFDIR | 0o710, st_uid=0, st_gid=984,
+        ),
+        chown=lambda *_args: events.append(("chown",)),
+        chmod=lambda *_args: events.append(("chmod",)),
+        unlink=lambda *_args: events.append(("unlink",)),
+    ))
+
+    def notify_ready():
+        assert any(event[0] == "bind" for event in events)
+        assert any(event[0] == "listen" for event in events)
+        events.append(("ready",))
+        api.shutdown()
+
+    monkeypatch.setattr(supervisor_service, "_notify_systemd_ready", notify_ready)
+    api.serve_forever()
+
+    names = [event[0] for event in events]
+    assert names.index("bind") < names.index("listen") < names.index("ready") < names.index("close")
 
 
 @pytest.mark.parametrize(
@@ -527,6 +610,7 @@ def test_s2_supervisor_service_rejects_removed_probe_key_path(monkeypatch):
     ],
     ids=["unexpected-field", "principal-drift", "openssl-path-drift"],
 )
+@pytest.mark.skipif(os.name != "posix", reason="NOT_RUN: systemd cgroup and uid/gid identity checks require POSIX")
 def test_s2_owner_service_config_enforces_exact_fixed_schema(monkeypatch, bad_config):
     monkeypatch.setattr(service_module.os.path, "lexists", lambda path: False)
     monkeypatch.setattr(service_module.os, "geteuid", lambda: 1500)
@@ -590,6 +674,7 @@ def test_s2_owner_service_trust_registry_enforces_exact_shared_schema(
         "unsafe-key-mode", "key-not-regular",
     ],
 )
+@pytest.mark.skipif(os.name != "posix", reason="NOT_RUN: root-owned public-key file checks require POSIX")
 def test_s2_owner_service_public_key_requires_root_owner_group_and_mode(
     monkeypatch, metadata,
 ):
@@ -603,14 +688,16 @@ def test_s2_owner_service_public_key_requires_root_owner_group_and_mode(
             })()
         return type("Info", (), {"st_mode": stat.S_IFDIR | 0o755, "st_uid": 0, "st_gid": 0})()
 
-    monkeypatch.setattr(service_module.os, "stat", fake_stat)
-    monkeypatch.setattr(service_module.os, "open", lambda path, flags: 13)
-    monkeypatch.setattr(service_module.os, "fstat", lambda fd: type("Info", (), {
+    monkeypatch.setattr(service_module, "os", SimpleNamespace(
+        stat=fake_stat,
+        open=lambda path, flags: 13,
+        fstat=lambda fd: type("Info", (), {
         "st_mode": (stat.S_IFREG if metadata.get("regular", True) else stat.S_IFDIR)
         | metadata["mode"], "st_uid": metadata["uid"],
         "st_gid": metadata["gid"], "st_size": 32,
-    })())
-    monkeypatch.setattr(service_module.os, "close", lambda fd: None)
+        })(), close=lambda fd: None, O_RDONLY=os.O_RDONLY, O_NOFOLLOW=_TEST_O_NOFOLLOW,
+        name="posix", path=os.path,
+    ))
 
     if metadata.get("uid") != 0 or metadata.get("gid") != 0 or metadata.get("mode") != 0o644 or not metadata.get("regular", True):
         with pytest.raises(ContractError, match="owner, mode, or size"):
@@ -666,6 +753,7 @@ def test_s2_owner_service_adopts_only_named_systemd_fd_three(monkeypatch):
     ))
 
 
+@pytest.mark.skipif(os.name != "posix", reason="NOT_RUN: systemd cgroup and uid/gid identity checks require POSIX")
 def test_s2_owner_service_rejects_wrong_or_untrusted_cgroup(monkeypatch):
     monkeypatch.setattr(service_module.os.path, "lexists", lambda path: False)
     monkeypatch.setattr(service_module.os, "geteuid", lambda: 1500)
@@ -685,6 +773,7 @@ def test_s2_owner_service_rejects_wrong_or_untrusted_cgroup(monkeypatch):
 
 
 @pytest.mark.parametrize("path", ["relative.sock", "/tmp/attacker.sock"])
+@pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="NOT_RUN: Unix activation sockets are unavailable on this platform")
 def test_s2_owner_service_rejects_nonfixed_activation_socket_path(
     dispatch_instruction_keypair, path,
 ):
@@ -708,11 +797,12 @@ def test_s2_owner_service_rejects_nonfixed_activation_socket_path(
     ("family", "socktype", "accepting"),
     [
         (socket.AF_INET, socket.SOCK_STREAM, 1),
-        (socket.AF_UNIX, socket.SOCK_DGRAM, 1),
-        (socket.AF_UNIX, socket.SOCK_STREAM, 0),
+        (getattr(socket, "AF_UNIX", -1), socket.SOCK_DGRAM, 1),
+        (getattr(socket, "AF_UNIX", -1), socket.SOCK_STREAM, 0),
     ],
     ids=["non-unix-fd", "non-stream-fd", "not-listening-fd"],
 )
+@pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="NOT_RUN: Unix activation sockets are unavailable on this platform")
 def test_s2_owner_service_rejects_wrong_systemd_listener_fd(
     dispatch_instruction_keypair, family, socktype, accepting,
 ):

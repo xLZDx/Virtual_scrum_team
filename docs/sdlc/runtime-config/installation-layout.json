@@ -85,13 +85,6 @@
       "uid": 0
     },
     {
-      "destination": "/etc/vst-runner/probe-request.json",
-      "gid": 0,
-      "mode": "0644",
-      "source": "probe-request.json",
-      "uid": 0
-    },
-    {
       "destination": "/etc/vst-runner/network-profile.json",
       "gid": 0,
       "mode": "0644",
@@ -147,12 +140,6 @@
       "uid": 0
     },
     {
-      "gid": 0,
-      "mode": "0755",
-      "path": "/var/lib/vst-runner/repository",
-      "uid": 0
-    },
-    {
       "gid": 988,
       "mode": "0700",
       "path": "/var/lib/vst-signer",
@@ -163,12 +150,6 @@
       "mode": "0700",
       "path": "/var/lib/vst-reviewer",
       "uid": 993
-    },
-    {
-      "gid": 989,
-      "mode": "0710",
-      "path": "/run/vst-preflight",
-      "uid": 0
     }
   ],
   "dynamic_state_rule": "retain observed bootstrap/issuer response and invocation identity; ambiguous outcome never retries signing or admission",
@@ -226,28 +207,14 @@
   "private_material_root": "/var/lib/vst-config-preparation/s2-20261030",
   "runtime_derived_files": [
     {
-      "gid": 0,
-      "mode": "0600",
-      "path": "/var/lib/vst-runner/private/preflight.json",
-      "source": "exact one-shot probe JSON captured by root and separately verified root-signed network policy for the configured run and nonce; no fabricated PASS",
-      "uid": 0
-    },
-    {
       "gid": 981,
       "mode": "0640",
       "path": "/etc/vst-runner/issuance-request.json",
       "source": "exact assignment_operation_id from authenticated successful bootstrap response for this run; not a caller-selected replacement",
       "uid": 0
-    },
-    {
-      "gid": 989,
-      "mode": "0640",
-      "path": "/run/vst-preflight/network-policy-attestation.json",
-      "source": "actual independently observed root policy evidence for the waiting probe MainPID/InvocationID, matching run/spec/nonce; signature only after all actual conditions hold",
-      "uid": 0
     }
   ],
-  "runtime_repository_rule": "single fixed deployment snapshot, no development checkout or per-sprint worktree",
+  "runtime_repository_rule": "Provision one root-owned read-only snapshot of the canonical Git-tree archive for the exact task_source_head at /var/lib/vst-runner/repository before config apply completes; it is a runtime deployment snapshot, never a development checkout or per-sprint worktree. All development remains in D:/Repo/Virtual_scrum_team.",
   "state": "CANDIDATE_NOT_INSTALLED",
   "store_rule": "initialize only the explicitly absent fresh target; refuse existing incompatible Store and preserve all data",
   "unit_overrides": [
@@ -279,7 +246,7 @@
       "destination": "/etc/systemd/system/vst-sandbox-probe.service.d/90-s2-host-path-mask.conf",
       "gid": 0,
       "mode": "0644",
-      "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
+      "sha256": "39ae210045c73880409b2c799146dce9c1f582d952f9a52705874b39579a8ec1",
       "source": "unit-overrides/vst-sandbox-probe.service.d/host-paths.conf",
       "uid": 0
     },

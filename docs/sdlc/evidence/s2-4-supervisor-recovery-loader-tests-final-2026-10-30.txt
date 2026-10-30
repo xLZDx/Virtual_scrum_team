@@ -1,0 +1,7 @@
+sssssssss                                                                [100%]
+=========================== short test summary info ===========================
+SKIPPED [1] tests\vst\test_s2_preflight_capture.py:481: Supervisor service contract requires POSIX path semantics
+SKIPPED [1] tests\vst\test_s2_preflight_capture.py:507: Supervisor service contract requires POSIX path semantics
+SKIPPED [1] tests\vst\test_s2_preflight_capture.py:538: Supervisor service contract requires POSIX path semantics
+SKIPPED [6] tests\vst\test_s2_preflight_capture.py:550: Supervisor service contract requires POSIX path semantics
+9 skipped, 21 deselected in 0.74s

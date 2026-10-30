@@ -2176,7 +2176,9 @@ def run_lifecycle_scenarios(
     fixture = SliceFixture(
         control, SLICE_KEY, clock, supervisor_key=SUPERVISOR_KEY,
         operator_key=OPERATOR_KEY, event_key=EVENT_KEY, anchor_path=anchor_path,
-        sandbox_mode=True,
+        # This is a synthetic report flow, not an environment qualification.
+        # Keep production sandbox admission tied to Supervisor-owned observations.
+        sandbox_mode=False,
     )
     worker = HandWrittenWorker(repository)
     run_id = "synthetic-safe-run"

@@ -14,7 +14,7 @@ requirement. Permission to prepare a candidate does not make that candidate mand
 |---|---|---|---|
 | 1 | S2-4 tracking reconciliation — corrected in change0591 | Correct stale writer/issuer HOLD and push-pending summaries against I01 SOURCE GO, code/test approval `c978360`, and successful task push through `e09c78b`. | Codex: verify the containing commit is normally pushed, then take item 2. |
 | 2 | S2-4 exact runtime inputs — DELIVERED `473e559` | Source compatibility fix a600774 is pushed; actual strict stage-only publication succeeded. Bundle32 artifacts, nine unit bindings and three rate-limit overrides are pinned to actual source/helper/task/policy/run identities. False local GPT-PM credential labeling was corrected; review and test evidence is retained in change0595. | Codex: delivered change0595 in473e559; normal push output `9021b98..473e559` succeeded. Focused9-case suite and actual UID999 command/parser passed; local registry HMAC valid/tamper checks passed. Continue only item3. Existing delegation is carried forward; no generic permission is pending. |
-| 3 | S2-4 current E5 and real owner-to-Runner evidence — IN PROGRESS | The prior one-shot attempt `8ee40d1a` failed closed on an unapproved Windows/host mount before attestation/bootstrap/dispatch/claim/probe/TestRun; its authorization is consumed and must not be retried. Fresh non-secret candidate: run `s2-runtime-20261030-1977eaba61274396b6b58d069c5cede2`, request `98b38065170f468c9943aa8f22160ff9`, nonce `a2a0dcab58b9451281ff0a7b079d4aa2`, bundle SHA `05530c73…10f91f`. GPT-PM found MAJOR-01 on stale predecessor `069be3b` / tuple `212a…/334296…/b575…`; Codex corrected it to the observed `7d1d16f` / bundle `388e6bb…` / tuple `e520…/2b5e…/0aac…` and retained all historical tuples in replay denial. Test-owner suite: 70 passed at uncommitted worktree; Python and security re-reviews PASS. GPT-PM re-review ACCEPTED MAJOR-01 (request `24c2372b-5cf8-4144-a690-d22a65db90e0`, reply `e8448c22-a258-51a4-af4c-fed00e545f51`, correlated); candidate is commit-eligible but not committed/exact-head tested. Fresh candidate runtime and restricted scenarios remain NOT_RUN; consumed authorization cannot be retried. | Codex: commit and normally push this scoped correction. Then the test owner repeats acceptance against committed exact HEAD; only after that request a fresh correlated one-shot runtime authorization. `e2e-runner` executes only the authorized bounded scope. |
+| 3 | S2-4 current E5 and real owner-to-Runner evidence — IN PROGRESS | Prior source `b38e7239` probe ended in SIGTERM while the Ubuntu-24.04 WSL journal recorded system power-off; the exact shutdown trigger is not established, and that historical run is not current-candidate evidence. The masked-mount classifier false refusal is fixed and re-reviewed. Focused regressions passed 5/5 and the mock-only qualification-harness tests passed 4/4, each on dirty S2-4 worktree at base `aedf712c`; supplemental safe suite was 133 passed, 60 skipped, 8 deselected, 1 warning, also dirty. Evidence: `evidence/s2-runtime-distro-shutdown-20261030.md`, `evidence/s2-masked-wsl-mount-regression-2026-10-30.json`, `evidence/s2-runtime-qualification-harness-test-run-2026-10-30.json`, `evidence/s2-focused-functional-run-2026-10-30.json`. The qualification harness preserves one WSL session and retry=0 but has not run against real runtime. No fresh run-bound E5 attestation, Owner-to-Runner result, or report-bound TestRun exists. | Codex: finish exact-source task evidence and candidate review, commit locally, obtain GPT-PM exact-head code acceptance before normal push, then request a fresh one-shot runtime authorization bound to the pushed exact source/config/run identity. `e2e-runner`: execute only that bounded authorization. Keep S2-5 queued. |
 | 4 | S2-5 final acceptance — not started | Requires S2-4 acceptance plus final revision/evidence review. | Codex assembles; GPT-PM decides. S3 remains unstarted. |
 
 ## Historical source update — change0556 (current state above)
@@ -315,6 +315,182 @@ The active AF push gate's `start_head` had pointed to `20fda2c` on the other
 pointer to the previous delivered S2 HEAD `2e6a796`, preserving sprint ID and phase history. This
 keeps the required exact-head review scoped to the current S2 continuation.
 
+**Current checkpoint — bounded recovery authorization `f0d3a07d` (2026-10-30).** GPT-PM
+request `f0d3a07d-4b1d-4eb7-a04e-25bbdf0be93d` returned `MODIFY — CONDITIONAL RECOVERY
+AUTHORIZATION`, bound to HEAD `7d1d16f6348e6c00a5a568b5cfbc8caf309194b9`. Its one fresh
+collector/validator chain ran once through one continuous Ubuntu-24.04 WSL process. Collector exit
+0 captured `docs/sdlc/evidence/s2-runtime-qual-f0d3a07d-s2-runtime-20261030-2b5e04a3-collector.stdout.bin`
+(35,342 bytes, SHA-256
+`6d9e4f818c91ee986c131dfef7b08aee36f36267e029302707f470be0cb23f53`); the committed validator
+ran once and returned PASS for all 26 configuration destinations and the exact pinned original
+baseline. Validator stdout is
+`docs/sdlc/evidence/s2-runtime-qual-f0d3a07d-s2-runtime-20261030-2b5e04a3-validator.stdout.bin`
+(449 bytes, SHA-256
+`1bb165b1935462a671230d7a6566c957ef599277c0d7587daf44e1327a8818f7`). The scoped recovery
+observation is in `docs/sdlc/evidence/s2-runtime-recovery-status-f0d3a07d-20261030.md`.
+
+The collector recorded boot ID `270cd88b-183f-426c-8add-872d9e98bcec`. A targeted read-only
+query at `2026-10-30T11:19:50Z` recorded boot ID
+`b0d0e05e-8705-44ab-9f32-277742e4a343`, so boot identity changed after inventory capture; the
+PM condition to keep boot identity unchanged failed. That later query also showed the nine named
+VST units loaded/inactive/dead with `MainPID=0` for service units and an empty systemd jobs list.
+Its shell exited 2 before the intended path observations; Store/preflight/socket state was not
+re-observed by that query. No host-wide process enumeration was performed. Because the PM
+authorization terminates on any failed or incomplete predicate, no apply, preflight, claim/probe,
+or TestRun was authorized or performed. Collector and validator slots are consumed; do not repeat
+them under request `f0d3a07d`. Current task remains S2-4 IN PROGRESS, S2-5 queued, and S3
+unstarted. Next: GPT-PM must clarify whether the observed inactive unit state satisfies the approved
+pre-apply readiness contract and, if so, issue a new exact-HEAD one-shot authorization for a fresh
+same-session inventory/validator/status sequence. Codex owns coordination; e2e-runner executes an
+authorized runtime chain. Production dispatch stays disabled.
+
+**Current result — fresh qualification and conditional apply, authorization `7f3f3b3c` (2026-10-30).**
+GPT-PM approved exactly one fresh zero-retry chain at the same HEAD and pins, with the authorization
+ending after apply capture. The chain ran once through one continuous Ubuntu-24.04 WSL process.
+Collector exit 0 captured at `2026-10-30T11:28:34.332497+02:00`; byte-exact host persistence was
+acknowledged before validation. Collector stdout is 35,345 bytes, SHA-256
+`29543f0a065ff844a6413c4536f7b1b737c9223060f7c276f3b73efe67d9c5f5`. The committed validator
+ran once, exit 0, and returned `PASS: complete S2 runtime inventory` for all 26 original-baseline
+destinations; validator stdout is 449 bytes, SHA-256
+`7619b1d5d377f85403d5e6c7bf20e3c83bb924bcf6cbadab667d6829ecc158e8`. Same-session status showed
+the boot ID unchanged, runtime selector unchanged, inventory age 3.45437 seconds, all nine required
+units satisfying the approved loaded/inactive/dead/MainPID-zero state, no systemd jobs, no Store,
+preflight, attestation or runtime sockets, no candidate collision, and all apply predicates true.
+
+The one conditional apply ran at `2026-10-30T11:28:37.816Z`, exit 0; daemon reload succeeded,
+four files were installed and 22 were already exact. Apply stdout is 4,354 bytes, SHA-256
+`73a4aa80794f8337f1afadfaf50d77b0ce76b3381e9327b86a72b3c376a4eadb`. The status and protocol
+hashes plus complete exact commands are preserved in
+`docs/sdlc/evidence/s2-runtime-qual-7f3f3b3c-s2-runtime-20261030-2b5e04a3.attempt.json` and its
+linked raw artifacts. No preflight, Owner→Runner claim/probe, TestRun, restricted selector,
+production activation, or retry was run; GPT-PM explicitly limited this authorization to apply.
+This closes the configuration apply substep only. S2-4 runtime/E5/Owner→Runner acceptance remains
+IN PROGRESS; S2-5 remains queued and S3 unstarted. Next: Codex requests a separate post-apply
+authorization from GPT-PM; the `e2e-runner` role executes only what that decision permits.
+
+**Post-apply qualification attempt `d71586a1` — stopped before runtime observation (2026-10-30).**
+GPT-PM request `d71586a1-9894-4b01-aafa-6dd5d0af7e48` authorized one S2-4.12c chain, retry cap
+zero. Its first WSL wrapper invocation started at `2026-10-30T11:41:20.496569Z`, but could not
+`chdir` to `/mnt/d/Repo/Virtual_scrum_team` (`FileNotFoundError(2, No such file or directory)`).
+The wrapper returned `HOLD`; collector and root preflight were not invoked. Claim/probe and exact
+selector TestRun remain `NOT_RUN`. No alternate mount, retry, or runtime operation occurred.
+Evidence: `docs/sdlc/evidence/s2-runtime-qual-d71586a1-s2-runtime-20261030-2b5e04a3.attempt.json`
+(SHA-256 `58c6306d418405848745c22a6f1d484ffc68634f1809210b7c3ecfbd44c62c38`) and matching WSL
+stdout (529 bytes, SHA-256
+`f9b4a7663a30d0d8297146bf8069ad13fafc56b6a122f652d05c0a3255320a81`). The one-shot authorization
+is exhausted at this first access failure. S2-4 remains IN PROGRESS and S2-5 stays queued. Next:
+Codex requests a new one-shot authorization that explicitly includes at most one temporary
+read-only D: mount, then one post-apply status/preflight → claim/probe → exact-selector chain;
+e2e-runner executes only after that decision.
+
+**Authorization `c8c6ecb5` — host launch stopped before WSL (2026-10-30).** GPT-PM approved one
+replacement zero-retry chain including one temporary read-only D: mount. Its first PowerShell
+wrapper attempt failed before `wsl.exe` started: `StandardOutputEncoding is only supported when
+standard output is redirected` (host command exit 1). No mount or runtime action occurred; post-
+apply status, inventory, preflight, claim/probe and TestRun are all `NOT_RUN`. The authorization
+was consumed at the first wrapper attempt and was not retried. Exact evidence:
+`docs/sdlc/evidence/s2-runtime-qual-c8c6ecb5-s2-runtime-20261030-2b5e04a3.attempt.json`
+(SHA-256 `29c20352696333f73fc5f1a746a3983ae0d313fc4a6321da78da5734463459a3`) and matching
+`-host-launch.stderr.txt` (203 bytes, SHA-256
+`2ef18f51555884c04dff7acaf8d883904dffdbad1b60a42d300c1426d6812693`). Next: Codex requests one
+new GPT-PM authorization specifying a noninteractive Windows launcher with child stdout/stderr
+redirected; only then may e2e-runner execute the same bounded chain. S2-4 remains IN PROGRESS,
+S2-5 stays queued, S3 unstarted, and production activation remains NOT_RUN.
+
+**Authorization `b3a9b780` — host command rejected before Python (2026-10-30).** GPT-PM issued a
+one-shot replacement authorization with retry cap 0 and a complete persisted-claim guard. The
+designated `e2e-runner` attempted the host call once through `cmd.exe`; command quoting caused
+`C:\Python314\python.exe` to be treated as an unrecognized command (exit 1). Python and WSL did
+not start; no runtime stage or target change occurred. The authorization is consumed. Exact
+command/output and launcher SHA-256 are recorded in
+`evidence/s2-runtime-qual-b3a9b780-host-launch-20261030.md`. S2-4 remains IN PROGRESS; S2-5 is
+queued. GPT-PM adjudicated request `98594d0e-1fb5-40ba-9ad5-148a3413e4e8` as HOLD for execution,
+GO for exactly two launcher-only corrections. The existing tuple remains valid only conditionally
+and must pass fresh HEAD, six source-pin, boot/runtime, config and candidate-state checks; no WSL
+execution is authorized by that reply. GPT-PM's MAJOR-01 required exact mountpoint detection
+instead of `findmnt --target`; MAJOR-02 required an explicit verified repository import path under
+isolated Python. Codex made these two changes only in
+`evidence/s2-runtime-qual-b3a9b780-launcher.py`; focused GPT-PM review of those findings and direct
+regressions is recorded below. Do not run the corrected launcher without a separate runtime
+authorization.
+
+The exact correlated outcome and authorized delta are recorded in
+`evidence/s2-runtime-qual-98594d0e-launcher-adjudication-20261030.md`. Corrected launcher hash and
+the focused review result are now recorded there. GPT-PM request
+`43bc1ebf-523d-4e3a-a077-f0b959cf214f` APPROVED the exact bytes at SHA-256
+`d4cd4b3d4eacc1ca620223db7ec997821106528e345a6110531ca1a8d32511d5`; MAJOR-01/02 are resolved
+and direct regressions passed static review. The same reply explicitly did not authorize a Windows/
+WSL invocation. Codex sent separate single-use runtime authorization request
+`c7fe8392-72a3-4c81-91ee-8bfe8b3e4382` naming this hash and preserving the prior tuple/pins; reply
+pending. No runtime invocation has occurred. If authorized, e2e-runner executes only the bounded
+sequence and stops on the first failure.
+
+**Authorization `dc6f1448` — one host launch, stopped before WSL (2026-10-30).** GPT-PM
+authorized one direct `C:\Python314\python.exe -I -B -S` invocation of the corrected launcher
+(SHA-256 `d4cd4b3d4eacc1ca620223db7ec997821106528e345a6110531ca1a8d32511d5`), with zero retries.
+The local checkout was branch `s2-canonical-continuation`, HEAD
+`7d1d16f6348e6c00a5a568b5cfbc8caf309194b9`. The host Python process started and exited 0, but its
+single attempt to create the authorized WSL child failed with
+`FileNotFoundError: [WinError 206] The filename or extension is too long`; the embedded base64 WSL
+program exceeded the Windows child-command limit. The attempt record says `wsl_spawned=false`.
+Therefore mount/source-pin/runtime predicates, post-apply status, preflight, Owner→Runner
+claim/probe, and TestRun are all `NOT_RUN`; no WSL target or Store mutation occurred. This
+authorization is consumed and must not be retried. Raw evidence is retained in
+`evidence/s2-runtime-qual-dc6f1448-outer.stdout.bin` (36,790 bytes, SHA-256
+`da6e103956b4305b3d2ae1ab5e3e087b204c8aaa2582f6f70e93929221615c92`),
+`evidence/s2-runtime-qual-dc6f1448-outer.stderr.bin` (0 bytes, SHA-256
+`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`), and
+`evidence/s2-runtime-qual-b3a9b780-s2-runtime-20261030-2b5e04a3.attempt.json` (36,960 bytes,
+SHA-256 `e9aada51fcb599368409993dc192eba756813ce159c2a4c3c6b6a1e0805f84ea`), including WSL
+stderr (71 bytes, SHA-256
+`6432d39107ce2c19135d41644fad43543b5b4f6ef41d4b8a4a7138dbdeb279e2`) and empty WSL stdout
+(SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`). S2-4 remains
+IN PROGRESS; S2-5 remains queued. Next: Codex coordinates a corrected command-length transport,
+obtains a new correlated authorization for its exact bytes, and then the e2e-runner executes only
+under that new one-shot decision. The stage-by-stage outcome is summarized in
+`evidence/s2-runtime-qual-dc6f1448-outcome-20261030.md`.
+
+**Authorization 268fd73c — HOLD before preflight (2026-10-30).** The one authorized direct host
+Python invocation verified launcher SHA-256 6c6e0c6e41bf67c3c170cc08492b45b0c4ae18888741a7fd5d95d7ba6cf16fa1
+and exact local HEAD 7d1d16f6348e6c00a5a568b5cfbc8caf309194b9, then started one Ubuntu-24.04 WSL
+child. Tuple, six pins, all 26 installed configuration targets, boot/runtime identity, manifest,
+systemd jobs/state, and empty Store/preflight/socket paths passed. The first failed predicate was
+the launcher's nine-unit parser: all systemctl calls exited 0, but returned MainPID before the
+other properties for services and omitted MainPID for the socket, unlike the launcher's assumed
+fixed array order. WSL stopped with terminal HOLD before root preflight; no unit start, Owner-to-Runner
+claim/probe, TestRun, retry, or production action occurred. The one temporary D: read-only mount
+was verified and unmounted successfully. The authorization is consumed. Exact unit arrays, command,
+stages, and artifact hashes are in
+evidence/s2-runtime-qual-268fd73c-outcome-20261030.md and
+evidence/s2-runtime-qual-dc22ee55-s2-runtime-20261030-2b5e04a3.attempt.json. S2-4 remains
+IN PROGRESS; S2-5 remains queued. Codex owns the narrow named-property parser correction and new
+correlated authorization; e2e-runner executes only under that authorization.
+
+**Authorization 8ee40d1a — HOLD at root preflight (2026-10-30).** The one authorized direct host
+invocation verified exact launcher SHA-256 5b03f670ec0f5adb01508d63d9f27582bde40fc66d0a8b490299721b621389db,
+size 29,899 bytes, and checkout HEAD 7d1d16f6348e6c00a5a568b5cfbc8caf309194b9. One Ubuntu-24.04
+WSL child started. All 17 tuple, HEAD, six source-pin, 26-target config, boot/runtime, manifest,
+unit, systemd-job and empty-state checks passed. One temporary D: read-only mount was verified and
+unmounted successfully. The single root-captured preflight returned exit 2 with
+“probe capture refused: probe namespace exposes an unapproved Windows or host mount”; terminal
+HOLD. The preflight command started the one-shot sandbox-probe systemd unit as its measurement
+stage; that probe refused the mount inventory before writing an attestation. No assignment
+bootstrap, issuer, Supervisor, Runner or dispatch service start, Owner-to-Runner claim/probe,
+exact-selector TestRun, retry, workaround or production action occurred. The authorization is consumed. Exact command, stage evidence and raw
+artifact hashes are in evidence/s2-runtime-qual-8ee40d1a-outcome-20261030.md and
+evidence/s2-runtime-qual-3a3a0e67-s2-runtime-20261030-2b5e04a3.attempt.json. S2-4 remains
+IN PROGRESS; S2-5 remains queued. Codex owns reconciling the approved temporary mount with the
+preflight refusal; no preflight bypass is authorized.
+
+**Fail-closed mount diagnostic delta (2026-10-30; working tree based on `38f843f`).** The
+preflight refusal previously omitted the offending mount category, so the observed attempt cannot
+identify the exact namespace entry. Codex added sanitized target classes and bounded filesystem
+labels to the refusal message; it does not emit raw source paths or nested usernames and does not
+change the rejection predicate. Helper SHA-256 is `c5d4f65b7eba42f68dfcf986ffd80fd35edcb096062d58360a3e51add9af72dd`;
+the inventory collector's source pin and test fixture were updated to match. The focused test
+command owned and run by `functional-test-reviewer` was
+`python -m pytest -q tests/vst/test_s2_preflight_host_capture.py::test_mount_inventory_refusal_reports_sanitized_mount_classification tests/vst/test_s2_preflight_host_capture.py::test_mount_inventory_rejects_windows_drive_and_unlisted_host_mount tests/vst/test_s2_runtime_config_inventory.py` — 35 passed, 1 pytest-asyncio deprecation warning. Security review found no remaining issue. Python review and GPT-PM exact-source review are still pending; this code change is not runtime proof and cannot authorize a retry.
+
 ### S2-5 — Exact-head gate and sprint decision
 
 1. **Given** completed source, mapped test, permitted runtime, and relevant specialist-review evidence, **When** final approval is requested, **Then** GPT-PM's approval names/correlates to the exact final Git head and evidence set. (REQ-006)
@@ -348,8 +524,90 @@ S2-1's bounded source/test task is delivered in pushed commit `e332ec4` after GP
 | S2-1 | Delivered — bounded source/test acceptance | M03 130/130 at `c855ca4`; source-fidelity 5/5 at `206a746`; adapter 38/38 at `6952469`; correlated-wrapper regression 38/38 at `0da595e`. GPT-PM request `f92b750e-485d-4f97-8c28-3bb2b8bfc3db` resolved S2-REVIEW-02 for this scope at submitted HEAD `57c734e60787a9db14bb888116d7e808bc46970e`; evidence: `evidence/s2-1-coverage-adjudication-f92b750e.md`. Delivery: `e332ec4` pushed. Tests/reviews are inherited records, not work rerun by GPT-PM. Runtime remains unproven. |
 | S2-2 | Delivered — bounded source/test only | GPT-PM request `b0f60d46-42b7-486a-b2f0-5d2253780f55`, correlated reply `d555b078-5647-46eb-bfc1-dd99654d634f`; exact source/test blobs are in pushed `e987a24`. WSL run record `evidence/s2-dispatch-owner-transport-wsl-run-20261029.md` reports 34 passed; peer credentials, pidfd and filesystem metadata are mocked. See delivery reconciliation 0588. |
 | S2-3 | Bounded stage-only acceptance and delivery complete | Commit `ae07f8708adcc7ef4f69505477ad6b72e3c912cf` is pushed. Exact bundle/inventory and post-stage manifest identities, PM decision `ac2d25a2-8b62-4d79-8614-fc6a9f7d0bb4`, and stage result are linked above. Selector/units were not changed; TP-10 remains partial. |
-| S2-4 | IN PROGRESS — runtime/E5 evidence remains | Diagnostic refusal fix is delivered and pushed in `055e913`. Fresh non-secret candidate run `s2-runtime-20261030-1977eaba61274396b6b58d069c5cede2`, request `98b38065170f468c9943aa8f22160ff9`, nonce `a2a0dcab58b9451281ff0a7b079d4aa2`, bundle SHA `05530c73…10f91f`. GPT-PM request `bbf54c64-e270-4ba6-b195-5af764fa3f07` returned MODIFY/MAJOR-01 because expected predecessor `069be3b` / tuple `212a…/334296…/b575…` differed from applied state in attempt `3a3a0e67` (`7d1d16f`, bundle `388e6bb…`, tuple `e520…/2b5e…/0aac…`). Codex corrected the predecessor pin and retained the older tuple for replay denial. Test-owner rerun: 70 passed, 1 deprecation warning, worktree-based (not committed exact-head); Python/security re-reviews PASS. GPT-PM re-review ACCEPTED MAJOR-01, no direct blocker (request `24c2372b-5cf8-4144-a690-d22a65db90e0`, job `86b484fa-5597-4cc2-bfbb-225c8560e2db`, reply `e8448c22-a258-51a4-af4c-fed00e545f51`, correlated). Candidate is eligible to commit but has not been committed or tested at exact HEAD. Fresh runtime remains NOT_RUN; prior one-shot authorization `8ee40d1a` is consumed. | Next: Codex commits and normally pushes this correction, preserving current S2-4. The test owner repeats focused acceptance against committed exact HEAD. Then Codex requests fresh correlated one-shot runtime authorization; `e2e-runner` executes only the approved bounded scope. S2-5 remains queued. |
+| S2-4 | IN PROGRESS — runtime/E5 evidence remains | Diagnostic refusal fix is delivered and pushed in `055e913`. Fresh non-secret candidate run `s2-runtime-20261030-1977eaba61274396b6b58d069c5cede2`, request `98b38065170f468c9943aa8f22160ff9`, nonce `a2a0dcab58b9451281ff0a7b079d4aa2`, bundle SHA `05530c73…10f91f`. GPT-PM request `bbf54c64-e270-4ba6-b195-5af764fa3f07` returned MODIFY/MAJOR-01 because expected predecessor `069be3b` / tuple `212a…/334296…/b575…` differed from applied state in attempt `3a3a0e67` (`7d1d16f`, bundle `388e6bb…`, tuple `e520…/2b5e…/0aac…`). Codex corrected the predecessor pin and retained the older tuple for replay denial. Pushed `aedf712c07eb0cc531852d18443faa497e19bb2d` retains earlier exact-head evidence of 70 passed. Latest supplemental safe suite by `functional-test-reviewer`: 133 passed, 60 skipped, 8 deselected, 1 warning on the same HEAD plus uncommitted candidate changes; not clean exact-commit evidence. Exact command/provenance and full output are linked above. GPT-PM re-review ACCEPTED MAJOR-01, no direct blocker (request `24c2372b-5cf8-4144-a690-d22a65db90e0`, job `86b484fa-5597-4cc2-bfbb-225c8560e2db`, reply `e8448c22-a258-51a4-af4c-fed00e545f51`, correlated). The correction is committed and pushed; exact-head tests pass. Fresh runtime remains NOT_RUN; prior one-shot authorization `8ee40d1a` is consumed. | Next: Codex requests fresh correlated one-shot runtime authorization bound to the pushed code and current candidate identities; `e2e-runner` executes only the approved bounded scope. S2-5 remains queued. |
 | S2-5 | Carried — final gate pending | No final exact-head GPT-PM approval for full S2 is recorded. Codex coordinates the submission after S2-3/S2-4 and reviews complete. |
+
+### Current S2-4 checkpoint — masked-mount false refusal fixed; runtime still open (2026-10-30)
+
+This checkpoint supersedes older S2-4 next-action summaries above where they predate the
+interrupted Owner-to-Runner attempt and its journal diagnosis. The current work item remains **S2-4**;
+S2-5 is queued and must not start yet.
+
+- **Implemented:** `tools/vst/preflight.py` accepts only an exact `SYSTEMD_MASKED_WSL_PATHS` entry
+  whose mount uses the root device/filesystem and `/run/systemd/inaccessible/dir`. Other `/mnt/*`
+  mounts, `drvfs`/`9p` drive mounts, and unrelated host mounts still fail closed.
+- **Test evidence:** `functional-test-reviewer` added focused regression coverage; the designated
+  selectors report **5 passed, 1 warning, 0 skipped** at `aedf712c` plus the dirty S2-4 source/config
+  worktree. This is worktree evidence, not clean exact-commit evidence. Full output and provenance:
+  `evidence/s2-masked-wsl-mount-regression-2026-10-30.txt` and `.json`.
+- **Harness test evidence:** `functional-test-reviewer` added mock-only contract coverage for input
+  bounds/correlation, archive and source-pin drift, one WSL child/no retry, and terminal HOLD record.
+  Result: **4 passed, 1 warning**, at `aedf712c` plus the dirty S2-4 worktree. This is not
+  exact-commit evidence. Full output/provenance:
+  `evidence/s2-runtime-qualification-harness-tests-final-2026-10-30.txt` and
+  `evidence/s2-runtime-qualification-harness-test-run-2026-10-30.json`.
+- **Review evidence:** `code-reviewer` found the prior masked-path false refusal and re-reviewed the
+  correction; the exact-path/source predicate is sound and no other confirmed BLOCKER/MAJOR was
+  found in the reviewed S2-4 diff. Review was read-only and did not run tests.
+- **Recovery review finding and fix:** focused security review found that existing-Store recovery
+  verified only the original durable observation claim and could accept stale environment evidence
+  after a runtime change (for example, a newly accessible container socket). Codex changed recovery
+  to verify the original one-start Store claim, then take and validate one new bounded
+  Supervisor-captured runtime observation with a fresh nonce before API readiness; it preserves the
+  original Store binding. Independent code and security re-reviews found no B/M in this focused
+  correction. Reviewers ran no tests/runtime.
+- **Recovery tests:** `functional-test-reviewer` added nine focused POSIX loader cases. Windows
+  selected the cases but skipped them due to the POSIX path guard (`9 skipped, 21 deselected`). The
+  existing Ubuntu WSL has no `/mnt/d` project mount; evidence is
+  `evidence/s2-4-supervisor-recovery-loader-wsl-attempt-2026-10-30.txt/.json`. The test owner then
+  streamed a temporary archive of only the needed source/tests into WSL without mount, install, or
+  service changes. Two fixture-only failures are retained as superseded attempts; after fixing the
+  fixture, the same bounded selectors passed **9/9, 21 deselected** on Ubuntu-24.04, Python 3.12.3,
+  pytest 7.4.4. Archive SHA-256 is
+  `B80FE142657E9322A05F9BB5EC894F01DBC54321AB2F500FF816B51C55C69591`; test file SHA-256 is
+  `E231200D024677C3FA8EE33C673DE501031BA637243C05DF7DFABB1BFEF744AF`. Full output/metadata:
+  `evidence/s2-4-supervisor-recovery-loader-wsl-tests-final-2026-10-30.txt` and
+  `evidence/s2-4-supervisor-recovery-loader-wsl-final-run-2026-10-30.json`. This is passing
+  mocked recovery-contract evidence, not real WSL/systemd runtime evidence.
+- **Runner source snapshot fix:** code review found that a clean runtime apply configured Runner's
+  working directory `/var/lib/vst-runner/repository` without provisioning the source tree. The
+  candidate now builds a deterministic archive of the exact pinned Git tree
+  `80c2b81deac364ed6466600fd46af47aafe805e2` (724 entries, 7,802,880 bytes, SHA-256
+  `c442a770c5580032b85006fa4522db81770955f7db2a2435c5e1d0e4bfcf3284`) and atomically installs
+  one root-owned read-only snapshot before applying configuration; it creates no development
+  checkout or per-sprint worktree. The designated Windows run passed **11/11** focused cases at
+  `aedf712c` plus the dirty worktree, with one deprecation warning; because its fixture models
+  ownership metadata and POSIX operations, this is source/package contract evidence, not live
+  POSIX or runtime evidence. Exact command/output/provenance:
+  `evidence/s2-4-task-source-snapshot-windows-owner-map-run2-20261030.json/.txt`. Ubuntu POSIX run
+  and WSL archive comparison remain `NOT_RUN` because the authorized temporary DrvFS mount did not
+  appear in `findmnt`. Read-only code and security reviews found no new B/M; test-fixture review
+  confirmed ownership assertions and the root-owned `0777` negative case. Detailed change record:
+  `docs/changes/0623-s2-4-runner-task-source-snapshot.md`.
+- **Runtime diagnosis:** read-only journal records prove that the probe's `SIGTERM` coincided with
+  Ubuntu-24.04 WSL powering down. The historical attempt was bound to source `b38e7239`, run
+  `s2-runtime-20261030-87d47f635f1c4231ab052a074dba4be8`, and InvocationID
+  `9ae0fc43f0534cc99dda2acb2f0661b0`; it is not evidence for the current `aedf712c` candidate.
+  The `systemd-logind` power-off entries precede the probe exit by about 54 ms. Separate WSL
+  invocations around a nonblocking service start are consistent with an idle-shutdown lifecycle gap;
+  the journal does not prove that specific trigger. See
+  `evidence/s2-runtime-distro-shutdown-20261030.md` and the original attempt JSON.
+- **Current runtime state:** `INCONCLUSIVE`; no run-bound E5/preflight attestation, Owner-to-Runner
+  completion, or authorized report-bound TestRun exists from the interrupted attempt. The old
+  attempt is consumed (`retry_cap=0`); its run ID/nonce cannot be reused. The current launcher
+  candidate holds one WSL child for its complete bounded protocol, but has not been runtime-proven.
+- **Owners and next action:** Codex owns the current task's evidence, change record, and normal Git
+  delivery; GPT-PM owns any required exact-head code/runtime adjudication. Current-turn read-only
+  code and security reviews of the dirty S2-4 candidate found no new BLOCKER/MAJOR. The designated
+  `e2e-runner` Windows source-snapshot run passed 11/11 focused cases, but mocked ownership means
+  this is not live POSIX or runtime evidence. POSIX/WSL and current run-bound E5/Owner-to-Runner
+  acceptance remain `NOT_RUN`/`INCONCLUSIVE`. The detailed delivery record is
+  `docs/changes/0624-s2-4-runtime-candidate-source-delivery.md`. Next, Codex makes the normal
+  task-local commit and push; the enforced pre-push hook must not be bypassed. After the exact
+  pushed source/config/run identities are bound, Codex obtains a fresh correlated one-shot runtime
+  decision; `e2e-runner` executes only that bounded E5 and Owner-to-Runner scope. The consumed
+  `8ee40d1a` authorization is never reused. Keep S2-4 active until runtime acceptance and delivery
+  are recorded; only then advance to S2-5.
 
 ### Focused test maintenance note
 

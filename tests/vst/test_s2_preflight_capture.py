@@ -1,450 +1,577 @@
-"""S2 capture contract tests; synthetic journal rows are not runtime evidence."""
+"""Supervisor-owned runtime observation contract tests; no fixture is host evidence."""
 from __future__ import annotations
 
 import hashlib
 import json
-import os
+import posixpath
 import stat
-import subprocess
-import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 from tools.vst import preflight, preflight_capture as capture
-from tools.vst.contracts import ContractError, canonical_bytes
+from tools.vst.contracts import ContractError
 
 
-RUN_ID = "s2-capture-run"
-NONCE = "s2-capture-nonce"
+RUN_ID = "s2-runtime-observation-test"
+NONCE = "s2-runtime-observation-nonce"
 INVOCATION_ID = "a" * 32
-OPERATOR_KEY = b"s2-capture-operator-root-key-0123456789"
-SPEC_BYTES = b"synthetic sandbox spec for capture test\n"
-SPEC_SHA256 = hashlib.sha256(SPEC_BYTES).hexdigest()
 NOW_NS = 50_000_000_000_000
-PROPERTIES = {
-    "automount_disabled", "interop_disabled", "no_container_socket", "non_root",
-    "external_egress_blocked", "loopback_canary", "empty_external_allowlist",
-}
+SOURCE_CONFIG = {"probe_unit": "1" * 64, "network_profile": "2" * 64}
 
 
-def _attestation(*, run_id=RUN_ID, nonce=NONCE, spec_sha256=SPEC_SHA256,
-                 key=OPERATOR_KEY, **overrides):
-    body = {
-        "run_id": run_id,
-        "spec_sha256": spec_sha256,
-        "nonce": nonce,
-        "environment_id": "synthetic-capture-environment",
-        "policy_sha256": "a" * 64,
-        "evidence_sha256": "b" * 64,
-        "empty_external_allowlist": True,
+def _observation(spec_sha256: str) -> dict:
+    checks = {
+        "automount_disabled": True,
+        "interop_disabled": True,
         "no_container_socket": True,
-        "no_unapproved_host_paths": True,
+        "non_root": True,
+        "egress_policy_isolated": True,
+        "loopback_canary": True,
+        "empty_external_allowlist": True,
+        "no_unapproved_host_mounts": True,
+        "expected_cgroup": True,
+        "runtime_namespaces_observed": True,
     }
-    body.update(overrides)
-    return preflight.sign_network_policy_attestation(body, key)
-
-
-def _probe(*, run_id=RUN_ID, nonce=NONCE, spec_sha256=SPEC_SHA256,
-           observed_at_ns=NOW_NS, attestation=None):
     return {
-        "run_id": run_id,
-        "spec_sha256": spec_sha256,
-        "nonce": nonce,
-        "checked_properties": {name: True for name in PROPERTIES},
+        "schema": "VST_S2_RUNTIME_OBSERVATION_V1",
+        "checked_properties": checks,
         "result": "PASS",
         "inventory": {
-            "mount_table": ["rootfs / ext4 rw,relatime 0 0"],
+            "mount_table": ["rootfs / ext4 rw 0 0"],
             "windows_drive_mounts": [],
+            "unapproved_host_mounts": [],
             "wsl_interop_present": False,
             "wsl_interop_enabled": False,
-            "uid": 1001,
-            "gid": 1001,
+            "uid": 999,
+            "gid": 989,
+            "cgroup": ["0::/system.slice/vst-sandbox-probe.service"],
+            "namespace_inodes": {"mount": 10, "network": 11, "cgroup": 12, "pid": 13},
+            "network_interfaces": ["lo"],
+            "network_routes": [],
             "container_socket_paths_present": [],
             "container_socket_inventory_complete": True,
-            "blocked_egress_target": ["198.51.100.1", 9],
-            "blocked_egress_probe_scope": (
-                "single reserved-target smoke probe; does not prove egress policy"
-            ),
-            "network_policy_attestation": attestation or _attestation(),
             "environment_variable_names": [],
-            "observed_at_monotonic_ns": observed_at_ns,
+            "spec_sha256": spec_sha256,
+            "network_profile_sha256": SOURCE_CONFIG["network_profile"],
+            "observed_at_monotonic_ns": NOW_NS,
         },
     }
 
 
-def _message_entry(probe, *, unit=capture.PROBE_UNIT, invocation_id=INVOCATION_ID,
-                   uid="999", gid="989", pid="123"):
-    return {
-        "_SYSTEMD_UNIT": unit,
-        "_SYSTEMD_INVOCATION_ID": invocation_id,
-        "_UID": uid,
-        "_GID": gid,
-        "_PID": pid,
-        "MESSAGE": json.dumps(probe, separators=(",", ":")),
+def _journal_entry(observation: dict) -> bytes:
+    entry = {
+        "_SYSTEMD_UNIT": capture.PROBE_UNIT,
+        "_SYSTEMD_INVOCATION_ID": INVOCATION_ID,
+        "_UID": "999",
+        "_GID": "989",
+        "_PID": "123",
+        "MESSAGE": json.dumps(observation, separators=(",", ":")),
     }
+    return json.dumps(entry, separators=(",", ":")).encode()
 
 
-def _result_entry(*, unit=capture.PROBE_UNIT, invocation_id=INVOCATION_ID,
-                  uid="0", pid="1", result="success"):
-    return {
-        "UNIT": unit,
-        "INVOCATION_ID": invocation_id,
-        "_PID": pid,
-        "_UID": uid,
-        "UNIT_RESULT": result,
-    }
-
-
-def _json_lines(*entries):
-    return ("\n".join(json.dumps(entry, separators=(",", ":")) for entry in entries)).encode()
-
-
-@pytest.fixture
-def capture_case(monkeypatch):
-    probe = _probe()
-    attestation = probe["inventory"]["network_policy_attestation"]
-    config = {
-        "run_id": RUN_ID,
-        "probe_nonce": NONCE,
-        "operator_key_path": "/etc/vst-runner/operator.key",
-        "preflight_record_path": "/run/vst-preflight/record.json",
-    }
-    request = {"run_id": RUN_ID, "nonce": NONCE}
-    root_reads = []
-    published = []
-    calls = []
-    root_values = {"request": request, "attestation": attestation}
-    responses = [
-        SimpleNamespace(returncode=0, stdout=_json_lines(_message_entry(probe))),
-        SimpleNamespace(returncode=0, stdout=_json_lines(_result_entry())),
+def test_supervisor_observes_exact_probe_once_and_returns_bound_evidence_in_memory(monkeypatch):
+    spec_bytes = b"synthetic sandbox specification\n"
+    spec_sha256 = hashlib.sha256(spec_bytes).hexdigest()
+    raw_observation = _observation(spec_sha256)
+    commands: list[list[str]] = []
+    sequence = [
+        b"running\n",
+        b"",
+        _journal_entry(raw_observation),
+        json.dumps({
+            "UNIT": capture.PROBE_UNIT,
+            "INVOCATION_ID": INVOCATION_ID,
+            "_PID": "1",
+            "_UID": "0",
+            "UNIT_RESULT": "success",
+        }, separators=(",", ":")).encode(),
     ]
+    claim_order: list[str] = []
+    unit_state = {
+        "LoadState": "loaded", "ActiveState": "inactive", "SubState": "dead",
+        "Result": "success", "ExecMainStatus": "0", "MainPID": "0",
+        "InvocationID": INVOCATION_ID,
+        "PrivateNetwork": "yes", "User": "vst-worker", "Group": "vst-worker",
+        "ControlGroup": "/system.slice/vst-sandbox-probe.service",
+    }
 
-    monkeypatch.setattr(capture, "SPEC_PATH", SimpleNamespace(read_bytes=lambda: SPEC_BYTES))
-    monkeypatch.setattr(capture, "_read_controlled_json", lambda path: config)
-    def read_root(path, *, max_bytes):
-        root_reads.append((path, max_bytes))
-        if path == capture.PROBE_REQUEST_PATH:
-            return root_values["request"]
-        if path == capture.NETWORK_ATTESTATION_PATH:
-            return root_values["attestation"]
-        raise AssertionError(f"unexpected root-controlled read: {path}")
-    monkeypatch.setattr(capture, "_read_root_controlled_json", read_root)
-    monkeypatch.setattr(capture, "_read_root_key", lambda path: OPERATOR_KEY)
-    monkeypatch.setattr(capture, "_write_root_record", lambda path, value: published.append((path, value)) or "c" * 64)
     monkeypatch.setattr(capture, "os", SimpleNamespace(name="posix", geteuid=lambda: 0))
-    monkeypatch.setattr(capture, "time", SimpleNamespace(monotonic_ns=lambda: NOW_NS))
+    monkeypatch.setattr(capture, "SPEC_PATH", SimpleNamespace(
+        is_file=lambda: True, read_bytes=lambda: spec_bytes,
+    ))
+    monkeypatch.setattr(capture, "PROBE_PROFILE_PATH", SimpleNamespace(is_file=lambda: True))
+    monkeypatch.setattr(capture, "_assert_units_inactive", lambda: claim_order.append("units-inactive"))
+    monkeypatch.setattr(capture, "_assert_manager_quiescent", lambda: None)
+    monkeypatch.setattr(capture, "_systemctl_show", lambda: dict(unit_state))
+    monkeypatch.setattr(capture, "_require_fresh_store_targets", lambda store, anchor: (
+        claim_order.append("fresh-targets"), (store, anchor)
+    )[1])
+    monkeypatch.setattr(capture, "_claim_observation", lambda *args: (
+        claim_order.append("claim"), "c" * 64
+    )[1])
+
+    def bounded_command(argv, *, timeout):
+        commands.append(list(argv))
+        assert timeout in {5, 15, 95}
+        return sequence.pop(0)
+
+    monkeypatch.setattr(capture, "_bounded_command", bounded_command)
     monkeypatch.setattr(preflight.time, "monotonic_ns", lambda: NOW_NS)
 
-    def run(argv, **kwargs):
-        calls.append((list(argv), kwargs))
-        assert len(calls) <= len(responses), "unexpected extra journal query"
-        return responses[len(calls) - 1]
+    probe = capture.observe_runtime_once(
+        RUN_ID, NONCE, SOURCE_CONFIG,
+        store_path="/var/lib/vst-runner/private/store.sqlite3",
+        anchor_path="/var/lib/vst-runner/private/store.anchor",
+    )
 
-    def invoke(invocation_id=INVOCATION_ID):
-        return capture.capture_probe_invocation(
-            invocation_id, config_path="/etc/vst-runner/supervisor-service.json",
-            journalctl_path="/usr/bin/journalctl", run=run,
+    assert probe["run_id"] == RUN_ID and probe["nonce"] == NONCE
+    assert probe["spec_sha256"] == spec_sha256 and probe["result"] == "PASS"
+    assert probe["inventory"]["systemd_probe"]["unit"] == capture.PROBE_UNIT
+    assert probe["inventory"]["systemd_probe"]["InvocationID"] == INVOCATION_ID
+    assert probe["inventory"]["observation_claim_sha256"] == "c" * 64
+    assert probe["inventory"]["source_config_sha256"] == SOURCE_CONFIG
+    assert claim_order.index("fresh-targets") < claim_order.index("claim")
+    assert commands == [
+        [capture.SYSTEMCTL_PATH, "is-system-running"],
+        [capture.SYSTEMCTL_PATH, "start", capture.PROBE_UNIT],
+        [capture.JOURNALCTL_PATH, "--no-pager", "--output=json",
+         f"_SYSTEMD_UNIT={capture.PROBE_UNIT}", f"_SYSTEMD_INVOCATION_ID={INVOCATION_ID}"],
+        [capture.JOURNALCTL_PATH, "--no-pager", "--output=json",
+         f"UNIT={capture.PROBE_UNIT}", f"INVOCATION_ID={INVOCATION_ID}", "_PID=1", "_UID=0"],
+    ]
+    assert sequence == []
+    assert "signature" not in probe and "network_policy_attestation" not in probe["inventory"]
+
+
+def test_probe_unit_identity_mismatch_refuses_before_claim_or_start(monkeypatch):
+    monkeypatch.setattr(capture, "os", SimpleNamespace(name="posix", geteuid=lambda: 0))
+    monkeypatch.setattr(capture, "SPEC_PATH", SimpleNamespace(
+        is_file=lambda: True, read_bytes=lambda: b"spec",
+    ))
+    monkeypatch.setattr(capture, "PROBE_PROFILE_PATH", SimpleNamespace(is_file=lambda: True))
+    monkeypatch.setattr(capture, "_assert_units_inactive", lambda: None)
+    monkeypatch.setattr(capture, "_assert_manager_quiescent", lambda: None)
+    monkeypatch.setattr(capture, "_require_fresh_store_targets", lambda *_: None)
+    claims: list[tuple] = []
+    monkeypatch.setattr(capture, "_claim_observation", lambda *args: claims.append(args))
+    monkeypatch.setattr(capture, "_systemctl_show", lambda: {
+        "LoadState": "loaded", "ActiveState": "inactive", "SubState": "dead",
+        "MainPID": "0", "PrivateNetwork": "yes", "User": "vst-worker",
+        "Group": "vst-worker", "ControlGroup": "/system.slice/unexpected.service",
+    })
+    commands: list[list[str]] = []
+    monkeypatch.setattr(capture, "_bounded_command", lambda argv, **_kw: (
+        commands.append(list(argv)), b"running\n"
+    )[1])
+
+    with pytest.raises(ContractError, match="exact loaded/inactive sandbox configuration"):
+        capture.observe_runtime_once(RUN_ID, NONCE, SOURCE_CONFIG,
+                                     store_path="/var/lib/vst/store.db",
+                                     anchor_path="/var/lib/vst/store.anchor")
+
+    assert len(commands) == 1
+    assert commands[0] == [capture.SYSTEMCTL_PATH, "is-system-running"]
+    assert claims == []
+
+
+def test_only_supervisor_type_notify_start_job_may_remain_pending(monkeypatch):
+    monkeypatch.setattr(capture, "_bounded_command", lambda *_args, **_kwargs: (
+        b"12 vst-supervisor.service start running\n"
+    ))
+
+    capture._assert_manager_quiescent()
+
+
+@pytest.mark.parametrize("job", [
+    "12 unrelated.service start running\n",
+    "12 vst-supervisor.service stop waiting\n",
+])
+def test_unrelated_or_nonstart_manager_job_blocks_runtime_observation(monkeypatch, job):
+    monkeypatch.setattr(capture, "_bounded_command", lambda *_args, **_kwargs: job.encode())
+
+    with pytest.raises(ContractError, match="unrelated systemd job is pending"):
+        capture._assert_manager_quiescent()
+
+
+def test_dependent_services_must_be_inactive_before_runtime_observation(monkeypatch):
+    calls = []
+
+    def command(argv, **_kwargs):
+        calls.append(argv)
+        if "vst-runner.service" in argv:
+            return b"loaded\nactive\nrunning\n123\n"
+        return b"loaded\ninactive\ndead\n0\n"
+
+    monkeypatch.setattr(capture, "_bounded_command", command)
+
+    with pytest.raises(ContractError, match="dependent services must remain inactive"):
+        capture._assert_units_inactive()
+
+    assert len(calls) == 6
+    assert "vst-runner.service" in calls[-1]
+
+
+def _fake_root_fs(monkeypatch, existing: set[str]):
+    fake_os = SimpleNamespace(
+        path=posixpath,
+        stat=lambda _path, **_kwargs: SimpleNamespace(
+            st_mode=stat.S_IFDIR | 0o700, st_uid=0,
+        ),
+        lstat=lambda path: (
+            SimpleNamespace(st_mode=stat.S_IFREG | 0o600, st_uid=0, st_nlink=1)
+            if path in existing else (_raise_missing(path))
+        ),
+    )
+    monkeypatch.setattr(capture, "os", fake_os)
+
+
+def _raise_missing(path):
+    raise FileNotFoundError(path)
+
+
+def test_fresh_store_requires_all_six_state_paths_to_be_absent(monkeypatch):
+    store = "/var/lib/vst-runner/private/store.sqlite3"
+    anchor = "/var/lib/vst-runner/private/store.anchor"
+    _fake_root_fs(monkeypatch, set())
+
+    assert capture.classify_store_targets(store, anchor) == "fresh"
+
+
+@pytest.mark.parametrize("existing_suffix", [
+    "", "-wal", "-shm", "-journal", ".anchor", ".anchor.coord.lock",
+], ids=["store", "wal", "shm", "journal", "anchor", "coord-lock"])
+def test_any_partial_store_or_anchor_state_refuses_fresh_qualification(
+        monkeypatch, existing_suffix):
+    store = "/var/lib/vst-runner/private/store.sqlite3"
+    anchor = "/var/lib/vst-runner/private/store.anchor"
+    if existing_suffix == ".anchor":
+        existing = {anchor}
+    elif existing_suffix == ".anchor.coord.lock":
+        existing = {anchor + ".coord.lock"}
+    else:
+        existing = {store + existing_suffix}
+    _fake_root_fs(monkeypatch, existing)
+
+    expected_error = (
+        "Store and external anchor must either both exist or both be absent"
+        if existing_suffix in {"", ".anchor"}
+        else "orphan runtime Store sidecar or coordinator lock exists"
+    )
+    with pytest.raises(ContractError, match=expected_error):
+        capture.classify_store_targets(store, anchor)
+
+
+def test_complete_root_controlled_store_and_anchor_pair_is_recovery_state(monkeypatch):
+    store = "/var/lib/vst-runner/private/store.sqlite3"
+    anchor = "/var/lib/vst-runner/private/store.anchor"
+    _fake_root_fs(monkeypatch, {store, anchor})
+
+    assert capture.classify_store_targets(store, anchor) == "recovery"
+
+
+@pytest.mark.skipif(__import__("os").name == "nt", reason="durable marker contract requires POSIX file descriptors")
+def test_runtime_observation_claim_is_durable_single_use_and_exact(tmp_path, monkeypatch):
+    import os as real_os
+
+    private_dir = tmp_path / "private"
+    private_dir.mkdir()
+    marker = private_dir / "claim.json"
+    payload = capture.canonical_bytes({
+        "schema": "VST_S2_RUNTIME_OBSERVATION_CLAIM_V1",
+        "run_id": RUN_ID, "nonce": NONCE, "spec_sha256": "a" * 64,
+        "source_config_sha256": SOURCE_CONFIG,
+    }) + b"\n"
+    digest = hashlib.sha256(payload).hexdigest()
+    monkeypatch.setattr(
+        capture, "_observation_claim_identity",
+        lambda *_args: (str(private_dir), str(marker), payload, digest),
+    )
+
+    def trusted_fstat(fd):
+        info = real_os.fstat(fd)
+        return SimpleNamespace(
+            st_mode=info.st_mode, st_uid=0, st_gid=0,
+            st_size=info.st_size, st_nlink=1,
         )
 
-    return SimpleNamespace(
-        probe=probe, attestation=attestation, config=config, request=request,
-        root_reads=root_reads, root_values=root_values, published=published,
-        calls=calls, responses=responses,
-        invoke=invoke,
+    monkeypatch.setattr(capture, "os", SimpleNamespace(
+        O_RDONLY=real_os.O_RDONLY, O_WRONLY=real_os.O_WRONLY, O_CREAT=real_os.O_CREAT,
+        O_EXCL=real_os.O_EXCL, O_NOFOLLOW=getattr(real_os, "O_NOFOLLOW", 0),
+        O_DIRECTORY=getattr(real_os, "O_DIRECTORY", 0),
+        scandir=real_os.scandir, open=real_os.open, close=real_os.close,
+        read=real_os.read, write=real_os.write, fsync=real_os.fsync,
+        fstat=trusted_fstat, fchown=lambda *_args: None, fchmod=real_os.fchmod,
+    ))
+
+    assert capture._claim_observation(RUN_ID, NONCE, "a" * 64, SOURCE_CONFIG) == digest
+    assert marker.read_bytes() == payload
+    assert capture.verify_existing_observation_claim(
+        RUN_ID, NONCE, "a" * 64, SOURCE_CONFIG,
+    ) == digest
+    with pytest.raises(ContractError, match="already has a one-start runtime observation claim"):
+        capture._claim_observation(RUN_ID, NONCE, "a" * 64, SOURCE_CONFIG)
+
+    marker.write_bytes(payload + b" ")
+    with pytest.raises(ContractError, match="claim differs from current exact inputs"):
+        capture.verify_existing_observation_claim(RUN_ID, NONCE, "a" * 64, SOURCE_CONFIG)
+
+
+def test_supervisor_readiness_barrier_requires_notify_and_before_runner(monkeypatch):
+    properties = {
+        "Type": "notify", "NotifyAccess": "main", "TimeoutStartUSec": "360s",
+        "Before": "vst-runner.service", "FragmentPath": "/etc/systemd/system/vst-supervisor.service",
+        "NeedDaemonReload": "no", "MainPID": "123",
+    }
+    monkeypatch.setattr(capture, "os", SimpleNamespace(getpid=lambda: 123))
+    monkeypatch.setattr(capture, "_systemctl_properties", lambda unit, names: (
+        assert_systemd_request(unit, names, properties)
+    ))
+
+    capture.assert_supervisor_readiness_barrier()
+
+
+def assert_systemd_request(unit, names, properties):
+    assert unit == "vst-supervisor.service"
+    assert set(names) == set(properties)
+    return properties
+
+
+@pytest.mark.parametrize("changed", ["run", "nonce", "spec", "source_config", "claim"])
+def test_deterministic_observation_binding_changes_with_every_authority_input(changed):
+    values = {
+        "run": RUN_ID, "nonce": NONCE, "spec": "a" * 64,
+        "source_config": SOURCE_CONFIG, "claim": "c" * 64,
+    }
+    original = capture.runtime_observation_binding_digest(
+        values["run"], values["nonce"], values["spec"], values["source_config"], values["claim"],
     )
-
-
-def test_capture_binds_exact_invocation_identity_and_single_probe_message(capture_case):
-    case = capture_case
-    result = case.invoke()
-
-    assert result == {"run_id": RUN_ID, "invocation_id": INVOCATION_ID, "probe_sha256": "c" * 64}
-    assert case.calls[0][0] == [
-        "/usr/bin/journalctl", "--no-pager", "--output=json",
-        f"_SYSTEMD_UNIT={capture.PROBE_UNIT}", f"_SYSTEMD_INVOCATION_ID={INVOCATION_ID}",
-    ]
-    assert case.calls[1][0] == [
-        "/usr/bin/journalctl", "--no-pager", "--output=json",
-        f"UNIT={capture.PROBE_UNIT}", f"INVOCATION_ID={INVOCATION_ID}", "_PID=1", "_UID=0",
-    ]
-    assert case.root_reads == [
-        (capture.PROBE_REQUEST_PATH, 65536), (capture.NETWORK_ATTESTATION_PATH, 65536),
-    ]
-    assert case.published == [(case.config["preflight_record_path"], case.probe)]
-    assert [kwargs for _, kwargs in case.calls] == [
-        {"check": False, "capture_output": True, "timeout": 15},
-        {"check": False, "capture_output": True, "timeout": 15},
-    ]
-
-
-@pytest.mark.parametrize(
-    "field,value",
-    [("UNIT", "other.service"), ("INVOCATION_ID", "b" * 32),
-     ("_PID", "42"), ("_UID", "999"), ("UNIT_RESULT", "failed")],
-)
-def test_capture_rejects_non_root_or_non_success_exact_service_result(capture_case, field, value):
-    case = capture_case
-    result = _result_entry()
-    result[field] = value
-    case.responses[1] = SimpleNamespace(returncode=0, stdout=_json_lines(result))
-
-    with pytest.raises(ContractError, match="exact root systemd invocation|did not record one successful"):
-        case.invoke()
-    assert not case.published
-
-
-def test_capture_rejects_duplicate_success_result_records(capture_case):
-    case = capture_case
-    case.responses[1] = SimpleNamespace(returncode=0, stdout=_json_lines(_result_entry(), _result_entry()))
-    with pytest.raises(ContractError, match="one successful unit result"):
-        case.invoke()
-    assert not case.published
-
-
-@pytest.mark.parametrize("field,value", [
-    ("_SYSTEMD_UNIT", "other.service"), ("_SYSTEMD_INVOCATION_ID", "b" * 32),
-    ("_UID", "0"), ("_GID", "988"), ("_PID", "0"),
-])
-def test_capture_rejects_probe_message_from_wrong_service_invocation_or_identity(capture_case, field, value):
-    case = capture_case
-    message = _message_entry(case.probe)
-    message[field] = value
-    case.responses[0] = SimpleNamespace(returncode=0, stdout=_json_lines(message))
-
-    with pytest.raises(ContractError, match="outside the requested invocation|configured worker identity"):
-        case.invoke()
-    assert not case.published
-
-
-@pytest.mark.parametrize("mutation", ["run_id", "spec_sha256", "nonce"])
-def test_capture_rejects_probe_with_wrong_run_spec_or_nonce(capture_case, mutation):
-    case = capture_case
-    probe = dict(case.probe)
-    probe[mutation] = "wrong"
-    case.responses[0] = SimpleNamespace(
-        returncode=0, stdout=_json_lines(_message_entry(probe)),
-    )
-    with pytest.raises(ContractError, match="run/spec/nonce or inventory validation"):
-        case.invoke()
-    assert not case.published
-
-
-@pytest.mark.parametrize("mutation", ["wrong_run", "wrong_spec", "wrong_nonce", "bad_signature"])
-def test_capture_rejects_invalid_root_network_attestation(capture_case, mutation):
-    case = capture_case
-    kwargs = {}
-    if mutation == "wrong_run":
-        kwargs["run_id"] = "other-run"
-    elif mutation == "wrong_spec":
-        kwargs["spec_sha256"] = "d" * 64
-    elif mutation == "wrong_nonce":
-        kwargs["nonce"] = "other-nonce"
-    attestation = _attestation(**kwargs)
-    if mutation == "bad_signature":
-        attestation["signature"] = "0" * 64
-    case.root_values["attestation"] = attestation
-    with pytest.raises(ContractError, match="root network-policy attestation is invalid"):
-        case.invoke()
-    assert not case.calls
-    assert not case.published
-
-
-@pytest.mark.parametrize("age_ns", [capture.MAX_CAPTURE_AGE_NS + 1, -1])
-def test_capture_rejects_probe_that_is_stale_or_from_future_clock(capture_case, monkeypatch, age_ns):
-    case = capture_case
-    case.probe["inventory"]["observed_at_monotonic_ns"] = NOW_NS
-    case.responses[0] = SimpleNamespace(
-        returncode=0, stdout=_json_lines(_message_entry(case.probe)),
-    )
-    # Validation sees a fresh record; advance only the capture clock to exercise
-    # the publication-time guard independently.
-    monkeypatch.setattr(preflight.time, "monotonic_ns", lambda: NOW_NS)
-    monkeypatch.setattr(capture.time, "monotonic_ns", lambda: NOW_NS + age_ns)
-    with pytest.raises(ContractError, match="stale or from a different monotonic clock"):
-        case.invoke()
-    assert not case.published
-
-
-@pytest.mark.parametrize("mutation", ["wrong_run", "wrong_nonce", "extra_field"])
-def test_capture_rejects_root_request_that_does_not_match_service_binding(capture_case, mutation):
-    case = capture_case
-    if mutation == "wrong_run":
-        case.root_values["request"] = {"run_id": "other", "nonce": NONCE}
-    elif mutation == "wrong_nonce":
-        case.root_values["request"] = {"run_id": RUN_ID, "nonce": "other"}
+    altered = dict(values)
+    if changed in {"run", "nonce"}:
+        altered[changed] = "different-" + changed
+    elif changed == "source_config":
+        altered[changed] = {**SOURCE_CONFIG, "network_profile": "f" * 64}
     else:
-        case.root_values["request"] = {"run_id": RUN_ID, "nonce": NONCE, "extra": True}
-    with pytest.raises(ContractError, match="exact run contract|does not match the root Supervisor run binding"):
-        case.invoke()
-    assert not case.calls
+        altered[changed] = "d" * 64
+
+    assert capture.runtime_observation_binding_digest(
+        altered["run"], altered["nonce"], altered["spec"],
+        altered["source_config"], altered["claim"],
+    ) != original
 
 
-@pytest.mark.parametrize(
-    "raw,match",
-    [(b"not-json", "not valid JSON records"), (b"", "no structured records"),
-     (bytes([0xff]), "not valid JSON records")],
-)
-def test_probe_journal_rejects_malformed_or_empty_output(capture_case, raw, match):
-    case = capture_case
-    case.responses[0] = SimpleNamespace(returncode=0, stdout=raw)
-    with pytest.raises(ContractError, match=match):
-        case.invoke()
-    assert not case.published
+def _supervisor_loader_harness(monkeypatch, *, store_mode, source_drift=False,
+                               observation_override=None):
+    import posixpath as path_module
+    from tools.vst import store as store_module
+    from tools.vst import supervisor as supervisor_module
+    from tools.vst import supervisor_service as service
 
+    config = json.loads((
+        Path(__file__).resolve().parents[2]
+        / "docs" / "sdlc" / "runtime-config" / "supervisor-service.json"
+    ).read_text(encoding="utf-8"))
+    config.pop("root_dispatch_issuer", None)
+    config.pop("assignment_policy_path", None)
+    config.pop("assignment_policy_sha256", None)
+    config["peers"] = [peer for peer in config["peers"] if peer["role"] in {
+        "dispatch_owner", "dispatcher", "runnerd", "signer",
+    }]
+    registry = {
+        "s2-test-key": {
+            "principal": "Codex", "purpose": "VST_S2_DISPATCH_INSTRUCTION_V1",
+            "public_key_path": "/etc/vst-runner/dispatch-instruction-public.pem",
+        },
+    }
+    source_hashes = {"network_profile": "d" * 64, "supervisor_unit": "e" * 64}
+    identity_calls: list[dict[str, str]] = []
+    observation_calls: list[tuple] = []
+    claim_checks: list[tuple] = []
+    call_order: list[str] = []
+    store_calls: list[tuple[str, tuple]] = []
+    store_instances = []
+    expected_spec = hashlib.sha256(preflight.SPEC_PATH.read_bytes()).hexdigest()
 
-def test_probe_journal_requires_one_and_only_one_message(capture_case):
-    case = capture_case
-    entry = _message_entry(case.probe)
-    case.responses[0] = SimpleNamespace(returncode=0, stdout=_json_lines(entry, entry))
-    with pytest.raises(ContractError, match="exactly one stdout record"):
-        case.invoke()
-    assert not case.published
+    def read_config(path, **_kwargs):
+        if path == service.DEFAULT_CONFIG_PATH:
+            return config
+        if path == service.DISPATCH_INSTRUCTION_TRUST_REGISTRY_PATH:
+            return registry
+        raise AssertionError(f"unexpected controlled config read: {path}")
 
+    def source_identity(_path, _config):
+        value = dict(source_hashes)
+        if source_drift and identity_calls:
+            value["network_profile"] = "f" * 64
+        identity_calls.append(value)
+        return value
 
-@pytest.mark.parametrize("query", [0, 1])
-def test_capture_fails_closed_on_journal_command_error(capture_case, query):
-    case = capture_case
-    case.responses[query] = SimpleNamespace(returncode=1, stdout=b"")
-    with pytest.raises(ContractError, match="journal query"):
-        case.invoke()
-    assert not case.published
+    def verify_claim(run_id, nonce, spec_sha, hashes):
+        call_order.append("verify_existing_claim")
+        claim_checks.append((run_id, nonce, spec_sha, dict(hashes)))
+        return "c" * 64
 
+    def observe(run_id, nonce, hashes, *, store_path, anchor_path, **options):
+        call_order.append("observe_runtime_once")
+        observation_calls.append((run_id, nonce, dict(hashes), store_path, anchor_path, options))
+        result = {
+            "run_id": run_id, "nonce": nonce, "spec_sha256": expected_spec, "result": "PASS",
+            "inventory": {
+                "spec_sha256": expected_spec,
+                "network_profile_sha256": hashes["network_profile"],
+                "namespace_inodes": {"mount": 20, "network": 21, "cgroup": 22, "pid": 13},
+                "observation_claim_sha256": "c" * 64,
+            },
+        }
+        if observation_override:
+            observation_override(result, hashes)
+        return result
 
-@pytest.mark.parametrize("query", [0, 1])
-def test_capture_normalizes_journal_timeout_and_os_error(capture_case, query):
-    case = capture_case
-    count = 0
-    def fail_run(*_args, **_kwargs):
-        nonlocal count
-        count += 1
-        if count == query + 1:
-            if query == 0:
-                raise OSError("journalctl unavailable")
-            raise subprocess.TimeoutExpired("journalctl", 15)
-        return case.responses[count - 1]
-    with pytest.raises(ContractError, match="cannot read the exact probe invocation|cannot verify the exact probe invocation result"):
-        capture.capture_probe_invocation(INVOCATION_ID, run=fail_run)
-    assert not case.published
+    class FakeStore:
+        def __init__(self, *_args, **_kwargs):
+            store_instances.append(self)
 
+        def ensure_preflight_consumed(self, *args):
+            store_calls.append(("fresh", args))
+            return True
 
-def _patch_record_os(monkeypatch, target, *, fail_on=None):
-    real_os = os
-    calls = []
-    directory_fd = 987654
-    def fake_stat(path, *, follow_symlinks=True):
-        if os.fspath(path) == str(target):
-            return SimpleNamespace(st_mode=stat.S_IFREG | 0o600, st_uid=0)
-        return real_os.stat(path, follow_symlinks=follow_symlinks)
-    def fake_open(path, flags, *args, **kwargs):
-        if os.fspath(path) == str(target.parent):
-            return directory_fd
-        return real_os.open(path, flags, *args, **kwargs)
-    def fake_fsync(fd):
-        if fd != directory_fd:
-            return real_os.fsync(fd)
-        calls.append(("fsync-directory", fd))
-    def fake_fchown(fd, uid, gid):
-        calls.append(("fchown", uid, gid))
-        if fail_on == "fchown":
-            raise OSError("chown failed")
-    def fake_fchmod(fd, mode):
-        calls.append(("fchmod", mode))
-        if fail_on == "fchmod":
-            raise OSError("chmod failed")
-    def fake_link(source, destination, *, follow_symlinks=True):
-        calls.append(("link", os.fspath(source), os.fspath(destination)))
-        if fail_on == "link":
-            raise OSError("link failed")
-        return real_os.link(source, destination, follow_symlinks=follow_symlinks)
-    shim = SimpleNamespace(
-        path=real_os.path, fchown=fake_fchown, fchmod=fake_fchmod, fdopen=real_os.fdopen,
-        fsync=fake_fsync, link=fake_link, open=fake_open,
-        O_RDONLY=getattr(real_os, "O_RDONLY", 0), O_DIRECTORY=getattr(real_os, "O_DIRECTORY", 0),
-        close=lambda fd: None if fd == directory_fd else real_os.close(fd),
-        unlink=real_os.unlink, stat=fake_stat,
+        def require_existing_preflight_consumed(self, *args):
+            store_calls.append(("recovery", args))
+
+    class FakeSupervisor:
+        def __init__(self, store, **_kwargs):
+            self.store = store
+            self._probe_consumed = False
+
+    class FakeAPI:
+        def __init__(self, *args, **_kwargs):
+            self.args = args
+
+    def fake_stat(path, *, follow_symlinks=False):
+        del follow_symlinks
+        if path == service.DISPATCH_INSTRUCTION_TRUST_REGISTRY_PATH:
+            return SimpleNamespace(st_mode=stat.S_IFREG | 0o644, st_uid=0, st_gid=0)
+        raise AssertionError(f"unexpected stat request: {path}")
+
+    monkeypatch.setattr(service, "os", SimpleNamespace(path=path_module, stat=fake_stat))
+    monkeypatch.setattr(service, "_read_controlled_json", read_config)
+    monkeypatch.setattr(service, "_runtime_observation_identity", source_identity)
+    monkeypatch.setattr(service, "_validate_root_data_path", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(service, "_read_root_key", lambda path: hashlib.sha256(path.encode()).digest())
+    monkeypatch.setattr(service, "AuthenticatedSupervisorAPI", FakeAPI)
+    monkeypatch.setattr("tools.vst.execution_grant._trusted_root_file", lambda *_a, **_kw: None)
+    monkeypatch.setattr(preflight, "_namespace_inode", lambda name: {"mnt": 10, "net": 11, "cgroup": 12, "pid": 13}[name])
+    monkeypatch.setattr(capture, "classify_store_targets", lambda *_args: store_mode)
+    monkeypatch.setattr(capture, "assert_supervisor_readiness_barrier", lambda: None)
+    monkeypatch.setattr(capture, "assert_runtime_services_inactive", lambda: None)
+    monkeypatch.setattr(capture, "observe_runtime_once", observe)
+    monkeypatch.setattr(capture, "verify_existing_observation_claim", verify_claim)
+    monkeypatch.setattr(store_module, "Store", FakeStore)
+    monkeypatch.setattr(supervisor_module, "Supervisor", FakeSupervisor)
+    return SimpleNamespace(
+        service=service, config=config, hashes=source_hashes, identity_calls=identity_calls,
+        observation_calls=observation_calls, claim_checks=claim_checks,
+        call_order=call_order,
+        store_calls=store_calls, store_instances=store_instances,
+        expected_spec=expected_spec,
     )
-    monkeypatch.setattr(capture, "os", shim)
-    monkeypatch.setattr(capture, "_ensure_root_capture_directory", lambda _path: str(target.parent))
-    return calls
 
 
-def test_root_record_is_canonical_hard_link_published_with_root_0600_contract(tmp_path, monkeypatch):
-    target = tmp_path / "record.json"
-    calls = _patch_record_os(monkeypatch, target)
-    record = {"run_id": RUN_ID, "observed": True}
+@pytest.mark.skipif(capture.os.name == "nt", reason="Supervisor service contract requires POSIX path semantics")
+def test_supervisor_fresh_start_consumes_direct_observation_before_api_is_returned(monkeypatch):
+    harness = _supervisor_loader_harness(monkeypatch, store_mode="fresh")
 
-    digest = capture._write_root_record(str(target), record)
+    api, supervisor = harness.service.load_supervisor_service()
 
-    payload = canonical_bytes(record) + b"\n"
-    assert target.read_bytes() == payload
-    assert digest == hashlib.sha256(payload).hexdigest()
-    assert ("fchown", 0, 0) in calls
-    assert ("fchmod", 0o600) in calls
-    link_call = next(call for call in calls if call[0] == "link")
-    assert link_call[2] == str(target)
-    assert not os.path.exists(link_call[1])
-    assert ("fsync-directory", 987654) in calls
-
-
-def test_root_record_refuses_existing_destination_without_overwrite(tmp_path, monkeypatch):
-    target = tmp_path / "record.json"
-    target.write_bytes(b"operator-owned prior record")
-    calls = _patch_record_os(monkeypatch, target)
-
-    with pytest.raises(ContractError, match="refusing to replace an existing preflight record"):
-        capture._write_root_record(str(target), {"run_id": RUN_ID})
-
-    assert target.read_bytes() == b"operator-owned prior record"
-    link_call = next(call for call in calls if call[0] == "link")
-    assert not os.path.exists(link_call[1])
+    assert len(harness.observation_calls) == 1
+    observed_run, observed_nonce, observed_hashes, _store_path, _anchor_path, options = harness.observation_calls[0]
+    assert (observed_run, observed_nonce, observed_hashes, options) == (
+        harness.config["run_id"], harness.config["probe_nonce"], harness.hashes, {},
+    )
+    assert harness.claim_checks == []
+    assert len(harness.store_instances) == 1
+    assert harness.store_calls[0][0] == "fresh"
+    run_id, nonce, spec_sha, probe_sha = harness.store_calls[0][1]
+    assert (run_id, nonce, spec_sha) == (
+        harness.config["run_id"], harness.config["probe_nonce"], harness.expected_spec,
+    )
+    assert probe_sha == capture.runtime_observation_binding_digest(
+        run_id, nonce, spec_sha, harness.hashes, "c" * 64,
+    )
+    assert supervisor._probe_consumed is True
+    assert api.args[0] is supervisor
+    assert api.args[1] == harness.config["socket_path"]
 
 
-@pytest.mark.parametrize("failure", ["fchown", "fchmod", "link"])
-def test_root_record_cleans_temporary_file_when_atomic_publish_step_fails(
-    tmp_path, monkeypatch, failure,
-):
-    target = tmp_path / "record.json"
-    calls = _patch_record_os(monkeypatch, target, fail_on=failure)
-    temporary_paths = []
-    real_mkstemp = capture.tempfile.mkstemp
-    def tracked_mkstemp(*args, **kwargs):
-        descriptor, path = real_mkstemp(*args, **kwargs)
-        temporary_paths.append(path)
-        return descriptor, path
-    monkeypatch.setattr(capture.tempfile, "mkstemp", tracked_mkstemp)
+@pytest.mark.skipif(capture.os.name == "nt", reason="Supervisor service contract requires POSIX path semantics")
+def test_supervisor_restart_revalidates_environment_without_replaying_one_start_claim(monkeypatch):
+    harness = _supervisor_loader_harness(monkeypatch, store_mode="recovery")
 
-    with pytest.raises(OSError, match="failed"):
-        capture._write_root_record(str(target), {"run_id": RUN_ID})
+    _api, supervisor = harness.service.load_supervisor_service()
 
-    assert temporary_paths and not os.path.exists(temporary_paths[0])
-    assert not target.exists()
-    assert not any(call[0] == "fsync-directory" for call in calls)
+    assert len(harness.observation_calls) == 1
+    observed_run, fresh_nonce, hashes, _store_path, _anchor_path, options = harness.observation_calls[0]
+    assert observed_run == harness.config["run_id"]
+    assert fresh_nonce != harness.config["probe_nonce"]
+    assert len(fresh_nonce) == 64
+    assert hashes == harness.hashes
+    assert options == {"require_fresh_store": False, "persist_one_start_claim": False}
+    assert harness.claim_checks == [(
+        harness.config["run_id"], harness.config["probe_nonce"], harness.expected_spec,
+        harness.hashes,
+    )]
+    assert harness.call_order == ["verify_existing_claim", "observe_runtime_once"]
+    assert len(harness.store_instances) == 1
+    assert harness.store_calls[0][0] == "recovery"
+    run_id, nonce, spec_sha, probe_sha = harness.store_calls[0][1]
+    assert (run_id, nonce, spec_sha) == (
+        harness.config["run_id"], harness.config["probe_nonce"], harness.expected_spec,
+    )
+    assert probe_sha == capture.runtime_observation_binding_digest(
+        run_id, nonce, spec_sha, harness.hashes, "c" * 64,
+    )
+    assert harness.identity_calls == [harness.hashes, harness.hashes, harness.hashes]
+    assert supervisor._probe_consumed is True
 
 
-@pytest.mark.skipif(os.name != "posix" or not hasattr(os, "geteuid") or os.geteuid() != 0,
-                    reason="root-owned filesystem publication requires POSIX UID 0")
-def test_posix_record_has_real_root_owner_mode_0600_and_never_overwrites():
-    parent = tempfile.mkdtemp(prefix="s2-preflight-capture-", dir="/run")
-    os.chown(parent, 0, 0)
-    os.chmod(parent, 0o700)
-    path = os.path.join(parent, "record.json")
-    try:
-        payload_record = {"run_id": RUN_ID, "observed": True}
-        digest = capture._write_root_record(path, payload_record)
-        info = os.stat(path, follow_symlinks=False)
-        payload = canonical_bytes(payload_record) + b"\n"
-        assert info.st_uid == 0
-        assert stat.S_IMODE(info.st_mode) == 0o600
-        assert Path(path).read_bytes() == payload
-        assert digest == hashlib.sha256(payload).hexdigest()
-        with pytest.raises(ContractError, match="refusing to replace an existing preflight record"):
-            capture._write_root_record(path, {"run_id": "replacement"})
-        assert Path(path).read_bytes() == payload
-    finally:
-        try:
-            os.unlink(path)
-        except FileNotFoundError:
-            pass
-        os.rmdir(parent)
+@pytest.mark.skipif(capture.os.name == "nt", reason="Supervisor service contract requires POSIX path semantics")
+def test_supervisor_restart_refuses_source_or_config_hash_drift_before_store_open(monkeypatch):
+    harness = _supervisor_loader_harness(monkeypatch, store_mode="recovery", source_drift=True)
+
+    with pytest.raises(ContractError, match="source or runtime configuration changed during recovery binding"):
+        harness.service.load_supervisor_service()
+
+    assert harness.call_order == ["verify_existing_claim", "observe_runtime_once"]
+    assert len(harness.observation_calls) == 1
+    assert harness.store_instances == []
+
+
+@pytest.mark.skipif(capture.os.name == "nt", reason="Supervisor service contract requires POSIX path semantics")
+@pytest.mark.parametrize("invalid", ["result", "spec", "network_profile", "mount_namespace", "network_namespace", "pid_namespace"])
+def test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open(monkeypatch, invalid):
+    def invalidate(probe, hashes):
+        if invalid == "result":
+            probe["result"] = "FAIL"
+        elif invalid == "spec":
+            probe["inventory"]["spec_sha256"] = "f" * 64
+        elif invalid == "network_profile":
+            probe["inventory"]["network_profile_sha256"] = "f" * 64
+        elif invalid == "mount_namespace":
+            probe["inventory"]["namespace_inodes"]["mount"] = 10
+        elif invalid == "network_namespace":
+            probe["inventory"]["namespace_inodes"]["network"] = 11
+        else:
+            probe["inventory"]["namespace_inodes"]["pid"] = 99
+
+    harness = _supervisor_loader_harness(
+        monkeypatch, store_mode="recovery", observation_override=invalidate,
+    )
+
+    with pytest.raises(ContractError):
+        harness.service.load_supervisor_service()
+
+    assert harness.call_order == ["verify_existing_claim", "observe_runtime_once"]
+    assert len(harness.observation_calls) == 1
+    assert harness.store_instances == []

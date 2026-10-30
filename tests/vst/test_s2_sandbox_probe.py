@@ -1,343 +1,254 @@
-"""S2 root-captured probe contract checks; fixtures are not host-isolation evidence."""
+"""Sandbox observation contract tests; synthetic data never proves host isolation."""
 from __future__ import annotations
 
-import hashlib
+import json
 import os
-import time
-from types import SimpleNamespace
-
 import pytest
+from types import SimpleNamespace
 
 from tools.vst import preflight
 from tools.vst.store import Store, StoreError
 from tools.vst.supervisor import Supervisor
 
-WORKER_KEY = b"s2-worker-root-key-0123456789-abcdef"
-SUPERVISOR_KEY = b"s2-supervisor-root-key-0123456789-abcdef"
-OPERATOR_KEY = b"s2-operator-root-key-0123456789-abcdef"
+
 EVENT_KEY = b"s2-event-root-key-0123456789-abcdef"
-REVIEWER_KEY = b"s2-reviewer-root-key-0123456789-abcdef"
-_DEFAULT_ATTESTATION = object()
-PROPERTIES = {
+OPERATOR_KEY = b"s2-operator-root-key-0123456789-abcdef"
+RUN_ID = "synthetic-supervisor-run"
+NONCE = "synthetic-supervisor-nonce"
+SPEC_SHA256 = "a" * 64
+NETWORK_SHA256 = "b" * 64
+NOW_NS = 5_000_000_000
+EXPECTED_CHECKS = {
     "automount_disabled", "interop_disabled", "no_container_socket", "non_root",
-    "external_egress_blocked", "loopback_canary", "empty_external_allowlist",
+    "egress_policy_isolated", "loopback_canary", "empty_external_allowlist",
+    "no_unapproved_host_mounts", "expected_cgroup", "runtime_namespaces_observed",
 }
 
 
-def operator_attestation(*, key=OPERATOR_KEY, run_id="run-1", nonce="nonce-1", **overrides):
-    body = {
-        "run_id": run_id,
-        "spec_sha256": hashlib.sha256(preflight.SPEC_PATH.read_bytes()).hexdigest(),
-        "nonce": nonce,
-        "environment_id": "synthetic-fixture-environment",
-        "policy_sha256": "a" * 64,
-        "evidence_sha256": "b" * 64,
-        "empty_external_allowlist": True,
-        "no_container_socket": True,
-        "no_unapproved_host_paths": True,
-    }
-    body.update(overrides)
-    return preflight.sign_network_policy_attestation(body, key)
-
-
-def valid_probe(attestation=_DEFAULT_ATTESTATION):
-    attestation = operator_attestation() if attestation is _DEFAULT_ATTESTATION else attestation
-    body = {
-        "run_id": "run-1",
-        "spec_sha256": hashlib.sha256(preflight.SPEC_PATH.read_bytes()).hexdigest(),
-        "nonce": "nonce-1",
-        "checked_properties": {name: True for name in PROPERTIES},
+def valid_observation(*, now_ns=NOW_NS) -> dict:
+    return {
+        "schema": "VST_S2_RUNTIME_OBSERVATION_V1",
+        "checked_properties": {name: True for name in EXPECTED_CHECKS},
         "result": "PASS",
         "inventory": {
-            "mount_table": ["rootfs / ext4 rw,relatime 0 0"],
-            "windows_drive_mounts": [],
-            "wsl_interop_present": False,
-            "wsl_interop_enabled": False,
-            "uid": 1001,
-            "gid": 1001,
-            "container_socket_paths_present": [],
-            "container_socket_inventory_complete": True,
-            "blocked_egress_target": ["198.51.100.1", 9],
-            "blocked_egress_probe_scope": "single reserved-target smoke probe; does not prove egress policy",
-            "network_policy_attestation": attestation,
+            "mount_table": ["rootfs / ext4 rw 0 0"],
+            "windows_drive_mounts": [], "unapproved_host_mounts": [],
+            "wsl_interop_present": False, "wsl_interop_enabled": False,
+            "uid": 999, "gid": 989,
+            "cgroup": ["0::/system.slice/vst-sandbox-probe.service"],
+            "namespace_inodes": {"mount": 10, "network": 11, "cgroup": 12, "pid": 13},
+            "network_interfaces": ["lo"], "network_routes": [],
+            "container_socket_paths_present": [], "container_socket_inventory_complete": True,
             "environment_variable_names": [],
-            "observed_at_monotonic_ns": time.monotonic_ns(),
+            "spec_sha256": SPEC_SHA256, "network_profile_sha256": NETWORK_SHA256,
+            "observed_at_monotonic_ns": now_ns,
         },
     }
-    # No Runner/probe signature: the Supervisor accepts only this exact record
-    # from its root-owned preflight path and verifies the separate root policy attestation.
-    return body
 
 
-def test_five_sandbox_trust_roots_are_pairwise_distinct():
-    roots = [WORKER_KEY, SUPERVISOR_KEY, OPERATOR_KEY, EVENT_KEY, REVIEWER_KEY]
-    assert all(len(key) >= 32 for key in roots)
-    assert len(set(roots)) == 5
+def test_runtime_observation_requires_exact_fresh_schema_and_all_environment_checks(monkeypatch):
+    monkeypatch.setattr(preflight.time, "monotonic_ns", lambda: NOW_NS)
+    observation = valid_observation()
 
-
-def test_probe_and_operator_attestation_bind_run_spec_nonce_and_every_check():
-    probe = valid_probe()
-    args = dict(
-        run_id="run-1", spec_sha256=probe["spec_sha256"], nonce="nonce-1",
-    )
-    assert "signature" not in probe
-    assert preflight.validate_fresh_probe(probe, **args)
-    attestation = probe["inventory"]["network_policy_attestation"]
-    operator_args = dict(
-        run_id="run-1", spec_sha256=probe["spec_sha256"], nonce="nonce-1", key=OPERATOR_KEY,
-    )
-    assert preflight.verify_network_policy_attestation(attestation, **operator_args)
-    for changed in (
-        {**probe, "run_id": "other"}, {**probe, "nonce": "other"},
-        {**probe, "spec_sha256": "0" * 64}, {**probe, "result": "FAIL"},
-    ):
-        assert not preflight.validate_fresh_probe(changed, **args)
-    for name in sorted(PROPERTIES):
-        bad = {**probe, "checked_properties": {**probe["checked_properties"], name: False}}
-        assert not preflight.validate_fresh_probe(bad, **args), name
-    for bad_args in (
-        {**operator_args, "run_id": "other"},
-        {**operator_args, "nonce": "other"},
-        {**operator_args, "spec_sha256": "0" * 64},
-        {**operator_args, "key": b"x" * 32},
-    ):
-        assert not preflight.verify_network_policy_attestation(attestation, **bad_args)
-
-
-@pytest.mark.parametrize(
-    "mutate",
-    ["missing_run_id", "missing_inventory", "extra_field", "extra_signature",
-     "missing_check", "non_boolean_check", "missing_inventory_field", "extra_inventory_field"],
-)
-def test_probe_inventory_requires_exact_unambiguous_schema_without_signature(mutate):
-    probe = valid_probe()
     assert preflight.validate_fresh_probe(
-        probe, run_id="run-1", spec_sha256=probe["spec_sha256"], nonce="nonce-1",
-    )
-    bad = {**probe, "inventory": dict(probe["inventory"]),
-           "checked_properties": dict(probe["checked_properties"])}
-    if mutate == "missing_run_id":
-        bad.pop("run_id")
-    elif mutate == "missing_inventory":
-        bad.pop("inventory")
-    elif mutate == "extra_field":
-        bad["unexpected"] = True
-    elif mutate == "extra_signature":
-        bad["signature"] = "a" * 64
-    elif mutate == "missing_check":
-        bad["checked_properties"].pop("loopback_canary")
-    elif mutate == "non_boolean_check":
-        bad["checked_properties"]["loopback_canary"] = 1
-    elif mutate == "missing_inventory_field":
-        bad["inventory"].pop("mount_table")
-    elif mutate == "extra_inventory_field":
-        bad["inventory"]["unexpected"] = True
-    assert not preflight.validate_fresh_probe(
-        bad, run_id="run-1", spec_sha256=probe["spec_sha256"], nonce="nonce-1",
+        {**observation, "run_id": RUN_ID, "nonce": NONCE, "spec_sha256": SPEC_SHA256},
+        run_id=RUN_ID, nonce=NONCE, spec_sha256=SPEC_SHA256,
     )
 
-
-@pytest.mark.parametrize("age_ns", [preflight.MAX_FRESH_PROBE_AGE_NS + 1, -1])
-def test_probe_rejects_stale_or_future_observation(monkeypatch, age_ns):
-    now_ns = 5_000_000_000
-    monkeypatch.setattr(preflight.time, "monotonic_ns", lambda: now_ns)
-    probe = valid_probe()
-    probe["inventory"]["observed_at_monotonic_ns"] = now_ns - age_ns
-
-    assert not preflight.validate_fresh_probe(
-        probe, run_id="run-1", spec_sha256=probe["spec_sha256"], nonce="nonce-1",
-    )
+    for name in EXPECTED_CHECKS:
+        bad = {**observation, "checked_properties": {**observation["checked_properties"], name: False}}
+        assert not preflight.validate_fresh_probe(
+            {**bad, "run_id": RUN_ID, "nonce": NONCE, "spec_sha256": SPEC_SHA256},
+            run_id=RUN_ID, nonce=NONCE, spec_sha256=SPEC_SHA256,
+        ), name
 
 
-@pytest.mark.parametrize(
-    ("field", "value"),
-    [("uid", 0), ("container_socket_inventory_complete", False),
-     ("container_socket_paths_present", ["/run/docker.sock"]),
-     ("wsl_interop_enabled", True),
-     ("windows_drive_mounts", ["C:\\ /mnt/c drvfs rw 0 0"]),
-     ("mount_table", [1]),
-     ("blocked_egress_target", ["203.0.113.1", 9]),
-     ("blocked_egress_probe_scope", "unbounded network evidence"),
-     ("environment_variable_names", [1]),
-     ("observed_at_monotonic_ns", True)],
-    ids=["root-uid", "incomplete-socket-inventory", "present-container-socket",
-         "interop-enabled", "windows-drive-mount", "malformed-mount-row",
-         "wrong-blocked-target", "wrong-target-scope", "malformed-environment-name",
-         "invalid-observation-time"],
-)
-def test_probe_inventory_rejects_root_or_unverified_socket_boundary(field, value):
-    probe = valid_probe()
-    bad = {**probe, "inventory": {**probe["inventory"], field: value}}
-    assert not preflight.validate_fresh_probe(
-        bad, run_id="run-1", spec_sha256=probe["spec_sha256"], nonce="nonce-1",
-    )
+@pytest.mark.parametrize("change", ["run", "nonce", "spec", "age", "future", "signature"])
+def test_runtime_observation_refuses_wrong_identity_staleness_or_extra_handoff(change, monkeypatch):
+    monkeypatch.setattr(preflight.time, "monotonic_ns", lambda: NOW_NS)
+    observation = valid_observation()
+    value = {**observation, "run_id": RUN_ID, "nonce": NONCE, "spec_sha256": SPEC_SHA256}
+    args = {"run_id": RUN_ID, "nonce": NONCE, "spec_sha256": SPEC_SHA256}
+    if change == "run":
+        value["run_id"] = "different-run"
+    elif change == "nonce":
+        value["nonce"] = "different-nonce"
+    elif change == "spec":
+        value["spec_sha256"] = "c" * 64
+    elif change == "age":
+        value["inventory"]["observed_at_monotonic_ns"] = NOW_NS - preflight.MAX_FRESH_PROBE_AGE_NS - 1
+    elif change == "future":
+        value["inventory"]["observed_at_monotonic_ns"] = NOW_NS + 1
+    else:
+        value["signature"] = "caller-supplied"
+
+    assert not preflight.validate_fresh_probe(value, **args)
 
 
-@pytest.mark.parametrize(
-    "mutate",
-    ["wrong_run", "wrong_spec", "wrong_nonce", "missing_field", "extra_field",
-     "bad_signature", "wrong_key", "nonempty_allowlist"],
-)
-def test_root_network_policy_attestation_rejects_invalid_binding_or_signature(mutate):
-    probe = valid_probe()
-    attestation = dict(probe["inventory"]["network_policy_attestation"])
-    args = dict(run_id="run-1", spec_sha256=probe["spec_sha256"], nonce="nonce-1", key=OPERATOR_KEY)
-    if mutate == "wrong_run":
-        attestation = operator_attestation(run_id="other")
-    elif mutate == "wrong_spec":
-        attestation = operator_attestation(spec_sha256="0" * 64)
-    elif mutate == "wrong_nonce":
-        attestation = operator_attestation(nonce="other")
-    elif mutate == "missing_field":
-        attestation.pop("evidence_sha256")
-    elif mutate == "extra_field":
-        attestation["unexpected"] = True
-    elif mutate == "bad_signature":
-        attestation["signature"] = "0" * 64
-    elif mutate == "wrong_key":
-        args["key"] = b"wrong-operator-key-0123456789-abcdef"
-    elif mutate == "nonempty_allowlist":
-        attestation = operator_attestation(empty_external_allowlist=False)
-    assert not preflight.verify_network_policy_attestation(attestation, **args)
-
-
-def _supervisor(tmp_path):
-    store = Store(str(tmp_path / "synthetic-sandbox.db"), event_key=EVENT_KEY)
-    store.sandbox_mode = True  # Protocol fixture only; does not claim host isolation.
+def test_supervisor_refuses_caller_supplied_observation_without_its_durable_consumption(tmp_path):
+    store = Store(str(tmp_path / "unconsumed.db"), event_key=EVENT_KEY)
+    store.sandbox_mode = True
     supervisor = Supervisor(
-        store,
-        operation_backend=object(),
-        run_id="run-1",
-        probe_nonce="nonce-1",
-        operator_key=OPERATOR_KEY,
+        store, operation_backend=object(), run_id=RUN_ID,
+        probe_nonce=NONCE, operator_key=OPERATOR_KEY,
     )
-    return store, supervisor
-
-
-def test_supervisor_accepts_a_valid_synthetic_operator_attestation(tmp_path):
-    store, supervisor = _supervisor(tmp_path)
-    started = []
+    starts = []
     try:
-        assert supervisor.start_worker(lambda: started.append(True) or "started", probe=valid_probe()) == "started"
-        assert started == [True]
+        with pytest.raises(StoreError, match="Supervisor-owned runtime observation"):
+            supervisor.start_worker(lambda: starts.append(True), probe=valid_observation())
+        assert starts == []
     finally:
         store.close()
 
 
-@pytest.mark.parametrize(
-    "mutation",
-    ["wrong_run", "wrong_spec", "wrong_nonce", "missing_field", "extra_field",
-     "failed_check", "root_uid", "incomplete_socket_inventory", "present_socket"],
-)
-def test_supervisor_refuses_invalid_root_captured_probe_before_worker_start(tmp_path, mutation):
-    probe = valid_probe()
-    if mutation == "wrong_run":
-        probe["run_id"] = "other"
-    elif mutation == "wrong_spec":
-        probe["spec_sha256"] = "0" * 64
-    elif mutation == "wrong_nonce":
-        probe["nonce"] = "other"
-    elif mutation == "missing_field":
-        probe.pop("inventory")
-    elif mutation == "extra_field":
-        probe["signature"] = "a" * 64
-    elif mutation == "failed_check":
-        probe["checked_properties"]["external_egress_blocked"] = False
-    elif mutation == "root_uid":
-        probe["inventory"]["uid"] = 0
-    elif mutation == "incomplete_socket_inventory":
-        probe["inventory"]["container_socket_inventory_complete"] = False
-    elif mutation == "present_socket":
-        probe["inventory"]["container_socket_paths_present"] = ["/run/docker.sock"]
-
-    store, supervisor = _supervisor(tmp_path)
-    started = []
-    try:
-        with pytest.raises(StoreError, match="fresh passing root-captured preflight"):
-            supervisor.start_worker(lambda: started.append(True), probe=probe)
-        assert started == []
-    finally:
-        store.close()
-
-
-@pytest.mark.parametrize("failure", ["missing", "wrong_key", "tampered", "nonempty_allowlist"])
-def test_supervisor_refuses_untrusted_operator_attestation_before_worker_start(tmp_path, failure):
-    attestation = operator_attestation()
-    if failure == "missing":
-        attestation = None
-    elif failure == "wrong_key":
-        attestation = operator_attestation(key=b"wrong-operator-key-0123456789-abcdef")
-    elif failure == "tampered":
-        attestation = operator_attestation()
-        attestation["evidence_sha256"] = "c" * 64
-    elif failure == "nonempty_allowlist":
-        attestation = operator_attestation(empty_external_allowlist=False)
-
-    store, supervisor = _supervisor(tmp_path)
-    started = []
-    try:
-        with pytest.raises(StoreError, match="fresh passing root-captured preflight|operator-root-signed"):
-            supervisor.start_worker(lambda: started.append(True), probe=valid_probe(attestation))
-        assert not started
-    finally:
-        store.close()
-
-
-def _patch_collect_inventory(monkeypatch, *, sockets, complete, mounts=""):
+def _patch_collection_environment(monkeypatch, *, sockets=(), complete=True, mounts=None,
+                                 empty_allowlist=True):
+    root_mount = "1 0 0:1 / / rw - ext4 rootfs rw"
+    mountinfo = "\n".join([root_mount, *(mounts or [])])
+    profile = json.dumps({
+        "external_allowlist": [] if empty_allowlist else ["example.invalid"],
+        "probe_network_scope": "PrivateNetwork; only loopback interface/routes are allowed",
+    })
+    values = {
+        "/proc/self/mountinfo": mountinfo,
+        "/proc/self/cgroup": "0::/system.slice/vst-sandbox-probe.service\n",
+        "/etc/vst-runner/network-profile.json": profile,
+        str(preflight.SPEC_PATH): "synthetic specification",
+    }
     class FakePath:
         def __init__(self, value):
             self.value = value
 
-        def read_text(self, *args, **kwargs):
-            return mounts
+        def __str__(self):
+            return str(self.value)
 
         def exists(self):
             return False
 
-    fake_os = SimpleNamespace(
-        name="posix", geteuid=lambda: 1001, getegid=lambda: 1001, environ={},
-    )
-    monkeypatch.setattr(preflight, "os", fake_os)
     monkeypatch.setattr(preflight, "Path", FakePath)
-    monkeypatch.setattr(preflight, "_container_socket_inventory", lambda: (sockets, complete))
-    monkeypatch.setattr(preflight, "_blocked_egress", lambda: True)
+    monkeypatch.setattr(preflight, "os", SimpleNamespace(
+        name="posix", geteuid=lambda: 999, getegid=lambda: 989, environ={},
+    ))
+    monkeypatch.setattr(preflight, "_bounded_proc_text", lambda path, *_a, **_kw: values[str(path)])
+    monkeypatch.setattr(preflight, "_network_namespace_inventory", lambda: (["lo"], [], [], True))
+    monkeypatch.setattr(preflight, "_namespace_inode", lambda _name: 10)
+    monkeypatch.setattr(preflight, "_container_socket_inventory", lambda: (list(sockets), complete))
     monkeypatch.setattr(preflight, "_loopback_canary", lambda: True)
 
 
-def test_collect_inventory_cannot_claim_empty_allowlist_without_operator_attestation(monkeypatch):
-    _patch_collect_inventory(monkeypatch, sockets=[], complete=True)
-    result = preflight.collect_inventory("run-1", "nonce-1")
-    assert result["result"] == "FAIL"
-    assert result["checked_properties"]["empty_external_allowlist"] is False
-    assert result["inventory"]["network_policy_attestation"] is None
+def test_environment_collector_reports_only_observed_network_and_mount_properties(monkeypatch):
+    _patch_collection_environment(monkeypatch)
+
+    result = preflight.collect_inventory()
+
+    assert result["schema"] == "VST_S2_RUNTIME_OBSERVATION_V1"
+    assert result["result"] == "PASS"
+    assert result["checked_properties"] == {name: True for name in EXPECTED_CHECKS}
+    assert "run_id" not in result and "nonce" not in result
+    assert "network_policy_attestation" not in result["inventory"]
 
 
-def test_collect_inventory_fails_closed_when_socket_enumeration_is_incomplete(monkeypatch):
-    _patch_collect_inventory(monkeypatch, sockets=[], complete=False)
-    attestation = operator_attestation()
-    result = preflight.collect_inventory(
-        "run-1", "nonce-1", network_policy_attestation=attestation,
-    )
+def test_environment_collector_fails_closed_on_incomplete_socket_inventory(monkeypatch):
+    _patch_collection_environment(monkeypatch, complete=False)
+
+    result = preflight.collect_inventory()
+
     assert result["inventory"]["container_socket_inventory_complete"] is False
     assert result["checked_properties"]["no_container_socket"] is False
     assert result["result"] == "FAIL"
 
 
-@pytest.mark.parametrize(
-    "mount_row, expected",
-    [
-        ("/dev/something /mnt/wslg ext4 rw 0 0", True),
-        ("C:\\ /mnt/c 9p rw,aname=drvfs;path=C:\\ 0 0", False),
-        ("C:\\ /mnt/c drvfs rw 0 0", False),
-    ],
-)
-def test_mount_classification_only_rejects_windows_drive_mounts(monkeypatch, mount_row, expected):
-    _patch_collect_inventory(monkeypatch, sockets=[], complete=True, mounts=mount_row)
-    inventory = preflight.collect_inventory("run-1", "nonce-1")
-    assert inventory["checked_properties"]["automount_disabled"] is expected
+def test_environment_collector_fails_closed_for_nonempty_egress_allowlist(monkeypatch):
+    _patch_collection_environment(monkeypatch, empty_allowlist=False)
+
+    result = preflight.collect_inventory()
+
+    assert result["checked_properties"]["empty_external_allowlist"] is False
+    assert result["result"] == "FAIL"
 
 
-def test_socket_inventory_discovers_runtime_socket_under_non_1000_uid(monkeypatch):
+@pytest.mark.parametrize(("mount_row", "expected"), [
+    ("2 1 0:2 / /mnt/wslg rw - ext4 /dev/host rw", True),
+    ("2 1 0:2 / /mnt/c rw - 9p C:\\ aname=drvfs;path=C:\\ rw", False),
+    ("2 1 0:2 / /mnt/c rw - drvfs C:\\ rw", False),
+])
+def test_environment_collector_classifies_windows_drive_mounts(monkeypatch, mount_row, expected):
+    _patch_collection_environment(monkeypatch, mounts=[mount_row])
+
+    result = preflight.collect_inventory()
+
+    assert result["checked_properties"]["automount_disabled"] is expected
+    if not expected:
+        assert result["checked_properties"]["no_unapproved_host_mounts"] is False
+        assert mount_row in result["inventory"]["unapproved_host_mounts"]
+        assert result["result"] == "FAIL"
+
+
+def test_environment_collector_fails_closed_for_unlisted_host_mount(monkeypatch):
+    host_mount = "2 1 0:2 /host/secrets /opt/private rw - ext4 /dev/other rw"
+    _patch_collection_environment(monkeypatch, mounts=[host_mount])
+
+    result = preflight.collect_inventory()
+
+    assert result["checked_properties"]["no_unapproved_host_mounts"] is False
+    assert result["inventory"]["unapproved_host_mounts"] == [host_mount]
+    assert result["result"] == "FAIL"
+
+
+def test_environment_collector_accepts_systemd_inaccessible_directory_mount_for_masked_wsl_path(
+        monkeypatch):
+    masked_mount = (
+        "2 1 0:1 /run/systemd/inaccessible/dir /mnt rw - ext4 rootfs rw"
+    )
+    _patch_collection_environment(monkeypatch, mounts=[masked_mount])
+
+    result = preflight.collect_inventory()
+
+    assert result["checked_properties"]["no_unapproved_host_mounts"] is True
+    assert result["inventory"]["unapproved_host_mounts"] == []
+    assert masked_mount in result["inventory"]["mount_table"]
+
+
+def test_network_namespace_observation_accepts_only_loopback_routes(monkeypatch):
+    route4 = (
+        "Iface Destination Gateway Flags RefCnt Use Metric Mask MTU Window IRTT\n"
+        "lo 0000007F 00000000 00000001 0 0 0 000000FF 0 0 0\n"
+    )
+    route6 = (
+        "00000000000000000000000000000001 80 "
+        "00000000000000000000000000000000 00 "
+        "00000000000000000000000000000000 00000000 00000000 00000000 00000000 lo\n"
+    )
+    values = {"/proc/net/route": route4, "/proc/net/ipv6_route": route6}
+    monkeypatch.setattr(preflight, "os", SimpleNamespace(listdir=lambda _path: ["lo"]))
+    monkeypatch.setattr(preflight, "_bounded_proc_text", lambda path, *_a, **_kw: values[str(path)])
+
+    interfaces, routes, _unused, isolated = preflight._network_namespace_inventory()
+
+    assert interfaces == ["lo"]
+    assert len(routes) == 2
+    assert isolated is True
+
+
+@pytest.mark.parametrize(("interfaces", "route_device"), [
+    (["lo", "eth0"], "lo"), (["lo"], "eth0"),
+])
+def test_network_namespace_observation_rejects_external_interface_or_route(
+        monkeypatch, interfaces, route_device):
+    route4 = (
+        "Iface Destination Gateway Flags RefCnt Use Metric Mask MTU Window IRTT\n"
+        f"{route_device} 0000007F 00000000 00000001 0 0 0 000000FF 0 0 0\n"
+    )
+    values = {"/proc/net/route": route4, "/proc/net/ipv6_route": ""}
+    monkeypatch.setattr(preflight, "os", SimpleNamespace(listdir=lambda _path: interfaces))
+    monkeypatch.setattr(preflight, "_bounded_proc_text", lambda path, *_a, **_kw: values[str(path)])
+
+    _observed_interfaces, _routes, _unused, isolated = preflight._network_namespace_inventory()
+
+    assert isolated is False
+
+
+def test_socket_inventory_finds_runtime_socket_under_nonstandard_uid(monkeypatch):
     user_paths = {"/run/user/1000", "/run/user/1001"}
     directories = {"/run/user", *user_paths}
     socket_path = "/run/user/1001/docker.sock"
@@ -354,20 +265,17 @@ def test_socket_inventory_discovers_runtime_socket_under_non_1000_uid(monkeypatc
             return self.path in user_paths
 
     class PathEnumerator:
-        def __init__(self, values):
-            self.values = values
-
         def __enter__(self):
-            return self.values
+            return [Entry("1000"), Entry("1001")]
 
-        def __exit__(self, *exc):
+        def __exit__(self, *_exc):
             return False
 
     class FakePath:
-        def __init__(self, value):
-            self.value = value
+        def __init__(self, _value):
+            pass
 
-        def read_text(self, *args, **kwargs):
+        def read_text(self, *_args, **_kwargs):
             return "Num RefCount Protocol Flags Type St Inode Path\n"
 
     def lstat(path):
@@ -376,25 +284,51 @@ def test_socket_inventory_discovers_runtime_socket_under_non_1000_uid(monkeypatc
         raise FileNotFoundError(path)
 
     fake_path = SimpleNamespace(
-        islink=lambda path: False,
+        islink=lambda _path: False,
         isdir=lambda path: path in directories,
         join=lambda *parts: "/".join(parts),
         dirname=lambda path: path.rsplit("/", 1)[0],
     )
-    fake_os = SimpleNamespace(
-        lstat=lstat,
-        scandir=lambda path: PathEnumerator([Entry("1000"), Entry("1001")]),
-        path=fake_path,
-    )
-    monkeypatch.setattr(preflight, "os", fake_os)
+    monkeypatch.setattr(preflight, "os", SimpleNamespace(
+        lstat=lstat, scandir=lambda _path: PathEnumerator(), path=fake_path,
+    ))
     monkeypatch.setattr(preflight, "Path", FakePath)
 
     sockets, complete = preflight._container_socket_inventory()
+
     assert complete is True
     assert sockets == [socket_path]
 
 
-@pytest.mark.skipif(os.name == "nt", reason="NOT_RUN: POSIX reviewer credentials are unavailable on Windows")
+def test_socket_inventory_fails_closed_when_proc_socket_evidence_is_unreadable(monkeypatch):
+    fake_path = SimpleNamespace(
+        islink=lambda _path: False,
+        isdir=lambda _path: False,
+        join=lambda *parts: "/".join(parts),
+        dirname=lambda path: path.rsplit("/", 1)[0],
+    )
+
+    class UnreadableProcPath:
+        def __init__(self, _path):
+            pass
+
+        def read_text(self, *_args, **_kwargs):
+            raise PermissionError("proc socket inventory denied")
+
+    monkeypatch.setattr(preflight, "os", SimpleNamespace(
+        lstat=lambda _path: (_ for _ in ()).throw(FileNotFoundError()),
+        scandir=lambda _path: pytest.fail("missing runtime root must not be enumerated"),
+        path=fake_path,
+    ))
+    monkeypatch.setattr(preflight, "Path", UnreadableProcPath)
+
+    sockets, complete = preflight._container_socket_inventory()
+
+    assert sockets == []
+    assert complete is False
+
+
+@pytest.mark.skipif(os.name == "nt", reason="requires the real POSIX runtime account database")
 def test_posix_read_only_reviewer_cannot_write_worktree_or_store_fixture():
     """Use the provisioned reviewer identity against disposable worker-owned resources."""
     import grp
@@ -482,20 +416,16 @@ if len(checks) != 3 or not all(row["write_denied"] for row in checks):
         shutil.rmtree(fixture_root)
 
 
-@pytest.mark.skip(reason="NOT_RUN: actual WSL/VM sandbox inventory and egress probe require operator-provisioned POSIX sandbox; synthetic inventories do not prove platform isolation")
+@pytest.mark.skip(reason="NOT_RUN: provisioned POSIX sandbox evidence is required; a synthetic inventory cannot prove host isolation")
 def test_real_sandbox_inventory_has_all_required_properties():
-    inventory = preflight.collect_inventory("operator-provisioned-run")
-    assert inventory["result"] == "PASS"
+    assert preflight.collect_inventory()["result"] == "PASS"
 
 
 @pytest.mark.parametrize("scenario", [
-    "worker_crash_mid_edit",
-    "STOP_injection_and_cleanup",
-    "budget_exhaustion",
-    "resume_with_fresh_epoch_and_receipt",
-    "unauthorized_write_outside_scope",
+    "worker_crash_mid_edit", "STOP_injection_and_cleanup", "budget_exhaustion",
+    "resume_with_fresh_epoch_and_receipt", "unauthorized_write_outside_scope",
     "blocked_egress_attempt",
 ])
-@pytest.mark.skip(reason="NOT_RUN: E8 bake-off requires operator-provisioned sandbox; process-kill and mutation runs are prohibited, and no synthetic result can prove isolation")
+@pytest.mark.skip(reason="NOT_RUN: E8 requires provisioned sandbox; process-kill and mutation runs are prohibited")
 def test_e8_sandbox_bakeoff_scenarios_not_run(scenario):
     pytest.skip(scenario)

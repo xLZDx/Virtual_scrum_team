@@ -6,6 +6,7 @@ import json
 import hashlib
 import os
 import select
+import secrets
 import signal
 import socket
 import stat
@@ -13,6 +14,7 @@ import struct
 import threading
 import sys
 import re
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Any
 
@@ -31,6 +33,24 @@ class SupervisorRPCError(RuntimeError):
     def __init__(self, message: str, *, kind: str | None = None):
         super().__init__(message)
         self.kind = kind
+
+
+def _notify_systemd_ready() -> None:
+    """Tell a Type=notify Supervisor unit it is ready only after its socket listens."""
+    notify_path = os.environ.get("NOTIFY_SOCKET")
+    if not notify_path:
+        return
+    if len(notify_path) > 107 or not (notify_path.startswith("/") or notify_path.startswith("@")):
+        raise ContractError("systemd notification socket path is malformed")
+    address = "\0" + notify_path[1:] if notify_path.startswith("@") else notify_path
+    client = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    try:
+        client.settimeout(2.0)
+        client.sendto(b"READY=1\nSTATUS=Runtime observation accepted; Supervisor API is listening", address)
+    except OSError as exc:
+        raise ContractError("systemd readiness notification failed") from exc
+    finally:
+        client.close()
 
 
 def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict:
@@ -152,6 +172,7 @@ class AuthenticatedSupervisorAPI:
             os.chown(self.socket_path, 0, self.socket_gid)
             os.chmod(self.socket_path, 0o660)
             server.listen(8)
+            _notify_systemd_ready()
             server.settimeout(0.5)
             while not self._shutdown.is_set():
                 try:
@@ -693,6 +714,147 @@ def _read_root_key(path: str) -> bytes:
         os.close(fd)
 
 
+def _runtime_observation_identity(config_path: str, config: dict) -> dict[str, str]:
+    """Hash the exact loaded source and non-secret runtime contract inputs safely."""
+    source_root = os.path.realpath(str(Path(__file__).resolve().parents[2]))
+    source_paths = {
+        "supervisor_service": str(Path(__file__).resolve()),
+        "supervisor": str(Path(__file__).resolve().with_name("supervisor.py")),
+        "preflight": str(Path(__file__).resolve().with_name("preflight.py")),
+        "preflight_capture": str(Path(__file__).resolve().with_name("preflight_capture.py")),
+    }
+    config_paths = {
+        "supervisor_config": config_path,
+        "network_profile": "/etc/vst-runner/network-profile.json",
+        "bootstrap_request": "/etc/vst-runner/bootstrap-request.json",
+        "probe_entrypoint": "/etc/vst-runner/probe-entrypoint.py",
+        "supervisor_unit": "/etc/systemd/system/vst-supervisor.service",
+        "probe_unit": "/etc/systemd/system/vst-sandbox-probe.service",
+        "task_manifest": "/etc/vst-runner/task-manifest.json",
+        "sandbox_spec": str(Path(__file__).resolve().parents[2] / "docs" / "SANDBOX_SPEC.md"),
+        "dispatch_trust": config.get("dispatch_instruction_trust_registry_path"),
+    }
+    if "assignment_policy_path" in config:
+        config_paths["assignment_policy"] = config["assignment_policy_path"]
+
+    # Pin every installed input that systemd actually executes or applies. The
+    # runtime bundle manifest is in the exact selected archive; compare installed
+    # bytes to its source digests before the one-shot service can be started.
+    runtime_bundle_path = os.path.join(source_root, "docs", "sdlc", "runtime-config", "bundle-manifest.json")
+    runtime_layout_path = os.path.join(source_root, "docs", "sdlc", "runtime-config", "installation-layout.json")
+    config_paths["runtime_bundle_manifest"] = runtime_bundle_path
+    config_paths["runtime_installation_layout"] = runtime_layout_path
+    bundle = _read_controlled_json(runtime_bundle_path, max_bytes=2 * 1024 * 1024)
+    layout = _read_controlled_json(runtime_layout_path, max_bytes=2 * 1024 * 1024)
+    bundle_files = {item.get("path"): item for item in bundle.get("files", [])
+                    if isinstance(item, dict)}
+    bundle_units = {item.get("name"): item for item in bundle.get("units", [])
+                    if isinstance(item, dict)}
+    required_units = {"vst-supervisor.service", "vst-sandbox-probe.service"}
+    if not required_units <= set(bundle_units):
+        raise ContractError("runtime bundle does not pin both Supervisor and probe units")
+    runtime_head = os.path.basename(source_root).removeprefix("vst-runtime-")
+    if (bundle.get("runtime_source_head") != runtime_head
+            or bundle.get("state") != "PREPARED_NOT_INSTALLED"):
+        raise ContractError("runtime bundle identity does not match the selected versioned archive")
+    expected_installed = {
+        config_paths["probe_entrypoint"]: bundle_files.get("probe-entrypoint.py", {}).get("sha256"),
+        config_paths["supervisor_unit"]: bundle_units["vst-supervisor.service"].get("sha256"),
+        config_paths["probe_unit"]: bundle_units["vst-sandbox-probe.service"].get("sha256"),
+    }
+    from .preflight_capture import PROBE_UNIT, _systemctl_properties
+    dropin_properties = _systemctl_properties(PROBE_UNIT, ("DropInPaths",))
+    installed_probe_dropins = dropin_properties["DropInPaths"].split()
+    expected_probe_dropins = []
+    expected_supervisor_dropins = []
+    for entry in layout.get("unit_overrides", []):
+        if not isinstance(entry, dict) or not isinstance(entry.get("destination"), str):
+            raise ContractError("runtime layout contains a malformed systemd drop-in record")
+        destination = entry["destination"]
+        if destination.startswith("/etc/systemd/system/vst-sandbox-probe.service.d/"):
+            expected_probe_dropins.append(destination)
+        elif destination.startswith("/etc/systemd/system/vst-supervisor.service.d/"):
+            expected_supervisor_dropins.append(destination)
+    if not expected_probe_dropins or installed_probe_dropins != sorted(expected_probe_dropins):
+        raise ContractError("effective probe drop-ins differ from the exact runtime layout")
+    supervisor_dropins = _systemctl_properties(
+        "vst-supervisor.service", ("DropInPaths",))["DropInPaths"].split()
+    if supervisor_dropins != sorted(expected_supervisor_dropins):
+        raise ContractError("effective Supervisor drop-ins differ from the exact runtime layout")
+    for prefix, paths_for_unit in (("probe_dropin", expected_probe_dropins),
+                                   ("supervisor_dropin", expected_supervisor_dropins)):
+        for index, destination in enumerate(sorted(paths_for_unit)):
+            basename = os.path.basename(destination)
+            layout_record = next(item for item in layout["unit_overrides"]
+                                 if item["destination"] == destination)
+            source_record = bundle_files.get(layout_record.get("source"))
+            expected_digest = layout_record.get("sha256")
+            if (not isinstance(source_record, dict) or source_record.get("sha256") != expected_digest
+                    or not isinstance(expected_digest, str) or not _SHA256.fullmatch(expected_digest)):
+                raise ContractError("runtime bundle does not exactly pin an effective systemd drop-in")
+            config_paths[f"{prefix}_{index}_{basename}"] = destination
+            expected_installed[destination] = expected_digest
+    paths = {**source_paths, **config_paths}
+    marker_path = os.path.join(source_root, ".vst-runtime-manifest.json")
+    if os.path.realpath("/opt/vst-runtime") != source_root:
+        raise ContractError("running Supervisor source is outside the active versioned runtime selector")
+    paths["runtime_manifest"] = marker_path
+    result: dict[str, str] = {}
+    for label, file_path in paths.items():
+        if not isinstance(file_path, str) or not os.path.isabs(file_path):
+            raise ContractError("runtime observation source/config path is invalid")
+        parent = os.path.dirname(file_path)
+        while True:
+            try:
+                parent_info = os.stat(parent, follow_symlinks=False)
+            except OSError as exc:
+                raise ContractError("runtime observation source/config parent is unavailable") from exc
+            if (not stat.S_ISDIR(parent_info.st_mode) or parent_info.st_uid != 0
+                    or parent_info.st_mode & 0o022):
+                raise ContractError("runtime observation source/config parent is not root-controlled")
+            if parent == "/":
+                break
+            parent = os.path.dirname(parent)
+        try:
+            fd = os.open(file_path, os.O_RDONLY | os.O_NOFOLLOW)
+        except OSError as exc:
+            raise ContractError("runtime observation source/config file is unavailable") from exc
+        try:
+            info = os.fstat(fd)
+            if (not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o022
+                    or info.st_size > 8 * 1024 * 1024):
+                raise ContractError("runtime observation source/config file is not bounded and root-controlled")
+            raw = bytearray()
+            while len(raw) <= 8 * 1024 * 1024:
+                chunk = os.read(fd, min(65536, 8 * 1024 * 1024 + 1 - len(raw)))
+                if not chunk:
+                    break
+                raw.extend(chunk)
+            if len(raw) > 8 * 1024 * 1024:
+                raise ContractError("runtime observation source/config file exceeds its size limit")
+            result[label] = hashlib.sha256(raw).hexdigest()
+        finally:
+            os.close(fd)
+    if len(result) != len(paths):
+        raise ContractError("runtime observation source/config inventory is incomplete")
+    for installed_path, expected_digest in expected_installed.items():
+        if not isinstance(expected_digest, str) or not _SHA256.fullmatch(expected_digest):
+            raise ContractError("runtime bundle contains a malformed installed source pin")
+        if result.get(next((label for label, candidate in paths.items()
+                            if candidate == installed_path), "")) != expected_digest:
+            raise ContractError("installed probe or systemd bytes differ from the exact runtime bundle")
+    runtime_manifest = _read_controlled_json(marker_path, max_bytes=65536)
+    if (runtime_manifest.get("schema") != 3 or runtime_manifest.get("head") != runtime_head
+            or not isinstance(runtime_head, str) or not re.fullmatch(r"[0-9a-f]{40}", runtime_head)
+            or not isinstance(runtime_manifest.get("archive_sha256"), str)
+            or not _SHA256.fullmatch(runtime_manifest["archive_sha256"])):
+        raise ContractError("active runtime marker does not bind a full source head and archive digest")
+    result["runtime_identity"] = hashlib.sha256(canonical_bytes({
+        "head": runtime_head, "archive_sha256": runtime_manifest["archive_sha256"],
+    })).hexdigest()
+    return result
+
+
 def _validate_root_data_path(path: str, *, max_existing_mode: int = 0o600) -> None:
     if not isinstance(path, str) or not os.path.isabs(path):
         raise ContractError("Supervisor data path must be absolute")
@@ -766,7 +928,7 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
         "store_path", "anchor_path", "event_key_path", "startup_supervisor_key_path",
         "execution_grant_key_id", "execution_grant_private_key_path", "execution_grant_trust_keys", "openssl_path",
         "dispatch_instruction_trust_registry_path",
-        "run_id", "probe_nonce", "preflight_record_path", "operator_key_path",
+        "run_id", "probe_nonce", "operator_key_path",
         "execution_grant_audience", "generation_record_path", "runner_unit_name",
         "runner_control_group", "runner_lock_path", "systemctl_path", "model_provenance",
         "socket_path", "socket_gid", "peers",
@@ -828,7 +990,7 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
         raise ContractError("Supervisor schema-upgrade authorization must be a boolean")
     for field in ("store_path", "anchor_path", "event_key_path", "startup_supervisor_key_path",
                   "execution_grant_private_key_path", "operator_key_path",
-                  "preflight_record_path", "openssl_path", "generation_record_path",
+                  "openssl_path", "generation_record_path",
                   "dispatch_instruction_trust_registry_path",
                   "runner_lock_path", "systemctl_path", "socket_path"):
         if not isinstance(value[field], str) or not os.path.isabs(value[field]):
@@ -1041,36 +1203,90 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
     run_id, probe_nonce = value["run_id"], value["probe_nonce"]
     if (not isinstance(run_id, str) or not run_id.strip()
             or not isinstance(probe_nonce, str) or not probe_nonce.strip()):
-        raise ContractError("Supervisor run id and preflight nonce must be non-empty")
-    probe_file = os.stat(value["preflight_record_path"], follow_symlinks=False)
-    if not stat.S_ISREG(probe_file.st_mode) or probe_file.st_uid != 0 or stat.S_IMODE(probe_file.st_mode) != 0o600:
-        raise ContractError("Supervisor preflight record must be root-owned mode 0600")
-    probe = _read_controlled_json(value["preflight_record_path"], max_bytes=1024 * 1024)
+        raise ContractError("Supervisor run id and runtime-observation nonce must be non-empty")
     operator_key = _read_root_key(value["operator_key_path"])
     if len({event_key, supervisor_key, operator_key}) != 3:
-        raise ContractError("Store, startup-supervisor, and operator keys must be distinct")
-    from .preflight import SPEC_PATH, validate_fresh_probe, verify_network_policy_attestation
+        raise ContractError("Store, startup-supervisor, and execution-resolution keys must be distinct")
+    from .preflight import SPEC_PATH, _namespace_inode
+    from .preflight_capture import (
+        assert_runtime_services_inactive, assert_supervisor_readiness_barrier,
+        classify_store_targets, observe_runtime_once,
+        runtime_observation_binding_digest, verify_existing_observation_claim,
+    )
 
+    store_mode = classify_store_targets(value["store_path"], value["anchor_path"])
+    assert_supervisor_readiness_barrier()
     spec_sha256 = hashlib.sha256(SPEC_PATH.read_bytes()).hexdigest()
-    if not validate_fresh_probe(
-        probe, run_id=run_id, spec_sha256=spec_sha256, nonce=probe_nonce,
-    ):
-        raise ContractError("root service preflight record is invalid or not bound to this run")
-    if not verify_network_policy_attestation(
-        probe["inventory"].get("network_policy_attestation"), run_id=run_id,
-        spec_sha256=spec_sha256, nonce=probe_nonce, key=operator_key,
-    ):
-        raise ContractError("root service operator network attestation is invalid")
+    source_config_before = _runtime_observation_identity(path, value)
+    host_namespaces = {name: _namespace_inode(name) for name in ("mnt", "net", "cgroup", "pid")}
+    if store_mode == "fresh":
+        probe = observe_runtime_once(
+            run_id, probe_nonce, source_config_before,
+            store_path=value["store_path"], anchor_path=value["anchor_path"],
+        )
+        if (probe["inventory"].get("spec_sha256") != spec_sha256
+                or probe["inventory"].get("network_profile_sha256") != source_config_before.get("network_profile")
+                or probe.get("result") != "PASS"):
+            raise ContractError("runtime observation did not PASS with the exact spec or egress-profile identity")
+        child_namespaces = probe["inventory"].get("namespace_inodes")
+        if (not isinstance(child_namespaces, dict)
+                or child_namespaces.get("mount") == host_namespaces["mnt"]
+                or child_namespaces.get("network") == host_namespaces["net"]
+                or child_namespaces.get("pid") != host_namespaces["pid"]):
+            raise ContractError("probe did not use distinct mount and network namespaces")
+        probe["inventory"]["supervisor_namespaces"] = host_namespaces
+        probe["inventory"]["source_config_sha256"] = source_config_before
+        claim_sha256 = probe["inventory"].get("observation_claim_sha256")
+        if not isinstance(claim_sha256, str) or not _SHA256.fullmatch(claim_sha256):
+            raise ContractError("fresh runtime observation claim identity is malformed")
+        source_config_after = _runtime_observation_identity(path, value)
+        if source_config_after != source_config_before:
+            raise ContractError("source or runtime configuration changed during direct observation")
+    else:
+        if value["allow_schema_upgrade"]:
+            raise ContractError("runtime recovery never authorizes Store schema migration")
+        claim_sha256 = verify_existing_observation_claim(
+            run_id, probe_nonce, spec_sha256, source_config_before,
+        )
+        # The durable claim proves which observation initialized this Store; it
+        # does not prove the environment is still safe after a service restart.
+        # Capture a fresh, invocation-bound observation before restoring readiness.
+        probe = observe_runtime_once(
+            run_id, secrets.token_hex(32), source_config_before,
+            store_path=value["store_path"], anchor_path=value["anchor_path"],
+            require_fresh_store=False, persist_one_start_claim=False,
+        )
+        if (probe["inventory"].get("spec_sha256") != spec_sha256
+                or probe["inventory"].get("network_profile_sha256") != source_config_before.get("network_profile")
+                or probe.get("result") != "PASS"):
+            raise ContractError("recovery runtime observation did not PASS with the exact spec or egress-profile identity")
+        child_namespaces = probe["inventory"].get("namespace_inodes")
+        if (not isinstance(child_namespaces, dict)
+                or child_namespaces.get("mount") == host_namespaces["mnt"]
+                or child_namespaces.get("network") == host_namespaces["net"]
+                or child_namespaces.get("pid") != host_namespaces["pid"]):
+            raise ContractError("recovery probe did not use distinct mount and network namespaces")
+        probe["inventory"]["supervisor_namespaces"] = host_namespaces
+        probe["inventory"]["source_config_sha256"] = source_config_before
+        source_config_after = _runtime_observation_identity(path, value)
+        if source_config_after != source_config_before:
+            raise ContractError("source or runtime configuration changed during recovery binding")
+    probe_digest = runtime_observation_binding_digest(
+        run_id, probe_nonce, spec_sha256, source_config_before, claim_sha256,
+    )
     from .store import Store
     from .supervisor import Supervisor
 
+    if classify_store_targets(value["store_path"], value["anchor_path"]) != store_mode:
+        raise ContractError("runtime Store state changed before Store initialization")
     store = Store(
         value["store_path"], event_key=event_key,
+        busy_timeout_sec=5.0,
         anchor_path=value["anchor_path"], sandbox_mode=True,
         supervisor_key=supervisor_key,
         execution_resolution_key=operator_key,
         supervisor_runner_id="persistent-runner-supervisor",
-        allow_schema_upgrade=value["allow_schema_upgrade"],
+        allow_schema_upgrade=(value["allow_schema_upgrade"] if store_mode == "fresh" else False),
     )
     supervisor = Supervisor(
         store, operation_backend=None,
@@ -1098,8 +1314,14 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
             _current_dispatch_instruction_trust_registry
         ) if root_dispatch_issuer is not None and root_dispatch_issuer["enabled"] else None,
     )
-    probe_digest = hashlib.sha256(canonical_bytes(probe)).hexdigest()
-    store.ensure_preflight_consumed(run_id, probe_nonce, spec_sha256, probe_digest)
+    source_config_after_store = _runtime_observation_identity(path, value)
+    if source_config_after_store != source_config_before:
+        raise ContractError("source or runtime configuration changed during Store initialization")
+    assert_runtime_services_inactive()
+    if store_mode == "fresh":
+        store.ensure_preflight_consumed(run_id, probe_nonce, spec_sha256, probe_digest)
+    else:
+        store.require_existing_preflight_consumed(run_id, probe_nonce, spec_sha256, probe_digest)
     supervisor._probe_consumed = True
     api = AuthenticatedSupervisorAPI(
         supervisor, value["socket_path"], peers=tuple(peers), socket_gid=socket_gid,

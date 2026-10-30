@@ -1551,3 +1551,19 @@ or fabricated PASS is permitted. A local HMAC witness is vst-independent-reviewe
 only a real separately executed review can be recorded, and final PM Bridge approval remains
 separate correlated evidence. Use explicit [Unit] rate-limit drop-ins while retaining the source
 template diagnostic. Full scope, actual verification and deployment limits are in change0595.
+
+## 2026-10-30 — Execute the delivered exact S2 runtime bundle (0596)
+
+473e559 delivered the exact non-secret bundle; the normal push9021b98..473e559 succeeded.
+Advance the ordered backlog only to actual S2-4 runtime qualification. Preserve source a600,
+existing Store/state, fail-closed checks and restricted-selector limits. A fresh actual role
+inventory is evidence for absent/exact installation inputs, not runtime acceptance. Record
+installation and measured run-bound outcomes separately in change0596 and its E2E record.
+
+## 2026-10-30 — Preserve an existing safe S2 runtime configuration during selection (0603)
+
+The target's `/etc/vst-runner` is root-owned and non-writable, while the runtime selector only
+changes the versioned runtime symlink and fixed service units. Permit this directory after a
+metadata-only check; do not read or replace its contents. Continue requiring absent runtime
+paths, inactive units, no pending jobs and empty cgroups. The selector code and focused tests
+are in change0603. Runtime selection and the owner-to-Runner request remain unperformed.

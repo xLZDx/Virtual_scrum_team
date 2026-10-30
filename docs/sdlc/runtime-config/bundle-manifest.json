@@ -86,13 +86,6 @@
       "uid": 0
     },
     {
-      "destination": "/etc/vst-runner/probe-request.json",
-      "gid": 0,
-      "mode": "0644",
-      "source": "probe-request.json",
-      "uid": 0
-    },
-    {
       "destination": "/etc/vst-runner/network-profile.json",
       "gid": 0,
       "mode": "0644",
@@ -142,8 +135,8 @@
     },
     {
       "path": "deployment-source-manifest.json",
-      "sha256": "c5fa4d74b56736f08b4f2c4f3fe60d6f01b443b1d348d0fd9758820ff32b3710",
-      "size": 1210
+      "sha256": "229d2bb2853af3493e6833177f69aa65ecc25e0ec6a3e2d61ec17bf2cf8d71a4",
+      "size": 1585
     },
     {
       "path": "dispatch-instruction-public.pem",
@@ -177,13 +170,13 @@
     },
     {
       "path": "identity-candidates.json",
-      "sha256": "98afc2ece60025bf079ef47a640d4936387ecc23e8623e485249b2b43824c82e",
-      "size": 2583
+      "sha256": "7b681374a2467ef3186ce9ee159e6cbb0cb7ad56d034fcd6ad6a202f95cf4c2a",
+      "size": 2742
     },
     {
       "path": "installation-layout.json",
-      "sha256": "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19",
-      "size": 8182
+      "sha256": "f403052cb26e6d635d7566fe25337e4c3fa18bf83c778dc600b807689b405d8f",
+      "size": 7424
     },
     {
       "path": "model-provenance.json",
@@ -192,18 +185,13 @@
     },
     {
       "path": "network-profile.json",
-      "sha256": "cff397ec99dad5ec290bc6a1c085cc870b5f0dff131abc3fc06b1d8b9b86aeab",
-      "size": 1176
+      "sha256": "a0843d1d1d36864aed240120e247c80e443e0a19852a1a947b0dc8ea1d6cfbdb",
+      "size": 970
     },
     {
       "path": "probe-entrypoint.py",
-      "sha256": "2bb8a72935a003411a57eeb5f70b01f0e6407955dfd0c2abf3981ce3a57e19b1",
-      "size": 1566
-    },
-    {
-      "path": "probe-request.json",
-      "sha256": "0cc4a298ced1ba7e5251c3864ec58a0121e928185db33e49296967c1c8be3564",
-      "size": 118
+      "sha256": "6c106e7f34e7f1320b8507fddcac5ebad1be6e67e613019894ebcc66ce2b92ba",
+      "size": 700
     },
     {
       "path": "public-material.json",
@@ -252,8 +240,8 @@
     },
     {
       "path": "supervisor-service.json",
-      "sha256": "42a80e23f49890787af8bbed97c3a02348eb1009a94b24ea66b9134668c4855d",
-      "size": 3462
+      "sha256": "7d98b2a7f66a14153b9e497cb117f5138ae537669d68b55222a94a418debecd9",
+      "size": 3389
     },
     {
       "path": "task-manifest.json",
@@ -272,8 +260,8 @@
     },
     {
       "path": "unit-overrides/vst-sandbox-probe.service.d/host-paths.conf",
-      "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
-      "size": 153
+      "sha256": "39ae210045c73880409b2c799146dce9c1f582d952f9a52705874b39579a8ec1",
+      "size": 138
     },
     {
       "path": "unit-overrides/vst-signer.service.d/rate-limits.conf",
@@ -312,7 +300,7 @@
   "schema": "VST_S2_NON_SECRET_CONFIG_BUNDLE_V1",
   "selection_before_config": true,
   "services_started_by_installation": false,
-  "source_binding_sha256": "3ca978c4fbd731f14bb5a0d78afa184f3273ade30601b0d0b28f9efe7273bde3",
+  "source_binding_sha256": "4b84fd419049c25148af740014ec1c6fb2eb9d07f3983ad7e1ea4afbd692f6cd",
   "source_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
   "sprint": "S2",
   "state": "PREPARED_NOT_INSTALLED",
@@ -346,7 +334,7 @@
       "destination": "/etc/systemd/system/vst-sandbox-probe.service.d/90-s2-host-path-mask.conf",
       "gid": 0,
       "mode": "0644",
-      "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
+      "sha256": "39ae210045c73880409b2c799146dce9c1f582d952f9a52705874b39579a8ec1",
       "source": "unit-overrides/vst-sandbox-probe.service.d/host-paths.conf",
       "uid": 0
     },
@@ -416,7 +404,7 @@
       "mode": "0644",
       "name": "vst-supervisor.service",
       "publication": "existing fingerprint-bound bootstrap transition",
-      "sha256": "aa64d16b7801f32146808706acffaa0ca9086653e5e3e9f5f5dac1bc07ab822c",
+      "sha256": "a6abfeaffede037a2a9ecd439a145ffc9917972531f0cb7a1e1e420da6a5a6eb",
       "source": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2/tools/vst/systemd/vst-supervisor.service",
       "uid": 0
     },

@@ -6,11 +6,11 @@ RUN_ID = "s2-runtime-20261030-1977eaba61274396b6b58d069c5cede2"
 REQUEST_ID = "98b38065170f468c9943aa8f22160ff9"
 NONCE = "a2a0dcab58b9451281ff0a7b079d4aa2"
 RUNTIME = "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2"
-HELPER_SHA = "aafd67378416c869ef527d08a39c97a24831f3c67cebd7bf57d171354e5e1387"
-APPLIER_SHA = "01ef69189112647672ae298fccae99324df7b185fa39361467ad4aef096be197"
-VALIDATOR_SHA = "1eaaeb1be2d1608b966a8e851e841e0e51dcec8c1c773eac532d89aa201816a6"
-BUNDLE_SHA = "05530c73ea583f0f7f60963ba9e196082dfb7abf92f86f0a0e2a0ae9ad10f91f"
-LAYOUT_SHA = "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19"
+CAPTURE_SHA = "befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119"
+APPLIER_SHA = "f39ee75e7d273fa28d2fa800becc99a2c0b4147f92a238f30462e52367334dcf"
+VALIDATOR_SHA = "46b29192b4dd5ac177d610215a6ac92922b6e1fd500f838315380e8c4c687351"
+BUNDLE_SHA = "2d0c7bcfdd92b3cffa3c9e1344d87f5d34cc690d65006298087d897cf5635d8c"
+LAYOUT_SHA = "f403052cb26e6d635d7566fe25337e4c3fa18bf83c778dc600b807689b405d8f"
 IMPLEMENTATION_HEAD = "6fb47d966814005ea51992c37d8af342a7cb4219"
 UNITS = [
     "vst-assignment-bootstrap.service", "vst-dispatch-issuer.service",
@@ -24,7 +24,7 @@ CONTAINER_SOCKETS = [
 ]
 
 def complete_readiness(readiness, units, runtime_selector, *, store_present,
-                       preflight_present, attestation_present, container_sockets,
+                       container_sockets,
                        installed_bootstrap_identity, candidate_identity_collision):
     """Assemble every validator readiness field from one target capture."""
     if not isinstance(units, dict) or set(units) != set(UNITS):
@@ -32,8 +32,7 @@ def complete_readiness(readiness, units, runtime_selector, *, store_present,
     if not isinstance(runtime_selector, dict):
         raise ValueError("runtime selector observation is missing")
     if any(type(value) is not bool for value in
-           (store_present, preflight_present, attestation_present,
-            candidate_identity_collision)):
+           (store_present, candidate_identity_collision)):
         raise ValueError("runtime state observations must be booleans")
     if (not isinstance(container_sockets, dict)
             or set(container_sockets) != set(CONTAINER_SOCKETS)
@@ -52,8 +51,6 @@ def complete_readiness(readiness, units, runtime_selector, *, store_present,
     result["runtime_selector"] = selector
     result.update({
         "store_present": store_present,
-        "preflight_present": preflight_present,
-        "attestation_present": attestation_present,
         "container_sockets": container_sockets,
         "candidate_identity_collision": candidate_identity_collision,
         "installed_bootstrap_identity": installed_bootstrap_identity,
@@ -62,14 +59,12 @@ def complete_readiness(readiness, units, runtime_selector, *, store_present,
 
 
 def assemble_inventory(fields, readiness, units, runtime_selector, *, store_present,
-                       preflight_present, attestation_present, container_sockets,
+                       container_sockets,
                        installed_bootstrap_identity, candidate_identity_collision):
     """Build the persisted inventory and its readiness duplicate from one capture."""
     complete = complete_readiness(
         readiness, units, runtime_selector,
         store_present=store_present,
-        preflight_present=preflight_present,
-        attestation_present=attestation_present,
         container_sockets=container_sockets,
         installed_bootstrap_identity=installed_bootstrap_identity,
         candidate_identity_collision=candidate_identity_collision,
@@ -79,8 +74,6 @@ def assemble_inventory(fields, readiness, units, runtime_selector, *, store_pres
         "readiness": complete,
         "runtime_selector": runtime_selector,
         "store_present": store_present,
-        "preflight_present": preflight_present,
-        "attestation_present": attestation_present,
         "container_sockets": container_sockets,
         "installed_bootstrap_identity": installed_bootstrap_identity,
         "candidate_identity_collision": candidate_identity_collision,
@@ -156,23 +149,17 @@ def shutdown_is_scheduled(result):
         return True
     raise RuntimeError("shutdown schedule command returned an unknown result")
 
-def candidate_identity_collision(store_present, bootstrap, probe):
+def candidate_identity_collision(store_present, bootstrap):
     if type(store_present) is not bool:
         raise ValueError("Store presence observation is missing")
-    required = {
-        "bootstrap": ({"request_id", "run_id"}, bootstrap),
-        "probe": ({"run_id", "nonce"}, probe),
-    }
-    for label, (keys, value) in required.items():
-        if (not isinstance(value, dict) or set(value) != keys
-                or any(not isinstance(value[key], str) or not value[key].strip() for key in keys)):
-            raise ValueError(label + " identity observation is incomplete")
+    keys = {"request_id", "run_id"}
+    if (not isinstance(bootstrap, dict) or set(bootstrap) != keys
+            or any(not isinstance(bootstrap[key], str) or not bootstrap[key].strip() for key in keys)):
+        raise ValueError("bootstrap identity observation is incomplete")
     return bool(
         store_present
         or bootstrap["run_id"] == RUN_ID
         or bootstrap["request_id"] == REQUEST_ID
-        or probe["run_id"] == RUN_ID
-        or probe["nonce"] == NONCE
     )
 
 observations = []
@@ -284,7 +271,7 @@ def main():
         raise RuntimeError("Git resolved a repository root outside the authorized checkout")
     head = command_text("source_repo_head", ["/usr/bin/git", "-C", REPO, "rev-parse", "HEAD"])
     source_files = {
-        "helper": ("tools/vst/preflight_host_capture.py", HELPER_SHA),
+        "capture": ("tools/vst/preflight_capture.py", CAPTURE_SHA),
         "applier": ("tools/qa/apply_s2_runtime_configuration.py", APPLIER_SHA),
         "validator": ("tools/qa/verify_s2_runtime_config_inventory.py", VALIDATOR_SHA),
         "bundle": ("docs/sdlc/runtime-config/bundle-manifest.json", BUNDLE_SHA),
@@ -292,7 +279,7 @@ def main():
     }
     source_identity = {"repo_head": head, "implementation_source_commit": IMPLEMENTATION_HEAD,
                        "runtime_source_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
-                       "helper_sha256": HELPER_SHA, "applier_sha256": APPLIER_SHA,
+                       "runtime_capture_sha256": CAPTURE_SHA, "applier_sha256": APPLIER_SHA,
                        "validator_sha256": VALIDATOR_SHA, "bundle_manifest_sha256": BUNDLE_SHA,
                        "installation_layout_sha256": LAYOUT_SHA}
     for key, (rel, expected) in source_files.items():
@@ -304,7 +291,7 @@ def main():
         match = blob.returncode == 0 and hashlib.sha256(blob.stdout).hexdigest() == actual and actual == expected
         if not match or blob.stderr:
             raise RuntimeError("source pin differs from current Git blob: " + rel)
-        field = {"helper":"helper_sha256_matches_head_blob",
+        field = {"capture":"runtime_capture_sha256_matches_head_blob",
                  "applier":"applier_sha256_matches_head_blob",
                  "validator":"validator_sha256_matches_head_blob",
                  "bundle":"bundle_manifest_sha256_matches_head_blob",
@@ -318,15 +305,9 @@ def main():
         return {k:value.get(k) for k in keys}
     installed = internal("installed_bootstrap_identity", "read identity fields only: /etc/vst-runner/bootstrap-request.json",
                          lambda: json_fields("/etc/vst-runner/bootstrap-request.json", ["request_id","run_id"]))
-    installed_probe = internal("installed_probe_identity", "read identity fields only: /etc/vst-runner/probe-request.json",
-                               lambda: json_fields("/etc/vst-runner/probe-request.json", ["run_id","nonce"]))
     store_path = "/var/lib/vst-runner/private/store.sqlite3"
-    preflight_path = "/var/lib/vst-runner/private/preflight.json"
-    attestation_path = "/run/vst-preflight/network-policy-attestation.json"
     store_present = os.path.lexists(store_path)
-    preflight_present = os.path.lexists(preflight_path)
-    attestation_present = os.path.lexists(attestation_path)
-    candidate_collision = candidate_identity_collision(store_present, installed, installed_probe)
+    candidate_collision = candidate_identity_collision(store_present, installed)
     boot = command_text("boot_id", ["/usr/bin/cat", "/proc/sys/kernel/random/boot_id"])
     kernel = command_text("kernel_release", ["/usr/bin/uname", "-r"])
     os_release = run("os_release", ["/usr/bin/cat", "/etc/os-release"])
@@ -394,8 +375,7 @@ def main():
     }
     inventory=assemble_inventory(
         inventory_fields, readiness, units, runtime_selector,
-        store_present=store_present, preflight_present=preflight_present,
-        attestation_present=attestation_present, container_sockets=sockets,
+        store_present=store_present, container_sockets=sockets,
         installed_bootstrap_identity=installed,
         candidate_identity_collision=candidate_collision,
     )

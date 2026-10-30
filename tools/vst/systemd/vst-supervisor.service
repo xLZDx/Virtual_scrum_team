@@ -5,7 +5,8 @@ Before=vst-runner.service
 RequiresMountsFor=/var/lib/vst-runner /etc/vst-runner
 
 [Service]
-Type=simple
+Type=notify
+NotifyAccess=main
 User=root
 Group=vst-supervisor-client
 RuntimeDirectory=vst-supervisor
@@ -16,7 +17,7 @@ Restart=on-failure
 RestartSec=2s
 StartLimitIntervalSec=60s
 StartLimitBurst=3
-TimeoutStartSec=30s
+TimeoutStartSec=360s
 TimeoutStopSec=15s
 LimitNOFILE=128
 PrivateTmp=yes
