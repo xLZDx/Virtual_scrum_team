@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Virtual Scrum Team — прогресс S2 и программы</title>
+  <style>
+    :root{color-scheme:dark;--bg:#121923;--panel:#1b2533;--line:#354255;--text:#edf3fb;--muted:#b5c1d1;--green:#39b77d;--blue:#5b91ea;--amber:#e1a933;--red:#e06c6c;--gray:#657287}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}main{max-width:1180px;margin:auto;padding:24px}header h1{font-size:clamp(1.8rem,4vw,2.7rem);line-height:1.15;margin:.3rem 0 1rem}.lede{color:var(--muted);font-size:1.08rem}.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;margin:16px 0;box-shadow:0 8px 22px #0002}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}.metric{padding:14px;border-radius:10px;background:#111a26;border:1px solid var(--line)}.metric strong{display:block;font-size:1.7rem}.muted,small{color:var(--muted)}.tag{display:inline-block;border-radius:99px;padding:2px 10px;font-size:.82rem;font-weight:700;background:#334155}.ok{color:#9ce6c2}.active{color:#9ec2ff}.pending{color:#ffd982}.stop{color:#ffaaaa}.progress{display:flex;height:16px;background:#354255;border-radius:99px;overflow:hidden;margin:12px 0}.progress span{display:block;flex:0 0 auto;height:100%;background:linear-gradient(90deg,var(--green),var(--blue))}.legend{display:flex;flex-wrap:wrap;gap:14px;color:var(--muted);font-size:.9rem}.swatch{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;background:var(--green)}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{text-align:left;vertical-align:top;padding:11px;border-bottom:1px solid var(--line)}th{color:#cbd8e8;font-size:.9rem}td{min-width:110px}code{overflow-wrap:anywhere;color:#d4e3ff;background:#111a26;padding:2px 5px;border-radius:4px}.scroll{overflow-x:auto}.details{margin:9px 0 0}.details summary{cursor:pointer;font-weight:700;color:#cfe0f7}.callout{border-left:4px solid var(--amber);padding:10px 14px;background:#282516;border-radius:6px}.danger{border-color:var(--red);background:#291b21}.links a{color:#9ec2ff}.foot{color:var(--muted);font-size:.9rem;border-top:1px solid var(--line);padding-top:14px;margin-top:20px}h2{margin-top:0}h3{margin-bottom:6px}ul{padding-left:22px}li{margin:5px 0}@media(max-width:650px){main{padding:12px}.panel{padding:14px}th,td{padding:8px}}
+    .program-bar,.sprint-bar{display:flex;height:22px;overflow:hidden;background:#354255;border-radius:99px;margin:9px 0}.program-bar>span,.sprint-bar>span{display:flex;align-items:center;justify-content:center;min-width:0;font-size:.75rem;font-weight:700;color:#101722;white-space:nowrap}.bar-done{background:var(--green)}.bar-active{background:var(--blue)}.bar-partial{background:var(--amber)}.bar-open{background:#657287;color:#f3f6fa!important}.sprint-chart{display:grid;gap:13px;margin-top:16px}.sprint-row{display:grid;grid-template-columns:minmax(160px,220px) minmax(120px,1fr) minmax(130px,180px);align-items:center;gap:12px}.sprint-row .sprint-bar{margin:0}.sprint-name{font-weight:700}.sprint-count{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}.chart-note{font-size:.92rem;color:var(--muted)}.task-group{margin:16px 0}.task-group h4{margin:12px 0 6px}.task-bar-row{display:grid;grid-template-columns:minmax(260px,2fr) minmax(120px,2fr) minmax(110px,1fr);gap:10px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line);font-size:.9rem}.task-bar-name{overflow-wrap:anywhere}.task-state-track{height:14px;background:#354255;border-radius:99px;overflow:hidden}.task-state-fill{display:block;height:100%;width:100%}.task-bar-status{text-align:right;color:var(--muted);font-size:.82rem}.task-bar-row.status-done .task-state-fill{background:var(--green)}.task-bar-row.status-partial .task-state-fill{background:var(--amber)}.task-bar-row.status-open .task-state-fill{background:#657287}@media(max-width:650px){.sprint-row{grid-template-columns:1fr auto;gap:4px 10px}.sprint-row .sprint-bar{grid-column:1/-1;grid-row:2}.sprint-count{grid-column:2;grid-row:1;text-align:right}.task-bar-row{grid-template-columns:1fr auto;gap:2px 10px}.task-state-track{grid-column:1/-1;grid-row:2}.task-bar-status{grid-column:2;grid-row:1}}
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Virtual Scrum Team — состояние программы и всех спринтов</h1>
+    <p class="muted">Срез: 2026-10-30 · ветка: <code>s2-canonical-continuation</code> · исходная ревизия runtime evidence: <code>7d1d16f6348e6c00a5a568b5cfbc8caf309194b9</code> · разрешение <code>8ee40d1a</code> исчерпано; preflight остановил qualification</p>
+    <p class="lede">Срез на 30 октября 2026 года. Сначала показаны общая полоса программы, спринты и задачи; пояснения и доказательства — ниже. Текущий последовательный пункт — S2-4; S2-5 и дальнейшие спринты не начаты.</p>
+  </header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>Virtual_scrum_team</dd>
+    <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-canonical-continuation @ 7d1d16f</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <section class="panel" id="portfolio-dashboard" aria-labelledby="portfolio-title">
+    <h2 id="portfolio-title">Вся программа — сначала статусы задач</h2>
+    <p class="chart-note">Сначала общая полоса по 40 каноническим ID из реестра, затем полосы S0–S5, затем все 40 ID задач; отдельная очередь S2-1—S2-5 показана ниже и не прибавляется к знаменателю 40.</p>
+    <div class="progress" role="img" aria-label="По 40 пунктам реестра: 4 закрыты, 26 частично выполнены, 10 открыты"><span style="width:10%;background:var(--green)"></span><span style="width:65%;background:var(--blue)"></span><span style="width:25%;background:var(--gray)"></span></div>
+    <div class="legend"><span><i class="swatch"></i>Закрыто: 4/40 (10%)</span><span><i class="swatch" style="background:var(--blue)"></i>Частично / в работе: 26/40 (65%)</span><span><i class="swatch" style="background:var(--gray)"></i>Открыто / не начато: 10/40 (25%)</span></div>
+    <h3 style="margin-top:22px">По спринтам</h3>
+    <div class="sprint-chart" aria-label="Состояние спринтов S0–S5">
+      <div class="sprint-row"><span class="sprint-name">S0 · Базовая линия</span><div class="sprint-bar" role="img" aria-label="Спринт записан как закрытый; знаменатель задач не установлен"><span class="bar-done" style="width:100%">ЗАКРЫТ</span></div><span class="sprint-count">Закрыт*</span></div>
+      <div class="sprint-row"><span class="sprint-name">S1 · Control plane</span><div class="sprint-bar" role="img" aria-label="Спринт записан как закрытый и слит; знаменатель задач не установлен"><span class="bar-done" style="width:100%">ЗАКРЫТ / СЛИТ</span></div><span class="sprint-count">Закрыт*</span></div>
+      <div class="sprint-row"><span class="sprint-name">S2 · Текущий</span><div class="sprint-bar" role="img" aria-label="Из 5 задач: 3 доставлены, 1 выполняется, 1 не начата"><span class="bar-done" style="width:60%">3</span><span class="bar-active" style="width:20%">1</span><span class="bar-open" style="width:20%">1</span></div><span class="sprint-count">3/5 доставлено · 60%</span></div>
+      <div class="sprint-row"><span class="sprint-name">S3 · Candidate audit</span><div class="sprint-bar" role="img" aria-label="5 записей: 1 принята в ограниченном scope, 3 частичные, 1 открытая"><span class="bar-done" style="width:20%">1</span><span class="bar-partial" style="width:60%">3 частично</span><span class="bar-open" style="width:20%">1</span></div><span class="sprint-count">1/5 узко принято · исторические данные</span></div>
+      <div class="sprint-row"><span class="sprint-name">S4 · QA automation</span><div class="sprint-bar" role="img" aria-label="8 записей: ни одна задача не закрыта полностью, все частичные или inconclusive"><span class="bar-partial" style="width:100%">8 ЧАСТИЧНЫХ / INCONCLUSIVE</span></div><span class="sprint-count">0/8 закрыто · 2 узкие проверки PASS</span></div>
+      <div class="sprint-row"><span class="sprint-name">S5 · AEVE receipt</span><div class="sprint-bar" role="img" aria-label="1 подготовленная задача заблокирована до реализации"><span class="bar-open" style="width:100%">ПОДГОТОВЛЕН / БЛОКИРОВАН</span></div><span class="sprint-count">0/1 реализовано</span></div>
+    </div>
+    <h3 style="margin-top:22px">Все задачи реестра · 40 полос</h3>
+    <p class="chart-note">Каждая строка — отдельный ID из <code>core/BACKLOG.md</code>. Цвет отмечает записанное состояние, а не придуманный процент внутри задачи. S0/S1 имеют статус закрытия спринта, но их task denominator в источнике отсутствует. Вспомогательные пункты без указанного спринта вынесены отдельно. Числа общего backlog не включают delivery-задачи S2-1—S2-5, чтобы не считать одни и те же acceptance items повторно.</p>
+    <div id="program-task-bars">
+<div class="task-group"><h4>S2 · элементы VST-009–020 и VST-025–026 · 14</h4>
+<div class="task-bar-row status-partial" title="implemented; focused tests passed; security/reliability/database reviews found no code-level MAJOR/BLOCKER; full required specialist consensus and exact-head GPT-PM gate pending"><span class="task-bar-name"><b>VST-009</b> · S2 E1: authenticated reviewer key, distinct from the worker key; verify IndependentReview receipts with it</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="implemented; focused tests passed; security/reliability/database reviews found no code-level MAJOR/BLOCKER; full required specialist consensus and exact-head GPT-PM gate pending"><span class="task-bar-name"><b>VST-010</b> · S2 E2: runner-derived `candidate_head`</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="POSIX capability drop and synthetic signer-key/IPC boundary selectors passed at exact code/test HEAD `4c1692d61ee04e945fc0ccdd44db71869ccd5468`"><span class="task-bar-name"><b>VST-011</b> · S2 E2: isolate the signing key from the process that runs commands</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="Existing anchor tests passed; no-final-newline append recovery correction passed its focused fixture regression at `dc1741b`; database review at `79155fd` found no integrity/locking blocker and one MINOR initial-directory-entry durability limitation"><span class="task-bar-name"><b>VST-012</b> · S2 E3: whole-database rollback detection through an externally anchored event head</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="At source/test HEAD `4c1692d61ee04e945fc0ccdd44db71869ccd5468`, the focused 13-case admission/deadline run and bounded POSIX E4.1 cross-UID runtime pass."><span class="task-bar-name"><b>VST-013</b> · S2 E4: verify POSIX permissions and process-group behavior; verify Job Object nesting</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="**PASS for the signed per-run WSL probe** at exact code/test HEAD `f0bbac8`; GPT-PM confirms the narrow per-run scope, while full system acceptance remains open."><span class="task-bar-name"><b>VST-014</b> · S2 E5: sandbox specification (dedicated WSL distro or VM, automount and interop off, no container socket, default-deny egress, non-root, per-run secrets) and pre-flight probe</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="22 focused diff-gate selectors and the bounded POSIX reviewer read-only fixture passed at exact code/test HEAD `4c1692d61ee04e945fc0ccdd44db71869ccd5468`."><span class="task-bar-name"><b>VST-015</b> · S2 E6: deterministic diff gate and read-only reviewer credential</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="implemented; owned WSL lifecycle scenarios passed; security/reliability/database reviews found no code-level MAJOR/BLOCKER; full required specialist consensus and exact-head GPT-PM gate pending"><span class="task-bar-name"><b>VST-016</b> · S2 E7: STOP and rollback transition table</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="Safe synthetic push/pull and recovery selectors pass at exact source/test HEAD `4c1692d61ee04e945fc0ccdd44db71869ccd5468`, including the synthetic timeout/restart retry selector"><span class="task-bar-name"><b>VST-017</b> · S2 E7: idempotency keys for push, pull request and receipts</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="implemented; focused tests passed; security/reliability/database reviews found no code-level MAJOR/BLOCKER; full required specialist consensus and exact-head GPT-PM gate pending"><span class="task-bar-name"><b>VST-018</b> · S2 E7: circuit breaker with a paused-provider state and manual-override record</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="implemented; focused tests passed; security/reliability/database reviews found no code-level MAJOR/BLOCKER; full required specialist consensus and exact-head GPT-PM gate pending"><span class="task-bar-name"><b>VST-019</b> · S2 E7: startup reconciliation after restart</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="partial; full crash/resume, child-kill and mutation acceptance `NOT_RUN` under current policy"><span class="task-bar-name"><b>VST-020</b> · S2 E8: isolated worker bake-off on one crash/resume fixture</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="implemented; focused tests passed; specialist review pending"><span class="task-bar-name"><b>VST-025</b> · S2: mandatory commands per slot listed in the manifest and checked by the gate; pin the test result parser</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-done" title="decided and implemented; focused tests passed"><span class="task-bar-name"><b>VST-026</b> · S2 decision: restrict waivable results to NOT_RUN/INCONCLUSIVE/BLOCKED, or record in ADR_0001 that a FAIL may be waived</span><span class="task-state-track" role="img" aria-label="ЗАКРЫТО"><i class="task-state-fill"></i></span><span class="task-bar-status">ЗАКРЫТО</span></div>
+</div>
+<div class="task-group"><h4>S3 · элементы VST-027–031 · 5</h4>
+<div class="task-bar-row status-partial" title="M01/M02 fixes committed in `040a3f2`; focused functional/E2E modules rerun 9/9 each at exact repository HEAD `2c4e9fd`; fresh security/reliability reviews at `3283bfa` found no valid BLOCKER/MAJOR/MINOR; GPT-PM APPROVE at `7f1aa35` is scoped to the local adapter"><span class="task-bar-name"><b>VST-027</b> · S3.1.1: vendor-neutral worker adapter request/response/state/error contract</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="GPT-PM conditionally selects Temporal as the sole provisional durable-engine comparator at server `af08a5e` / SDK `a4c2bb3`; read-only audit APPROVED, acquisition NOT APPROVED."><span class="task-bar-name"><b>VST-028</b> · S3.2.1: candidate identity, immutable revision, license, dependency, compatibility, and security audit</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="At exact canonical HEAD `7816aeb`, designated E2E reruns passed all 9 adapter and all 9 synthetic pilot selectors. They use local synthetic fixtures; process-kill, mutation, external candidate and sandbox selectors were not included."><span class="task-bar-name"><b>VST-029</b> · S3.3.1: shared deterministic crash/resume, STOP, retry, and budget fixture</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-open" title="pending a fresh run-bound signed probe and applicable gates"><span class="task-bar-name"><b>VST-030</b> · S3.3.2: sandbox-bound worktree, credentials, diff, and egress proof</span><span class="task-state-track" role="img" aria-label="ОТКРЫТО"><i class="task-state-fill"></i></span><span class="task-bar-status">ОТКРЫТО</span></div>
+<div class="task-bar-row status-partial" title="GPT-PM selected Temporal PROVISIONALLY as the durable-engine comparator; acquisition/execution NOT APPROVED. Static source comparison recorded in `s3-static-candidate-comparison-20261027.md`; no common runtime denominator or final worker choice exists."><span class="task-bar-name"><b>VST-031</b> · S3.4: candidate comparison, residual risk, and operator choice</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+</div>
+<div class="task-group"><h4>S4 · элементы VST-032–038 и VST-040 · 8</h4>
+<div class="task-bar-row status-partial" title="Current registry source head `3885d8a`; manifest SHA-256 `7b03dd4a…a4f2dd7a`; 963 selectors, 53 policy `NOT_RUN`, 900 Windows assignments. New timeout-cleanup selector is explicitly excluded."><span class="task-bar-name"><b>VST-032</b> · S4.1: category manifest, selector registry and denominator</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="Exact candidate `05b1845` used CPython 3.14.3 / pytest 9.0.3 on Windows and CPython 3.12.3 / pytest 9.0.3 on Ubuntu 24.04 WSL; normalized dependency-lock SHA `6e23fdd3…45e691`. Root integration/API/regression assigned selectors passed 1/1, 1/1, 2/2 through the installed report-bound helper; all three category reports remain `INCONCLUSIVE` due policy rows. Root preflight is local QA only, not an S2 receipt."><span class="task-bar-name"><b>VST-033</b> · S4.2: hash-pinned pytest environment and bounded native runner</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="Focused Windows contracts passed 110/110; full Windows functional passed 90/90 and API passed 688/688 with no failures/skips, but API is `INCONCLUSIVE` due 14 policy exclusions. WSL functional passed 90/90; API passed 690/690, also `INCONCLUSIVE` due 14 exclusions."><span class="task-bar-name"><b>VST-034</b> · S4.3: functional and Python API selectors</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="Windows assigned counts passed: integration 41/41, E2E 55/55, regression 874/874. WSL user: 46/46, 55/55 and 881/881. Each category is `INCONCLUSIVE` only due its category policy exclusions. Earlier WSL layout failures are diagnostic-only; corrected nested-layout reports are the retained acceptance evidence."><span class="task-bar-name"><b>VST-035</b> · S4.4: integration, E2E and regression selectors</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="Exact report-bound candidate `621ddc01`: Windows 3/3 PASS and WSL 3/3 PASS; all three selectors passed at both profiles. Evidence: `docs/sdlc/evidence/s4-report-bound-targeted-621ddc01-20261026.md`; dependency target snapshots verified before/after."><span class="task-bar-name"><b>VST-036</b> · S4.5: synthetic seeded-failure fixture catalog</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="Windows regression at `bdc8e3b` passed 897/897 expected selectors (1,845 concrete nodes); report is `INCONCLUSIVE` because 53 policy selectors remain `NOT_RUN`. Exact-candidate Windows seeded-failure 3/3, WSL seeded-failure 3/3 and WSL AC-16 1/1 passed at `621ddc01`."><span class="task-bar-name"><b>VST-037</b> · S4.6: report envelope, hashes, platform matrix and gate compatibility</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="**PASS 1/1 at exact candidate `621ddc01`**; UID/GID 997:988, no supplementary groups, no Windows drive mounts; candidate-bound helper version/hash and target before/after are recorded."><span class="task-bar-name"><b>VST-038</b> · S4.2.3 / AC-16: report-bound WSL child identity boundary</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-partial" title="**Report-bound pre/post target-content checks PASS** on Windows regression and Windows/WSL targeted rows at candidate `621ddc01`; synthetic persistent post-execution mutation test passed in the Windows regression at code-identical candidate `bdc8e3b`."><span class="task-bar-name"><b>VST-040</b> · S4.2.4 / AC-17: bind external QA dependency contents to locked wheels</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+</div>
+<div class="task-group"><h4>S5 · элемент VST-041 · 1</h4>
+<div class="task-bar-row status-open" title="**PREPARED / BLOCKED FROM IMPLEMENTATION.** No S5 source/test implementation. In-scope `tools/` and `tests/` inventory found no AEVE source/analyzer; the `aeve-router` check also returned `NOT_COVERED: AEVE_PROFILE_TRANSPORT_UNAVAILABLE` because no AEVE MCP tool or `aeve` CLI was available. S2 Phase 8 and S4 acceptance remain open."><span class="task-bar-name"><b>VST-041</b> · S5: bounded AEVE static-analysis receipt and exact-head gate</span><span class="task-state-track" role="img" aria-label="ОТКРЫТО"><i class="task-state-fill"></i></span><span class="task-bar-status">ОТКРЫТО</span></div>
+</div>
+<div class="task-group"><h4>Без sprint mapping в core/BACKLOG.md · VST-001–008 и VST-021–024 · 12</h4>
+<div class="task-bar-row status-done" title="done 2026-10-15"><span class="task-bar-name"><b>VST-001</b> · Raise `maxTurns` or split tasks for read-heavy design/explore agents</span><span class="task-state-track" role="img" aria-label="ЗАКРЫТО"><i class="task-state-fill"></i></span><span class="task-bar-status">ЗАКРЫТО</span></div>
+<div class="task-bar-row status-open" title="open"><span class="task-bar-name"><b>VST-002</b> · Let design agents save their own document</span><span class="task-state-track" role="img" aria-label="ОТКРЫТО"><i class="task-state-fill"></i></span><span class="task-bar-status">ОТКРЫТО</span></div>
+<div class="task-bar-row status-done" title="done 2026-10-15"><span class="task-bar-name"><b>VST-003</b> · Choose a license for the public repository</span><span class="task-state-track" role="img" aria-label="ЗАКРЫТО"><i class="task-state-fill"></i></span><span class="task-bar-status">ЗАКРЫТО</span></div>
+<div class="task-bar-row status-open" title="open (pilot data: it found no BLOCKER/MAJOR twice, GPT-PM still required exact-head correlation)"><span class="task-bar-name"><b>VST-004</b> · Decide whether `security-reviewer` runs in every SDLC pilot sprint</span><span class="task-state-track" role="img" aria-label="ОТКРЫТО"><i class="task-state-fill"></i></span><span class="task-bar-status">ОТКРЫТО</span></div>
+<div class="task-bar-row status-open" title="open"><span class="task-bar-name"><b>VST-005</b> · Add a project template (`docs/sdlc/` skeleton with STATE.md) installable into a new project</span><span class="task-state-track" role="img" aria-label="ОТКРЫТО"><i class="task-state-fill"></i></span><span class="task-bar-status">ОТКРЫТО</span></div>
+<div class="task-bar-row status-open" title="open"><span class="task-bar-name"><b>VST-006</b> · Resolve role alias `adk-tune-sql-query` with a dedicated SQL-tuning agent if `database-reviewer` proves too broad</span><span class="task-state-track" role="img" aria-label="ОТКРЫТО"><i class="task-state-fill"></i></span><span class="task-bar-status">ОТКРЫТО</span></div>
+<div class="task-bar-row status-done" title="closed in effect 2026-10-24"><span class="task-bar-name"><b>VST-007</b> · Keep the exact verification record of the final test run in the repo (command, collected list, head)</span><span class="task-state-track" role="img" aria-label="ЗАКРЫТО"><i class="task-state-fill"></i></span><span class="task-bar-status">ЗАКРЫТО</span></div>
+<div class="task-bar-row status-partial" title="partly done 2026-10-24"><span class="task-bar-name"><b>VST-008</b> · Put the exact-head rule into `sdlc-orchestrator`: run the security review and GPT-PM on one committed head, avoid source commits afterwards</span><span class="task-state-track" role="img" aria-label="ЧАСТИЧНО / В РАБОТЕ"><i class="task-state-fill"></i></span><span class="task-bar-status">ЧАСТИЧНО / В РАБОТЕ</span></div>
+<div class="task-bar-row status-open" title="open (operator-owned)"><span class="task-bar-name"><b>VST-021</b> · Operator: align the workspace `AGENTS.md` model default with ADR-0001</span><span class="task-state-track" role="img" aria-label="ОТКРЫТО"><i class="task-state-fill"></i></span><span class="task-bar-status">ОТКРЫТО</span></div>
+<div class="task-bar-row status-open" title="open (operator-owned)"><span class="task-bar-name"><b>VST-022</b> · Operator: align the global contract&#x27;s list of test-writing agents with ADR-0001</span><span class="task-state-track" role="img" aria-label="ОТКРЫТО"><i class="task-state-fill"></i></span><span class="task-bar-status">ОТКРЫТО</span></div>
+<div class="task-bar-row status-open" title="open (operator-owned)"><span class="task-bar-name"><b>VST-023</b> · Operator: re-install the changed roster and skills into `~/.claude` with a snapshot first, then run the global lint</span><span class="task-state-track" role="img" aria-label="ОТКРЫТО"><i class="task-state-fill"></i></span><span class="task-bar-status">ОТКРЫТО</span></div>
+<div class="task-bar-row status-open" title="open (operator-owned)"><span class="task-bar-name"><b>VST-024</b> · Operator decision O-1: keep, generalize or move the private repository names in this public repository</span><span class="task-state-track" role="img" aria-label="ОТКРЫТО"><i class="task-state-fill"></i></span><span class="task-bar-status">ОТКРЫТО</span></div>
+</div>
+</div>
+    <h3 style="margin-top:22px">Текущая очередь доставки S2</h3>
+    <div class="sprint-chart">
+      <div class="sprint-row"><span class="sprint-name">S2-1 · Source/recovery</span><div class="sprint-bar"><span class="bar-done" style="width:100%">ДОСТАВЛЕНО</span></div><span class="sprint-count">pushed e332ec4</span></div>
+      <div class="sprint-row"><span class="sprint-name">S2-2 · Owner transport</span><div class="sprint-bar"><span class="bar-done" style="width:100%">ДОСТАВЛЕНО</span></div><span class="sprint-count">pushed e987a24</span></div>
+      <div class="sprint-row"><span class="sprint-name">S2-3 · Stage-only bundle</span><div class="sprint-bar"><span class="bar-done" style="width:100%">ДОСТАВЛЕНО</span></div><span class="sprint-count">pushed ae07f87</span></div>
+      <div class="sprint-row"><span class="sprint-name">S2-4 · Runtime/E5</span><div class="sprint-bar"><span class="bar-active" style="width:100%">В РАБОТЕ · RUNTIME НЕ ПРИНЯТ</span></div><span class="sprint-count">текущая задача</span></div>
+      <div class="sprint-row"><span class="sprint-name">S2-5 · Final acceptance</span><div class="sprint-bar"><span class="bar-open" style="width:100%">НЕ НАЧАТА</span></div><span class="sprint-count">после S2-4</span></div>
+    </div>
+    <p class="chart-note">* Закрытие S0/S1 следует записи о merge; это не оценка процента их задач. Число 2/6 относится к закрытым спринтам, а 4/40 — к явно перечисленным пунктам core backlog. Частичные пункты не засчитываются закрытыми.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="s2-summary">
+    <h2 id="s2-summary">Текущий спринт: S2</h2>
+    <p><span class="tag active">В РАБОТЕ</span> По списку пяти задач S2-1—S2-5 три доставлены, одна выполняется, одна ожидает финальной приёмки. Это <b>60% по количеству задач</b> (3 ÷ 5), без весов по трудоёмкости. Это не означает, что сам спринт принят: общий S2 пока <b class="stop">NOT APPROVED</b>.</p>
+    <div class="grid" style="margin-top:14px">
+      <div class="metric"><span class="muted">Runtime collector</span><strong class="ok">PASS</strong><small>35 345 байт; SHA-256 начинается с 29543f0a…</small></div>
+      <div class="metric"><span class="muted">Inventory validator</span><strong class="ok">PASS</strong><small>449 байт вывода; SHA-256 начинается с 7619b1d5…</small></div>
+      <div class="metric"><span class="muted">Apply 26 файлов</span><strong class="ok">PASS</strong><small>Один запуск, exit 0: 4 файла установлены; 22 уже имели целевые байты.</small></div>
+      <div class="metric"><span class="muted">Preflight → claim/probe → TestRun</span><strong class="pending">NOT RUN</strong><small>Один run-bound preflight-пробник был запущен и отказал из-за Windows/host mount в namespace; VST-сервисы Owner→Runner claim/probe и TestRun — NOT_RUN.</small></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="program-summary">
+    <h2 id="program-summary">Общий прогресс программы</h2>
+    <p>Последовательность S0—S5: S0 и S1 отмечены как закрытые/слитые; S2 активен; S3—S5 стоят после S2. <b>2 из 6 спринтов закрыты (33,3%)</b> — простой невзвешенный счёт спринтов, а не оценка трудозатрат или готовности продукта. В S3—S5 есть старые подготовительные материалы; они не означают текущую приёмку. Их детальные статусы ниже помечены как исторические там, где запись старше текущего среза.</p>
+    <p class="chart-note">Верхняя панель уже содержит общую полосу программы, полосы спринтов и отдельную полосу для каждого из 40 пунктов реестра. Ниже оставлены пояснения, матрица acceptance, evidence, blockers и следующие шаги; полосы не дублируются. Показатели S3–S5 основаны на более старых записях и помечены как исторические.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Спринт</th><th>Текущий статус</th><th>Что это означает</th><th>Остаток / следующий шаг</th></tr></thead>
+      <tbody>
+        <tr><td>S0</td><td class="ok">Закрыт</td><td>Базовая линия включена в merged S0/S1 baseline.</td><td>Работы не требуется.</td></tr>
+        <tr><td>S1</td><td class="ok">Закрыт и слит</td><td><code>core/STATE.md</code> фиксирует merge S0+S1 в <code>origin/main</code>.</td><td>Работы не требуется.</td></tr>
+        <tr><td>S2</td><td class="active">Активен</td><td>Текущая очередь S2-4 runtime/E5 и реальной Owner→Runner проверки.</td><td>Закончить S2-4; затем провести финальную S2 приёмку.</td></tr>
+        <tr><td>S3</td><td class="pending">Очередь после S2</td><td>В репозитории есть старые audit/design артефакты; это не закрытый спринт.</td><td>Не начинать до S2; обновить точный статус на своей очереди.</td></tr>
+        <tr><td>S4</td><td class="pending">Очередь после S3</td><td>Последняя известная запись говорит о незакрытой приёмке и policy selectors NOT_RUN; запись историческая.</td><td>После S3 сверить оставшуюся acceptance и выполнить только разрешённую часть.</td></tr>
+        <tr><td>S5</td><td class="pending">Очередь после S4</td><td>Последняя известная запись от 27 октября называла подготовку неполной; актуальность не перепроверялась.</td><td>После S4 восстановить acceptance из текущих исходников/evidence и продолжить.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="panel" aria-labelledby="task-details">
+    <h2 id="task-details">Подробности по задачам S2</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>ID / смысл</th><th>Статус</th><th>Доказательства</th><th>Что осталось</th><th>Владелец / следующий шаг</th></tr></thead>
+      <tbody>
+        <tr><td><b>S2-1</b><br>Fail-closed инструкция, Store admission и recovery</td><td class="ok">Доставлен: ограниченный source/test scope</td><td>Backlog ссылается на pushed <code>e332ec4</code> и принятие baseline-plus-delta. Это source/test принятие, не production runtime.</td><td>В рамках этой ограниченной задачи нет. Не переоткрывать без конкретной регрессии.</td><td>Codex: оставить принятую базу без повторной реализации.</td></tr>
+        <tr><td><b>S2-2</b><br>Owner transport к Store-backed dispatcher</td><td class="ok">Доставлен: ограниченный source/test scope</td><td>Backlog ссылается на pushed <code>e987a24</code> и ранее записанный WSL результат 34 passed; часть границы была mocked.</td><td>Реальная системная квалификация относится к S2-4, а не к повторному написанию S2-2.</td><td>Codex: учитывать это как принятую основу; не повторять без дефекта.</td></tr>
+        <tr><td><b>S2-3</b><br>Immutable non-secret bundle и stage-only подготовка</td><td class="ok">Доставлен в ограниченном scope</td><td>Backlog указывает pushed <code>ae07f870</code>, bundle/inventory и результат stage-only.</td><td>Отдельный пункт TP-10 помечен partial; он не равен провалу принятого stage-only scope.</td><td>Codex: использовать закреплённый bundle в текущей квалификации.</td></tr>
+        <tr><td><b>S2-4 / S2-4.12b—c</b><br>Текущий runtime/E5 и Owner→Runner путь</td><td class="active">В работе; apply и 17 preflight-проверок PASS, затем runtime HOLD</td><td>На HEAD <code>7d1d16f</code> collector/validator/status и apply (exit 0: 4 файла установлены, 22 уже совпадали) подтверждены. Launcher SHA <code>5b03f670…1389db</code> прошёл exact-source review GPT-PM <code>d8e9f261…</code>. Разрешение <code>8ee40d1a</code> использовано; 17 свежих проверок PASS, но root preflight завершился exit 2: <code>probe namespace exposes an unapproved Windows or host mount</code>.</td><td>Probe был запущен только как часть preflight; VST-сервисы, bootstrap, Owner→Runner claim/probe и точный TestRun selector не запускались. Нужны анализ отказа и узкий безопасный code/config delta; повтор разрешения запрещён.</td><td>Codex: установить точную причину отказа по исходнику и evidence, не ослабляя проверку mount boundaries; затем focused review и новое отдельное runtime-разрешение. После acceptance закрыть S2-4 с evidence/docs/commit/push до S2-5. Outcome: <code>s2-runtime-qual-8ee40d1a-outcome-20261030.md</code>.</td></tr>
+        <tr><td><b>S2-5</b><br>Финальная приёмка S2</td><td class="pending">Не начат</td><td>Backlog ставит финальную exact-head оценку после S2-4.</td><td>Сопоставить все S2 критерии и доказательства; получить итоговый verdict. S2 пока NOT APPROVED.</td><td>Codex: собрать доказательства после S2-4; GPT-PM: вынести финальное решение.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="panel" aria-labelledby="runtime-history">
+    <h2 id="runtime-history">Runtime-попытки и текущая цепочка</h2>
+    <p>Каждое разрешение одноразовое, с нулём повторов. Ошибочные попытки сохранены; старые байты не подменяют свежий inventory.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Запрос</th><th>Что произошло</th><th>Что запустилось</th><th>Disposition</th></tr></thead>
+      <tbody>
+        <tr><td><code>88884f8c…</code><br>предыдущий checkpoint</td><td>WSL не открыл collector по пути <code>/mnt/d/…</code>; script не исполнился.</td><td>Нет validator/apply/preflight/claim/TestRun.</td><td>Исчерпан.</td></tr>
+        <tr><td><code>0b1325c5…</code></td><td>Read-only mount подтверждён, но следующий WSL process не нашёл каталог репозитория.</td><td>Нет collector и дальнейших шагов.</td><td>Исчерпан.</td></tr>
+        <tr><td><code>8a744d73…</code></td><td>Collector PASS; отдельный WSL вызов validator не нашёл каталог на mount.</td><td>Validator не запускался; apply/preflight/claim/TestRun не запускались.</td><td>Исчерпан.</td></tr>
+        <tr><td><code>0606fc1b…</code></td><td>Collector PASS, 35 344 байта; запись файла инвентаризации на read-only D: завершилась FileNotFoundError.</td><td>Validator и последующие шаги не запускались.</td><td>Исчерпан.</td></tr>
+        <tr><td><code>b379a207…</code></td><td>Read-only mount/source pins PASS; collector PASS 35 349 байт; host подтвердил точное сохранение bytes; validator PASS 449 байт. Protocol далее содержит только <code>READY_APPLY</code>.</td><td>Последующий snapshot не обнаружил прежние host PowerShell/Python/WSL PID. При этом нет chain/apply result artifact или protocol-события исхода. Невозможно установить, выполнился ли apply или изменил ли target.</td><td class="pending">Одноразовая авторизация исчерпана. Требуется read-only reconciliation и новая коррелированная авторизация; blind retry запрещён.</td></tr>
+        <tr><td><code>f0d3a07d…</code></td><td>Свежие collector и validator запущены по одному разу в непрерывном WSL процессе; validator PASS для 26 целей.</td><td>После inventory boot ID изменился. Девять units были inactive/dead; jobs пуст. Status shell завершился exit 2 до файловых path-проверок.</td><td class="pending">Apply и downstream шаги не запускались. Эта одноразовая цепочка исчерпана; требуется новое решение GPT-PM.</td></tr>
+        <tr><td><code>7f3f3b3c…</code></td><td>Новая свежая цепочка: collector, byte-exact persistence, validator и status gates выполнены в одной WSL-сессии; все условия до apply PASS.</td><td>Inventory SHA-256 <code>29543f0a…</code>; validator PASS по 26 исходным целям; boot ID неизменен; 9 unit state gates и systemd jobs PASS. Apply один раз завершился exit 0; 4 файла установлены, 22 уже точные.</td><td class="pending">Авторизация окончилась после фиксации apply. Preflight, claim/probe и TestRun требуют отдельного решения.</td></tr>
+        <tr><td><code>d71586a1…</code></td><td>Один разрешённый WSL wrapper стартовал, затем вернул HOLD до runtime inventory.</td><td>Не удалось перейти в <code>/mnt/d/Repo/Virtual_scrum_team</code> (FileNotFoundError). Collector и preflight не запускались.</td><td class="pending">Retry cap 0; попытка исчерпана. Claim/probe и TestRun также NOT_RUN. Запрошена новая авторизация с read-only mount setup.</td></tr>
+        <tr><td><code>c8c6ecb5…</code></td><td>PowerShell завершился до старта WSL с ошибкой <code>StandardOutputEncoding is only supported when standard output is redirected</code>.</td><td>Mount, inventory/status и preflight не запускались; claim/probe и TestRun NOT_RUN.</td><td class="pending">Одноразовое разрешение исчерпано.</td></tr>
+        <tr><td><code>b3a9b780…</code></td><td>Единственный host-вызов через <code>cmd.exe</code> завершился exit 1 до Python/WSL.</td><td>Runtime stages и изменения target не выполнялись. GPT-PM одобрил corrected launcher <code>d4cd4b3d…11d5</code>; MAJOR-01/02 закрыты.</td><td class="pending">Одноразовый вызов исчерпан; следующий runtime запуск требует отдельной авторизации.</td></tr>
+        <tr><td><code>dc6f1448…</code></td><td>Approved launcher вызван напрямую; host Python exit 0 записал HOLD: <code>FileNotFoundError [WinError 206]</code> при запуске дочернего WSL процесса — командная строка слишком длинная.</td><td>WSL, mount, HEAD/source pins, runtime status, preflight, claim/probe и TestRun не запускались; target не менялся. Outer stdout: 36 790 байт, SHA <code>DA6E1039…615C92</code>; stderr пустой. Child hashes указаны в sidecar.</td><td class="pending">Разрешение consumed, retry cap 0. Сократить транспорт через stdin, запросить focused review и новую авторизацию. Evidence: <code>s2-runtime-qual-dc6f1448-outcome-20261030.md</code>.</td></tr>
+        <tr><td><code>268fd73c…</code></td><td>Transport через stdin был пересмотрен GPT-PM; найден несовпадающий вложенный request ID, затем исправленный исходник прошёл отдельный exact-source approval.</td><td>Одна попытка дошла до WSL, но первоначальный systemctl parser отверг именованный формат полей.</td><td class="pending">Разрешение исчерпано. Parser исправлен и повторно reviewed; дальше применено отдельное разрешение. Evidence: <code>s2-runtime-qual-268fd73c-outcome-20261030.md</code>.</td></tr>
+        <tr><td><code>8ee40d1a…</code></td><td>После 17 PASS preflight был вызван и отказал exit 2: <code>probe namespace exposes an unapproved Windows or host mount</code>.</td><td>Сервис, bootstrap, claim/probe и TestRun не запускались; временный D: read-only mount проверен и снят.</td><td class="pending">Разрешение исчерпано; не повторять. Выяснить точную причину без ослабления fail-closed проверки. Evidence: <code>s2-runtime-qual-8ee40d1a-outcome-20261030.md</code>.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="callout danger"><b>Текущая граница:</b> configuration apply доказан. В последнем запуске 17 свежих checks прошли, затем preflight был вызван и завершился exit 2, отказав из-за неразрешённого Windows/host mount в namespace. Сервис, claim/probe и TestRun не запускались. Разрешение <code>8ee40d1a</code> исчерпано; повтор запрещён. Следующий шаг — найти причину, сохранить fail-closed границу, пройти source review и получить отдельное разрешение. Production activation не выполнялась.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="all-gates">
+    <h2 id="all-gates">Все ключевые gates программы S0–S5</h2>
+    <p>«Закрыт» ниже означает доказанное принятие именно указанного gate. Наличие кода, планов или старого тестового отчёта само по себе не закрывает runtime, sprint или merge gate. Для S3–S5 последние подробные записи датированы 26–27 октября и помечены как исторические до их очереди.</p>
+    <div class="scroll"><table><thead><tr><th>Спринт / gate</th><th>Статус</th><th>Что доказано</th><th>Что осталось</th><th>Владелец / следующий шаг</th></tr></thead><tbody>
+      <tr><td><b>S0 + S1</b><br>Базовый контрольный план и VST control plane</td><td class="ok">Закрыты / слиты</td><td><code>core/STATE.md</code>: GPT-PM final gate на <code>abc0d50</code>; PR 1 объединён в <code>origin/main</code> как <code>d5cd7f5</code> 24 октября.</td><td>В текущем backlog открытых задач S0/S1 не указано; свежий повторный аудит исторических критериев не проводился.</td><td>Исторический gate принят. Не переоткрывать без конкретного дефекта.</td></tr>
+      <tr><td><b>S2 / REQ-001—004</b><br>Подписанная инструкция, Store authority, owner transport, fail-closed recovery и ограниченная StageOnly подготовка</td><td class="ok">Приняты в ограниченном source/test scope</td><td>Backlog фиксирует S2-1/2/3 как доставленные и запушенные: <code>e332ec4</code>, <code>e987a24</code>, <code>ae07f87</code>; bounded reviews/tests указаны в <code>docs/sdlc/verify-evidence.md</code>.</td><td>Это не доказательство полного runtime, production dispatch или закрытия всех исторических S2 selector rows.</td><td>Codex сохраняет принятый baseline; новый код только при конкретной acceptance-дельте.</td></tr>
+      <tr><td><b>S2 / REQ-005 и S2-DISPATCH-M01</b><br>Runtime identity, точный config, текущий E5 и реальный Owner→Runner путь</td><td class="active">OPEN / IN PROGRESS</td><td>Collector/validator/status и apply exit 0 (4 файла установлены, 22 точны) доказаны на HEAD <code>7d1d16f</code>. В последнем разрешённом запуске 17 проверок PASS; run-bound preflight-probe отказал exit 2 из-за Windows/host mount. Evidence: <code>s2-runtime-qual-8ee40d1a-outcome-20261030.md</code>.</td><td>Preflight не прошёл; сервис, claim/probe и TestRun остаются NOT_RUN. Runtime/E5 acceptance открыта.</td><td>Codex анализирует точный отказ и готовит исправление без ослабления границ; затем GPT-PM review и отдельное runtime authorization. S2-5 остаётся в очереди.</td></tr>
+      <tr><td><b>S2 / REQ-006</b><br>Финальная exact-head приёмка спринта</td><td class="pending">Не пройдена</td><td>Кодовый PM approval <code>PMG-20261030-7d1d16f6</code> относится только к текущему code scope/HEAD.</td><td>Нет итогового решения по полной S2 acceptance и свежего полного набора gate-доказательств.</td><td>После runtime closure Codex собирает точный пакет; GPT-PM принимает или отклоняет S2 целиком.</td></tr>
+      <tr><td><b>S2 / ограниченные selectors</b><br>Process-kill, crash/recovery, mutation, E8 и S4 policy selector family</td><td class="gray">NOT_RUN</td><td>Ограничения явно сохраняются в текущем backlog/test plan; NOT_RUN не считается PASS.</td><td>Эти сценарии не входят в текущую разрешённую runtime попытку.</td><td>Codex сохраняет NOT_RUN; решения не расширять в этом отчёте.</td></tr>
+      <tr><td><b>S3 / G01—G02</b><br>Идентичность кандидата, лицензии, зависимости и provenance</td><td class="active">Частично проверены; gate открыт</td><td>В <code>core/BACKLOG.md</code> записан read-only audit Temporal: сервер v1.32.1 и SDK 1.34.0 — только provisional comparator; часть release metadata/CI наблюдалась.</td><td>Некоторые версии/лицензии и source-to-artifact provenance остаются NOT_VERIFIED; полный dependency/profile/runtime выбор не закрыт.</td><td>Codex продолжает scoped техническую сверку, когда S3 станет текущим; GPT-PM — архитектурная adjudication; operator сохраняет только реально зарезервированные legal/acquisition решения.</td></tr>
+      <tr><td><b>S3 / G03</b><br>Compatibility и жизненный цикл Temporal</td><td class="ok">Design ACCEPT; implementation/runtime OPEN</td><td>Исправленный design принят GPT-PM на HEAD <code>77b3193</code> (request <code>4e961c19…</code>); прежний MODIFY исторический.</td><td>Exact server/SDK compatibility, provenance, runnable profile и runtime не доказаны.</td><td>Не считать design review спринт-приёмкой; закрывать после S2 в составе S3.</td></tr>
+      <tr><td><b>S3 / G04—G06</b><br>Acquisition, зависимость от S2 и свежая sandbox qualification</td><td class="pending">Не пройдены</td><td>В планах зафиксированы условия допуска; кандидат не acquired/built/run.</td><td>S2 exact-head gate и run-bound sandbox evidence; acquisition/execution gate остаётся закрыт.</td><td>Codex после S2 готовит конкретный пакет; GPT-PM adjudicates. Не запускать до последовательного входа в S3.</td></tr>
+      <tr><td><b>S3 / G07</b><br>Gateway/RPC topology и cancellation exception</td><td class="ok">Design ACCEPT; code/runtime OPEN</td><td>G07 design mapping принят (request <code>f591d5e7…</code>); narrow cancellation RPC exception принят вместе с corrected design на <code>77b3193</code>.</td><td>Gateway, no-bypass/listener controls, VST integration и end-to-end proof не реализованы/не проверены в S3.</td><td>Codex реализует только после S2 и после проверки актуальной acceptance delta; GPT-PM review — на точном коде.</td></tr>
+      <tr><td><b>S3 / G08—G09</b><br>Общий fixture, кандидатное сравнение и решение о запуске</td><td class="pending">Не начаты</td><td>План задаёт одинаковый synthetic fixture и запрещает объявлять TOP до полного сравнения.</td><td>Нет общих реальных прогонов всех кандидатов, полного знаменателя или итогового выбора.</td><td>Codex готовит fixture/records после S2; тестовые роли выполняют назначенные тесты после кода; GPT-PM оценивает evidence.</td></tr>
+      <tr><td><b>S4 / VST-032—037</b><br>Registry, runner, категории, seeded failure и отчётность</td><td class="active">Частично реализованы/проверены; overall INCONCLUSIVE</td><td>Исторические отчёты дают category/targeted passes на конкретных кандидатах и средах; exact-head review на <code>1e75d5b</code> вернул REJECT из-за 53 policy IDs NOT_RUN.</td><td>Данные относятся к старым S4 heads и не являются fresh S4 acceptance в текущем S2 checkout.</td><td>Codex пересверяет при старте S4; test roles выполняют только разрешённые категории; GPT-PM adjudicates точный финальный head.</td></tr>
+      <tr><td><b>S4 / AC-16</b><br>Report-bound worker identity</td><td class="ok">PASS в ограниченном candidate scope</td><td>Записан 1/1 на candidate <code>621ddc01</code>, UID/GID 997:988, без supplementary groups и Windows mounts.</td><td>Один selector не доказывает весь S2 sandbox или все S4 profiles; запись старая.</td><td>Сохранять узкую границу доказательства; Codex пересверяет на актуальном S4 candidate.</td></tr>
+      <tr><td><b>S4 / AC-17</b><br>Integrity locked QA dependencies</td><td class="active">Частично доказан; NOT_VERIFIED</td><td>Pre/post target-content checks и отдельный synthetic persistent-mutation test PASS на записанных candidates.</td><td>Same-identity change-and-restore во время фактического pytest не доказан; dependency_execution_integrity остаётся NOT_VERIFIED.</td><td>Codex сохраняет точный остаток и готовит acceptance mapping при старте S4.</td></tr>
+      <tr><td><b>S4 / 53 policy selectors</b><br>Исключённые процессные/политические сценарии</td><td class="gray">NOT_RUN; S4 INCONCLUSIVE</td><td>Последние записи сохраняют 53 ID как NOT_RUN; GPT-PM exact-head response <code>1e75d5b</code> — REJECT, не обнаружив новый source B/M, но не приняв пропуски.</td><td>NOT_RUN не преобразованы в PASS или waiver.</td><td>Переоценить только когда S4 текущий и применимый контракт разрешён; текущие результаты исторические.</td></tr>
+      <tr><td><b>S5 / VST-041 и предложенный VST-042</b><br>AEVE provenance, v3 receipt и exact-head gate</td><td class="pending">NOT STARTED</td><td>Есть план AC-1—AC-13; в scoped source inventory не найден AEVE analyzer/adapter. VST-041 указан в backlog; VST-042 встречается в плане и ещё не reconciled в каноническом backlog.</td><td>Нет реализации/тестов; S2 и S4 gates не закрыты; AEVE identity/interface/license/transport не подтверждены в этом checkout.</td><td>Codex сверяет source/interface, когда S5 станет текущим и S2/S4 закрыты; GPT-PM reviews contract exact-head. Не расширять поиск за пределы проекта.</td></tr>
+      <tr><td><b>AF / orchestration state vs sprint acceptance</b></td><td class="pending">Записи расходятся по свежести</td><td><code>docs/sdlc/state.json</code> хранит framework phase history; <code>gate-approval.md</code> содержит code APPROVE на <code>7d1d16f</code>. Отдельный PM Bridge gate <code>S2-PHASE-8</code> показывает BLOCKED с обновлением 28 октября.</td><td>Phase number, code approval и full sprint acceptance — разные вещи. PM Bridge запись старше текущего HEAD и не заменяет его adjudication.</td><td>Codex синхронизирует handoff при закрытии S2; GPT-PM принимает только полную текущую acceptance.</td></tr>
+    </tbody></table></div>
+  </section>
+  <section class="panel" aria-labelledby="all-queues">
+    <h2 id="all-queues">Очередь задач по спринтам</h2>
+    <div class="scroll"><table><thead><tr><th>Спринт / task IDs</th><th>Статус задач</th><th>Остаток приёмки и следующий шаг</th><th>Источник / свежесть</th></tr></thead><tbody>
+      <tr><td><b>S0</b></td><td class="ok">Закрыт с S1</td><td>PR 1 содержит S0+S1 baseline; нового S0 backlog в текущем execution checkpoint нет.</td><td><code>core/STATE.md</code>, история merge от 24 октября.</td></tr>
+      <tr><td><b>S1</b></td><td class="ok">Слит</td><td>Control-plane core прошёл exact gate и merged PR1; подробные исторические suite totals не пересчитывались.</td><td><code>core/STATE.md</code>, history merged as <code>d5cd7f5</code>.</td></tr>
+      <tr><td><b>S2-1</b>—<b>S2-3</b></td><td class="ok">Доставлены в bounded scope</td><td>Source/test и StageOnly acceptance приняты; broader runtime/restricted evidence не подразумевается.</td><td><code>docs/sdlc/backlog.md</code> и <code>verify-evidence.md</code>.</td></tr>
+      <tr><td><b>S2-4</b> (subtasks 4.1—4.12c)</td><td class="active">IN PROGRESS; apply passed, latest runtime attempt HOLD at root preflight</td><td>Collector/validator/status/apply and 17 fresh protocol checks are PASS. GPT-PM reviewed exact launcher SHA `5b03f670…1389db`; one-shot authorization `8ee40d1a` is consumed. Root preflight returned exit 2 refusing an unapproved Windows/host mount.</td><td>Service, Owner-to-Runner claim/probe and report-bound TestRun are NOT_RUN. No retry. S2-5 stays queued.</td></tr>
+      <tr><td><b>S2-5</b></td><td class="pending">OPEN / not started</td><td>Полная S2 exact-head review и acceptance после закрытия предыдущих S2 criteria.</td><td><code>docs/sdlc/backlog.md</code>, current 30 Oct.</td></tr>
+      <tr><td><b>S3 / VST-027—031</b></td><td class="pending">S3 NOT STARTED; локальный adapter contract имеет scoped approval; остальное partial/open</td><td>VST-028 audit/licensing/provenance; VST-029 common runtime fixture; VST-030 sandbox proof; VST-031 comparison/decision остаются незакрытыми.</td><td><code>core/BACKLOG.md</code> и S3 plan; подробные записи 26–27 Oct, исторические.</td></tr>
+      <tr><td><b>S4 / VST-032—040</b></td><td class="active">Implementation and test evidence partial; S4 INCONCLUSIVE</td><td>Registry/runner/categories имеют старые report-bound passes; 53 policy selectors remain NOT_RUN; AC-17 in-run same-identity integrity NOT_VERIFIED; exact-head verdict REJECT.</td><td><code>core/BACKLOG.md</code>, <code>core/STATE.md</code>, candidate heads 621ddc01/1e75d5b, historical.</td></tr>
+      <tr><td><b>S5 / VST-041</b>; proposed VST-042</td><td class="pending">NOT STARTED</td><td>Нужны предшествующие gates и доступный AEVE source/interface в пределах проекта; дальше — v3 receipt, isolation и gate integration по плану.</td><td><code>core/BACKLOG.md</code> (VST-041) и S5 plan (предложенный VST-042).</td></tr>
+    </tbody></table></div>
+    <p><b>Итог программы:</b> 2/6 спринтов отмечены закрытыми/слитыми (33,3% невзвешенного счёта спринтов). Текущий S2 имеет 3/5 bounded tasks delivered (60% счёта задач), но сам S2 не принят. Проценты не учитывают трудоёмкость, глубину gate-остатков или частичные задачи S3–S5.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="criteria">
+    <h2 id="criteria">Гейты приёмки S2</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Критерий</th><th>Состояние</th><th>Остаток / владелец / следующий шаг</th></tr></thead>
+      <tbody>
+        <tr><td><b>REQ-001—004</b><br>Source contract: подпись, Store authority, fail-closed recovery</td><td class="ok">Приняты в ограниченном source/test scope</td><td>Не переоткрывать без конкретного дефекта. Codex сохраняет текущую accepted baseline.</td></tr>
+        <tr><td><b>REQ-005</b><br>Runtime: точный root config, issuer identity, run-bound E5 и реальный Owner→Runner путь</td><td class="active">Открыт; частичная свежая runtime проверка</td><td>Закрыть conditional apply → root-captured evidence → one bound claim/probe → exact selector. Codex координирует; e2e-runner исполняет.</td></tr>
+        <tr><td><b>REQ-006</b><br>Привязка evidence/review к точному source revision и финальный S2 verdict</td><td class="pending">Финальный S2 gate не пройден</td><td>После REQ-005 обновить подробную запись, сделать commit/push задачи и получить финальное решение GPT-PM на точном HEAD.</td></tr>
+        <tr><td><b>Ограниченные selectors</b><br>Process-kill/crash/recovery/mutation, E8, S4/policy selectors</td><td class="gray">NOT_RUN</td><td>Не запускались и не учитываются как PASS; соблюдать ограничения acceptance. Codex поддерживает явную разметку.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="panel links" aria-labelledby="sources">
+    <h2 id="sources">Источники и ограничения</h2>
+    <ul>
+      <li><a href="../docs/sdlc/backlog.md">Текущий S2 ordered backlog</a> и <a href="../docs/sdlc/verify-evidence.md">S2 verification evidence</a>.</li>
+      <li><a href="../core/BACKLOG.md">Программный backlog S2–S5</a> и <a href="../core/STATE.md">Program state</a>; последние S3–S5 детали датированы 26–27 октября и поэтому отмечены как исторические.</li>
+      <li><a href="../docs/S3_WORKER_PILOT_PLAN_2026-10-24.md">S3 plan</a>, <a href="../docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md">S4 plan</a>, <a href="../docs/S5_AEVE_GATE_PLAN_2026-10-24.md">S5 plan</a>; планы не доказывают выполнение.</li>
+      <li><a href="../docs/sdlc/requirements.md">Требования REQ-001—REQ-006</a>.</li>
+      <li><a href="../docs/changes/0617-s2-runtime-inventory-source-pins.md">Change record S2-4.12b: source pins и collector acceptance</a> и <a href="../docs/changes/0618-s2-4.12b-review-baseline-reconciliation.md">точный review baseline</a>.</li>
+      <li><a href="../docs/sdlc/evidence/s2-runtime-qual-7f3f3b3c-s2-runtime-20261030-2b5e04a3.attempt.json">Attempt record 7f3f3b3c: inventory/validator, conditional apply и NOT_RUN boundary</a>.</li>
+      <li><a href="../docs/sdlc/evidence/s2-runtime-qual-d71586a1-s2-runtime-20261030-2b5e04a3.attempt.json">Attempt record d71586a1: точная причина stop до post-apply inventory</a>.</li>
+      <li><a href="../docs/sdlc/evidence/s2-runtime-qual-c8c6ecb5-s2-runtime-20261030-2b5e04a3.attempt.json">Attempt record c8c6ecb5: PowerShell отказал до запуска WSL</a>.</li>
+      <li><a href="../docs/sdlc/evidence/s2-runtime-qual-b3a9b780-host-launch-20261030.md">Attempt b3a9b780: cmd.exe не запустил Python; WSL не стартовал</a>.</li>
+      <li><a href="../docs/sdlc/evidence/s2-runtime-qual-dc6f1448-outcome-20261030.md">Attempt dc6f1448: WinError 206 до старта WSL</a>; <a href="../docs/sdlc/evidence/s2-runtime-qual-dc22ee55-decisions-20261030.md">stdin review</a>; <a href="../docs/sdlc/evidence/s2-runtime-qual-8ee40d1a-outcome-20261030.md">последний outcome 8ee40d1a: HOLD на preflight mount check</a>.</li>
+      <li>Свежие попытки в <code>docs/sdlc/evidence/s2-runtime-qual-*</code>. Ветка и origin на момент среза: <code>s2-canonical-continuation</code>, HEAD <code>7d1d16f6348e6c00a5a568b5cfbc8caf309194b9</code>, ahead/behind <code>0/0</code>.</li>
+      <li>Статус S3/S4/S5 частично основан на записях <code>core/STATE.md</code> от 27 октября; эти записи устарее текущего Git-среза и требуют обновления на своей очереди. Цифра 33,3% не является принятым весовым процентом программы.</li>
+    </ul>
+    <p class="foot">Владелец отчёта и последовательной работы: Codex; GPT-PM принимает архитектурные и точные gate-решения; оператор остаётся владельцем только действий, прямо зарезервированных за человеком. Текущий scope остаётся S2; S3—S5 ещё не начаты по очереди. Детальные S3—S5 статусы старше текущего Git-среза и должны быть перепроверены при переходе к каждому спринту.</p>
+  </section>
+</main>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Virtual Scrum Team — S2 and program progress</title>
+  <style>
+    :root{color-scheme:dark;--bg:#121923;--panel:#1b2533;--line:#354255;--text:#edf3fb;--muted:#b5c1d1;--green:#39b77d;--blue:#5b91ea;--amber:#e1a933;--red:#e06c6c;--gray:#657287}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}main{max-width:1180px;margin:auto;padding:24px}header h1{font-size:clamp(1.8rem,4vw,2.7rem);line-height:1.15;margin:.3rem 0 1rem}.lede{color:var(--muted);font-size:1.08rem}.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;margin:16px 0;box-shadow:0 8px 22px #0002}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}.metric{padding:14px;border-radius:10px;background:#111a26;border:1px solid var(--line)}.metric strong{display:block;font-size:1.7rem}.muted,small{color:var(--muted)}.tag{display:inline-block;border-radius:99px;padding:2px 10px;font-size:.82rem;font-weight:700;background:#334155}.ok{color:#9ce6c2}.active{color:#9ec2ff}.pending{color:#ffd982}.stop{color:#ffaaaa}.progress{display:flex;height:16px;background:#354255;border-radius:99px;overflow:hidden;margin:12px 0}.progress span{display:block;flex:0 0 auto;height:100%;background:linear-gradient(90deg,var(--green),var(--blue))}.legend{display:flex;flex-wrap:wrap;gap:14px;color:var(--muted);font-size:.9rem}.swatch{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;background:var(--green)}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{text-align:left;vertical-align:top;padding:11px;border-bottom:1px solid var(--line)}th{color:#cbd8e8;font-size:.9rem}td{min-width:110px}code{overflow-wrap:anywhere;color:#d4e3ff;background:#111a26;padding:2px 5px;border-radius:4px}.scroll{overflow-x:auto}.callout{border-left:4px solid var(--amber);padding:10px 14px;background:#282516;border-radius:6px}.danger{border-color:var(--red);background:#291b21}.links a{color:#9ec2ff}.foot{color:var(--muted);font-size:.9rem;border-top:1px solid var(--line);padding-top:14px;margin-top:20px}h2{margin-top:0}h3{margin-bottom:6px}ul{padding-left:22px}li{margin:5px 0}@media(max-width:650px){main{padding:12px}.panel{padding:14px}th,td{padding:8px}}
+    .program-bar,.sprint-bar{display:flex;height:22px;overflow:hidden;background:#354255;border-radius:99px;margin:9px 0}.program-bar>span,.sprint-bar>span{display:flex;align-items:center;justify-content:center;min-width:0;font-size:.75rem;font-weight:700;color:#101722;white-space:nowrap}.bar-done{background:var(--green)}.bar-active{background:var(--blue)}.bar-partial{background:var(--amber)}.bar-open{background:#657287;color:#f3f6fa!important}.sprint-chart{display:grid;gap:13px;margin-top:16px}.sprint-row{display:grid;grid-template-columns:minmax(160px,220px) minmax(120px,1fr) minmax(130px,180px);align-items:center;gap:12px}.sprint-row .sprint-bar{margin:0}.sprint-name{font-weight:700}.sprint-count{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}.chart-note{font-size:.92rem;color:var(--muted)}.task-group{margin:16px 0}.task-group h4{margin:12px 0 6px}.task-bar-row{display:grid;grid-template-columns:minmax(260px,2fr) minmax(120px,2fr) minmax(110px,1fr);gap:10px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line);font-size:.9rem}.task-bar-name{overflow-wrap:anywhere}.task-state-track{height:14px;background:#354255;border-radius:99px;overflow:hidden}.task-state-fill{display:block;height:100%;width:100%}.task-bar-status{text-align:right;color:var(--muted);font-size:.82rem}.task-bar-row.status-done .task-state-fill{background:var(--green)}.task-bar-row.status-partial .task-state-fill{background:var(--amber)}.task-bar-row.status-open .task-state-fill{background:#657287}@media(max-width:650px){.sprint-row{grid-template-columns:1fr auto;gap:4px 10px}.sprint-row .sprint-bar{grid-column:1/-1;grid-row:2}.sprint-count{grid-column:2;grid-row:1;text-align:right}.task-bar-row{grid-template-columns:1fr auto;gap:2px 10px}.task-state-track{grid-column:1/-1;grid-row:2}.task-bar-status{grid-column:2;grid-row:1}}
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Virtual Scrum Team — status across all sprints and gates</h1>
+    <p class="lede">Snapshot: 30 October 2026. Runtime evidence source HEAD: <code>7d1d16f6348e6c00a5a568b5cfbc8caf309194b9</code>. Latest one-shot authorization <code>8ee40d1a</code> is consumed; root preflight stopped qualification. Charts come first: overall program, sprints, then all 40 canonical tasks; explanations and evidence follow below.</p>
+  </header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>Virtual_scrum_team</dd>
+    <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-canonical-continuation @ 7d1d16f</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <section class="panel" id="portfolio-dashboard" aria-labelledby="portfolio-title">
+    <h2 id="portfolio-title">Whole program — task status first</h2>
+    <p class="chart-note">First: one overall bar for 40 canonical IDs in the register, then S0–S5 sprint bars and all 40 task IDs. The separate S2-1–S2-5 delivery queue follows and is not added to the denominator of 40.</p>
+    <div class="progress" role="img" aria-label="Of 40 register items: 4 closed, 26 partial, 10 open"><span style="width:10%;background:var(--green)"></span><span style="width:65%;background:var(--blue)"></span><span style="width:25%;background:var(--gray)"></span></div>
+    <div class="legend"><span><i class="swatch"></i>Closed: 4/40 (10%)</span><span><i class="swatch" style="background:var(--blue)"></i>Partial / in progress: 26/40 (65%)</span><span><i class="swatch" style="background:var(--gray)"></i>Open / not started: 10/40 (25%)</span></div>
+    <h3 style="margin-top:22px">By sprint</h3>
+    <div class="sprint-chart" aria-label="S0–S5 sprint status">
+      <div class="sprint-row"><span class="sprint-name">S0 · Baseline</span><div class="sprint-bar" role="img" aria-label="Sprint recorded closed; task denominator unavailable"><span class="bar-done" style="width:100%">CLOSED</span></div><span class="sprint-count">Closed*</span></div>
+      <div class="sprint-row"><span class="sprint-name">S1 · Control plane</span><div class="sprint-bar" role="img" aria-label="Sprint recorded closed and merged; task denominator unavailable"><span class="bar-done" style="width:100%">CLOSED / MERGED</span></div><span class="sprint-count">Closed*</span></div>
+      <div class="sprint-row"><span class="sprint-name">S2 · Current</span><div class="sprint-bar" role="img" aria-label="Of five tasks: three delivered, one in progress, one not started"><span class="bar-done" style="width:60%">3</span><span class="bar-active" style="width:20%">1</span><span class="bar-open" style="width:20%">1</span></div><span class="sprint-count">3/5 delivered · 60%</span></div>
+      <div class="sprint-row"><span class="sprint-name">S3 · Candidate audit</span><div class="sprint-bar" role="img" aria-label="Five records: one accepted in bounded scope, three partial, one open"><span class="bar-done" style="width:20%">1</span><span class="bar-partial" style="width:60%">3 partial</span><span class="bar-open" style="width:20%">1</span></div><span class="sprint-count">1/5 narrow acceptance · historical</span></div>
+      <div class="sprint-row"><span class="sprint-name">S4 · QA automation</span><div class="sprint-bar" role="img" aria-label="Eight records: no fully closed task; all are partial or inconclusive"><span class="bar-partial" style="width:100%">8 PARTIAL / INCONCLUSIVE</span></div><span class="sprint-count">0/8 closed · 2 narrow checks PASS</span></div>
+      <div class="sprint-row"><span class="sprint-name">S5 · AEVE receipt</span><div class="sprint-bar" role="img" aria-label="One prepared task is blocked before implementation"><span class="bar-open" style="width:100%">PREPARED / BLOCKED</span></div><span class="sprint-count">0/1 implemented</span></div>
+    </div>
+    <h3 style="margin-top:22px">Every register task · 40 bars</h3>
+    <p class="chart-note">Each row is an ID from <code>core/BACKLOG.md</code>. Color encodes the recorded state; no within-task percentage is invented. S0/S1 closure is shown as sprint status because their task denominator is absent. Unassigned project items are grouped separately. The 40-item total excludes S2-1–S2-5 delivery tasks to avoid counting related acceptance work twice.</p>
+    <div id="program-task-bars">
+<div class="task-group"><h4>S2 · VST-009–020 and VST-025–026 · 14</h4>
+<div class="task-bar-row status-partial" title="implemented; focused tests passed; security/reliability/database reviews found no code-level MAJOR/BLOCKER; full required specialist consensus and exact-head GPT-PM gate pending"><span class="task-bar-name"><b>VST-009</b> · S2 E1: authenticated reviewer key, distinct from the worker key; verify IndependentReview receipts with it</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="implemented; focused tests passed; security/reliability/database reviews found no code-level MAJOR/BLOCKER; full required specialist consensus and exact-head GPT-PM gate pending"><span class="task-bar-name"><b>VST-010</b> · S2 E2: runner-derived `candidate_head`</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="POSIX capability drop and synthetic signer-key/IPC boundary selectors passed at exact code/test HEAD `4c1692d61ee04e945fc0ccdd44db71869ccd5468`"><span class="task-bar-name"><b>VST-011</b> · S2 E2: isolate the signing key from the process that runs commands</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="Existing anchor tests passed; no-final-newline append recovery correction passed its focused fixture regression at `dc1741b`; database review at `79155fd` found no integrity/locking blocker and one MINOR initial-directory-entry durability limitation"><span class="task-bar-name"><b>VST-012</b> · S2 E3: whole-database rollback detection through an externally anchored event head</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="At source/test HEAD `4c1692d61ee04e945fc0ccdd44db71869ccd5468`, the focused 13-case admission/deadline run and bounded POSIX E4.1 cross-UID runtime pass."><span class="task-bar-name"><b>VST-013</b> · S2 E4: verify POSIX permissions and process-group behavior; verify Job Object nesting</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="**PASS for the signed per-run WSL probe** at exact code/test HEAD `f0bbac8`; GPT-PM confirms the narrow per-run scope, while full system acceptance remains open."><span class="task-bar-name"><b>VST-014</b> · S2 E5: sandbox specification (dedicated WSL distro or VM, automount and interop off, no container socket, default-deny egress, non-root, per-run secrets) and pre-flight probe</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="22 focused diff-gate selectors and the bounded POSIX reviewer read-only fixture passed at exact code/test HEAD `4c1692d61ee04e945fc0ccdd44db71869ccd5468`."><span class="task-bar-name"><b>VST-015</b> · S2 E6: deterministic diff gate and read-only reviewer credential</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="implemented; owned WSL lifecycle scenarios passed; security/reliability/database reviews found no code-level MAJOR/BLOCKER; full required specialist consensus and exact-head GPT-PM gate pending"><span class="task-bar-name"><b>VST-016</b> · S2 E7: STOP and rollback transition table</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="Safe synthetic push/pull and recovery selectors pass at exact source/test HEAD `4c1692d61ee04e945fc0ccdd44db71869ccd5468`, including the synthetic timeout/restart retry selector"><span class="task-bar-name"><b>VST-017</b> · S2 E7: idempotency keys for push, pull request and receipts</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="implemented; focused tests passed; security/reliability/database reviews found no code-level MAJOR/BLOCKER; full required specialist consensus and exact-head GPT-PM gate pending"><span class="task-bar-name"><b>VST-018</b> · S2 E7: circuit breaker with a paused-provider state and manual-override record</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="implemented; focused tests passed; security/reliability/database reviews found no code-level MAJOR/BLOCKER; full required specialist consensus and exact-head GPT-PM gate pending"><span class="task-bar-name"><b>VST-019</b> · S2 E7: startup reconciliation after restart</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="partial; full crash/resume, child-kill and mutation acceptance `NOT_RUN` under current policy"><span class="task-bar-name"><b>VST-020</b> · S2 E8: isolated worker bake-off on one crash/resume fixture</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="implemented; focused tests passed; specialist review pending"><span class="task-bar-name"><b>VST-025</b> · S2: mandatory commands per slot listed in the manifest and checked by the gate; pin the test result parser</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-done" title="decided and implemented; focused tests passed"><span class="task-bar-name"><b>VST-026</b> · S2 decision: restrict waivable results to NOT_RUN/INCONCLUSIVE/BLOCKED, or record in ADR_0001 that a FAIL may be waived</span><span class="task-state-track" role="img" aria-label="CLOSED"><i class="task-state-fill"></i></span><span class="task-bar-status">CLOSED</span></div>
+</div>
+<div class="task-group"><h4>S3 · VST-027–031 · 5</h4>
+<div class="task-bar-row status-partial" title="M01/M02 fixes committed in `040a3f2`; focused functional/E2E modules rerun 9/9 each at exact repository HEAD `2c4e9fd`; fresh security/reliability reviews at `3283bfa` found no valid BLOCKER/MAJOR/MINOR; GPT-PM APPROVE at `7f1aa35` is scoped to the local adapter"><span class="task-bar-name"><b>VST-027</b> · S3.1.1: vendor-neutral worker adapter request/response/state/error contract</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="GPT-PM conditionally selects Temporal as the sole provisional durable-engine comparator at server `af08a5e` / SDK `a4c2bb3`; read-only audit APPROVED, acquisition NOT APPROVED."><span class="task-bar-name"><b>VST-028</b> · S3.2.1: candidate identity, immutable revision, license, dependency, compatibility, and security audit</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="At exact canonical HEAD `7816aeb`, designated E2E reruns passed all 9 adapter and all 9 synthetic pilot selectors. They use local synthetic fixtures; process-kill, mutation, external candidate and sandbox selectors were not included."><span class="task-bar-name"><b>VST-029</b> · S3.3.1: shared deterministic crash/resume, STOP, retry, and budget fixture</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-open" title="pending a fresh run-bound signed probe and applicable gates"><span class="task-bar-name"><b>VST-030</b> · S3.3.2: sandbox-bound worktree, credentials, diff, and egress proof</span><span class="task-state-track" role="img" aria-label="OPEN"><i class="task-state-fill"></i></span><span class="task-bar-status">OPEN</span></div>
+<div class="task-bar-row status-partial" title="GPT-PM selected Temporal PROVISIONALLY as the durable-engine comparator; acquisition/execution NOT APPROVED. Static source comparison recorded in `s3-static-candidate-comparison-20261027.md`; no common runtime denominator or final worker choice exists."><span class="task-bar-name"><b>VST-031</b> · S3.4: candidate comparison, residual risk, and operator choice</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+</div>
+<div class="task-group"><h4>S4 · VST-032–038 and VST-040 · 8</h4>
+<div class="task-bar-row status-partial" title="Current registry source head `3885d8a`; manifest SHA-256 `7b03dd4a…a4f2dd7a`; 963 selectors, 53 policy `NOT_RUN`, 900 Windows assignments. New timeout-cleanup selector is explicitly excluded."><span class="task-bar-name"><b>VST-032</b> · S4.1: category manifest, selector registry and denominator</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="Exact candidate `05b1845` used CPython 3.14.3 / pytest 9.0.3 on Windows and CPython 3.12.3 / pytest 9.0.3 on Ubuntu 24.04 WSL; normalized dependency-lock SHA `6e23fdd3…45e691`. Root integration/API/regression assigned selectors passed 1/1, 1/1, 2/2 through the installed report-bound helper; all three category reports remain `INCONCLUSIVE` due policy rows. Root preflight is local QA only, not an S2 receipt."><span class="task-bar-name"><b>VST-033</b> · S4.2: hash-pinned pytest environment and bounded native runner</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="Focused Windows contracts passed 110/110; full Windows functional passed 90/90 and API passed 688/688 with no failures/skips, but API is `INCONCLUSIVE` due 14 policy exclusions. WSL functional passed 90/90; API passed 690/690, also `INCONCLUSIVE` due 14 exclusions."><span class="task-bar-name"><b>VST-034</b> · S4.3: functional and Python API selectors</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="Windows assigned counts passed: integration 41/41, E2E 55/55, regression 874/874. WSL user: 46/46, 55/55 and 881/881. Each category is `INCONCLUSIVE` only due its category policy exclusions. Earlier WSL layout failures are diagnostic-only; corrected nested-layout reports are the retained acceptance evidence."><span class="task-bar-name"><b>VST-035</b> · S4.4: integration, E2E and regression selectors</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="Exact report-bound candidate `621ddc01`: Windows 3/3 PASS and WSL 3/3 PASS; all three selectors passed at both profiles. Evidence: `docs/sdlc/evidence/s4-report-bound-targeted-621ddc01-20261026.md`; dependency target snapshots verified before/after."><span class="task-bar-name"><b>VST-036</b> · S4.5: synthetic seeded-failure fixture catalog</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="Windows regression at `bdc8e3b` passed 897/897 expected selectors (1,845 concrete nodes); report is `INCONCLUSIVE` because 53 policy selectors remain `NOT_RUN`. Exact-candidate Windows seeded-failure 3/3, WSL seeded-failure 3/3 and WSL AC-16 1/1 passed at `621ddc01`."><span class="task-bar-name"><b>VST-037</b> · S4.6: report envelope, hashes, platform matrix and gate compatibility</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="**PASS 1/1 at exact candidate `621ddc01`**; UID/GID 997:988, no supplementary groups, no Windows drive mounts; candidate-bound helper version/hash and target before/after are recorded."><span class="task-bar-name"><b>VST-038</b> · S4.2.3 / AC-16: report-bound WSL child identity boundary</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-partial" title="**Report-bound pre/post target-content checks PASS** on Windows regression and Windows/WSL targeted rows at candidate `621ddc01`; synthetic persistent post-execution mutation test passed in the Windows regression at code-identical candidate `bdc8e3b`."><span class="task-bar-name"><b>VST-040</b> · S4.2.4 / AC-17: bind external QA dependency contents to locked wheels</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+</div>
+<div class="task-group"><h4>S5 · VST-041 · 1</h4>
+<div class="task-bar-row status-open" title="**PREPARED / BLOCKED FROM IMPLEMENTATION.** No S5 source/test implementation. In-scope `tools/` and `tests/` inventory found no AEVE source/analyzer; the `aeve-router` check also returned `NOT_COVERED: AEVE_PROFILE_TRANSPORT_UNAVAILABLE` because no AEVE MCP tool or `aeve` CLI was available. S2 Phase 8 and S4 acceptance remain open."><span class="task-bar-name"><b>VST-041</b> · S5: bounded AEVE static-analysis receipt and exact-head gate</span><span class="task-state-track" role="img" aria-label="OPEN"><i class="task-state-fill"></i></span><span class="task-bar-status">OPEN</span></div>
+</div>
+<div class="task-group"><h4>No sprint mapping in core/BACKLOG.md · VST-001–008 and VST-021–024 · 12</h4>
+<div class="task-bar-row status-done" title="done 2026-10-15"><span class="task-bar-name"><b>VST-001</b> · Raise `maxTurns` or split tasks for read-heavy design/explore agents</span><span class="task-state-track" role="img" aria-label="CLOSED"><i class="task-state-fill"></i></span><span class="task-bar-status">CLOSED</span></div>
+<div class="task-bar-row status-open" title="open"><span class="task-bar-name"><b>VST-002</b> · Let design agents save their own document</span><span class="task-state-track" role="img" aria-label="OPEN"><i class="task-state-fill"></i></span><span class="task-bar-status">OPEN</span></div>
+<div class="task-bar-row status-done" title="done 2026-10-15"><span class="task-bar-name"><b>VST-003</b> · Choose a license for the public repository</span><span class="task-state-track" role="img" aria-label="CLOSED"><i class="task-state-fill"></i></span><span class="task-bar-status">CLOSED</span></div>
+<div class="task-bar-row status-open" title="open (pilot data: it found no BLOCKER/MAJOR twice, GPT-PM still required exact-head correlation)"><span class="task-bar-name"><b>VST-004</b> · Decide whether `security-reviewer` runs in every SDLC pilot sprint</span><span class="task-state-track" role="img" aria-label="OPEN"><i class="task-state-fill"></i></span><span class="task-bar-status">OPEN</span></div>
+<div class="task-bar-row status-open" title="open"><span class="task-bar-name"><b>VST-005</b> · Add a project template (`docs/sdlc/` skeleton with STATE.md) installable into a new project</span><span class="task-state-track" role="img" aria-label="OPEN"><i class="task-state-fill"></i></span><span class="task-bar-status">OPEN</span></div>
+<div class="task-bar-row status-open" title="open"><span class="task-bar-name"><b>VST-006</b> · Resolve role alias `adk-tune-sql-query` with a dedicated SQL-tuning agent if `database-reviewer` proves too broad</span><span class="task-state-track" role="img" aria-label="OPEN"><i class="task-state-fill"></i></span><span class="task-bar-status">OPEN</span></div>
+<div class="task-bar-row status-done" title="closed in effect 2026-10-24"><span class="task-bar-name"><b>VST-007</b> · Keep the exact verification record of the final test run in the repo (command, collected list, head)</span><span class="task-state-track" role="img" aria-label="CLOSED"><i class="task-state-fill"></i></span><span class="task-bar-status">CLOSED</span></div>
+<div class="task-bar-row status-partial" title="partly done 2026-10-24"><span class="task-bar-name"><b>VST-008</b> · Put the exact-head rule into `sdlc-orchestrator`: run the security review and GPT-PM on one committed head, avoid source commits afterwards</span><span class="task-state-track" role="img" aria-label="PARTIAL / IN PROGRESS"><i class="task-state-fill"></i></span><span class="task-bar-status">PARTIAL / IN PROGRESS</span></div>
+<div class="task-bar-row status-open" title="open (operator-owned)"><span class="task-bar-name"><b>VST-021</b> · Operator: align the workspace `AGENTS.md` model default with ADR-0001</span><span class="task-state-track" role="img" aria-label="OPEN"><i class="task-state-fill"></i></span><span class="task-bar-status">OPEN</span></div>
+<div class="task-bar-row status-open" title="open (operator-owned)"><span class="task-bar-name"><b>VST-022</b> · Operator: align the global contract&#x27;s list of test-writing agents with ADR-0001</span><span class="task-state-track" role="img" aria-label="OPEN"><i class="task-state-fill"></i></span><span class="task-bar-status">OPEN</span></div>
+<div class="task-bar-row status-open" title="open (operator-owned)"><span class="task-bar-name"><b>VST-023</b> · Operator: re-install the changed roster and skills into `~/.claude` with a snapshot first, then run the global lint</span><span class="task-state-track" role="img" aria-label="OPEN"><i class="task-state-fill"></i></span><span class="task-bar-status">OPEN</span></div>
+<div class="task-bar-row status-open" title="open (operator-owned)"><span class="task-bar-name"><b>VST-024</b> · Operator decision O-1: keep, generalize or move the private repository names in this public repository</span><span class="task-state-track" role="img" aria-label="OPEN"><i class="task-state-fill"></i></span><span class="task-bar-status">OPEN</span></div>
+</div>
+</div>
+    <h3 style="margin-top:22px">Current ordered S2 delivery queue</h3>
+    <div class="sprint-chart">
+      <div class="sprint-row"><span class="sprint-name">S2-1 · Source/recovery</span><div class="sprint-bar"><span class="bar-done" style="width:100%">DELIVERED</span></div><span class="sprint-count">pushed e332ec4</span></div>
+      <div class="sprint-row"><span class="sprint-name">S2-2 · Owner transport</span><div class="sprint-bar"><span class="bar-done" style="width:100%">DELIVERED</span></div><span class="sprint-count">pushed e987a24</span></div>
+      <div class="sprint-row"><span class="sprint-name">S2-3 · Stage-only bundle</span><div class="sprint-bar"><span class="bar-done" style="width:100%">DELIVERED</span></div><span class="sprint-count">pushed ae07f87</span></div>
+      <div class="sprint-row"><span class="sprint-name">S2-4 · Runtime/E5</span><div class="sprint-bar"><span class="bar-active" style="width:100%">IN PROGRESS · RUNTIME OPEN</span></div><span class="sprint-count">current task</span></div>
+      <div class="sprint-row"><span class="sprint-name">S2-5 · Final acceptance</span><div class="sprint-bar"><span class="bar-open" style="width:100%">NOT STARTED</span></div><span class="sprint-count">after S2-4</span></div>
+    </div>
+    <p class="chart-note">* S0/S1 are closed according to recorded merge status; this is not a task-completion percentage. 2/6 counts closed sprints; 4/40 counts explicit core backlog items. Partial items do not count as closed.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="s2-summary">
+    <h2 id="s2-summary">Current sprint: S2</h2>
+    <p><span class="tag active">IN PROGRESS</span> Of the five tracked S2 tasks (S2-1 through S2-5), three are delivered, one is active, and one is awaiting final acceptance. That is <b>60% by task count</b> (3 ÷ 5), with no effort weights. It does not mean the sprint is accepted: overall S2 is still <b class="stop">NOT APPROVED</b>.</p>
+    <div class="grid" style="margin-top:14px">
+      <div class="metric"><span class="muted">Runtime collector</span><strong class="ok">PASS</strong><small>35,345 bytes; SHA-256 prefix 29543f0a…</small></div>
+      <div class="metric"><span class="muted">Inventory validator</span><strong class="ok">PASS</strong><small>449 output bytes; SHA-256 prefix 7619b1d5…</small></div>
+      <div class="metric"><span class="muted">Apply 26 files</span><strong class="ok">PASS</strong><small>One invocation, exit 0: four files installed; 22 already matched target bytes.</small></div>
+      <div class="metric"><span class="muted">Preflight → claim/probe → TestRun</span><strong class="pending">NOT RUN</strong><small>The run-bound preflight probe started once and refused a Windows/host mount; VST services, Owner→Runner claim/probe and TestRun are NOT_RUN.</small></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="program-summary">
+    <h2 id="program-summary">Overall program progress</h2>
+    <p>Across S0—S5, S0 and S1 are recorded as closed/merged; S2 is active; S3—S5 are queued after S2. <b>2 of 6 sprints are closed (33.3%)</b>, an unweighted sprint-count ratio, not an estimate of effort or product readiness. Older preparation artifacts exist for S3—S5; they do not mean those sprints are accepted. Their detailed rows below are marked historical where their records predate this snapshot.</p>
+    <p class="chart-note">The dashboard above contains the overall program bar, sprint bars, and one bar for each of the 40 registry items. Sections below retain explanations, acceptance, evidence, blockers and next actions; charts are not duplicated. S3–S5 metrics are based on older records and marked historical.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Sprint</th><th>Current status</th><th>Meaning</th><th>Remaining / next action</th></tr></thead>
+      <tbody>
+        <tr><td>S0</td><td class="ok">Closed</td><td>Baseline included in the merged S0/S1 delivery.</td><td>No remaining work recorded.</td></tr>
+        <tr><td>S1</td><td class="ok">Closed and merged</td><td><code>core/STATE.md</code> records the S0+S1 merge into <code>origin/main</code>.</td><td>No remaining work recorded.</td></tr>
+        <tr><td>S2</td><td class="active">Active</td><td>Current queue is S2-4 runtime/E5 and a real Owner→Runner qualification.</td><td>Finish S2-4, then complete final S2 acceptance.</td></tr>
+        <tr><td>S3</td><td class="pending">Queued after S2</td><td>Older audit/design artifacts exist; this is not a closed sprint.</td><td>Do not start before S2; refresh its exact status when it becomes current.</td></tr>
+        <tr><td>S4</td><td class="pending">Queued after S3</td><td>Latest known record says acceptance is open and policy selectors are NOT_RUN; that record is historical.</td><td>After S3, reconcile acceptance and execute only the allowed scope.</td></tr>
+        <tr><td>S5</td><td class="pending">Queued after S4</td><td>Latest known 27 October record described preparation as incomplete; current status has not been rechecked.</td><td>After S4, recover acceptance from current source/evidence and continue.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="panel" aria-labelledby="task-details">
+    <h2 id="task-details">S2 task details</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>ID / acceptance meaning</th><th>Status</th><th>Evidence</th><th>Remaining work</th><th>Owner / next action</th></tr></thead>
+      <tbody>
+        <tr><td><b>S2-1</b><br>Fail-closed instruction, Store admission and recovery</td><td class="ok">Delivered: bounded source/test scope</td><td>Backlog links pushed commit <code>e332ec4</code> and baseline-plus-delta acceptance. This is source/test acceptance, not production runtime.</td><td>None within that bounded task. Reopen only for a concrete regression.</td><td>Codex: preserve the accepted baseline without reimplementation.</td></tr>
+        <tr><td><b>S2-2</b><br>Owner transport to the Store-backed dispatcher</td><td class="ok">Delivered: bounded source/test scope</td><td>Backlog links pushed commit <code>e987a24</code> and a prior WSL report of 34 passed; some system boundaries were mocked.</td><td>Real system qualification belongs to S2-4, not a rewrite of S2-2.</td><td>Codex: treat this as accepted baseline unless a defect is established.</td></tr>
+        <tr><td><b>S2-3</b><br>Immutable non-secret bundle and stage-only preparation</td><td class="ok">Delivered in bounded scope</td><td>Backlog records pushed <code>ae07f870</code>, the bundle/inventory and stage-only result.</td><td>A separate TP-10 item is marked partial; that does not invalidate the accepted stage-only scope.</td><td>Codex: use the pinned bundle in the current qualification.</td></tr>
+        <tr><td><b>S2-4 / S2-4.12b—c</b><br>Runtime/E5 and Owner→Runner path</td><td class="active">In progress; apply and 17 preflight checks passed, then runtime HOLD</td><td>At HEAD <code>7d1d16f</code>, collector/validator/status and apply (exit 0: four files installed, 22 already exact) are recorded. Launcher SHA <code>5b03f670…1389db</code> passed GPT-PM exact-source review <code>d8e9f261…</code>. Authorization <code>8ee40d1a</code> was consumed; all 17 fresh checks passed, but root preflight exited 2: <code>probe namespace exposes an unapproved Windows or host mount</code>.</td><td>The probe ran only as the preflight stage; VST services, bootstrap, Owner→Runner claim/probe and the exact TestRun selector did not run. Analyze the refusal and prepare a narrow safe code/config correction; do not repeat the consumed authorization.</td><td>Codex identifies the exact predicate from in-scope source/evidence without weakening mount isolation, then gets focused review and a separate runtime authorization. After acceptance, deliver S2-4 evidence/docs/commit/push before S2-5. Outcome: <code>s2-runtime-qual-8ee40d1a-outcome-20261030.md</code>.</td></tr>
+        <tr><td><b>S2-5</b><br>Final S2 acceptance</td><td class="pending">Not started</td><td>Backlog places the exact-head final decision after S2-4.</td><td>Reconcile every S2 criterion/evidence and obtain the final verdict. S2 remains NOT APPROVED.</td><td>Codex: assemble evidence after S2-4; GPT-PM: decide final acceptance.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="panel" aria-labelledby="runtime-history">
+    <h2 id="runtime-history">Runtime attempts and the current chain</h2>
+    <p>Each authorization is one-shot with zero retries. Failed attempts are preserved; old bytes do not replace a fresh inventory.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Request</th><th>Outcome</th><th>What ran</th><th>Disposition</th></tr></thead>
+      <tbody>
+        <tr><td><code>88884f8c…</code><br>previous checkpoint</td><td>WSL could not open the collector at <code>/mnt/d/…</code>; the script did not execute.</td><td>No validator/apply/preflight/claim/TestRun.</td><td>Exhausted.</td></tr>
+        <tr><td><code>0b1325c5…</code></td><td>Read-only mount passed, but the next WSL process could not find the repository directory.</td><td>No collector or later step.</td><td>Exhausted.</td></tr>
+        <tr><td><code>8a744d73…</code></td><td>Collector passed; the separate WSL validator invocation could not find the mounted repository.</td><td>Validator did not run; no apply/preflight/claim/TestRun.</td><td>Exhausted.</td></tr>
+        <tr><td><code>0606fc1b…</code></td><td>Collector passed with 35,344 bytes; writing inventory to read-only D: failed with FileNotFoundError.</td><td>Validator and later steps did not run.</td><td>Exhausted.</td></tr>
+        <tr><td><code>b379a207…</code></td><td>One continuous WSL session; read-only mount/source pins passed; collector passed with 35,349 bytes; host acknowledged byte-exact persistence; validator passed.</td><td>A later process snapshot no longer showed the process. There is no chain/apply result artifact or protocol event establishing the outcome or target changes.</td><td class="pending">One-shot authorization is exhausted. Read-only reconciliation and a new correlated authorization are required; blind retry is prohibited.</td></tr>
+        <tr><td><code>f0d3a07d…</code></td><td>Fresh collector and validator each ran once in a continuous WSL process; validator PASS for 26 targets.</td><td>Boot ID changed after inventory; the nine units showed inactive/dead; jobs list was empty. The status shell exited 2 before path checks.</td><td class="pending">No apply or downstream step ran. Authorization exhausted; GPT-PM issued a replacement decision.</td></tr>
+        <tr><td><code>7f3f3b3c…</code></td><td>Fresh collector, byte-exact persistence, validator and same-process status gates all passed.</td><td>All 26 original-baseline destinations matched; boot identity stayed unchanged. One apply exited 0: four files installed, 22 already exact.</td><td class="pending">Authorization ended after apply result. Preflight, claim/probe and TestRun require their separate approved chain.</td></tr>
+        <tr><td><code>d71586a1…</code></td><td>One authorized WSL wrapper started, then returned HOLD before runtime inventory.</td><td>It could not change directory to <code>/mnt/d/Repo/Virtual_scrum_team</code> (FileNotFoundError). No collector, preflight, claim/probe or TestRun.</td><td class="pending">Retry cap 0; no alternate mount/retry. New authorization requested with explicit read-only mount setup.</td></tr>
+        <tr><td><code>c8c6ecb5…</code></td><td>PowerShell returned exit 1 before WSL start: <code>StandardOutputEncoding is only supported when standard output is redirected</code>.</td><td>No mount, runtime status, inventory, preflight, claim/probe or TestRun ran.</td><td class="pending">One-shot authorization consumed.</td></tr>
+        <tr><td><code>b3a9b780…</code></td><td>The single host call through <code>cmd.exe</code> returned exit 1 before Python/WSL.</td><td>No runtime stage or target change occurred. GPT-PM approved launcher SHA <code>d4cd4b3d…11d5</code>; MAJOR-01/02 are closed.</td><td class="pending">That one-shot authorization is consumed; another launch requires separate authorization.</td></tr>
+        <tr><td><code>dc6f1448…</code></td><td>The approved launcher was invoked directly; host Python exit 0 recorded HOLD: <code>FileNotFoundError [WinError 206]</code> starting WSL because the child command line was too long.</td><td>WSL, mount, source pins, runtime status, preflight, claim/probe and TestRun did not start; no target changed. Outer stdout: 36,790 bytes, SHA <code>DA6E1039…615C92</code>; stderr empty. Child hashes are in the sidecar.</td><td class="pending">Authorization consumed, retry cap 0. Shorten wrapper transport via stdin, obtain focused review and new authorization. Evidence: <code>s2-runtime-qual-dc6f1448-outcome-20261030.md</code>.</td></tr>
+        <tr><td><code>268fd73c…</code></td><td>GPT-PM reviewed stdin transport, found a stale embedded request ID, then approved corrected exact source.</td><td>One attempt reached WSL but the original systemctl parser rejected named-property output.</td><td class="pending">Authorization consumed. Parser fixed/reviewed; a separate GO was used next. Evidence: <code>s2-runtime-qual-268fd73c-outcome-20261030.md</code>.</td></tr>
+        <tr><td><code>8ee40d1a…</code></td><td>After 17 PASS checks, root preflight ran and exited 2: <code>probe namespace exposes an unapproved Windows or host mount</code>.</td><td>Service, bootstrap, claim/probe and TestRun did not run; temporary D: read-only mount was verified and removed.</td><td class="pending">One-shot authorization consumed; do not retry. Identify exact cause without weakening fail-closed rejection. Evidence: <code>s2-runtime-qual-8ee40d1a-outcome-20261030.md</code>.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="callout danger"><b>Current boundary:</b> configuration apply is proven. In the latest run, all 17 fresh checks passed, then preflight was invoked and exited 2, refusing an unapproved Windows/host mount in the namespace. Service, claim/probe and TestRun did not run. Authorization <code>8ee40d1a</code> is consumed; do not retry. Identify the exact cause without weakening the fail-closed boundary, obtain source review, then request separate authorization. Production activation was not performed.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="all-gates">
+    <h2 id="all-gates">Program acceptance gates across S0–S5</h2>
+    <p>“Closed” means the specific gate has recorded acceptance. Code, a plan or an older test report alone does not close a runtime, sprint or merge gate. Detailed S3–S5 records are dated 26–27 October and are historical until those sprints become current.</p>
+    <div class="scroll"><table><thead><tr><th>Sprint / gate</th><th>Status</th><th>Evidence</th><th>Remaining acceptance</th><th>Owner / next step</th></tr></thead><tbody>
+      <tr><td><b>S0 + S1</b><br>Baseline plan and VST control plane</td><td class="ok">Closed / merged</td><td><code>core/STATE.md</code>: GPT-PM final gate at <code>abc0d50</code>; PR 1 merged into <code>origin/main</code> as <code>d5cd7f5</code> on 24 October.</td><td>No open S0/S1 task is listed in the current backlog; historical criteria were not re-audited in this snapshot.</td><td>Codex preserves accepted work; reopen only for a concrete defect.</td></tr>
+      <tr><td><b>S2 / REQ-001—004</b><br>Signed instruction, Store authority, owner transport, fail-closed recovery and bounded StageOnly preparation</td><td class="ok">Accepted in bounded source/test scope</td><td>Backlog marks S2-1/2/3 delivered and pushed: <code>e332ec4</code>, <code>e987a24</code>, <code>ae07f87</code>; bounded reviews/tests are linked from <code>docs/sdlc/verify-evidence.md</code>.</td><td>This does not establish complete runtime, production dispatch or every historical S2 selector.</td><td>Codex preserves the accepted baseline; reopen only for a proven acceptance delta.</td></tr>
+      <tr><td><b>S2 / REQ-005 and S2-DISPATCH-M01</b><br>Runtime identity, exact config, current E5 and real Owner→Runner path</td><td class="active">OPEN / IN PROGRESS</td><td>Collector/validator/status and apply exit 0 (four files installed, 22 exact) are evidenced at HEAD <code>7d1d16f</code>. In the latest authorized run, 17 checks passed; the run-bound preflight probe exited 2 due to a Windows/host mount. Evidence: <code>s2-runtime-qual-8ee40d1a-outcome-20261030.md</code>.</td><td>Preflight failed; service, claim/probe and TestRun remain NOT_RUN. Runtime/E5 acceptance is open.</td><td>Codex analyzes the exact refusal and prepares a safe correction without weakening isolation; then GPT-PM reviews source and a separate runtime authorization is required. S2-5 remains queued.</td></tr>
+      <tr><td><b>S2 / REQ-006</b><br>Final exact-head sprint acceptance</td><td class="pending">Not passed</td><td>Code approval <code>PMG-20261030-7d1d16f6</code> covers only code scope at current HEAD.</td><td>No final decision for complete S2 acceptance and no complete fresh gate evidence.</td><td>After runtime closure, Codex assembles the exact packet; GPT-PM decides S2 acceptance.</td></tr>
+      <tr><td><b>S2 / restricted selectors</b><br>Process kill, crash/recovery, mutation, E8 and S4/policy selectors</td><td class="gray">NOT_RUN</td><td>Restrictions remain explicit in backlog/test plan; NOT_RUN is not PASS.</td><td>These scenarios are outside the currently authorized runtime attempt.</td><td>Codex preserves NOT_RUN and does not expand scope.</td></tr>
+      <tr><td><b>S3 / G01—G02</b><br>Candidate identity, licenses, dependencies and provenance</td><td class="active">Partially audited; gate open</td><td><code>core/BACKLOG.md</code> records a read-only Temporal audit: server v1.32.1 and SDK 1.34.0 are provisional comparators; some release metadata/CI was observed.</td><td>Some version/license and source-to-artifact provenance remains NOT_VERIFIED; dependency/profile/runtime choice is not closed.</td><td>Codex continues scoped technical reconciliation when S3 is current; GPT-PM adjudicates architecture; operator retains genuinely reserved legal/acquisition decisions.</td></tr>
+      <tr><td><b>S3 / G03</b><br>Temporal compatibility and lifecycle</td><td class="ok">Design ACCEPT; implementation/runtime OPEN</td><td>Corrected design accepted by GPT-PM at <code>77b3193</code> (request <code>4e961c19…</code>); earlier MODIFY is historical.</td><td>Exact server/SDK compatibility, provenance, runnable profile and runtime are unproven.</td><td>Do not treat design review as sprint acceptance; finish within S3 after S2.</td></tr>
+      <tr><td><b>S3 / G04—G06</b><br>Acquisition, S2 dependency and fresh sandbox qualification</td><td class="pending">Not passed</td><td>Plans record entry conditions; candidate has not been acquired, built or run.</td><td>S2 exact-head gate and run-bound sandbox evidence; acquisition/execution gate remains open.</td><td>Codex prepares a concrete packet after S2; GPT-PM adjudicates. Do not begin before S3 is current.</td></tr>
+      <tr><td><b>S3 / G07</b><br>Gateway/RPC topology and cancellation exception</td><td class="ok">Design ACCEPT; code/runtime OPEN</td><td>G07 design mapping accepted (request <code>f591d5e7…</code>); narrow cancellation RPC exception accepted with corrected design at <code>77b3193</code>.</td><td>Gateway, no-bypass/listener controls, VST integration and end-to-end proof are not implemented/verified in S3.</td><td>Codex implements only after S2 and a current acceptance delta; GPT-PM reviews exact code.</td></tr>
+      <tr><td><b>S3 / G08—G09</b><br>Shared fixture, candidate comparison and run decision</td><td class="pending">Not started</td><td>Plan requires the same synthetic fixture for candidates and prohibits declaring a TOP candidate before complete comparison.</td><td>No common real runs, complete denominator or final candidate selection.</td><td>Codex prepares fixture/records after S2; test roles run assigned tests after code; GPT-PM evaluates evidence.</td></tr>
+      <tr><td><b>S4 / VST-032—037</b><br>Registry, runner, categories, seeded failure and reporting</td><td class="active">Partially implemented/tested; overall INCONCLUSIVE</td><td>Historical reports show category/targeted passes on specific candidates/environments; exact-head review at <code>1e75d5b</code> returned REJECT because 53 policy IDs were NOT_RUN.</td><td>These are old S4 heads, not fresh acceptance in the current S2 checkout.</td><td>Codex reconciles when S4 is current; test roles execute only allowed categories; GPT-PM adjudicates the exact final head.</td></tr>
+      <tr><td><b>S4 / AC-16</b><br>Report-bound worker identity</td><td class="ok">PASS in bounded candidate scope</td><td>Recorded 1/1 at candidate <code>621ddc01</code>, UID/GID 997:988, no supplementary groups or Windows mounts.</td><td>One selector does not prove the full S2 sandbox or all S4 profiles; record is historical.</td><td>Preserve the narrow claim; Codex reconciles against current S4 candidate.</td></tr>
+      <tr><td><b>S4 / AC-17</b><br>Integrity of locked QA dependencies</td><td class="active">Partially proven; NOT_VERIFIED</td><td>Pre/post target-content checks and a separate synthetic persistent-mutation test passed on recorded candidates.</td><td>Same-identity change-and-restore during the actual pytest run is unproven; dependency_execution_integrity remains NOT_VERIFIED.</td><td>Codex preserves this exact gap and maps acceptance when S4 becomes current.</td></tr>
+      <tr><td><b>S4 / 53 policy selectors</b><br>Excluded process/policy scenarios</td><td class="gray">NOT_RUN; S4 INCONCLUSIVE</td><td>Latest records keep 53 IDs NOT_RUN; GPT-PM exact-head response for <code>1e75d5b</code> was REJECT, with no new source B/M finding but no acceptance of the omissions.</td><td>NOT_RUN is not converted into PASS or waiver.</td><td>Reassess only when S4 is current and the applicable contract authorizes it; current data is historical.</td></tr>
+      <tr><td><b>S5 / VST-041 and proposed VST-042</b><br>AEVE provenance, v3 receipt and exact-head gate</td><td class="pending">NOT STARTED</td><td>Plan AC-1—13 exists; scoped source inventory found no AEVE analyzer/adapter. VST-041 is in backlog; VST-042 appears only in plan and is not reconciled into canonical backlog.</td><td>No implementation/tests; S2 and S4 gates are open; AEVE identity/interface/license/transport are unconfirmed in this checkout.</td><td>Codex inspects source/interface when S5 is current and prerequisites close; GPT-PM reviews the exact contract/head. Stay inside this repository.</td></tr>
+      <tr><td><b>AF / orchestration state vs sprint acceptance</b></td><td class="pending">Records differ in freshness</td><td><code>docs/sdlc/state.json</code> stores framework phase history; <code>gate-approval.md</code> contains code APPROVE at <code>7d1d16f</code>. PM Bridge gate <code>S2-PHASE-8</code> reports BLOCKED, last updated 28 October.</td><td>Phase number, code approval and full sprint acceptance are distinct. The PM Bridge record predates current HEAD and does not replace current adjudication.</td><td>Codex synchronizes handoff at S2 closure; GPT-PM decides full current acceptance.</td></tr>
+    </tbody></table></div>
+  </section>
+  <section class="panel" aria-labelledby="all-queues">
+    <h2 id="all-queues">Ordered task queue by sprint</h2>
+    <div class="scroll"><table><thead><tr><th>Sprint / task IDs</th><th>Status</th><th>Remaining acceptance and next action</th><th>Source / freshness</th></tr></thead><tbody>
+      <tr><td><b>S0</b></td><td class="ok">Closed with S1</td><td>PR 1 includes the S0/S1 baseline; no open S0 backlog item appears in the current execution checkpoint.</td><td><code>core/STATE.md</code>, merge history on 24 October.</td></tr>
+      <tr><td><b>S1</b></td><td class="ok">Merged</td><td>Control-plane core passed its exact gate and merged as PR 1; historical suite totals were not recomputed.</td><td><code>core/STATE.md</code>, merge <code>d5cd7f5</code>.</td></tr>
+      <tr><td><b>S2-1—S2-3</b></td><td class="ok">Delivered in bounded scope</td><td>Source/test and StageOnly acceptance are recorded; this does not imply broader runtime/restricted evidence.</td><td><code>docs/sdlc/backlog.md</code> and <code>verify-evidence.md</code>.</td></tr>
+      <tr><td><b>S2-4</b> (subtasks 4.1—4.12c)</td><td class="active">IN PROGRESS; apply passed, latest runtime attempt HOLD at root preflight</td><td>GPT-PM exact-source review `d8e9f261` approved launcher SHA `5b03f670…1389db`; one-shot authorization `8ee40d1a` was used and consumed.</td><td>Preflight failed; service, claim/probe and TestRun are NOT_RUN. Runtime/E5 remains open; S2-5 stays queued.</td></tr>
+      <tr><td><b>S2-5</b></td><td class="pending">OPEN / not started</td><td>Full S2 exact-head review and acceptance after earlier S2 criteria close.</td><td><code>docs/sdlc/backlog.md</code>, current 30 October.</td></tr>
+      <tr><td><b>S3 / VST-027—031</b></td><td class="pending">S3 NOT STARTED; local adapter contract has scoped approval; others partial/open</td><td>VST-028 audit/licensing/provenance; VST-029 common runtime fixture; VST-030 sandbox proof; VST-031 comparison/decision remain open.</td><td><code>core/BACKLOG.md</code> and S3 plan; details dated 26–27 October and historical.</td></tr>
+      <tr><td><b>S4 / VST-032—040</b></td><td class="active">Implementation and test evidence partial; S4 INCONCLUSIVE</td><td>Registry/runner/categories have older report-bound passes; 53 policy selectors remain NOT_RUN; AC-17 in-run same-identity integrity is NOT_VERIFIED; exact-head verdict REJECT.</td><td><code>core/BACKLOG.md</code>, <code>core/STATE.md</code>, candidate heads <code>621ddc01</code>/<code>1e75d5b</code>; historical.</td></tr>
+      <tr><td><b>S5 / VST-041</b>; proposed VST-042</td><td class="pending">NOT STARTED</td><td>Preceding gates and an in-scope AEVE source/interface are prerequisites; then v3 receipt, isolation and gate integration follow the plan.</td><td><code>core/BACKLOG.md</code> (VST-041) and S5 plan (proposed VST-042).</td></tr>
+    </tbody></table></div>
+    <p><b>Program total:</b> 2/6 sprints are recorded closed/merged (33.3% unweighted sprint count). Current S2 has 3/5 bounded tasks delivered (60% task count), but S2 itself is not accepted. These percentages do not account for effort, gate depth or partial S3–S5 work.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="criteria">
+    <h2 id="criteria">S2 acceptance gates</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Criterion</th><th>Status</th><th>Remaining work / owner / next action</th></tr></thead>
+      <tbody>
+        <tr><td><b>REQ-001—004</b><br>Source contract: signatures, Store authority and fail-closed recovery</td><td class="ok">Accepted in bounded source/test scope</td><td>Do not reopen without a concrete defect. Codex preserves the accepted baseline.</td></tr>
+        <tr><td><b>REQ-005</b><br>Runtime: exact root config, issuer identity, run-bound E5 and real Owner→Runner path</td><td class="active">Open; fresh runtime evidence is partial</td><td>Complete conditional apply → root-captured evidence → one bound claim/probe → exact selector. Codex coordinates; e2e-runner executes.</td></tr>
+        <tr><td><b>REQ-006</b><br>Evidence/review bound to exact source revision and final S2 verdict</td><td class="pending">Final S2 gate not passed</td><td>After REQ-005, update the task record, commit/push the task, and obtain GPT-PM's final exact-head decision.</td></tr>
+        <tr><td><b>Restricted selectors</b><br>Process-kill/crash/recovery/mutation, E8, S4/policy selectors</td><td class="gray">NOT_RUN</td><td>Not executed and not counted as PASS; preserve accepted restrictions. Codex keeps their status explicit.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="panel links" aria-labelledby="sources">
+    <h2 id="sources">Sources and limitations</h2>
+    <ul>
+      <li><a href="../docs/sdlc/backlog.md">S2 ordered backlog</a>, especially the current execution checkpoint and S2 disposition.</li>
+      <li><a href="../docs/sdlc/requirements.md">Requirements REQ-001—REQ-006</a>.</li>
+      <li><a href="../docs/changes/0617-s2-runtime-inventory-source-pins.md">S2-4.12b change record: source pins and collector acceptance</a> and <a href="../docs/changes/0618-s2-4.12b-review-baseline-reconciliation.md">review-baseline reconciliation</a>.</li>
+      <li>Fresh attempts are under <code>docs/sdlc/evidence/s2-runtime-qual-*</code>. Snapshot branch/origin: <code>s2-canonical-continuation</code>, HEAD <code>7d1d16f6348e6c00a5a568b5cfbc8caf309194b9</code>, ahead/behind <code>0/0</code>.</li>
+      <li>Current apply record: <a href="../docs/sdlc/evidence/s2-runtime-qual-7f3f3b3c-s2-runtime-20261030-2b5e04a3.attempt.json">7f3f3b3c</a>; post-apply access stop: <a href="../docs/sdlc/evidence/s2-runtime-qual-d71586a1-s2-runtime-20261030-2b5e04a3.attempt.json">d71586a1</a>.</li>
+      <li>PowerShell launch stop before WSL: <a href="../docs/sdlc/evidence/s2-runtime-qual-c8c6ecb5-s2-runtime-20261030-2b5e04a3.attempt.json">attempt c8c6ecb5</a>.</li>
+      <li>cmd.exe command-quoting stop before Python: <a href="../docs/sdlc/evidence/s2-runtime-qual-b3a9b780-host-launch-20261030.md">attempt b3a9b780</a>.</li>
+      <li><a href="../docs/sdlc/evidence/s2-runtime-qual-dc6f1448-outcome-20261030.md">Attempt dc6f1448: WinError 206 before WSL</a>; <a href="../docs/sdlc/evidence/s2-runtime-qual-dc22ee55-decisions-20261030.md">stdin review</a>; <a href="../docs/sdlc/evidence/s2-runtime-qual-8ee40d1a-outcome-20261030.md">latest 8ee40d1a outcome: HOLD at preflight mount check</a>.</li>
+      <li>S3/S4/S5 status is partly based on <code>core/STATE.md</code> records dated 27 October; those records predate this Git snapshot and need refresh when each sprint becomes current. The 33.3% figure is not an accepted weighted program-completion percentage.</li>
+    </ul>
+    <p class="foot">Report and continuation owner: Codex. GPT-PM owns technical adjudication and the final S2 decision. e2e-runner is an execution role, not a separate project owner. This is an interim checkpoint; update it after apply reaches a verified outcome or exact stop condition.</p>
+  </section>
+</main>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>
