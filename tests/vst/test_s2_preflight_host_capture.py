@@ -228,8 +228,12 @@ def test_process_identity_rejects_each_unpinned_uid_or_gid_position(
              for line in lines]
     (proc / "status").write_text("\n".join(lines) + "\n", encoding="ascii")
     _map_proc_path(monkeypatch, pid, proc)
-    with pytest.raises(ContractError, match="configured worker"):
+    expected_uid = values if field == "Uid" else [999, 999, 999, 999]
+    expected_gid = values if field == "Gid" else [989, 989, 989, 989]
+    with pytest.raises(ContractError, match="configured worker") as error:
         capture._process_identity(pid)
+    assert f"uid={expected_uid!r}, gid={expected_gid!r}" in str(error.value)
+    assert "expected uid=[999, 999, 999, 999], gid=[989, 989, 989, 989]" in str(error.value)
 
 
 def test_network_observation_accepts_only_loopback_addresses_and_routes() -> None:

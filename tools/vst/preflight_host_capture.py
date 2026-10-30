@@ -239,7 +239,10 @@ def _process_identity(pid: int) -> dict[str, Any]:
     except (OSError, ValueError, StopIteration, IndexError) as exc:
         raise ContractError("probe process identity cannot be established") from exc
     if uid_values != [999, 999, 999, 999] or gid_values != [989, 989, 989, 989]:
-        raise ContractError("probe process identity differs from the configured worker")
+        raise ContractError(
+            "probe process identity differs from the configured worker "
+            f"(uid={uid_values!r}, gid={gid_values!r}; "
+            "expected uid=[999, 999, 999, 999], gid=[989, 989, 989, 989])")
     if not any(line.rsplit(":", 1)[-1] == "/system.slice/vst-sandbox-probe.service"
                for line in cgroup.splitlines()):
         raise ContractError("probe process is outside its exact systemd cgroup")

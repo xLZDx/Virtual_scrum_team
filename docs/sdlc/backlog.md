@@ -194,37 +194,36 @@ succeeded. Local diff verification confirmed the reviewed four-file scope. This 
 live WSL/Runner evidence.
 
 **Current ordered subtask S2-4.12b — one fresh current-run E5 and owner-to-Runner qualification.**
-The new non-secret run binding and installer pins are implemented and the focused local bundle/apply
-suite reports 22 passed; code/security reviewers found no actionable finding. The fresh binding is
-`s2-runtime-20261030-8102de64e7b4472ca2b5d2d56ed48510` with request
-`c63842aefcf74f57af70a1b2f93b8271` and nonce `5f5820a7cfc348cfa89de31af6c6d1a7`; its task
-manifest retains `retry_cap: 0` and the single allowed assignment-basis selector. The previous
-attempt identities are retired. Runtime application, root capture, and owner-to-Runner TestRun are
-still `NOT_RUN`. Next: exact-head code approval and normal push; then a separate correlated
-authorization bound to this fresh identity before the single permitted runtime journey. GPT-PM
-request `8f4c362c-e87e-474e-b73c-3183401f2d6e` / reply
-`ac001ce4-8a51-5557-b106-76c66ff11d95` approved code HEAD `0c97e030`; normal push succeeded and
-the upstream ref matches. The test files were not attached to GPT-PM because the transport flagged
-a synthetic credential-like fixture; their 22-pass execution remains the test agent's report. Read-
-only e2e readiness found fresh WSL shutdown entries after its observer exited; the live helper will
-refuse until a stable WSL session is held open. Restricted process/crash/mutation/E8/policy
-selectors remain `NOT_RUN`. S2-5 stays queued.
+The non-secret bundle and installer were approved and pushed in `0c97e03`; its exact-head approval
+is recorded in request `8f4c362c-e87e-474e-b73c-3183401f2d6e` / reply
+`ac001ce4-8a51-5557-b106-76c66ff11d95`. The run binding is
+`s2-runtime-20261030-8102de64e7b4472ca2b5d2d56ed48510`, bootstrap request
+`c63842aefcf74f57af70a1b2f93b8271`, nonce `5f5820a7cfc348cfa89de31af6c6d1a7`; the manifest
+keeps `retry_cap: 0` and exactly one assignment-basis selector.
 
-**Current code correction in S2-4.12b (not yet delivered):** the first exact runtime attempt applied
-the authorized 26-file configuration once, but the root helper refused before creating its durable
-claim because `_systemctl_show()` required `MainPID` on the standard inactive
-`vst-dispatch-owner.socket`; systemd 255 correctly omits that property for socket units. No probe,
-attestation, Store/preflight record, service start, or TestRun occurred, and the authorized run ID,
-request ID, and nonce remain unconsumed. The helper now requires `MainPID` for services and omits
-only that field for `.socket` units; the socket still must report exactly the common properties,
-`LoadState=loaded`, and `ActiveState=inactive`. The functional-test-reviewer added three regression
-cases and reports 56 focused tests passed. Security and code review found no actionable issue. See
-`docs/changes/0612-s2-4.12b-socket-unit-mainpid.md` for exact evidence and scope.
+The authorized 26-file configuration installation succeeded once; all destinations matched the
+bundle and daemon-reload completed without starting or enabling services. GPT-PM authorized one
+root-captured runtime attempt (request `bd3463de-0137-4702-89a8-d4d571f5f25e` / reply
+`c246964e-2445-5bfd-a61b-82171d28c624`) and a temporary read-only host DrvFS mount solely for exact
+source verification (request `0b6c9eb0-3fa6-4a4a-9128-97a3921f7543`). The first helper invocation
+refused before claim because systemd socket units omit `MainPID`; fix `8917e54` was reviewed by
+security, code reviewer, and GPT-PM (request `29178c2e-e189-4b0e-8c13-ec990747fa8e`) and pushed.
+The corrected same attempt passed fresh preconditions, created its durable one-use claim, and then
+failed with `probe process identity differs from the configured worker`. The claim is consumed; no
+probe attestation, root preflight record, Store, bootstrap, Supervisor, Runner, or TestRun evidence
+was produced. The four-value UID/GID arrays at failure were not retained, so the field-level cause
+is `NOT_VERIFIED`; journald only records effective UID/GID 999:989. No retry or replacement identity
+is authorized by the consumed attempt.
 
-The code correction still needs exact-head GPT-PM code approval and a normal push. The previously
-authorized runtime journey can then resume with the same unconsumed identity only if its exact helper
-hash is newly authorized and a fresh inventory plus every existing fail-closed condition passes; do
-not repeat configuration installation. S2-4 remains open, S2-5 is queued, and S3 remains unstarted.
+The current follow-up adds only those observed/expected numeric arrays to the existing fail-closed
+error message so a separately authorized qualification can diagnose the exact mismatch; it does not
+change the predicate. The focused functional-test-reviewer suite reports 56 passed, one existing
+pytest-asyncio warning; code/security review found no actionable issue. See
+`docs/changes/0612-s2-4.12b-socket-unit-mainpid.md` and
+`docs/changes/0613-s2-4.12b-process-identity-diagnostics.md`. This follow-up still needs exact-head
+GPT-PM code approval and push. After that, Codex must prepare a distinct run binding and request a
+separate correlated GPT-PM authorization; do not reuse the consumed run ID or reinstall config until
+that new attempt is authorized. S2-4 remains open, S2-5 is queued, and S3 remains unstarted.
 
 ### S2-5 — Exact-head gate and sprint decision
 
