@@ -44,11 +44,28 @@ python -m pytest -q tests/vst/test_s2_e8_synthetic_lifecycle.py tests/vst/test_s
 7 passed, 1 warning in 35.48s; exit 0
 ```
 
-Both ran at HEAD `312090a949e78f1db4d3877978781c5a568417d0`. Warnings are pytest-asyncio's
-Python 3.14 deprecation notice. Nine skipped cases are not counted as passes; this includes the
-POSIX root-owned publication integration test, skipped because the Windows host's WSL environment
-has no Python executable. Exact target journal fields and real root-owned publication therefore
-remain unverified.
+Both Windows-hosted runs used HEAD `312090a949e78f1db4d3877978781c5a568417d0`. Warnings are
+pytest-asyncio's Python 3.14 deprecation notice. The first run skipped the POSIX root-owned
+publication test because that test process ran on Windows; it did not establish that WSL lacked
+Python.
+
+The designated `e2e-runner` then archived the exact committed `tools/vst` and focused test files
+from HEAD `29f2671` into a temporary WSL directory and ran the POSIX publication integration as
+root:
+
+```text
+/usr/bin/python3 --version
+Python 3.12.3
+/usr/bin/python3 -m pytest --version
+pytest 7.4.4
+/usr/bin/python3 -m pytest -q tests/vst/test_s2_preflight_capture.py::test_posix_record_has_real_root_owner_mode_0600_and_never_overwrites
+1 passed in 0.30s; exit 0
+```
+
+The `e2e-runner` confirmed the temporary directory was removed. No VST service or persistent
+runtime configuration changed. This verifies root-owned mode-`0600` atomic publication and
+no-overwrite behavior on the target OS; capture of an actual systemd probe invocation and its
+manager result remains unverified.
 
 Independent read-only Python and security reviews found no concrete source defect. The security
 review specifically confirms the root manager query is invocation-bound and filters trusted
@@ -56,7 +73,8 @@ manager PID/UID fields. This is source review, not live systemd evidence.
 
 ## Acceptance disposition and next task
 
-- **S2-4.2 source and focused synthetic tests:** implementation and focused evidence are complete.
+- **S2-4.2 source and focused tests:** implementation, synthetic tests, and the target-OS root
+  publication integration are complete.
 - **S2-4 runtime acceptance:** remains `IN PROGRESS`. Actual systemd journal behavior, target-side
   root capture, candidate bundle repinning/installation, current E5 provenance and a real
   owner-to-Runner result have not been established by this task.
