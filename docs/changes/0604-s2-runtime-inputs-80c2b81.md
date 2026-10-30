@@ -43,9 +43,8 @@ prior plan and inventory were for `f685cc9` and cannot be reused as if they desc
   inventory snapshot expired before installation: the normal installer rejected it when its age
   was 318.9 seconds (the limit is 300 seconds), before any target mutation. All other revision and
   compiler identity values matched. The new inventory was collected immediately before retry.
-- No runtime selection, service start, Store initialization, bootstrap, or dispatch occurred. The
-  StageOnly retry with the refreshed inventory is the next action; verify the immutable staged tree
-  against this exact plan and inventory. Do not select the runtime or install the separate stale
-  configuration candidate in this step.
+- No runtime selection, service start, Store initialization, bootstrap, or dispatch occurred during
+  this input-capture task. The bounded StageOnly retry using the refreshed inventory completed
+  separately under `docs/changes/0605-s2-stage-only-80c2b81.md`; it left the selector unchanged.
 - Current E5 evidence and the real owner-to-Runner journey remain open. Restricted process-kill,
   crash/recovery, mutation, E8, and policy selectors remain `NOT_RUN`.

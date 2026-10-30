@@ -132,8 +132,16 @@ inventory refreshed at `2026-10-30T02:49:02Z` is
 It confirms the selector still points to `a600774`, all nine S2 units are inactive, no jobs are pending, Store
 and current preflight are absent, and the root-owned compiler identity is present. The failed attempt made no
 target change. No private bytes were read or hashed. Detailed record:
-`docs/changes/0604-s2-runtime-inputs-80c2b81.md`. Next: commit/push the refreshed inventory and immediately
-run only the bounded StageOnly publication for `80c2b81`; current E5 and the real owner-to-Runner journey remain open.
+`docs/changes/0604-s2-runtime-inputs-80c2b81.md`.
+
+**Delivered S2-4.9 — bounded StageOnly publication for `80c2b81`.** After pushing the refreshed inventory,
+the normal installer exited 0 at `2026-10-30T02:50Z`. It verified the exact source map, published
+`/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2`, and reported helper SHA-256
+`0ee613b289ab4fcf79d82f1cae777b96fcd97c8a02c59dded50736797a4381f5`, owner/mode `root:vst-runner 0:988 4750`,
+`selected=false`, `systemd_units_installed=0`. Record: `docs/changes/0605-s2-stage-only-80c2b81.md`.
+This is immutable publication only; the selector is still on `a600774` and no services were activated. Next:
+reconcile the non-secret configuration candidate to `80c2b81`, obtain current E5 evidence, then run the one
+permitted owner-to-Runner journey. Current E5 and that journey remain open.
 Restricted process-kill, crash/recovery, mutation, E8, and policy selectors remain `NOT_RUN`.
 
 ### S2-5 — Exact-head gate and sprint decision

@@ -38,19 +38,27 @@ root-owned mode-0600 preflight record and separate attestation remain runtime ev
 
 ## Current read-only target status
 
-At `2026-10-30T02:43:06.339898+00:00`, `e2e-runner` captured the exact source-bound inventory
+At `2026-10-30T02:49:02.839487+00:00`, `e2e-runner` captured the exact source-bound inventory
 `docs/sdlc/evidence/s2-runtime-target-inventory-80c2b81deac364ed6466600fd46af47aafe805e2.json`,
-SHA-256 `ef7fc473efc734ae2e5be1b4e0181f4bf2d70939c045f2a720301fcae119412d`. Source/requested head
+SHA-256 `5f011ff65577a9363d2c1b60747e586d12042995dc88e8dff8779bdb81b28a66`. Source/requested head
 is `80c2b81deac364ed6466600fd46af47aafe805e2`. The selector still points to `a600774`; all nine
 S2 units are inactive and no jobs are pending. The Store and current preflight file are absent.
 `/usr/bin/cc` resolves to root-owned GCC 13, mode `0755`, SHA-256
 `1b99826121ae6682a634e5efe09bd3e3df58ce58e0b28f849114ab5b89139c26`. The inventory read no
 private key bytes and made no target changes.
 
-## Next action
+## Current staged runtime and next action
 
-Publish the exact source plan and fresh target inventory for `80c2b81`, then execute only the
-bounded StageOnly publication. After verifying the staged payload, rebind the non-secret runtime
-configuration to the accepted source, obtain a current root-captured E5 measurement, and run the
-single permitted owner-to-Runner selector once. Do not initialize an existing Store, dispatch
-production work, or rerun a request after an ambiguous outcome.
+The normal installer ran with the exact source plan and refreshed inventory and exited 0. It
+published `/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2`, verified its complete source
+map, and reported `selected=false` and `systemd_units_installed=0`. The e2e-runner read-only
+follow-up confirmed the root-owned runtime manifest matches the plan and inventory, and all nine
+units remain inactive with no pending jobs. The helper SHA-256 is
+`0ee613b289ab4fcf79d82f1cae777b96fcd97c8a02c59dded50736797a4381f5`, owner/mode `root:vst-runner`
+(`0:988`), mode `4750`. No configuration, Store, service, bootstrap, or dispatch mutation was
+performed. The selector remains on `a600774`; the current preflight and Store are absent.
+
+Next: reconcile and hash-check the non-secret runtime configuration candidate against `80c2b81`,
+obtain current root-captured E5 evidence, and run the single permitted owner-to-Runner selector
+once. Do not initialize an existing Store, dispatch production work, or retry a request after an
+ambiguous outcome.
