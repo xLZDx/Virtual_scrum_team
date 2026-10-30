@@ -175,10 +175,21 @@ to consume the actual `runtime_selector.link_target` inventory field; its focuse
 reports 10 passed with one existing pytest-asyncio warning. Exact evidence is in
 `docs/changes/0608-s2-runtime-selection-and-inventory-contract.md`.
 
-**Next ordered S2-4.11c — apply and verify the exact 26-file configuration.** Obtain a fresh
-post-selection inventory within five minutes and run the committed pinned config applier. It must
-finish with all 26 exact hashes and nine loaded-inactive units. No service start is included. The
-current-run E5 and one permitted owner-to-Runner journey remain open.
+**Delivered ordered subtask S2-4.11c — apply and verify the exact 26-file configuration.** The
+committed pinned applier ran against post-selection inventory SHA-256
+`d68d5679936927172b2b143fb3c80c28278f7034940bbbf93ffdd72aeda8fba3` at source commit
+`aa32afd6298233666897b8753efafa84909715ef`. It updated seven exact known config files; the other
+19 destinations were already exact. All 26 post-install hashes match, systemd `daemon-reload`
+succeeded, all nine units remained loaded/inactive, there were no jobs, and Store stayed absent.
+Private bytes were excluded. Evidence and exact command are in
+`docs/changes/0609-s2-runtime-config-install.md` and
+`docs/sdlc/evidence/s2-runtime-config-post-install-20261030T033734Z.json`.
+
+**Next ordered S2-4.12 — current-run E5 and one permitted owner-to-Runner qualification.** Start
+only the configured probe/Supervisor path after exact run evidence is generated, preserve the
+single run/request identity, and record actual authenticated ingress, Store intent, Runner result
+and receipt. No restricted process/crash/mutation/E8/policy selectors are included. S2-5 remains
+queued until this allowed runtime journey is accepted.
 
 ### S2-5 — Exact-head gate and sprint decision
 
