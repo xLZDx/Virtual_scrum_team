@@ -226,10 +226,14 @@ for the consumed run; the new candidate has not been applied.
 
 The functional-test-reviewer ran the three focused helper/config suites: 79 passed, with one existing
 pytest-asyncio deprecation warning. Independent code and security reviews found no actionable
-finding; all 34 bundle hashes and both installer pins match. Exact-head GPT-PM code review and normal
-push are still required for this candidate. After that, GPT-PM must separately authorize the new
-tuple before a fresh inventory, any configuration application, or probe. Do not reuse the consumed
-tuple, reinstall the candidate early, or start another selector. Details: `docs/changes/0612-s2-4.12b-socket-unit-mainpid.md`,
+finding; all 34 bundle hashes and both installer pins match. GPT-PM approved the exact candidate
+HEAD `069be3b5193595c06a39ac72237452625b7514f4` for normal push (request
+`f4b7008d-2a49-4c1e-88f1-9a37876d4c10`, correlated reply
+`82ba7c80-21c4-50b5-be25-6a3afb6b85d8`); normal push to `origin/s2-canonical-continuation`
+succeeded. That approval was source-only. GPT-PM must separately authorize the new tuple before a
+fresh inventory, any configuration application, or probe. Do not reuse the consumed tuple,
+reinstall the candidate early, or start another selector. Details:
+`docs/changes/0612-s2-4.12b-socket-unit-mainpid.md`,
 `docs/changes/0613-s2-4.12b-process-identity-diagnostics.md`, and
 `docs/changes/0614-s2-4.12b-retired-run-and-fresh-binding.md`. S2-4 remains open, S2-5 is queued,
 and S3 remains unstarted.
