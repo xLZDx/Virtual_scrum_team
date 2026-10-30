@@ -195,13 +195,6 @@
       "uid": 995
     },
     {
-      "destination": "/etc/vst-runner/probe-verification.key",
-      "gid": 0,
-      "mode": "0600",
-      "staging_file": "receipt-and-probe.key",
-      "uid": 0
-    },
-    {
       "destination": "/etc/vst-runner/network-policy.key",
       "gid": 0,
       "mode": "0600",
@@ -236,7 +229,7 @@
       "gid": 0,
       "mode": "0600",
       "path": "/var/lib/vst-runner/private/preflight.json",
-      "source": "actual measured probe and root policy signer for the configured run and nonce; no fabricated PASS",
+      "source": "exact one-shot probe JSON captured by root and separately verified root-signed network policy for the configured run and nonce; no fabricated PASS",
       "uid": 0
     },
     {
@@ -272,6 +265,22 @@
       "mode": "0644",
       "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
       "source": "unit-overrides/vst-runner.service.d/rate-limits.conf",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-runner.service.d/90-s2-host-path-mask.conf",
+      "gid": 0,
+      "mode": "0644",
+      "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
+      "source": "unit-overrides/vst-runner.service.d/host-paths.conf",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-sandbox-probe.service.d/90-s2-host-path-mask.conf",
+      "gid": 0,
+      "mode": "0644",
+      "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
+      "source": "unit-overrides/vst-sandbox-probe.service.d/host-paths.conf",
       "uid": 0
     },
     {

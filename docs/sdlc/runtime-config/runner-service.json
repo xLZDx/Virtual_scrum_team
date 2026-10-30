@@ -19,9 +19,9 @@
   "socket_path": "/run/vst-runner/runner.sock",
   "supervisor_socket": "/run/vst-supervisor/supervisor.sock",
   "unit_name": "vst-runner.service",
-  "worker_exec_helper_binary_sha256": "40cca741389d4b711dfca45da2698846a6acc801be006456cc7af207e2dd6353",
-  "worker_exec_helper_head": "a600774649527ff0b33eb81f4d431f8226119b2c",
-  "worker_exec_helper_path": "/usr/local/libexec/vst-s4-worker-exec-a600774649527ff0b33eb81f4d431f8226119b2c",
+  "worker_exec_helper_binary_sha256": "0ee613b289ab4fcf79d82f1cae777b96fcd97c8a02c59dded50736797a4381f5",
+  "worker_exec_helper_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
+  "worker_exec_helper_path": "/usr/local/libexec/vst-s4-worker-exec-80c2b81deac364ed6466600fd46af47aafe805e2",
   "worker_exec_helper_source_sha256": "ea76231fe4b3ae99902be7be43d3a7a970f9ea28c7b27258097f0ceb9d20d951",
   "worker_gid": 989,
   "worker_uid": 999

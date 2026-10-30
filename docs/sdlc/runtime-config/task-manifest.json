@@ -14,7 +14,7 @@
     }
   ],
   "author_principal": "Codex",
-  "base_head": "a600774649527ff0b33eb81f4d431f8226119b2c",
+  "base_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
   "change_scope": {
     "allowed_paths": [
       "tests/vst/test_s2_assignment_basis.py"

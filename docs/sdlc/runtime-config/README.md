@@ -16,6 +16,13 @@ not a development checkout or a worktree per sprint.
   be silently relabeled as the current installed revision.
 - Service configuration files use the implemented closed schemas. installation-layout.json
   specifies exact destination ownership/modes, isolated private directories and protected keys.
+- The runner and one-shot probe units both mask WSL host-integration roots (`/mnt`, `/usr/lib/wsl`,
+  `/init`, `/run/WSL`, and `/tmp/.X11-unix`) with root-owned `InaccessiblePaths` drop-ins. This
+  follows the actual probe finding that the default WSL unit namespaces exposed host mounts; the
+  signed policy must remain absent until the same-path runtime check confirms those paths are
+  inaccessible. Explicit inaccessible `/home` and `/root` paths keep host home data hidden, while
+  an empty read-only `/run/user` tmpfs keeps host user sockets hidden and lets the required socket
+  inventory confirm a complete empty scan.
 - Public keys and fingerprints are included; private bytes stay in the root-owned mode0700 WSL
   preparation directory. No private material is committed or sent for review.
 - model-provenance.json records the actual configured custom-role model. It explicitly does not
@@ -52,11 +59,13 @@ not a development checkout or a worktree per sprint.
    SHA verification and no overwrite. Publish the runtime selector/units using the existing
    fingerprint-bound bootstrap transition contract. Install the exact config/material layout.
    Never expose private key bytes in logs, requests, attachments or repository files.
-5. The designated test role obtains actual non-root preflight observations under the fixed
-   isolated profile. The independently controlled root signer verifies the effective network,
-   mount/socket and systemd facts before signing measured evidence for the exact run. A failed or
-   incomplete measurement remains failure/unknown; it is not turned into PASS by signing.
-6. Start only the configured runtime services for the authorized qualification. The bounded
+5. Root independently verifies the effective network, mount/socket and systemd facts for the
+   exact one-shot probe invocation, then publishes the run/spec/nonce-bound signed network-policy
+   attestation. The non-root probe emits canonical measured JSON; the root controller captures
+   that exact output into the root-owned mode-0600 preflight file. The probe inventory has no
+   signature requirement. Reject failed or incomplete measurements; never turn unknown into PASS.
+6. Start Supervisor only after it validates the captured inventory and root network-policy
+   attestation. Then start the other configured runtime services for the authorized qualification. The bounded
    one-shot bootstrap caller submits the immutable request through the existing authenticated
    RPC. Derive issuance-request.json only from its exact successful returned operation identity.
    Preserve the invocation and authenticated response. An ambiguous result stops dependent work;
@@ -71,11 +80,12 @@ not a development checkout or a worktree per sprint.
 ## Current preparation state
 
 The Python3.12 missing SO_PEERPIDFD-name defect was concretely observed and fixed in delivered
-source a600774. Its 45 focused passes and actual kernel-pidfd proof are in change0592. The new source was staged successfully. Configuration pins now use the official source-specific
-transition manifest, its content-plus-metadata tree digest, and actual compiled helper digest.
-The auxiliary E2E content-only tree inventory has a different declared algorithm and is retained
-separately; it is not substituted for the transition tree digest. Bundle verification and delivery
-remain before installation.
+source a600774. Its 45 focused passes and actual kernel-pidfd proof are in change0592. The current
+candidate is rebound to source `80c2b81deac364ed6466600fd46af47aafe805e2`; its immutable runtime and
+helper are staged but not selected. The official read-only `bootstrap_runtime prepare` generated
+the exact transition manifest at `2026-10-30T03:03Z`, binding the staged tree, helper, current
+selector and unit fingerprints. The non-secret bundle remains `PREPARED_NOT_INSTALLED`; runtime
+selection and configuration installation are separate, unperformed steps.
 
 The source unit templates contain ignored [Service] StartLimitIntervalSec lines. The three
 explicit unit-overrides add the intended 60-second interval/Burst3 under [Unit]; retain the

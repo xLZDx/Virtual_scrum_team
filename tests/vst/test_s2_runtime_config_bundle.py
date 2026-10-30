@@ -34,7 +34,7 @@ from tools.vst.contracts import (
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BUNDLE_DIR = REPO_ROOT / "docs" / "sdlc" / "runtime-config"
-SOURCE_HEAD = "a600774649527ff0b33eb81f4d431f8226119b2c"
+SOURCE_HEAD = "80c2b81deac364ed6466600fd46af47aafe805e2"
 
 
 def _json(name: str) -> dict:
@@ -51,10 +51,13 @@ def test_bundle_manifest_covers_every_payload_with_exact_bytes_and_safe_scope():
     payload_paths = {
         str(path.relative_to(BUNDLE_DIR)).replace("\\", "/")
         for path in BUNDLE_DIR.rglob("*")
-        if path.is_file() and path.name not in {"bundle-manifest.json", "README.md"}
+        if path.is_file()
+        and "__pycache__" not in path.parts
+        and path.suffix != ".pyc"
+        and path.name not in {"bundle-manifest.json", "README.md"}
     }
 
-    assert len(records) == 32
+    assert len(records) == 34
     assert payload_paths == set(records)
     assert len(bundle["units"]) == 9
     assert bundle["schema"] == "VST_S2_NON_SECRET_CONFIG_BUNDLE_V1"
@@ -82,18 +85,51 @@ def test_bundle_manifest_covers_every_payload_with_exact_bytes_and_safe_scope():
     assert all(item["uid"] == 0 for item in bundle["configuration_installation"])
 
     overrides = _json("installation-layout.json")["unit_overrides"]
-    expected_overrides = {
+    expected_rate_limit_overrides = {
         "unit-overrides/vst-runner.service.d/rate-limits.conf",
         "unit-overrides/vst-signer.service.d/rate-limits.conf",
         "unit-overrides/vst-supervisor.service.d/rate-limits.conf",
     }
-    assert {item["source"] for item in overrides} == expected_overrides
+    expected_host_path_overrides = {
+        "unit-overrides/vst-runner.service.d/host-paths.conf",
+        "unit-overrides/vst-sandbox-probe.service.d/host-paths.conf",
+    }
+    assert {item["source"] for item in overrides} == (
+        expected_rate_limit_overrides | expected_host_path_overrides
+    )
+    assert bundle["unit_overrides"] == overrides
+    expected_destinations = {
+        "unit-overrides/vst-runner.service.d/host-paths.conf":
+            "/etc/systemd/system/vst-runner.service.d/90-s2-host-path-mask.conf",
+        "unit-overrides/vst-sandbox-probe.service.d/host-paths.conf":
+            "/etc/systemd/system/vst-sandbox-probe.service.d/90-s2-host-path-mask.conf",
+    }
     for item in overrides:
         data = (BUNDLE_DIR / item["source"]).read_bytes()
-        assert data == b"[Unit]\nStartLimitIntervalSec=60s\nStartLimitBurst=3\n"
-        assert item["destination"].endswith(item["source"].removeprefix("unit-overrides/"))
+        if item["source"] in expected_rate_limit_overrides:
+            assert data == b"[Unit]\nStartLimitIntervalSec=60s\nStartLimitBurst=3\n"
+        else:
+            assert data == (
+                b"[Service]\n"
+                b"InaccessiblePaths=-/init -/home -/mnt -/root -/usr/lib/wsl -/run/WSL -/tmp/.X11-unix\n"
+                b"ProtectHome=no\n"
+                b"TemporaryFileSystem=/run/user:ro,mode=0755\n"
+            )
+        expected_destination = expected_destinations.get(
+            item["source"],
+            "/etc/systemd/system/" + item["source"].removeprefix("unit-overrides/"),
+        )
+        assert item["destination"] == expected_destination
         assert item["uid"] == 0 and item["gid"] == 0 and item["mode"] == "0644"
         assert item["sha256"] == records[item["source"]]["sha256"] == _sha256(data)
+    assert {
+        item["destination"]
+        for item in overrides
+        if item["source"] in expected_host_path_overrides
+    } == {
+        "/etc/systemd/system/vst-runner.service.d/90-s2-host-path-mask.conf",
+        "/etc/systemd/system/vst-sandbox-probe.service.d/90-s2-host-path-mask.conf",
+    }
 
 
 def test_actual_task_policy_and_bootstrap_validators_accept_only_crossbound_candidate():
@@ -188,6 +224,9 @@ def test_public_material_matches_standalone_public_keys_and_probe_run_binding():
     public = _json("public-material.json")["public"]
     run_binding = _json("run-binding.json")
     probe_request = _json("probe-request.json")
+    bootstrap_request = _json("bootstrap-request.json")
+    supervisor = _json("supervisor-service.json")
+    network_profile = _json("network-profile.json")
 
     for key, filename in (
         ("dispatch-instruction", "dispatch-instruction-public.pem"),
@@ -202,6 +241,10 @@ def test_public_material_matches_standalone_public_keys_and_probe_run_binding():
         "run_id": run_binding["run_id"],
         "nonce": run_binding["probe_nonce"],
     }
+    assert bootstrap_request["run_id"] == run_binding["run_id"]
+    assert supervisor["run_id"] == run_binding["run_id"]
+    assert supervisor["probe_nonce"] == run_binding["probe_nonce"]
+    assert network_profile["environment_id"] == f"Ubuntu-24.04:S2:{run_binding['run_id']}"
     assert run_binding["runtime_source_head"] == SOURCE_HEAD
     assert run_binding["state"] == "PREPARATION_NOT_EXECUTION"
 

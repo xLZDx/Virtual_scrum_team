@@ -1,5 +1,5 @@
 {
-  "assignment_policy_sha256": "1859bbf777b12ead6ded46581282a976a746071fc844f4f46a2d5baf6e2072cf",
+  "assignment_policy_sha256": "d84fc710f22b73727772ec86dd98b23097f8baaab90828468919ef178b930153",
   "configuration_installation": [
     {
       "destination": "/etc/vst-runner/supervisor-service.json",
@@ -132,18 +132,18 @@
   "files": [
     {
       "path": "assignment-delegation-policy.json",
-      "sha256": "3dde22a446451dac2f6d8882eb2ec11a0297e5b0e1ef3b32d7cda4c1bf6ebc59",
+      "sha256": "3dabe39f15ee280d1fac78c83989ce71ec868410b665fa26e199378f27deb427",
       "size": 1411
     },
     {
       "path": "bootstrap-request.json",
-      "sha256": "c25869bb519e53a2b564ff3c171d423fed84fb70a46b3be9bc14ceb9485f98a7",
+      "sha256": "4d248a42790aa53a54cac0df8cd97dd04b583653791d3e32999d7d6186f688e6",
       "size": 4104
     },
     {
       "path": "deployment-source-manifest.json",
-      "sha256": "f4324fc73a16cc1a47452dc6c694105c755651359e19b7e6aed8f2758edcb84c",
-      "size": 1429
+      "sha256": "c5fa4d74b56736f08b4f2c4f3fe60d6f01b443b1d348d0fd9758820ff32b3710",
+      "size": 1210
     },
     {
       "path": "dispatch-instruction-public.pem",
@@ -182,8 +182,8 @@
     },
     {
       "path": "installation-layout.json",
-      "sha256": "201187c862e095c42b0fa005c3fbd8ffda93dc99f19b5017faad62af80d8fc27",
-      "size": 7671
+      "sha256": "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19",
+      "size": 8182
     },
     {
       "path": "model-provenance.json",
@@ -192,7 +192,7 @@
     },
     {
       "path": "network-profile.json",
-      "sha256": "dbb0d5cb3566c3d99bcd138f63f50a937b6480a086325422d86ac5f4e8824f75",
+      "sha256": "a01d444236e080425a1e6b6e20871850bc4400c7db21d518634cecefb18bffa5",
       "size": 1176
     },
     {
@@ -202,7 +202,7 @@
     },
     {
       "path": "probe-request.json",
-      "sha256": "e2d7eac542aa1140570527156756a63c4e65904ace07976114a02c64bf730e95",
+      "sha256": "6013485266a3120e1e698687c28effb511fddfeeb07822c55a1365638fbd5d71",
       "size": 118
     },
     {
@@ -227,12 +227,12 @@
     },
     {
       "path": "run-binding.json",
-      "sha256": "bc4cbd0e1bc18d147b2d123910906ebf949ae599d750c0e189cffcfdda9012b0",
-      "size": 599
+      "sha256": "d845fa4b1e42d956f4e9bb758df30f2293b8787e1729a3badc8ef0726e730ec3",
+      "size": 587
     },
     {
       "path": "runner-service.json",
-      "sha256": "6af0b157c9222ade2b4846e0b2f5802532da5af08470234366d393def4617e83",
+      "sha256": "2121baaf8598b80c139ba452eeab11760c8b0240d0e177220e9e792545c70579",
       "size": 1256
     },
     {
@@ -242,8 +242,8 @@
     },
     {
       "path": "runtime-transition-manifest.json",
-      "sha256": "a25f3351c99053fbdf4fa5212758627ad3ecbbeb6162d9c6d578fd777ed9583b",
-      "size": 3157
+      "sha256": "7e642a4c36a33e5d5aebbbfb180d6ef646a8cbbae4ed046147eef40f73b47c1a",
+      "size": 3524
     },
     {
       "path": "signer-service.json",
@@ -252,18 +252,28 @@
     },
     {
       "path": "supervisor-service.json",
-      "sha256": "b6eecacc4579014a8514707847384be2ff6d54a747ffbfff56333d1e8f884abe",
-      "size": 3524
+      "sha256": "7d8b823a6bb881c7f73645db1f751ba16194c2018df2b9782aa85c9efadbbbe9",
+      "size": 3462
     },
     {
       "path": "task-manifest.json",
-      "sha256": "1a29b459d21e68d5b8ef434b66a2a2ec9fd8acc427f627417c493d9671ca71ef",
+      "sha256": "9c1f6f11f7e92294a3bad3425febfae2ef432d269e53aa6ff0ce3bb3e895296a",
       "size": 3596
+    },
+    {
+      "path": "unit-overrides/vst-runner.service.d/host-paths.conf",
+      "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
+      "size": 153
     },
     {
       "path": "unit-overrides/vst-runner.service.d/rate-limits.conf",
       "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
       "size": 51
+    },
+    {
+      "path": "unit-overrides/vst-sandbox-probe.service.d/host-paths.conf",
+      "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
+      "size": 153
     },
     {
       "path": "unit-overrides/vst-signer.service.d/rate-limits.conf",
@@ -297,16 +307,16 @@
   "project": "Virtual_scrum_team",
   "qualification_task_scope": "one exact existing allowlisted TestRun via real authenticated owner-to-Runner path; inner Store fixture test remains labeled synthetic",
   "reviewed_approval_is_not_asserted_by_manifest": true,
-  "runtime_source_head": "a600774649527ff0b33eb81f4d431f8226119b2c",
-  "runtime_transition_sha256": "6a9db55005044ba306f4135c93fa411a4ce7e0572482b32ed7ecfecbea35e50a",
+  "runtime_source_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
+  "runtime_transition_sha256": "dc516f6b7053ec48bf96aaa3ddb3042d87d57f8f7199284e27e98f8203cc7935",
   "schema": "VST_S2_NON_SECRET_CONFIG_BUNDLE_V1",
   "selection_before_config": true,
   "services_started_by_installation": false,
-  "source_binding_sha256": "2451f6d06b93ff34b7c1c0d891c875482ac4b21a71db5c64f7ad6c22d9cb2ba8",
-  "source_head": "a600774649527ff0b33eb81f4d431f8226119b2c",
+  "source_binding_sha256": "3ca978c4fbd731f14bb5a0d78afa184f3273ade30601b0d0b28f9efe7273bde3",
+  "source_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
   "sprint": "S2",
   "state": "PREPARED_NOT_INSTALLED",
-  "task_manifest_sha256": "2dc6fce44a3096a0f35afd78baa70a952ae4aa2d8ad0b00f8bac166e10d4fe32",
+  "task_manifest_sha256": "c9dc31dce7419214d88a4da5dd645f5905ef01f8640154d357143f73afdcc860",
   "unit_overrides": [
     {
       "destination": "/etc/systemd/system/vst-supervisor.service.d/rate-limits.conf",
@@ -322,6 +332,22 @@
       "mode": "0644",
       "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
       "source": "unit-overrides/vst-runner.service.d/rate-limits.conf",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-runner.service.d/90-s2-host-path-mask.conf",
+      "gid": 0,
+      "mode": "0644",
+      "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
+      "source": "unit-overrides/vst-runner.service.d/host-paths.conf",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-sandbox-probe.service.d/90-s2-host-path-mask.conf",
+      "gid": 0,
+      "mode": "0644",
+      "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
+      "source": "unit-overrides/vst-sandbox-probe.service.d/host-paths.conf",
       "uid": 0
     },
     {
@@ -341,7 +367,7 @@
       "name": "vst-dispatch-owner.service",
       "publication": "existing fingerprint-bound bootstrap transition",
       "sha256": "606aff7a866d0182d891e42df66e26160540372a8120480b13fef10e45fe9cfb",
-      "source": "/opt/vst-runtime-a600774649527ff0b33eb81f4d431f8226119b2c/tools/vst/systemd/vst-dispatch-owner.service",
+      "source": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2/tools/vst/systemd/vst-dispatch-owner.service",
       "uid": 0
     },
     {
@@ -351,7 +377,7 @@
       "name": "vst-dispatch-owner.socket",
       "publication": "existing fingerprint-bound bootstrap transition",
       "sha256": "a7855aefc05a04df1b51b798e2cf82c060716d638391573ac0b232de24724b6e",
-      "source": "/opt/vst-runtime-a600774649527ff0b33eb81f4d431f8226119b2c/tools/vst/systemd/vst-dispatch-owner.socket",
+      "source": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2/tools/vst/systemd/vst-dispatch-owner.socket",
       "uid": 0
     },
     {
@@ -361,7 +387,7 @@
       "name": "vst-dispatcher.service",
       "publication": "existing fingerprint-bound bootstrap transition",
       "sha256": "ed12e2f7d5ee2a7177139682a91d5ba714679497e7c0f50c565b2141302a6c16",
-      "source": "/opt/vst-runtime-a600774649527ff0b33eb81f4d431f8226119b2c/tools/vst/systemd/vst-dispatcher.service",
+      "source": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2/tools/vst/systemd/vst-dispatcher.service",
       "uid": 0
     },
     {
@@ -371,7 +397,7 @@
       "name": "vst-runner.service",
       "publication": "existing fingerprint-bound bootstrap transition",
       "sha256": "4915925e88b11fdf23fd10af5f3520eb921496dbd9a727743139bc91a9e3b8be",
-      "source": "/opt/vst-runtime-a600774649527ff0b33eb81f4d431f8226119b2c/tools/vst/systemd/vst-runner.service",
+      "source": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2/tools/vst/systemd/vst-runner.service",
       "uid": 0
     },
     {
@@ -381,7 +407,7 @@
       "name": "vst-signer.service",
       "publication": "existing fingerprint-bound bootstrap transition",
       "sha256": "33ed12ee7174c9136493cfba3cd4176a1c48ac9515afb79d5eb0740ff6d3502d",
-      "source": "/opt/vst-runtime-a600774649527ff0b33eb81f4d431f8226119b2c/tools/vst/systemd/vst-signer.service",
+      "source": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2/tools/vst/systemd/vst-signer.service",
       "uid": 0
     },
     {
@@ -391,7 +417,7 @@
       "name": "vst-supervisor.service",
       "publication": "existing fingerprint-bound bootstrap transition",
       "sha256": "aa64d16b7801f32146808706acffaa0ca9086653e5e3e9f5f5dac1bc07ab822c",
-      "source": "/opt/vst-runtime-a600774649527ff0b33eb81f4d431f8226119b2c/tools/vst/systemd/vst-supervisor.service",
+      "source": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2/tools/vst/systemd/vst-supervisor.service",
       "uid": 0
     },
     {

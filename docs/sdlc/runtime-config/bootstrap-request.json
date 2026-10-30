@@ -1,7 +1,7 @@
 {
   "attempt": 1,
-  "request_id": "7625c860e5db468882dd7c4a37fe8306",
-  "run_id": "s2-runtime-20261030-70e93aab84f94c58ab447a3de94e6261",
+  "request_id": "3e56a61c5b1e45aea089c305b25e3187",
+  "run_id": "s2-runtime-20261030-87d47f635f1c4231ab052a074dba4be8",
   "schema": "VST_S2_ASSIGNMENT_BOOTSTRAP_REQUEST_V1",
   "slot": "runtime-tests",
   "story_id": "S2-4",
@@ -22,7 +22,7 @@
       }
     ],
     "author_principal": "Codex",
-    "base_head": "a600774649527ff0b33eb81f4d431f8226119b2c",
+    "base_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
     "change_scope": {
       "allowed_paths": [
         "tests/vst/test_s2_assignment_basis.py"
