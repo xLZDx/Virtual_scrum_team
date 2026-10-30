@@ -74,12 +74,16 @@ with open("/proc/self/mountinfo", encoding="ascii") as stream:
 PY
 
 if [ "$stage_only" -eq 1 ]; then
-    /usr/bin/python3.12 -I -S - <<'PY'
-import os, subprocess
+    /usr/bin/python3.12 -I -S - "$bundle_root" <<'PY'
+import os, subprocess, sys
 
-for path in ("/etc/vst-runner", "/run/vst-supervisor", "/run/vst-runner"):
+sys.path.insert(0, sys.argv[1])
+from tools.vst.runtime_bundle import validate_stage_only_config_directory
+
+for path in ("/run/vst-supervisor", "/run/vst-runner"):
     if os.path.lexists(path):
-        raise SystemExit("stage-only requires absent runtime configuration/socket paths: " + path)
+        raise SystemExit("stage-only requires absent runtime socket paths: " + path)
+validate_stage_only_config_directory("/etc/vst-runner")
 
 units = (
     "vst-supervisor.service", "vst-signer.service", "vst-runner.service",

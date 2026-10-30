@@ -205,11 +205,11 @@ with open("/proc/self/mountinfo", encoding="ascii") as stream:
             raise SystemExit("Windows-drive mount is visible; refusing source deployment")
 
 if stage_only:
-    # Stage-only is restricted to the reviewed unconfigured bootstrap host. This
-    # preflight is observational; it does not create directories or change units.
-    for path in ("/etc/vst-runner", "/run/vst-supervisor", "/run/vst-runner"):
+    # This early check is observational. The existing configuration directory is
+    # validated from the exact source bundle before any helper/runtime is published.
+    for path in ("/run/vst-supervisor", "/run/vst-runner"):
         if os.path.lexists(path):
-            raise SystemExit("stage-only requires absent runtime configuration/socket paths: " + path)
+            raise SystemExit("stage-only requires absent runtime socket paths: " + path)
     units = (
         "vst-supervisor.service", "vst-signer.service", "vst-runner.service",
         "vst-dispatcher.service", "vst-dispatch-owner.service", "vst-dispatch-owner.socket",
@@ -580,6 +580,11 @@ if os.path.lexists(helper_path):
     if (not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or info.st_gid != 988
             or stat.S_IMODE(info.st_mode) != 0o4750 or info.st_nlink != 1):
         raise SystemExit("existing exact-version worker helper has unexpected identity; no state changed")
+
+if stage_only:
+    sys.path.insert(0, stage)
+    from tools.vst.runtime_bundle import validate_stage_only_config_directory
+    validate_stage_only_config_directory("/etc/vst-runner")
 
 worker = ["/bin/sh", os.path.join(stage, "tools/qa/install_wsl_worker_helper.sh"),
           head, stage, digest, expected_plan_sha256, expected_inventory_sha256]
