@@ -92,8 +92,12 @@ def _systemctl_show(unit: str, *, run: Callable[..., Any] = subprocess.run) -> d
         if not separator or key in values:
             raise ContractError("systemd unit properties are malformed or duplicated")
         values[key] = value
-    required = {"LoadState", "ActiveState", "SubState", "Result", "MainPID",
+    required = {"LoadState", "ActiveState", "SubState", "Result",
                 "InvocationID", "ControlGroup", "PrivateNetwork"}
+    # systemd socket units have no process of their own and omit MainPID.
+    # Keep the field mandatory for services, including the probe unit.
+    if not unit.endswith(".socket"):
+        required.add("MainPID")
     if set(values) != required:
         raise ContractError("systemd unit properties are incomplete")
     return values

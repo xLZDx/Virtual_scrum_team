@@ -210,6 +210,22 @@ only e2e readiness found fresh WSL shutdown entries after its observer exited; t
 refuse until a stable WSL session is held open. Restricted process/crash/mutation/E8/policy
 selectors remain `NOT_RUN`. S2-5 stays queued.
 
+**Current code correction in S2-4.12b (not yet delivered):** the first exact runtime attempt applied
+the authorized 26-file configuration once, but the root helper refused before creating its durable
+claim because `_systemctl_show()` required `MainPID` on the standard inactive
+`vst-dispatch-owner.socket`; systemd 255 correctly omits that property for socket units. No probe,
+attestation, Store/preflight record, service start, or TestRun occurred, and the authorized run ID,
+request ID, and nonce remain unconsumed. The helper now requires `MainPID` for services and omits
+only that field for `.socket` units; the socket still must report exactly the common properties,
+`LoadState=loaded`, and `ActiveState=inactive`. The functional-test-reviewer added three regression
+cases and reports 56 focused tests passed. Security and code review found no actionable issue. See
+`docs/changes/0612-s2-4.12b-socket-unit-mainpid.md` for exact evidence and scope.
+
+The code correction still needs exact-head GPT-PM code approval and a normal push. The previously
+authorized runtime journey can then resume with the same unconsumed identity only if its exact helper
+hash is newly authorized and a fresh inventory plus every existing fail-closed condition passes; do
+not repeat configuration installation. S2-4 remains open, S2-5 is queued, and S3 remains unstarted.
+
 ### S2-5 — Exact-head gate and sprint decision
 
 1. **Given** completed source, mapped test, permitted runtime, and relevant specialist-review evidence, **When** final approval is requested, **Then** GPT-PM's approval names/correlates to the exact final Git head and evidence set. (REQ-006)

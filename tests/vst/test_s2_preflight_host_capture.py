@@ -45,6 +45,40 @@ def test_typed_systemd_unit_argument_rejects_shell_fragment_before_execution() -
     assert calls == []
 
 
+def test_socket_unit_properties_accept_systemd_omitting_main_pid() -> None:
+    properties = _unit()
+    properties.pop("MainPID")
+    properties["PrivateNetwork"] = "no"
+
+    def run(_argv, **_kwargs):
+        return _result("".join(f"{key}={value}\n" for key, value in properties.items()))
+
+    assert capture._systemctl_show("vst-dispatch-owner.socket", run=run) == properties
+
+
+def test_service_unit_still_requires_main_pid_property() -> None:
+    properties = _unit()
+    properties.pop("MainPID")
+
+    def run(_argv, **_kwargs):
+        return _result("".join(f"{key}={value}\n" for key, value in properties.items()))
+
+    with pytest.raises(ContractError, match="properties are incomplete"):
+        capture._systemctl_show("vst-sandbox-probe.service", run=run)
+
+
+def test_socket_unit_still_requires_other_requested_properties() -> None:
+    properties = _unit()
+    properties.pop("MainPID")
+    properties.pop("PrivateNetwork")
+
+    def run(_argv, **_kwargs):
+        return _result("".join(f"{key}={value}\n" for key, value in properties.items()))
+
+    with pytest.raises(ContractError, match="properties are incomplete"):
+        capture._systemctl_show("vst-dispatch-owner.socket", run=run)
+
+
 @pytest.mark.parametrize("state", ["degraded", "stopping", "starting"])
 def test_systemd_must_be_fully_running_before_probe_start(monkeypatch, state: str) -> None:
     calls: list[list[str]] = []
