@@ -185,10 +185,13 @@ Private bytes were excluded. Evidence and exact command are in
 `docs/changes/0609-s2-runtime-config-install.md` and
 `docs/sdlc/evidence/s2-runtime-config-post-install-20261030T033734Z.json`.
 
-**Current ordered subtask S2-4.12a — root-measured probe capture implementation.** The helper and
-focused synthetic coverage are complete: 53 passed; the security and reliability reviewers found
-no remaining MAJOR. The exact-head GPT-PM code review and normal push are the remaining delivery
-actions for this subtask. No live WSL/Runner evidence is claimed here.
+**Delivered ordered subtask S2-4.12a — root-measured probe capture implementation.** The helper
+and focused synthetic coverage are complete: 53 passed; security and reliability reviewers found
+no remaining MAJOR. GPT-PM request `69174c68-5974-4b48-bcfe-f356a763746d` approved bounded code
+HEAD `19338baebc865bbc9fabec45115340a629c61807` (reply
+`e273369c-e309-5a80-a3b7-eabe92d6e9bc`); normal push to `origin/s2-canonical-continuation`
+succeeded. Local diff verification confirmed the reviewed four-file scope. This does not claim
+live WSL/Runner evidence.
 
 **Next ordered subtask S2-4.12b — one fresh current-run E5 and owner-to-Runner qualification.**
 Begin only after 4.12a is approved and pushed. The interrupted attempt's run/request/nonce are
