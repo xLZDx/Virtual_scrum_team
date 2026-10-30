@@ -174,14 +174,17 @@ def validate_mount_observation(mount: Any) -> None:
         raise InventoryError("D: is not verified as the exact read-only 9p mount")
 
 
-def _validate_source_identity(value: Any, expected_repo_head: str, expected_helper_sha256: str) -> None:
+def _validate_source_identity(
+        value: Any, expected_repo_head: str, expected_helper_sha256: str,
+        expected_validator_sha256: str, expected_applier_sha256: str) -> None:
     if not isinstance(value, dict):
         raise InventoryError("source identity evidence is missing")
     expected = {
         "repo_head": expected_repo_head,
         "implementation_source_commit": IMPLEMENTATION_HEAD,
         "helper_sha256": expected_helper_sha256,
-        "applier_sha256": "ac512db996eff8ca8572a1bcf14e9a14081cb77b621bff7a7369a10df8bcf52d",
+        "validator_sha256": expected_validator_sha256,
+        "applier_sha256": expected_applier_sha256,
         "bundle_manifest_sha256": CANDIDATE_BUNDLE_SHA256,
         "installation_layout_sha256": CANDIDATE_LAYOUT_SHA256,
         "runtime_source_head": SOURCE_HEAD,
@@ -189,6 +192,14 @@ def _validate_source_identity(value: Any, expected_repo_head: str, expected_help
     for key, expected_value in expected.items():
         if value.get(key) != expected_value:
             raise InventoryError("source identity differs from its exact pin: " + key)
+
+
+def _committed_source_sha256(expected_repo_head: str, relative_path: str) -> str:
+    committed = _git_blob(expected_repo_head, relative_path)
+    working = (REPO / relative_path).read_bytes()
+    if committed != working:
+        raise InventoryError("source file differs from its exact committed Git blob: " + relative_path)
+    return _sha(committed)
 
 
 def _validate_readiness(value: Any) -> None:
@@ -278,8 +289,13 @@ def validate_inventory(
         raise InventoryError("target inventory is outside the five-minute freshness window")
 
     validate_mount_observation(inventory.get("mount"))
+    expected_validator_sha256 = _committed_source_sha256(
+        expected_repo_head, "tools/qa/verify_s2_runtime_config_inventory.py")
+    expected_applier_sha256 = _committed_source_sha256(
+        expected_repo_head, "tools/qa/apply_s2_runtime_configuration.py")
     _validate_source_identity(inventory.get("source_identity"), expected_repo_head,
-                              expected_helper_sha256)
+                              expected_helper_sha256, expected_validator_sha256,
+                              expected_applier_sha256)
     readiness = inventory.get("readiness")
     _validate_readiness(readiness)
     inventory_boot_id = inventory.get("boot_id")

@@ -174,9 +174,22 @@ inventory attempt failed before collection with `D_MOUNT_NOT_9P_RO`. A separatel
 replacement read-only inventory verified D: / 9p / `ro,relatime` and returned exit 0, but omitted
 required PID1 identity, `vst-runner`, systemd-version, exact 26-file baseline comparison, and
 verbatim JSON persistence. The full result is `evidence/s2-runtime-owner-runner-qualification-9357ee74.json`.
-The dedicated inventory-validator test now reports 29 passed, one existing deprecation warning,
+The dedicated inventory-validator test now reports 31 passed, one existing deprecation warning,
 including validator-to-payload integration and the remote octal-mode parse contract; this is
 code-level fail-closed evidence only. Neither target attempt reached configuration apply, root preflight,
 probe/claim, or TestRun. Both inventory authorizations are consumed; the candidate remains
 unapplied/unclaimed. A fresh exact-head runtime authorization is required before the e2e-runner
 performs another inventory. Restricted process/crash/mutation/E8/policy selectors remain NOT_RUN.
+
+The separate authorization for HEAD `f9f488f` permitted exactly one fresh inventory. Its raw JSON
+is `evidence/s2-runtime-target-inventory-f9f488f.json` (SHA-256
+`d4dc31bcd0eb97478677a844b80c2f7ccfbb9d176a8197b52c4a7ea7cdb340a9`). The verifier ran once and
+refused because of a stale applier SHA pin; no apply, root preflight, claim, or TestRun occurred.
+The captured PID1 record also shows collector path `/proc/1/ns/mount` returned FileNotFoundError;
+the required proc path is `/proc/1/ns/mnt`, and PID1 UID/GID arrays were consequently not captured.
+Both the inventory and verifier slots under that authorization are consumed. The code now derives
+applier/verifier hashes from exact HEAD blobs and checks worktree equality; 31 focused tests and local
+code/security reviews pass. A new exact-head authorization is required after the correction is
+committed/pushed, followed by one fresh corrected inventory. See
+`evidence/s2-runtime-owner-runner-qualification-f9f488f.json` and
+`../changes/0617-s2-runtime-inventory-source-pins.md`.

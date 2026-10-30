@@ -4,7 +4,9 @@ import copy
 import base64
 import hashlib
 import json
+import subprocess
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 
@@ -14,8 +16,21 @@ from tools.qa import apply_s2_runtime_configuration as applier
 
 _load_pinned_baseline_fingerprints = inventory._previous_installed_fingerprints
 NOW = datetime(2026, 10, 30, 12, 0, tzinfo=timezone.utc)
-EXPECTED_REPO_HEAD = "1b5dd9d7a639b629465ac6fcf29e300ba80c18ca"
+EXPECTED_REPO_HEAD = subprocess.run(
+    ["git", "-C", str(inventory.REPO), "rev-parse", "HEAD"],
+    check=True, capture_output=True, text=True).stdout.strip()
+VALIDATOR_PATH = "tools/qa/verify_s2_runtime_config_inventory.py"
+APPLIER_PATH = "tools/qa/apply_s2_runtime_configuration.py"
 EXPECTED_HELPER_SHA256 = "0f3b7b6fe11798ebc806a55bd4d6f687e7974b6f4394b2065e15defab8255083"
+EXPECTED_APPLIER_SHA256 = hashlib.sha256(
+    inventory._git_blob(EXPECTED_REPO_HEAD, APPLIER_PATH)).hexdigest()
+WORKTREE_VALIDATOR_SHA256 = hashlib.sha256(Path(inventory.__file__).read_bytes()).hexdigest()
+try:
+    COMMITTED_VALIDATOR_MATCHES_WORKTREE = (
+        inventory._git_blob(EXPECTED_REPO_HEAD, VALIDATOR_PATH)
+        == Path(inventory.__file__).read_bytes())
+except inventory.InventoryError:
+    COMMITTED_VALIDATOR_MATCHES_WORKTREE = False
 
 
 @pytest.fixture(scope="module")
@@ -29,6 +44,15 @@ def baseline_fingerprints() -> dict[str, dict[str, object]]:
 def use_pinned_baseline(monkeypatch, baseline_fingerprints) -> None:
     monkeypatch.setattr(inventory, "_previous_installed_fingerprints",
                         lambda: baseline_fingerprints)
+    if not COMMITTED_VALIDATOR_MATCHES_WORKTREE:
+        committed_source_sha256 = inventory._committed_source_sha256
+
+        def candidate_validator_sha256(expected_repo_head: str, relative_path: str) -> str:
+            if relative_path == VALIDATOR_PATH:
+                return WORKTREE_VALIDATOR_SHA256
+            return committed_source_sha256(expected_repo_head, relative_path)
+
+        monkeypatch.setattr(inventory, "_committed_source_sha256", candidate_validator_sha256)
 
 
 @pytest.fixture
@@ -49,7 +73,8 @@ def valid_inventory(baseline_fingerprints) -> dict[str, object]:
             "repo_head": EXPECTED_REPO_HEAD,
             "implementation_source_commit": inventory.IMPLEMENTATION_HEAD,
             "helper_sha256": EXPECTED_HELPER_SHA256,
-            "applier_sha256": "ac512db996eff8ca8572a1bcf14e9a14081cb77b621bff7a7369a10df8bcf52d",
+            "applier_sha256": EXPECTED_APPLIER_SHA256,
+            "validator_sha256": WORKTREE_VALIDATOR_SHA256,
             "bundle_manifest_sha256": inventory.CANDIDATE_BUNDLE_SHA256,
             "installation_layout_sha256": inventory.CANDIDATE_LAYOUT_SHA256,
             "runtime_source_head": inventory.SOURCE_HEAD,
@@ -207,13 +232,19 @@ def test_inventory_rejects_stale_capture(valid_inventory) -> None:
         _validate(valid_inventory)
 
 
-@pytest.mark.parametrize("mismatch", ["collision", "runtime_selector", "bootstrap_identity"])
+@pytest.mark.parametrize("mismatch", [
+    "collision", "runtime_selector", "bootstrap_identity", "validator_sha256", "applier_sha256",
+])
 def test_inventory_rejects_candidate_or_installed_identity_mismatch(valid_inventory, mismatch) -> None:
     readiness = valid_inventory["readiness"]
     if mismatch == "collision":
         readiness["candidate_identity_collision"] = True
     elif mismatch == "runtime_selector":
         valid_inventory["runtime_selector"]["link_target"] = "/opt/vst-runtime-unpinned"
+    elif mismatch == "validator_sha256":
+        valid_inventory["source_identity"]["validator_sha256"] = "0" * 64
+    elif mismatch == "applier_sha256":
+        valid_inventory["source_identity"]["applier_sha256"] = "0" * 64
     else:
         readiness["installed_bootstrap_identity"]["run_id"] = "another-run"
 
@@ -245,14 +276,11 @@ def test_apply_payload_preserves_validated_canonical_octal_mode(
     raw_inventory = json.dumps(valid_inventory, sort_keys=True, separators=(",", ":")).encode()
     inventory_path = tmp_path / "runtime-inventory.json"
     inventory_path.write_bytes(raw_inventory)
-    original_git_blob = applier._git_blob
-
-    def committed_validator_from_worktree(commit: str, relative_path: str) -> bytes:
-        if relative_path == "tools/qa/verify_s2_runtime_config_inventory.py":
-            return inventory.Path(inventory.__file__).read_bytes()
-        return original_git_blob(commit, relative_path)
-
-    monkeypatch.setattr(applier, "_git_blob", committed_validator_from_worktree)
+    if not COMMITTED_VALIDATOR_MATCHES_WORKTREE:
+        # Before commit, exercise payload serialization with the candidate validator already
+        # covered by the unit tests, without claiming its bytes exist in Git HEAD.
+        monkeypatch.setattr(applier, "_load_committed_inventory_validator",
+                            lambda _repo_head: inventory.validate_inventory)
 
     payload_bytes = applier.build_payload(
         inventory_path, hashlib.sha256(raw_inventory).hexdigest(), EXPECTED_REPO_HEAD,
@@ -280,7 +308,7 @@ def test_apply_payload_rejects_validator_blob_that_differs_from_worktree(
     original_git_blob = applier._git_blob
 
     def mismatched_validator_blob(commit: str, relative_path: str) -> bytes:
-        if relative_path == "tools/qa/verify_s2_runtime_config_inventory.py":
+        if relative_path == VALIDATOR_PATH:
             return b"# not the committed validator source"
         return original_git_blob(commit, relative_path)
 

@@ -249,6 +249,23 @@ new correlated runtime authorization for the pushed head and exact source pins. 
 owns the one authorized complete inventory/apply/preflight/test sequence. S2-4 remains IN PROGRESS;
 S2-5 is queued and S3 unstarted.
 
+**Latest runtime result and source-pin correction.** GPT-PM request
+`733857ce-024e-42ab-b65a-25e12162dc38`, reply `6402ed93-9fb2-5569-8710-50b32034b531`, authorized one
+inventory and conditional downstream sequence on HEAD `f9f488f`. The one raw inventory is
+`docs/sdlc/evidence/s2-runtime-target-inventory-f9f488f.json`, SHA-256
+`d4dc31bcd0eb97478677a844b80c2f7ccfbb9d176a8197b52c4a7ea7cdb340a9`. The committed verifier ran
+once and refused because its applier SHA pin was stale (`ac512…` vs authorized `7d208…`). No apply,
+root preflight, durable claim/probe, or TestRun occurred. The collector also used
+`/proc/1/ns/mount` rather than `/proc/1/ns/mnt`, leaving mount namespace and PID1 UID/GID evidence
+incomplete; this is a collector-command defect. The expected old installed bootstrap identity was
+observed, and candidate collision was false. Codex now derives both verifier and applier digests
+from exact HEAD Git blobs and requires byte-identical worktree files; the focused suite reports 31
+passed. Local code and security reviews found no concrete defect. This correction still needs a
+task commit, exact-head GPT-PM source review, normal push, and a new bounded runtime authorization.
+Next collector must use `/proc/1/ns/mnt` and `/proc/1/status`, persist full JSON, and run the verifier
+once; do not repeat any used inventory/verifier invocation. Detailed record:
+`docs/changes/0617-s2-runtime-inventory-source-pins.md`.
+
 The candidate tuple remains unapplied and unclaimed: run
 `s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910`, request
 `e520e04f58ad5e6a431a3a20b0efb87c`, nonce `0aac24fec9a2a5c53c5e9da21cbb4a42`, bundle SHA-256
