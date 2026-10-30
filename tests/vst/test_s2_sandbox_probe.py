@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -60,7 +61,7 @@ def valid_probe(attestation=_DEFAULT_ATTESTATION):
             "blocked_egress_probe_scope": "single reserved-target smoke probe; does not prove egress policy",
             "network_policy_attestation": attestation,
             "environment_variable_names": [],
-            "observed_at_monotonic_ns": 1,
+            "observed_at_monotonic_ns": time.monotonic_ns(),
         },
     }
     # No Runner/probe signature: the Supervisor accepts only this exact record
@@ -133,6 +134,18 @@ def test_probe_inventory_requires_exact_unambiguous_schema_without_signature(mut
         bad["inventory"]["unexpected"] = True
     assert not preflight.validate_fresh_probe(
         bad, run_id="run-1", spec_sha256=probe["spec_sha256"], nonce="nonce-1",
+    )
+
+
+@pytest.mark.parametrize("age_ns", [preflight.MAX_FRESH_PROBE_AGE_NS + 1, -1])
+def test_probe_rejects_stale_or_future_observation(monkeypatch, age_ns):
+    now_ns = 5_000_000_000
+    monkeypatch.setattr(preflight.time, "monotonic_ns", lambda: now_ns)
+    probe = valid_probe()
+    probe["inventory"]["observed_at_monotonic_ns"] = now_ns - age_ns
+
+    assert not preflight.validate_fresh_probe(
+        probe, run_id="run-1", spec_sha256=probe["spec_sha256"], nonce="nonce-1",
     )
 
 

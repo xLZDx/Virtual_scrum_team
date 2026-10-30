@@ -6,6 +6,7 @@ import os
 import threading
 import json
 import sqlite3
+import time
 
 import pytest
 
@@ -428,7 +429,7 @@ def test_supervisor_consumes_a_synthetic_probe_once_for_one_run(tmp_path):
             "blocked_egress_target": ["198.51.100.1", 9],
             "blocked_egress_probe_scope": "single reserved-target smoke probe; does not prove egress policy",
             "network_policy_attestation": attestation,
-            "environment_variable_names": [], "observed_at_monotonic_ns": 1,
+            "environment_variable_names": [], "observed_at_monotonic_ns": time.monotonic_ns(),
         },
     }
     probe = body

@@ -11,6 +11,7 @@ import os
 import re
 import sqlite3
 import tempfile
+import time
 
 import pytest
 
@@ -63,7 +64,7 @@ def _synthetic_probe(run_id: str, nonce: str) -> dict:
             "blocked_egress_probe_scope": "single reserved-target smoke probe; does not prove egress policy",
             "network_policy_attestation": attestation,
             "environment_variable_names": [],
-            "observed_at_monotonic_ns": 1,
+            "observed_at_monotonic_ns": time.monotonic_ns(),
         },
     }
 

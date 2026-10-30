@@ -13,6 +13,7 @@ from typing import Any
 from .contracts import ContractError
 SPEC_PATH = Path(__file__).resolve().parents[2] / "docs" / "SANDBOX_SPEC.md"
 BLOCKED_EGRESS_TARGET = ("198.51.100.1", 9)
+MAX_FRESH_PROBE_AGE_NS = 120_000_000_000
 CONTAINER_SOCKETS = (
     "/run/docker.sock", "/var/run/docker.sock", "/run/containerd/containerd.sock",
     "/run/podman/podman.sock",
@@ -226,6 +227,8 @@ def validate_fresh_probe(probe: dict[str, Any], *, run_id: str, spec_sha256: str
         return False
     checks = probe.get("checked_properties")
     inventory = probe.get("inventory")
+    observed_at = inventory.get("observed_at_monotonic_ns") if isinstance(inventory, dict) else None
+    age_ns = time.monotonic_ns() - observed_at if type(observed_at) is int else -1
     expected_checks = {
         "automount_disabled", "interop_disabled", "no_container_socket", "non_root",
         "external_egress_blocked", "loopback_canary", "empty_external_allowlist",
@@ -261,7 +264,7 @@ def validate_fresh_probe(probe: dict[str, Any], *, run_id: str, spec_sha256: str
         and isinstance(inventory.get("environment_variable_names"), list)
         and all(isinstance(name, str) for name in inventory["environment_variable_names"])
         and type(inventory.get("observed_at_monotonic_ns")) is int
-        and inventory["observed_at_monotonic_ns"] > 0
+        and 0 <= age_ns <= MAX_FRESH_PROBE_AGE_NS
     )
 
 
