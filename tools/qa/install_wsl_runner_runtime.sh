@@ -74,7 +74,7 @@ with open("/proc/self/mountinfo", encoding="ascii") as stream:
 PY
 
 if [ "$stage_only" -eq 1 ]; then
-    /usr/bin/python3.12 -I -S - "$bundle_root" <<'PY'
+    /usr/bin/python3.12 -I -B -S - "$bundle_root" <<'PY'
 import os, subprocess, sys
 
 sys.path.insert(0, sys.argv[1])

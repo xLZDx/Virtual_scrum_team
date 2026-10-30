@@ -107,6 +107,12 @@ These criteria make the existing requirements testable; they do not add product 
 
 **S2-4.4 — exact StageOnly inputs:** source plan and Ubuntu-24.04 target inventory for source `7c7d599af03860ede7d4960301ed8d0456c360c0` are captured in `docs/changes/0600-s2-runtime-source-inputs.md`, including exact SHA-256 identities. GPT-PM confirmed the plan/source hash and StageOnly boundary but held the first execution because its inventory aged past five minutes. Codex refreshed the read-only inventory at `2026-10-30T02:01:02.747390+00:00`, SHA-256 `37a9577b0e710c911dd3f6f84da43be9d756b22106460581bf5a53e121436848`; this exact digest must be reviewed before StageOnly. StageOnly has not run. Existing configuration, selector and services must remain unchanged.
 
+**S2-4.4 result:** GPT-PM follow-up request `7ede96a5-6419-4510-afd8-64e480c2e54d` approved the refreshed inventory and resolved `M-S2-4-STAGE-01`. The exact StageOnly command then exited 1 because Python imports added unplanned `__pycache__` members. Read-only post-failure verification showed no target change: selector remains on `a600774`; requested runtime/helper are absent; nine S2 units are inactive; jobs, Store and runtime record are absent. Detailed evidence: `docs/changes/0600-s2-runtime-source-inputs.md`.
+
+**S2-4.5 — preserve exact StageOnly source members:** Codex added `-B` to both StageOnly module-import paths; the functional-test reviewer added and ran the focused two-case regression (2 passed, one existing deprecation warning) in `tests/vst/test_s2_stage_only_install.py`. Detailed record: `docs/changes/0601-s2-stage-only-import-fix.md`. Code/test acceptance is complete; commit and normal push are the next actions.
+
+**S2-4.6 — retry bounded StageOnly on the corrected exact source:** not started. After S2-4.5 is pushed, generate and pin the source plan and fresh target inventory for that exact head, obtain the narrow plan/inventory review, then run the existing StageOnly installer inside the five-minute inventory window. Codex owns completion; no selector, unit, config, service, Store, or dispatch activation is included.
+
 ### S2-5 — Exact-head gate and sprint decision
 
 1. **Given** completed source, mapped test, permitted runtime, and relevant specialist-review evidence, **When** final approval is requested, **Then** GPT-PM's approval names/correlates to the exact final Git head and evidence set. (REQ-006)

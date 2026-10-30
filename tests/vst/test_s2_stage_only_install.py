@@ -113,6 +113,84 @@ def test_python_c_sys_argv_matches_host_argument_contract():
                                          transfer_id, stage_only]
 
 
+def _host_source_import_flags() -> list[str]:
+    script = (ROOT / "tools/qa/install_wsl_runtime.ps1").read_text(encoding="utf-8")
+    match = re.search(
+        r"\$wslStart\.FileName = \$wsl\s*.*?"
+        r"foreach \(\$argument in @\(\s*(.*?)\s*\)\)\s*\{\s*"
+        r"\[void\]\$wslStart\.ArgumentList\.Add\(\$argument\)",
+        script,
+        re.DOTALL,
+    )
+    assert match, "host WSL process must keep its explicit argument list"
+    arguments = re.findall(r"'([^']*)'", match.group(1))
+    python_index = arguments.index("/usr/bin/python3.12")
+    flags = arguments[python_index + 1:python_index + 4]
+    assert flags == ["-I", "-B", "-S"], (
+        "the host StageOnly package import must disable bytecode writes before exact bundle re-verification"
+    )
+    return flags
+
+
+def _wsl_source_import_flags() -> list[str]:
+    script = (ROOT / "tools/qa/install_wsl_runner_runtime.sh").read_text(encoding="utf-8")
+    match = re.search(
+        r"/usr/bin/python3\.12(?P<flags>(?:\s+-[A-Za-z]+)+)\s+-\s+\"\$bundle_root\" <<'PY'",
+        script,
+    )
+    assert match, "WSL StageOnly must retain the bounded source-bundle validation program"
+    flags = match.group("flags").split()
+    assert flags == ["-I", "-B", "-S"], (
+        "the WSL StageOnly package import must disable bytecode writes before exact bundle re-verification"
+    )
+    return flags
+
+
+@pytest.mark.parametrize(
+    ("path", "flags"),
+    [
+        ("host bootstrap", _host_source_import_flags),
+        ("WSL StageOnly guard", _wsl_source_import_flags),
+    ],
+)
+def test_stage_only_runtime_bundle_import_does_not_change_exact_source_members(
+    tmp_path: Path, path: str, flags,
+) -> None:
+    bundle = tmp_path / "source-bundle"
+    package = bundle / "tools" / "vst"
+    package.mkdir(parents=True)
+    (bundle / "tools" / "__init__.py").write_text("", encoding="ascii")
+    (package / "__init__.py").write_text("", encoding="ascii")
+    (package / "contracts.py").write_text("CONTRACT = True\n", encoding="ascii")
+    (package / "runtime_bundle.py").write_text(
+        "from .contracts import CONTRACT\n"
+        "def validate_stage_only_config_directory(path):\n"
+        "    return CONTRACT and path == '/etc/vst-runner'\n",
+        encoding="ascii",
+    )
+    expected_members = {
+        "tools", "tools/__init__.py", "tools/vst", "tools/vst/__init__.py",
+        "tools/vst/contracts.py", "tools/vst/runtime_bundle.py",
+    }
+
+    result = subprocess.run(
+        [sys.executable, *flags(), "-c",
+         "import sys; sys.path.insert(0, sys.argv[1]); "
+         "from tools.vst.runtime_bundle import validate_stage_only_config_directory; "
+         "assert validate_stage_only_config_directory('/etc/vst-runner')",
+         str(bundle)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, f"{path} StageOnly import failed: {result.stderr}"
+    actual_members = {item.relative_to(bundle).as_posix() for item in bundle.rglob("*")}
+    assert actual_members == expected_members, (
+        f"{path} StageOnly import changed the exact source bundle member set"
+    )
+
+
 def _runner_main_python() -> str:
     shell = (ROOT / "tools/qa/install_wsl_runner_runtime.sh").read_text(encoding="utf-8")
     snippets = re.findall(r"<<'PY'\r?\n(.*?)\r?\nPY", shell, re.DOTALL)

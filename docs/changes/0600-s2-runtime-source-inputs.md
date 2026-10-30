@@ -38,10 +38,16 @@ plan and a target/compiler inventory no older than five minutes before it can st
   the refreshed inventory was collected read-only and fixes only that expiry.
 - **Exact plan review:** GPT-PM request `79be4fc7-73d0-41d5-bcc8-6fea89f417de` confirmed the source
   plan SHA and StageOnly design, but held execution solely because the submitted inventory had
-  expired. The refreshed inventory SHA above must be pinned and reviewed before staging.
-- **Live source staging:** not yet run. After GPT-PM reviews the refreshed inventory, invoke the
-  existing installer with `-StageOnly` and the exact input hashes while the inventory remains
-  fresh. The expected result is a new versioned source/helper with the existing selector, units
-  and configuration unchanged.
+  expired. Follow-up request `7ede96a5-6419-4510-afd8-64e480c2e54d` approved the refreshed inventory
+  and resolved `M-S2-4-STAGE-01`.
+- **First live StageOnly attempt:** the exact approved command exited 1. The source-bundle verifier
+  found Python `__pycache__` entries added by the StageOnly module imports. Read-only verification
+  afterward confirmed the old selector still targets `a600774`, the `7c7d599` runtime/helper are
+  absent, all nine S2 units remain inactive, and no jobs, Store, runtime record, or configuration
+  change appeared. No retry or cleanup was performed.
+- **Next action:** S2-4.5 fixes the two StageOnly source imports to prevent bytecode writes, with a
+  focused regression owned and run by the functional-test reviewer. S2-4.6 must then generate a
+  source plan and fresh inventory for the resulting exact commit, obtain the narrow plan/inventory
+  review, and rerun StageOnly within the five-minute inventory window.
 - **S2-4 runtime acceptance:** remains `IN PROGRESS`; real invocation capture, current E5 and the
   authenticated owner-to-Runner result remain open.

@@ -609,7 +609,7 @@ $wslStart.RedirectStandardOutput = $true
 $wslStart.RedirectStandardError = $true
 foreach ($argument in @(
     '--distribution', $Distribution, '--user', 'root', '--exec', '/usr/bin/python3.12',
-    '-I', '-S', '-c', $bootstrap, $ExpectedHead, $ExpectedPlanSha256,
+    '-I', '-B', '-S', '-c', $bootstrap, $ExpectedHead, $ExpectedPlanSha256,
     $ExpectedInventorySha256, $transferId,
     $(if ($StageOnly.IsPresent) { '1' } else { '0' })
 )) {
