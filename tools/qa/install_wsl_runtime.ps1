@@ -64,7 +64,14 @@ if ($sourcePlan.schema -cne 'VST_S2_RUNTIME_SOURCE_PLAN_V2' -or
     $sourcePlan.archive_members -isnot [System.Management.Automation.PSCustomObject]) {
     throw 'Source plan schema, head, status, or exact member map is invalid.'
 }
-$inventoryRelativePath = "docs/sdlc/evidence/s2-runtime-target-inventory-$ExpectedHead.json"
+$inventoryRelativePath = [string]$sourcePlan.target_inventory.path
+if ($sourcePlan.target_inventory -isnot [System.Management.Automation.PSCustomObject] -or
+    $inventoryRelativePath -notmatch '^docs/sdlc/evidence/[A-Za-z0-9._-]+\.json$' -or
+    $inventoryRelativePath -match '(^|/)\.\.?(/|$)' -or
+    $sourcePlan.target_inventory.sha256 -notmatch '^[0-9a-f]{64}$' -or
+    $sourcePlan.target_inventory.sha256 -cne $ExpectedInventorySha256) {
+    throw 'Source plan target-inventory path or digest is invalid or differs from the reviewed value.'
+}
 $inventoryPath = Join-Path $repoRoot $inventoryRelativePath
 if (-not (Test-Path -LiteralPath $inventoryPath -PathType Leaf)) {
     throw "Exact reviewed target inventory is missing: $inventoryRelativePath"
@@ -81,6 +88,9 @@ if ($inventorySha256 -cne $ExpectedInventorySha256) {
     throw "Target inventory SHA-256 differs from the exact reviewed value $ExpectedInventorySha256."
 }
 $targetInventory = [System.Text.Encoding]::UTF8.GetString($inventoryBytes) | ConvertFrom-Json
+if ([string]$targetInventory.observed_utc -cne [string]$sourcePlan.target_inventory.observed_utc) {
+    throw 'Target inventory capture time differs from the source plan binding.'
+}
 try {
     $inventoryObserved = [DateTimeOffset]::Parse(
         [string]$targetInventory.observed_utc,
@@ -211,8 +221,10 @@ if stage_only:
         if os.path.lexists(path):
             raise SystemExit("stage-only requires absent runtime socket paths: " + path)
     units = (
-        "vst-supervisor.service", "vst-signer.service", "vst-runner.service",
-        "vst-dispatcher.service", "vst-dispatch-owner.service", "vst-dispatch-owner.socket",
+        "vst-assignment-bootstrap.service", "vst-dispatch-issuer.service",
+        "vst-dispatch-owner.service", "vst-dispatch-owner.socket",
+        "vst-dispatcher.service", "vst-runner.service",
+        "vst-sandbox-probe.service", "vst-signer.service", "vst-supervisor.service",
     )
     for unit in units:
         load_state = subprocess.run(

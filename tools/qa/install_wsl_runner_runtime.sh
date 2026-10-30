@@ -86,8 +86,10 @@ for path in ("/run/vst-supervisor", "/run/vst-runner"):
 validate_root_config_directory("/etc/vst-runner")
 
 units = (
-    "vst-supervisor.service", "vst-signer.service", "vst-runner.service",
-    "vst-dispatcher.service", "vst-dispatch-owner.service", "vst-dispatch-owner.socket",
+    "vst-assignment-bootstrap.service", "vst-dispatch-issuer.service",
+    "vst-dispatch-owner.service", "vst-dispatch-owner.socket",
+    "vst-dispatcher.service", "vst-runner.service",
+    "vst-sandbox-probe.service", "vst-signer.service", "vst-supervisor.service",
 )
 for unit in units:
     load_state = subprocess.run(

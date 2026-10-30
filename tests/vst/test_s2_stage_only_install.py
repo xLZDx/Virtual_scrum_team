@@ -24,22 +24,45 @@ def _powershell_bootstrap() -> str:
     return match.group(1)
 
 
-def _stage_guard() -> ast.If:
-    module = ast.parse(_powershell_bootstrap())
-    matches = [node for node in module.body if isinstance(node, ast.If)
-               and isinstance(node.test, ast.Name) and node.test.id == "stage_only"]
-    assert matches
-    return min(matches, key=lambda node: node.lineno)
+def _stage_guard(source: str = "host") -> ast.If | ast.Module:
+    if source == "host":
+        module = ast.parse(_powershell_bootstrap())
+        matches = [node for node in module.body if isinstance(node, ast.If)
+                   and isinstance(node.test, ast.Name) and node.test.id == "stage_only"]
+        assert matches
+        return min(matches, key=lambda node: node.lineno)
+
+    assert source == "wsl"
+    shell = (ROOT / "tools/qa/install_wsl_runner_runtime.sh").read_text(encoding="utf-8")
+    snippets = re.findall(r"<<'PY'\r?\n(.*?)\r?\nPY", shell, re.DOTALL)
+    for snippet in snippets:
+        try:
+            module = ast.parse(snippet)
+        except SyntaxError:
+            continue
+        if ("validate_root_config_directory" not in snippet
+                or "systemctl" not in snippet or "ControlGroup" not in snippet):
+            continue
+        units_index = next(
+            index for index, node in enumerate(module.body)
+            if isinstance(node, ast.Assign)
+            and any(isinstance(target, ast.Name) and target.id == "units"
+                    for target in node.targets)
+        )
+        return ast.Module(body=module.body[units_index:], type_ignores=[])
+    raise AssertionError("WSL stage-only systemd preflight Python block was not found")
 
 
 def _run_guard(tmp_path: Path, *, configured: str | None = None,
                active_unit: str | None = None, jobs: str = "",
-               populated_unit: str | None = None) -> None:
+               populated_unit: str | None = None, guard_source: str = "host") -> None:
     cgroup_root = tmp_path / "cgroup"
     cgroup_root.mkdir(exist_ok=True)
     units = (
-        "vst-supervisor.service", "vst-signer.service", "vst-runner.service",
-        "vst-dispatcher.service", "vst-dispatch-owner.service", "vst-dispatch-owner.socket",
+        "vst-assignment-bootstrap.service", "vst-dispatch-issuer.service",
+        "vst-dispatch-owner.service", "vst-dispatch-owner.socket",
+        "vst-dispatcher.service", "vst-runner.service",
+        "vst-sandbox-probe.service", "vst-signer.service", "vst-supervisor.service",
     )
     for unit in units:
         group = cgroup_root / "system.slice" / unit
@@ -80,9 +103,11 @@ def _run_guard(tmp_path: Path, *, configured: str | None = None,
 
     fake_os = SimpleNamespace(path=FakePath, walk=os.walk)
     fake_subprocess = SimpleNamespace(run=fake_run, DEVNULL=-3, PIPE=-1)
+    guard = _stage_guard(guard_source)
+    body = guard.body if isinstance(guard, ast.Module) else [guard]
     namespace = {"stage_only": True, "units": units, "os": fake_os,
                  "subprocess": fake_subprocess, "SystemExit": SystemExit}
-    exec(compile(ast.Module(body=[_stage_guard()], type_ignores=[]), "stage-only-preflight", "exec"), namespace)
+    exec(compile(ast.Module(body=body, type_ignores=[]), "stage-only-preflight", "exec"), namespace)
 
 
 def test_embedded_python_programs_are_syntactically_valid():
@@ -111,6 +136,18 @@ def test_python_c_sys_argv_matches_host_argument_contract():
     )
     assert json.loads(result.stdout) == ["-c", head, plan_digest, inventory_digest,
                                          transfer_id, stage_only]
+
+
+def test_host_handoff_binds_inventory_path_digest_and_timestamp_from_reviewed_plan() -> None:
+    script = (ROOT / "tools/qa/install_wsl_runtime.ps1").read_text(encoding="utf-8")
+
+    assert '$inventoryRelativePath = [string]$sourcePlan.target_inventory.path' in script
+    assert "^docs/sdlc/evidence/[A-Za-z0-9._-]+\\.json$" in script
+    assert "(^|/)\\.\\.?(/|$)" in script
+    assert "$sourcePlan.target_inventory.sha256 -cne $ExpectedInventorySha256" in script
+    assert '"HEAD:$inventoryRelativePath"' in script
+    assert "[string]$targetInventory.observed_utc -cne [string]$sourcePlan.target_inventory.observed_utc" in script
+    assert 's2-runtime-target-inventory-$ExpectedHead.json' not in script
 
 
 def _host_source_import_flags() -> list[str]:
@@ -341,30 +378,82 @@ def test_existing_runtime_refuses_mismatched_schema_three_identity(
         _run_existing_runtime_branch(tmp_path, {field: "f" * (40 if field == "head" else 64)})
 
 
-def test_stage_guard_accepts_complete_idle_inventory(tmp_path: Path):
-    assert _run_guard(tmp_path) is None
+@pytest.mark.parametrize("guard_source", ["host", "wsl"])
+def test_stage_guard_accepts_complete_idle_inventory(tmp_path: Path, guard_source: str):
+    assert _run_guard(tmp_path, guard_source=guard_source) is None
 
 
-def test_stage_guard_refuses_existing_configuration_path(tmp_path: Path):
-    with pytest.raises(SystemExit, match="absent runtime configuration/socket"):
-        _run_guard(tmp_path, configured="/etc/vst-runner")
-
-
-def test_stage_guard_requires_exactly_inactive_state(tmp_path: Path):
-    with pytest.raises(SystemExit, match="loaded-inactive or not-found"):
-        _run_guard(tmp_path, active_unit="vst-runner.service")
-
-
-@pytest.mark.parametrize("row", [
-    "1 vst-runner.service stop waiting\n",
-    "2 vst-dispatch-owner.socket start running\n",
+@pytest.mark.parametrize(("guard_source", "socket_path"), [
+    ("host", "/run/vst-supervisor"),
+    ("host", "/run/vst-runner"),
 ])
-def test_stage_guard_checks_systemd_unit_column_in_job_rows(tmp_path: Path, row: str):
+def test_stage_guard_refuses_existing_runtime_socket_path(
+    tmp_path: Path, guard_source: str, socket_path: str,
+):
+    with pytest.raises(SystemExit, match="absent runtime socket paths"):
+        _run_guard(tmp_path, configured=socket_path, guard_source=guard_source)
+
+
+@pytest.mark.parametrize("guard_source", ["host", "wsl"])
+def test_stage_guard_requires_exactly_inactive_state(tmp_path: Path, guard_source: str):
+    with pytest.raises(SystemExit, match="loaded-inactive or not-found"):
+        _run_guard(tmp_path, active_unit="vst-runner.service", guard_source=guard_source)
+
+
+@pytest.mark.parametrize(("guard_source", "row"), [
+    ("host", "1 vst-runner.service stop waiting\n"),
+    ("host", "2 vst-dispatch-owner.socket start running\n"),
+    ("wsl", "1 vst-runner.service stop waiting\n"),
+    ("wsl", "2 vst-dispatch-owner.socket start running\n"),
+])
+def test_stage_guard_checks_systemd_unit_column_in_job_rows(
+    tmp_path: Path, guard_source: str, row: str,
+):
     with pytest.raises(SystemExit, match="no systemd job"):
-        _run_guard(tmp_path, jobs=row)
+        _run_guard(tmp_path, jobs=row, guard_source=guard_source)
 
 
-def test_stage_guard_refuses_populated_service_cgroup(tmp_path: Path):
+@pytest.mark.parametrize("guard_source", ["host", "wsl"])
+def test_stage_guard_refuses_populated_service_cgroup(tmp_path: Path, guard_source: str):
     with pytest.raises(SystemExit, match="empty S2 service cgroups"):
-        _run_guard(tmp_path, populated_unit="vst-signer.service")
+        _run_guard(tmp_path, populated_unit="vst-signer.service", guard_source=guard_source)
+
+
+@pytest.mark.parametrize(("guard_source", "unit"), [
+    (source, unit)
+    for source in ("host", "wsl")
+    for unit in ("vst-assignment-bootstrap.service", "vst-dispatch-issuer.service",
+                 "vst-sandbox-probe.service")
+])
+def test_stage_guard_refuses_active_inventory_only_units(
+    tmp_path: Path, guard_source: str, unit: str,
+):
+    with pytest.raises(SystemExit, match="loaded-inactive or not-found"):
+        _run_guard(tmp_path, active_unit=unit, guard_source=guard_source)
+
+
+@pytest.mark.parametrize(("guard_source", "unit"), [
+    (source, unit)
+    for source in ("host", "wsl")
+    for unit in ("vst-assignment-bootstrap.service", "vst-dispatch-issuer.service",
+                 "vst-sandbox-probe.service")
+])
+def test_stage_guard_checks_jobs_for_inventory_only_units(
+    tmp_path: Path, guard_source: str, unit: str,
+):
+    with pytest.raises(SystemExit, match="no systemd job"):
+        _run_guard(tmp_path, jobs=f"1 {unit} stop waiting\n", guard_source=guard_source)
+
+
+@pytest.mark.parametrize(("guard_source", "unit"), [
+    (source, unit)
+    for source in ("host", "wsl")
+    for unit in ("vst-assignment-bootstrap.service", "vst-dispatch-issuer.service",
+                 "vst-sandbox-probe.service")
+])
+def test_stage_guard_refuses_populated_inventory_only_unit_cgroups(
+    tmp_path: Path, guard_source: str, unit: str,
+):
+    with pytest.raises(SystemExit, match="empty S2 service cgroups"):
+        _run_guard(tmp_path, populated_unit=unit, guard_source=guard_source)
 
