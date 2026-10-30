@@ -783,6 +783,25 @@ def test_attempt_claim_retires_interrupted_original_identity(monkeypatch) -> Non
         )
 
 
+def test_attempt_claim_retires_socket_mismatch_run_identity_before_marker_creation(
+        tmp_path, monkeypatch) -> None:
+    private_dir = tmp_path / "private"
+    private_dir.mkdir(mode=0o700)
+    real_stat = os.stat
+    monkeypatch.setattr(capture.os, "stat", lambda path, **_kw: SimpleNamespace(
+        st_uid=0, st_gid=0, st_mode=0o40700) if pathlib.Path(path) == private_dir else real_stat(path))
+
+    with pytest.raises(ContractError, match="permanently retired"):
+        capture._claim_attempt(
+            "c63842aefcf74f57af70a1b2f93b8271",
+            "s2-runtime-20261030-8102de64e7b4472ca2b5d2d56ed48510",
+            "5f5820a7cfc348cfa89de31af6c6d1a7", "4" * 64,
+            {"preflight_record_path": str(private_dir / "preflight.json")},
+        )
+
+    assert list(private_dir.iterdir()) == []
+
+
 def test_run_probe_rejects_malformed_run_id_before_start(monkeypatch) -> None:
     # No source, runtime, or WSL command may run for shell-like identity input.
     monkeypatch.setattr(capture.os, "name", "posix")

@@ -88,7 +88,7 @@
     }
   ],
   "preflight_record_path": "/var/lib/vst-runner/private/preflight.json",
-  "probe_nonce": "5f5820a7cfc348cfa89de31af6c6d1a7",
+  "probe_nonce": "b57520d076e1acd355d310ed18364907",
   "root_dispatch_issuer": {
     "enabled": true,
     "key_id": "s2-dispatch-instruction-20261030",
@@ -96,7 +96,7 @@
     "minimum_safety_slack_seconds": 10,
     "public_key_fingerprint": "b3586ac2f707058a8933759b8abbf4f5b8b84e7fde70f644d9d77d523b7af162"
   },
-  "run_id": "s2-runtime-20261030-8102de64e7b4472ca2b5d2d56ed48510",
+  "run_id": "s2-runtime-20261030-334296bd0779488d837a27e283b50b6a",
   "runner_control_group": "/system.slice/vst-runner.service",
   "runner_lock_path": "/run/vst-runner/cgroup-admission.lock",
   "runner_unit_name": "vst-runner.service",

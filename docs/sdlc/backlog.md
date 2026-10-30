@@ -215,15 +215,24 @@ was produced. The four-value UID/GID arrays at failure were not retained, so the
 is `NOT_VERIFIED`; journald only records effective UID/GID 999:989. No retry or replacement identity
 is authorized by the consumed attempt.
 
-The current follow-up adds only those observed/expected numeric arrays to the existing fail-closed
-error message so a separately authorized qualification can diagnose the exact mismatch; it does not
-change the predicate. The focused functional-test-reviewer suite reports 56 passed, one existing
-pytest-asyncio warning; code/security review found no actionable issue. See
-`docs/changes/0612-s2-4.12b-socket-unit-mainpid.md` and
-`docs/changes/0613-s2-4.12b-process-identity-diagnostics.md`. This follow-up still needs exact-head
-GPT-PM code approval and push. After that, Codex must prepare a distinct run binding and request a
-separate correlated GPT-PM authorization; do not reuse the consumed run ID or reinstall config until
-that new attempt is authorized. S2-4 remains open, S2-5 is queued, and S3 remains unstarted.
+The code changes are delivered in pushed commits `8917e54` (socket-unit property handling) and
+`ac92d0e` (non-secret UID/GID mismatch diagnostics). The consumed run tuple is now permanently
+retired in the current helper candidate. That candidate also prepares one distinct, non-secret
+runtime binding: run `s2-runtime-20261030-334296bd0779488d837a27e283b50b6a`, bootstrap request
+`212a23e66ee94a7d87355b11e07e34fe`, nonce `b57520d076e1acd355d310ed18364907`; its bundle digest
+is `03d9c692bf058ca61570d2a954a0faf6c088100e4036d38d88afb26b08d25e0a`. It keeps `retry_cap: 0`
+and the same sole assignment-basis selector. The previous 26-file configuration remains installed
+for the consumed run; the new candidate has not been applied.
+
+The functional-test-reviewer ran the three focused helper/config suites: 79 passed, with one existing
+pytest-asyncio deprecation warning. Independent code and security reviews found no actionable
+finding; all 34 bundle hashes and both installer pins match. Exact-head GPT-PM code review and normal
+push are still required for this candidate. After that, GPT-PM must separately authorize the new
+tuple before a fresh inventory, any configuration application, or probe. Do not reuse the consumed
+tuple, reinstall the candidate early, or start another selector. Details: `docs/changes/0612-s2-4.12b-socket-unit-mainpid.md`,
+`docs/changes/0613-s2-4.12b-process-identity-diagnostics.md`, and
+`docs/changes/0614-s2-4.12b-retired-run-and-fresh-binding.md`. S2-4 remains open, S2-5 is queued,
+and S3 remains unstarted.
 
 ### S2-5 — Exact-head gate and sprint decision
 

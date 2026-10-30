@@ -54,6 +54,9 @@ RETIRED_RUN_IDENTITIES = {
     ("3e56a61c5b1e45aea089c305b25e3187",
      "s2-runtime-20261030-87d47f635f1c4231ab052a074dba4be8",
      "0d2bb2c5f977478a924f7ec6629a339d"),
+    ("c63842aefcf74f57af70a1b2f93b8271",
+     "s2-runtime-20261030-8102de64e7b4472ca2b5d2d56ed48510",
+     "5f5820a7cfc348cfa89de31af6c6d1a7"),
 }
 INVOCATION_ID = re.compile(r"^[0-9a-f]{32}$")
 RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
