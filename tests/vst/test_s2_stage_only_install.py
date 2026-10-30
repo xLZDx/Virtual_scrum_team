@@ -2,15 +2,18 @@
 from __future__ import annotations
 
 import ast
+import base64
 import hashlib
 import json
 import os
 import re
+import shutil
 import stat
 import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
+from datetime import datetime, timezone
 
 import pytest
 
@@ -146,8 +149,150 @@ def test_host_handoff_binds_inventory_path_digest_and_timestamp_from_reviewed_pl
     assert "(^|/)\\.\\.?(/|$)" in script
     assert "$sourcePlan.target_inventory.sha256 -cne $ExpectedInventorySha256" in script
     assert '"HEAD:$inventoryRelativePath"' in script
-    assert "[string]$targetInventory.observed_utc -cne [string]$sourcePlan.target_inventory.observed_utc" in script
+    assert "[System.Text.Json.JsonDocument]::Parse($planJson)" in script
+    assert "[System.Text.Json.JsonDocument]::Parse($inventoryJson)" in script
+    assert "-PropertyName 'observed_utc'" in script
+    assert "$inventoryObservedUtc -cne $planInventoryObservedUtc" in script
+    assert "        $inventoryObservedUtc," in script
     assert 's2-runtime-target-inventory-$ExpectedHead.json' not in script
+
+
+def _timestamp_extraction_snippet() -> str:
+    script = (ROOT / "tools/qa/install_wsl_runtime.ps1").read_text(encoding="utf-8")
+    helper_start = script.index("function Get-UniqueJsonStringProperty {")
+    helper_end = script.index("$planDocument = [System.Text.Json.JsonDocument]::Parse($planJson)", helper_start)
+    plan_start = helper_end
+    plan_end = script.index("$sourcePlan = $planJson | ConvertFrom-Json", plan_start)
+    inventory_start = script.index(
+        "$inventoryDocument = [System.Text.Json.JsonDocument]::Parse($inventoryJson)"
+    )
+    inventory_end = script.index("$targetInventory = $inventoryJson | ConvertFrom-Json", inventory_start)
+    parse_start = script.index("try {\n    $inventoryObserved = [DateTimeOffset]::Parse(", inventory_end)
+    age_start = script.index(
+        "$inventoryAgeSeconds = ([DateTimeOffset]::UtcNow - $inventoryObserved).TotalSeconds",
+        parse_start,
+    )
+    age_end = script.index("\n", age_start)
+    helper_fragment = script[helper_start:helper_end]
+    plan_fragment = script[plan_start:plan_end]
+    inventory_fragment = script[inventory_start:inventory_end]
+    inventory_validation_fragment = script[inventory_end:parse_start]
+    parse_fragment = script[parse_start:age_end]
+    return (helper_fragment + plan_fragment + inventory_fragment
+            + inventory_validation_fragment + parse_fragment + """
+if ($inventoryAgeSeconds -lt -30 -or $inventoryAgeSeconds -gt 300) {
+    throw "unexpected inventory age: $inventoryAgeSeconds"
+}
+Write-Output $planInventoryObservedUtc
+Write-Output $inventoryObservedUtc
+Write-Output $inventoryAgeSeconds
+""")
+
+
+def _run_timestamp_extraction(plan_json: str, inventory_json: str) -> subprocess.CompletedProcess[str]:
+    powershell = shutil.which("pwsh")
+    if powershell is None:
+        pytest.skip("PowerShell 7 is required for System.Text.Json")
+    plan_b64 = base64.b64encode(plan_json.encode("utf-8")).decode("ascii")
+    inventory_b64 = base64.b64encode(inventory_json.encode("utf-8")).decode("ascii")
+    script = (
+        "$planJson = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('" + plan_b64 + "'))\n"
+        "$inventoryJson = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('" + inventory_b64 + "'))\n"
+        + _timestamp_extraction_snippet()
+    )
+
+    return subprocess.run(
+        [powershell, "-NoProfile", "-NonInteractive", "-Command", script],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+
+
+def test_powershell_inventory_timestamp_is_preserved_as_utc() -> None:
+    observed_utc = datetime.now(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
+    plan_json = json.dumps({"target_inventory": {"observed_utc": observed_utc}})
+    inventory_json = json.dumps({"observed_utc": observed_utc})
+
+    result = _run_timestamp_extraction(plan_json, inventory_json)
+
+    assert result.returncode == 0, result.stderr
+    lines = result.stdout.splitlines()
+    assert lines[0] == observed_utc
+    assert lines[1] == observed_utc
+    assert 0 <= float(lines[2]) <= 300
+
+
+@pytest.mark.parametrize(
+    ("plan_json", "inventory_json", "expected_error"),
+    [
+        (
+            '{"other":{"observed_utc":"2026-10-30T20:59:51Z"},'
+            '"target_inventory":{"nested":{"observed_utc":"2026-10-30T20:59:51Z"}}}',
+            '{"observed_utc":"2026-10-30T20:59:51Z"}',
+            "Source plan target_inventory must contain exactly one string 'observed_utc' property.",
+        ),
+        (
+            '{"target_inventory":{"observed_utc":"2026-10-30T20:59:51Z"},'
+            '"target_inventory":{"observed_utc":"2026-10-30T20:59:51Z"}}',
+            '{"observed_utc":"2026-10-30T20:59:51Z"}',
+            "Source plan must contain exactly one target_inventory object.",
+        ),
+        (
+            '{"target_inventory":{"observed_utc":"2026-10-30T20:59:51Z",'
+            '"observed_utc":"2026-10-30T20:59:51Z"}}',
+            '{"observed_utc":"2026-10-30T20:59:51Z"}',
+            "Source plan target_inventory must contain exactly one string 'observed_utc' property.",
+        ),
+        (
+            '{"target_inventory":{"observed_utc":"2026-10-30T20:59:51Z"}}',
+            '{"nested":{"observed_utc":"2026-10-30T20:59:51Z"}}',
+            "Target inventory must contain exactly one string 'observed_utc' property.",
+        ),
+        (
+            '{"target_inventory":{"observed_utc":"2026-10-30T20:59:51Z"}}',
+            '{"observed_utc":"2026-10-30T20:59:51Z","observed_utc":"2026-10-30T20:59:51Z"}',
+            "Target inventory must contain exactly one string 'observed_utc' property.",
+        ),
+    ],
+)
+def test_powershell_inventory_timestamp_rejects_misplaced_or_duplicate_properties(
+    plan_json: str, inventory_json: str, expected_error: str,
+) -> None:
+    result = _run_timestamp_extraction(plan_json, inventory_json)
+
+    assert result.returncode != 0
+    assert expected_error in result.stderr
+
+
+def test_powershell_inventory_timestamp_refuses_non_string_property() -> None:
+    observed_utc = datetime.now(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
+    plan_json = json.dumps({"target_inventory": {"observed_utc": observed_utc}})
+    inventory_json = '{"observed_utc":null}'
+
+    result = _run_timestamp_extraction(plan_json, inventory_json)
+
+    assert result.returncode != 0
+    assert "Target inventory must contain exactly one string 'observed_utc' property." in result.stderr
+
+
+@pytest.mark.parametrize(
+    "observed_utc",
+    [
+        "2026-10-30T21:10:00+02:00",
+        "2026-10-30T21:10:00",
+    ],
+    ids=["non-utc-offset", "timezone-absent"],
+)
+def test_powershell_inventory_timestamp_rejects_non_utc_designator(observed_utc: str) -> None:
+    plan_json = json.dumps({"target_inventory": {"observed_utc": observed_utc}})
+    inventory_json = json.dumps({"observed_utc": observed_utc})
+
+    result = _run_timestamp_extraction(plan_json, inventory_json)
+
+    assert result.returncode != 0
+    assert "Target inventory observation time must use an explicit UTC designator." in result.stderr
 
 
 def _host_source_import_flags() -> list[str]:

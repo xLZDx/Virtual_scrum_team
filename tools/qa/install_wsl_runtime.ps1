@@ -57,7 +57,57 @@ $planSha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($p
 if ($planSha256 -cne $ExpectedPlanSha256) {
     throw "Source plan SHA-256 differs from the exact reviewed value $ExpectedPlanSha256."
 }
-$sourcePlan = [System.Text.Encoding]::UTF8.GetString($planBytes) | ConvertFrom-Json
+$planJson = [System.Text.Encoding]::UTF8.GetString($planBytes)
+function Get-UniqueJsonStringProperty {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Text.Json.JsonElement]$JsonObject,
+        [Parameter(Mandatory = $true)]
+        [string]$PropertyName,
+        [Parameter(Mandatory = $true)]
+        [string]$Context
+    )
+    if ($JsonObject.ValueKind -ne [System.Text.Json.JsonValueKind]::Object) {
+        throw "$Context must be a JSON object."
+    }
+    $propertyMatches = @(
+        foreach ($property in $JsonObject.EnumerateObject()) {
+            if ($property.Name -ceq $PropertyName) {
+                $propertyValue = $null
+                if ($property.Value.ValueKind -eq [System.Text.Json.JsonValueKind]::String) {
+                    $propertyValue = $property.Value.GetString()
+                }
+                [pscustomobject]@{
+                    ValueKind = $property.Value.ValueKind
+                    Value = $propertyValue
+                }
+            }
+        }
+    )
+    if ($propertyMatches.Count -ne 1 -or
+        $propertyMatches[0].ValueKind -ne [System.Text.Json.JsonValueKind]::String) {
+        throw "$Context must contain exactly one string '$PropertyName' property."
+    }
+    return [string]$propertyMatches[0].Value
+}
+$planDocument = [System.Text.Json.JsonDocument]::Parse($planJson)
+try {
+    $targetInventoryMatches = @(
+        foreach ($property in $planDocument.RootElement.EnumerateObject()) {
+            if ($property.Name -ceq 'target_inventory') { $property.Value }
+        }
+    )
+    if ($targetInventoryMatches.Count -ne 1) {
+        throw 'Source plan must contain exactly one target_inventory object.'
+    }
+    $planInventoryObservedUtc = Get-UniqueJsonStringProperty `
+        -JsonObject $targetInventoryMatches[0] `
+        -PropertyName 'observed_utc' `
+        -Context 'Source plan target_inventory'
+} finally {
+    $planDocument.Dispose()
+}
+$sourcePlan = $planJson | ConvertFrom-Json
 if ($sourcePlan.schema -cne 'VST_S2_RUNTIME_SOURCE_PLAN_V2' -or
     $sourcePlan.status -cne 'UNSIGNED_REVIEW_CANDIDATE' -or
     $sourcePlan.source_head -cne $ExpectedHead -or
@@ -87,13 +137,26 @@ $inventorySha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashDa
 if ($inventorySha256 -cne $ExpectedInventorySha256) {
     throw "Target inventory SHA-256 differs from the exact reviewed value $ExpectedInventorySha256."
 }
-$targetInventory = [System.Text.Encoding]::UTF8.GetString($inventoryBytes) | ConvertFrom-Json
-if ([string]$targetInventory.observed_utc -cne [string]$sourcePlan.target_inventory.observed_utc) {
+$inventoryJson = [System.Text.Encoding]::UTF8.GetString($inventoryBytes)
+$inventoryDocument = [System.Text.Json.JsonDocument]::Parse($inventoryJson)
+try {
+    $inventoryObservedUtc = Get-UniqueJsonStringProperty `
+        -JsonObject $inventoryDocument.RootElement `
+        -PropertyName 'observed_utc' `
+        -Context 'Target inventory'
+} finally {
+    $inventoryDocument.Dispose()
+}
+if ($inventoryObservedUtc -cne $planInventoryObservedUtc) {
     throw 'Target inventory capture time differs from the source plan binding.'
+}
+$targetInventory = $inventoryJson | ConvertFrom-Json
+if ($inventoryObservedUtc -notmatch '(?:Z|\+00:00)$') {
+    throw 'Target inventory observation time must use an explicit UTC designator.'
 }
 try {
     $inventoryObserved = [DateTimeOffset]::Parse(
-        [string]$targetInventory.observed_utc,
+        $inventoryObservedUtc,
         [System.Globalization.CultureInfo]::InvariantCulture,
         [System.Globalization.DateTimeStyles]::None
     ).ToUniversalTime()
