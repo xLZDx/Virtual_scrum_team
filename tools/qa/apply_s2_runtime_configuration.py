@@ -79,9 +79,12 @@ def build_payload(inventory_path: Path, expected_inventory_sha256: str, source_c
     if (not isinstance(inventory, dict)
             or inventory.get("schema") != INVENTORY_SCHEMA
             or inventory.get("source_head", inventory.get("runtime_source_head")) != RUNTIME_SOURCE_HEAD
-            or not isinstance(inventory.get("configuration_files"), dict)
-            or not isinstance(inventory.get("selected_runtime_path"), str)):
+            or not isinstance(inventory.get("configuration_files"), dict)):
         raise ValueError("target inventory schema or configuration map is invalid")
+    runtime_selector = inventory.get("runtime_selector")
+    selected = runtime_selector.get("link_target") if isinstance(runtime_selector, dict) else None
+    if selected != "/opt/vst-runtime-" + RUNTIME_SOURCE_HEAD:
+        raise ValueError("target inventory does not identify the selected S2 runtime")
     captured = datetime.fromisoformat(str(inventory["captured_utc"]).replace("Z", "+00:00"))
     age = (datetime.now(timezone.utc) - captured.astimezone(timezone.utc)).total_seconds()
     if age < -30 or age > 300:

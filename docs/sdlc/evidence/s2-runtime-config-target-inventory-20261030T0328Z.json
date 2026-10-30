@@ -1,0 +1,658 @@
+{
+  "boot_id": "270cd88b-183f-426c-8add-872d9e98bcec",
+  "captured_utc": "2026-10-30T03:31:20.220992Z",
+  "configuration_files": {
+    "/etc/systemd/system/vst-assignment-bootstrap.service": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0644",
+        "sha256": "e714fb88699ae07fbd96ccd8758cb58d1db8bcf075d52145c6e8a3ec8931f43f",
+        "size": 1016,
+        "uid": 0
+      },
+      "candidate_match": true,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0644",
+      "sha256": "e714fb88699ae07fbd96ccd8758cb58d1db8bcf075d52145c6e8a3ec8931f43f",
+      "size": 1016,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/systemd/system/vst-dispatch-issuer.service": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0644",
+        "sha256": "d798f141e33d15444afccb1ac26213665571f19e70f1dc61fbd7f60b23140c7d",
+        "size": 1027,
+        "uid": 0
+      },
+      "candidate_match": true,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0644",
+      "sha256": "d798f141e33d15444afccb1ac26213665571f19e70f1dc61fbd7f60b23140c7d",
+      "size": 1027,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/systemd/system/vst-runner.service.d/90-s2-host-path-mask.conf": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0644",
+        "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
+        "size": 153,
+        "uid": 0
+      },
+      "candidate_match": true,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0644",
+      "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
+      "size": 153,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/systemd/system/vst-runner.service.d/rate-limits.conf": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0644",
+        "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+        "size": 51,
+        "uid": 0
+      },
+      "candidate_match": true,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0644",
+      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+      "size": 51,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/systemd/system/vst-sandbox-probe.service": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0644",
+        "sha256": "d80c171238985ffcc7f19c6eac74276c7ea7615ebf85d63391b6f2dbf097f33f",
+        "size": 637,
+        "uid": 0
+      },
+      "candidate_match": true,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0644",
+      "sha256": "d80c171238985ffcc7f19c6eac74276c7ea7615ebf85d63391b6f2dbf097f33f",
+      "size": 637,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/systemd/system/vst-sandbox-probe.service.d/90-s2-host-path-mask.conf": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0644",
+        "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
+        "size": 153,
+        "uid": 0
+      },
+      "candidate_match": true,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0644",
+      "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
+      "size": 153,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/systemd/system/vst-signer.service.d/rate-limits.conf": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0644",
+        "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+        "size": 51,
+        "uid": 0
+      },
+      "candidate_match": true,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0644",
+      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+      "size": 51,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/systemd/system/vst-supervisor.service.d/rate-limits.conf": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0644",
+        "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+        "size": 51,
+        "uid": 0
+      },
+      "candidate_match": true,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0644",
+      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+      "size": 51,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/assignment-delegation-policy.json": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0644",
+        "sha256": "3dabe39f15ee280d1fac78c83989ce71ec868410b665fa26e199378f27deb427",
+        "size": 1411,
+        "uid": 0
+      },
+      "candidate_match": false,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0644",
+      "sha256": "3dde22a446451dac2f6d8882eb2ec11a0297e5b0e1ef3b32d7cda4c1bf6ebc59",
+      "size": 1411,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/bootstrap-request.json": {
+      "candidate": {
+        "gid": 980,
+        "mode": "0640",
+        "sha256": "4d248a42790aa53a54cac0df8cd97dd04b583653791d3e32999d7d6186f688e6",
+        "size": 4104,
+        "uid": 0
+      },
+      "candidate_match": false,
+      "gid": 980,
+      "kind": "regular",
+      "mode": "0640",
+      "sha256": "eeed47b01222936452625ce4135de36b6c6ad4d6c0358e3b1f55306056a67f4c",
+      "size": 4104,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/dispatch-instruction-public.pem": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0644",
+        "sha256": "b3586ac2f707058a8933759b8abbf4f5b8b84e7fde70f644d9d77d523b7af162",
+        "size": 113,
+        "uid": 0
+      },
+      "candidate_match": true,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0644",
+      "sha256": "b3586ac2f707058a8933759b8abbf4f5b8b84e7fde70f644d9d77d523b7af162",
+      "size": 113,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/dispatch-instruction-trust.json": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0644",
+        "sha256": "c88d90f75653168b417b15f11d1dc6086433d7d4c948757ac30b967fac8db350",
+        "size": 196,
+        "uid": 0
+      },
+      "candidate_match": true,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0644",
+      "sha256": "c88d90f75653168b417b15f11d1dc6086433d7d4c948757ac30b967fac8db350",
+      "size": 196,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/dispatch-owner-service.json": {
+      "candidate": {
+        "gid": 982,
+        "mode": "0640",
+        "sha256": "1df674c4198df4246ed6490fd1ae9eaadd8a8be18ba54c5852019694de4a99c1",
+        "size": 65,
+        "uid": 0
+      },
+      "candidate_match": true,
+      "gid": 982,
+      "kind": "regular",
+      "mode": "0640",
+      "sha256": "1df674c4198df4246ed6490fd1ae9eaadd8a8be18ba54c5852019694de4a99c1",
+      "size": 65,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/dispatcher-service.json": {
+      "candidate": {
+        "gid": 983,
+        "mode": "0640",
+        "sha256": "3f35183f011a1bdb4b3ec8fa45480178dc91d6281b26bdc30e3d50185f2842cc",
+        "size": 166,
+        "uid": 0
+      },
+      "candidate_match": true,
+      "gid": 983,
+      "kind": "regular",
+      "mode": "0640",
+      "sha256": "3f35183f011a1bdb4b3ec8fa45480178dc91d6281b26bdc30e3d50185f2842cc",
+      "size": 166,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/execution-grant-public.pem": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0644",
+        "sha256": "bbf647ee13e5aafdceccfce9bbb41dc9f79f15f4578a19dfb4ddcf11442a45ad",
+        "size": 113,
+        "uid": 0
+      },
+      "candidate_match": true,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0644",
+      "sha256": "bbf647ee13e5aafdceccfce9bbb41dc9f79f15f4578a19dfb4ddcf11442a45ad",
+      "size": 113,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/fence.json": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0600",
+        "sha256": "8b96cf8d743bd6fc5c4bc51a3a988f7477f7466e6d40748e9462d88dce9da556",
+        "size": 440,
+        "uid": 0
+      },
+      "candidate_match": true,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0600",
+      "sha256": "8b96cf8d743bd6fc5c4bc51a3a988f7477f7466e6d40748e9462d88dce9da556",
+      "size": 440,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/model-provenance.json": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0644",
+        "sha256": "a78f908212da5715a951c62d17e2ec720ad6065c13164191d3aef0bf506d6303",
+        "size": 567,
+        "uid": 0
+      },
+      "candidate_match": true,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0644",
+      "sha256": "a78f908212da5715a951c62d17e2ec720ad6065c13164191d3aef0bf506d6303",
+      "size": 567,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/network-profile.json": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0644",
+        "sha256": "a01d444236e080425a1e6b6e20871850bc4400c7db21d518634cecefb18bffa5",
+        "size": 1176,
+        "uid": 0
+      },
+      "candidate_match": false,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0644",
+      "sha256": "233a617c7269cc82554fab233a77cb2c4d61a3bafbbc2faa00636e1e64e46315",
+      "size": 1176,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/probe-entrypoint.py": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0644",
+        "sha256": "2bb8a72935a003411a57eeb5f70b01f0e6407955dfd0c2abf3981ce3a57e19b1",
+        "size": 1566,
+        "uid": 0
+      },
+      "candidate_match": true,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0644",
+      "sha256": "2bb8a72935a003411a57eeb5f70b01f0e6407955dfd0c2abf3981ce3a57e19b1",
+      "size": 1566,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/probe-request.json": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0644",
+        "sha256": "6013485266a3120e1e698687c28effb511fddfeeb07822c55a1365638fbd5d71",
+        "size": 118,
+        "uid": 0
+      },
+      "candidate_match": false,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0644",
+      "sha256": "6a75aa4c499b80ba4a061bf97267305dad8db4a0ba67e95bf8e805e89bc69b4d",
+      "size": 118,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/reviewer-registry.json": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0644",
+        "sha256": "678dbe279d91ba96fa3b6e79da13c2c2be8270cbc08bbaaae9f7bf724078e6fd",
+        "size": 269,
+        "uid": 0
+      },
+      "candidate_match": true,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0644",
+      "sha256": "678dbe279d91ba96fa3b6e79da13c2c2be8270cbc08bbaaae9f7bf724078e6fd",
+      "size": 269,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/reviewer-use-policy.json": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0644",
+        "sha256": "a69dfcb56d54aadf7d9b2d966edbf4867145a861b23c2313e03fc0bc36766c97",
+        "size": 875,
+        "uid": 0
+      },
+      "candidate_match": true,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0644",
+      "sha256": "a69dfcb56d54aadf7d9b2d966edbf4867145a861b23c2313e03fc0bc36766c97",
+      "size": 875,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/runner-service.json": {
+      "candidate": {
+        "gid": 988,
+        "mode": "0640",
+        "sha256": "2121baaf8598b80c139ba452eeab11760c8b0240d0e177220e9e792545c70579",
+        "size": 1256,
+        "uid": 0
+      },
+      "candidate_match": false,
+      "gid": 988,
+      "kind": "regular",
+      "mode": "0640",
+      "sha256": "6af0b157c9222ade2b4846e0b2f5802532da5af08470234366d393def4617e83",
+      "size": 1256,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/signer-service.json": {
+      "candidate": {
+        "gid": 988,
+        "mode": "0640",
+        "sha256": "4d4d53fccd20d415b13a69b9ad4151eff6c15532ae4a6460a09fc32b2a869ad3",
+        "size": 510,
+        "uid": 0
+      },
+      "candidate_match": true,
+      "gid": 988,
+      "kind": "regular",
+      "mode": "0640",
+      "sha256": "4d4d53fccd20d415b13a69b9ad4151eff6c15532ae4a6460a09fc32b2a869ad3",
+      "size": 510,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/supervisor-service.json": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0600",
+        "sha256": "7d8b823a6bb881c7f73645db1f751ba16194c2018df2b9782aa85c9efadbbbe9",
+        "size": 3462,
+        "uid": 0
+      },
+      "candidate_match": false,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0600",
+      "sha256": "a10eaec602dbd750eb2c2e348b4e3f1eefdae5468fdfc8ee89ad69b2db5731f0",
+      "size": 3524,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/task-manifest.json": {
+      "candidate": {
+        "gid": 0,
+        "mode": "0644",
+        "sha256": "9c1f6f11f7e92294a3bad3425febfae2ef432d269e53aa6ff0ce3bb3e895296a",
+        "size": 3596,
+        "uid": 0
+      },
+      "candidate_match": false,
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0644",
+      "sha256": "1a29b459d21e68d5b8ef434b66a2a2ec9fd8acc427f627417c493d9671ca71ef",
+      "size": 3596,
+      "state": "PRESENT",
+      "uid": 0
+    }
+  },
+  "platform": {
+    "distribution": "ubuntu",
+    "kernel": "6.6.114.1-microsoft-standard-WSL2",
+    "system": "Linux-6.6.114.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "version": "24.04"
+  },
+  "private_material_metadata_only": {
+    "/etc/vst-runner/dispatch-instruction-private.pem": {
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0600",
+      "size": 119,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/execution-grant-private.pem": {
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0600",
+      "size": 119,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/network-policy.key": {
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0600",
+      "size": 32,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/startup-supervisor.key": {
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0600",
+      "size": 32,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/etc/vst-runner/store-event.key": {
+      "gid": 0,
+      "kind": "regular",
+      "mode": "0600",
+      "size": 32,
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/var/lib/vst-reviewer/review.key": {
+      "gid": 985,
+      "kind": "regular",
+      "mode": "0600",
+      "size": 32,
+      "state": "PRESENT",
+      "uid": 993
+    },
+    "/var/lib/vst-signer/receipt.key": {
+      "gid": 988,
+      "kind": "regular",
+      "mode": "0600",
+      "size": 32,
+      "state": "PRESENT",
+      "uid": 995
+    }
+  },
+  "runtime_selector": {
+    "gid": 0,
+    "kind": "symlink",
+    "link_target": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2",
+    "mode": "0777",
+    "size": 57,
+    "state": "PRESENT",
+    "uid": 0
+  },
+  "schema": "VST_S2_RUNTIME_CONFIG_TARGET_INVENTORY_V1",
+  "source_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
+  "store": {
+    "path": "/var/lib/vst-runner/private/store.sqlite3",
+    "state": "ABSENT"
+  },
+  "systemd": {
+    "jobs": [],
+    "unit_states": {
+      "vst-assignment-bootstrap.service": {
+        "errors": [
+          "",
+          ""
+        ],
+        "exit_codes": [
+          0,
+          0
+        ],
+        "values": [
+          "loaded",
+          "inactive"
+        ]
+      },
+      "vst-dispatch-issuer.service": {
+        "errors": [
+          "",
+          ""
+        ],
+        "exit_codes": [
+          0,
+          0
+        ],
+        "values": [
+          "loaded",
+          "inactive"
+        ]
+      },
+      "vst-dispatch-owner.service": {
+        "errors": [
+          "",
+          ""
+        ],
+        "exit_codes": [
+          0,
+          0
+        ],
+        "values": [
+          "loaded",
+          "inactive"
+        ]
+      },
+      "vst-dispatch-owner.socket": {
+        "errors": [
+          "",
+          ""
+        ],
+        "exit_codes": [
+          0,
+          0
+        ],
+        "values": [
+          "loaded",
+          "inactive"
+        ]
+      },
+      "vst-dispatcher.service": {
+        "errors": [
+          "",
+          ""
+        ],
+        "exit_codes": [
+          0,
+          0
+        ],
+        "values": [
+          "loaded",
+          "inactive"
+        ]
+      },
+      "vst-runner.service": {
+        "errors": [
+          "",
+          ""
+        ],
+        "exit_codes": [
+          0,
+          0
+        ],
+        "values": [
+          "loaded",
+          "inactive"
+        ]
+      },
+      "vst-sandbox-probe.service": {
+        "errors": [
+          "",
+          ""
+        ],
+        "exit_codes": [
+          0,
+          0
+        ],
+        "values": [
+          "loaded",
+          "inactive"
+        ]
+      },
+      "vst-signer.service": {
+        "errors": [
+          "",
+          ""
+        ],
+        "exit_codes": [
+          0,
+          0
+        ],
+        "values": [
+          "loaded",
+          "inactive"
+        ]
+      },
+      "vst-supervisor.service": {
+        "errors": [
+          "",
+          ""
+        ],
+        "exit_codes": [
+          0,
+          0
+        ],
+        "values": [
+          "loaded",
+          "inactive"
+        ]
+      }
+    }
+  }
+}

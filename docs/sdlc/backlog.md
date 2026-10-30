@@ -164,13 +164,21 @@ pytest-asyncio deprecation warning; these are local payload-contract tests, not 
 runtime proof. Security review found no remaining concrete issue. Evidence and scope:
 `docs/changes/0607-s2-runtime-config-applier.md`.
 
-**Next ordered S2-4.11b — select the staged runtime, then install and verify exact configuration.**
-The WSL target snapshot at `03:24:02Z` found 19/26 paths already equal to the candidate and seven
-known config differences. The two host-path drop-ins match byte-for-byte; all three
-absent-only candidate units already exist with exact candidate bytes. No service was started and
-the selector was still on `a600774` at that snapshot. Next, apply the existing reviewed inactive
-runtime transition, obtain a fresh post-selection inventory, and run the pinned config applier.
-The current-run E5 and one permitted owner-to-Runner journey remain open.
+**Delivered ordered preparation S2-4.11b — select the exact staged runtime without activation.**
+The existing root-only `bootstrap_runtime apply` transition accepted the exact candidate manifest
+digest `dc516f6b7053ec48bf96aaa3ddb3042d87d57f8f7199284e27e98f8203cc7935` and returned
+`bootstrap_selection=complete`, `services_started_or_reloaded=false`,
+`store_opened_or_changed=false`. A post-selection e2e-runner inventory then confirmed selector
+`80c2b81`, all nine relevant units `loaded/inactive`, no jobs, and an absent Store target. It found
+19/26 config destinations matching and seven known differences. The config applier was corrected
+to consume the actual `runtime_selector.link_target` inventory field; its focused regression suite
+reports 10 passed with one existing pytest-asyncio warning. Exact evidence is in
+`docs/changes/0608-s2-runtime-selection-and-inventory-contract.md`.
+
+**Next ordered S2-4.11c — apply and verify the exact 26-file configuration.** Obtain a fresh
+post-selection inventory within five minutes and run the committed pinned config applier. It must
+finish with all 26 exact hashes and nine loaded-inactive units. No service start is included. The
+current-run E5 and one permitted owner-to-Runner journey remain open.
 
 ### S2-5 — Exact-head gate and sprint decision
 

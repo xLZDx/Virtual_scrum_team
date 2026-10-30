@@ -15,7 +15,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "tools/qa/apply_s2_runtime_configuration.py"
 BUNDLE = ROOT / "docs/sdlc/runtime-config"
-SOURCE_COMMIT = "cb7e2ed4e786f87d8ea6183d3b943a6f9c915416"
+SOURCE_COMMIT = "158210ef30e22e2ee44fbfe6283a17f0eeefa56b"
 SPEC = importlib.util.spec_from_file_location("s2_config_apply", SCRIPT)
 assert SPEC and SPEC.loader
 APPLY = importlib.util.module_from_spec(SPEC)
@@ -47,7 +47,6 @@ def _inventory() -> dict:
         "captured_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "boot_id": "270cd88b-183f-426c-8add-872d9e98bcec",
         "source_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
-        "selected_runtime_path": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2",
         "runtime_selector": {
             "state": "PRESENT",
             "kind": "symlink",
@@ -87,7 +86,8 @@ def test_payload_contains_exact_non_secret_candidates_and_pins_current_state(tmp
     assert payload["schema"] == "VST_S2_RUNTIME_CONFIG_APPLY_V1"
     assert len(payload["files"]) == 26
     assert {item["destination"] for item in payload["files"]} == expected
-    assert payload["selected_runtime_path"].endswith(payload["source_head"])
+    assert "selected_runtime_path" not in json.loads(path.read_bytes())
+    assert payload["selected_runtime_path"] == json.loads(path.read_bytes())["runtime_selector"]["link_target"]
     assert payload["bundle_manifest_sha256"] == APPLY.BUNDLE_MANIFEST_SHA256
     assert payload["installation_layout_sha256"] == APPLY.INSTALLATION_LAYOUT_SHA256
     assert _sha(base64.b64decode(payload["bundle_manifest_b64"])) == APPLY.BUNDLE_MANIFEST_SHA256
@@ -155,6 +155,15 @@ def test_payload_accepts_exact_absent_state_and_octal_inventory_mode(tmp_path):
     assert absent["expected_new"]["mode"] == int(
         json.loads((BUNDLE / "bundle-manifest.json").read_text(encoding="utf-8"))["configuration_installation"][0]["mode"], 8
     )
+
+
+def test_payload_rejects_inventory_selecting_another_runtime(tmp_path):
+    inventory = _inventory()
+    inventory["runtime_selector"]["link_target"] = "/opt/vst-runtime-a600774649527ff0b33eb81f4d431f8226119b2c"
+    path, digest = _write_inventory(tmp_path, inventory)
+
+    with pytest.raises(ValueError, match="selected S2 runtime"):
+        APPLY.build_payload(path, digest, SOURCE_COMMIT)
 
 
 @pytest.mark.parametrize("source_commit", ["cb7e2ed", "z" * 40])
