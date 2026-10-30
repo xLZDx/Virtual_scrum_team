@@ -201,8 +201,14 @@ suite reports 22 passed; code/security reviewers found no actionable finding. Th
 manifest retains `retry_cap: 0` and the single allowed assignment-basis selector. The previous
 attempt identities are retired. Runtime application, root capture, and owner-to-Runner TestRun are
 still `NOT_RUN`. Next: exact-head code approval and normal push; then a separate correlated
-authorization bound to this fresh identity before the single permitted runtime journey. Restricted
-process/crash/mutation/E8/policy selectors remain `NOT_RUN`. S2-5 stays queued.
+authorization bound to this fresh identity before the single permitted runtime journey. GPT-PM
+request `8f4c362c-e87e-474e-b73c-3183401f2d6e` / reply
+`ac001ce4-8a51-5557-b106-76c66ff11d95` approved code HEAD `0c97e030`; normal push succeeded and
+the upstream ref matches. The test files were not attached to GPT-PM because the transport flagged
+a synthetic credential-like fixture; their 22-pass execution remains the test agent's report. Read-
+only e2e readiness found fresh WSL shutdown entries after its observer exited; the live helper will
+refuse until a stable WSL session is held open. Restricted process/crash/mutation/E8/policy
+selectors remain `NOT_RUN`. S2-5 stays queued.
 
 ### S2-5 — Exact-head gate and sprint decision
 
