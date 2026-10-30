@@ -34,11 +34,25 @@ snapshot for the corrected revision.
 ## Acceptance disposition and next action
 
 - **Corrected StageOnly inputs:** captured and pinned; the target snapshot is time-limited.
-- **Exact-plan review:** not yet requested for source `f685cc9` and this inventory digest. GPT-PM
-  owns the narrow approval; Codex owns sending the exact artifacts and carrying out the bounded
-  command on approval.
-- **Runtime StageOnly:** not yet rerun. Invoke the committed installer with `-StageOnly` only if
-  review returns approval and the inventory remains within its five-minute window. Retain exact
-  output and verify selector, units, configuration and services remain unchanged.
-- This task does not authorize runtime selection, service activation, Store/Runner startup or
-  dispatch. S2-4 runtime acceptance remains open separately.
+- **Exact-plan review:** GPT-PM request `7d4bd70e-ebbc-4b98-ac3b-fe6b84825fca` approved the exact
+  plan/inventory and bounded operation. It found no actionable BLOCKER/MAJOR within this scope
+  and explicitly did not approve runtime selection, service activation, or full S2 closure.
+- **Runtime StageOnly:** the normal committed installer ran with `-StageOnly` and exited 0. It
+  reported `selected=false`, `systemd_units_installed=0`, and `runtime_stage_only=true`; it verified
+  the exact source archive, plan and target inventory. The temporary transfer bundle and source
+  manifest were removed by the successful installer.
+- **Post-stage verification:** at `2026-10-30T02:17:23.380934+00:00`, the complete published runtime
+  tree and runtime marker matched the committed source-plan member map and exact archive/plan/
+  inventory/compiler identities. Runtime path is root-owned mode `0755`. The versioned helper is
+  `root:vst-runner` (`0:988`), mode `4750`, one link, SHA-256
+  `3e7fe2ed0006b9e86ceb08f41071ac6a69b547bb2fe603255a3763643ce2cf91`; its `--version` output binds
+  it to source `f685cc9` and the exact committed C source hash. The existing selector still points
+  to `a600774`. All nine S2 units remain loaded/inactive with no invocation IDs, jobs or cgroups;
+  unit/drop-in hashes and `/etc/vst-runner` directory metadata match the pre-stage inventory.
+  Store, run record and runtime socket paths remain absent. No configuration contents were read.
+- **S2-4.6 bounded StageOnly publication:** complete for source `f685cc9`; the exact plan review,
+  normal installer, and read-only post-stage payload/target verification passed.
+- This result does **not** prove current run-bound environment measurements, a current E5 result,
+  or a permitted real owner-to-Runner journey. Existing runtime selection remains `a600774`; no
+  units/services were activated. Those are the next separate S2-4 runtime task, not accepted by
+  this stage-only result.
