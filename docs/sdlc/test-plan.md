@@ -193,3 +193,46 @@ code/security reviews pass. A new exact-head authorization is required after the
 committed/pushed, followed by one fresh corrected inventory. See
 `evidence/s2-runtime-owner-runner-qualification-f9f488f.json` and
 `../changes/0617-s2-runtime-inventory-source-pins.md`.
+
+**Current S2-4.12b update:** GPT-PM exact-head request
+`cf7a9515-0cd8-47d2-a0cb-1c351a3ef1e0` found MAJOR-01: six validator-required fields were absent
+inside `readiness`, although present at inventory top level. The production collector now routes
+the same captured values through one `assemble_inventory()` function and persists both copies.
+The prior 35 collector-helper tests did not prove this real collector-to-validator contract. The
+functional-test-reviewer added a focused integration regression that invokes the real
+`validate_inventory`, including missing and contradictory nested values. It returned 52 passed,
+one existing pytest-asyncio deprecation warning, exit 0, Python 3.14.3 at HEAD
+`1a7dca5527dbe48324426f9b5f56621e85a6279b`. Updated test-contract code review found no actionable
+B/M issue. The tester reran the focused command at committed HEAD
+`b927a438a72d14a31229c9d0ad7514a19606c98e`: 52 passed, one existing deprecation warning, exit 0.
+A subsequent task-record-only amendment changed no collector or test bytes. Request remediation
+approval for the exact committed HEAD
+and source bytes, push normally, and request one fresh runtime authorization. Do not reuse either
+consumed authorization or begin S2-5 first.
+
+The first fresh authorization `53f946da-755c-4859-adca-6bfd64fb2293` / reply
+`09ac688e-5ded-5b7b-aa9c-5e6a69e13ff7` at HEAD `2e6a796` produced inventory
+`7a7e97b1e9a7dedbfd57592c3df66fea7ff6847c0a6ff3e77d6e49abd5b168d0`; the verifier refused
+because `readiness.units` was omitted. No apply, root preflight, claim/probe or TestRun occurred.
+The exact inventory and authorization transcript are the `2e6a796`-suffixed evidence files.
+
+The replacement GPT-PM authorization `a2bd39ce-8ae4-4416-9b82-56382a610c92` / reply
+`80091d4f-cbf2-5c72-af15-7ef9a48020bf` permitted one inventory and one verifier on exact HEAD
+`2e6a796eaa04664812cf1266322b083f18770fa1`, followed only by conditional apply, root preflight,
+and one report-bound TestRun. The inventory SHA was
+`acb6b116aa66f4ba764a9e7c9ad505b90574323ed16129a71a61a970956e151c`; the validator ran once and
+refused because `readiness.runtime_selector` was omitted from the persisted inventory even though
+the observed top-level symlink matched. Apply, root preflight, claim/probe and TestRun were
+`NOT_RUN`; the authorization is consumed. Full records are
+`evidence/s2-runtime-target-inventory-a2bd39ce.json` and
+`evidence/s2-runtime-owner-runner-qualification-a2bd39ce.json` (SHA-256
+`ef84d142d52e0fe8c19364d360bc91209fdcc7bf3525709cd017fd419538a87c`).
+
+To prevent further hand-assembled schema omissions, the current task adds
+`tools/qa/collect_s2_runtime_config_inventory.py` (SHA-256
+`95a28412a9a12ac365a8d8e36bd0e61b431ae5aa9f1cbfe134e2d1de68d0ef06`). Its focused regression suite is
+`python -m pytest -q tests/vst/test_s2_runtime_inventory_collector.py`: 35 passed, one existing
+pytest-asyncio deprecation warning, exit 0; Python 3.14.3 at HEAD
+`2e6a796eaa04664812cf1266322b083f18770fa1`. These are code-level collection/schema tests only;
+they do not prove target runtime acceptance. Use the committed collector and a new exact-head
+authorization for the next live inventory; all prohibited scenario groups remain `NOT_RUN`.

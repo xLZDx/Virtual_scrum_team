@@ -218,6 +218,31 @@ acceptance remains NOT APPROVED. This decision does not authorize privileged iss
 production keys/configuration, activation, dispatch, E5 replacement, runtime acceptance, or S2
 closure. The V1 caller-selected operation-ID route and real owner-to-Runner evidence remain open.
 
+### S2-4.12b runtime inventory MAJOR-01 remediation
+
+- The local task commit contains the single-path `assemble_inventory()` correction, the focused integration
+  regression, the two prior one-shot
+  runtime refusal artifacts, and the task change record. Collector Git-blob and worktree bytes
+  match at SHA-256 `453fe70732c7309158cab7a0876b6bb7347b895056969ef87dbf988dd8cfa838`.
+- GPT-PM review request `cf7a9515-0cd8-47d2-a0cb-1c351a3ef1e0` on prior HEAD
+  `1a7dca5527dbe48324426f9b5f56621e85a6279b` returned HOLD / MAJOR-01: six fields checked by the
+  real validator were absent from nested `readiness`. The shared assembler now derives both copies
+  from the same read-only capture. The code reviewer confirmed no remaining actionable B/M finding;
+  security review likewise found no actionable B/M finding.
+- The designated functional-test-reviewer ran
+  `python -m pytest -q tests/vst/test_s2_runtime_inventory_collector.py` at pre-commit working-tree
+  state on HEAD `1a7dca5527dbe48324426f9b5f56621e85a6279b`: 52 passed, one existing pytest-asyncio
+  deprecation warning, exit 0, Python 3.14.3. This covers valid assembly through the real
+  `validate_inventory` and missing/contradictory cases for all eight duplicated readiness fields.
+  The reviewer reran this command after the code/test commit at HEAD
+  `b927a438a72d14a31229c9d0ad7514a19606c98e`: 52 passed, one existing deprecation warning, exit 0.
+  A subsequent task-record-only amendment changed no collector or test bytes. No target runtime was
+  invoked.
+- Remaining: run exact-head GPT-PM remediation review, pass the enforced pre-push gate, push
+  normally, then request a fresh one-shot runtime
+  authorization. Neither consumed authorization can be reused; no apply, preflight, claim/probe,
+  or TestRun occurred under them.
+
 ### S2-4 exact configuration preparation — 2026-10-30
 
 Delivered code a600774 corrects the actually observed Python3.12 missing pidfd constant; its

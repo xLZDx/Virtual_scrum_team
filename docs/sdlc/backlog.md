@@ -278,6 +278,38 @@ old HEAD `1b5dd9d7a639b629465ac6fcf29e300ba80c18ca`; the validator changes the c
 correlated runtime authorization is required after this task is pushed. The prior installation
 remains bound to the consumed run. S2-4 remains IN PROGRESS, S2-5 is queued, and S3 is unstarted.
 
+**Latest S2-4.12b runtime attempts.** Request `53f946da-755c-4859-adca-6bfd64fb2293` / reply
+`09ac688e-5ded-5b7b-aa9c-5e6a69e13ff7` authorized one inventory and validator at HEAD `2e6a796`;
+the collector omitted `readiness.units`, so validation refused. No runtime mutation occurred. Its
+inventory SHA was `7a7e97b1e9a7dedbfd57592c3df66fea7ff6847c0a6ff3e77d6e49abd5b168d0`; both records
+are preserved under the `2e6a796` evidence suffix. Replacement request
+`a2bd39ce-8ae4-4416-9b82-56382a610c92`, reply
+`80091d4f-cbf2-5c72-af15-7ef9a48020bf`, authorized one inventory plus one validator and conditional
+apply/preflight/TestRun at exact HEAD `2e6a796eaa04664812cf1266322b083f18770fa1`. Inventory SHA
+`acb6b116aa66f4ba764a9e7c9ad505b90574323ed16129a71a61a970956e151c` recorded values matching
+the requested target predicates but omitted the duplicate `readiness.runtime_selector`; the one verifier refused with
+`selected runtime path differs from the pinned S2 runtime`. No apply, preflight, claim/probe, or
+TestRun occurred; this was a collector serialization defect, not a confirmed target failure. Codex
+added a collector candidate at `tools/qa/collect_s2_runtime_config_inventory.py`; its current
+integration-corrected SHA-256 is `453fe70732c7309158cab7a0876b6bb7347b895056969ef87dbf988dd8cfa838`.
+GPT-PM request `cf7a9515-0cd8-47d2-a0cb-1c351a3ef1e0` returned HOLD / MAJOR-01: six validator-
+required fields were only top-level and absent from `readiness`, so the next verifier would fail.
+The current uncommitted assembler correction duplicates the same captured values into both places.
+The functional-test-reviewer added an integration regression through the production assembler and
+real validator. `python -m pytest -q tests/vst/test_s2_runtime_inventory_collector.py` returned 52
+passed, one existing pytest-asyncio deprecation warning, exit 0, Python 3.14.3, at HEAD
+`1a7dca5527dbe48324426f9b5f56621e85a6279b`. The tests prove the valid assembly passes and missing
+or contradictory values are refused for all eight duplicated readiness fields. Code review
+re-reviewed the integration contract and found no actionable B/M issue. Security re-review found no
+actionable B/M finding. The tester reran the command on committed HEAD
+`b927a438a72d14a31229c9d0ad7514a19606c98e`: 52 passed, one existing deprecation warning, exit 0;
+a subsequent task-record-only amendment changed no source or test bytes. Do not call this ready for
+PM review yet. Current S2-4.12b next step: obtain
+remediation review bound to exact HEAD and exact collector bytes, normally push, then request a fresh
+one-shot runtime authorization bound to that pushed HEAD and pins. Execute no further runtime
+command under the consumed requests.
+S2-4 remains IN PROGRESS; S2-5 remains queued; S3 is unstarted.
+
 ### S2-5 — Exact-head gate and sprint decision
 
 1. **Given** completed source, mapped test, permitted runtime, and relevant specialist-review evidence, **When** final approval is requested, **Then** GPT-PM's approval names/correlates to the exact final Git head and evidence set. (REQ-006)
