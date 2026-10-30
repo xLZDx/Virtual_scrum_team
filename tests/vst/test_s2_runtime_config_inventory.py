@@ -21,7 +21,7 @@ EXPECTED_REPO_HEAD = subprocess.run(
     check=True, capture_output=True, text=True).stdout.strip()
 VALIDATOR_PATH = "tools/qa/verify_s2_runtime_config_inventory.py"
 APPLIER_PATH = "tools/qa/apply_s2_runtime_configuration.py"
-EXPECTED_HELPER_SHA256 = "0f3b7b6fe11798ebc806a55bd4d6f687e7974b6f4394b2065e15defab8255083"
+EXPECTED_HELPER_SHA256 = "aafd67378416c869ef527d08a39c97a24831f3c67cebd7bf57d171354e5e1387"
 EXPECTED_APPLIER_SHA256 = hashlib.sha256(
     inventory._git_blob(EXPECTED_REPO_HEAD, APPLIER_PATH)).hexdigest()
 WORKTREE_VALIDATOR_SHA256 = hashlib.sha256(Path(inventory.__file__).read_bytes()).hexdigest()

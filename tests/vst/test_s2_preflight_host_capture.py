@@ -598,6 +598,48 @@ def test_mount_inventory_rejects_windows_drive_and_unlisted_host_mount(tmp_path,
         capture._mount_and_socket_observation(pid)
 
 
+def test_mount_inventory_refusal_reports_sanitized_mount_classification(tmp_path, monkeypatch) -> None:
+    pid = 4242
+    proc = _mount_fixture(tmp_path, pid, [
+        _mount_line(1, "/", "ext4", "/dev/sda"),
+        "2 1 8:1 / /mnt/d rw - 9p D: rw,aname=drvfs",
+        _mount_line(3, "/home/alice/private", "ext4", "/dev/private-source",
+                    root="/host/home/alice/private", device="8:9"),
+    ])
+    _map_proc_path(monkeypatch, pid, proc)
+
+    with pytest.raises(ContractError, match="unapproved Windows or host mount") as exc_info:
+        capture._mount_and_socket_observation(pid)
+
+    message = str(exc_info.value)
+    assert "Windows-drive mount target=/mnt/<nested> filesystem=9p" in message
+    assert "unlisted mount target=/home/<nested> filesystem=ext4" in message
+    assert "D:" not in message
+    assert "alice" not in message
+    assert "/dev/private-source" not in message
+    assert "/host/home" not in message
+
+
+def test_mount_inventory_deduplicates_repeated_findings_before_suffix_count(tmp_path, monkeypatch) -> None:
+    pid = 4242
+    drvfs_mount = "2 1 8:1 / /mnt/d rw - 9p D: rw,aname=drvfs"
+    proc = _mount_fixture(tmp_path, pid, [
+        _mount_line(1, "/", "ext4", "/dev/sda"),
+        drvfs_mount,
+        *[drvfs_mount.replace("2 1", f"{mount_id} 1") for mount_id in range(3, 12)],
+    ])
+    _map_proc_path(monkeypatch, pid, proc)
+
+    with pytest.raises(ContractError, match="unapproved Windows or host mount") as exc_info:
+        capture._mount_and_socket_observation(pid)
+
+    message = str(exc_info.value)
+    assert "Windows-drive mount target=/mnt/<nested> filesystem=9p" in message
+    assert "unlisted mount target=/mnt/<nested> filesystem=9p" in message
+    assert "duplicate target=/mnt/<nested>" in message
+    assert "additional mount findings" not in message
+
+
 def test_socket_inventory_fails_closed_for_known_container_socket(tmp_path, monkeypatch) -> None:
     pid = 4242
     proc = _mount_fixture(tmp_path, pid, [_mount_line(1, "/", "ext4", "/dev/sda")])

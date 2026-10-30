@@ -362,6 +362,7 @@ def _mount_and_socket_observation(pid: int) -> dict[str, Any]:
         raise ContractError("probe mount or socket inventory is incomplete") from exc
     windows_mounts: list[str] = []
     unapproved_host_mounts: list[str] = []
+    mount_findings: list[str] = []
     try:
         kernel_release = Path("/proc/sys/kernel/osrelease").read_text(encoding="ascii").strip()
     except (OSError, UnicodeError) as exc:
@@ -386,6 +387,26 @@ def _mount_and_socket_observation(pid: int) -> dict[str, Any]:
     }
     for masked_path in MASKED_HOST_PATHS:
         allowed_mounts[masked_path] = {"ext4", "overlay"}
+
+    def diagnostic_target(target: str) -> str:
+        if target in allowed_mounts:
+            return target
+        parts = [part for part in target.split("/") if part]
+        if not parts:
+            return "/"
+        known_roots = {
+            "boot", "dev", "etc", "home", "init", "mnt", "opt", "proc",
+            "root", "run", "sys", "tmp", "usr", "var",
+        }
+        if parts[0] not in known_roots:
+            return "/<unknown>" + ("/<nested>" if len(parts) > 1 else "")
+        return f"/{parts[0]}/<nested>" if len(parts) > 1 else f"/{parts[0]}/<entry>"
+
+    def diagnostic_filesystem(filesystem: str) -> str:
+        if re.fullmatch(r"[a-z0-9._+-]{1,32}", filesystem):
+            return filesystem
+        return "<other>"
+
     decoded: list[tuple[str, str, list[str], str, str, str, str]] = []
     for line in mount_lines:
         fields = line.split()
@@ -410,6 +431,7 @@ def _mount_and_socket_observation(pid: int) -> dict[str, Any]:
     for line, target, fields, root_source, filesystem, source, options in decoded:
         if target in seen_targets:
             unapproved_host_mounts.append("duplicate mount target: " + target)
+            mount_findings.append(f"duplicate target={diagnostic_target(target)}")
             continue
         seen_targets.add(target)
         is_drvfs = filesystem.lower() == "drvfs" or (
@@ -417,9 +439,17 @@ def _mount_and_socket_observation(pid: int) -> dict[str, Any]:
         )
         if is_drvfs and re.fullmatch(r"[A-Za-z]:\\?", source):
             windows_mounts.append(line)
+            mount_findings.append(
+                f"Windows-drive mount target={diagnostic_target(target)} "
+                f"filesystem={diagnostic_filesystem(filesystem)}"
+            )
         expected_fs = allowed_mounts.get(target)
         if expected_fs is None or filesystem not in expected_fs:
             unapproved_host_mounts.append(line)
+            mount_findings.append(
+                f"unlisted mount target={diagnostic_target(target)} "
+                f"filesystem={diagnostic_filesystem(filesystem)}"
+            )
             continue
         is_virtual = filesystem in {"proc", "sysfs", "devtmpfs", "devpts", "tmpfs",
                                     "ramfs", "cgroup2", "mqueue"}
@@ -458,8 +488,19 @@ def _mount_and_socket_observation(pid: int) -> dict[str, Any]:
         is_unapproved = not valid_source
         if is_unapproved:
             unapproved_host_mounts.append(line)
+            mount_findings.append(
+                f"unexpected mount binding target={diagnostic_target(target)} "
+                f"filesystem={diagnostic_filesystem(filesystem)}"
+            )
     if windows_mounts or unapproved_host_mounts:
-        raise ContractError("probe namespace exposes an unapproved Windows or host mount")
+        unique_findings = list(dict.fromkeys(mount_findings))
+        details = "; ".join(unique_findings[:8])
+        if len(unique_findings) > 8:
+            details += f"; {len(unique_findings) - 8} additional mount findings"
+        raise ContractError(
+            "probe namespace exposes an unapproved Windows or host mount"
+            + (f" ({details})" if details else "")
+        )
 
     sockets = sorted({line.split()[-1] for line in unix_lines if line.split()
                       and any(token in line.split()[-1].lower()
