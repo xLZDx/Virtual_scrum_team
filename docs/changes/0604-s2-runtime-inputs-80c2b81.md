@@ -22,13 +22,13 @@ prior plan and inventory were for `f685cc9` and cannot be reused as if they desc
   activation.
 - Target inventory: `docs/sdlc/evidence/s2-runtime-target-inventory-80c2b81deac364ed6466600fd46af47aafe805e2.json`
   — 14,458 bytes, SHA-256
-  `ef7fc473efc734ae2e5be1b4e0181f4bf2d70939c045f2a720301fcae119412d`; source and requested
+  `5f011ff65577a9363d2c1b60747e586d12042995dc88e8dff8779bdb81b28a66`; source and requested
   source heads both equal `80c2b81deac364ed6466600fd46af47aafe805e2`.
 - Exact read-only WSL wrapper: `$script | wsl.exe -d Ubuntu-24.04 --user root -- python3 -B -`.
   It queried systemd unit states and jobs, mount visibility, compiler ownership/package/version/hash,
   and metadata for fixed runtime, configuration, Store and preflight paths. It did not read private
   key contents, hash secret bytes, or mutate the target.
-- Observation time: `2026-10-30T02:43:06.339898+00:00`. The selected runtime remains `a600774`;
+- Observation time: `2026-10-30T02:49:02.839487+00:00`. The selected runtime remains `a600774`;
   all nine S2 units are inactive; no systemd jobs are pending; `/var/lib/vst-runner/private/store.sqlite3`
   and the current preflight record are absent. `/usr/bin/cc` resolves to the root-owned GCC 13
   package executable at mode `0755`, SHA-256
@@ -39,11 +39,13 @@ prior plan and inventory were for `f685cc9` and cannot be reused as if they desc
 
 ## Acceptance disposition and next action
 
-- Exact source plan and read-only target inventory: captured and hash-checked.
-- No target mutation, runtime selection, service start, Store initialization, bootstrap, or dispatch
-  was performed in this task.
-- Next ordered task: execute the normal bounded `-StageOnly` publication for source `80c2b81`, then
-  verify the immutable staged tree against this exact source plan and inventory. Do not select the
-  runtime or install the separate stale configuration candidate in this step.
+- Exact source plan and refreshed read-only target inventory: captured and hash-checked. The first
+  inventory snapshot expired before installation: the normal installer rejected it when its age
+  was 318.9 seconds (the limit is 300 seconds), before any target mutation. All other revision and
+  compiler identity values matched. The new inventory was collected immediately before retry.
+- No runtime selection, service start, Store initialization, bootstrap, or dispatch occurred. The
+  StageOnly retry with the refreshed inventory is the next action; verify the immutable staged tree
+  against this exact plan and inventory. Do not select the runtime or install the separate stale
+  configuration candidate in this step.
 - Current E5 evidence and the real owner-to-Runner journey remain open. Restricted process-kill,
   crash/recovery, mutation, E8, and policy selectors remain `NOT_RUN`.

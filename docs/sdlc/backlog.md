@@ -125,13 +125,15 @@ uncommitted; it is not an activation input.
 **S2-4.8 — exact source and target inputs for the selector fix.** Source plan for committed source
 `80c2b81deac364ed6466600fd46af47aafe805e2` is `docs/sdlc/evidence/s2-runtime-source-plan-80c2b81deac364ed6466600fd46af47aafe805e2.json`
 (SHA-256 `01818efcd23bc20a3a4b408921d7342f5e5f95adc16ad86fe7b2a3b7176e2344`). A fresh read-only Ubuntu-24.04
-inventory at `2026-10-30T02:43:06Z` is
+inventory refreshed at `2026-10-30T02:49:02Z` is
 `docs/sdlc/evidence/s2-runtime-target-inventory-80c2b81deac364ed6466600fd46af47aafe805e2.json` (SHA-256
-`ef7fc473efc734ae2e5be1b4e0181f4bf2d70939c045f2a720301fcae119412d`). It confirms the selector still points
-to `a600774`, all nine S2 units are inactive, no jobs are pending, Store and current preflight are absent, and
-the root-owned compiler identity is present. No private bytes were read or hashed; no target mutation occurred.
-Detailed record: `docs/changes/0604-s2-runtime-inputs-80c2b81.md`. Next: publish these exact inputs, then run only
-the bounded StageOnly publication for `80c2b81`; current E5 and the real owner-to-Runner journey remain open.
+`5f011ff65577a9363d2c1b60747e586d12042995dc88e8dff8779bdb81b28a66`), refreshed at
+`2026-10-30T02:49:02Z` after the prior inventory expired at installer validation (318.9 seconds old; limit 300).
+It confirms the selector still points to `a600774`, all nine S2 units are inactive, no jobs are pending, Store
+and current preflight are absent, and the root-owned compiler identity is present. The failed attempt made no
+target change. No private bytes were read or hashed. Detailed record:
+`docs/changes/0604-s2-runtime-inputs-80c2b81.md`. Next: commit/push the refreshed inventory and immediately
+run only the bounded StageOnly publication for `80c2b81`; current E5 and the real owner-to-Runner journey remain open.
 Restricted process-kill, crash/recovery, mutation, E8, and policy selectors remain `NOT_RUN`.
 
 ### S2-5 — Exact-head gate and sprint decision
