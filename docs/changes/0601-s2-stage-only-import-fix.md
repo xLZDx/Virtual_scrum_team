@@ -38,10 +38,10 @@ WSL runtime publication.
 
 ## Acceptance disposition and next action
 
-- **S2-4.5 code and focused regression:** complete; pending this task commit and normal push.
-- **S2-4.6 runtime publication:** not yet complete. The previous attempt made no target changes;
-  refresh exact source-plan/inventory inputs for the committed fix, obtain their narrow review,
-  and rerun the existing `-StageOnly` command. Preserve the current selector, units, config and
-  services.
+- **S2-4.5 code and focused regression:** committed and normally pushed as `f685cc9778e516b277e243a14dfa123db34ec247`.
+- **S2-4.6 runtime publication:** not yet complete. The previous attempt made no target changes.
+  Exact source-plan and refreshed target-inventory inputs for `f685cc9` are now captured in
+  change `0602`; obtain their narrow review and rerun the existing `-StageOnly` command. Preserve
+  the current selector, units, config and services.
 - S2-4 runtime acceptance remains open for measured current-run evidence and the permitted real
   owner-to-Runner journey. Restricted selectors remain `NOT_RUN`.
