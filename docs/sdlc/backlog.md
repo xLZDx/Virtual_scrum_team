@@ -213,8 +213,12 @@ deadline to every nested systemd command and checks expiry even when the first s
 worker identity. The functional-test-reviewer reran the focused suite on the final code: 93 passed,
 one existing pytest-asyncio deprecation warning. Coverage includes declining command timeouts,
 deadline exhaustion, worker-first late validation, and refusal of the consumed tuple before marker
-creation. Security and final code reviews passed; exact-head GPT-PM source approval remains pending.
-Detailed change record:
+creation. Security and final code reviews passed. GPT-PM exact-head review request
+`7e63f76e-4454-4b9d-80ad-c8ce77f607f6` returned HOLD because its declared helper digest was stale:
+request `d324c810…` versus actual committed/worktree helper bytes `0f3b7b6f…` (55,295 bytes).
+Direct Git-blob/worktree comparison matches the latter; the mismatch is in the request metadata,
+not evidence of a source defect. GPT-PM found no other actionable issue. Codex corrected the
+canonical digest record and will request a focused exact-digest follow-up before push. Detailed change record:
 `docs/changes/0615-s2-4.12b-worker-identity-settle.md`.
 
 The unapproved, preparation-only next candidate is run
