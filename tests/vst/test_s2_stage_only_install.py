@@ -164,7 +164,7 @@ def test_stage_only_runtime_bundle_import_does_not_change_exact_source_members(
     (package / "contracts.py").write_text("CONTRACT = True\n", encoding="ascii")
     (package / "runtime_bundle.py").write_text(
         "from .contracts import CONTRACT\n"
-        "def validate_stage_only_config_directory(path):\n"
+        "def validate_root_config_directory(path):\n"
         "    return CONTRACT and path == '/etc/vst-runner'\n",
         encoding="ascii",
     )
@@ -176,8 +176,8 @@ def test_stage_only_runtime_bundle_import_does_not_change_exact_source_members(
     result = subprocess.run(
         [sys.executable, *flags(), "-c",
          "import sys; sys.path.insert(0, sys.argv[1]); "
-         "from tools.vst.runtime_bundle import validate_stage_only_config_directory; "
-         "assert validate_stage_only_config_directory('/etc/vst-runner')",
+         "from tools.vst.runtime_bundle import validate_root_config_directory; "
+         "assert validate_root_config_directory('/etc/vst-runner')",
          str(bundle)],
         check=False,
         capture_output=True,

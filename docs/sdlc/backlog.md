@@ -113,6 +113,16 @@ These criteria make the existing requirements testable; they do not add product 
 
 **Delivered S2-4.6 — bounded StageOnly publication:** GPT-PM request `7d4bd70e-ebbc-4b98-ac3b-fe6b84825fca` approved source plan SHA-256 `90b88d12f571b0e9bc3744e4f9aff723ee2c0740f5895108726b8e52da2b1a5d` and fresh target inventory SHA-256 `8ede4656da3c18eda730873524534892c58ac0c9056885a3cbd59045a66ff733`. The normal installer ran at about `2026-10-30T02:13Z`, exit 0: it published the immutable `f685cc9` runtime and helper with `selected=false`, `systemd_units_installed=0`. Read-only post-stage verification at `2026-10-30T02:17:23.380934+00:00` matched the complete runtime tree and marker to the pinned plan; helper SHA-256 `3e7fe2ed0006b9e86ceb08f41071ac6a69b547bb2fe603255a3763643ce2cf91`, owner/mode `root:vst-runner 0:988 4750`. Selector still points to `a600774`; nine units are inactive; no jobs/cgroups, Store, run record, or runtime sockets; config directory and unit/drop-in metadata are unchanged. Detailed record: `docs/changes/0602-s2-stage-only-refreshed-inputs.md`. This closes only inactive source publication. Next ordered task remains S2-4 permitted current-run qualification and owner-to-Runner evidence; S2-4 and S2-5 remain open.
 
+**S2-4.7 — permit runtime selection beside existing safe configuration.** The target contains a root-owned,
+non-writable `/etc/vst-runner`; the selector now validates only that directory's metadata and leaves its files and
+Store untouched. It continues to require absent `/run` service paths, inactive units, no pending jobs, and empty
+cgroups. Focused results: Windows 12 passed/2 POSIX-only skipped; WSL Python 3.12 ran the two POSIX selector cases
+2/2; the code reviewer found no actionable BLOCKER/MAJOR. Evidence: `docs/changes/0603-s2-existing-config-runtime-selection.md`.
+The selector has not been applied. A separate, still-uncommitted runtime configuration candidate contains a stale
+`a600774` source pin and is excluded from this task commit. Next: commit/push this selector fix, prepare an exact
+source plan and fresh target inventory for the resulting source, stage it, then rebind and run the permitted S2-4
+path. The real owner-to-Runner journey, current runtime evidence and S2-5 exact-head decision remain open.
+
 ### S2-5 — Exact-head gate and sprint decision
 
 1. **Given** completed source, mapped test, permitted runtime, and relevant specialist-review evidence, **When** final approval is requested, **Then** GPT-PM's approval names/correlates to the exact final Git head and evidence set. (REQ-006)

@@ -78,12 +78,12 @@ if [ "$stage_only" -eq 1 ]; then
 import os, subprocess, sys
 
 sys.path.insert(0, sys.argv[1])
-from tools.vst.runtime_bundle import validate_stage_only_config_directory
+from tools.vst.runtime_bundle import validate_root_config_directory
 
 for path in ("/run/vst-supervisor", "/run/vst-runner"):
     if os.path.lexists(path):
         raise SystemExit("stage-only requires absent runtime socket paths: " + path)
-validate_stage_only_config_directory("/etc/vst-runner")
+validate_root_config_directory("/etc/vst-runner")
 
 units = (
     "vst-supervisor.service", "vst-signer.service", "vst-runner.service",

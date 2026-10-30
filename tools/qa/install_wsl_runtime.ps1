@@ -583,8 +583,8 @@ if os.path.lexists(helper_path):
 
 if stage_only:
     sys.path.insert(0, stage)
-    from tools.vst.runtime_bundle import validate_stage_only_config_directory
-    validate_stage_only_config_directory("/etc/vst-runner")
+    from tools.vst.runtime_bundle import validate_root_config_directory
+    validate_root_config_directory("/etc/vst-runner")
 
 worker = ["/bin/sh", os.path.join(stage, "tools/qa/install_wsl_worker_helper.sh"),
           head, stage, digest, expected_plan_sha256, expected_inventory_sha256]

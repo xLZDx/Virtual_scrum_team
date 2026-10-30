@@ -47,18 +47,18 @@ def _fail(message: str) -> None:
     raise ContractError("runtime bundle: " + message)
 
 
-def validate_stage_only_config_directory(path: str = "/etc/vst-runner") -> None:
-    """Allow inert config to coexist with a new immutable stage without modifying it."""
-    _path(path, "stage-only configuration directory")
+def validate_root_config_directory(path: str = "/etc/vst-runner") -> None:
+    """Allow an existing root-controlled config directory without reading or changing it."""
+    _path(path, "root configuration directory")
     try:
         info = os.lstat(path)
     except FileNotFoundError:
         return
     except OSError as exc:
-        raise ContractError("runtime bundle: cannot inspect stage-only configuration directory") from exc
+        raise ContractError("runtime bundle: cannot inspect root configuration directory") from exc
     if (not stat.S_ISDIR(info.st_mode) or info.st_uid != 0
             or stat.S_IMODE(info.st_mode) & 0o022):
-        _fail("stage-only configuration directory must be a root-controlled non-writable directory")
+        _fail("root configuration directory must be a root-controlled non-writable directory")
 
 
 def _digest(value: object, name: str) -> str:

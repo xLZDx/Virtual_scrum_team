@@ -19,14 +19,14 @@ def test_stage_only_allows_absent_configuration_directory(monkeypatch):
 
     monkeypatch.setattr(bundle.os, "lstat", missing)
 
-    bundle.validate_stage_only_config_directory(CONFIG_DIR)
+    bundle.validate_root_config_directory(CONFIG_DIR)
 
 
 def test_stage_only_allows_existing_root_owned_non_writable_directory(monkeypatch):
     expected = SimpleNamespace(st_mode=stat.S_IFDIR | 0o755, st_uid=0)
     monkeypatch.setattr(bundle.os, "lstat", lambda _path: expected)
 
-    bundle.validate_stage_only_config_directory(CONFIG_DIR)
+    bundle.validate_root_config_directory(CONFIG_DIR)
 
 
 @pytest.mark.parametrize(
@@ -44,7 +44,7 @@ def test_stage_only_rejects_unsafe_existing_configuration_directory(monkeypatch,
     monkeypatch.setattr(bundle.os, "lstat", lambda _path: info)
 
     with pytest.raises(ContractError, match="root-controlled non-writable directory"):
-        bundle.validate_stage_only_config_directory(CONFIG_DIR)
+        bundle.validate_root_config_directory(CONFIG_DIR)
 
 
 def test_stage_only_fails_closed_when_configuration_directory_cannot_be_inspected(monkeypatch):
@@ -53,5 +53,5 @@ def test_stage_only_fails_closed_when_configuration_directory_cannot_be_inspecte
 
     monkeypatch.setattr(bundle.os, "lstat", inaccessible)
 
-    with pytest.raises(ContractError, match="cannot inspect stage-only configuration directory"):
-        bundle.validate_stage_only_config_directory(CONFIG_DIR)
+    with pytest.raises(ContractError, match="cannot inspect root configuration directory"):
+        bundle.validate_root_config_directory(CONFIG_DIR)

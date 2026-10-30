@@ -194,6 +194,55 @@ def test_apply_requires_exact_external_manifest_pin(host):
     assert not host.journal.exists()
 
 
+def test_selector_allows_existing_root_config_dir_but_still_requires_inactive_units(monkeypatch):
+    validated = []
+    unit_queries = []
+
+    def validate_existing_config():
+        # The production validator inspects only /etc/vst-runner's metadata.
+        # This spy makes it explicit that the selector does not read config files.
+        validated.append(True)
+
+    class Result:
+        returncode = 0
+
+        def __init__(self, stdout):
+            self.stdout = stdout
+
+    def systemctl(arguments, **_kwargs):
+        if arguments[1] == "list-jobs":
+            return Result("No jobs running.\n")
+        if "--property=ActiveState" in arguments:
+            unit_queries.append(arguments[2])
+            return Result("inactive\n")
+        if "--property=ControlGroup" in arguments:
+            return Result("\n")
+        raise AssertionError(f"unexpected systemctl query: {arguments!r}")
+
+    monkeypatch.setattr(runtime, "validate_root_config_directory", validate_existing_config)
+    monkeypatch.setattr(runtime.os.path, "lexists", lambda _path: False)
+    monkeypatch.setattr(runtime.subprocess, "run", systemctl)
+    runtime._require_unconfigured_and_inactive()
+
+    assert validated == [True]
+    assert set(unit_queries) == set(UNITS)
+
+
+def test_selector_fails_closed_before_systemctl_when_existing_config_dir_is_unsafe(monkeypatch):
+    def reject_unsafe_config():
+        raise ContractError("unsafe root configuration directory")
+
+    monkeypatch.setattr(runtime, "validate_root_config_directory", reject_unsafe_config)
+    monkeypatch.setattr(
+        runtime.subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail("systemctl queried after config validation failed"),
+    )
+
+    with pytest.raises(ContractError, match="unsafe root configuration directory"):
+        runtime._require_unconfigured_and_inactive()
+
+
 def test_apply_selects_exact_staged_tree_without_starting_services(host, capsys):
     runtime.apply(host.manifest, host.digest)
     assert os.readlink(host.selector) == "/opt/vst-runtime-" + HEAD_NEW

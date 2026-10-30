@@ -23,9 +23,10 @@ from .contracts import ContractError, canonical_bytes
 from .runtime_bundle import (
     HELPER_BASE, PARENTS, RUNTIME_LINK, SCHEMA, UNIT_DIR, UNITS,
     build_manifest, load_canonical_manifest, manifest_sha256, tree_sha256,
+    validate_root_config_directory,
 )
 
-CONFIG_SENTINELS = ("/etc/vst-runner", "/run/vst-supervisor", "/run/vst-runner")
+CONFIG_SENTINELS = ("/run/vst-supervisor", "/run/vst-runner")
 JOURNAL_ROOT = "/var/lib/vst-bootstrap-transitions"
 SYSTEMCTL = "/usr/bin/systemctl"
 CGROUP_ROOT = "/sys/fs/cgroup"
@@ -126,6 +127,7 @@ def _require_fixed_parents() -> None:
 
 
 def _require_unconfigured_and_inactive() -> None:
+    validate_root_config_directory()
     for path in CONFIG_SENTINELS:
         if os.path.lexists(path):
             refuse("configured/runtime path exists: " + path)
