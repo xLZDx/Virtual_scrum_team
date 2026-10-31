@@ -55,4 +55,15 @@ The diagnostic code change was committed as `01a25158fca6e83bbb427271fe632ffebee
 
 ## Current status and next step
 
-S2-4 remains `IN PROGRESS`; S2-5 is queued and not started. PM08-05 and PM08-06 are both consumed and must not be retried. The next executable step is a new exact one-shot request bound to the current pushed HEAD and source hashes for read-only mount-audit-only mode. If authorized, the designated `e2e-runner` may invoke only that exact diagnostic once. Runtime selector/TestRun, service activation, current E5, Owner-to-Runner, dispatch and S2-4 closure remain unproven and are not authorized by either prior diagnostic decision. Owner: Codex for evidence and request coordination; GPT-PM for one-shot adjudication.
+## PM08-07 follow-up
+
+- Authorization: GPT-PM one-shot `S2-4-PM08-AUDIT-ONESHOT-20261101-20`, request `9b57793b-36a4-44f4-873d-c165693bb493`, bound to HEAD `f0bda6abc06dd9dc759ebcada3b3754609083b5e`; retry cap `0`.
+- Preflight passed for exact HEAD/branch/upstream and source hashes. Experiment `s2-ro-hardening-audit-20261101-pm08-07` used one exact mount-audit-only command; no retry.
+- Inner CLI exit: `2`; stdout `0` bytes, SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`; stderr `108` bytes, SHA-256 `a000dfbbb93505288b28547ebda5b3ebb9c639b6e11364668e957214725c73cb`.
+- No valid JSON stdout was emitted, so the authorized artifact `s2-ro-hardening-audit-20261101-pm08-07.json` was not created. The executor did not retain the stderr text; the refusal reason is `NOT_VERIFIED`, not inferred. PM08-07 is consumed and cannot be retried.
+- After the run, local read-only checks confirmed the helper and launcher working-tree SHA-256 values still match the committed expected values and the pinned mount-decoder baseline commit exists. These checks do not identify the refusal reason.
+- No mountinfo, effective masks, private `/dev`, runtime selector/TestRun, service, configuration/key, E5, Owner-to-Runner, dispatch, or production evidence was produced.
+
+## Current status and next step
+
+S2-4 remains `IN PROGRESS`; S2-5 is queued and not started. PM08-05, PM08-06 and PM08-07 are consumed and must not be retried. Before seeking another one-shot diagnostic, correct the execution/reporting boundary so an invalid/empty stdout preserves the exact bounded stderr text in the executor's result (without writing an extra artifact); then inspect that exact refusal before deciding whether source remediation is needed. Any later runtime attempt needs a new exact PM decision bound to its then-current pushed HEAD. Runtime selector/TestRun, service activation, current E5, Owner-to-Runner, dispatch and S2-4 closure remain open. Owner: Codex for evidence and coordination; GPT-PM for adjudication.
