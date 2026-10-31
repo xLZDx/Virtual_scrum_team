@@ -492,8 +492,18 @@ def _verify_execution_unit() -> dict:
         "NoNewPrivileges": "yes", "RuntimeMaxUSec": _expected_runtime_timeout(),
     }
     if any(props.get(key) != value for key, value in expected.items()):
+        R["transient_unit_property_mismatch"] = {
+            "expected": expected,
+            "observed": {key: props.get(key) for key in expected},
+        }
         stop("transient-unit identity or hardening properties differ from the exact profile")
     if actual_inaccessible != expected_inaccessible:
+        R["inaccessible_path_mismatch"] = {
+            "expected": sorted(expected_inaccessible),
+            "observed": sorted(actual_inaccessible),
+            "missing": sorted(expected_inaccessible - actual_inaccessible),
+            "unexpected": sorted(actual_inaccessible - expected_inaccessible),
+        }
         stop("transient-unit inaccessible path set differs from the exact approved target set")
     cgroup = pathlib.Path("/proc/self/cgroup").read_text(encoding="ascii").splitlines()
     if "0::/system.slice/" + TRANSIENT_UNIT not in cgroup:

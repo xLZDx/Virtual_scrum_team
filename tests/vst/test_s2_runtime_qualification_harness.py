@@ -448,11 +448,68 @@ def test_pm08_execution_unit_requires_exact_unit_identity_and_mount_namespace():
     assert result["properties"] == properties
     assert result["open_fds"] == ["0", "1", "2"]
 
-    properties["ControlGroup"] = "/system.slice/vst-s2-qual-ffffffffffffffff.service"
+    # A hardening mismatch is retained as bounded expected/observed fields.
+    properties["ProtectSystem"] = "full"
+    functions["R"].clear()
     with pytest.raises(functions["Hold"]):
         functions["_verify_execution_unit"]()
     assert functions["R"]["reason"] == (
         "transient-unit identity or hardening properties differ from the exact profile")
+    property_mismatch = functions["R"]["transient_unit_property_mismatch"]
+    assert set(property_mismatch) == {"expected", "observed"}
+    assert set(property_mismatch["expected"]) == {
+        "LoadState", "ActiveState", "SubState", "Result", "MainPID", "ControlGroup",
+        "PrivateDevices", "ProtectSystem", "ProtectKernelTunables", "ProtectKernelModules",
+        "ProtectKernelLogs", "ProtectControlGroups", "NoNewPrivileges", "RuntimeMaxUSec",
+    }
+    assert property_mismatch["expected"]["ProtectSystem"] == "strict"
+    assert property_mismatch["observed"] == {
+        key: properties[key] for key in property_mismatch["expected"]
+    }
+    assert property_mismatch["observed"]["ProtectSystem"] == "full"
+
+    properties["ProtectSystem"] = "strict"
+    properties["ControlGroup"] = "/system.slice/vst-s2-qual-ffffffffffffffff.service"
+    functions["R"].clear()
+    with pytest.raises(functions["Hold"]):
+        functions["_verify_execution_unit"]()
+    assert functions["R"]["reason"] == (
+        "transient-unit identity or hardening properties differ from the exact profile")
+    assert functions["R"]["transient_unit_property_mismatch"]["expected"]["ControlGroup"] == (
+        "/system.slice/" + unit)
+    assert functions["R"]["transient_unit_property_mismatch"]["observed"]["ControlGroup"] == (
+        "/system.slice/vst-s2-qual-ffffffffffffffff.service")
+
+    properties["ControlGroup"] = "/system.slice/" + unit
+    expected_paths = sorted(expected_inaccessible)
+    missing_path = expected_paths[0]
+    properties["InaccessiblePaths"] = " ".join("-" + path for path in expected_paths[1:])
+    functions["R"].clear()
+    with pytest.raises(functions["Hold"]):
+        functions["_verify_execution_unit"]()
+    assert functions["R"]["reason"] == (
+        "transient-unit inaccessible path set differs from the exact approved target set")
+    assert functions["R"]["inaccessible_path_mismatch"] == {
+        "expected": expected_paths,
+        "observed": expected_paths[1:],
+        "missing": [missing_path],
+        "unexpected": [],
+    }
+
+    unexpected_path = "/tmp/unexpected-mask-target"
+    properties["InaccessiblePaths"] = " ".join(
+        "-" + path for path in expected_paths + [unexpected_path])
+    functions["R"].clear()
+    with pytest.raises(functions["Hold"]):
+        functions["_verify_execution_unit"]()
+    assert functions["R"]["reason"] == (
+        "transient-unit inaccessible path set differs from the exact approved target set")
+    assert functions["R"]["inaccessible_path_mismatch"] == {
+        "expected": expected_paths,
+        "observed": sorted(expected_paths + [unexpected_path]),
+        "missing": [],
+        "unexpected": [unexpected_path],
+    }
 
 
 def test_pm08_effective_masks_verify_mount_id_type_and_root_ownership():
