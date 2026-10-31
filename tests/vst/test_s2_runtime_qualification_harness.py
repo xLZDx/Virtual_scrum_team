@@ -717,6 +717,7 @@ def test_pm08_mount_audit_binds_sources_baseline_and_creates_no_auth_or_attempt_
         launched.append((script, unit_name, runtime_max_sec))
         return {
             "exit_code": 0, "timed_out": False, "writer_error": None,
+            "unit_name": unit_name,
             "runtime_max_sec": runtime_max_sec, "systemd_properties": [],
             "stdout": {"bytes": len(protocol), "sha256": _sha(protocol),
                        "prefix": protocol, "truncated": False},
@@ -797,6 +798,258 @@ def test_pm08_mount_audit_fails_closed_before_wsl_on_source_or_baseline_mismatch
             expected_helper_sha256=expected_helper,
         )
     assert calls == []
+    assert list(tmp_path.rglob("*")) == []
+
+
+@pytest.mark.parametrize(("failure", "expected_terminal"), [
+    ("invalid-utf8", "HOLD"),
+    ("invalid-json", "HOLD"),
+    ("timeout", "UNKNOWN"),
+    ("stdout-truncated", "UNKNOWN"),
+    ("stderr-truncated", "UNKNOWN"),
+    ("wrong-protocol-schema", "HOLD"),
+])
+def test_pm08_mount_audit_emits_bounded_structured_hold_without_attempt_files(
+        monkeypatch, tmp_path, capsys, failure, expected_terminal):
+    launcher_bytes, helper_bytes = b"exact launcher source bytes\n", b"exact helper source bytes\n"
+    baseline = harness.MOUNT_AUDIT_BASELINE
+    baseline_source = "def _decode_mountinfo(raw):\n    return [], [], []"
+    if failure == "invalid-utf8":
+        stdout_prefix = b"\xffnot-json"
+    elif failure == "invalid-json":
+        stdout_prefix = b'{"schema":'
+    elif failure == "wrong-protocol-schema":
+        stdout_prefix = json.dumps({
+            "schema": "UNEXPECTED_PROTOCOL_V0", "terminal": "PASS",
+        }, separators=(",", ":")).encode("ascii")
+    elif failure == "stdout-truncated":
+        stdout_prefix = b"x" * 20000
+    else:
+        stdout_prefix = b'{"schema":"VST_S2_RUNTIME_QUALIFICATION_PROTOCOL_V1"}'
+    stderr_prefix = b"y" * 20000 if failure == "stderr-truncated" else b"synthetic diagnostic"
+    stdout_truncated = failure == "stdout-truncated"
+    stderr_truncated = failure == "stderr-truncated"
+    timed_out = failure == "timeout"
+    launched = []
+
+    def read_source(path, *, maximum):
+        assert maximum == harness.MAX_WSL_SCRIPT_BYTES
+        return launcher_bytes if Path(path) == Path(harness.__file__) else helper_bytes
+
+    def fake_git(_root, *args, maximum):
+        if args[0] == "rev-parse":
+            return (baseline + "\n").encode("ascii")
+        assert args[0] == "show"
+        return baseline_source.encode("utf-8")
+
+    def fake_wsl(_script, *, unit_name, runtime_max_sec):
+        launched.append((unit_name, runtime_max_sec))
+        return {
+            "exit_code": 0 if not timed_out else None,
+            "timed_out": timed_out, "writer_error": None,
+            "unit_name": unit_name, "runtime_max_sec": runtime_max_sec,
+            "systemd_properties": ["RuntimeMaxSec=60"],
+            "stdout": {
+                "bytes": len(stdout_prefix), "sha256": _sha(stdout_prefix),
+                "prefix": stdout_prefix, "truncated": stdout_truncated,
+            },
+            "stderr": {
+                "bytes": len(stderr_prefix), "sha256": _sha(stderr_prefix),
+                "prefix": stderr_prefix, "truncated": stderr_truncated,
+            },
+        }
+
+    monkeypatch.setattr(harness, "_read_bounded_regular", read_source)
+    monkeypatch.setattr(harness, "_git", fake_git)
+    monkeypatch.setattr(harness, "_run_bounded_wsl", fake_wsl)
+    experiment_id = "s2-4-pm08-failure-01"
+    expected_unit = harness._transient_unit_name(experiment_id)
+
+    exit_code = harness.run_read_only_mount_audit(
+        root=tmp_path, experiment_id=experiment_id,
+        expected_launcher_sha256=_sha(launcher_bytes),
+        expected_helper_sha256=_sha(helper_bytes),
+    )
+
+    assert exit_code == 2
+    assert launched == [(expected_unit, 60)]
+    report = json.loads(capsys.readouterr().out)
+    assert report["schema"] == "VST_S2_RUNTIME_MOUNT_AUDIT_OUTER_V1"
+    assert report["terminal"] == expected_terminal
+    assert report["terminal"] != "PASS"
+    assert report["experiment_id"] == experiment_id
+    assert report["source_identity"] == {
+        "launcher_sha256": _sha(launcher_bytes),
+        "helper_sha256": _sha(helper_bytes),
+        "baseline_revision": baseline,
+        "baseline_decoder_sha256": _sha(baseline_source.encode("utf-8")),
+    }
+    outer = report["outer_process"]
+    assert outer["unit_name"] == expected_unit
+    assert outer["runtime_max_sec"] == 60
+    assert outer["timed_out"] is timed_out
+    assert outer["stdout_bytes"] == len(stdout_prefix)
+    assert outer["stdout_sha256"] == _sha(stdout_prefix)
+    assert outer["stdout_truncated"] is stdout_truncated
+    assert outer["stderr_bytes"] == len(stderr_prefix)
+    assert outer["stderr_sha256"] == _sha(stderr_prefix)
+    assert outer["stderr_truncated"] is stderr_truncated
+    assert len(outer["stdout_prefix"]) <= 16384
+    assert len(outer["stderr_prefix"]) <= 16384
+    assert set(outer) == {
+        "exit_code", "timed_out", "writer_error", "unit_name", "runtime_max_sec",
+        "systemd_properties", "stdout_bytes", "stdout_sha256", "stdout_truncated",
+        "stdout_prefix", "stderr_bytes", "stderr_sha256", "stderr_truncated",
+        "stderr_prefix",
+    }
+    assert not any("auth" in key.lower() or "attempt" in key.lower()
+                   for key in report.keys() | outer.keys())
+    assert list(tmp_path.rglob("*")) == []
+
+
+def test_pm08_mount_audit_downgrades_helper_pass_when_outer_exit_is_nonzero(
+        monkeypatch, tmp_path, capsys):
+    launcher_bytes, helper_bytes = b"exact launcher source bytes\n", b"exact helper source bytes\n"
+    baseline = harness.MOUNT_AUDIT_BASELINE
+    baseline_source = "def _decode_mountinfo(raw):\n    return [], [], []"
+    protocol = json.dumps({
+        "schema": "VST_S2_RUNTIME_QUALIFICATION_PROTOCOL_V1",
+        "terminal": "PASS", "mount_audit": {
+            "schema": "VST_S2_RUNTIME_MOUNT_AUDIT_V1",
+            "terminal": "PASS", "reason": "synthetic helper PASS",
+        },
+    }, separators=(",", ":")).encode("ascii")
+    launched = []
+
+    def read_source(path, *, maximum):
+        assert maximum == harness.MAX_WSL_SCRIPT_BYTES
+        return launcher_bytes if Path(path) == Path(harness.__file__) else helper_bytes
+
+    def fake_git(_root, *args, maximum):
+        if args[0] == "rev-parse":
+            return (baseline + "\n").encode("ascii")
+        assert args[0] == "show"
+        return baseline_source.encode("utf-8")
+
+    def fake_wsl(_script, *, unit_name, runtime_max_sec):
+        launched.append((unit_name, runtime_max_sec))
+        stderr = b"synthetic outer failure"
+        return {
+            "exit_code": 17, "timed_out": False, "writer_error": None,
+            "unit_name": unit_name, "runtime_max_sec": runtime_max_sec,
+            "systemd_properties": ["RuntimeMaxSec=60"],
+            "stdout": {
+                "bytes": len(protocol), "sha256": _sha(protocol),
+                "prefix": protocol, "truncated": False,
+            },
+            "stderr": {
+                "bytes": len(stderr), "sha256": _sha(stderr),
+                "prefix": stderr, "truncated": False,
+            },
+        }
+
+    monkeypatch.setattr(harness, "_read_bounded_regular", read_source)
+    monkeypatch.setattr(harness, "_git", fake_git)
+    monkeypatch.setattr(harness, "_run_bounded_wsl", fake_wsl)
+    experiment_id = "s2-4-pm08-nonzero-outer-01"
+    expected_unit = harness._transient_unit_name(experiment_id)
+
+    exit_code = harness.run_read_only_mount_audit(
+        root=tmp_path, experiment_id=experiment_id,
+        expected_launcher_sha256=_sha(launcher_bytes),
+        expected_helper_sha256=_sha(helper_bytes),
+    )
+
+    assert exit_code == 2
+    assert launched == [(expected_unit, 60)]
+    report = json.loads(capsys.readouterr().out)
+    assert report["schema"] == "VST_S2_RUNTIME_MOUNT_AUDIT_V1"
+    assert report["terminal"] == "HOLD"
+    assert report["reason"] == "outer transient unit exited nonzero despite helper PASS"
+    assert report["terminal"] != "PASS"
+    assert report["outer_process"]["exit_code"] == 17
+    assert report["outer_process"]["timed_out"] is False
+    assert report["source_identity"]["launcher_sha256"] == _sha(launcher_bytes)
+    assert report["source_identity"]["helper_sha256"] == _sha(helper_bytes)
+    assert list(tmp_path.rglob("*")) == []
+
+
+@pytest.mark.parametrize(("case", "protocol_terminal", "expected_reason"), [
+    ("terminal-mismatch", "HOLD", "protocol and mount-audit terminal statuses disagree"),
+    ("invalid-top-terminal", "SUCCESS", "protocol terminal status is invalid"),
+    ("runner-error", "PASS", "bounded WSL runner ended without a complete result; do not retry"),
+])
+def test_pm08_mount_audit_rejects_protocol_terminal_conflicts_and_runner_errors(
+        monkeypatch, tmp_path, capsys, case, protocol_terminal, expected_reason):
+    launcher_bytes, helper_bytes = b"exact launcher source bytes\n", b"exact helper source bytes\n"
+    baseline = harness.MOUNT_AUDIT_BASELINE
+    baseline_source = "def _decode_mountinfo(raw):\n    return [], [], []"
+    experiment_id = "s2-4-pm08-terminal-check-01"
+    nested_terminal = "PASS"
+    protocol = json.dumps({
+        "schema": "VST_S2_RUNTIME_QUALIFICATION_PROTOCOL_V1",
+        "terminal": protocol_terminal,
+        "mount_audit": {
+            "schema": "VST_S2_RUNTIME_MOUNT_AUDIT_V1",
+            "terminal": nested_terminal,
+            "reason": "synthetic nested PASS",
+            "experiment_id": experiment_id,
+        },
+    }, separators=(",", ":")).encode("ascii")
+
+    def read_source(path, *, maximum):
+        assert maximum == harness.MAX_WSL_SCRIPT_BYTES
+        return launcher_bytes if Path(path) == Path(harness.__file__) else helper_bytes
+
+    def fake_git(_root, *args, maximum):
+        if args[0] == "rev-parse":
+            return (baseline + "\n").encode("ascii")
+        assert args[0] == "show"
+        return baseline_source.encode("utf-8")
+
+    def fake_wsl(_script, *, unit_name, runtime_max_sec):
+        if case == "runner-error":
+            raise harness.QualificationError("synthetic runner failure")
+        stderr = b""
+        return {
+            "exit_code": 0, "timed_out": False, "writer_error": None,
+            "unit_name": unit_name, "runtime_max_sec": runtime_max_sec,
+            "systemd_properties": ["RuntimeMaxSec=60"],
+            "stdout": {
+                "bytes": len(protocol), "sha256": _sha(protocol),
+                "prefix": protocol, "truncated": False,
+            },
+            "stderr": {
+                "bytes": len(stderr), "sha256": _sha(stderr),
+                "prefix": stderr, "truncated": False,
+            },
+        }
+
+    monkeypatch.setattr(harness, "_read_bounded_regular", read_source)
+    monkeypatch.setattr(harness, "_git", fake_git)
+    monkeypatch.setattr(harness, "_run_bounded_wsl", fake_wsl)
+
+    exit_code = harness.run_read_only_mount_audit(
+        root=tmp_path, experiment_id=experiment_id,
+        expected_launcher_sha256=_sha(launcher_bytes),
+        expected_helper_sha256=_sha(helper_bytes),
+    )
+
+    assert exit_code == 2
+    report = json.loads(capsys.readouterr().out)
+    assert report["terminal"] in {"HOLD", "UNKNOWN"}
+    assert report["terminal"] != "PASS"
+    assert report["reason"] == expected_reason
+    if case == "runner-error":
+        assert report["schema"] == "VST_S2_RUNTIME_MOUNT_AUDIT_OUTER_V1"
+        assert report["terminal"] == "UNKNOWN"
+        assert report["experiment_id"] == experiment_id
+        assert report["outer_process"]["runner_error_type"] == "QualificationError"
+        assert report["outer_process"]["unit_name"] == harness._transient_unit_name(experiment_id)
+    else:
+        assert report["schema"] == "VST_S2_RUNTIME_MOUNT_AUDIT_V1"
+        assert report["terminal"] == "HOLD"
+        assert report["experiment_id"] == experiment_id
     assert list(tmp_path.rglob("*")) == []
 
 

@@ -583,26 +583,61 @@ def run_read_only_mount_audit(*, root: Path, experiment_id: str,
     script = prefix + helper
     if len(script) > MAX_WSL_SCRIPT_BYTES:
         raise QualificationError("mount-only protocol exceeded its bounded transfer size")
-    result = _run_bounded_wsl(script, unit_name=unit_name, runtime_max_sec=60)
-    stdout, stderr = result["stdout"], result["stderr"]
-    if result["timed_out"] or result["writer_error"] or stdout["truncated"] or stderr["truncated"]:
-        raise QualificationError("read-only experiment outcome is indeterminate; do not retry")
+    outer: dict[str, Any] = {"unit_name": unit_name, "runtime_max_sec": 60}
+    source_identity = {
+        "launcher_sha256": launcher_hash, "helper_sha256": helper_hash,
+        "baseline_revision": MOUNT_AUDIT_BASELINE, "baseline_decoder_sha256": baseline_hash,
+    }
+
+    def emit_hold(reason: str, *, terminal: str = "HOLD") -> int:
+        report = {
+            "schema": "VST_S2_RUNTIME_MOUNT_AUDIT_OUTER_V1",
+            "terminal": terminal, "reason": reason,
+            "source_identity": source_identity, "outer_process": outer,
+            "experiment_id": experiment_id,
+        }
+        print(json.dumps(report, sort_keys=True, ensure_ascii=True, indent=2))
+        return 2
+
     try:
-        protocol = json.loads(stdout["prefix"], object_pairs_hook=_no_duplicate_pairs)
-    except (UnicodeDecodeError, json.JSONDecodeError, QualificationError) as exc:
-        raise QualificationError("read-only experiment did not return its bounded JSON evidence") from exc
-    if not isinstance(protocol, dict) or protocol.get("schema") != "VST_S2_RUNTIME_QUALIFICATION_PROTOCOL_V1":
-        raise QualificationError("read-only experiment returned an unexpected evidence schema")
-    audit = protocol.get("mount_audit")
-    outer = {
-        "exit_code": result["exit_code"], "unit_name": unit_name,
+        result = _run_bounded_wsl(script, unit_name=unit_name, runtime_max_sec=60)
+    except (QualificationError, OSError, subprocess.SubprocessError) as exc:
+        outer["runner_error_type"] = type(exc).__name__
+        return emit_hold("bounded WSL runner ended without a complete result; do not retry",
+                         terminal="UNKNOWN")
+    stdout, stderr = result["stdout"], result["stderr"]
+    outer.update({
+        "exit_code": result["exit_code"], "timed_out": result["timed_out"],
+        "writer_error": result["writer_error"], "unit_name": result["unit_name"],
         "runtime_max_sec": result["runtime_max_sec"],
         "systemd_properties": result["systemd_properties"],
         "stdout_bytes": stdout["bytes"], "stdout_sha256": stdout["sha256"],
+        "stdout_truncated": stdout["truncated"],
+        "stdout_prefix": stdout["prefix"][:16384].decode("utf-8", "replace"),
         "stderr_bytes": stderr["bytes"], "stderr_sha256": stderr["sha256"],
-        "stderr_prefix": stderr["prefix"].decode("utf-8", "replace"),
-    }
+        "stderr_truncated": stderr["truncated"],
+        "stderr_prefix": stderr["prefix"][:16384].decode("utf-8", "replace"),
+    })
+    if result["timed_out"] or result["writer_error"] or stdout["truncated"] or stderr["truncated"]:
+        return emit_hold("bounded process result is incomplete; do not retry", terminal="UNKNOWN")
+    try:
+        protocol = json.loads(stdout["prefix"], object_pairs_hook=_no_duplicate_pairs)
+    except (UnicodeDecodeError, json.JSONDecodeError, QualificationError):
+        return emit_hold("read-only experiment did not return bounded JSON evidence")
+    if not isinstance(protocol, dict) or protocol.get("schema") != "VST_S2_RUNTIME_QUALIFICATION_PROTOCOL_V1":
+        return emit_hold("read-only experiment returned an unexpected evidence schema")
+    audit = protocol.get("mount_audit")
     if isinstance(audit, dict) and audit.get("schema") == "VST_S2_RUNTIME_MOUNT_AUDIT_V1":
+        protocol_terminal, audit_terminal = protocol.get("terminal"), audit.get("terminal")
+        if protocol_terminal not in {"PASS", "HOLD"} or audit_terminal not in {"PASS", "HOLD"}:
+            audit["terminal"] = "HOLD"
+            audit["reason"] = "protocol terminal status is invalid"
+        elif protocol_terminal != audit_terminal:
+            audit["terminal"] = "HOLD"
+            audit["reason"] = "protocol and mount-audit terminal statuses disagree"
+        elif result["exit_code"] != 0 and audit_terminal == "PASS":
+            audit["terminal"] = "HOLD"
+            audit["reason"] = "outer transient unit exited nonzero despite helper PASS"
         audit["source_identity"] = {
             "launcher_sha256": launcher_hash, "helper_sha256": helper_hash,
             "baseline_revision": MOUNT_AUDIT_BASELINE, "baseline_decoder_sha256": baseline_hash,
@@ -612,11 +647,8 @@ def run_read_only_mount_audit(*, root: Path, experiment_id: str,
     else:
         report = {"schema": "VST_S2_RUNTIME_MOUNT_AUDIT_OUTER_V1",
                   "terminal": "HOLD", "reason": protocol.get("reason", "helper stopped before mount audit"),
-                  "protocol": protocol, "source_identity": {
-                      "launcher_sha256": launcher_hash, "helper_sha256": helper_hash,
-                      "baseline_revision": MOUNT_AUDIT_BASELINE,
-                      "baseline_decoder_sha256": baseline_hash,
-                  }, "outer_process": outer}
+                  "protocol": protocol, "source_identity": source_identity,
+                  "outer_process": outer, "experiment_id": experiment_id}
     print(json.dumps(report, sort_keys=True, ensure_ascii=True, indent=2))
     return 0 if result["exit_code"] == 0 and report.get("terminal") == "PASS" else 2
 
