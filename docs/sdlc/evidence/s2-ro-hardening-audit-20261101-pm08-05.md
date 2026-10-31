@@ -66,4 +66,13 @@ The diagnostic code change was committed as `01a25158fca6e83bbb427271fe632ffebee
 
 ## Current status and next step
 
-S2-4 remains `IN PROGRESS`; S2-5 is queued and not started. PM08-05, PM08-06 and PM08-07 are consumed and must not be retried. Before seeking another one-shot diagnostic, correct the execution/reporting boundary so an invalid/empty stdout preserves the exact bounded stderr text in the executor's result (without writing an extra artifact); then inspect that exact refusal before deciding whether source remediation is needed. Any later runtime attempt needs a new exact PM decision bound to its then-current pushed HEAD. Runtime selector/TestRun, service activation, current E5, Owner-to-Runner, dispatch and S2-4 closure remain open. Owner: Codex for evidence and coordination; GPT-PM for adjudication.
+## PM08-08 follow-up
+
+- Authorization: GPT-PM one-shot `S2-4-PM08-AUDIT-ONESHOT-20261101-21`, request `d1a534cf-8520-4b55-a395-edaf8e33464e`, bound to HEAD `d9014a7a99c16dd5e9f78a941c0be1c5acc65fc6`; retry cap `0`.
+- The designated executor reports that it invoked the exact PM08-08 command once, but the `functions.exec` result carrying its metadata was truncated before the runner recovered it. The permitted artifact path `s2-ro-hardening-audit-20261101-pm08-08.json` is absent.
+- Exit code, timestamps, stdout/stderr byte counts and hashes, exact stderr, terminal result, and mount facts are `UNKNOWN` because the executor could not recover them. No JSON artifact was recorded. PM08-08 is consumed; do not retry.
+- The executor has been asked to inspect whether its tool output/cell can be recovered, without rerunning. No execution fact beyond the reported consumed invocation and absent artifact is upgraded to verified evidence.
+
+## Current status and next step
+
+S2-4 remains `IN PROGRESS`; S2-5 is queued and not started. PM08-05 through PM08-08 are all consumed and must not be retried. Before seeking another one-shot diagnostic, fix the executor's output-capture boundary so required run metadata and bounded stderr text survive tool output limits; inspect the exact PM08-08 tool result if recoverable. Any later runtime attempt needs a new exact PM decision bound to its then-current pushed HEAD. Runtime selector/TestRun, service activation, current E5, Owner-to-Runner, dispatch and S2-4 closure remain open. Owner: Codex for evidence and coordination; GPT-PM for adjudication.
