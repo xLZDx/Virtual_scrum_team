@@ -504,7 +504,11 @@ def _verify_execution_unit() -> dict:
             "missing": sorted(expected_inaccessible - actual_inaccessible),
             "unexpected": sorted(actual_inaccessible - expected_inaccessible),
         }
-        stop("transient-unit inaccessible path set differs from the exact approved target set")
+        # In the read-only diagnostic mode, retain the mismatch but continue to
+        # collect mountinfo. The audit result remains HOLD below; this does not
+        # relax runtime qualification or permit a selector/service operation.
+        if not MOUNT_AUDIT_ONLY:
+            stop("transient-unit inaccessible path set differs from the exact approved target set")
     cgroup = pathlib.Path("/proc/self/cgroup").read_text(encoding="ascii").splitlines()
     if "0::/system.slice/" + TRANSIENT_UNIT not in cgroup:
         stop("helper cgroup does not identify its exact transient unit")
@@ -699,16 +703,22 @@ def _read_only_mount_audit() -> None:
     effective_masks, mask_failures = _verify_effective_masks(rows)
     devices, device_failures = _verify_private_dev(rows)
     isolation_failures = mask_failures + device_failures
+    inaccessible_path_mismatch = R.get("inaccessible_path_mismatch")
+    audit_passed = (not inaccessible_path_mismatch and not windows and not rejected
+                    and not isolation_failures)
     result = {
         "schema": "VST_S2_RUNTIME_MOUNT_AUDIT_V1",
-        "terminal": "PASS" if not windows and not rejected and not isolation_failures else "HOLD",
+        "terminal": "PASS" if audit_passed else "HOLD",
         "reason": ("candidate parser and effective-mask proofs passed"
-                   if not windows and not rejected and not isolation_failures
-                   else "candidate parser or independent isolation proof rejected evidence"),
+                   if audit_passed else
+                   "transient-unit inaccessible path set differs; mount inventory retained for diagnosis"
+                   if inaccessible_path_mismatch else
+                   "candidate parser or independent isolation proof rejected evidence"),
         "experiment_unit": unit, "baseline_revision": BASELINE_DECODER_REVISION,
         "baseline_parser_sha256": baseline_sha256,
         "mountinfo_sha256": hashlib.sha256(mountinfo).hexdigest(),
         "mountinfo_bytes": len(mountinfo), "mount_rows": rows,
+        "inaccessible_path_mismatch": inaccessible_path_mismatch,
         "baseline": baseline,
         "candidate": {"row_count": len(rows), "windows_drive_rows": windows,
                       "rejected_rows": rejected},

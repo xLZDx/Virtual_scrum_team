@@ -152,7 +152,7 @@ def _wsl_mount_audit_functions(*, unit="vst-s2-qual-0123456789abcdef.service"):
     }
     functions = {
         "_unescape_mountinfo", "_decode_mountinfo", "_verify_execution_unit",
-        "_verify_private_dev", "_verify_effective_masks",
+        "_verify_private_dev", "_verify_effective_masks", "_read_only_mount_audit",
     }
     nodes = [node for node in tree.body if (
         isinstance(node, ast.Assign)
@@ -184,10 +184,57 @@ def _wsl_mount_audit_functions(*, unit="vst-s2-qual-0123456789abcdef.service"):
         "R": runtime, "Hold": Hold, "stop": stop,
         "_systemd_unit_properties": lambda: {},
         "_expected_runtime_timeout": lambda: "1min",
+        "BASELINE_DECODER_SOURCE": "",
+        "BASELINE_DECODER_SHA256": "",
+        "BASELINE_DECODER_REVISION": "0" * 40,
+        "utc": lambda: "2026-11-01T00:00:00Z",
     }
     exec(compile(ast.Module(body=nodes, type_ignores=[]), str(source_path), "exec"),
          namespace)
     return namespace
+
+
+def _configure_fake_transient_unit(functions, *, inaccessible_paths):
+    unit = functions["TRANSIENT_UNIT"]
+    properties = {
+        "LoadState": "loaded", "ActiveState": "active", "SubState": "running",
+        "Result": "success", "MainPID": "4321", "ControlGroup": "/system.slice/" + unit,
+        "PrivateDevices": "yes", "ProtectSystem": "strict",
+        "ProtectKernelTunables": "yes", "ProtectKernelModules": "yes",
+        "ProtectKernelLogs": "yes", "ProtectControlGroups": "yes",
+        "NoNewPrivileges": "yes", "RuntimeMaxUSec": "1min",
+        "InaccessiblePaths": " ".join("-" + path for path in sorted(inaccessible_paths)),
+    }
+
+    class FakePath:
+        def __init__(self, value):
+            self.value = str(value)
+            self.name = self.value.rsplit("/", 1)[-1]
+
+        def read_bytes(self):
+            if self.value == "/proc/self/cmdline":
+                return b"/usr/bin/python3.12\0-I\0-B\0-S\0-\0"
+            if self.value == "/proc/self/mountinfo":
+                return b"synthetic mount inventory\n"
+            raise AssertionError(self.value)
+
+        def read_text(self, encoding=None):
+            assert self.value == "/proc/self/cgroup"
+            return "0::/system.slice/" + unit + "\n"
+
+        def iterdir(self):
+            assert self.value == "/proc/self/fd"
+            return [FakePath("/proc/self/fd/" + name) for name in ("0", "1", "2")]
+
+    functions["os"] = SimpleNamespace(
+        geteuid=lambda: 0,
+        getpid=lambda: 4321,
+        stat=lambda path: SimpleNamespace(
+            st_dev=1, st_ino=100 if path == "/proc/self/ns/mnt" else 200),
+    )
+    functions["pathlib"] = SimpleNamespace(Path=FakePath)
+    functions["_systemd_unit_properties"] = lambda: properties
+    return properties
 
 
 def _mountinfo_line(mount_id, parent_id, device, root, target, mount_options,
@@ -510,6 +557,48 @@ def test_pm08_execution_unit_requires_exact_unit_identity_and_mount_namespace():
         "missing": [],
         "unexpected": [unexpected_path],
     }
+
+
+def test_pm08_readonly_audit_keeps_mount_inventory_when_init_property_is_missing():
+    functions = _wsl_mount_audit_functions()
+    expected = set(functions["SYSTEMD_INACCESSIBLE_PATHS"])
+    expected.add("/sys/fs/cgroup/system.slice/" + functions["TRANSIENT_UNIT"]
+                 + "/memory.pressure")
+    properties = _configure_fake_transient_unit(
+        functions, inaccessible_paths=expected - {"/init"})
+    baseline_source = "def _decode_mountinfo(raw):\n    return [], [], []\n"
+    functions["BASELINE_DECODER_SOURCE"] = baseline_source
+    functions["BASELINE_DECODER_SHA256"] = _sha(baseline_source.encode("utf-8"))
+    functions["BASELINE_DECODER_REVISION"] = "0" * 40
+    functions["_decode_mountinfo"] = lambda raw, expected_unit=None: ([], [], [])
+    functions["_verify_effective_masks"] = lambda rows: ({}, [])
+    functions["_verify_private_dev"] = lambda rows: ({}, [])
+
+    functions["_read_only_mount_audit"]()
+
+    mismatch = functions["R"]["inaccessible_path_mismatch"]
+    assert mismatch["missing"] == ["/init"]
+    assert mismatch["unexpected"] == []
+    audit = functions["R"]["mount_audit"]
+    assert audit["terminal"] == "HOLD"
+    assert audit["inaccessible_path_mismatch"] == mismatch
+    assert audit["mountinfo_bytes"] > 0
+    assert audit["execution"]["properties"] == properties
+
+
+def test_pm08_runtime_preflight_still_stops_on_missing_init_property():
+    functions = _wsl_mount_audit_functions()
+    expected = set(functions["SYSTEMD_INACCESSIBLE_PATHS"])
+    expected.add("/sys/fs/cgroup/system.slice/" + functions["TRANSIENT_UNIT"]
+                 + "/memory.pressure")
+    functions["MOUNT_AUDIT_ONLY"] = False
+    _configure_fake_transient_unit(functions, inaccessible_paths=expected - {"/init"})
+
+    with pytest.raises(functions["Hold"]):
+        functions["_verify_execution_unit"]()
+
+    assert functions["R"]["inaccessible_path_mismatch"]["missing"] == ["/init"]
+    assert functions["R"]["terminal"] == "HOLD"
 
 
 def test_pm08_effective_masks_verify_mount_id_type_and_root_ownership():
