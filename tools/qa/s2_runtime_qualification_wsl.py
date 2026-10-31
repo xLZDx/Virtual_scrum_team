@@ -23,6 +23,11 @@ import time
 import urllib.parse
 
 AUTH = json.loads(AUTH)
+TRANSIENT_UNIT = TRANSIENT_UNIT
+MOUNT_AUDIT_ONLY = MOUNT_AUDIT_ONLY
+BASELINE_DECODER_SOURCE = BASELINE_DECODER_SOURCE
+BASELINE_DECODER_SHA256 = BASELINE_DECODER_SHA256
+BASELINE_DECODER_REVISION = BASELINE_DECODER_REVISION
 MAX_COMMAND_CAPTURE = 256 * 1024
 MAX_REPORT_BYTES = 1_800_000
 OWNER_SOCKET = "/run/vst-supervisor/dispatch-owner.sock"
@@ -143,84 +148,575 @@ def stop(reason: str) -> None:
     raise Hold()
 
 
-def _decode_mountinfo(raw: str) -> tuple[list[dict], list[str], list[dict]]:
-    rows = []
-    windows_mounts = []
-    unapproved_mounts = []
-    decoded = []
+SYSTEMD_MASK_DIRS = frozenset({
+    "/dev/hugepages", "/dev/shm", "/home", "/mnt", "/proc/acpi", "/proc/bus",
+    "/proc/fs", "/proc/irq", "/proc/latency_stats", "/proc/mtrr", "/proc/scsi",
+    "/proc/sys/fs/binfmt_misc", "/root", "/run/WSL", "/run/credentials",
+    "/run/lock", "/run/shm", "/run/user", "/sys/fs/bpf", "/sys/fs/selinux",
+    "/sys/fs/fuse/connections", "/sys/kernel/config", "/sys/kernel/debug",
+    "/sys/kernel/tracing", "/tmp/.X11-unix", "/usr/lib/modules", "/usr/lib/wsl",
+})
+SYSTEMD_MASK_FILES = frozenset({"/init", "/proc/kallsyms", "/proc/kcore", "/proc/kmsg"})
+SYSTEMD_MASK_TARGETS = SYSTEMD_MASK_DIRS | SYSTEMD_MASK_FILES
+SYSTEMD_INACCESSIBLE_PATHS = tuple(sorted(SYSTEMD_MASK_TARGETS))
+
+# Only mount rows present in the independently captured PM-07 inventory can be
+# treated as an underlying row below a mask. Absence is allowed; a new row is not.
+MASK_BASES = {
+    "/dev/shm": ("tmpfs", "/", "none", {"rw", "nosuid", "nodev", "noatime"}, "/dev"),
+    "/run/lock": ("tmpfs", "/", "none", {"rw", "nosuid", "nodev", "noexec", "noatime"}, "/run"),
+    "/run/shm": ("tmpfs", "/", "none", {"rw", "nosuid", "nodev", "noatime"}, "/run"),
+    "/proc/acpi": ("proc", "/acpi", "proc", {"ro", "nosuid", "nodev", "noexec", "relatime"}, "/proc"),
+    "/proc/bus": ("proc", "/bus", "proc", {"ro", "nosuid", "nodev", "noexec", "relatime"}, "/proc"),
+    "/proc/fs": ("proc", "/fs", "proc", {"ro", "nosuid", "nodev", "noexec", "relatime"}, "/proc"),
+    "/proc/irq": ("proc", "/irq", "proc", {"ro", "nosuid", "nodev", "noexec", "relatime"}, "/proc"),
+    "/proc/latency_stats": ("proc", "/latency_stats", "proc", {"ro", "nosuid", "nodev", "noexec", "relatime"}, "/proc"),
+    "/proc/mtrr": ("proc", "/mtrr", "proc", {"ro", "nosuid", "nodev", "noexec", "relatime"}, "/proc"),
+    "/proc/scsi": ("proc", "/scsi", "proc", {"ro", "nosuid", "nodev", "noexec", "relatime"}, "/proc"),
+    "/proc/sys/fs/binfmt_misc": ("binfmt_misc", "/", "binfmt_misc", {"rw", "nosuid", "relatime"}, "/proc"),
+    "/sys/fs/bpf": ("sysfs", "/fs/bpf", "sysfs", {"ro", "nosuid", "nodev", "noexec", "noatime"}, "/sys"),
+    "/sys/fs/selinux": ("sysfs", "/fs/selinux", "sysfs", {"rw", "nosuid", "nodev", "noexec", "noatime"}, "/sys"),
+}
+
+EXACT_MOUNTS = {
+    "/run": ("tmpfs", "/", "none", {"rw", "nosuid", "nodev"}),
+    "/dev/pts": ("devpts", "/", "devpts", {"rw", "nosuid", "noexec", "noatime"}),
+    "/dev/mqueue": ("mqueue", "/", "mqueue", {"rw", "nosuid", "nodev", "noexec", "relatime"}),
+    "/sys": ("sysfs", "/", "sysfs", {"rw", "nosuid", "nodev", "noexec", "noatime"}),
+    "/sys/fs/cgroup": ("cgroup2", "/", "cgroup2", {"ro", "nosuid", "nodev", "noexec", "relatime"}),
+    "/proc": ("proc", "/", "proc", {"rw", "nosuid", "nodev", "noexec", "relatime"}),
+    "/proc/sys": ("proc", "/sys", "proc", {"ro", "nosuid", "nodev", "noexec", "relatime"}),
+    "/proc/sysrq-trigger": ("proc", "/sysrq-trigger", "proc", {"ro", "nosuid", "nodev", "noexec", "relatime"}),
+}
+
+
+def _unescape_mountinfo(value: str) -> str:
+    return value.replace("\\040", " ").replace("\\011", "\t").replace(
+        "\\012", "\n").replace("\\134", "\\")
+
+
+def _decode_mountinfo(raw: str, *, expected_unit: str | None = None) -> tuple[list[dict], list[str], list[dict]]:
+    """Accept only the measured system mounts and exact current-unit masks."""
+    rows: list[dict] = []
+    windows_mounts: list[dict] = []
+    unapproved_mounts: list[dict] = []
+    seen_ids: set[int] = set()
     for number, line in enumerate(raw.splitlines(), 1):
         before, separator, after = line.partition(" - ")
+        if not separator or len(line) > 16384:
+            unapproved_mounts.append({"line": number, "reason": "mountinfo row is malformed",
+                                      "line_sha256": hashlib.sha256(line.encode()).hexdigest(),
+                                      "line_prefix": line[:512]})
+            continue
         left, right = before.split(), after.split()
-        if separator != " - " or len(left) < 6 or len(right) < 3 or len(line) > 16384:
-            raise ValueError("mountinfo row is malformed")
-        def unescape(value):
-            return value.replace("\\040", " ").replace("\\011", "\t").replace("\\012", "\n").replace("\\134", "\\")
-        mountpoint = unescape(left[4])
-        mount_root = unescape(left[3])
-        device = left[2]
-        fstype = right[0].lower()
-        source = unescape(right[1])
-        mount_options = left[5].split(",")
-        super_options = right[2].split(",") if len(right) > 2 else []
-        all_options = mount_options + super_options
-        row = {"mountpoint": mountpoint, "filesystem": fstype,
-               "source": source, "device": device, "mount_root": mount_root,
-               "mount_options": mount_options,
-               "line_sha256": hashlib.sha256(line.encode()).hexdigest()}
+        if len(left) < 6 or len(right) != 3:
+            unapproved_mounts.append({"line": number, "reason": "mountinfo fields are malformed",
+                                      "line_sha256": hashlib.sha256(line.encode()).hexdigest(),
+                                      "line_prefix": line[:512]})
+            continue
+        try:
+            mount_id, parent_id = int(left[0]), int(left[1])
+        except ValueError:
+            unapproved_mounts.append({"line": number, "reason": "mountinfo identifiers are malformed",
+                                      "line_sha256": hashlib.sha256(line.encode()).hexdigest(),
+                                      "line_prefix": line[:512]})
+            continue
+        if mount_id <= 0 or parent_id <= 0 or mount_id in seen_ids:
+            unapproved_mounts.append({"line": number, "mount_id": mount_id,
+                                      "reason": "mountinfo identifiers are invalid or duplicated",
+                                      "line_sha256": hashlib.sha256(line.encode()).hexdigest(),
+                                      "line_prefix": line[:512]})
+            continue
+        seen_ids.add(mount_id)
+        mountpoint = _unescape_mountinfo(left[4])
+        mount_root = _unescape_mountinfo(left[3])
+        if not mountpoint.startswith("/") or "/../" in mountpoint or mountpoint.endswith("/.."):
+            unapproved_mounts.append({"line": number, "mount_id": mount_id,
+                                      "reason": "mountinfo target is not a canonical absolute path",
+                                      "line_sha256": hashlib.sha256(line.encode()).hexdigest(),
+                                      "line_prefix": line[:512]})
+            continue
+        fstype, source = right[0].lower(), _unescape_mountinfo(right[1])
+        mount_options, super_options = left[5].split(","), right[2].split(",")
+        if (len(set(mount_options)) != len(mount_options)
+                or len(set(super_options)) != len(super_options)):
+            unapproved_mounts.append({"line": number, "mount_id": mount_id,
+                                      "reason": "mountinfo contains duplicate options",
+                                      "line_sha256": hashlib.sha256(line.encode()).hexdigest(),
+                                      "line_prefix": line[:512]})
+        row = {
+            "line": number, "mount_id": mount_id, "parent_id": parent_id,
+            "mountpoint": mountpoint, "filesystem": fstype, "source": source,
+            "device": left[2], "mount_root": mount_root,
+            "mount_options": mount_options, "super_options": super_options,
+            "optional_fields": left[6:],
+            "line_sha256": hashlib.sha256(line.encode()).hexdigest(),
+        }
         rows.append(row)
+        options = mount_options + super_options
         wsl_drvfs_9p = fstype == "9p" and re.search(
-            r"(?:^|[;,])aname=drvfs(?:$|[;,])", ",".join(all_options), re.IGNORECASE,
+            r"(?:^|[;,])aname=drvfs(?:$|[;,])", ",".join(options), re.IGNORECASE,
         ) is not None
-        if (fstype == "drvfs" or wsl_drvfs_9p
-                or re.fullmatch(r"[A-Za-z]:\\?", source)):
+        if fstype == "drvfs" or wsl_drvfs_9p or re.fullmatch(r"[A-Za-z]:\\?", source):
             windows_mounts.append(row)
-        decoded.append((number, row, device, mount_root, source, all_options))
 
-    roots = [item for item in decoded if item[1]["mountpoint"] == "/"]
-    if len(roots) != 1:
-        raise ValueError("mount namespace must expose exactly one root filesystem")
-    _root_number, root_row, root_device, _root_mount, _root_source, _root_options = roots[0]
-    root_filesystem = root_row["filesystem"]
-    systemd_masked_wsl_paths = {
-        "/init", "/home", "/mnt", "/root", "/run/WSL", "/usr/lib/wsl",
-        "/tmp/.X11-unix",
-    }
-    for number, row, device, mount_root, source, mount_options in decoded:
-        target = row["mountpoint"]
-        filesystem = row["filesystem"]
-        wsl_path = (target == "/mnt" or target.startswith("/mnt/")
-                    or target in systemd_masked_wsl_paths)
-        valid_source = False
-        if filesystem in {"proc", "sysfs", "devtmpfs", "devpts", "tmpfs", "ramfs",
-                          "cgroup2", "mqueue"}:
-            permitted_roots = {"/"}
-            if target == "/proc/sys":
-                permitted_roots.add("/sys")
-            if target == "/proc/sysrq-trigger":
-                permitted_roots.add("/sysrq-trigger")
-            valid_source = mount_root in permitted_roots and source == filesystem
-        elif target in systemd_masked_wsl_paths:
-            valid_source = (device == root_device and filesystem == root_filesystem
-                            and mount_root == "/run/systemd/inaccessible/dir")
-        elif target in {"/tmp", "/var/tmp"}:
-            private_parent = "/tmp/systemd-private-" if target == "/tmp" else "/var/tmp/systemd-private-"
-            valid_source = (device == root_device and filesystem == root_filesystem
-                            and mount_root.startswith(private_parent)
-                            and "vst-sandbox-probe.service" in mount_root
-                            and mount_root.endswith("/tmp"))
-        elif target == "/usr/lib/modules" or target.startswith("/usr/lib/modules/"):
-            valid_source = (filesystem == "overlay" and source == "none" and mount_root == "/"
-                            and "ro" in mount_options)
+    by_path: dict[str, list[dict]] = {}
+    for row in rows:
+        by_path.setdefault(row["mountpoint"], []).append(row)
+    root_rows = by_path.get("/", [])
+    run_rows = by_path.get("/run", [])
+    if len(root_rows) != 1 or len(run_rows) != 1:
+        for row in rows:
+            reject(row, "mount inventory cannot be classified without unique root and /run")
+        unapproved_mounts.append({"reason": "mount namespace root and /run must each be unique",
+                                  "root_rows": len(root_rows), "run_rows": len(run_rows)})
+        return rows, windows_mounts, unapproved_mounts
+    root, run = root_rows[0], run_rows[0]
+    run_device = run["device"]
+    handled: set[int] = set()
+
+    def reject(row: dict, reason: str) -> None:
+        unapproved_mounts.append({"row": row["mount_id"], "reason": reason, **row})
+
+    def nearest_parent_mount(target: str) -> dict | None:
+        parents = [row for row in rows if row["mountpoint"] != target
+                   and (row["mountpoint"] == "/" or target.startswith(
+                       row["mountpoint"].rstrip("/") + "/"))]
+        if not parents:
+            return None
+        deepest = max(len(row["mountpoint"]) for row in parents)
+        candidates = [row for row in parents if len(row["mountpoint"]) == deepest]
+        # A stacked ancestor is ambiguous unless it is an explicitly understood
+        # systemd mask; callers reject ambiguity rather than guessing the top.
+        return max(candidates, key=lambda row: row["mount_id"]) if len(candidates) == 1 else None
+
+    def check_parent(row: dict, target: str) -> bool:
+        parent = nearest_parent_mount(target)
+        return parent is not None and row["parent_id"] == parent["mount_id"]
+
+    if expected_unit is not None and not re.fullmatch(r"vst-s2-qual-[0-9a-f]{16}\.service", expected_unit):
+        for row in rows:
+            reject(row, "transient unit identity is malformed")
+        unapproved_mounts.append({"reason": "transient unit identity is malformed"})
+        return rows, windows_mounts, unapproved_mounts
+    cgroup_target = None
+    if expected_unit is not None:
+        cgroup_target = "/sys/fs/cgroup/system.slice/" + expected_unit + "/memory.pressure"
+    mask_targets = set(SYSTEMD_MASK_TARGETS)
+    if cgroup_target:
+        mask_targets.add(cgroup_target)
+
+    for target in sorted(mask_targets):
+        group = by_path.get(target, [])
+        expected_root = ("/systemd/inaccessible/reg" if target in SYSTEMD_MASK_FILES
+                         or target == cgroup_target else "/systemd/inaccessible/dir")
+        masks = [row for row in group if (
+            row["filesystem"] == "tmpfs" and row["source"] == "none"
+            and row["mount_root"] == expected_root and row["device"] == run_device
+            and set(row["mount_options"]) == {"ro", "nosuid", "nodev", "noexec"}
+            and set(row["super_options"]) == {"rw", "mode=755"}
+        )]
+        if len(masks) != 1:
+            for row in group:
+                reject(row, "exact systemd inaccessible mask is missing or ambiguous")
+            if not group:
+                unapproved_mounts.append({"mountpoint": target,
+                                          "reason": "required inaccessible mask has no mount row"})
+            continue
+        mask = masks[0]
+        bases = [row for row in group if row["mount_id"] != mask["mount_id"]]
+        if len(bases) > 1:
+            for row in bases:
+                reject(row, "multiple underlying rows below one inaccessible mask")
+            reject(mask, "inaccessible mask overlays multiple underlying rows")
+            continue
+        if not check_parent(mask, target):
+            reject(mask, "inaccessible mask is not attached to the exact target parent")
+        handled.add(mask["mount_id"])
+        expected_base = MASK_BASES.get(target)
+        if target == cgroup_target:
+            expected_base = (
+                "cgroup2", "/system.slice/" + expected_unit + "/memory.pressure",
+                "cgroup2", {"rw", "nosuid", "nodev", "noexec", "relatime"},
+                "/sys/fs/cgroup",
+            )
+        for base in bases:
+            if expected_base is None:
+                reject(base, "unapproved underlying mount below inaccessible mask")
+                continue
+            fstype, mount_root, source, options, parent_path = expected_base
+            parent = by_path.get(parent_path, [])
+            same = (base["filesystem"] == fstype and base["mount_root"] == mount_root
+                    and base["source"] == source and set(base["mount_options"]) == options
+                    and set(base["super_options"]) == {"rw"}
+                    and len(parent) == 1 and base["parent_id"] == parent[0]["mount_id"]
+                    and base["mount_id"] < mask["mount_id"])
+            if not same:
+                reject(base, "underlying mount below mask differs from its exact measured contract")
+            else:
+                handled.add(base["mount_id"])
+        nested = [row for row in rows if row["mount_id"] not in handled
+                  and row["mountpoint"].startswith(target.rstrip("/") + "/")]
+        for row in nested:
+            reject(row, "unexpected nested mount remains below inaccessible target")
+
+    incoming_path = "/run/systemd/incoming"
+    incoming = by_path.get(incoming_path, [])
+    expected_incoming_root = "/systemd/propagate/" + expected_unit if expected_unit else None
+    if len(incoming) != 1:
+        for row in incoming:
+            reject(row, "current-unit propagation mount is missing or ambiguous")
+        if not incoming:
+            unapproved_mounts.append({"mountpoint": incoming_path,
+                                      "reason": "required current-unit propagation mount is absent"})
+    else:
+        row = incoming[0]
+        valid = (expected_unit is not None and row["filesystem"] == "tmpfs"
+                 and row["source"] == "none" and row["device"] == run_device
+                 and row["mount_root"] == expected_incoming_root
+                 and set(row["mount_options"]) == {"ro", "nosuid", "nodev"}
+                 and set(row["super_options"]) == {"rw", "mode=755"}
+                 and check_parent(row, incoming_path))
+        if valid:
+            handled.add(row["mount_id"])
         else:
-            valid_source = (device == root_device and filesystem == root_filesystem
-                            and mount_root == target)
-            if target in {"/usr", "/boot", "/etc", "/var", "/opt"}:
-                valid_source = valid_source and "ro" in mount_options
+            reject(row, "propagation mount is not bound to this exact transient unit")
+
+    exact = dict(EXACT_MOUNTS)
+    exact["/"] = ("ext4", "/", root["source"], {"ro", "nosuid", "relatime"})
+    exact["/dev"] = ("tmpfs", "/", "tmpfs", {"ro", "nosuid", "noexec"})
+    for target, (fstype, mount_root, source, options) in exact.items():
+        group = by_path.get(target, [])
+        if len(group) != 1:
+            for row in group:
+                if row["mount_id"] not in handled:
+                    reject(row, "approved system mount is missing or ambiguous")
+            if not group:
+                unapproved_mounts.append({"mountpoint": target,
+                                          "reason": "required system mount is absent"})
+            continue
+        row = group[0]
+        valid = (row["filesystem"] == fstype and row["mount_root"] == mount_root
+                 and row["source"] == source and set(row["mount_options"]) == options)
         if target == "/":
-            valid_source = mount_root == "/" and device == root_device
-        if not valid_source or (wsl_path and target not in systemd_masked_wsl_paths):
-            unapproved_mounts.append({"row": number, **row})
+            valid = valid and row["device"] == root["device"]
+        elif target == "/run":
+            valid = (valid and row["device"] == run_device
+                     and set(row["super_options"]) == {"rw", "mode=755"})
+        elif target == "/dev":
+            valid = (valid and set(row["super_options"]) == {
+                "rw", "size=4096k", "nr_inodes=65536", "mode=755"})
+        else:
+            valid = valid and check_parent(row, target)
+        if valid:
+            handled.add(row["mount_id"])
+        else:
+            reject(row, "system mount does not match its measured exact semantics")
+
+    if cgroup_target:
+        group = by_path.get(cgroup_target, [])
+        mask = next((row for row in group if row["mount_id"] in handled
+                     and row["mount_root"] == "/systemd/inaccessible/reg"), None)
+        bases = [row for row in group if mask is None or row["mount_id"] != mask["mount_id"]]
+        if mask is None:
+            unapproved_mounts.append({"mountpoint": cgroup_target,
+                                      "reason": "current-unit memory.pressure is not masked"})
+        if len(bases) > 1:
+            for row in bases:
+                reject(row, "multiple current-unit memory.pressure base mounts")
+        for row in bases:
+            expected_root = "/system.slice/" + expected_unit + "/memory.pressure"
+            parent = by_path.get("/sys/fs/cgroup", [])
+            valid = (row["filesystem"] == "cgroup2" and row["source"] == "cgroup2"
+                     and row["device"] == (parent[0]["device"] if len(parent) == 1 else None)
+                     and row["mount_root"] == expected_root
+                     and set(row["mount_options"]) == {"rw", "nosuid", "nodev", "noexec", "relatime"}
+                     and len(parent) == 1 and row["parent_id"] == parent[0]["mount_id"]
+                     and mask is not None and row["mount_id"] < mask["mount_id"])
+            if valid:
+                handled.add(row["mount_id"])
+            else:
+                reject(row, "current-unit memory.pressure base mount is unexpected")
+
+    for row in rows:
+        if row["mount_id"] not in handled and not any(
+                item.get("row") == row["mount_id"] for item in unapproved_mounts):
+            reject(row, "unrecognized mount row")
     return rows, windows_mounts, unapproved_mounts
+
+
+def _systemd_unit_properties() -> dict[str, str]:
+    props = ("LoadState", "ActiveState", "SubState", "Result", "MainPID", "ControlGroup",
+             "PrivateDevices", "ProtectSystem",
+             "ProtectKernelTunables", "ProtectKernelModules", "ProtectKernelLogs",
+             "ProtectControlGroups", "NoNewPrivileges", "RuntimeMaxUSec", "InaccessiblePaths")
+    result = record("current_transient_unit", ["/usr/bin/systemctl", "show", TRANSIENT_UNIT,
+                   "--no-pager", *["--property=" + prop for prop in props]])
+    output = _require_command(result, "transient-unit property verification")
+    values = {}
+    for line in output.decode("utf-8", "strict").splitlines():
+        key, separator, value = line.partition("=")
+        if not separator or key not in props or key in values:
+            stop("systemd returned unknown or duplicate transient-unit properties")
+        values[key] = value
+    if set(values) != set(props):
+        stop("systemd omitted a required transient-unit property")
+    return values
+
+
+def _verify_execution_unit() -> dict:
+    if not re.fullmatch(r"vst-s2-qual-[0-9a-f]{16}\.service", TRANSIENT_UNIT):
+        stop("transient unit identity is malformed")
+    if os.geteuid() != 0:
+        stop("isolated helper is not running as root")
+    current_ns, init_ns = os.stat("/proc/self/ns/mnt"), os.stat("/proc/1/ns/mnt")
+    if (current_ns.st_dev, current_ns.st_ino) == (init_ns.st_dev, init_ns.st_ino):
+        stop("helper does not run in a distinct mount namespace")
+    argv = pathlib.Path("/proc/self/cmdline").read_bytes().split(b"\0")
+    if argv[-1:] == [b""]:
+        argv.pop()
+    if argv != [b"/usr/bin/python3.12", b"-I", b"-B", b"-S", b"-"]:
+        stop("helper process command line differs from the approved interpreter")
+    props = _systemd_unit_properties()
+    expected_inaccessible = set(SYSTEMD_INACCESSIBLE_PATHS)
+    expected_inaccessible.add(
+        "/sys/fs/cgroup/system.slice/" + TRANSIENT_UNIT + "/memory.pressure")
+    actual_inaccessible = {item.removeprefix("-") for item in props["InaccessiblePaths"].split()}
+    expected = {
+        "LoadState": "loaded", "ActiveState": "active", "SubState": "running",
+        "Result": "success", "MainPID": str(os.getpid()),
+        "ControlGroup": "/system.slice/" + TRANSIENT_UNIT,
+        "PrivateDevices": "yes", "ProtectSystem": "strict",
+        "ProtectKernelTunables": "yes", "ProtectKernelModules": "yes",
+        "ProtectKernelLogs": "yes", "ProtectControlGroups": "yes",
+        "NoNewPrivileges": "yes", "RuntimeMaxUSec": _expected_runtime_timeout(),
+    }
+    if any(props.get(key) != value for key, value in expected.items()):
+        stop("transient-unit identity or hardening properties differ from the exact profile")
+    if actual_inaccessible != expected_inaccessible:
+        stop("transient-unit inaccessible path set differs from the exact approved target set")
+    cgroup = pathlib.Path("/proc/self/cgroup").read_text(encoding="ascii").splitlines()
+    if "0::/system.slice/" + TRANSIENT_UNIT not in cgroup:
+        stop("helper cgroup does not identify its exact transient unit")
+    open_fds = sorted(pathlib.Path("/proc/self/fd").iterdir(), key=lambda path: path.name)
+    fd_names = [path.name for path in open_fds]
+    if fd_names != ["0", "1", "2"]:
+        stop("helper has unexpected open file descriptors")
+    return {"mount_namespace_distinct_from_pid1": True, "uid": os.geteuid(),
+            "pid": os.getpid(), "unit": TRANSIENT_UNIT, "properties": props,
+            "open_fds": fd_names, "cmdline": [item.decode("ascii") for item in argv]}
+
+
+def _verify_private_dev(mount_rows: list[dict]) -> tuple[dict, list[str]]:
+    expected_links = {
+        "core": "/proc/kcore", "fd": "/proc/self/fd", "log": "/run/systemd/journal/dev-log",
+        "stdin": "/proc/self/fd/0", "stdout": "/proc/self/fd/1", "stderr": "/proc/self/fd/2",
+    }
+    expected_devices = {"tty": (5, 0), "urandom": (1, 9), "random": (1, 8),
+                        "full": (1, 7), "zero": (1, 5), "null": (1, 3), "ptmx": (5, 2)}
+    expected_directories = {"char": (0o755, 0, 0), "hugepages": (0, 0, 0),
+                            "mqueue": (0o1777, 0, 0), "pts": (0o755, 0, 0),
+                            "shm": (0, 0, 0)}
+    expected_char_aliases = {
+        "1:3": "../null", "1:5": "../zero", "1:7": "../full",
+        "1:8": "../random", "1:9": "../urandom", "5:0": "../tty", "5:2": "../ptmx",
+    }
+    expected_names = set(expected_links) | set(expected_devices) | set(expected_directories)
+    entries = {}
+    with os.scandir("/dev") as directory:
+        names = {entry.name for entry in directory}
+    failures = []
+    if names != expected_names:
+        failures.append("private /dev entry set differs from the exact allowlist")
+    for name in sorted(expected_names - names):
+        failures.append("private /dev allowlisted entry is missing: " + name)
+    for name in sorted(names):
+        path = "/dev/" + name
+        info = os.lstat(path)
+        metadata = {"uid": info.st_uid, "gid": info.st_gid, "mode": stat.S_IMODE(info.st_mode)}
+        if name in expected_links:
+            if (not stat.S_ISLNK(info.st_mode) or os.readlink(path) != expected_links[name]
+                    or metadata != {"uid": 0, "gid": 0, "mode": 0o777}):
+                failures.append("private /dev symlink differs from its exact link/owner/mode: " + name)
+            metadata["target"] = expected_links[name]
+            metadata["type"] = "symlink"
+        elif name in expected_devices:
+            major, minor = expected_devices[name]
+            if (not stat.S_ISCHR(info.st_mode) or os.major(info.st_rdev) != major
+                    or os.minor(info.st_rdev) != minor
+                    or metadata != {"uid": 0, "gid": 0, "mode": 0o666}):
+                failures.append("private /dev device differs from its exact type/id/owner/mode: " + name)
+            metadata.update(type="character", major=major, minor=minor)
+        elif name in expected_directories:
+            mode, uid, gid = expected_directories[name]
+            if (not stat.S_ISDIR(info.st_mode) or metadata != {"uid": uid, "gid": gid, "mode": mode}):
+                failures.append("private /dev directory differs from its exact type/owner/mode: " + name)
+            metadata["type"] = "directory"
+        else:
+            failures.append("unexpected private /dev entry: " + name)
+            metadata["type"] = "unexpected"
+        entries[name] = metadata
+    nested_entries = {}
+    for directory_name in ("char", "hugepages", "mqueue", "pts", "shm"):
+        path = "/dev/" + directory_name
+        if directory_name not in names:
+            continue
+        observed = {}
+        try:
+            with os.scandir(path) as directory:
+                children = sorted(directory, key=lambda entry: entry.name)
+            for child in children:
+                info = child.stat(follow_symlinks=False)
+                child_metadata = {
+                    "uid": info.st_uid, "gid": info.st_gid,
+                    "mode": stat.S_IMODE(info.st_mode),
+                    "type": ("character" if stat.S_ISCHR(info.st_mode) else
+                             "block" if stat.S_ISBLK(info.st_mode) else
+                             "symlink" if stat.S_ISLNK(info.st_mode) else
+                             "directory" if stat.S_ISDIR(info.st_mode) else
+                             "regular" if stat.S_ISREG(info.st_mode) else "other"),
+                }
+                if stat.S_ISCHR(info.st_mode) or stat.S_ISBLK(info.st_mode):
+                    child_metadata.update(major=os.major(info.st_rdev), minor=os.minor(info.st_rdev))
+                if stat.S_ISLNK(info.st_mode):
+                    child_metadata["target"] = os.readlink(child.path)
+                observed[child.name] = child_metadata
+                if directory_name in {"hugepages", "shm"}:
+                    failures.append("masked private /dev directory is not empty: " + directory_name)
+                elif directory_name == "char":
+                    if (child.name not in expected_char_aliases or not stat.S_ISLNK(info.st_mode)
+                            or child_metadata.get("target") != expected_char_aliases.get(child.name)
+                            or (info.st_uid, info.st_gid, stat.S_IMODE(info.st_mode)) != (0, 0, 0o777)):
+                        failures.append("private /dev/char contains an unexpected alias: " + child.name)
+                elif directory_name == "pts":
+                    ptmx_ok = (child.name == "ptmx" and stat.S_ISCHR(info.st_mode)
+                               and (os.major(info.st_rdev), os.minor(info.st_rdev)) == (5, 2)
+                               and (info.st_uid, info.st_gid, stat.S_IMODE(info.st_mode)) == (0, 0, 0))
+                    if not ptmx_ok:
+                        failures.append("private /dev/pts contains an unexpected entry: " + child.name)
+                elif directory_name == "mqueue" and not stat.S_ISREG(info.st_mode):
+                    failures.append("private /dev/mqueue contains a non-regular entry: " + child.name)
+        except OSError as exc:
+            failures.append("private /dev directory could not be inspected: "
+                            + directory_name + ": " + type(exc).__name__)
+        nested_entries[directory_name] = observed
+    dev_mountpoints = {row["mountpoint"] for row in mount_rows
+                       if row["mountpoint"].startswith("/dev/")}
+    allowed_mountpoints = {"/dev/pts", "/dev/mqueue", "/dev/hugepages", "/dev/shm"}
+    if not dev_mountpoints <= allowed_mountpoints or not {"/dev/pts", "/dev/mqueue"} <= dev_mountpoints:
+        failures.append("private /dev contains an unexpected or missing nested mount")
+    return ({"entry_count": len(entries), "entries": entries,
+             "nested_entries": nested_entries,
+             "nested_mountpoints": sorted(dev_mountpoints)}, failures)
+
+
+def _verify_effective_masks(mount_rows: list[dict]) -> tuple[dict, list[str]]:
+    targets = set(SYSTEMD_MASK_TARGETS)
+    if TRANSIENT_UNIT:
+        targets.add("/sys/fs/cgroup/system.slice/" + TRANSIENT_UNIT + "/memory.pressure")
+    by_path: dict[str, list[dict]] = {}
+    for row in mount_rows:
+        by_path.setdefault(row["mountpoint"], []).append(row)
+    verified = {}
+    failures = []
+    for target in sorted(targets):
+        expected_root = ("/systemd/inaccessible/reg" if target in SYSTEMD_MASK_FILES
+                         or target.endswith("/memory.pressure") else "/systemd/inaccessible/dir")
+        candidates = [row for row in by_path.get(target, [])
+                      if row["mount_root"] == expected_root and row["filesystem"] == "tmpfs"
+                      and row["source"] == "none"]
+        if len(candidates) != 1:
+            failures.append("effective inaccessible target is missing or ambiguous: " + target)
+            continue
+        row = candidates[0]
+        flags = os.O_PATH | getattr(os, "O_CLOEXEC", 0)
+        try:
+            fd = os.open(target, flags)
+        except OSError as exc:
+            failures.append("effective inaccessible target cannot be opened: " + target + ": " + type(exc).__name__)
+            continue
+        try:
+            info = os.fstat(fd)
+            expected_type = stat.S_ISREG if expected_root.endswith("/reg") else stat.S_ISDIR
+            if (not expected_type(info.st_mode) or info.st_uid != 0 or info.st_gid != 0
+                    or stat.S_IMODE(info.st_mode) != 0):
+                failures.append("effective inaccessible path has the wrong type/owner/mode: " + target)
+                continue
+            fdinfo = pathlib.Path("/proc/self/fdinfo/" + str(fd)).read_text(encoding="ascii")
+            mount_id = None
+            for line in fdinfo.splitlines():
+                if line.startswith("mnt_id:"):
+                    mount_id = int(line.partition(":")[2].strip())
+                    break
+            if mount_id != row["mount_id"]:
+                failures.append("path resolves through a different mount than its mask row: " + target)
+                continue
+            verified[target] = {"mount_id": mount_id, "type": "regular" if expected_root.endswith("/reg") else "directory",
+                                "uid": info.st_uid, "gid": info.st_gid,
+                                "mode": stat.S_IMODE(info.st_mode)}
+        except (OSError, ValueError) as exc:
+            failures.append("effective inaccessible path metadata is unavailable: " + target + ": " + type(exc).__name__)
+        finally:
+            os.close(fd)
+    return verified, failures
+
+
+def _read_only_mount_audit() -> None:
+    if not MOUNT_AUDIT_ONLY or not TRANSIENT_UNIT:
+        stop("read-only mount audit identity is absent")
+    unit = _verify_execution_unit()
+    mountinfo = pathlib.Path("/proc/self/mountinfo").read_bytes()
+    if len(mountinfo) > 8 * 1024 * 1024:
+        stop("mount inventory exceeds its byte bound")
+    raw = mountinfo.decode("utf-8", "strict")
+    baseline_sha256 = hashlib.sha256(BASELINE_DECODER_SOURCE.encode("utf-8")).hexdigest()
+    if (not BASELINE_DECODER_SOURCE or baseline_sha256 != BASELINE_DECODER_SHA256
+            or not re.fullmatch(r"[0-9a-f]{40}", BASELINE_DECODER_REVISION)):
+        stop("exact unchanged baseline parser is missing or not hash-bound")
+    baseline_namespace = {"hashlib": hashlib, "re": re}
+    exec(compile(BASELINE_DECODER_SOURCE, "<pinned-baseline-mount-decoder>", "exec"),
+         baseline_namespace, baseline_namespace)
+    try:
+        baseline_rows, baseline_windows, baseline_rejections = baseline_namespace["_decode_mountinfo"](raw)
+        baseline = {"row_count": len(baseline_rows), "windows_drive_rows": baseline_windows,
+                    "rejected_rows": baseline_rejections}
+    except Exception as exc:
+        baseline_rows, baseline_windows = [], []
+        baseline = {"row_count": 0, "windows_drive_rows": [], "rejected_rows": [],
+                    "parser_error_type": type(exc).__name__,
+                    "parser_error": str(exc)[:256]}
+    rows, windows, rejected = _decode_mountinfo(raw, expected_unit=TRANSIENT_UNIT)
+    effective_masks, mask_failures = _verify_effective_masks(rows)
+    devices, device_failures = _verify_private_dev(rows)
+    isolation_failures = mask_failures + device_failures
+    result = {
+        "schema": "VST_S2_RUNTIME_MOUNT_AUDIT_V1",
+        "terminal": "PASS" if not windows and not rejected and not isolation_failures else "HOLD",
+        "reason": ("candidate parser and effective-mask proofs passed"
+                   if not windows and not rejected and not isolation_failures
+                   else "candidate parser or independent isolation proof rejected evidence"),
+        "experiment_unit": unit, "baseline_revision": BASELINE_DECODER_REVISION,
+        "baseline_parser_sha256": baseline_sha256,
+        "mountinfo_sha256": hashlib.sha256(mountinfo).hexdigest(),
+        "mountinfo_bytes": len(mountinfo), "mount_rows": rows,
+        "baseline": baseline,
+        "candidate": {"row_count": len(rows), "windows_drive_rows": windows,
+                      "rejected_rows": rejected},
+        "isolation_failures": isolation_failures,
+        "effective_masks": effective_masks, "private_dev": devices,
+        "execution": unit,
+        "runtime_selector_invocations": 0, "vst_service_starts": 0,
+        "authorization_or_attempt_files_created": 0,
+        "persistent_configuration_changes": 0,
+    }
+    R["mount_audit"] = result
+    R["terminal"] = result["terminal"]
+    R["reason"] = result["reason"]
+    R["finished_utc"] = utc()
+
+
+def _expected_runtime_timeout() -> str:
+    return "1min" if MOUNT_AUDIT_ONLY else "40min"
 
 
 def _secure_bytes(path: str, maximum: int = 8 * 1024 * 1024) -> bytes:
@@ -334,23 +830,34 @@ def _systemd_show(unit: str) -> dict:
 
 
 def _prestart_inventory(identity: dict) -> dict:
-    if os.geteuid() != 0:
-        stop("launcher is not root in the selected WSL distribution")
+    execution = _verify_execution_unit()
     try:
-        mountinfo = pathlib.Path("/proc/self/mountinfo").read_text(encoding="utf-8")
-        mount_rows, windows_mounts, unapproved_mounts = _decode_mountinfo(mountinfo)
+        mountinfo_bytes = pathlib.Path("/proc/self/mountinfo").read_bytes()
+        if len(mountinfo_bytes) > 8 * 1024 * 1024:
+            raise ValueError("complete mount inventory exceeds its byte bound")
+        mountinfo = mountinfo_bytes.decode("utf-8", "strict")
+        mount_rows, windows_mounts, unapproved_mounts = _decode_mountinfo(
+            mountinfo, expected_unit=TRANSIENT_UNIT)
+        effective_masks, mask_failures = _verify_effective_masks(mount_rows)
+        private_dev, device_failures = _verify_private_dev(mount_rows)
     except Exception as exc:
-        stop("complete mount inventory is unavailable: " + type(exc).__name__)
+        stop("complete mount inventory is unavailable: " + type(exc).__name__ + ": " + str(exc)[:256])
     R["prestart"]["mount_inventory"] = {
         "rows": mount_rows, "row_count": len(mount_rows),
         "unapproved_host_mounts": unapproved_mounts,
-        "sha256": hashlib.sha256(mountinfo.encode()).hexdigest(),
+        "sha256": hashlib.sha256(mountinfo_bytes).hexdigest(),
+        "execution_unit": execution,
+        "effective_masks": effective_masks,
+        "private_dev": private_dev,
     }
     if windows_mounts:
         stop("Windows drive mount detected in complete mount inventory")
     if unapproved_mounts:
         stop("unapproved host mount detected in complete mount inventory")
-    if len(mountinfo.encode()) > 8 * 1024 * 1024 or len(mount_rows) < 4:
+    if mask_failures or device_failures:
+        stop("independent mask/device verification failed: "
+             + "; ".join((mask_failures + device_failures)[:8]))
+    if len(mount_rows) < 4:
         stop("mount inventory is outside expected bounds")
 
     if pathlib.Path("/proc/1/comm").read_text(encoding="ascii").strip() != "systemd":
@@ -736,37 +1243,42 @@ def _wait_for_test_run(config: dict, manifest: dict, instruction: dict,
     return receipt
 
 
+_identity = AUTH.get("identity", {}) if isinstance(AUTH, dict) else {}
+_authorization = AUTH.get("authorization", {}) if isinstance(AUTH, dict) else {}
 R = {
     "schema": "VST_S2_RUNTIME_QUALIFICATION_PROTOCOL_V1",
-    "authorization_request_id": AUTH["authorization"]["request_id"],
-    "authorization_reply_id": AUTH["authorization"]["reply_id"],
-    "identity": {key: AUTH["identity"][key] for key in (
+    "authorization_request_id": _authorization.get("request_id"),
+    "authorization_reply_id": _authorization.get("reply_id"),
+    "identity": {key: _identity[key] for key in (
         "runtime_source_head", "run_id", "bootstrap_request_id",
         "nonce", "runtime_selector", "bundle_sha256", "config_bundle_sha256",
-        "task_manifest_sha256", "selector_test_id")},
+        "task_manifest_sha256", "selector_test_id") if key in _identity},
     "started_utc": utc(), "commands": [], "prestart": {}, "stages": {},
     "terminal": None, "retry_cap": 0,
 }
 
 try:
-    if os.geteuid() != 0:
-        stop("WSL protocol requires the existing root execution boundary")
-    supervisor_config = _prestart_inventory(AUTH["identity"])
-    # Direct source/config/host observations and inactive checks are the
-    # qualification boundary; no Runner-signed probe is a prerequisite here.
-    _start_service("vst-supervisor.service")
-    _start_service("vst-signer.service")
-    _start_service("vst-runner.service")
-    _start_service("vst-dispatch-owner.socket")
-    _start_service("vst-dispatcher.service")
-    handoff = _run_bootstrap(AUTH["identity"], _json_file("/etc/vst-runner/task-manifest.json"))
-    instruction = _run_issuer(handoff, AUTH["identity"])
-    _owner_submit(instruction, AUTH["identity"])
-    _wait_for_test_run(supervisor_config,
-                       _json_file("/etc/vst-runner/task-manifest.json"),
-                       instruction, AUTH["identity"])
-    R["terminal"] = "PASS"
-    R["reason"] = "Exact one-shot mount-free host checks and real Owner-to-Runner TestRun completed."
+    if MOUNT_AUDIT_ONLY:
+        _read_only_mount_audit()
+    else:
+        if not isinstance(AUTH, dict) or "identity" not in AUTH or "authorization" not in AUTH:
+            stop("runtime authorization tuple is absent")
+        supervisor_config = _prestart_inventory(AUTH["identity"])
+        # Source/config/host observations and inactive checks are the
+        # qualification boundary; no Runner-signed probe is a prerequisite here.
+        _start_service("vst-supervisor.service")
+        _start_service("vst-signer.service")
+        _start_service("vst-runner.service")
+        _start_service("vst-dispatch-owner.socket")
+        _start_service("vst-dispatcher.service")
+        handoff = _run_bootstrap(AUTH["identity"], _json_file("/etc/vst-runner/task-manifest.json"))
+        instruction = _run_issuer(handoff, AUTH["identity"])
+        _owner_submit(instruction, AUTH["identity"])
+        _wait_for_test_run(supervisor_config,
+                           _json_file("/etc/vst-runner/task-manifest.json"),
+                           instruction, AUTH["identity"])
+        R["terminal"] = "PASS"
+        R["reason"] = "Exact one-shot mount-free host checks and real Owner-to-Runner TestRun completed."
 except Hold:
     pass
 except BaseException as exc:

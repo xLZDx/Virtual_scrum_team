@@ -10,6 +10,7 @@ outcome is unknown: this command never retries.
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import io
 import json
@@ -26,6 +27,7 @@ MAX_WSL_SCRIPT_BYTES = 512 * 1024
 MAX_WSL_STDOUT_BYTES = 2 * 1024 * 1024
 MAX_WSL_STDERR_BYTES = 256 * 1024
 MAX_GIT_BLOB_BYTES = 4 * 1024 * 1024
+SYSTEMD_STARTUP_SHUTDOWN_GRACE_SEC = 30
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 OPAQUE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{15,127}$")
@@ -88,6 +90,16 @@ ALLOWED_CONFIG_ROOTS = (
 )
 WSL_DISTRIBUTION = "Ubuntu-24.04"
 WSL_HELPER = Path(__file__).with_name("s2_runtime_qualification_wsl.py")
+MOUNT_AUDIT_BASELINE = "788ea48fd48f8c4a78a3c7bed50d7b0776ef2b1d"
+SYSTEMD_MASK_TARGETS = (
+    "/dev/hugepages", "/dev/shm", "/home", "/mnt", "/proc/acpi", "/proc/bus",
+    "/proc/fs", "/proc/irq", "/proc/kallsyms", "/proc/kcore", "/proc/kmsg",
+    "/proc/latency_stats", "/proc/mtrr", "/proc/scsi", "/proc/sys/fs/binfmt_misc",
+    "/root", "/run/WSL", "/run/credentials", "/run/lock", "/run/shm", "/run/user",
+    "/sys/fs/bpf", "/sys/fs/fuse/connections", "/sys/fs/selinux", "/sys/kernel/config",
+    "/sys/kernel/debug", "/sys/kernel/tracing", "/tmp/.X11-unix", "/usr/lib/modules",
+    "/usr/lib/wsl",
+)
 
 
 class QualificationError(ValueError):
@@ -415,11 +427,33 @@ def _load_wsl_script() -> bytes:
     return content
 
 
-def _run_bounded_wsl(script: bytes) -> dict[str, Any]:
-    """Run WSL once while draining both pipes into capped, hashed captures."""
+def _transient_unit_name(run_id: str) -> str:
+    if not OPAQUE_ID.fullmatch(run_id):
+        raise QualificationError("transient unit identity input is malformed")
+    return "vst-s2-qual-" + hashlib.sha256(run_id.encode("ascii")).hexdigest()[:16] + ".service"
+
+
+def _run_bounded_wsl(script: bytes, *, unit_name: str, runtime_max_sec: int) -> dict[str, Any]:
+    """Run one helper in its own exact transient systemd mount namespace."""
+    if not re.fullmatch(r"vst-s2-qual-[0-9a-f]{16}\.service", unit_name):
+        raise QualificationError("transient unit name is not deterministic and bounded")
+    if runtime_max_sec not in {60, 2400}:
+        raise QualificationError("transient unit runtime limit is outside the approved profiles")
+    mask_paths = list(SYSTEMD_MASK_TARGETS)
+    mask_paths.append("/sys/fs/cgroup/system.slice/" + unit_name + "/memory.pressure")
+    isolation = [
+        "--wait", "--collect", "--pipe", "--quiet", "--unit=" + unit_name,
+        "--property=PrivateDevices=yes", "--property=ProtectSystem=strict",
+        "--property=ProtectKernelTunables=yes", "--property=ProtectKernelModules=yes",
+        "--property=ProtectKernelLogs=yes", "--property=ProtectControlGroups=yes",
+        "--property=NoNewPrivileges=yes",
+        "--property=RuntimeMaxSec=" + str(runtime_max_sec) + "s",
+        "--property=InaccessiblePaths=" + " ".join("-" + path for path in sorted(mask_paths)),
+    ]
     process = subprocess.Popen(
         ["wsl.exe", "--distribution", WSL_DISTRIBUTION, "--user", "root",
-         "--exec", "/usr/bin/python3.12", "-I", "-B", "-S", "-"],
+         "--exec", "/usr/bin/systemd-run", *isolation, "--",
+         "/usr/bin/python3.12", "-I", "-B", "-S", "-"],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         bufsize=0, close_fds=True,
     )
@@ -476,7 +510,7 @@ def _run_bounded_wsl(script: bytes) -> dict[str, Any]:
     writer.start()
     timed_out = False
     try:
-        process.wait(timeout=2400)
+        process.wait(timeout=runtime_max_sec + SYSTEMD_STARTUP_SHUTDOWN_GRACE_SEC)
     except subprocess.TimeoutExpired:
         timed_out = True
         try:
@@ -494,7 +528,97 @@ def _run_bounded_wsl(script: bytes) -> dict[str, Any]:
         "exit_code": process.returncode, "timed_out": timed_out,
         "writer_error": writer_error[0] if writer_error else None,
         "stdout": out_result, "stderr": err_result,
+        "unit_name": unit_name, "runtime_max_sec": runtime_max_sec,
+        "systemd_properties": isolation[5:],
     }
+
+
+def _baseline_mount_decoder(root: Path) -> tuple[str, str]:
+    resolved = _git(root, "rev-parse", "--verify", MOUNT_AUDIT_BASELINE + "^{commit}", maximum=1024)
+    if resolved.decode("ascii", "strict").strip() != MOUNT_AUDIT_BASELINE:
+        raise QualificationError("unchanged mount parser baseline does not resolve to its exact reviewed commit")
+    source = _git(root, "show", MOUNT_AUDIT_BASELINE + ":tools/qa/s2_runtime_qualification_wsl.py",
+                  maximum=MAX_WSL_SCRIPT_BYTES).decode("utf-8", "strict")
+    tree = ast.parse(source)
+    decoder = next((node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    and node.name == "_decode_mountinfo"), None)
+    if decoder is None:
+        raise QualificationError("unchanged mount parser is absent from the approved baseline")
+    segment = ast.get_source_segment(source, decoder)
+    if not segment:
+        raise QualificationError("unchanged mount parser source could not be extracted exactly")
+    return segment, hashlib.sha256(segment.encode("utf-8")).hexdigest()
+
+
+def run_read_only_mount_audit(*, root: Path, experiment_id: str,
+                              expected_launcher_sha256: str,
+                              expected_helper_sha256: str) -> int:
+    """Run the single adjudicated mount-only experiment; it creates no attempt file."""
+    if not experiment_id or not OPAQUE_ID.fullmatch(experiment_id):
+        raise QualificationError("read-only experiment identity is malformed")
+    sha256_input = re.compile(r"^[0-9a-fA-F]{64}$")
+    if (not isinstance(expected_launcher_sha256, str)
+            or not isinstance(expected_helper_sha256, str)
+            or not sha256_input.fullmatch(expected_launcher_sha256)
+            or not sha256_input.fullmatch(expected_helper_sha256)):
+        raise QualificationError("exact reviewed source hashes are required for the mount-only experiment")
+    # Digest hex is case-insensitive; normalize before exact byte-digest comparison.
+    expected_launcher_sha256 = expected_launcher_sha256.lower()
+    expected_helper_sha256 = expected_helper_sha256.lower()
+    launcher = _read_bounded_regular(Path(__file__), maximum=MAX_WSL_SCRIPT_BYTES)
+    helper = _read_bounded_regular(WSL_HELPER, maximum=MAX_WSL_SCRIPT_BYTES)
+    launcher_hash, helper_hash = hashlib.sha256(launcher).hexdigest(), hashlib.sha256(helper).hexdigest()
+    if launcher_hash != expected_launcher_sha256 or helper_hash != expected_helper_sha256:
+        raise QualificationError("mount-only experiment source differs from the exact reviewed file hashes")
+    baseline_source, baseline_hash = _baseline_mount_decoder(root)
+    unit_name = _transient_unit_name(experiment_id)
+    values = {
+        "AUTH": "{}", "TRANSIENT_UNIT": unit_name, "MOUNT_AUDIT_ONLY": True,
+        "BASELINE_DECODER_SOURCE": baseline_source,
+        "BASELINE_DECODER_SHA256": baseline_hash,
+        "BASELINE_DECODER_REVISION": MOUNT_AUDIT_BASELINE,
+    }
+    prefix = "".join(key + " = " + json.dumps(value, ensure_ascii=True) + "\n"
+                     for key, value in values.items()).encode("ascii")
+    script = prefix + helper
+    if len(script) > MAX_WSL_SCRIPT_BYTES:
+        raise QualificationError("mount-only protocol exceeded its bounded transfer size")
+    result = _run_bounded_wsl(script, unit_name=unit_name, runtime_max_sec=60)
+    stdout, stderr = result["stdout"], result["stderr"]
+    if result["timed_out"] or result["writer_error"] or stdout["truncated"] or stderr["truncated"]:
+        raise QualificationError("read-only experiment outcome is indeterminate; do not retry")
+    try:
+        protocol = json.loads(stdout["prefix"], object_pairs_hook=_no_duplicate_pairs)
+    except (UnicodeDecodeError, json.JSONDecodeError, QualificationError) as exc:
+        raise QualificationError("read-only experiment did not return its bounded JSON evidence") from exc
+    if not isinstance(protocol, dict) or protocol.get("schema") != "VST_S2_RUNTIME_QUALIFICATION_PROTOCOL_V1":
+        raise QualificationError("read-only experiment returned an unexpected evidence schema")
+    audit = protocol.get("mount_audit")
+    outer = {
+        "exit_code": result["exit_code"], "unit_name": unit_name,
+        "runtime_max_sec": result["runtime_max_sec"],
+        "systemd_properties": result["systemd_properties"],
+        "stdout_bytes": stdout["bytes"], "stdout_sha256": stdout["sha256"],
+        "stderr_bytes": stderr["bytes"], "stderr_sha256": stderr["sha256"],
+        "stderr_prefix": stderr["prefix"].decode("utf-8", "replace"),
+    }
+    if isinstance(audit, dict) and audit.get("schema") == "VST_S2_RUNTIME_MOUNT_AUDIT_V1":
+        audit["source_identity"] = {
+            "launcher_sha256": launcher_hash, "helper_sha256": helper_hash,
+            "baseline_revision": MOUNT_AUDIT_BASELINE, "baseline_decoder_sha256": baseline_hash,
+        }
+        audit["outer_process"] = outer
+        report = audit
+    else:
+        report = {"schema": "VST_S2_RUNTIME_MOUNT_AUDIT_OUTER_V1",
+                  "terminal": "HOLD", "reason": protocol.get("reason", "helper stopped before mount audit"),
+                  "protocol": protocol, "source_identity": {
+                      "launcher_sha256": launcher_hash, "helper_sha256": helper_hash,
+                      "baseline_revision": MOUNT_AUDIT_BASELINE,
+                      "baseline_decoder_sha256": baseline_hash,
+                  }, "outer_process": outer}
+    print(json.dumps(report, sort_keys=True, ensure_ascii=True, indent=2))
+    return 0 if result["exit_code"] == 0 and report.get("terminal") == "PASS" else 2
 
 
 def run_once(input_path: Path, output_path: Path, *, root: Path) -> int:
@@ -512,10 +636,16 @@ def run_once(input_path: Path, output_path: Path, *, root: Path) -> int:
     if hashlib.sha256(wsl_code).hexdigest() != validated["source_pins"]["qualification"][
             "tools/qa/s2_runtime_qualification_wsl.py"]:
         raise QualificationError("streamed WSL protocol differs from its exact qualification source pin")
-    # The only dynamic protocol data is embedded as canonical, bounded JSON in
-    # the streamed Python source. It never crosses a shell or command-line parser.
+    # The authorization and deterministic unit identity are embedded as
+    # bounded Python literals. Neither crosses a shell parser or command line.
     compact = json.dumps(validated, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-    prefix = ("AUTH = " + repr(json.loads(json.dumps(compact))) + "\n").encode("ascii")
+    unit_name = _transient_unit_name(validated["identity"]["run_id"])
+    prefix = ("AUTH = " + json.dumps(compact, ensure_ascii=True) + "\n"
+              + "TRANSIENT_UNIT = " + json.dumps(unit_name) + "\n"
+              + "MOUNT_AUDIT_ONLY = False\n"
+              + "BASELINE_DECODER_SOURCE = \"\"\n"
+              + "BASELINE_DECODER_SHA256 = \"\"\n"
+              + "BASELINE_DECODER_REVISION = \"\"\n").encode("ascii")
     script = prefix + wsl_code
     if len(script) > MAX_WSL_SCRIPT_BYTES:
         raise QualificationError("authorization plus WSL protocol exceeded its transfer bound")
@@ -532,6 +662,7 @@ def run_once(input_path: Path, output_path: Path, *, root: Path) -> int:
         )},
         "source_pins_verified": True,
         "wsl_distribution": WSL_DISTRIBUTION,
+        "transient_unit": unit_name,
         "retry_cap": 0,
     }
     fd = _exclusive_record(output_path, initial)
@@ -539,7 +670,7 @@ def run_once(input_path: Path, output_path: Path, *, root: Path) -> int:
         initial["state"] = "INDETERMINATE_UNTIL_TERMINAL_RECORD"
         _write_record(fd, initial)
         try:
-            result = _run_bounded_wsl(script)
+            result = _run_bounded_wsl(script, unit_name=unit_name, runtime_max_sec=2400)
         except OSError as exc:
             initial.update(state="INDETERMINATE", error_type=type(exc).__name__, retry="PROHIBITED")
             _write_record(fd, initial)
@@ -593,11 +724,28 @@ def run_once(input_path: Path, output_path: Path, *, root: Path) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--authorization-input", required=True, type=Path)
-    parser.add_argument("--attempt-output", required=True, type=Path)
+    parser.add_argument("--authorization-input", type=Path)
+    parser.add_argument("--attempt-output", type=Path)
+    parser.add_argument("--mount-audit-only", action="store_true")
+    parser.add_argument("--experiment-id")
+    parser.add_argument("--expected-launcher-sha256")
+    parser.add_argument("--expected-helper-sha256")
     args = parser.parse_args(argv)
     root = Path(__file__).resolve().parents[2]
     try:
+        if args.mount_audit_only:
+            if (args.authorization_input is not None or args.attempt_output is not None
+                    or not args.experiment_id or not args.expected_launcher_sha256
+                    or not args.expected_helper_sha256):
+                raise QualificationError("mount-only mode requires an experiment ID and both exact source hashes only")
+            return run_read_only_mount_audit(
+                root=root, experiment_id=args.experiment_id,
+                expected_launcher_sha256=args.expected_launcher_sha256,
+                expected_helper_sha256=args.expected_helper_sha256)
+        if (args.authorization_input is None or args.attempt_output is None
+                or args.experiment_id is not None or args.expected_launcher_sha256 is not None
+                or args.expected_helper_sha256 is not None):
+            raise QualificationError("runtime mode requires exactly authorization input and attempt output")
         return run_once(args.authorization_input, args.attempt_output, root=root)
     except (QualificationError, OSError, subprocess.SubprocessError) as exc:
         print("S2 runtime qualification refused: " + str(exc), file=sys.stderr)
