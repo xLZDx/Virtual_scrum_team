@@ -94,6 +94,25 @@ def _write_input(root: Path, value: dict | bytes) -> tuple[Path, Path]:
     return input_path, output_path
 
 
+def test_read_json_preserves_raw_crlf_bytes(tmp_path):
+    path = tmp_path / "attempt.json"
+    raw = b'{\r\n  "value": "line1\\r\\nline2"\r\n}\r\n'
+    path.write_bytes(raw)
+
+    value, actual = harness._read_json(path, maximum=1024)
+
+    assert actual == raw
+    assert value == {"value": "line1\r\nline2"}
+
+
+def test_read_bounded_regular_preserves_raw_crlf_bytes(tmp_path):
+    path = tmp_path / "pinned-source.txt"
+    raw = b"first line\r\nsecond line\r\n"
+    path.write_bytes(raw)
+
+    assert harness._read_bounded_regular(path, maximum=1024) == raw
+
+
 def _wsl_prestart_functions():
     """Load only the exact WSL mount-preflight functions, without running its protocol."""
     source_path = Path(__file__).resolve().parents[2] / WSL_HELPER

@@ -114,7 +114,9 @@ def _read_json(path: Path, *, maximum: int) -> tuple[dict[str, Any], bytes]:
         raise QualificationError("authorization input is unavailable") from exc
     if not path.is_file() or path.is_symlink() or before.st_size < 2 or before.st_size > maximum:
         raise QualificationError("authorization input must be a bounded regular file")
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    # `os.read` uses the CRT descriptor mode on Windows. Keep it binary so
+    # CRLF bytes are not translated before the size and identity checks.
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(path, flags)
     except OSError as exc:
@@ -155,7 +157,10 @@ def _read_bounded_regular(path: Path, *, maximum: int) -> bytes:
     if path.is_symlink() or not path.is_file() or before.st_size > maximum:
         raise QualificationError("pinned source must be a bounded regular file")
     try:
-        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        fd = os.open(
+            path,
+            os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0),
+        )
     except OSError as exc:
         raise QualificationError("pinned source could not be opened safely") from exc
     try:
