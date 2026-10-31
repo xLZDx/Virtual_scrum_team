@@ -7,6 +7,7 @@ the installed runtime source has been verified and all pre-start checks pass.
 from __future__ import annotations
 
 import datetime
+import errno
 import grp
 import hashlib
 import json
@@ -512,9 +513,27 @@ def _verify_execution_unit() -> dict:
     cgroup = pathlib.Path("/proc/self/cgroup").read_text(encoding="ascii").splitlines()
     if "0::/system.slice/" + TRANSIENT_UNIT not in cgroup:
         stop("helper cgroup does not identify its exact transient unit")
-    open_fds = sorted(pathlib.Path("/proc/self/fd").iterdir(), key=lambda path: path.name)
-    fd_names = [path.name for path in open_fds]
+    try:
+        candidate_fd_names = os.listdir("/proc/self/fd")
+    except OSError as exc:
+        stop("open file descriptors could not be enumerated: " + type(exc).__name__)
+    fd_names = []
+    for name in candidate_fd_names:
+        if not name.isascii() or not name.isdecimal():
+            stop("open file descriptor inventory contains a malformed entry")
+        try:
+            os.fstat(int(name))
+        except OSError as exc:
+            # The procfs enumeration can include its own temporary directory
+            # descriptor. It is no longer open once listdir returns; ignore
+            # only that EBADF snapshot race, never a descriptor still open.
+            if exc.errno == errno.EBADF:
+                continue
+            stop("open file descriptor could not be inspected: " + type(exc).__name__)
+        fd_names.append(name)
+    fd_names.sort(key=int)
     if fd_names != ["0", "1", "2"]:
+        R["open_fds_mismatch"] = {"expected": ["0", "1", "2"], "observed": fd_names}
         stop("helper has unexpected open file descriptors")
     return {"mount_namespace_distinct_from_pid1": True, "uid": os.geteuid(),
             "pid": os.getpid(), "unit": TRANSIENT_UNIT, "properties": props,

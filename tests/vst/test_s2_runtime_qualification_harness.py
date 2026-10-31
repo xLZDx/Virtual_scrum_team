@@ -5,6 +5,7 @@ attempt-evidence gates. No test in this module launches WSL or a runtime service
 """
 from __future__ import annotations
 
+import errno
 import hashlib
 import io
 import json
@@ -178,7 +179,7 @@ def _wsl_mount_audit_functions(*, unit="vst-s2-qual-0123456789abcdef.service"):
         raise Hold()
 
     namespace = {
-        "hashlib": hashlib, "re": re, "os": __import__("os"),
+        "errno": errno, "hashlib": hashlib, "re": re, "os": __import__("os"),
         "stat": __import__("stat"), "pathlib": pathlib,
         "TRANSIENT_UNIT": unit, "MOUNT_AUDIT_ONLY": True,
         "R": runtime, "Hold": Hold, "stop": stop,
@@ -194,7 +195,8 @@ def _wsl_mount_audit_functions(*, unit="vst-s2-qual-0123456789abcdef.service"):
     return namespace
 
 
-def _configure_fake_transient_unit(functions, *, inaccessible_paths):
+def _configure_fake_transient_unit(functions, *, inaccessible_paths,
+                                   fd_entries=("0", "1", "2"), closed_fds=()):
     unit = functions["TRANSIENT_UNIT"]
     properties = {
         "LoadState": "loaded", "ActiveState": "active", "SubState": "running",
@@ -222,15 +224,22 @@ def _configure_fake_transient_unit(functions, *, inaccessible_paths):
             assert self.value == "/proc/self/cgroup"
             return "0::/system.slice/" + unit + "\n"
 
-        def iterdir(self):
-            assert self.value == "/proc/self/fd"
-            return [FakePath("/proc/self/fd/" + name) for name in ("0", "1", "2")]
+    def fake_listdir(path):
+        assert path == "/proc/self/fd"
+        return list(fd_entries)
+
+    def fake_fstat(fd):
+        if fd in closed_fds:
+            raise OSError(errno.EBADF, "descriptor closed after procfs enumeration")
+        return SimpleNamespace(st_mode=0)
 
     functions["os"] = SimpleNamespace(
         geteuid=lambda: 0,
         getpid=lambda: 4321,
         stat=lambda path: SimpleNamespace(
             st_dev=1, st_ino=100 if path == "/proc/self/ns/mnt" else 200),
+        listdir=fake_listdir,
+        fstat=fake_fstat,
     )
     functions["pathlib"] = SimpleNamespace(Path=FakePath)
     functions["_systemd_unit_properties"] = lambda: properties
@@ -476,15 +485,13 @@ def test_pm08_execution_unit_requires_exact_unit_identity_and_mount_namespace():
             assert self.value == "/proc/self/cgroup"
             return "0::/system.slice/" + unit + "\n"
 
-        def iterdir(self):
-            assert self.value == "/proc/self/fd"
-            return [FakePath("/proc/self/fd/" + name) for name in ("0", "1", "2")]
-
     fake_os = SimpleNamespace(
         geteuid=lambda: 0,
         getpid=lambda: 4321,
         stat=lambda path: SimpleNamespace(
             st_dev=1, st_ino=100 if path == "/proc/self/ns/mnt" else 200),
+        listdir=lambda path: ["0", "1", "2"],
+        fstat=lambda fd: None,
     )
     functions["os"] = fake_os
     functions["pathlib"] = SimpleNamespace(Path=FakePath)
@@ -528,6 +535,7 @@ def test_pm08_execution_unit_requires_exact_unit_identity_and_mount_namespace():
         "/system.slice/vst-s2-qual-ffffffffffffffff.service")
 
     properties["ControlGroup"] = "/system.slice/" + unit
+    functions["MOUNT_AUDIT_ONLY"] = False
     expected_paths = sorted(expected_inaccessible)
     missing_path = expected_paths[0]
     properties["InaccessiblePaths"] = " ".join("-" + path for path in expected_paths[1:])
@@ -599,6 +607,35 @@ def test_pm08_runtime_preflight_still_stops_on_missing_init_property():
 
     assert functions["R"]["inaccessible_path_mismatch"]["missing"] == ["/init"]
     assert functions["R"]["terminal"] == "HOLD"
+
+
+def test_pm08_open_fd_snapshot_ignores_closed_procfs_entry():
+    functions = _wsl_mount_audit_functions()
+    expected = set(functions["SYSTEMD_INACCESSIBLE_PATHS"])
+    expected.add("/sys/fs/cgroup/system.slice/" + functions["TRANSIENT_UNIT"]
+                 + "/memory.pressure")
+    _configure_fake_transient_unit(
+        functions, inaccessible_paths=expected, fd_entries=("0", "1", "2", "17"),
+        closed_fds=(17,))
+    result = functions["_verify_execution_unit"]()
+
+    assert result["open_fds"] == ["0", "1", "2"]
+    assert functions["R"].get("open_fds_mismatch") is None
+
+
+def test_pm08_open_fd_snapshot_rejects_still_open_extra_descriptor():
+    functions = _wsl_mount_audit_functions()
+    expected = set(functions["SYSTEMD_INACCESSIBLE_PATHS"])
+    expected.add("/sys/fs/cgroup/system.slice/" + functions["TRANSIENT_UNIT"]
+                 + "/memory.pressure")
+    _configure_fake_transient_unit(
+        functions, inaccessible_paths=expected, fd_entries=("0", "1", "2", "17"))
+
+    with pytest.raises(functions["Hold"]):
+        functions["_verify_execution_unit"]()
+
+    assert functions["R"]["open_fds_mismatch"] == {
+        "expected": ["0", "1", "2"], "observed": ["0", "1", "2", "17"]}
 
 
 def test_pm08_effective_masks_verify_mount_id_type_and_root_ownership():
