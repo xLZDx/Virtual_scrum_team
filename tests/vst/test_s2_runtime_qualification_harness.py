@@ -30,6 +30,13 @@ FAILURE_PROTOCOL = json.dumps({
     "terminal": "HOLD",
     "reason": "synthetic bounded refusal",
 }, separators=(",", ":")).encode("ascii")
+MOCK_WSL_SOURCE = (
+    b'"""Synthetic WSL helper."""\n'
+    b"from __future__ import annotations\n"
+    b"import json\n"
+    b"AUTH = json.loads(AUTH)\n"
+    b"# mocked protocol body\n"
+)
 
 
 def _sha(data: bytes) -> str:
@@ -689,7 +696,7 @@ def test_pm08_run_bounded_wsl_uses_exact_unit_and_systemd_isolation_properties(
 def test_pm08_mount_audit_binds_sources_baseline_and_creates_no_auth_or_attempt_files(
         monkeypatch, tmp_path, capsys, uppercase_hashes):
     launcher_bytes = b"exact launcher source bytes\n"
-    helper_bytes = b"exact helper source bytes\n"
+    helper_bytes = MOCK_WSL_SOURCE
     baseline = harness.MOUNT_AUDIT_BASELINE
     baseline_source = "def _decode_mountinfo(raw):\n    return [], [], []"
     baseline_sha = _sha(baseline_source.encode("utf-8"))
@@ -744,14 +751,37 @@ def test_pm08_mount_audit_binds_sources_baseline_and_creates_no_auth_or_attempt_
     assert exit_code == 0
     assert len(launched) == 1
     script, unit_name, runtime_max_sec = launched[0]
-    prefix = script[:script.index(helper_bytes)].decode("ascii")
+    marker = b"AUTH = json.loads(AUTH)\n"
+    marker_offset = helper_bytes.index(marker)
+    injected = (
+        b'AUTH = "{}"\n'
+        + ("TRANSIENT_UNIT = " + json.dumps(expected_unit) + "\n").encode("ascii")
+        + b"MOUNT_AUDIT_ONLY = True\n"
+        + ("BASELINE_DECODER_SOURCE = " + json.dumps(baseline_source) + "\n").encode("ascii")
+        + ("BASELINE_DECODER_SHA256 = " + json.dumps(baseline_sha) + "\n").encode("ascii")
+        + ("BASELINE_DECODER_REVISION = " + json.dumps(baseline) + "\n").encode("ascii")
+    )
+    expected_script = helper_bytes[:marker_offset] + injected + helper_bytes[marker_offset:]
+    assert script == expected_script
+    compile(script, "<mock-mount-audit-script>", "exec")
+    audit_tree = ast.parse(script.decode("ascii"))
+    audit_mode = next(ast.literal_eval(node.value) for node in audit_tree.body
+                      if isinstance(node, ast.Assign)
+                      and any(isinstance(target, ast.Name)
+                              and target.id == "MOUNT_AUDIT_ONLY" for target in node.targets))
+    assert audit_mode is True
+    assert script.index(b"from __future__ import annotations\n") < script.index(b'AUTH = "{}"\n')
+    assert script.index(b"import json\n") < script.index(b'AUTH = "{}"\n')
+    assert script.count(marker) == 1
+    assert script.index(marker) > script.index(b'AUTH = "{}"\n')
+    prefix = script[:script.index(b"# mocked protocol body")].decode("ascii")
     assert 'AUTH = "{}"\n' in prefix
     assert 'TRANSIENT_UNIT = ' + json.dumps(expected_unit) in prefix
-    assert "MOUNT_AUDIT_ONLY = true" in prefix
+    assert "MOUNT_AUDIT_ONLY = True" in prefix
     assert 'BASELINE_DECODER_SOURCE = ' + json.dumps(baseline_source) in prefix
     assert 'BASELINE_DECODER_SHA256 = ' + json.dumps(baseline_sha) in prefix
     assert 'BASELINE_DECODER_REVISION = ' + json.dumps(baseline) in prefix
-    assert script.endswith(helper_bytes)
+    assert script[script.index(marker):].endswith(helper_bytes[marker_offset:])
     assert "attempt" not in prefix
     assert "docs/sdlc/evidence" not in prefix
     assert unit_name == expected_unit
@@ -771,7 +801,7 @@ def test_pm08_mount_audit_binds_sources_baseline_and_creates_no_auth_or_attempt_
 @pytest.mark.parametrize("failure", ["launcher-hash", "helper-hash", "baseline-revision"])
 def test_pm08_mount_audit_fails_closed_before_wsl_on_source_or_baseline_mismatch(
         monkeypatch, tmp_path, failure):
-    launcher_bytes, helper_bytes = b"launcher\n", b"helper\n"
+    launcher_bytes, helper_bytes = b"launcher\n", MOCK_WSL_SOURCE
     baseline = harness.MOUNT_AUDIT_BASELINE
     baseline_source = "def _decode_mountinfo(raw):\n    return [], [], []"
     calls = []
@@ -801,6 +831,45 @@ def test_pm08_mount_audit_fails_closed_before_wsl_on_source_or_baseline_mismatch
     assert list(tmp_path.rglob("*")) == []
 
 
+@pytest.mark.parametrize("marker_case", ["missing", "duplicate"])
+def test_pm08_mount_audit_refuses_nonunique_injection_marker_before_runner(
+        monkeypatch, tmp_path, marker_case):
+    marker = b"AUTH = json.loads(AUTH)\n"
+    launcher_bytes = b"exact launcher source bytes\n"
+    if marker_case == "missing":
+        helper_bytes = MOCK_WSL_SOURCE.replace(marker, b"AUTH = {}\n")
+    else:
+        helper_bytes = MOCK_WSL_SOURCE + marker
+    baseline = harness.MOUNT_AUDIT_BASELINE
+    baseline_source = "def _decode_mountinfo(raw):\n    return [], [], []"
+    calls = []
+
+    def read_source(path, *, maximum):
+        assert maximum == harness.MAX_WSL_SCRIPT_BYTES
+        return launcher_bytes if Path(path) == Path(harness.__file__) else helper_bytes
+
+    def fake_git(_root, *args, maximum):
+        if args[0] == "rev-parse":
+            return (baseline + "\n").encode("ascii")
+        assert args[0] == "show"
+        return baseline_source.encode("utf-8")
+
+    monkeypatch.setattr(harness, "_read_bounded_regular", read_source)
+    monkeypatch.setattr(harness, "_git", fake_git)
+    monkeypatch.setattr(harness, "_run_bounded_wsl",
+                        lambda *_args, **_kwargs: calls.append(True))
+
+    with pytest.raises(harness.QualificationError, match="value-injection point is not unique"):
+        harness.run_read_only_mount_audit(
+            root=tmp_path, experiment_id="s2-4-pm08-marker-refusal-01",
+            expected_launcher_sha256=_sha(launcher_bytes),
+            expected_helper_sha256=_sha(helper_bytes),
+        )
+
+    assert calls == []
+    assert list(tmp_path.rglob("*")) == []
+
+
 @pytest.mark.parametrize(("failure", "expected_terminal"), [
     ("invalid-utf8", "HOLD"),
     ("invalid-json", "HOLD"),
@@ -811,7 +880,7 @@ def test_pm08_mount_audit_fails_closed_before_wsl_on_source_or_baseline_mismatch
 ])
 def test_pm08_mount_audit_emits_bounded_structured_hold_without_attempt_files(
         monkeypatch, tmp_path, capsys, failure, expected_terminal):
-    launcher_bytes, helper_bytes = b"exact launcher source bytes\n", b"exact helper source bytes\n"
+    launcher_bytes, helper_bytes = b"exact launcher source bytes\n", MOCK_WSL_SOURCE
     baseline = harness.MOUNT_AUDIT_BASELINE
     baseline_source = "def _decode_mountinfo(raw):\n    return [], [], []"
     if failure == "invalid-utf8":
@@ -909,7 +978,7 @@ def test_pm08_mount_audit_emits_bounded_structured_hold_without_attempt_files(
 
 def test_pm08_mount_audit_downgrades_helper_pass_when_outer_exit_is_nonzero(
         monkeypatch, tmp_path, capsys):
-    launcher_bytes, helper_bytes = b"exact launcher source bytes\n", b"exact helper source bytes\n"
+    launcher_bytes, helper_bytes = b"exact launcher source bytes\n", MOCK_WSL_SOURCE
     baseline = harness.MOUNT_AUDIT_BASELINE
     baseline_source = "def _decode_mountinfo(raw):\n    return [], [], []"
     protocol = json.dumps({
@@ -981,7 +1050,7 @@ def test_pm08_mount_audit_downgrades_helper_pass_when_outer_exit_is_nonzero(
 ])
 def test_pm08_mount_audit_rejects_protocol_terminal_conflicts_and_runner_errors(
         monkeypatch, tmp_path, capsys, case, protocol_terminal, expected_reason):
-    launcher_bytes, helper_bytes = b"exact launcher source bytes\n", b"exact helper source bytes\n"
+    launcher_bytes, helper_bytes = b"exact launcher source bytes\n", MOCK_WSL_SOURCE
     baseline = harness.MOUNT_AUDIT_BASELINE
     baseline_source = "def _decode_mountinfo(raw):\n    return [], [], []"
     experiment_id = "s2-4-pm08-terminal-check-01"
@@ -1214,7 +1283,7 @@ def test_wrong_expected_qualification_head_refuses_before_attempt_or_wsl(
 
 def test_run_once_starts_one_mock_wsl_child_and_persists_terminal_hold(
         monkeypatch, tmp_path, capsys):
-    script = b"# mocked exact WSL protocol source\n"
+    script = MOCK_WSL_SOURCE
     value = _auth_input(streamed_wsl=script)
     input_path, output_path = _write_input(tmp_path, value)
     monkeypatch.setattr(harness, "verify_source_pins", lambda *_args: None)
@@ -1222,6 +1291,7 @@ def test_run_once_starts_one_mock_wsl_child_and_persists_terminal_hold(
     monkeypatch.setattr(harness, "_load_wsl_script", lambda: script)
 
     calls = []
+    captured_inputs = []
 
     class CapturedInput:
         def __init__(self):
@@ -1242,6 +1312,7 @@ def test_run_once_starts_one_mock_wsl_child_and_persists_terminal_hold(
         def __init__(self, argv, **kwargs):
             calls.append((argv, kwargs))
             self.stdin = CapturedInput()
+            captured_inputs.append(self.stdin)
             self.stdout = io.BytesIO(FAILURE_PROTOCOL)
             self.stderr = io.BytesIO(b"synthetic stderr")
             self.returncode = 2
@@ -1260,6 +1331,19 @@ def test_run_once_starts_one_mock_wsl_child_and_persists_terminal_hold(
     assert argv[:3] == ["wsl.exe", "--distribution", harness.WSL_DISTRIBUTION]
     assert kwargs["close_fds"] is True
     assert len(calls[0][1:]) == 1
+    injected_script = bytes(captured_inputs[0].data)
+    compile(injected_script, "<mock-runtime-script>", "exec")
+    runtime_tree = ast.parse(injected_script.decode("ascii"))
+    runtime_mode = next(ast.literal_eval(node.value) for node in runtime_tree.body
+                        if isinstance(node, ast.Assign)
+                        and any(isinstance(target, ast.Name)
+                                and target.id == "MOUNT_AUDIT_ONLY" for target in node.targets))
+    assert runtime_mode is False
+    assert injected_script.index(b"from __future__ import annotations\n") < injected_script.index(
+        b'AUTH = "{')
+    assert injected_script.count(b"AUTH = json.loads(AUTH)\n") == 1
+    assert injected_script.index(b"AUTH = json.loads(AUTH)\n") > injected_script.index(
+        b'AUTH = "{')
     attempt = json.loads(output_path.read_text(encoding="utf-8"))
     assert attempt["state"] == "HOLD"
     assert attempt["protocol"]["terminal"] == "HOLD"
@@ -1268,6 +1352,12 @@ def test_run_once_starts_one_mock_wsl_child_and_persists_terminal_hold(
     assert attempt["stdout_sha256"] == _sha(FAILURE_PROTOCOL)
     assert attempt["stderr_sha256"] == _sha(b"synthetic stderr")
     assert capsys.readouterr().out
+
+
+@pytest.mark.parametrize("unsupported", [1, None, [], {}])
+def test_pm08_python_literal_refuses_unsupported_value_types(unsupported):
+    with pytest.raises(harness.QualificationError, match="no safe Python literal encoding"):
+        harness._python_literal(unsupported)
 
 
 def test_wsl_mount_allowlist_accepts_only_expected_mounts(monkeypatch):
@@ -1318,7 +1408,7 @@ def test_wsl_prestart_refuses_unapproved_mounts(monkeypatch, label, extra, reaso
 
 def test_unknown_protocol_persists_indeterminate_record_without_retry(
         monkeypatch, tmp_path):
-    script = b"# mocked exact WSL protocol source\n"
+    script = MOCK_WSL_SOURCE
     unknown_protocol = b'{"schema":"VST_S2_RUNTIME_QUALIFICATION_PROTOCOL_V999"}'
     value = _auth_input(streamed_wsl=script)
     input_path, output_path = _write_input(tmp_path, value)
@@ -1328,7 +1418,7 @@ def test_unknown_protocol_persists_indeterminate_record_without_retry(
 
     calls = []
 
-    def one_wsl_attempt(_script):
+    def one_wsl_attempt(_script, **_kwargs):
         calls.append(True)
         return {
             "exit_code": 2,

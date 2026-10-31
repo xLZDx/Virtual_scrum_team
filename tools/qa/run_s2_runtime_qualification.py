@@ -550,6 +550,24 @@ def _baseline_mount_decoder(root: Path) -> tuple[str, str]:
     return segment, hashlib.sha256(segment.encode("utf-8")).hexdigest()
 
 
+def _inject_protocol_values(prefix: bytes, helper: bytes) -> bytes:
+    marker = b"AUTH = json.loads(AUTH)\n"
+    if helper.count(marker) != 1:
+        raise QualificationError("WSL protocol value-injection point is not unique")
+    # Keep module docstring, future imports, and standard-library imports before
+    # the injected assignments so the streamed program remains valid Python.
+    offset = helper.index(marker)
+    return helper[:offset] + prefix + helper[offset:]
+
+
+def _python_literal(value: str | bool) -> str:
+    if isinstance(value, bool):
+        return "True" if value else "False"
+    if isinstance(value, str):
+        return json.dumps(value, ensure_ascii=True)
+    raise QualificationError("WSL protocol value has no safe Python literal encoding")
+
+
 def run_read_only_mount_audit(*, root: Path, experiment_id: str,
                               expected_launcher_sha256: str,
                               expected_helper_sha256: str) -> int:
@@ -578,9 +596,9 @@ def run_read_only_mount_audit(*, root: Path, experiment_id: str,
         "BASELINE_DECODER_SHA256": baseline_hash,
         "BASELINE_DECODER_REVISION": MOUNT_AUDIT_BASELINE,
     }
-    prefix = "".join(key + " = " + json.dumps(value, ensure_ascii=True) + "\n"
+    prefix = "".join(key + " = " + _python_literal(value) + "\n"
                      for key, value in values.items()).encode("ascii")
-    script = prefix + helper
+    script = _inject_protocol_values(prefix, helper)
     if len(script) > MAX_WSL_SCRIPT_BYTES:
         raise QualificationError("mount-only protocol exceeded its bounded transfer size")
     outer: dict[str, Any] = {"unit_name": unit_name, "runtime_max_sec": 60}
@@ -678,7 +696,7 @@ def run_once(input_path: Path, output_path: Path, *, root: Path) -> int:
               + "BASELINE_DECODER_SOURCE = \"\"\n"
               + "BASELINE_DECODER_SHA256 = \"\"\n"
               + "BASELINE_DECODER_REVISION = \"\"\n").encode("ascii")
-    script = prefix + wsl_code
+    script = _inject_protocol_values(prefix, wsl_code)
     if len(script) > MAX_WSL_SCRIPT_BYTES:
         raise QualificationError("authorization plus WSL protocol exceeded its transfer bound")
     initial = {
