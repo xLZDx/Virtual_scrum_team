@@ -92,7 +92,7 @@ WSL_DISTRIBUTION = "Ubuntu-24.04"
 WSL_HELPER = Path(__file__).with_name("s2_runtime_qualification_wsl.py")
 MOUNT_AUDIT_BASELINE = "788ea48fd48f8c4a78a3c7bed50d7b0776ef2b1d"
 SYSTEMD_MASK_TARGETS = (
-    "/dev/hugepages", "/dev/shm", "/home", "/mnt", "/proc/acpi", "/proc/bus",
+    "/dev/hugepages", "/dev/shm", "/home", "/init", "/mnt", "/proc/acpi", "/proc/bus",
     "/proc/fs", "/proc/irq", "/proc/kallsyms", "/proc/kcore", "/proc/kmsg",
     "/proc/latency_stats", "/proc/mtrr", "/proc/scsi", "/proc/sys/fs/binfmt_misc",
     "/root", "/run/WSL", "/run/credentials", "/run/lock", "/run/shm", "/run/user",
@@ -448,7 +448,7 @@ def _run_bounded_wsl(script: bytes, *, unit_name: str, runtime_max_sec: int) -> 
         "--property=ProtectKernelLogs=yes", "--property=ProtectControlGroups=yes",
         "--property=NoNewPrivileges=yes",
         "--property=RuntimeMaxSec=" + str(runtime_max_sec) + "s",
-        "--property=InaccessiblePaths=" + " ".join("-" + path for path in sorted(mask_paths)),
+        "--property=InaccessiblePaths=" + " ".join(sorted(mask_paths)),
     ]
     process = subprocess.Popen(
         ["wsl.exe", "--distribution", WSL_DISTRIBUTION, "--user", "root",

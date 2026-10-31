@@ -125,18 +125,33 @@ def _wsl_prestart_functions():
     """Load only the exact WSL mount-preflight functions, without running its protocol."""
     source_path = Path(__file__).resolve().parents[2] / WSL_HELPER
     tree = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
-    wanted = {"Hold", "stop", "_decode_mountinfo", "_prestart_inventory"}
-    nodes = [node for node in tree.body
-             if ((isinstance(node, ast.ClassDef) or isinstance(node, ast.FunctionDef))
-                 and node.name in wanted)]
-    assert {node.name for node in nodes} == wanted
+    wanted = {"Hold", "stop", "_unescape_mountinfo", "_decode_mountinfo",
+              "_prestart_inventory"}
+    constants = {"SYSTEMD_MASK_DIRS", "SYSTEMD_MASK_FILES", "SYSTEMD_MASK_TARGETS",
+                 "MASK_BASES", "EXACT_MOUNTS"}
+    nodes = [node for node in tree.body if (
+        isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Name) and target.id in constants
+                for target in node.targets)
+    ) or (((isinstance(node, ast.ClassDef) or isinstance(node, ast.FunctionDef))
+           and node.name in wanted))]
+    assert {node.name for node in nodes
+            if isinstance(node, (ast.ClassDef, ast.FunctionDef))} == wanted
+    assert {target.id for node in nodes if isinstance(node, ast.Assign)
+            for target in node.targets if isinstance(target, ast.Name)} == constants
     module = ast.Module(body=nodes, type_ignores=[])
     namespace = {
         "hashlib": hashlib,
         "os": SimpleNamespace(geteuid=lambda: 0),
         "pathlib": pathlib,
         "re": re,
+        "TRANSIENT_UNIT": "vst-s2-qual-0123456789abcdef.service",
         "R": {"prestart": {}},
+        # These external boundaries are stubbed so the fixture only exercises
+        # mountinfo allowlisting and never inspects or starts a runtime.
+        "_verify_execution_unit": lambda: {"unit": "synthetic"},
+        "_verify_effective_masks": lambda _rows: ({}, []),
+        "_verify_private_dev": lambda _rows: ({}, []),
     }
     exec(compile(module, str(source_path), "exec"), namespace)
     return namespace
@@ -193,6 +208,61 @@ def _wsl_mount_audit_functions(*, unit="vst-s2-qual-0123456789abcdef.service"):
     exec(compile(ast.Module(body=nodes, type_ignores=[]), str(source_path), "exec"),
          namespace)
     return namespace
+
+
+def _verify_effective_masks_fixture(*, missing=(), unmasked=()):
+    """Verify a synthetic effective-mask inventory with selected missing/bad rows."""
+    unit = "vst-s2-qual-0123456789abcdef.service"
+    functions = _wsl_mount_audit_functions(unit=unit)
+    cgroup_target = "/sys/fs/cgroup/system.slice/" + unit + "/memory.pressure"
+    targets = sorted(set(functions["SYSTEMD_MASK_TARGETS"]) | {cgroup_target})
+    missing = set(missing)
+    unmasked = set(unmasked)
+    rows = []
+    for mount_id, target in enumerate(targets, 100):
+        if target in missing:
+            continue
+        root = ("/systemd/inaccessible/reg" if target in functions["SYSTEMD_MASK_FILES"]
+                or target == cgroup_target else "/systemd/inaccessible/dir")
+        if target in unmasked:
+            root = "/unmasked"
+        rows.append({"mountpoint": target, "mount_id": mount_id,
+                     "mount_root": root, "filesystem": "tmpfs", "source": "none"})
+
+    fd_mount_ids = {}
+    fd_targets = {}
+
+    class FakePath:
+        def __init__(self, value):
+            self.value = str(value)
+
+        def read_text(self, encoding=None):
+            fd = int(self.value.rsplit("/", 1)[-1])
+            return "pos:\t0\nmnt_id:\t" + str(fd_mount_ids[fd]) + "\n"
+
+    def fake_open(path, flags):
+        assert flags == (0x200000 | 0x80000)  # Linux O_PATH | O_CLOEXEC.
+        target = str(path)
+        row = next(item for item in rows if item["mountpoint"] == target)
+        fd = row["mount_id"]
+        fd_mount_ids[fd] = row["mount_id"]
+        fd_targets[fd] = target
+        return fd
+
+    def fake_fstat(fd):
+        target = fd_targets[fd]
+        regular = target in functions["SYSTEMD_MASK_FILES"] or target == cgroup_target
+        return SimpleNamespace(
+            st_mode=(functions["stat"].S_IFREG if regular else functions["stat"].S_IFDIR),
+            st_uid=0, st_gid=0,
+        )
+
+    functions["os"] = SimpleNamespace(
+        O_PATH=0x200000, O_CLOEXEC=0x80000,
+        open=fake_open, fstat=fake_fstat, close=lambda _fd: None,
+    )
+    functions["pathlib"] = SimpleNamespace(Path=FakePath)
+    return functions["_verify_effective_masks"](rows)
 
 
 def _configure_fake_transient_unit(functions, *, inaccessible_paths,
@@ -375,6 +445,69 @@ def test_pm08_mount_decoder_accepts_exact_masks_incoming_and_current_cgroup_unit
     assert set(incoming[0]["mount_options"]) == {"ro", "nosuid", "nodev"}
     assert set(incoming[0]["super_options"]) == {"rw", "mode=755"}
     assert not any("other-unit" in row["mount_root"] for row in rows)
+
+
+@pytest.mark.parametrize("target", ["/proc/latency_stats", "/proc/mtrr", "/init"])
+def test_pm08_mount_decoder_rejects_missing_required_masks(target):
+    unit = "vst-s2-qual-0123456789abcdef.service"
+    mountinfo, functions = _complete_mountinfo(unit)
+    lines = [line for line in mountinfo.splitlines()
+             if line.split(" - ")[0].split()[4] != target]
+
+    _, _, unapproved = functions["_decode_mountinfo"]("\n".join(lines), expected_unit=unit)
+
+    assert any(item.get("mountpoint") == target
+               and "required inaccessible mask has no mount row" in item["reason"]
+               for item in unapproved)
+
+
+@pytest.mark.parametrize("target", ["/proc/latency_stats", "/proc/mtrr"])
+def test_pm08_mount_decoder_rejects_unmasked_proc_paths(target):
+    unit = "vst-s2-qual-0123456789abcdef.service"
+    mountinfo, functions = _complete_mountinfo(unit)
+    lines = [line for line in mountinfo.splitlines()
+             if not (line.split(" - ")[0].split()[4] == target
+                     and line.split(" - ")[0].split()[3].startswith("/systemd/inaccessible/"))]
+
+    _, _, unapproved = functions["_decode_mountinfo"]("\n".join(lines), expected_unit=unit)
+
+    assert any(item.get("mountpoint") == target
+               and "exact systemd inaccessible mask is missing or ambiguous" in item["reason"]
+               for item in unapproved)
+
+
+def test_pm08_mount_decoder_rejects_nested_mount_below_missing_required_directory():
+    unit = "vst-s2-qual-0123456789abcdef.service"
+    mountinfo, functions = _complete_mountinfo(unit)
+    lines = [line for line in mountinfo.splitlines()
+             if line.split(" - ")[0].split()[4] != "/proc/bus"]
+    proc_id = next(int(line.split()[0]) for line in lines
+                   if line.split(" - ")[0].split()[4] == "/proc")
+    lines.append(_mountinfo_line(
+        900, proc_id, "0:5", "/bus/child", "/proc/bus/child",
+        "ro,nosuid,nodev,noexec,relatime", "proc", "proc", "rw"))
+
+    _, _, unapproved = functions["_decode_mountinfo"]("\n".join(lines), expected_unit=unit)
+
+    assert any(item.get("mountpoint") == "/proc/bus/child" for item in unapproved)
+
+
+@pytest.mark.parametrize("target", ["/proc/latency_stats", "/proc/mtrr", "/init"])
+def test_pm08_effective_masks_reject_missing_required_targets(target):
+    verified, failures = _verify_effective_masks_fixture(missing={target})
+
+    assert target not in verified
+    assert any("effective inaccessible target is missing or ambiguous: " + target in failure
+               for failure in failures)
+
+
+@pytest.mark.parametrize("target", ["/proc/latency_stats", "/proc/mtrr", "/init"])
+def test_pm08_effective_masks_reject_unmasked_targets(target):
+    verified, failures = _verify_effective_masks_fixture(unmasked={target})
+
+    assert target not in verified
+    assert any("effective inaccessible target is missing or ambiguous: " + target in failure
+               for failure in failures)
 
 
 @pytest.mark.parametrize("mutation", ["generic", "wrong-root", "wrong-source", "wrong-device",
@@ -641,6 +774,8 @@ def test_pm08_open_fd_snapshot_rejects_still_open_extra_descriptor():
 def test_pm08_effective_masks_verify_mount_id_type_and_root_ownership():
     unit = "vst-s2-qual-0123456789abcdef.service"
     functions = _wsl_mount_audit_functions(unit=unit)
+    assert {"/proc/latency_stats", "/proc/mtrr"} <= functions["SYSTEMD_MASK_FILES"]
+    assert not ({"/proc/latency_stats", "/proc/mtrr"} & functions["SYSTEMD_MASK_DIRS"])
     cgroup_target = "/sys/fs/cgroup/system.slice/" + unit + "/memory.pressure"
     targets = sorted(set(functions["SYSTEMD_MASK_TARGETS"]) | {cgroup_target})
     rows = []
@@ -698,6 +833,13 @@ def test_pm08_effective_masks_verify_mount_id_type_and_root_ownership():
     verified, failures = functions["_verify_effective_masks"](rows)
     assert failures
     assert any("different mount" in failure for failure in failures)
+
+
+def test_runtime_and_wsl_helper_mask_target_sets_match():
+    functions = _wsl_mount_audit_functions()
+
+    assert set(harness.SYSTEMD_MASK_TARGETS) == functions["SYSTEMD_MASK_TARGETS"]
+    assert "/init" in harness.SYSTEMD_MASK_TARGETS
 
 
 def _private_dev_fixture(*, char_extra=False, masked_extra=False, wrong_null_mode=False,
@@ -846,12 +988,15 @@ def test_pm08_run_bounded_wsl_uses_exact_unit_and_systemd_isolation_properties(
     expected_mask_paths = sorted(set(harness.SYSTEMD_MASK_TARGETS) | {
         "/sys/fs/cgroup/system.slice/" + expected_unit + "/memory.pressure",
     })
+    inaccessible_paths = expected_mask_paths
+    assert "/init" in inaccessible_paths
+    assert all(not path.startswith("-") for path in inaccessible_paths)
     expected_properties = [
         "--property=PrivateDevices=yes", "--property=ProtectSystem=strict",
         "--property=ProtectKernelTunables=yes", "--property=ProtectKernelModules=yes",
         "--property=ProtectKernelLogs=yes", "--property=ProtectControlGroups=yes",
         "--property=NoNewPrivileges=yes", "--property=RuntimeMaxSec=" + str(runtime_max_sec) + "s",
-        "--property=InaccessiblePaths=" + " ".join("-" + path for path in expected_mask_paths),
+        "--property=InaccessiblePaths=" + " ".join(expected_mask_paths),
     ]
     assert captured["argv"] == [
         "wsl.exe", "--distribution", harness.WSL_DISTRIBUTION, "--user", "root",
@@ -1545,10 +1690,11 @@ def test_pm08_python_literal_refuses_unsupported_value_types(unsupported):
 
 def test_wsl_mount_allowlist_accepts_only_expected_mounts(monkeypatch):
     functions = _wsl_prestart_functions()
+    mountinfo, _ = _complete_mountinfo(functions["TRANSIENT_UNIT"])
     rows, windows_mounts, unapproved_mounts = functions["_decode_mountinfo"](
-        _approved_mountinfo())
+        mountinfo, expected_unit=functions["TRANSIENT_UNIT"])
 
-    assert len(rows) == 9
+    assert len(rows) > 9
     assert windows_mounts == []
     assert unapproved_mounts == []
 
@@ -1572,16 +1718,17 @@ def test_wsl_mount_allowlist_accepts_only_expected_mounts(monkeypatch):
 ])
 def test_wsl_prestart_refuses_unapproved_mounts(monkeypatch, label, extra, reason):
     functions = _wsl_prestart_functions()
-    mountinfo = _approved_mountinfo() + "\n" + extra
+    mountinfo, _ = _complete_mountinfo(functions["TRANSIENT_UNIT"])
+    mountinfo += "\n" + extra
 
-    original_read_text = pathlib.Path.read_text
+    original_read_bytes = pathlib.Path.read_bytes
 
-    def read_text(path, *args, **kwargs):
+    def read_bytes(path, *args, **kwargs):
         if path.as_posix() == "/proc/self/mountinfo":
-            return mountinfo
-        return original_read_text(path, *args, **kwargs)
+            return mountinfo.encode("utf-8")
+        return original_read_bytes(path, *args, **kwargs)
 
-    monkeypatch.setattr(pathlib.Path, "read_text", read_text)
+    monkeypatch.setattr(pathlib.Path, "read_bytes", read_bytes)
     with pytest.raises(functions["Hold"]):
         functions["_prestart_inventory"]({})
 

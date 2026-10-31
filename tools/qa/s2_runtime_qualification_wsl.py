@@ -151,13 +151,16 @@ def stop(reason: str) -> None:
 
 SYSTEMD_MASK_DIRS = frozenset({
     "/dev/hugepages", "/dev/shm", "/home", "/mnt", "/proc/acpi", "/proc/bus",
-    "/proc/fs", "/proc/irq", "/proc/latency_stats", "/proc/mtrr", "/proc/scsi",
+    "/proc/fs", "/proc/irq", "/proc/scsi",
     "/proc/sys/fs/binfmt_misc", "/root", "/run/WSL", "/run/credentials",
     "/run/lock", "/run/shm", "/run/user", "/sys/fs/bpf", "/sys/fs/selinux",
     "/sys/fs/fuse/connections", "/sys/kernel/config", "/sys/kernel/debug",
     "/sys/kernel/tracing", "/tmp/.X11-unix", "/usr/lib/modules", "/usr/lib/wsl",
 })
-SYSTEMD_MASK_FILES = frozenset({"/init", "/proc/kallsyms", "/proc/kcore", "/proc/kmsg"})
+SYSTEMD_MASK_FILES = frozenset({
+    "/init", "/proc/kallsyms", "/proc/kcore", "/proc/kmsg",
+    "/proc/latency_stats", "/proc/mtrr",
+})
 SYSTEMD_MASK_TARGETS = SYSTEMD_MASK_DIRS | SYSTEMD_MASK_FILES
 SYSTEMD_INACCESSIBLE_PATHS = tuple(sorted(SYSTEMD_MASK_TARGETS))
 
