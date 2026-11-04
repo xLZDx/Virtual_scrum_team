@@ -7,10 +7,10 @@ REQUEST_ID = "ba3faaadb50447b79df509619b6ee010"
 NONCE = "1fd3cb4e69e54bc6aa5e63458ae82818"
 RUNTIME = "/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
 CAPTURE_SHA = "befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119"
-APPLIER_SHA = "d5230e7f247a374c4ce3050824de8fe988e51b5be320f6e0e6ffb2c89f6bee53"
-VALIDATOR_SHA = "548058437dba2059f6efc67e4de1a21f9f1bec52d9af0d14211996d03eef97d2"
-BUNDLE_SHA = "d03306788fc4e5090527483dc0412f055822d738ce13a08e11245afe2e9368e4"
-LAYOUT_SHA = "b34b5dfb9d43c10e24294dc9e89bf890ed6e303a9f9c5cd5e7dec560f727e9b2"
+APPLIER_SHA = "33a1cdbc1d4c9c4e99b6f763fb0bfacc28ca754f457de276f1931ae472f39b00"
+VALIDATOR_SHA = "58e023639385f11f29ea9421686faee67ec833cc05774fbb97e62a4431d03eb0"
+BUNDLE_SHA = "64d81004c651c40e14d4930f85940e2ee0bf58bc34cc7b93c56fbf07a2ed1b9b"
+LAYOUT_SHA = "f46e97704a89b5da339701bb71b6e71c4ce846ae96cb4504929869352d0315dd"
 IMPLEMENTATION_HEAD = "16549bb8f10113b2f05f41b3aa390bad80dab97e"
 UNITS = [
     "vst-assignment-bootstrap.service", "vst-dispatch-issuer.service",
@@ -210,7 +210,10 @@ def file_hash(path):
     return h.hexdigest()
 def file_fingerprint(path):
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
-    fd = os.open(path, flags)
+    try:
+        fd = os.open(path, flags)
+    except FileNotFoundError:
+        return {"state": "ABSENT", "kind": "absent"}
     try:
         before = os.fstat(fd)
         if not stat.S_ISREG(before.st_mode):
@@ -363,7 +366,8 @@ def main():
         dest=item["destination"]
         fingerprint = internal("fingerprint_"+dest,"read-only O_NOFOLLOW stat+sha256: "+dest,
                                lambda p=dest:file_fingerprint(p))
-        if not isinstance(fingerprint, dict) or fingerprint.get("state") != "PRESENT":
+        if (not isinstance(fingerprint, dict)
+                or fingerprint.get("state") not in ("PRESENT", "ABSENT")):
             raise RuntimeError("configuration destination fingerprint is incomplete: " + dest)
         configuration_files[dest] = fingerprint
     sockets={p:os.path.lexists(p) for p in CONTAINER_SOCKETS}

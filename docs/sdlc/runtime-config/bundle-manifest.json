@@ -135,8 +135,8 @@
     },
     {
       "path": "deployment-source-manifest.json",
-      "size": 1585,
-      "sha256": "7ddcbe5b4a27ebf3988c8cd0994852070274cf00829843793922392c9dbeb70b"
+      "size": 1806,
+      "sha256": "e8929c51d7e4bd2de95a9b9cc7cf58e00871e5f778b170e70ccee9f77962900a"
     },
     {
       "path": "dispatch-instruction-public.pem",
@@ -175,8 +175,8 @@
     },
     {
       "path": "installation-layout.json",
-      "size": 7465,
-      "sha256": "b34b5dfb9d43c10e24294dc9e89bf890ed6e303a9f9c5cd5e7dec560f727e9b2"
+      "size": 8278,
+      "sha256": "f46e97704a89b5da339701bb71b6e71c4ce846ae96cb4504929869352d0315dd"
     },
     {
       "path": "model-provenance.json",
@@ -249,6 +249,16 @@
       "sha256": "65e591a2214c653502da8228fdcd5ec88f2ed27d7ed47f74a7839063eff1c61e"
     },
     {
+      "path": "unit-overrides/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf",
+      "size": 93,
+      "sha256": "05e12ed07359a8ec83b161dda0d79ac4f15c27c366e75f1e5beefa9c76fafb37"
+    },
+    {
+      "path": "unit-overrides/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf",
+      "size": 93,
+      "sha256": "05e12ed07359a8ec83b161dda0d79ac4f15c27c366e75f1e5beefa9c76fafb37"
+    },
+    {
       "path": "unit-overrides/vst-runner.service.d/host-paths.conf",
       "size": 153,
       "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062"
@@ -300,7 +310,7 @@
   "schema": "VST_S2_NON_SECRET_CONFIG_BUNDLE_V1",
   "selection_before_config": true,
   "services_started_by_installation": false,
-  "source_binding_sha256": "c98a53370128403dffd4b44c33235eda793095b74a9a08d9dd30a5bcdd9539e0",
+  "source_binding_sha256": "c23a7cbd541eed59e0d0486a9d3289f58f4a8ac61aa2c06778bee082d9cd416a",
   "source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
   "sprint": "S2",
   "state": "PREPARED_NOT_INSTALLED",

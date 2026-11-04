@@ -8,13 +8,18 @@
   "runtime_tree_digest_definition": "tools.vst.runtime_bundle.tree_sha256 canonical content+metadata records",
   "runtime_tree_sha256": "a56032e1c58bb04b41e7fe6c31fb60c3df7ca6663aa059b537718524e1450f0f",
   "sandbox_spec_sha256": "d001f9305e8fe38ae5c3ea06cbd377ec95926783a0277e29ec025f34cabacbfa",
-  "schema": "VST_S2_DEPLOYMENT_SOURCE_BINDING_V1",
+  "schema": "VST_S2_DEPLOYMENT_SOURCE_BINDING_V2",
   "task_repository": "Virtual_scrum_team",
-  "task_repository_after_apply": "Root-owned, non-writable, exact task-source snapshot at task_repository_destination; never a development checkout or per-sprint worktree.",
+  "task_repository_after_apply": "Root-owned, non-writable Git repository with the exact shallow task_source_head at task_repository_destination; never a development checkout or per-sprint worktree.",
   "task_repository_destination": "/var/lib/vst-runner/repository",
   "task_repository_usage": "single read-only runtime deployment snapshot; all development remains in D:/Repo/Virtual_scrum_team",
-  "task_source_archive_bytes": 8960000,
-  "task_source_archive_format": "canonical-git-tree-tar-v1",
-  "task_source_archive_sha256": "3e0428af38afccd6379b9a048ba88a36c1c29522bd5dcde7b823d6cddb0c1acb",
-  "task_source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
+  "task_source_head": "67361bb4aa23355d9a6bc7877a987ba688559eda",
+  "task_source_tree_sha1": "0c4a8440a38027563d2455024af6b58072fe3b57",
+  "task_source_shallow_commits": [
+    "67361bb4aa23355d9a6bc7877a987ba688559eda"
+  ],
+  "task_source_git_pack_format": "git-pack-shallow-v1",
+  "task_source_git_pack_bytes": 2666915,
+  "task_source_git_pack_sha256": "2ce52ec7dfd3b1eb16c0704f133b491e8c571753ba8e3f6c9bfc931dd0328bd3",
+  "task_source_git_object_count": 804
 }

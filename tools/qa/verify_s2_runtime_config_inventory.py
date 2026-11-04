@@ -20,8 +20,17 @@ IMPLEMENTATION_HEAD = "16549bb8f10113b2f05f41b3aa390bad80dab97e"
 PREVIOUS_CONFIG_HEAD = "7d1d16f6348e6c00a5a568b5cfbc8caf309194b9"
 PREVIOUS_BUNDLE_SHA256 = "388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45"
 PREVIOUS_LAYOUT_SHA256 = "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19"
-CANDIDATE_BUNDLE_SHA256 = "d03306788fc4e5090527483dc0412f055822d738ce13a08e11245afe2e9368e4"
-CANDIDATE_LAYOUT_SHA256 = "b34b5dfb9d43c10e24294dc9e89bf890ed6e303a9f9c5cd5e7dec560f727e9b2"
+CANDIDATE_BUNDLE_SHA256 = "64d81004c651c40e14d4930f85940e2ee0bf58bc34cc7b93c56fbf07a2ed1b9b"
+CANDIDATE_LAYOUT_SHA256 = "f46e97704a89b5da339701bb71b6e71c4ce846ae96cb4504929869352d0315dd"
+TASK_SOURCE_HEAD = "67361bb4aa23355d9a6bc7877a987ba688559eda"
+TASK_SOURCE_TREE = "0c4a8440a38027563d2455024af6b58072fe3b57"
+TASK_SOURCE_PACK_SHA256 = "2ce52ec7dfd3b1eb16c0704f133b491e8c571753ba8e3f6c9bfc931dd0328bd3"
+TASK_SOURCE_PACK_BYTES = 2_666_915
+TASK_SOURCE_OBJECT_COUNT = 804
+TASK_GUARD_DESTINATIONS = {
+    "/etc/systemd/system/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf",
+    "/etc/systemd/system/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf",
+}
 RUN_ID = "s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e"
 REQUEST_ID = "ba3faaadb50447b79df509619b6ee010"
 NONCE = "1fd3cb4e69e54bc6aa5e63458ae82818"
@@ -182,18 +191,23 @@ def _validate_candidate_identity(expected_repo_head: str) -> None:
             or binding.get("state") != "PREPARATION_NOT_EXECUTION"
             or supervisor.get("run_id") != RUN_ID or supervisor.get("probe_nonce") != NONCE):
         raise InventoryError("candidate run/request/nonce identities are not cross-bound")
-    archive_size = deployment_source.get("task_source_archive_bytes")
-    archive_sha = deployment_source.get("task_source_archive_sha256")
+    pack_size = deployment_source.get("task_source_git_pack_bytes")
+    pack_sha = deployment_source.get("task_source_git_pack_sha256")
     snapshot_parent = next((item for item in layout.get("directories", [])
                             if item.get("path") == "/var/lib/vst-runner"), None)
-    if (deployment_source.get("task_source_head") != SOURCE_HEAD
+    if (deployment_source.get("runtime_source_head") != SOURCE_HEAD
+            or deployment_source.get("task_source_head") != TASK_SOURCE_HEAD
+            or deployment_source.get("task_source_tree_sha1") != TASK_SOURCE_TREE
             or deployment_source.get("task_repository_destination") != "/var/lib/vst-runner/repository"
-            or deployment_source.get("task_source_archive_format") != "canonical-git-tree-tar-v1"
-            or type(archive_size) is not int or not 1 <= archive_size <= 16 * 1024 * 1024
-            or not isinstance(archive_sha, str) or not HEX64.fullmatch(archive_sha)
+            or deployment_source.get("task_source_git_pack_format") != "git-pack-shallow-v1"
+            or deployment_source.get("task_source_shallow_commits") != [TASK_SOURCE_HEAD]
+            or deployment_source.get("task_source_git_object_count") != TASK_SOURCE_OBJECT_COUNT
+            or type(pack_size) is not int or pack_size != TASK_SOURCE_PACK_BYTES
+            or not isinstance(pack_sha, str) or pack_sha != TASK_SOURCE_PACK_SHA256
+            or "task_source_git_pack_b64_chunks" in deployment_source
             or snapshot_parent != {"path": "/var/lib/vst-runner", "uid": 0, "gid": 0, "mode": "0755"}
             or "read-only snapshot" not in layout.get("runtime_repository_rule", "")):
-        raise InventoryError("candidate lacks its exact read-only task-source snapshot contract")
+        raise InventoryError("candidate lacks its exact bounded shallow-Git task-source contract")
 
 
 def _regular_file_fingerprint(value: Any, destination: str) -> dict[str, Any]:
@@ -393,14 +407,21 @@ def validate_inventory(
                             if item["publication"].startswith(
                                 "new absent-only configuration unit")])
     candidate_destinations = {item["destination"] for item in candidate_entries}
-    if len(candidate_entries) != 25 or len(candidate_destinations) != 25:
-        raise InventoryError("candidate bundle does not contain the exact 25 destination set")
-    if not candidate_destinations.issubset(previous):
-        raise InventoryError("candidate adds a destination absent from the consumed baseline")
-    expected = {path: previous[path] for path in candidate_destinations}
+    if len(candidate_entries) != 27 or len(candidate_destinations) != 27:
+        raise InventoryError("candidate bundle does not contain the exact 27 destination set")
+    added = candidate_destinations - set(previous)
+    if added != TASK_GUARD_DESTINATIONS:
+        raise InventoryError("candidate adds destinations outside the exact recovery guard pair")
+    expected = {path: previous[path] if path in previous else {"state": "absent"}
+                for path in candidate_destinations}
     if not isinstance(files, dict) or set(files) != set(expected):
-        raise InventoryError("inventory must contain exactly all 25 configured destinations")
+        raise InventoryError("inventory must contain exactly all 27 configured destinations")
     for destination, expected_fingerprint in expected.items():
+        if expected_fingerprint == {"state": "absent"}:
+            actual = files[destination]
+            if actual != {"state": "ABSENT", "kind": "absent"}:
+                raise InventoryError("new recovery guard already exists or is not positively absent: " + destination)
+            continue
         actual = _regular_file_fingerprint(files[destination], destination)
         if actual != expected_fingerprint:
             raise InventoryError("installed file differs from consumed-run baseline: " + destination)

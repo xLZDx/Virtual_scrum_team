@@ -5,13 +5,11 @@ from __future__ import annotations
 import argparse
 import base64
 import hashlib
-import io
 import json
 import os
 import re
 import subprocess
 import sys
-import tarfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -22,11 +20,36 @@ INVENTORY_SCHEMA = "VST_S2_RUNTIME_CONFIG_TARGET_INVENTORY_V1"
 CONFIG_ROOT = "/etc/vst-runner"
 SYSTEMD_ROOT = "/etc/systemd/system"
 TASK_REPOSITORY_ROOT = "/var/lib/vst-runner/repository"
-TASK_REPOSITORY_ARCHIVE_FORMAT = "canonical-git-tree-tar-v1"
+TASK_REPOSITORY_GIT_PACK_FORMAT = "git-pack-shallow-v1"
 MAX_APPLY_PAYLOAD_BYTES = 16 * 1024 * 1024
 RUNTIME_SOURCE_HEAD = "ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
-BUNDLE_MANIFEST_SHA256 = "d03306788fc4e5090527483dc0412f055822d738ce13a08e11245afe2e9368e4"
-INSTALLATION_LAYOUT_SHA256 = "b34b5dfb9d43c10e24294dc9e89bf890ed6e303a9f9c5cd5e7dec560f727e9b2"
+BUNDLE_MANIFEST_SHA256 = "64d81004c651c40e14d4930f85940e2ee0bf58bc34cc7b93c56fbf07a2ed1b9b"
+INSTALLATION_LAYOUT_SHA256 = "f46e97704a89b5da339701bb71b6e71c4ce846ae96cb4504929869352d0315dd"
+DEPLOYMENT_BRANCH = "s2-canonical-continuation"
+TASK_SOURCE_HEAD = "67361bb4aa23355d9a6bc7877a987ba688559eda"
+TASK_SOURCE_TREE = "0c4a8440a38027563d2455024af6b58072fe3b57"
+TASK_SOURCE_OBJECT_COUNT = 804
+TASK_SOURCE_PACK_SHA256 = "2ce52ec7dfd3b1eb16c0704f133b491e8c571753ba8e3f6c9bfc931dd0328bd3"
+TASK_SOURCE_PACK_BYTES = 2_666_915
+WSL_REPOSITORY_ROOT = "/mnt/d/Repo/Virtual_scrum_team"
+GUARD_DESTINATIONS = (
+    "/etc/systemd/system/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf",
+    "/etc/systemd/system/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf",
+)
+IMPLEMENTATION_INPUTS = (
+    "tools/qa/apply_s2_runtime_configuration.py",
+    "tools/qa/runtime_snapshot_transaction.py",
+    "tools/qa/collect_s2_runtime_config_inventory.py",
+    "tools/qa/verify_s2_runtime_config_inventory.py",
+    "docs/sdlc/runtime-config/deployment-source-manifest.json",
+    "docs/sdlc/runtime-config/bundle-manifest.json",
+    "docs/sdlc/runtime-config/installation-layout.json",
+    "docs/sdlc/runtime-config/unit-overrides/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf",
+    "docs/sdlc/runtime-config/unit-overrides/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf",
+    "tests/vst/test_s2_runtime_config_bundle.py",
+    "tests/vst/test_s2_runtime_config_inventory.py",
+    "tests/vst/test_s2_runtime_configuration_apply.py",
+)
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 _HEX40 = re.compile(r"^[0-9a-f]{40}$")
 
@@ -52,116 +75,79 @@ def _git_blob(commit: str, relative_path: str) -> bytes:
     return result.stdout
 
 
-def _build_task_source_archive(commit: str) -> bytes:
-    if not _HEX40.fullmatch(commit):
-        raise ValueError("task source commit must be a full lowercase Git object id")
-    tree = subprocess.run(
-        ["git", "-C", str(REPO), "--no-replace-objects", "ls-tree", "-rz",
-         "--full-tree", "-r", commit],
+def _task_source_pack(source_manifest: dict[str, Any]) -> bytes:
+    if (source_manifest.get("schema") != "VST_S2_DEPLOYMENT_SOURCE_BINDING_V2"
+            or source_manifest.get("task_repository") != "Virtual_scrum_team"
+            or source_manifest.get("task_repository_destination") != TASK_REPOSITORY_ROOT
+            or source_manifest.get("task_source_head") != TASK_SOURCE_HEAD
+            or source_manifest.get("task_source_tree_sha1") != TASK_SOURCE_TREE
+            or source_manifest.get("task_source_git_pack_format") != TASK_REPOSITORY_GIT_PACK_FORMAT
+            or source_manifest.get("task_source_shallow_commits") != [TASK_SOURCE_HEAD]
+            or source_manifest.get("task_source_git_object_count") != TASK_SOURCE_OBJECT_COUNT):
+        raise ValueError("task-source Git identity differs from its exact deployment binding")
+    size = source_manifest.get("task_source_git_pack_bytes")
+    digest = source_manifest.get("task_source_git_pack_sha256")
+    if (type(size) is not int or size != TASK_SOURCE_PACK_BYTES
+            or digest != TASK_SOURCE_PACK_SHA256
+            or "task_source_git_pack_b64_chunks" in source_manifest):
+        raise ValueError("task-source Git pack metadata differs from its non-self-referential pins")
+    objects = subprocess.run(
+        ["git", "-C", str(REPO), "--no-replace-objects", "rev-list", "--objects",
+         "--no-walk", TASK_SOURCE_HEAD],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
     )
-    if tree.returncode:
-        raise ValueError("cannot enumerate the pinned task-source Git tree")
-    records: list[tuple[str, str, bytes]] = []
-    directories = {"task-source"}
-    seen: set[str] = set()
-    for raw_record in tree.stdout.split(b"\0"):
-        if not raw_record:
-            continue
-        metadata, separator, raw_path = raw_record.partition(b"\t")
-        fields = metadata.split(b" ")
-        if not separator or len(fields) != 3 or fields[1] != b"blob":
-            raise ValueError("task source contains an unsupported Git tree entry")
-        mode, object_id = fields[0], fields[2]
-        if mode not in (b"100644", b"100755") or not re.fullmatch(rb"[0-9a-f]{40}", object_id):
-            raise ValueError("task source contains a symlink, submodule, or unsupported file mode")
-        try:
-            relative = raw_path.decode("utf-8", errors="strict")
-        except UnicodeDecodeError as exc:
-            raise ValueError("task source path is not portable UTF-8") from exc
-        parts = relative.split("/")
-        if (not relative or relative.startswith("/") or "\\" in relative
-                or any(part in ("", ".", "..") for part in parts)):
-            raise ValueError("task source contains a path outside the portable repository root")
-        if relative in seen:
-            raise ValueError("task source contains a duplicate path")
-        seen.add(relative)
-        for count in range(1, len(parts)):
-            directories.add("task-source/" + "/".join(parts[:count]))
-        records.append((relative, mode.decode("ascii"), object_id))
-    if not records or len(records) + len(directories) > 4096:
-        raise ValueError("task source has an empty or oversized Git tree")
-
-    request = b"".join(object_id + b"\n" for _relative, _mode, object_id in records)
-    blobs = subprocess.run(
-        ["git", "-C", str(REPO), "--no-replace-objects", "cat-file", "--batch"],
-        input=request, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+    if objects.returncode or len(objects.stdout.splitlines()) != TASK_SOURCE_OBJECT_COUNT:
+        raise ValueError("pinned task-source commit object closure is unavailable or has changed")
+    packed_result = subprocess.run(
+        ["git", "-C", str(REPO), "--no-replace-objects", "pack-objects", "--stdout", "--no-reuse-delta",
+         "--no-reuse-object", "--threads=1", "--window=0", "--depth=0"],
+        input=objects.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
     )
-    if blobs.returncode:
-        raise ValueError("cannot read the exact pinned task-source blobs")
-    content_by_path: dict[str, tuple[int, bytes]] = {}
-    cursor = 0
-    total = 0
-    for relative, mode, object_id in records:
-        header_end = blobs.stdout.find(b"\n", cursor)
-        if header_end < 0:
-            raise ValueError("Git returned a truncated task-source blob header")
-        header = blobs.stdout[cursor:header_end].split(b" ")
-        if len(header) != 3 or header[0] != object_id or header[1] != b"blob":
-            raise ValueError("Git returned a task-source blob with the wrong identity")
-        try:
-            size = int(header[2])
-        except ValueError as exc:
-            raise ValueError("Git returned a task-source blob with an invalid size") from exc
-        if size < 0 or size > 8 * 1024 * 1024:
-            raise ValueError("task-source file exceeds the fixed per-file limit")
-        start = header_end + 1
-        end = start + size
-        if end >= len(blobs.stdout) or blobs.stdout[end:end + 1] != b"\n":
-            raise ValueError("Git returned a truncated task-source blob")
-        data = blobs.stdout[start:end]
-        total += size
-        if total > 32 * 1024 * 1024:
-            raise ValueError("task-source Git tree exceeds the fixed expanded-size limit")
-        content_by_path[relative] = (0o755 if mode == "100755" else 0o644, data)
-        cursor = end + 1
-    if cursor != len(blobs.stdout):
-        raise ValueError("Git returned unexpected trailing task-source bytes")
+    packed = packed_result.stdout
+    if (packed_result.returncode or len(packed) != size or _sha(packed) != digest
+            or not packed.startswith(b"PACK")):
+        raise ValueError("dynamically generated task-source Git pack differs from its exact manifest pin")
+    return packed
 
-    output = io.BytesIO()
-    try:
-        with tarfile.open(fileobj=output, mode="w", format=tarfile.USTAR_FORMAT) as archive:
-            directory_order = sorted(directories, key=lambda value: (value.count("/"), value))
-            for name in directory_order:
-                info = tarfile.TarInfo(name)
-                info.type = tarfile.DIRTYPE
-                info.mode = 0o755
-                info.uid = info.gid = 0
-                info.uname = info.gname = ""
-                info.mtime = 0
-                info.size = 0
-                archive.addfile(info)
-            for relative, _mode, _object_id in records:
-                file_mode, data = content_by_path[relative]
-                info = tarfile.TarInfo("task-source/" + relative)
-                info.type = tarfile.REGTYPE
-                info.mode = file_mode
-                info.uid = info.gid = 0
-                info.uname = info.gname = ""
-                info.mtime = 0
-                info.size = len(data)
-                archive.addfile(info, io.BytesIO(data))
-    except (OSError, tarfile.TarError) as exc:
-        raise ValueError("task-source paths cannot be represented in the fixed USTAR format") from exc
-    archive_bytes = output.getvalue()
-    if len(archive_bytes) > MAX_APPLY_PAYLOAD_BYTES:
-        raise ValueError("canonical task-source archive exceeds the fixed transfer limit")
-    return archive_bytes
+
+def _validate_deployment_commit(commit: str) -> None:
+    if not _HEX40.fullmatch(commit):
+        raise ValueError("approved deployment commit must be a full lowercase Git object id")
+    branch = subprocess.run(
+        ["git", "-C", str(REPO), "--no-replace-objects", "rev-parse", "--abbrev-ref", "HEAD"],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, text=True,
+    )
+    head = subprocess.run(
+        ["git", "-C", str(REPO), "--no-replace-objects", "rev-parse", "--verify", "HEAD"],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, text=True,
+    )
+    upstream = subprocess.run(
+        ["git", "-C", str(REPO), "--no-replace-objects", "merge-base", "--is-ancestor",
+         commit, "@{upstream}"],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+    )
+    if (branch.returncode or branch.stdout.strip() != DEPLOYMENT_BRANCH
+            or head.returncode or head.stdout.strip() != commit or upstream.returncode):
+        raise ValueError("approved deployment commit is not the pushed canonical branch HEAD")
+    dirty = subprocess.run(
+        ["git", "-C", str(REPO), "status", "--porcelain=v1", "--", *IMPLEMENTATION_INPUTS],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, text=True,
+    )
+    if dirty.returncode or dirty.stdout:
+        raise ValueError("an in-scope deployment input differs from its pushed commit")
+    for relative in IMPLEMENTATION_INPUTS:
+        committed = _git_blob(commit, relative)
+        try:
+            working = (REPO / relative).read_bytes()
+        except OSError as exc:
+            raise ValueError("an approved deployment input is missing: " + relative) from exc
+        if committed != working:
+            raise ValueError("deployment input differs from its exact committed blob: " + relative)
 
 
 def _current_inventory_validation_identity() -> tuple[str, str]:
     head = subprocess.run(
-        ["git", "-C", str(REPO), "rev-parse", "HEAD"],
+        ["git", "-C", str(REPO), "--no-replace-objects", "rev-parse", "HEAD"],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, text=True,
     )
     repo_head = head.stdout.strip()
@@ -213,6 +199,7 @@ def build_payload(
         raise ValueError("expected inventory digest must be lowercase SHA-256")
     if not _HEX40.fullmatch(source_commit):
         raise ValueError("source commit must be a full lowercase Git object id")
+    _validate_deployment_commit(source_commit)
     bundle_bytes = _git_blob(source_commit, "docs/sdlc/runtime-config/bundle-manifest.json")
     layout_bytes = _git_blob(source_commit, "docs/sdlc/runtime-config/installation-layout.json")
     if _sha(bundle_bytes) != BUNDLE_MANIFEST_SHA256 or _sha(layout_bytes) != INSTALLATION_LAYOUT_SHA256:
@@ -262,20 +249,24 @@ def build_payload(
         raise ValueError("deployment source binding differs from the pinned bundle")
     deployment_source = json.loads(deployment_source_bytes)
     task_source_head = deployment_source.get("task_source_head")
-    archive = _build_task_source_archive(task_source_head)
-    archive_sha256 = deployment_source.get("task_source_archive_sha256")
-    archive_bytes = deployment_source.get("task_source_archive_bytes")
-    if (deployment_source.get("task_source_archive_format") != TASK_REPOSITORY_ARCHIVE_FORMAT
-            or task_source_head != source_head
-            or type(archive_bytes) is not int or archive_bytes != len(archive)
-            or not _HEX64.fullmatch(str(archive_sha256 or ""))
-            or _sha(archive) != archive_sha256):
-        raise ValueError("task-source archive differs from the exact deployment source binding")
+    if (deployment_source.get("runtime_source_head") != source_head
+            or task_source_head != TASK_SOURCE_HEAD
+            or deployment_source.get("task_source_tree_sha1") != TASK_SOURCE_TREE
+            or deployment_source.get("task_repository_destination") != TASK_REPOSITORY_ROOT):
+        raise ValueError("task-source identity differs from the runtime bundle contract")
+    if bundle.get("source_binding_sha256") != _sha(
+            json.dumps(deployment_source, sort_keys=True, separators=(",", ":"),
+                       ensure_ascii=False).encode("utf-8")):
+        raise ValueError("deployment source binding differs from the canonical bundle pin")
+    task_pack = _task_source_pack(deployment_source)
+    helper_bytes = _git_blob(source_commit, "tools/qa/runtime_snapshot_transaction.py")
+    if not helper_bytes or len(helper_bytes) > 512 * 1024:
+        raise ValueError("runtime snapshot transaction helper is missing or oversized")
     entries = list(bundle["configuration_installation"]) + list(layout["unit_overrides"])
     entries += [item for item in bundle["units"]
                 if item["publication"] == "new absent-only configuration unit; no enable/start during installation"]
-    if len(entries) != 25 or len({item["destination"] for item in entries}) != len(entries):
-        raise ValueError("configuration bundle does not contain the exact 25 unique destinations")
+    if len(entries) != 27 or len({item["destination"] for item in entries}) != len(entries):
+        raise ValueError("configuration bundle does not contain the exact 27 unique destinations")
 
     files: list[dict[str, Any]] = []
     inventory_map = inventory["configuration_files"]
@@ -312,8 +303,10 @@ def build_payload(
                       "expected_new": expected_new, "content_b64": base64.b64encode(data).decode("ascii")})
 
     payload = {
-        "schema": "VST_S2_RUNTIME_CONFIG_APPLY_V1",
+        "schema": "VST_S2_RUNTIME_CONFIG_APPLY_V2",
         "source_head": source_head,
+        "task_source_head": task_source_head,
+        "deployment_source_commit": source_commit,
         "expected_boot_id": inventory["boot_id"],
         "selected_runtime_path": "/opt/vst-runtime-" + source_head,
         "inventory_sha256": expected_inventory_sha256,
@@ -326,27 +319,35 @@ def build_payload(
         "deployment_source_manifest_b64": base64.b64encode(deployment_source_bytes).decode("ascii"),
         "task_source_snapshot": {
             "head": task_source_head,
-            "format": TASK_REPOSITORY_ARCHIVE_FORMAT,
-            "size": len(archive),
-            "sha256": archive_sha256,
-            "archive_b64": base64.b64encode(archive).decode("ascii"),
+            "tree_sha1": TASK_SOURCE_TREE,
+            "format": TASK_REPOSITORY_GIT_PACK_FORMAT,
+            "object_count": TASK_SOURCE_OBJECT_COUNT,
+            "shallow_commits": [task_source_head],
+            "size": len(task_pack),
+            "sha256": _sha(task_pack),
+            "pack_b64": base64.b64encode(task_pack).decode("ascii"),
         },
+        "transaction_helper_sha256": _sha(helper_bytes),
+        "transaction_helper_b64": base64.b64encode(helper_bytes).decode("ascii"),
         "files": files,
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("ascii")
     if len(encoded) > MAX_APPLY_PAYLOAD_BYTES:
-        raise ValueError("configuration and task-source snapshot exceed the fixed transfer limit")
+        raise ValueError("configuration and task-source Git pack exceed the fixed transfer limit")
     return encoded
 
 
-_REMOTE = r'''import base64, fcntl, hashlib, io, json, os, platform, re, shutil, stat, subprocess, sys, tarfile, tempfile
+_REMOTE = r'''import base64, fcntl, hashlib, json, os, platform, re, stat, subprocess, sys, tempfile, uuid
 from datetime import datetime, timezone
 
-BUNDLE_SHA256 = "d03306788fc4e5090527483dc0412f055822d738ce13a08e11245afe2e9368e4"
-LAYOUT_SHA256 = "b34b5dfb9d43c10e24294dc9e89bf890ed6e303a9f9c5cd5e7dec560f727e9b2"
+BUNDLE_SHA256 = "64d81004c651c40e14d4930f85940e2ee0bf58bc34cc7b93c56fbf07a2ed1b9b"
+LAYOUT_SHA256 = "f46e97704a89b5da339701bb71b6e71c4ce846ae96cb4504929869352d0315dd"
 SOURCE_HEAD = "ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
+TASK_HEAD = "67361bb4aa23355d9a6bc7877a987ba688559eda"
+TASK_TREE = "0c4a8440a38027563d2455024af6b58072fe3b57"
 TASK_REPOSITORY_ROOT = "/var/lib/vst-runner/repository"
-TASK_REPOSITORY_ARCHIVE_FORMAT = "canonical-git-tree-tar-v1"
+WSL_REPOSITORY_ROOT = "/mnt/d/Repo/Virtual_scrum_team"
+TASK_REPOSITORY_PACK_FORMAT = "git-pack-shallow-v1"
 
 expected_sha = sys.argv[1]
 raw = sys.stdin.buffer.read(16 * 1024 * 1024 + 1)
@@ -358,9 +359,16 @@ except (UnicodeDecodeError, json.JSONDecodeError) as exc:
     raise SystemExit("configuration transfer is invalid JSON") from exc
 if os.geteuid() != 0 or platform.system() != "Linux":
     raise SystemExit("configuration apply requires root on Linux")
-if (p.get("schema") != "VST_S2_RUNTIME_CONFIG_APPLY_V1" or len(p.get("files", [])) != 25
-        or p.get("source_head") != SOURCE_HEAD):
+if (p.get("schema") != "VST_S2_RUNTIME_CONFIG_APPLY_V2" or len(p.get("files", [])) != 27
+        or p.get("source_head") != SOURCE_HEAD or p.get("task_source_head") != TASK_HEAD):
     raise SystemExit("configuration transfer schema/count invalid")
+if (len(sys.argv) != 4 or not re.fullmatch(r"[0-9a-f]{64}", str(sys.argv[1]))
+        or p.get("deployment_source_commit") != sys.argv[2]
+        or not re.fullmatch(r"[0-9a-f]{40}", str(sys.argv[2]))
+        or os.path.realpath(sys.argv[3]) != WSL_REPOSITORY_ROOT):
+    raise SystemExit("deployment implementation commit differs from the independent invocation pin")
+deployment_commit = sys.argv[2]
+repo_root = sys.argv[3]
 bundle_raw = base64.b64decode(p.get("bundle_manifest_b64", ""), validate=True)
 layout_raw = base64.b64decode(p.get("installation_layout_b64", ""), validate=True)
 if (hashlib.sha256(bundle_raw).hexdigest() != BUNDLE_SHA256
@@ -368,6 +376,15 @@ if (hashlib.sha256(bundle_raw).hexdigest() != BUNDLE_SHA256
         or hashlib.sha256(layout_raw).hexdigest() != LAYOUT_SHA256
         or p.get("installation_layout_sha256") != LAYOUT_SHA256):
     raise SystemExit("configuration manifest differs from the independently pinned candidate")
+for relative, payload_blob in (
+        ("docs/sdlc/runtime-config/bundle-manifest.json", bundle_raw),
+        ("docs/sdlc/runtime-config/installation-layout.json", layout_raw)):
+    committed = subprocess.run(
+        ["/usr/bin/git", "-C", repo_root, "--no-replace-objects", "show",
+         deployment_commit + ":" + relative],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+    if committed.returncode or committed.stdout != payload_blob:
+        raise SystemExit("payload manifest differs from its exact deployment Git blob: " + relative)
 bundle, layout = json.loads(bundle_raw), json.loads(layout_raw)
 if bundle.get("runtime_source_head") != SOURCE_HEAD or bundle.get("state") != "PREPARED_NOT_INSTALLED":
     raise SystemExit("pinned bundle source/state is invalid")
@@ -380,222 +397,74 @@ if (not isinstance(deployment_source_record, dict)
         or hashlib.sha256(deployment_source_raw).hexdigest() != deployment_source_record.get("sha256")
         or hashlib.sha256(deployment_source_raw).hexdigest() != deployment_source_digest):
     raise SystemExit("deployment source binding differs from the pinned bundle")
+committed_source_manifest = subprocess.run(
+    ["/usr/bin/git", "-C", repo_root, "--no-replace-objects", "show",
+     deployment_commit + ":docs/sdlc/runtime-config/deployment-source-manifest.json"],
+    stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+if committed_source_manifest.returncode or committed_source_manifest.stdout != deployment_source_raw:
+    raise SystemExit("deployment source manifest differs from its exact deployment Git blob")
 deployment_source = json.loads(deployment_source_raw)
 snapshot = p.get("task_source_snapshot")
 if (not isinstance(snapshot, dict)
-        or deployment_source.get("task_source_head") != SOURCE_HEAD
+        or deployment_source.get("runtime_source_head") != SOURCE_HEAD
+        or deployment_source.get("task_source_head") != TASK_HEAD
+        or deployment_source.get("task_source_tree_sha1") != TASK_TREE
         or deployment_source.get("task_repository_destination") != TASK_REPOSITORY_ROOT
-        or deployment_source.get("task_source_archive_format") != TASK_REPOSITORY_ARCHIVE_FORMAT
-        or snapshot.get("head") != SOURCE_HEAD
-        or snapshot.get("format") != TASK_REPOSITORY_ARCHIVE_FORMAT):
+        or deployment_source.get("task_source_git_pack_format") != "git-pack-shallow-v1"
+        or snapshot.get("head") != TASK_HEAD or snapshot.get("tree_sha1") != TASK_TREE):
     raise SystemExit("task-source snapshot identity differs from its exact source binding")
-snapshot_raw = base64.b64decode(snapshot.get("archive_b64", ""), validate=True)
-if (type(snapshot.get("size")) is not int
-        or snapshot.get("size") != len(snapshot_raw)
-        or snapshot.get("size") != deployment_source.get("task_source_archive_bytes")
-        or snapshot.get("sha256") != deployment_source.get("task_source_archive_sha256")
-        or hashlib.sha256(snapshot_raw).hexdigest() != snapshot.get("sha256")):
-    raise SystemExit("task-source snapshot bytes differ from the exact source binding")
-
-def read_task_snapshot(archive_raw):
+branch = subprocess.run(["/usr/bin/git", "-C", repo_root, "--no-replace-objects",
+                         "rev-parse", "--abbrev-ref", "HEAD"],
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
+head = subprocess.run(["/usr/bin/git", "-C", repo_root, "--no-replace-objects",
+                       "rev-parse", "--verify", "HEAD"],
+                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
+upstream = subprocess.run(["/usr/bin/git", "-C", repo_root, "--no-replace-objects",
+                           "merge-base", "--is-ancestor", deployment_commit, "@{upstream}"],
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+if (branch.returncode or branch.stdout.strip() != "s2-canonical-continuation"
+        or head.returncode or head.stdout.strip() != deployment_commit or upstream.returncode):
+    raise SystemExit("deployment commit is not the exact pushed canonical branch HEAD")
+implementation_inputs = (
+    "tools/qa/apply_s2_runtime_configuration.py",
+    "tools/qa/runtime_snapshot_transaction.py",
+    "tools/qa/collect_s2_runtime_config_inventory.py",
+    "tools/qa/verify_s2_runtime_config_inventory.py",
+    "docs/sdlc/runtime-config/deployment-source-manifest.json",
+    "docs/sdlc/runtime-config/bundle-manifest.json",
+    "docs/sdlc/runtime-config/installation-layout.json",
+    "docs/sdlc/runtime-config/unit-overrides/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf",
+    "docs/sdlc/runtime-config/unit-overrides/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf",
+    "tests/vst/test_s2_runtime_config_bundle.py",
+    "tests/vst/test_s2_runtime_config_inventory.py",
+    "tests/vst/test_s2_runtime_configuration_apply.py",
+)
+for relative in implementation_inputs:
+    committed = subprocess.run(["/usr/bin/git", "-C", repo_root, "--no-replace-objects",
+                                "show", deployment_commit + ":" + relative],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
     try:
-        archive = tarfile.open(fileobj=io.BytesIO(archive_raw), mode="r:")
-    except (tarfile.TarError, OSError) as exc:
-        raise SystemExit("task-source snapshot is not a valid tar archive") from exc
-    entries = {}
-    total = 0
-    try:
-        members = archive.getmembers()
-        if not members or len(members) > 4096:
-            raise SystemExit("task-source snapshot member count is invalid")
-        for member in members:
-            name = member.name
-            if "\x00" in name or "\\" in name or name.startswith("/"):
-                raise SystemExit("task-source snapshot contains an unsafe path")
-            parts = name.rstrip("/").split("/")
-            if not parts or parts[0] != "task-source" or any(
-                    part in ("", ".", "..") for part in parts):
-                raise SystemExit("task-source snapshot path escapes the pinned root")
-            relative = "/".join(parts[1:])
-            if relative in entries:
-                raise SystemExit("task-source snapshot contains a duplicate path")
-            if member.isdir():
-                if member.mode & ~0o777:
-                    raise SystemExit("task-source snapshot directory mode is unsafe")
-                entries[relative] = {"kind": "directory", "mode": 0o555}
-            elif member.isfile():
-                if (member.mode & ~0o777
-                        or type(member.size) is not int or member.size < 0
-                        or member.size > 8 * 1024 * 1024):
-                    raise SystemExit("task-source snapshot file metadata is unsafe")
-                total += member.size
-                if total > 32 * 1024 * 1024:
-                    raise SystemExit("task-source snapshot expands beyond its size limit")
-                stream = archive.extractfile(member)
-                if stream is None:
-                    raise SystemExit("task-source snapshot file content is unavailable")
-                data = stream.read(member.size + 1)
-                if len(data) != member.size:
-                    raise SystemExit("task-source snapshot file size differs from its tar header")
-                entries[relative] = {
-                    "kind": "file", "mode": 0o555 if member.mode & 0o111 else 0o444,
-                    "executable": bool(member.mode & 0o111),
-                    "size": len(data), "sha256": hashlib.sha256(data).hexdigest(),
-                    "data": data,
-                }
-            else:
-                raise SystemExit("task-source snapshot contains a link or special file")
-    finally:
-        archive.close()
-    if entries.get("") != {"kind": "directory", "mode": 0o555}:
-        raise SystemExit("task-source snapshot root directory is missing")
-    for relative, item in entries.items():
-        if not relative:
-            continue
-        parent = relative.rpartition("/")[0]
-        if parent not in entries or entries[parent].get("kind") != "directory":
-            raise SystemExit("task-source snapshot contains a missing directory parent")
-    return entries
-
-snapshot_entries = read_task_snapshot(snapshot_raw)
-
-def snapshot_matches(root, expected):
-    try:
-        root_info = os.lstat(root)
-    except FileNotFoundError:
-        return False
-    if (not stat.S_ISDIR(root_info.st_mode) or stat.S_ISLNK(root_info.st_mode)
-            or root_info.st_uid != 0 or root_info.st_gid != 0
-            or stat.S_IMODE(root_info.st_mode) != 0o555):
-        return False
-    actual = {""}
-    for current, directories, files_in_dir in os.walk(root, topdown=True, followlinks=False):
-        relative_root = os.path.relpath(current, root)
-        if relative_root == ".": relative_root = ""
-        for name in directories:
-            path = os.path.join(current, name)
-            info = os.lstat(path)
-            relative = "/".join(filter(None, (relative_root, name)))
-            item = expected.get(relative)
-            if (item is None or item.get("kind") != "directory"
-                    or not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode)
-                    or info.st_uid != 0 or info.st_gid != 0
-                    or stat.S_IMODE(info.st_mode) != item["mode"]):
-                return False
-            actual.add(relative)
-        for name in files_in_dir:
-            path = os.path.join(current, name)
-            info = os.lstat(path)
-            relative = "/".join(filter(None, (relative_root, name)))
-            item = expected.get(relative)
-            if (item is None or item.get("kind") != "file"
-                    or not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode)
-                    or info.st_nlink != 1 or info.st_uid != 0 or info.st_gid != 0
-                    or stat.S_IMODE(info.st_mode) != item["mode"]
-                    or info.st_size != item["size"]):
-                return False
-            digest = hashlib.sha256()
-            with open(path, "rb") as stream:
-                for chunk in iter(lambda: stream.read(65536), b""): digest.update(chunk)
-            if digest.hexdigest() != item["sha256"]:
-                return False
-            actual.add(relative)
-    return actual == set(expected)
-
-def install_task_snapshot(root, expected):
-    parent = os.path.dirname(root)
-    parent_parent = os.path.dirname(parent)
-    parent_parent_info = os.lstat(parent_parent)
-    if (not stat.S_ISDIR(parent_parent_info.st_mode) or stat.S_ISLNK(parent_parent_info.st_mode)
-            or parent_parent_info.st_uid != 0 or stat.S_IMODE(parent_parent_info.st_mode) & 0o022):
-        raise SystemExit("task-source snapshot parent is not root-controlled")
-    try:
-        parent_info = os.lstat(parent)
-    except FileNotFoundError:
-        os.mkdir(parent, 0o755)
-        os.chown(parent, 0, 0)
-        os.chmod(parent, 0o755)
-        parent_info = os.lstat(parent)
-        parent_fd = os.open(parent_parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
-                            | getattr(os, "O_NOFOLLOW", 0))
-        try: os.fsync(parent_fd)
-        finally: os.close(parent_fd)
-    if (not stat.S_ISDIR(parent_info.st_mode) or stat.S_ISLNK(parent_info.st_mode)
-            or parent_info.st_uid != 0 or parent_info.st_gid != 0
-            or stat.S_IMODE(parent_info.st_mode) != 0o755):
-        raise SystemExit("task-source snapshot parent has unexpected owner or mode")
-    try:
-        os.lstat(root)
-    except FileNotFoundError:
-        pass
-    else:
-        if snapshot_matches(root, expected):
-            return "already-exact"
-        raise SystemExit("existing task-source snapshot differs from the pinned source; refusing overwrite")
-    stage = tempfile.mkdtemp(prefix=".vst-task-source-", dir=parent)
-    try:
-        directories = sorted((path for path, item in expected.items()
-                              if path and item["kind"] == "directory"),
-                             key=lambda path: (path.count("/"), path))
-        for relative in directories:
-            path = os.path.join(stage, *relative.split("/"))
-            os.makedirs(path, mode=0o755, exist_ok=True)
-            info = os.lstat(path)
-            if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode):
-                raise SystemExit("task-source snapshot path conflicts with a directory")
-        for relative, item in expected.items():
-            if not relative or item["kind"] != "file":
-                continue
-            path = os.path.join(stage, *relative.split("/"))
-            fd_file = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL
-                              | getattr(os, "O_NOFOLLOW", 0), 0o600)
-            try:
-                view = memoryview(item["data"])
-                while view:
-                    written = os.write(fd_file, view)
-                    if written <= 0: raise SystemExit("task-source snapshot write made no progress")
-                    view = view[written:]
-                os.fchown(fd_file, 0, 0)
-                os.fchmod(fd_file, item["mode"])
-                os.fsync(fd_file)
-            finally:
-                os.close(fd_file)
-        for relative in sorted(directories, key=lambda path: (-path.count("/"), path)):
-            path = os.path.join(stage, *relative.split("/"))
-            os.chown(path, 0, 0)
-            os.chmod(path, 0o555)
-            dir_fd = os.open(path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
-                             | getattr(os, "O_NOFOLLOW", 0))
-            try: os.fsync(dir_fd)
-            finally: os.close(dir_fd)
-        os.chown(stage, 0, 0)
-        os.chmod(stage, 0o555)
-        stage_fd = os.open(stage, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
-                           | getattr(os, "O_NOFOLLOW", 0))
-        try: os.fsync(stage_fd)
-        finally: os.close(stage_fd)
-        if not snapshot_matches(stage, expected):
-            raise SystemExit("staged task-source snapshot failed its read-only verification")
-        try:
-            os.rename(stage, root)
-        except FileExistsError as exc:
-            raise SystemExit("task-source snapshot appeared during provisioning; no overwrite occurred") from exc
-        parent_fd = os.open(parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
-                            | getattr(os, "O_NOFOLLOW", 0))
-        try: os.fsync(parent_fd)
-        finally: os.close(parent_fd)
-    except BaseException:
-        if os.path.isdir(stage) and not os.path.islink(stage):
-            for current, dirs, _files in os.walk(stage, topdown=False, followlinks=False):
-                for name in dirs:
-                    candidate = os.path.join(current, name)
-                    if not os.path.islink(candidate): os.chmod(candidate, 0o700)
-            os.chmod(stage, 0o700)
-            shutil.rmtree(stage)
-        raise
-    if not snapshot_matches(root, expected):
-        raise SystemExit("installed task-source snapshot differs from its pinned archive")
-    return "installed"
+        working = open(os.path.join(repo_root, relative), "rb").read()
+    except OSError as exc:
+        raise SystemExit("an approved deployment input is missing: " + relative) from exc
+    if committed.returncode or committed.stdout != working:
+        raise SystemExit("deployment input differs from its exact committed Git blob: " + relative)
+    mode = os.lstat(os.path.join(repo_root, relative)).st_mode
+    if not stat.S_ISREG(mode):
+        raise SystemExit("deployment input is not a regular committed source file: " + relative)
+helper_raw = base64.b64decode(p.get("transaction_helper_b64", ""), validate=True)
+helper_digest = p.get("transaction_helper_sha256")
+committed_helper = subprocess.run(
+    ["/usr/bin/git", "-C", repo_root, "--no-replace-objects", "show",
+     deployment_commit + ":tools/qa/runtime_snapshot_transaction.py"],
+    stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+if (not helper_raw or len(helper_raw) > 512 * 1024
+        or committed_helper.returncode or helper_raw != committed_helper.stdout
+        or hashlib.sha256(helper_raw).hexdigest() != helper_digest):
+    raise SystemExit("transaction helper differs from its exact committed source digest")
+helper_ns = {"__name__": "_vst_s2_runtime_snapshot_transaction"}
+exec(compile(helper_raw, "runtime_snapshot_transaction.py", "exec", dont_inherit=True), helper_ns)
+snapshot_pack = helper_ns["validate_pack"](snapshot)
 
 expected_entries = list(bundle["configuration_installation"]) + list(layout["unit_overrides"])
 expected_entries += [item for item in bundle["units"] if item["publication"].startswith("new absent-only configuration unit")]
@@ -607,8 +476,8 @@ for entry in expected_entries:
         "uid": entry["uid"], "gid": entry["gid"], "mode": mode,
         "size": source["size"], "sha256": source["sha256"], "source": entry["source"],
     }
-if len(expected) != 25:
-    raise SystemExit("pinned manifest destination map is not the exact 25-file set")
+if len(expected) != 27:
+    raise SystemExit("pinned manifest destination map is not the exact 27-file set")
 inventory_raw = base64.b64decode(p.get("inventory_b64", ""), validate=True)
 if hashlib.sha256(inventory_raw).hexdigest() != p.get("inventory_sha256"):
     raise SystemExit("target inventory differs from its exact SHA-256 pin")
@@ -624,7 +493,7 @@ if age < -30 or age > 300:
 if inventory.get("runtime_selector", {}).get("link_target") != p.get("selected_runtime_path"):
     raise SystemExit("inventory does not identify the selected candidate runtime")
 received = {item.get("destination"): item for item in p["files"]}
-if len(received) != 25 or set(received) != set(expected):
+if len(received) != 27 or set(received) != set(expected):
     raise SystemExit("configuration payload destination set differs from the pinned manifest")
 for path, contract in expected.items():
     item = received[path]
@@ -672,18 +541,47 @@ for root in roots:
 units = ("vst-supervisor.service", "vst-signer.service", "vst-runner.service",
          "vst-dispatcher.service", "vst-dispatch-owner.service", "vst-dispatch-owner.socket",
          "vst-assignment-bootstrap.service", "vst-dispatch-issuer.service", "vst-sandbox-probe.service")
+protected_units = ("vst-runner.service", "vst-dispatcher.service")
+unit_before = {}
 for unit in units:
-    result = subprocess.run(["/usr/bin/systemctl", "show", "--property=LoadState", "--value", unit],
+    loaded = subprocess.run(["/usr/bin/systemctl", "show", "--property=LoadState", "--value", unit],
                             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                             text=True, check=False, timeout=10)
-    if result.returncode != 0 or result.stdout.strip() not in ("loaded", "not-found"):
+    if loaded.returncode != 0 or loaded.stdout.strip() not in ("loaded", "not-found"):
         raise SystemExit("cannot establish unit load state: " + unit)
-    if result.stdout.strip() == "loaded":
-        active = subprocess.run(["/usr/bin/systemctl", "show", "--property=ActiveState", "--value", unit],
-                                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                text=True, check=False, timeout=10)
-        if active.returncode != 0 or active.stdout.strip() != "inactive":
-            raise SystemExit("configuration apply requires inactive services: " + unit)
+    if unit in protected_units and loaded.stdout.strip() != "loaded":
+        raise SystemExit("protected transaction unit is not loaded: " + unit)
+    if loaded.stdout.strip() == "not-found":
+        continue
+    properties = subprocess.run(
+        ["/usr/bin/systemctl", "show", "--property=ActiveState,SubState,InvocationID,ControlGroup,UnitFileState", "--value", unit],
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, check=False, timeout=10)
+    if properties.returncode != 0:
+        raise SystemExit("cannot establish unit activation identity: " + unit)
+    values = properties.stdout.splitlines()
+    if len(values) != 5:
+        raise SystemExit("unit activation properties are incomplete: " + unit)
+    active_state, substate, invocation_id, control_group, unit_file_state = values
+    if active_state not in ("active", "inactive"):
+        raise SystemExit("unit is transitioning or failed; refusing configuration apply: " + unit)
+    if unit_file_state in ("masked", "masked-runtime"):
+        raise SystemExit("protected unit already has an unowned mask: " + unit)
+    if unit not in protected_units and unit != "vst-dispatch-owner.socket" and active_state != "inactive":
+        raise SystemExit("an unrelated S2 service is active: " + unit)
+    unit_before[unit] = {"active": active_state == "active", "substate": substate,
+                         "invocation_id": invocation_id, "control_group": control_group,
+                         "unit_file_state": unit_file_state}
+if (not unit_before["vst-runner.service"]["invocation_id"]
+        or not unit_before["vst-dispatcher.service"]["invocation_id"]):
+    raise SystemExit("protected service invocation identity is unavailable")
+if (unit_before["vst-dispatcher.service"]["active"]
+        and not unit_before["vst-runner.service"]["active"]):
+    raise SystemExit("active Dispatcher without active Runner is an unexpected predecessor state")
+for unit in protected_units:
+    runtime_mask = "/run/systemd/system/" + unit
+    if os.path.lexists(runtime_mask):
+        raise SystemExit("protected unit has a pre-existing runtime mask: " + unit)
 jobs = subprocess.run(["/usr/bin/systemctl", "list-jobs", "--no-legend", "--plain"],
                       stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                       text=True, check=False, timeout=10)
@@ -719,6 +617,153 @@ def allowed_path(path):
     return ((path.startswith("/etc/vst-runner/") and "/../" not in path and not path.endswith("/.."))
             or (path.startswith("/etc/systemd/system/") and "/../" not in path and not path.endswith("/..")))
 
+def run_systemctl(*arguments, timeout=30):
+    result = subprocess.run(["/usr/bin/systemctl", *arguments], stdin=subprocess.DEVNULL,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                            check=False, timeout=timeout)
+    if result.returncode:
+        raise SystemExit("systemd operation failed: " + " ".join(arguments[:3]))
+    return result.stdout.strip()
+
+def unit_value(unit, prop):
+    return run_systemctl("show", "--property=" + prop, "--value", unit, timeout=10)
+
+def ensure_destination_parent(path):
+    parent = os.path.dirname(path)
+    fixed_parents = {
+        "/etc/systemd/system/vst-runner.service.d": "/etc/systemd/system",
+        "/etc/systemd/system/vst-dispatcher.service.d": "/etc/systemd/system",
+    }
+    if parent in fixed_parents and not os.path.lexists(parent):
+        base = fixed_parents[parent]
+        info = os.lstat(base)
+        if (not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode)
+                or info.st_uid != 0 or info.st_gid != 0 or stat.S_IMODE(info.st_mode) & 0o022):
+            raise SystemExit("systemd drop-in parent is not root-controlled")
+        os.mkdir(parent, 0o755)
+        os.chown(parent, 0, 0)
+        os.chmod(parent, 0o755)
+        dfd = os.open(base, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+                      | getattr(os, "O_NOFOLLOW", 0))
+        try: os.fsync(dfd)
+        finally: os.close(dfd)
+    info = os.lstat(parent)
+    if (not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode)
+            or info.st_uid != 0 or info.st_gid != 0 or stat.S_IMODE(info.st_mode) & 0o022):
+        raise SystemExit("destination parent is not root-controlled: " + path)
+
+def install_config_file(item, predecessor_backup=None):
+    path = item["destination"]
+    parent = os.path.dirname(path)
+    data = base64.b64decode(item["content_b64"], validate=True)
+    target = item["expected_new"]
+    current = fingerprint(path)
+    if current == target:
+        return {"path":path, "sha256":target["sha256"], "result":"already-exact"}
+    if current != item["expected_current"]:
+        raise SystemExit("destination changed after its exact preflight: " + path)
+    fd_tmp, temporary = tempfile.mkstemp(prefix=".vst-s2-config-", dir=parent)
+    preserve_temporary = False
+    try:
+        with os.fdopen(fd_tmp, "wb", closefd=True) as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chown(temporary, target["uid"], target["gid"])
+        os.chmod(temporary, target["mode"])
+        current = fingerprint(path)
+        if current != item["expected_current"]:
+            raise SystemExit("destination changed immediately before replacement: " + path)
+        staged_info = os.lstat(temporary)
+        if current.get("state") == "absent":
+            helper_ns["_renameat2_file"](temporary, path, 1)
+            published = os.lstat(path)
+            if ((published.st_dev, published.st_ino) != (staged_info.st_dev, staged_info.st_ino)
+                    or fingerprint(path) != target):
+                raise SystemExit("exclusive config publication differs from its exact staged inode")
+        else:
+            if (not isinstance(predecessor_backup, str)
+                    or not os.path.isabs(predecessor_backup)):
+                raise SystemExit("atomic replacement requires its durable predecessor backup")
+            prior_state, prior_bytes = helper_ns["_config_fingerprint"](predecessor_backup)
+            if (prior_bytes is None or prior_state.get("uid") != 0 or prior_state.get("gid") != 0
+                    or prior_state.get("mode") != 0o600
+                    or prior_state.get("sha256") != current.get("sha256")
+                    or prior_state.get("size") != current.get("size")):
+                raise SystemExit("durable predecessor backup does not match the exact current config")
+            previous_info = os.lstat(path)
+            # Until the displaced inode is proven to be the journaled predecessor,
+            # preserve the temporary path on every exception.
+            preserve_temporary = True
+            helper_ns["_renameat2_file"](temporary, path, 2)
+            published = os.lstat(path)
+            displaced = os.lstat(temporary)
+            if ((published.st_dev, published.st_ino) != (staged_info.st_dev, staged_info.st_ino)
+                    or (displaced.st_dev, displaced.st_ino) != (previous_info.st_dev, previous_info.st_ino)
+                    or fingerprint(path) != target or fingerprint(temporary) != current):
+                raise SystemExit("atomic exchange displaced an unexpected concurrent config; both versions retained")
+            preserve_temporary = False
+            os.unlink(temporary)
+        dfd = os.open(parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+                      | getattr(os, "O_NOFOLLOW", 0))
+        try: os.fsync(dfd)
+        finally: os.close(dfd)
+    except BaseException:
+        if not preserve_temporary and os.path.lexists(temporary):
+            os.unlink(temporary)
+        raise
+    if fingerprint(path) != target:
+        raise SystemExit("installed destination does not match the exact target: " + path)
+    return {"path":path, "sha256":target["sha256"], "result":"installed"}
+
+def cgroup_is_empty(control_group):
+    if not isinstance(control_group, str) or not control_group.startswith("/") or ".." in control_group.split("/"):
+        raise SystemExit("systemd ControlGroup is invalid")
+    if control_group == "/":
+        return False
+    path = os.path.join("/sys/fs/cgroup", control_group.lstrip("/"))
+    if not os.path.lexists(path):
+        return True
+    info = os.lstat(path)
+    if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode):
+        raise SystemExit("service cgroup path is not a directory")
+    events = {}
+    with open(os.path.join(path, "cgroup.events"), "r", encoding="ascii") as stream:
+        for line in stream:
+            key, value = line.split()
+            events[key] = value
+    with open(os.path.join(path, "cgroup.procs"), "r", encoding="ascii") as stream:
+        procs = stream.read().split()
+    return events.get("populated") == "0" and not procs
+
+def verify_persistent_guard(unit):
+    conditions = unit_value(unit, "Conditions")
+    required = "ConditionPathExists=!/var/lib/vst-runner/private/snapshot-transaction-incomplete.json"
+    if required not in conditions:
+        raise SystemExit("systemd did not load the exact persistent snapshot guard: " + unit)
+
+def verify_runtime_mask(unit):
+    path = "/run/systemd/system/" + unit
+    try:
+        info = os.lstat(path)
+    except FileNotFoundError:
+        return False
+    if (not stat.S_ISLNK(info.st_mode) or info.st_uid != 0 or info.st_gid != 0
+            or info.st_nlink != 1 or os.readlink(path) != "/dev/null"):
+        return False
+    return {"device":info.st_dev, "inode":info.st_ino, "target":"/dev/null"}
+
+def read_runner_generation():
+    path = "/var/lib/vst-runner/generation.json"
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or info.st_size > 65536:
+            raise SystemExit("Runner generation record has unsafe metadata")
+        return json.loads(os.read(fd, 65537))
+    finally:
+        os.close(fd)
+
 # Preflight the complete set before any write; retries may see only the pinned old or exact new bytes.
 seen = set()
 for item in p["files"]:
@@ -726,9 +771,7 @@ for item in p["files"]:
     if not allowed_path(path) or path in seen: raise SystemExit("invalid/duplicate destination")
     seen.add(path)
     parent = os.path.dirname(path)
-    info = os.lstat(parent)
-    if not stat.S_ISDIR(info.st_mode) or info.st_uid != 0 or stat.S_IMODE(info.st_mode) & 0o022:
-        raise SystemExit("destination parent is not root-controlled: " + path)
+    ensure_destination_parent(path)
     actual = fingerprint(path)
     if actual not in (item["expected_current"], item["expected_new"]):
         raise SystemExit("destination differs from pinned old/new state: " + path)
@@ -745,71 +788,673 @@ if (not stat.S_ISREG(lock_info.st_mode) or lock_info.st_uid != 0 or lock_info.st
         or stat.S_IMODE(lock_info.st_mode) != 0o600 or lock_info.st_nlink != 1):
     raise SystemExit("configuration apply lock is unsafe")
 fcntl.flock(fd, fcntl.LOCK_EX)
-task_source_snapshot_result = install_task_snapshot(TASK_REPOSITORY_ROOT, snapshot_entries)
+marker_path = "/var/lib/vst-runner/private/snapshot-transaction-incomplete.json"
+if os.path.lexists(marker_path):
+    transaction_fd = os.open(marker_path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        transaction_info = os.fstat(transaction_fd)
+        marker_raw = os.read(transaction_fd, 16 * 1024 + 1)
+        if (not stat.S_ISREG(transaction_info.st_mode) or transaction_info.st_uid != 0
+                or transaction_info.st_gid != 0 or stat.S_IMODE(transaction_info.st_mode) != 0o600
+                or len(marker_raw) > 16 * 1024):
+            raise SystemExit("existing snapshot transaction marker has unsafe metadata")
+    finally:
+        os.close(transaction_fd)
+    marker_record = helper_ns["_unique_json"](marker_raw)
+    transaction_id = marker_record.get("transaction_id")
+    recovered = helper_ns["load_transaction_for_recovery"](transaction_id)
+    path_state = helper_ns["reconcile_snapshot_paths"](recovered)
+    print(json.dumps({"schema":"VST_S2_RUNTIME_CONFIG_APPLY_RESULT_V2",
+                      "result":"recovery-required", "transaction_id":transaction_id,
+                      "journal_path":recovered["journal_path"], "journal_state":recovered["state"],
+                      "snapshot_paths":path_state}, sort_keys=True, separators=(",",":")))
+    raise SystemExit("existing transaction preserved; use its explicit recovery path before applying")
+transaction_id = uuid.uuid4().hex
+stage_path = os.path.join(
+    os.path.dirname(TASK_REPOSITORY_ROOT),
+    ".vst-task-source-stage-" + TASK_HEAD + "-" + transaction_id)
+marker_path = "/var/lib/vst-runner/private/snapshot-transaction-incomplete.json"
+if not os.path.lexists(marker_path):
+    try:
+        live_identity = helper_ns["_tree_identity"](TASK_REPOSITORY_ROOT)
+        live_stat = os.lstat(TASK_REPOSITORY_ROOT)
+    except BaseException:
+        live_identity = None
+        live_stat = None
+    if (live_identity is not None and live_identity[:2] == (TASK_HEAD, TASK_TREE)
+            and live_stat is not None and stat.S_ISDIR(live_stat.st_mode)
+            and not stat.S_ISLNK(live_stat.st_mode) and live_stat.st_uid == 0
+            and live_stat.st_gid == 0 and stat.S_IMODE(live_stat.st_mode) == 0o555
+            and all(fingerprint(item["destination"]) == item["expected_new"]
+                    for item in p["files"])):
+        for unit in protected_units:
+            verify_persistent_guard(unit)
+        print(json.dumps({"schema":"VST_S2_RUNTIME_CONFIG_APPLY_RESULT_V2",
+                          "deployment_source_commit":deployment_commit,
+                          "source_head":p["source_head"], "task_source_head":TASK_HEAD,
+                          "inventory_sha256":p["inventory_sha256"], "boot_id":p["expected_boot_id"],
+                          "task_source_snapshot":{"head":TASK_HEAD, "tree_sha1":TASK_TREE,
+                              "result":"already-exact-no-op"},
+                          "files":[{"path":item["destination"],
+                                    "sha256":item["expected_new"]["sha256"],
+                                    "result":"already-exact"} for item in p["files"]]},
+                         sort_keys=True, separators=(",",":")))
+        raise SystemExit(0)
+task_stage_proof = helper_ns["build_git_stage"](snapshot_pack, stage_path)
+transaction_preview = helper_ns["transaction_identity"](
+    TASK_REPOSITORY_ROOT, stage_path, transaction_id)
+recovery_path = ("/var/lib/vst-runner/repository-recovery-" +
+                 transaction_preview["old_head"] + "-" + transaction_id)
+transaction = None
 results = []
+guard_paths = {
+    "/etc/systemd/system/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf",
+    "/etc/systemd/system/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf",
+}
+if len(guard_paths) != 2 or not guard_paths.issubset(received):
+    raise SystemExit("exact Runner/Dispatcher recovery guard pair is absent from the payload")
 for item in p["files"]:
     path = item["destination"]
-    parent = os.path.dirname(path)
-    data = base64.b64decode(item["content_b64"], validate=True)
-    target = item["expected_new"]
-    current = fingerprint(path)
-    if current == target:
-        results.append({"path": path, "sha256": target["sha256"], "result": "already-exact"})
-        continue
-    if current != item["expected_current"]:
-        raise SystemExit("destination changed after preflight: " + path)
-    fd_tmp, temporary = tempfile.mkstemp(prefix=".vst-s2-config-", dir=parent)
-    try:
-        with os.fdopen(fd_tmp, "wb", closefd=True) as stream:
-            stream.write(data); stream.flush(); os.fsync(stream.fileno())
-        os.chown(temporary, target["uid"], target["gid"])
-        os.chmod(temporary, target["mode"])
-        # Recheck immediately before replacement. Parent directories are root-controlled.
-        if fingerprint(path) != item["expected_current"]:
-            raise SystemExit("destination changed immediately before replacement: " + path)
-        os.replace(temporary, path)
-        dfd = os.open(parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0))
-        try: os.fsync(dfd)
-        finally: os.close(dfd)
-    finally:
-        if os.path.exists(temporary): os.unlink(temporary)
-    if fingerprint(path) != target:
-        raise SystemExit("installed destination does not match candidate: " + path)
-    results.append({"path": path, "sha256": target["sha256"], "result": "installed"})
+    if path in guard_paths:
+        results.append(install_config_file(item))
 reload = subprocess.run(["/usr/bin/systemctl", "daemon-reload"], stdin=subprocess.DEVNULL,
                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                         check=False, timeout=30)
 if reload.returncode != 0:
-    raise SystemExit("systemd did not reload the exact installed unit files")
-for unit in units:
-    loaded = subprocess.run(["/usr/bin/systemctl", "show", "--property=LoadState", "--value", unit],
-                            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            text=True, check=False, timeout=10)
-    active = subprocess.run(["/usr/bin/systemctl", "show", "--property=ActiveState", "--value", unit],
-                            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            text=True, check=False, timeout=10)
-    if loaded.returncode != 0 or active.returncode != 0 or loaded.stdout.strip() != "loaded" or active.stdout.strip() != "inactive":
-        raise SystemExit("post-reload unit state is not loaded-inactive: " + unit)
-print(json.dumps({"schema":"VST_S2_RUNTIME_CONFIG_APPLY_RESULT_V1", "source_head":p["source_head"],
+    raise SystemExit("systemd did not reload the exact persistent recovery guards")
+for unit in protected_units:
+    verify_persistent_guard(unit)
+activation_state = {unit: unit_before[unit]["active"] for unit in protected_units}
+configuration_state = {
+    item["destination"]: {"expected_current":item["expected_current"],
+                          "expected_new":item["expected_new"]}
+    for item in p["files"]
+}
+transaction = helper_ns["create_transaction"](
+    TASK_REPOSITORY_ROOT, stage_path, deployment_commit=sys.argv[2],
+    activation_state=activation_state, configuration_state=configuration_state,
+    marker_path="/var/lib/vst-runner/private/snapshot-transaction-incomplete.json")
+try:
+    helper_ns["backup_configurations"](transaction, p["files"])
+    mask_paths_before = {}
+    for unit in protected_units:
+        mask_path = "/run/systemd/system/" + unit
+        if os.path.lexists(mask_path):
+            raise SystemExit("runtime mask path became occupied before transaction fencing: " + unit)
+        mask_paths_before[unit] = None
+    helper_ns["record_state"](transaction, "MARKER_DURABLE", "FENCING",
+                               runtime_mask_paths_before=mask_paths_before)
+    transaction["state"] = "FENCING"
+    installed_masks = {}
+    for unit in protected_units:
+        installed_masks[unit] = helper_ns["ensure_runtime_mask"](
+            transaction, unit, mask_paths_before)
+    helper_ns["record_fenced"](transaction, installed_masks)
+
+    dispatcher = unit_before["vst-dispatcher.service"]
+    if dispatcher["active"]:
+        run_systemctl("stop", "vst-dispatcher.service", timeout=1910)
+    if unit_value("vst-dispatcher.service", "ActiveState") != "inactive":
+        raise SystemExit("Dispatcher did not reach inactive after graceful stop")
+    dispatcher_empty = cgroup_is_empty(dispatcher["control_group"])
+    if not dispatcher_empty:
+        raise SystemExit("Dispatcher cgroup remains populated; both snapshots remain untouched")
+    helper_ns["record_dispatcher_drained"](
+        transaction, inactive=True, cgroup_empty=True,
+        invocation_id=dispatcher["invocation_id"] or "NOT_ACTIVE")
+
+    runner = unit_before["vst-runner.service"]
+    runner_stop_started = datetime.now(timezone.utc)
+    if runner["active"]:
+        run_systemctl("stop", "vst-runner.service", timeout=1910)
+    if unit_value("vst-runner.service", "ActiveState") != "inactive":
+        raise SystemExit("Runner did not reach inactive after its bounded fence stop")
+    if not cgroup_is_empty(runner["control_group"]):
+        raise SystemExit("Runner cgroup remains populated; snapshot exchange is prohibited")
+    fence_records = helper_ns["read_fence_ledger"]("/var/lib/vst-runner/private/fence-ledger.json")
+    fence_record = fence_records[-1]
+    if (fence_record.get("unit") != "vst-runner.service"
+            or fence_record.get("state") != "STOPPED_EMPTY"
+            or fence_record.get("invocation_id") != runner["invocation_id"]
+            or fence_record.get("control_group") != runner["control_group"]):
+        raise SystemExit("Runner lacks an exact STOPPED_EMPTY fence for its captured invocation")
+    recorded_at = datetime.fromisoformat(str(fence_record["recorded_at"]).replace("Z", "+00:00"))
+    if runner["active"] and recorded_at.astimezone(timezone.utc) < runner_stop_started:
+        raise SystemExit("Runner STOPPED_EMPTY fence is stale relative to this stop")
+    helper_ns["record_runner_stopped_empty"](
+        transaction, inactive=True, cgroup_empty=True, fence_record=fence_record)
+
+    for item in p["files"]:
+        if item["destination"] not in guard_paths:
+            backup_record = transaction["configuration_backup_records"].get(item["destination"], {})
+            results.append(install_config_file(
+                item, predecessor_backup=backup_record.get("predecessor_backup")))
+    reload = subprocess.run(["/usr/bin/systemctl", "daemon-reload"], stdin=subprocess.DEVNULL,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                            check=False, timeout=30)
+    if reload.returncode != 0:
+        raise SystemExit("systemd did not reload the exact installed configuration")
+    for unit in protected_units:
+        verify_persistent_guard(unit)
+        if unit_value(unit, "ActiveState") != "inactive":
+            raise SystemExit("protected service unexpectedly became active while fenced: " + unit)
+    for unit, before in unit_before.items():
+        if unit == "vst-dispatch-owner.socket" and unit_value(unit, "ActiveState") != (
+                "active" if before["active"] else "inactive"):
+            raise SystemExit("separate dispatch-owner socket activation changed unexpectedly")
+
+    helper_ns["exchange_candidate"](
+        transaction, recovery_path=recovery_path,
+        marker_path="/var/lib/vst-runner/private/snapshot-transaction-incomplete.json")
+    if not verify_runtime_mask("vst-runner.service") or not verify_runtime_mask("vst-dispatcher.service"):
+        raise SystemExit("transaction-owned runtime masks disappeared before activation restoration")
+    runner_verified = not activation_state["vst-runner.service"]
+    dispatcher_verified = not activation_state["vst-dispatcher.service"]
+    try:
+        for unit in protected_units:
+            run_systemctl("unmask", "--runtime", unit)
+        if activation_state["vst-runner.service"]:
+            run_systemctl("start", "vst-runner.service", timeout=60)
+            if unit_value("vst-runner.service", "ActiveState") != "active":
+                raise SystemExit("previously active Runner did not return to active")
+            runner_invocation = unit_value("vst-runner.service", "InvocationID")
+            generation = read_runner_generation()
+            records = helper_ns["read_fence_ledger"]("/var/lib/vst-runner/private/fence-ledger.json")
+            if (generation.get("state") != "RUNNING"
+                    or generation.get("invocation_id") != runner_invocation
+                    or not records or records[-1].get("state") != "RUNNING"
+                    or records[-1].get("invocation_id") != runner_invocation):
+                raise SystemExit("Runner generation is not fenced to its new active invocation")
+            runner_verified = True
+        if activation_state["vst-dispatcher.service"]:
+            if not runner_verified:
+                raise SystemExit("Dispatcher cannot start before the new Runner generation is verified")
+            run_systemctl("start", "vst-dispatcher.service", timeout=60)
+            dispatcher_verified = unit_value("vst-dispatcher.service", "ActiveState") == "active"
+            if not dispatcher_verified:
+                raise SystemExit("previously active Dispatcher did not return to active")
+        for unit in protected_units:
+            expected_active = activation_state[unit]
+            actual_active = unit_value(unit, "ActiveState") == "active"
+            if actual_active != expected_active:
+                raise SystemExit("protected unit activation state differs from its captured baseline")
+        helper_ns["mark_activation_restored"](
+            transaction, runner_verified=runner_verified,
+            dispatcher_verified=dispatcher_verified, original_activation=activation_state)
+    except BaseException as activation_error:
+        marker_identity = helper_ns["create_durable_marker"](
+            transaction["marker_path"],
+            {key:transaction[key] for key in helper_ns["_TRANSACTION_FIELDS"]})
+        transaction["marker_identity"] = marker_identity
+        transaction["marker_present"] = True
+        helper_ns["record_state"](
+            transaction, "MARKER_CLEARED", "RECOVERY_REQUIRED",
+            marker_device=marker_identity[0], marker_inode=marker_identity[1],
+            reason="activation restoration failed; durable start guard was re-established",
+            error_type=type(activation_error).__name__)
+        mask_paths_before = {unit:(verify_runtime_mask(unit) or None) for unit in protected_units}
+        helper_ns["record_state"](transaction, "RECOVERY_REQUIRED", "FENCING",
+                                   runtime_mask_paths_before=mask_paths_before)
+        quiescence_failures = []
+        for unit in ("vst-dispatcher.service", "vst-runner.service"):
+            try:
+                if unit_value(unit, "ActiveState") == "active":
+                    run_systemctl("stop", unit, timeout=1910)
+            except BaseException as stop_error:
+                quiescence_failures.append(unit + ":stop:" + type(stop_error).__name__)
+            try:
+                if (unit_value(unit, "ActiveState") != "inactive"
+                        or not cgroup_is_empty(unit_before[unit]["control_group"])):
+                    quiescence_failures.append(unit + ":still-active-or-populated")
+            except BaseException as verify_error:
+                quiescence_failures.append(unit + ":verify:" + type(verify_error).__name__)
+        refreshed_masks = {}
+        for unit in protected_units:
+            refreshed_masks[unit] = helper_ns["ensure_runtime_mask"](
+                transaction, unit, mask_paths_before)
+        helper_ns["record_fenced"](transaction, refreshed_masks)
+        helper_ns["record_state"](
+            transaction, "FENCED", "RECOVERY_REQUIRED",
+            reason="activation restoration failed after exact target verification",
+            error_type=type(activation_error).__name__,
+            quiescence_failures=quiescence_failures, runtime_masks=refreshed_masks)
+        if quiescence_failures:
+            raise SystemExit("activation failed and protected services remain active or unverified: "
+                             + ",".join(quiescence_failures)) from activation_error
+        raise
+    task_source_snapshot_result = "installed-atomically"
+except BaseException:
+    # Marker, journal, masks and both tree identities are intentionally retained.
+    # No automatic cleanup or service start is permitted after an ambiguous failure.
+    raise
+print(json.dumps({"schema":"VST_S2_RUNTIME_CONFIG_APPLY_RESULT_V2",
+                  "deployment_source_commit":deployment_commit,
+                  "source_head":p["source_head"], "task_source_head":TASK_HEAD,
                   "inventory_sha256":p["inventory_sha256"], "boot_id":p["expected_boot_id"],
-                  "task_source_snapshot":{"head":snapshot["head"], "sha256":snapshot["sha256"],
-                      "destination":TASK_REPOSITORY_ROOT, "result":task_source_snapshot_result},
+                  "task_source_snapshot":{"head":snapshot["head"], "tree_sha1":snapshot["tree_sha1"],
+                      "format":snapshot["format"], "sha256":snapshot["sha256"],
+                      "object_count":snapshot["object_count"],
+                      "read_only_git_proof":task_stage_proof,
+                      "destination":TASK_REPOSITORY_ROOT, "recovery_path":recovery_path,
+                      "result":task_source_snapshot_result,
+                      "transaction_id":transaction["transaction_id"],
+                      "journal_path":transaction["journal_path"], "state":transaction["state"]},
                   "daemon_reload":"success", "files":results}, sort_keys=True, separators=(",",":")))
 '''
 
 
+_RECOVERY_REMOTE = r'''import base64, fcntl, hashlib, json, os, platform, re, stat, subprocess, sys, time
+
+TASK_HEAD = "67361bb4aa23355d9a6bc7877a987ba688559eda"
+TASK_TREE = "0c4a8440a38027563d2455024af6b58072fe3b57"
+TASK_REPOSITORY_ROOT = "/var/lib/vst-runner/repository"
+EXPECTED_REPO_ROOT = "/mnt/d/Repo/Virtual_scrum_team"
+expected_sha, deployment_commit, repo_root, transaction_id = sys.argv[1:5]
+raw = sys.stdin.buffer.read(1024 * 1024 + 1)
+if len(raw) > 1024 * 1024 or hashlib.sha256(raw).hexdigest() != expected_sha:
+    raise SystemExit("recovery request digest/size invalid")
+try:
+    request = json.loads(raw)
+except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+    raise SystemExit("recovery request is invalid JSON") from exc
+if (os.geteuid() != 0 or platform.system() != "Linux" or repo_root != EXPECTED_REPO_ROOT
+        or not re.fullmatch(r"[0-9a-f]{40}", deployment_commit)
+        or not re.fullmatch(r"[0-9a-f]{32}", transaction_id)
+        or request.get("schema") != "VST_S2_RUNTIME_TRANSACTION_RECOVERY_V1"
+        or request.get("transaction_id") != transaction_id):
+    raise SystemExit("recovery request identity is outside the fixed contract")
+if subprocess.run(["/usr/bin/git", "-C", repo_root, "--no-replace-objects", "rev-parse", "--verify", "HEAD"],
+                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False).stdout.strip().decode() != deployment_commit:
+    raise SystemExit("recovery source checkout differs from the exact approved deployment commit")
+helper_raw = base64.b64decode(request.get("transaction_helper_b64", ""), validate=True)
+helper_sha = request.get("transaction_helper_sha256")
+committed_helper = subprocess.run(
+    ["/usr/bin/git", "-C", repo_root, "--no-replace-objects", "show",
+     deployment_commit + ":tools/qa/runtime_snapshot_transaction.py"],
+    stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+if (not helper_raw or len(helper_raw) > 512 * 1024 or committed_helper.returncode
+        or helper_raw != committed_helper.stdout or hashlib.sha256(helper_raw).hexdigest() != helper_sha):
+    raise SystemExit("recovery helper differs from its exact approved Git blob")
+helper = {"__name__":"_vst_s2_runtime_snapshot_transaction"}
+exec(compile(helper_raw, "runtime_snapshot_transaction.py", "exec", dont_inherit=True), helper)
+
+def systemctl(*args, timeout=30):
+    result = subprocess.run(["/usr/bin/systemctl", *args], stdin=subprocess.DEVNULL,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                            check=False, timeout=timeout)
+    if result.returncode:
+        raise RuntimeError("systemd recovery command failed: " + " ".join(args[:3]))
+    return result.stdout.strip()
+
+def value(unit, prop):
+    return systemctl("show", "--property=" + prop, "--value", unit)
+
+def cgroup_empty(group):
+    if not isinstance(group, str) or not group.startswith("/") or ".." in group.split("/") or group == "/":
+        return False
+    path = "/sys/fs/cgroup/" + group.lstrip("/")
+    if not os.path.lexists(path):
+        return True
+    info = os.lstat(path)
+    if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode):
+        return False
+    with open(os.path.join(path, "cgroup.events"), "r", encoding="ascii") as stream:
+        events = dict(line.split() for line in stream)
+    with open(os.path.join(path, "cgroup.procs"), "r", encoding="ascii") as stream:
+        pids = stream.read().split()
+    return events.get("populated") == "0" and not pids
+
+def mask_identity(unit):
+    path = "/run/systemd/system/" + unit
+    try:
+        info = os.lstat(path)
+    except FileNotFoundError:
+        return None
+    if (not stat.S_ISLNK(info.st_mode) or info.st_uid != 0 or info.st_gid != 0
+            or info.st_nlink != 1 or os.readlink(path) != "/dev/null"):
+        raise RuntimeError("transaction runtime mask is absent or not exact: " + unit)
+    return {"device":info.st_dev, "inode":info.st_ino, "target":"/dev/null"}
+
+units = ("vst-runner.service", "vst-dispatcher.service")
+lock_path = "/run/vst-s2-config-apply.lock"
+lock_fd = os.open(lock_path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+lock_info = os.fstat(lock_fd)
+if (not stat.S_ISREG(lock_info.st_mode) or lock_info.st_uid != 0 or lock_info.st_gid != 0
+        or stat.S_IMODE(lock_info.st_mode) != 0o600 or lock_info.st_nlink != 1):
+    raise SystemExit("recovery lock identity is unsafe")
+fcntl.flock(lock_fd, fcntl.LOCK_EX)
+transaction = helper["load_transaction_for_recovery"](transaction_id)
+if transaction.get("task_source_head") != TASK_HEAD:
+    raise SystemExit("recovery journal task-source pin differs")
+if transaction.get("marker_present"):
+    last_marker_record = next((record for record in reversed(transaction["records"])
+                               if "marker_device" in record and "marker_inode" in record), None)
+    observed_identity = transaction.get("marker_identity")
+    if (last_marker_record is None or
+            (last_marker_record.get("marker_device"), last_marker_record.get("marker_inode")) != observed_identity):
+        state = transaction["state"]
+        facts = {"marker_device":observed_identity[0], "marker_inode":observed_identity[1],
+                 "reason":"explicit recovery durably adopted its exact re-established marker"}
+        if state in {"GUARDS_VERIFIED", "ACTIVATION_READY", "MARKER_CLEARED", "FENCING"}:
+            helper["record_state"](transaction, state, "RECOVERY_REQUIRED", **facts)
+        elif state == "RECOVERY_REQUIRED":
+            helper["_append_journal"](transaction["journal_path"], transaction,
+                                      "RECOVERY_REQUIRED", **facts)
+        else:
+            raise SystemExit("re-established marker is not bound to a recoverable transaction state")
+        transaction.update({"state":"RECOVERY_REQUIRED",
+                            "records":helper["_read_journal"](transaction["journal_path"])})
+prior_commit = transaction.get("deployment_commit")
+ancestor = subprocess.run(
+    ["/usr/bin/git", "-C", repo_root, "--no-replace-objects", "merge-base", "--is-ancestor",
+     prior_commit, deployment_commit], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+if not re.fullmatch(r"[0-9a-f]{40}", str(prior_commit)) or ancestor.returncode:
+    raise SystemExit("recovery journal deployment commit is not an ancestor of the approved current source")
+guards = {}
+for unit in units:
+    conditions = value(unit, "Conditions")
+    guards[unit] = "ConditionPathExists=!/var/lib/vst-runner/private/snapshot-transaction-incomplete.json" in conditions
+if guards != {unit:True for unit in units}:
+    raise SystemExit("both exact persistent recovery guards are not effective")
+masks = {unit:mask_identity(unit) for unit in units}
+recorded_masks = next((record.get("runtime_masks") for record in reversed(transaction["records"])
+                       if isinstance(record.get("runtime_masks"), dict)), None)
+if transaction.get("state") == "ACTIVATION_RESTORED":
+    if transaction.get("marker_present") or any(mask is not None for mask in masks.values()):
+        raise SystemExit("completed recovery has a marker or runtime mask that must remain absent")
+    actual_activation = {unit:value(unit, "ActiveState") == "active" for unit in units}
+    if actual_activation != transaction["activation_state"]:
+        raise SystemExit("completed recovery activation differs from its durable result")
+    layout = helper["reconcile_snapshot_paths"](transaction)
+    safe_head, safe_tree = ((TASK_HEAD, TASK_TREE) if layout["live"] == "candidate"
+                            else (transaction["old_head"], transaction["old_tree_sha1"]))
+    if layout["live"] == "candidate":
+        proof = helper["_verify_git_readonly"](transaction["live_path"])
+        if (proof.get("head"), proof.get("tree_sha1")) != (safe_head, safe_tree):
+            raise SystemExit("completed recovery candidate Git identity changed")
+    for path, configuration in transaction["configuration_state"].items():
+        expected = (configuration["expected_new"] if layout["live"] == "candidate"
+                    else configuration["expected_current"])
+        if (layout["live"] == "old" and path in helper["PREINSTALLED_GUARD_PATHS"]
+                and expected.get("state") == "absent"):
+            expected = configuration["expected_new"]
+        if helper["_config_fingerprint"](path)[0] != expected:
+            raise SystemExit("completed recovery configuration set changed: " + path)
+    if actual_activation["vst-runner.service"]:
+        invocation = value("vst-runner.service", "InvocationID")
+        fences = helper["read_fence_ledger"]("/var/lib/vst-runner/private/fence-ledger.json")
+        if (not fences or fences[-1].get("unit") != "vst-runner.service"
+                or fences[-1].get("state") != "RUNNING"
+                or fences[-1].get("invocation_id") != invocation):
+            raise SystemExit("completed recovery Runner invocation no longer matches its RUNNING fence")
+    print(json.dumps({"schema":"VST_S2_RUNTIME_TRANSACTION_RECOVERY_RESULT_V1",
+                      "transaction_id":transaction_id, "safe_tree":layout["live"],
+                      "safe_head":safe_head, "state":"ACTIVATION_RESTORED",
+                      "marker_present":False, "activation_state":transaction["activation_state"],
+                      "runtime_masks_removed":True, "already_restored":True},
+                     sort_keys=True, separators=(",",":")))
+    raise SystemExit(0)
+def persist_recovery_marker():
+    if transaction.get("marker_present"):
+        return
+    base = {key:transaction[key] for key in helper["_TRANSACTION_FIELDS"]}
+    identity = helper["create_durable_marker"](transaction["marker_path"], base)
+    facts = {"marker_device":identity[0], "marker_inode":identity[1],
+             "reason":"explicit recovery re-established the persistent guard before service quiescence"}
+    state = transaction["state"]
+    if state in {"GUARDS_VERIFIED", "ACTIVATION_READY", "MARKER_CLEARED"}:
+        helper["record_state"](transaction, state, "RECOVERY_REQUIRED", **facts)
+    elif state == "RECOVERY_REQUIRED":
+        helper["_append_journal"](transaction["journal_path"], transaction,
+                                  "RECOVERY_REQUIRED", **facts)
+    else:
+        raise SystemExit("cannot re-establish the transaction marker from this state")
+    transaction.update({"marker_identity":identity, "marker_present":True,
+                        "state":"RECOVERY_REQUIRED",
+                        "records":helper["_read_journal"](transaction["journal_path"])})
+
+if transaction.get("state") == "GUARDS_VERIFIED" and not transaction.get("marker_present"):
+    persist_recovery_marker()
+
+state = transaction.get("state")
+need_fence = False
+if isinstance(recorded_masks, dict) and masks == recorded_masks:
+    pass
+elif transaction.get("marker_present") and state in {"GUARDS_VERIFIED", "MARKER_DURABLE", "FENCING"}:
+    if state == "FENCING":
+        fencing_record = next((record for record in reversed(transaction["records"])
+                               if record.get("state") == "FENCING"), {})
+        intent = fencing_record.get("runtime_mask_paths_before")
+        prepared = fencing_record.get("prepared_runtime_masks", {})
+        if (not isinstance(intent, dict) or set(intent) != set(units)
+                or not isinstance(prepared, dict) or not set(prepared).issubset(units)
+                or any(masks[unit] is not None
+                       and masks[unit] != prepared.get(unit, intent[unit])
+                       for unit in units)):
+            raise SystemExit("partial runtime masks differ from the exact prepared fence inode or intent")
+    elif any(mask is not None for mask in masks.values()):
+        raise SystemExit("runtime masks appeared before the durable fencing intent")
+    need_fence = True
+elif (transaction.get("marker_present") and state == "RECOVERY_REQUIRED"
+      and recorded_masks is None):
+    fencing_record = next((record for record in reversed(transaction["records"])
+                           if record.get("state") == "FENCING"), None)
+    if fencing_record is None:
+        if any(mask is not None for mask in masks.values()):
+            raise SystemExit("runtime masks appeared before any durable fencing intent")
+    else:
+        intent = fencing_record.get("runtime_mask_paths_before")
+        prepared = fencing_record.get("prepared_runtime_masks", {})
+        if (not isinstance(intent, dict) or set(intent) != set(units)
+                or not isinstance(prepared, dict) or not set(prepared).issubset(units)
+                or any(masks[unit] is not None
+                       and masks[unit] != prepared.get(unit, intent[unit])
+                       for unit in units)):
+            raise SystemExit("recovery-required mask state lacks its exact pre-fence inode lineage")
+    need_fence = True
+elif transaction.get("marker_present") and state in {
+        "FENCED", "DISPATCHER_DRAINED", "RUNNER_STOPPED_EMPTY", "EXCHANGED",
+        "OLD_RETAINED", "TARGET_VERIFIED", "ACTIVATION_READY", "RECOVERY_REQUIRED"}:
+    if not isinstance(recorded_masks, dict) or any(
+            masks[unit] not in (None, recorded_masks.get(unit)) for unit in units):
+        raise SystemExit("runtime masks differ from their durable pre-recovery identities")
+    need_fence = masks != recorded_masks
+elif state in {"ACTIVATION_READY", "MARKER_CLEARED", "RECOVERY_REQUIRED"}:
+    if not isinstance(recorded_masks, dict) or any(
+            masks[unit] not in (None, recorded_masks.get(unit)) for unit in units):
+        raise SystemExit("runtime mask was replaced by an unrecorded inode")
+    persist_recovery_marker()
+    need_fence = masks != recorded_masks
+else:
+    raise SystemExit("current runtime masks do not match a recoverable transaction state")
+if need_fence:
+    if transaction.get("state") == "GUARDS_VERIFIED":
+        identity = transaction.get("marker_identity")
+        if identity is None:
+            raise SystemExit("recovery cannot bind its observed durable transaction marker")
+        helper["_append_journal"](transaction["journal_path"], transaction, "MARKER_DURABLE",
+                                  marker_device=identity[0], marker_inode=identity[1],
+                                  recovery_observed_marker=True)
+        transaction.update({"state":"MARKER_DURABLE",
+                            "records":helper["_read_journal"](transaction["journal_path"])})
+    if transaction.get("state") == "MARKER_DURABLE":
+        helper["record_state"](transaction, "MARKER_DURABLE", "FENCING",
+                                runtime_mask_paths_before=masks)
+    elif transaction.get("state") == "MARKER_CLEARED":
+        helper["record_state"](transaction, "MARKER_CLEARED", "RECOVERY_REQUIRED",
+                                reason="recovery re-established runtime fencing")
+        helper["record_state"](transaction, "RECOVERY_REQUIRED", "FENCING",
+                                runtime_mask_paths_before=masks)
+    elif transaction.get("state") == "ACTIVATION_READY":
+        helper["record_state"](transaction, "ACTIVATION_READY", "RECOVERY_REQUIRED",
+                                reason="recovery re-established runtime fencing")
+        helper["record_state"](transaction, "RECOVERY_REQUIRED", "FENCING",
+                                runtime_mask_paths_before=masks)
+    elif transaction.get("state") == "RECOVERY_REQUIRED":
+        helper["record_state"](transaction, "RECOVERY_REQUIRED", "FENCING",
+                                runtime_mask_paths_before=masks)
+    elif transaction.get("state") in {
+            "FENCED", "DISPATCHER_DRAINED", "RUNNER_STOPPED_EMPTY", "EXCHANGED",
+            "OLD_RETAINED", "TARGET_VERIFIED"}:
+        helper["record_state"](transaction, transaction["state"], "RECOVERY_REQUIRED",
+                                reason="recovery re-established volatile runtime masks")
+        helper["record_state"](transaction, "RECOVERY_REQUIRED", "FENCING",
+                                runtime_mask_paths_before=masks)
+    elif transaction.get("state") != "FENCING":
+        raise SystemExit("recovery could not durably enter the exact FENCING state")
+    fencing_record = next((record for record in reversed(
+        helper["_read_journal"](transaction["journal_path"]))
+        if record.get("state") == "FENCING"), {})
+    mask_paths_before = fencing_record.get("runtime_mask_paths_before")
+    if not isinstance(mask_paths_before, dict) or set(mask_paths_before) != set(units):
+        raise SystemExit("recovery lacks the exact durable FENCING intent")
+before = {}
+for unit in units:
+    before[unit] = {"active":value(unit, "ActiveState") == "active",
+                     "control_group":value(unit, "ControlGroup"),
+                     "invocation_id":value(unit, "InvocationID")}
+runner_stop_started = time.time()
+for unit in ("vst-dispatcher.service", "vst-runner.service"):
+    if before[unit]["active"]:
+        systemctl("stop", unit, timeout=1910)
+    if value(unit, "ActiveState") != "inactive" or not cgroup_empty(before[unit]["control_group"]):
+        raise SystemExit("protected service did not reach exact inactive/empty state: " + unit)
+fences = helper["read_fence_ledger"]("/var/lib/vst-runner/private/fence-ledger.json")
+if not fences:
+    raise SystemExit("recovery lacks a durable Runner STOPPED_EMPTY fence")
+fence = fences[-1]
+if (fence.get("unit") != "vst-runner.service" or fence.get("state") != "STOPPED_EMPTY"
+        or fence.get("control_group") != before["vst-runner.service"]["control_group"]
+        or (before["vst-runner.service"]["invocation_id"]
+            and fence.get("invocation_id") != before["vst-runner.service"]["invocation_id"])):
+    raise SystemExit("latest Runner fence is not bound to the observed stopped invocation")
+recorded_at = fence.get("recorded_at")
+if before["vst-runner.service"]["active"]:
+    from datetime import datetime, timezone
+    if datetime.fromisoformat(str(recorded_at).replace("Z", "+00:00")).timestamp() < runner_stop_started:
+        raise SystemExit("Runner STOPPED_EMPTY fence predates this recovery stop")
+if need_fence:
+    current_masks = {}
+    for unit in units:
+        current_masks[unit] = helper["ensure_runtime_mask"](
+            transaction, unit, mask_paths_before)
+    helper["record_fenced"](transaction, current_masks)
+    transaction["records"] = helper["_read_journal"](transaction["journal_path"])
+    masks = current_masks
+result = helper["recover_snapshot_transaction"](
+    transaction, guards_verified=guards, runtime_masks_owned=masks,
+    services_quiesced={unit:True for unit in units})
+if result.get("marker_present") or not result.get("runtime_masks_must_remain"):
+    raise SystemExit("recovery did not reach its exact masked terminal state")
+runner_verified = not transaction["activation_state"]["vst-runner.service"]
+dispatcher_verified = not transaction["activation_state"]["vst-dispatcher.service"]
+try:
+    for unit in units:
+        systemctl("unmask", "--runtime", unit)
+    if transaction["activation_state"]["vst-runner.service"]:
+        systemctl("start", "vst-runner.service", timeout=60)
+        invocation = value("vst-runner.service", "InvocationID")
+        generation_fd = os.open("/var/lib/vst-runner/generation.json", os.O_RDONLY | os.O_NOFOLLOW)
+        try:
+            generation_info = os.fstat(generation_fd)
+            if not stat.S_ISREG(generation_info.st_mode) or generation_info.st_uid != 0 or generation_info.st_size > 65536:
+                raise RuntimeError("Runner generation metadata is unsafe after recovery")
+            generation = json.loads(os.read(generation_fd, 65537))
+        finally:
+            os.close(generation_fd)
+        current_fences = helper["read_fence_ledger"]("/var/lib/vst-runner/private/fence-ledger.json")
+        if (value("vst-runner.service", "ActiveState") != "active"
+                or generation.get("state") != "RUNNING" or generation.get("invocation_id") != invocation
+                or not current_fences or current_fences[-1].get("state") != "RUNNING"
+                or current_fences[-1].get("invocation_id") != invocation):
+            raise RuntimeError("recovered Runner generation does not match its exact active invocation")
+        runner_verified = True
+    if transaction["activation_state"]["vst-dispatcher.service"]:
+        if not runner_verified:
+            raise RuntimeError("Dispatcher recovery requires the exact active Runner generation")
+        systemctl("start", "vst-dispatcher.service", timeout=60)
+        dispatcher_verified = value("vst-dispatcher.service", "ActiveState") == "active"
+        if not dispatcher_verified:
+            raise RuntimeError("Dispatcher did not return to its recorded activation state")
+    for unit in units:
+        if (value(unit, "ActiveState") == "active") != transaction["activation_state"][unit]:
+            raise RuntimeError("recovered unit activation differs from its recorded predecessor")
+    helper["mark_activation_restored"](
+        transaction, runner_verified=runner_verified, dispatcher_verified=dispatcher_verified,
+        original_activation=transaction["activation_state"])
+except BaseException as exc:
+    marker_identity = helper["create_durable_marker"](
+        transaction["marker_path"],
+        {key:transaction[key] for key in helper["_TRANSACTION_FIELDS"]})
+    transaction["marker_identity"] = marker_identity
+    transaction["marker_present"] = True
+    helper["record_state"](
+        transaction, "MARKER_CLEARED", "RECOVERY_REQUIRED",
+        marker_device=marker_identity[0], marker_inode=marker_identity[1],
+        reason="activation restoration failed; durable start guard was re-established",
+        error_type=type(exc).__name__)
+    mask_paths_before = {unit:mask_identity(unit) for unit in units}
+    helper["record_state"](transaction, "RECOVERY_REQUIRED", "FENCING",
+                           runtime_mask_paths_before=mask_paths_before)
+    quiescence_failures = []
+    for unit in ("vst-dispatcher.service", "vst-runner.service"):
+        control_group = value(unit, "ControlGroup")
+        try:
+            if value(unit, "ActiveState") == "active":
+                systemctl("stop", unit, timeout=1910)
+        except BaseException as stop_error:
+            quiescence_failures.append(unit + ":stop:" + type(stop_error).__name__)
+        try:
+            if value(unit, "ActiveState") != "inactive" or not cgroup_empty(control_group):
+                quiescence_failures.append(unit + ":still-active-or-populated")
+        except BaseException as verify_error:
+            quiescence_failures.append(unit + ":verify:" + type(verify_error).__name__)
+    refreshed_masks = {}
+    for unit in units:
+        refreshed_masks[unit] = helper["ensure_runtime_mask"](
+            transaction, unit, mask_paths_before)
+    helper["record_fenced"](transaction, refreshed_masks)
+    helper["record_state"](transaction, "FENCED", "RECOVERY_REQUIRED",
+                           reason="activation restoration failed after safe recovery",
+                           error_type=type(exc).__name__,
+                           quiescence_failures=quiescence_failures,
+                           runtime_masks=refreshed_masks)
+    if quiescence_failures:
+        raise RuntimeError("activation recovery failed and a protected service remains active/unverified: "
+                           + ",".join(quiescence_failures)) from exc
+    raise
+print(json.dumps({"schema":"VST_S2_RUNTIME_TRANSACTION_RECOVERY_RESULT_V1",
+                  "transaction_id":transaction_id, "safe_tree":result["safe_tree"],
+                  "safe_head":result["safe_head"], "state":transaction["state"],
+                  "marker_present":transaction["marker_present"],
+                  "activation_state":transaction["activation_state"],
+                  "runtime_masks_removed":True}, sort_keys=True, separators=(",",":")))
+'''
+
+
+def _validate_embedded_programs() -> None:
+    """Compile embedded root-side programs before any command can build a payload."""
+    compile(_REMOTE, "<vst-s2-runtime-apply>", "exec")
+    compile(_RECOVERY_REMOTE, "<vst-s2-runtime-recovery>", "exec")
+
+
+_validate_embedded_programs()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--inventory", type=Path, required=True)
-    parser.add_argument("--inventory-sha256", required=True)
-    parser.add_argument("--source-commit", required=True)
+    parser.add_argument("--inventory", type=Path)
+    parser.add_argument("--inventory-sha256")
+    parser.add_argument("--approved-deployment-commit", required=True)
     parser.add_argument("--distribution", default="Ubuntu-24.04")
+    parser.add_argument("--recover-transaction", metavar="TRANSACTION_ID")
     args = parser.parse_args()
     try:
         head = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--verify", "HEAD"],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, text=True)
-        if head.returncode or head.stdout.strip() != args.source_commit:
-            raise ValueError("source commit does not equal the current exact checkout HEAD")
+        if head.returncode or head.stdout.strip() != args.approved_deployment_commit:
+            raise ValueError("approved deployment commit does not equal the current exact checkout HEAD")
+        _validate_deployment_commit(args.approved_deployment_commit)
         committed_tool = subprocess.run(
             ["git", "-C", str(REPO), "rev-parse", "--verify", "HEAD:tools/qa/apply_s2_runtime_configuration.py"],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, text=True)
@@ -819,16 +1464,46 @@ def main() -> int:
         if (committed_tool.returncode or working_tool.returncode
                 or committed_tool.stdout.strip() != working_tool.stdout.strip()):
             raise ValueError("installer source differs from the exact committed Git blob")
+        if args.recover_transaction:
+            if args.inventory is not None or args.inventory_sha256 is not None:
+                raise ValueError("transaction recovery does not accept an inventory payload")
+            if not re.fullmatch(r"[0-9a-f]{32}", args.recover_transaction):
+                raise ValueError("recovery transaction ID must be 128-bit lowercase hex")
+            helper_bytes = _git_blob(args.approved_deployment_commit,
+                                     "tools/qa/runtime_snapshot_transaction.py")
+            recovery_payload = json.dumps({
+                "schema": "VST_S2_RUNTIME_TRANSACTION_RECOVERY_V1",
+                "transaction_id": args.recover_transaction,
+                "transaction_helper_b64": base64.b64encode(helper_bytes).decode("ascii"),
+                "transaction_helper_sha256": _sha(helper_bytes),
+            }, sort_keys=True, separators=(",", ":")).encode("ascii")
+            digest = _sha(recovery_payload)
+            wsl = subprocess.run(
+                ["wsl.exe", "--distribution", args.distribution, "--user", "root", "--exec",
+                 "/usr/bin/python3.12", "-I", "-B", "-S", "-c", _RECOVERY_REMOTE,
+                 digest, args.approved_deployment_commit, WSL_REPOSITORY_ROOT,
+                 args.recover_transaction],
+                input=recovery_payload, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+            )
+            if wsl.stdout:
+                print(wsl.stdout.decode("utf-8", errors="replace").rstrip())
+            if wsl.returncode:
+                print(wsl.stderr.decode("utf-8", errors="replace").rstrip(), file=sys.stderr)
+                return wsl.returncode
+            return 0
+        if args.inventory is None or args.inventory_sha256 is None:
+            raise ValueError("normal apply requires both --inventory and --inventory-sha256")
         expected_repo_head, expected_capture_sha256 = _current_inventory_validation_identity()
         payload = build_payload(
-            args.inventory, args.inventory_sha256, args.source_commit,
+            args.inventory, args.inventory_sha256, args.approved_deployment_commit,
             expected_repo_head=expected_repo_head,
             expected_capture_sha256=expected_capture_sha256,
         )
         digest = _sha(payload)
         wsl = subprocess.run(
             ["wsl.exe", "--distribution", args.distribution, "--user", "root", "--exec",
-             "/usr/bin/python3.12", "-I", "-B", "-S", "-c", _REMOTE, digest],
+             "/usr/bin/python3.12", "-I", "-B", "-S", "-c", _REMOTE,
+             digest, args.approved_deployment_commit, WSL_REPOSITORY_ROOT],
             input=payload, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
         )
         if wsl.stdout:

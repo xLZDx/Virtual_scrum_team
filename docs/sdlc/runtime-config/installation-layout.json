@@ -214,24 +214,16 @@
       "uid": 0
     }
   ],
-  "runtime_repository_rule": "Provision one root-owned read-only snapshot of the canonical Git-tree archive for the exact task_source_head at /var/lib/vst-runner/repository before config apply completes; it is a runtime deployment snapshot, never a development checkout or per-sprint worktree. All development remains in D:/Repo/Virtual_scrum_team.",
+  "runtime_repository_rule": "Provision one root-owned, non-writable shallow Git repository from the exact git-pack-shallow-v1 pack for task_source_head at /var/lib/vst-runner/repository; verify the pinned HEAD, tree, shallow boundary, object closure and read-only Git operations as UID 997 before configuration apply completes. It is a runtime deployment snapshot, never a development checkout or per-sprint worktree. All development remains in D:/Repo/Virtual_scrum_team.",
   "state": "CANDIDATE_NOT_INSTALLED",
   "store_rule": "initialize only the explicitly absent fresh target; refuse existing incompatible Store and preserve all data",
   "unit_overrides": [
     {
-      "destination": "/etc/systemd/system/vst-supervisor.service.d/rate-limits.conf",
+      "destination": "/etc/systemd/system/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf",
       "gid": 0,
       "mode": "0644",
-      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
-      "source": "unit-overrides/vst-supervisor.service.d/rate-limits.conf",
-      "uid": 0
-    },
-    {
-      "destination": "/etc/systemd/system/vst-runner.service.d/rate-limits.conf",
-      "gid": 0,
-      "mode": "0644",
-      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
-      "source": "unit-overrides/vst-runner.service.d/rate-limits.conf",
+      "sha256": "05e12ed07359a8ec83b161dda0d79ac4f15c27c366e75f1e5beefa9c76fafb37",
+      "source": "unit-overrides/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf",
       "uid": 0
     },
     {
@@ -240,6 +232,22 @@
       "mode": "0644",
       "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
       "source": "unit-overrides/vst-runner.service.d/host-paths.conf",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf",
+      "gid": 0,
+      "mode": "0644",
+      "sha256": "05e12ed07359a8ec83b161dda0d79ac4f15c27c366e75f1e5beefa9c76fafb37",
+      "source": "unit-overrides/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-runner.service.d/rate-limits.conf",
+      "gid": 0,
+      "mode": "0644",
+      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+      "source": "unit-overrides/vst-runner.service.d/rate-limits.conf",
       "uid": 0
     },
     {
@@ -256,6 +264,14 @@
       "mode": "0644",
       "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
       "source": "unit-overrides/vst-signer.service.d/rate-limits.conf",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-supervisor.service.d/rate-limits.conf",
+      "gid": 0,
+      "mode": "0644",
+      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+      "source": "unit-overrides/vst-supervisor.service.d/rate-limits.conf",
       "uid": 0
     }
   ]
