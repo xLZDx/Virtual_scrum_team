@@ -15,6 +15,11 @@ from pathlib import Path
 from typing import Any
 
 REPO = Path(__file__).resolve().parents[2]
+if str(REPO) in sys.path:
+    sys.path.remove(str(REPO))
+sys.path.insert(0, str(REPO))
+from tools.vst.contracts import ContractError, manifest_sha256, validate_task_manifest
+
 BUNDLE = REPO / "docs/sdlc/runtime-config"
 INVENTORY_SCHEMA = "VST_S2_RUNTIME_CONFIG_TARGET_INVENTORY_V1"
 CONFIG_ROOT = "/etc/vst-runner"
@@ -23,7 +28,7 @@ TASK_REPOSITORY_ROOT = "/var/lib/vst-runner/repository"
 TASK_REPOSITORY_GIT_PACK_FORMAT = "git-pack-shallow-v1"
 MAX_APPLY_PAYLOAD_BYTES = 16 * 1024 * 1024
 RUNTIME_SOURCE_HEAD = "ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
-BUNDLE_MANIFEST_SHA256 = "64d81004c651c40e14d4930f85940e2ee0bf58bc34cc7b93c56fbf07a2ed1b9b"
+BUNDLE_MANIFEST_SHA256 = "8f487494a1a6bc08c0ce567075a32945ca0c1a22c5ec03e7213ac3e2f4466741"
 INSTALLATION_LAYOUT_SHA256 = "f46e97704a89b5da339701bb71b6e71c4ce846ae96cb4504929869352d0315dd"
 DEPLOYMENT_BRANCH = "s2-canonical-continuation"
 TASK_SOURCE_HEAD = "67361bb4aa23355d9a6bc7877a987ba688559eda"
@@ -39,6 +44,7 @@ GUARD_DESTINATIONS = (
 IMPLEMENTATION_INPUTS = (
     "tools/qa/apply_s2_runtime_configuration.py",
     "tools/qa/runtime_snapshot_transaction.py",
+    "tools/vst/contracts.py",
     "tools/qa/collect_s2_runtime_config_inventory.py",
     "tools/qa/verify_s2_runtime_config_inventory.py",
     "docs/sdlc/runtime-config/deployment-source-manifest.json",
@@ -56,6 +62,12 @@ _HEX40 = re.compile(r"^[0-9a-f]{40}$")
 
 def _sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def _canonical_sha(value: Any) -> str:
+    data = json.dumps(value, sort_keys=True, separators=(",", ":"),
+                      ensure_ascii=True, allow_nan=False).encode("utf-8")
+    return _sha(data)
 
 
 def _json(path: Path) -> dict[str, Any]:
@@ -249,7 +261,9 @@ def build_payload(
         raise ValueError("deployment source binding differs from the pinned bundle")
     deployment_source = json.loads(deployment_source_bytes)
     task_source_head = deployment_source.get("task_source_head")
-    if (deployment_source.get("runtime_source_head") != source_head
+    if (bundle.get("source_head") != source_head
+            or bundle.get("task_source_head") != task_source_head
+            or deployment_source.get("runtime_source_head") != source_head
             or task_source_head != TASK_SOURCE_HEAD
             or deployment_source.get("task_source_tree_sha1") != TASK_SOURCE_TREE
             or deployment_source.get("task_repository_destination") != TASK_REPOSITORY_ROOT):
@@ -258,6 +272,45 @@ def build_payload(
             json.dumps(deployment_source, sort_keys=True, separators=(",", ":"),
                        ensure_ascii=False).encode("utf-8")):
         raise ValueError("deployment source binding differs from the canonical bundle pin")
+    task_manifest_bytes = _git_blob(
+        source_commit, "docs/sdlc/runtime-config/task-manifest.json")
+    policy_bytes = _git_blob(
+        source_commit, "docs/sdlc/runtime-config/assignment-delegation-policy.json")
+    supervisor_bytes = _git_blob(
+        source_commit, "docs/sdlc/runtime-config/supervisor-service.json")
+    for name, data in (("task-manifest.json", task_manifest_bytes),
+                       ("assignment-delegation-policy.json", policy_bytes),
+                       ("supervisor-service.json", supervisor_bytes)):
+        record = records.get(name)
+        if (not isinstance(record, dict) or record.get("size") != len(data)
+                or record.get("sha256") != _sha(data)):
+            raise ValueError("task identity input differs from the pinned bundle: " + name)
+    try:
+        task_manifest = validate_task_manifest(json.loads(task_manifest_bytes))
+    except ContractError as exc:
+        raise ValueError("task manifest does not satisfy the VST contract") from exc
+    assignment_policy = json.loads(policy_bytes)
+    supervisor_config = json.loads(supervisor_bytes)
+    if (not isinstance(task_manifest, dict) or not isinstance(assignment_policy, dict)
+            or not isinstance(supervisor_config, dict)):
+        raise ValueError("task identity configuration must be JSON objects")
+    task_digest = manifest_sha256(task_manifest)
+    policy_digest = _canonical_sha(assignment_policy)
+    allowed_assignments = assignment_policy.get("allowed_assignments")
+    change_scope = task_manifest.get("change_scope")
+    if (not isinstance(change_scope, dict)
+            or task_manifest.get("base_head") != task_source_head
+            or task_manifest.get("scope") != change_scope.get("allowed_paths")
+            or bundle.get("task_manifest_sha256") != task_digest
+            or assignment_policy.get("source_head") != task_source_head
+            or assignment_policy.get("manifest_sha256") != bundle.get("source_binding_sha256")
+            or not isinstance(allowed_assignments, list)
+            or len(allowed_assignments) != 1
+            or not isinstance(allowed_assignments[0], dict)
+            or allowed_assignments[0].get("task_manifest_sha256") != task_digest
+            or bundle.get("assignment_policy_sha256") != policy_digest
+            or supervisor_config.get("assignment_policy_sha256") != policy_digest):
+        raise ValueError("task manifest, assignment policy and runtime bundle identities disagree")
     task_pack = _task_source_pack(deployment_source)
     helper_bytes = _git_blob(source_commit, "tools/qa/runtime_snapshot_transaction.py")
     if not helper_bytes or len(helper_bytes) > 512 * 1024:
@@ -340,7 +393,7 @@ def build_payload(
 _REMOTE = r'''import base64, fcntl, hashlib, json, os, platform, re, stat, subprocess, sys, tempfile, uuid
 from datetime import datetime, timezone
 
-BUNDLE_SHA256 = "64d81004c651c40e14d4930f85940e2ee0bf58bc34cc7b93c56fbf07a2ed1b9b"
+BUNDLE_SHA256 = "8f487494a1a6bc08c0ce567075a32945ca0c1a22c5ec03e7213ac3e2f4466741"
 LAYOUT_SHA256 = "f46e97704a89b5da339701bb71b6e71c4ce846ae96cb4504929869352d0315dd"
 SOURCE_HEAD = "ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
 TASK_HEAD = "67361bb4aa23355d9a6bc7877a987ba688559eda"
@@ -386,7 +439,10 @@ for relative, payload_blob in (
     if committed.returncode or committed.stdout != payload_blob:
         raise SystemExit("payload manifest differs from its exact deployment Git blob: " + relative)
 bundle, layout = json.loads(bundle_raw), json.loads(layout_raw)
-if bundle.get("runtime_source_head") != SOURCE_HEAD or bundle.get("state") != "PREPARED_NOT_INSTALLED":
+if (bundle.get("source_head") != SOURCE_HEAD
+        or bundle.get("runtime_source_head") != SOURCE_HEAD
+        or bundle.get("task_source_head") != TASK_HEAD
+        or bundle.get("state") != "PREPARED_NOT_INSTALLED"):
     raise SystemExit("pinned bundle source/state is invalid")
 manifest_files = {item["path"]: item for item in bundle["files"]}
 deployment_source_raw = base64.b64decode(p.get("deployment_source_manifest_b64", ""), validate=True)

@@ -7,9 +7,10 @@ REQUEST_ID = "ba3faaadb50447b79df509619b6ee010"
 NONCE = "1fd3cb4e69e54bc6aa5e63458ae82818"
 RUNTIME = "/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
 CAPTURE_SHA = "befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119"
-APPLIER_SHA = "33a1cdbc1d4c9c4e99b6f763fb0bfacc28ca754f457de276f1931ae472f39b00"
-VALIDATOR_SHA = "58e023639385f11f29ea9421686faee67ec833cc05774fbb97e62a4431d03eb0"
-BUNDLE_SHA = "64d81004c651c40e14d4930f85940e2ee0bf58bc34cc7b93c56fbf07a2ed1b9b"
+APPLIER_SHA = "d72c4f66c33debb590f6e719757b9c3a609b377507c2bf6b19e73b112db8188d"
+VALIDATOR_SHA = "6f946bd8634299a8576a64be14e9410893036a5ed7564f2b3e7eb9171cd6f3af"
+CONTRACTS_SHA = "bf01d990a94cd71887f8d9f81019333f3bf43d5950a655de3646e9bb3d585ea4"
+BUNDLE_SHA = "8f487494a1a6bc08c0ce567075a32945ca0c1a22c5ec03e7213ac3e2f4466741"
 LAYOUT_SHA = "f46e97704a89b5da339701bb71b6e71c4ce846ae96cb4504929869352d0315dd"
 IMPLEMENTATION_HEAD = "16549bb8f10113b2f05f41b3aa390bad80dab97e"
 UNITS = [
@@ -277,13 +278,15 @@ def main():
         "capture": ("tools/vst/preflight_capture.py", CAPTURE_SHA),
         "applier": ("tools/qa/apply_s2_runtime_configuration.py", APPLIER_SHA),
         "validator": ("tools/qa/verify_s2_runtime_config_inventory.py", VALIDATOR_SHA),
+        "contracts": ("tools/vst/contracts.py", CONTRACTS_SHA),
         "bundle": ("docs/sdlc/runtime-config/bundle-manifest.json", BUNDLE_SHA),
         "layout": ("docs/sdlc/runtime-config/installation-layout.json", LAYOUT_SHA),
     }
     source_identity = {"repo_head": head, "implementation_source_commit": IMPLEMENTATION_HEAD,
                        "runtime_source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
                        "runtime_capture_sha256": CAPTURE_SHA, "applier_sha256": APPLIER_SHA,
-                       "validator_sha256": VALIDATOR_SHA, "bundle_manifest_sha256": BUNDLE_SHA,
+                       "validator_sha256": VALIDATOR_SHA, "contracts_sha256": CONTRACTS_SHA,
+                       "bundle_manifest_sha256": BUNDLE_SHA,
                        "installation_layout_sha256": LAYOUT_SHA}
     for key, (rel, expected) in source_files.items():
         path = os.path.join(REPO, rel)
@@ -297,6 +300,7 @@ def main():
         field = {"capture":"runtime_capture_sha256_matches_head_blob",
                  "applier":"applier_sha256_matches_head_blob",
                  "validator":"validator_sha256_matches_head_blob",
+                 "contracts":"contracts_sha256_matches_head_blob",
                  "bundle":"bundle_manifest_sha256_matches_head_blob",
                  "layout":"installation_layout_sha256_matches_head_blob"}[key]
         source_identity[field] = bool(match)

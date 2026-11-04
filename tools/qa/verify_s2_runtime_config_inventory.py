@@ -13,6 +13,11 @@ from pathlib import Path
 from typing import Any
 
 REPO = Path(__file__).resolve().parents[2]
+if str(REPO) in sys.path:
+    sys.path.remove(str(REPO))
+sys.path.insert(0, str(REPO))
+from tools.vst.contracts import ContractError, manifest_sha256, validate_task_manifest
+
 INVENTORY_SCHEMA = "VST_S2_RUNTIME_CONFIG_TARGET_INVENTORY_V1"
 SOURCE_HEAD = "ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
 PREVIOUS_SOURCE_HEAD = "80c2b81deac364ed6466600fd46af47aafe805e2"
@@ -20,7 +25,7 @@ IMPLEMENTATION_HEAD = "16549bb8f10113b2f05f41b3aa390bad80dab97e"
 PREVIOUS_CONFIG_HEAD = "7d1d16f6348e6c00a5a568b5cfbc8caf309194b9"
 PREVIOUS_BUNDLE_SHA256 = "388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45"
 PREVIOUS_LAYOUT_SHA256 = "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19"
-CANDIDATE_BUNDLE_SHA256 = "64d81004c651c40e14d4930f85940e2ee0bf58bc34cc7b93c56fbf07a2ed1b9b"
+CANDIDATE_BUNDLE_SHA256 = "8f487494a1a6bc08c0ce567075a32945ca0c1a22c5ec03e7213ac3e2f4466741"
 CANDIDATE_LAYOUT_SHA256 = "f46e97704a89b5da339701bb71b6e71c4ce846ae96cb4504929869352d0315dd"
 TASK_SOURCE_HEAD = "67361bb4aa23355d9a6bc7877a987ba688559eda"
 TASK_SOURCE_TREE = "0c4a8440a38027563d2455024af6b58072fe3b57"
@@ -83,6 +88,12 @@ class InventoryError(ValueError):
 
 def _sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def _canonical_sha256(value: Any) -> str:
+    data = json.dumps(value, sort_keys=True, separators=(",", ":"),
+                      ensure_ascii=True, allow_nan=False).encode("utf-8")
+    return _sha(data)
 
 
 def _git_blob(commit: str, relative_path: str) -> bytes:
@@ -163,7 +174,9 @@ def _validate_candidate_identity(expected_repo_head: str) -> None:
     bundle = json.loads(bundle_raw)
     if (bundle.get("schema") != "VST_S2_NON_SECRET_CONFIG_BUNDLE_V1"
             or bundle.get("state") != "PREPARED_NOT_INSTALLED"
+            or bundle.get("source_head") != SOURCE_HEAD
             or bundle.get("runtime_source_head") != SOURCE_HEAD
+            or bundle.get("task_source_head") != TASK_SOURCE_HEAD
             or not isinstance(bundle.get("files"), list)):
         raise InventoryError("candidate bundle schema/state/source is invalid")
     records = {item.get("path"): item for item in bundle["files"] if isinstance(item, dict)}
@@ -184,7 +197,22 @@ def _validate_candidate_identity(expected_repo_head: str) -> None:
     binding = candidate_json("run-binding.json")
     supervisor = candidate_json("supervisor-service.json")
     deployment_source = candidate_json("deployment-source-manifest.json")
+    task_manifest = candidate_json("task-manifest.json")
+    try:
+        validated_task_manifest = validate_task_manifest(task_manifest)
+    except ContractError as exc:
+        raise InventoryError("candidate task manifest does not satisfy the VST contract") from exc
+    assignment_policy = candidate_json("assignment-delegation-policy.json")
     layout = candidate_json("installation-layout.json")
+    allowed_assignments = assignment_policy.get("allowed_assignments")
+    if not isinstance(allowed_assignments, list) or len(allowed_assignments) != 1:
+        raise InventoryError("candidate assignment policy must pin exactly one task")
+    allowed_assignment = allowed_assignments[0]
+    if not isinstance(allowed_assignment, dict):
+        raise InventoryError("candidate assignment policy entry is malformed")
+    task_change_scope = task_manifest.get("change_scope")
+    if not isinstance(task_change_scope, dict):
+        raise InventoryError("candidate task manifest change scope is malformed")
     if (bootstrap.get("run_id") != RUN_ID or bootstrap.get("request_id") != REQUEST_ID
             or network.get("environment_id") != "Ubuntu-24.04:S2:" + RUN_ID
             or binding.get("run_id") != RUN_ID or binding.get("probe_nonce") != NONCE
@@ -197,6 +225,14 @@ def _validate_candidate_identity(expected_repo_head: str) -> None:
                             if item.get("path") == "/var/lib/vst-runner"), None)
     if (deployment_source.get("runtime_source_head") != SOURCE_HEAD
             or deployment_source.get("task_source_head") != TASK_SOURCE_HEAD
+            or task_manifest.get("base_head") != TASK_SOURCE_HEAD
+            or assignment_policy.get("source_head") != TASK_SOURCE_HEAD
+            or task_manifest.get("scope") != task_change_scope.get("allowed_paths")
+            or bundle.get("task_manifest_sha256") != manifest_sha256(validated_task_manifest)
+            or bundle.get("assignment_policy_sha256") != _canonical_sha256(assignment_policy)
+            or assignment_policy.get("manifest_sha256") != bundle.get("source_binding_sha256")
+            or allowed_assignment.get("task_manifest_sha256") != bundle.get("task_manifest_sha256")
+            or supervisor.get("assignment_policy_sha256") != bundle.get("assignment_policy_sha256")
             or deployment_source.get("task_source_tree_sha1") != TASK_SOURCE_TREE
             or deployment_source.get("task_repository_destination") != "/var/lib/vst-runner/repository"
             or deployment_source.get("task_source_git_pack_format") != "git-pack-shallow-v1"
@@ -206,7 +242,9 @@ def _validate_candidate_identity(expected_repo_head: str) -> None:
             or not isinstance(pack_sha, str) or pack_sha != TASK_SOURCE_PACK_SHA256
             or "task_source_git_pack_b64_chunks" in deployment_source
             or snapshot_parent != {"path": "/var/lib/vst-runner", "uid": 0, "gid": 0, "mode": "0755"}
-            or "read-only snapshot" not in layout.get("runtime_repository_rule", "")):
+            or not isinstance(layout.get("runtime_repository_rule"), str)
+            or not re.search(r"\bread-only\b.*\bsnapshot\b",
+                             layout["runtime_repository_rule"], re.IGNORECASE)):
         raise InventoryError("candidate lacks its exact bounded shallow-Git task-source contract")
 
 
@@ -268,7 +306,8 @@ def validate_mount_observation(mount: Any) -> None:
 
 def _validate_source_identity(
         value: Any, expected_repo_head: str, expected_capture_sha256: str,
-        expected_validator_sha256: str, expected_applier_sha256: str) -> None:
+        expected_validator_sha256: str, expected_applier_sha256: str,
+        expected_contracts_sha256: str) -> None:
     if not isinstance(value, dict):
         raise InventoryError("source identity evidence is missing")
     expected = {
@@ -277,6 +316,7 @@ def _validate_source_identity(
         "runtime_capture_sha256": expected_capture_sha256,
         "validator_sha256": expected_validator_sha256,
         "applier_sha256": expected_applier_sha256,
+        "contracts_sha256": expected_contracts_sha256,
         "bundle_manifest_sha256": CANDIDATE_BUNDLE_SHA256,
         "installation_layout_sha256": CANDIDATE_LAYOUT_SHA256,
         "runtime_source_head": SOURCE_HEAD,
@@ -384,9 +424,11 @@ def validate_inventory(
         expected_repo_head, "tools/qa/verify_s2_runtime_config_inventory.py")
     expected_applier_sha256 = _committed_source_sha256(
         expected_repo_head, "tools/qa/apply_s2_runtime_configuration.py")
+    expected_contracts_sha256 = _committed_source_sha256(
+        expected_repo_head, "tools/vst/contracts.py")
     _validate_source_identity(inventory.get("source_identity"), expected_repo_head,
                               expected_capture_sha256, expected_validator_sha256,
-                              expected_applier_sha256)
+                              expected_applier_sha256, expected_contracts_sha256)
     readiness = inventory.get("readiness")
     _validate_readiness(readiness)
     inventory_boot_id = inventory.get("boot_id")

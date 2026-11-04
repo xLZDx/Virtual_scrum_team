@@ -15,7 +15,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "tools/qa/apply_s2_runtime_configuration.py"
 BUNDLE = ROOT / "docs/sdlc/runtime-config"
-SOURCE_COMMIT = "158210ef30e22e2ee44fbfe6283a17f0eeefa56b"
+SOURCE_COMMIT = "943ee9af3361df74f513e5c4f361a57ca1b2df8f"
 SPEC = importlib.util.spec_from_file_location("s2_config_apply", SCRIPT)
 assert SPEC and SPEC.loader
 APPLY = importlib.util.module_from_spec(SPEC)
@@ -32,6 +32,9 @@ def candidate_runtime_config_blobs(monkeypatch):
         return read_blob(commit, relative_path)
 
     monkeypatch.setattr(APPLY, "_git_blob", read_candidate)
+    # These tests exercise candidate payload construction; the production pushed-HEAD
+    # guard is a separate boundary and the local candidate is intentionally uncommitted.
+    monkeypatch.setattr(APPLY, "_validate_deployment_commit", lambda _commit: None)
 
 
 def _sha(data: bytes) -> str:
@@ -75,6 +78,84 @@ def _write_inventory(tmp_path: Path, inventory: dict) -> tuple[Path, str]:
     return path, _sha(raw)
 
 
+def _candidate_config_overrides(mutation: str) -> dict[str, bytes]:
+    """Build a re-pinned candidate with exactly one broken cross-binding."""
+    names = ("task-manifest.json", "assignment-delegation-policy.json",
+             "supervisor-service.json")
+    values = {name: json.loads((BUNDLE / name).read_bytes()) for name in names}
+    bundle = json.loads((BUNDLE / "bundle-manifest.json").read_bytes())
+    task = values["task-manifest.json"]
+    policy = values["assignment-delegation-policy.json"]
+    supervisor = values["supervisor-service.json"]
+
+    if mutation == "task-schema":
+        values["task-manifest.json"] = []
+    elif mutation == "policy-schema":
+        values["assignment-delegation-policy.json"] = []
+    elif mutation == "supervisor-schema":
+        values["supervisor-service.json"] = []
+    elif mutation == "task-base-head":
+        task["base_head"] = "f" * 40
+    elif mutation == "task-scope":
+        task["scope"] = ["tests/another-selector.py"]
+    elif mutation == "policy-source-head":
+        policy["source_head"] = "f" * 40
+    elif mutation == "policy-source-binding":
+        policy["manifest_sha256"] = "f" * 64
+    elif mutation == "allowed-task-digest":
+        policy["allowed_assignments"][0]["task_manifest_sha256"] = "f" * 64
+    elif mutation == "supervisor-policy-digest":
+        supervisor["assignment_policy_sha256"] = "f" * 64
+    elif mutation == "bundle-task-source-head":
+        bundle["task_source_head"] = "f" * 40
+    else:
+        raise AssertionError(f"unknown test mutation: {mutation}")
+
+    if mutation not in {"task-schema", "policy-schema", "supervisor-schema"}:
+        task_digest = _sha(json.dumps(
+            task, sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+            allow_nan=False).encode("utf-8"))
+        bundle["task_manifest_sha256"] = task_digest
+        if mutation != "allowed-task-digest":
+            policy["allowed_assignments"][0]["task_manifest_sha256"] = task_digest
+        policy_digest = _sha(json.dumps(
+            policy, sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+            allow_nan=False).encode("utf-8"))
+        bundle["assignment_policy_sha256"] = policy_digest
+        if mutation != "supervisor-policy-digest":
+            supervisor["assignment_policy_sha256"] = policy_digest
+
+    overrides = {}
+    records = {item["path"]: item for item in bundle["files"]}
+    for name in names:
+        raw = json.dumps(values[name], indent=2, ensure_ascii=False) + "\n"
+        encoded = raw.encode("utf-8")
+        overrides[name] = encoded
+        records[name]["size"] = len(encoded)
+        records[name]["sha256"] = _sha(encoded)
+    bundle_raw = (json.dumps(bundle, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    overrides["bundle-manifest.json"] = bundle_raw
+    return overrides
+
+
+def _use_candidate_overrides(monkeypatch, overrides: dict[str, bytes]) -> None:
+    read_blob = APPLY._git_blob
+
+    def read_candidate(commit: str, relative_path: str) -> bytes:
+        if relative_path.startswith("docs/sdlc/runtime-config/"):
+            name = relative_path.removeprefix("docs/sdlc/runtime-config/")
+            if name in overrides:
+                return overrides[name]
+            return (BUNDLE / name).read_bytes()
+        return read_blob(commit, relative_path)
+
+    bundle_digest = _sha(overrides["bundle-manifest.json"])
+    monkeypatch.setattr(APPLY, "_git_blob", read_candidate)
+    monkeypatch.setattr(APPLY, "BUNDLE_MANIFEST_SHA256", bundle_digest)
+    # These tests isolate payload identity validation from the separate pushed-HEAD guard.
+    monkeypatch.setattr(APPLY, "_validate_deployment_commit", lambda _commit: None)
+
+
 def test_payload_contains_exact_non_secret_candidate_and_pins_current_state(tmp_path, monkeypatch):
     path, digest = _write_inventory(tmp_path, _inventory())
     git_blobs = []
@@ -97,8 +178,11 @@ def test_payload_contains_exact_non_secret_candidate_and_pins_current_state(tmp_
     expected.update(item["destination"] for item in layout["unit_overrides"])
     expected.update(item["destination"] for item in bundle["units"] if item["publication"].startswith("new absent-only"))
 
-    assert payload["schema"] == "VST_S2_RUNTIME_CONFIG_APPLY_V1"
-    assert len(payload["files"]) == 25
+    assert payload["schema"] == "VST_S2_RUNTIME_CONFIG_APPLY_V2"
+    assert len(payload["files"]) == 27
+    assert payload["source_head"] == APPLY.RUNTIME_SOURCE_HEAD
+    assert payload["task_source_head"] == APPLY.TASK_SOURCE_HEAD
+    assert payload["source_head"] != payload["task_source_head"]
     assert {item["destination"] for item in payload["files"]} == expected
     assert "selected_runtime_path" not in json.loads(path.read_bytes())
     assert payload["selected_runtime_path"] == json.loads(path.read_bytes())["runtime_selector"]["link_target"]
@@ -113,6 +197,10 @@ def test_payload_contains_exact_non_secret_candidate_and_pins_current_state(tmp_
         "docs/sdlc/runtime-config/bundle-manifest.json",
         "docs/sdlc/runtime-config/installation-layout.json",
         "docs/sdlc/runtime-config/deployment-source-manifest.json",
+        "docs/sdlc/runtime-config/task-manifest.json",
+        "docs/sdlc/runtime-config/assignment-delegation-policy.json",
+        "docs/sdlc/runtime-config/supervisor-service.json",
+        "tools/qa/runtime_snapshot_transaction.py",
         *("docs/sdlc/runtime-config/" + item["source"] for item in
           list(bundle["configuration_installation"]) + list(layout["unit_overrides"]) + [
               item for item in bundle["units"] if item["publication"].startswith("new absent-only")
@@ -136,6 +224,34 @@ def test_installer_pins_current_candidate_in_local_and_root_checks():
     assert layout_digest == APPLY.INSTALLATION_LAYOUT_SHA256
     assert f'BUNDLE_SHA256 = "{bundle_digest}"' in APPLY._REMOTE
     assert f'LAYOUT_SHA256 = "{layout_digest}"' in APPLY._REMOTE
+
+
+@pytest.mark.parametrize("name", ["task-schema", "policy-schema", "supervisor-schema"])
+def test_payload_rejects_malformed_task_identity_schema_before_digest_acceptance(
+        tmp_path, monkeypatch, name):
+    path, digest = _write_inventory(tmp_path, _inventory())
+    _use_candidate_overrides(monkeypatch, _candidate_config_overrides(name))
+
+    error = ("task manifest does not satisfy the VST contract" if name == "task-schema"
+             else "task identity configuration must be JSON objects")
+    with pytest.raises(ValueError, match=error):
+        APPLY.build_payload(path, digest, SOURCE_COMMIT)
+
+
+@pytest.mark.parametrize("mutation", [
+    "task-base-head", "task-scope", "policy-source-head", "policy-source-binding",
+    "allowed-task-digest", "supervisor-policy-digest", "bundle-task-source-head",
+])
+def test_payload_rejects_task_runtime_identity_cross_binding_mismatch(
+        tmp_path, monkeypatch, mutation):
+    path, digest = _write_inventory(tmp_path, _inventory())
+    _use_candidate_overrides(monkeypatch, _candidate_config_overrides(mutation))
+
+    expected_error = (
+        "task-source identity differs|task manifest, assignment policy and runtime bundle identities disagree"
+    )
+    with pytest.raises(ValueError, match=expected_error):
+        APPLY.build_payload(path, digest, SOURCE_COMMIT)
 
 
 def test_payload_refuses_bundle_bytes_that_do_not_match_the_pinned_digest(

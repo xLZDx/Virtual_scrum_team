@@ -1,5 +1,5 @@
 {
-  "assignment_policy_sha256": "3edf5006f8a9f7b43bca7468109ed4bc0fef67b39a3f06f93e12243250c25683",
+  "assignment_policy_sha256": "05ac58458289828831fb3873bca520c14db6a5252b333b7fd4718b47ca50a67f",
   "configuration_installation": [
     {
       "destination": "/etc/vst-runner/supervisor-service.json",
@@ -125,13 +125,13 @@
   "files": [
     {
       "path": "assignment-delegation-policy.json",
-      "size": 1411,
-      "sha256": "c42e9c8423d98800b37c3c77e2d9b21f6e551fd9ce9da41c62dedfdc72584c4b"
+      "size": 1419,
+      "sha256": "0246de7f97040ec0260726010b50ee1d11c0e9685658b60b67bfe4b311e0970c"
     },
     {
       "path": "bootstrap-request.json",
       "size": 4104,
-      "sha256": "55d65c2a1227292bdfb8d118b41288afd3249f00adfb011ebb20f5b536c949e9"
+      "sha256": "b20b4ef9584fe41b929038f65deeec2acc471249382d25f4da99f924f4600789"
     },
     {
       "path": "deployment-source-manifest.json",
@@ -241,12 +241,12 @@
     {
       "path": "supervisor-service.json",
       "size": 3389,
-      "sha256": "a1ef4b153de89e6dcab39bd9f587459bb8b09dc8c06ea12c47076c4b4b0fd351"
+      "sha256": "ffd46207a2de046f8b2a4872a73b33965de0fb811ae9c0a8d18ac3b8e366b61c"
     },
     {
       "path": "task-manifest.json",
       "size": 3596,
-      "sha256": "65e591a2214c653502da8228fdcd5ec88f2ed27d7ed47f74a7839063eff1c61e"
+      "sha256": "ee71c78ff3c976e8f52f7052ae4c54df5f5b8b791c00f4fff87defc85da8b7f9"
     },
     {
       "path": "unit-overrides/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf",
@@ -314,22 +314,14 @@
   "source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
   "sprint": "S2",
   "state": "PREPARED_NOT_INSTALLED",
-  "task_manifest_sha256": "f00e05e42822d383acd7cd74a149872abeed745f04014933261fbb3d6515be2f",
+  "task_manifest_sha256": "195a471a68892ad0cf21e191113f86a9dfb616501d5f4034e377eaad0ba17529",
   "unit_overrides": [
     {
-      "destination": "/etc/systemd/system/vst-supervisor.service.d/rate-limits.conf",
+      "destination": "/etc/systemd/system/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf",
       "gid": 0,
       "mode": "0644",
-      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
-      "source": "unit-overrides/vst-supervisor.service.d/rate-limits.conf",
-      "uid": 0
-    },
-    {
-      "destination": "/etc/systemd/system/vst-runner.service.d/rate-limits.conf",
-      "gid": 0,
-      "mode": "0644",
-      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
-      "source": "unit-overrides/vst-runner.service.d/rate-limits.conf",
+      "sha256": "05e12ed07359a8ec83b161dda0d79ac4f15c27c366e75f1e5beefa9c76fafb37",
+      "source": "unit-overrides/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf",
       "uid": 0
     },
     {
@@ -338,6 +330,22 @@
       "mode": "0644",
       "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
       "source": "unit-overrides/vst-runner.service.d/host-paths.conf",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf",
+      "gid": 0,
+      "mode": "0644",
+      "sha256": "05e12ed07359a8ec83b161dda0d79ac4f15c27c366e75f1e5beefa9c76fafb37",
+      "source": "unit-overrides/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-runner.service.d/rate-limits.conf",
+      "gid": 0,
+      "mode": "0644",
+      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+      "source": "unit-overrides/vst-runner.service.d/rate-limits.conf",
       "uid": 0
     },
     {
@@ -354,6 +362,14 @@
       "mode": "0644",
       "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
       "source": "unit-overrides/vst-signer.service.d/rate-limits.conf",
+      "uid": 0
+    },
+    {
+      "destination": "/etc/systemd/system/vst-supervisor.service.d/rate-limits.conf",
+      "gid": 0,
+      "mode": "0644",
+      "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+      "source": "unit-overrides/vst-supervisor.service.d/rate-limits.conf",
       "uid": 0
     }
   ],
@@ -449,5 +465,6 @@
       "uid": 0
     }
   ],
-  "unrestricted_dispatch_authorized": false
+  "unrestricted_dispatch_authorized": false,
+  "task_source_head": "67361bb4aa23355d9a6bc7877a987ba688559eda"
 }

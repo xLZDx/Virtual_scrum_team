@@ -4,15 +4,11 @@ import copy
 import ast
 import base64
 import hashlib
-import io
 import json
-import os
-import shutil
-import stat
 import subprocess
-import tarfile
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -32,6 +28,8 @@ EXPECTED_CAPTURE_SHA256 = collector.CAPTURE_SHA
 WORKTREE_APPLIER_SHA256 = hashlib.sha256(Path(applier.__file__).read_bytes()).hexdigest()
 EXPECTED_APPLIER_SHA256 = WORKTREE_APPLIER_SHA256
 WORKTREE_VALIDATOR_SHA256 = hashlib.sha256(Path(inventory.__file__).read_bytes()).hexdigest()
+WORKTREE_CONTRACTS_SHA256 = hashlib.sha256(
+    (inventory.REPO / "tools/vst/contracts.py").read_bytes()).hexdigest()
 EXPECTED_PREVIOUS_CONFIG_HEAD = "7d1d16f6348e6c00a5a568b5cfbc8caf309194b9"
 EXPECTED_PREVIOUS_BUNDLE_SHA256 = "388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45"
 EXPECTED_PREVIOUS_FINGERPRINTS_SHA256 = "e116dd237401d0f89d3ac706a883e19f53bda0bdba5f853afc153f3fc5eac095"
@@ -121,8 +119,29 @@ def valid_inventory(baseline_fingerprints) -> dict[str, object]:
            if item["publication"].startswith("new absent-only configuration unit")]
     )
     candidate_destinations = {item["destination"] for item in candidate_entries}
-    assert len(candidate_entries) == len(candidate_destinations) == 25
-    assert candidate_destinations <= set(baseline_fingerprints)
+    assert len(candidate_entries) == len(candidate_destinations) == 27
+    absent_recovery_guard_destinations = {
+        "/etc/systemd/system/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf",
+        "/etc/systemd/system/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf",
+    }
+    added_destinations = candidate_destinations - set(baseline_fingerprints)
+    assert added_destinations == absent_recovery_guard_destinations
+    existing_destinations = candidate_destinations - absent_recovery_guard_destinations
+    assert existing_destinations <= set(baseline_fingerprints)
+    configuration_files = {
+        destination: {**fingerprint, "state": "PRESENT", "kind": "regular",
+                      "mode": f"{fingerprint['mode']:04o}"}
+        for destination, fingerprint in copy.deepcopy(baseline_fingerprints).items()
+        if destination in existing_destinations
+    }
+    configuration_files.update({
+        destination: {"state": "ABSENT", "kind": "absent"}
+        for destination in absent_recovery_guard_destinations
+    })
+    assert {
+        destination for destination, observed in configuration_files.items()
+        if observed["state"] == "ABSENT"
+    } == absent_recovery_guard_destinations
     return {
         "schema": inventory.INVENTORY_SCHEMA,
         "source_head": inventory.SOURCE_HEAD,
@@ -141,6 +160,7 @@ def valid_inventory(baseline_fingerprints) -> dict[str, object]:
             "runtime_capture_sha256": EXPECTED_CAPTURE_SHA256,
             "applier_sha256": EXPECTED_APPLIER_SHA256,
             "validator_sha256": WORKTREE_VALIDATOR_SHA256,
+            "contracts_sha256": collector.CONTRACTS_SHA,
             "bundle_manifest_sha256": inventory.CANDIDATE_BUNDLE_SHA256,
             "installation_layout_sha256": inventory.CANDIDATE_LAYOUT_SHA256,
             "runtime_source_head": inventory.SOURCE_HEAD,
@@ -171,15 +191,22 @@ def valid_inventory(baseline_fingerprints) -> dict[str, object]:
                 "run_id": inventory.BASELINE_RUN_ID,
             },
         },
-        "configuration_files": {
-            destination: {**fingerprint, "state": "PRESENT", "kind": "regular",
-                          "mode": f"{fingerprint['mode']:04o}"}
-            for destination, fingerprint in copy.deepcopy(baseline_fingerprints).items()
-            if destination in candidate_destinations
-        },
+        "configuration_files": configuration_files,
         "runtime_selector": {"state": "PRESENT", "kind": "symlink",
                              "link_target": inventory.RUNTIME_PATH},
     }
+
+
+def test_candidate_inventory_marks_only_the_two_new_recovery_guards_absent(valid_inventory):
+    absent_destinations = {
+        destination for destination, observed in valid_inventory["configuration_files"].items()
+        if observed["state"] == "ABSENT"
+    }
+    assert absent_destinations == {
+        "/etc/systemd/system/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf",
+        "/etc/systemd/system/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf",
+    }
+    assert len(valid_inventory["configuration_files"]) == 27
 
 
 def _validate(value: dict[str, object]):
@@ -204,6 +231,64 @@ def _use_candidate_config_blobs(monkeypatch, overrides: dict[str, bytes] | None 
     monkeypatch.setattr(inventory, "_git_blob", read_candidate)
 
 
+def _candidate_identity_overrides(mutation: str) -> dict[str, bytes]:
+    names = ("task-manifest.json", "assignment-delegation-policy.json",
+             "supervisor-service.json")
+    bundle_dir = inventory.REPO / "docs/sdlc/runtime-config"
+    values = {name: json.loads((bundle_dir / name).read_bytes()) for name in names}
+    bundle = json.loads((bundle_dir / "bundle-manifest.json").read_bytes())
+    task = values["task-manifest.json"]
+    policy = values["assignment-delegation-policy.json"]
+    supervisor = values["supervisor-service.json"]
+
+    if mutation == "task-schema":
+        values["task-manifest.json"] = []
+    elif mutation == "policy-schema":
+        values["assignment-delegation-policy.json"] = []
+    elif mutation == "supervisor-schema":
+        values["supervisor-service.json"] = []
+    elif mutation == "task-base-head":
+        task["base_head"] = "f" * 40
+    elif mutation == "task-scope":
+        task["scope"] = ["tests/another-selector.py"]
+    elif mutation == "policy-source-head":
+        policy["source_head"] = "f" * 40
+    elif mutation == "policy-source-binding":
+        policy["manifest_sha256"] = "f" * 64
+    elif mutation == "allowed-task-digest":
+        policy["allowed_assignments"][0]["task_manifest_sha256"] = "f" * 64
+    elif mutation == "supervisor-policy-digest":
+        supervisor["assignment_policy_sha256"] = "f" * 64
+    elif mutation == "bundle-task-source-head":
+        bundle["task_source_head"] = "f" * 40
+    else:
+        raise AssertionError(f"unknown test mutation: {mutation}")
+
+    if mutation not in {"task-schema", "policy-schema", "supervisor-schema"}:
+        canonical = lambda obj: hashlib.sha256(json.dumps(
+            obj, sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+            allow_nan=False).encode("utf-8")).hexdigest()
+        task_digest = canonical(task)
+        bundle["task_manifest_sha256"] = task_digest
+        if mutation != "allowed-task-digest":
+            policy["allowed_assignments"][0]["task_manifest_sha256"] = task_digest
+        policy_digest = canonical(policy)
+        bundle["assignment_policy_sha256"] = policy_digest
+        if mutation != "supervisor-policy-digest":
+            supervisor["assignment_policy_sha256"] = policy_digest
+
+    records = {item["path"]: item for item in bundle["files"]}
+    overrides = {}
+    for name in names:
+        raw = (json.dumps(values[name], indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+        overrides[name] = raw
+        records[name]["size"] = len(raw)
+        records[name]["sha256"] = hashlib.sha256(raw).hexdigest()
+    overrides["bundle-manifest.json"] = (
+        json.dumps(bundle, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    return overrides
+
+
 def test_candidate_config_identity_and_bundle_pins_match_exact_inputs(monkeypatch) -> None:
     consumed_identity = {
         "run_id": "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910",
@@ -226,7 +311,8 @@ def test_candidate_config_identity_and_bundle_pins_match_exact_inputs(monkeypatc
     bundle_dir = inventory.REPO / "docs/sdlc/runtime-config"
     identity_inputs = {
         "bootstrap-request.json", "network-profile.json", "run-binding.json",
-        "supervisor-service.json",
+        "supervisor-service.json", "task-manifest.json",
+        "assignment-delegation-policy.json",
     }
     bundle_raw = (bundle_dir / "bundle-manifest.json").read_bytes()
     bundle = json.loads(bundle_raw)
@@ -239,6 +325,8 @@ def test_candidate_config_identity_and_bundle_pins_match_exact_inputs(monkeypatc
     input_values = {
         name: json.loads((bundle_dir / name).read_bytes()) for name in identity_inputs
     }
+    input_values["deployment-source-manifest.json"] = json.loads(
+        (bundle_dir / "deployment-source-manifest.json").read_bytes())
     assert input_values["bootstrap-request.json"]["request_id"] == collector.REQUEST_ID
     assert input_values["bootstrap-request.json"]["run_id"] == collector.RUN_ID
     assert input_values["network-profile.json"]["environment_id"] == (
@@ -249,6 +337,27 @@ def test_candidate_config_identity_and_bundle_pins_match_exact_inputs(monkeypatc
     assert input_values["supervisor-service.json"]["probe_nonce"] == collector.NONCE
     assert not any("probe_request" in key or "probe-request" in key
                    for key in input_values["supervisor-service.json"])
+
+    task = input_values["task-manifest.json"]
+    policy = input_values["assignment-delegation-policy.json"]
+    supervisor = input_values["supervisor-service.json"]
+    source = input_values["deployment-source-manifest.json"]
+    assert (bundle["source_head"] == bundle["runtime_source_head"]
+            == source["runtime_source_head"] == inventory.SOURCE_HEAD)
+    assert (bundle["task_source_head"] == source["task_source_head"]
+            == task["base_head"] == policy["source_head"] == inventory.TASK_SOURCE_HEAD)
+    assert bundle["runtime_source_head"] != bundle["task_source_head"]
+    task_digest = inventory.manifest_sha256(task)
+    policy_digest = hashlib.sha256(json.dumps(
+        policy, sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+        allow_nan=False).encode("utf-8")).hexdigest()
+    assert task["scope"] == task["change_scope"]["allowed_paths"]
+    assert bundle["task_manifest_sha256"] == task_digest
+    assert policy["allowed_assignments"][0]["task_manifest_sha256"] == task_digest
+    assert policy["manifest_sha256"] == bundle["source_binding_sha256"]
+    assert bundle["assignment_policy_sha256"] == policy_digest
+    assert supervisor["assignment_policy_sha256"] == policy_digest
+    assert collector.CONTRACTS_SHA == WORKTREE_CONTRACTS_SHA256
 
     for relative in identity_inputs:
         raw = (bundle_dir / relative).read_bytes()
@@ -296,6 +405,28 @@ def test_candidate_identity_rejects_member_or_identity_mismatch(monkeypatch, mis
         inventory._validate_candidate_identity(EXPECTED_REPO_HEAD)
 
 
+@pytest.mark.parametrize("mutation", [
+    "task-schema", "policy-schema", "supervisor-schema", "task-base-head",
+    "task-scope", "policy-source-head", "policy-source-binding",
+    "allowed-task-digest", "supervisor-policy-digest", "bundle-task-source-head",
+])
+def test_candidate_identity_rejects_malformed_schema_or_crossbinding(
+        monkeypatch, mutation) -> None:
+    overrides = _candidate_identity_overrides(mutation)
+    bundle_digest = hashlib.sha256(overrides["bundle-manifest.json"]).hexdigest()
+    monkeypatch.setattr(inventory, "CANDIDATE_BUNDLE_SHA256", bundle_digest)
+    _use_candidate_config_blobs(monkeypatch, overrides)
+
+    if mutation in {"task-schema", "policy-schema", "supervisor-schema"}:
+        expected_error = "candidate config is not a JSON object"
+    elif mutation == "bundle-task-source-head":
+        expected_error = "candidate bundle schema/state/source is invalid"
+    else:
+        expected_error = "candidate lacks its exact bounded shallow-Git task-source contract"
+    with pytest.raises(inventory.InventoryError, match=expected_error):
+        inventory._validate_candidate_identity(EXPECTED_REPO_HEAD)
+
+
 @pytest.mark.parametrize(
     ("constant_name", "tuple_index"),
     [("REQUEST_ID", 0), ("RUN_ID", 1), ("NONCE", 2)],
@@ -313,7 +444,7 @@ def test_candidate_identity_rejects_each_consumed_tuple_component(
 def test_complete_inventory_accepts_exact_read_only_nine_p_mount(valid_inventory) -> None:
     result = _validate(valid_inventory)
 
-    assert result["configuration_destination_count"] == 25
+    assert result["configuration_destination_count"] == 27
     assert result["mount_fstype"] == "9p"
     assert result["mount_source"] == "D:"
     assert result["mount_read_only"] is True
@@ -385,7 +516,7 @@ def test_inventory_rejects_incomplete_or_noncanonical_runtime_selector(
 
 
 @pytest.mark.parametrize("change", ["missing", "extra", "tampered"])
-def test_inventory_requires_exact_25_candidate_destinations(valid_inventory, change) -> None:
+def test_inventory_requires_exact_27_candidate_destinations(valid_inventory, change) -> None:
     files = valid_inventory["configuration_files"]
     destination = next(iter(files))
     if change == "missing":
@@ -395,7 +526,7 @@ def test_inventory_requires_exact_25_candidate_destinations(valid_inventory, cha
     else:
         files[destination]["sha256"] = "0" * 64
 
-    with pytest.raises(inventory.InventoryError, match="exactly all 25 configured destinations|differs from consumed-run baseline"):
+    with pytest.raises(inventory.InventoryError, match="exactly all 27 configured destinations|differs from consumed-run baseline"):
         _validate(valid_inventory)
 
 
@@ -478,6 +609,7 @@ def test_apply_payload_preserves_validated_canonical_octal_mode(
         # covered by the unit tests, without claiming its bytes exist in Git HEAD.
         monkeypatch.setattr(applier, "_load_committed_inventory_validator",
                             lambda _repo_head: inventory.validate_inventory)
+    monkeypatch.setattr(applier, "_validate_deployment_commit", lambda _commit: None)
 
     payload_bytes = applier.build_payload(
         inventory_path, hashlib.sha256(raw_inventory).hexdigest(), EXPECTED_REPO_HEAD,
@@ -490,26 +622,26 @@ def test_apply_payload_preserves_validated_canonical_octal_mode(
     source_manifest = json.loads(
         (inventory.REPO / "docs/sdlc/runtime-config/deployment-source-manifest.json").read_bytes())
     snapshot = payload["task_source_snapshot"]
-    archived_source = base64.b64decode(snapshot["archive_b64"], validate=True)
-    assert snapshot["head"] == source_manifest["task_source_head"] == applier.RUNTIME_SOURCE_HEAD
-    assert snapshot["format"] == source_manifest["task_source_archive_format"]
-    assert snapshot["size"] == len(archived_source) == source_manifest["task_source_archive_bytes"]
-    assert snapshot["sha256"] == hashlib.sha256(archived_source).hexdigest()
-    assert snapshot["sha256"] == source_manifest["task_source_archive_sha256"]
+    packed_source = base64.b64decode(snapshot["pack_b64"], validate=True)
+    assert snapshot["head"] == source_manifest["task_source_head"] == applier.TASK_SOURCE_HEAD
+    assert snapshot["head"] != applier.RUNTIME_SOURCE_HEAD
+    assert snapshot["format"] == source_manifest["task_source_git_pack_format"]
+    assert snapshot["format"] == "git-pack-shallow-v1"
+    assert snapshot["size"] == len(packed_source) == source_manifest["task_source_git_pack_bytes"]
+    assert snapshot["sha256"] == hashlib.sha256(packed_source).hexdigest()
+    assert snapshot["sha256"] == source_manifest["task_source_git_pack_sha256"]
+    assert snapshot["object_count"] == source_manifest["task_source_git_object_count"]
+    assert snapshot["shallow_commits"] == source_manifest["task_source_shallow_commits"]
     assert payload["deployment_source_manifest_sha256"] == hashlib.sha256(
         base64.b64decode(payload["deployment_source_manifest_b64"], validate=True)).hexdigest()
-
-    monkeypatch.setattr(applier, "_build_task_source_archive", lambda _head: b"wrong pinned archive")
-    with pytest.raises(ValueError, match="task-source archive differs"):
-        applier.build_payload(
-            inventory_path, hashlib.sha256(raw_inventory).hexdigest(), EXPECTED_REPO_HEAD,
-            expected_repo_head=EXPECTED_REPO_HEAD,
-            expected_capture_sha256=EXPECTED_CAPTURE_SHA256)
 
     payload_files = payload["files"]
     if isinstance(payload_files, list):
         payload_files = {item["destination"]: item for item in payload_files}
     for destination, observed in payload_inventory["configuration_files"].items():
+        if observed["state"] == "ABSENT":
+            continue
+        assert observed["state"] == "PRESENT" and observed["kind"] == "regular"
         parsed_mode = int(observed["mode"], 8)
         assert parsed_mode == payload_files[destination]["expected_current"]["mode"]
 
@@ -536,399 +668,111 @@ def test_apply_payload_rejects_validator_blob_that_differs_from_worktree(
             expected_capture_sha256=EXPECTED_CAPTURE_SHA256)
 
 
-def _remote_snapshot_functions():
-    tree = ast.parse(applier._REMOTE)
-    names = {"read_task_snapshot", "snapshot_matches", "install_task_snapshot"}
-    definitions = [node for node in tree.body
-                   if isinstance(node, ast.FunctionDef) and node.name in names]
-    assert {node.name for node in definitions} == names
-    namespace = {
-        "hashlib": hashlib,
-        "io": io,
-        "os": os,
-        "shutil": shutil,
-        "stat": stat,
-        "tarfile": tarfile,
-        "tempfile": __import__("tempfile"),
+class _SnapshotContractError(RuntimeError):
+    pass
+
+
+def _task_source_pack_validator():
+    source = (inventory.REPO / "tools/qa/runtime_snapshot_transaction.py").read_text(
+        encoding="utf-8")
+    tree = ast.parse(source)
+    definition = next(
+        node for node in tree.body
+        if isinstance(node, ast.FunctionDef) and node.name == "validate_pack")
+    pin_names = {
+        "MAX_PACK_BYTES", "TASK_HEAD", "TASK_TREE", "TASK_OBJECT_COUNT",
+        "TASK_PACK_SHA256", "TASK_PACK_BYTES",
     }
-    code = compile(ast.Module(body=definitions, type_ignores=[]), "<remote-task-snapshot>", "exec")
+
+    def constant_value(node):
+        if isinstance(node, ast.Constant) and type(node.value) in (int, str):
+            return node.value
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mult):
+            return constant_value(node.left) * constant_value(node.right)
+        raise AssertionError(f"unsupported pinned constant expression: {ast.dump(node)}")
+
+    pinned_values = {
+        target.id: constant_value(node.value)
+        for node in tree.body if isinstance(node, ast.Assign)
+        for target in node.targets
+        if isinstance(target, ast.Name) and target.id in pin_names
+    }
+    assert set(pinned_values) == pin_names
+    namespace = {
+        "Any": Any,
+        "hashlib": hashlib,
+        "SnapshotContractError": _SnapshotContractError,
+        **pinned_values,
+    }
+    code = compile(ast.Module(body=[definition], type_ignores=[]),
+                   "<runtime-snapshot-pack-validator>", "exec")
     exec(code, namespace)
-    return namespace
+    return namespace["validate_pack"]
 
 
-def _install_snapshot_with_diagnostics(functions, target, expected, observed):
-    try:
-        return functions["install_task_snapshot"](str(target), expected)
-    except SystemExit as exc:
-        if "staged task-source snapshot failed" not in str(exc):
-            raise
-        expected_metadata = {
-            path: {key: value for key, value in entry.items() if key != "data"}
-            for path, entry in expected.items()
-        }
-        pytest.fail(
-            f"{exc}; expected task-source metadata={expected_metadata}; "
-            f"observed lstat metadata={observed}"
-        )
+def _pinned_task_source_pack() -> tuple[dict[str, object], bytes]:
+    source_manifest = json.loads((
+        inventory.REPO / "docs/sdlc/runtime-config/deployment-source-manifest.json"
+    ).read_bytes())
+    packed = applier._task_source_pack(source_manifest)
+    snapshot = {
+        "head": source_manifest["task_source_head"],
+        "tree_sha1": source_manifest["task_source_tree_sha1"],
+        "format": source_manifest["task_source_git_pack_format"],
+        "object_count": source_manifest["task_source_git_object_count"],
+        "shallow_commits": source_manifest["task_source_shallow_commits"],
+        "sha256": source_manifest["task_source_git_pack_sha256"],
+        "size": source_manifest["task_source_git_pack_bytes"],
+        "pack_b64": base64.b64encode(packed).decode("ascii"),
+    }
+    return snapshot, packed
 
 
-def _task_snapshot_tar(entries):
-    raw = io.BytesIO()
-    with tarfile.open(fileobj=raw, mode="w:") as archive:
-        for name, kind, mode, data, linkname in entries:
-            member = tarfile.TarInfo(name)
-            member.mode = mode
-            member.uid = 0
-            member.gid = 0
-            member.mtime = 0
-            if kind == "directory":
-                member.type = tarfile.DIRTYPE
-                member.size = 0
-                archive.addfile(member)
-            elif kind == "file":
-                member.type = tarfile.REGTYPE
-                member.size = len(data)
-                archive.addfile(member, io.BytesIO(data))
-            else:
-                member.type = {
-                    "symlink": tarfile.SYMTYPE,
-                    "hardlink": tarfile.LNKTYPE,
-                    "fifo": tarfile.FIFOTYPE,
-                }[kind]
-                member.linkname = linkname
-                member.size = 0
-                archive.addfile(member)
-    return raw.getvalue()
+@pytest.fixture(scope="module")
+def task_source_pack_validator():
+    return _task_source_pack_validator()
 
 
-def _valid_task_snapshot_tar():
-    return _task_snapshot_tar([
-        ("task-source", "directory", 0o775, b"", ""),
-        ("task-source/tests", "directory", 0o775, b"", ""),
-        ("task-source/tests/test_example.py", "file", 0o664, b"value = 1\n", ""),
-    ])
+@pytest.fixture(scope="module")
+def pinned_task_source_pack():
+    return _pinned_task_source_pack()
 
 
-@pytest.mark.parametrize(
-    ("entries", "error"),
-    [
-        ([("task-source", "directory", 0o775, b"", ""),
-          ("task-source/../escape", "file", 0o664, b"x", "")],
-         "path escapes"),
-        ([("task-source", "directory", 0o775, b"", ""),
-          ("task-source/a", "file", 0o664, b"x", ""),
-          ("task-source/a", "file", 0o664, b"x", "")],
-         "duplicate path"),
-        ([("task-source", "directory", 0o775, b"", ""),
-          ("task-source/link", "symlink", 0o777, b"", "../../etc/passwd")],
-         "link or special file"),
-        ([("task-source", "directory", 0o775, b"", ""),
-          ("task-source/link", "hardlink", 0o644, b"", "task-source/a")],
-         "link or special file"),
-        ([("task-source", "directory", 0o775, b"", ""),
-          ("task-source/pipe", "fifo", 0o644, b"", "")],
-         "link or special file"),
-        ([("task-source", "directory", 0o775, b"", ""),
-          ("task-source/large", "file", 0o664, b"x" * (8 * 1024 * 1024 + 1), "")],
-         "file metadata is unsafe"),
-    ],
-    ids=["traversal", "duplicate", "symlink", "hardlink", "special", "member-bomb"],
-)
-def test_remote_task_snapshot_parser_rejects_unsafe_tar_members(entries, error) -> None:
-    functions = _remote_snapshot_functions()
-    with pytest.raises(SystemExit, match=error):
-        functions["read_task_snapshot"](_task_snapshot_tar(entries))
+def test_task_source_git_pack_validator_accepts_exact_manifest_pack(
+        task_source_pack_validator, pinned_task_source_pack) -> None:
+    snapshot, packed = pinned_task_source_pack
+
+    assert task_source_pack_validator(snapshot) == packed
 
 
-def _emulate_root_owned_temp_tree(
-        monkeypatch, root: Path, observed: dict[str, dict[str, object]] | None = None
-) -> tuple[list[tuple[str, int, int]], list[tuple[str, int, int]]]:
-    root = root.resolve()
-    original_lstat = os.lstat
-    original_open = os.open
-    original_rename = os.rename
-    original_close = os.close
-    chown_calls: list[tuple[str, int, int]] = []
-    fchown_calls: list[tuple[str, int, int]] = []
-    owner_map: dict[str, tuple[int, int]] = {}
-    opened_paths: dict[int, str] = {}
+def test_task_source_git_pack_validator_rejects_malformed_base64(
+        task_source_pack_validator, pinned_task_source_pack) -> None:
+    snapshot, _packed = pinned_task_source_pack
+    snapshot = copy.deepcopy(snapshot)
+    snapshot["pack_b64"] = "not valid base64!"
 
-    def normalized_path(path) -> str:
-        return os.path.normcase(os.path.abspath(os.fsdecode(path)))
-
-    normalized_root = normalized_path(root)
-    for current, directories, files in os.walk(root):
-        owner_map[normalized_path(current)] = (0, 0)
-        for name in directories + files:
-            owner_map[normalized_path(os.path.join(current, name))] = (0, 0)
-
-    def in_tree(path) -> bool:
-        try:
-            return os.path.commonpath((normalized_root, normalized_path(path))) == normalized_root
-        except (OSError, RuntimeError, ValueError):
-            return False
-
-    def open_with_path_tracking(path, flags, mode=0o777, *args, **kwargs):
-        fd = original_open(path, flags, mode, *args, **kwargs)
-        if in_tree(path):
-            opened_paths[fd] = normalized_path(path)
-        return fd
-
-    def chown_with_owner_tracking(path, uid, gid):
-        if in_tree(path):
-            owner_map[normalized_path(path)] = (uid, gid)
-        chown_calls.append((str(path), uid, gid))
-
-    def fchown_with_owner_tracking(fd, uid, gid):
-        path = opened_paths.get(fd)
-        if path is not None:
-            owner_map[path] = (uid, gid)
-        fchown_calls.append((path or str(fd), uid, gid))
-
-    def rename_with_tracking(source, destination, *args, **kwargs):
-        result = original_rename(source, destination, *args, **kwargs)
-        source_path = normalized_path(source)
-        destination_path = normalized_path(destination)
-        relocated_owners = {}
-        for path, owner in list(owner_map.items()):
-            try:
-                if os.path.commonpath((source_path, path)) == source_path:
-                    relative = os.path.relpath(path, source_path)
-                    relocated_owners[normalized_path(os.path.join(destination_path, relative))] = owner
-                    owner_map.pop(path, None)
-            except (OSError, RuntimeError, ValueError):
-                continue
-        owner_map.update(relocated_owners)
-        if os.name == "nt":
-            old_paths = []
-            relocated_modes = {}
-            for path, mode in list(posix_modes.items()):
-                try:
-                    if os.path.commonpath((source_path, path)) == source_path:
-                        relative = os.path.relpath(path, source_path)
-                        old_paths.append(path)
-                        relocated_modes[normalized_path(os.path.join(destination_path, relative))] = mode
-                except (OSError, RuntimeError, ValueError):
-                    continue
-            for old_path in old_paths:
-                del posix_modes[old_path]
-            posix_modes.update(relocated_modes)
-        return result
-
-    def close_with_path_tracking(fd):
-        opened_paths.pop(fd, None)
-        return original_close(fd)
-
-    if os.name == "nt":
-        original_chmod = os.chmod
-        original_fchmod = getattr(os, "fchmod", None)
-        original_fsync = os.fsync
-        original_rmtree = shutil.rmtree
-        posix_modes: dict[str, int] = {}
-        directory_fds: set[int] = set()
-        next_directory_fd = [-1]
-
-        def chmod_with_posix_mode(path, mode, *args, **kwargs):
-            if in_tree(path):
-                posix_modes[normalized_path(path)] = stat.S_IMODE(mode)
-            return original_chmod(path, mode, *args, **kwargs)
-
-        def open_with_path_tracking(path, flags, mode=0o777, *args, **kwargs):
-            if in_tree(path):
-                try:
-                    path_info = original_lstat(path)
-                except FileNotFoundError:
-                    path_info = None
-                if path_info is not None and stat.S_ISDIR(path_info.st_mode):
-                    fd = next_directory_fd[0]
-                    next_directory_fd[0] -= 1
-                    opened_paths[fd] = normalized_path(path)
-                    directory_fds.add(fd)
-                    return fd
-                flags |= getattr(os, "O_BINARY", 0)
-            fd = original_open(path, flags, mode, *args, **kwargs)
-            if in_tree(path):
-                opened_paths[fd] = normalized_path(path)
-            return fd
-
-        def fchmod_with_posix_mode(fd, mode):
-            path = opened_paths.get(fd)
-            if path is not None:
-                posix_modes[path] = stat.S_IMODE(mode)
-            if fd not in directory_fds and original_fchmod is not None:
-                return original_fchmod(fd, mode)
-            return None
-
-        def fsync_with_directory_fd_shim(fd):
-            if fd not in directory_fds:
-                return original_fsync(fd)
-            return None
-
-        def close_with_directory_fd_shim(fd):
-            if fd in directory_fds:
-                directory_fds.remove(fd)
-                opened_paths.pop(fd, None)
-                return None
-            return close_with_path_tracking(fd)
-
-        def rmtree_with_posix_unlink_semantics(path, *args, **kwargs):
-            for current, directories, files in os.walk(path, topdown=False):
-                for name in files:
-                    try:
-                        original_chmod(os.path.join(current, name), 0o600)
-                    except FileNotFoundError:
-                        pass
-                for name in directories:
-                    try:
-                        original_chmod(os.path.join(current, name), 0o700)
-                    except FileNotFoundError:
-                        pass
-                try:
-                    original_chmod(current, 0o700)
-                except FileNotFoundError:
-                    pass
-            return original_rmtree(path, *args, **kwargs)
-
-    def lstat_with_root_owner(path, *args, **kwargs):
-        info = original_lstat(path, *args, **kwargs)
-        if os.name == "nt":
-            path_in_tree = in_tree(path)
-        else:
-            try:
-                absolute_path = os.path.abspath(os.fsdecode(path))
-                path_in_tree = os.path.commonpath((str(root), absolute_path)) == str(root)
-            except (OSError, RuntimeError, ValueError):
-                path_in_tree = False
-        if not path_in_tree:
-            return info
-        uid, gid = owner_map.get(normalized_path(path), (1000, 1000))
-        if os.name == "nt":
-            kind = stat.S_IFMT(info.st_mode)
-            default_mode = 0o755 if stat.S_ISDIR(info.st_mode) else 0o644
-            mode = kind | posix_modes.get(normalized_path(path), default_mode)
-
-            class SyntheticStatResult:
-                def __init__(self, source):
-                    self._source = source
-                    self.st_mode = mode
-                    self.st_uid = uid
-                    self.st_gid = gid
-
-                def __getattr__(self, name):
-                    # Preserve platform fields such as Windows st_file_attributes
-                    # and st_reparse_tag for consumers like shutil.rmtree.
-                    return getattr(self._source, name)
-
-            result = SyntheticStatResult(info)
-            if observed is not None:
-                observed[normalized_path(path)] = {
-                    "st_mode": result.st_mode,
-                    "st_uid": result.st_uid,
-                    "st_gid": result.st_gid,
-                    "st_nlink": result.st_nlink,
-                    "st_size": result.st_size,
-                    "st_file_attributes": getattr(result, "st_file_attributes", None),
-                    "st_reparse_tag": getattr(result, "st_reparse_tag", None),
-                }
-            return result
-        values = list(info)
-        values[4] = uid
-        values[5] = gid
-        result = os.stat_result(values)
-        if observed is not None:
-            observed[os.path.abspath(os.fsdecode(path))] = {
-                "st_mode": result.st_mode,
-                "st_uid": result.st_uid,
-                "st_gid": result.st_gid,
-                "st_nlink": result.st_nlink,
-                "st_size": result.st_size,
-            }
-        return result
-
-    monkeypatch.setattr(os, "lstat", lstat_with_root_owner)
-    if os.name == "nt":
-        monkeypatch.setattr(os, "chmod", chmod_with_posix_mode)
-        monkeypatch.setattr(os, "open", open_with_path_tracking)
-        monkeypatch.setattr(os, "fchmod", fchmod_with_posix_mode, raising=False)
-        monkeypatch.setattr(os, "fsync", fsync_with_directory_fd_shim)
-        monkeypatch.setattr(os, "close", close_with_directory_fd_shim)
-        monkeypatch.setattr(shutil, "rmtree", rmtree_with_posix_unlink_semantics)
-    else:
-        monkeypatch.setattr(os, "open", open_with_path_tracking)
-        monkeypatch.setattr(os, "close", close_with_path_tracking)
-    monkeypatch.setattr(os, "chown", chown_with_owner_tracking, raising=False)
-    monkeypatch.setattr(os, "fchown", fchown_with_owner_tracking, raising=False)
-    monkeypatch.setattr(os, "rename", rename_with_tracking)
-    return chown_calls, fchown_calls
+    with pytest.raises(_SnapshotContractError, match="pack encoding is malformed"):
+        task_source_pack_validator(snapshot)
 
 
-def test_remote_task_snapshot_installs_exact_read_only_tree_and_is_idempotent(
-        tmp_path, monkeypatch) -> None:
-    functions = _remote_snapshot_functions()
-    raw = _valid_task_snapshot_tar()
-    expected = functions["read_task_snapshot"](raw)
-    var_lib = tmp_path / "var" / "lib"
-    var_lib.mkdir(parents=True)
-    observed: dict[str, dict[str, object]] = {}
-    chown_calls, fchown_calls = _emulate_root_owned_temp_tree(monkeypatch, tmp_path, observed)
-    target = var_lib / "vst-runner" / "repository"
+def test_task_source_git_pack_validator_rejects_wrong_identity_metadata(
+        task_source_pack_validator, pinned_task_source_pack) -> None:
+    snapshot, _packed = pinned_task_source_pack
+    snapshot = copy.deepcopy(snapshot)
+    snapshot["tree_sha1"] = "f" * 40
 
-    assert _install_snapshot_with_diagnostics(functions, target, expected, observed) == "installed"
-    assert functions["snapshot_matches"](str(target), expected)
-    assert stat.S_IMODE(os.lstat(target).st_mode) == 0o555
-    assert stat.S_IMODE(os.lstat(target / "tests").st_mode) == 0o555
-    assert stat.S_IMODE(os.lstat(target / "tests" / "test_example.py").st_mode) == 0o444
-    assert os.lstat(target).st_uid == 0 and os.lstat(target).st_gid == 0
-    assert any(uid == gid == 0 for _path, uid, gid in chown_calls)
-    for relative, item in expected.items():
-        if item["kind"] == "file":
-            assert any(
-                Path(path).as_posix().endswith("/" + relative) and uid == gid == 0
-                for path, uid, gid in fchown_calls
-            )
-        elif relative:
-            assert any(
-                Path(path).as_posix().endswith("/" + relative) and uid == gid == 0
-                for path, uid, gid in chown_calls
-            )
-    assert any(Path(path).name.startswith(".vst-task-source-") and uid == gid == 0
-               for path, uid, gid in chown_calls)
-
-    assert functions["install_task_snapshot"](str(target), expected) == "already-exact"
+    with pytest.raises(_SnapshotContractError,
+                       match="identity differs from the fixed contract"):
+        task_source_pack_validator(snapshot)
 
 
-def test_remote_task_snapshot_refuses_nonexact_existing_tree_without_overwrite(
-        tmp_path, monkeypatch) -> None:
-    functions = _remote_snapshot_functions()
-    expected = functions["read_task_snapshot"](_valid_task_snapshot_tar())
-    var_lib = tmp_path / "var" / "lib"
-    var_lib.mkdir(parents=True)
-    observed: dict[str, dict[str, object]] = {}
-    _emulate_root_owned_temp_tree(monkeypatch, tmp_path, observed)
-    target = var_lib / "vst-runner" / "repository"
-    assert _install_snapshot_with_diagnostics(functions, target, expected, observed) == "installed"
+def test_task_source_git_pack_validator_rejects_tampered_bytes(
+        task_source_pack_validator, pinned_task_source_pack) -> None:
+    snapshot, packed = pinned_task_source_pack
+    snapshot = copy.deepcopy(snapshot)
+    tampered = packed[:-1] + bytes((packed[-1] ^ 1,))
+    snapshot["pack_b64"] = base64.b64encode(tampered).decode("ascii")
 
-    sample = target / "tests" / "test_example.py"
-    sample.chmod(0o644)
-    sample.write_bytes(b"operator-owned replacement\n")
-    sample.chmod(0o444)
-    with pytest.raises(SystemExit, match="refusing overwrite"):
-        functions["install_task_snapshot"](str(target), expected)
-    assert sample.read_bytes() == b"operator-owned replacement\n"
-
-
-def test_remote_task_snapshot_rejects_unsafe_parent_without_writing(tmp_path, monkeypatch) -> None:
-    functions = _remote_snapshot_functions()
-    expected = functions["read_task_snapshot"](_valid_task_snapshot_tar())
-    parent_parent = tmp_path / "var" / "lib"
-    parent_parent.mkdir(parents=True)
-    _emulate_root_owned_temp_tree(monkeypatch, tmp_path)
-    parent = parent_parent / "vst-runner"
-    parent.mkdir()
-    os.chown(parent, 0, 0)
-    parent.chmod(0o777)
-    target = parent / "repository"
-
-    with pytest.raises(SystemExit, match="parent has unexpected owner or mode"):
-        functions["install_task_snapshot"](str(target), expected)
-    assert not target.exists()
+    with pytest.raises(_SnapshotContractError,
+                       match="pack bytes differ from the fixed contract"):
+        task_source_pack_validator(snapshot)

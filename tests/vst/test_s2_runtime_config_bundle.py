@@ -95,6 +95,10 @@ def test_bundle_manifest_covers_every_payload_with_exact_bytes_and_safe_scope():
         "unit-overrides/vst-runner.service.d/host-paths.conf",
         "unit-overrides/vst-sandbox-probe.service.d/host-paths.conf",
     }
+    expected_snapshot_recovery_overrides = {
+        "unit-overrides/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf",
+        "unit-overrides/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf",
+    }
     expected_host_path_override_bytes = {
         "unit-overrides/vst-runner.service.d/host-paths.conf": (
             b"[Service]\n"
@@ -107,9 +111,18 @@ def test_bundle_manifest_covers_every_payload_with_exact_bytes_and_safe_scope():
             b"InaccessiblePaths=-/init -/home -/mnt -/root -/usr/lib/wsl -/run/WSL -/tmp/.X11-unix\n"
             b"TemporaryFileSystem=/run/user:ro,mode=0755\n"
         ),
+        "unit-overrides/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf": (
+            b"[Unit]\n"
+            b"ConditionPathExists=!/var/lib/vst-runner/private/snapshot-transaction-incomplete.json\n"
+        ),
+        "unit-overrides/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf": (
+            b"[Unit]\n"
+            b"ConditionPathExists=!/var/lib/vst-runner/private/snapshot-transaction-incomplete.json\n"
+        ),
     }
     assert {item["source"] for item in overrides} == (
         expected_rate_limit_overrides | expected_host_path_overrides
+        | expected_snapshot_recovery_overrides
     )
     assert bundle["unit_overrides"] == overrides
     expected_destinations = {
@@ -117,6 +130,10 @@ def test_bundle_manifest_covers_every_payload_with_exact_bytes_and_safe_scope():
             "/etc/systemd/system/vst-runner.service.d/90-s2-host-path-mask.conf",
         "unit-overrides/vst-sandbox-probe.service.d/host-paths.conf":
             "/etc/systemd/system/vst-sandbox-probe.service.d/90-s2-host-path-mask.conf",
+        "unit-overrides/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf":
+            "/etc/systemd/system/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf",
+        "unit-overrides/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf":
+            "/etc/systemd/system/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf",
     }
     for item in overrides:
         data = (BUNDLE_DIR / item["source"]).read_bytes()
@@ -139,6 +156,14 @@ def test_bundle_manifest_covers_every_payload_with_exact_bytes_and_safe_scope():
         "/etc/systemd/system/vst-runner.service.d/90-s2-host-path-mask.conf",
         "/etc/systemd/system/vst-sandbox-probe.service.d/90-s2-host-path-mask.conf",
     }
+    assert {
+        item["destination"]
+        for item in overrides
+        if item["source"] in expected_snapshot_recovery_overrides
+    } == {
+        "/etc/systemd/system/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf",
+        "/etc/systemd/system/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf",
+    }
 
 
 def test_actual_task_policy_and_bootstrap_validators_accept_only_crossbound_candidate():
@@ -147,10 +172,14 @@ def test_actual_task_policy_and_bootstrap_validators_accept_only_crossbound_cand
     policy = _json("assignment-delegation-policy.json")
     bundle = _json("bundle-manifest.json")
     supervisor = _json("supervisor-service.json")
+    source = _json("deployment-source-manifest.json")
 
     validated_task = validate_task_manifest(task)
     assert manifest_sha256(validated_task) == bundle["task_manifest_sha256"]
-    assert task["base_head"] == policy["source_head"] == bundle["source_head"]
+    assert task["base_head"] == policy["source_head"] == bundle["task_source_head"]
+    assert bundle["source_head"] == bundle["runtime_source_head"] == source["runtime_source_head"]
+    assert source["task_source_head"] == bundle["task_source_head"]
+    assert bundle["runtime_source_head"] != bundle["task_source_head"]
     assert policy["manifest_sha256"] == bundle["source_binding_sha256"]
 
     validated_policy, policy_digest = validate_policy(policy)
@@ -226,30 +255,39 @@ def test_model_and_reviewer_registry_digests_bind_the_declared_artifacts():
     assert _sha256(canonical_bytes(transition)) == bundle["runtime_transition_sha256"]
     assert source["runtime_transition_manifest_sha256"] == bundle["runtime_transition_sha256"]
     assert source["runtime_tree_sha256"] == transition["runtime_tree_sha256"]
-    assert source["runtime_source_head"] == source["task_source_head"] == bundle["source_head"]
+    assert source["runtime_source_head"] == bundle["source_head"] == bundle["runtime_source_head"]
+    assert source["task_source_head"] == bundle["task_source_head"]
+    assert source["runtime_source_head"] != source["task_source_head"]
 
 
-def test_task_source_snapshot_manifest_pins_canonical_archive_and_layout():
+def test_task_source_snapshot_manifest_pins_shallow_git_pack_and_layout():
     source = _json("deployment-source-manifest.json")
     bundle = _json("bundle-manifest.json")
     layout = _json("installation-layout.json")
 
-    assert source["task_source_head"] == bundle["source_head"]
+    assert source["runtime_source_head"] == bundle["source_head"]
+    assert source["task_source_head"] == bundle["task_source_head"]
+    assert source["runtime_source_head"] != source["task_source_head"]
     assert source["task_repository_destination"] == "/var/lib/vst-runner/repository"
-    assert source["task_source_archive_format"] == applier.TASK_REPOSITORY_ARCHIVE_FORMAT
-    assert type(source["task_source_archive_bytes"]) is int
-    assert source["task_source_archive_bytes"] > 0
-    assert re.fullmatch(r"[0-9a-f]{64}", source["task_source_archive_sha256"])
+    assert source["task_source_git_pack_format"] == applier.TASK_REPOSITORY_GIT_PACK_FORMAT
+    assert source["task_source_git_pack_format"] == "git-pack-shallow-v1"
+    assert type(source["task_source_git_pack_bytes"]) is int
+    assert source["task_source_git_pack_bytes"] > 0
+    assert re.fullmatch(r"[0-9a-f]{64}", source["task_source_git_pack_sha256"])
+    assert source["task_source_shallow_commits"] == [source["task_source_head"]]
     assert hashlib.sha256(canonical_bytes(source)).hexdigest() == bundle["source_binding_sha256"]
-    assert all(term in source["task_repository_after_apply"]
-               for term in ("Root-owned", "non-writable", "snapshot"))
+    assert all(term in source["task_repository_after_apply"] for term in (
+        "Root-owned", "non-writable", "Git repository", "exact shallow task_source_head",
+    ))
+    assert "single read-only runtime deployment snapshot" in source["task_repository_usage"]
     assert "D:/Repo/Virtual_scrum_team" in source["task_repository_usage"]
     assert "/var/lib/vst-runner/repository" in layout["runtime_repository_rule"]
     assert "never a development checkout or per-sprint worktree" in layout["runtime_repository_rule"]
 
-    archived = applier._build_task_source_archive(source["task_source_head"])
-    assert len(archived) == source["task_source_archive_bytes"]
-    assert _sha256(archived) == source["task_source_archive_sha256"]
+    packed = applier._task_source_pack(source)
+    assert len(packed) == source["task_source_git_pack_bytes"]
+    assert _sha256(packed) == source["task_source_git_pack_sha256"]
+    assert packed.startswith(b"PACK")
 
 
 def test_public_material_matches_standalone_public_keys_and_probe_run_binding():

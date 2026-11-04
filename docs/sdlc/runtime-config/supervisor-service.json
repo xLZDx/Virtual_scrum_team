@@ -2,7 +2,7 @@
   "allow_schema_upgrade": false,
   "anchor_path": "/var/lib/vst-runner/private/store.anchor",
   "assignment_policy_path": "/etc/vst-runner/assignment-delegation-policy.json",
-  "assignment_policy_sha256": "3edf5006f8a9f7b43bca7468109ed4bc0fef67b39a3f06f93e12243250c25683",
+  "assignment_policy_sha256": "05ac58458289828831fb3873bca520c14db6a5252b333b7fd4718b47ca50a67f",
   "dispatch_instruction_trust_registry_path": "/etc/vst-runner/dispatch-instruction-trust.json",
   "event_key_path": "/etc/vst-runner/store-event.key",
   "execution_grant_audience": "s2-runtime-qualification",
