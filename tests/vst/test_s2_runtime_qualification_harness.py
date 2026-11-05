@@ -157,6 +157,60 @@ def _wsl_prestart_functions():
     return namespace
 
 
+class _WslTestRunHold(Exception):
+    pass
+
+
+def _wsl_test_run_function():
+    """Load only the WSL TestRun observer with isolated dependency stubs."""
+    source_path = Path(__file__).resolve().parents[2] / WSL_HELPER
+    tree = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
+    function = next(node for node in tree.body
+                    if isinstance(node, ast.FunctionDef)
+                    and node.name == "_wait_for_test_run")
+    imports = {
+        (node.module, tuple(alias.name for alias in node.names))
+        for node in function.body if isinstance(node, ast.ImportFrom)
+    }
+    assert imports == {
+        ("tools.vst.contracts", ("canonical_bytes", "receipt_sha256", "validate_receipt")),
+        ("tools.vst.execution_grant", ("validate_execution_grant",)),
+        ("tools.vst.supervisor_service", ("SupervisorClient",)),
+    }
+    function.body = [node for node in function.body if not isinstance(node, ast.ImportFrom)]
+
+    namespace = {
+        "hashlib": hashlib,
+        "json": json,
+        "HEX40": re.compile(r"^[0-9a-f]{40}$"),
+        "sys": __import__("sys"),
+        "time": __import__("time"),
+        "_pairs": dict,
+        "canonical_bytes": lambda value: json.dumps(
+            value, sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+            allow_nan=False,
+        ).encode("ascii"),
+        "receipt_sha256": lambda value: _sha(json.dumps(
+            value, sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+            allow_nan=False,
+        ).encode("ascii")),
+        "validate_receipt": lambda value: value,
+        "validate_execution_grant": lambda value: value,
+        "stop": lambda reason: (_ for _ in ()).throw(_WslTestRunHold(reason)),
+        "utc": lambda: "2026-11-04T00:00:00Z",
+        "R": {"stages": {"bootstrap": {"handoff": {
+            "runner_id": "runner-1", "epoch": 3,
+        }}}, "commands": []},
+        "_read_task_rows": lambda _store_path, _task_id: ([], [], []),
+        "_systemd_show": lambda _unit: {
+            "LoadState": "loaded", "ActiveState": "active",
+        },
+    }
+    exec(compile(ast.Module(body=[function], type_ignores=[]),
+                 str(source_path), "exec"), namespace)
+    return namespace["_wait_for_test_run"], namespace, _WslTestRunHold
+
+
 def _wsl_mount_audit_functions(*, unit="vst-s2-qual-0123456789abcdef.service"):
     """Load only the exact WSL mount decoder and its independent audit helpers."""
     source_path = Path(__file__).resolve().parents[2] / WSL_HELPER
@@ -1646,7 +1700,7 @@ def test_run_once_starts_one_mock_wsl_child_and_persists_terminal_hold(
             self.returncode = 2
 
         def wait(self, *, timeout):
-            assert timeout == 2400
+            assert timeout == 2400 + harness.SYSTEMD_STARTUP_SHUTDOWN_GRACE_SEC
             return self.returncode
 
     monkeypatch.setattr(harness.subprocess, "Popen", MockWslProcess)
@@ -1775,3 +1829,134 @@ def test_unknown_protocol_persists_indeterminate_record_without_retry(
     assert attempt["stderr_sha256"] == _sha(b"")
     assert attempt["retry"] == "PROHIBITED"
     assert attempt["retry_cap"] == 0
+
+
+def _report_bound_test_run_fixture(monkeypatch, receipt_mutation=None):
+    wait_for_test_run, namespace, hold_type = _wsl_test_run_function()
+    task_id = "S2-4-runtime-owner-runner-qualification"
+    selector = (
+        "tests/vst/test_s2_assignment_basis.py::"
+        "test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment"
+    )
+    task_source_head = "9" * 40
+    qualification_source_head = "a" * 40
+    manifest_sha256 = "8" * 64
+    service_generation = "generation-0123456789abcdef"
+    identity = {
+        "runtime_selector": "/opt/vst-runtime-" + RUNTIME_HEAD,
+        "qualification_source_head": qualification_source_head,
+        "run_id": "run-0123456789abcdef",
+        "task_manifest_sha256": manifest_sha256,
+        "selector_test_id": selector,
+    }
+    instruction = {"request_id": "request-0123456789abcdef"}
+    grant = {
+        "grant_id": "grant-0123456789abcdef",
+        "invocation_id": "invocation-0123456789abcdef",
+        "request_id": instruction["request_id"],
+        "task_id": task_id,
+        "slot": "runtime-tests",
+        "runner_id": "runner-1",
+        "attempt": 1,
+        "epoch": 3,
+        "run_id": identity["run_id"],
+        "service_generation": service_generation,
+        "manifest_sha256": manifest_sha256,
+    }
+    grant_bytes = namespace["canonical_bytes"](grant)
+    grant_digest = _sha(grant_bytes)
+    claim = {
+        **{key: grant[key] for key in (
+            "grant_id", "invocation_id", "request_id", "task_id", "slot",
+            "runner_id", "attempt", "epoch", "run_id", "service_generation",
+            "manifest_sha256",
+        )},
+        "payload_sha256": grant_digest,
+        "grant_body": json.dumps(grant),
+        "claimed_at": "2026-11-04T00:00:00Z",
+    }
+    pending = {
+        "event": "RUNNER_EXECUTION_PENDING", "state": "PENDING",
+        "grant_id": grant["grant_id"], "invocation_id": grant["invocation_id"],
+        "request_id": grant["request_id"], "task_id": grant["task_id"],
+        "slot": grant["slot"], "runner_id": grant["runner_id"],
+        "attempt": grant["attempt"], "epoch": grant["epoch"],
+        "service_generation": grant["service_generation"],
+        "run_id": grant["run_id"], "payload_sha256": grant_digest,
+    }
+    events = [{"state": "PENDING", "payload": json.dumps(pending)}]
+
+    receipt = {
+        "receipt_type": "TestRun", "result": "PASS", "task_id": task_id,
+        "slot": "runtime-tests", "attempt": 1,
+        "candidate_head": task_source_head, "run_id": identity["run_id"],
+        "manifest_sha256": manifest_sha256,
+        "diff_gate": {
+            "verdict": "PASS", "candidate_head": task_source_head,
+            "manifest_sha256": manifest_sha256,
+        },
+        "runner_attestation": {"request": {
+            "candidate_head": task_source_head,
+            "manifest_sha256": manifest_sha256,
+        }},
+        "expected_test_ids": [selector], "executed_test_ids": [selector],
+        "skipped_test_ids": [], "xfail_test_ids": [],
+    }
+    if receipt_mutation is not None:
+        path, value = receipt_mutation
+        target = receipt
+        parts = path.split(".")
+        for part in parts[:-1]:
+            target = target[part]
+        target[parts[-1]] = value
+    receipt_bytes = namespace["canonical_bytes"](receipt)
+    receipt_row = {
+        "body": json.dumps(receipt),
+        "receipt_sha256": _sha(receipt_bytes),
+    }
+
+    class FakeSupervisorClient:
+        def __init__(self, _socket_path):
+            pass
+
+        def generation(self):
+            return service_generation
+
+        def claim_status(self, _grant):
+            return {"service_generation": service_generation, "state": "PENDING"}
+
+    namespace["SupervisorClient"] = FakeSupervisorClient
+    namespace["_read_task_rows"] = lambda _store_path, _task: (
+        [claim], events, [receipt_row],
+    )
+    result = (wait_for_test_run(
+        {"store_path": "/tmp/store.sqlite3"},
+        {"task_id": task_id, "timeout_sec": 1, "base_head": task_source_head},
+        instruction, identity,
+    ), namespace, hold_type, receipt)
+    return result
+
+
+def test_report_bound_test_run_accepts_exact_candidate_and_manifest_tuple(monkeypatch):
+    result, namespace, _hold_type, expected_receipt = _report_bound_test_run_fixture(monkeypatch)
+
+    assert result == expected_receipt
+    assert result["candidate_head"] == "9" * 40  # TaskManifest.base_head
+    assert result["candidate_head"] != "a" * 40  # qualification_source_head
+    assert namespace["R"]["stages"]["test_run"]["verdict"] == "PASS"
+
+
+@pytest.mark.parametrize(("field", "invalid_value"), [
+    ("candidate_head", "7" * 40),
+    ("diff_gate.candidate_head", "7" * 40),
+    ("runner_attestation.request.candidate_head", "7" * 40),
+    ("manifest_sha256", "7" * 64),
+    ("diff_gate.manifest_sha256", "7" * 64),
+    ("runner_attestation.request.manifest_sha256", "7" * 64),
+    ("diff_gate.verdict", "FAIL"),
+])
+def test_report_bound_test_run_refuses_mismatched_identity_or_nonpass_diff_gate(
+        monkeypatch, field, invalid_value):
+    with pytest.raises(_wsl_test_run_function()[2],
+                       match="one report-bound TestRun did not produce the exact authorized PASS receipt"):
+        _report_bound_test_run_fixture(monkeypatch, (field, invalid_value))

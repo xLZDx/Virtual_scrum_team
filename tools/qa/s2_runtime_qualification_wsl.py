@@ -1260,6 +1260,11 @@ def _wait_for_test_run(config: dict, manifest: dict, instruction: dict,
     receipt = validate_receipt(json.loads(row["body"], object_pairs_hook=_pairs))
     computed = receipt_sha256(receipt)
     selector = identity["selector_test_id"]
+    expected_candidate_head = manifest.get("base_head")
+    if not isinstance(expected_candidate_head, str) or not HEX40.fullmatch(expected_candidate_head):
+        stop("authorized TaskManifest base_head is not a valid candidate revision")
+    diff_gate = receipt["diff_gate"]
+    attestation_request = receipt["runner_attestation"]["request"]
     accepted = (
         computed == row["receipt_sha256"]
         and receipt.get("receipt_type") == "TestRun"
@@ -1267,8 +1272,14 @@ def _wait_for_test_run(config: dict, manifest: dict, instruction: dict,
         and receipt.get("task_id") == task_id
         and receipt.get("slot") == "runtime-tests"
         and receipt.get("attempt") == 1
+        and receipt.get("candidate_head") == expected_candidate_head
         and receipt.get("run_id") == identity["run_id"]
         and receipt.get("manifest_sha256") == identity["task_manifest_sha256"]
+        and diff_gate["verdict"] == "PASS"
+        and diff_gate["candidate_head"] == expected_candidate_head
+        and diff_gate["manifest_sha256"] == identity["task_manifest_sha256"]
+        and attestation_request["candidate_head"] == expected_candidate_head
+        and attestation_request["manifest_sha256"] == identity["task_manifest_sha256"]
         and receipt.get("expected_test_ids") == [selector]
         and receipt.get("executed_test_ids") == [selector]
         and receipt.get("skipped_test_ids") == []
