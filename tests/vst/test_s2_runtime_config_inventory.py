@@ -30,10 +30,13 @@ EXPECTED_APPLIER_SHA256 = WORKTREE_APPLIER_SHA256
 WORKTREE_VALIDATOR_SHA256 = hashlib.sha256(Path(inventory.__file__).read_bytes()).hexdigest()
 WORKTREE_CONTRACTS_SHA256 = hashlib.sha256(
     (inventory.REPO / "tools/vst/contracts.py").read_bytes()).hexdigest()
-EXPECTED_PREVIOUS_CONFIG_HEAD = "7d1d16f6348e6c00a5a568b5cfbc8caf309194b9"
-EXPECTED_PREVIOUS_BUNDLE_SHA256 = "388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45"
-EXPECTED_PREVIOUS_FINGERPRINTS_SHA256 = "e116dd237401d0f89d3ac706a883e19f53bda0bdba5f853afc153f3fc5eac095"
+EXPECTED_PREVIOUS_CONFIG_HEAD = "e42c82ff297902991b9b6e1aa322f44ca08bffb9"
+EXPECTED_PREVIOUS_BUNDLE_SHA256 = "8f487494a1a6bc08c0ce567075a32945ca0c1a22c5ec03e7213ac3e2f4466741"
+EXPECTED_PREVIOUS_FINGERPRINTS_SHA256 = "bee5cf8066e94e316b0fc1e3aef538e276716f2bdf3b6abf90e3e822d37cae6d"
 EXPECTED_CONSUMED_IDENTITIES = (
+    ("ba3faaadb50447b79df509619b6ee010",
+     "s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e",
+     "1fd3cb4e69e54bc6aa5e63458ae82818"),
     ("e520e04f58ad5e6a431a3a20b0efb87c",
      "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910",
      "0aac24fec9a2a5c53c5e9da21cbb4a42"),
@@ -46,6 +49,11 @@ EXPECTED_CONSUMED_IDENTITIES = (
     ("c63842aefcf74f57af70a1b2f93b8271",
      "s2-runtime-20261030-8102de64e7b4472ca2b5d2d56ed48510",
      "5f5820a7cfc348cfa89de31af6c6d1a7"),
+)
+EXPECTED_FRESH_IDENTITY = (
+    "f4adc20007b44d6b8a4580ef6a2d1ed4",
+    "s2-runtime-20261105-cbd53635c3eb47bfbf7a7e594399cdd7",
+    "cd7f47554f384611a89328af6d1d87e0",
 )
 try:
     COMMITTED_VALIDATOR_MATCHES_WORKTREE = (
@@ -64,11 +72,11 @@ except inventory.InventoryError:
 @pytest.fixture(scope="module")
 def baseline_fingerprints() -> dict[str, dict[str, object]]:
     fingerprints = inventory._previous_installed_fingerprints()
-    assert len(fingerprints) == 26
+    assert len(fingerprints) == 27
     return fingerprints
 
 
-def test_consumed_predecessor_pins_all_26_installed_fingerprints(
+def test_consumed_predecessor_pins_all_27_installed_fingerprints_and_guard_pair(
         baseline_fingerprints) -> None:
     assert inventory.PREVIOUS_CONFIG_HEAD == EXPECTED_PREVIOUS_CONFIG_HEAD
     assert inventory.PREVIOUS_BUNDLE_SHA256 == EXPECTED_PREVIOUS_BUNDLE_SHA256
@@ -82,10 +90,18 @@ def test_consumed_predecessor_pins_all_26_installed_fingerprints(
         baseline_fingerprints, sort_keys=True, separators=(",", ":")).encode("utf-8")
     assert hashlib.sha256(canonical_fingerprints).hexdigest() == (
         EXPECTED_PREVIOUS_FINGERPRINTS_SHA256)
+    assert inventory.TASK_GUARD_DESTINATIONS <= set(baseline_fingerprints)
+    for destination in inventory.TASK_GUARD_DESTINATIONS:
+        guard = baseline_fingerprints[destination]
+        assert guard == {
+            "state": "file", "uid": 0, "gid": 0, "mode": 0o644,
+            "size": 93,
+            "sha256": "05e12ed07359a8ec83b161dda0d79ac4f15c27c366e75f1e5beefa9c76fafb37",
+        }
     bootstrap = baseline_fingerprints["/etc/vst-runner/bootstrap-request.json"]
     assert bootstrap["size"] == 4104
     assert bootstrap["sha256"] == (
-        "df0d5701e6a356d43224208cd9a099183e12404967f5133838bd978e0b7834c1")
+        "b20b4ef9584fe41b929038f65deeec2acc471249382d25f4da99f924f4600789")
 
 
 @pytest.fixture(autouse=True)
@@ -120,28 +136,12 @@ def valid_inventory(baseline_fingerprints) -> dict[str, object]:
     )
     candidate_destinations = {item["destination"] for item in candidate_entries}
     assert len(candidate_entries) == len(candidate_destinations) == 27
-    absent_recovery_guard_destinations = {
-        "/etc/systemd/system/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf",
-        "/etc/systemd/system/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf",
-    }
-    added_destinations = candidate_destinations - set(baseline_fingerprints)
-    assert added_destinations == absent_recovery_guard_destinations
-    existing_destinations = candidate_destinations - absent_recovery_guard_destinations
-    assert existing_destinations <= set(baseline_fingerprints)
+    assert candidate_destinations == set(baseline_fingerprints)
     configuration_files = {
         destination: {**fingerprint, "state": "PRESENT", "kind": "regular",
                       "mode": f"{fingerprint['mode']:04o}"}
         for destination, fingerprint in copy.deepcopy(baseline_fingerprints).items()
-        if destination in existing_destinations
     }
-    configuration_files.update({
-        destination: {"state": "ABSENT", "kind": "absent"}
-        for destination in absent_recovery_guard_destinations
-    })
-    assert {
-        destination for destination, observed in configuration_files.items()
-        if observed["state"] == "ABSENT"
-    } == absent_recovery_guard_destinations
     return {
         "schema": inventory.INVENTORY_SCHEMA,
         "source_head": inventory.SOURCE_HEAD,
@@ -197,15 +197,19 @@ def valid_inventory(baseline_fingerprints) -> dict[str, object]:
     }
 
 
-def test_candidate_inventory_marks_only_the_two_new_recovery_guards_absent(valid_inventory):
-    absent_destinations = {
-        destination for destination, observed in valid_inventory["configuration_files"].items()
-        if observed["state"] == "ABSENT"
-    }
-    assert absent_destinations == {
-        "/etc/systemd/system/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf",
-        "/etc/systemd/system/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf",
-    }
+def test_candidate_inventory_preserves_exact_27_destinations_and_installed_guard_pair(
+        valid_inventory, baseline_fingerprints):
+    files = valid_inventory["configuration_files"]
+    assert len(files) == 27
+    assert set(files) == set(baseline_fingerprints)
+    assert all(value["state"] == "PRESENT" for value in files.values())
+    for destination in inventory.TASK_GUARD_DESTINATIONS:
+        observed = files[destination]
+        pinned = baseline_fingerprints[destination]
+        assert observed == {
+            **pinned, "state": "PRESENT", "kind": "regular",
+            "mode": f"{pinned['mode']:04o}",
+        }
     assert len(valid_inventory["configuration_files"]) == 27
 
 
@@ -215,56 +219,12 @@ def _validate(value: dict[str, object]):
         expected_capture_sha256=EXPECTED_CAPTURE_SHA256, now=NOW)
 
 
-def _prepared_recovery_guard_fingerprints() -> dict[str, dict[str, object]]:
-    layout = json.loads(inventory._git_blob(
-        EXPECTED_REPO_HEAD, "docs/sdlc/runtime-config/installation-layout.json"))
-    guards = {}
-    for item in layout["unit_overrides"]:
-        destination = item["destination"]
-        if destination not in inventory.TASK_GUARD_DESTINATIONS:
-            continue
-        raw = inventory._git_blob(
-            EXPECTED_REPO_HEAD, "docs/sdlc/runtime-config/" + item["source"])
-        mode = int(item["mode"], 8) if isinstance(item["mode"], str) else item["mode"]
-        guards[destination] = {
-            "state": "PRESENT", "kind": "regular", "uid": item["uid"],
-            "gid": item["gid"], "mode": f"{mode:04o}", "size": len(raw),
-            "sha256": hashlib.sha256(raw).hexdigest(),
-        }
-    assert set(guards) == inventory.TASK_GUARD_DESTINATIONS
-    return guards
-
-
-def _set_prepared_recovery_guards(value: dict[str, object], *, present: set[str]) -> None:
-    files = value["configuration_files"]
-    assert isinstance(files, dict)
-    prepared = _prepared_recovery_guard_fingerprints()
-    for destination in inventory.TASK_GUARD_DESTINATIONS:
-        files[destination] = (copy.deepcopy(prepared[destination]) if destination in present
-                              else {"state": "ABSENT", "kind": "absent"})
-
-
-@pytest.mark.parametrize("present", [
-    set(),
-    set(inventory.TASK_GUARD_DESTINATIONS),
-    {next(iter(inventory.TASK_GUARD_DESTINATIONS))},
-], ids=["both-absent", "both-exact", "mixed-exact-and-absent"])
-def test_inventory_accepts_only_absent_or_exact_prepared_recovery_guards(valid_inventory, present):
-    _set_prepared_recovery_guards(valid_inventory, present=present)
-
-    result = _validate(valid_inventory)
-
-    assert result["configuration_destination_count"] == 27
-
-
 @pytest.mark.parametrize("mutation", [
     "hash", "size", "uid", "gid", "mode", "kind", "symlink", "unknown-presence",
 ], ids=["altered-hash", "altered-size", "altered-owner", "altered-group",
        "altered-mode", "wrong-kind", "symlink", "unknown-presence"])
-def test_inventory_rejects_mixed_pair_when_prepared_guard_is_not_exact(
+def test_inventory_rejects_altered_guard_fingerprint(
         valid_inventory, mutation):
-    present = set(inventory.TASK_GUARD_DESTINATIONS)
-    _set_prepared_recovery_guards(valid_inventory, present=present)
     destination = next(iter(inventory.TASK_GUARD_DESTINATIONS))
     guard = valid_inventory["configuration_files"][destination]
     if mutation == "hash":
@@ -289,47 +249,27 @@ def test_inventory_rejects_mixed_pair_when_prepared_guard_is_not_exact(
         _validate(valid_inventory)
 
 
-def test_inventory_refuses_guard_member_that_differs_from_bundle_pin(valid_inventory, monkeypatch):
-    layout = json.loads(inventory._git_blob(
-        EXPECTED_REPO_HEAD, "docs/sdlc/runtime-config/installation-layout.json"))
-    guard = next(item for item in layout["unit_overrides"]
-                 if item["destination"] in inventory.TASK_GUARD_DESTINATIONS)
-    guard_source = "docs/sdlc/runtime-config/" + guard["source"]
-    read_candidate = inventory._git_blob
-
-    def tampered_guard_member(commit: str, relative_path: str) -> bytes:
-        raw = read_candidate(commit, relative_path)
-        return raw + b"# tampered after candidate pin\n" if relative_path == guard_source else raw
-
-    monkeypatch.setattr(inventory, "_git_blob", tampered_guard_member)
-
-    with pytest.raises(inventory.InventoryError):
-        _validate(valid_inventory)
-
-
-def test_inventory_refuses_unsafe_pinned_guard_source_path(valid_inventory, monkeypatch):
-    bundle_dir = inventory.REPO / "docs/sdlc/runtime-config"
-    bundle = json.loads((bundle_dir / "bundle-manifest.json").read_bytes())
-    layout = json.loads((bundle_dir / "installation-layout.json").read_bytes())
-    guard = next(item for item in layout["unit_overrides"]
-                 if item["destination"] in inventory.TASK_GUARD_DESTINATIONS)
-    guard["source"] = "../untrusted-recovery-guard.conf"
-    layout_raw = (json.dumps(layout, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
-    layout_record = next(item for item in bundle["files"]
-                         if item["path"] == "installation-layout.json")
-    layout_record["size"] = len(layout_raw)
-    layout_record["sha256"] = hashlib.sha256(layout_raw).hexdigest()
-    bundle_raw = (json.dumps(bundle, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
-    bundle_digest = hashlib.sha256(bundle_raw).hexdigest()
-    layout_digest = hashlib.sha256(layout_raw).hexdigest()
-    monkeypatch.setattr(inventory, "CANDIDATE_BUNDLE_SHA256", bundle_digest)
-    monkeypatch.setattr(inventory, "CANDIDATE_LAYOUT_SHA256", layout_digest)
-    valid_inventory["source_identity"]["bundle_manifest_sha256"] = bundle_digest
-    valid_inventory["source_identity"]["installation_layout_sha256"] = layout_digest
-    _use_candidate_config_blobs(monkeypatch, {
-        "bundle-manifest.json": bundle_raw,
-        "installation-layout.json": layout_raw,
-    })
+@pytest.mark.parametrize("destination", sorted(inventory.TASK_GUARD_DESTINATIONS),
+                         ids=["dispatcher-guard", "runner-guard"])
+@pytest.mark.parametrize("mutation", ["absent", "hash", "size", "uid", "gid", "mode"],
+                         ids=["absent", "hash", "size", "uid", "gid", "mode"])
+def test_inventory_refuses_absent_or_tampered_consumed_guard(
+        valid_inventory, destination, mutation):
+    guard = valid_inventory["configuration_files"][destination]
+    if mutation == "absent":
+        valid_inventory["configuration_files"][destination] = {
+            "state": "ABSENT", "kind": "absent",
+        }
+    elif mutation == "hash":
+        guard["sha256"] = "0" * 64
+    elif mutation == "size":
+        guard["size"] += 1
+    elif mutation == "uid":
+        guard["uid"] += 1
+    elif mutation == "gid":
+        guard["gid"] += 1
+    else:
+        guard["mode"] = "0600"
 
     with pytest.raises(inventory.InventoryError):
         _validate(valid_inventory)
@@ -410,11 +350,6 @@ def _candidate_identity_overrides(mutation: str) -> dict[str, bytes]:
 
 
 def test_candidate_config_identity_and_bundle_pins_match_exact_inputs(monkeypatch) -> None:
-    consumed_identity = {
-        "run_id": "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910",
-        "request_id": "e520e04f58ad5e6a431a3a20b0efb87c",
-        "nonce": "0aac24fec9a2a5c53c5e9da21cbb4a42",
-    }
     candidate_identity = {
         "run_id": collector.RUN_ID,
         "request_id": collector.REQUEST_ID,
@@ -425,14 +360,21 @@ def test_candidate_config_identity_and_bundle_pins_match_exact_inputs(monkeypatc
         "request_id": inventory.REQUEST_ID,
         "nonce": inventory.NONCE,
     }
+    assert (candidate_identity["request_id"], candidate_identity["run_id"],
+            candidate_identity["nonce"]) == EXPECTED_FRESH_IDENTITY
     assert len(set(candidate_identity.values())) == len(candidate_identity)
-    assert set(candidate_identity.values()).isdisjoint(consumed_identity.values())
+    consumed_requests = {identity[0] for identity in EXPECTED_CONSUMED_IDENTITIES}
+    consumed_runs = {identity[1] for identity in EXPECTED_CONSUMED_IDENTITIES}
+    consumed_nonces = {identity[2] for identity in EXPECTED_CONSUMED_IDENTITIES}
+    assert candidate_identity["request_id"] not in consumed_requests
+    assert candidate_identity["run_id"] not in consumed_runs
+    assert candidate_identity["nonce"] not in consumed_nonces
 
     bundle_dir = inventory.REPO / "docs/sdlc/runtime-config"
     identity_inputs = {
         "bootstrap-request.json", "network-profile.json", "run-binding.json",
         "supervisor-service.json", "task-manifest.json",
-        "assignment-delegation-policy.json",
+        "assignment-delegation-policy.json", "deployment-source-manifest.json",
     }
     bundle_raw = (bundle_dir / "bundle-manifest.json").read_bytes()
     bundle = json.loads(bundle_raw)
@@ -445,8 +387,6 @@ def test_candidate_config_identity_and_bundle_pins_match_exact_inputs(monkeypatc
     input_values = {
         name: json.loads((bundle_dir / name).read_bytes()) for name in identity_inputs
     }
-    input_values["deployment-source-manifest.json"] = json.loads(
-        (bundle_dir / "deployment-source-manifest.json").read_bytes())
     assert input_values["bootstrap-request.json"]["request_id"] == collector.REQUEST_ID
     assert input_values["bootstrap-request.json"]["run_id"] == collector.RUN_ID
     assert input_values["network-profile.json"]["environment_id"] == (
@@ -501,6 +441,58 @@ def test_candidate_config_identity_and_bundle_pins_match_exact_inputs(monkeypatc
     inventory._validate_candidate_identity(EXPECTED_REPO_HEAD)
 
 
+def test_fresh_binding_changes_only_bootstrap_and_supervisor_installed_bytes(monkeypatch):
+    _use_candidate_config_blobs(monkeypatch)
+
+    def pinned_json(commit: str, name: str) -> dict[str, object]:
+        return json.loads(inventory._git_blob(
+            commit, "docs/sdlc/runtime-config/" + name))
+
+    previous_bundle = pinned_json(inventory.PREVIOUS_CONFIG_HEAD, "bundle-manifest.json")
+    previous_layout = pinned_json(inventory.PREVIOUS_CONFIG_HEAD, "installation-layout.json")
+    candidate_bundle = pinned_json(EXPECTED_REPO_HEAD, "bundle-manifest.json")
+    candidate_layout = pinned_json(EXPECTED_REPO_HEAD, "installation-layout.json")
+    previous_entries = (previous_bundle["configuration_installation"]
+                        + previous_layout["unit_overrides"]
+                        + [item for item in previous_bundle["units"]
+                           if item["publication"].startswith("new absent-only configuration unit")])
+    candidate_entries = (candidate_bundle["configuration_installation"]
+                         + candidate_layout["unit_overrides"]
+                         + [item for item in candidate_bundle["units"]
+                            if item["publication"].startswith("new absent-only configuration unit")])
+    previous_sources = {item["destination"]: item["source"] for item in previous_entries}
+    candidate_sources = {item["destination"]: item["source"] for item in candidate_entries}
+
+    assert len(previous_sources) == len(candidate_sources) == 27
+    assert candidate_sources == previous_sources
+    changed_destinations = {
+        destination for destination, source in candidate_sources.items()
+        if inventory._git_blob(EXPECTED_REPO_HEAD, "docs/sdlc/runtime-config/" + source)
+        != inventory._git_blob(inventory.PREVIOUS_CONFIG_HEAD,
+                               "docs/sdlc/runtime-config/" + previous_sources[destination])
+    }
+    assert changed_destinations == {
+        "/etc/vst-runner/bootstrap-request.json",
+        "/etc/vst-runner/network-profile.json",
+        "/etc/vst-runner/supervisor-service.json",
+    }, changed_destinations
+
+    assert previous_layout == candidate_layout
+    assert previous_bundle["task_source_head"] == candidate_bundle["task_source_head"]
+    assert previous_bundle["task_manifest_sha256"] == candidate_bundle["task_manifest_sha256"]
+    assert previous_bundle["source_head"] == candidate_bundle["source_head"]
+    assert previous_bundle["runtime_source_head"] == candidate_bundle["runtime_source_head"]
+    for relative in (
+        "task-manifest.json", "deployment-source-manifest.json", "public-material.json",
+        "dispatch-instruction-public.pem", "execution-grant-public.pem",
+        "reviewer-registry.json", "reviewer-registry-record.json",
+    ):
+        assert inventory._git_blob(EXPECTED_REPO_HEAD,
+                                   "docs/sdlc/runtime-config/" + relative) == inventory._git_blob(
+                                       inventory.PREVIOUS_CONFIG_HEAD,
+                                       "docs/sdlc/runtime-config/" + relative), relative
+
+
 @pytest.mark.parametrize("mismatch", ["member", "identity", "consumed_reuse"])
 def test_candidate_identity_rejects_member_or_identity_mismatch(monkeypatch, mismatch) -> None:
     _use_candidate_config_blobs(monkeypatch)
@@ -523,6 +515,75 @@ def test_candidate_identity_rejects_member_or_identity_mismatch(monkeypatch, mis
 
     with pytest.raises(inventory.InventoryError, match=expected_error):
         inventory._validate_candidate_identity(EXPECTED_REPO_HEAD)
+
+
+def test_candidate_identity_rejects_layout_change_under_exact_bundle_pin(monkeypatch):
+    bundle_dir = inventory.REPO / "docs/sdlc/runtime-config"
+    bundle = json.loads((bundle_dir / "bundle-manifest.json").read_bytes())
+    layout = json.loads((bundle_dir / "installation-layout.json").read_bytes())
+    guard = next(item for item in layout["unit_overrides"]
+                 if item["destination"] in inventory.TASK_GUARD_DESTINATIONS)
+    guard["source"] = "../untrusted-recovery-guard.conf"
+    layout_raw = (json.dumps(layout, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    layout_record = next(item for item in bundle["files"]
+                         if item["path"] == "installation-layout.json")
+    layout_record["size"] = len(layout_raw)
+    layout_record["sha256"] = hashlib.sha256(layout_raw).hexdigest()
+    bundle_raw = (json.dumps(bundle, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    _use_candidate_config_blobs(monkeypatch, {
+        "bundle-manifest.json": bundle_raw,
+        "installation-layout.json": layout_raw,
+    })
+
+    with pytest.raises(inventory.InventoryError,
+                       match="candidate bundle differs from its exact SHA-256 pin"):
+        inventory._validate_candidate_identity(EXPECTED_REPO_HEAD)
+
+
+def test_inventory_refuses_guard_member_that_differs_from_bundle_pin(valid_inventory, monkeypatch):
+    layout = json.loads(inventory._git_blob(
+        EXPECTED_REPO_HEAD, "docs/sdlc/runtime-config/installation-layout.json"))
+    guard = next(item for item in layout["unit_overrides"]
+                 if item["destination"] in inventory.TASK_GUARD_DESTINATIONS)
+    guard_source = "docs/sdlc/runtime-config/" + guard["source"]
+    read_candidate = inventory._git_blob
+
+    def tampered_guard_member(commit: str, relative_path: str) -> bytes:
+        raw = read_candidate(commit, relative_path)
+        return raw + b"# tampered after candidate pin\n" if relative_path == guard_source else raw
+
+    monkeypatch.setattr(inventory, "_git_blob", tampered_guard_member)
+
+    with pytest.raises(inventory.InventoryError):
+        _validate(valid_inventory)
+
+
+def test_inventory_refuses_unsafe_pinned_guard_source_path(valid_inventory, monkeypatch):
+    bundle_dir = inventory.REPO / "docs/sdlc/runtime-config"
+    bundle = json.loads((bundle_dir / "bundle-manifest.json").read_bytes())
+    layout = json.loads((bundle_dir / "installation-layout.json").read_bytes())
+    guard = next(item for item in layout["unit_overrides"]
+                 if item["destination"] in inventory.TASK_GUARD_DESTINATIONS)
+    guard["source"] = "../untrusted-recovery-guard.conf"
+    layout_raw = (json.dumps(layout, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    layout_record = next(item for item in bundle["files"]
+                         if item["path"] == "installation-layout.json")
+    layout_record["size"] = len(layout_raw)
+    layout_record["sha256"] = hashlib.sha256(layout_raw).hexdigest()
+    bundle_raw = (json.dumps(bundle, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    bundle_digest = hashlib.sha256(bundle_raw).hexdigest()
+    layout_digest = hashlib.sha256(layout_raw).hexdigest()
+    monkeypatch.setattr(inventory, "CANDIDATE_BUNDLE_SHA256", bundle_digest)
+    monkeypatch.setattr(inventory, "CANDIDATE_LAYOUT_SHA256", layout_digest)
+    valid_inventory["source_identity"]["bundle_manifest_sha256"] = bundle_digest
+    valid_inventory["source_identity"]["installation_layout_sha256"] = layout_digest
+    _use_candidate_config_blobs(monkeypatch, {
+        "bundle-manifest.json": bundle_raw,
+        "installation-layout.json": layout_raw,
+    })
+
+    with pytest.raises(inventory.InventoryError):
+        _validate(valid_inventory)
 
 
 @pytest.mark.parametrize("mutation", [
@@ -709,12 +770,8 @@ def test_pinned_baseline_rejects_mismatched_consumed_identity(monkeypatch) -> No
         _load_pinned_baseline_fingerprints()
 
 
-@pytest.mark.parametrize("prepared_guard_pair", [False, True], ids=["absent", "exact-prepared-pair"])
 def test_apply_payload_preserves_validated_canonical_octal_mode(
-        valid_inventory, tmp_path, monkeypatch, prepared_guard_pair) -> None:
-    if prepared_guard_pair:
-        _set_prepared_recovery_guards(
-            valid_inventory, present=set(inventory.TASK_GUARD_DESTINATIONS))
+        valid_inventory, tmp_path, monkeypatch) -> None:
     _validate(valid_inventory)
     committed_git_blob = applier._git_blob
 
@@ -762,12 +819,52 @@ def test_apply_payload_preserves_validated_canonical_octal_mode(
     payload_files = payload["files"]
     if isinstance(payload_files, list):
         payload_files = {item["destination"]: item for item in payload_files}
+    assert len(payload_files) == 27
+    changed_payloads = {
+        destination for destination, item in payload_files.items()
+        if item["expected_current"] != item["expected_new"]
+    }
+    assert changed_payloads == {
+        "/etc/vst-runner/bootstrap-request.json",
+        "/etc/vst-runner/network-profile.json",
+        "/etc/vst-runner/supervisor-service.json",
+    }, changed_payloads
     for destination, observed in payload_inventory["configuration_files"].items():
         if observed["state"] == "ABSENT":
             continue
         assert observed["state"] == "PRESENT" and observed["kind"] == "regular"
         parsed_mode = int(observed["mode"], 8)
         assert parsed_mode == payload_files[destination]["expected_current"]["mode"]
+        content = base64.b64decode(payload_files[destination]["content_b64"], validate=True)
+        assert len(content) == payload_files[destination]["expected_new"]["size"]
+        assert hashlib.sha256(content).hexdigest() == payload_files[destination]["expected_new"]["sha256"]
+
+
+def test_apply_payload_rejects_guard_source_bytes_outside_bundle_pin(
+        valid_inventory, tmp_path, monkeypatch):
+    valid_inventory["captured_utc"] = datetime.now(timezone.utc).isoformat()
+    raw_inventory = json.dumps(valid_inventory, sort_keys=True, separators=(",", ":")).encode()
+    inventory_path = tmp_path / "runtime-inventory.json"
+    inventory_path.write_bytes(raw_inventory)
+    layout = json.loads((inventory.REPO / "docs/sdlc/runtime-config/installation-layout.json").read_bytes())
+    guard = next(item for item in layout["unit_overrides"]
+                 if item["destination"] in inventory.TASK_GUARD_DESTINATIONS)
+    guard_blob_path = "docs/sdlc/runtime-config/" + guard["source"]
+    original_git_blob = applier._git_blob
+
+    def candidate_blob_with_tampered_guard(commit: str, relative_path: str) -> bytes:
+        if relative_path == guard_blob_path:
+            return original_git_blob(commit, relative_path) + b"# altered after bundle pin\n"
+        if relative_path.startswith("docs/sdlc/runtime-config/"):
+            return (inventory.REPO / relative_path).read_bytes()
+        return original_git_blob(commit, relative_path)
+
+    monkeypatch.setattr(applier, "_git_blob", candidate_blob_with_tampered_guard)
+    monkeypatch.setattr(applier, "_validate_deployment_commit", lambda _commit: None)
+
+    with pytest.raises(ValueError, match="configuration source differs from the pinned bundle"):
+        applier.build_payload(
+            inventory_path, hashlib.sha256(raw_inventory).hexdigest(), EXPECTED_REPO_HEAD)
 
 
 def test_apply_payload_rejects_validator_blob_that_differs_from_worktree(

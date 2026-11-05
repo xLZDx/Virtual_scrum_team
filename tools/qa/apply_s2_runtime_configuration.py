@@ -58,7 +58,7 @@ def _remote_stdin(source: str, payload: bytes) -> bytes:
 
 
 RUNTIME_SOURCE_HEAD = "ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
-BUNDLE_MANIFEST_SHA256 = "8f487494a1a6bc08c0ce567075a32945ca0c1a22c5ec03e7213ac3e2f4466741"
+BUNDLE_MANIFEST_SHA256 = "4c13f2991f39cf12b84af4b0440621ab1adaa74ca1894dfda29eec1006cd7138"
 INSTALLATION_LAYOUT_SHA256 = "f46e97704a89b5da339701bb71b6e71c4ce846ae96cb4504929869352d0315dd"
 DEPLOYMENT_BRANCH = "s2-canonical-continuation"
 TASK_SOURCE_HEAD = "67361bb4aa23355d9a6bc7877a987ba688559eda"
@@ -423,7 +423,7 @@ def build_payload(
 _REMOTE = r'''import base64, fcntl, hashlib, json, os, platform, re, stat, subprocess, sys, tempfile, uuid
 from datetime import datetime, timezone
 
-BUNDLE_SHA256 = "8f487494a1a6bc08c0ce567075a32945ca0c1a22c5ec03e7213ac3e2f4466741"
+BUNDLE_SHA256 = "4c13f2991f39cf12b84af4b0440621ab1adaa74ca1894dfda29eec1006cd7138"
 LAYOUT_SHA256 = "f46e97704a89b5da339701bb71b6e71c4ce846ae96cb4504929869352d0315dd"
 SOURCE_HEAD = "ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
 TASK_HEAD = "67361bb4aa23355d9a6bc7877a987ba688559eda"

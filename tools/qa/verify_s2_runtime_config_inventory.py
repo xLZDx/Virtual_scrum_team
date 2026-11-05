@@ -20,12 +20,12 @@ from tools.vst.contracts import ContractError, manifest_sha256, validate_task_ma
 
 INVENTORY_SCHEMA = "VST_S2_RUNTIME_CONFIG_TARGET_INVENTORY_V1"
 SOURCE_HEAD = "ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
-PREVIOUS_SOURCE_HEAD = "80c2b81deac364ed6466600fd46af47aafe805e2"
+PREVIOUS_SOURCE_HEAD = "ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
 IMPLEMENTATION_HEAD = "16549bb8f10113b2f05f41b3aa390bad80dab97e"
-PREVIOUS_CONFIG_HEAD = "7d1d16f6348e6c00a5a568b5cfbc8caf309194b9"
-PREVIOUS_BUNDLE_SHA256 = "388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45"
-PREVIOUS_LAYOUT_SHA256 = "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19"
-CANDIDATE_BUNDLE_SHA256 = "8f487494a1a6bc08c0ce567075a32945ca0c1a22c5ec03e7213ac3e2f4466741"
+PREVIOUS_CONFIG_HEAD = "e42c82ff297902991b9b6e1aa322f44ca08bffb9"
+PREVIOUS_BUNDLE_SHA256 = "8f487494a1a6bc08c0ce567075a32945ca0c1a22c5ec03e7213ac3e2f4466741"
+PREVIOUS_LAYOUT_SHA256 = "f46e97704a89b5da339701bb71b6e71c4ce846ae96cb4504929869352d0315dd"
+CANDIDATE_BUNDLE_SHA256 = "4c13f2991f39cf12b84af4b0440621ab1adaa74ca1894dfda29eec1006cd7138"
 CANDIDATE_LAYOUT_SHA256 = "f46e97704a89b5da339701bb71b6e71c4ce846ae96cb4504929869352d0315dd"
 TASK_SOURCE_HEAD = "67361bb4aa23355d9a6bc7877a987ba688559eda"
 TASK_SOURCE_TREE = "0c4a8440a38027563d2455024af6b58072fe3b57"
@@ -36,16 +36,19 @@ TASK_GUARD_DESTINATIONS = {
     "/etc/systemd/system/vst-runner.service.d/90-s2-snapshot-recovery-guard.conf",
     "/etc/systemd/system/vst-dispatcher.service.d/90-s2-snapshot-recovery-guard.conf",
 }
-RUN_ID = "s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e"
-REQUEST_ID = "ba3faaadb50447b79df509619b6ee010"
-NONCE = "1fd3cb4e69e54bc6aa5e63458ae82818"
-CONSUMED_RUN_ID = "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910"
-CONSUMED_REQUEST_ID = "e520e04f58ad5e6a431a3a20b0efb87c"
-CONSUMED_NONCE = "0aac24fec9a2a5c53c5e9da21cbb4a42"
+RUN_ID = "s2-runtime-20261105-cbd53635c3eb47bfbf7a7e594399cdd7"
+REQUEST_ID = "f4adc20007b44d6b8a4580ef6a2d1ed4"
+NONCE = "cd7f47554f384611a89328af6d1d87e0"
+CONSUMED_RUN_ID = "s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e"
+CONSUMED_REQUEST_ID = "ba3faaadb50447b79df509619b6ee010"
+CONSUMED_NONCE = "1fd3cb4e69e54bc6aa5e63458ae82818"
 # Keep all one-shot identities observed in the accepted config-history contract. A
 # candidate must never revive an older run/request/nonce just because the immediately
 # previous attempt has since changed.
 HISTORIC_CONSUMED_IDENTITIES = (
+    ("e520e04f58ad5e6a431a3a20b0efb87c",
+     "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910",
+     "0aac24fec9a2a5c53c5e9da21cbb4a42"),
     ("212a23e66ee94a7d87355b11e07e34fe",
      "s2-runtime-20261030-334296bd0779488d837a27e283b50b6a",
      "b57520d076e1acd355d310ed18364907"),
@@ -57,9 +60,9 @@ HISTORIC_CONSUMED_IDENTITIES = (
      "5f5820a7cfc348cfa89de31af6c6d1a7"),
 )
 RUNTIME_PATH = "/opt/vst-runtime-" + SOURCE_HEAD
-BASELINE_RUN_ID = "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910"
-BASELINE_REQUEST_ID = "e520e04f58ad5e6a431a3a20b0efb87c"
-BASELINE_NONCE = "0aac24fec9a2a5c53c5e9da21cbb4a42"
+BASELINE_RUN_ID = "s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e"
+BASELINE_REQUEST_ID = "ba3faaadb50447b79df509619b6ee010"
+BASELINE_NONCE = "1fd3cb4e69e54bc6aa5e63458ae82818"
 UNITS = (
     "vst-assignment-bootstrap.service",
     "vst-dispatch-issuer.service",
@@ -132,8 +135,8 @@ def _previous_installed_fingerprints() -> dict[str, dict[str, Any]]:
     entries = list(bundle["configuration_installation"]) + list(layout["unit_overrides"])
     entries += [item for item in bundle["units"]
                 if item["publication"].startswith("new absent-only configuration unit")]
-    if len(entries) != 26 or len({item["destination"] for item in entries}) != 26:
-        raise InventoryError("consumed-run baseline is not the exact 26-destination set")
+    if len(entries) != 27 or len({item["destination"] for item in entries}) != 27:
+        raise InventoryError("consumed-run baseline is not the exact 27-destination set")
 
     expected: dict[str, dict[str, Any]] = {}
     for item in entries:
@@ -451,38 +454,25 @@ def validate_inventory(
     candidate_destinations = {item["destination"] for item in candidate_entries}
     if len(candidate_entries) != 27 or len(candidate_destinations) != 27:
         raise InventoryError("candidate bundle does not contain the exact 27 destination set")
-    added = candidate_destinations - set(previous)
-    if added != TASK_GUARD_DESTINATIONS:
-        raise InventoryError("candidate adds destinations outside the exact recovery guard pair")
-    guard_fingerprints = {}
-    candidate_records = {record["path"]: record for record in candidate_bundle["files"]}
+    if (candidate_destinations != set(previous)
+            or not TASK_GUARD_DESTINATIONS <= candidate_destinations):
+        raise InventoryError("fresh binding changes the installed 27-destination set or recovery guards")
+    candidate_records = {record.get("path"): record for record in candidate_bundle["files"]
+                         if isinstance(record, dict)}
     for item in candidate_entries:
-        if item["destination"] not in added:
-            continue
         source = item["source"]
-        if not isinstance(source, str) or source.startswith("/") or ".." in Path(source).parts:
-            raise InventoryError("recovery guard has an unsafe bundle source")
+        if (not isinstance(source, str) or "\\" in source
+                or any(part in {"", ".", ".."} for part in source.split("/"))):
+            raise InventoryError("configuration candidate has an unsafe bundle source")
         raw = _git_blob(expected_repo_head, "docs/sdlc/runtime-config/" + source)
         record = candidate_records.get(source)
-        if record is None or len(raw) != record["size"] or _sha(raw) != record["sha256"]:
-            raise InventoryError("recovery guard differs from its pinned bundle member")
-        mode = int(item["mode"], 8) if isinstance(item["mode"], str) else item["mode"]
-        guard_fingerprints[item["destination"]] = {
-            "state": "file", "uid": item["uid"], "gid": item["gid"], "mode": mode,
-            "size": len(raw), "sha256": _sha(raw),
-        }
-    expected = {path: previous[path] if path in previous else {"state": "absent"}
-                for path in candidate_destinations}
+        if (not isinstance(record, dict) or type(record.get("size")) is not int
+                or record["size"] != len(raw) or record.get("sha256") != _sha(raw)):
+            raise InventoryError("configuration candidate differs from its pinned bundle member: " + source)
+    expected = previous
     if not isinstance(files, dict) or set(files) != set(expected):
         raise InventoryError("inventory must contain exactly all 27 configured destinations")
     for destination, expected_fingerprint in expected.items():
-        if expected_fingerprint == {"state": "absent"}:
-            actual = files[destination]
-            if actual == {"state": "ABSENT", "kind": "absent"}:
-                continue
-            if _regular_file_fingerprint(actual, destination) != guard_fingerprints[destination]:
-                raise InventoryError("recovery guard is neither absent nor the exact prepared file: " + destination)
-            continue
         actual = _regular_file_fingerprint(files[destination], destination)
         if actual != expected_fingerprint:
             raise InventoryError("installed file differs from consumed-run baseline: " + destination)
