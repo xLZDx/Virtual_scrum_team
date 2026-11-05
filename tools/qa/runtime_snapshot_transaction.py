@@ -69,6 +69,14 @@ RUNTIME_PATHS = {
 TASK_BASE_HEAD = "67361bb4aa23355d9a6bc7877a987ba688559eda"
 MAX_PACK_BYTES = 8 * 1024 * 1024
 MAX_JOURNAL_BYTES = 4 * 1024 * 1024
+RUNNER_FENCE_BOOTSTRAP_COMMIT = "ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
+RUNNER_FENCE_SOURCE_SHA256 = "32c682eddb78747b91e319cee365e2e12c54edda3096316992e5d0fe025d67ab"
+RUNNER_CONTRACTS_SOURCE_SHA256 = "bf01d990a94cd71887f8d9f81019333f3bf43d5950a655de3646e9bb3d585ea4"
+_FENCE_CONFIG = "/etc/vst-runner/fence.json"
+_FENCE_LEDGER = "/var/lib/vst-runner/private/fence-ledger.json"
+_FENCE_GENERATION = "/var/lib/vst-runner/generation.json"
+_STORE_PATH = "/var/lib/vst-runner/private/store.sqlite3"
+_ROLE_UNITS = ("vst-runner.service", "vst-dispatcher.service")
 _HEX40 = re.compile(r"^[0-9a-f]{40}$")
 _HEX32 = re.compile(r"^[0-9a-f]{32}$")
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
@@ -77,8 +85,9 @@ _TRANSITIONS = {
     "MARKER_DURABLE": {"FENCING", "RECOVERY_REQUIRED"},
     "FENCING": {"FENCED", "RECOVERY_REQUIRED"},
     "FENCED": {"DISPATCHER_DRAINED", "RECOVERY_REQUIRED"},
-    "DISPATCHER_DRAINED": {"RUNNER_STOPPED_EMPTY", "RECOVERY_REQUIRED"},
+    "DISPATCHER_DRAINED": {"RUNNER_STOPPED_EMPTY", "RUNNER_BOOTSTRAP_EMPTY", "RECOVERY_REQUIRED"},
     "RUNNER_STOPPED_EMPTY": {"EXCHANGED", "RECOVERY_REQUIRED"},
+    "RUNNER_BOOTSTRAP_EMPTY": {"EXCHANGED", "RECOVERY_REQUIRED"},
     "EXCHANGED": {"OLD_RETAINED", "RECOVERY_REQUIRED", "ROLLBACK_EXCHANGED"},
     "OLD_RETAINED": {"TARGET_VERIFIED", "RECOVERY_REQUIRED", "ROLLBACK_EXCHANGED"},
     "TARGET_VERIFIED": {"ACTIVATION_READY", "RECOVERY_REQUIRED", "ROLLBACK_EXCHANGED"},
@@ -338,13 +347,14 @@ def _append_journal(journal_path: str, transaction: dict[str, Any], state: str,
     return record
 
 
-def read_fence_ledger(path: str) -> list[dict[str, Any]]:
+def read_fence_ledger(path: str, *, allow_empty: bool = False) -> list[dict[str, Any]]:
     if path != "/var/lib/vst-runner/private/fence-ledger.json":
         raise SnapshotContractError("Runner fence ledger path differs from the fixed contract")
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     try:
         info = os.fstat(fd)
-        if (not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or info.st_gid != 0
+        if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+                or info.st_uid != 0 or info.st_gid != 0
                 or stat.S_IMODE(info.st_mode) != 0o600 or info.st_size > MAX_JOURNAL_BYTES):
             raise SnapshotContractError("Runner fence ledger has unsafe identity or size")
         raw = bytearray()
@@ -353,8 +363,17 @@ def read_fence_ledger(path: str) -> list[dict[str, Any]]:
             if not part:
                 break
             raw.extend(part)
+        final_info = os.fstat(fd)
+        path_info = os.stat(path, follow_symlinks=False)
+        if ((info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns) !=
+                (final_info.st_dev, final_info.st_ino, final_info.st_size, final_info.st_mtime_ns)
+                or (path_info.st_dev, path_info.st_ino) != (info.st_dev, info.st_ino)
+                or len(raw) != final_info.st_size):
+            raise SnapshotContractError("Runner fence ledger changed during its bounded read")
     finally:
         os.close(fd)
+    if not raw and allow_empty:
+        return []
     if not raw or not raw.endswith(b"\n"):
         raise SnapshotContractError("Runner fence ledger is empty or has a partial tail")
     required = {
@@ -821,16 +840,585 @@ def reconcile_snapshot_paths(transaction: dict[str, Any]) -> dict[str, Any]:
             "old_location": found["old"][0], "candidate_location": found["candidate"][0]}
 
 
+def _read_root_json(path: str, *, mode: int, limit: int = 4 * 1024 * 1024
+                    ) -> tuple[dict[str, Any], bytes]:
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        info = os.fstat(fd)
+        if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+                or info.st_uid != 0 or info.st_gid != 0
+                or stat.S_IMODE(info.st_mode) != mode or info.st_size > limit):
+            raise SnapshotContractError("bootstrap metadata has unsafe identity, mode, or size")
+        raw = bytearray()
+        while len(raw) <= limit:
+            part = os.read(fd, min(65536, limit + 1 - len(raw)))
+            if not part:
+                break
+            raw.extend(part)
+    finally:
+        os.close(fd)
+    if len(raw) > limit:
+        raise SnapshotContractError("bootstrap metadata exceeds its bounded read")
+    return _unique_json(bytes(raw)), bytes(raw)
+
+
+def _verify_root_directory_chain(path: str) -> None:
+    if not os.path.isabs(path) or os.path.normpath(path) != path:
+        raise SnapshotContractError("privileged metadata parent is not a normalized absolute path")
+    current = "/"
+    for part in (path.strip("/").split("/") if path != "/" else ()):
+        current = os.path.join(current, part)
+        info = os.lstat(current)
+        if (not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode)
+                or info.st_uid != 0 or info.st_gid != 0
+                or stat.S_IMODE(info.st_mode) & 0o022):
+            raise SnapshotContractError("privileged metadata parent path is not root-controlled")
+
+
+def _bootstrap_cgroup(path: str) -> dict[str, Any]:
+    expected = {
+        "/sys/fs/cgroup/system.slice/vst-runner.service": "vst-runner.service",
+        "/sys/fs/cgroup/system.slice/vst-dispatcher.service": "vst-dispatcher.service",
+    }
+    if path not in expected:
+        raise SnapshotContractError("protected cgroup path differs from the fixed unit inventory")
+    root_fd = os.open("/sys/fs/cgroup", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    slice_fd = target_fd = -1
+    try:
+        root_info = os.fstat(root_fd)
+        if not stat.S_ISDIR(root_info.st_mode) or root_info.st_uid != 0 or root_info.st_gid != 0:
+            raise SnapshotContractError("cgroup v2 root is not root-controlled")
+        slice_fd = os.open("system.slice", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                           dir_fd=root_fd)
+        slice_info = os.fstat(slice_fd)
+        if not stat.S_ISDIR(slice_info.st_mode) or slice_info.st_uid != 0 or slice_info.st_gid != 0:
+            raise SnapshotContractError("system.slice cgroup directory is not root-controlled")
+        try:
+            target_fd = os.open(expected[path], os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                dir_fd=slice_fd)
+        except FileNotFoundError:
+            return {"state": "absent"}
+        info = os.fstat(target_fd)
+        if not stat.S_ISDIR(info.st_mode) or info.st_uid != 0 or info.st_gid != 0:
+            raise SnapshotContractError("protected cgroup directory is not root-owned")
+        events_fd = os.open("cgroup.events", os.O_RDONLY | os.O_NOFOLLOW, dir_fd=target_fd)
+        try:
+            events_info = os.fstat(events_fd)
+            if not stat.S_ISREG(events_info.st_mode):
+                raise SnapshotContractError("cgroup.events is not a regular pseudo-file")
+            events_raw = os.read(events_fd, 4096).decode("ascii")
+        finally:
+            os.close(events_fd)
+        procs_fd = os.open("cgroup.procs", os.O_RDONLY | os.O_NOFOLLOW, dir_fd=target_fd)
+        try:
+            procs_info = os.fstat(procs_fd)
+            if not stat.S_ISREG(procs_info.st_mode):
+                raise SnapshotContractError("cgroup.procs is not a regular pseudo-file")
+            procs_raw = os.read(procs_fd, 1024 * 1024).decode("ascii")
+        finally:
+            os.close(procs_fd)
+        events = dict(line.split() for line in events_raw.splitlines() if line.strip())
+        pids = [line for line in procs_raw.splitlines() if line.strip()]
+        entries = list(os.scandir(target_fd))
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise SnapshotContractError("protected cgroup quiescence cannot be read") from exc
+    finally:
+        if target_fd >= 0:
+            os.close(target_fd)
+        if slice_fd >= 0:
+            os.close(slice_fd)
+        os.close(root_fd)
+    if (events.get("populated") != "0" or pids
+            or any(entry.is_symlink() or entry.is_dir(follow_symlinks=False) for entry in entries)):
+        raise SnapshotContractError("protected cgroup is populated or contains child scopes")
+    return {"state": "empty", "device": info.st_dev, "inode": info.st_ino,
+            "populated": "0", "processes": 0, "children": 0}
+
+
+def _bootstrap_process_counts(role_uids: set[int]) -> dict[str, int]:
+    counts = {str(uid): 0 for uid in role_uids}
+    try:
+        entries = list(os.scandir("/proc"))
+    except OSError as exc:
+        raise SnapshotContractError("process inventory cannot be opened") from exc
+    for entry in entries:
+        if not entry.name.isdecimal():
+            continue
+        try:
+            fd = os.open(os.path.join(entry.path, "status"), os.O_RDONLY | os.O_NOFOLLOW)
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            raise SnapshotContractError("process identity inventory is incomplete") from exc
+        try:
+            info = os.fstat(fd)
+            if not stat.S_ISREG(info.st_mode):
+                raise SnapshotContractError("process status is not a regular proc file")
+            raw = os.read(fd, 65536).decode("ascii")
+        except (OSError, UnicodeError) as exc:
+            raise SnapshotContractError("process identity inventory is unreadable") from exc
+        finally:
+            os.close(fd)
+        uid_line = next((line for line in raw.splitlines() if line.startswith("Uid:")), None)
+        if uid_line is None:
+            raise SnapshotContractError("process status has no UID identity")
+        try:
+            uids = [int(value) for value in uid_line.split()[1:5]]
+        except ValueError as exc:
+            raise SnapshotContractError("process status UID identity is malformed") from exc
+        if len(uids) != 4:
+            raise SnapshotContractError("process status UID identity is incomplete")
+        for uid in set(uids) & role_uids:
+            counts[str(uid)] += 1
+    if any(counts.values()):
+        raise SnapshotContractError("a reserved Runner role identity has live processes")
+    return counts
+
+
+def _validate_bootstrap_record(record: dict[str, Any]) -> None:
+    if (set(record) != {
+            "version", "state", "unit", "invocation_id", "control_group",
+            "cgroup_device", "cgroup_inode", "lock_device", "lock_inode",
+            "generation", "predecessor_outcome", "sequence", "recorded_at",
+            "previous_record_sha256", "record_sha256"}
+            or record.get("version") != 1 or record.get("state") != "BOOTSTRAP_EMPTY"
+            or record.get("unit") != "vst-runner.service"
+            or record.get("invocation_id") != "BOOTSTRAP"
+            or record.get("control_group") != "/system.slice/vst-runner.service"
+            or record.get("generation") != "BOOTSTRAP"
+            or record.get("predecessor_outcome") != "NONE"
+            or type(record.get("sequence")) is not int or record["sequence"] != 1
+            or record.get("previous_record_sha256") != "0" * 64
+            or any(type(record.get(field)) is not int for field in
+                   ("cgroup_device", "cgroup_inode", "lock_device", "lock_inode"))
+            or record.get("lock_device") != -1 or record.get("lock_inode") != -1
+            or ((record.get("cgroup_device") == -1) != (record.get("cgroup_inode") == -1))
+            or record.get("cgroup_device", -1) < -1 or record.get("cgroup_inode", -1) < -1
+            or not isinstance(record.get("recorded_at"), str)
+            or not _HEX64.fullmatch(str(record.get("record_sha256", "")))):
+        raise SnapshotContractError("fence ledger is not an authentic BOOTSTRAP_EMPTY record")
+    body = {key: value for key, value in record.items() if key != "record_sha256"}
+    if hashlib.sha256(_canonical(body)).hexdigest() != record["record_sha256"]:
+        raise SnapshotContractError("BOOTSTRAP_EMPTY record hash is invalid")
+
+
+def observe_bootstrap_predecessor(*, allow_missing_ledger: bool = False,
+                                 allow_candidate_root: bool = False) -> dict[str, Any]:
+    """Read fresh cold-start evidence without changing the Runner lifecycle state."""
+    for parent in ("/etc/vst-runner", "/var/lib/vst-runner/private",
+                   "/var/lib/vst-runner", "/opt"):
+        _verify_root_directory_chain(parent)
+    config, config_raw = _read_root_json(_FENCE_CONFIG, mode=0o600, limit=65536)
+    required = {"unit_name", "systemctl_path", "ledger_path", "runtime_dir", "daemon_uid",
+                "daemon_gid", "dispatcher_uid", "dispatcher_gid", "worker_uid", "worker_gid",
+                "control_group", "generation_record_path"}
+    role_uids = [config.get(name) for name in ("daemon_uid", "dispatcher_uid", "worker_uid")]
+    if (set(config) != required or config.get("unit_name") != "vst-runner.service"
+            or config.get("systemctl_path") != "/usr/bin/systemctl"
+            or config.get("ledger_path") != _FENCE_LEDGER
+            or config.get("generation_record_path") != _FENCE_GENERATION
+            or config.get("control_group") != "/system.slice/vst-runner.service"
+            or any(type(uid) is not int or uid < 1 for uid in role_uids)
+            or len(set(role_uids)) != 3):
+        raise SnapshotContractError("fence configuration does not match the fixed cold-start contract")
+    ledger_absent = False
+    ledger_empty = False
+    try:
+        records = read_fence_ledger(_FENCE_LEDGER, allow_empty=True)
+    except FileNotFoundError:
+        ledger_absent = True
+        records = []
+    ledger_empty = not ledger_absent and not records
+    ledger_identity = None
+    if not ledger_absent:
+        ledger_info = os.lstat(_FENCE_LEDGER)
+        if not stat.S_ISREG(ledger_info.st_mode) or stat.S_ISLNK(ledger_info.st_mode):
+            raise SnapshotContractError("Runner ledger path is not a regular non-link file")
+        ledger_identity = {"device": ledger_info.st_dev, "inode": ledger_info.st_ino}
+    generation_absent = False
+    generation_record: dict[str, Any] | None = None
+    try:
+        generation_record, _generation_raw = _read_root_json(_FENCE_GENERATION, mode=0o644)
+    except FileNotFoundError:
+        generation_absent = True
+    if (ledger_absent or ledger_empty) and not allow_missing_ledger:
+        raise SnapshotContractError("Runner lifecycle ledger is absent or has no authoritative record")
+    if (ledger_absent or ledger_empty) and not generation_absent:
+        raise SnapshotContractError("generation snapshot exists without its authoritative lifecycle ledger")
+    if not ledger_absent and not ledger_empty:
+        if len(records) != 1:
+            raise SnapshotContractError("cold bootstrap accepts only the one-record initial ledger")
+        _validate_bootstrap_record(records[0])
+        if not generation_absent and generation_record != records[0]:
+            raise SnapshotContractError("generation snapshot differs from its authoritative ledger record")
+    store_sidecars = [_STORE_PATH, _STORE_PATH + "-wal", _STORE_PATH + "-shm",
+                      _STORE_PATH + "-journal"]
+    store_states = {}
+    for path in store_sidecars:
+        try:
+            info = os.lstat(path)
+        except FileNotFoundError:
+            store_states[path] = "absent"
+        else:
+            if stat.S_ISLNK(info.st_mode):
+                raise SnapshotContractError("Store metadata path is a symlink")
+            raise SnapshotContractError("Store or SQLite sidecar already exists")
+    units: dict[str, Any] = {}
+    for unit in _ROLE_UNITS:
+        result = subprocess.run(
+            ["/usr/bin/systemctl", "show", unit,
+             "--property=ActiveState", "--property=SubState",
+             "--property=InvocationID", "--property=ControlGroup", "--no-pager"],
+            cwd="/", env={"LC_ALL": "C", "PATH": ""}, stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True,
+            timeout=8, check=False)
+        try:
+            lines = result.stdout.decode("ascii").splitlines()
+        except UnicodeError as exc:
+            raise SnapshotContractError("protected systemd properties are not ASCII") from exc
+        expected_properties = {"ActiveState", "SubState", "InvocationID", "ControlGroup"}
+        values: dict[str, str] = {}
+        for line in lines:
+            key, separator, value = line.partition("=")
+            if not separator or key not in expected_properties or key in values:
+                raise SnapshotContractError("protected systemd properties are malformed or duplicated")
+            values[key] = value
+        if (result.returncode != 0 or values.get("ActiveState") != "inactive"
+                or values.get("SubState") != "dead" or values.get("InvocationID") != ""
+                or values.get("ControlGroup") != "" or set(values) != expected_properties):
+            raise SnapshotContractError("protected systemd unit is not exactly inactive without identity")
+        units[unit] = {"active_state": "inactive", "sub_state": "dead",
+                       "invocation_id": "", "control_group": ""}
+    jobs = subprocess.run(
+        ["/usr/bin/systemctl", "list-jobs", "--no-legend", "--no-pager"],
+        cwd="/", env={"LC_ALL": "C", "PATH": ""}, stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True,
+        timeout=8, check=False)
+    if jobs.returncode != 0:
+        raise SnapshotContractError("systemd job inventory is unavailable")
+    try:
+        job_units = [line.split()[1] for line in jobs.stdout.decode("ascii").splitlines()
+                     if len(line.split()) >= 2]
+    except UnicodeError as exc:
+        raise SnapshotContractError("systemd job inventory is malformed") from exc
+    if set(job_units) & set(_ROLE_UNITS):
+        raise SnapshotContractError("a protected systemd unit has a pending job")
+    cgroups = {
+        "vst-runner.service": _bootstrap_cgroup("/sys/fs/cgroup/system.slice/vst-runner.service"),
+        "vst-dispatcher.service": _bootstrap_cgroup("/sys/fs/cgroup/system.slice/vst-dispatcher.service"),
+    }
+    process_counts = _bootstrap_process_counts(set(role_uids))
+    boot_fd = os.open("/proc/sys/kernel/random/boot_id", os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        boot_id = os.read(boot_fd, 128).decode("ascii").strip()
+    finally:
+        os.close(boot_fd)
+    pid1_fd = os.open("/proc/1/stat", os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        pid1_stat = os.read(pid1_fd, 4096).decode("ascii").strip()
+    finally:
+        os.close(pid1_fd)
+    pid1_tail = pid1_stat.rsplit(")", 1)[-1].split()
+    if len(pid1_tail) < 20 or not _HEX32.fullmatch(boot_id.replace("-", "")):
+        raise SnapshotContractError("kernel boot or PID 1 start-time identity is malformed")
+    repo = os.lstat(TASK_REPOSITORY_ROOT)
+    if (not stat.S_ISDIR(repo.st_mode) or stat.S_ISLNK(repo.st_mode)
+            or repo.st_uid != 0 or repo.st_gid != 0):
+        raise SnapshotContractError("live snapshot root is not a root-owned directory")
+    root_mode = stat.S_IMODE(repo.st_mode)
+    head = _git_output(TASK_REPOSITORY_ROOT, "rev-parse", "--verify", "HEAD")
+    tree = _git_output(TASK_REPOSITORY_ROOT, "rev-parse", "--verify", "HEAD^{tree}")
+    if (head, tree, root_mode) == (
+            EXPECTED_PREDECESSOR_HEAD, "38a0a60b6170d068beb370c62f25b008d246902f", 0o755):
+        root_kind = "predecessor"
+        readonly_git_proof = None
+    elif (head, tree, root_mode) == (TASK_HEAD, TASK_TREE, 0o555):
+        if not allow_candidate_root:
+            raise SnapshotContractError("candidate root is accepted only during explicit cold recovery")
+        root_kind = "candidate"
+        readonly_git_proof = _verify_git_readonly(TASK_REPOSITORY_ROOT)
+    else:
+        raise SnapshotContractError("live root is neither the exact predecessor nor exact readonly candidate")
+    record = records[0] if records else None
+    return {
+        "schema": "VST_RUNNER_COLD_PREDECESSOR_PROOF_V1",
+        "observed_at": datetime.now(timezone.utc).isoformat(),
+        "boot_id": boot_id, "pid1_start_ticks": pid1_tail[19],
+        "fence_config_sha256": hashlib.sha256(config_raw).hexdigest(),
+        "ledger_absent": ledger_absent, "ledger_empty": ledger_empty,
+        "ledger_identity": ledger_identity,
+        "generation_absent": generation_absent,
+        "ledger_record": record,
+        "ledger_record_sha256": None if record is None else record["record_sha256"],
+        "generation_matches_ledger": bool(record is not None and generation_record == record),
+        "role_process_counts": process_counts, "units": units, "cgroups": cgroups,
+        "protected_jobs": [],
+        "store_paths": store_states,
+        "live_root": {"kind": root_kind, "device": repo.st_dev, "inode": repo.st_ino,
+                      "mode": root_mode, "head": head, "tree_sha1": tree,
+                      "readonly_git_proof": readonly_git_proof},
+    }
+
+
+def _cold_proof_current(proof: dict[str, Any], *, allow_missing: bool) -> dict[str, Any]:
+    proof_fields = {"schema", "observed_at", "boot_id", "pid1_start_ticks",
+                    "fence_config_sha256", "ledger_absent", "ledger_empty", "generation_absent",
+                    "ledger_identity", "ledger_record", "ledger_record_sha256", "generation_matches_ledger",
+                    "role_process_counts", "units", "cgroups", "protected_jobs",
+                    "store_paths", "live_root"}
+    if (not isinstance(proof, dict) or set(proof) != proof_fields
+            or proof.get("schema") != "VST_RUNNER_COLD_PREDECESSOR_PROOF_V1"):
+        raise SnapshotContractError("cold-start proof schema is invalid")
+    current = observe_bootstrap_predecessor(
+        allow_missing_ledger=allow_missing,
+        allow_candidate_root=proof.get("live_root", {}).get("kind") == "candidate")
+    for field in proof_fields - {"observed_at"}:
+        if current.get(field) != proof.get(field):
+            raise SnapshotContractError("cold-start proof is stale for field " + field)
+    return current
+
+
+def _journal_masks(transaction: dict[str, Any]) -> dict[str, Any]:
+    records = _read_journal(transaction["journal_path"])
+    masks = next((record.get("runtime_masks") for record in reversed(records)
+                  if isinstance(record.get("runtime_masks"), dict)), None)
+    units = set(_ROLE_UNITS)
+    if not isinstance(masks, dict) or set(masks) != units:
+        raise SnapshotContractError("bootstrap requires both transaction-owned runtime masks")
+    for unit in units:
+        mask = masks[unit]
+        if (not isinstance(mask, dict) or set(mask) != {"device", "inode", "target"}
+                or mask.get("target") != "/dev/null"):
+            raise SnapshotContractError("bootstrap mask journal identity is malformed")
+        path = "/run/systemd/system/" + unit
+        info = os.lstat(path)
+        if (not stat.S_ISLNK(info.st_mode) or (info.st_dev, info.st_ino) !=
+                (mask.get("device"), mask.get("inode")) or os.readlink(path) != "/dev/null"):
+            raise SnapshotContractError("bootstrap lacks the exact transaction-owned unit mask")
+    return masks
+
+
+def _verify_bootstrap_guards(transaction: dict[str, Any]) -> None:
+    for path in PREINSTALLED_GUARD_PATHS:
+        state = transaction["configuration_state"].get(path)
+        if not isinstance(state, dict) or _config_fingerprint(path)[0] != state.get("expected_new"):
+            raise SnapshotContractError("bootstrap persistent guard is not the exact pinned configuration")
+    required = "ConditionPathExists=!/var/lib/vst-runner/private/snapshot-transaction-incomplete.json"
+    for unit in _ROLE_UNITS:
+        result = subprocess.run(
+            ["/usr/bin/systemctl", "show", unit, "--property=Conditions", "--no-pager"],
+            cwd="/", env={"LC_ALL": "C", "PATH": ""}, stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True,
+            timeout=8, check=False)
+        if result.returncode != 0 or required.encode("ascii") not in result.stdout:
+            raise SnapshotContractError("systemd has not loaded the exact persistent transaction guard")
+
+
+def _verify_pinned_runtime() -> str:
+    runtime = "/opt/vst-runtime-" + RUNNER_FENCE_BOOTSTRAP_COMMIT
+    module_path = runtime + "/tools/vst/runner_fence.py"
+    contracts_path = runtime + "/tools/vst/contracts.py"
+    current = "/"
+    for part in ("opt", "vst-runtime-" + RUNNER_FENCE_BOOTSTRAP_COMMIT,
+                 "tools", "vst"):
+        current = os.path.join(current, part)
+        info = os.lstat(current)
+        if (not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode)
+                or info.st_uid != 0 or info.st_gid != 0
+                or stat.S_IMODE(info.st_mode) & 0o022):
+            raise SnapshotContractError("immutable Runner runtime path is not root-controlled")
+    for path, expected in ((module_path, RUNNER_FENCE_SOURCE_SHA256),
+                           (contracts_path, RUNNER_CONTRACTS_SOURCE_SHA256)):
+        info = os.lstat(path)
+        if (not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode) or info.st_nlink != 1
+                or info.st_uid != 0 or info.st_gid != 0
+                or stat.S_IMODE(info.st_mode) & 0o022):
+            raise SnapshotContractError("immutable Runner source file is not root-controlled")
+        actual = _hash_file(path)
+        if actual != expected:
+            raise SnapshotContractError("immutable Runner fence source digest differs from its pinned runtime")
+    return runtime
+
+
+def _invoke_pinned_bootstrap(expected_config_sha256: str, *, ledger_was_absent: bool,
+                             expected_ledger_identity: dict[str, int] | None) -> None:
+    runtime = _verify_pinned_runtime()
+    bootstrap = '''
+import hashlib, json, os, stat, sys
+fd = os.open('/etc/vst-runner/fence.json', os.O_RDONLY | os.O_NOFOLLOW)
+try:
+    raw = os.read(fd, 65537)
+finally:
+    os.close(fd)
+if hashlib.sha256(raw).hexdigest() != EXPECTED_CONFIG_SHA256:
+    raise RuntimeError('fence configuration changed before bootstrap')
+sys.path.insert(0, RUNTIME_PATH)
+from tools.vst.runner_fence import bootstrap_empty, _load_root_json, _lock_path
+config = _load_root_json('/etc/vst-runner/fence.json')
+if config.get('ledger_path') != LEDGER_PATH or config.get('generation_record_path') != GENERATION_PATH:
+    raise RuntimeError('fence paths differ from the cold-start contract')
+lock_fd = _lock_path(config['ledger_path'])
+ledger_fd = -1
+try:
+    try:
+        ledger_fd = os.open(LEDGER_PATH, os.O_RDWR | os.O_NOFOLLOW)
+        created = False
+    except FileNotFoundError:
+        if not LEDGER_WAS_ABSENT:
+            raise RuntimeError('expected empty ledger disappeared')
+        ledger_fd = os.open(LEDGER_PATH,
+                            os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        created = True
+        os.fchown(ledger_fd, 0, 0)
+        os.fchmod(ledger_fd, 0o600)
+    info = os.fstat(ledger_fd)
+    path_info = os.lstat(LEDGER_PATH)
+    if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+            or info.st_uid != 0 or info.st_gid != 0
+            or stat.S_IMODE(info.st_mode) != 0o600 or info.st_size != 0
+            or stat.S_ISLNK(path_info.st_mode)
+            or (path_info.st_dev, path_info.st_ino) != (info.st_dev, info.st_ino)):
+        raise RuntimeError('ledger is not the exact safe empty file')
+    if not created and LEDGER_WAS_ABSENT:
+        raise RuntimeError('ledger appeared after the absent-ledger observation')
+    if (not created and EXPECTED_LEDGER_IDENTITY is not None
+            and {'device': info.st_dev, 'inode': info.st_ino} != EXPECTED_LEDGER_IDENTITY):
+        raise RuntimeError('empty ledger inode changed after its observation')
+    os.fsync(ledger_fd)
+    parent_fd = os.open(os.path.dirname(LEDGER_PATH), os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        os.fsync(parent_fd)
+    finally:
+        os.close(parent_fd)
+    if os.path.lexists(GENERATION_PATH):
+        raise RuntimeError('generation appeared before baseline bootstrap')
+finally:
+    os.close(lock_fd)
+record = bootstrap_empty()
+after = os.fstat(ledger_fd)
+path_after = os.lstat(LEDGER_PATH)
+if ((after.st_dev, after.st_ino) != (info.st_dev, info.st_ino)
+        or (path_after.st_dev, path_after.st_ino) != (info.st_dev, info.st_ino)
+        or not stat.S_ISREG(path_after.st_mode) or stat.S_ISLNK(path_after.st_mode)
+        or path_after.st_uid != 0 or path_after.st_gid != 0
+        or stat.S_IMODE(path_after.st_mode) != 0o600 or after.st_size <= 0):
+    raise RuntimeError('bootstrap replaced or failed to durably append to the prepared ledger')
+os.close(ledger_fd)
+print(json.dumps(record, sort_keys=True, separators=(',', ':')))
+'''
+    replacements = {
+        "EXPECTED_CONFIG_SHA256": repr(expected_config_sha256),
+        "RUNTIME_PATH": repr(runtime),
+        "LEDGER_PATH": repr(_FENCE_LEDGER),
+        "GENERATION_PATH": repr(_FENCE_GENERATION),
+        "LEDGER_WAS_ABSENT": repr(ledger_was_absent),
+        "EXPECTED_LEDGER_IDENTITY": repr(expected_ledger_identity),
+    }
+    for name, value in replacements.items():
+        bootstrap = bootstrap.replace(name, value)
+    code = "exec(" + repr(bootstrap) + ")"
+    result = subprocess.run(
+        ["/usr/bin/python3.12", "-I", "-B", "-S", "-c", code], cwd="/",
+        env={"LC_ALL": "C", "PATH": ""}, stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True,
+        timeout=30, check=False)
+    if result.returncode != 0:
+        raise SnapshotContractError("pinned Runner bootstrap primitive failed closed")
+    try:
+        emitted = _unique_json(result.stdout.strip())
+    except (ValueError, UnicodeError) as exc:
+        raise SnapshotContractError("pinned Runner bootstrap returned malformed evidence") from exc
+    _validate_bootstrap_record(emitted)
+
+
+def ensure_bootstrap_predecessor(transaction: dict[str, Any], *,
+                                 create_baseline: bool = True) -> dict[str, Any]:
+    if transaction.get("activation_state") != {
+            "vst-runner.service": False, "vst-dispatcher.service": False}:
+        raise SnapshotContractError("cold bootstrap is limited to transactions with both services originally inactive")
+    verify_durable_marker(transaction["marker_path"], transaction["transaction_id"],
+                          transaction.get("marker_identity"))
+    _journal_masks(transaction)
+    _verify_bootstrap_guards(transaction)
+    proof = observe_bootstrap_predecessor(allow_missing_ledger=True,
+                                         allow_candidate_root=not create_baseline)
+    if proof["ledger_absent"] or proof["ledger_empty"]:
+        if not create_baseline:
+            return proof
+        _invoke_pinned_bootstrap(
+            proof["fence_config_sha256"], ledger_was_absent=proof["ledger_absent"],
+            expected_ledger_identity=proof["ledger_identity"])
+    elif proof["generation_absent"]:
+        # Only repair this one derived file when its exact authoritative ledger record exists.
+        record = proof["ledger_record"]
+        _validate_bootstrap_record(record)
+        runtime = _verify_pinned_runtime()
+        contracts_module = runtime + "/tools/vst/contracts.py"
+        fence_module = runtime + "/tools/vst/runner_fence.py"
+        if (_hash_file(fence_module) != RUNNER_FENCE_SOURCE_SHA256
+                or _hash_file(contracts_module) != RUNNER_CONTRACTS_SOURCE_SHA256):
+            raise SnapshotContractError("immutable Runner fence source digest differs from its pinned runtime")
+        code = ("import hashlib,os,sys; fd=os.open('/etc/vst-runner/fence.json',os.O_RDONLY|os.O_NOFOLLOW); "
+                "raw=os.read(fd,65537); os.close(fd); "
+                "assert hashlib.sha256(raw).hexdigest()==" + repr(proof["fence_config_sha256"]) + "; "
+                "sys.path.insert(0, " + repr(runtime) + "); "
+                "from tools.vst.runner_fence import (_publish_generation,_load_root_json,"
+                "_lock_path,_read_records); "
+                "c=_load_root_json('/etc/vst-runner/fence.json'); "
+                "fd=_lock_path(c['ledger_path']); "
+                "r=_read_records(c['ledger_path']); "
+                "assert len(r)==1 and r[0]==" + repr(record) + "; "
+                "assert not os.path.lexists(c['generation_record_path']); "
+                "_publish_generation(c,r[0]); os.close(fd)")
+        result = subprocess.run(["/usr/bin/python3.12", "-I", "-B", "-S", "-c", code],
+                                cwd="/", env={"LC_ALL": "C", "PATH": ""},
+                                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, close_fds=True, timeout=30, check=False)
+        if result.returncode != 0:
+            raise SnapshotContractError("pinned generation repair failed closed")
+    return observe_bootstrap_predecessor(allow_missing_ledger=not create_baseline)
+
+
+def record_dispatcher_bootstrap_quiescent(transaction: dict[str, Any], *,
+                                          proof: dict[str, Any]) -> None:
+    current = _cold_proof_current(proof, allow_missing=False)
+    record_state(transaction, "FENCED", "DISPATCHER_DRAINED",
+                 dispatcher_inactive=True, dispatcher_cgroup_empty=True,
+                 dispatcher_invocation_id_absent=True, cold_predecessor_proof=current)
+
+
+def record_runner_bootstrap_empty(transaction: dict[str, Any], *,
+                                  proof: dict[str, Any]) -> None:
+    current = _cold_proof_current(proof, allow_missing=False)
+    if (transaction.get("activation_state") != {
+            "vst-runner.service": False, "vst-dispatcher.service": False}
+            or current.get("ledger_absent") or current.get("ledger_record") is None
+            or current.get("generation_matches_ledger") is not True):
+        raise SnapshotContractError("Runner bootstrap state lacks the exact cold BOOTSTRAP_EMPTY record")
+    _journal_masks(transaction)
+    _verify_bootstrap_guards(transaction)
+    record_state(transaction, "DISPATCHER_DRAINED", "RUNNER_BOOTSTRAP_EMPTY",
+                 runner_inactive=True, runner_cgroup_empty=True,
+                 runner_invocation_id_absent=True,
+                 runner_fence_record_sha256=current["ledger_record_sha256"],
+                 cold_predecessor_proof=current)
+
+
 def recover_snapshot_transaction(transaction: dict[str, Any], *,
                                  guards_verified: dict[str, bool],
                                  runtime_masks_owned: dict[str, dict[str, Any]],
-                                 services_quiesced: dict[str, bool]) -> dict[str, Any]:
+                                 services_quiesced: dict[str, bool],
+                                 bootstrap_proof: dict[str, Any] | None = None) -> dict[str, Any]:
     """Reconcile an exact terminal snapshot state; never starts services or deletes snapshots."""
     units = {"vst-runner.service", "vst-dispatcher.service"}
     if guards_verified != {unit: True for unit in units}:
         raise SnapshotContractError("recovery requires both exact persistent guards to be effective")
     if services_quiesced != {unit: True for unit in units}:
         raise SnapshotContractError("recovery requires both protected service cgroups to be quiescent")
+    if bootstrap_proof is not None:
+        if transaction.get("activation_state") != {unit: False for unit in units}:
+            raise SnapshotContractError("cold-start recovery proof is valid only for originally inactive services")
+        bootstrap_proof = _cold_proof_current(bootstrap_proof, allow_missing=True)
     recorded_masks = next((record.get("runtime_masks") for record in reversed(
         transaction.get("records", [])) if isinstance(record.get("runtime_masks"), dict)), None)
     if transaction.get("marker_present") or transaction.get("state") in {
@@ -846,6 +1434,16 @@ def recover_snapshot_transaction(transaction: dict[str, Any], *,
                     or runtime_masks_owned.get(unit) != expected_mask):
                 raise SnapshotContractError("runtime mask identity is not the exact transaction-owned inode")
     layout = reconcile_snapshot_paths(transaction)
+    if bootstrap_proof is not None and layout["live"] == "candidate":
+        cold_records = [record for record in transaction.get("records", [])
+                        if record.get("state") == "RUNNER_BOOTSTRAP_EMPTY"]
+        if (bootstrap_proof.get("live_root", {}).get("kind") != "candidate"
+                or not cold_records or bootstrap_proof.get("ledger_absent")
+                or bootstrap_proof.get("generation_matches_ledger") is not True
+                or not any(record.get("runner_fence_record_sha256") ==
+                           bootstrap_proof.get("ledger_record_sha256")
+                           for record in cold_records)):
+            raise SnapshotContractError("candidate-live recovery lacks its durable authentic cold bootstrap receipt")
     configuration_state = transaction["configuration_state"]
     observed_configurations = {path: _config_fingerprint(path)[0] for path in configuration_state}
     backup_records = transaction.get("configuration_backup_records")
@@ -1443,8 +2041,25 @@ def _rename_noreplace(source: str, destination: str) -> None:
 def exchange_candidate(transaction: dict[str, Any], *, recovery_path: str,
                        marker_path: str) -> None:
     """Exchange once, retain old root, prove both identities, and journal activation readiness."""
-    if transaction.get("state") != "RUNNER_STOPPED_EMPTY":
-        raise SnapshotContractError("snapshot exchange requires exact stopped-empty Runner state")
+    source_state = transaction.get("state")
+    if source_state not in {"RUNNER_STOPPED_EMPTY", "RUNNER_BOOTSTRAP_EMPTY"}:
+        raise SnapshotContractError("snapshot exchange requires an exact Runner empty-state receipt")
+    receipt = None
+    if source_state == "RUNNER_BOOTSTRAP_EMPTY":
+        if transaction.get("activation_state") != {
+                "vst-runner.service": False, "vst-dispatcher.service": False}:
+            raise SnapshotContractError("cold snapshot exchange requires both services originally inactive")
+        records = _read_journal(transaction["journal_path"])
+        receipt = next((record for record in reversed(records)
+                        if record.get("state") == "RUNNER_BOOTSTRAP_EMPTY"), None)
+        if receipt is None:
+            raise SnapshotContractError("cold snapshot exchange lacks its durable bootstrap receipt")
+        current = _cold_proof_current(receipt.get("cold_predecessor_proof"), allow_missing=False)
+        if (receipt.get("runner_fence_record_sha256") != current.get("ledger_record_sha256")
+                or current.get("generation_matches_ledger") is not True):
+            raise SnapshotContractError("cold snapshot exchange evidence no longer matches the authentic ledger")
+        _journal_masks(transaction)
+        _verify_bootstrap_guards(transaction)
     transaction_id = transaction["transaction_id"]
     expected_recovery = (transaction["recovery_prefix"] +
                          transaction["old_head"] + "-" + transaction_id)
@@ -1455,8 +2070,10 @@ def exchange_candidate(transaction: dict[str, Any], *, recovery_path: str,
     if os.path.lexists(recovery_path):
         raise SnapshotContractError("predecessor retention path is occupied")
     exchange_directories(transaction["live_path"], transaction["stage_path"])
-    record_state(transaction, "RUNNER_STOPPED_EMPTY", "EXCHANGED",
-                 exchange_syscall="renameat2(RENAME_EXCHANGE)")
+    record_state(transaction, source_state, "EXCHANGED",
+                 exchange_syscall="renameat2(RENAME_EXCHANGE)",
+                 cold_bootstrap_record_sha256=(None if receipt is None else
+                                               receipt.get("runner_fence_record_sha256")))
     live = os.lstat(transaction["live_path"])
     stage = os.lstat(transaction["stage_path"])
     if ((live.st_dev, live.st_ino) != candidate_identity

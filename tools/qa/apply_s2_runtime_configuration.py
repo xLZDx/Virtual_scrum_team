@@ -676,9 +676,17 @@ for unit in units:
     unit_before[unit] = {"active": active_state == "active", "substate": substate,
                          "invocation_id": invocation_id, "control_group": control_group,
                          "unit_file_state": unit_file_state}
+bootstrap_predecessor = False
 if (not unit_before["vst-runner.service"]["invocation_id"]
         or not unit_before["vst-dispatcher.service"]["invocation_id"]):
-    raise SystemExit("protected service invocation identity is unavailable")
+    if all(not unit_before[unit]["active"]
+           and not unit_before[unit]["invocation_id"]
+           and not unit_before[unit]["control_group"] for unit in protected_units):
+        # This is a genuine pre-start baseline, never a stopped invocation receipt.
+        helper_ns["observe_bootstrap_predecessor"](allow_missing_ledger=True)
+        bootstrap_predecessor = True
+    else:
+        raise SystemExit("protected service invocation identity is unavailable")
 if (unit_before["vst-dispatcher.service"]["active"]
         and not unit_before["vst-runner.service"]["active"]):
     raise SystemExit("active Dispatcher without active Runner is an unexpected predecessor state")
@@ -995,38 +1003,45 @@ try:
             transaction, unit, mask_paths_before)
     helper_ns["record_fenced"](transaction, installed_masks)
 
-    dispatcher = unit_before["vst-dispatcher.service"]
-    if dispatcher["active"]:
-        run_systemctl("stop", "vst-dispatcher.service", timeout=1910)
-    if unit_value("vst-dispatcher.service", "ActiveState") != "inactive":
-        raise SystemExit("Dispatcher did not reach inactive after graceful stop")
-    dispatcher_empty = cgroup_is_empty(dispatcher["control_group"])
-    if not dispatcher_empty:
-        raise SystemExit("Dispatcher cgroup remains populated; both snapshots remain untouched")
-    helper_ns["record_dispatcher_drained"](
-        transaction, inactive=True, cgroup_empty=True,
-        invocation_id=dispatcher["invocation_id"] or "NOT_ACTIVE")
+    if bootstrap_predecessor:
+        bootstrap_proof = helper_ns["ensure_bootstrap_predecessor"](transaction)
+        helper_ns["record_dispatcher_bootstrap_quiescent"](
+            transaction, proof=bootstrap_proof)
+        helper_ns["record_runner_bootstrap_empty"](
+            transaction, proof=bootstrap_proof)
+    else:
+        dispatcher = unit_before["vst-dispatcher.service"]
+        if dispatcher["active"]:
+            run_systemctl("stop", "vst-dispatcher.service", timeout=1910)
+        if unit_value("vst-dispatcher.service", "ActiveState") != "inactive":
+            raise SystemExit("Dispatcher did not reach inactive after graceful stop")
+        dispatcher_empty = cgroup_is_empty(dispatcher["control_group"])
+        if not dispatcher_empty:
+            raise SystemExit("Dispatcher cgroup remains populated; both snapshots remain untouched")
+        helper_ns["record_dispatcher_drained"](
+            transaction, inactive=True, cgroup_empty=True,
+            invocation_id=dispatcher["invocation_id"] or "NOT_ACTIVE")
 
-    runner = unit_before["vst-runner.service"]
-    runner_stop_started = datetime.now(timezone.utc)
-    if runner["active"]:
-        run_systemctl("stop", "vst-runner.service", timeout=1910)
-    if unit_value("vst-runner.service", "ActiveState") != "inactive":
-        raise SystemExit("Runner did not reach inactive after its bounded fence stop")
-    if not cgroup_is_empty(runner["control_group"]):
-        raise SystemExit("Runner cgroup remains populated; snapshot exchange is prohibited")
-    fence_records = helper_ns["read_fence_ledger"]("/var/lib/vst-runner/private/fence-ledger.json")
-    fence_record = fence_records[-1]
-    if (fence_record.get("unit") != "vst-runner.service"
-            or fence_record.get("state") != "STOPPED_EMPTY"
-            or fence_record.get("invocation_id") != runner["invocation_id"]
-            or fence_record.get("control_group") != runner["control_group"]):
-        raise SystemExit("Runner lacks an exact STOPPED_EMPTY fence for its captured invocation")
-    recorded_at = datetime.fromisoformat(str(fence_record["recorded_at"]).replace("Z", "+00:00"))
-    if runner["active"] and recorded_at.astimezone(timezone.utc) < runner_stop_started:
-        raise SystemExit("Runner STOPPED_EMPTY fence is stale relative to this stop")
-    helper_ns["record_runner_stopped_empty"](
-        transaction, inactive=True, cgroup_empty=True, fence_record=fence_record)
+        runner = unit_before["vst-runner.service"]
+        runner_stop_started = datetime.now(timezone.utc)
+        if runner["active"]:
+            run_systemctl("stop", "vst-runner.service", timeout=1910)
+        if unit_value("vst-runner.service", "ActiveState") != "inactive":
+            raise SystemExit("Runner did not reach inactive after its bounded fence stop")
+        if not cgroup_is_empty(runner["control_group"]):
+            raise SystemExit("Runner cgroup remains populated; snapshot exchange is prohibited")
+        fence_records = helper_ns["read_fence_ledger"]("/var/lib/vst-runner/private/fence-ledger.json")
+        fence_record = fence_records[-1]
+        if (fence_record.get("unit") != "vst-runner.service"
+                or fence_record.get("state") != "STOPPED_EMPTY"
+                or fence_record.get("invocation_id") != runner["invocation_id"]
+                or fence_record.get("control_group") != runner["control_group"]):
+            raise SystemExit("Runner lacks an exact STOPPED_EMPTY fence for its captured invocation")
+        recorded_at = datetime.fromisoformat(str(fence_record["recorded_at"]).replace("Z", "+00:00"))
+        if runner["active"] and recorded_at.astimezone(timezone.utc) < runner_stop_started:
+            raise SystemExit("Runner STOPPED_EMPTY fence is stale relative to this stop")
+        helper_ns["record_runner_stopped_empty"](
+            transaction, inactive=True, cgroup_empty=True, fence_record=fence_record)
 
     for item in p["files"]:
         if item["destination"] not in guard_paths:
@@ -1357,7 +1372,7 @@ elif (transaction.get("marker_present") and state == "RECOVERY_REQUIRED"
             raise SystemExit("recovery-required mask state lacks its exact pre-fence inode lineage")
     need_fence = True
 elif transaction.get("marker_present") and state in {
-        "FENCED", "DISPATCHER_DRAINED", "RUNNER_STOPPED_EMPTY", "EXCHANGED",
+        "FENCED", "DISPATCHER_DRAINED", "RUNNER_STOPPED_EMPTY", "RUNNER_BOOTSTRAP_EMPTY", "EXCHANGED",
         "OLD_RETAINED", "TARGET_VERIFIED", "ACTIVATION_READY", "RECOVERY_REQUIRED"}:
     if not isinstance(recorded_masks, dict) or any(
             masks[unit] not in (None, recorded_masks.get(unit)) for unit in units):
@@ -1398,7 +1413,7 @@ if need_fence:
         helper["record_state"](transaction, "RECOVERY_REQUIRED", "FENCING",
                                 runtime_mask_paths_before=masks)
     elif transaction.get("state") in {
-            "FENCED", "DISPATCHER_DRAINED", "RUNNER_STOPPED_EMPTY", "EXCHANGED",
+            "FENCED", "DISPATCHER_DRAINED", "RUNNER_STOPPED_EMPTY", "RUNNER_BOOTSTRAP_EMPTY", "EXCHANGED",
             "OLD_RETAINED", "TARGET_VERIFIED"}:
         helper["record_state"](transaction, transaction["state"], "RECOVERY_REQUIRED",
                                 reason="recovery re-established volatile runtime masks")
@@ -1417,26 +1432,45 @@ for unit in units:
     before[unit] = {"active":value(unit, "ActiveState") == "active",
                      "control_group":value(unit, "ControlGroup"),
                      "invocation_id":value(unit, "InvocationID")}
+bootstrap_recovery = (
+    all(transaction["activation_state"][unit] is False for unit in units)
+    and all(not before[unit]["active"] and not before[unit]["invocation_id"]
+            and not before[unit]["control_group"] for unit in units))
+if bootstrap_recovery and need_fence:
+    # Establish the exact journal-owned masks before collecting cold proof.
+    current_masks = {}
+    for unit in units:
+        current_masks[unit] = helper["ensure_runtime_mask"](
+            transaction, unit, mask_paths_before)
+    helper["record_fenced"](transaction, current_masks)
+    transaction["records"] = helper["_read_journal"](transaction["journal_path"])
+    masks = current_masks
+    need_fence = False
 runner_stop_started = time.time()
 for unit in ("vst-dispatcher.service", "vst-runner.service"):
     if before[unit]["active"]:
         systemctl("stop", unit, timeout=1910)
     if value(unit, "ActiveState") != "inactive" or not cgroup_empty(before[unit]["control_group"]):
         raise SystemExit("protected service did not reach exact inactive/empty state: " + unit)
-fences = helper["read_fence_ledger"]("/var/lib/vst-runner/private/fence-ledger.json")
-if not fences:
-    raise SystemExit("recovery lacks a durable Runner STOPPED_EMPTY fence")
-fence = fences[-1]
-if (fence.get("unit") != "vst-runner.service" or fence.get("state") != "STOPPED_EMPTY"
-        or fence.get("control_group") != before["vst-runner.service"]["control_group"]
-        or (before["vst-runner.service"]["invocation_id"]
-            and fence.get("invocation_id") != before["vst-runner.service"]["invocation_id"])):
-    raise SystemExit("latest Runner fence is not bound to the observed stopped invocation")
-recorded_at = fence.get("recorded_at")
-if before["vst-runner.service"]["active"]:
-    from datetime import datetime, timezone
-    if datetime.fromisoformat(str(recorded_at).replace("Z", "+00:00")).timestamp() < runner_stop_started:
-        raise SystemExit("Runner STOPPED_EMPTY fence predates this recovery stop")
+bootstrap_proof = None
+if bootstrap_recovery:
+    bootstrap_proof = helper["ensure_bootstrap_predecessor"](
+        transaction, create_baseline=False)
+else:
+    fences = helper["read_fence_ledger"]("/var/lib/vst-runner/private/fence-ledger.json")
+    if not fences:
+        raise SystemExit("recovery lacks a durable Runner STOPPED_EMPTY fence")
+    fence = fences[-1]
+    if (fence.get("unit") != "vst-runner.service" or fence.get("state") != "STOPPED_EMPTY"
+            or fence.get("control_group") != before["vst-runner.service"]["control_group"]
+            or (before["vst-runner.service"]["invocation_id"]
+                and fence.get("invocation_id") != before["vst-runner.service"]["invocation_id"])):
+        raise SystemExit("latest Runner fence is not bound to the observed stopped invocation")
+    recorded_at = fence.get("recorded_at")
+    if before["vst-runner.service"]["active"]:
+        from datetime import datetime, timezone
+        if datetime.fromisoformat(str(recorded_at).replace("Z", "+00:00")).timestamp() < runner_stop_started:
+            raise SystemExit("Runner STOPPED_EMPTY fence predates this recovery stop")
 if need_fence:
     current_masks = {}
     for unit in units:
@@ -1447,7 +1481,7 @@ if need_fence:
     masks = current_masks
 result = helper["recover_snapshot_transaction"](
     transaction, guards_verified=guards, runtime_masks_owned=masks,
-    services_quiesced={unit:True for unit in units})
+    services_quiesced={unit:True for unit in units}, bootstrap_proof=bootstrap_proof)
 if result.get("marker_present") or not result.get("runtime_masks_must_remain"):
     raise SystemExit("recovery did not reach its exact masked terminal state")
 runner_verified = not transaction["activation_state"]["vst-runner.service"]

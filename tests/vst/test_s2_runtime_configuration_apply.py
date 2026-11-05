@@ -563,3 +563,105 @@ def test_embedded_unit_admission_rejects_active_unrelated_service():
     with pytest.raises(SystemExit, match="unrelated S2 service is active"):
         _run_embedded_unit_admission(
             _named_unit_output(active="active", invocation="2" * 32), protected_units=())
+
+
+def _run_embedded_bootstrap_admission(unit_properties):
+    """Execute the actual cold-admission statements with all target I/O replaced."""
+    import ast
+    from types import SimpleNamespace
+
+    tree = ast.parse(APPLY._REMOTE)
+    by_name = {node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)}
+    units_assignment = next(node for node in tree.body if isinstance(node, ast.Assign)
+                            and any(isinstance(target, ast.Name) and target.id == "units"
+                                    for target in node.targets))
+    protected_assignment = next(node for node in tree.body if isinstance(node, ast.Assign)
+                                and any(isinstance(target, ast.Name) and target.id == "protected_units"
+                                        for target in node.targets))
+    unit_loop = next(node for node in tree.body if isinstance(node, ast.For)
+                     and isinstance(node.target, ast.Name) and node.target.id == "unit")
+    bootstrap_nodes = [node for node in tree.body
+                       if isinstance(node, ast.Assign) and any(
+                           isinstance(target, ast.Name) and target.id == "bootstrap_predecessor"
+                           for target in node.targets)]
+    bootstrap_check = next(node for node in tree.body if isinstance(node, ast.If)
+                           and any(isinstance(target, ast.Name)
+                                   and target.id == "bootstrap_predecessor"
+                                   for child in ast.walk(node) if isinstance(child, ast.Assign)
+                                   for target in child.targets))
+    calls = []
+    observations = []
+
+    class Completed:
+        returncode = 0
+        stderr = ""
+
+        def __init__(self, stdout):
+            self.stdout = stdout
+
+    def fake_run(argv, **_kwargs):
+        calls.append(argv)
+        if "--property=LoadState" in argv:
+            return Completed("loaded\n")
+        if "--property=ActiveState,SubState,InvocationID,ControlGroup,UnitFileState" in argv:
+            return Completed(unit_properties[argv[-1]])
+        raise AssertionError(f"unexpected target command during admission: {argv!r}")
+
+    def observe(**kwargs):
+        observations.append(kwargs)
+        return {"observed": True}
+
+    units = ("vst-supervisor.service", "vst-signer.service", "vst-runner.service",
+             "vst-dispatcher.service", "vst-dispatch-owner.service",
+             "vst-dispatch-owner.socket", "vst-assignment-bootstrap.service",
+             "vst-dispatch-issuer.service", "vst-sandbox-probe.service")
+    namespace = {
+        "subprocess": SimpleNamespace(run=fake_run, DEVNULL=object(), PIPE=object()),
+        "units": units,
+        "protected_units": ("vst-runner.service", "vst-dispatcher.service"),
+        "unit_before": {},
+        "bootstrap_predecessor": False,
+        "helper_ns": {"observe_bootstrap_predecessor": observe},
+    }
+    body = [by_name["parse_unit_identity"], units_assignment, protected_assignment,
+            unit_loop, *bootstrap_nodes, bootstrap_check]
+    exec(compile(ast.Module(body=body, type_ignores=[]),
+                 "<embedded-cold-bootstrap-admission>", "exec"), namespace)
+    return namespace, observations, calls
+
+
+def test_embedded_admission_observes_only_exact_prestart_cold_pair():
+    cold = _named_unit_output()
+    properties = {unit: cold for unit in (
+        "vst-supervisor.service", "vst-signer.service", "vst-runner.service",
+        "vst-dispatcher.service", "vst-dispatch-owner.service",
+        "vst-dispatch-owner.socket", "vst-assignment-bootstrap.service",
+        "vst-dispatch-issuer.service", "vst-sandbox-probe.service")}
+
+    namespace, observations, calls = _run_embedded_bootstrap_admission(properties)
+
+    assert namespace["bootstrap_predecessor"] is True
+    assert observations == [{"allow_missing_ledger": True}]
+    assert len(calls) == 18
+
+
+@pytest.mark.parametrize("changed_unit, mutation", [
+    ("vst-runner.service", {"InvocationID": "a" * 32}),
+    ("vst-dispatcher.service", {"ControlGroup": "/system.slice/vst-dispatcher.service"}),
+    ("vst-runner.service", {"ActiveState": "active", "InvocationID": "b" * 32,
+                             "ControlGroup": "/system.slice/vst-runner.service"}),
+])
+def test_embedded_admission_rejects_mixed_or_started_pair_without_cold_observation(
+        changed_unit, mutation):
+    values = {"ActiveState": "inactive", "SubState": "dead", "InvocationID": "",
+              "ControlGroup": "", "UnitFileState": "disabled"}
+    values.update(mutation)
+    properties = {unit: _named_unit_output() for unit in (
+        "vst-supervisor.service", "vst-signer.service", "vst-runner.service",
+        "vst-dispatcher.service", "vst-dispatch-owner.service",
+        "vst-dispatch-owner.socket", "vst-assignment-bootstrap.service",
+        "vst-dispatch-issuer.service", "vst-sandbox-probe.service")}
+    properties[changed_unit] = "".join(f"{key}={value}\n" for key, value in values.items())
+
+    with pytest.raises(SystemExit, match="invocation identity is unavailable"):
+        _run_embedded_bootstrap_admission(properties)
