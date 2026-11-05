@@ -960,6 +960,66 @@ def test_bootstrap_predecessor_emits_one_pinned_baseline_then_requires_ledger_ma
     assert events[4][2] == {"ledger_was_absent": True, "expected_ledger_identity": None}
 
 
+def test_candidate_refresh_helper_reobserves_existing_ledger_without_bootstrap_primitive(
+        monkeypatch):
+    record = _bootstrap_record()
+    proof = _candidate_proof(record)
+    tx = {"activation_state": {"vst-runner.service": False,
+                                "vst-dispatcher.service": False},
+          "marker_path": "/isolated/marker", "transaction_id": "a" * 32,
+          "marker_identity": (1, 2)}
+    events = []
+
+    monkeypatch.setattr(TX, "verify_durable_marker",
+                        lambda *args: events.append(("marker", args)))
+    monkeypatch.setattr(TX, "_journal_masks", lambda _tx: events.append(("masks", None)))
+    monkeypatch.setattr(TX, "_verify_bootstrap_guards",
+                        lambda _tx: events.append(("guards", None)))
+    monkeypatch.setattr(TX, "observe_bootstrap_predecessor",
+                        lambda **kwargs: events.append(("observe", kwargs)) or proof)
+    monkeypatch.setattr(TX, "_invoke_pinned_bootstrap",
+                        lambda *_args, **_kwargs: pytest.fail(
+                            "existing candidate refresh must not create a baseline"))
+
+    result = TX.ensure_bootstrap_predecessor(tx, create_baseline=False)
+
+    assert result is proof
+    assert [event[0] for event in events] == [
+        "marker", "masks", "guards", "observe", "observe"]
+    assert events[3][1] == {"allow_missing_ledger": True, "allow_candidate_root": True}
+    assert events[4][1] == {"allow_missing_ledger": True, "allow_candidate_root": True}
+
+
+def test_default_bootstrap_helper_does_not_opt_into_candidate_root(monkeypatch):
+    record = _bootstrap_record()
+    proof = _candidate_proof(record)
+    tx = {"activation_state": {"vst-runner.service": False,
+                                "vst-dispatcher.service": False},
+          "marker_path": "/isolated/marker", "transaction_id": "a" * 32,
+          "marker_identity": (1, 2)}
+    calls = []
+
+    monkeypatch.setattr(TX, "verify_durable_marker", lambda *_args: None)
+    monkeypatch.setattr(TX, "_journal_masks", lambda _tx: None)
+    monkeypatch.setattr(TX, "_verify_bootstrap_guards", lambda _tx: None)
+
+    def observe(**kwargs):
+        calls.append(kwargs)
+        if kwargs["allow_candidate_root"]:
+            return proof
+        raise TX.SnapshotContractError("candidate root refused by default observation")
+
+    monkeypatch.setattr(TX, "observe_bootstrap_predecessor", observe)
+    monkeypatch.setattr(TX, "_invoke_pinned_bootstrap",
+                        lambda *_args, **_kwargs: pytest.fail(
+                            "default predecessor path must not bootstrap an existing candidate"))
+
+    with pytest.raises(TX.SnapshotContractError, match="candidate root refused by default"):
+        TX.ensure_bootstrap_predecessor(tx)
+
+    assert calls == [{"allow_missing_ledger": True, "allow_candidate_root": False}]
+
+
 @pytest.mark.parametrize("activation", [
     {"vst-runner.service": True, "vst-dispatcher.service": False},
     {"vst-runner.service": False, "vst-dispatcher.service": True},

@@ -1420,7 +1420,8 @@ def ensure_bootstrap_predecessor(transaction: dict[str, Any], *,
                                 stderr=subprocess.PIPE, close_fds=True, timeout=30, check=False)
         if result.returncode != 0:
             raise SnapshotContractError("pinned generation repair failed closed")
-    return observe_bootstrap_predecessor(allow_missing_ledger=not create_baseline)
+    return observe_bootstrap_predecessor(
+        allow_missing_ledger=not create_baseline, allow_candidate_root=not create_baseline)
 
 
 def record_dispatcher_bootstrap_quiescent(transaction: dict[str, Any], *,

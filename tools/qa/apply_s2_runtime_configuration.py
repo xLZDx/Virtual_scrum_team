@@ -643,6 +643,23 @@ def parse_unit_identity(output):
     return values
 
 
+def verify_cold_refresh(proof, transaction=None):
+    root = proof["live_root"]
+    if root["kind"] == "predecessor":
+        return False
+    if (root["kind"] != "candidate" or root["head"] != TASK_HEAD
+            or root["tree_sha1"] != TASK_TREE or root["mode"] != 0o555
+            or proof["ledger_absent"] or proof["ledger_empty"]
+            or proof["ledger_record"] is None or proof["generation_absent"]
+            or proof["generation_matches_ledger"] is not True):
+        raise SystemExit("cold configuration refresh lacks its exact existing candidate and ledger")
+    if transaction is not None:
+        fields = ("device", "inode", "mode", "head", "tree_sha1")
+        if any(root[field] != transaction["old_" + field] for field in fields):
+            raise SystemExit("cold configuration refresh root differs from the transaction predecessor")
+    return True
+
+
 unit_before = {}
 for unit in units:
     loaded = subprocess.run(["/usr/bin/systemctl", "show", "--property=LoadState", "--value", unit],
@@ -677,13 +694,17 @@ for unit in units:
                          "invocation_id": invocation_id, "control_group": control_group,
                          "unit_file_state": unit_file_state}
 bootstrap_predecessor = False
+bootstrap_candidate_refresh = False
+bootstrap_initial_proof = None
 if (not unit_before["vst-runner.service"]["invocation_id"]
         or not unit_before["vst-dispatcher.service"]["invocation_id"]):
     if all(not unit_before[unit]["active"]
            and not unit_before[unit]["invocation_id"]
            and not unit_before[unit]["control_group"] for unit in protected_units):
         # This is a genuine pre-start baseline, never a stopped invocation receipt.
-        helper_ns["observe_bootstrap_predecessor"](allow_missing_ledger=True)
+        bootstrap_initial_proof = helper_ns["observe_bootstrap_predecessor"](
+            allow_missing_ledger=True, allow_candidate_root=True)
+        bootstrap_candidate_refresh = verify_cold_refresh(bootstrap_initial_proof)
         bootstrap_predecessor = True
     else:
         raise SystemExit("protected service invocation identity is unavailable")
@@ -1002,7 +1023,15 @@ try:
     helper_ns["record_fenced"](transaction, installed_masks)
 
     if bootstrap_predecessor:
-        bootstrap_proof = helper_ns["ensure_bootstrap_predecessor"](transaction)
+        if bootstrap_candidate_refresh:
+            verify_cold_refresh(bootstrap_initial_proof, transaction)
+            current_cold_proof = helper_ns["_cold_proof_current"](
+                bootstrap_initial_proof, allow_missing=False)
+            verify_cold_refresh(current_cold_proof, transaction)
+        bootstrap_proof = helper_ns["ensure_bootstrap_predecessor"](
+            transaction, create_baseline=not bootstrap_candidate_refresh)
+        if bootstrap_candidate_refresh and not verify_cold_refresh(bootstrap_proof, transaction):
+            raise SystemExit("cold configuration refresh lost its exact existing candidate")
         helper_ns["record_dispatcher_bootstrap_quiescent"](
             transaction, proof=bootstrap_proof)
         helper_ns["record_runner_bootstrap_empty"](
