@@ -150,7 +150,7 @@ def stop(reason: str) -> None:
 
 
 SYSTEMD_MASK_DIRS = frozenset({
-    "/dev/hugepages", "/dev/shm", "/home", "/mnt", "/proc/acpi", "/proc/bus",
+    "/dev/hugepages", "/dev/pts", "/dev/shm", "/home", "/mnt", "/proc/acpi", "/proc/bus",
     "/proc/fs", "/proc/irq", "/proc/scsi",
     "/proc/sys/fs/binfmt_misc", "/root", "/run/WSL", "/run/credentials",
     "/run/lock", "/run/shm", "/run/user", "/sys/fs/bpf", "/sys/fs/selinux",
@@ -164,9 +164,10 @@ SYSTEMD_MASK_FILES = frozenset({
 SYSTEMD_MASK_TARGETS = SYSTEMD_MASK_DIRS | SYSTEMD_MASK_FILES
 SYSTEMD_INACCESSIBLE_PATHS = tuple(sorted(SYSTEMD_MASK_TARGETS))
 
-# Only mount rows present in the independently captured PM-07 inventory can be
-# treated as an underlying row below a mask. Absence is allowed; a new row is not.
+# Underlying rows must match captured inventories (PM-07; 1c93d05e for devpts).
+# Absence is allowed; a different row is not.
 MASK_BASES = {
+    "/dev/pts": ("devpts", "/", "devpts", {"rw", "nosuid", "noexec", "noatime"}, "/dev"),
     "/dev/shm": ("tmpfs", "/", "none", {"rw", "nosuid", "nodev", "noatime"}, "/dev"),
     "/run/lock": ("tmpfs", "/", "none", {"rw", "nosuid", "nodev", "noexec", "noatime"}, "/run"),
     "/run/shm": ("tmpfs", "/", "none", {"rw", "nosuid", "nodev", "noatime"}, "/run"),
@@ -184,7 +185,6 @@ MASK_BASES = {
 
 EXACT_MOUNTS = {
     "/run": ("tmpfs", "/", "none", {"rw", "nosuid", "nodev"}),
-    "/dev/pts": ("devpts", "/", "devpts", {"rw", "nosuid", "noexec", "noatime"}),
     "/dev/mqueue": ("mqueue", "/", "mqueue", {"rw", "nosuid", "nodev", "noexec", "relatime"}),
     "/sys": ("sysfs", "/", "sysfs", {"rw", "nosuid", "nodev", "noexec", "noatime"}),
     "/sys/fs/cgroup": ("cgroup2", "/", "cgroup2", {"ro", "nosuid", "nodev", "noexec", "relatime"}),
@@ -352,7 +352,9 @@ def _decode_mountinfo(raw: str, *, expected_unit: str | None = None) -> tuple[li
             parent = by_path.get(parent_path, [])
             same = (base["filesystem"] == fstype and base["mount_root"] == mount_root
                     and base["source"] == source and set(base["mount_options"]) == options
-                    and set(base["super_options"]) == {"rw"}
+                    and set(base["super_options"]) == (
+                        {"rw", "gid=5", "mode=620", "ptmxmode=000"}
+                        if target == "/dev/pts" else {"rw"})
                     and len(parent) == 1 and base["parent_id"] == parent[0]["mount_id"]
                     and base["mount_id"] < mask["mount_id"])
             if not same:
@@ -551,7 +553,7 @@ def _verify_private_dev(mount_rows: list[dict]) -> tuple[dict, list[str]]:
     expected_devices = {"tty": (5, 0), "urandom": (1, 9), "random": (1, 8),
                         "full": (1, 7), "zero": (1, 5), "null": (1, 3), "ptmx": (5, 2)}
     expected_directories = {"char": (0o755, 0, 0), "hugepages": (0, 0, 0),
-                            "mqueue": (0o1777, 0, 0), "pts": (0o755, 0, 0),
+                            "mqueue": (0o1777, 0, 0), "pts": (0, 0, 0),
                             "shm": (0, 0, 0)}
     expected_char_aliases = {
         "1:3": "../null", "1:5": "../zero", "1:7": "../full",
@@ -617,19 +619,13 @@ def _verify_private_dev(mount_rows: list[dict]) -> tuple[dict, list[str]]:
                 if stat.S_ISLNK(info.st_mode):
                     child_metadata["target"] = os.readlink(child.path)
                 observed[child.name] = child_metadata
-                if directory_name in {"hugepages", "shm"}:
+                if directory_name in {"hugepages", "pts", "shm"}:
                     failures.append("masked private /dev directory is not empty: " + directory_name)
                 elif directory_name == "char":
                     if (child.name not in expected_char_aliases or not stat.S_ISLNK(info.st_mode)
                             or child_metadata.get("target") != expected_char_aliases.get(child.name)
                             or (info.st_uid, info.st_gid, stat.S_IMODE(info.st_mode)) != (0, 0, 0o777)):
                         failures.append("private /dev/char contains an unexpected alias: " + child.name)
-                elif directory_name == "pts":
-                    ptmx_ok = (child.name == "ptmx" and stat.S_ISCHR(info.st_mode)
-                               and (os.major(info.st_rdev), os.minor(info.st_rdev)) == (5, 2)
-                               and (info.st_uid, info.st_gid, stat.S_IMODE(info.st_mode)) == (0, 0, 0))
-                    if not ptmx_ok:
-                        failures.append("private /dev/pts contains an unexpected entry: " + child.name)
                 elif directory_name == "mqueue" and not stat.S_ISREG(info.st_mode):
                     failures.append("private /dev/mqueue contains a non-regular entry: " + child.name)
         except OSError as exc:

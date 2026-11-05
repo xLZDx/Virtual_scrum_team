@@ -1068,8 +1068,6 @@ def _complete_mountinfo(unit="vst-s2-qual-0123456789abcdef.service"):
         options="rw,nosuid,nodev,noexec,noatime", super_options="rw")
     add("/proc", root="/", device="0:5", filesystem="proc", source="proc",
         options="rw,nosuid,nodev,noexec,relatime", super_options="rw")
-    add("/dev/pts", root="/", device="0:6", filesystem="devpts", source="devpts",
-        options="rw,nosuid,noexec,noatime", super_options="rw,mode=620")
     add("/dev/mqueue", root="/", device="0:7", filesystem="mqueue", source="mqueue",
         options="rw,nosuid,nodev,noexec,relatime", super_options="rw")
     add("/sys/fs/cgroup", root="/", device="0:8", filesystem="cgroup2", source="cgroup2",
@@ -1085,7 +1083,9 @@ def _complete_mountinfo(unit="vst-s2-qual-0123456789abcdef.service"):
         if expected:
             filesystem, root, source, options, parent = expected
             add(target, root=root, device="0:2", filesystem=filesystem, source=source,
-                options=",".join(sorted(options)), super_options="rw", parent=parent)
+                options=",".join(sorted(options)),
+                super_options=("rw,gid=5,mode=620,ptmxmode=000" if target == "/dev/pts"
+                               else "rw"), parent=parent)
         inaccessible_root = (
             "/systemd/inaccessible/reg" if target in functions["SYSTEMD_MASK_FILES"]
             else "/systemd/inaccessible/dir"
@@ -1123,6 +1123,16 @@ def test_pm08_mount_decoder_accepts_exact_masks_incoming_and_current_cgroup_unit
     assert set(root["mount_options"]) == {"ro", "nosuid", "relatime"}
     assert (run["filesystem"], run["source"], run["device"], run["mount_root"]) == (
         "tmpfs", "none", "0:2", "/")
+    pts_base = next(row for row in by_path["/dev/pts"] if row["mount_root"] == "/")
+    pts_mask = next(row for row in by_path["/dev/pts"]
+                    if row["mount_root"] == "/systemd/inaccessible/dir")
+    dev = by_path["/dev"][0]
+    assert (pts_base["filesystem"], pts_base["source"], pts_base["device"]) == (
+        "devpts", "devpts", "0:2")
+    assert set(pts_base["mount_options"]) == {"rw", "nosuid", "noexec", "noatime"}
+    assert set(pts_base["super_options"]) == {"rw", "gid=5", "mode=620", "ptmxmode=000"}
+    assert pts_base["parent_id"] == dev["mount_id"]
+    assert pts_base["mount_id"] < pts_mask["mount_id"]
     expected_targets = set(functions["SYSTEMD_MASK_TARGETS"])
     cgroup_target = "/sys/fs/cgroup/system.slice/" + unit + "/memory.pressure"
     expected_targets.add(cgroup_target)
@@ -1151,7 +1161,7 @@ def test_pm08_mount_decoder_accepts_exact_masks_incoming_and_current_cgroup_unit
     assert not any("other-unit" in row["mount_root"] for row in rows)
 
 
-@pytest.mark.parametrize("target", ["/proc/latency_stats", "/proc/mtrr", "/init"])
+@pytest.mark.parametrize("target", ["/proc/latency_stats", "/proc/mtrr", "/init", "/dev/pts"])
 def test_pm08_mount_decoder_rejects_missing_required_masks(target):
     unit = "vst-s2-qual-0123456789abcdef.service"
     mountinfo, functions = _complete_mountinfo(unit)
@@ -1165,8 +1175,8 @@ def test_pm08_mount_decoder_rejects_missing_required_masks(target):
                for item in unapproved)
 
 
-@pytest.mark.parametrize("target", ["/proc/latency_stats", "/proc/mtrr"])
-def test_pm08_mount_decoder_rejects_unmasked_proc_paths(target):
+@pytest.mark.parametrize("target", ["/proc/latency_stats", "/proc/mtrr", "/dev/pts"])
+def test_pm08_mount_decoder_rejects_unmasked_required_path(target):
     unit = "vst-s2-qual-0123456789abcdef.service"
     mountinfo, functions = _complete_mountinfo(unit)
     lines = [line for line in mountinfo.splitlines()
@@ -1178,6 +1188,54 @@ def test_pm08_mount_decoder_rejects_unmasked_proc_paths(target):
     assert any(item.get("mountpoint") == target
                and "exact systemd inaccessible mask is missing or ambiguous" in item["reason"]
                for item in unapproved)
+
+
+@pytest.mark.parametrize("mutation", [
+    "wrong-gid", "wrong-mode", "wrong-ptmxmode", "wrong-mount-flags",
+    "wrong-parent", "base-after-mask", "extra-nested-mount",
+], ids=["gid", "mode", "ptmxmode", "mount-options", "parent", "mount-order",
+       "nested-mount"])
+def test_pm08_mount_decoder_rejects_unapproved_devpts_base_or_child(mutation):
+    unit = "vst-s2-qual-0123456789abcdef.service"
+    mountinfo, functions = _complete_mountinfo(unit)
+    lines = mountinfo.splitlines()
+    base_index = next(i for i, line in enumerate(lines)
+                      if line.split(" - ")[0].split()[4] == "/dev/pts"
+                      and line.split(" - ")[0].split()[3] == "/")
+    mask_index = next(i for i, line in enumerate(lines)
+                      if line.split(" - ")[0].split()[4] == "/dev/pts"
+                      and line.split(" - ")[0].split()[3] == "/systemd/inaccessible/dir")
+    if mutation in {"wrong-gid", "wrong-mode", "wrong-ptmxmode", "wrong-mount-flags",
+                    "wrong-parent"}:
+        left, separator, right = lines[base_index].partition(" - ")
+        left_fields, right_fields = left.split(), right.split()
+        if mutation == "wrong-gid":
+            right_fields[2] = "rw,gid=4,mode=620,ptmxmode=000"
+        elif mutation == "wrong-mode":
+            right_fields[2] = "rw,gid=5,mode=621,ptmxmode=000"
+        elif mutation == "wrong-ptmxmode":
+            right_fields[2] = "rw,gid=5,mode=620,ptmxmode=0666"
+        elif mutation == "wrong-mount-flags":
+            left_fields[5] = "rw,nosuid,noexec"
+        else:
+            left_fields[1] = next(line.split()[0] for line in lines
+                                  if line.split(" - ")[0].split()[4] == "/")
+        lines[base_index] = " ".join(left_fields) + separator + " ".join(right_fields)
+    elif mutation == "base-after-mask":
+        left, separator, right = lines[base_index].partition(" - ")
+        fields = left.split()
+        fields[0] = str(max(int(line.split()[0]) for line in lines) + 1)
+        lines[base_index] = " ".join(fields) + separator + right
+    elif mutation == "extra-nested-mount":
+        mask_id = int(lines[mask_index].split()[0])
+        lines.append(_mountinfo_line(max(int(line.split()[0]) for line in lines) + 1,
+                                     mask_id, "0:6", "/", "/dev/pts/extra",
+                                     "rw,nosuid,noexec,noatime", "devpts", "devpts",
+                                     "rw,gid=5,mode=620,ptmxmode=000"))
+
+    _rows, _windows, rejected = functions["_decode_mountinfo"]("\n".join(lines),
+                                                                expected_unit=unit)
+    assert rejected, mutation
 
 
 def test_pm08_mount_decoder_rejects_nested_mount_below_missing_required_directory():
@@ -1543,11 +1601,14 @@ def test_runtime_and_wsl_helper_mask_target_sets_match():
     functions = _wsl_mount_audit_functions()
 
     assert set(harness.SYSTEMD_MASK_TARGETS) == functions["SYSTEMD_MASK_TARGETS"]
+    assert "/dev/pts" in harness.SYSTEMD_MASK_TARGETS
+    assert "/dev/pts" in functions["SYSTEMD_INACCESSIBLE_PATHS"]
     assert "/init" in harness.SYSTEMD_MASK_TARGETS
 
 
 def _private_dev_fixture(*, char_extra=False, masked_extra=False, wrong_null_mode=False,
-                         pts_extra=False, mqueue_extra=False):
+                         pts_extra=False, pts_ptmx=False, wrong_pts_mode=False,
+                         wrong_pts_owner=False, mqueue_extra=False):
     functions = _wsl_mount_audit_functions()
     links = {
         "core": "/proc/kcore", "fd": "/proc/self/fd", "log": "/run/systemd/journal/dev-log",
@@ -1556,7 +1617,10 @@ def _private_dev_fixture(*, char_extra=False, masked_extra=False, wrong_null_mod
     devices = {"tty": (5, 0), "urandom": (1, 9), "random": (1, 8),
                "full": (1, 7), "zero": (1, 5), "null": (1, 3), "ptmx": (5, 2)}
     directories = {"char": (0o755, 0, 0), "hugepages": (0, 0, 0),
-                   "mqueue": (0o1777, 0, 0), "pts": (0o755, 0, 0), "shm": (0, 0, 0)}
+                   "mqueue": (0o1777, 0, 0),
+                   "pts": (0o755 if wrong_pts_mode else 0,
+                          1 if wrong_pts_owner else 0, 0),
+                   "shm": (0, 0, 0)}
     names = set(links) | set(devices) | set(directories)
     stats = {}
     link_targets = {}
@@ -1581,10 +1645,11 @@ def _private_dev_fixture(*, char_extra=False, masked_extra=False, wrong_null_mod
             stat=lambda *, follow_symlinks=False: SimpleNamespace(
                 st_mode=functions["stat"].S_IFLNK | 0o777, st_uid=0, st_gid=0, st_rdev=0)))
         link_targets["/dev/char/" + alias] = target
-    children["pts"].append(SimpleNamespace(
-        name="ptmx", path="/dev/pts/ptmx",
-        stat=lambda *, follow_symlinks=False: SimpleNamespace(
-            st_mode=functions["stat"].S_IFCHR, st_uid=0, st_gid=0, st_rdev=(5, 2))))
+    if pts_ptmx:
+        children["pts"].append(SimpleNamespace(
+            name="ptmx", path="/dev/pts/ptmx",
+            stat=lambda *, follow_symlinks=False: SimpleNamespace(
+                st_mode=functions["stat"].S_IFCHR, st_uid=0, st_gid=0, st_rdev=(5, 2))))
     if pts_extra:
         children["pts"].append(SimpleNamespace(
             name="unexpected-device", path="/dev/pts/unexpected-device",
@@ -1639,12 +1704,17 @@ def test_pm08_private_dev_requires_exact_metadata_aliases_and_empty_masked_dirs(
         "1:3", "1:5", "1:7", "1:8", "1:9", "5:0", "5:2",
     }
     assert result["nested_entries"]["hugepages"] == {}
+    assert result["entries"]["pts"] == {
+        "uid": 0, "gid": 0, "mode": 0, "type": "directory",
+    }
+    assert result["nested_entries"]["pts"] == {}
     assert result["nested_entries"]["shm"] == {}
 
 
 @pytest.mark.parametrize("kwargs", [
     {"char_extra": True}, {"masked_extra": True}, {"wrong_null_mode": True},
-    {"pts_extra": True}, {"mqueue_extra": True},
+    {"pts_extra": True}, {"pts_ptmx": True}, {"wrong_pts_mode": True},
+    {"wrong_pts_owner": True}, {"mqueue_extra": True},
 ])
 def test_pm08_private_dev_rejects_alias_nested_content_and_wrong_device_mode(kwargs):
     functions, mount_rows = _private_dev_fixture(**kwargs)
