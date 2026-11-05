@@ -2310,6 +2310,136 @@ class Store:
         )
         return new_epoch
 
+    def acquire_epoch_idempotent(
+        self,
+        operation_key: str,
+        story_id: str,
+        expected_epoch: int,
+        owner: str,
+        ttl_sec: float = DEFAULT_OWNER_TTL_SEC,
+    ) -> int:
+        """Idempotently acquire exactly the next epoch under the Store fence."""
+        _need_str(operation_key, "operation_key")
+        _need_str(story_id, "story_id")
+        _need_str(owner, "owner")
+        _need_int(expected_epoch, "expected_epoch", 1)
+        ttl = _need_ttl(ttl_sec)
+        if not self.reconciliation_complete:
+            raise StoreError("startup reconciliation must complete before epoch acquisition", kind="integrity")
+        payload = {
+            "story_id": story_id, "expected_epoch": expected_epoch,
+            "owner": owner, "ttl_sec": ttl,
+        }
+
+        def acquire(conn: sqlite3.Connection) -> dict:
+            epoch = self._acquire_epoch_locked(
+                conn, story_id, owner, ttl, expected_epoch=expected_epoch
+            )
+            return {"epoch": epoch}
+
+        result = self.execute_idempotent(operation_key, "epoch_acquire", payload, acquire)
+        if not isinstance(result, dict) or isinstance(result.get("epoch"), bool) or not isinstance(result.get("epoch"), int):
+            raise StoreError("stored epoch acquisition result is invalid", kind="integrity")
+        return result["epoch"]
+
+    def resume_epoch_idempotent(
+        self,
+        operation_key: str,
+        task_id: str,
+        story_id: str,
+        prior_attempt: int,
+        prior_epoch: int,
+        prior_operation_key: str,
+        recovery_outcome: dict,
+        expected_owner: str,
+        new_owner: str,
+        ttl_sec: float = DEFAULT_OWNER_TTL_SEC,
+    ) -> int:
+        """Create one new epoch only after a recorded, returned app checkpoint.
+
+        Lease expiry and fencing alone do not prove process death. This narrow
+        resume path accepts only a durably RELEASED prior lease and a persisted
+        non-approving application-checkpoint outcome. Unknown/timeout outcomes,
+        STOP-fenced leases, and other terminal leases fail closed.
+        """
+        for value, name in (
+            (operation_key, "operation_key"), (task_id, "task_id"),
+            (story_id, "story_id"), (prior_operation_key, "prior_operation_key"),
+            (expected_owner, "expected_owner"), (new_owner, "new_owner"),
+        ):
+            _need_str(value, name)
+        _need_int(prior_attempt, "prior_attempt", 1)
+        _need_int(prior_epoch, "prior_epoch", 1)
+        ttl = _need_ttl(ttl_sec)
+        if not isinstance(recovery_outcome, dict):
+            raise StoreError("resume requires a recorded application checkpoint", kind="argument")
+        if not self.reconciliation_complete:
+            raise StoreError("startup reconciliation must complete before resume", kind="integrity")
+        payload = {
+            "task_id": task_id, "story_id": story_id,
+            "prior_attempt": prior_attempt, "prior_epoch": prior_epoch,
+            "prior_operation_key": prior_operation_key,
+            "recovery_outcome": recovery_outcome,
+            "expected_owner": expected_owner, "new_owner": new_owner, "ttl_sec": ttl,
+        }
+
+        def resume(conn: sqlite3.Connection) -> dict:
+            story = self._story_row(conn, story_id)
+            task = self._task_row(conn, task_id)
+            if task["story_id"] != story_id:
+                raise StoreError("resume task does not belong to the specified story", kind="story")
+            if int(story["epoch"]) != prior_epoch or story["owner"] != expected_owner:
+                raise StoreError("resume has a stale epoch or owner fence", kind="epoch")
+            lease = conn.execute(
+                "SELECT epoch, status, wrote, marked FROM leases WHERE task_id = ? AND attempt = ?",
+                (task_id, prior_attempt),
+            ).fetchone()
+            if (lease is None or int(lease["epoch"]) != prior_epoch
+                    or lease["status"] != LEASE_RELEASED
+                    or lease["wrote"] != 0 or lease["marked"] != 0):
+                raise StoreError("resume requires a durably RELEASED prior lease", kind="lifecycle")
+            prior = conn.execute(
+                "SELECT operation, result FROM supervisor_operations WHERE operation_key = ?",
+                (prior_operation_key,),
+            ).fetchone()
+            if prior is None or prior["operation"] != "s3_attempt_outcome":
+                raise StoreError("resume outcome is not durably recorded", kind="lifecycle")
+            try:
+                stored_outcome = json.loads(prior["result"])
+            except (TypeError, ValueError) as exc:
+                raise StoreError("stored resume outcome is invalid", kind="integrity") from exc
+            if canonical_bytes(stored_outcome) != canonical_bytes(recovery_outcome):
+                raise StoreError("resume outcome differs from the persisted attempt result", kind="duplicate")
+            if (recovery_outcome.get("state") != "INCONCLUSIVE"
+                    or recovery_outcome.get("error_code") != "INTERRUPTED"
+                    or recovery_outcome.get("checkpoint") not in {
+                        "after_edit_before_commit", "after_commit_before_response"
+                    }
+                    or recovery_outcome.get("execution_returned") is not True):
+                raise StoreError("resume outcome does not prove a named returned app checkpoint", kind="lifecycle")
+            if recovery_outcome.get("attempt") != prior_attempt or recovery_outcome.get("epoch") != prior_epoch:
+                raise StoreError("resume checkpoint is bound to a different attempt fence", kind="integrity")
+            conn.execute(
+                "UPDATE stories SET owner = NULL, owner_expires_at = NULL, state = 'OPEN' "
+                "WHERE story_id = ? AND epoch = ? AND owner = ?",
+                (story_id, prior_epoch, expected_owner),
+            )
+            if conn.execute("SELECT changes()").fetchone()[0] != 1:
+                raise StoreError("resume lost the owner compare-and-swap", kind="epoch")
+            self._record_event_locked(
+                conn, story_id, expected_owner, "EPOCH_RELEASED",
+                {"epoch": prior_epoch, "reason": "APPLICATION_CHECKPOINT_RESUME"},
+            )
+            new_epoch = self._acquire_epoch_locked(
+                conn, story_id, new_owner, ttl, expected_epoch=prior_epoch
+            )
+            return {"epoch": new_epoch}
+
+        result = self.execute_idempotent(operation_key, "epoch_resume", payload, resume)
+        if not isinstance(result, dict) or isinstance(result.get("epoch"), bool) or not isinstance(result.get("epoch"), int):
+            raise StoreError("stored resume epoch result is invalid", kind="integrity")
+        return result["epoch"]
+
     def renew_epoch(self, story_id: str, owner: str, ttl_sec: float) -> None:
         """Extend the owner's liveness; only the current, still-live owner may renew.
 
@@ -5940,6 +6070,173 @@ class Store:
                 "NO_EXECUTION_PROVEN", "EFFECTS_RESOLVED",
             },
         }
+
+    def charge_idempotent(
+        self,
+        operation_key: str,
+        task_id: str,
+        amount: int,
+        *,
+        supervisor_key: bytes,
+        runner_id: str = SUPERVISOR_RUNNER_ID,
+        expected_cap: int | None = None,
+        expected_spent: int | None = None,
+    ) -> int:
+        """Charge budget once for an exact key/payload, preserving cap markers.
+
+        A repeated identical request returns its original remaining balance. A
+        reused key with different task, amount, or runner is rejected. An
+        over-cap first attempt atomically records the existing signed budget
+        markers and a durable blocked result; replay raises the same budget
+        error without charging or appending another marker.
+        """
+        _need_str(operation_key, "operation_key")
+        _need_str(task_id, "task_id")
+        _need_int(amount, "amount", 0, MAX_BUDGET)
+        sup_key = self._need_supervisor_key(supervisor_key)
+        _need_str(runner_id, "runner_id")
+        if expected_cap is not None:
+            _need_int(expected_cap, "expected_cap", 0, MAX_BUDGET)
+        if expected_spent is not None:
+            _need_int(expected_spent, "expected_spent", 0, MAX_BUDGET)
+        payload = {
+            "task_id": task_id, "amount": amount, "runner_id": runner_id,
+            "expected_cap": expected_cap, "expected_spent": expected_spent,
+        }
+
+        def charge(conn: sqlite3.Connection) -> dict:
+            task = self._task_row(conn, task_id)
+            row = conn.execute(
+                "SELECT cap, spent FROM budget WHERE task_id = ?", (task_id,)
+            ).fetchone()
+            if row is None:
+                raise StoreError(f"no budget set for task {task_id!r}", kind="budget")
+            if ((expected_cap is not None and row["cap"] != expected_cap)
+                    or (expected_spent is not None and row["spent"] != expected_spent)):
+                raise StoreError(
+                    "caller budget snapshot differs from the authoritative ledger",
+                    kind="budget_snapshot",
+                )
+            if row["spent"] + amount > row["cap"]:
+                self._budget_exceeded_locked(conn, task, sup_key, runner_id, amount)
+                return {"state": "BLOCKED", "remaining": row["cap"] - row["spent"]}
+            conn.execute(
+                "UPDATE budget SET spent = spent + ? WHERE task_id = ?", (amount, task_id)
+            )
+            return {"state": "COMPLETED", "remaining": row["cap"] - row["spent"] - amount}
+
+        result = self.execute_idempotent(
+            operation_key, "budget_charge", payload, charge
+        )
+        if not isinstance(result, dict) or result.get("state") not in {"BLOCKED", "COMPLETED"}:
+            raise StoreError("stored idempotent budget result is invalid", kind="integrity")
+        if result["state"] == "BLOCKED":
+            raise StoreError(f"budget exceeded for task {task_id!r}", kind="budget")
+        remaining = result.get("remaining")
+        if isinstance(remaining, bool) or not isinstance(remaining, int):
+            raise StoreError("stored idempotent budget balance is invalid", kind="integrity")
+        return remaining
+
+    def stop_attempt_fenced(
+        self,
+        operation_key: str,
+        task_id: str,
+        story_id: str,
+        attempt: int,
+        expected_epoch: int,
+        expected_owner: str,
+        reason: str,
+        authorized_actor: str,
+        binding: dict | None = None,
+    ) -> dict:
+        """Durably STOP an attempt and atomically advance its story fence.
+
+        The old live lease, if present, is fenced in the same transaction as the
+        epoch advance and idempotency record. This prevents old-epoch receipts
+        from being accepted. It does not terminate an operating-system process;
+        the result is always INCONCLUSIVE until a separate safe cleanup proof
+        exists. Replaying an identical stop key/payload returns the prior result
+        without advancing the epoch again. ``authorized_actor`` is recorded as
+        audit identity; this method does not authenticate that identity.
+        """
+        for value, name in (
+            (operation_key, "operation_key"), (task_id, "task_id"),
+            (story_id, "story_id"), (expected_owner, "expected_owner"),
+            (authorized_actor, "authorized_actor"),
+        ):
+            _need_str(value, name)
+        if not isinstance(reason, str) or not reason.strip() or len(reason) > 512:
+            raise StoreError("stop reason must contain 1..512 characters", kind="argument")
+        if not self.reconciliation_complete:
+            raise StoreError("startup reconciliation must complete before STOP", kind="integrity")
+        if binding is not None and not isinstance(binding, dict):
+            raise StoreError("stop binding must be an object", kind="argument")
+        _need_int(attempt, "attempt", 1)
+        _need_int(expected_epoch, "expected_epoch", 1)
+        payload = {
+            "task_id": task_id, "story_id": story_id, "attempt": attempt,
+            "expected_epoch": expected_epoch, "expected_owner": expected_owner,
+            "reason": reason, "authorized_actor": authorized_actor,
+            "binding": binding or {},
+        }
+
+        def stop(conn: sqlite3.Connection) -> dict:
+            story = self._story_row(conn, story_id)
+            task = self._task_row(conn, task_id)
+            if task["story_id"] != story_id:
+                raise StoreError("stop task does not belong to the specified story", kind="story")
+            if int(story["epoch"]) != expected_epoch:
+                raise StoreError("stop request has a stale epoch fence", kind="epoch")
+            if story["owner"] != expected_owner:
+                raise StoreError("stop request does not hold current story ownership", kind="epoch")
+            new_epoch = expected_epoch + 1
+            if new_epoch > MAX_COUNTER:
+                raise StoreError("epoch counter exhausted", kind="epoch")
+            lease = conn.execute(
+                "SELECT lease_id, epoch, status FROM leases WHERE task_id = ? AND attempt = ?",
+                (task_id, attempt),
+            ).fetchone()
+            if lease is not None and int(lease["epoch"]) != expected_epoch:
+                raise StoreError("stop attempt lease belongs to a different epoch", kind="epoch")
+            conn.execute(
+                "UPDATE stories SET epoch = ?, owner = NULL, owner_expires_at = NULL, state = 'OPEN' "
+                "WHERE story_id = ? AND epoch = ? AND owner = ?",
+                (new_epoch, story_id, expected_epoch, expected_owner),
+            )
+            if conn.execute("SELECT changes()").fetchone()[0] != 1:
+                raise StoreError("stop lost the story epoch compare-and-swap", kind="epoch")
+            fenced = False
+            if lease is not None and lease["status"] == LEASE_LIVE:
+                conn.execute(
+                    "UPDATE leases SET status = 'FENCED' WHERE lease_id = ? AND status = 'LIVE'",
+                    (lease["lease_id"],),
+                )
+                if conn.execute("SELECT changes()").fetchone()[0] != 1:
+                    raise StoreError("stop lost the live lease compare-and-swap", kind="lease")
+                self._free_slot(conn, int(lease["lease_id"]))
+                self._record_event_locked(
+                    conn, task_id, "store", "LEASE_FENCED",
+                    {"attempt": attempt, "new_epoch": new_epoch, "reason": "STOP"},
+                )
+                fenced = True
+            result = {
+                "state": "INCONCLUSIVE",
+                "task_id": task_id,
+                "story_id": story_id,
+                "attempt": attempt,
+                "old_epoch": expected_epoch,
+                "new_epoch": new_epoch,
+                "lease_fenced": fenced,
+                "process_termination": "NOT_VERIFIED",
+            }
+            self._record_event_locked(
+                conn, task_id, "supervisor", "NOTE",
+                {"event": "STOP_ATTEMPT_FENCED", "operation_key": operation_key,
+                 **payload, "result": result},
+            )
+            return result
+
+        return self.execute_idempotent(operation_key, "stop_attempt_fenced", payload, stop)
 
     def execute_external_idempotent(
         self, operation_key: str, operation: str, payload: Any, effect: Callable[[], Any]
