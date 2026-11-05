@@ -816,6 +816,12 @@ def _config_identity(identity: dict) -> tuple[dict, dict, dict]:
     task_manifest = _json_file("/etc/vst-runner/task-manifest.json")
     profile = _json_file("/etc/vst-runner/network-profile.json")
     policy = _json_file("/etc/vst-runner/assignment-delegation-policy.json")
+    manifest_hash = hashlib.sha256(_canonical(task_manifest)).hexdigest()
+    if manifest_hash != identity["task_manifest_sha256"]:
+        raise ValueError("task manifest differs from its authorized canonical digest")
+    task_source_head = task_manifest.get("base_head")
+    if not isinstance(task_source_head, str) or not re.fullmatch(r"[0-9a-f]{40}", task_source_head):
+        raise ValueError("authorized TaskManifest base_head is not a valid task source revision")
     selector = identity["selector_test_id"]
     if (config.get("run_id") != identity["run_id"]
             or config.get("probe_nonce") != identity["nonce"]
@@ -834,14 +840,12 @@ def _config_identity(identity: dict) -> tuple[dict, dict, dict]:
             or task_manifest.get("story_id") != bootstrap.get("story_id")
             or profile.get("external_allowlist") != []
             or profile.get("environment_id") != "Ubuntu-24.04:S2:" + identity["run_id"]
-            or policy.get("source_head") != identity["runtime_source_head"]
+            or policy.get("source_head") != task_source_head
             or policy.get("allowed_assignments", [{}])[0].get("task_manifest_sha256")
                != identity["task_manifest_sha256"]):
         raise ValueError("runtime configuration does not match the one-shot authorization tuple")
-    manifest_hash = hashlib.sha256(_canonical(task_manifest)).hexdigest()
     config_bundle_hash = hashlib.sha256(_canonical(identity["config_sha256"])).hexdigest()
-    if (manifest_hash != identity["task_manifest_sha256"]
-            or config_bundle_hash != identity["config_bundle_sha256"]):
+    if config_bundle_hash != identity["config_bundle_sha256"]:
         raise ValueError("task manifest or complete configuration hash map differs")
     return config, bootstrap, task_manifest
 
@@ -861,14 +865,27 @@ def _runtime_identity(identity: dict) -> None:
 
 
 def _systemd_show(unit: str) -> dict:
+    if unit not in EXPECTED_UNITS:
+        stop("systemd unit is outside the qualification scope")
     raw = _require_command(record("unit:" + unit, [
         "/usr/bin/systemctl", "show", unit, "--property=LoadState", "--property=ActiveState",
-        "--property=SubState", "--property=Result", "--property=MainPID", "--value",
+        "--property=SubState", "--property=Result", "--property=MainPID",
+        "--property=ControlPID", "--no-pager",
     ]), "systemd inventory")
-    lines = raw.decode("utf-8", "replace").splitlines()
-    if len(lines) != 5:
+    properties = {"LoadState", "ActiveState", "SubState", "Result", "MainPID", "ControlPID"}
+    required = properties - {"MainPID"} if unit.endswith(".socket") else properties
+    values = {}
+    for line in raw.decode("utf-8", "strict").splitlines():
+        key, separator, value = line.partition("=")
+        if not separator or key not in properties or key in values:
+            stop("systemd returned a malformed unit inventory")
+        values[key] = value
+    if not required <= values.keys():
         stop("systemd returned a malformed unit inventory")
-    return dict(zip(("LoadState", "ActiveState", "SubState", "Result", "MainPID"), lines))
+    if any(not re.fullmatch(r"[0-9]+", values[key])
+           for key in ("MainPID", "ControlPID") if key in values):
+        stop("systemd returned a malformed process identity")
+    return values
 
 
 def _prestart_inventory(identity: dict) -> dict:
@@ -934,7 +951,8 @@ def _prestart_inventory(identity: dict) -> dict:
         unit_rows[unit] = _systemd_show(unit)
         row = unit_rows[unit]
         if (row["LoadState"] != "loaded" or row["ActiveState"] != "inactive"
-                or row["SubState"] != "dead" or row["MainPID"] not in {"", "0"}):
+                or row["SubState"] != "dead" or row.get("MainPID", "") not in {"", "0"}
+                or row["ControlPID"] != "0"):
             stop("all runtime and preflight units must be loaded and inactive before activation")
     jobs = _require_command(record("systemd_jobs", [
         "/usr/bin/systemctl", "list-jobs", "--no-legend", "--no-pager",

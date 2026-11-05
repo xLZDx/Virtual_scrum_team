@@ -10,8 +10,10 @@ import hashlib
 import io
 import json
 import ast
+import os
 import pathlib
 import re
+import stat
 import tarfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -157,6 +159,354 @@ def _wsl_prestart_functions():
     return namespace
 
 
+def _wsl_identity_functions(*, config_json=None, config_bytes=None, runtime_json=None,
+                            runtime_bytes=None, runtime_pins=None, unit_outputs=None):
+    """Load only identity and named-systemd functions with isolated file/command boundaries."""
+    source_path = Path(__file__).resolve().parents[2] / WSL_HELPER
+    tree = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
+    wanted = {"_config_identity", "_runtime_identity", "_tree_digest", "_systemd_show"}
+    constant = next(node for node in tree.body if isinstance(node, ast.Assign)
+                    and any(isinstance(target, ast.Name) and target.id == "EXPECTED_UNITS"
+                            for target in node.targets))
+    functions = [node for node in tree.body if isinstance(node, ast.FunctionDef)
+                 and node.name in wanted]
+    assert {node.name for node in functions} == wanted
+    calls = []
+    config_json = {} if config_json is None else config_json
+    config_bytes = {} if config_bytes is None else config_bytes
+    runtime_json = {} if runtime_json is None else runtime_json
+    runtime_bytes = {} if runtime_bytes is None else runtime_bytes
+    unit_outputs = {} if unit_outputs is None else unit_outputs
+
+    class Hold(Exception):
+        pass
+
+    def record(label, argv):
+        calls.append((label, argv))
+        return {"stdout": unit_outputs[argv[2]]}
+
+    def stop(reason):
+        raise Hold(reason)
+
+    def secure_bytes(path, _maximum=2 * 1024 * 1024):
+        if path in config_bytes:
+            return config_bytes[path]
+        return runtime_bytes[path]
+
+    def json_file(path, _maximum=2 * 1024 * 1024):
+        if path in config_json:
+            return config_json[path]
+        return runtime_json[path]
+
+    def fake_lstat(path):
+        if path == "/opt/vst-runtime":
+            return SimpleNamespace(st_mode=stat.S_IFLNK | 0o777, st_uid=0)
+        return SimpleNamespace(st_mode=stat.S_IFDIR | 0o555, st_uid=0)
+
+    namespace = {
+        "hashlib": hashlib,
+        "json": json,
+        "re": re,
+        "os": SimpleNamespace(lstat=fake_lstat, readlink=lambda _path: "/opt/vst-runtime-" + RUNTIME_HEAD,
+                              path=os.path),
+        "stat": stat,
+        "EXPECTED_UNITS": (),
+        "AUTH": {"source_pins": {"runtime": runtime_pins or {}}},
+        "record": record,
+        "_require_command": lambda result, _name: result["stdout"],
+        "_secure_bytes": secure_bytes,
+        "_json_file": json_file,
+        "_canonical": lambda value: json.dumps(
+            value, sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+            allow_nan=False).encode("ascii"),
+        "stop": stop,
+    }
+    module = ast.Module(body=[constant, *functions], type_ignores=[])
+    exec(compile(module, str(source_path), "exec"), namespace)
+    namespace["systemd_calls"] = calls
+    namespace["Hold"] = Hold
+    return namespace
+
+
+def _config_identity_fixture(*, task_base_head="9" * 40, policy_source_head=None,
+                              policy_manifest_sha256=None, identity_manifest_sha256=None):
+    selector = "tests/vst/test_s2_runtime_qualification_harness.py::test_runtime_handoff_contract"
+    acceptance = "one authorized runtime test"
+    task_manifest = {
+        "base_head": task_base_head,
+        "task_id": "S2-4-runtime-owner-runner-qualification",
+        "story_id": "S2-4",
+        "retry_cap": 0,
+        "acceptance": acceptance,
+        "required_tests": [{"slot": "runtime-tests", "test_id": selector,
+                            "acceptance": acceptance}],
+    }
+    canonical = lambda value: json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+        allow_nan=False).encode("ascii")
+    task_digest = _sha(canonical(task_manifest))
+    config_json = {
+        "/etc/vst-runner/supervisor-service.json": {
+            "run_id": "run-0123456789abcdef", "probe_nonce": "5" * 32,
+            "store_path": "/var/lib/vst-runner/private/store.sqlite3",
+        },
+        "/etc/vst-runner/bootstrap-request.json": {
+            "request_id": "4" * 32, "run_id": "run-0123456789abcdef",
+            "task_manifest": task_manifest, "task_id": task_manifest["task_id"],
+            "story_id": task_manifest["story_id"],
+        },
+        "/etc/vst-runner/task-manifest.json": task_manifest,
+        "/etc/vst-runner/network-profile.json": {
+            "external_allowlist": [], "environment_id": "Ubuntu-24.04:S2:run-0123456789abcdef",
+        },
+        "/etc/vst-runner/assignment-delegation-policy.json": {
+            "source_head": task_base_head if policy_source_head is None else policy_source_head,
+            "allowed_assignments": [{"task_manifest_sha256": (
+                task_digest if policy_manifest_sha256 is None else policy_manifest_sha256)}],
+        },
+    }
+    config_bytes = {path: canonical(value) for path, value in config_json.items()}
+    config_sha256 = {path: _sha(raw) for path, raw in config_bytes.items()}
+    return {
+        "identity": {
+            "runtime_source_head": RUNTIME_HEAD,
+            "qualification_source_head": QUALIFICATION_HEAD,
+            "run_id": "run-0123456789abcdef", "nonce": "5" * 32,
+            "bootstrap_request_id": "4" * 32, "selector_test_id": selector,
+            "task_manifest_sha256": (task_digest if identity_manifest_sha256 is None
+                                      else identity_manifest_sha256),
+            "config_sha256": config_sha256,
+            "config_bundle_sha256": _sha(canonical(config_sha256)),
+        },
+        "config_json": config_json,
+        "config_bytes": config_bytes,
+        "task_head": task_base_head,
+    }
+
+
+def _named_systemd_output(properties, order):
+    return "".join(f"{name}={properties[name]}\n" for name in order).encode("ascii")
+
+
+def _wsl_prestart_unit_gate(functions):
+    source_path = Path(__file__).resolve().parents[2] / WSL_HELPER
+    tree = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
+    prestart = next(node for node in tree.body if isinstance(node, ast.FunctionDef)
+                    and node.name == "_prestart_inventory")
+    rows_assignment = next(node for node in prestart.body if isinstance(node, ast.Assign)
+                           and any(isinstance(target, ast.Name) and target.id == "unit_rows"
+                                   for target in node.targets))
+    unit_loop = next(node for node in ast.walk(prestart) if isinstance(node, ast.For)
+                     and isinstance(node.target, ast.Name) and node.target.id == "unit"
+                     and any(isinstance(child, ast.Constant) and child.value == "ControlPID"
+                             for child in ast.walk(node)))
+    isolated = ast.Module(body=[rows_assignment, unit_loop], type_ignores=[])
+    exec(compile(isolated, str(source_path), "exec"), functions)
+    return functions["unit_rows"]
+
+
+def test_wsl_config_identity_binds_policy_to_task_manifest_head_not_runtime_or_qualifier():
+    fixture = _config_identity_fixture()
+    functions = _wsl_identity_functions(
+        config_json=fixture["config_json"], config_bytes=fixture["config_bytes"])
+
+    _config, _bootstrap, task_manifest = functions["_config_identity"](fixture["identity"])
+
+    assert fixture["identity"]["runtime_source_head"] == RUNTIME_HEAD
+    assert fixture["identity"]["qualification_source_head"] == QUALIFICATION_HEAD
+    assert task_manifest["base_head"] == fixture["task_head"] == "9" * 40
+    assert task_manifest["base_head"] not in {
+        fixture["identity"]["runtime_source_head"],
+        fixture["identity"]["qualification_source_head"],
+    }
+
+
+@pytest.mark.parametrize("wrong_policy_head", [RUNTIME_HEAD, QUALIFICATION_HEAD],
+                         ids=["runtime-head", "qualification-head"])
+def test_wsl_config_identity_rejects_policy_head_that_is_not_task_manifest_base(
+        wrong_policy_head):
+    fixture = _config_identity_fixture(policy_source_head=wrong_policy_head)
+    functions = _wsl_identity_functions(
+        config_json=fixture["config_json"], config_bytes=fixture["config_bytes"])
+
+    with pytest.raises(ValueError):
+        functions["_config_identity"](fixture["identity"])
+
+
+@pytest.mark.parametrize("bad_base_head", [None, "9" * 39, "g" * 40, 900],
+                         ids=["missing", "short", "non-hex", "wrong-type"])
+def test_wsl_config_identity_rejects_malformed_authorized_task_manifest_base_head(
+        bad_base_head):
+    fixture = _config_identity_fixture(task_base_head=bad_base_head)
+    functions = _wsl_identity_functions(
+        config_json=fixture["config_json"], config_bytes=fixture["config_bytes"])
+
+    with pytest.raises(ValueError):
+        functions["_config_identity"](fixture["identity"])
+
+
+@pytest.mark.parametrize("mismatch", ["authorized-task-hash", "policy-task-hash"],
+                         ids=["manifest-digest", "policy-assignment-digest"])
+def test_wsl_config_identity_rejects_task_manifest_hash_mismatch(mismatch):
+    fixture_options = {}
+    if mismatch == "authorized-task-hash":
+        fixture_options["identity_manifest_sha256"] = "f" * 64
+    else:
+        fixture_options["policy_manifest_sha256"] = "f" * 64
+    fixture = _config_identity_fixture(**fixture_options)
+    functions = _wsl_identity_functions(
+        config_json=fixture["config_json"], config_bytes=fixture["config_bytes"])
+
+    with pytest.raises(ValueError):
+        functions["_config_identity"](fixture["identity"])
+
+
+def test_wsl_runtime_identity_keeps_runtime_marker_and_source_pins_separate():
+    selector = "/opt/vst-runtime-" + RUNTIME_HEAD
+    source_path = os.path.join(selector, "tools", "qa", "runtime-check.py")
+    source_bytes = b"pinned runtime source\n"
+    pins = {"tools/qa/runtime-check.py": _sha(source_bytes)}
+    marker = {"schema": 3, "head": RUNTIME_HEAD, "archive_sha256": HEX}
+    functions = _wsl_identity_functions(
+        runtime_json={selector + "/.vst-runtime-manifest.json": marker},
+        runtime_bytes={source_path: source_bytes}, runtime_pins=pins)
+    identity = {"runtime_selector": selector, "runtime_source_head": RUNTIME_HEAD,
+                "qualification_source_head": QUALIFICATION_HEAD, "bundle_sha256": HEX}
+
+    assert functions["_runtime_identity"](identity) is None
+
+
+@pytest.mark.parametrize("mismatch", ["selector", "marker-head", "marker-archive", "source-pin"],
+                         ids=["selector", "marker-head", "archive-pin", "runtime-source-pin"])
+def test_wsl_runtime_identity_still_refuses_runtime_marker_or_pin_mismatch(mismatch):
+    selector = "/opt/vst-runtime-" + RUNTIME_HEAD
+    source_path = os.path.join(selector, "tools", "qa", "runtime-check.py")
+    source_bytes = b"runtime source bytes\n"
+    digest = _sha(source_bytes)
+    marker = {"schema": 3, "head": RUNTIME_HEAD, "archive_sha256": HEX}
+    identity = {"runtime_selector": selector, "runtime_source_head": RUNTIME_HEAD,
+                "qualification_source_head": QUALIFICATION_HEAD, "bundle_sha256": HEX}
+    pins = {"tools/qa/runtime-check.py": digest}
+    if mismatch == "selector":
+        identity["runtime_selector"] = "/opt/vst-runtime-" + QUALIFICATION_HEAD
+    elif mismatch == "marker-head":
+        marker["head"] = QUALIFICATION_HEAD
+    elif mismatch == "marker-archive":
+        marker["archive_sha256"] = "f" * 64
+    else:
+        pins["tools/qa/runtime-check.py"] = "f" * 64
+    functions = _wsl_identity_functions(
+        runtime_json={selector + "/.vst-runtime-manifest.json": marker},
+        runtime_bytes={source_path: source_bytes}, runtime_pins=pins)
+
+    with pytest.raises(ValueError):
+        functions["_runtime_identity"](identity)
+
+
+def _service_unit_properties():
+    return {"LoadState": "loaded", "ActiveState": "inactive", "SubState": "dead",
+            "Result": "success", "MainPID": "0", "ControlPID": "0"}
+
+
+def _socket_unit_properties():
+    return {"LoadState": "loaded", "ActiveState": "inactive", "SubState": "dead",
+            "Result": "success", "ControlPID": "0"}
+
+
+def test_wsl_systemd_show_parses_reordered_named_service_and_socket_properties():
+    service = "vst-runner.service"
+    socket = "vst-dispatch-owner.socket"
+    outputs = {
+        service: _named_systemd_output(_service_unit_properties(),
+                                      ["Result", "MainPID", "ActiveState", "ControlPID",
+                                       "SubState", "LoadState"]),
+        socket: _named_systemd_output(_socket_unit_properties(),
+                                     ["ControlPID", "SubState", "LoadState", "Result",
+                                      "ActiveState"]),
+    }
+    functions = _wsl_identity_functions(unit_outputs=outputs)
+
+    service_result = functions["_systemd_show"](service)
+    socket_result = functions["_systemd_show"](socket)
+
+    assert service_result == _service_unit_properties()
+    assert socket_result == _socket_unit_properties()
+    assert "MainPID" not in socket_result
+    assert [label for label, _argv in functions["systemd_calls"]] == [
+        "unit:" + service, "unit:" + socket,
+    ]
+
+
+@pytest.mark.parametrize("raw", [
+    b"ActiveState=inactive\nSubState=dead\nResult=success\nControlPID=0\nLoadState=loaded\n",
+    b"LoadState=loaded\nActiveState=inactive\nSubState=dead\nResult=success\nMainPID=0\n",
+    b"LoadState=loaded\nActiveState=inactive\nSubState=dead\nResult=success\nMainPID=0\nControlPID=0\nUnexpected=yes\n",
+    b"LoadState=loaded\nActiveState=inactive\nActiveState=inactive\nSubState=dead\nResult=success\nMainPID=0\nControlPID=0\n",
+    b"LoadState\nActiveState=inactive\nSubState=dead\nResult=success\nMainPID=0\nControlPID=0\n",
+    b"LoadState=loaded\nActiveState=inactive\nSubState=dead\nResult=success\nMainPID=not-a-pid\nControlPID=0\n",
+    b"LoadState=loaded\nActiveState=inactive\nSubState=dead\nResult=success\nMainPID=0\nControlPID=-1\n",
+], ids=["missing-controlpid", "missing-mainpid", "unknown", "duplicate", "malformed",
+       "nonnumeric-mainpid", "nonnumeric-controlpid"])
+def test_wsl_systemd_show_rejects_missing_ambiguous_or_malformed_named_properties(raw):
+    functions = _wsl_identity_functions(unit_outputs={"vst-runner.service": raw})
+
+    with pytest.raises(functions["Hold"]):
+        functions["_systemd_show"]("vst-runner.service")
+
+
+def test_wsl_systemd_show_rejects_units_outside_exact_qualification_allowlist():
+    functions = _wsl_identity_functions()
+
+    with pytest.raises(functions["Hold"]):
+        functions["_systemd_show"]("unrelated.service")
+
+    assert functions["systemd_calls"] == []
+
+
+def _inactive_systemd_outputs(units):
+    outputs = {}
+    for unit in units:
+        properties = (_socket_unit_properties() if unit.endswith(".socket")
+                      else _service_unit_properties())
+        outputs[unit] = _named_systemd_output(properties, list(reversed(properties)))
+    return outputs
+
+
+def test_wsl_prestart_unit_gate_accepts_named_inactive_services_and_socket_without_mainpid():
+    outputs = _inactive_systemd_outputs((
+        "vst-sandbox-probe.service", "vst-assignment-bootstrap.service",
+        "vst-dispatch-issuer.service", "vst-supervisor.service", "vst-signer.service",
+        "vst-runner.service", "vst-dispatcher.service", "vst-dispatch-owner.socket",
+        "vst-dispatch-owner.service",
+    ))
+    functions = _wsl_identity_functions(unit_outputs=outputs)
+
+    rows = _wsl_prestart_unit_gate(functions)
+
+    assert rows["vst-runner.service"]["MainPID"] == "0"
+    assert rows["vst-runner.service"]["ControlPID"] == "0"
+    assert rows["vst-dispatch-owner.socket"]["ControlPID"] == "0"
+    assert "MainPID" not in rows["vst-dispatch-owner.socket"]
+    assert len(rows) == len(functions["EXPECTED_UNITS"])
+
+
+@pytest.mark.parametrize(("unit", "field", "value"), [
+    ("vst-runner.service", "MainPID", "4321"),
+    ("vst-dispatch-owner.socket", "ControlPID", "7"),
+], ids=["active-service-pid", "active-socket-control-pid"])
+def test_wsl_prestart_unit_gate_refuses_nonzero_service_or_socket_pid(
+        unit, field, value):
+    fixture = _wsl_identity_functions(unit_outputs={})
+    outputs = _inactive_systemd_outputs(fixture["EXPECTED_UNITS"])
+    base = _socket_unit_properties() if unit.endswith(".socket") else _service_unit_properties()
+    base[field] = value
+    outputs[unit] = _named_systemd_output(base, list(reversed(base)))
+    functions = _wsl_identity_functions(unit_outputs=outputs)
+
+    with pytest.raises(functions["Hold"]):
+        _wsl_prestart_unit_gate(functions)
+
+
 class _WslTestRunHold(Exception):
     pass
 
@@ -203,7 +553,7 @@ def _wsl_test_run_function():
         }}}, "commands": []},
         "_read_task_rows": lambda _store_path, _task_id: ([], [], []),
         "_systemd_show": lambda _unit: {
-            "LoadState": "loaded", "ActiveState": "active",
+            "LoadState": "loaded", "ActiveState": "active", "ControlPID": "0",
         },
     }
     exec(compile(ast.Module(body=[function], type_ignores=[]),
