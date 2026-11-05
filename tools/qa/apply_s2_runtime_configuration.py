@@ -628,6 +628,21 @@ units = ("vst-supervisor.service", "vst-signer.service", "vst-runner.service",
          "vst-dispatcher.service", "vst-dispatch-owner.service", "vst-dispatch-owner.socket",
          "vst-assignment-bootstrap.service", "vst-dispatch-issuer.service", "vst-sandbox-probe.service")
 protected_units = ("vst-runner.service", "vst-dispatcher.service")
+
+
+def parse_unit_identity(output):
+    expected = {"ActiveState", "SubState", "InvocationID", "ControlGroup", "UnitFileState"}
+    values = {}
+    for line in output.splitlines():
+        key, separator, value = line.partition("=")
+        if not separator or key not in expected or key in values:
+            raise ValueError("unit activation properties are ambiguous")
+        values[key] = value
+    if set(values) != expected:
+        raise ValueError("unit activation properties are incomplete")
+    return values
+
+
 unit_before = {}
 for unit in units:
     loaded = subprocess.run(["/usr/bin/systemctl", "show", "--property=LoadState", "--value", unit],
@@ -640,15 +655,18 @@ for unit in units:
     if loaded.stdout.strip() == "not-found":
         continue
     properties = subprocess.run(
-        ["/usr/bin/systemctl", "show", "--property=ActiveState,SubState,InvocationID,ControlGroup,UnitFileState", "--value", unit],
+        ["/usr/bin/systemctl", "show", "--property=ActiveState,SubState,InvocationID,ControlGroup,UnitFileState", unit],
         stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         text=True, check=False, timeout=10)
     if properties.returncode != 0:
         raise SystemExit("cannot establish unit activation identity: " + unit)
-    values = properties.stdout.splitlines()
-    if len(values) != 5:
-        raise SystemExit("unit activation properties are incomplete: " + unit)
-    active_state, substate, invocation_id, control_group, unit_file_state = values
+    try:
+        values = parse_unit_identity(properties.stdout)
+    except ValueError as exc:
+        raise SystemExit(str(exc) + ": " + unit) from exc
+    active_state, substate = values["ActiveState"], values["SubState"]
+    invocation_id, control_group = values["InvocationID"], values["ControlGroup"]
+    unit_file_state = values["UnitFileState"]
     if active_state not in ("active", "inactive"):
         raise SystemExit("unit is transitioning or failed; refusing configuration apply: " + unit)
     if unit_file_state in ("masked", "masked-runtime"):

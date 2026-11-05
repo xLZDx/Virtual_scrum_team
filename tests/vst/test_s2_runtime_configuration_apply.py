@@ -453,3 +453,113 @@ def test_main_wsl_call_uses_short_loader_and_framed_remote_source(
     assert kwargs["input"] == APPLY._remote_stdin(expected_source, expected_payload)
     assert kwargs["input"][8:8 + len(expected_source.encode("utf-8"))] == expected_source.encode("utf-8")
     assert kwargs["input"][8 + len(expected_source.encode("utf-8")):] == expected_payload
+
+
+def _run_embedded_unit_admission(output, *, unit="vst-supervisor.service",
+                                 protected_units=("vst-supervisor.service",)):
+    import ast
+    from types import SimpleNamespace
+
+    tree = ast.parse(APPLY._REMOTE)
+    parser = next(node for node in tree.body
+                  if isinstance(node, ast.FunctionDef) and node.name == "parse_unit_identity")
+    admission = next(node for node in tree.body
+                     if isinstance(node, ast.For) and isinstance(node.target, ast.Name)
+                     and node.target.id == "unit")
+    calls = []
+
+    class Completed:
+        returncode = 0
+        stderr = ""
+
+        def __init__(self, stdout):
+            self.stdout = stdout
+
+    def fake_run(argv, **_kwargs):
+        calls.append(argv)
+        if "--property=LoadState" in argv:
+            return Completed("loaded\n")
+        if "--property=ActiveState,SubState,InvocationID,ControlGroup,UnitFileState" in argv:
+            return Completed(output)
+        raise AssertionError(f"unexpected systemd command: {argv!r}")
+
+    namespace = {
+        "subprocess": SimpleNamespace(run=fake_run, DEVNULL=object(), PIPE=object()),
+        "units": (unit,),
+        "protected_units": protected_units,
+        "unit_before": {},
+    }
+    exec(compile(ast.Module(body=[parser, admission], type_ignores=[]),
+                 "<embedded-unit-admission>", "exec"), namespace)
+    return namespace["unit_before"], calls
+
+
+def _named_unit_output(*, active="inactive", sub="dead", invocation="",
+                       control_group="", file_state="disabled", order=None):
+    values = {
+        "ActiveState": active,
+        "SubState": sub,
+        "InvocationID": invocation,
+        "ControlGroup": control_group,
+        "UnitFileState": file_state,
+    }
+    keys = order or ["ControlGroup", "ActiveState", "SubState", "UnitFileState", "InvocationID"]
+    return "".join(f"{key}={values[key]}\n" for key in keys)
+
+
+def test_embedded_unit_admission_reads_named_reordered_empty_systemd_properties():
+    before, calls = _run_embedded_unit_admission(_named_unit_output())
+
+    assert before["vst-supervisor.service"] == {
+        "active": False,
+        "substate": "dead",
+        "invocation_id": "",
+        "control_group": "",
+        "unit_file_state": "disabled",
+    }
+    property_call = calls[1]
+    assert property_call == [
+        "/usr/bin/systemctl", "show",
+        "--property=ActiveState,SubState,InvocationID,ControlGroup,UnitFileState",
+        "vst-supervisor.service",
+    ]
+    assert "--value" not in property_call
+
+
+@pytest.mark.parametrize("bad_output", [
+    "ActiveState=inactive\nSubState=dead\nInvocationID=\nControlGroup=\n",
+    "ActiveState=inactive\nActiveState=inactive\nSubState=dead\nInvocationID=\nControlGroup=\nUnitFileState=disabled\n",
+    "ActiveState=inactive\nSubState=dead\nInvocationID=\nControlGroup=\nUnitFileState=disabled\nUnexpected=x\n",
+    "ActiveState=inactive\nSubState=dead\nInvocationID=\nControlGroup=\nUnitFileState\n",
+], ids=["missing", "duplicate", "unknown", "malformed"])
+def test_embedded_unit_admission_rejects_ambiguous_properties_before_target_actions(bad_output):
+    with pytest.raises(SystemExit, match="unit activation properties"):
+        _run_embedded_unit_admission(bad_output)
+
+
+@pytest.mark.parametrize("active", ["active", "inactive"])
+def test_embedded_unit_admission_preserves_allowed_protected_active_states(active):
+    before, _calls = _run_embedded_unit_admission(
+        _named_unit_output(active=active, sub="running" if active == "active" else "dead",
+                           invocation="1" * 32 if active == "active" else ""))
+
+    assert before["vst-supervisor.service"]["active"] is (active == "active")
+
+
+@pytest.mark.parametrize("active, file_state, message", [
+    ("failed", "disabled", "transitioning or failed"),
+    ("activating", "disabled", "transitioning or failed"),
+    ("inactive", "masked", "unowned mask"),
+    ("inactive", "masked-runtime", "unowned mask"),
+])
+def test_embedded_unit_admission_keeps_failed_transition_and_mask_guards(
+        active, file_state, message):
+    with pytest.raises(SystemExit, match=message):
+        _run_embedded_unit_admission(
+            _named_unit_output(active=active, file_state=file_state))
+
+
+def test_embedded_unit_admission_rejects_active_unrelated_service():
+    with pytest.raises(SystemExit, match="unrelated S2 service is active"):
+        _run_embedded_unit_admission(
+            _named_unit_output(active="active", invocation="2" * 32), protected_units=())
