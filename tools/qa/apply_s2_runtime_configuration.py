@@ -849,9 +849,7 @@ def cgroup_is_empty(control_group):
     return events.get("populated") == "0" and not procs
 
 def verify_persistent_guard(unit):
-    conditions = unit_value(unit, "Conditions")
-    required = "ConditionPathExists=!/var/lib/vst-runner/private/snapshot-transaction-incomplete.json"
-    if required not in conditions:
+    if not helper_ns["persistent_guard_loaded"](unit):
         raise SystemExit("systemd did not load the exact persistent snapshot guard: " + unit)
 
 def verify_runtime_mask(unit):
@@ -1271,8 +1269,7 @@ if not re.fullmatch(r"[0-9a-f]{40}", str(prior_commit)) or ancestor.returncode:
     raise SystemExit("recovery journal deployment commit is not an ancestor of the approved current source")
 guards = {}
 for unit in units:
-    conditions = value(unit, "Conditions")
-    guards[unit] = "ConditionPathExists=!/var/lib/vst-runner/private/snapshot-transaction-incomplete.json" in conditions
+    guards[unit] = helper["persistent_guard_loaded"](unit)
 if guards != {unit:True for unit in units}:
     raise SystemExit("both exact persistent recovery guards are not effective")
 masks = {unit:mask_identity(unit) for unit in units}

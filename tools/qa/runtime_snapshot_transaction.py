@@ -1209,19 +1209,52 @@ def _journal_masks(transaction: dict[str, Any]) -> dict[str, Any]:
     return masks
 
 
+def parse_persistent_guard_conditions(raw: bytes) -> bool:
+    if len(raw) > 65536:
+        raise SnapshotContractError("systemd condition evidence exceeds its bound")
+    try:
+        value = _unique_json(raw)
+    except (ValueError, UnicodeError) as exc:
+        raise SnapshotContractError("systemd condition evidence is not valid JSON") from exc
+    if (set(value) != {"type", "data"} or value["type"] != "a(sbbsi)"
+            or not isinstance(value["data"], list) or len(value["data"]) > 256):
+        raise SnapshotContractError("systemd condition evidence has an unexpected D-Bus type")
+    found = False
+    for condition in value["data"]:
+        if (not isinstance(condition, list) or len(condition) != 5
+                or not isinstance(condition[0], str) or len(condition[0]) > 128
+                or type(condition[1]) is not bool or type(condition[2]) is not bool
+                or not isinstance(condition[3], str) or len(condition[3]) > 4096
+                or type(condition[4]) is not int or not -(2 ** 31) <= condition[4] < 2 ** 31):
+            raise SnapshotContractError("systemd condition evidence has a malformed condition")
+        # Conditions are (type, trigger, negate, parameter, last-evaluation-status).
+        # Only a non-trigger (mandatory), negated existence condition protects this marker.
+        if condition[:4] == ["ConditionPathExists", False, True, RUNTIME_PATHS["marker_path"]]:
+            found = True
+    return found
+
+
+def persistent_guard_loaded(unit: str) -> bool:
+    if unit not in _ROLE_UNITS:
+        raise SnapshotContractError("persistent guard unit is outside the protected pair")
+    object_path = "/org/freedesktop/systemd1/unit/" + unit.replace("-", "_2d").replace(".", "_2e")
+    result = subprocess.run(
+        ["/usr/bin/busctl", "--system", "--json=short", "get-property",
+         "org.freedesktop.systemd1", object_path, "org.freedesktop.systemd1.Unit", "Conditions"],
+        cwd="/", env={"LC_ALL": "C", "PATH": ""}, stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True, timeout=8, check=False)
+    if result.returncode != 0:
+        raise SnapshotContractError("systemd persistent guard property is unavailable")
+    return parse_persistent_guard_conditions(result.stdout)
+
+
 def _verify_bootstrap_guards(transaction: dict[str, Any]) -> None:
     for path in PREINSTALLED_GUARD_PATHS:
         state = transaction["configuration_state"].get(path)
         if not isinstance(state, dict) or _config_fingerprint(path)[0] != state.get("expected_new"):
             raise SnapshotContractError("bootstrap persistent guard is not the exact pinned configuration")
-    required = "ConditionPathExists=!/var/lib/vst-runner/private/snapshot-transaction-incomplete.json"
     for unit in _ROLE_UNITS:
-        result = subprocess.run(
-            ["/usr/bin/systemctl", "show", unit, "--property=Conditions", "--no-pager"],
-            cwd="/", env={"LC_ALL": "C", "PATH": ""}, stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True,
-            timeout=8, check=False)
-        if result.returncode != 0 or required.encode("ascii") not in result.stdout:
+        if not persistent_guard_loaded(unit):
             raise SnapshotContractError("systemd has not loaded the exact persistent transaction guard")
 
 

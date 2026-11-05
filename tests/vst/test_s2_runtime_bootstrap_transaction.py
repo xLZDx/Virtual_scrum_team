@@ -809,7 +809,10 @@ def test_bootstrap_persistent_guards_must_match_all_pinned_files_and_loaded_cond
     calls = []
     class Completed:
         returncode = 0
-        stdout = b"Conditions=ConditionPathExists=!/var/lib/vst-runner/private/snapshot-transaction-incomplete.json\n"
+        stdout = json.dumps({"type": "a(sbbsi)", "data": [[
+            "ConditionPathExists", False, True,
+            "/var/lib/vst-runner/private/snapshot-transaction-incomplete.json", 0,
+        ]]}).encode("ascii")
     def fake_run(argv, **kwargs):
         calls.append(argv)
         return Completed()
@@ -818,13 +821,112 @@ def test_bootstrap_persistent_guards_must_match_all_pinned_files_and_loaded_cond
     TX._verify_bootstrap_guards(tx)
 
     assert len(calls) == 2
-    assert all("show" in call and "--property=Conditions" in call for call in calls)
+    assert all(call[:3] == ["/usr/bin/busctl", "--system", "--json=short"]
+               and call[3] == "get-property" for call in calls)
 
     class MissingCondition(Completed):
-        stdout = b"Conditions=ConditionPathExists=/tmp/other\n"
+        stdout = json.dumps({"type": "a(sbbsi)", "data": [[
+            "ConditionPathExists", False, True, "/tmp/other", 0,
+        ]]}).encode("ascii")
     monkeypatch.setattr(TX.subprocess, "run", lambda *_args, **_kwargs: MissingCondition())
     with pytest.raises(TX.SnapshotContractError, match="persistent transaction guard"):
         TX._verify_bootstrap_guards(tx)
+
+
+def _systemd_condition_payload(condition):
+    return json.dumps({"type": "a(sbbsi)", "data": [condition]},
+                      separators=(",", ":")).encode("ascii")
+
+
+@pytest.mark.parametrize("status", [-(2 ** 31), -1, 0, 1, 2 ** 31 - 1])
+def test_persistent_guard_parser_accepts_exact_typed_negated_condition_for_any_int_status(status):
+    raw = _systemd_condition_payload([
+        "ConditionPathExists", False, True,
+        "/var/lib/vst-runner/private/snapshot-transaction-incomplete.json", status,
+    ])
+
+    assert TX.parse_persistent_guard_conditions(raw) is True
+
+
+@pytest.mark.parametrize("condition", [
+    ["ConditionPathExists", True, True,
+     "/var/lib/vst-runner/private/snapshot-transaction-incomplete.json", 0],
+    ["ConditionPathExists", False, False,
+     "/var/lib/vst-runner/private/snapshot-transaction-incomplete.json", 0],
+    ["ConditionPathExists", False, True, "/tmp/other", 0],
+], ids=["trigger", "not-negated", "wrong-marker"])
+def test_persistent_guard_parser_does_not_accept_trigger_nonnegated_or_wrong_path(
+        condition):
+    assert TX.parse_persistent_guard_conditions(_systemd_condition_payload(condition)) is False
+
+
+@pytest.mark.parametrize("raw", [
+    b"{\"type\":\"a(sbbsi)\",\"data\":[],\"data\":[]}",
+    b"{\"type\":\"a(sbbsi)\",\"type\":\"a(sbbsi)\",\"data\":[]}",
+    b"{not-json",
+    b"{\"type\":\"a(ssbbi)\",\"data\":[]}",
+    b"{\"type\":\"a(sbbsi)\",\"data\":[[\"ConditionPathExists\",0,true,\"/var/lib/vst-runner/private/snapshot-transaction-incomplete.json\",0]]}",
+    b"{\"type\":\"a(sbbsi)\",\"data\":[[\"ConditionPathExists\",false,1,\"/var/lib/vst-runner/private/snapshot-transaction-incomplete.json\",0]]}",
+    b"{\"type\":\"a(sbbsi)\",\"data\":[[\"ConditionPathExists\",false,true,\"/var/lib/vst-runner/private/snapshot-transaction-incomplete.json\",false]]}",
+    b"{\"type\":\"a(sbbsi)\",\"data\":[[\"ConditionPathExists\",false,true,\"/var/lib/vst-runner/private/snapshot-transaction-incomplete.json\",2147483648]]}",
+], ids=["duplicate-data", "duplicate-type", "malformed-json", "opaque-type",
+       "integer-trigger", "integer-negate", "boolean-status", "status-overflow"])
+def test_persistent_guard_parser_refuses_duplicate_malformed_opaque_and_wrongly_typed_payloads(raw):
+    with pytest.raises(TX.SnapshotContractError,
+                       match="duplicate field|systemd condition evidence"):
+        TX.parse_persistent_guard_conditions(raw)
+
+
+def test_persistent_guard_parser_refuses_payload_over_fixed_bound():
+    with pytest.raises(TX.SnapshotContractError, match="exceeds its bound"):
+        TX.parse_persistent_guard_conditions(b" " * 65537)
+
+
+def test_persistent_guard_loaded_queries_only_fixed_pair_with_typed_json(monkeypatch):
+    calls = []
+    payload = _systemd_condition_payload([
+        "ConditionPathExists", False, True,
+        "/var/lib/vst-runner/private/snapshot-transaction-incomplete.json", -1,
+    ])
+
+    class Completed:
+        returncode = 0
+        stdout = payload
+
+    monkeypatch.setattr(TX.subprocess, "run", lambda argv, **kwargs: (
+        calls.append((argv, kwargs)) or Completed()))
+
+    assert TX.persistent_guard_loaded("vst-runner.service") is True
+    assert TX.persistent_guard_loaded("vst-dispatcher.service") is True
+    assert [call[0][5] for call in calls] == [
+        "/org/freedesktop/systemd1/unit/vst_2drunner_2eservice",
+        "/org/freedesktop/systemd1/unit/vst_2ddispatcher_2eservice",
+    ]
+    for argv, kwargs in calls:
+        assert argv == [
+            "/usr/bin/busctl", "--system", "--json=short", "get-property",
+            "org.freedesktop.systemd1", argv[5], "org.freedesktop.systemd1.Unit", "Conditions",
+        ]
+        assert kwargs["timeout"] == 8 and kwargs["check"] is False
+        assert kwargs["env"] == {"LC_ALL": "C", "PATH": ""}
+
+
+def test_persistent_guard_loaded_rejects_unprotected_units_nonzero_and_timeout(monkeypatch):
+    with pytest.raises(TX.SnapshotContractError, match="outside the protected pair"):
+        TX.persistent_guard_loaded("vst-supervisor.service")
+
+    class Failed:
+        returncode = 255
+        stdout = b'{"type":"a(sbbsi)","data":[]}'
+    monkeypatch.setattr(TX.subprocess, "run", lambda *_args, **_kwargs: Failed())
+    with pytest.raises(TX.SnapshotContractError, match="property is unavailable"):
+        TX.persistent_guard_loaded("vst-runner.service")
+
+    def timeout(*_args, **_kwargs):
+        raise TX.subprocess.TimeoutExpired("busctl", 8)
+    monkeypatch.setattr(TX.subprocess, "run", timeout)
+    with pytest.raises(TX.subprocess.TimeoutExpired):
+        TX.persistent_guard_loaded("vst-dispatcher.service")
 
 
 def test_bootstrap_predecessor_emits_one_pinned_baseline_then_requires_ledger_match(monkeypatch):

@@ -565,6 +565,69 @@ def test_embedded_unit_admission_rejects_active_unrelated_service():
             _named_unit_output(active="active", invocation="2" * 32), protected_units=())
 
 
+def test_normal_apply_persistent_guard_check_delegates_to_typed_helper():
+    import ast
+
+    tree = ast.parse(APPLY._REMOTE)
+    verify = next(node for node in tree.body if isinstance(node, ast.FunctionDef)
+                  and node.name == "verify_persistent_guard")
+    calls = []
+    namespace = {"helper_ns": {"persistent_guard_loaded": lambda unit: calls.append(unit) or True}}
+    exec(compile(ast.Module(body=[verify], type_ignores=[]),
+                 "<embedded-apply-guard-check>", "exec"), namespace)
+
+    namespace["verify_persistent_guard"]("vst-runner.service")
+    namespace["verify_persistent_guard"]("vst-dispatcher.service")
+
+    assert calls == ["vst-runner.service", "vst-dispatcher.service"]
+    calls.clear()
+    namespace["helper_ns"]["persistent_guard_loaded"] = lambda unit: calls.append(unit) or False
+    with pytest.raises(SystemExit, match="systemd did not load the exact persistent snapshot guard"):
+        namespace["verify_persistent_guard"]("vst-runner.service")
+    assert calls == ["vst-runner.service"]
+
+
+@pytest.mark.parametrize("guard_results, expected_failure", [
+    ({"vst-runner.service": True, "vst-dispatcher.service": True}, False),
+    ({"vst-runner.service": True, "vst-dispatcher.service": False}, True),
+], ids=["both-effective", "dispatcher-missing"])
+def test_recovery_guard_check_delegates_to_typed_helper_and_requires_both_units(
+        guard_results, expected_failure):
+    import ast
+
+    tree = ast.parse(APPLY._RECOVERY_REMOTE)
+    guard_assignment = next(node for node in tree.body if isinstance(node, ast.Assign)
+                            and any(isinstance(target, ast.Name) and target.id == "guards"
+                                    for target in node.targets))
+    guard_loop = next(node for node in tree.body if isinstance(node, ast.For)
+                      and isinstance(node.target, ast.Name) and node.target.id == "unit"
+                      and any(isinstance(child, ast.Call) and isinstance(child.func, ast.Subscript)
+                              and isinstance(child.func.value, ast.Name)
+                              and child.func.value.id == "helper"
+                              and isinstance(child.func.slice, ast.Constant)
+                              and child.func.slice.value == "persistent_guard_loaded"
+                              for child in ast.walk(node)))
+    guard_check = next(node for node in tree.body if isinstance(node, ast.If)
+                       and any(isinstance(child, ast.Name) and child.id == "guards"
+                               for child in ast.walk(node.test)))
+    calls = []
+
+    def loaded(unit):
+        calls.append(unit)
+        return guard_results[unit]
+
+    namespace = {"units": ("vst-runner.service", "vst-dispatcher.service"),
+                 "helper": {"persistent_guard_loaded": loaded}}
+    isolated = ast.Module(body=[guard_assignment, guard_loop, guard_check], type_ignores=[])
+    if expected_failure:
+        with pytest.raises(SystemExit, match="both exact persistent recovery guards"):
+            exec(compile(isolated, "<embedded-recovery-guard-check>", "exec"), namespace)
+    else:
+        exec(compile(isolated, "<embedded-recovery-guard-check>", "exec"), namespace)
+
+    assert calls == ["vst-runner.service", "vst-dispatcher.service"]
+
+
 def _run_embedded_bootstrap_admission(unit_properties):
     """Execute the actual cold-admission statements with all target I/O replaced."""
     import ast
