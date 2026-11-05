@@ -132,8 +132,20 @@ def _run(argv: list[str], *, cwd: str | None = None, input_bytes: bytes | None =
     return result.stdout
 
 
+def _snapshot_git_argv(root: str, *args: str) -> list[str]:
+    # The worker reads a root-owned snapshot, so Git needs this exact command-local trust entry.
+    if (not os.path.isabs(root) or os.path.realpath(root) != root or "*" in root):
+        raise SnapshotContractError("Git snapshot trust path is not an exact canonical directory")
+    info = os.lstat(root)
+    if (not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode)
+            or info.st_uid != 0 or info.st_gid != 0 or info.st_mode & 0o022):
+        raise SnapshotContractError("Git snapshot trust requires a root-owned non-writable directory")
+    return ["/usr/bin/git", "-c", "safe.directory=" + root,
+            "-C", root, "--no-replace-objects", *args]
+
+
 def _git_output(root: str, *args: str, user: tuple[int, int] | None = None) -> str:
-    return _run(["/usr/bin/git", "-C", root, "--no-replace-objects", *args],
+    return _run(_snapshot_git_argv(root, *args),
                 user=user).decode("ascii").strip()
 
 
@@ -205,8 +217,7 @@ def _verify_git_readonly(root: str) -> dict[str, Any]:
     if head != TASK_HEAD or tree != TASK_TREE:
         raise SnapshotContractError("Git snapshot HEAD/tree differs from the pinned task source")
     status = _git_output(root, "status", "--porcelain=v1", user=(997, 988))
-    diff = _run(["/usr/bin/git", "-C", root, "--no-replace-objects", "diff", "--binary",
-                 "--find-renames", TASK_BASE_HEAD],
+    diff = _run(_snapshot_git_argv(root, "diff", "--binary", "--find-renames", TASK_BASE_HEAD),
                 user=(997, 988))
     untracked = _git_output(root, "ls-files", "--others", "--exclude-standard", user=(997, 988))
     ignored = _git_output(root, "ls-files", "--others", "--ignored", "--exclude-standard", user=(997, 988))

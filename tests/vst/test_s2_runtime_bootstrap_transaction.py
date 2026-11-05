@@ -4,8 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import json
 import os
+import shutil
 import stat
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -1268,3 +1273,166 @@ def test_interrupted_partial_configuration_restore_uses_real_backup_and_snapshot
     assert result["safe_head"] == TX.EXPECTED_PREDECESSOR_HEAD
     assert result["marker_present"] is False
     assert tx["state"] == "MARKER_CLEARED"
+
+
+def _git_fixture_environment(home):
+    environment = {key: value for key, value in os.environ.items()
+                   if not key.startswith("GIT_")}
+    environment.update({"HOME": str(home), "GIT_CONFIG_NOSYSTEM": "1",
+                        "GIT_CONFIG_GLOBAL": os.devnull,
+                        "LC_ALL": "C", "PATH": os.environ.get("PATH", "")})
+    return environment
+
+
+def _make_root_owned_shallow_stage(monkeypatch, fixture_root):
+    home = fixture_root / "home"
+    source = fixture_root / "source-repository"
+    stage = fixture_root / "readonly-stage"
+    home.mkdir(mode=0o755)
+    env = _git_fixture_environment(home)
+    subprocess.run(["/usr/bin/git", "init", "--quiet", "--initial-branch=main", str(source)],
+                   cwd="/", env=env, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    (source / "payload.txt").write_text("isolated worker Git fixture\n", encoding="ascii")
+    subprocess.run(["/usr/bin/git", "-C", str(source), "add", "payload.txt"],
+                   cwd="/", env=env, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    subprocess.run(["/usr/bin/git", "-c", "user.name=VST test fixture",
+                    "-c", "user.email=vst-test@example.invalid", "-C", str(source),
+                    "commit", "--quiet", "-m", "fixture"],
+                   cwd="/", env=env, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    head = subprocess.run(["/usr/bin/git", "-C", str(source), "rev-parse", "HEAD"],
+                          cwd="/", env=env, check=True, stdout=subprocess.PIPE).stdout.decode().strip()
+    tree = subprocess.run(["/usr/bin/git", "-C", str(source), "rev-parse", "HEAD^{tree}"],
+                          cwd="/", env=env, check=True, stdout=subprocess.PIPE).stdout.decode().strip()
+    pack = subprocess.run(["/usr/bin/git", "-C", str(source), "pack-objects", "--stdout", "--revs"],
+                          cwd="/", env=env, input=(head + "\n").encode("ascii"), check=True,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout
+    monkeypatch.setattr(TX, "TASK_HEAD", head)
+    monkeypatch.setattr(TX, "TASK_TREE", tree)
+    monkeypatch.setattr(TX, "TASK_BASE_HEAD", head)
+    monkeypatch.setattr(TX, "TASK_OBJECT_COUNT", 3)
+    proof = TX.build_git_stage(pack, str(stage))
+    return source, stage, pack, proof, home
+
+
+def _remove_git_fixture(fixture_root):
+    resolved = Path(fixture_root).resolve()
+    if resolved.parent != Path("/tmp") or not resolved.name.startswith("vst-s2-git-worker-"):
+        raise AssertionError("refusing cleanup outside this test's private /tmp fixture")
+    shutil.rmtree(resolved)
+
+
+@pytest.mark.skipif(os.name == "nt" or not hasattr(os, "geteuid") or os.geteuid() != 0,
+                    reason="read-only worker Git fixture requires POSIX root and demotion UID")
+def test_root_owned_readonly_shallow_snapshot_verifies_as_actual_worker_with_polluted_git_env(
+        monkeypatch):
+    fixture_root = Path(tempfile.mkdtemp(prefix="vst-s2-git-worker-", dir="/tmp"))
+    os.chmod(fixture_root, 0o755)
+    try:
+        hostile_global = fixture_root / "hostile-global-config"
+        monkeypatch.setenv("GIT_DIR", "/definitely/not/the/snapshot")
+        monkeypatch.setenv("GIT_WORK_TREE", "/definitely/not/the/worktree")
+        monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+        monkeypatch.setenv("GIT_CONFIG_KEY_0", "safe.directory")
+        monkeypatch.setenv("GIT_CONFIG_VALUE_0", "*")
+        monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(hostile_global))
+        _source, stage, _pack, proof, home = _make_root_owned_shallow_stage(
+            monkeypatch, fixture_root)
+
+        assert stat.S_IMODE(os.lstat(stage).st_mode) == 0o555
+        assert proof["worker_uid"] == 997 and proof["worker_gid"] == 988
+        assert proof["status_clean"] is True
+        assert proof["diff_empty"] is True
+        assert proof["untracked_empty"] is True
+        assert proof["ignored_empty"] is True
+        inventory = TX._inventory(str(stage))
+        inventory_digest = hashlib.sha256(json.dumps(
+            sorted((key, *value) for key, value in inventory.items()),
+            separators=(",", ":")).encode("utf-8")).hexdigest()
+        assert proof["inventory_sha256"] == inventory_digest
+        assert os.environ["GIT_DIR"] == "/definitely/not/the/snapshot"
+        assert os.environ["GIT_CONFIG_VALUE_0"] == "*"
+        assert not hostile_global.exists()
+        assert not (home / ".gitconfig").exists()
+    finally:
+        _remove_git_fixture(fixture_root)
+
+
+@pytest.mark.skipif(os.name == "nt" or not hasattr(os, "geteuid") or os.geteuid() != 0,
+                    reason="snapshot trust contract checks POSIX root ownership and modes")
+def test_snapshot_git_trust_rejects_noncanonical_symlink_wildcard_and_writable_roots(
+        monkeypatch):
+    fixture_root = Path(tempfile.mkdtemp(prefix="vst-s2-git-worker-", dir="/tmp"))
+    os.chmod(fixture_root, 0o755)
+    root = fixture_root / "root"
+    root.mkdir(mode=0o755)
+    link = fixture_root / "root-link"
+    link.symlink_to(root, target_is_directory=True)
+    try:
+        assert TX._snapshot_git_argv(str(root), "status")[:5] == [
+            "/usr/bin/git", "-c", "safe.directory=" + str(root), "-C", str(root)]
+        invalid = [
+            ("relative", "Git snapshot trust path is not an exact canonical directory"),
+            (str(root) + "/.", "Git snapshot trust path is not an exact canonical directory"),
+            (str(root) + "*", "Git snapshot trust path is not an exact canonical directory"),
+            (str(link), "Git snapshot trust path is not an exact canonical directory"),
+        ]
+        for path, message in invalid:
+            with pytest.raises(TX.SnapshotContractError, match=message):
+                TX._snapshot_git_argv(path, "status")
+
+        os.chmod(root, 0o775)
+        with pytest.raises(TX.SnapshotContractError,
+                           match="root-owned non-writable directory"):
+            TX._snapshot_git_argv(str(root), "status")
+    finally:
+        _remove_git_fixture(fixture_root)
+
+
+@pytest.mark.skipif(os.name == "nt" or not hasattr(os, "geteuid") or os.geteuid() != 0,
+                    reason="read-only worker Git fixture requires POSIX root and demotion UID")
+def test_readonly_git_verification_refuses_dirty_snapshot_as_worker(monkeypatch):
+    fixture_root = Path(tempfile.mkdtemp(prefix="vst-s2-git-worker-", dir="/tmp"))
+    os.chmod(fixture_root, 0o755)
+    try:
+        _source, stage, _pack, proof, _home = _make_root_owned_shallow_stage(
+            monkeypatch, fixture_root)
+        assert proof["status_clean"] is True
+        os.chmod(stage, 0o755)
+        (stage / "unexpected.txt").write_text("dirty\n", encoding="ascii")
+        os.chmod(stage, 0o555)
+
+        with pytest.raises(TX.SnapshotContractError,
+                           match="read-only worker Git checks found changes or untracked content"):
+            TX._verify_git_readonly(str(stage))
+    finally:
+        _remove_git_fixture(fixture_root)
+
+
+def test_readonly_git_subprocess_strips_hostile_git_environment_without_changing_parent(
+        monkeypatch):
+    import subprocess as subprocess_module
+
+    keys = {"GIT_DIR": "/wrong", "GIT_WORK_TREE": "/wrong-worktree",
+            "GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "safe.directory",
+            "GIT_CONFIG_VALUE_0": "*", "GIT_CONFIG_GLOBAL": "/tmp/hostile-config"}
+    for key, value in keys.items():
+        monkeypatch.setenv(key, value)
+    observed = {}
+
+    class Completed:
+        returncode = 0
+        stdout = b"ok"
+
+    def capture(argv, **kwargs):
+        observed.update(kwargs["env"])
+        return Completed()
+
+    monkeypatch.setattr(TX.subprocess, "run", capture)
+
+    assert TX._run([sys.executable, "-c", "pass"]) == b"ok"
+
+    assert not any(key.startswith("GIT_") and key not in {
+        "GIT_CONFIG_NOSYSTEM", "GIT_CONFIG_GLOBAL"} for key in observed)
+    assert observed["GIT_CONFIG_NOSYSTEM"] == "1"
+    assert observed["GIT_CONFIG_GLOBAL"] == os.devnull
+    assert {key: os.environ[key] for key in keys} == keys
