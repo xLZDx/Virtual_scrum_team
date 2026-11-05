@@ -335,3 +335,121 @@ def test_payload_rejects_non_full_or_nonexistent_source_commit(tmp_path, source_
 
     with pytest.raises(ValueError):
         APPLY.build_payload(path, digest, source_commit)
+
+
+def test_wsl_source_loader_preserves_long_utf8_source_binary_payload_and_argv():
+    import subprocess
+    import sys
+
+    source = "import json,sys\nraw=sys.stdin.buffer.read()\nsys.stdout.buffer.write(json.dumps({'argv':sys.argv[1:],'raw':raw.hex()}).encode())\n" + "#\n" * 18000
+    payload = b"\x00\xffpayload\r\n\x80"
+    framed = APPLY._remote_stdin(source, payload)
+    completed = subprocess.run(
+        [sys.executable, "-I", "-c", APPLY._WSL_SOURCE_LOADER, "kept-arg", "second"],
+        input=framed, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+    )
+    assert len(source) > 32767
+    assert completed.returncode == 0, completed.stderr.decode(errors="replace")
+    observed = json.loads(completed.stdout)
+    assert observed["argv"] == ["kept-arg", "second"]
+    assert bytes.fromhex(observed["raw"]) == payload
+
+
+@pytest.mark.parametrize("frame, message", [
+    (b"short", "header is truncated"),
+    ((0).to_bytes(8, "big"), "size is invalid"),
+    ((512 * 1024 + 1).to_bytes(8, "big"), "size is invalid"),
+    ((4).to_bytes(8, "big") + b"ab", "frame is truncated"),
+])
+def test_wsl_source_loader_rejects_invalid_frame_before_source_execution(frame, message):
+    import subprocess
+    import sys
+
+    completed = subprocess.run(
+        [sys.executable, "-I", "-c", APPLY._WSL_SOURCE_LOADER],
+        input=frame, stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, check=False,
+    )
+    assert completed.returncode != 0
+    if frame == b"short":
+        assert completed.stdout == b""
+    else:
+        assert message.encode() in completed.stderr
+    assert b"source executed" not in completed.stderr
+
+
+def test_remote_stdin_rejects_source_and_payload_over_bounds():
+    with pytest.raises(ValueError, match="source exceeds"):
+        APPLY._remote_stdin("x" * (APPLY.MAX_REMOTE_SOURCE_BYTES + 1), b"")
+    with pytest.raises(ValueError, match="payload exceeds"):
+        APPLY._remote_stdin("pass", b"x" * (APPLY.MAX_APPLY_PAYLOAD_BYTES + 1))
+
+
+@pytest.mark.parametrize("recovery", [False, True], ids=["normal-apply", "recovery"])
+def test_main_wsl_call_uses_short_loader_and_framed_remote_source(
+        monkeypatch, tmp_path, recovery, capsys):
+    import sys
+
+    approved_commit = "a" * 40
+    payload = b"known-payload\x00\xff"
+    inventory_path = tmp_path / "inventory.json"
+    inventory_path.write_bytes(b"inventory")
+    calls = []
+
+    class Completed:
+        returncode = 0
+        stdout = b""
+        stderr = b""
+
+    def fake_run(argv, **kwargs):
+        if argv[0] == "git":
+            if "hash-object" in argv:
+                result = Completed()
+                result.stdout = "f" * 40 + "\n"
+                return result
+            if "rev-parse" in argv:
+                result = Completed()
+                if "tools/qa/apply_s2_runtime_configuration.py" in argv[-1]:
+                    result.stdout = "f" * 40 + "\n"
+                else:
+                    result.stdout = approved_commit + "\n" if kwargs.get("text") else b"b" * 40
+                return result
+        if argv[0] == "wsl.exe":
+            calls.append((argv, kwargs))
+            return Completed()
+        raise AssertionError(f"unexpected subprocess: {argv!r}")
+
+    monkeypatch.setattr(APPLY.subprocess, "run", fake_run)
+    if recovery:
+        monkeypatch.setattr(APPLY, "_git_blob", lambda _commit, _path: b"committed helper")
+        monkeypatch.setattr(sys, "argv", [str(SCRIPT), "--approved-deployment-commit", approved_commit,
+                                           "--recover-transaction", "c" * 32])
+        expected_source = APPLY._RECOVERY_REMOTE
+        expected_payload = json.dumps({
+            "schema": "VST_S2_RUNTIME_TRANSACTION_RECOVERY_V1",
+            "transaction_id": "c" * 32,
+            "transaction_helper_b64": base64.b64encode(b"committed helper").decode("ascii"),
+            "transaction_helper_sha256": _sha(b"committed helper"),
+        }, sort_keys=True, separators=(",", ":")).encode("ascii")
+        expected_args = [APPLY._sha(expected_payload), approved_commit,
+                         APPLY.WSL_REPOSITORY_ROOT, "c" * 32]
+    else:
+        monkeypatch.setattr(APPLY, "_current_inventory_validation_identity", lambda: ("d" * 40, "e" * 64))
+        monkeypatch.setattr(APPLY, "build_payload", lambda *_args, **_kwargs: payload)
+        monkeypatch.setattr(sys, "argv", [str(SCRIPT), "--approved-deployment-commit", approved_commit,
+                                           "--inventory", str(inventory_path), "--inventory-sha256", "f" * 64])
+        expected_source = APPLY._REMOTE
+        expected_payload = payload
+        expected_args = [APPLY._sha(payload), approved_commit, APPLY.WSL_REPOSITORY_ROOT]
+
+    assert APPLY.main() == 0
+    capsys.readouterr()
+    assert len(calls) == 1
+    argv, kwargs = calls[0]
+    assert argv == ["wsl.exe", "--distribution", "Ubuntu-24.04", "--user", "root", "--exec",
+                    "/usr/bin/python3.12", "-I", "-B", "-S", "-c", APPLY._WSL_SOURCE_LOADER,
+                    *expected_args]
+    assert len(APPLY._WSL_SOURCE_LOADER.encode("utf-8")) < 32767
+    assert kwargs["input"] == APPLY._remote_stdin(expected_source, expected_payload)
+    assert kwargs["input"][8:8 + len(expected_source.encode("utf-8"))] == expected_source.encode("utf-8")
+    assert kwargs["input"][8 + len(expected_source.encode("utf-8")):] == expected_payload

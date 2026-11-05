@@ -604,9 +604,9 @@ def test_apply_payload_preserves_validated_canonical_octal_mode(
     raw_inventory = json.dumps(valid_inventory, sort_keys=True, separators=(",", ":")).encode()
     inventory_path = tmp_path / "runtime-inventory.json"
     inventory_path.write_bytes(raw_inventory)
-    if not COMMITTED_VALIDATOR_MATCHES_WORKTREE:
-        # Before commit, exercise payload serialization with the candidate validator already
-        # covered by the unit tests, without claiming its bytes exist in Git HEAD.
+    if not COMMITTED_VALIDATOR_MATCHES_WORKTREE or not COMMITTED_APPLIER_MATCHES_WORKTREE:
+        # Exercise payload serialization against the exact candidate source in this worktree;
+        # the production pushed-HEAD guard remains covered by its explicit mismatch tests.
         monkeypatch.setattr(applier, "_load_committed_inventory_validator",
                             lambda _repo_head: inventory.validate_inventory)
     monkeypatch.setattr(applier, "_validate_deployment_commit", lambda _commit: None)

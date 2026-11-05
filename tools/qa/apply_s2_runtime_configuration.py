@@ -27,6 +27,36 @@ SYSTEMD_ROOT = "/etc/systemd/system"
 TASK_REPOSITORY_ROOT = "/var/lib/vst-runner/repository"
 TASK_REPOSITORY_GIT_PACK_FORMAT = "git-pack-shallow-v1"
 MAX_APPLY_PAYLOAD_BYTES = 16 * 1024 * 1024
+MAX_REMOTE_SOURCE_BYTES = 512 * 1024
+# Keep Windows CreateProcess argv small; the payload follows the framed source.
+_WSL_SOURCE_LOADER = """import sys
+
+def _vst_read_source():
+    stream = sys.stdin.buffer
+    header = stream.read(8)
+    if len(header) != 8:
+        raise SystemExit("remote source frame header is truncated")
+    size = int.from_bytes(header, "big")
+    if not 1 <= size <= 512 * 1024:
+        raise SystemExit("remote source frame size is invalid")
+    source = stream.read(size)
+    if len(source) != size:
+        raise SystemExit("remote source frame is truncated")
+    return source
+
+exec(compile(_vst_read_source(), "<vst-s2-runtime-remote>", "exec"))
+"""
+
+
+def _remote_stdin(source: str, payload: bytes) -> bytes:
+    source_bytes = source.encode("utf-8")
+    if not 1 <= len(source_bytes) <= MAX_REMOTE_SOURCE_BYTES:
+        raise ValueError("remote source exceeds its bounded frame")
+    if len(payload) > MAX_APPLY_PAYLOAD_BYTES:
+        raise ValueError("remote payload exceeds its size bound")
+    return len(source_bytes).to_bytes(8, "big") + source_bytes + payload
+
+
 RUNTIME_SOURCE_HEAD = "ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
 BUNDLE_MANIFEST_SHA256 = "8f487494a1a6bc08c0ce567075a32945ca0c1a22c5ec03e7213ac3e2f4466741"
 INSTALLATION_LAYOUT_SHA256 = "f46e97704a89b5da339701bb71b6e71c4ce846ae96cb4504929869352d0315dd"
@@ -1490,6 +1520,7 @@ print(json.dumps({"schema":"VST_S2_RUNTIME_TRANSACTION_RECOVERY_RESULT_V1",
 
 def _validate_embedded_programs() -> None:
     """Compile embedded root-side programs before any command can build a payload."""
+    compile(_WSL_SOURCE_LOADER, "<vst-s2-runtime-loader>", "exec")
     compile(_REMOTE, "<vst-s2-runtime-apply>", "exec")
     compile(_RECOVERY_REMOTE, "<vst-s2-runtime-recovery>", "exec")
 
@@ -1536,10 +1567,10 @@ def main() -> int:
             digest = _sha(recovery_payload)
             wsl = subprocess.run(
                 ["wsl.exe", "--distribution", args.distribution, "--user", "root", "--exec",
-                 "/usr/bin/python3.12", "-I", "-B", "-S", "-c", _RECOVERY_REMOTE,
+                 "/usr/bin/python3.12", "-I", "-B", "-S", "-c", _WSL_SOURCE_LOADER,
                  digest, args.approved_deployment_commit, WSL_REPOSITORY_ROOT,
                  args.recover_transaction],
-                input=recovery_payload, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+                input=_remote_stdin(_RECOVERY_REMOTE, recovery_payload), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
             )
             if wsl.stdout:
                 print(wsl.stdout.decode("utf-8", errors="replace").rstrip())
@@ -1558,9 +1589,9 @@ def main() -> int:
         digest = _sha(payload)
         wsl = subprocess.run(
             ["wsl.exe", "--distribution", args.distribution, "--user", "root", "--exec",
-             "/usr/bin/python3.12", "-I", "-B", "-S", "-c", _REMOTE,
+             "/usr/bin/python3.12", "-I", "-B", "-S", "-c", _WSL_SOURCE_LOADER,
              digest, args.approved_deployment_commit, WSL_REPOSITORY_ROOT],
-            input=payload, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+            input=_remote_stdin(_REMOTE, payload), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
         )
         if wsl.stdout:
             print(wsl.stdout.decode("utf-8", errors="replace").rstrip())
