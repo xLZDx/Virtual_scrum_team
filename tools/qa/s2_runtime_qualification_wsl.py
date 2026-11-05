@@ -761,10 +761,11 @@ def _expected_runtime_timeout() -> str:
     return "1min" if MOUNT_AUDIT_ONLY else "40min"
 
 
-def _secure_bytes(path: str, maximum: int = 8 * 1024 * 1024) -> bytes:
+def _secure_bytes(path: str, maximum: int = 8 * 1024 * 1024, *, allow_empty: bool = False) -> bytes:
     before = os.lstat(path)
     if (not stat.S_ISREG(before.st_mode) or before.st_nlink != 1
-            or before.st_mode & 0o022 or before.st_size < 1 or before.st_size > maximum):
+            or before.st_mode & 0o022 or before.st_size < (0 if allow_empty else 1)
+            or before.st_size > maximum):
         raise ValueError("trusted file type, mode, link count, or size is invalid: " + path)
     fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
     try:
@@ -797,13 +798,59 @@ def _json_file(path: str, maximum: int = 2 * 1024 * 1024) -> dict:
 
 def _tree_digest(root: str, expected: dict[str, str]) -> None:
     root_info = os.lstat(root)
-    if not stat.S_ISDIR(root_info.st_mode) or root_info.st_uid != 0 or root_info.st_mode & 0o022:
+    if (not stat.S_ISDIR(root_info.st_mode) or root_info.st_uid != 0 or root_info.st_gid != 0
+            or stat.S_IMODE(root_info.st_mode) != 0o755):
         raise ValueError("versioned runtime root is not root-controlled")
+    # The installer copies tools/vst and docs, not its source-bundle QA tools.
+    archive_only = {
+        "tools/qa/install_wsl_runner_runtime.sh", "tools/qa/install_wsl_worker_helper.sh",
+        "tools/qa/verify_wsl_source_bundle.py", "tools/qa/verify_wsl_runtime_stage.py",
+        "tools/qa/worker_exec.c",
+    }
+    if not isinstance(expected, dict) or not archive_only <= expected.keys():
+        raise ValueError("runtime archive pins lack the fixed installation tools")
+    deployed = {}
     for rel, digest in expected.items():
-        path = os.path.join(root, *rel.split("/"))
-        data = _secure_bytes(path, 16 * 1024 * 1024)
-        if hashlib.sha256(data).hexdigest() != digest:
-            raise ValueError("runtime source hash mismatch: " + rel)
+        if (not isinstance(rel, str) or rel.startswith("/") or "\\" in rel
+                or any(part in {"", ".", ".."} for part in rel.split("/"))
+                or not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest)):
+            raise ValueError("runtime archive pin is malformed")
+        if rel in archive_only:
+            continue
+        if not (rel.startswith("tools/vst/") or rel == "docs/SANDBOX_SPEC.md"):
+            raise ValueError("runtime archive pin is outside the installation contract")
+        deployed[rel] = digest
+    if "docs/SANDBOX_SPEC.md" not in deployed or not any(p.startswith("tools/vst/") for p in deployed):
+        raise ValueError("runtime archive pins lack the deployed source roots")
+    expected_dirs = {"/".join(rel.split("/")[:i])
+                     for rel in deployed for i in range(1, len(rel.split("/")))}
+    actual_dirs, actual_files = set(), {}
+
+    def failed_walk(error):
+        raise error
+
+    for current, directories, files in os.walk(root, followlinks=False, onerror=failed_walk):
+        for name in sorted(directories + files):
+            path = os.path.join(current, name)
+            rel = os.path.relpath(path, root).replace(os.sep, "/")
+            info = os.lstat(path)
+            if info.st_uid != 0 or info.st_gid != 0:
+                raise ValueError("runtime path is not root-owned: " + rel)
+            if stat.S_ISDIR(info.st_mode) and stat.S_IMODE(info.st_mode) == 0o755:
+                actual_dirs.add(rel)
+            elif (stat.S_ISREG(info.st_mode) and stat.S_IMODE(info.st_mode) == 0o644
+                  and info.st_nlink == 1):
+                data = _secure_bytes(path, 16 * 1024 * 1024, allow_empty=True)
+                actual_files[rel] = hashlib.sha256(data).hexdigest()
+            else:
+                raise ValueError("runtime path has an unsafe type, mode, or link count: " + rel)
+            if len(actual_dirs) + len(actual_files) > 50000:
+                raise ValueError("runtime tree exceeds its entry bound")
+    if (actual_dirs != expected_dirs
+            or set(actual_files) != set(deployed) | {".vst-runtime-manifest.json"}):
+        raise ValueError("deployed runtime tree has missing or unexpected paths")
+    if any(actual_files[rel] != digest for rel, digest in deployed.items()):
+        raise ValueError("deployed runtime source hash differs from the pinned archive")
 
 
 def _config_identity(identity: dict) -> tuple[dict, dict, dict]:
@@ -850,7 +897,7 @@ def _config_identity(identity: dict) -> tuple[dict, dict, dict]:
     return config, bootstrap, task_manifest
 
 
-def _runtime_identity(identity: dict) -> None:
+def _runtime_identity(identity: dict) -> dict:
     selector = identity["runtime_selector"]
     if selector != "/opt/vst-runtime-" + identity["runtime_source_head"]:
         raise ValueError("runtime selector is not the full-hash versioned identity")
@@ -858,10 +905,25 @@ def _runtime_identity(identity: dict) -> None:
     if (marker.get("schema") != 3 or marker.get("head") != identity["runtime_source_head"]
             or marker.get("archive_sha256") != identity["bundle_sha256"]):
         raise ValueError("installed runtime marker differs from the authorized runtime bundle")
+    if (set(marker) != {"schema", "head", "archive_sha256", "plan_sha256", "inventory_sha256",
+                       "compiler_path", "compiler_resolved_path", "compiler_sha256",
+                       "compiler_symlink_target"}
+            or any(not isinstance(marker[name], str) or not re.fullmatch(r"[0-9a-f]{64}", marker[name])
+                   for name in ("plan_sha256", "inventory_sha256", "compiler_sha256"))
+            or marker["compiler_path"] != "/usr/bin/cc"
+            or marker["compiler_symlink_target"] != "/etc/alternatives/cc"
+            or not isinstance(marker["compiler_resolved_path"], str)
+            or not re.fullmatch(r"/usr/bin/[A-Za-z0-9._+-]+", marker["compiler_resolved_path"])):
+        raise ValueError("installed runtime marker provenance is malformed")
+    if _secure_bytes(selector + "/.vst-runtime-manifest.json", 65536) != _canonical(marker):
+        raise ValueError("installed runtime marker is not the canonical installation record")
     link = os.lstat("/opt/vst-runtime")
     if not stat.S_ISLNK(link.st_mode) or os.readlink("/opt/vst-runtime") != selector:
         raise ValueError("active runtime symlink does not select the distinct authorized runtime")
     _tree_digest(selector, AUTH["source_pins"]["runtime"])
+    if _json_file(selector + "/.vst-runtime-manifest.json", 65536) != marker:
+        raise ValueError("installed runtime marker changed during verification")
+    return marker
 
 
 def _systemd_show(unit: str) -> dict:
@@ -924,22 +986,12 @@ def _prestart_inventory(identity: dict) -> dict:
     # No runtime, service, key, or configuration path is read until every
     # mountinfo row has been inspected for Windows-backed mounts.
     config = _json_file("/etc/vst-runner/supervisor-service.json")
-    runtime = identity["runtime_selector"]
-    _runtime_identity(identity)
+    runtime_manifest = _runtime_identity(identity)
     _config_identity(identity)
-    # Verify the deployment plan's complete no-symlink source inventory.
-    source_manifest = _json_file(runtime + "/.vst-source-manifest.json", 8 * 1024 * 1024)
-    runtime_manifest = _json_file(runtime + "/.vst-runtime-manifest.json", 65536)
-    verify = ["/usr/bin/python3.12", "-I", "-B", "-S",
-              runtime + "/tools/qa/verify_wsl_source_bundle.py",
-              "--root", runtime, "--expected-head", identity["runtime_source_head"],
-              "--archive-sha256", identity["bundle_sha256"],
-              "--plan-sha256", runtime_manifest["plan_sha256"],
-              "--inventory-sha256", runtime_manifest["inventory_sha256"]]
-    _require_command(record("full_runtime_source_verification", verify, timeout=120),
-                     "complete installed source verification")
+    # Complete deployed-tree verification above follows the installer's fixed projection.
     R["prestart"]["runtime_source_manifest"] = {
-        "schema": source_manifest.get("schema"),
+        "schema": runtime_manifest.get("schema"),
+        "verification": "complete-deployed-tree-from-authorized-archive",
         "archive_sha256": runtime_manifest.get("archive_sha256"),
         "head": runtime_manifest.get("head"),
         "inventory_sha256": runtime_manifest.get("inventory_sha256"),

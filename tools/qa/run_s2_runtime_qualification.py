@@ -323,7 +323,8 @@ def validate_input(value: Any) -> dict[str, Any]:
 
 def _git(root: Path, *args: str, maximum: int = MAX_GIT_BLOB_BYTES) -> bytes:
     result = subprocess.run(
-        ["git", "-C", str(root), "--no-replace-objects", *args],
+        ["git", "-c", "core.autocrlf=false", "-c", "core.eol=lf",
+         "-C", str(root), "--no-replace-objects", *args],
         stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         check=False, timeout=30,
     )
