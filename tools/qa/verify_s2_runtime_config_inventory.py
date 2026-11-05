@@ -454,6 +454,23 @@ def validate_inventory(
     added = candidate_destinations - set(previous)
     if added != TASK_GUARD_DESTINATIONS:
         raise InventoryError("candidate adds destinations outside the exact recovery guard pair")
+    guard_fingerprints = {}
+    candidate_records = {record["path"]: record for record in candidate_bundle["files"]}
+    for item in candidate_entries:
+        if item["destination"] not in added:
+            continue
+        source = item["source"]
+        if not isinstance(source, str) or source.startswith("/") or ".." in Path(source).parts:
+            raise InventoryError("recovery guard has an unsafe bundle source")
+        raw = _git_blob(expected_repo_head, "docs/sdlc/runtime-config/" + source)
+        record = candidate_records.get(source)
+        if record is None or len(raw) != record["size"] or _sha(raw) != record["sha256"]:
+            raise InventoryError("recovery guard differs from its pinned bundle member")
+        mode = int(item["mode"], 8) if isinstance(item["mode"], str) else item["mode"]
+        guard_fingerprints[item["destination"]] = {
+            "state": "file", "uid": item["uid"], "gid": item["gid"], "mode": mode,
+            "size": len(raw), "sha256": _sha(raw),
+        }
     expected = {path: previous[path] if path in previous else {"state": "absent"}
                 for path in candidate_destinations}
     if not isinstance(files, dict) or set(files) != set(expected):
@@ -461,8 +478,10 @@ def validate_inventory(
     for destination, expected_fingerprint in expected.items():
         if expected_fingerprint == {"state": "absent"}:
             actual = files[destination]
-            if actual != {"state": "ABSENT", "kind": "absent"}:
-                raise InventoryError("new recovery guard already exists or is not positively absent: " + destination)
+            if actual == {"state": "ABSENT", "kind": "absent"}:
+                continue
+            if _regular_file_fingerprint(actual, destination) != guard_fingerprints[destination]:
+                raise InventoryError("recovery guard is neither absent nor the exact prepared file: " + destination)
             continue
         actual = _regular_file_fingerprint(files[destination], destination)
         if actual != expected_fingerprint:

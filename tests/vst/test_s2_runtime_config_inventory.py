@@ -215,6 +215,126 @@ def _validate(value: dict[str, object]):
         expected_capture_sha256=EXPECTED_CAPTURE_SHA256, now=NOW)
 
 
+def _prepared_recovery_guard_fingerprints() -> dict[str, dict[str, object]]:
+    layout = json.loads(inventory._git_blob(
+        EXPECTED_REPO_HEAD, "docs/sdlc/runtime-config/installation-layout.json"))
+    guards = {}
+    for item in layout["unit_overrides"]:
+        destination = item["destination"]
+        if destination not in inventory.TASK_GUARD_DESTINATIONS:
+            continue
+        raw = inventory._git_blob(
+            EXPECTED_REPO_HEAD, "docs/sdlc/runtime-config/" + item["source"])
+        mode = int(item["mode"], 8) if isinstance(item["mode"], str) else item["mode"]
+        guards[destination] = {
+            "state": "PRESENT", "kind": "regular", "uid": item["uid"],
+            "gid": item["gid"], "mode": f"{mode:04o}", "size": len(raw),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+        }
+    assert set(guards) == inventory.TASK_GUARD_DESTINATIONS
+    return guards
+
+
+def _set_prepared_recovery_guards(value: dict[str, object], *, present: set[str]) -> None:
+    files = value["configuration_files"]
+    assert isinstance(files, dict)
+    prepared = _prepared_recovery_guard_fingerprints()
+    for destination in inventory.TASK_GUARD_DESTINATIONS:
+        files[destination] = (copy.deepcopy(prepared[destination]) if destination in present
+                              else {"state": "ABSENT", "kind": "absent"})
+
+
+@pytest.mark.parametrize("present", [
+    set(),
+    set(inventory.TASK_GUARD_DESTINATIONS),
+    {next(iter(inventory.TASK_GUARD_DESTINATIONS))},
+], ids=["both-absent", "both-exact", "mixed-exact-and-absent"])
+def test_inventory_accepts_only_absent_or_exact_prepared_recovery_guards(valid_inventory, present):
+    _set_prepared_recovery_guards(valid_inventory, present=present)
+
+    result = _validate(valid_inventory)
+
+    assert result["configuration_destination_count"] == 27
+
+
+@pytest.mark.parametrize("mutation", [
+    "hash", "size", "uid", "gid", "mode", "kind", "symlink", "unknown-presence",
+], ids=["altered-hash", "altered-size", "altered-owner", "altered-group",
+       "altered-mode", "wrong-kind", "symlink", "unknown-presence"])
+def test_inventory_rejects_mixed_pair_when_prepared_guard_is_not_exact(
+        valid_inventory, mutation):
+    present = set(inventory.TASK_GUARD_DESTINATIONS)
+    _set_prepared_recovery_guards(valid_inventory, present=present)
+    destination = next(iter(inventory.TASK_GUARD_DESTINATIONS))
+    guard = valid_inventory["configuration_files"][destination]
+    if mutation == "hash":
+        guard["sha256"] = "0" * 64
+    elif mutation == "size":
+        guard["size"] += 1
+    elif mutation == "uid":
+        guard["uid"] += 1
+    elif mutation == "gid":
+        guard["gid"] += 1
+    elif mutation == "mode":
+        guard["mode"] = "0600"
+    elif mutation == "kind":
+        guard["kind"] = "directory"
+    elif mutation == "symlink":
+        guard["kind"] = "symlink"
+        guard["target"] = "/tmp/untrusted-guard"
+    else:
+        guard["state"] = "UNKNOWN"
+
+    with pytest.raises(inventory.InventoryError):
+        _validate(valid_inventory)
+
+
+def test_inventory_refuses_guard_member_that_differs_from_bundle_pin(valid_inventory, monkeypatch):
+    layout = json.loads(inventory._git_blob(
+        EXPECTED_REPO_HEAD, "docs/sdlc/runtime-config/installation-layout.json"))
+    guard = next(item for item in layout["unit_overrides"]
+                 if item["destination"] in inventory.TASK_GUARD_DESTINATIONS)
+    guard_source = "docs/sdlc/runtime-config/" + guard["source"]
+    read_candidate = inventory._git_blob
+
+    def tampered_guard_member(commit: str, relative_path: str) -> bytes:
+        raw = read_candidate(commit, relative_path)
+        return raw + b"# tampered after candidate pin\n" if relative_path == guard_source else raw
+
+    monkeypatch.setattr(inventory, "_git_blob", tampered_guard_member)
+
+    with pytest.raises(inventory.InventoryError):
+        _validate(valid_inventory)
+
+
+def test_inventory_refuses_unsafe_pinned_guard_source_path(valid_inventory, monkeypatch):
+    bundle_dir = inventory.REPO / "docs/sdlc/runtime-config"
+    bundle = json.loads((bundle_dir / "bundle-manifest.json").read_bytes())
+    layout = json.loads((bundle_dir / "installation-layout.json").read_bytes())
+    guard = next(item for item in layout["unit_overrides"]
+                 if item["destination"] in inventory.TASK_GUARD_DESTINATIONS)
+    guard["source"] = "../untrusted-recovery-guard.conf"
+    layout_raw = (json.dumps(layout, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    layout_record = next(item for item in bundle["files"]
+                         if item["path"] == "installation-layout.json")
+    layout_record["size"] = len(layout_raw)
+    layout_record["sha256"] = hashlib.sha256(layout_raw).hexdigest()
+    bundle_raw = (json.dumps(bundle, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    bundle_digest = hashlib.sha256(bundle_raw).hexdigest()
+    layout_digest = hashlib.sha256(layout_raw).hexdigest()
+    monkeypatch.setattr(inventory, "CANDIDATE_BUNDLE_SHA256", bundle_digest)
+    monkeypatch.setattr(inventory, "CANDIDATE_LAYOUT_SHA256", layout_digest)
+    valid_inventory["source_identity"]["bundle_manifest_sha256"] = bundle_digest
+    valid_inventory["source_identity"]["installation_layout_sha256"] = layout_digest
+    _use_candidate_config_blobs(monkeypatch, {
+        "bundle-manifest.json": bundle_raw,
+        "installation-layout.json": layout_raw,
+    })
+
+    with pytest.raises(inventory.InventoryError):
+        _validate(valid_inventory)
+
+
 def _use_candidate_config_blobs(monkeypatch, overrides: dict[str, bytes] | None = None) -> None:
     read_committed = inventory._git_blob
     candidate_overrides = overrides or {}
@@ -589,8 +709,12 @@ def test_pinned_baseline_rejects_mismatched_consumed_identity(monkeypatch) -> No
         _load_pinned_baseline_fingerprints()
 
 
+@pytest.mark.parametrize("prepared_guard_pair", [False, True], ids=["absent", "exact-prepared-pair"])
 def test_apply_payload_preserves_validated_canonical_octal_mode(
-        valid_inventory, tmp_path, monkeypatch) -> None:
+        valid_inventory, tmp_path, monkeypatch, prepared_guard_pair) -> None:
+    if prepared_guard_pair:
+        _set_prepared_recovery_guards(
+            valid_inventory, present=set(inventory.TASK_GUARD_DESTINATIONS))
     _validate(valid_inventory)
     committed_git_blob = applier._git_blob
 
