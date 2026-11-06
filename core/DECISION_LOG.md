@@ -1567,3 +1567,12 @@ changes the versioned runtime symlink and fixed service units. Permit this direc
 metadata-only check; do not read or replace its contents. Continue requiring absent runtime
 paths, inactive units, no pending jobs and empty cgroups. The selector code and focused tests
 are in change0603. Runtime selection and the owner-to-Runner request remain unperformed.
+
+## 2026-11-05 — Record VST-027 integration delivery (S3 PR #3)
+
+The vendor-neutral worker adapter/pilot was integrated on current S2 base `0d14021` and delivered
+as commit `db4e97065099122b18dad9ce0c28f1aea569f392` to `s3-vendor-neutral-worker-pilot`.
+Focused adapter and pilot E2E modules each passed 9/9; internal database, reliability, code, and
+security reviews found no confirmed BLOCKER/MAJOR, and GPT-PM approved the exact patch. PR #3 is
+draft against `s2-canonical-continuation`. Evidence is synthetic-only; runtime/backend qualification
+remains separate and unclaimed.
