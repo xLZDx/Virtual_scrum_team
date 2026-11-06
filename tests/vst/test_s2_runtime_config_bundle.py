@@ -325,9 +325,9 @@ def test_fresh_runtime_identity_is_crossbound_and_single_selector_only():
     nonce = run_binding["probe_nonce"]
     request_id = bootstrap["request_id"]
     assert (request_id, run_id, nonce) == (
-        "f4adc20007b44d6b8a4580ef6a2d1ed4",
-        "s2-runtime-20261105-cbd53635c3eb47bfbf7a7e594399cdd7",
-        "cd7f47554f384611a89328af6d1d87e0",
+        "102717f422a44c5f807ea72219b46f6e",
+        "s2-runtime-20261106-7c9c27397c8649f2a186a68fc613a3aa",
+        "9afe3b44eb9e47d284057a47f7bb095b",
     )
     consumed_identities = {
         ("ba3faaadb50447b79df509619b6ee010",
@@ -358,6 +358,15 @@ def test_fresh_runtime_identity_is_crossbound_and_single_selector_only():
     assert network["environment_id"] == f"Ubuntu-24.04:S2:{run_id}"
     assert task["task_id"] == "S2-4-runtime-owner-runner-qualification"
     assert task["retry_cap"] == 0
+    exact_selector = (
+        "tests/vst/test_s2_assignment_basis.py::"
+        "test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment"
+    )
+    assert task["scope"] == [exact_selector]
+    assert task["required_tests"] == [{
+        "acceptance": ["REQ-003"], "slot": "runtime-tests", "test_id": exact_selector,
+    }]
+    assert task["mandatory_commands"][0]["argv"][-1] == exact_selector
     assert "probe-request.json" not in {
         item["path"] for item in _json("bundle-manifest.json")["files"]
     }

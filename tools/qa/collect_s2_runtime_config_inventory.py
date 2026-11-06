@@ -2,15 +2,15 @@
 import datetime, hashlib, json, os, stat, subprocess, sys
 
 REPO = "/mnt/d/Repo/Virtual_scrum_team"
-RUN_ID = "s2-runtime-20261105-cbd53635c3eb47bfbf7a7e594399cdd7"
-REQUEST_ID = "f4adc20007b44d6b8a4580ef6a2d1ed4"
-NONCE = "cd7f47554f384611a89328af6d1d87e0"
+RUN_ID = "s2-runtime-20261106-7c9c27397c8649f2a186a68fc613a3aa"
+REQUEST_ID = "102717f422a44c5f807ea72219b46f6e"
+NONCE = "9afe3b44eb9e47d284057a47f7bb095b"
 RUNTIME = "/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
 CAPTURE_SHA = "befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119"
-APPLIER_SHA = "5c02647b103462502be5385eb0381acec5e989b32c787979d0841037cdb4e35c"
-VALIDATOR_SHA = "c334c6cdcf2677c8f3d87f52c74951d61717e64f7dbe0f77cc0541cc32f5d135"
+APPLIER_SHA = "f06b513dc0b3c591deef0d3ae46005805941a611fcd42afafaff1dbbd9a38359"
+VALIDATOR_SHA = "8cf18b921d5e77a334b407ff156c728247667e63d9558909885f82d1c2799383"
 CONTRACTS_SHA = "bf01d990a94cd71887f8d9f81019333f3bf43d5950a655de3646e9bb3d585ea4"
-BUNDLE_SHA = "4c13f2991f39cf12b84af4b0440621ab1adaa74ca1894dfda29eec1006cd7138"
+BUNDLE_SHA = "e7b68568b2997b1b29ed7b107fa7103e7cdc1b7e0b9604516449541a0c9db186"
 LAYOUT_SHA = "f46e97704a89b5da339701bb71b6e71c4ce846ae96cb4504929869352d0315dd"
 IMPLEMENTATION_HEAD = "16549bb8f10113b2f05f41b3aa390bad80dab97e"
 UNITS = [
@@ -245,11 +245,9 @@ def command_text(label, argv, cwd=None):
     return item["stdout"].strip()
 def main():
     mountpoint = run("mountpoint_check", ["/usr/bin/mountpoint", "-q", "/mnt/d"])
-    if mountpoint["exit_code"] == 32 and not mountpoint["stderr"]:
-        mounted = run("temporary_read_only_D_mount",
-                      ["/usr/bin/mount", "-t", "drvfs", "D:", "/mnt/d", "-o", "ro"])
-        require_success(mounted, "temporary read-only D: mount")
-    elif mountpoint["exit_code"] != 0 or mountpoint["stderr"]:
+    if mountpoint["exit_code"] != 0 or mountpoint["stderr"]:
+        if mountpoint["exit_code"] == 32 and not mountpoint["stderr"]:
+            raise RuntimeError("D_MOUNT_ABSENT; read-only collector will not change mount state")
         raise RuntimeError("mountpoint check returned an unknown result")
     src = run("findmnt_source", ["/usr/bin/findmnt", "-n", "-o", "SOURCE", "--target", "/mnt/d"])
     fs = run("findmnt_filesystem_options",

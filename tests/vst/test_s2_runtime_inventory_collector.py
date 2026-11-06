@@ -180,6 +180,26 @@ def test_require_success_rejects_failed_exit_or_unexpected_stderr(result) -> Non
         collector.require_success(result, "inventory command")
 
 
+def test_main_fails_closed_without_mounting_when_d_drive_mount_is_absent(monkeypatch) -> None:
+    calls = []
+
+    def run(label, argv, cwd=None, timeout=20):
+        calls.append((label, argv))
+        if label == "mountpoint_check":
+            return {"exit_code": 32, "stdout": "", "stderr": ""}
+        raise AssertionError(f"collector attempted a command after absent mount: {label}")
+
+    collector.observations.clear()
+    monkeypatch.setattr(collector, "run", run)
+
+    with pytest.raises(
+            RuntimeError,
+            match="D_MOUNT_ABSENT; read-only collector will not change mount state"):
+        collector.main()
+
+    assert calls == [("mountpoint_check", ["/usr/bin/mountpoint", "-q", "/mnt/d"])]
+
+
 def test_parse_os_release_accepts_observed_ubuntu_2404() -> None:
     assert collector.parse_os_release('ID="ubuntu"\nVERSION_ID="24.04"\n') == "Ubuntu-24.04"
 

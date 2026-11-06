@@ -1,5 +1,5 @@
 {
-  "environment_id": "Ubuntu-24.04:S2:s2-runtime-20261105-cbd53635c3eb47bfbf7a7e594399cdd7",
+  "environment_id": "Ubuntu-24.04:S2:s2-runtime-20261106-7c9c27397c8649f2a186a68fc613a3aa",
   "external_allowlist": [],
   "kind": "configuration_not_measurement",
   "probe_address_families": [

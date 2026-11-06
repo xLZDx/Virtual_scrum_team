@@ -131,7 +131,7 @@
     {
       "path": "bootstrap-request.json",
       "size": 4104,
-      "sha256": "be1802a65d4705c5d01e578742133fd8c46f84fb9321374d55484920ba2e377a"
+      "sha256": "8a0c295517a3a07f3e28a96d3d5d10e2cac6cfe856a3341571c7ad4609909a4b"
     },
     {
       "path": "deployment-source-manifest.json",
@@ -186,7 +186,7 @@
     {
       "path": "network-profile.json",
       "size": 970,
-      "sha256": "f0d4e76b13a59b92575e16b5ef1cc5880760a405a5248c6cf79e23a2044bf1c4"
+      "sha256": "ea2963f7474b6b3d26685e445d7c3d259a66b172a57c792a75ccdfec1aa08061"
     },
     {
       "path": "probe-entrypoint.py",
@@ -216,7 +216,7 @@
     {
       "path": "run-binding.json",
       "size": 628,
-      "sha256": "b80b506af43eeec8814dcf58ab72c0b5089a197b228cf3700a186e52549e75f9"
+      "sha256": "339059cfeec84eb7152206d48d075b615adb5070796c35922877134a4ecc831e"
     },
     {
       "path": "runner-service.json",
@@ -241,7 +241,7 @@
     {
       "path": "supervisor-service.json",
       "size": 3389,
-      "sha256": "484362e883b69e307d7a20f0b189a49604266bc8dfa9fc22c4092748912ab772"
+      "sha256": "fad5afce4f3a262ab91aff3b24c3b2df91e8117e549aca6ca8ce6a63e0f17e3e"
     },
     {
       "path": "task-manifest.json",

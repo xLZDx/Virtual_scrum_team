@@ -51,9 +51,9 @@ EXPECTED_CONSUMED_IDENTITIES = (
      "5f5820a7cfc348cfa89de31af6c6d1a7"),
 )
 EXPECTED_FRESH_IDENTITY = (
-    "f4adc20007b44d6b8a4580ef6a2d1ed4",
-    "s2-runtime-20261105-cbd53635c3eb47bfbf7a7e594399cdd7",
-    "cd7f47554f384611a89328af6d1d87e0",
+    "102717f422a44c5f807ea72219b46f6e",
+    "s2-runtime-20261106-7c9c27397c8649f2a186a68fc613a3aa",
+    "9afe3b44eb9e47d284057a47f7bb095b",
 )
 try:
     COMMITTED_VALIDATOR_MATCHES_WORKTREE = (
@@ -462,9 +462,18 @@ def test_fresh_binding_changes_only_bootstrap_and_supervisor_installed_bytes(mon
                             if item["publication"].startswith("new absent-only configuration unit")])
     previous_sources = {item["destination"]: item["source"] for item in previous_entries}
     candidate_sources = {item["destination"]: item["source"] for item in candidate_entries}
+    previous_install_contracts = {
+        item["destination"]: (item["uid"], item["gid"], item["mode"])
+        for item in previous_entries
+    }
+    candidate_install_contracts = {
+        item["destination"]: (item["uid"], item["gid"], item["mode"])
+        for item in candidate_entries
+    }
 
     assert len(previous_sources) == len(candidate_sources) == 27
     assert candidate_sources == previous_sources
+    assert candidate_install_contracts == previous_install_contracts
     changed_destinations = {
         destination for destination, source in candidate_sources.items()
         if inventory._git_blob(EXPECTED_REPO_HEAD, "docs/sdlc/runtime-config/" + source)
@@ -476,6 +485,18 @@ def test_fresh_binding_changes_only_bootstrap_and_supervisor_installed_bytes(mon
         "/etc/vst-runner/network-profile.json",
         "/etc/vst-runner/supervisor-service.json",
     }, changed_destinations
+    assert len(changed_destinations) == 3
+    unchanged_destinations = set(candidate_sources) - changed_destinations
+    assert len(unchanged_destinations) == 24
+    for destination in unchanged_destinations:
+        source = candidate_sources[destination]
+        previous_bytes = inventory._git_blob(
+            inventory.PREVIOUS_CONFIG_HEAD,
+            "docs/sdlc/runtime-config/" + previous_sources[destination])
+        candidate_bytes = inventory._git_blob(
+            EXPECTED_REPO_HEAD, "docs/sdlc/runtime-config/" + source)
+        assert hashlib.sha256(candidate_bytes).digest() == hashlib.sha256(previous_bytes).digest(), (
+            destination)
 
     assert previous_layout == candidate_layout
     assert previous_bundle["task_source_head"] == candidate_bundle["task_source_head"]
