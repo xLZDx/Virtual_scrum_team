@@ -378,6 +378,223 @@ def test_wsl_source_loader_rejects_invalid_frame_before_source_execution(frame, 
     assert b"source executed" not in completed.stderr
 
 
+def _run_embedded_repo_mount_guard(*, existing=None, remount_exit=0, capture_exit=False,
+                                  replace_mount_id_after_remount=False):
+    """Execute the actual apply-child mount guard with host I/O represented by a fake runner."""
+    import ast
+    import io
+    from types import SimpleNamespace
+
+    tree = ast.parse(APPLY._REMOTE)
+    start = next(index for index, node in enumerate(tree.body)
+                 if isinstance(node, ast.Assign) and any(
+                     isinstance(target, ast.Name) and target.id == "created_repo_mount"
+                     for target in node.targets))
+    end = next(index for index, node in enumerate(tree.body)
+               if isinstance(node, ast.Assign) and any(
+                   isinstance(target, ast.Name) and target.id == "bundle_raw"
+                   for target in node.targets))
+    nodes = tree.body[start:end]
+    state = dict(existing) if existing is not None else None
+    calls = []
+    callbacks = []
+    remount_completed = False
+
+    class Completed:
+        def __init__(self, returncode=0, stdout="", stderr=""):
+            self.returncode = returncode
+            self.stdout = stdout
+            self.stderr = stderr
+
+    def fake_run(argv, **_kwargs):
+        nonlocal state, remount_completed
+        calls.append(list(argv))
+        if argv[0] == "/usr/bin/mountpoint":
+            return Completed(0 if state is not None else 32)
+        if argv[0] == "/usr/bin/findmnt":
+            if state is None:
+                return Completed(1)
+            if replace_mount_id_after_remount and remount_completed:
+                state["id"] = "999"
+            fields = [state[name] for name in ("id", "target", "source", "filesystem", "options")]
+            return Completed(stdout=" ".join(fields) + "\n")
+        if argv[0] == "/usr/bin/mount" and "-t" in argv:
+            state = {"id": "501", "target": "/mnt/d", "source": "D:",
+                     "filesystem": "9p", "options": "rw,relatime"}
+            return Completed()
+        if argv[0] == "/usr/bin/mount" and "remount,ro" in argv:
+            if remount_exit == 0 and state is not None:
+                state["options"] = "ro,relatime"
+                remount_completed = True
+            return Completed(remount_exit)
+        if argv[0] == "/usr/bin/umount":
+            if (state is not None and argv[-1] == state["target"]
+                    and state["id"] == "501"):
+                state = None
+            return Completed()
+        raise AssertionError(f"unexpected command in mount preflight: {argv!r}")
+
+    namespace = {
+        "atexit": SimpleNamespace(register=callbacks.append),
+        "os": SimpleNamespace(path=SimpleNamespace(isdir=lambda _path: True,
+                                                    islink=lambda _path: False)),
+        "subprocess": SimpleNamespace(run=fake_run, PIPE=object()),
+        "sys": SimpleNamespace(stderr=io.StringIO()),
+    }
+    try:
+        exec(compile(ast.Module(body=nodes, type_ignores=[]),
+                     "<embedded-repo-mount-guard>", "exec"), namespace)
+    except SystemExit as exc:
+        if not capture_exit:
+            raise
+        namespace["preflight_error"] = exc
+    return namespace, calls, callbacks, lambda: state
+
+
+def test_remote_apply_mount_is_exact_readonly_and_owned_cleanup_runs():
+    namespace, calls, callbacks, state = _run_embedded_repo_mount_guard()
+
+    assert namespace["created_repo_mount"] is True
+    assert namespace["owned_repo_mount_id"] == "501"
+    assert state() == {"id": "501", "target": "/mnt/d", "source": "D:",
+                       "filesystem": "9p", "options": "ro,relatime"}
+    assert len(callbacks) == 1
+    assert [call for call in calls if call[:2] == ["/usr/bin/mount", "-t"]] == [
+        ["/usr/bin/mount", "-t", "drvfs", "D:", "/mnt/d", "-o", "ro"]]
+    assert [call for call in calls if "remount,ro" in call] == [
+        ["/usr/bin/mount", "-o", "remount,ro", "/mnt/d"]]
+
+    namespace["cleanup_repo_mount"]()
+
+    assert state() is None
+    assert [call for call in calls if call[0] == "/usr/bin/umount"] == [
+        ["/usr/bin/umount", "/mnt/d"]]
+    # The independent exact-Git source checks remain in the remote apply contract.
+    assert 'deployment_commit + ":docs/sdlc/runtime-config/deployment-source-manifest.json"' in APPLY._REMOTE
+    assert 'deployment_commit + ":" + relative' in APPLY._REMOTE
+    assert '"merge-base", "--is-ancestor", deployment_commit, "@{upstream}"' in APPLY._REMOTE
+
+
+def test_remote_apply_owned_rw_mount_is_normally_cleaned_when_ro_remount_fails():
+    namespace, calls, _callbacks, state = _run_embedded_repo_mount_guard(
+        remount_exit=1, capture_exit=True)
+
+    assert str(namespace["preflight_error"]) == "repository mount could not be remounted read-only"
+    assert state() is None
+    assert [call for call in calls if call[0] == "/usr/bin/umount"] == [
+        ["/usr/bin/umount", "/mnt/d"]]
+
+
+def test_remote_apply_fails_closed_when_mount_id_changes_after_remount():
+    namespace, calls, callbacks, state = _run_embedded_repo_mount_guard(
+        capture_exit=True, replace_mount_id_after_remount=True)
+
+    assert str(namespace["preflight_error"]) == (
+        "repository mount identity changed during read-only remount")
+    assert namespace["owned_repo_mount_id"] == "501"
+    assert state() == {"id": "999", "target": "/mnt/d", "source": "D:",
+                       "filesystem": "9p", "options": "ro,relatime"}
+    assert len(callbacks) == 1
+    assert [call for call in calls if call[0] == "/usr/bin/umount"] == []
+    assert "S2_REPO_MOUNT_CLEANUP=refused-mount-changed" in (
+        namespace["sys"].stderr.getvalue())
+    # The embedded guard is extracted only up to bundle_raw, so no inventory or
+    # configuration payload can be consumed after the identity mismatch.
+
+
+@pytest.mark.parametrize("existing, message", [
+    ({"id": "31", "target": "/mnt/d", "source": "D:", "filesystem": "9p",
+      "options": "rw,relatime"}, "pre-existing repository mount is writable"),
+    ({"id": "32", "target": "/mnt/d", "source": "E:", "filesystem": "9p",
+      "options": "ro,relatime"}, "repository mount source or filesystem"),
+], ids=["preexisting-rw", "wrong-source"])
+def test_remote_apply_mount_guard_refuses_preexisting_rw_or_wrong_source(existing, message):
+    with pytest.raises(SystemExit, match=message):
+        _run_embedded_repo_mount_guard(existing=existing)
+
+
+def test_remote_apply_cleanup_refuses_replaced_mount_id():
+    namespace, calls, _callbacks, state = _run_embedded_repo_mount_guard()
+    state()["id"] = "999"
+
+    namespace["cleanup_repo_mount"]()
+
+    assert state()["id"] == "999"
+    assert not [call for call in calls if call[0] == "/usr/bin/umount"]
+    assert "S2_REPO_MOUNT_CLEANUP=refused-mount-changed" in namespace["sys"].stderr.getvalue()
+
+
+def test_remote_apply_cleanup_reports_metadata_check_failure():
+    namespace, _calls, _callbacks, _state = _run_embedded_repo_mount_guard()
+
+    def fail_metadata_check():
+        raise OSError("mount table unavailable")
+
+    namespace["repo_mount_record"] = fail_metadata_check
+    namespace["cleanup_repo_mount"]()
+
+    assert "S2_REPO_MOUNT_CLEANUP=check-failed-OSError" in namespace["sys"].stderr.getvalue()
+
+
+def _run_embedded_manifest_pin_checks(payload):
+    import ast
+    import base64
+
+    tree = ast.parse(APPLY._REMOTE)
+    start = next(index for index, node in enumerate(tree.body)
+                 if isinstance(node, ast.Assign) and any(
+                     isinstance(target, ast.Name) and target.id == "bundle_raw"
+                     for target in node.targets))
+    end = next(index for index, node in enumerate(tree.body)
+               if isinstance(node, ast.Assign) and any(
+                   isinstance(child, ast.Name) and child.id == "bundle"
+                   for target in node.targets for child in ast.walk(target)))
+    namespace = {"base64": base64, "hashlib": hashlib, "json": json,
+                 "BUNDLE_SHA256": APPLY.BUNDLE_MANIFEST_SHA256,
+                 "LAYOUT_SHA256": APPLY.INSTALLATION_LAYOUT_SHA256,
+                 "p": payload}
+    exec(compile(ast.Module(body=tree.body[start:end + 1], type_ignores=[]),
+                 "<embedded-manifest-hash-guard>", "exec"), namespace)
+    return namespace
+
+
+def test_remote_apply_accepts_exact_pinned_manifests_without_git_read():
+    bundle_raw = (BUNDLE / "bundle-manifest.json").read_bytes()
+    layout_raw = (BUNDLE / "installation-layout.json").read_bytes()
+    payload = {
+        "bundle_manifest_b64": base64.b64encode(bundle_raw).decode("ascii"),
+        "bundle_manifest_sha256": APPLY.BUNDLE_MANIFEST_SHA256,
+        "installation_layout_b64": base64.b64encode(layout_raw).decode("ascii"),
+        "installation_layout_sha256": APPLY.INSTALLATION_LAYOUT_SHA256,
+    }
+
+    namespace = _run_embedded_manifest_pin_checks(payload)
+
+    assert namespace["bundle"]["state"] == "PREPARED_NOT_INSTALLED"
+    assert namespace["layout"]["unit_overrides"]
+
+
+@pytest.mark.parametrize("field, mutation", [
+    ("bundle_manifest_b64", lambda raw: base64.b64encode(base64.b64decode(raw) + b" ").decode("ascii")),
+    ("bundle_manifest_sha256", lambda _value: "0" * 64),
+    ("installation_layout_b64", lambda raw: base64.b64encode(base64.b64decode(raw) + b" ").decode("ascii")),
+    ("installation_layout_sha256", lambda _value: "0" * 64),
+], ids=["bundle-bytes", "bundle-digest", "layout-bytes", "layout-digest"])
+def test_remote_apply_rejects_tampered_bundle_or_layout_hash(field, mutation):
+    bundle_raw = (BUNDLE / "bundle-manifest.json").read_bytes()
+    layout_raw = (BUNDLE / "installation-layout.json").read_bytes()
+    payload = {
+        "bundle_manifest_b64": base64.b64encode(bundle_raw).decode("ascii"),
+        "bundle_manifest_sha256": APPLY.BUNDLE_MANIFEST_SHA256,
+        "installation_layout_b64": base64.b64encode(layout_raw).decode("ascii"),
+        "installation_layout_sha256": APPLY.INSTALLATION_LAYOUT_SHA256,
+    }
+    payload[field] = mutation(payload[field])
+
+    with pytest.raises(SystemExit, match="configuration manifest differs from the independently pinned candidate"):
+        _run_embedded_manifest_pin_checks(payload)
+
+
 def test_remote_stdin_rejects_source_and_payload_over_bounds():
     with pytest.raises(ValueError, match="source exceeds"):
         APPLY._remote_stdin("x" * (APPLY.MAX_REMOTE_SOURCE_BYTES + 1), b"")
@@ -453,6 +670,45 @@ def test_main_wsl_call_uses_short_loader_and_framed_remote_source(
     assert kwargs["input"] == APPLY._remote_stdin(expected_source, expected_payload)
     assert kwargs["input"][8:8 + len(expected_source.encode("utf-8"))] == expected_source.encode("utf-8")
     assert kwargs["input"][8 + len(expected_source.encode("utf-8")):] == expected_payload
+
+
+def test_main_fails_closed_when_owned_repo_mount_cleanup_marker_reports_failure(
+        monkeypatch, tmp_path, capsys):
+    import sys
+
+    approved_commit = "a" * 40
+    inventory_path = tmp_path / "inventory.json"
+    inventory_path.write_bytes(b"inventory")
+
+    class Completed:
+        returncode = 0
+        stdout = b""
+        stderr = b"S2_REPO_MOUNT_CLEANUP=umount-failed\n"
+
+    def fake_run(argv, **_kwargs):
+        if argv[0] == "git":
+            result = Completed()
+            result.stderr = ""
+            if "hash-object" in argv:
+                result.stdout = "f" * 40 + "\n"
+            elif "rev-parse" in argv:
+                result.stdout = "f" * 40 + "\n" if "tools/qa/apply_s2_runtime_configuration.py" in argv[-1] else approved_commit + "\n"
+            else:
+                raise AssertionError(f"unexpected Git command: {argv!r}")
+            return result
+        if argv[0] == "wsl.exe":
+            return Completed()
+        raise AssertionError(f"unexpected subprocess: {argv!r}")
+
+    monkeypatch.setattr(APPLY.subprocess, "run", fake_run)
+    monkeypatch.setattr(APPLY, "_current_inventory_validation_identity",
+                        lambda: ("d" * 40, "e" * 64))
+    monkeypatch.setattr(APPLY, "build_payload", lambda *_args, **_kwargs: b"payload")
+    monkeypatch.setattr(sys, "argv", [str(SCRIPT), "--approved-deployment-commit", approved_commit,
+                                       "--inventory", str(inventory_path), "--inventory-sha256", "f" * 64])
+
+    assert APPLY.main() == 2
+    assert "S2_REPO_MOUNT_CLEANUP=umount-failed" in capsys.readouterr().err
 
 
 def _run_embedded_unit_admission(output, *, unit="vst-supervisor.service",

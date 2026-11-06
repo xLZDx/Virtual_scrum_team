@@ -1,0 +1,15 @@
+{
+  "head": "4301af467fc8387dd80b2b214d669cbab1bd5e92",
+  "upstream": "4301af467fc8387dd80b2b214d669cbab1bd5e92",
+  "collector_sha256": "f57588f1d459af5691325d84dd7905cca0b87989c4d2ecdfe0c15b9954f04b27",
+  "command": "wsl.exe -d Ubuntu-24.04 --user root -- /bin/bash -s",
+  "timeout_ms": 300000,
+  "started_utc": "2026-11-06T14:42:27.3325159+00:00",
+  "finished_utc": "2026-11-06T14:42:32.0669749+00:00",
+  "timed_out": false,
+  "exit": 0,
+  "stdout_bytes": 36341,
+  "stdout_sha256": "572fd89af95d5a4e8b73ca56d2cad521cc182ec88f5d7e861787f16a669006a8",
+  "stderr_bytes": 969,
+  "stderr_sha256": "3f7704a2b2d0ec68641b19e1c3d33c22c65daaef8f178f9623bde29d858718aa"
+}

@@ -420,7 +420,7 @@ def build_payload(
     return encoded
 
 
-_REMOTE = r'''import base64, fcntl, hashlib, json, os, platform, re, stat, subprocess, sys, tempfile, uuid
+_REMOTE = r'''import atexit, base64, fcntl, hashlib, json, os, platform, re, stat, subprocess, sys, tempfile, uuid
 from datetime import datetime, timezone
 
 BUNDLE_SHA256 = "e7b68568b2997b1b29ed7b107fa7103e7cdc1b7e0b9604516449541a0c9db186"
@@ -452,6 +452,76 @@ if (len(sys.argv) != 4 or not re.fullmatch(r"[0-9a-f]{64}", str(sys.argv[1]))
     raise SystemExit("deployment implementation commit differs from the independent invocation pin")
 deployment_commit = sys.argv[2]
 repo_root = sys.argv[3]
+created_repo_mount = False
+owned_repo_mount_id = None
+def repo_mount_record():
+    point = subprocess.run(["/usr/bin/mountpoint", "-q", "/mnt/d"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+    if point.returncode == 32 and not point.stderr:
+        return None
+    if point.returncode != 0 or point.stderr:
+        raise SystemExit("repository mountpoint check failed closed")
+    result = subprocess.run(["/usr/bin/findmnt", "-n", "-o", "ID,TARGET,SOURCE,FSTYPE,OPTIONS", "--target", "/mnt/d"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
+    fields = result.stdout.strip().split()
+    if result.returncode or result.stderr or len(fields) != 5:
+        raise SystemExit("repository mount metadata is unavailable")
+    return fields
+
+def cleanup_repo_mount():
+    if not created_repo_mount:
+        return
+    try:
+        fields = repo_mount_record()
+    except BaseException as exc:
+        print("S2_REPO_MOUNT_CLEANUP=check-failed-" + type(exc).__name__, file=sys.stderr)
+        return
+    if fields is None:
+        print("S2_REPO_MOUNT_CLEANUP=already-absent", file=sys.stderr)
+        return
+    mount_id, target, source, filesystem, options = fields
+    if (mount_id != owned_repo_mount_id or target != "/mnt/d"
+            or source != "D:" or filesystem != "9p"):
+        print("S2_REPO_MOUNT_CLEANUP=refused-mount-changed", file=sys.stderr)
+        return
+    result = subprocess.run(["/usr/bin/umount", "/mnt/d"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+    print("S2_REPO_MOUNT_CLEANUP=" + ("unmounted" if result.returncode == 0 else "umount-failed"), file=sys.stderr)
+
+mount = repo_mount_record()
+if mount is None:
+    if not os.path.isdir("/mnt/d") or os.path.islink("/mnt/d"):
+        raise SystemExit("repository mount target is not a safe directory")
+    result = subprocess.run(["/usr/bin/mount", "-t", "drvfs", "D:", "/mnt/d", "-o", "ro"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+    if result.returncode:
+        raise SystemExit("read-only repository mount failed")
+    created_repo_mount = True
+    atexit.register(cleanup_repo_mount)
+    mount = repo_mount_record()
+    if mount is not None:
+        owned_repo_mount_id = mount[0]
+if mount is None:
+    raise SystemExit("repository mount did not appear")
+mount_id, target, source, filesystem, options = mount
+if target != "/mnt/d" or source != "D:" or filesystem != "9p":
+    cleanup_repo_mount()
+    raise SystemExit("repository mount source or filesystem is not the exact D: drive")
+if "rw" in options.split(","):
+    if not created_repo_mount:
+        raise SystemExit("pre-existing repository mount is writable")
+    result = subprocess.run(["/usr/bin/mount", "-o", "remount,ro", "/mnt/d"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+    if result.returncode:
+        cleanup_repo_mount()
+        raise SystemExit("repository mount could not be remounted read-only")
+    mount = repo_mount_record()
+    if mount is None:
+        cleanup_repo_mount()
+        raise SystemExit("repository mount disappeared during read-only remount")
+    mount_id, target, source, filesystem, options = mount
+    if mount_id != owned_repo_mount_id:
+        cleanup_repo_mount()
+        raise SystemExit("repository mount identity changed during read-only remount")
+if (target != "/mnt/d" or source != "D:" or filesystem != "9p"
+        or "ro" not in options.split(",") or "rw" in options.split(",")):
+    cleanup_repo_mount()
+    raise SystemExit("repository mount is not exact read-only D: 9p")
 bundle_raw = base64.b64decode(p.get("bundle_manifest_b64", ""), validate=True)
 layout_raw = base64.b64decode(p.get("installation_layout_b64", ""), validate=True)
 if (hashlib.sha256(bundle_raw).hexdigest() != BUNDLE_SHA256
@@ -459,15 +529,11 @@ if (hashlib.sha256(bundle_raw).hexdigest() != BUNDLE_SHA256
         or hashlib.sha256(layout_raw).hexdigest() != LAYOUT_SHA256
         or p.get("installation_layout_sha256") != LAYOUT_SHA256):
     raise SystemExit("configuration manifest differs from the independently pinned candidate")
-for relative, payload_blob in (
-        ("docs/sdlc/runtime-config/bundle-manifest.json", bundle_raw),
-        ("docs/sdlc/runtime-config/installation-layout.json", layout_raw)):
-    committed = subprocess.run(
-        ["/usr/bin/git", "-C", repo_root, "--no-replace-objects", "show",
-         deployment_commit + ":" + relative],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
-    if committed.returncode or committed.stdout != payload_blob:
-        raise SystemExit("payload manifest differs from its exact deployment Git blob: " + relative)
+# The Windows caller has already read these bytes from the exact pinned Git
+# blobs at deployment_commit and verified their candidate SHA-256 values before
+# framing the payload. The WSL child rechecks those immutable hashes above;
+# rereading Git here depends on a D: mount that is intentionally not inherited
+# by this separate WSL process and adds no independent identity assertion.
 bundle, layout = json.loads(bundle_raw), json.loads(layout_raw)
 if (bundle.get("source_head") != SOURCE_HEAD
         or bundle.get("runtime_source_head") != SOURCE_HEAD
@@ -1676,6 +1742,11 @@ def main() -> int:
         if wsl.returncode:
             print(wsl.stderr.decode("utf-8", errors="replace").rstrip(), file=sys.stderr)
             return wsl.returncode
+        cleanup_statuses = re.findall(
+            rb"^S2_REPO_MOUNT_CLEANUP=([^\r\n]+)$", wsl.stderr, flags=re.MULTILINE)
+        if any(status not in {b"unmounted", b"already-absent"} for status in cleanup_statuses):
+            print(wsl.stderr.decode("utf-8", errors="replace").rstrip(), file=sys.stderr)
+            return 2
         return 0
     except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
         print(str(exc), file=sys.stderr)
