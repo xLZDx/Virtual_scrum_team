@@ -1,0 +1,20 @@
+{
+  "grant_id": "S2-4D-REQ003-MOUNT-COLLECT-003",
+  "host_start_utc": "2026-11-06T13:28:46.9455242+00:00",
+  "host_end_utc": "2026-11-06T13:28:51.7015991+00:00",
+  "invocation": "wsl.exe -d Ubuntu-24.04 --user root -- /bin/bash -s",
+  "wrapper_sha256": "fd663b66aae60d8912c813eb9dd53abd00e0f39a3381bdfc72e5c3f11e9fa8b4",
+  "wrapper_stdout_metadata": "\nWRAPPER_START_UTC=2026-11-06T13:28:50Z\nWRAPPER_END_UTC=2026-11-06T13:28:51Z\nWRAPPER_EXIT=0\nMOUNT_STATE=CREATED_BY_WRAPPER\nMOUNT_ATTEMPTED=1\nMOUNT_COMMAND_EXIT=0\nMOUNT_TARGET=/mnt/d\nMOUNT_SOURCE=D:\nMOUNT_FSTYPE_OPTIONS=9p     ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3\nTARGET_HEAD=86a875b6df752f844508e657a995da70b03fe156\nCOLLECTOR_SHA256=f57588f1d459af5691325d84dd7905cca0b87989c4d2ecdfe0c15b9954f04b27\nCOLLECTOR_INVOKED=1\nCOLLECTOR_START_UTC=2026-11-06T13:28:50Z\nCOLLECTOR_END_UTC=2026-11-06T13:28:51Z\nCOLLECTOR_EXIT=0\nCLEANUP_RESULT=ATTEMPTED\nCLEANUP_EXIT=0\nPOST_CLEANUP_MOUNTPOINT_EXIT=32\nPOST_CLEANUP_TARGET=/\nPOST_CLEANUP_SOURCE=/dev/sdf\n",
+  "wsl_stderr_before_collector_delimiter": "",
+  "collector_stdout_path": "docs\\sdlc\\evidence\\s2-4d-runtime-inventory-20261106-03.stdout.json",
+  "collector_stdout_bytes": 36344,
+  "collector_stdout_sha256": "afc28de0879ba37e8611a0509fbb110f120d024e23be198f73bed0b946d5fe3d",
+  "collector_stderr_path": "docs\\sdlc\\evidence\\s2-4d-runtime-inventory-20261106-03.stderr.txt",
+  "collector_stderr_bytes": 0,
+  "collector_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "outer_exit_code": 0,
+  "head_expected": "86a875b6df752f844508e657a995da70b03fe156",
+  "collector_sha256_expected": "f57588f1d459af5691325d84dd7905cca0b87989c4d2ecdfe0c15b9954f04b27",
+  "script_input_normalized_lf": true,
+  "no_retry": true
+}
