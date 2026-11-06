@@ -1,21 +1,33 @@
 # S2 backlog and acceptance plan
 
-Sprint identity: Agentic_Framework sprint `39b7cc253f5d`, mapped to the already active project sprint **S2**. This is a tracking association, not a new sprint. S3 remains unstarted.
+Sprint identity: Agentic_Framework sprint `39b7cc253f5d`, mapped to the already active project sprint **S2**. This is a tracking association, not a new sprint. Remote review found an already-open/draft S3 PR #3; this turn did not create or alter it.
 
-## Current execution checkpoint — 2026-10-30
+## Current execution checkpoint — 2026-11-06
 
-This backlog is the ordered task queue. Dated evidence and older narrative sections retain their
-historical scope; they must not silently reopen accepted code. Before a new implementation or
-review, identify the missing numbered acceptance criterion and check its existing approval and
-implementation. An accepted item is reopened only with a concrete regression or changed accepted
-requirement. Permission to prepare a candidate does not make that candidate mandatory for S2.
+This table is the sole active task queue. Dated evidence and older narrative sections retain their
+historical scope; every older `Next:` line is archived chronology, not an executable instruction.
+They must not silently reopen accepted code. The S2-5 bounded code disposition is recorded in
+`docs/sdlc/acceptance.md`; it supersedes older S2 closure summaries for source/test acceptance
+only. Live runtime/E5/production acceptance remains `NOT_RUN`, not passed. Operator decision
+2026-11-06 removed the WSL inventory/configuration-apply/qualification QA harness and its Git
+source checks from active scope; no older WSL next-action may be followed. Before a new
+implementation or review, identify the
+missing numbered acceptance criterion and check its existing approval and implementation. An
+accepted item is reopened only with a concrete regression or changed accepted requirement.
+Permission to prepare a candidate does not make that candidate mandatory for S2.
 
 | Order | Task / state | Evidence / remainder | Owner / next action |
 |---|---|---|---|
-| 1 | S2-4 tracking reconciliation — corrected in change0591 | Correct stale writer/issuer HOLD and push-pending summaries against I01 SOURCE GO, code/test approval `c978360`, and successful task push through `e09c78b`. | Codex: verify the containing commit is normally pushed, then take item 2. |
-| 2 | S2-4 exact runtime inputs — DELIVERED `473e559` | Source compatibility fix a600774 is pushed; actual strict stage-only publication succeeded. Bundle32 artifacts, nine unit bindings and three rate-limit overrides are pinned to actual source/helper/task/policy/run identities. False local GPT-PM credential labeling was corrected; review and test evidence is retained in change0595. | Codex: delivered change0595 in473e559; normal push output `9021b98..473e559` succeeded. Focused9-case suite and actual UID999 command/parser passed; local registry HMAC valid/tamper checks passed. Continue only item3. Existing delegation is carried forward; no generic permission is pending. |
-| 3 | S2-4 current E5 and real owner-to-Runner evidence — IN PROGRESS | Current code/test correction `ee69f9f` and evidence commit `c8df57d` are pushed. GPT-PM approved the post-stage manifest consistency only: request `5ed4b8d8-1c5f-4e45-9e92-cb14df136fe7`, correlated reply `315cc40b-9e06-5641-88fc-4ab2ecdd93de`, 0 B/M. Manifest SHA-256 `fafaf93158fee300f1b62ea53e8712e8c600b89a7d0b350399de62989cddcc52`; current and previous runtime tree hashes were subsequently recalculated read-only and match. StageOnly publication is accepted; selector remains on `80c2b81`, nine units inactive, no jobs, Store absent. Focused source-extracted PowerShell parser probes passed; required pytest is `NOT_RUN` under the test role restriction. Current run-bound E5, permitted Owner-to-Runner, and report-bound TestRun remain `NOT_RUN`; S2-4 is not delivered. Detailed review and tree evidence: `evidence/s2-4-post-stage-manifest-review-5ed4b8d8.md`, `evidence/s2-4-post-stage-content-verification-ee69f9f-20261030.json`. | Codex: prepare the next exact runtime-qualification candidate bound to current source/target identities and request a separate one-shot adjudication; StageOnly approval cannot be reused. `e2e-runner`: run only the separately authorized bounded qualification. Keep S2-5 queued. |
-| 4 | S2-5 final acceptance — not started | Requires S2-4 acceptance plus final revision/evidence review. | Codex assembles; GPT-PM decides. S3 remains unstarted. |
+| 1 | S2-4 tracking reconciliation — DELIVERED in change0591 | Corrected stale writer/issuer HOLD and push-pending summaries against I01 SOURCE GO, code/test approval `c978360`, and successful task push through `e09c78b`. | No remaining action; retain as accepted evidence. Do not repeat reconciliation. |
+| 2 | S2-4 exact runtime inputs — DELIVERED `473e559` | Source compatibility fix a600774 is pushed; actual strict stage-only publication succeeded. Bundle32 artifacts, nine unit bindings and three rate-limit overrides are pinned to actual source/helper/task/policy/run identities. False local GPT-PM credential labeling was corrected; review and test evidence is retained in change0595. | No remaining action for the accepted bounded preparation; retain its limits and do not repeat the bundle work. |
+| 3 | S2-4D REQ-003 source/test acceptance — DELIVERED `96a8da7` | Removed five QA-only WSL inventory/apply/qualification scripts and four dedicated test modules; retained the Store-backed product path. Windows selector: 1 passed; bundle contract module: 11 passed. GPT-PM request `a2c98c0f-a741-4ad6-8330-8cbde5bc3571`, reply `f981ea40-d56c-58aa-8c5e-87631a900140`: APPROVE, 0 BLOCKER / 0 MAJOR. Commit pushed to `origin/s2-canonical-continuation`, updating S2 PR #2. | Codex: preserve the bounded test/runtime distinction in `docs/sdlc/acceptance.md`; runtime/E5/production remain `NOT_RUN`. |
+| 4 | S2-5 final bounded S2 code acceptance — ACCEPTED | Exact code/test candidate `96a8da7bf5af5c9d5b37e56287c48472cb239254` received correlated GPT-PM APPROVE after internal review and focused Windows tests. Full task/requirement disposition is in `docs/sdlc/acceptance.md`. | S2 code scope is closed. REQ-005 live runtime/E5/production remains explicitly NOT_RUN and not accepted; it is deferred from this bounded code closure. Codex records that boundary; no WSL workflow is to be resumed. |
+
+Operator scope decision (2026-11-06) supersedes older S2-4 WSL execution next-actions below:
+the WSL inventory/configuration-apply/qualification QA harness and its Git source checks were
+removed from active project scope. Older WSL commands/results remain chronology only and must not
+be executed or treated as current S2 acceptance. S2-4 closes at source/test scope; live runtime,
+E5 and production status remain `NOT_RUN` and are not claimed.
 
 ## Historical source update — change0556 (current state above)
 

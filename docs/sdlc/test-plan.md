@@ -14,7 +14,7 @@ The recorded source/test evidence is bounded:
 | S2-1, `S2-PROV-M03-R01` | GPT-PM source/test acceptance at `c855ca4`; the linked M03 run record reports 130 passed, 0 failed in Ubuntu 24.04 WSL with Python 3.12.3/pytest 7.4.4. | Source/test behavior for cross-generation historical-result recovery at that revision. | Installed runtime, systemd identity, kernel credentials, current-head equivalence, production issuer/E5, or full S2 acceptance. |
 | S2-2 | GPT-PM transport request `b0f60d46-42b7-486a-b2f0-5d2253780f55`; PM Bridge job `68efb4e6-a296-4fd7-bcfc-2c6fe2568d5c` recovered correlated reply `d555b078-5647-46eb-bfc1-dd99654d634f` (`correlated=true`); source/test blobs delivered in pushed `e987a24`. `docs/sdlc/evidence/s2-dispatch-owner-transport-wsl-run-20261029.md` reports 34 passed, 0 skipped, 0 failed at HEAD `20fda2c`. | One local AF_UNIX socketpair request/half-close/EOF/response/ACK path through the real `DispatchOwnerService._handle()` method. | Live systemd socket activation, actual PID 1 credentials, kernel peer credentials, pidfd, socket filesystem metadata, provisioned identities/configuration, Store, Runner, or production owner-to-Runner behavior. Those properties were mocked or absent. |
 
-These historical results are not rerun or promoted to current-head proof by this plan. As of 2026-11-06, bounded source/test acceptance for S2-1 through S2-5 is recorded in `acceptance.md`; this remains separate from live-runtime, E5 and production acceptance, which is `NOT_RUN` / not accepted. S2-4E / REQ-005 is deferred from this bounded code closure. The current task queue and task status are in `backlog.md`; this test matrix is not an active queue and does not reopen accepted tasks.
+These historical results are not rerun or promoted to current-head proof by this plan. As of 2026-11-06, bounded source/test acceptance for the S2 code tasks is recorded in `acceptance.md`; S2-4E / REQ-005 is explicitly deferred from this code closure. Live-runtime, E5 and production acceptance remains `NOT_RUN` / not accepted. The current task queue and task status are in `backlog.md`; this test matrix is not an active queue and does not reopen accepted tasks.
 
 ## Execution order and ownership
 
@@ -44,10 +44,10 @@ These historical results are not rerun or promoted to current-head proof by this
 | TP-11 — S2-3 design acceptance; REQ-005/006 | In an unconfigured disposable host model with exact old/new runtime and helper fingerprints, install the new immutable artifacts and replace selector plus six fixed-name units through individually atomic renames. Assert final digests match the reviewed manifest, prior artifacts remain, and no enable/start occurs. Do not assert multi-path atomicity. | **PASS — disposable-host model only.** Focused bootstrap tests verify selector/unit replacement and that service start/reload is false; no live runtime was selected. | `e2e-runner`; actual stage-only operation still depends on fresh exact bundle approval and inventory. |
 | TP-12 — S2-3 design acceptance; REQ-005/006 | Inject failures between selector/unit renames. Assert a durable journal records completed steps, services remain inactive, and recovery restores each exact prior selector/unit byte set and hashes or fails closed for read-only recovery. Retain new immutable artifacts. | **PASS — deterministic injected exceptions and recovery only.** Real process-kill/crash/power-loss remains prohibited and `NOT_RUN`. | `e2e-runner` ran the focused fixture selection; no real crash or production filesystem test. |
 | TP-13 — S2-3/S2-4 boundary; REQ-005 | Preparation/transition never start/enable services, create/activate issuer keys, sign/replace E5, enable dispatch, or mutate/migrate Store. Assert no such command/write occurs. `UNKNOWN` Store blocks all Store-changing and activation actions. | **PARTIAL — fixture evidence reports services_started_or_reloaded=false; the real stage-only result reports `selected=false`, `selector_unchanged=true`, and `systemd_units_installed=0`.** Store, service identity/configuration, issuer key, E5, and dispatch were not touched. Live activation and Store behavior remain unverified. | Codex records the exact non-secret stage evidence. The accepted candidate manifest is not an activation permit; production behavior remains separately gated by exact authorization and fresh run-bound evidence. |
-| TP-14 — S2-4 AC-1/4; REQ-003/005 | Conditional permitted runtime journey: from a genuinely authorized owner request through the installed authenticated endpoint and existing Supervisor/Store/filter/dispatcher to the real Runner. Capture exact HEAD, systemd identity, root-controlled config, current run-bound provenance, selected E5 format/binding/nonce/spec digest, Store assignment/lease, and Runner result. Positive result must correspond to one authorized assignment. | **NOT_RUN / blocked.** Current transport test does not reach systemd, Store, or Runner. `S2-DISPATCH-M01` remains MAJOR/OPEN. | `e2e-runner` executes only after exact bundle review, accepted authorization format/policy, provisioned identities/configuration and current run-bound evidence. Current human E5 v1 remains mandatory unless a separately reviewed/approved machine format is explicitly selected. Operator owns the exact production policy authorization/reserved custody; Codex gathers permitted evidence; GPT-PM adjudicates. |
-| TP-15 — S2-4 AC-2; REQ-001/003/005 | In the permitted runtime journey, refuse missing/unauthenticated issuer or trust key, wrong owner, expired/revoked/badly bound instruction, stale lease/epoch/generation, mismatched payload, duplicate, or ambiguous result. Assert no unauthorized/duplicate Runner execution and Store authority remains unchanged. | **NOT_RUN / blocked** until TP-14 prerequisites. No synthetic identity may be reported as production acceptance. | `e2e-runner`; same prerequisites as TP-14. Synthetic negative fixtures may be used only within the separately accepted mapped test scope and must be labeled synthetic. |
+| TP-14 — S2-4D; REQ-003 source/test acceptance | Run the exact `test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment` selector through the Windows test agent and independently review the actual `tools/vst` owner-to-Runner source path. The selector proves persisted Store handoff equality only. | **PASS — bounded local selector: 1 passed.** It does not prove live Supervisor/Runner runtime, E5, or production configuration. WSL inventory/apply/qualification QA harness was removed from active project scope by operator decision (2026-11-06). | `functional-test-reviewer` executed the selector; internal `code-reviewer` and `code-explorer` reviews found no BLOCKER/MAJOR. Runtime/E5 remain `NOT_RUN` and are not part of S2 code closure. |
+| TP-15 — S2-4 runtime/production follow-up; REQ-001/003/005 | Live service-to-Runner execution with current E5 and production identity/configuration, plus the negative authorization/replay cases. | **NOT_RUN — deferred outside S2 code closure by operator decision (2026-11-06).** No production or runtime readiness is claimed. | Retain as future deployment/runtime work only if re-authorized; do not invoke the retired WSL collector or qualification scripts. |
 | TP-16 — S2-4 AC-3; REQ-006 | Report restricted process-kill, crash/recovery, mutation, E8, and policy selectors exactly as `NOT_RUN`; assert no skipped/synthetic result is counted as pass. | **PROHIBITED — NOT_RUN.** No execution or test authoring for these selectors. | Codex preserves this status in the evidence record; no test-role execution. |
-| TP-17 — S2-5 AC-1/2/3; REQ-006 | After all accepted evidence and fixes, reconcile the final Git HEAD with the exact test commands/results and reviewer evidence; any subsequent code change makes approval stale. Verify acceptance record distinguishes accepted source/test stories from carried runtime/gates. | **ACCEPTED — bounded code scope.** Exact candidate `96a8da7`; test commands/results, reviewer outcomes and correlated GPT-PM APPROVE are recorded in `acceptance.md`. No code change followed that reviewed candidate before delivery. | Codex preserves the evidence boundary; no further S2-5 code action is queued. Runtime/E5/production remain `NOT_RUN`, not passed. |
+| TP-17 — S2-5 AC-1/2/3; REQ-006 | Reconcile accepted code evidence with exact Git candidate, task test commands/results, internal reviews and correlated GPT-PM decision; distinguish bounded source/test from runtime/gates. | **ACCEPTED — bounded code scope.** Exact candidate `96a8da7`; test commands/results, reviewer outcomes and correlated GPT-PM APPROVE are recorded in `acceptance.md`. No code change followed that reviewed candidate before delivery. | Codex preserves the evidence boundary; no further S2-5 code action is queued. Runtime/E5/production remain `NOT_RUN`, not passed. |
 
 ## Explicitly prohibited or unavailable coverage
 
@@ -187,10 +187,11 @@ is `evidence/s2-runtime-target-inventory-f9f488f.json` (SHA-256
 refused because of a stale applier SHA pin; no apply, root preflight, claim, or TestRun occurred.
 The captured PID1 record also shows collector path `/proc/1/ns/mount` returned FileNotFoundError;
 the required proc path is `/proc/1/ns/mnt`, and PID1 UID/GID arrays were consequently not captured.
-Both the inventory and verifier slots under that authorization are consumed. The code now derives
-applier/verifier hashes from exact HEAD blobs and checks worktree equality; 31 focused tests and local
-code/security reviews pass. A new exact-head authorization is required after the correction is
-committed/pushed, followed by one fresh corrected inventory. See
+Both the inventory and verifier slots under that authorization are consumed. The code then derived
+applier/verifier hashes from exact HEAD blobs and checked worktree equality; the historical record
+reports 31 focused tests and local code/security reviews. The subsequent recommendation to request
+another authorization and inventory is **RETIRED / NOT_APPLICABLE** by operator decision
+(2026-11-06): the WSL QA harness was removed from active project scope. Do not repeat it. See
 `evidence/s2-runtime-owner-runner-qualification-f9f488f.json` and
 `../changes/0617-s2-runtime-inventory-source-pins.md`.
 
@@ -228,11 +229,17 @@ the observed top-level symlink matched. Apply, root preflight, claim/probe and T
 `evidence/s2-runtime-owner-runner-qualification-a2bd39ce.json` (SHA-256
 `ef84d142d52e0fe8c19364d360bc91209fdcc7bf3525709cd017fd419538a87c`).
 
-To prevent further hand-assembled schema omissions, the current task adds
+Historical note (2026-11-06): the operator removed the WSL inventory/configuration-apply/qualification
+QA harness from active project scope. Historical records below remain for provenance only; no new
+WSL inventory, apply, Git-source check, or WSL qualification is required or may be used for S2 code
+closure.
+
+To prevent further hand-assembled schema omissions, the historical task added
 `tools/qa/collect_s2_runtime_config_inventory.py` (SHA-256
 `95a28412a9a12ac365a8d8e36bd0e61b431ae5aa9f1cbfe134e2d1de68d0ef06`). Its focused regression suite is
 `python -m pytest -q tests/vst/test_s2_runtime_inventory_collector.py`: 35 passed, one existing
 pytest-asyncio deprecation warning, exit 0; Python 3.14.3 at HEAD
-`2e6a796eaa04664812cf1266322b083f18770fa1`. These are code-level collection/schema tests only;
-they do not prove target runtime acceptance. Use the committed collector and a new exact-head
-authorization for the next live inventory; all prohibited scenario groups remain `NOT_RUN`.
+`2e6a796eaa04664812cf1266322b083f18770fa1`. This is historical code-level collection/schema
+evidence only and does not prove target runtime acceptance. The former next-inventory instruction
+is **RETIRED / NOT_APPLICABLE** by operator decision (2026-11-06); the collector is removed and no
+new WSL authorization or inventory is part of S2 code closure.

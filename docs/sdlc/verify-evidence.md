@@ -2,8 +2,15 @@
 
 Sprint: 39b7cc253f5d
 
-Product sprint: existing S2. Framework phase: 7 Verify. This is an evidence record, not an
-approval file. Overall S2 remains NOT APPROVED; production/runtime criteria below are unresolved.
+Product sprint: existing S2. Framework phase metadata is historical and is not the task queue.
+This is an evidence record, not an approval file. Bounded S2 source/test acceptance is approved
+and pushed at `96a8da7`; see `acceptance.md` for the task matrix. Live service-to-Runner,
+current E5 and production/deployment readiness remain `NOT_RUN` and are not claimed as completed.
+
+Operator scope decision (2026-11-06): remove the WSL inventory/configuration-apply/qualification
+QA harness and its Git source checks from active S2 execution. Earlier WSL records below are
+historical provenance only. S2 code closure uses the local exact REQ-003 selector and specialist
+source review; it does not imply live Runner execution or production readiness.
 
 ## Provenance and verification layers
 
@@ -63,11 +70,12 @@ hidden or counted as new-feature coverage. Codex owns its backlog reconciliation
 | S2-1 / current PM coverage adjudication | Correlated GPT-PM decision recorded; test evidence is inherited | Request `f92b750e-485d-4f97-8c28-3bb2b8bfc3db` at submitted HEAD `57c734e60787a9db14bb888116d7e808bc46970e` accepted baseline-plus-delta evidence for S2-1 and resolved S2-REVIEW-02. GPT-PM accepted the reported no-change comparison for six S2-1 paths, while noting it did not independently reproduce that Git-object comparison or execute tests. Full disposition: `evidence/s2-1-coverage-adjudication-f92b750e.md`. | No further coverage review is required for S2-1 source/test acceptance. This was delivered in `e332ec4`. Do not treat it as runtime or full-S2 approval. | None for S2-1 source/test delivery; production/runtime and E5 are not proven. | Codex owns the evidence update and push; GPT-PM owns the submitted adjudication. | S2-1 evidence is settled; no further S2-1 review is queued. Preserve runtime limits; do not reopen on HEAD-only changes. |
 | S2-2 / authenticated owner transport | Delivered — bounded source/test acceptance | GPT-PM request `b0f60d46-42b7-486a-b2f0-5d2253780f55`; recovered PM Bridge job `68efb4e6-a296-4fd7-bcfc-2c6fe2568d5c`, correlated reply `d555b078-5647-46eb-bfc1-dd99654d634f`. Exact source/test blobs are in pushed commit `e987a24`; designated WSL run reports 34 passed, 0 skipped/failed. Delivery record 0588 reconciles the previously uncertain wait state. | Real activated endpoint to Runner; actual systemd/PID1 credentials, kernel credentials, pidfd, socket metadata, root configuration, production authority/E5. | Production `S2-DISPATCH-M01` and real runtime remain unproven. | Codex owns evidence; GPT-PM owns bounded source/test decision; operator owns genuine production authority/signature. | S2-2 bounded source/test is delivered; no further task action is queued. Keep production/runtime unproven and do not reopen accepted work. |
 | S2-3 / exact bundle and bounded inactive preparation | Focused M-S2-3-03 review approved on source HEAD `ef465cd` (request `17aa39d9-fb95-4d27-ba94-858fe1cc954d`); exact bundle approved for inactive stage-only on plan SHA `59ebfee0435d7a34f4c09de6ef5269e08d7a6713a5e7301497ba754ef348d8e9`, inventory SHA `a3b6ea38103edfb0d25cab8ef3c2e405d8bcb2d08c0d16194668b4860095d054`, archive SHA `bc489ce6155e178b1f2c2ef6a9e8b88e78c3b3e991576107319c9b34c3543d44` (requests `29c0c463-9d18-4c35-ae9d-8ed5331a4f70`, refreshed inventory `5f47ce5d-3db2-4f22-9e72-cad81a139c9c`). | Designated-runner direct regression: 4 passed, 8 deselected, 0 skipped on committed source `043980f`; blobs unchanged at reviewed `ef465cd`. The authorized stage-only handoff installed the immutable runtime/helper in Ubuntu-24.04 and returned `selected=false`, `selector_unchanged=true`, `systemd_units_installed=0`, `runtime_stage_only=true`. | Exact post-stage manifest was separately reviewed; resulting bounded preparation acceptance is recorded. The broader TP-10 rejection/error matrix remains PARTIAL; live collision refusal, selector transition, services, Store, identities, keys/E5, dispatch and production are not accepted by this task. | GPT-PM request `ac2d25a2-8b62-4d79-8614-fc6a9f7d0bb4` / correlated reply `1c8d392e-1a57-533c-b874-97823f5e4628` approved manifest SHA `78d21af798f66a3e54a8d638f393773af5d20120075cd02599ac70675cb84be7`, with 0 BLOCKER/MAJOR in scope. Store remains UNKNOWN; no selection, unit writes/activation, keys/E5 or production authorized. | Codex committed and pushed task record `ae07f8708adcc7ef4f69505477ad6b72e3c912cf`; GPT-PM owns the bounded manifest decision; `e2e-runner` owns mapped runtime tests. | S2-3 bounded task is delivered; no further S2-3 task action is queued. Preserve its runtime limitations; no S2 code reopen is warranted. |
-| S2-4 / authenticated assignment and runtime provenance | Issuer SOURCE implemented and bounded code/test approved; runtime OPEN | I01 SOURCE GO `c7a8e23e`; exact code/test APPROVE at `c978360`, request `8fc2e0ba`; additional V2 verification slice approved at `aa349632`, pushed through `e09c78b` | Production configuration/key provenance, current E5 and real owner-to-Runner journey | REQ-005 runtime prerequisites unverified; no missing issuer source implementation asserted | Codex: preparation/evidence; GPT-PM: adjudication; operator: reserved authority/custody/attestation | Follow the current ordered queue in backlog.md; reconcile permitted runtime inputs without reopening accepted source |
-| S2-5 / exact-head gate and delivery | OPEN | Correlated architecture decisions and actual role evidence retained | Fresh full S2 acceptance and exact-head GPT-PM approval, then one sprint PR | S2-3/S2-4 runtime acceptance unresolved | GPT-PM; Codex coordinates | Submit complete evidence only when prerequisites established; never self-approve |
+| S2-4 / authenticated assignment source/test | ACCEPTED — bounded source/test | I01 SOURCE GO `c7a8e23e`; exact code/test approval at `c978360` (request `8fc2e0ba`); V2 verification slice `aa349632`/`e09c78b`; REQ-003 selector and focused bundle tests are linked below | No remaining bounded code/test acceptance recorded | Live service-to-Runner, current E5 and production config remain NOT_RUN; no production readiness claim | Codex; GPT-PM supplied source/code decisions | Preserve the separated runtime status; do not reopen accepted source without a concrete regression |
+| S2-4D / REQ-003 stored Store handoff | ACCEPTED — bounded source/test | Windows exact selector: 1 passed; runtime-config bundle contract module: 11 passed. Internal `code-reviewer` and `code-explorer` found no BLOCKER/MAJOR. GPT-PM request `a2c98c0f-a741-4ad6-8330-8cbde5bc3571`, correlated reply `f981ea40-d56c-58aa-8c5e-87631a900140`: APPROVE, 0 BLOCKER/MAJOR on exact candidate `96a8da7`; pushed to `origin/s2-canonical-continuation`. | No remaining bounded REQ-003 source/test criterion recorded | Selector proves Store-level persisted handoff equality only; it does not prove live Runner/E5/production | Codex; GPT-PM supplied final code review | Keep runtime and production as NOT_RUN; do not resume the retired WSL QA harness |
+| S2-5 / exact-head bounded code acceptance and delivery | ACCEPTED — bounded source/test | Exact candidate `96a8da7`; required internal review, agent-owned focused tests and correlated GPT-PM APPROVE; successful push verified on `origin/s2-canonical-continuation`; detailed matrix in `acceptance.md` | None within the recorded bounded code scope | Live runtime/E5/production acceptance remains NOT_RUN, not passed | Codex; GPT-PM supplied exact-head approval | Keep the code/runtime disposition distinct in the dashboard and handoff |
 | Restricted scenarios / process-kill, crash/recovery, mutation, E8 and policy selectors | NOT_RUN | Explicit restrictions preserved | No pass or waiver inferred | Prohibited execution | Operator for any changed scope; Codex preserves status | Leave NOT_RUN; obtain only a precise authorized disposition if required for acceptance |
 
-## Historical remaining-work narrative (superseded by backlog.md current checkpoint)
+## Historical remaining-work narrative (superseded by the 2026-11-06 checkpoint and acceptance.md)
 
 1. S2-1 is delivered in pushed commit `e332ec4` with change records 0586/0587; its bounded
    source/test coverage acceptance is complete.
@@ -78,8 +86,9 @@ hidden or counted as new-feature coverage. Codex owns its backlog reconciliation
    `ae07f8708adcc7ef4f69505477ad6b72e3c912cf`; this does not close the full runtime story.
    S2-4 is the next incomplete task. Obtain its focused DB/security review and explicit bounded
    GPT-PM source decision before implementing newly authorized scope.
-4. Collect genuine current runtime/E5/authority evidence only if its prerequisites and authorization
-   exist. Restricted scenarios remain NOT_RUN. Finish full S2 acceptance before S3.
+4. At the time of this archived narrative, runtime/E5 evidence was still queued. The 2026-11-06
+   bounded-code disposition supersedes that queue for code closure; live runtime/E5/production
+   remain NOT_RUN and are not accepted by this record. Restricted scenarios remain NOT_RUN.
 
 Current human E5 verifier is unchanged; unsigned machine observations always remain UNKNOWN.
 No production signing key/service, Store migration, dispatch activation, PR or merge is claimed by
@@ -196,7 +205,8 @@ Codex will not invent an operator signature/waiver or an external coordinator.
   `evidence/s2-3-post-stage-manifest-review-ac2d25a2.md`. The accepted evidence/change record was
   committed as `ae07f8708adcc7ef4f69505477ad6b72e3c912cf` and pushed to
   `origin/s2-canonical-continuation`. This closes only that bounded S2-3 task delivery. TP-10's
-  full refusal matrix remains partial; S2-4/S2-5 and the overall S2 gate remain open.
+  full refusal matrix remains partial. This statement is historical for the record date; current
+  bounded S2-4D/S2-5 disposition is in `acceptance.md`, and live runtime remains NOT_RUN.
 
 ### S2-4 bounded V2 authorization source slice (2026-10-30)
 
@@ -238,10 +248,10 @@ closure. The V1 caller-selected operation-ID route and real owner-to-Runner evid
   `b927a438a72d14a31229c9d0ad7514a19606c98e`: 52 passed, one existing deprecation warning, exit 0.
   A subsequent task-record-only amendment changed no collector or test bytes. No target runtime was
   invoked.
-- Remaining: run exact-head GPT-PM remediation review, pass the enforced pre-push gate, push
-  normally, then request a fresh one-shot runtime
-  authorization. Neither consumed authorization can be reused; no apply, preflight, claim/probe,
-  or TestRun occurred under them.
+- Historical next-action text above is retired by the operator scope decision dated 2026-11-06.
+  The collector/validator/apply/qualification QA scripts were removed from active project scope;
+  do not request another WSL authorization or run that workflow. The earlier target runtime,
+  apply, claim/probe and TestRun remain `NOT_RUN`; their evidence is historical only.
 - Review-range correction: tracked AF `start_head` previously pointed to
   `20fda2cbf262...` on `s4-canonical-continuation`, which is not an ancestor of this S2 branch. It
   now points to previous delivered S2 HEAD `2e6a796eaa04664812cf1266322b083f18770fa1`, so the exact
