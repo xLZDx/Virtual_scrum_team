@@ -1,0 +1,68 @@
+.....F.....                                                              [100%]
+================================== FAILURES ===================================
+_____ test_fresh_runtime_identity_is_crossbound_and_single_selector_only ______
+
+    def test_fresh_runtime_identity_is_crossbound_and_single_selector_only():
+        run_binding = _json("run-binding.json")
+        bootstrap = _json("bootstrap-request.json")
+        supervisor = _json("supervisor-service.json")
+        network = _json("network-profile.json")
+        task = _json("task-manifest.json")
+    
+        run_id = run_binding["run_id"]
+        nonce = run_binding["probe_nonce"]
+        request_id = bootstrap["request_id"]
+        assert (request_id, run_id, nonce) == (
+            "102717f422a44c5f807ea72219b46f6e",
+            "s2-runtime-20261106-7c9c27397c8649f2a186a68fc613a3aa",
+            "9afe3b44eb9e47d284057a47f7bb095b",
+        )
+        consumed_identities = {
+            ("ba3faaadb50447b79df509619b6ee010",
+             "s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e",
+             "1fd3cb4e69e54bc6aa5e63458ae82818"),
+            ("e520e04f58ad5e6a431a3a20b0efb87c",
+             "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910",
+             "0aac24fec9a2a5c53c5e9da21cbb4a42"),
+            ("3e56a61c5b1e45aea089c305b25e3187",
+             "s2-runtime-20261030-87d47f635f1c4231ab052a074dba4be8",
+             "0d2bb2c5f977478a924f7ec6629a339d"),
+            ("c63842aefcf74f57af70a1b2f93b8271",
+             "s2-runtime-20261030-8102de64e7b4472ca2b5d2d56ed48510",
+             "5f5820a7cfc348cfa89de31af6c6d1a7"),
+            ("212a23e66ee94a7d87355b11e07e34fe",
+             "s2-runtime-20261030-334296bd0779488d837a27e283b50b6a",
+             "b57520d076e1acd355d310ed18364907"),
+        }
+    
+        assert run_id and all(run_id != consumed_run for _, consumed_run, _ in consumed_identities)
+        assert re.fullmatch(r"[0-9a-f]{32}", nonce)
+        assert all(nonce != consumed_nonce for _, _, consumed_nonce in consumed_identities)
+        assert re.fullmatch(r"[0-9a-f]{32}", request_id)
+        assert all(request_id != consumed_request for consumed_request, _, _ in consumed_identities)
+        assert bootstrap["run_id"] == run_id
+        assert supervisor["run_id"] == run_id
+        assert supervisor["probe_nonce"] == nonce
+        assert network["environment_id"] == f"Ubuntu-24.04:S2:{run_id}"
+        assert task["task_id"] == "S2-4-runtime-owner-runner-qualification"
+        assert task["retry_cap"] == 0
+        exact_selector = (
+            "tests/vst/test_s2_assignment_basis.py::"
+            "test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment"
+        )
+>       assert task["scope"] == [exact_selector]
+E       AssertionError: assert ['tests/vst/t...ent_basis.py'] == ['tests/vst/t...t_enrichment']
+E         
+E         At index 0 diff: 'tests/vst/test_s2_assignment_basis.py' != 'tests/vst/test_s2_assignment_basis.py::test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment'
+E         Use -v to get more diff
+
+tests\vst\test_s2_runtime_config_bundle.py:355: AssertionError
+============================== warnings summary ===============================
+tests/vst/test_s2_runtime_config_bundle.py::test_bundle_manifest_covers_every_payload_with_exact_bytes_and_safe_scope
+  C:\Users\koros\AppData\Roaming\Python\Python314\site-packages\pytest_asyncio\plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/vst/test_s2_runtime_config_bundle.py::test_fresh_runtime_identity_is_crossbound_and_single_selector_only
+1 failed, 10 passed, 1 warning in 4.37s

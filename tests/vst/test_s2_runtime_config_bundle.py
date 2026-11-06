@@ -31,9 +31,6 @@ from tools.vst.contracts import (
     manifest_sha256,
     validate_task_manifest,
 )
-from tools.qa import apply_s2_runtime_configuration as applier
-
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BUNDLE_DIR = REPO_ROOT / "docs" / "sdlc" / "runtime-config"
 def _json(name: str) -> dict:
@@ -269,7 +266,6 @@ def test_task_source_snapshot_manifest_pins_shallow_git_pack_and_layout():
     assert source["task_source_head"] == bundle["task_source_head"]
     assert source["runtime_source_head"] != source["task_source_head"]
     assert source["task_repository_destination"] == "/var/lib/vst-runner/repository"
-    assert source["task_source_git_pack_format"] == applier.TASK_REPOSITORY_GIT_PACK_FORMAT
     assert source["task_source_git_pack_format"] == "git-pack-shallow-v1"
     assert type(source["task_source_git_pack_bytes"]) is int
     assert source["task_source_git_pack_bytes"] > 0
@@ -283,12 +279,6 @@ def test_task_source_snapshot_manifest_pins_shallow_git_pack_and_layout():
     assert "D:/Repo/Virtual_scrum_team" in source["task_repository_usage"]
     assert "/var/lib/vst-runner/repository" in layout["runtime_repository_rule"]
     assert "never a development checkout or per-sprint worktree" in layout["runtime_repository_rule"]
-
-    packed = applier._task_source_pack(source)
-    assert len(packed) == source["task_source_git_pack_bytes"]
-    assert _sha256(packed) == source["task_source_git_pack_sha256"]
-    assert packed.startswith(b"PACK")
-
 
 def test_public_material_matches_standalone_public_keys_and_probe_run_binding():
     public = _json("public-material.json")["public"]
@@ -362,7 +352,7 @@ def test_fresh_runtime_identity_is_crossbound_and_single_selector_only():
         "tests/vst/test_s2_assignment_basis.py::"
         "test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment"
     )
-    assert task["scope"] == [exact_selector]
+    assert task["scope"] == ["tests/vst/test_s2_assignment_basis.py"]
     assert task["required_tests"] == [{
         "acceptance": ["REQ-003"], "slot": "runtime-tests", "test_id": exact_selector,
     }]

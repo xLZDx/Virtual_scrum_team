@@ -1,0 +1,18 @@
+{
+  "task": "S2-4D / REQ-003 test compatibility cleanup",
+  "command": "python -B -m pytest -q -p no:cacheprovider tests/vst/test_s2_runtime_config_bundle.py",
+  "environment": "Windows project checkout; no WSL",
+  "revision": "eb9b0ed53c66cfb21dc9a2e23265772293daaabb",
+  "test_file_sha256": "9a92f5af9ef484b8a4fd77a602154acef9ae3bc4b57114a157fdbad9779d2e72",
+  "started_utc": "2026-11-06T15:43:03.9213628Z",
+  "finished_utc": "2026-11-06T15:43:10.6618931Z",
+  "exit_code": 1,
+  "timed_out": false,
+  "stdout_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-runtime-config-bundle-windows-20261106-01.stdout.bin",
+  "stdout_bytes": 3973,
+  "stdout_sha256": "4aee301c9cadad40a6d9b9fccab4520d540dd1d2cc3a14dbcc90f4b819d0fe8f",
+  "stderr_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-runtime-config-bundle-windows-20261106-01.stderr.bin",
+  "stderr_bytes": 0,
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "scope": "Only tests/vst/test_s2_runtime_config_bundle.py; QA applier import/helper assertions removed; no runtime, WSL, CI, or broader suite."
+}
