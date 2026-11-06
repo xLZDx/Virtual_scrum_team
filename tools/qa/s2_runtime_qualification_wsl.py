@@ -1366,8 +1366,11 @@ _identity = AUTH.get("identity", {}) if isinstance(AUTH, dict) else {}
 _authorization = AUTH.get("authorization", {}) if isinstance(AUTH, dict) else {}
 R = {
     "schema": "VST_S2_RUNTIME_QUALIFICATION_PROTOCOL_V1",
+    "authorization_source": _authorization.get("source"),
     "authorization_request_id": _authorization.get("request_id"),
     "authorization_reply_id": _authorization.get("reply_id"),
+    "authorization_operator_reference": _authorization.get("operator_principal"),
+    "authorization_operator_statement_sha256": _authorization.get("operator_statement_sha256"),
     "identity": {key: _identity[key] for key in (
         "runtime_source_head", "run_id", "bootstrap_request_id",
         "nonce", "runtime_selector", "bundle_sha256", "config_bundle_sha256",

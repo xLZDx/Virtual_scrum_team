@@ -189,6 +189,23 @@ def _auth_input(*, streamed_wsl: bytes = b"# mocked WSL helper\n") -> dict:
     }
 
 
+def _operator_auth_input(*, streamed_wsl: bytes = b"# mocked WSL helper\n") -> dict:
+    value = _auth_input(streamed_wsl=streamed_wsl)
+    statement = "Operator authorizes one S2-4D REQ-003 run through the exact existing selector, retry_cap=0."
+    value["authorization"] = {
+        "source": "OPERATOR",
+        "operator_principal": "operator",
+        "operator_authorization_id": "operator-s2-4d-req003-20261106-01",
+        "operator_statement": statement,
+        "operator_statement_sha256": _sha(statement.encode("utf-8")),
+        "verdict": "AUTHORIZE_ONE_SHOT",
+        "retry_cap": 0,
+        "allowed_operation": "S2-4_OWNER_RUNNER_TESTRUN",
+    }
+    value["identity"]["selector_test_id"] = harness.OPERATOR_REQ003_SELECTOR
+    return value
+
+
 def _write_input(root: Path, value: dict | bytes) -> tuple[Path, Path]:
     input_path = root / "authorization.json"
     output_path = root / "docs" / "sdlc" / "evidence" / "attempt.json"
@@ -2268,6 +2285,62 @@ def test_closed_identity_schema_requires_qualification_source_head():
         harness.validate_input(value)
 
 
+def test_operator_authorization_accepts_only_exact_one_shot_req003_contract():
+    value = _operator_auth_input()
+
+    validated = harness.validate_input(value)
+
+    assert validated["authorization"] == {
+        "source": "OPERATOR",
+        "request_id": "operator-s2-4d-req003-20261106-01",
+        "operator_principal": "operator",
+        "operator_statement_sha256": value["authorization"]["operator_statement_sha256"],
+        "verdict": "AUTHORIZE_ONE_SHOT",
+        "retry_cap": 0,
+        "allowed_operation": "S2-4_OWNER_RUNNER_TESTRUN",
+    }
+    assert validated["identity"]["selector_test_id"] == harness.OPERATOR_REQ003_SELECTOR
+    assert "reply_id" not in validated["authorization"]
+    assert "payload_sha256" not in validated["authorization"]
+
+
+@pytest.mark.parametrize("mutation", [
+    "wrong-statement-digest",
+    "retry-enabled",
+    "wrong-operation",
+    "wrong-selector",
+    "mixed-pm-metadata",
+])
+def test_operator_authorization_rejects_scope_or_provenance_widening(mutation):
+    value = _operator_auth_input()
+    if mutation == "wrong-statement-digest":
+        value["authorization"]["operator_statement_sha256"] = "0" * 64
+    elif mutation == "retry-enabled":
+        value["authorization"]["retry_cap"] = 1
+    elif mutation == "wrong-operation":
+        value["authorization"]["allowed_operation"] = "S2-4_ANY_TEST"
+    elif mutation == "wrong-selector":
+        value["identity"]["selector_test_id"] = (
+            "tests/vst/test_s2_runtime_qualification_harness.py::test_runtime_handoff_contract"
+        )
+    else:
+        value["authorization"]["reply_id"] = "invented-pm-reply-0123456789"
+
+    with pytest.raises(harness.QualificationError):
+        harness.validate_input(value)
+
+
+def test_pm_bridge_authorization_contract_remains_unchanged():
+    value = _auth_input()
+
+    validated = harness.validate_input(value)
+
+    assert validated["authorization"]["source"] == "PM_BRIDGE"
+    assert validated["authorization"]["request_id"] == "2" * 32
+    assert validated["authorization"]["reply_id"] == "reply-0123456789abcdef"
+    assert validated["authorization"]["retry_cap"] == 0
+
+
 def test_qualification_source_pins_cover_exactly_the_two_launcher_paths():
     value = _auth_input()
     value["source_pins"]["qualification"]["tools/qa/unapproved.py"] = HEX
@@ -2527,6 +2600,69 @@ def test_run_once_starts_one_mock_wsl_child_and_persists_terminal_hold(
     assert attempt["retry_cap"] == 0
     assert attempt["stdout_sha256"] == _sha(FAILURE_PROTOCOL)
     assert attempt["stderr_sha256"] == _sha(b"synthetic stderr")
+    assert capsys.readouterr().out
+
+
+def test_operator_one_shot_run_records_provenance_and_refuses_replay(
+        monkeypatch, tmp_path, capsys):
+    script = MOCK_WSL_SOURCE
+    value = _operator_auth_input(streamed_wsl=script)
+    input_path, default_output_path = _write_input(tmp_path, value)
+    output_path = default_output_path.with_name("s2-runtime-qual-operator-001.attempt.json")
+    monkeypatch.setattr(harness, "verify_source_pins", lambda *_args: None)
+    monkeypatch.setattr(harness, "_load_wsl_script", lambda: script)
+    calls = []
+
+    def fake_wsl(injected_script, *, unit_name, runtime_max_sec):
+        calls.append((injected_script, unit_name, runtime_max_sec))
+        return {
+            "exit_code": 2,
+            "timed_out": False,
+            "writer_error": None,
+            "unit_name": unit_name,
+            "runtime_max_sec": runtime_max_sec,
+            "systemd_properties": ["RuntimeMaxSec=2400"],
+            "stdout": {
+                "bytes": len(FAILURE_PROTOCOL), "sha256": _sha(FAILURE_PROTOCOL),
+                "prefix": FAILURE_PROTOCOL, "truncated": False,
+            },
+            "stderr": {
+                "bytes": 0, "sha256": _sha(b""),
+                "prefix": b"", "truncated": False,
+            },
+        }
+
+    monkeypatch.setattr(harness, "_run_bounded_wsl", fake_wsl)
+
+    exit_code = harness.run_once(input_path, output_path, root=tmp_path)
+
+    assert exit_code == 2
+    assert len(calls) == 1
+    injected_tree = ast.parse(calls[0][0].decode("ascii"))
+    auth_literal = next(ast.literal_eval(node.value) for node in injected_tree.body
+                        if isinstance(node, ast.Assign)
+                        and any(isinstance(target, ast.Name) and target.id == "AUTH"
+                                for target in node.targets))
+    injected = json.loads(auth_literal)
+    assert injected["authorization"] == harness.validate_input(value)["authorization"]
+    assert "reply_id" not in injected["authorization"]
+
+    attempt = json.loads(output_path.read_text(encoding="utf-8"))
+    assert attempt["authorization_source"] == "OPERATOR"
+    assert attempt["authorization_request_id"] == "operator-s2-4d-req003-20261106-01"
+    assert attempt["authorization_reply_id"] is None
+    assert attempt["authorization_operator_reference"] == "operator"
+    assert attempt["authorization_operator_statement_sha256"] == value[
+        "authorization"]["operator_statement_sha256"]
+    assert attempt["identity"]["selector_test_id"] == harness.OPERATOR_REQ003_SELECTOR
+    assert attempt["retry_cap"] == 0
+
+    replay_output = output_path.with_name("attempt-replay.json")
+    with pytest.raises(harness.QualificationError,
+                       match="authorization reuses an identity present"):
+        harness.run_once(input_path, replay_output, root=tmp_path)
+    assert len(calls) == 1
+    assert not replay_output.exists()
     assert capsys.readouterr().out
 
 

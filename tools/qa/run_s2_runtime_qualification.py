@@ -1,8 +1,9 @@
 """Run one authorized, mount-free S2-4 Owner→Runner/TestRun qualification.
 
 Input schema VST_S2_RUNTIME_AUTH_INPUT_V1 is deliberately closed. It contains
-only correlated authorization metadata, immutable source/configuration pins,
-and one test selector; it must never contain credentials or private key bytes.
+PM_BRIDGE correlated authorization metadata or a scoped OPERATOR instruction,
+immutable source/configuration pins, and one test selector; it must never
+contain credentials or private key bytes.
 The launcher validates the complete input before it creates an exclusive
 attempt record or starts WSL. Any started attempt is consumed even if its
 outcome is unknown: this command never retries.
@@ -37,6 +38,14 @@ AUTH_FIELDS = frozenset({
     "source", "correlated", "verdict", "request_id", "job_id", "user_turn_id",
     "reply_id", "payload_sha256", "retry_cap", "allowed_operation",
 })
+OPERATOR_AUTH_FIELDS = frozenset({
+    "source", "operator_principal", "operator_authorization_id", "operator_statement",
+    "operator_statement_sha256", "verdict", "retry_cap", "allowed_operation",
+})
+OPERATOR_REQ003_SELECTOR = (
+    "tests/vst/test_s2_assignment_basis.py::"
+    "test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment"
+)
 TOP_FIELDS = frozenset({"schema", "authorization", "identity", "source_pins"})
 IDENTITY_FIELDS = frozenset({
     "runtime_source_head", "qualification_source_head", "run_id", "bootstrap_request_id",
@@ -238,21 +247,61 @@ def validate_input(value: Any) -> dict[str, Any]:
     if record["schema"] != "VST_S2_RUNTIME_AUTH_INPUT_V1":
         raise QualificationError("authorization input schema is not supported")
 
-    auth = _exact_object(record["authorization"], AUTH_FIELDS, "authorization")
-    if (auth["source"] != "PM_BRIDGE" or auth["correlated"] is not True
-            or auth["verdict"] != "AUTHORIZE_ONE_SHOT"
-            or type(auth["retry_cap"]) is not int or auth["retry_cap"] != 0
-            or auth["allowed_operation"] != "S2-4_OWNER_RUNNER_TESTRUN"):
-        raise QualificationError("authorization is not a correlated one-shot S2-4 grant")
-    if not isinstance(auth["request_id"], str) or not REQUEST_ID.fullmatch(auth["request_id"]):
-        raise QualificationError("authorization request_id is malformed")
-    if not isinstance(auth["job_id"], str) or not OPAQUE_ID.fullmatch(auth["job_id"]):
-        raise QualificationError("authorization job_id is malformed")
-    if not isinstance(auth["user_turn_id"], str) or not OPAQUE_ID.fullmatch(auth["user_turn_id"]):
-        raise QualificationError("authorization user_turn_id is malformed")
-    if not isinstance(auth["reply_id"], str) or not OPAQUE_ID.fullmatch(auth["reply_id"]):
-        raise QualificationError("authorization reply_id is malformed")
-    _digest(auth["payload_sha256"], "authorization.payload_sha256")
+    raw_auth = record["authorization"]
+    if not isinstance(raw_auth, dict):
+        raise QualificationError("authorization must be an object")
+    source = raw_auth.get("source")
+    if source == "PM_BRIDGE":
+        auth = _exact_object(raw_auth, AUTH_FIELDS, "authorization")
+        if (auth["correlated"] is not True
+                or auth["verdict"] != "AUTHORIZE_ONE_SHOT"
+                or type(auth["retry_cap"]) is not int or auth["retry_cap"] != 0
+                or auth["allowed_operation"] != "S2-4_OWNER_RUNNER_TESTRUN"):
+            raise QualificationError("authorization is not a correlated one-shot S2-4 grant")
+        if not isinstance(auth["request_id"], str) or not REQUEST_ID.fullmatch(auth["request_id"]):
+            raise QualificationError("authorization request_id is malformed")
+        if not isinstance(auth["job_id"], str) or not OPAQUE_ID.fullmatch(auth["job_id"]):
+            raise QualificationError("authorization job_id is malformed")
+        if not isinstance(auth["user_turn_id"], str) or not OPAQUE_ID.fullmatch(auth["user_turn_id"]):
+            raise QualificationError("authorization user_turn_id is malformed")
+        if not isinstance(auth["reply_id"], str) or not OPAQUE_ID.fullmatch(auth["reply_id"]):
+            raise QualificationError("authorization reply_id is malformed")
+        _digest(auth["payload_sha256"], "authorization.payload_sha256")
+    elif source == "OPERATOR":
+        # This is a local record of the operator's direct instruction, not an
+        # external signature or a claim of cryptographic operator identity.
+        supplied_auth = _exact_object(raw_auth, OPERATOR_AUTH_FIELDS, "operator authorization")
+        statement = supplied_auth["operator_statement"]
+        try:
+            statement_bytes = statement.encode("utf-8") if isinstance(statement, str) else b""
+        except UnicodeEncodeError as exc:
+            raise QualificationError("operator statement is not valid UTF-8 text") from exc
+        if (supplied_auth["operator_principal"] != "operator"
+                or not isinstance(supplied_auth["operator_authorization_id"], str)
+                or not OPAQUE_ID.fullmatch(supplied_auth["operator_authorization_id"])
+                or not isinstance(statement, str) or not statement.strip()
+                or len(statement_bytes) > 4096
+                or supplied_auth["verdict"] != "AUTHORIZE_ONE_SHOT"
+                or type(supplied_auth["retry_cap"]) is not int or supplied_auth["retry_cap"] != 0
+                or supplied_auth["allowed_operation"] != "S2-4_OWNER_RUNNER_TESTRUN"):
+            raise QualificationError("operator authorization is not a scoped one-shot S2-4 instruction")
+        statement_digest = _digest(
+            supplied_auth["operator_statement_sha256"],
+            "authorization.operator_statement_sha256",
+        )
+        if hashlib.sha256(statement_bytes).hexdigest() != statement_digest:
+            raise QualificationError("operator statement digest does not match its recorded text")
+        auth = {
+            "source": "OPERATOR",
+            "request_id": supplied_auth["operator_authorization_id"],
+            "operator_principal": "operator",
+            "operator_statement_sha256": statement_digest,
+            "verdict": supplied_auth["verdict"],
+            "retry_cap": 0,
+            "allowed_operation": supplied_auth["allowed_operation"],
+        }
+    else:
+        raise QualificationError("authorization source is unsupported")
 
     identity = _exact_object(record["identity"], IDENTITY_FIELDS, "identity")
     runtime_head = _head(identity["runtime_source_head"], "identity.runtime_source_head")
@@ -273,6 +322,8 @@ def validate_input(value: Any) -> dict[str, Any]:
     for name in ("bundle_sha256", "config_bundle_sha256", "task_manifest_sha256"):
         _digest(identity[name], "identity." + name)
     selector_test = _test_selector(identity["selector_test_id"])
+    if source == "OPERATOR" and selector_test != OPERATOR_REQ003_SELECTOR:
+        raise QualificationError("operator authorization is limited to the exact S2-4D REQ-003 selector")
 
     config_hashes = identity["config_sha256"]
     if not isinstance(config_hashes, dict) or not 1 <= len(config_hashes) <= 128:
@@ -705,7 +756,11 @@ def run_once(input_path: Path, output_path: Path, *, root: Path) -> int:
         "state": "STARTING",
         "authorization_input_sha256": hashlib.sha256(raw_bytes).hexdigest(),
         "authorization_request_id": validated["authorization"]["request_id"],
-        "authorization_reply_id": validated["authorization"]["reply_id"],
+        "authorization_source": validated["authorization"]["source"],
+        "authorization_reply_id": validated["authorization"].get("reply_id"),
+        "authorization_operator_reference": validated["authorization"].get("operator_principal"),
+        "authorization_operator_statement_sha256": validated["authorization"].get(
+            "operator_statement_sha256"),
         "identity": {key: validated["identity"][key] for key in (
             "runtime_source_head", "qualification_source_head", "run_id", "bootstrap_request_id",
             "nonce", "runtime_selector", "bundle_sha256", "config_bundle_sha256",

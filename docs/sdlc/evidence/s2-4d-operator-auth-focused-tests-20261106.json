@@ -1,0 +1,19 @@
+{
+  "task_id": "S2-4-runtime-owner-runner-qualification",
+  "acceptance": "REQ-003",
+  "purpose": "Focused regression evidence for distinct direct OPERATOR authorization variant and unchanged PM_BRIDGE validation",
+  "revision": {
+    "head": "2adbc590637e78e0778e5b3f85f2a72fa32bdab7",
+    "upstream": "2adbc590637e78e0778e5b3f85f2a72fa32bdab7",
+    "working_tree_changes_present": true,
+    "launcher_sha256": "83dc10ba534c5e0de369a89ced85315d394e98e47b874df82d9e93e857fc4382",
+    "wsl_protocol_sha256": "b0834da826939f941889ff199feee7c1d9176d772209612bd106dba3888f7e81",
+    "test_sha256": "b20bdf14cc7fdd87b2beb52a4c2fd4f1d096b2f656e9ab26a6fa0078379f7b74"
+  },
+  "command": "python -B -m pytest -q -p no:cacheprovider tests/vst/test_s2_runtime_qualification_harness.py::test_operator_authorization_accepts_only_exact_one_shot_req003_contract tests/vst/test_s2_runtime_qualification_harness.py::test_operator_authorization_rejects_scope_or_provenance_widening tests/vst/test_s2_runtime_qualification_harness.py::test_pm_bridge_authorization_contract_remains_unchanged",
+  "exit_code": 0,
+  "console_output": "....... [100%]`r`n============================== warnings summary ===============================`r`ntests/vst/test_s2_runtime_qualification_harness.py::test_operator_authorization_accepts_only_exact_one_shot_req003_contract`r`n  C:\\Users\\koros\\AppData\\Roaming\\Python\\Python314\\site-packages\\pytest_asyncio\\plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16`r`n    return asyncio.get_event_loop_policy()`r`n`r`n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html`r`n7 passed, 1 warning in 0.42s`r`n",
+  "result": "PASS",
+  "limits": "Only three named regression functions from tests/vst/test_s2_runtime_qualification_harness.py ran; 7 test cases total. No broad suite, CI, runtime, or REQ-003 task selector was invoked.",
+  "observed_utc": "2026-11-06"
+}
