@@ -13,11 +13,20 @@
 #  * The queue lives in a protected folder whose ACL admits only SYSTEM,
 #    Administrators and the operator's own user. The ACL, the owner and every request
 #    file's owner and name are verified before each request; anything else is refused.
-#  * Residual risk (accepted): another process running as the SAME user as the operator
-#    can submit the four fixed actions. It can already do everything the operator can.
+#  * Requests go in <queue>\in (the operator's user may write there); results are written
+#    only by this elevated process into <queue>\out (the operator's user may only read).
+#    Items that are reparse points (links) are refused, and result files are created
+#    with CreateNew, so nothing is ever written through a pre-planted link.
+#  * AdminRoot must not pre-exist unless it is administrator-owned and free of links;
+#    otherwise the helper aborts and asks the operator to delete it.
+#  * Residual risk (accepted, test-only harness): the provisioner installs code from the
+#    operator's repository checkout (task manifest, seed script, E2E test) and runs
+#    it elevated BY DESIGN, exactly as the operator-run installer did. The SHA-256 pin
+#    protects the installer script, not those inputs. A process running as the SAME user
+#    as the operator can therefore influence what an elevated run installs.
 #
-# Request: write a file <id>.req (id: letters, digits, dashes) into the queue whose
-# content is one action name. Result: <id>.out (output), then <id>.done (exit code).
+# Request: write <id>.req (id: letters, digits, dashes) into <queue>\in with one action
+# name. Result: <id>.out (output), then <id>.done (exit code) in <queue>\out.
 #   reinstall  -> provisioner -Action Cleanup, then provisioner install
 #   cleanup    -> provisioner -Action Cleanup
 #   e2e        -> start the registered E2E scheduled task once, wait, report
@@ -39,8 +48,11 @@ $userSid = $identity.User.Value
 $adminSid = 'S-1-5-32-544'
 $systemSid = 'S-1-5-18'
 $Queue = Join-Path $AdminRoot 'queue'
+$InDir = Join-Path $Queue 'in'
+$OutDir = Join-Path $Queue 'out'
 $binDir = Join-Path $AdminRoot 'bin'
 $provisioner = Join-Path $binDir 'provision_s2_4e_windows.ps1'
+$psExe = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
 $sourceProvisioner = Join-Path $RepoRoot 'tests\vst\provision_s2_4e_windows.ps1'
 
 function New-ProtectedDirectory([string]$Path, [hashtable]$Grants) {
@@ -71,6 +83,19 @@ function Assert-ProvisionerIntegrity {
     if ($hash -ne $ProvisionerSha256.ToUpperInvariant()) { throw 'Protected provisioner copy failed its SHA-256 check.' }
 }
 
+function Assert-NoLinksAndAdminOwned([string]$Path) {
+    foreach ($item in @(Get-Item -LiteralPath $Path -Force) + @(Get-ChildItem -LiteralPath $Path -Recurse -Force -ErrorAction Stop)) {
+        if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "Refusing: reparse point under ${Path}: $($item.FullName)" }
+        $owner = (New-Object Security.Principal.NTAccount((Get-Acl -LiteralPath $item.FullName).Owner)).Translate([Security.Principal.SecurityIdentifier]).Value
+        if ($owner -ne $adminSid -and $owner -ne $systemSid) { throw "Refusing: $($item.FullName) is not owned by an administrator principal. Delete $Path and start again." }
+    }
+}
+
+# A pre-existing AdminRoot is trusted only if it is already administrator-owned and link-free.
+if (Test-Path -LiteralPath $AdminRoot) {
+    Assert-NoLinksAndAdminOwned $AdminRoot
+    Assert-ProtectedDirectory $AdminRoot @($systemSid, $adminSid, $userSid)
+}
 # Protected administrator-only copy of the provisioner (verified against the supplied hash).
 New-ProtectedDirectory $AdminRoot @{$systemSid='FullControl'; $adminSid='FullControl'}
 New-ProtectedDirectory $binDir @{$systemSid='FullControl'; $adminSid='FullControl'}
@@ -78,11 +103,16 @@ $sourceHash = (Get-FileHash -LiteralPath $sourceProvisioner -Algorithm SHA256).H
 if ($sourceHash -ne $ProvisionerSha256.ToUpperInvariant()) {
     throw "Repository provisioner hash $sourceHash does not match the supplied -ProvisionerSha256."
 }
-Copy-Item -LiteralPath $sourceProvisioner -Destination $provisioner -Force
+if (Test-Path -LiteralPath $provisioner) { Remove-Item -LiteralPath $provisioner -Force }
+[IO.File]::Copy($sourceProvisioner, $provisioner, $false)   # never overwrites an existing file
 Assert-ProvisionerIntegrity
-# Protected queue: only the operator's user may write requests.
-New-ProtectedDirectory $Queue @{$systemSid='FullControl'; $adminSid='FullControl'; $userSid='Modify'}
-Assert-ProtectedDirectory $Queue @($systemSid, $adminSid, $userSid)
+Assert-NoLinksAndAdminOwned $binDir
+Assert-ProtectedDirectory $binDir @($systemSid, $adminSid)
+# Protected queue: requests in (operator Modify), results out (operator read only).
+New-ProtectedDirectory $Queue @{$systemSid='FullControl'; $adminSid='FullControl'; $userSid='ReadAndExecute'}
+New-ProtectedDirectory $InDir @{$systemSid='FullControl'; $adminSid='FullControl'; $userSid='Modify'}
+New-ProtectedDirectory $OutDir @{$systemSid='FullControl'; $adminSid='FullControl'; $userSid='ReadAndExecute'}
+foreach ($dir in @($Queue, $InDir, $OutDir)) { Assert-ProtectedDirectory $dir @($systemSid, $adminSid, $userSid) }
 
 function Get-E2eTaskName {
     # The provisioner registers exactly one task named VST-S2E-<run id>.
@@ -101,13 +131,13 @@ function Invoke-Action([string]$Action) {
     if ($Action -in @('cleanup', 'reinstall')) { Assert-ProvisionerIntegrity }
     switch ($Action) {
         'cleanup' {
-            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $provisioner -Action Cleanup 2>&1
+            & $psExe -NoProfile -ExecutionPolicy Bypass -File $provisioner -Action Cleanup -RepoRoot $RepoRoot 2>&1
             "EXIT=$LASTEXITCODE"
         }
         'reinstall' {
-            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $provisioner -Action Cleanup 2>&1
+            & $psExe -NoProfile -ExecutionPolicy Bypass -File $provisioner -Action Cleanup -RepoRoot $RepoRoot 2>&1
             "CLEANUP_EXIT=$LASTEXITCODE"
-            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $provisioner 2>&1
+            & $psExe -NoProfile -ExecutionPolicy Bypass -File $provisioner -RepoRoot $RepoRoot 2>&1
             "EXIT=$LASTEXITCODE"
             Get-VstEvents 10
             Get-Service VST* -ErrorAction SilentlyContinue | ForEach-Object { "SERVICE {0} {1}" -f $_.Name, $_.Status }
@@ -140,28 +170,49 @@ function Invoke-Action([string]$Action) {
     }
 }
 
-Write-Host "S2-4E admin runner is waiting for requests in $Queue (Ctrl+C to stop)."
+function Write-NewResult([string]$Path, [string[]]$Lines) {
+    # CreateNew: fails if anything (including a planted link) already exists at the path.
+    $stream = [IO.File]::Open($Path, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+    try {
+        $bytes = [Text.Encoding]::UTF8.GetBytes(($Lines -join "`r`n") + "`r`n")
+        $stream.Write($bytes, 0, $bytes.Length)
+    } finally { $stream.Dispose() }
+}
+
+Write-Host "S2-4E admin runner is waiting for requests in $InDir (Ctrl+C to stop)."
 while ($true) {
-    foreach ($request in @(Get-ChildItem -LiteralPath $Queue -Filter '*.req' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime)) {
+    foreach ($request in @(Get-ChildItem -LiteralPath $InDir -Filter '*.req' -File -Force -ErrorAction SilentlyContinue | Sort-Object LastWriteTime)) {
         $id = [IO.Path]::GetFileNameWithoutExtension($request.Name)
-        $out = Join-Path $Queue "$id.out"
+        $outPath = Join-Path $OutDir "$id.out"
+        $donePath = Join-Path $OutDir "$id.done"
         $code = 0
+        $lines = @()
         try {
             if ($id -notmatch '^[A-Za-z0-9-]{1,40}$') { throw 'Request name is not allowed.' }
-            Assert-ProtectedDirectory $Queue @($systemSid, $adminSid, $userSid)
+            foreach ($dir in @($Queue, $InDir, $OutDir)) { Assert-ProtectedDirectory $dir @($systemSid, $adminSid, $userSid) }
+            if ($request.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Request is a reparse point.' }
             $owner = (New-Object Security.Principal.NTAccount((Get-Acl -LiteralPath $request.FullName).Owner)).Translate([Security.Principal.SecurityIdentifier]).Value
             if ($owner -ne $userSid -and $owner -ne $adminSid) { throw 'Request file owner is not the operator.' }
-            if ($request.Length -gt 64) { throw 'Request file is too large.' }
-            $action = (Get-Content -LiteralPath $request.FullName -Raw).Trim().ToLowerInvariant()
-            Remove-Item -LiteralPath $request.FullName -Force
+            $stream = [IO.File]::Open($request.FullName, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+            try {
+                if ($stream.Length -gt 64) { throw 'Request file is too large.' }
+                $buffer = New-Object byte[] ([int]$stream.Length)
+                [void]$stream.Read($buffer, 0, $buffer.Length)
+            } finally { $stream.Dispose() }
+            $action = ([Text.Encoding]::UTF8.GetString($buffer)).Trim().ToLowerInvariant()
             Write-Host ("{0:HH:mm:ss} running '{1}' ({2})" -f (Get-Date), $action, $id)
-            Invoke-Action $action *>&1 | ForEach-Object { "$_" } | Set-Content -LiteralPath $out -Encoding UTF8
+            $lines = @(Invoke-Action $action *>&1 | ForEach-Object { "$_" })
         } catch {
             $code = 1
-            Remove-Item -LiteralPath $request.FullName -Force -ErrorAction SilentlyContinue
-            Add-Content -LiteralPath $out -Value ("RUNNER_ERROR: {0}: {1}" -f $_.Exception.GetType().Name, $_.Exception.Message) -Encoding UTF8
+            $lines += ("RUNNER_ERROR: {0}: {1}" -f $_.Exception.GetType().Name, $_.Exception.Message)
         }
-        Set-Content -LiteralPath (Join-Path $Queue "$id.done") -Value $code -Encoding ASCII
+        try {
+            Remove-Item -LiteralPath $request.FullName -Force -ErrorAction SilentlyContinue
+            Write-NewResult $outPath $lines
+            Write-NewResult $donePath @("$code")
+        } catch {
+            Write-Host ("result for {0} not written: {1}" -f $id, $_.Exception.Message)
+        }
         Write-Host ("{0:HH:mm:ss} finished ({1}) code {2}" -f (Get-Date), $id, $code)
     }
     Start-Sleep -Seconds 2

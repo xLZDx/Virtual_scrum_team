@@ -133,7 +133,16 @@ function Remove-OwnedSetup {
             (@($marker.service_names) -join ',') -ne ($serviceNames -join ',')) {
         throw 'Refusing cleanup: path or ownership marker does not match this test setup.'
     }
+    # The marker lives in a folder a local user could have pre-created, so trust nothing in it
+    # until the root is proven to be administrator-owned and free of links.
+    $rootAcl = Get-Acl -LiteralPath $root
+    $rootOwner = (New-Object Security.Principal.NTAccount($rootAcl.Owner)).Translate([Security.Principal.SecurityIdentifier]).Value
+    if ($rootOwner -ne $adminSid -and $rootOwner -ne $systemSid) { throw 'Refusing cleanup: VST root is not owned by an administrator principal.' }
+    if (@(Get-ChildItem -LiteralPath $root -Recurse -Force -Attributes ReparsePoint -ErrorAction SilentlyContinue).Count -gt 0) {
+        throw 'Refusing cleanup: VST root contains a reparse point.'
+    }
     $taskName = [string]$marker.task_name
+    if ($taskName -and $taskName -notmatch '^VST-S2E-s2-4e-win-[0-9a-f]{16}$') { throw 'Refusing cleanup: marker task name is not a setup task name.' }
     if ($taskName) {
         $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
         if ($task -and [string]$task.State -eq 'Running') {

@@ -1727,3 +1727,7 @@ The rebinding adds the reliability hardening.
 ## 2026-11-07 — Elevated helper: integrity-checked protected copy and ACL-protected queue
 
 Closes GPT-PM round-4 BLOCKER-01 (mutable provisioner run elevated) and BLOCKER-02 (unprotected request queue). The helper copies the provisioner into C:\ProgramData\VST-admin\bin (administrators and SYSTEM only), requires a matching SHA-256 passed by the operator, and re-verifies it before each run. The queue C:\ProgramData\VST-admin\queue is protected, with SYSTEM, Administrators and the operator's user only. The ACL, the owner and each request's owner, name and size are checked per request. The Store-thread fix was accepted in the same review.
+
+## 2026-11-07 — Elevated helper hardened a second time (single round) and Cleanup made fail-closed
+
+Inbox/outbox split with link refusal and CreateNew results, fail-closed handling of a pre-existing AdminRoot, a provisioner copied as a new file, and an admin-owned, link-free root plus a task-name pattern required by Cleanup. The residual risk that a same-user process can influence the repo inputs the provisioner installs is accepted and documented. The helper was never run, because it needs elevation.

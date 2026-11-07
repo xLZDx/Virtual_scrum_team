@@ -1528,3 +1528,16 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
   - The queue is a protected folder admitting only SYSTEM, Administrators and the operator's own user. The ACL, the owner and every request file's owner and name are verified for every request.
   - Residual: a process running as the same user can submit the four fixed actions; this is accepted and documented.
 - Rule: threat-model any elevated component for unprivileged inputs, both code and data, and run an internal security review on it before any external gate.
+
+## 2026-11-07 — Internal security review of the elevated helper: 4 MAJOR, fixed in ONE round
+
+- Kind: SHORTCOMING (found by security-reviewer on f0c3bd1; no BLOCKER).
+- Facts and fixes:
+  - A pre-existing hostile C:\ProgramData\VST-admin was not neutralized (the hash pin could be raced). Now it is used only if administrator-owned and link-free; the provisioner copy is a new file (CreateNew), and bin is asserted admin-only.
+  - Queue paths followed links (elevated read/write primitive). Now: requests go in queue\in (operator Modify), results in queue\out (operator read only, created with CreateNew by the elevated process); reparse points are refused.
+  - The SHA-256 pin covers only the installer script. The provisioner installs code from the repository checkout (manifest, seed script, E2E test) and runs it elevated by design, as in every operator-run attempt. This is now stated in the header as an accepted residual instead of overclaimed.
+  - The provisioner's Cleanup trusted a marker in a folder a local user could pre-create. Cleanup now requires an administrator-owned, link-free root and a task name matching the setup pattern.
+  - MINORs fixed: the full path of powershell.exe, -RepoRoot forwarded to the provisioner, and the result-file write wrapped in its own try/catch.
+- Per the NO SECONDARY BLOCKERS rule this is the single fix round for this helper. Remaining unproven hypotheses (the symlink privilege, CopyFile ACL behaviour) are accepted; the e2e task identity check (MINOR-3) and filtering of the e2e log tail (MINOR-4) are not done, since the same user is already trusted.
+- Layer: the author missed the threat model. The internal security review caught it before the second GPT round.
+- Not run: the helper itself, which needs elevation. Both scripts parse with 0 errors.
