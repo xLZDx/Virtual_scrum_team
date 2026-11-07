@@ -1259,3 +1259,11 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Layer that caught it: the project-plan stop hook (statuses) and the provisioner's own guard (elevation).
 - Rule: put only a bare status token in plan status cells and qualifiers in Evidence. Give the operator the exact "Run as administrator" step for elevated installers.
 - Fix status: S2-4D and S2-5 are now ACCEPTED (the bounded scope is recorded in Evidence). S2-4E is now BLOCKED_OPERATOR until the provisioner runs elevated. No code changed.
+## 2026-11-07 — Fix false ACL rejections in the S2-4E provisioner trust check
+
+- Kind: FAILURE (installer defect found by the operator's elevated run).
+- Facts: the elevated install refused C:\Python314 ("A non-admin principal can modify service runtime code"), although only SYSTEM and Administrators can write there. A read-only precheck then showed the Git trees failing with a Translate error. The functional-test-reviewer evidence is in docs/sdlc/evidence/s2-4e-acl-mask-fix-20261107.json: 19/20 PASS, and the one FAIL is a real user-owned Git\etc finding.
+- Root cause: the write mask included FileSystemRights.Modify, which also carries the read/execute bits. Separately, NTAccount names such as "ALL APPLICATION PACKAGES" cannot be translated back to SIDs.
+- Layer that missed it: the author and the source-only reviews, because the function was never run against real ACLs. The operator's run and a read-only real-tree precheck caught it.
+- Rule: build permission masks from explicit write bits, read ACL owners and rules as SIDs, and dry-run every trust check against the real target trees before asking the operator to elevate.
+- Fix status: mask and SID reading fixed, with a security review of the mask showing no BLOCKER/MAJOR. Five user-owned MSYS files in C:\Program Files\Git\etc stay rejected by design; the operator chose to re-own them.

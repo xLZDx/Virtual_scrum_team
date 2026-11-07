@@ -58,8 +58,11 @@ function Get-ServiceSid([string]$Name) {
 function Assert-TrustedRuntimeTree([string]$Path) {
     $trusted = @($systemSid, $adminSid)
     try { $trusted += (New-Object Security.Principal.NTAccount('NT SERVICE\TrustedInstaller')).Translate([Security.Principal.SecurityIdentifier]).Value } catch {}
-    $writeMask = [Security.AccessControl.FileSystemRights]::Write -bor
-        [Security.AccessControl.FileSystemRights]::Modify -bor
+    # Write-capable bits only. FileSystemRights.Modify must not be used here: it also contains the
+    # read/execute bits, so every ordinary ReadAndExecute grant would be misreported as writable.
+    # Generic write/all bits are included because raw ACEs may carry them unmapped.
+    $writeMask = [int64][Security.AccessControl.FileSystemRights]::Write -bor
+        [int64]0x40000000 -bor [int64]0x10000000 -bor
         [Security.AccessControl.FileSystemRights]::Delete -bor
         [Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles -bor
         [Security.AccessControl.FileSystemRights]::ChangePermissions -bor
@@ -72,11 +75,15 @@ function Assert-TrustedRuntimeTree([string]$Path) {
     }
     foreach ($item in $items) {
         $acl = Get-Acl -LiteralPath $item.FullName
-        $ownerSid = (New-Object Security.Principal.NTAccount($acl.Owner)).Translate([Security.Principal.SecurityIdentifier]).Value
+        # Read the owner and rules as SIDs directly: names such as
+        # "APPLICATION PACKAGE AUTHORITY\ALL APPLICATION PACKAGES" cannot be translated back to SIDs.
+        $ownerSid = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
         if ($ownerSid -notin $trusted) { throw "Untrusted owner on service runtime path: $($item.FullName)" }
-        foreach ($rule in $acl.Access) {
+        foreach ($rule in $acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])) {
             if ($rule.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow) { continue }
-            $trusteeSid = $rule.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value
+            # An inherit-only ACE grants nothing on this object; every descendant is scanned with its own ACL.
+            if ($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) { continue }
+            $trusteeSid = $rule.IdentityReference.Value
             if ($trusteeSid -notin $trusted -and (([int64]$rule.FileSystemRights -band [int64]$writeMask) -ne 0)) {
                 throw "A non-admin principal can modify service runtime code: $($item.FullName)"
             }
@@ -86,10 +93,10 @@ function Assert-TrustedRuntimeTree([string]$Path) {
     $ancestor = Split-Path -Parent ([IO.Path]::GetFullPath($Path))
     while ($ancestor -and $ancestor -ne $pathRoot.TrimEnd('\')) {
         $acl = Get-Acl -LiteralPath $ancestor
-        foreach ($rule in $acl.Access) {
+        foreach ($rule in $acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])) {
             if ($rule.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow) { continue }
             if ($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) { continue }
-            $trusteeSid = $rule.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value
+            $trusteeSid = $rule.IdentityReference.Value
             if ($trusteeSid -notin $trusted -and
                     (([int64]$rule.FileSystemRights -band [int64][Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles) -ne 0)) {
                 throw "A non-admin principal can replace the trusted runtime directory: $ancestor"
