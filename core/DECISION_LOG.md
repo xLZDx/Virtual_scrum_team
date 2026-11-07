@@ -1894,3 +1894,8 @@ The e2e-runner mapped the 10 plan scenario groups for the hand-written comparato
 ## 2026-11-07 — S3-C bounded part approved; S3 now waits on the operator
 
 GPT-PM request c1867dbe-f76d-4567-83f8-9b9d46c580e5 (delta 3cad14e..98b548d) returned APPROVE with 0 BLOCKER and 0 MAJOR for S3-C (VST-029), limited to the local synthetic fixture and the hand-written comparator; head 98b548d is pushed on s3-worker-pilot (PR 4, draft). S3-C is BLOCKED_OPERATOR for its remainder: the same-fixture runs for Temporal and BMad Loop need the operator to authorize acquiring the pinned sources (S3-B), and the credential-read, egress and probe-issuer rows need the sandbox decision (S3-D). VST-029 stays partial in the registry with the approval note. Open S3 tasks: S3-B, S3-C remainder, S3-D, S3-E, all BLOCKED_OPERATOR; S3-A is accepted. No sprint other than S3 is started.
+
+
+## 2026-11-08 — S3 closed in bounded form by the operator decision
+
+Operator decision recorded 2026-11-08 (answered in chat; the answer may have been auto-accepted by the 5-minute question policy, reversible): do not acquire Temporal or BMad Loop, close S3 with the single built-in hand-written worker, and if a sandbox is ever needed use Windows-local without WSL. S3-A and the local synthetic part of S3-C are ACCEPTED; S3-B, S3-D and S3-E are PARKED, not accepted. The candidate comparison, the sandbox, credential-read and egress rows, the real probe issuer and a real process kill stay NOT_RUN. S4 and S5 are not started and need separate operator approval.

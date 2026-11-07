@@ -1674,3 +1674,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — S3-C delivery
 
 - Kind: SUCCESS: the scenario matrix was written against the plan's denominator, executed the unreviewed branches and found two real defects before the sprint PR was merged; the narrow GPT-PM round on the delta returned a bare APPROVE. Bounded scope was stated up front, so the NOT_RUN rows stayed visible instead of being averaged into the approval.
+
+
+## 2026-11-08 — S3 bounded closure
+
+- Kind: SUCCESS: the sprint was closed against the real evidence (2 accepted, 3 parked by decision) instead of counting parked rows as passed; NOT_RUN rows are named in the plan, registry and both reports.
