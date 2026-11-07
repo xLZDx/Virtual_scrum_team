@@ -1620,3 +1620,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — PROJECT_PLAN status vocabulary
 
 - Kind: SHORTCOMING (mine): I wrote the status DONE_LOCAL, which the plan gate does not know, so S2-4E counted as open. Rule: reuse the status words already present in the plan table.
+
+## 2026-11-07 — Push and PR update
+
+- Kind: SUCCESS: I checked for an existing PR before opening one and updated draft PR 2 instead of creating a second S2 PR (one PR per sprint).
