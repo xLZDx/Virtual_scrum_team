@@ -550,6 +550,40 @@ def read_role_private_file(path: str, *, service_sid: str, service_root: str,
     return content
 
 
+def _report_service_failure(advapi: Any, service_name: str, exc: BaseException) -> None:
+    """Record a start/run failure in the Windows Application event log (best effort).
+
+    Only the exception type, message and code locations are recorded; contract
+    errors never carry key bytes. A logging failure must not mask the stop status.
+    """
+    try:
+        import traceback
+
+        text = "VST service %s stopped: %s" % (
+            service_name, "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
+        )
+        text = text[:30000]
+        advapi.RegisterEventSourceW.restype = wintypes.HANDLE
+        advapi.RegisterEventSourceW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR]
+        advapi.ReportEventW.restype = wintypes.BOOL
+        advapi.ReportEventW.argtypes = [
+            wintypes.HANDLE, wintypes.WORD, wintypes.WORD, wintypes.DWORD, wintypes.LPVOID,
+            wintypes.WORD, wintypes.DWORD, ctypes.POINTER(wintypes.LPCWSTR), wintypes.LPVOID,
+        ]
+        advapi.DeregisterEventSource.restype = wintypes.BOOL
+        advapi.DeregisterEventSource.argtypes = [wintypes.HANDLE]
+        source = advapi.RegisterEventSourceW(None, service_name)
+        if not source:
+            return
+        try:
+            strings = (wintypes.LPCWSTR * 1)(text)
+            advapi.ReportEventW(source, 0x0001, 0, 1, None, 1, 0, strings, None)
+        finally:
+            advapi.DeregisterEventSource(source)
+    except Exception:
+        return
+
+
 def run_scm_service(service_name: str, target_factory: Callable[[], Any]) -> None:
     """Run one real own-process service through StartServiceCtrlDispatcherW."""
     if os.name != "nt":
@@ -617,7 +651,9 @@ def run_scm_service(service_name: str, target_factory: Callable[[], Any]) -> Non
             publish(SERVICE_RUNNING, SERVICE_ACCEPT_STOP)
             target.serve_forever()
             publish(SERVICE_STOPPED)
-        except Exception:
+        except Exception as exc:
+            # Never fail silently: SCM itself only reports "Incorrect function".
+            _report_service_failure(advapi, service_name, exc)
             try:
                 publish(SERVICE_STOPPED, winerror=1)
             except Exception:

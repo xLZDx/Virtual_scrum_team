@@ -1299,3 +1299,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Layer that missed it: the author, the mocked tests, and the GPT-PM source review of c4558a8. Caught by the real Windows run.
 - Rule: run every Win32 security primitive at least once against a real path before review. Service start-up failures must be observable (see the silent-failure finding).
 - Fix status: OWNER|DACL is now requested. The installed snapshot still pins base_head 7adb183, so the manifest must be rebound to a commit that contains this fix. An all-roles composition diagnostic (docs/sdlc/evidence/s2_4e_diag_supervisor.py) is prepared for one elevated run.
+## 2026-11-07 — Service host now records start-up failures in the event log
+
+- Kind: SHORTCOMING fixed (silent failure).
+- Facts: run_scm_service swallowed every exception and SCM showed only "Incorrect function". It now writes the exception type, message and traceback to the Application event log, using the service name as the source. A non-elevated self-check wrote and read back an event: "VST service VSTDiagSelfCheck stopped: tools.vst.contracts.ContractError: self-check of event reporting".
+- Rule: every catch-all around a service entrypoint must leave an observable cause.
