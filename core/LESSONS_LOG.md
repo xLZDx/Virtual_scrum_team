@@ -1664,3 +1664,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — Report scheme
 
 - Kind: SHORTCOMING (mine): after the operator asked for the old-scheme program status report I first kept refreshing the new plan report; the operator had to ask again. Rule: when the operator names an earlier report format, rebuild that exact artifact first and say which one it is.
+
+## 2026-11-07 — Defects behind an approved gate
+
+- Kind: FAILURE (process): the S3-A code gate was approved while the pilot gate wrapper always raised TypeError and symlink commits were accepted; both were found only when the S3-C scenario matrix executed those paths.
+- Missed by: author, both static reviewers, the earlier tests and GPT-PM (reviews read code; no test executed these branches).
+- Rule: map the plan's scenario denominator to tests before asking for the code gate, not after; a branch no test executes is unreviewed.

@@ -1179,7 +1179,7 @@ class SyntheticStoryPilot:
                               "reported candidate head does not descend from the trusted candidate revision")
             diff = _run_git(
                 repository,
-                ["diff", "--name-only", "-z", "--no-renames", request.candidate_revision, head, "--"],
+                ["diff", "--raw", "-z", "--no-renames", request.candidate_revision, head, "--"],
                 timeout,
             )
         except (subprocess.TimeoutExpired, OSError) as exc:
@@ -1188,13 +1188,43 @@ class SyntheticStoryPilot:
         if diff.returncode:
             return refuse(WorkerErrorCode.RECONCILIATION_REQUIRED,
                           "could not list the paths changed by the reported candidate head")
-        changed = {item.decode("utf-8", "replace") for item in diff.stdout.split(b"\0") if item}
+        # --raw -z: ":<old mode> <new mode> <old sha> <new sha> <status>\0<path>\0" per entry.
+        tokens = [item for item in diff.stdout.split(b"\0") if item]
+        if len(tokens) % 2:
+            return refuse(WorkerErrorCode.RECONCILIATION_REQUIRED,
+                          "could not parse the paths changed by the reported candidate head")
+        changed = set()
+        irregular = False
+        for meta, raw_path in zip(tokens[0::2], tokens[1::2]):
+            fields = meta.decode("ascii", "replace").lstrip(":").split()
+            if len(fields) < 5:
+                return refuse(WorkerErrorCode.RECONCILIATION_REQUIRED,
+                              "could not parse the paths changed by the reported candidate head")
+            # Deleted entries (mode 000000) carry no file; every other new mode must be regular.
+            if fields[1] not in _REGULAR_FILE_MODES and fields[1] != "000000":
+                irregular = True
+            changed.add(raw_path.decode("utf-8", "replace"))
         if not changed:
             return refuse(WorkerErrorCode.RECONCILIATION_REQUIRED,
                           "candidate head introduces no change relative to the trusted revision")
         if not changed.issubset(set(request.allowed_paths)):
             return refuse(WorkerErrorCode.SCOPE_DENIED,
                           "candidate commit changes paths outside allowed_paths")
+        if irregular:
+            return refuse(WorkerErrorCode.RECONCILIATION_REQUIRED,
+                          "candidate commit introduces a non-regular entry (symlink or gitlink)")
+        try:
+            entry = _run_git(repository, ["ls-tree", "-z", head, "--", request.change_path], timeout)
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            return refuse(WorkerErrorCode.RECONCILIATION_REQUIRED,
+                          f"candidate commit verification failed: {type(exc).__name__}")
+        entries = [item for item in entry.stdout.split(b"\0") if item]
+        entry_fields = entries[0].split(b"\t")[0].split() if len(entries) == 1 else []
+        if (entry.returncode or len(entry_fields) != 3
+                or entry_fields[0].decode("ascii", "replace") not in _REGULAR_FILE_MODES
+                or entry_fields[1] != b"blob"):
+            return refuse(WorkerErrorCode.RECONCILIATION_REQUIRED,
+                          "change_path is not a regular file entry at the candidate head")
         try:
             blob = _run_git(
                 repository, ["cat-file", "blob", f"{head}:{request.change_path}"], timeout)
@@ -1261,6 +1291,8 @@ class SyntheticStoryPilot:
             response.candidate_head or request.base_head,
             self.fixture.store.current_epoch(request.story_id),
             self.fixture.key,
+            supervisor_key=self.fixture.supervisor_key,
+            operator_key=self.fixture.operator_key,
         )
 
 
@@ -1281,6 +1313,9 @@ _TRANSIENT_LEASE_KINDS = frozenset({"slot", "lease"})
 # manifest, key, lifecycle, epoch, argument, ...) is terminal for the caller:
 # BLOCKED and marked "not retryable", never INCONCLUSIVE.
 _TRANSIENT_STORE_KINDS = frozenset({"busy", "slot", "lease"})
+
+
+_REGULAR_FILE_MODES = frozenset({"100644", "100755"})
 
 
 def _run_git(repository: str, args: list[str], timeout: float) -> subprocess.CompletedProcess:

@@ -53,6 +53,12 @@ def _git(repository, *args: str) -> str:
 
 @pytest.fixture
 def pilot_env(tmp_path):
+    env = _build_env(tmp_path, retry_cap=1)
+    yield env
+    env[0].close()
+
+
+def _build_env(tmp_path, *, retry_cap: int):
     repository = tmp_path / "candidate"
     repository.mkdir()
     _git(repository, "init")
@@ -68,7 +74,7 @@ def pilot_env(tmp_path):
     fixture = SliceFixture(
         str(tmp_path / "control"), SLICE_KEY, FakeClock(),
         supervisor_key=SUPERVISOR_KEY, operator_key=OPERATOR_KEY,
-        event_key=EVENT_KEY,
+        event_key=EVENT_KEY, retry_cap=retry_cap,
     )
     worker = HandWrittenWorker(str(repository))
     adapter = HandWrittenWorkerAdapter(
@@ -76,8 +82,7 @@ def pilot_env(tmp_path):
     )
     supervisor = Supervisor(fixture.store, operation_backend=object())
     pilot = SyntheticStoryPilot(fixture, supervisor, adapter)
-    yield fixture, pilot, repository, candidate_revision
-    fixture.close()
+    return fixture, pilot, repository, candidate_revision
 
 
 def _request(fixture, candidate_revision: str, *, attempt: int = 1, epoch: int | None = None,
@@ -1386,6 +1391,602 @@ def test_r8_stop_message_for_untyped_adapter_result(pilot_env, monkeypatch):
         "worker process cleanup is NOT_VERIFIED"
     )
     assert "adapter_stop=UNTYPED" in response.progress
+
+
+# ---------------------------------------------------------------------------
+# S3-C scenario-denominator gap tests (groups 2, 3, 4, 5, 6, 9, 10)
+# ---------------------------------------------------------------------------
+
+import hashlib  # noqa: E402
+import os  # noqa: E402
+
+from tools.vst.contracts import receipt_sha256  # noqa: E402
+from tools.vst.diffgate import check_diff  # noqa: E402
+from tools.vst.slice import AUTHOR, EXPECTED_TEST_IDS, REVIEWER, WRONG_KEY  # noqa: E402
+
+
+def _plumbing_commit(repository, parent: str, *, put=None, remove=()) -> str:
+    """Commit built with a private index: HEAD, branches and the work tree are untouched."""
+    index = os.path.join(str(repository), ".git", "vst-s3c-index")
+    env = dict(os.environ, GIT_INDEX_FILE=index)
+
+    def run(*args: str, data: bytes | None = None) -> str:
+        done = subprocess.run(
+            ["git", "-C", str(repository), *args], check=True, env=env, input=data,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        return done.stdout.decode("utf-8").strip()
+
+    try:
+        run("read-tree", parent)
+        for path in remove:
+            run("update-index", "--force-remove", path)
+        for path, (mode, content) in (put or {}).items():
+            blob = run("hash-object", "-w", "--stdin", data=content)
+            run("update-index", "--add", "--cacheinfo", f"{mode},{blob},{path}")
+        tree = run("write-tree")
+        return run("commit-tree", tree, "-p", parent, "-m", "plumbing candidate")
+    finally:
+        if os.path.exists(index):
+            os.remove(index)
+
+
+def _git_diff_evidence(fixture, repository, base: str, head: str) -> dict:
+    """Feed the S2 diff gate from real git output (raw modes, rename detection)."""
+    raw = subprocess.run(
+        ["git", "-C", str(repository), "diff", "--raw", "-M", "--no-abbrev", base, head],
+        check=True, stdout=subprocess.PIPE, text=True,
+    ).stdout
+    diff_bytes = subprocess.run(
+        ["git", "-C", str(repository), "diff", "-M", base, head],
+        check=True, stdout=subprocess.PIPE,
+    ).stdout
+    changed, symlinks, renames = [], [], []
+    for line in raw.splitlines():
+        meta, *paths = line.split("\t")
+        old_mode, new_mode, _o, _n, status = meta.lstrip(":").split()
+        changed.extend(paths)
+        if "120000" in (old_mode, new_mode):
+            symlinks.extend(paths)
+        if status.startswith("R"):
+            renames.append((paths[0], paths[1]))
+    return check_diff(
+        manifest_sha256=fixture.manifest_hash, base_head=base, candidate_head=head,
+        changed_paths=changed, allowed_paths=fixture.manifest["scope"],
+        diff_bytes=diff_bytes, symlink_paths=symlinks, rename_pairs=renames,
+    )
+
+
+_BASE_BLOB = b"value = 'base'\n"
+_CANDIDATE_BLOB = b"value = 'candidate'\n"
+# case id -> (plumbing arguments, diff-gate reason, pilot error code for the forged claim)
+_G6_CASES = {
+    "outside_scope": (
+        {"put": {"docs/outside.txt": ("100644", b"x\n")}},
+        "OUT_OF_SCOPE_PATH", WorkerErrorCode.SCOPE_DENIED),
+    "protected_hook": (
+        {"put": {"hooks/pre-commit": ("100755", b"#!/bin/sh\n")}},
+        "BLOCKED_PATH_CLASS", WorkerErrorCode.SCOPE_DENIED),
+    "protected_ci_config": (
+        {"put": {".github/workflows/ci.yml": ("100644", b"on: push\n")}},
+        "BLOCKED_PATH_CLASS", WorkerErrorCode.SCOPE_DENIED),
+    "protected_install_script": (
+        {"put": {"install.sh": ("100755", b"#!/bin/sh\n")}},
+        "BLOCKED_PATH_CLASS", WorkerErrorCode.SCOPE_DENIED),
+    "protected_build_config": (
+        {"put": {"pyproject.toml": ("100644", b"[project]\n")}},
+        "BLOCKED_PATH_CLASS", WorkerErrorCode.SCOPE_DENIED),
+    "manifest_file": (
+        {"put": {"docs/sdlc/task-manifest.json": ("100644", b"{}\n")}},
+        "OUT_OF_SCOPE_PATH", WorkerErrorCode.SCOPE_DENIED),
+    "rename_into_blocked_path": (
+        {"put": {"hooks/pre-commit": ("100644", _BASE_BLOB)}, "remove": ("src/synthetic.py",)},
+        "RENAME_INTO_BLOCKED_PATH", WorkerErrorCode.SCOPE_DENIED),
+}
+
+
+def test_g6_diff_gate_passes_the_real_pilot_commit(pilot_env):
+    """Group 6 allowed worktree edit: the S2 diff gate accepts exactly the pilot's commit."""
+    fixture, pilot, repository, candidate_revision = pilot_env
+    response = pilot.start(_request(fixture, candidate_revision))
+    assert response.state is WorkerState.SUCCEEDED
+
+    evidence = _git_diff_evidence(fixture, repository, candidate_revision, response.candidate_head)
+
+    assert evidence["verdict"] == "PASS" and evidence["reason"] == "PASS"
+    assert evidence["changed_paths"] == ["src/synthetic.py"]
+    assert evidence["candidate_head"] == response.candidate_head
+
+
+@pytest.mark.parametrize("case", sorted(_G6_CASES))
+def test_g6_diff_gate_fails_real_git_diffs_outside_scope_or_into_protected_paths(
+    pilot_env, case,
+):
+    fixture, _pilot, repository, candidate_revision = pilot_env
+    arguments, reason, _code = _G6_CASES[case]
+    head = _plumbing_commit(repository, candidate_revision, **arguments)
+
+    evidence = _git_diff_evidence(fixture, repository, candidate_revision, head)
+
+    assert evidence["verdict"] == "FAIL"
+    assert evidence["reason"] == reason
+
+
+def test_g6_diff_gate_fails_a_real_symlink_change_even_on_an_allowed_path(pilot_env):
+    fixture, _pilot, repository, candidate_revision = pilot_env
+    head = _plumbing_commit(
+        repository, candidate_revision, put={"src/synthetic.py": ("120000", _CANDIDATE_BLOB)})
+
+    evidence = _git_diff_evidence(fixture, repository, candidate_revision, head)
+
+    assert evidence["verdict"] == "FAIL" and evidence["reason"] == "SYMLINK_CHANGE"
+    assert evidence["changed_paths"] == ["src/synthetic.py"]
+
+
+@pytest.mark.parametrize("case", sorted(_G6_CASES))
+def test_g6_pilot_refuses_a_forged_success_for_out_of_scope_or_protected_commits(
+    pilot_env, case,
+):
+    """AC-14: the pilot never promotes such a commit and no gate APPROVE is reachable."""
+    fixture, pilot, repository, candidate_revision = pilot_env
+    arguments, _reason, code = _G6_CASES[case]
+    request = _request(fixture, candidate_revision)
+    _lying_start(pilot, _plumbing_commit(repository, candidate_revision, **arguments))
+
+    response = pilot.start(request)
+
+    assert response.state is WorkerState.INCONCLUSIVE
+    assert response.error is not None and response.error.code is code
+    assert fixture.store.receipts_for_task(fixture.task_id) == []
+    assert _decide(pilot, fixture, request, fixture.current_head)["verdict"] != "APPROVE"
+
+
+def test_g6_pilot_refuses_a_forged_success_that_replaced_the_file_by_a_symlink(pilot_env):
+    """A symlink whose target text equals change_content must not pass the blob comparison."""
+    fixture, pilot, repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+    _lying_start(pilot, _plumbing_commit(
+        repository, candidate_revision,
+        put={"src/synthetic.py": ("120000", request.change_content.encode("utf-8"))}))
+
+    response = pilot.start(request)
+
+    assert response.state is WorkerState.INCONCLUSIVE
+    assert response.error is not None
+    assert response.error.code is WorkerErrorCode.RECONCILIATION_REQUIRED
+    assert "non-regular entry" in response.error.message and "symlink" in response.error.message
+    assert fixture.store.receipts_for_task(fixture.task_id) == []
+
+
+def test_g6_symlink_committed_earlier_with_an_empty_new_diff_is_refused(pilot_env):
+    """The trusted revision already has a symlink at change_path; the head adds no change."""
+    fixture, pilot, repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+    symlink_base = _plumbing_commit(
+        repository, candidate_revision,
+        put={"src/synthetic.py": ("120000", request.change_content.encode("utf-8"))})
+    assert _git(repository, "ls-tree", symlink_base, "--", "src/synthetic.py").startswith("120000 blob")
+    # Re-anchor the trusted revision on the symlink commit, then claim a no-op head.
+    pilot.adapter.candidate_revision = symlink_base
+    anchored = replace(request, candidate_revision=symlink_base, effect_key=effect_key_for(
+        request.run_id, request.candidate_id, symlink_base, request.manifest_sha256,
+        request.task_id, request.story_id, request.base_head, request.allowed_paths,
+        request.change_path, request.change_content))
+    tree = _git(repository, "rev-parse", f"{symlink_base}^{{tree}}")
+    noop_head = _git(repository, "commit-tree", tree, "-p", symlink_base, "-m", "no-op")
+    _lying_start(pilot, noop_head)
+
+    response = pilot.start(anchored)
+
+    assert response.state is WorkerState.INCONCLUSIVE
+    assert response.error is not None
+    assert response.error.code is WorkerErrorCode.RECONCILIATION_REQUIRED
+    assert "no change relative to the trusted revision" in response.error.message
+    assert fixture.store.receipts_for_task(fixture.task_id) == []
+
+
+def test_g6_deleting_the_file_leaves_no_regular_entry_and_is_refused(pilot_env):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+    _lying_start(pilot, _plumbing_commit(
+        repository, candidate_revision, remove=("src/synthetic.py",)))
+
+    response = pilot.start(request)
+
+    assert response.state is WorkerState.INCONCLUSIVE
+    assert response.error is not None
+    assert response.error.code is WorkerErrorCode.RECONCILIATION_REQUIRED
+    assert "not a regular file entry" in response.error.message
+    assert fixture.store.receipts_for_task(fixture.task_id) == []
+
+
+@pytest.mark.parametrize("path", [
+    ".github/workflows/ci.yml", "hooks/pre-commit", "install.sh", "pyproject.toml",
+    "docs/sdlc/task-manifest.json",
+])
+def test_g6_pilot_start_for_a_protected_or_manifest_path_never_invokes_the_worker(
+    pilot_env, path,
+):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    calls = []
+    real_start = pilot.adapter.start
+    pilot.adapter.start = lambda req: calls.append(req) or real_start(req)
+
+    response = pilot.start(_request(fixture, candidate_revision, path=path))
+
+    assert response.state is WorkerState.BLOCKED
+    assert response.error is not None and response.error.code is WorkerErrorCode.SCOPE_DENIED
+    assert calls == []
+    assert _commit_count(repository, candidate_revision) == 0
+    assert fixture.store.receipts_for_task(fixture.task_id) == []
+
+
+# ---- group 9: exact candidate revision mismatch -----------------------------------
+
+def test_g9_candidate_revision_mismatch_is_blocked_without_a_write(pilot_env):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+    other = "e" * 40
+    forged = replace(request, candidate_revision=other, effect_key=effect_key_for(
+        request.run_id, request.candidate_id, other, request.manifest_sha256,
+        request.task_id, request.story_id, request.base_head, request.allowed_paths,
+        request.change_path, request.change_content))
+
+    response = pilot.start(forged)
+
+    assert response.state is WorkerState.BLOCKED
+    assert response.error is not None and response.error.code is WorkerErrorCode.INVALID_REQUEST
+    assert "candidate identity/revision" in response.error.message
+    assert _commit_count(repository, candidate_revision) == 0
+    assert _attempt_row(fixture, forged) is None
+
+
+# ---- group 5: budget boundaries beyond the existing zero-remaining / exact-cap tests ----
+
+def test_g5_one_unit_over_remaining_budget_is_blocked_and_never_overspends(pilot_env):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    cap = fixture.manifest["cost_cap"]
+    _prespend(fixture, cap - 1)
+    calls = []
+    real_start = pilot.adapter.start
+    pilot.adapter.start = lambda req: calls.append(req) or real_start(req)
+    over = replace(_request(fixture, candidate_revision), budget_spent=cap - 1, budget_units=2)
+
+    blocked = pilot.start(over)
+
+    assert blocked.state is WorkerState.BLOCKED
+    assert blocked.error is not None and blocked.error.code is WorkerErrorCode.BUDGET_EXHAUSTED
+    assert calls == []
+    assert _commit_count(repository, candidate_revision) == 0
+    assert _lease_statuses(fixture, over) == ["RELEASED"]
+    # No excess spend: exactly one unit (the cap) is still available on the Store ledger.
+    assert fixture.store.charge_idempotent(
+        "s3c-last-unit", fixture.task_id, 1, supervisor_key=fixture.supervisor_key,
+        expected_cap=cap, expected_spent=cap - 1) == 0
+    assert blocked == pilot.start(over)  # persisted refusal replays identically
+
+
+def test_g5_request_budget_cap_above_the_manifest_cap_starts_nothing(pilot_env):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    cap = fixture.manifest["cost_cap"]
+    request = replace(_request(fixture, candidate_revision), budget_cap=cap + 1)
+
+    blocked = pilot.start(request)
+
+    assert blocked.state is WorkerState.BLOCKED
+    assert blocked.error is not None and blocked.error.code is WorkerErrorCode.BUDGET_EXHAUSTED
+    assert "exceeds the manifest cap" in blocked.error.message
+    assert _commit_count(repository, candidate_revision) == 0
+    assert _attempt_row(fixture, request) is None
+    assert _lease_statuses(fixture, request) == []
+
+
+# ---- group 4: retry-cap boundary at other cap values ------------------------------------
+
+@pytest.mark.parametrize("retry_cap", [0, 2])
+def test_g4_retry_cap_boundary_allows_exactly_cap_plus_one_failed_attempts(tmp_path, retry_cap):
+    fixture, pilot, repository, candidate_revision = _build_env(tmp_path, retry_cap=retry_cap)
+    try:
+        assert fixture.manifest["retry_cap"] == retry_cap
+        _real, failing = _install_failing_adapter(pilot)
+        previous = _request(fixture, candidate_revision)
+        assert pilot.start(previous).state is WorkerState.FAILED
+        for attempt in range(2, retry_cap + 2):
+            nxt = _request(fixture, candidate_revision, attempt=attempt, epoch=previous.epoch + 1)
+            assert pilot.resume(_resume_for(previous, nxt)).state is WorkerState.FAILED
+            previous = nxt
+        assert failing.calls == retry_cap + 1
+        epoch_before = fixture.store.current_epoch(fixture.story_id)
+
+        beyond = _request(
+            fixture, candidate_revision, attempt=retry_cap + 2, epoch=previous.epoch + 1)
+        refused = pilot.resume(_resume_for(previous, beyond))
+
+        assert refused.state is WorkerState.BLOCKED
+        assert refused.error is not None and refused.error.code is WorkerErrorCode.RETRY_EXHAUSTED
+        assert failing.calls == retry_cap + 1
+        assert fixture.store.current_epoch(fixture.story_id) == epoch_before
+        assert _commit_count(repository, candidate_revision) == 0
+    finally:
+        fixture.close()
+
+
+# ---- group 3: STOP sub-cases not asserted elsewhere ---------------------------------------
+
+def test_g3_stop_before_any_start_is_refused_and_creates_no_fence(pilot_env):
+    """Current contract: STOP needs a durable prior attempt binding; nothing is fenced."""
+    fixture, pilot, repository, candidate_revision = pilot_env
+    original = _request(fixture, candidate_revision)
+
+    response = pilot.stop(_stop_request(original))
+
+    assert response.state is WorkerState.BLOCKED
+    assert response.error is not None and response.error.code is WorkerErrorCode.RECONCILIATION_REQUIRED
+    assert "durable matching prior attempt" in response.error.message
+    assert fixture.store.current_epoch(fixture.story_id) == original.epoch
+    assert _commit_count(repository, candidate_revision) == 0
+    assert fixture.store.lookup_idempotent_operation(
+        _stop_request(original).operation_key, operation="stop_attempt_fenced") is None
+
+
+def test_g3_late_receipt_from_the_stopped_epoch_is_rejected_by_the_store(pilot_env):
+    """Group 3 late receipt: after STOP advances the epoch, the old attempt cannot append."""
+    fixture, pilot, _repository, candidate_revision = pilot_env
+    original = _request(fixture, candidate_revision)
+    _inject_app_checkpoint_interrupt(pilot)
+    assert pilot.start(original).state is WorkerState.INCONCLUSIVE
+    assert pilot.stop(_stop_request(original)).state is WorkerState.INCONCLUSIVE
+    new_epoch = fixture.store.current_epoch(fixture.story_id)
+    assert new_epoch == original.epoch + 1
+    fixture.store.acquire_lease(
+        fixture.task_id, fixture.story_id, fixture.runner_id, new_epoch, 2, 600,
+        supervisor_key=fixture.supervisor_key)
+    late = fixture.make_test_receipt(1, EXPECTED_TEST_IDS, epoch=original.epoch)
+
+    with pytest.raises(StoreError) as refused:
+        fixture.append(late)
+
+    assert refused.value.kind == "epoch"
+    assert fixture.store.receipts_for_task(fixture.task_id) == []
+
+
+# ---- group 2: a crash at a checkpoint without an automatic resume rule ---------------------
+
+def test_g2_crash_at_before_edit_checkpoint_is_inconclusive_and_has_no_automatic_resume(pilot_env):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    original = _request(fixture, candidate_revision)
+
+    def crash(checkpoint):
+        if checkpoint is Checkpoint.BEFORE_EDIT:
+            raise RuntimeError("deterministic crash before the edit")
+
+    pilot.adapter.checkpoint_hook = crash
+    crashed = pilot.start(original)
+
+    assert crashed.state is WorkerState.INCONCLUSIVE
+    assert crashed.error is not None and crashed.error.code is WorkerErrorCode.RECONCILIATION_REQUIRED
+    assert crashed.checkpoint is None
+    assert _commit_count(repository, candidate_revision) == 0
+    assert _lease_statuses(fixture, original) == ["LIVE"]  # uncertain result keeps the lease
+    pilot.adapter.checkpoint_hook = None
+
+    second = _request(fixture, candidate_revision, attempt=2, epoch=original.epoch + 1)
+    refused = pilot.resume(_resume_for(original, second))
+
+    assert refused.state is WorkerState.BLOCKED
+    assert refused.error is not None and refused.error.code is WorkerErrorCode.UNSUPPORTED_STATE
+    assert fixture.store.current_epoch(fixture.story_id) == original.epoch
+    assert _commit_count(repository, candidate_revision) == 0
+
+
+# ---- group 10: evidence chain through the real Store gate ---------------------------------
+
+def _decide(pilot, fixture, request, head: str, **options) -> dict:
+    """The S2 Store/Supervisor gate decision with the fixture's signing keys."""
+    return pilot.supervisor.evaluate_gate(
+        request.task_id, head, fixture.store.current_epoch(request.story_id), fixture.key,
+        supervisor_key=fixture.supervisor_key, operator_key=fixture.operator_key, **options)
+
+
+def _lease_for_receipts(fixture, attempt: int, epoch: int | None = None) -> None:
+    fixture.store.acquire_lease(
+        fixture.task_id, fixture.story_id, fixture.runner_id,
+        fixture.store.current_epoch(fixture.story_id) if epoch is None else epoch,
+        attempt, 600, supervisor_key=fixture.supervisor_key)
+
+
+def _good_receipts(fixture, head: str, *, tests=None) -> list[dict]:
+    return [
+        tests if tests is not None else fixture.make_test_receipt(1, EXPECTED_TEST_IDS, head=head),
+        fixture.make_static_receipt(head=head),
+        fixture.make_review_receipt(REVIEWER, AUTHOR, head=head),
+    ]
+
+
+def _succeeded(pilot, fixture, candidate_revision):
+    request = _request(fixture, candidate_revision)
+    response = pilot.start(request)
+    assert response.state is WorkerState.SUCCEEDED
+    return request, response
+
+
+def test_g10_complete_signed_receipt_set_at_the_candidate_head_is_approved(pilot_env):
+    """Group 1 signed gate outcome / positive control for group 10."""
+    fixture, pilot, _repository, candidate_revision = pilot_env
+    request, response = _succeeded(pilot, fixture, candidate_revision)
+    # S3 itself never approves: with no receipts the gate is not APPROVE.
+    assert _decide(pilot, fixture, request, response.candidate_head)["verdict"] != "APPROVE"
+    _lease_for_receipts(fixture, 2)
+    for receipt in _good_receipts(fixture, response.candidate_head):
+        fixture.append(receipt)
+
+    decision = _decide(pilot, fixture, request, response.candidate_head)
+
+    assert decision["verdict"] == "APPROVE"
+    assert decision["unresolved_findings"] == []
+
+
+def test_g10_missing_required_receipt_is_not_approval(pilot_env):
+    fixture, pilot, _repository, candidate_revision = pilot_env
+    request, response = _succeeded(pilot, fixture, candidate_revision)
+    _lease_for_receipts(fixture, 2)
+    tests, static, _review = _good_receipts(fixture, response.candidate_head)
+    fixture.append(tests)
+    fixture.append(static)
+
+    decision = _decide(pilot, fixture, request, response.candidate_head)
+
+    assert decision["verdict"] == "MODIFY"
+    assert "review" in " ".join(decision["reasons"])
+
+
+def test_g10_receipt_signed_with_the_wrong_key_is_rejected_by_the_store(pilot_env):
+    fixture, pilot, _repository, candidate_revision = pilot_env
+    request, response = _succeeded(pilot, fixture, candidate_revision)
+    _lease_for_receipts(fixture, 2)
+    forged = fixture.make_test_receipt(
+        1, EXPECTED_TEST_IDS, head=response.candidate_head, key=WRONG_KEY)
+
+    with pytest.raises(StoreError) as refused:
+        fixture.append(forged)
+
+    assert refused.value.kind == "signature"
+    assert fixture.store.receipts_for_task(fixture.task_id) == []
+    assert _decide(pilot, fixture, request, response.candidate_head)["verdict"] != "APPROVE"
+
+
+def _test_receipt_with_artifact(fixture, head: str, digests: dict) -> dict:
+    return fixture._build(
+        "TestRun", "tests", 1, head, None, None, None, None,
+        {
+            "expected_test_ids": list(EXPECTED_TEST_IDS),
+            "executed_test_ids": list(EXPECTED_TEST_IDS),
+            "skipped_test_ids": [],
+            "xfail_test_ids": [],
+            "commands": [{"argv": ["synthetic-test-run"], "exit_code": 0}],
+            "covered_acceptance": ["AC-1"],
+            "artifact_digests": digests,
+        })
+
+
+def test_g10_artifact_modified_after_hashing_is_not_approval(pilot_env):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    request, response = _succeeded(pilot, fixture, candidate_revision)
+    artifact = repository / "src" / "synthetic.py"
+    digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
+    _lease_for_receipts(fixture, 2)
+    tests = _test_receipt_with_artifact(
+        fixture, response.candidate_head, {"src/synthetic.py": digest})
+    for receipt in _good_receipts(fixture, response.candidate_head, tests=tests):
+        fixture.append(receipt)
+
+    def resolver(path):
+        target = repository / path
+        return hashlib.sha256(target.read_bytes()).hexdigest() if target.exists() else None
+
+    def decide():
+        return _decide(
+            pilot, fixture, request, response.candidate_head, artifact_resolver=resolver)
+
+    assert decide()["verdict"] == "APPROVE"
+    artifact.write_text("value = 'tampered after hashing'\n", encoding="utf-8")
+    tampered = decide()
+    assert tampered["verdict"] == "MODIFY"
+    assert any("digest mismatch" in reason for reason in tampered["reasons"])
+    artifact.unlink()
+    assert decide()["verdict"] == "MODIFY"
+
+
+def test_g10_pilot_evaluate_returns_the_store_gate_decision(pilot_env):
+    fixture, pilot, _repository, candidate_revision = pilot_env
+    request, response = _succeeded(pilot, fixture, candidate_revision)
+
+    without_receipts = pilot.evaluate(request)
+
+    assert without_receipts == _decide(pilot, fixture, request, response.candidate_head)
+    assert without_receipts["verdict"] != "APPROVE"
+    _lease_for_receipts(fixture, 2)
+    for receipt in _good_receipts(fixture, response.candidate_head):
+        fixture.append(receipt)
+    approved = pilot.evaluate(request)
+    assert approved == _decide(pilot, fixture, request, response.candidate_head)
+    assert approved["verdict"] == "APPROVE"
+
+
+def test_g10_failed_attempt_stays_visible_after_a_later_pass(pilot_env):
+    """Real pilot flow: attempt 1 FAILED (no receipt filed), attempt 2 passes and is approved."""
+    fixture, pilot, repository, candidate_revision = pilot_env
+    real = pilot.adapter
+    first = _request(fixture, candidate_revision)
+    second = _request(fixture, candidate_revision, attempt=2, epoch=first.epoch + 1)
+
+    class Receipting:
+        def __getattr__(self, name):
+            return getattr(real, name)
+
+        def start(self, request):
+            return _pilot_response(request, WorkerState.FAILED, error=WorkerError(
+                WorkerErrorCode.EXECUTION_FAILED, "synthetic worker failure"))
+
+        def resume(self, resume_request):
+            response = real.resume(resume_request)
+            assert response.state is WorkerState.SUCCEEDED
+            head, epoch = response.candidate_head, resume_request.request.epoch
+            fixture.append(fixture.make_test_receipt(1, EXPECTED_TEST_IDS, head=head, epoch=epoch))
+            fixture.append(fixture.make_static_receipt(head=head, epoch=epoch))
+            fixture.append(fixture.make_review_receipt(REVIEWER, AUTHOR, head=head, epoch=epoch))
+            return response
+
+    pilot.adapter = Receipting()  # non-HandWritten wrapper: SUCCEEDED needs a commit verifier
+    pilot.commit_verifier = lambda req, resp: None if (
+        resp.candidate_head == _git(repository, "rev-parse", "--verify", "HEAD")
+        and _git(repository, "show", f"{resp.candidate_head}:{req.change_path}")
+        == req.change_content.strip()
+    ) else _pilot_response(req, WorkerState.INCONCLUSIVE, error=WorkerError(
+        WorkerErrorCode.RECONCILIATION_REQUIRED, "verifier: head/blob mismatch"))
+    assert pilot.start(first).state is WorkerState.FAILED
+    passed = pilot.resume(_resume_for(first, second))
+    assert passed.state is WorkerState.SUCCEEDED
+
+    assert _decide(pilot, fixture, second, passed.candidate_head)["verdict"] == "APPROVE"
+    # The failed attempt is not rewritten by the later pass.
+    assert pilot.status(first).state is WorkerState.FAILED
+    assert pilot.status(first).error.code is WorkerErrorCode.EXECUTION_FAILED
+    outcome = fixture.store.lookup_idempotent_operation(
+        pilot_module._derived_key("outcome", first.operation_key), operation="s3_attempt_outcome")
+    assert outcome["state"] == "COMPLETED"
+    assert outcome["result"]["state"] == "FAILED"
+    assert outcome["result"]["error_code"] == "EXECUTION_FAILED"
+    assert pilot.status(second).state is WorkerState.SUCCEEDED
+
+
+def test_g10_failed_attempt_that_filed_a_receipt_cannot_be_resumed_fail_closed(pilot_env):
+    """Current contract: Store resume needs lease.wrote == 0, so a FAIL receipt blocks the resume."""
+    fixture, pilot, repository, candidate_revision = pilot_env
+    real = pilot.adapter
+    first = _request(fixture, candidate_revision)
+
+    class Receipting:
+        def __getattr__(self, name):
+            return getattr(real, name)
+
+        def start(self, request):
+            fixture.append(fixture.make_test_receipt(
+                1, EXPECTED_TEST_IDS, exit_code=1, head=request.base_head))
+            return _pilot_response(request, WorkerState.FAILED, error=WorkerError(
+                WorkerErrorCode.EXECUTION_FAILED, "synthetic worker failure"))
+
+    pilot.adapter = Receipting()
+    assert pilot.start(first).state is WorkerState.FAILED
+    second = _request(fixture, candidate_revision, attempt=2, epoch=first.epoch + 1)
+
+    refused = pilot.resume(_resume_for(first, second))
+
+    assert refused.state is WorkerState.BLOCKED
+    assert refused.error.message == "resume fence: StoreError: kind=lifecycle (not retryable)"
+    assert fixture.store.current_epoch(fixture.story_id) == first.epoch
+    assert _commit_count(repository, candidate_revision) == 0
+    assert [r["result"] for r in fixture.store.receipts_for_task(fixture.task_id)] == ["FAIL"]
 
 
 # AC-5 (fresh signed probe), AC-6 (actual WSL boundary), and runtime behavior
