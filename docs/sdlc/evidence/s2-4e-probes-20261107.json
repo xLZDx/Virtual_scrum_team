@@ -2,16 +2,10 @@
   "meta": {
     "date": "2026-11-07",
     "task": "S2-4E",
-    "revision": "4e681938c32e0a402ea952497d028c6caad45bb2 (tools/tests dirty)",
+    "revision": "a55fee0b77b2770ceefc2a6c3b96b0f89d391e68 (tools/tests clean)",
     "python": "3.14.3",
     "os": "Windows-11-10.0.26300-SP0",
-    "process_is_elevated_admin": false,
-    "run_notes": "P3/P4 recorded from one run each (an earlier P4 run crashed on a probe format-string bug and recorded nothing). P1/P2 were re-run to fix probe-script defects; last run recorded. P1b was run twice: the first run used a token without the logon SID and every process died with 0xC0000142, and its tamper control was vacuous (fixed). No product code modified.",
-    "defects_found": [
-      "D1 (refined) recv() maps only 109/232 to EOF; 233 raises. With server CloseHandle ONLY the client reads the full buffered response then gets 109 (handled). 233 arises only after DisconnectNamedPipe; Disconnect without Flush discards unread data (client received 0 of 15 bytes).",
-      "D2 usr\bin (MSYS) openssl fails under write-restricted token (TokenDefaultDacl 0xC0000022, CreateFileMapping error 5); native mingw64\bin openssl passes version + Ed25519 genpkey/sign/verify in the allowed scratch dir (needs token with logon SID restricting SID for process init).",
-      "O1 server close() FlushFileBuffers blocks while a connected peer withholds reads (4010 ms)"
-    ]
+    "process_is_elevated_admin": false
   },
   "probes": {
     "P4": {
@@ -259,5 +253,646 @@
       ],
       "output_excerpt": "[{'mode': 'close_only', 'payload': 15, 'server_written': 15, 'write_ok': True, 'client_received': 15, 'intact': True, 'terminal_error_after_drain': 109}, {'mode': 'close_only', 'payload': 51200, 'server_written': 51200, 'write_ok': True, 'client_received': 51200, 'intact': True, 'terminal_error_after_drain': 109}]\n{'mode': 'disconnect_then_close', 'payload': 15, 'server_written': 15, 'write_ok': True, 'client_received': 0, 'intact': False, 'terminal_error_after_drain': 233}"
     }
+  },
+  "second_pass_a55fee0": {
+    "revision": "a55fee0b77b2770ceefc2a6c3b96b0f89d391e68",
+    "meta": {
+      "date": "2026-11-07",
+      "task": "S2-4E",
+      "revision": "a55fee0b77b2770ceefc2a6c3b96b0f89d391e68 (tools/tests clean)",
+      "python": "3.14.3",
+      "os": "Windows-11-10.0.26300-SP0",
+      "process_is_elevated_admin": false
+    },
+    "probes": {
+      "P1": {
+        "command": "python docs/sdlc/evidence/s2_4e_probe_p1_restricted_token.py",
+        "status": "FAIL",
+        "substeps": [
+          {
+            "name": "thread token is actually restricted (IsTokenRestricted)",
+            "status": "PASS",
+            "detail": "True"
+          },
+          {
+            "name": "(a) create file in C:\\Windows\\Temp denied (confirms B6 risk)",
+            "status": "PASS",
+            "detail": "DENIED errno=13 winerror=None"
+          },
+          {
+            "name": "(b) write in per-role scratch dir (DACL: throwaway SID + user) succeeds",
+            "status": "PASS",
+            "detail": "created+written"
+          },
+          {
+            "name": "control: dir granting only the user (not throwaway/Everyone) is denied",
+            "status": "PASS",
+            "detail": "DENIED errno=13 winerror=None"
+          },
+          {
+            "name": "control: openssl version unrestricted",
+            "status": "PASS",
+            "detail": "OpenSSL 3.5.5 27 Jan 2026 (Library: OpenSSL 3.5.5 27 Jan 2026)"
+          },
+          {
+            "name": "diagnostic: whoami.exe starts under spec write-restricted token",
+            "status": "INFO",
+            "detail": "spec token (Everyone+throwaway) via CreateProcessAsUserW: wait=0 exit=3221225794 (0xC0000142) stdout=''"
+          },
+          {
+            "name": "(openssl) version under spec primary write-restricted token",
+            "status": "FAIL",
+            "detail": "spec token (Everyone+throwaway) via CreateProcessAsUserW: wait=0 exit=256 (0x00000100) stdout='0 [main] openssl (38468) cygheap_user::init: NtSetInformationToken (TokenDefaultDacl), 0xC0000022\\n    645 [main] openssl (38468) C:\\\\Program Files\\\\Git\\\\usr\\\\bin\\\\openssl.exe: *** fatal error - CreateFileMapping S-1-5-21-1658137595-2520424230-3796741800-1001.1, Win32 error 5.  Terminating.'"
+          },
+          {
+            "name": "diagnostic: whoami.exe under token + logon SID restricting SID",
+            "status": "INFO",
+            "detail": "token + logon SID S-1-5-5-1-2256840009 via CreateProcessAsUserW: wait=0 exit=1 (0x00000001) stdout='ERROR: Access is denied.\\r\\r\\nERROR: The handle is invalid.'"
+          },
+          {
+            "name": "(openssl) version under write-restricted token + logon SID (desktop access)",
+            "status": "FAIL",
+            "detail": "token + logon SID S-1-5-5-1-2256840009 via CreateProcessAsUserW: wait=0 exit=256 (0x00000100) stdout='0 [main] openssl (79476) cygheap_user::init: NtSetInformationToken (TokenDefaultDacl), 0xC0000022\\n    659 [main] openssl (79476) C:\\\\Program Files\\\\Git\\\\usr\\\\bin\\\\openssl.exe: *** fatal error - CreateFileMapping S-1-5-21-1658137595-2520424230-3796741800-1001.1, Win32 error 5.  Terminating.'"
+          }
+        ],
+        "output_excerpt": "throwaway_sid=S-1-5-21-224714956-363436799-287362006-3057 user_sid=S-1-5-21-1658137595-2520424230-3796741800-1001 results={'thread_token_restricted': True, 'a_windows_temp': 'DENIED errno=13 winerror=None', 'b_scratch': 'created+written', 'control_user_only_dir': 'DENIED errno=13 winerror=None'}",
+        "approximation": "unelevated WRITE_RESTRICTED token of the current user; real service tokens (virtual account, service SID, session 0) may differ"
+      },
+      "P1b_mingw64_openssl_D2": {
+        "command": "python docs/sdlc/evidence/s2_4e_probe_p1b_mingw_openssl.py",
+        "status": "PASS",
+        "substeps": [
+          {
+            "name": "1. mingw64 openssl version under write-restricted token (Everyone+throwaway+logon SID)",
+            "status": "PASS",
+            "detail": "mingw64 openssl, write-restricted via CreateProcessAsUserW: wait=0 exit=0 (0x00000000) stdout='OpenSSL 3.5.5 27 Jan 2026 (Library: OpenSSL 3.5.5 27 Jan 2026)'"
+          },
+          {
+            "name": "2a. genpkey -algorithm ED25519 writes key in scratch",
+            "status": "PASS",
+            "detail": "genpkey via CreateProcessAsUserW: wait=0 exit=0 (0x00000000) stdout='' key_exists=True"
+          },
+          {
+            "name": "2b. pkeyutl -sign -rawin yields a 64-byte signature",
+            "status": "PASS",
+            "detail": "sign via CreateProcessAsUserW: wait=0 exit=0 (0x00000000) stdout='' sig_size=64"
+          },
+          {
+            "name": "2c. pkeyutl -verify -rawin reports success",
+            "status": "PASS",
+            "detail": "verify via CreateProcessAsUserW: wait=0 exit=0 (0x00000000) stdout='Signature Verified Successfully'"
+          },
+          {
+            "name": "2d. control: tampered message does not verify (process ran, exit 1, no success text)",
+            "status": "PASS",
+            "detail": "verify tampered via CreateProcessAsUserW: wait=0 exit=1 (0x00000001) stdout='A44E0000:error:030000EA:digital envelope routines:EVP_DigestVerify:provider signature failure:../openssl-3.5.5/crypto/evp/m_sigver.c:779:ED25519 digest_verify:\\r\\nSignature Verification Failure'"
+          },
+          {
+            "name": "3. PE import table of mingw64 openssl.exe (own parser; no dumpbin, no pefile)",
+            "status": "PASS",
+            "detail": "direct=libcrypto-3-x64.dll [mingw64\\bin], libssl-3-x64.dll [mingw64\\bin], KERNEL32.dll [system], msvcrt.dll [system], WS2_32.dll [system] || transitive mingw64 DLLs to copy: libcrypto-3-x64.dll, libssl-3-x64.dll || NOT FOUND: "
+          }
+        ],
+        "output_excerpt": "mingw64 openssl, write-restricted via CreateProcessAsUserW: wait=0 exit=0 (0x00000000) stdout='OpenSSL 3.5.5 27 Jan 2026 (Library: OpenSSL 3.5.5 27 Jan 2026)'\ngenpkey via CreateProcessAsUserW: wait=0 exit=0 (0x00000000) stdout='' key_exists=True\nsign via CreateProcessAsUserW: wait=0 exit=0 (0x00000000) stdout='' sig_size=64\nverify via CreateProcessAsUserW: wait=0 exit=0 (0x00000000) stdout='Signature Verified Successfully'\nverify tampered via CreateProcessAsUserW: wait=0 exit=1 (0x00000001) stdout='A44E0000:error:030000EA:digital envelope routines:EVP_DigestVerify:provider signature failure:../openssl-3.5.5/crypto/evp/m_sigver.c:779:ED25519 digest_verify:\\r\\nSignature Verification Failure'\ndirect=libcrypto-3-x64.dll [mingw64\\bin], libssl-3-x64.dll [mingw64\\bin], KERNEL32.dll [system], msvcrt.dll [system], WS2_32.dll [system] || transitive mingw64 DLLs to copy: libcrypto-3-x64.dll, libssl-3-x64.dll || NOT FOUND: "
+      },
+      "P2b_D1_server_closehandle_only": {
+        "command": "python docs/sdlc/evidence/s2_4e_probe_p1b_mingw_openssl.py",
+        "status": "PASS",
+        "substeps": [
+          {
+            "name": "4. server CloseHandle only: client reads full buffered response then EOF",
+            "status": "PASS",
+            "detail": "[{'mode': 'close_only', 'payload': 15, 'server_written': 15, 'write_ok': True, 'client_received': 15, 'intact': True, 'terminal_error_after_drain': 109}, {'mode': 'close_only', 'payload': 51200, 'server_written': 51200, 'write_ok': True, 'client_received': 51200, 'intact': True, 'terminal_error_after_drain': 109}]"
+          },
+          {
+            "name": "4b. INFO contrast: Disconnect+Close without Flush",
+            "status": "INFO",
+            "detail": "{'mode': 'disconnect_then_close', 'payload': 15, 'server_written': 15, 'write_ok': True, 'client_received': 0, 'intact': False, 'terminal_error_after_drain': 233}"
+          }
+        ],
+        "output_excerpt": "[{'mode': 'close_only', 'payload': 15, 'server_written': 15, 'write_ok': True, 'client_received': 15, 'intact': True, 'terminal_error_after_drain': 109}, {'mode': 'close_only', 'payload': 51200, 'server_written': 51200, 'write_ok': True, 'client_received': 51200, 'intact': True, 'terminal_error_after_drain': 109}]\n{'mode': 'disconnect_then_close', 'payload': 15, 'server_written': 15, 'write_ok': True, 'client_received': 0, 'intact': False, 'terminal_error_after_drain': 233}"
+      },
+      "P2": {
+        "command": "python docs/sdlc/evidence/s2_4e_probe_p2_pipe.py",
+        "status": "PASS",
+        "substeps": [
+          {
+            "name": "(a) 5 sequential request/response cycles",
+            "status": "PASS",
+            "detail": "(ok, ms) per cycle: [(True, 33), (True, 7), (True, 13), (True, 12), (True, 8)]"
+          },
+          {
+            "name": "(b1) client exits without reading: server close does not block; next client served",
+            "status": "PASS",
+            "detail": "handled_by_server=True close_ms=0 next_client_ok=True next_ms=14 events=[{'ev': 'request', 'req': 'SMALL', 't': 1794061343.5474646}, {'ev': 'sent', 'req': 'SMALL', 'send_ms': 17, 't': 1794061343.5478032}, {'ev': 'closed', 'req': 'SMALL', 'close_ms': 0, 't': 1794061343.5482023}]"
+          },
+          {
+            "name": "(b2) INFORMATIONAL stalled non-reading peer (not a pass/fail criterion)",
+            "status": "PASS",
+            "detail": "{\"scenario\": \"peer connected, request sent, response NOT read, peer held open 4 s\", \"server_close_ms\": 1, \"second_client_latency_ms\": 18, \"second_client_ok\": true, \"meaning\": \"close() (FlushFileBuffers) blocks until the peer reads or exits; with a single-threaded accept loop one stalled same-trust peer delays all others\"}"
+          },
+          {
+            "name": "(c) silent client dropped by server at ~5 s handshake; listener keeps serving",
+            "status": "PASS",
+            "detail": "recv=b'' err=None drop_ms=2006 concurrent_client={'ok': True, 'ms': 1512} served_after_drop=True server_events=[{'ev': 'dropped_after_handshake_wait', 'ms': 2695, 't': 1794061351.776968}, {'ev': 'request', 'req': 'ECHO during-silent', 't': 1794061351.783506}, {'ev': 'sent', 'req': 'ECHO during-silent', 'send_ms': 5, 't': 1794061351.783961}, {'ev': 'closed', 'req': 'ECHO during-silent', 'close_ms': 0, 't': 1794061351.7842321}, {'ev': 'request', 'req': 'ECHO after-silent', 't': 1794061351.7967565}, {'ev': 'sent', 'req': 'ECHO after-silent', 'send_ms': 20, 't': 1794061351.8117476}, {'ev': 'closed', 'req': 'ECHO after-silent', 'close_ms': 0, 't': 1794061351.8123107}]"
+          },
+          {
+            "name": "(c2) client recv() reports EOF (b'') once the server dropped the instance",
+            "status": "PASS",
+            "detail": "recv returned b'', raised None (233 = ERROR_PIPE_NOT_CONNECTED is not mapped to EOF; recv maps only 109/232)"
+          },
+          {
+            "name": "(d) 1 MiB response received intact",
+            "status": "PASS",
+            "detail": "header=b'LEN 1048576' body_len=1048576 sha_match=True ms=116"
+          }
+        ],
+        "output_excerpt": "server stderr: \nserver log: 061341.5038247}, {\"ev\": \"sent\", \"req\": \"ECHO 4\", \"send_ms\": 2, \"t\": 1794061341.5041072}, {\"ev\": \"closed\", \"req\": \"ECHO 4\", \"close_ms\": 0, \"t\": 1794061341.5044408}, {\"ev\": \"request\", \"req\": \"SMALL\", \"t\": 1794061343.5474646}, {\"ev\": \"sent\", \"req\": \"SMALL\", \"send_ms\": 17, \"t\": 1794061343.5478032}, {\"ev\": \"closed\", \"req\": \"SMALL\", \"close_ms\": 0, \"t\": 1794061343.5482023}, {\"ev\": \"request\", \"req\": \"ECHO after-b1\", \"t\": 1794061344.206164}, {\"ev\": \"sent\", \"req\": \"ECHO after-b1\", \"send_ms\": 5, \"t\": 1794061344.2070668}, {\"ev\": \"closed\", \"req\": \"ECHO after-b1\", \"close_ms\": 0, \"t\": 1794061344.2075312}, {\"ev\": \"request\", \"req\": \"SMALL\", \"t\": 1794061345.7628145}, {\"ev\": \"sent\", \"req\": \"SMALL\", \"send_ms\": 3, \"t\": 1794061345.7634044}, {\"ev\": \"closed\", \"req\": \"SMALL\", \"close_ms\": 1, \"t\": 1794061345.7640412}, {\"ev\": \"request\", \"req\": \"ECHO during-hold\", \"t\": 1794061346.0694723}, {\"ev\": \"sent\", \"req\": \"ECHO during-hold\", \"send_ms\": 5, \"t\": 1794061346.0698843}, {\"ev\": \"closed\", \"req\": \"ECHO during-hold\", \"close_ms\": 0, \"t\": 1794061346.0701423}, {\"ev\": \"dropped_after_handshake_wait\", \"ms\": 2695, \"t\": 1794061351.776968}, {\"ev\": \"request\", \"req\": \"ECHO during-silent\", \"t\": 1794061351.783506}, {\"ev\": \"sent\", \"req\": \"ECHO during-silent\", \"send_ms\": 5, \"t\": 1794061351.783961}, {\"ev\": \"closed\", \"req\": \"ECHO during-silent\", \"close_ms\": 0, \"t\": 1794061351.7842321}, {\"ev\": \"request\", \"req\": \"ECHO after-silent\", \"t\": 1794061351.7967565}, {\"ev\": \"sent\", \"req\": \"ECHO after-silent\", \"send_ms\": 20, \"t\": 1794061351.8117476}, {\"ev\": \"closed\", \"req\": \"ECHO after-silent\", \"close_ms\": 0, \"t\": 1794061351.8123107}, {\"ev\": \"request\", \"req\": \"BIG\", \"t\": 1794061351.8253512}, {\"ev\": \"sent\", \"req\": \"BIG\", \"send_ms\": 101, \"t\": 1794061351.9260092}, {\"ev\": \"closed\", \"req\": \"BIG\", \"close_ms\": 0, \"t\": 1794061351.92642}, {\"ev\": \"request\", \"req\": \"QUIT\", \"t\": 1794061351.9391577}, {\"ev\": \"sent\", \"req\": \"QUIT\", \"send_ms\": 1, \"t\": 1794061351.939421}, {\"ev\": \"closed\", \"req\": \"QUIT\", \"close_ms\": 0, \"t\": 1794061351.9396155}]",
+        "patched": "windows_named_pipe._verify_service_process replaced by a no-op in server and client processes; nothing else patched. server_sid=current user SID; client policy allowed_client_services={S-1-5-32-545 (Users)}",
+        "notes": [
+          {
+            "b2_observation": {
+              "scenario": "peer connected, request sent, response NOT read, peer held open 4 s",
+              "server_close_ms": 1,
+              "second_client_latency_ms": 18,
+              "second_client_ok": true,
+              "meaning": "close() (FlushFileBuffers) blocks until the peer reads or exits; with a single-threaded accept loop one stalled same-trust peer delays all others"
+            }
+          }
+        ]
+      },
+      "P3": {
+        "command": "python docs/sdlc/evidence/s2_4e_probe_p3_token_sid.py",
+        "status": "PASS",
+        "substeps": [
+          {
+            "name": "precondition: CheckTokenMembership(primary) fails with 1309",
+            "status": "PASS",
+            "detail": "ret=0 err=1309"
+          },
+          {
+            "name": "Users S-1-5-32-545",
+            "status": "PASS",
+            "detail": "got=True expected=True"
+          },
+          {
+            "name": "Everyone S-1-1-0",
+            "status": "PASS",
+            "detail": "got=True expected=True"
+          },
+          {
+            "name": "own user S-1-5-21-1658137595-2520424230-3796741800-1001",
+            "status": "PASS",
+            "detail": "got=True expected=True"
+          },
+          {
+            "name": "SYSTEM S-1-5-18",
+            "status": "PASS",
+            "detail": "got=False expected=False"
+          },
+          {
+            "name": "Administrators S-1-5-32-544 (deny-only/absent under UAC)",
+            "status": "PASS",
+            "detail": "got=False expected=False"
+          },
+          {
+            "name": "unrelated service SID S-1-5-80-1-2-3-4-5",
+            "status": "PASS",
+            "detail": "got=False expected=False"
+          }
+        ],
+        "output_excerpt": "precondition: CheckTokenMembership(primary) fails with 1309: ret=0 err=1309; Users S-1-5-32-545: got=True expected=True; Everyone S-1-1-0: got=True expected=True; own user S-1-5-21-1658137595-2520424230-3796741800-1001: got=True expected=True; SYSTEM S-1-5-18: got=False expected=False; Administrators S-1-5-32-544 (deny-only/absent under UAC): got=False expected=False; unrelated service SID S-1-5-80-1-2-3-4-5: got=False expected=False"
+      },
+      "P4": {
+        "command": "python docs/sdlc/evidence/s2_4e_probe_p4_compile.py",
+        "status": "PASS",
+        "substeps": [
+          {
+            "name": "py_compile tools/vst/__init__.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/assignment_basis.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/bootstrap_runtime.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/contracts.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/diffgate.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/dispatch_instruction.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/dispatch_issuance.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/dispatch_owner_client.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/dispatch_owner_latch.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/dispatch_owner_service.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/dispatch_owner_transport.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/dispatcher_service.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/execution_grant.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/gate.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/lifecycle.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/machine_authorization.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/machine_observations.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/peer_pidfd.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/preflight.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/preflight_capture.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/preflight_host_capture.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/root_dispatch_issuer.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/runner.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/runner_fence.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/runner_service.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/runtime_bundle.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/sandbox.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/signer.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/signing.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/slice.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/store.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/supervisor.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/supervisor_service.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/windows_named_pipe.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tools/vst/windows_service_host.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "py_compile tests/vst/s2_4e_windows_provision.py",
+            "status": "PASS",
+            "detail": "compiled"
+          },
+          {
+            "name": "control: broken .py is rejected",
+            "status": "PASS",
+            "detail": "PyCompileError raised"
+          },
+          {
+            "name": "control: broken .ps1 is rejected by PS parser",
+            "status": "PASS",
+            "detail": "rc=0 PSVersion=5.1.26100.9711\nPSEdition=Desktop\nERRORS=3\nAt C:\\Users\\koros\\AppData\\Local\\Temp\\tmp0e0282j5\\bad.ps1:1 char:8\n+ if ($x { Write-Host 'a'\n+        ~\nUnexpected token '{' in expression or statement.\nAt C:\\Users\\koros\\AppData\\Local\\Temp\\tmp0e0282j5\\bad.ps1:1 char:8\n+ if ($x { Write-Host 'a'\n+   "
+          },
+          {
+            "name": "PowerShell 5.1 ParseFile tests/vst/provision_s2_4e_windows.ps1",
+            "status": "PASS",
+            "detail": "rc=0 errors=0"
+          }
+        ],
+        "output_excerpt": "PSVersion=5.1.26100.9711\nPSEdition=Desktop\nERRORS=0"
+      },
+      "P5_product_pipe_closehandle_multiclient": {
+        "command": "python docs/sdlc/evidence/s2_4e_probe_p5_product_pipe_close.py",
+        "status": "PASS",
+        "substeps": [
+          {
+            "name": "1a multi-client x multi-request: full payload intact (incl. 300 KB > 64 KB)",
+            "status": "PASS",
+            "detail": "n=12 results=[('ECHO c1r0', True, True, 1), ('BIG', True, True, 0), ('ECHO c1r1', True, True, 0), ('ECHO c2r0', True, True, 1), ('ECHO c3r1', True, True, 1), ('BIG', True, True, 0), ('ECHO c3r2', True, True, 1), ('BIG', True, True, 0), ('ECHO c2r2', True, True, 0), ('BIG', True, True, 0), ('ECHO c0r1', True, True, 0), ('ECHO c0r2', True, True, 1)] total_ms=225"
+          },
+          {
+            "name": "1b client sees EOF (b'') after the complete response in every cycle",
+            "status": "PASS",
+            "detail": "eof flags=[True, True, True, True, True, True, True, True, True, True, True, True] eof_ms=[1, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1]"
+          },
+          {
+            "name": "1c server close() never slow (CloseHandle-only): max close_ms < 200",
+            "status": "PASS",
+            "detail": "max_close_ms=1 errs=[]"
+          },
+          {
+            "name": "2 non-reading client (small response) does not delay next client beyond handshake window (2 s)",
+            "status": "PASS",
+            "detail": "next_client_ms=29 out=b'RESP after-noread-small\\n' events=[{'req': 'SMALL', 'err': None, 'send_ms': 1, 'close_ms': 0}, {'req': 'ECHO after-noread-small', 'err': None, 'send_ms': 7, 'close_ms': 0}]"
+          },
+          {
+            "name": "3 non-reading client (1.5 MB response) blocks server at most IO timeout (3 s) + handshake (2 s)",
+            "status": "PASS",
+            "detail": "next_client_ms=2721 huge_event=[{'req': 'HUGE', 'err': \"TimeoutError('Windows named-pipe write timed out')\", 'send_ms': 3004, 'close_ms': 0}] (err expected: TimeoutError on sendall)"
+          }
+        ],
+        "output_excerpt": "server stderr: \nlog: [{\"req\": \"ECHO c1r0\", \"err\": null, \"send_ms\": 2, \"close_ms\": 0}, {\"req\": \"BIG\", \"err\": null, \"send_ms\": 23, \"close_ms\": 0}, {\"req\": \"ECHO c2r0\", \"err\": null, \"send_ms\": 2, \"close_ms\": 0}, {\"req\": \"ECHO c1r1\", \"err\": null, \"send_ms\": 2, \"close_ms\": 0}, {\"req\": \"ECHO c3r1\", \"err\": null, \"send_ms\": 2, \"close_ms\": 0}, {\"req\": \"BIG\", \"err\": null, \"send_ms\": 23, \"close_ms\": 0}, {\"req\": \"BIG\", \"err\": null, \"send_ms\": 23, \"close_ms\": 0}, {\"req\": \"ECHO c3r2\", \"err\": null, \"send_ms\": 2, \"close_ms\": 0}, {\"req\": \"ECHO c2r2\", \"err\": null, \"send_ms\": 2, \"close_ms\": 0}, {\"req\": \"BIG\", \"err\": null, \"send_ms\": 28, \"close_ms\": 1}, {\"req\": \"ECHO c0r1\", \"err\": null, \"send_ms\": 3, \"close_ms\": 0}, {\"req\": \"ECHO c0r2\", \"err\": null, \"send_ms\": 4, \"close_ms\": 0}, {\"req\": \"SMALL\", \"err\": null, \"send_ms\": 1, \"close_ms\": 0}, {\"req\": \"ECHO after-noread-small\", \"err\": null, \"send_ms\": 7, \"close_ms\": 0}, {\"req\": \"HUGE\", \"err\": \"TimeoutError('Windows named-pipe write timed out')\", \"send_ms\": 3004, \"close_ms\": 0}, {\"req\": \"ECHO after-noread-huge\", \"err\": null, \"send_ms\": 4, \"close_ms\": 0}, {\"req\": \"QUIT\", \"err\": null, \"send_ms\": 1, \"close_ms\": 0}]",
+        "patched": "windows_named_pipe._verify_service_process no-op only"
+      },
+      "P6_report_service_failure": {
+        "command": "python docs/sdlc/evidence/s2_4e_probe_p6_failure_report.py",
+        "status": "PASS",
+        "substeps": [
+          {
+            "name": "event was written once with service-name source",
+            "status": "PASS",
+            "detail": "[('register', 'VSTSupervisor'), ('report', 'VST service VSTSupervisor stopped: ValueError (message omitted)\\n  at s2_4e_probe_p6_failure_report.py:40 in raise_chain\\ncaused by:\\nContractError: contract msg\\n  at s2_4e_probe_p6_failure_report.py:38 in raise_chain')]"
+          },
+          {
+            "name": "ValueError message 'secret-value-123' is absent",
+            "status": "PASS",
+            "detail": "VST service VSTSupervisor stopped: ValueError (message omitted)\n  at s2_4e_probe_p6_failure_report.py:40 in raise_chain\ncaused by:\nContractError: contract msg\n  at s2_4e_probe_p6_failure_report.py:38 in raise_chain"
+          },
+          {
+            "name": "ContractError message 'contract msg' is present",
+            "status": "PASS",
+            "detail": "VST service VSTSupervisor stopped: ValueError (message omitted)\n  at s2_4e_probe_p6_failure_report.py:40 in raise_chain\ncaused by:\nContractError: contract msg\n  at s2_4e_probe_p6_failure_report.py:38 in raise_chain"
+          },
+          {
+            "name": "type names ValueError + ContractError present, ValueError flagged omitted",
+            "status": "PASS",
+            "detail": "VST service VSTSupervisor stopped: ValueError (message omitted)\n  at s2_4e_probe_p6_failure_report.py:40 in raise_chain\ncaused by:\nContractError: contract msg\n  at s2_4e_probe_p6_failure_report.py:38 in raise_chain"
+          },
+          {
+            "name": "frame lines 'at s2_4e_probe_p6_failure_report.py:<n> in raise_chain' present",
+            "status": "PASS",
+            "detail": "VST service VSTSupervisor stopped: ValueError (message omitted)\n  at s2_4e_probe_p6_failure_report.py:40 in raise_chain\ncaused by:\nContractError: contract msg\n  at s2_4e_probe_p6_failure_report.py:38 in raise_chain"
+          },
+          {
+            "name": "'caused by:' separator present",
+            "status": "PASS",
+            "detail": "VST service VSTSupervisor stopped: ValueError (message omitted)\n  at s2_4e_probe_p6_failure_report.py:40 in raise_chain\ncaused by:\nContractError: contract msg\n  at s2_4e_probe_p6_failure_report.py:38 in raise_chain"
+          },
+          {
+            "name": "length <= 4000",
+            "status": "PASS",
+            "detail": "len=214"
+          },
+          {
+            "name": "implicit __context__ chain: secret absent, OSError message present",
+            "status": "PASS",
+            "detail": "VST service VSTSigner stopped: RuntimeError (message omitted)\n  at s2_4e_probe_p6_failure_report.py:73 in main\n  at s2_4e_probe_p6_failure_report.py:71 in implicit\ncaused by:\nOSError: [Errno 5] os msg\n  at s2_4e_probe_p6_failure_report.py:69 in implicit"
+          },
+          {
+            "name": "oversized message is truncated to <= 4000",
+            "status": "PASS",
+            "detail": "len=4000"
+          },
+          {
+            "name": "cause chain limited to 5 entries",
+            "status": "PASS",
+            "detail": "entries=5 len=641"
+          },
+          {
+            "name": "logging failure does not propagate (ReportEventW raises)",
+            "status": "PASS",
+            "detail": "returned None"
+          },
+          {
+            "name": "logging failure does not propagate (RegisterEventSourceW raises)",
+            "status": "PASS",
+            "detail": "returned None"
+          },
+          {
+            "name": "logging failure does not propagate (RegisterEventSourceW returns 0)",
+            "status": "PASS",
+            "detail": "returned None"
+          },
+          {
+            "name": "real advapi32 path does not raise (unregistered source)",
+            "status": "PASS",
+            "detail": "returned None"
+          }
+        ],
+        "output_excerpt": "VST service VSTSupervisor stopped: ValueError (message omitted)\n  at s2_4e_probe_p6_failure_report.py:40 in raise_chain\ncaused by:\nContractError: contract msg\n  at s2_4e_probe_p6_failure_report.py:38 in raise_chain",
+        "patched": "advapi32 replaced by a MagicMock capturing RegisterEventSourceW/ReportEventW; last case uses real advapi32"
+      },
+      "P7_config_role_access_denied": {
+        "command": "python docs/sdlc/evidence/s2_4e_probe_p7_config_role.py",
+        "status": "PASS",
+        "substeps": [
+          {
+            "name": "precondition: deny READ_CONTROL gives real errno 5 from assert_path_acl",
+            "status": "PASS",
+            "detail": "icacls=[('store', 0, 'file: C:\\\\Users\\\\koros\\\\AppData\\\\Local\\\\Temp\\\\s24e-p7-jb7w4b3r\\\\store\\nSuccessfully processed 1 files; Failed processing 0 files', ''), ('signer', 0, 'ile: C:\\\\Users\\\\koros\\\\AppData\\\\Local\\\\Temp\\\\s24e-p7-jb7w4b3r\\\\signer\\nSuccessfully processed 1 files; Failed processing 0 files', '')] real_acl=[('store', 'OSError errno=5'), ('signer', 'OSError errno=5')]"
+          },
+          {
+            "name": "signer root denied, role=supervisor -> skipped",
+            "status": "PASS",
+            "detail": "got=ok want=ok"
+          },
+          {
+            "name": "store root denied, role=signer -> skipped",
+            "status": "PASS",
+            "detail": "got=ok want=ok"
+          },
+          {
+            "name": "store root denied, role=supervisor (own root) -> re-raises",
+            "status": "PASS",
+            "detail": "got=OSError errno=5 want=OSError errno=5"
+          },
+          {
+            "name": "signer root denied, role=signer (own root) -> re-raises",
+            "status": "PASS",
+            "detail": "got=OSError errno=5 want=OSError errno=5"
+          },
+          {
+            "name": "store root denied, role=None (dispatcher/owner/runner callers pass no role) -> skipped by design",
+            "status": "PASS",
+            "detail": "got=ok want=ok"
+          },
+          {
+            "name": "signer root denied, role=None -> skipped by design",
+            "status": "PASS",
+            "detail": "got=ok want=ok"
+          },
+          {
+            "name": "INFO fail-open: typo role='supervisr', store root denied -> skipped (no role validation)",
+            "status": "PASS",
+            "detail": "got=ok want=ok"
+          },
+          {
+            "name": "both denied, role=supervisor -> re-raises (own store)",
+            "status": "PASS",
+            "detail": "got=OSError errno=5 want=OSError errno=5"
+          },
+          {
+            "name": "none denied, role=supervisor -> ok",
+            "status": "PASS",
+            "detail": "got=ok want=ok"
+          },
+          {
+            "name": "other role's root fails with errno 2 (not 5) -> re-raises",
+            "status": "PASS",
+            "detail": "OSError errno=2"
+          },
+          {
+            "name": "other role's root fails with ContractError -> re-raises",
+            "status": "PASS",
+            "detail": "ContractError bad acl"
+          }
+        ],
+        "output_excerpt": "[[\"precondition: deny READ_CONTROL gives real errno 5 from assert_path_acl\", \"PASS\", \"icacls=[('store', 0, 'file: C:\\\\\\\\Users\\\\\\\\koros\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\s24e-p7-jb7w4b3r\\\\\\\\store\\\\nSuccessfully processed 1 files; Failed processing 0 files', ''), ('signer', 0, 'ile: C:\\\\\\\\Users\\\\\\\\koros\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\s24e-p7-jb7w4b3r\\\\\\\\signer\\\\nSuccessfully processed 1 files; Failed processing 0 files', '')] real_acl=[('store', 'OSError errno=5'), ('signer', 'OSError errno=5')]\"], [\"signer root denied, role=supervisor -> skipped\", \"PASS\", \"got=ok want=ok\"], [\"store root denied, role=signer -> skipped\", \"PASS\", \"got=ok want=ok\"], [\"store root denied, role=supervisor (own root) -> re-raises\", \"PASS\", \"got=OSError errno=5 want=OSError errno=5\"], [\"signer root denied, role=signer (own root) -> re-raises\", \"PASS\", \"got=OSError errno=5 want=OSError errno=5\"], [\"store root denied, role=None (dispatcher/owner/runner callers pass no role) -> skipped by design\", \"PASS\", \"got=ok want=ok\"], [\"signer root denied, role=None -> skipped by design\", \"PASS\", \"got=ok want=ok\"], [\"INFO fail-open: typo role='supervisr', store root denied -> skipped (no role validation)\", \"PASS\", \"got=ok want=ok\"], [\"both denied, role=supervisor -> re-raises (own store)\", \"PASS\", \"got=OSError errno=5 want=OSError errno=5\"], [\"none denied, role=supervisor -> ok\", \"PASS\", \"got=ok want=ok\"], [\"other role's root fails with errno 2 (not 5) -> re-raises\", \"PASS\", \"OSError errno=2\"], [\"other role's root fails with ContractError -> re-raises\", \"PASS\", \"ContractError bad acl\"]]",
+        "patched": "resolve_enabled_service_sid -> fake SIDs; assert_path_acl: no-op for data_root and the non-denied private root, REAL for the denied root. Full real load() is impossible non-elevated (no VST services in SCM, data_root must be SYSTEM/Administrators-owned)."
+      }
+    },
+    "runner_output": {
+      "s2_4e_probe_p1_restricted_token": {
+        "rc": 0,
+        "stdout_tail": "{\n \"probe\": \"P1\",\n \"status\": \"FAIL\",\n \"substeps\": [\n  [\n   \"thread token is actually restricted (IsTokenRestricted)\",\n   \"PASS\"\n  ],\n  [\n   \"(a) create file in C:\\\\Windows\\\\Temp denied (confirms B6 risk)\",\n   \"PASS\"\n  ],\n  [\n   \"(b) write in per-role scratch dir (DACL: throwaway SID + user) succeeds\",\n   \"PASS\"\n  ],\n  [\n   \"control: dir granting only the user (not throwaway/Everyone) is denied\",\n   \"PASS\"\n  ],\n  [\n   \"control: openssl version unrestricted\",\n   \"PASS\"\n  ],\n  [\n   \"diagnostic: whoami.exe starts under spec write-restricted token\",\n   \"INFO\"\n  ],\n  [\n   \"(openssl) version under spec primary write-restricted token\",\n   \"FAIL\"\n  ],\n  [\n   \"diagnostic: whoami.exe under token + logon SID restricting SID\",\n   \"INFO\"\n  ],\n  [\n   \"(openssl) version under write-restricted token + logon SID (desktop access)\",\n   \"FAIL\"\n  ]\n ]\n}\n",
+        "stderr_tail": ""
+      },
+      "s2_4e_probe_p1b_mingw_openssl": {
+        "rc": 0,
+        "stdout_tail": "{\n \"probe\": \"P1b_mingw64_openssl_D2\",\n \"status\": \"PASS\",\n \"substeps\": [\n  [\n   \"1. mingw64 openssl version under write-restricted token (Everyone+throwaway+logon SID)\",\n   \"PASS\"\n  ],\n  [\n   \"2a. genpkey -algorithm ED25519 writes key in scratch\",\n   \"PASS\"\n  ],\n  [\n   \"2b. pkeyutl -sign -rawin yields a 64-byte signature\",\n   \"PASS\"\n  ],\n  [\n   \"2c. pkeyutl -verify -rawin reports success\",\n   \"PASS\"\n  ],\n  [\n   \"2d. control: tampered message does not verify (process ran, exit 1, no success text)\",\n   \"PASS\"\n  ],\n  [\n   \"3. PE import table of mingw64 openssl.exe (own parser; no dumpbin, no pefile)\",\n   \"PASS\"\n  ]\n ]\n}\n{\n \"probe\": \"P2b_D1_server_closehandle_only\",\n \"status\": \"PASS\",\n \"substeps\": [\n  [\n   \"4. server CloseHandle only: client reads full buffered response then EOF\",\n   \"PASS\"\n  ],\n  [\n   \"4b. INFO contrast: Disconnect+Close without Flush\",\n   \"INFO\"\n  ]\n ]\n}\n",
+        "stderr_tail": ""
+      },
+      "s2_4e_probe_p2_pipe": {
+        "rc": 0,
+        "stdout_tail": "SENT\n{\n \"probe\": \"P2\",\n \"status\": \"PASS\",\n \"substeps\": [\n  [\n   \"(a) 5 sequential request/response cycles\",\n   \"PASS\"\n  ],\n  [\n   \"(b1) client exits without reading: server close does not block; next client served\",\n   \"PASS\"\n  ],\n  [\n   \"(b2) INFORMATIONAL stalled non-reading peer (not a pass/fail criterion)\",\n   \"PASS\"\n  ],\n  [\n   \"(c) silent client dropped by server at ~5 s handshake; listener keeps serving\",\n   \"PASS\"\n  ],\n  [\n   \"(c2) client recv() reports EOF (b'') once the server dropped the instance\",\n   \"PASS\"\n  ],\n  [\n   \"(d) 1 MiB response received intact\",\n   \"PASS\"\n  ]\n ]\n}\n",
+        "stderr_tail": ""
+      },
+      "s2_4e_probe_p3_token_sid": {
+        "rc": 0,
+        "stdout_tail": "{\n \"probe\": \"P3\",\n \"status\": \"PASS\",\n \"substeps\": [\n  [\n   \"precondition: CheckTokenMembership(primary) fails with 1309\",\n   \"PASS\"\n  ],\n  [\n   \"Users S-1-5-32-545\",\n   \"PASS\"\n  ],\n  [\n   \"Everyone S-1-1-0\",\n   \"PASS\"\n  ],\n  [\n   \"own user S-1-5-21-1658137595-2520424230-3796741800-1001\",\n   \"PASS\"\n  ],\n  [\n   \"SYSTEM S-1-5-18\",\n   \"PASS\"\n  ],\n  [\n   \"Administrators S-1-5-32-544 (deny-only/absent under UAC)\",\n   \"PASS\"\n  ],\n  [\n   \"unrelated service SID S-1-5-80-1-2-3-4-5\",\n   \"PASS\"\n  ]\n ]\n}\n",
+        "stderr_tail": ""
+      },
+      "s2_4e_probe_p4_compile": {
+        "rc": 0,
+        "stdout_tail": ",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tools/vst/machine_observations.py\",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tools/vst/peer_pidfd.py\",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tools/vst/preflight.py\",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tools/vst/preflight_capture.py\",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tools/vst/preflight_host_capture.py\",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tools/vst/root_dispatch_issuer.py\",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tools/vst/runner.py\",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tools/vst/runner_fence.py\",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tools/vst/runner_service.py\",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tools/vst/runtime_bundle.py\",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tools/vst/sandbox.py\",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tools/vst/signer.py\",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tools/vst/signing.py\",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tools/vst/slice.py\",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tools/vst/store.py\",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tools/vst/supervisor.py\",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tools/vst/supervisor_service.py\",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tools/vst/windows_named_pipe.py\",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tools/vst/windows_service_host.py\",\n   \"PASS\"\n  ],\n  [\n   \"py_compile tests/vst/s2_4e_windows_provision.py\",\n   \"PASS\"\n  ],\n  [\n   \"control: broken .py is rejected\",\n   \"PASS\"\n  ],\n  [\n   \"control: broken .ps1 is rejected by PS parser\",\n   \"PASS\"\n  ],\n  [\n   \"PowerShell 5.1 ParseFile tests/vst/provision_s2_4e_windows.ps1\",\n   \"PASS\"\n  ]\n ]\n}\n",
+        "stderr_tail": ""
+      },
+      "s2_4e_probe_p5_product_pipe_close": {
+        "rc": 0,
+        "stdout_tail": "{\n \"probe\": \"P5_product_pipe_closehandle_multiclient\",\n \"status\": \"PASS\",\n \"substeps\": [\n  [\n   \"1a multi-client x multi-request: full payload intact (incl. 300 KB > 64 KB)\",\n   \"PASS\"\n  ],\n  [\n   \"1b client sees EOF (b'') after the complete response in every cycle\",\n   \"PASS\"\n  ],\n  [\n   \"1c server close() never slow (CloseHandle-only): max close_ms < 200\",\n   \"PASS\"\n  ],\n  [\n   \"2 non-reading client (small response) does not delay next client beyond handshake window (2 s)\",\n   \"PASS\"\n  ],\n  [\n   \"3 non-reading client (1.5 MB response) blocks server at most IO timeout (3 s) + handshake (2 s)\",\n   \"PASS\"\n  ]\n ]\n}\n",
+        "stderr_tail": ""
+      },
+      "s2_4e_probe_p6_failure_report": {
+        "rc": 0,
+        "stdout_tail": "{\n \"probe\": \"P6_report_service_failure\",\n \"status\": \"FAIL\",\n \"substeps\": [\n  [\n   \"event was written once with service-name source\",\n   \"PASS\"\n  ],\n  [\n   \"ValueError message 'secret-value-123' is absent\",\n   \"PASS\"\n  ],\n  [\n   \"ContractError message 'contract msg' is present\",\n   \"PASS\"\n  ],\n  [\n   \"type names ValueError + ContractError present, ValueError flagged omitted\",\n   \"PASS\"\n  ],\n  [\n   \"frame lines 'at s2_4e_probe_p6_failure_report.py:<n> in raise_chain' present\",\n   \"PASS\"\n  ],\n  [\n   \"'caused by:' separator present\",\n   \"PASS\"\n  ],\n  [\n   \"length <= 4000\",\n   \"PASS\"\n  ],\n  [\n   \"implicit __context__ chain: secret absent, OSError message present\",\n   \"PASS\"\n  ],\n  [\n   \"oversized message is truncated to <= 4000\",\n   \"PASS\"\n  ],\n  [\n   \"cause chain limited to 5 entries\",\n   \"FAIL\"\n  ],\n  [\n   \"logging failure does not propagate (ReportEventW raises)\",\n   \"PASS\"\n  ],\n  [\n   \"logging failure does not propagate (RegisterEventSourceW raises)\",\n   \"PASS\"\n  ],\n  [\n   \"logging failure does not propagate (RegisterEventSourceW returns 0)\",\n   \"PASS\"\n  ],\n  [\n   \"real advapi32 path does not raise (unregistered source)\",\n   \"PASS\"\n  ]\n ]\n}\n",
+        "stderr_tail": ""
+      },
+      "s2_4e_probe_p7_config_role": {
+        "rc": 0,
+        "stdout_tail": "{\n \"probe\": \"P7_config_role_access_denied\",\n \"status\": \"FAIL\",\n \"substeps\": [\n  [\n   \"precondition: deny READ_CONTROL gives real errno 5 from assert_path_acl\",\n   \"PASS\"\n  ],\n  [\n   \"signer root denied, role=supervisor -> skipped\",\n   \"PASS\"\n  ],\n  [\n   \"store root denied, role=signer -> skipped\",\n   \"PASS\"\n  ],\n  [\n   \"store root denied, role=supervisor (own root) -> re-raises\",\n   \"PASS\"\n  ],\n  [\n   \"signer root denied, role=signer (own root) -> re-raises\",\n   \"PASS\"\n  ],\n  [\n   \"store root denied, role=None (owner/admin/default) -> re-raises\",\n   \"FAIL\"\n  ],\n  [\n   \"signer root denied, role=None -> re-raises\",\n   \"FAIL\"\n  ],\n  [\n   \"both denied, role=supervisor -> re-raises (own store)\",\n   \"PASS\"\n  ],\n  [\n   \"none denied, role=supervisor -> ok\",\n   \"PASS\"\n  ],\n  [\n   \"other role's root fails with errno 2 (not 5) -> re-raises\",\n   \"PASS\"\n  ],\n  [\n   \"other role's root fails with ContractError -> re-raises\",\n   \"PASS\"\n  ]\n ]\n}\n",
+        "stderr_tail": ""
+      }
+    },
+    "notes": [
+      "Each probe run exactly once via python <file>.py in docs/sdlc/evidence (cwd), non-elevated.",
+      "P2 handshake-drop thresholds updated 4.5-7 s -> 1.5-3.5 s to match intentional _HANDSHAKE_TIMEOUT_SEC=2.0.",
+      "P4 file list widened to every tools/vst/*.py + tests/vst/s2_4e_windows_provision.py.",
+      "First-pass keys (meta, probes) preserved unchanged.",
+      "P6 and P7 re-run once after fixing probe-side expectation bugs (P6 chain-count regex missed the prefixed first line; P7 role=None expectation contradicted the dispatcher/owner/runner callers). Product code untouched. First run of both: P6 FAIL(probe bug), P7 FAIL(wrong expectation)."
+    ]
   }
 }

@@ -8,9 +8,8 @@ from pathlib import Path
 
 from s2_4e_probe_common import REPO, record, sub, overall
 
-FILES = ["tools/vst/windows_named_pipe.py", "tools/vst/windows_service_host.py",
-         "tools/vst/dispatcher_service.py", "tools/vst/execution_grant.py",
-         "tests/vst/s2_4e_windows_provision.py"]
+FILES = sorted(str(f.relative_to(REPO)).replace("\\", "/") for f in (REPO / "tools" / "vst").glob("*.py")) + [
+    "tests/vst/s2_4e_windows_provision.py"]
 PS = "tests/vst/provision_s2_4e_windows.ps1"
 POWERSHELL = r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
 SCRIPT = ("$e=$null;$t=$null;[void][System.Management.Automation.Language.Parser]::ParseFile('{p}',[ref]$t,[ref]$e);"

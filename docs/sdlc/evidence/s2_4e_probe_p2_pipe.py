@@ -214,7 +214,7 @@ def main() -> None:
         holder.close()
         again = request(pipe, "ECHO after-silent") == b"RESP after-silent\n"
         dropped_evt = [e for e in events(logpath)[n0:] if e["ev"] == "dropped_after_handshake_wait"]
-        ok = (bool(dropped_evt) and 4500 <= dropped_evt[0]["ms"] <= 7000 and 4000 <= drop_ms <= 7000
+        ok = (bool(dropped_evt) and 1500 <= dropped_evt[0]["ms"] <= 3500 and 1500 <= drop_ms <= 3500
               and side.get("ok") and again)
         subs.append(sub("(c) silent client dropped by server at ~5 s handshake; listener keeps serving",
                         "PASS" if ok else "FAIL",

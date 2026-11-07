@@ -1641,3 +1641,7 @@ The rebinding adds batch 2 (named-pipe lifecycle, pre-SCM failure reporting, Dis
 ## 2026-11-07 — S2-4E manifest base_head 326e1489e9913b8ab75ca57860e2f2e263e993f1 -> fdb7fb603198f2db2d11caab68242c03952e113c
 
 The rebinding adds the second-pass fixes (pipe close, token checks, sanitized event log, native OpenSSL, Modify-only temp dirs).
+
+## 2026-11-07 — Event-log text records OSError codes only; load() rejects unknown roles
+
+`_report_service_failure` records OSError as errno/winerror without its text, and formats each chained exception independently. `WindowsRuntimeConfig.load(role=...)` raises ContractError for a role outside the six service roles. Evidence: second-pass probes (`second_pass_a55fee0`) and the code-reviewer report (no BLOCKER/MAJOR).

@@ -139,6 +139,8 @@ class WindowsRuntimeConfig:
             )
             for role, service_name in _SERVICE_NAMES.items()
         }
+        if role is not None and role not in _SERVICE_NAMES:
+            raise ContractError("unknown Windows VST service role")
         system_sid, administrators_sid = "S-1-5-18", "S-1-5-32-544"
         all_service_sids = {item.service_sid for item in identities.values()}
         if roots is None:
@@ -558,9 +560,11 @@ def _report_service_failure(advapi: Any, service_name: str, exc: BaseException) 
     """Record a start/run failure in the Windows Application event log (best effort).
 
     The Application log is readable by local users, so only exception type names,
-    code locations, and the messages of ContractError/OSError (fixed, value-free
-    strings in this codebase) are recorded. Other exception messages can embed
-    runtime values and are omitted. A logging failure must not mask the stop status.
+    code locations, ContractError messages (fixed, value-free strings in this
+    codebase) and OSError errno/winerror codes are recorded. Other messages, and
+    OSError text (it carries file paths), are omitted. Each entry is formatted
+    independently so one unprintable exception cannot drop the whole event. A
+    logging failure must not mask the stop status.
     """
     try:
         import traceback
@@ -570,14 +574,22 @@ def _report_service_failure(advapi: Any, service_name: str, exc: BaseException) 
         seen = 0
         while current is not None and seen < 5:
             seen += 1
-            if isinstance(current, (ContractError, OSError)):
-                lines.append("%s: %s" % (type(current).__name__, current))
-            else:
-                lines.append("%s (message omitted)" % type(current).__name__)
-            for frame in traceback.extract_tb(current.__traceback__)[-8:]:
-                lines.append("  at %s:%s in %s" % (
-                    os.path.basename(frame.filename), frame.lineno, frame.name,
-                ))
+            try:
+                if isinstance(current, ContractError):
+                    lines.append("%s: %s" % (type(current).__name__, current))
+                elif isinstance(current, OSError):
+                    lines.append("%s: errno=%s winerror=%s" % (
+                        type(current).__name__, current.errno,
+                        getattr(current, "winerror", None),
+                    ))
+                else:
+                    lines.append("%s (message omitted)" % type(current).__name__)
+                for frame in traceback.extract_tb(current.__traceback__)[-8:]:
+                    lines.append("  at %s:%s in %s" % (
+                        os.path.basename(frame.filename), frame.lineno, frame.name,
+                    ))
+            except Exception:
+                lines.append("<unprintable %s>" % type(current).__name__)
             current = current.__cause__ or current.__context__
             if current is not None:
                 lines.append("caused by:")

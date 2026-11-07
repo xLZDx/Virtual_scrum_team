@@ -1388,3 +1388,18 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — S2-4E manifest rebound to fdb7fb603198f2db2d11caab68242c03952e113c (second-pass fixes)
 
 - Kind: NEUTRAL. The protected app snapshot is built from base_head, so every tools/vst change needs this rebind.
+
+## 2026-11-07 — Second-pass agent results applied (event-log robustness, role validation)
+
+- Kind: SHORTCOMING (found by code-reviewer and functional-test-reviewer at a55fee0).
+- Facts:
+  - Probes at a55fee0 are recorded in s2-4e-probes-20261107.json under `second_pass_a55fee0`. P2, P2b, P3, P4, P5, P6 and P7 pass. P1 fails as known: the MSYS openssl dies under the restricted token, which the switch to mingw64 OpenSSL sidesteps.
+  - code-reviewer found no BLOCKER or MAJOR.
+  - Fixed MINORs:
+    - one unprintable exception dropped the whole event-log entry;
+    - OSError text (file paths) reached the Application log;
+    - an unknown `role` value silently skipped access-denied on both private roots.
+- Root cause: the sanitizer had a single try block and trusted str(OSError); `role` was not validated.
+- Rule: validate every role/selector argument at the boundary, and format each log component independently.
+- Accepted (not fixed): a same-trust peer that never reads a response larger than 64 KB stalls the single-threaded accept loop for at most the I/O timeout (P5: 3004 ms).
+- Must be checked by the elevated E2E: per-role temp dirs granted Modify (code-reviewer MINOR 3).
