@@ -1465,3 +1465,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — S2-4E manifest rebound to e97eea29e6248f1454c064a6b1b66d533d37e191 (Owner pipe fallback, bounded event-log text)
 
 - Kind: SUCCESS. Probes pipe_id_e97eea2 passed: forced-denied token with session 4 is accepted; error 1346 and session 0 are rejected; event text is bounded; the handler is attached to the tools.vst and vst loggers only.
+
+## 2026-11-07 — GPT-PM approved the pipe identification change (round 3)
+
+- Kind: NEUTRAL. The approval is static only; the elevated run is the real test.
