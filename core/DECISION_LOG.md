@@ -1723,3 +1723,7 @@ Supervisor RPC timeouts in Runner and Owner are 30 s, OpenSSL timeout 20 s, Owne
 ## 2026-11-07 — S2-4E manifest base_head c4eb827908d5e3d4ad464c9035f7c444ce6335a1 -> 3536cbfe323cbe85555ad2c318e46c41e37eafce
 
 The rebinding adds the reliability hardening.
+
+## 2026-11-07 — Elevated helper: integrity-checked protected copy and ACL-protected queue
+
+Closes GPT-PM round-4 BLOCKER-01 (mutable provisioner run elevated) and BLOCKER-02 (unprotected request queue). The helper copies the provisioner into C:\ProgramData\VST-admin\bin (administrators and SYSTEM only), requires a matching SHA-256 passed by the operator, and re-verifies it before each run. The queue C:\ProgramData\VST-admin\queue is protected, with SYSTEM, Administrators and the operator's user only. The ACL, the owner and each request's owner, name and size are checked per request. The Store-thread fix was accepted in the same review.

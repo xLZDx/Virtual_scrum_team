@@ -1515,3 +1515,16 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — S2-4E manifest rebound to 3536cbfe323cbe85555ad2c318e46c41e37eafce (reliability hardening)
 
 - Kind: NEUTRAL.
+
+## 2026-11-07 — GPT-PM round 4: the elevated helper was a privilege-escalation path
+
+- Kind: FAILURE (found by GPT-PM round 4, request 5017157e-c9f0-4cc7-a5c0-63ad7a90c02f: 2 BLOCKER on the new helper; the Store-thread fix was accepted).
+- Facts:
+  - The elevated helper ran the provisioner straight from the writable repository, so any process that could edit that file could run code elevated.
+  - The request queue had no ACL, so any local principal able to write there could trigger elevated cleanup or reinstall.
+- Root cause: the helper was designed for convenience; the trust boundary of an elevated process that consumes unprivileged inputs was not threat-modelled. No internal reviewer was asked to review it before it was sent to GPT.
+- Fix:
+  - The provisioner is copied to a protected administrator-only folder, and its SHA-256 must match a value the operator passes on the command line. It is re-verified before every run.
+  - The queue is a protected folder admitting only SYSTEM, Administrators and the operator's own user. The ACL, the owner and every request file's owner and name are verified for every request.
+  - Residual: a process running as the same user can submit the four fixed actions; this is accepted and documented.
+- Rule: threat-model any elevated component for unprivileged inputs, both code and data, and run an internal security review on it before any external gate.
