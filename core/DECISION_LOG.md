@@ -1594,3 +1594,7 @@ The run_scm_service start-up exception path now reports to the Windows Applicati
 ## 2026-11-07 — Named-pipe client timeout bounds
 
 The connect wait stays capped at 30 s. The client I/O timeout may reach 3600 s so that dispatch can wait for task completion (MAX_DISPATCH_TIMEOUT_SEC=1900).
+
+## 2026-11-07 — S2-4E manifest base_head rebinding (7adb183 -> 34fbace)
+
+Reason: the protected snapshot must contain the product fixes 22f1f1e, 7c0e012 and 34fbace to the Windows service host and the named-pipe client. Without them no Windows service can start. The delta from 7adb183 is: tools/vst/windows_service_host.py and tools/vst/windows_named_pipe.py; the tests/vst S2-4E provisioning files; core logs; and docs/sdlc evidence. The operator authorized manifest changes for S2-4E. The accepted S2-4D/S2-5 dispositions at 96a8da7 are unchanged.

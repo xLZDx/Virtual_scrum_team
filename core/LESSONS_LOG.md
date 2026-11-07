@@ -1313,3 +1313,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Layer that missed it: the author and the mocked tests. Caught by real composition.
 - Rule: give the connect wait and the I/O deadline separate bounds.
 - Fix status: the connect wait is capped at 30 s and the I/O timeout allows up to 3600 s. A non-elevated check accepts 1900 and rejects 3601.
+
+## 2026-11-07 — S2-4E manifest rebound to the product-fix commit
+
+- Kind: NEUTRAL.
+- Facts: base_head moved from 7adb183 to 34fbace, which contains the three Windows product fixes (owner/DACL request, start-up failure event log, pipe timeout bounds). The manifest is the only file that referenced the old base_head.
+- Rule: rebind only for a concrete product delta, and record which delta.
