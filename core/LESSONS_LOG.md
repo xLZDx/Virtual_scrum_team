@@ -1610,3 +1610,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Facts: after the intent-schema fix (fd5178e) and the receipt-assertion fix (57c22d3) the real Windows E2E passed: LAST_TASK_RESULT=0, one test OK in about 8 s, no VST_EVENT inside the run window. Evidence: docs/sdlc/evidence/s2-4e-e2e-run-20261107-4.out.
 - Why it worked: each failed elevated run was diagnosed from the sanitized event log and fixed at its root; four runs, four distinct real defects, none a flake.
 - Limit: the three earlier hypotheses (grant key ACL, git under Runner token, TemporaryDirectory) were exercised by a passing receipt, not asserted individually.
+
+## 2026-11-07 — GPT-PM round 7 APPROVE for S2-4E
+
+- Kind: SUCCESS, with one SHORTCOMING of mine: round 6 was sent with --include-path tests only, so the reviewer saw no production code and returned REVIEW INCOMPLETE; I resent as round 7 with tools, tests, evidence and manifest included.
+- Facts: round 7 request 3338d1ba-cdb0-4fcf-a105-e96fb9cd2cf5, delta 34e934d..8fa7399, APPROVE, 0 BLOCKER / 0 MAJOR.
+- Rule: check that --include-path covers every changed top-level directory of the delta (git diff --stat) before sending a final review.

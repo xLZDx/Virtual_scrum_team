@@ -1771,3 +1771,7 @@ The third E2E run completed the full Owner-to-Runner flow (COMPLETE PASS receipt
 ## 2026-11-07 — S2-4E Windows E2E passed
 
 Run 4 (installed from 57c22d3, run id s2-4e-win-9931058239fa4cef): LAST_TASK_RESULT=0, test OK. Next: GPT-PM code review of the delta since the last approval, then push and PR only after APPROVE and the operator go.
+
+## 2026-11-07 — S2-4E status docs updated after GPT-PM round 7 APPROVE
+
+acceptance.md, backlog.md and PROJECT_PLAN.md now record S2-4E as done locally; push and the single S2 PR still need the operator go. Approval binds to head 8fa7399; these docs-only commits change no code.
