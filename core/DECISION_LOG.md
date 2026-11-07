@@ -1653,3 +1653,7 @@ The rebinding adds the event-log formatting hardening and the unknown-role rejec
 ## 2026-11-07 — S2-4E harness limits derived from the manifest timeout
 
 The scheduled E2E task limit is manifest timeout_sec + 300 s, and the E2E receipt poll is timeout_sec + 120 s; both are validated. This closes GPT-PM round-1 MAJOR-01 (request a06d2890-6b38-4504-b796-27e199bb7532, reply 7209d52d-e1fc-52e2-9159-590abec4ba43).
+
+## 2026-11-07 — S2-4E manifest base_head 64ab73736a9fe598442e867e7583664530053cde -> c2ffcda6a602c9326769d979545f09da804ed68d
+
+The rebinding adds the manifest-derived harness time limits.

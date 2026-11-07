@@ -1417,3 +1417,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Root cause: harness limits were picked as constants instead of being derived from the contract they wrap.
 - Layer: missed by the author and both internal agent passes; caught by GPT-PM.
 - Rule: derive every harness timeout from the manifest/contract value plus an explicit margin, and assert the relationship.
+
+## 2026-11-07 — S2-4E manifest rebound to c2ffcda6a602c9326769d979545f09da804ed68d (MAJOR-01 fix)
+
+- Kind: NEUTRAL. Needed because the protected app snapshot is built from base_head.
