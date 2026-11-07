@@ -1,0 +1,62 @@
+TASK_STATE=Ready
+LAST_TASK_RESULT=1
+LAST_RUN_TIME=11/07/2026 19:13:16
+--- e2e-output.log ---
+python.exe : test_signed_owner_instruction_completes_in_real_windows_worker_job 
+(__main__.S2OwnerRunnerWindowsProcessE2E.test_signed_owner_instruction_completes_in_real_windows_worker_job)
+At C:\ProgramData\VST\run-e2e.ps1:4 char:1
++ & 'C:\Python314\python.exe' -B -m tests.vst.test_s2_owner_runner_wind ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (test_signed_own...ows_worker_job):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Submit once, then poll only for its exact durable Store completion. ... FAIL
+
+======================================================================
+FAIL: test_signed_owner_instruction_completes_in_real_windows_worker_job 
+(__main__.S2OwnerRunnerWindowsProcessE2E.test_signed_owner_instruction_completes_in_real_windows_worker_job)
+Submit once, then poll only for its exact durable Store completion.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\ProgramData\VST\app\tests\vst\test_s2_owner_runner_windows_e2e.py", line 249, in 
+test_signed_owner_instruction_completes_in_real_windows_worker_job
+    self.assertIsNotNone(
+    ~~~~~~~~~~~~~~~~~~~~^
+        completed,
+        ^^^^^^^^^^
+        "Owner did not expose a durable COMPLETE receipt before the bounded deadline",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: unexpectedly None : Owner did not expose a durable COMPLETE receipt before the bounded deadline
+
+----------------------------------------------------------------------
+Ran 1 test in 1021.334s
+
+FAILED (failures=1)
+VST_EVENT 19:10:41 VSTDispatcher: VST service VSTDispatcher stopped: TimeoutError: errno=None winerror=None
+  at windows_service_host.py:732 in service_main
+  at dispatcher_service.py:90 in serve_forever
+  at dispatcher_service.py:81 in _next_dispatch_intent
+  at supervisor_service.py:516 in next_dispatch_intent
+  at supervisor_service.py:698 in call
+  at windows_named_pipe.py:610 in connect
+VST_EVENT 19:10:45 VSTSigner: VST service VSTSigner stopped: OSError: errno=None winerror=None
+  at windows_service_host.py:732 in service_main
+  at signer.py:216 in serve_forever
+  at windows_named_pipe.py:738 in accept
+VST_EVENT 19:10:47 VSTWorker: VST service VSTWorker stopped: OSError: errno=None winerror=None
+  at windows_service_host.py:732 in service_main
+  at runner_service.py:186 in serve_forever
+  at windows_named_pipe.py:738 in accept
+VST_EVENT 19:13:21 VSTDispatcher: VST service VSTDispatcher stopped: SupervisorRPCError (message omitted)
+  at windows_service_host.py:732 in service_main
+  at dispatcher_service.py:90 in serve_forever
+  at dispatcher_service.py:81 in _next_dispatch_intent
+  at supervisor_service.py:549 in next_dispatch_intent
+SERVICE VSTDispatcher Stopped
+SERVICE VSTOwner Running
+SERVICE VSTRunner Running
+SERVICE VSTSigner Running
+SERVICE VSTSupervisor Running
+SERVICE VSTWorker Running

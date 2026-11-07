@@ -535,7 +535,16 @@ class SupervisorClient:
                 "event_seq", "principal", "task_id", "slot", "attempt", "epoch", "run_id",
                 "request_id", "service_generation", "lease_id", "payload_digest", "manifest_digest",
             }
-            if (set(intent) != required
+            # The Store always stores the signed instruction and its key id with the intent;
+            # delegated-key issuance may add four optional string fields.
+            required = required | {"instruction", "key_id"}
+            optional = {"key_class", "key_fingerprint", "issuance_operation_key",
+                        "issuance_envelope_sha256"}
+            if (not required <= set(intent) or not set(intent) <= required | optional
+                    or any(not isinstance(intent[field], str) or not intent[field]
+                           for field in optional & set(intent))
+                    or not isinstance(intent["key_id"], str) or not intent["key_id"]
+                    or not isinstance(intent["instruction"], dict)
                     or type(intent["event_seq"]) is not int or intent["event_seq"] < 1
                     or any(not isinstance(intent[field], str) or not intent[field]
                            for field in ("principal", "task_id", "slot", "run_id", "service_generation"))
@@ -547,6 +556,16 @@ class SupervisorClient:
                            for field in ("payload_digest", "manifest_digest"))
                     or result["cursor_after"]["sequence"] != intent["event_seq"]):
                 raise SupervisorRPCError("Supervisor returned a malformed dispatch intent")
+            from .dispatch_instruction import validate_dispatch_instruction
+            try:
+                instruction = validate_dispatch_instruction(intent["instruction"])
+            except ContractError as exc:
+                raise SupervisorRPCError("Supervisor returned an invalid dispatch instruction") from exc
+            if (instruction["key_id"] != intent["key_id"]
+                    or any(instruction[field] != intent[field] for field in (
+                        "task_id", "slot", "attempt", "epoch", "run_id", "request_id",
+                    ))):
+                raise SupervisorRPCError("Supervisor intent differs from signed dispatch instruction")
         return result
 
     def issue_dispatch_grant(self, request_id: str) -> dict:

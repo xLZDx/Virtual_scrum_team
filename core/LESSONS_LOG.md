@@ -1574,3 +1574,14 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — S2-4E manifest rebound to 2bff3a302055c3f38e630cd7807bbb77a8340881 (public-key fingerprint)
 
 - Kind: NEUTRAL.
+
+## 2026-11-07 — Dispatcher client accepts the real dispatch intent shape
+
+- Kind: FAILURE (found by the second real E2E run; e2e-runner and the coordinator diagnosed it from the event log and the code).
+- Facts:
+  - VSTDispatcher stopped 5 s into the run with SupervisorRPCError at supervisor_service.py:549 ("malformed dispatch intent"). The client required exactly 12 intent keys, while the Store always delivers 13 or more (adds instruction, key_id, and optional delegated-key fields).
+  - Evidence: docs/sdlc/evidence/s2-4e-e2e-run-20261107-2.out, LAST_TASK_RESULT=1.
+- Root cause: the client schema was written independently of the Store payload; functional tests call the Supervisor API directly and bypass the client-side check, so no test joined the two.
+- Missed by: author, tests (no client-to-real-Supervisor-output test), reviewers.
+- Fix: the client accepts the 12 base keys plus instruction and key_id, with four optional string fields, and cross-validates the signed instruction like submit_dispatch_intent does.
+- Rule: every client-side response validator needs one test fed with the real producer output, not a hand-written dict.

@@ -1751,3 +1751,7 @@ root_dispatch_issuer.public_key_fingerprint has a Windows branch: lstat, regular
 ## 2026-11-07 — S2-4E manifest base_head 75bb0a0f6295f7730bfe89d372f210b316a47a4e -> 2bff3a302055c3f38e630cd7807bbb77a8340881
 
 The rebinding adds the Windows public-key fingerprint branch.
+
+## 2026-11-07 — Dispatcher client intent schema aligned with the Store payload
+
+SupervisorClient.next_dispatch_intent now accepts instruction and key_id (required) and the four optional delegated-key fields, and validates the signed instruction against the intent fields. Evidence: docs/sdlc/evidence/s2-4e-e2e-run-20261107-2.out (second E2E run, Dispatcher stopped on the old schema).
