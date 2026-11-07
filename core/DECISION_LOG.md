@@ -1824,3 +1824,12 @@ The _validate_response method now calls these validators for all SUCCEEDED respo
 
 **Status:** MAJOR-001 FIXED in code; needs functional-test-reviewer verification before push.
 **Remaining:** MAJOR-002 (retry failure) requires more complex refactoring; status TBD.
+
+## 2026-11-07 — S3-B audit completion: MAJOR-001 fixed, MAJOR-002 approach documented
+
+S3-B candidate audit complete. Evidence:
+- MAJOR-001: FIXED (commit eb5e653: git validation for candidate_head)
+- MAJOR-002: Approach documented (docs/sdlc/evidence/major-002-fix-approach-20261107.md); estimated ~3 hrs implementation + test
+- License mismatch: Open (NOASSERTION vs MIT in BMad Loop)
+
+**S3-B status:** PARTIAL. Waiting for operator decision on MAJOR-002 remediation scope (include in S3 or defer). MAJOR-001 fix ready for functional-test-reviewer verification.
