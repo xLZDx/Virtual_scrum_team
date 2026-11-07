@@ -1855,3 +1855,14 @@ PROJECT_PLAN updated to mark S3-B and S3-C as BLOCKED_EXTERNAL with verified cau
 - S3-C: local selectors 18/18 passed; advanced selectors blocked
 
 Next action depends on operator decision: proceed with test verification (if operator permits) or mark S3 closure pending future MAJOR-002 implementation.
+
+## 2026-11-07 — S3 sprint classification complete: 5 tasks, 1 EXTERNAL, 2 OPERATOR, 2 EXTERNAL
+
+All S3 tasks classified:
+- S3-A (VST-027): BLOCKED_EXTERNAL — awaiting functional-test-reviewer results
+- S3-B (VST-028): BLOCKED_EXTERNAL — MAJOR-001 fixed, MAJOR-002 ready, test execution prohibited
+- S3-C (VST-029): BLOCKED_EXTERNAL — advanced test selectors blocked by policy
+- S3-D (VST-030): BLOCKED_OPERATOR — sandbox choice (WSL vs Windows)
+- S3-E (VST-031): BLOCKED_OPERATOR — depends on S3-D
+
+Sprint cannot progress without: (1) operator permit to run prohibited tests, OR (2) operator decisions on S3-D/E, OR (3) test-runner completion of ongoing runs.
