@@ -1,0 +1,52 @@
+TASK_STATE=Ready
+LAST_TASK_RESULT=0
+LAST_RUN_TIME=11/07/2026 19:40:47
+--- e2e-output.log ---
+python.exe : test_signed_owner_instruction_completes_in_real_windows_worker_job 
+(__main__.S2OwnerRunnerWindowsProcessE2E.test_signed_owner_instruction_completes_in_real_windows_worker_job)
+At C:\ProgramData\VST\run-e2e.ps1:4 char:1
++ & 'C:\Python314\python.exe' -B -m tests.vst.test_s2_owner_runner_wind ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (test_signed_own...ows_worker_job):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Submit once, then poll only for its exact durable Store completion. ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 8.119s
+
+OK
+VST_EVENT 19:13:21 VSTDispatcher: VST service VSTDispatcher stopped: SupervisorRPCError (message omitted)
+  at windows_service_host.py:732 in service_main
+  at dispatcher_service.py:90 in serve_forever
+  at dispatcher_service.py:81 in _next_dispatch_intent
+  at supervisor_service.py:549 in next_dispatch_intent
+VST_EVENT 19:34:32 VSTSigner: VST service VSTSigner stopped: OSError: errno=None winerror=None
+  at windows_service_host.py:732 in service_main
+  at signer.py:216 in serve_forever
+  at windows_named_pipe.py:738 in accept
+VST_EVENT 19:34:34 VSTWorker: VST service VSTWorker stopped: OSError: errno=None winerror=None
+  at windows_service_host.py:732 in service_main
+  at runner_service.py:186 in serve_forever
+  at windows_named_pipe.py:738 in accept
+VST_EVENT 19:39:14 VSTDispatcher: VST service VSTDispatcher stopped: TimeoutError: errno=None winerror=None
+  at windows_service_host.py:732 in service_main
+  at dispatcher_service.py:90 in serve_forever
+  at dispatcher_service.py:81 in _next_dispatch_intent
+  at supervisor_service.py:516 in next_dispatch_intent
+  at supervisor_service.py:717 in call
+  at windows_named_pipe.py:610 in connect
+VST_EVENT 19:39:17 VSTSigner: VST service VSTSigner stopped: OSError: errno=None winerror=None
+  at windows_service_host.py:732 in service_main
+  at signer.py:216 in serve_forever
+  at windows_named_pipe.py:738 in accept
+VST_EVENT 19:39:19 VSTWorker: VST service VSTWorker stopped: OSError: errno=None winerror=None
+  at windows_service_host.py:732 in service_main
+  at runner_service.py:186 in serve_forever
+  at windows_named_pipe.py:738 in accept
+SERVICE VSTDispatcher Running
+SERVICE VSTOwner Running
+SERVICE VSTRunner Running
+SERVICE VSTSigner Running
+SERVICE VSTSupervisor Running
+SERVICE VSTWorker Running

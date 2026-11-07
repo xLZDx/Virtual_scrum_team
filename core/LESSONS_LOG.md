@@ -1603,3 +1603,10 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Root cause: the assertion was written against the in-memory per-command report, not the signed receipt schema. Missed by author and reviewers; never runnable before this run.
 - Fix: assert the exact receipt command keys instead; containment stays enforced by the Worker.
 - Rule: assert only fields of the contract the test reads, checked against the validator.
+
+## 2026-11-07 — S2-4E Windows E2E green (run 4)
+
+- Kind: SUCCESS.
+- Facts: after the intent-schema fix (fd5178e) and the receipt-assertion fix (57c22d3) the real Windows E2E passed: LAST_TASK_RESULT=0, one test OK in about 8 s, no VST_EVENT inside the run window. Evidence: docs/sdlc/evidence/s2-4e-e2e-run-20261107-4.out.
+- Why it worked: each failed elevated run was diagnosed from the sanitized event log and fixed at its root; four runs, four distinct real defects, none a flake.
+- Limit: the three earlier hypotheses (grant key ACL, git under Runner token, TemporaryDirectory) were exercised by a passing receipt, not asserted individually.

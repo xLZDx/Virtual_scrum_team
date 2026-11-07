@@ -1767,3 +1767,7 @@ tests/vst/test_s2_dispatch_intent_client_schema.py (17 cases, 17 passed as root 
 ## 2026-11-07 — E2E job_object assertion replaced
 
 The third E2E run completed the full Owner-to-Runner flow (COMPLETE PASS receipt); only the final job_object assertion failed because the receipt schema carries no such field. The assertion now checks the exact command keys; Job Object containment is enforced by the Worker (worker_refused otherwise).
+
+## 2026-11-07 — S2-4E Windows E2E passed
+
+Run 4 (installed from 57c22d3, run id s2-4e-win-9931058239fa4cef): LAST_TASK_RESULT=0, test OK. Next: GPT-PM code review of the delta since the last approval, then push and PR only after APPROVE and the operator go.
