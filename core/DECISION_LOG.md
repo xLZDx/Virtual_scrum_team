@@ -1759,3 +1759,7 @@ SupervisorClient.next_dispatch_intent now accepts instruction and key_id (requir
 ## 2026-11-07 — S2-4E manifest base_head 2bff3a3 -> fd5178efb30979765fbe1d7a03b9bfee732009b3
 
 The rebinding adds the Dispatcher client intent schema fix.
+
+## 2026-11-07 — Intent schema regression test added
+
+tests/vst/test_s2_dispatch_intent_client_schema.py (17 cases, 17 passed as root in a WSL copy at 156ead1; 9 failed against the pre-fix client). Native Windows skips these (POSIX root fixture), so the real-Windows proof remains the E2E.

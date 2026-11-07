@@ -1589,3 +1589,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — S2-4E manifest rebound to fd5178e (intent schema)
 
 - Kind: NEUTRAL.
+
+## 2026-11-07 — Regression test for the Dispatcher client intent schema
+
+- Kind: SUCCESS.
+- Facts: 17 tests feed the client check with real Supervisor output; run as root in WSL copy: 17 passed; against the pre-fix client 9 failed, so the tests detect the original bug. Limit: the client does not verify the Ed25519 signature (Supervisor/Dispatcher side does).
+- Rule: a response validator is tested against real producer output.
