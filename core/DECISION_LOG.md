@@ -1735,3 +1735,7 @@ Inbox/outbox split with link refusal and CreateNew results, fail-closed handling
 ## 2026-11-07 — GPT-PM APPROVE round 5 for the elevated helper at 34e934d
 
 Request 989af31c-0377-486f-85ee-b9636b270134, reply de9d7818-577a-5253-9dfe-2b3490c1b3b4 (correlated). Verdict: APPROVE, BLOCKER 0, MAJOR 0. The BLOCKER-01 and BLOCKER-02 of round 4 are resolved. The residual risk (repo inputs run elevated by design) is accepted. The helper is NOT_RUN. The pin to supply is the provisioner SHA-256 f6aea1649274b584a0d9c91db10da8babf5566b21a678f89bcabf86f42848f90.
+
+## 2026-11-07 — Owner no longer asserts its live SCM PID before SCM registration
+
+Removed the early assert_current_service_identity call from dispatch_owner_service.main(). run_scm_service's service_main performs the identical check after the process has registered with the SCM, as for every other role. Evidence: the Application event for VSTOwner at 18:54:04, `configured Windows service is not running`.

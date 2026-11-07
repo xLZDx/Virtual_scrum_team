@@ -1545,3 +1545,13 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — GPT-PM approved the hardened helper in one verification round
 
 - Kind: SUCCESS. An internal security review before the external gate closed the real findings in a single round.
+
+## 2026-11-07 — Elevated run through the helper: Dispatcher now runs; Owner asserted its SCM PID too early
+
+- Kind: FAILURE (found by the helper-driven elevated reinstall; diagnosed in one pass from the installer's VST_EVENT output).
+- Facts:
+  - At the Store-thread fix, VSTDispatcher, VSTSupervisor, VSTRunner, VSTSigner and VSTWorker all start and stay Running. The Dispatcher is no longer dropped, which confirms the DACL + SCM-pid client identification and the store-thread fix on real restricted service tokens.
+  - VSTOwner stopped with `ContractError: configured Windows service is not running`, at assert_current_service_identity called from dispatch_owner_service.main BEFORE run_scm_service. Before the process registers with the SCM, the SCM reports no PID for it.
+- Root cause: only the Owner called the live-SCM-PID check in main(). Every other role calls it inside its target factory, after registration. The check still runs for the Owner in service_main.
+- Layer: the author and the mock-only tests missed it; the real SCM caught it.
+- Rule: any "I am the live SCM process" assertion must run after run_scm_service's registration, never in main() before it.

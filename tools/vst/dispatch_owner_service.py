@@ -352,7 +352,8 @@ def main() -> None:
 
         runtime = WindowsRuntimeConfig.load()
         identity = runtime.identity("owner")
-        assert_current_service_identity(identity)
+        # The live-SCM-process check runs in run_scm_service (service_main) once the
+        # process has registered with the SCM; before that the SCM reports no PID.
         raw = read_runtime_json(runtime, "owner.json")
         if set(raw) != {"principal", "openssl_path", "trust_registry", "interactive_owner_sid"}:
             raise ContractError("Windows Owner config fields do not match its schema")
