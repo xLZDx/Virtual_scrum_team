@@ -299,7 +299,10 @@ class S2OwnerRunnerWindowsProcessE2E(unittest.TestCase):
         self.assertEqual(len(valid["commands"]), 1)
         self.assertEqual(valid["commands"][0]["argv"], pinned_argv[0])
         self.assertEqual(valid["commands"][0]["exit_code"], 0)
-        self.assertIs(valid["commands"][0].get("job_object"), True)
+        # The signed receipt schema carries only argv and exit_code per command; Job Object
+        # containment is enforced by the Worker, which refuses (worker_refused) unless it
+        # confirmed the Job Object, so a COMPLETE PASS receipt already implies it.
+        self.assertEqual(set(valid["commands"][0]), {"argv", "exit_code"})
         self.assertEqual(request["commands"], valid["commands"])
 
 

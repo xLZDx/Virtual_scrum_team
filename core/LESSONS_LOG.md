@@ -1595,3 +1595,11 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Kind: SUCCESS.
 - Facts: 17 tests feed the client check with real Supervisor output; run as root in WSL copy: 17 passed; against the pre-fix client 9 failed, so the tests detect the original bug. Limit: the client does not verify the Ed25519 signature (Supervisor/Dispatcher side does).
 - Rule: a response validator is tested against real producer output.
+
+## 2026-11-07 — E2E test asserted a field the signed receipt cannot carry
+
+- Kind: FAILURE (test defect, found by the third real E2E run; the product flow reached a COMPLETE PASS receipt in under 10 s).
+- Facts: test_s2_owner_runner_windows_e2e.py:302 required commands[0].job_object True; contracts.py:610 allows only argv and exit_code, and runner_service.py:247/293 refuse unless the Job Object was confirmed. Evidence: docs/sdlc/evidence/s2-4e-e2e-run-20261107-3.out.
+- Root cause: the assertion was written against the in-memory per-command report, not the signed receipt schema. Missed by author and reviewers; never runnable before this run.
+- Fix: assert the exact receipt command keys instead; containment stays enforced by the Worker.
+- Rule: assert only fields of the contract the test reads, checked against the validator.

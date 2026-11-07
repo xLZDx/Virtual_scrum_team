@@ -1763,3 +1763,7 @@ The rebinding adds the Dispatcher client intent schema fix.
 ## 2026-11-07 — Intent schema regression test added
 
 tests/vst/test_s2_dispatch_intent_client_schema.py (17 cases, 17 passed as root in a WSL copy at 156ead1; 9 failed against the pre-fix client). Native Windows skips these (POSIX root fixture), so the real-Windows proof remains the E2E.
+
+## 2026-11-07 — E2E job_object assertion replaced
+
+The third E2E run completed the full Owner-to-Runner flow (COMPLETE PASS receipt); only the final job_object assertion failed because the receipt schema carries no such field. The assertion now checks the exact command keys; Job Object containment is enforced by the Worker (worker_refused otherwise).
