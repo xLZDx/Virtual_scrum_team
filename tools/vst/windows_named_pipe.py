@@ -32,6 +32,11 @@ _ERROR_NO_DATA = 232
 _ERROR_PIPE_CONNECTED = 535
 _ERROR_PIPE_LISTENING = 536
 _ERROR_SEM_TIMEOUT = 121
+_ERROR_NO_IMPERSONATION_TOKEN = 1309
+_TOKEN_USER_CLASS = 1
+_TOKEN_GROUPS_CLASS = 2
+_SE_GROUP_ENABLED = 0x00000004
+_SE_GROUP_USE_FOR_DENY_ONLY = 0x00000010
 
 _PIPE_ACCESS_DUPLEX = 0x00000003
 _PIPE_REJECT_REMOTE_CLIENTS = 0x00000008
@@ -216,6 +221,55 @@ def _security_descriptor(allowed_sids: tuple[str, ...]) -> tuple[ctypes.c_void_p
     return descriptor, advapi32
 
 
+def _primary_token_has_enabled_sid(token: wintypes.HANDLE, sid: ctypes.c_void_p) -> bool:
+    _kernel32, advapi32 = _api()
+    advapi32.GetTokenInformation.restype = wintypes.BOOL
+    advapi32.GetTokenInformation.argtypes = [
+        wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD,
+        ctypes.POINTER(wintypes.DWORD),
+    ]
+    advapi32.EqualSid.restype = wintypes.BOOL
+    advapi32.EqualSid.argtypes = [wintypes.LPVOID, wintypes.LPVOID]
+    # The token user (e.g. S-1-5-18 for LocalSystem) is not listed among the groups
+    # but counts as membership, exactly as in CheckTokenMembership.
+    needed = wintypes.DWORD()
+    advapi32.GetTokenInformation(token, _TOKEN_USER_CLASS, None, 0, ctypes.byref(needed))
+    if needed.value <= 0 or needed.value > 4096:
+        raise ContractError("Windows token user is unavailable")
+    user_buffer = ctypes.create_string_buffer(needed.value)
+    if not advapi32.GetTokenInformation(
+        token, _TOKEN_USER_CLASS, user_buffer, needed.value, ctypes.byref(needed),
+    ):
+        raise _last_error("cannot read Windows token user")
+    user_sid = ctypes.cast(user_buffer, ctypes.POINTER(wintypes.LPVOID)).contents.value
+    if advapi32.EqualSid(user_sid, sid):
+        return True
+    needed = wintypes.DWORD()
+    advapi32.GetTokenInformation(token, _TOKEN_GROUPS_CLASS, None, 0, ctypes.byref(needed))
+    if needed.value <= 0 or needed.value > 1024 * 1024:
+        raise ContractError("Windows token groups are unavailable")
+    buffer = ctypes.create_string_buffer(needed.value)
+    if not advapi32.GetTokenInformation(
+        token, _TOKEN_GROUPS_CLASS, buffer, needed.value, ctypes.byref(needed),
+    ):
+        raise _last_error("cannot read Windows token groups")
+
+    class _SidAndAttributes(ctypes.Structure):
+        _fields_ = [("Sid", wintypes.LPVOID), ("Attributes", wintypes.DWORD)]
+
+    count = ctypes.cast(buffer, ctypes.POINTER(wintypes.DWORD)).contents.value
+    offset = ctypes.sizeof(ctypes.c_void_p)  # GroupCount DWORD padded to pointer alignment
+    entries = ctypes.cast(
+        ctypes.addressof(buffer) + offset, ctypes.POINTER(_SidAndAttributes * count),
+    ).contents
+    for entry in entries:
+        if not advapi32.EqualSid(entry.Sid, sid):
+            continue
+        attributes = entry.Attributes
+        return bool(attributes & _SE_GROUP_ENABLED) and not attributes & _SE_GROUP_USE_FOR_DENY_ONLY
+    return False
+
+
 def _check_token_sid(token: wintypes.HANDLE, expected_sid: str) -> bool:
     _kernel32, advapi32 = _api()
     sid = ctypes.c_void_p()
@@ -223,9 +277,14 @@ def _check_token_sid(token: wintypes.HANDLE, expected_sid: str) -> bool:
         raise ContractError("configured Windows service SID is invalid")
     try:
         member = wintypes.BOOL()
-        if not advapi32.CheckTokenMembership(token, sid, ctypes.byref(member)):
+        if advapi32.CheckTokenMembership(token, sid, ctypes.byref(member)):
+            return bool(member.value)
+        if ctypes.get_last_error() != _ERROR_NO_IMPERSONATION_TOKEN:
             raise _last_error("cannot verify Windows named-pipe peer SID")
-        return bool(member.value)
+        # CheckTokenMembership accepts only impersonation tokens. For a primary
+        # process token, read its groups (TOKEN_QUERY suffices) and require the
+        # SID to be enabled and not deny-only.
+        return _primary_token_has_enabled_sid(token, sid)
     finally:
         _kernel32, _advapi32 = _api()
         _kernel32.LocalFree(sid)

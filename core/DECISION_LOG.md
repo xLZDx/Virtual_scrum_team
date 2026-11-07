@@ -1598,3 +1598,7 @@ The connect wait stays capped at 30 s. The client I/O timeout may reach 3600 s s
 ## 2026-11-07 — S2-4E manifest base_head rebinding (7adb183 -> 34fbace)
 
 Reason: the protected snapshot must contain the product fixes 22f1f1e, 7c0e012 and 34fbace to the Windows service host and the named-pipe client. Without them no Windows service can start. The delta from 7adb183 is: tools/vst/windows_service_host.py and tools/vst/windows_named_pipe.py; the tests/vst S2-4E provisioning files; core logs; and docs/sdlc evidence. The operator authorized manifest changes for S2-4E. The accepted S2-4D/S2-5 dispositions at 96a8da7 are unchanged.
+
+## 2026-11-07 — Primary-token membership fallback
+
+_check_token_sid keeps CheckTokenMembership for impersonation tokens. On ERROR_NO_IMPERSONATION_TOKEN it falls back to TokenUser plus enabled, non-deny-only TokenGroups, so the LocalSystem and administrator exclusion keeps its meaning.

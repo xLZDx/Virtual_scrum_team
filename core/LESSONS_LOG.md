@@ -1319,3 +1319,11 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Kind: NEUTRAL.
 - Facts: base_head moved from 7adb183 to 34fbace, which contains the three Windows product fixes (owner/DACL request, start-up failure event log, pipe timeout bounds). The manifest is the only file that referenced the old base_head.
 - Rule: rebind only for a concrete product delta, and record which delta.
+
+## 2026-11-07 — CheckTokenMembership was given primary process tokens
+
+- Kind: FAILURE (product defect, the first cause recorded by the new service event log).
+- Facts: VSTSupervisor stopped with OSError 1309 (no impersonation token) in assert_current_service_identity. _verify_server_sid has the same pattern. CheckTokenMembership accepts only impersonation tokens.
+- Root cause: a Win32 contract that the mocked tests could not exercise.
+- Fix: on 1309, _check_token_sid falls back to reading TokenUser and TokenGroups (TOKEN_QUERY only); a group SID must be enabled and not deny-only. A non-elevated check on this process's primary token gave the expected result in 6 of 6 cases (Users, Everyone and own user true; SYSTEM, deny-only Administrators and an unrelated service SID false).
+- Rule: exercise every token primitive with both primary and impersonation tokens.
