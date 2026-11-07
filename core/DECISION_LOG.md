@@ -1799,3 +1799,16 @@ On the operator's order PR 2 was merged into main (merge 7c94c6c, GPT-PM round 7
 ## 2026-11-07 — S3 adapter tests green; BMad Loop public metadata recorded
 
 functional-test-reviewer ran tests/vst/test_s3_worker_adapter.py on HEAD c0f7c17: 15 passed (9 existing unchanged plus 6 added), no product defect. BMad Loop public metadata was read through the GitHub API only (no clone or execution) and is recorded in the plan row S3-B; the license field mismatch (NOASSERTION vs MIT in pyproject) is open for the license review.
+
+## 2026-11-07 — S3-B candidate audit: security findings recorded
+
+S3-B audit completed for pilot.py (S3-A adapter) and BMad Loop v0.10.0. Evidence: docs/sdlc/evidence/s3b-candidate-audit-20261107.md.
+
+**Findings:**
+- MAJOR-001 (pilot.py:964-991): No git validation of candidate_head after SUCCEEDED; can accept arbitrary commit without evidence
+- MAJOR-002 (pilot.py:872-877): Retry failure in resume_epoch_idempotent leaves epoch/lease in inconsistent state; recovery path disabled
+- License mismatch: BMad Loop repo metadata NOASSERTION vs pyproject.toml MIT — needs license file verification
+
+**Status:** S3-B PARTIAL. Security audit findings block S3 completion until operator decides: remediate blockers or accept as design constraints.
+
+**Sandbox-compatibility:** DEPENDENT on MAJOR-001/002 resolution. Process containment inherited from S2-4E (Windows Job Object) but failure scenarios now exposed.
