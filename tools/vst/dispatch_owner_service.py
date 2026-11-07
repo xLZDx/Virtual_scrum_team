@@ -138,6 +138,16 @@ def _validate_trust_registry(registry: Mapping[str, Any]) -> None:
 
 
 def _validate_root_public_key(path: str) -> None:
+    if os.name == "nt":
+        if not isinstance(path, str) or not os.path.isabs(path):
+            raise ContractError("dispatch instruction public key path is invalid")
+        try:
+            info = os.stat(path, follow_symlinks=False)
+        except OSError as exc:
+            raise ContractError("dispatch instruction public key is unavailable") from exc
+        if not stat.S_ISREG(info.st_mode) or info.st_size > 65536:
+            raise ContractError("dispatch instruction public key must be a bounded regular file")
+        return
     if os.name != "posix" or not hasattr(os, "O_NOFOLLOW") or not os.path.isabs(path):
         raise ContractError("dispatch instruction public key path is invalid")
     parent = os.path.dirname(os.path.abspath(path))
@@ -176,7 +186,12 @@ class DispatchOwnerService:
 
     def __init__(self, config: DispatchOwnerServiceConfig,
                  supervisor: Any | None = None) -> None:
-        if config.principal != OWNER_PRINCIPAL or config.openssl_path != OPENSSL_PATH:
+        if (config.principal != OWNER_PRINCIPAL
+                or (os.name == "posix" and config.openssl_path != OPENSSL_PATH)
+                or (os.name == "nt" and (
+                    not isinstance(config.openssl_path, str)
+                    or not os.path.isabs(config.openssl_path)
+                ))):
             raise ContractError("dispatch-owner service configuration is not fixed")
         self.client = DispatchOwnerClient(
             principal=config.principal,
@@ -210,7 +225,29 @@ class DispatchOwnerService:
                     self._shutdown.set()
                     return
 
-    def _handle(self, conn: socket.socket) -> bool:
+    def serve_windows_forever(self, listener: Any) -> None:
+        """Serve one signed Owner request per authenticated Windows named-pipe instance."""
+        from .windows_named_pipe import WindowsNamedPipeListener
+
+        if not isinstance(listener, WindowsNamedPipeListener):
+            raise ContractError("dispatch-owner Windows listener is not an authenticated named pipe")
+        while not self._shutdown.is_set():
+            try:
+                conn = listener.accept(timeout_sec=0.5)
+            except OSError:
+                if self._shutdown.is_set():
+                    return
+                raise
+            if conn is None:
+                continue
+            with conn:
+                if self._handle(conn, require_eof=False):
+                    self._outcome_unknown = True
+                    self._shutdown.set()
+                    listener.close()
+                    return
+
+    def _handle(self, conn: Any, *, require_eof: bool = True) -> bool:
         conn.settimeout(REQUEST_TIMEOUT_SEC)
         outcome_unknown = False
         accepted_result: dict | None = None
@@ -220,21 +257,31 @@ class DispatchOwnerService:
             if length < 2 or length > MAX_REQUEST_BYTES:
                 raise ContractError("dispatch-owner request size is invalid")
             payload = _recv_exact(conn, length)
-            if conn.recv(1) != b"":
+            # Unix sockets use half-close to prove the request ended. A Windows
+            # named pipe has no write-half shutdown; its listener creates one
+            # authenticated instance for this single framed request and closes it
+            # after the response, so no second operation can be consumed.
+            if require_eof and conn.recv(1) != b"":
                 raise ContractError("dispatch-owner connection contains trailing request bytes")
             request = json.loads(payload, object_pairs_hook=_unique_json_object)
-            if (not isinstance(request, dict) or set(request) != {"instruction"}
-                    or canonical_bytes(request) != payload):
+            if not isinstance(request, dict) or canonical_bytes(request) != payload:
                 raise ContractError("dispatch-owner request does not match the exact envelope")
-            try:
-                result = self.client.submit(request["instruction"])
-            except DispatchOutcomeUnknown as exc:
-                _LOGGER.error("dispatch-owner Supervisor outcome is unknown (%s)", type(exc).__name__)
-                outcome_unknown = True
-                response = {"ok": False, "error": "reconciliation_required"}
+            if set(request) == {"instruction"}:
+                try:
+                    result = self.client.submit(request["instruction"])
+                except DispatchOutcomeUnknown as exc:
+                    _LOGGER.error("dispatch-owner Supervisor outcome is unknown (%s)", type(exc).__name__)
+                    outcome_unknown = True
+                    response = {"ok": False, "error": "reconciliation_required"}
+                else:
+                    accepted_result = result
+                    response = {"ok": True, "result": result}
+            elif (set(request) == {"operation", "instruction"}
+                    and request.get("operation") == "completed_receipt"):
+                receipt = self.client.completed_receipt(request["instruction"])
+                response = {"ok": True, "result": receipt}
             else:
-                accepted_result = result
-                response = {"ok": True, "result": result}
+                raise ContractError("dispatch-owner operation is not supported")
         except Exception as exc:
             _LOGGER.warning("dispatch-owner request refused (%s)", type(exc).__name__)
             response = {"ok": False, "error": "refused"}
@@ -284,6 +331,67 @@ def _systemd_listener() -> socket.socket:
 
 
 def main() -> None:
+    if os.name == "nt":
+        if sys.argv[1:] != ["--windows-scm"]:
+            raise ContractError("Windows Owner must be launched by SCM with --windows-scm")
+        from .supervisor_service import WindowsSupervisorClient
+        from .windows_named_pipe import WindowsNamedPipeListener
+        from .windows_service_host import (
+            WindowsRuntimeConfig, assert_current_service_identity, assert_path_acl,
+            read_runtime_json, run_scm_service, service_name_for_role,
+        )
+
+        runtime = WindowsRuntimeConfig.load()
+        identity = runtime.identity("owner")
+        assert_current_service_identity(identity)
+        raw = read_runtime_json(runtime, "owner.json")
+        if set(raw) != {"principal", "openssl_path", "trust_registry", "interactive_owner_sid"}:
+            raise ContractError("Windows Owner config fields do not match its schema")
+        principal, openssl_path = raw["principal"], raw["openssl_path"]
+        owner_sid, trust_registry = raw["interactive_owner_sid"], raw["trust_registry"]
+        if (principal != OWNER_PRINCIPAL or not isinstance(openssl_path, str)
+                or not os.path.isabs(openssl_path)
+                or not isinstance(owner_sid, str)
+                or not re.fullmatch(r"S-1-\d+(?:-\d+){1,15}", owner_sid)):
+            raise ContractError("Windows Owner principal, verifier, or user SID is invalid")
+        _validate_trust_registry(trust_registry)
+        service_sids = {item.service_sid for item in runtime.role_identities.values()}
+        for entry in trust_registry.values():
+            assert_path_acl(
+                entry["public_key_path"],
+                allowed_sids={"S-1-5-18", "S-1-5-32-544", *service_sids},
+                writable_sids={"S-1-5-18", "S-1-5-32-544"},
+            )
+        supervisor_identity = runtime.identity("supervisor")
+        supervisor = WindowsSupervisorClient(
+            runtime.pipe_name("supervisor_owner"),
+            expected_server_sid=supervisor_identity.service_sid,
+            expected_server_service=supervisor_identity.service_name,
+            timeout_sec=5.0,
+        )
+        service_config = DispatchOwnerServiceConfig(
+            principal=principal, openssl_path=openssl_path,
+            trust_registry=trust_registry,
+        )
+
+        class _WindowsOwnerTarget:
+            def __init__(self) -> None:
+                self.service = DispatchOwnerService(service_config, supervisor=supervisor)
+                self.listener = WindowsNamedPipeListener(
+                    runtime.pipe_name("owner"), server_sid=identity.service_sid,
+                    server_service=identity.service_name, allowed_client_services={},
+                    allowed_client_user_sids=(owner_sid,), timeout_sec=1.0,
+                )
+
+            def serve_forever(self) -> None:
+                self.service.serve_windows_forever(self.listener)
+
+            def shutdown(self) -> None:
+                self.service.shutdown()
+                self.listener.close()
+
+        run_scm_service(service_name_for_role("owner"), _WindowsOwnerTarget)
+        return
     if os.name != "posix" or not hasattr(socket, "AF_UNIX"):
         raise ContractError("dispatch-owner requires POSIX Unix sockets")
     if len(sys.argv) != 1:

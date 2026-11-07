@@ -775,6 +775,17 @@ class Supervisor:
         """Observe an exact accepted result without granting current execution authority."""
         return self.store.replay_dispatch_outcome(principal=principal, instruction=instruction)
 
+    def completed_dispatch_receipt(self, *, principal: str, instruction: object) -> dict | None:
+        """Read a completed Runner receipt bound to this owner's accepted instruction."""
+        accepted = self.store.replay_dispatch_outcome(
+            principal=principal, instruction=instruction,
+        )
+        if accepted is None:
+            return None
+        return self.store.completed_dispatch_receipt(
+            request_id=accepted["request_id"], principal=principal,
+        )
+
     def ack_dispatch_intent(
         self, *, principal: str, request_id: str, payload_digest: str, event_seq: int,
         result_sha256: str, service_generation: str,

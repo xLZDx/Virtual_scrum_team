@@ -98,7 +98,7 @@ def _store_with_pre_0473_schema_v5_claim_basis(
     manifest: dict, clock: FakeClock, *, db_path: str,
 ):
     """Create the historical v5 DDL before seeding the legacy recovery event."""
-    assert store_module.SCHEMA_VERSION == 6
+    assert store_module.SCHEMA_VERSION == 7
     assert store_module.EVENT_KINDS == PRE_0473_SCHEMA_V5_EVENT_KINDS | {
         "DISPATCH_INTENT_ACCEPTED",
     }
@@ -311,7 +311,7 @@ def test_pre_0473_schema_v5_pending_recovery_event_survives_fresh_reconciliation
             allow_schema_upgrade=True,
         )
         with reader._read_tx() as conn:
-            assert conn.execute("PRAGMA user_version").fetchone()[0] == 6
+            assert conn.execute("PRAGMA user_version").fetchone()[0] == 7
         _assert_raw_store_event_chain_is_valid(reader)
         assert reader.reconciliation_complete
         assert reader.runner_execution_claim_status(
@@ -388,7 +388,7 @@ def test_pre_0473_schema_v5_pending_recovery_event_rejects_malformed_or_mismatch
             allow_schema_upgrade=True,
         )
         with reader._read_tx() as conn:
-            assert conn.execute("PRAGMA user_version").fetchone()[0] == 6
+            assert conn.execute("PRAGMA user_version").fetchone()[0] == 7
         _assert_raw_store_event_chain_is_valid(reader)
         assert not reader.reconciliation_complete
         with pytest.raises(StoreError) as error:

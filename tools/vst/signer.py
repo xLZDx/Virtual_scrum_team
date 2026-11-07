@@ -136,6 +136,192 @@ def _key_is_private(path: str) -> bytes:
     return key
 
 
+class WindowsAuthenticatedSigner:
+    """SCM Signer service; only its service SID process receives the private key."""
+
+    def __init__(
+        self, *, pipe_name: str, signer_sid: str, runner_sid: str,
+        signer_service: str, runner_service: str, key: bytes, ledger_path: str,
+        signer_root: str,
+        grant_verifier: Callable[[dict], dict], active_service_generation: Callable[[], str],
+        pending_grant_checker: Callable[[dict], bool], service_identity: Any,
+        listener: Any | None = None,
+    ) -> None:
+        if os.name != "nt":
+            raise ContractError("Windows authenticated Signer is available only on Windows")
+        from .windows_named_pipe import WindowsNamedPipeListener
+        from .windows_service_host import WindowsRoleIdentity, assert_current_service_identity, assert_path_acl
+        if (signer_service != "VSTSigner" or runner_service != "VSTRunner"
+                or not isinstance(signer_sid, str) or not re.fullmatch(r"S-1-\d+(?:-\d+){1,15}", signer_sid)
+                or not isinstance(runner_sid, str) or not re.fullmatch(r"S-1-\d+(?:-\d+){1,15}", runner_sid)
+                or signer_sid == runner_sid):
+            raise ContractError("Windows Signer and Runner service identities are invalid")
+        if not isinstance(key, bytes) or len(key) < MIN_KEY_BYTES:
+            raise ContractError("Windows Signer key material is invalid")
+        if (not callable(grant_verifier) or not callable(active_service_generation)
+                or not callable(pending_grant_checker)):
+            raise ContractError("Windows Signer trust callbacks are incomplete")
+        assert_current_service_identity(service_identity)
+        system_admin = {"S-1-5-18", "S-1-5-32-544"}
+        root, ledger = os.path.abspath(signer_root), os.path.abspath(ledger_path)
+        try:
+            if os.path.commonpath((root, ledger)) != root or ledger == root:
+                raise ContractError("Windows Signer ledger is outside its private root")
+        except ValueError as exc:
+            raise ContractError("Windows Signer ledger and root are on different volumes") from exc
+        assert_path_acl(root, allowed_sids=system_admin | {signer_sid},
+                        writable_sids=system_admin | {signer_sid}, require_protected=True)
+        if os.path.exists(ledger):
+            assert_path_acl(ledger, allowed_sids=system_admin | {signer_sid},
+                            writable_sids=system_admin | {signer_sid})
+        self.pipe_name = pipe_name
+        self.signer_sid = signer_sid
+        self.runner_sid = runner_sid
+        self.signer_service = signer_service
+        self.runner_service = runner_service
+        self.key = key
+        self.ledger_path = ledger
+        self.signer_root = root
+        self.grant_verifier = grant_verifier
+        self.active_service_generation = active_service_generation
+        self.pending_grant_checker = pending_grant_checker
+        self.service_identity = service_identity
+        self._listener = listener or WindowsNamedPipeListener(
+            pipe_name, server_sid=signer_sid, server_service=signer_service,
+            allowed_client_services={runner_sid: runner_service}, timeout_sec=1.0,
+        )
+        self._ledger: sqlite3.Connection | None = None
+        self._lock = threading.Lock()
+        self._shutdown = threading.Event()
+
+    def shutdown(self) -> None:
+        self._shutdown.set()
+        self._listener.close()
+
+    def serve_forever(self) -> None:
+        self._ledger = sqlite3.connect(self.ledger_path)
+        from .windows_service_host import assert_path_acl
+        assert_path_acl(
+            self.ledger_path,
+            allowed_sids={"S-1-5-18", "S-1-5-32-544", self.signer_sid},
+            writable_sids={"S-1-5-18", "S-1-5-32-544", self.signer_sid},
+        )
+        self._ledger.execute(
+            "CREATE TABLE IF NOT EXISTS requests "
+            "(request_id TEXT PRIMARY KEY, payload BLOB NOT NULL, signature TEXT NOT NULL)"
+        )
+        self._ledger.commit()
+        try:
+            while not self._shutdown.is_set():
+                connection = self._listener.accept(timeout_sec=0.5)
+                if connection is None:
+                    continue
+                with connection:
+                    self._handle_windows(connection)
+        finally:
+            if self._ledger is not None:
+                self._ledger.close()
+                self._ledger = None
+
+    def _handle_windows(self, connection: Any) -> None:
+        try:
+            connection.settimeout(SIGNER_SOCKET_TIMEOUT_SEC)
+            from .runner_service import _HEADER, _recv_exact
+            size = _HEADER.unpack(_recv_exact(connection, _HEADER.size))[0]
+            if size < 2 or size > MAX_REQUEST_BYTES:
+                raise ContractError("signing request exceeds size limit")
+            payload = _recv_exact(connection, size)
+            wire = json.loads(payload)
+            if not isinstance(wire, dict) or canonical_bytes(wire) != payload:
+                raise ContractError("signing request is not canonical JSON")
+            purpose = wire.get("purpose")
+            grant = wire.get("grant")
+            if purpose not in {"runner_authorize", "runner_sign", "runner_diff"}:
+                raise ContractError("unsupported Windows Signer purpose")
+            valid = self.grant_verifier(grant)
+            generation = self.active_service_generation()
+            if (not isinstance(valid, dict) or valid != grant
+                    or valid.get("service_generation") != generation
+                    or self.pending_grant_checker(valid) is not True):
+                raise ContractError("Signer grant is not current, claimed, and generation-bound")
+            if purpose == "runner_authorize":
+                if set(wire) != {"purpose", "grant"}:
+                    raise ContractError("Signer authorization request fields are invalid")
+                response = {"authorized": True}
+            elif purpose == "runner_sign":
+                if set(wire) != {"purpose", "grant", "request"}:
+                    raise ContractError("Signer request fields are invalid")
+                request = validate_signing_request(wire["request"])
+                if any(request.get(name) != valid[field] for name, field in (
+                    ("request_id", "request_id"), ("task_id", "task_id"),
+                    ("slot", "slot"), ("attempt", "attempt"),
+                    ("epoch", "epoch"), ("manifest_sha256", "manifest_sha256"),
+                )):
+                    raise ContractError("Signer payload does not match its exact execution grant")
+                request_id = request["request_id"]
+                response = {"signature": request_signature(request, self.key)}
+            else:
+                if set(wire) != {"purpose", "grant", "request_id", "body"}:
+                    raise ContractError("Signer diff request fields are invalid")
+                request_id = wire["request_id"]
+                body = wire["body"]
+                if (request_id != f"{valid['request_id']}:diff"
+                        or not isinstance(body, dict) or set(body) != {
+                            "manifest_sha256", "candidate_head", "diff_sha256", "changed_paths", "verdict", "reason",
+                        }
+                        or body.get("manifest_sha256") != valid["manifest_sha256"]
+                        or not isinstance(body.get("candidate_head"), str)
+                        or not re.fullmatch(r"[0-9a-f]{40}", body["candidate_head"])
+                        or not isinstance(body.get("diff_sha256"), str)
+                        or not re.fullmatch(r"[0-9a-f]{64}", body["diff_sha256"])
+                        or body.get("verdict") not in {"PASS", "FAIL"}
+                        or not isinstance(body.get("changed_paths"), list)
+                        or any(not isinstance(path, str) or not path for path in body["changed_paths"])
+                        or len(body["changed_paths"]) != len(set(body["changed_paths"]))):
+                    raise ContractError("Signer diff body does not match the execution grant")
+                response = {"signature": sign(body, self.key, DIFF_GATE_LABEL)}
+            if purpose != "runner_authorize":
+                encoded_message = canonical_bytes(wire)
+                signature = response["signature"]
+                with self._lock:
+                    if self._ledger is None:
+                        raise ContractError("Windows Signer ledger is not open")
+                    self._ledger.execute("BEGIN IMMEDIATE")
+                    prior = self._ledger.execute(
+                        "SELECT payload, signature FROM requests WHERE request_id=?", (request_id,),
+                    ).fetchone()
+                    if prior is not None:
+                        if bytes(prior[0]) != encoded_message:
+                            self._ledger.rollback()
+                            raise ContractError("request_id replayed with a different payload")
+                        signature = str(prior[1])
+                        response["signature"] = signature
+                    else:
+                        self._ledger.execute(
+                            "INSERT INTO requests(request_id,payload,signature) VALUES(?,?,?)",
+                            (request_id, encoded_message, signature),
+                        )
+                    self._ledger.commit()
+        except Exception:
+            # A failed SQLite statement/commit must not leave the shared
+            # connection inside a transaction and poison the next request.
+            try:
+                with self._lock:
+                    if self._ledger is not None and self._ledger.in_transaction:
+                        self._ledger.rollback()
+            except sqlite3.Error:
+                pass
+            response = {"error": "unauthorized"}
+        encoded_response = canonical_bytes(response)
+        if len(encoded_response) > MAX_SIGNER_RESPONSE_BYTES:
+            encoded_response = canonical_bytes({"error": "response_too_large"})
+        try:
+            from .runner_service import _HEADER
+            connection.sendall(_HEADER.pack(len(encoded_response)) + encoded_response)
+        except OSError:
+            return
+
+
 class AuthenticatedSigner:
     """Small synchronous signer server with kernel-authenticated runner UID."""
 
@@ -478,6 +664,67 @@ def load_signer_service(path: str = DEFAULT_SERVICE_CONFIG) -> AuthenticatedSign
 
 
 def main() -> None:
+    if os.name == "nt":
+        if sys.argv[1:] != ["--windows-scm"]:
+            raise ContractError("Windows Signer must be launched by SCM with --windows-scm")
+        from .execution_grant import verify_execution_grant
+        from .supervisor_service import WindowsSupervisorClient
+        from .windows_service_host import (
+            WindowsRuntimeConfig, assert_path_acl, read_runtime_json,
+            read_signer_private_key, run_scm_service, service_name_for_role,
+        )
+
+        runtime = WindowsRuntimeConfig.load()
+        config = read_runtime_json(runtime, "signer.json")
+        if set(config) != {"receipt_key_path", "ledger_path"}:
+            raise ContractError("Windows Signer config fields do not match its schema")
+        key_path, ledger_path = config["receipt_key_path"], config["ledger_path"]
+        identity = runtime.identity("signer")
+        runner_identity = runtime.identity("runner")
+        supervisor_identity = runtime.identity("supervisor")
+        grant_config = read_runtime_json(runtime, "supervisor.json")
+        trust_keys = grant_config.get("execution_grant_trust_keys")
+        openssl_path = grant_config.get("openssl_path")
+        audience = grant_config.get("execution_grant_audience")
+        if (not isinstance(trust_keys, dict) or not trust_keys
+                or not isinstance(openssl_path, str) or not os.path.isabs(openssl_path)
+                or not isinstance(audience, str) or not audience):
+            raise ContractError("Windows Signer grant trust configuration is incomplete")
+        service_sids = {item.service_sid for item in runtime.role_identities.values()}
+        for trusted_path in trust_keys.values():
+            if not isinstance(trusted_path, str) or not os.path.isabs(trusted_path):
+                raise ContractError("Windows Signer trust key path is invalid")
+            assert_path_acl(
+                trusted_path, allowed_sids={"S-1-5-18", "S-1-5-32-544", *service_sids},
+                writable_sids={"S-1-5-18", "S-1-5-32-544"},
+            )
+        key = read_signer_private_key(
+            key_path, signer_sid=identity.service_sid, signer_root=runtime.signer_root,
+        )
+        supervisor = WindowsSupervisorClient(
+            runtime.pipe_name("supervisor_signer"),
+            expected_server_sid=supervisor_identity.service_sid,
+            expected_server_service=supervisor_identity.service_name,
+            timeout_sec=5.0,
+        )
+        def verify_grant(grant: dict) -> dict:
+            return verify_execution_grant(
+                grant, trust_keys, audience=audience,
+                service_generation=supervisor.generation(), openssl_path=openssl_path,
+            )
+
+        target = lambda: WindowsAuthenticatedSigner(
+            pipe_name=runtime.pipe_name("runner_signer"),
+            signer_sid=identity.service_sid, runner_sid=runner_identity.service_sid,
+            signer_service=identity.service_name, runner_service=runner_identity.service_name,
+            key=key, ledger_path=ledger_path, signer_root=runtime.signer_root,
+            grant_verifier=verify_grant,
+            active_service_generation=supervisor.generation,
+            pending_grant_checker=supervisor.pending,
+            service_identity=identity,
+        )
+        run_scm_service(service_name_for_role("signer"), target)
+        return
     config_path = DEFAULT_SERVICE_CONFIG
     if len(sys.argv) == 2:
         config_path = sys.argv[1]
@@ -503,6 +750,80 @@ def authorize_runner_over_socket(socket_path: str, *, grant: dict | None = None)
             raise ContractError("signer did not authenticate runner identity")
     elif not isinstance(response, dict) or response != {"authorized": True}:
         raise ContractError("signer did not authorize the claimed execution grant")
+
+
+def _windows_signer_call(
+    pipe_name: str, *, expected_server_sid: str, expected_server_service: str,
+    message: dict[str, Any], timeout_sec: float = SIGNER_SOCKET_TIMEOUT_SEC,
+) -> dict:
+    """Exchange one bounded request with the SCM-authenticated Signer pipe."""
+    if os.name != "nt":
+        raise ContractError("Windows Signer IPC is available only on Windows")
+    payload = canonical_bytes(message)
+    if len(payload) > MAX_REQUEST_BYTES:
+        raise ContractError("signing request exceeds size limit")
+    from .runner_service import _HEADER, _recv_exact
+    from .windows_named_pipe import WindowsNamedPipeClient
+    client = WindowsNamedPipeClient(
+        pipe_name, expected_server_sid=expected_server_sid,
+        expected_server_service=expected_server_service, timeout_sec=timeout_sec,
+    )
+    with client.connect() as connection:
+        connection.sendall(_HEADER.pack(len(payload)) + payload)
+        size = _HEADER.unpack(_recv_exact(connection, _HEADER.size))[0]
+        if size < 2 or size > MAX_SIGNER_RESPONSE_BYTES:
+            raise ContractError("signer response is empty or exceeds its size limit")
+        response = json.loads(_recv_exact(connection, size))
+    if not isinstance(response, dict):
+        raise ContractError("signer response must be a JSON object")
+    return response
+
+
+def authorize_runner_over_pipe(
+    pipe_name: str, *, expected_server_sid: str, expected_server_service: str,
+    grant: dict,
+) -> None:
+    response = _windows_signer_call(
+        pipe_name, expected_server_sid=expected_server_sid,
+        expected_server_service=expected_server_service,
+        message={"purpose": "runner_authorize", "grant": grant},
+    )
+    if response != {"authorized": True}:
+        raise ContractError("Signer did not authorize this exact claimed grant")
+
+
+def sign_over_pipe(
+    pipe_name: str, request: dict[str, Any], *, expected_server_sid: str,
+    expected_server_service: str, execution_grant: dict,
+) -> str:
+    validate_signing_request(request)
+    response = _windows_signer_call(
+        pipe_name, expected_server_sid=expected_server_sid,
+        expected_server_service=expected_server_service,
+        message={"purpose": "runner_sign", "grant": execution_grant, "request": request},
+    )
+    signature = response.get("signature")
+    if not isinstance(signature, str) or not re.fullmatch(r"[0-9a-f]{64}", signature):
+        raise ContractError("Signer returned a malformed request signature")
+    return signature
+
+
+def sign_diff_over_pipe(
+    pipe_name: str, request_id: str, evidence: dict[str, Any], *,
+    expected_server_sid: str, expected_server_service: str, execution_grant: dict,
+) -> str:
+    if not isinstance(request_id, str) or not request_id:
+        raise ContractError("request_id must be non-empty")
+    response = _windows_signer_call(
+        pipe_name, expected_server_sid=expected_server_sid,
+        expected_server_service=expected_server_service,
+        message={"purpose": "runner_diff", "grant": execution_grant,
+                 "request_id": request_id, "body": evidence},
+    )
+    signature = response.get("signature")
+    if not isinstance(signature, str) or not re.fullmatch(r"[0-9a-f]{64}", signature):
+        raise ContractError("Signer returned a malformed diff signature")
+    return signature
 
 
 def sign_diff_over_socket(

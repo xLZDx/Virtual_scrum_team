@@ -6,10 +6,12 @@ transaction with an explicit COMMIT or ROLLBACK; SQLite "busy"/"locked"
 errors become the distinct StoreBusyError (a StoreError with kind 'busy').
 journal_mode is WAL, foreign_keys and recursive_triggers are ON.
 
-Schema versioning: PRAGMA user_version is SCHEMA_VERSION (6). A new file is
-initialised inside one transaction; supported v3-v5 layouts are upgraded
-additively, while un-versioned legacy tables and unknown versions are refused
-with StoreError(kind='schema').
+Schema versioning: PRAGMA user_version is SCHEMA_VERSION (7). A new file is
+initialised inside one transaction; supported v3-v6 layouts are upgraded
+transactionally with historical events and runner claims preserved. The v6 to
+v7 upgrade rebuilds the runner claim/event tables to bind run identities
+without requiring sandbox probe rows. Un-versioned legacy tables and unknown
+versions are refused with StoreError(kind='schema').
 The database file (and its -wal/-shm files) get mode 0o600 on a best-effort
 basis (os.chmod failures are ignored).
 
@@ -136,7 +138,7 @@ from .contracts import (
 from .signing import MIN_KEY_BYTES, OPERATOR_MANUAL_OVERRIDE_LABEL, RECEIPT_V2_LABEL, sign, verify
 from .lifecycle import AnchorError, FileExternalAnchor, signed_checkpoint
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 GENESIS_HASH = "0" * 64
 DEFAULT_OWNER_TTL_SEC = 3600.0
 SUPERVISOR_RUNNER_ID = "store-supervisor"
@@ -237,13 +239,15 @@ def _runner_execution_schema_statements() -> tuple[str, ...]:
             runner_id TEXT NOT NULL,
             attempt INT NOT NULL CHECK (attempt >= 1),
             epoch INT NOT NULL CHECK (epoch >= 1),
-            run_id TEXT NOT NULL REFERENCES supervisor_probes(run_id),
+            run_id TEXT NOT NULL,
             service_generation TEXT NOT NULL,
             manifest_sha256 TEXT NOT NULL,
             payload_sha256 TEXT NOT NULL,
             grant_body TEXT NOT NULL,
             claimed_at REAL NOT NULL,
-            UNIQUE (task_id, slot, attempt)
+            UNIQUE (task_id, slot, attempt),
+            FOREIGN KEY (run_id, service_generation)
+                REFERENCES supervisor_runs(run_id, service_generation)
         )""",
         """CREATE TABLE runner_execution_events (
             seq INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -261,6 +265,21 @@ def _runner_execution_schema_statements() -> tuple[str, ...]:
         BEGIN SELECT RAISE(ABORT, 'runner execution events are append-only'); END""",
         """CREATE TRIGGER runner_execution_events_no_delete BEFORE DELETE ON runner_execution_events
         BEGIN SELECT RAISE(ABORT, 'runner execution events are append-only'); END""",
+    )
+
+
+def _supervisor_run_schema_statements() -> tuple[str, ...]:
+    """Run/generation identities are independent of optional sandbox probes."""
+    return (
+        """CREATE TABLE IF NOT EXISTS supervisor_runs (
+            run_id TEXT NOT NULL,
+            service_generation TEXT NOT NULL,
+            PRIMARY KEY (run_id, service_generation)
+        )""",
+        """CREATE TRIGGER IF NOT EXISTS supervisor_runs_no_update BEFORE UPDATE ON supervisor_runs
+        BEGIN SELECT RAISE(ABORT, 'supervisor runs are append-only'); END""",
+        """CREATE TRIGGER IF NOT EXISTS supervisor_runs_no_delete BEFORE DELETE ON supervisor_runs
+        BEGIN SELECT RAISE(ABORT, 'supervisor runs are append-only'); END""",
     )
 
 
@@ -331,6 +350,7 @@ def _schema_statements() -> tuple[str, ...]:
             spent INT NOT NULL DEFAULT 0 CHECK (spent >= 0)
         )""",
         "CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
+        *_supervisor_run_schema_statements(),
         *_runner_execution_schema_statements(),
         """CREATE TABLE supervisor_operations (
             operation_key TEXT PRIMARY KEY,
@@ -741,7 +761,7 @@ class Store:
     def _init_schema(self) -> None:
         with self._tx() as conn:
             version = conn.execute("PRAGMA user_version").fetchone()[0]
-            if version in (3, 4, 5) and not self._allow_schema_upgrade:
+            if version in (3, 4, 5, 6) and not self._allow_schema_upgrade:
                 raise StoreError(
                     f"schema version {version} requires an explicitly authorized upgrade to {SCHEMA_VERSION}",
                     kind="schema",
@@ -787,20 +807,26 @@ class Store:
                     "CREATE TRIGGER supervisor_probes_no_delete BEFORE DELETE ON supervisor_probes "
                     "BEGIN SELECT RAISE(ABORT, 'supervisor probes are append-only'); END"
                 )
+                for statement in _supervisor_run_schema_statements():
+                    conn.execute(statement)
                 for statement in _runner_execution_schema_statements():
                     conn.execute(statement)
             elif version == 4:
                 # Add the one-invocation runner authorization ledger without
                 # rewriting prior task, lease, receipt, or event history.
+                for statement in _supervisor_run_schema_statements():
+                    conn.execute(statement)
                 for statement in _runner_execution_schema_statements():
                     conn.execute(statement)
-            elif version not in (5, SCHEMA_VERSION):
+            elif version not in (5, 6, SCHEMA_VERSION):
                 raise StoreError(
                     f"schema version {version} is not supported (expected {SCHEMA_VERSION})",
                     kind="schema",
                 )
             if version in (3, 4, 5):
                 self._migrate_events_v5_to_v6(conn)
+            if version in (3, 4, 5, 6):
+                self._migrate_runner_execution_claims_v6_to_v7(conn)
                 conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
     @staticmethod
@@ -829,6 +855,79 @@ class Store:
             "CREATE TRIGGER events_no_delete BEFORE DELETE ON events "
             "BEGIN SELECT RAISE(ABORT, 'events are append-only'); END"
         )
+
+    @staticmethod
+    def _migrate_runner_execution_claims_v6_to_v7(conn: sqlite3.Connection) -> None:
+        """Bind execution claims to run/generation identity, not sandbox probe evidence."""
+        for statement in _supervisor_run_schema_statements():
+            conn.execute(statement)
+
+        claims_before = int(conn.execute(
+            "SELECT COUNT(*) FROM runner_execution_claims",
+        ).fetchone()[0])
+        events_before = int(conn.execute(
+            "SELECT COUNT(*) FROM runner_execution_events",
+        ).fetchone()[0])
+        for row in conn.execute(
+            "SELECT DISTINCT run_id, service_generation FROM runner_execution_claims",
+        ).fetchall():
+            conn.execute(
+                "INSERT OR IGNORE INTO supervisor_runs(run_id, service_generation) VALUES (?, ?)",
+                (row["run_id"], row["service_generation"]),
+            )
+
+        for trigger in (
+            "runner_execution_claims_no_update", "runner_execution_claims_no_delete",
+            "runner_execution_events_no_update", "runner_execution_events_no_delete",
+        ):
+            conn.execute(f"DROP TRIGGER IF EXISTS {trigger}")
+        conn.execute("ALTER TABLE runner_execution_events RENAME TO runner_execution_events_v6")
+        conn.execute("ALTER TABLE runner_execution_claims RENAME TO runner_execution_claims_v6")
+        for statement in _runner_execution_schema_statements():
+            conn.execute(statement)
+
+        claim_columns = (
+            "grant_id, invocation_id, request_id, task_id, slot, runner_id, attempt, epoch, "
+            "run_id, service_generation, manifest_sha256, payload_sha256, grant_body, claimed_at"
+        )
+        event_columns = "seq, grant_id, state, payload, created_at"
+        conn.execute(
+            f"INSERT INTO runner_execution_claims ({claim_columns}) "
+            f"SELECT {claim_columns} FROM runner_execution_claims_v6 ORDER BY grant_id"
+        )
+        conn.execute(
+            f"INSERT INTO runner_execution_events ({event_columns}) "
+            f"SELECT {event_columns} FROM runner_execution_events_v6 ORDER BY seq"
+        )
+        claims_after = int(conn.execute(
+            "SELECT COUNT(*) FROM runner_execution_claims",
+        ).fetchone()[0])
+        events_after = int(conn.execute(
+            "SELECT COUNT(*) FROM runner_execution_events",
+        ).fetchone()[0])
+        if claims_after != claims_before or events_after != events_before:
+            raise StoreError("Store v6→v7 runner history count changed during upgrade", kind="schema")
+        if (conn.execute(
+                f"SELECT {claim_columns} FROM runner_execution_claims_v6 "
+                f"EXCEPT SELECT {claim_columns} FROM runner_execution_claims LIMIT 1",
+        ).fetchone() is not None or conn.execute(
+                f"SELECT {claim_columns} FROM runner_execution_claims "
+                f"EXCEPT SELECT {claim_columns} FROM runner_execution_claims_v6 LIMIT 1",
+        ).fetchone() is not None):
+            raise StoreError("Store v6→v7 runner claims changed during upgrade", kind="schema")
+        if (conn.execute(
+                f"SELECT {event_columns} FROM runner_execution_events_v6 "
+                f"EXCEPT SELECT {event_columns} FROM runner_execution_events LIMIT 1",
+        ).fetchone() is not None or conn.execute(
+                f"SELECT {event_columns} FROM runner_execution_events "
+                f"EXCEPT SELECT {event_columns} FROM runner_execution_events_v6 LIMIT 1",
+        ).fetchone() is not None):
+            raise StoreError("Store v6→v7 runner events changed during upgrade", kind="schema")
+
+        conn.execute("DROP TABLE runner_execution_events_v6")
+        conn.execute("DROP TABLE runner_execution_claims_v6")
+        if conn.execute("PRAGMA foreign_key_check").fetchone() is not None:
+            raise StoreError("Store v6→v7 foreign-key integrity check failed", kind="schema")
 
     # ------------------------------------------------------------ lifecycle
 
@@ -1198,7 +1297,9 @@ class Store:
             raise StoreError("dispatch intent has no matching live lease", kind="lease")
         if not self.reconciliation_complete:
             raise StoreError("Store startup reconciliation is required for dispatch intent", kind="integrity")
-        if conn.execute("SELECT 1 FROM supervisor_probes WHERE run_id=?", (run_id,)).fetchone() is None:
+        if (self.sandbox_mode and conn.execute(
+                "SELECT 1 FROM supervisor_probes WHERE run_id=?", (run_id,),
+        ).fetchone() is None):
             raise StoreError("dispatch intent requires a consumed run-bound preflight", kind="probe")
         last = conn.execute(
             "SELECT attempt FROM receipts WHERE task_id=? AND slot=? ORDER BY attempt DESC LIMIT 1",
@@ -2454,7 +2555,7 @@ class Store:
             (task_id, slot, attempt),
         ).fetchone() is not None:
             raise StoreError("grant attempt already has a receipt", kind="duplicate")
-        if conn.execute(
+        if self.sandbox_mode and conn.execute(
             "SELECT 1 FROM supervisor_probes WHERE run_id = ?", (run_id,)
         ).fetchone() is None:
             raise StoreError("grant requires a consumed run-bound preflight", kind="probe")
@@ -4285,6 +4386,19 @@ class Store:
             for row in conn.execute("SELECT * FROM supervisor_operations").fetchall()
         }
         probes = {row["run_id"]: row for row in conn.execute("SELECT * FROM supervisor_probes").fetchall()}
+        recorded_runs = {
+            (row["run_id"], row["service_generation"])
+            for row in conn.execute("SELECT run_id, service_generation FROM supervisor_runs").fetchall()
+        }
+        claimed_runs = {
+            (row["run_id"], row["service_generation"])
+            for row in conn.execute(
+                "SELECT DISTINCT run_id, service_generation FROM runner_execution_claims",
+            ).fetchall()
+        }
+        if recorded_runs != claimed_runs:
+            raise StoreError("supervisor run identities differ from immutable execution claims",
+                             kind="integrity")
         event_operations: dict[str, dict] = {}
         external_intents: dict[str, list[dict]] = {}
         external_completions: dict[str, list[dict]] = {}
@@ -5150,6 +5264,54 @@ class Store:
                 raise StoreError("completed runner receipt is missing", kind="integrity")
             return dict(receipt)
 
+    def completed_dispatch_receipt(self, *, request_id: str, principal: str) -> dict | None:
+        """Return the completed receipt for one accepted dispatch owned by principal.
+
+        This is a read-only observation path. It never issues a grant or changes a
+        runner claim; it resolves only the immutable grant already issued for the
+        exact accepted dispatch intent.
+        """
+        intent = self.find_dispatch_intent(request_id, principal=principal)
+        grant_payload = {
+            "request_id": request_id,
+            "service_generation": intent["service_generation"],
+        }
+        if intent.get("issuance_operation_key") is not None:
+            grant_payload.update({
+                "issuance_operation_key": intent["issuance_operation_key"],
+                "issuance_envelope_sha256": intent["issuance_envelope_sha256"],
+            })
+        grant_operation = self.lookup_idempotent_operation(
+            f"dispatch-grant:{request_id}", operation="dispatch_grant",
+            payload=grant_payload, check_payload=True,
+        )
+        if grant_operation is None or grant_operation.get("state") != "COMPLETED":
+            return None
+        stored_grant = grant_operation.get("result")
+        from .execution_grant import validate_execution_grant
+        try:
+            grant = validate_execution_grant(stored_grant)
+        except Exception as exc:
+            raise StoreError("stored runner grant is invalid", kind="integrity") from exc
+        if any(grant.get(field) != intent.get(field) for field in (
+                "task_id", "slot", "attempt", "epoch", "run_id", "service_generation")):
+            raise StoreError("runner grant does not match the accepted dispatch", kind="integrity")
+        receipt = self.completed_runner_execution_receipt(grant)
+        if receipt is None:
+            return None
+        return {
+            "dispatch": {
+                field: intent[field] for field in (
+                    "principal", "task_id", "slot", "attempt", "epoch", "run_id",
+                    "request_id", "service_generation",
+                )
+            },
+            "execution": {
+                "request_id": grant["request_id"],
+                "receipt": receipt,
+            },
+        }
+
     def claim_runner_execution(
         self, grant: dict, *, active_service_generation: str,
         dispatch_issuance_proof: Any = None,
@@ -5161,8 +5323,8 @@ class Store:
         method. Its caller must provide the generation obtained from the trusted
         lifecycle fence, not from the runner request. This method does not verify
         Ed25519; the daemon verifies the signature and the Store independently
-        rechecks every current task/lease/preflight/budget fence before child
-        creation.
+        rechecks every current task/lease/budget fence and, in sandbox mode,
+        the consumed preflight before child creation.
 
         Returns None for a newly claimed run, or the exact stored receipt for a
         duplicate COMPLETE grant. PENDING, EXECUTION_RESERVED, INDETERMINATE,
@@ -5278,7 +5440,7 @@ class Store:
                 (valid["task_id"], valid["slot"], valid["attempt"]),
             ).fetchone() is not None:
                 raise StoreError("execution attempt already has a receipt", kind="duplicate")
-            if conn.execute(
+            if self.sandbox_mode and conn.execute(
                 "SELECT 1 FROM supervisor_probes WHERE run_id = ?", (valid["run_id"],)
             ).fetchone() is None:
                 raise StoreError("execution grant has no consumed run-bound preflight", kind="probe")
@@ -5286,6 +5448,10 @@ class Store:
             if blocked is not None:
                 raise StoreError(blocked, kind="budget")
             try:
+                conn.execute(
+                    "INSERT OR IGNORE INTO supervisor_runs(run_id, service_generation) VALUES (?, ?)",
+                    (valid["run_id"], valid["service_generation"]),
+                )
                 conn.execute(
                     "INSERT INTO runner_execution_claims "
                     "(grant_id, invocation_id, request_id, task_id, slot, runner_id, attempt, epoch, run_id, "

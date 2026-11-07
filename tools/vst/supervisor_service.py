@@ -290,6 +290,13 @@ class AuthenticatedSupervisorAPI:
             return self.supervisor.replay_dispatch_outcome(
                 principal=peer.principal, instruction=body["instruction"],
             )
+        if operation == "completed_dispatch_receipt":
+            if (peer is None or peer.role != "dispatch_owner" or not peer.principal
+                    or set(body) != {"instruction"}):
+                raise ContractError("completed dispatch receipt request is not authorized")
+            return self.supervisor.completed_dispatch_receipt(
+                principal=peer.principal, instruction=body["instruction"],
+            )
         if operation == "ack_dispatch_intent":
             fields = {"request_id", "payload_digest", "event_seq", "result_sha256", "service_generation"}
             if (peer is None or peer.role != "dispatch_owner" or not peer.principal
@@ -337,6 +344,25 @@ class AuthenticatedSupervisorAPI:
             if set(body) != {"grant"} or not isinstance(body["grant"], dict):
                 raise ContractError("pending request fields are invalid")
             return {"pending": self.supervisor.verify_pending_runner_execution(body["grant"])}
+        if operation == "worker_reservation":
+            if (peer is None or peer.role != "worker"
+                    or peer.operations != frozenset({"worker_reservation"})
+                    or set(body) != {"grant"} or not isinstance(body["grant"], dict)):
+                raise ContractError("Worker reservation view is not authorized")
+            grant = body["grant"]
+            status = self.supervisor.runner_execution_claim_status(grant)
+            if (not isinstance(status, dict)
+                    or set(status) not in ({"state", "service_generation"},
+                                          {"state", "service_generation", "receipt"},
+                                          {"state", "service_generation", "reason_code"})
+                    or not isinstance(status.get("service_generation"), str)):
+                raise ContractError("Supervisor claim status is malformed")
+            return {
+                "reserved": status.get("state") == "EXECUTION_RESERVED",
+                "service_generation": status["service_generation"],
+                "grant_id": grant.get("grant_id"),
+                "payload_sha256": hashlib.sha256(canonical_bytes(grant)).hexdigest(),
+            }
         if operation == "complete":
             if set(body) != {"grant", "receipt"} or not all(
                 isinstance(body[name], dict) for name in ("grant", "receipt")
@@ -464,6 +490,14 @@ class SupervisorClient:
         result = self.call("replay_dispatch_outcome", body)
         if result is not None and not isinstance(result, dict):
             raise SupervisorRPCError("Supervisor returned a malformed historical dispatch outcome")
+        return result
+
+    def completed_dispatch_receipt(self, **body: Any) -> dict | None:
+        if set(body) != {"instruction"}:
+            raise SupervisorRPCError("completed dispatch receipt request is malformed")
+        result = self.call("completed_dispatch_receipt", body)
+        if result is not None and not isinstance(result, dict):
+            raise SupervisorRPCError("Supervisor returned a malformed completed dispatch receipt")
         return result
 
     def ack_dispatch_intent(self, **body: Any) -> dict:
@@ -604,6 +638,244 @@ class SupervisorClient:
         if not isinstance(result, dict) or set(result) != {"receipt_sha256"}:
             raise SupervisorRPCError("Supervisor returned a malformed receipt tip")
         return result["receipt_sha256"]
+
+
+@dataclass(frozen=True)
+class WindowsSupervisorEndpoint:
+    """One role-specific named-pipe endpoint, bound to one Windows service identity."""
+
+    pipe_name: str
+    client_sid: str
+    client_service: str
+    role: str
+    operations: frozenset[str]
+    principal: str | None = None
+
+
+_WINDOWS_ROLE_OPERATIONS = {
+    "dispatcher": frozenset({"issue_dispatch_grant", "next_dispatch_intent"}),
+    "dispatch_owner": frozenset({
+        "submit_dispatch_intent", "replay_dispatch_outcome", "completed_dispatch_receipt",
+        "ack_dispatch_intent",
+    }),
+    "runnerd": frozenset({
+        "claim", "claim_status", "reserve", "complete", "generation",
+        "recover", "manifest", "previous_receipt", "no_execution",
+    }),
+    "signer": frozenset({"generation", "pending"}),
+    "worker": frozenset({"worker_reservation"}),
+    "operator": frozenset({"reconcile_runner_execution"}),
+}
+
+
+class WindowsSupervisorClient(SupervisorClient):
+    """Supervisor RPC client using one authenticated named pipe per request."""
+
+    def __init__(
+        self, pipe_name: str, *, expected_server_sid: str,
+        expected_server_service: str, timeout_sec: float = 5.0,
+    ) -> None:
+        if (isinstance(timeout_sec, bool) or not isinstance(timeout_sec, (int, float))
+                or not 0.1 <= timeout_sec <= 30.0):
+            raise ContractError("Windows Supervisor RPC timeout is invalid")
+        from .windows_named_pipe import WindowsNamedPipeClient
+
+        self._pipe_client = WindowsNamedPipeClient(
+            pipe_name, expected_server_sid=expected_server_sid,
+            expected_server_service=expected_server_service, timeout_sec=float(timeout_sec),
+        )
+        self.timeout_sec = float(timeout_sec)
+
+    def call(self, operation: str, body: dict) -> Any:
+        if not isinstance(operation, str) or not isinstance(body, dict):
+            raise ContractError("Supervisor RPC call is malformed")
+        payload = canonical_bytes({"operation": operation, "body": body})
+        if len(payload) > MAX_SUPERVISOR_MESSAGE_BYTES:
+            raise ContractError("Supervisor RPC request exceeds its size limit")
+        with self._pipe_client.connect() as client:
+            client.sendall(_HEADER.pack(len(payload)) + payload)
+            length = _HEADER.unpack(_recv_exact(client, _HEADER.size))[0]
+            if length < 2 or length > MAX_SUPERVISOR_MESSAGE_BYTES:
+                raise SupervisorRPCError("Supervisor RPC response exceeds its size limit")
+            response = json.loads(
+                _recv_exact(client, length), object_pairs_hook=_unique_json_object,
+            )
+        if not isinstance(response, dict) or type(response.get("ok")) is not bool:
+            raise SupervisorRPCError("Supervisor RPC response is malformed")
+        if response["ok"] is True:
+            if set(response) != {"ok", "result"}:
+                raise SupervisorRPCError("Supervisor RPC success response is malformed")
+            return response["result"]
+        error = response.get("error")
+        if (set(response) != {"ok", "error"}
+                or not isinstance(error, str) or not error):
+            raise SupervisorRPCError("Supervisor RPC refusal is malformed")
+        raise SupervisorRPCError(f"Supervisor RPC refused request ({error})", kind=error)
+
+    def worker_reservation(self, grant: dict) -> dict:
+        result = self.call("worker_reservation", {"grant": grant})
+        if (not isinstance(result, dict) or set(result) != {
+                "reserved", "service_generation", "grant_id", "payload_sha256",
+            } or type(result["reserved"]) is not bool
+                or not isinstance(result["service_generation"], str)
+                or not isinstance(result["grant_id"], str)
+                or not isinstance(result["payload_sha256"], str)
+                or not _SHA256.fullmatch(result["payload_sha256"])):
+            raise SupervisorRPCError("Supervisor returned a malformed Worker reservation view")
+        return result
+
+
+class WindowsAuthenticatedSupervisorAPI:
+    """Windows named-pipe front end for the existing Supervisor dispatch contract.
+
+    Each pipe admits one configured SCM service SID/name pair and one fixed role.
+    The Store and authorization decisions remain in the existing Supervisor.
+    """
+
+    def __init__(
+        self, supervisor: Any, *, server_sid: str, server_service: str,
+        endpoints: tuple[WindowsSupervisorEndpoint, ...],
+        max_request_bytes: int = MAX_SUPERVISOR_MESSAGE_BYTES,
+    ) -> None:
+        if os.name != "nt":
+            raise ContractError("Windows Supervisor API is available only on Windows")
+        if not endpoints or len({item.role for item in endpoints}) != len(endpoints):
+            raise ContractError("Windows Supervisor endpoint roles are empty or duplicated")
+        if (type(max_request_bytes) is not int or not 1024 <= max_request_bytes
+                <= MAX_SUPERVISOR_MESSAGE_BYTES):
+            raise ContractError("Windows Supervisor RPC size limit is invalid")
+        from .windows_named_pipe import WindowsNamedPipeListener
+
+        names: set[str] = set()
+        sids: set[str] = set()
+        services: set[str] = set()
+        listeners = {}
+        for endpoint in endpoints:
+            if not isinstance(endpoint, WindowsSupervisorEndpoint):
+                raise ContractError("Windows Supervisor endpoint record is invalid")
+            expected_operations = _WINDOWS_ROLE_OPERATIONS.get(endpoint.role)
+            if expected_operations is None or endpoint.operations != expected_operations:
+                raise ContractError("Windows Supervisor endpoint operation policy is invalid")
+            if (endpoint.role == "dispatch_owner"
+                    and (not isinstance(endpoint.principal, str)
+                         or not _PRINCIPAL_ID.fullmatch(endpoint.principal))):
+                raise ContractError("Windows dispatch-owner principal is invalid")
+            if endpoint.role != "dispatch_owner" and endpoint.principal is not None:
+                raise ContractError("Windows non-owner endpoint must not set a dispatch principal")
+            if (endpoint.pipe_name in names or endpoint.client_sid in sids
+                    or endpoint.client_service in services):
+                raise ContractError("Windows Supervisor endpoint identities are duplicated")
+            names.add(endpoint.pipe_name)
+            sids.add(endpoint.client_sid)
+            services.add(endpoint.client_service)
+            listeners[endpoint.role] = WindowsNamedPipeListener(
+                endpoint.pipe_name, server_sid=server_sid, server_service=server_service,
+                allowed_client_services={endpoint.client_sid: endpoint.client_service},
+                timeout_sec=1.0,
+            )
+        self.supervisor = supervisor
+        self.endpoints = {item.role: item for item in endpoints}
+        self.listeners = listeners
+        self.max_request_bytes = max_request_bytes
+        self._shutdown = threading.Event()
+        self._errors: list[BaseException] = []
+        self._error_lock = threading.Lock()
+        self._dispatch_api = object.__new__(AuthenticatedSupervisorAPI)
+        self._dispatch_api.supervisor = supervisor
+
+    def shutdown(self) -> None:
+        self._shutdown.set()
+        for listener in self.listeners.values():
+            listener.close()
+
+    def serve_forever(self) -> None:
+        threads = [
+            threading.Thread(
+                target=self._serve_role, args=(role,),
+                name=f"vst-supervisor-{role}", daemon=True,
+            )
+            for role in self.listeners
+        ]
+        for thread in threads:
+            thread.start()
+        try:
+            while any(thread.is_alive() for thread in threads):
+                for thread in threads:
+                    thread.join(0.1)
+                if self._errors:
+                    self.shutdown()
+        finally:
+            self.shutdown()
+            for thread in threads:
+                thread.join()
+        if self._errors:
+            raise ContractError("Windows Supervisor endpoint stopped unexpectedly") from self._errors[0]
+
+    def _serve_role(self, role: str) -> None:
+        listener = self.listeners[role]
+        while not self._shutdown.is_set():
+            try:
+                connection = listener.accept(timeout_sec=0.5)
+                if connection is None:
+                    continue
+                with connection:
+                    self._handle(role, connection)
+            except OSError:
+                if self._shutdown.is_set():
+                    return
+                with self._error_lock:
+                    self._errors.append(RuntimeError(f"Windows Supervisor {role} pipe failed"))
+                self.shutdown()
+                return
+            except Exception as exc:
+                with self._error_lock:
+                    self._errors.append(exc)
+                self.shutdown()
+                return
+
+    def _handle(self, role: str, connection: Any) -> None:
+        endpoint = self.endpoints[role]
+        connection.settimeout(10.0)
+        try:
+            length = _HEADER.unpack(_recv_exact(connection, _HEADER.size))[0]
+            if length < 2 or length > self.max_request_bytes:
+                raise ContractError("Windows Supervisor RPC request size is invalid")
+            payload = _recv_exact(connection, length)
+            message = json.loads(payload, object_pairs_hook=_unique_json_object)
+            if (not isinstance(message, dict) or set(message) != {"operation", "body"}
+                    or not isinstance(message["operation"], str)
+                    or message["operation"] not in endpoint.operations
+                    or not isinstance(message["body"], dict)
+                    or canonical_bytes(message) != payload):
+                raise ContractError("Windows Supervisor RPC operation or frame is invalid")
+            peer = SupervisorPeer(
+                role=endpoint.role, uid=1, gid=1,
+                cgroup=f"windows-service:{endpoint.client_service}",
+                operations=endpoint.operations, principal=endpoint.principal,
+            )
+            operation = message["operation"]
+            if operation == "next_dispatch_intent":
+                body = message["body"]
+                if (set(body) != {"cursor"}
+                        or (body["cursor"] is not None and not isinstance(body["cursor"], dict))):
+                    raise ContractError("Windows dispatcher cursor request is invalid")
+                result = self.supervisor.next_dispatch_intent(
+                    cursor=body["cursor"], audience=f"windows-service:{endpoint.client_service}",
+                )
+            else:
+                result = self._dispatch_api._dispatch(operation, message["body"], peer)
+            response = {"ok": True, "result": result}
+        except Exception:
+            response = {"ok": False, "error": "refused"}
+        encoded = canonical_bytes(response)
+        if len(encoded) > MAX_SUPERVISOR_MESSAGE_BYTES:
+            encoded = canonical_bytes({"ok": False, "error": "response_too_large"})
+        try:
+            connection.sendall(_HEADER.pack(len(encoded)) + encoded)
+        except OSError:
+            # A single disconnected/malformed peer must not stop every role
+            # endpoint hosted by this Supervisor process.
+            return
 
 
 DEFAULT_CONFIG_PATH = "/etc/vst-runner/supervisor-service.json"
@@ -921,6 +1193,157 @@ def _active_runner_generation(config: dict) -> str:
     return invocation
 
 
+def load_windows_supervisor_service(path: str | None = None) -> tuple[WindowsAuthenticatedSupervisorAPI, Any]:
+    """Compose the Windows-local Supervisor without the POSIX/E5 readiness path."""
+    if os.name != "nt":
+        raise ContractError("Windows Supervisor composition is available only on Windows")
+    from .windows_service_host import (
+        WindowsRuntimeConfig, assert_current_service_identity, assert_path_acl,
+        read_role_private_file,
+    )
+    runtime = WindowsRuntimeConfig.load()
+    identity = runtime.identity("supervisor")
+    assert_current_service_identity(identity)
+    config_path = path or os.path.join(runtime.data_root, "supervisor.json")
+    if not isinstance(config_path, str) or not os.path.isabs(config_path):
+        raise ContractError("Windows Supervisor config path must be absolute")
+    role_sids = {item.service_sid for item in runtime.role_identities.values()}
+    assert_path_acl(
+        config_path,
+        allowed_sids={"S-1-5-18", "S-1-5-32-544", *role_sids},
+        writable_sids={"S-1-5-18", "S-1-5-32-544"},
+    )
+    try:
+        with open(config_path, "rb") as stream:
+            raw = stream.read(262145)
+        if len(raw) > 262144:
+            raise ContractError("Windows Supervisor config exceeds its size limit")
+        value = json.loads(raw, object_pairs_hook=_unique_json_object)
+    except (OSError, ValueError, UnicodeDecodeError) as exc:
+        raise ContractError("Windows Supervisor config is unavailable or malformed") from exc
+    required = {
+        "store_path", "anchor_path", "event_key_path", "startup_supervisor_key_path",
+        "execution_resolution_key_path", "execution_grant_key_id",
+        "execution_grant_private_key_path", "execution_grant_trust_keys", "openssl_path",
+        "execution_grant_audience", "dispatch_instruction_trust_keys",
+        "model_provenance", "run_id", "dispatch_owner_principal",
+    }
+    if not isinstance(value, dict) or set(value) != required:
+        raise ContractError("Windows Supervisor config fields do not match its fixed schema")
+    supervisor_root = runtime.store_root
+    for field in ("store_path", "anchor_path", "event_key_path", "startup_supervisor_key_path",
+                  "execution_resolution_key_path", "execution_grant_private_key_path"):
+        file_path = value[field]
+        if not isinstance(file_path, str) or not os.path.isabs(file_path):
+            raise ContractError(f"Windows Supervisor {field} must be absolute")
+        try:
+            if os.path.commonpath((supervisor_root, file_path)) != supervisor_root:
+                raise ContractError(f"Windows Supervisor {field} must be under its private Store root")
+        except ValueError as exc:
+            raise ContractError(f"Windows Supervisor {field} is on another volume") from exc
+    for path_field in ("store_path", "anchor_path"):
+        target = value[path_field]
+        if os.path.exists(target):
+            assert_path_acl(
+                target,
+                allowed_sids={"S-1-5-18", "S-1-5-32-544", identity.service_sid},
+                writable_sids={"S-1-5-18", "S-1-5-32-544", identity.service_sid},
+            )
+    key_root_args = {"service_sid": identity.service_sid, "service_root": supervisor_root}
+    event_key = read_role_private_file(value["event_key_path"], **key_root_args)
+    startup_key = read_role_private_file(value["startup_supervisor_key_path"], **key_root_args)
+    resolution_key = read_role_private_file(value["execution_resolution_key_path"], **key_root_args)
+    if len({event_key, startup_key, resolution_key}) != 3:
+        raise ContractError("Windows Supervisor Store keys must be distinct")
+    from .execution_grant import _trusted_openssl, _trusted_root_file
+    openssl_path = _trusted_openssl(value["openssl_path"])
+    _trusted_root_file(value["execution_grant_private_key_path"], private=True)
+    trust_keys = value["execution_grant_trust_keys"]
+    if (not isinstance(trust_keys, dict) or not trust_keys
+            or any(not isinstance(key_id, str) or not _MODEL_ID.fullmatch(key_id)
+                   or not isinstance(key_path, str) or not os.path.isabs(key_path)
+                   for key_id, key_path in trust_keys.items())):
+        raise ContractError("Windows execution-grant trust registry is malformed")
+    dispatch_trust = value["dispatch_instruction_trust_keys"]
+    if (not isinstance(dispatch_trust, dict) or not dispatch_trust
+            or any(not isinstance(key_id, str) or not _MODEL_ID.fullmatch(key_id)
+                   or not isinstance(entry, dict)
+                   or set(entry) != {"principal", "purpose", "public_key_path"}
+                   or not isinstance(entry["principal"], str)
+                   or entry["purpose"] != "VST_S2_DISPATCH_INSTRUCTION_V1"
+                   or not isinstance(entry["public_key_path"], str)
+                   or not os.path.isabs(entry["public_key_path"])
+                   for key_id, entry in dispatch_trust.items())):
+        raise ContractError("Windows dispatch-instruction trust registry is malformed")
+    for key_path in [*trust_keys.values(), *(entry["public_key_path"] for entry in dispatch_trust.values())]:
+        _trusted_root_file(key_path, private=False)
+    model_provenance = value["model_provenance"]
+    if (not isinstance(model_provenance, dict) or not model_provenance
+            or any(not isinstance(model, str) or not _MODEL_ID.fullmatch(model)
+                   or not isinstance(digest, str) or not _SHA256.fullmatch(digest)
+                   for model, digest in model_provenance.items())):
+        raise ContractError("Windows model provenance registry is malformed")
+    if (not isinstance(value["run_id"], str) or not value["run_id"]
+            or not isinstance(value["dispatch_owner_principal"], str)
+            or not _PRINCIPAL_ID.fullmatch(value["dispatch_owner_principal"])):
+        raise ContractError("Windows Supervisor run or dispatch Owner identity is invalid")
+    generation = secrets.token_hex(32)
+    from .store import Store
+    from .supervisor import Supervisor
+    store = Store(
+        value["store_path"], event_key=event_key, busy_timeout_sec=5.0,
+        anchor_path=value["anchor_path"], sandbox_mode=False,
+        supervisor_key=startup_key, execution_resolution_key=resolution_key,
+        supervisor_runner_id="VSTSupervisor",
+    )
+    supervisor = Supervisor(
+        store, operation_backend=None, run_id=value["run_id"],
+        operator_key=resolution_key,
+        execution_grant_key_id=value["execution_grant_key_id"],
+        execution_grant_private_key_path=value["execution_grant_private_key_path"],
+        execution_grant_openssl_path=openssl_path,
+        execution_grant_trust_keys=trust_keys,
+        dispatch_instruction_trust_keys=dispatch_trust,
+        dispatch_instruction_openssl_path=openssl_path,
+        execution_grant_audience=value["execution_grant_audience"],
+        service_generation_provider=lambda: generation,
+        model_provenance_verifier=lambda model, digest: model_provenance.get(model) == digest,
+        model_provenance_digest_provider=lambda model: model_provenance.get(model),
+    )
+    endpoints = (
+        WindowsSupervisorEndpoint(
+            runtime.pipe_name("supervisor_dispatcher"), runtime.identity("dispatcher").service_sid,
+            runtime.identity("dispatcher").service_name, "dispatcher",
+            _WINDOWS_ROLE_OPERATIONS["dispatcher"],
+        ),
+        WindowsSupervisorEndpoint(
+            runtime.pipe_name("supervisor_owner"), runtime.identity("owner").service_sid,
+            runtime.identity("owner").service_name, "dispatch_owner",
+            _WINDOWS_ROLE_OPERATIONS["dispatch_owner"], value["dispatch_owner_principal"],
+        ),
+        WindowsSupervisorEndpoint(
+            runtime.pipe_name("supervisor_runner"), runtime.identity("runner").service_sid,
+            runtime.identity("runner").service_name, "runnerd",
+            _WINDOWS_ROLE_OPERATIONS["runnerd"],
+        ),
+        WindowsSupervisorEndpoint(
+            runtime.pipe_name("supervisor_signer"), runtime.identity("signer").service_sid,
+            runtime.identity("signer").service_name, "signer",
+            _WINDOWS_ROLE_OPERATIONS["signer"],
+        ),
+        WindowsSupervisorEndpoint(
+            runtime.pipe_name("supervisor_worker"), runtime.identity("worker").service_sid,
+            runtime.identity("worker").service_name, "worker",
+            _WINDOWS_ROLE_OPERATIONS["worker"],
+        ),
+    )
+    api = WindowsAuthenticatedSupervisorAPI(
+        supervisor, server_sid=identity.service_sid, server_service=identity.service_name,
+        endpoints=endpoints,
+    )
+    return api, store
+
+
 def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[AuthenticatedSupervisorAPI, Any]:
     """Build the root Supervisor from a strict root-owned deployment contract."""
     value = _read_controlled_json(path)
@@ -1066,7 +1489,8 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
     role_operations = {
         "dispatcher": frozenset({"issue_dispatch_grant", "next_dispatch_intent"}),
         "dispatch_owner": frozenset({
-            "submit_dispatch_intent", "replay_dispatch_outcome", "ack_dispatch_intent",
+            "submit_dispatch_intent", "replay_dispatch_outcome", "completed_dispatch_receipt",
+            "ack_dispatch_intent",
         }),
         "runnerd": frozenset({
             "claim", "claim_status", "reserve", "complete", "generation",
@@ -1331,6 +1755,31 @@ def load_supervisor_service(path: str = DEFAULT_CONFIG_PATH) -> tuple[Authentica
 
 
 def main() -> None:
+    if os.name == "nt":
+        if sys.argv[1:] != ["--windows-scm"]:
+            raise ContractError(
+                "Windows Supervisor must be launched by SCM with --windows-scm"
+            )
+        from .windows_service_host import run_scm_service, service_name_for_role
+
+        class _WindowsSupervisorScmTarget:
+            def __init__(self) -> None:
+                self.api, self.store = load_windows_supervisor_service()
+
+            def serve_forever(self) -> None:
+                try:
+                    self.api.serve_forever()
+                finally:
+                    self.store.close()
+
+            def shutdown(self) -> None:
+                self.api.shutdown()
+
+        run_scm_service(
+            service_name_for_role("supervisor"),
+            _WindowsSupervisorScmTarget,
+        )
+        return
     if os.geteuid() != 0:
         raise ContractError("Supervisor service must run as root")
     config_path = DEFAULT_CONFIG_PATH

@@ -1414,6 +1414,8 @@ def run_manifest_commands(
     artifact_paths: list[str] | None = None, timeout_sec: int | None = None,
     deadline_sec: int | None = None, max_output_bytes: int = DEFAULT_MAX_OUTPUT_BYTES,
     extra_env: dict[str, str] | None = None, report: dict | None = None,
+    worker_executor: Any | None = None, signer_server_sid: str | None = None,
+    signer_server_service: str | None = None,
 ) -> dict:
     """Run every manifest-pinned v2 command, derive HEAD, and request signatures.
 
@@ -1428,7 +1430,11 @@ def run_manifest_commands(
     from .sandbox import (require_distinct_worker_identity,
                           require_runner_can_access_signer,
                           require_worker_cannot_access_signer)
-    from .signer import authorize_runner_over_socket, sign_diff_over_socket, sign_over_socket
+    from .signer import (
+        authorize_runner_over_pipe, authorize_runner_over_socket,
+        sign_diff_over_pipe, sign_diff_over_socket, sign_over_pipe,
+        sign_over_socket,
+    )
 
     valid = validate_task_manifest(manifest)
     if valid.get("contract_version") != 2:
@@ -1443,23 +1449,30 @@ def run_manifest_commands(
     _req_hex(model_provenance_sha256, "model_provenance_sha256", 64)
     if not os.path.isdir(cwd):
         raise ContractError("cwd must be an existing repository directory")
-    if os.name != "posix":
-        raise ContractError("v2 worker execution requires a POSIX identity boundary")
-    if (not isinstance(worker_uid, int) or isinstance(worker_uid, bool) or worker_uid < 1 or
-            not isinstance(worker_gid, int) or isinstance(worker_gid, bool) or worker_gid < 1):
-        raise ContractError("worker_uid and worker_gid must be positive POSIX ids")
-    if (worker_uid, worker_gid) != (999, 989) or (os.geteuid(), os.getegid()) != (997, 988):
-        raise ContractError("POSIX manifest execution requires the fixed vst-runner to vst-worker helper")
-    if (not isinstance(worker_exec_helper_path, str)
-            or not _POSIX_WORKER_EXEC_HELPER_PATH.fullmatch(worker_exec_helper_path)
-            or not isinstance(worker_exec_helper_head, str)
-            or not _POSIX_WORKER_EXEC_HELPER_HEAD.fullmatch(worker_exec_helper_head)
-            or worker_exec_helper_path != _POSIX_WORKER_EXEC_HELPER_PREFIX + worker_exec_helper_head
-            or not callable(verify_worker_exec_helper)):
-        raise ContractError("manifest execution requires the exact helper path for its full configured build head")
-    require_distinct_worker_identity(worker_uid)
-    require_runner_can_access_signer(signer_socket)
-    require_worker_cannot_access_signer(signer_socket, worker_uid=worker_uid, worker_gid=worker_gid)
+    if os.name == "nt":
+        if (worker_executor is None or not callable(getattr(worker_executor, "run", None))
+                or not isinstance(signer_server_sid, str)
+                or not re.fullmatch(r"S-1-\d+(?:-\d+){1,15}", signer_server_sid)
+                or signer_server_service != "VSTSigner"):
+            raise ContractError("Windows execution requires the SCM Worker and Signer service endpoints")
+    else:
+        if worker_executor is not None or signer_server_sid is not None:
+            raise ContractError("Windows service transports cannot be configured on the POSIX runner path")
+        if (not isinstance(worker_uid, int) or isinstance(worker_uid, bool) or worker_uid < 1 or
+                not isinstance(worker_gid, int) or isinstance(worker_gid, bool) or worker_gid < 1):
+            raise ContractError("worker_uid and worker_gid must be positive POSIX ids")
+        if (worker_uid, worker_gid) != (999, 989) or (os.geteuid(), os.getegid()) != (997, 988):
+            raise ContractError("POSIX manifest execution requires the fixed vst-runner to vst-worker helper")
+        if (not isinstance(worker_exec_helper_path, str)
+                or not _POSIX_WORKER_EXEC_HELPER_PATH.fullmatch(worker_exec_helper_path)
+                or not isinstance(worker_exec_helper_head, str)
+                or not _POSIX_WORKER_EXEC_HELPER_HEAD.fullmatch(worker_exec_helper_head)
+                or worker_exec_helper_path != _POSIX_WORKER_EXEC_HELPER_PREFIX + worker_exec_helper_head
+                or not callable(verify_worker_exec_helper)):
+            raise ContractError("manifest execution requires the exact helper path for its full configured build head")
+        require_distinct_worker_identity(worker_uid)
+        require_runner_can_access_signer(signer_socket)
+        require_worker_cannot_access_signer(signer_socket, worker_uid=worker_uid, worker_gid=worker_gid)
     _req_int(attempt, "attempt", 1, MAX_COUNTER)
     _req_int(epoch, "epoch", 1, MAX_COUNTER)
     if prev_receipt_sha256 is not None:
@@ -1500,7 +1513,14 @@ def run_manifest_commands(
     })
     if replay is not None:
         return validate_receipt(replay)
-    authorize_runner_over_socket(signer_socket, grant=execution_authority.grant)
+    if os.name == "nt":
+        authorize_runner_over_pipe(
+            signer_socket, expected_server_sid=signer_server_sid,
+            expected_server_service=signer_server_service,
+            grant=execution_authority.grant,
+        )
+    else:
+        authorize_runner_over_socket(signer_socket, grant=execution_authority.grant)
     deadline_at = time.monotonic() + deadline
     commands: list[dict] = []
     parser_results: list[dict] = []
@@ -1518,7 +1538,8 @@ def run_manifest_commands(
             reservation_confirmed = True
         if time.monotonic() >= command_launch_deadline:
             raise ContractError("command deadline expired after launch reservation")
-        verify_worker_exec_helper()
+        if os.name != "nt":
+            verify_worker_exec_helper()
 
     for item in pinned:
         parser_key = (item["parser_id"], item["parser_version"], item["parser_sha256"])
@@ -1541,14 +1562,23 @@ def run_manifest_commands(
                     "capture_incomplete": False, "job_object": False, "skipped_by_deadline": True}
         else:
             command_launch_deadline = min(deadline_at, now + float(per_command))
-            exit_code, stdout, info = _run_one(
-                item["argv"], cwd, min(float(per_command), remaining), env,
-                max_output_bytes, require_job_object=True,
-                worker_uid=worker_uid, worker_gid=worker_gid,
-                worker_exec_helper_path=worker_exec_helper_path,
-                _deadline_at=min(deadline_at, now + float(per_command)),
-                _before_spawn=verify_and_reserve_before_spawn,
-            )
+            command_timeout = min(float(per_command), remaining)
+            if os.name == "nt":
+                verify_and_reserve_before_spawn()
+                exit_code, stdout, info = worker_executor.run(
+                    grant=execution_authority.grant, manifest=valid, slot=slot,
+                    argv=item["argv"], timeout_sec=max(1, int(command_timeout)),
+                    max_output_bytes=max_output_bytes,
+                )
+            else:
+                exit_code, stdout, info = _run_one(
+                    item["argv"], cwd, command_timeout, env,
+                    max_output_bytes, require_job_object=True,
+                    worker_uid=worker_uid, worker_gid=worker_gid,
+                    worker_exec_helper_path=worker_exec_helper_path,
+                    _deadline_at=min(deadline_at, now + float(per_command)),
+                    _before_spawn=verify_and_reserve_before_spawn,
+                )
             if not info.get("admission_wait_expired"):
                 info["skipped_by_deadline"] = False
         parsed = parser(stdout)
@@ -1578,19 +1608,34 @@ def run_manifest_commands(
     diff_bytes, changed, renames, symlinks = _diff_paths(cwd, valid["base_head"])
     diff = git_diff_evidence(cwd, valid, candidate_head, diff_bytes, changed,
                              symlink_paths=symlinks, rename_pairs=renames)
-    diff["signature"] = sign_diff_over_socket(
-        signer_socket, f"{request_id}:diff", {k: v for k, v in diff.items()},
-        execution_grant=execution_authority.grant,
-    )
+    if os.name == "nt":
+        diff["signature"] = sign_diff_over_pipe(
+            signer_socket, f"{request_id}:diff", {k: v for k, v in diff.items()},
+            expected_server_sid=signer_server_sid,
+            expected_server_service=signer_server_service,
+            execution_grant=execution_authority.grant,
+        )
+    else:
+        diff["signature"] = sign_diff_over_socket(
+            signer_socket, f"{request_id}:diff", {k: v for k, v in diff.items()},
+            execution_grant=execution_authority.grant,
+        )
     request = {
         "request_id": request_id, "task_id": valid["task_id"], "slot": slot,
         "attempt": attempt, "epoch": epoch, "manifest_sha256": manifest_hash,
         "candidate_head": candidate_head, "commands": commands,
         "parser_results": parser_results, "artifact_digests": digests,
     }
-    request_sig = sign_over_socket(
-        signer_socket, request, execution_grant=execution_authority.grant
-    )
+    if os.name == "nt":
+        request_sig = sign_over_pipe(
+            signer_socket, request, expected_server_sid=signer_server_sid,
+            expected_server_service=signer_server_service,
+            execution_grant=execution_authority.grant,
+        )
+    else:
+        request_sig = sign_over_socket(
+            signer_socket, request, execution_grant=execution_authority.grant
+        )
     receipt = {
         "contract_version": 2,
         "receipt_id": f"{valid['task_id']}:{slot}:{attempt}:{invocation_id}",

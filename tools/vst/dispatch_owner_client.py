@@ -27,6 +27,8 @@ class DispatchOwnerClient:
             raise ContractError("dispatch-owner transport does not expose the historical replay operation")
         if not callable(getattr(transport, "ack_dispatch_intent", None)):
             raise ContractError("dispatch-owner transport does not expose the acknowledgement operation")
+        if not callable(getattr(transport, "completed_dispatch_receipt", None)):
+            raise ContractError("dispatch-owner transport does not expose the completed receipt operation")
         self.principal = principal
         self.trust_registry = trust_registry
         self.openssl_path = openssl_path
@@ -116,3 +118,49 @@ class DispatchOwnerClient:
         except Exception as exc:
             raise DispatchOutcomeUnknown("dispatch result was forwarded but acknowledgement is unknown") from exc
         return body
+
+    def completed_receipt(self, instruction: object) -> dict | None:
+        """Poll only for the exact durable receipt of this owner's accepted instruction."""
+        envelope = validate_dispatch_instruction(instruction)
+        accepted = self._replay_historical(envelope)
+        if accepted is None:
+            return None
+        try:
+            result = self.transport.completed_dispatch_receipt(instruction=envelope)
+        except Exception as exc:
+            raise DispatchOutcomeUnknown("completed dispatch receipt could not be verified") from exc
+        if result is None:
+            return None
+        if (not isinstance(result, dict) or set(result) != {"dispatch", "execution"}
+                or not isinstance(result["dispatch"], dict)
+                or not isinstance(result["execution"], dict)
+                or set(result["execution"]) != {"request_id", "receipt"}):
+            raise DispatchOutcomeUnknown("completed dispatch receipt is malformed")
+        dispatch = result["dispatch"]
+        if set(dispatch) != {
+                "principal", "task_id", "slot", "attempt", "epoch", "run_id",
+                "request_id", "service_generation"}:
+            raise DispatchOutcomeUnknown("completed dispatch binding is malformed")
+        if any(dispatch.get(field) != accepted.get(field) for field in (
+                "principal", "task_id", "slot", "attempt", "epoch", "run_id",
+                "request_id", "service_generation")):
+            raise DispatchOutcomeUnknown("completed dispatch differs from the accepted instruction")
+        receipt = result["execution"].get("receipt")
+        grant_request_id = result["execution"].get("request_id")
+        if not isinstance(receipt, dict) or not isinstance(grant_request_id, str) or not grant_request_id:
+            raise DispatchOutcomeUnknown("completed Runner receipt is malformed")
+        attestation = receipt.get("runner_attestation")
+        request = attestation.get("request") if isinstance(attestation, dict) else None
+        if (not isinstance(request, dict)
+                or request.get("request_id") != grant_request_id
+                or request.get("task_id") != accepted.get("task_id")
+                or request.get("slot") != accepted.get("slot")
+                or request.get("attempt") != accepted.get("attempt")
+                or request.get("epoch") != accepted.get("epoch")
+                or receipt.get("task_id") != accepted.get("task_id")
+                or receipt.get("slot") != accepted.get("slot")
+                or receipt.get("attempt") != accepted.get("attempt")
+                or receipt.get("epoch") != accepted.get("epoch")
+                or receipt.get("manifest_sha256") != accepted.get("manifest_digest")):
+            raise DispatchOutcomeUnknown("completed Runner receipt differs from the accepted instruction")
+        return result

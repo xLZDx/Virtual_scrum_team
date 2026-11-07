@@ -97,6 +97,9 @@ def validate_execution_grant(value: object) -> dict[str, Any]:
 
 
 def _trusted_root_file(path: str, *, private: bool) -> None:
+    if os.name == "nt":
+        _trusted_windows_file(path, private=private)
+        return
     if os.name != "posix" or not hasattr(os, "O_NOFOLLOW") or not os.path.isabs(path):
         raise ContractError("execution grant keys require absolute POSIX paths without symlinks")
     parent = os.path.dirname(os.path.abspath(path))
@@ -124,6 +127,9 @@ def _trusted_root_file(path: str, *, private: bool) -> None:
 
 
 def _trusted_openssl(path: str) -> str:
+    if os.name == "nt":
+        _trusted_windows_file(path, private=False)
+        return path
     if os.name != "posix" or not os.path.isabs(path):
         raise ContractError("execution grant OpenSSL path must be absolute on POSIX")
     path = os.path.realpath(path)
@@ -148,6 +154,36 @@ def _trusted_openssl(path: str) -> str:
     return path
 
 
+def _trusted_windows_file(path: str, *, private: bool) -> None:
+    """Check a protected Windows key/tool path before passing it to OpenSSL."""
+    if not isinstance(path, str) or not os.path.isabs(path):
+        raise ContractError("execution grant Windows trust path must be absolute")
+    from .windows_service_host import (
+        assert_current_service_identity, assert_path_acl, resolve_enabled_service_sid,
+    )
+    service_sids = {resolve_enabled_service_sid(name) for name in (
+        "VSTOwner", "VSTSupervisor", "VSTDispatcher", "VSTRunner", "VSTSigner", "VSTWorker",
+    )}
+    trusted = {"S-1-5-18", "S-1-5-32-544", *service_sids}
+    if private:
+        supervisor_sid = resolve_enabled_service_sid("VSTSupervisor")
+        from .windows_service_host import WindowsRoleIdentity
+        assert_current_service_identity(WindowsRoleIdentity(
+            "supervisor", "VSTSupervisor", supervisor_sid, None,
+        ))
+        assert_path_acl(path, allowed_sids={"S-1-5-18", "S-1-5-32-544", supervisor_sid},
+                        writable_sids={"S-1-5-18", "S-1-5-32-544"})
+    else:
+        assert_path_acl(path, allowed_sids=trusted,
+                        writable_sids={"S-1-5-18", "S-1-5-32-544"})
+    try:
+        info = os.stat(path, follow_symlinks=False)
+    except OSError as exc:
+        raise ContractError("execution grant Windows trust file is unavailable") from exc
+    if not stat.S_ISREG(info.st_mode) or info.st_file_attributes & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400):
+        raise ContractError("execution grant Windows trust path is not a regular non-reparse file")
+
+
 def _input_file(data: bytes):
     stream = tempfile.TemporaryFile(mode="w+b")
     stream.write(data)
@@ -162,6 +198,11 @@ def _openssl_signature(
 ) -> bytes | bool:
     executable = _trusted_openssl(openssl_path)
     _trusted_root_file(key_path, private=private)
+    if os.name == "nt":
+        return _windows_openssl_signature(
+            executable, key_path=key_path, payload=payload,
+            signature=signature, private=private,
+        )
     data_file = _input_file(payload)
     signature_file = None if private else _input_file(signature or b"")
     try:
@@ -197,6 +238,44 @@ def _openssl_signature(
         data_file.close()
         if signature_file is not None:
             signature_file.close()
+
+
+def _windows_openssl_signature(
+    executable: str, *, key_path: str, payload: bytes,
+    signature: bytes | None, private: bool,
+) -> bytes | bool:
+    """Use the ACL-pinned OpenSSL binary without exposing key bytes in argv."""
+    if not private and not isinstance(signature, bytes):
+        raise ContractError("execution grant signature bytes are unavailable")
+    try:
+        with tempfile.TemporaryDirectory(prefix="vst-grant-") as temp_dir:
+            data_path = os.path.join(temp_dir, "payload.bin")
+            signature_path = os.path.join(temp_dir, "signature.bin")
+            with open(data_path, "xb") as stream:
+                stream.write(payload)
+            argv = [executable, "pkeyutl", "-sign" if private else "-verify", "-rawin"]
+            if not private:
+                argv.append("-pubin")
+            argv.extend(["-inkey", key_path])
+            if private:
+                argv.extend(["-in", data_path])
+            else:
+                with open(signature_path, "xb") as stream:
+                    stream.write(signature or b"")
+                argv.extend(["-in", data_path, "-sigfile", signature_path])
+            result = subprocess.run(
+                argv, cwd=temp_dir, env={"SYSTEMROOT": os.environ.get("SYSTEMROOT", r"C:\Windows"),
+                                         "PATH": ""}, stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, close_fds=True,
+                timeout=5, check=False,
+            )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ContractError("execution grant Windows Ed25519 operation is unavailable") from exc
+    if private:
+        if result.returncode != 0 or len(result.stdout) != 64:
+            raise ContractError("execution grant Ed25519 signing failed")
+        return result.stdout
+    return result.returncode == 0
 
 
 def sign_execution_grant(
@@ -288,7 +367,7 @@ class ExecutionAuthority:
         self,
         grant: object,
         *,
-        daemon_uid: int,
+        daemon_uid: int | None,
         service_generation: str,
         trusted_keys: Mapping[str, str],
         openssl_path: str,
@@ -299,12 +378,25 @@ class ExecutionAuthority:
         terminalize_no_execution: Any,
         reserve: Any,
         complete: Any,
+        daemon_identity_check: Any | None = None,
+        grant_verifier: Any | None = None,
     ) -> None:
-        self.grant = verify_execution_grant(
-            grant, trusted_keys, audience=audience,
-            service_generation=service_generation, openssl_path=openssl_path,
-        )
-        if type(daemon_uid) is not int or daemon_uid < 1:
+        if os.name == "nt":
+            if not callable(grant_verifier):
+                raise ContractError("Windows execution authority requires the configured public-key verifier")
+            verified = grant_verifier(grant)
+            if not isinstance(verified, dict) or verified != grant:
+                raise ContractError("Windows execution grant verification changed its exact input")
+            self.grant = dict(verified)
+        else:
+            self.grant = verify_execution_grant(
+                grant, trusted_keys, audience=audience,
+                service_generation=service_generation, openssl_path=openssl_path,
+            )
+        if os.name == "nt":
+            if daemon_uid is not None or not callable(daemon_identity_check):
+                raise ContractError("Windows execution authority requires an SCM-bound service identity check")
+        elif type(daemon_uid) is not int or daemon_uid < 1:
             raise ContractError("execution authority daemon UID is invalid")
         self.daemon_uid = daemon_uid
         self.service_generation = _identifier(service_generation, "service generation")
@@ -320,10 +412,18 @@ class ExecutionAuthority:
         self._terminalize_no_execution = terminalize_no_execution
         self._reserve = reserve
         self._complete = complete
+        self._daemon_identity_check = daemon_identity_check
         self._claimed = False
         self._reserved = False
         self._completed = False
         self._no_execution_confirmed = False
+
+    def _require_daemon_identity(self) -> None:
+        if os.name == "nt":
+            if self._daemon_identity_check() is not True:
+                raise ContractError("execution authority is outside its configured SCM service identity")
+        elif os.name != "posix" or os.geteuid() != self.daemon_uid:
+            raise ContractError("manifest execution is restricted to the configured daemon identity")
 
     @property
     def reservation_confirmed(self) -> bool:
@@ -375,8 +475,7 @@ class ExecutionAuthority:
                 raise ContractError(f"execution authority {context_field} does not match grant")
         if self._claimed:
             raise ContractError("execution authority has already claimed a run")
-        if os.name != "posix" or os.geteuid() != self.daemon_uid:
-            raise ContractError("manifest execution is restricted to the configured daemon identity")
+        self._require_daemon_identity()
         if self._daemon_boundary_check() is not True:
             raise ContractError("manifest execution is outside the configured daemon boundary")
         try:
@@ -427,8 +526,7 @@ class ExecutionAuthority:
         """Durably reserve the exact grant immediately before its first child launch."""
         if not self._claimed or self._reserved:
             raise ContractError("execution reservation requires one unreserved claim")
-        if os.name != "posix" or os.geteuid() != self.daemon_uid:
-            raise ContractError("manifest execution is restricted to the configured daemon identity")
+        self._require_daemon_identity()
         if self._daemon_boundary_check() is not True:
             raise ContractError("manifest execution is outside the configured daemon boundary")
         try:
@@ -510,5 +608,10 @@ class ExecutionAuthority:
             raise ContractError("execution cannot complete before its durable launch reservation")
         if not isinstance(receipt, dict):
             raise ContractError("execution completion receipt must be an object")
+        self._require_daemon_identity()
+        if self._daemon_boundary_check() is not True:
+            raise AmbiguousExecutionAuthorityError(
+                "runner service generation changed before durable completion"
+            )
         self._complete(dict(self.grant), dict(receipt))
         self._completed = True
