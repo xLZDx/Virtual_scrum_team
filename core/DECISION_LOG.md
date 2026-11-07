@@ -1783,3 +1783,7 @@ Same evidence as the previous entry (GPT-PM round 7 APPROVE, E2E run 4 green); p
 ## 2026-11-07 — S2 branch pushed and PR 2 updated
 
 On the operator go, s2-canonical-continuation was pushed without force (c2693c3..6e4996e). The existing draft PR 2 is the single S2 PR; its body now records the S2-4E Windows E2E result and GPT-PM round 7 APPROVE. S3 is not started.
+
+## 2026-11-07 — Program report refreshed
+
+PROJECT_PLAN.md now shows S2 as IN_REVIEW (PR 2 ready, merge pending) and S2-4E with commit 57c22d3; the RU and EN plan reports were re-rendered (9/9 accepted tasks, 9 verified on the remote). S3 to S5 have no task lists, so the program percentage covers only the nine S2 tasks.

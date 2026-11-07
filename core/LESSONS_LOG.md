@@ -1624,3 +1624,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — Push and PR update
 
 - Kind: SUCCESS: I checked for an existing PR before opening one and updated draft PR 2 instead of creating a second S2 PR (one PR per sprint).
+
+## 2026-11-07 — Stale program report
+
+- Kind: SHORTCOMING (mine): after the push the plan reports still showed 6/9 and a placeholder title; I had not re-rendered them. The operator spotted it. Also the S2-4E row had no commit hash, so it did not count as verified on the remote.
+- Rule: re-render the plan reports in the same step as any status change, and fill the Commit column for every accepted task.
