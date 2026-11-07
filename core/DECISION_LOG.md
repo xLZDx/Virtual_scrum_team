@@ -1583,3 +1583,7 @@ Service creation now uses New-Service (SCM API) plus sc config obj= NT SERVICE\<
 ## 2026-11-07 — S2-4E seed step dry-run
 
 The Python seed stage of the provisioner passed a non-elevated dry run in a scratch root after the signing-bytes placeholder fix; see the lessons log.
+
+## 2026-11-07 — Product fix in tools/vst requires an S2-4E manifest rebinding
+
+tools/vst/windows_service_host.py (outside the manifest change_scope) had a defect that blocks every Windows service start. A product fix cannot reach the protected snapshot while base_head pins 7adb183. Decision: fix the product, then rebind the task manifest base_head to the commit that contains the fix. The accepted S2-4D/S2-5 dispositions are unaffected. Open finding (MAJOR, silent failure): run_scm_service swallows start-up exceptions without recording the cause; to fix within S2-4E, or record as a follow-up before closing S2.

@@ -1291,3 +1291,11 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Layer that missed it: the author and the source reviews. Fixed with a well-formed placeholder signature, then a non-elevated dry run of the whole seed step in a scratch root passed (exit 0, all keys/configs/store/instruction created).
 - Rule: run every non-privileged installer stage locally before asking the operator for an elevated attempt.
 - Fix status: fixed. The ACL, service and scheduled-task stages after the seed remain unmeasured until the next elevated run.
+## 2026-11-07 — Windows service ACL verifier never requested the owner
+
+- Kind: FAILURE (product defect in accepted code c4558a8, found by the first real SCM start).
+- Facts: VSTSupervisor exited at start with SCM event 7023. An elevated diagnostic showed ContractError: Windows protected path owner is unavailable from assert_path_acl. GetNamedSecurityInfoW was called with DACL_SECURITY_INFORMATION only, so the owner pointer was always NULL and every protected path failed. After the fix, a non-elevated check reads the owner and fails later, at the trustee check, as expected for C:\Program Files\Git.
+- Root cause: Win32 contract misuse that mocked unit tests could not expose. The service host also swallows start-up exceptions, so SCM shows only "Incorrect function".
+- Layer that missed it: the author, the mocked tests, and the GPT-PM source review of c4558a8. Caught by the real Windows run.
+- Rule: run every Win32 security primitive at least once against a real path before review. Service start-up failures must be observable (see the silent-failure finding).
+- Fix status: OWNER|DACL is now requested. The installed snapshot still pins base_head 7adb183, so the manifest must be rebound to a commit that contains this fix. An all-roles composition diagnostic (docs/sdlc/evidence/s2_4e_diag_supervisor.py) is prepared for one elevated run.

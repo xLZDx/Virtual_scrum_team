@@ -61,6 +61,7 @@ _SERVICE_CONFIG_SERVICE_SID_INFO = 5
 _SERVICE_SID_TYPE_UNRESTRICTED = 1
 _SERVICE_SID_TYPE_RESTRICTED = 3
 _SE_FILE_OBJECT = 1
+_OWNER_SECURITY_INFORMATION = 0x00000001
 _DACL_SECURITY_INFORMATION = 0x00000004
 _SE_DACL_PROTECTED = 0x1000
 _ACL_SIZE_INFORMATION = 2
@@ -425,7 +426,9 @@ def assert_path_acl(path: str, *, allowed_sids: set[str], writable_sids: set[str
     dacl = ctypes.c_void_p()
     descriptor = ctypes.c_void_p()
     result = advapi.GetNamedSecurityInfoW(
-        absolute, _SE_FILE_OBJECT, _DACL_SECURITY_INFORMATION,
+        # The owner is verified below, so it must be requested together with the DACL;
+        # requesting only the DACL leaves the owner pointer NULL on every path.
+        absolute, _SE_FILE_OBJECT, _OWNER_SECURITY_INFORMATION | _DACL_SECURITY_INFORMATION,
         ctypes.byref(owner), ctypes.byref(group), ctypes.byref(dacl), None,
         ctypes.byref(descriptor),
     )
