@@ -313,11 +313,115 @@ def probe6():
     return subs
 
 
+class _AdvProxy:
+    def __init__(self, real, code):
+        self._real, self._code = real, code
+
+    def __getattr__(self, name):
+        return getattr(self._real, name)
+
+    def OpenThreadToken(self, *a):
+        import ctypes
+        ctypes.set_last_error(self._code)
+        return 0
+
+
+class _K32Proxy:
+    def __init__(self, real, session):
+        self._real, self._session = real, session
+
+    def __getattr__(self, name):
+        return getattr(self._real, name)
+
+    def GetNamedPipeClientSessionId(self, pipe, ref):
+        ref._obj.value = self._session
+        return 1
+
+
+def probe7():
+    import ctypes
+    subs = []
+    wp._service_process_id = lambda n: (_ for _ in ()).throw(AssertionError("must not be called"))
+    me = own_user_sid()
+    sess = ctypes.c_ulong()
+    ctypes.windll.kernel32.ProcessIdToSessionId(os.getpid(), ctypes.byref(sess))
+    real_api = wp._api
+    cases = (
+        ("OpenThreadToken forced error 5, same-user client in session %d (!=0) -> accepted" % sess.value, 5, None, True, None),
+        ("OpenThreadToken forced error 1346 -> dropped", 1346, None, False, "cannot inspect named-pipe client identity"),
+        ("forced error 5 + GetNamedPipeClientSessionId patched to 0 -> dropped", 5, 0, False, "identity could not be verified"))
+    try:
+        for label, code, session, expect_ok, msg in cases:
+            def api(code=code, session=session):
+                k, a = real_api()
+                return (_K32Proxy(k, session) if session is not None else k), _AdvProxy(a, code)
+            pipe = "pipeid7-%d-%d" % (os.getpid(), len(subs))
+            lis = wp.WindowsNamedPipeListener(pipe, server_sid=FAKE_SERVER, server_service="vstprobeid",
+                                              allowed_client_services={}, allowed_client_user_sids=(me,), timeout_sec=5.0)
+            try:
+                wp._api = api
+                rows, served, drops, _ = run_clients(lis, pipe, [("t", 1)], FAKE_SERVER, lambda p: None, 1)
+            finally:
+                wp._api = real_api
+                lis.close()
+            dm = [str(r.exc_info[1]) for r in drops]
+            good = (rows[0].get("ok") and served and not drops) if expect_ok else                    (not rows[0].get("ok") and not served and len(drops) == 1 and msg in dm[0])
+            subs.append(sub(label, "PASS" if good else "FAIL", f"row={rows[0]} served={served} drops={dm}"))
+    finally:
+        wp._api = real_api
+    return subs
+
+
+def probe8():
+    from tools.vst import windows_service_host as sh
+    subs = []
+    adv = mock.MagicMock(); adv.RegisterEventSourceW.return_value = 1; cap = []
+    adv.ReportEventW.side_effect = lambda s, et, c, e, sid, n, d, strs, r: cap.append((et, strs[0])) or 1
+    lg = logging.getLogger("probe8.x"); lg.propagate = False; lg.setLevel(logging.DEBUG)
+    lg.addHandler(sh._EventLogHandler(adv, "vstprobe"))
+    NL, ESC = chr(10), chr(27)
+    msg = 'x' + NL + 'y' + ESC + 'z' + 'A' * 995
+    assert len(msg) == 1000
+    lg.warning('tmpl' + ESC + '[31m' + NL + 'SECOND-LINE', exc_info=sh.ContractError(msg))
+    t = cap[0][1] if cap else ''
+    lines = t.split(NL)
+    cl = [l for l in lines if l.startswith('ContractError: ')]
+    body = cl[0][len('ContractError: '):] if cl else ''
+    ctrl = [hex(ord(c)) for c in t if ord(c) < 32 and c != NL]
+    ok = bool(cl) and len(body) == 200 and body.startswith('x?y?zAAAA') and not ctrl and lines[0].count('SECOND-LINE') == 1
+    subs.append(sub('ContractError 1000 chars with newline and ESC -> exactly 200 chars kept, control chars replaced by ?, no control chars in text',
+                    'PASS' if ok else 'FAIL', 'len(body)=%d body[:12]=%r ctrl=%s lines=%d' % (len(body), body[:12], ctrl, len(lines))))
+    first = lines[0] if lines else ''
+    subs.append(sub('template with ESC and newline sanitized: stays on one line, no control chars',
+                    'PASS' if first == 'VST service vstprobe WARNING: tmpl?[31m?SECOND-LINE' else 'FAIL', 'first_line=%r' % first))
+    import inspect
+    src = inspect.getsource(sh.main)
+    exact = 'for logger_name in {__package__ or "tools.vst", "vst"}:' in src and "logging.getLogger(logger_name).addHandler(handler)" in src
+    adv2 = mock.MagicMock(); adv2.RegisterEventSourceW.return_value = 1; cap2 = []
+    adv2.ReportEventW.side_effect = lambda s, et, c, e, sid, n, d, strs, r: cap2.append(strs[0]) or 1
+    handler = sh._EventLogHandler(adv2, "vstprobe")
+    names = {sh.__package__ or "tools.vst", "vst"}
+    for n in names:  # replicated from main(); main() source checked to contain the same lines
+        logging.getLogger(n).addHandler(handler)
+    try:
+        for n in ("tools.vst.x", "vst.y", "other.lib"):
+            logging.getLogger(n).warning("from %s", n)
+        logging.getLogger().warning("root-direct")
+    finally:
+        for n in names:
+            logging.getLogger(n).removeHandler(handler)
+    got = [c.split(": ", 1)[1] for c in cap2]
+    subs.append(sub("handler attached as main() does: tools.vst.x and vst.y reach it; other.lib and root do not (replicated; main source contains identical loop: %s)" % exact,
+                    "PASS" if exact and got == ["from %s", "from %s"] and len(cap2) == 2 else "FAIL", f"names={sorted(names)} captured={cap2}"))
+    return subs
+
+
 def main() -> None:
     orig = (wp._service_process_id, wp._verify_service_process)
     subs, log = [], []
     for name, fn in (("probe1", probe1), ("probe2", probe2), ("probe3", probe3), ("probe4", probe4),
-                     ("probe5", probe5), ("probe6", probe6)):
+                     ("probe5", probe5), ("probe6", probe6),
+                     ("probe7", probe7), ("probe8", probe8)):
         try:
             s = fn()
         except Exception:  # noqa: BLE001
@@ -326,7 +430,7 @@ def main() -> None:
             x["name"] = name + ": " + x["name"]
         subs += s
         log.append(f"{name}: " + ", ".join(x["status"] for x in s))
-    record("pipe_id_37e5b1e", "python docs/sdlc/evidence/s2_4e_probe_pipe_id_37e5b1e.py", overall(subs), subs,
+    record(os.environ.get("PROBE_KEY", "pipe_id_37e5b1e"), "PROBE_KEY=pipe_id_e97eea2 python docs/sdlc/evidence/s2_4e_probe_pipe_id_37e5b1e.py", overall(subs), subs,
            "\n".join(log), {"code_delta": "pipe client identified by SCM pid; sanitized EventLog handler"})
     for x in subs:
         print(x["status"], "|", x["name"], "|", x["detail"][:700])

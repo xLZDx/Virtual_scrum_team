@@ -1682,3 +1682,7 @@ The rebinding adds the pipe client identification and event-log refusal changes.
 
 - Owner (user-SID) listener: if OpenThreadToken is denied, the client is accepted only because the kernel admitted it through the pipe DACL (allowed user SIDs, LocalSystem, the server) and GetNamedPipeClientSessionId is non-zero. Any other failure, or session 0, is refused.
 - Event-log text: ContractError messages are cut to 200 printable characters. Residual risk accepted: local users can read contract diagnostics (field names, ids). These never contain key material, and refusals must stay diagnosable. The handler is attached to the `tools.vst` and `vst` loggers only.
+
+## 2026-11-07 — S2-4E manifest base_head 37e5b1ef4c1f0529283a30760610811b36e7ff32 -> e97eea29e6248f1454c064a6b1b66d533d37e191
+
+Evidence: probes pipe_id_37e5b1e and pipe_id_e97eea2 in s2-4e-probes-20261107.json.

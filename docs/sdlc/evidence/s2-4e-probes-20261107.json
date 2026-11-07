@@ -2,7 +2,7 @@
   "meta": {
     "date": "2026-11-07",
     "task": "S2-4E",
-    "revision": "17d7da75cc60fd3b2f2bdb97b2b69b720d23bab2 (tools/tests clean)",
+    "revision": "e97eea29e6248f1454c064a6b1b66d533d37e191 (tools/tests clean)",
     "python": "3.14.3",
     "os": "Windows-11-10.0.26300-SP0",
     "process_is_elevated_admin": false
@@ -850,6 +850,129 @@
         }
       ],
       "output_excerpt": "probe1: PASS, PASS\nprobe2: PASS, PASS\nprobe3: PASS, PASS, PASS\nprobe4: PASS, PASS\nprobe5: PASS, PASS, PASS, PASS, PASS, PASS\nprobe6: PASS, PASS",
+      "code_delta": "pipe client identified by SCM pid; sanitized EventLog handler"
+    },
+    "pipe_id_e97eea2": {
+      "command": "PROBE_KEY=pipe_id_e97eea2 python docs/sdlc/evidence/s2_4e_probe_pipe_id_37e5b1e.py",
+      "status": "PASS",
+      "substeps": [
+        {
+          "name": "probe1: 2 clients (child pids differ from server) x3 sequential requests all accepted",
+          "status": "PASS",
+          "detail": "server_pid=43056 child_pids=[58312, 27228] ok=6/6 served=['ECHO a-0', 'ECHO a-1', 'ECHO a-2', 'ECHO b-0', 'ECHO b-1', 'ECHO b-2'] drops=0 rows=[{'tag': 'a', 'i': 0, 'pid': 58312, 'resp': 'RESP a-0', 'ok': True}, {'tag': 'a', 'i': 1, 'pid': 58312, 'resp': 'RESP a-1', 'ok': True}]"
+        },
+        {
+          "name": "probe1: service path did not open any token (no _check_token_user_sid call)",
+          "status": "PASS",
+          "detail": "token_check_calls=[]"
+        },
+        {
+          "name": "probe2: client pid != SCM pid (server's own pid returned): dropped, client sees EOF/error",
+          "status": "PASS",
+          "detail": "client_row={'tag': 'bad', 'i': 0, 'pid': 64168, 'resp': '', 'ok': False} served=[] drops=[('dropped Windows named-pipe client on \\\\\\\\.\\\\pipe\\\\vst-pipeid2-43056', 'Windows named-pipe client is not a configured service process')]"
+        },
+        {
+          "name": "probe2: listener keeps serving next valid client after a reject",
+          "status": "PASS",
+          "detail": "rows=[{'tag': 'good', 'i': 0, 'pid': 6460, 'resp': 'RESP good-0', 'ok': True}, {'tag': 'good', 'i': 1, 'pid': 6460, 'resp': 'RESP good-1', 'ok': True}] served=['ECHO good-0', 'ECHO good-1'] drops=0"
+        },
+        {
+          "name": "probe3: first service not running (ContractError), second matches -> accepted",
+          "status": "PASS",
+          "detail": "row={'tag': 'x', 'i': 0, 'pid': 124172, 'resp': 'RESP x-0', 'ok': True} served=['ECHO x-0'] drops=[]"
+        },
+        {
+          "name": "probe3: all allowed services not running -> rejected",
+          "status": "PASS",
+          "detail": "row={'tag': 'x', 'i': 0, 'pid': 84900, 'resp': '', 'ok': False} served=[] drops=['Windows named-pipe client is not a configured service process']"
+        },
+        {
+          "name": "probe3: first wrong pid, second not running -> rejected",
+          "status": "PASS",
+          "detail": "row={'tag': 'x', 'i': 0, 'pid': 49536, 'resp': '', 'ok': False} served=[] drops=['Windows named-pipe client is not a configured service process']"
+        },
+        {
+          "name": "probe4: user-SID listener accepts same-user client via token path",
+          "status": "PASS",
+          "detail": "row={'tag': 'u', 'i': 0, 'pid': 82484, 'resp': 'RESP u-0', 'ok': True} served=['ECHO u-0'] token_calls=[('S-1-5-21-1658137595-2520424230-3796741800-1001', True)] drops=[]"
+        },
+        {
+          "name": "probe4: user-SID listener rejects when allowed SID is a different SID",
+          "status": "PASS",
+          "detail": "row={'tag': 'u', 'i': 0, 'pid': 57956, 'resp': '', 'ok': False} served=[] token_calls=[('S-1-5-21-9999-8888-7777-1001', False)] drops=['Windows named-pipe client SID is unauthorized']"
+        },
+        {
+          "name": "probe5: WARNING text: template with literal %s, ValueError (message omitted), errno=5, frame lines; no secrets",
+          "status": "PASS",
+          "detail": "events=2 missing=[] leaked=[] text='VST service vstprobe WARNING: dropped Windows named-pipe client on %s\\nValueError (message omitted)\\n  at s2_4e_probe_pipe_id_37e5b1e.py:245 in raiser\\ncaused by:\\nOSError: errno=5 winerror=None\\n  at s2_4e_probe_pipe_id_37e5b1e.py:243 in raiser' no_tb_text='VST service vstprobe WARNING: dropped Windows named-pipe client on %s\\nValueError (message omitted)'"
+        },
+        {
+          "name": "probe5: event type 2 for WARNING",
+          "status": "PASS",
+          "detail": "types=[2, 2]"
+        },
+        {
+          "name": "probe5: event type 1 for ERROR",
+          "status": "PASS",
+          "detail": "types=[2, 2, 1] last='VST service vstprobe ERROR: service refused %s\\nValueError (message omitted)\\n  at'"
+        },
+        {
+          "name": "probe5: INFO/DEBUG records ignored",
+          "status": "PASS",
+          "detail": "added=0"
+        },
+        {
+          "name": "probe5: raising mock never propagates (Register and Report failures) and handleError not triggered",
+          "status": "PASS",
+          "detail": "propagated=None handler_errors=0"
+        },
+        {
+          "name": "probe5: _report_service_failure still emits 'VST service X stopped:' (type 1), sanitized",
+          "status": "PASS",
+          "detail": "'VST service VstX stopped: ValueError (message omitted)\\n  at s2_4e_probe_pipe_id_37e5b1e.py:245 in raiser\\ncaused by:\\nOSError: errno=5 winerror=None\\n  at s2_4e_probe_pipe_id_37e5b1e.py:243 in raiser'"
+        },
+        {
+          "name": "probe6: py_compile all tools/vst/*.py (35 files)",
+          "status": "PASS",
+          "detail": "bad=[]"
+        },
+        {
+          "name": "probe6: PowerShell 5.1 parse of provision_s2_4e_windows.ps1",
+          "status": "PASS",
+          "detail": "rc=0 'PSVersion=5.1.26100.9711\\nERRORS=0' stderr='' VST_EVENT_occurrences=1"
+        },
+        {
+          "name": "probe7: OpenThreadToken forced error 5, same-user client in session 4 (!=0) -> accepted",
+          "status": "PASS",
+          "detail": "row={'tag': 't', 'i': 0, 'pid': 123300, 'resp': 'RESP t-0', 'ok': True} served=['ECHO t-0'] drops=[]"
+        },
+        {
+          "name": "probe7: OpenThreadToken forced error 1346 -> dropped",
+          "status": "PASS",
+          "detail": "row={'tag': 't', 'i': 0, 'pid': 57716, 'resp': '', 'ok': False} served=[] drops=['[Errno 1346] cannot inspect named-pipe client identity: Either a required impersonation level was not provided, or the provided impersonation level is invalid.']"
+        },
+        {
+          "name": "probe7: forced error 5 + GetNamedPipeClientSessionId patched to 0 -> dropped",
+          "status": "PASS",
+          "detail": "row={'tag': 't', 'i': 0, 'pid': 33232, 'resp': '', 'ok': False} served=[] drops=['Windows named-pipe client identity could not be verified']"
+        },
+        {
+          "name": "probe8: ContractError 1000 chars with newline and ESC -> exactly 200 chars kept, control chars replaced by ?, no control chars in text",
+          "status": "PASS",
+          "detail": "len(body)=200 body[:12]='x?y?zAAAAAAA' ctrl=[] lines=2"
+        },
+        {
+          "name": "probe8: template with ESC and newline sanitized: stays on one line, no control chars",
+          "status": "PASS",
+          "detail": "first_line='VST service vstprobe WARNING: tmpl?[31m?SECOND-LINE'"
+        },
+        {
+          "name": "probe8: handler attached as main() does: tools.vst.x and vst.y reach it; other.lib and root do not (replicated; main source contains identical loop: True)",
+          "status": "PASS",
+          "detail": "names=['tools.vst', 'vst'] captured=['VST service vstprobe WARNING: from %s', 'VST service vstprobe WARNING: from %s']"
+        }
+      ],
+      "output_excerpt": "probe1: PASS, PASS\nprobe2: PASS, PASS\nprobe3: PASS, PASS, PASS\nprobe4: PASS, PASS\nprobe5: PASS, PASS, PASS, PASS, PASS, PASS\nprobe6: PASS, PASS\nprobe7: PASS, PASS, PASS\nprobe8: PASS, PASS, PASS",
       "code_delta": "pipe client identified by SCM pid; sanitized EventLog handler"
     }
   },

@@ -1461,3 +1461,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
   - compile and parse are clean.
 - Process slip: the coordinator edited windows_named_pipe.py and windows_service_host.py while that probe agent was running. The probes are re-run on the committed code.
 - Rule: do not edit files a running probe or review agent is reading. Queue the edits instead.
+
+## 2026-11-07 — S2-4E manifest rebound to e97eea29e6248f1454c064a6b1b66d533d37e191 (Owner pipe fallback, bounded event-log text)
+
+- Kind: SUCCESS. Probes pipe_id_e97eea2 passed: forced-denied token with session 4 is accepted; error 1346 and session 0 are rejected; event text is bounded; the handler is attached to the tools.vst and vst loggers only.
