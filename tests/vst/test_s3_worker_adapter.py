@@ -393,6 +393,7 @@ def test_ac1_stop_and_resume_contracts_fail_closed():
 BAD_PATHS = [
     "a" + chr(92) + "b", "a:b", ".git/x", "a/.git/y", ".GIT/x", "./x", "a//b", "/abs", "../x",
     "a/../b", "a\x01b", "a\nb", "", ".", "..", "C:/x", "a/b/", "x" * 513,
+    "a/b.", "a/b ", "GIT~1/x", "git~2", "a" + chr(0x7f), "x/Git~12/y", "a./b", "a /b",
 ]
 
 
@@ -440,6 +441,14 @@ def test_worker_request_rejects_noncanonical_allowed_paths_and_change_path(bad):
         request(allowed_paths=("src/synthetic.py", bad))
     with pytest.raises(ValueError):
         request(change_path=bad)  # not canonical and not in allowed_paths
+
+
+def test_canonical_path_predicate_keeps_legitimate_near_miss_names():
+    for good in ("src/a.py", ".github/x.yml", ".gitignore", "git~1.txt", "git~", "git~x", "gitx~1",
+                 "a.b/c", "legit/git", "a" + chr(0x7e)):
+        assert is_canonical_repo_path(good), good
+    for bad in ("a" + chr(0x7f) + "b", chr(0x7f), "dir./x", "dir /x", "GiT~007"):
+        assert not is_canonical_repo_path(bad), bad
 
 
 def test_worker_request_change_path_is_not_normalized_to_allowed_path():

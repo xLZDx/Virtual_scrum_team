@@ -746,6 +746,648 @@ def test_s3_stop_progress_records_adapter_stop_outcome(pilot_env):
     assert fixture.store.current_epoch(fixture.story_id) == original.epoch + 1
 
 
+# ---------------------------------------------------------------------------
+# Remediation round 2 scenarios (R1-R8)
+# ---------------------------------------------------------------------------
+
+import tools.vst.pilot as pilot_module  # noqa: E402
+from tools.vst.pilot import _store_failure  # noqa: E402
+
+
+def _attempt_row(fixture, request, operation="s3_attempt"):
+    return fixture.store.lookup_idempotent_operation(request.operation_key, operation=operation)
+
+
+def _lease_statuses(fixture, request) -> list[str]:
+    rows = fixture.store._conn.execute(
+        "SELECT status FROM leases WHERE task_id = ? ORDER BY attempt", (request.task_id,),
+    ).fetchall()
+    return [row["status"] for row in rows]
+
+
+class _LeaseGate:
+    """Wrap Store.acquire_lease: raise ``kind`` while ``active``, else delegate."""
+
+    def __init__(self, store, kind: str, *, times: int | None = None):
+        self.real = store.acquire_lease
+        self.kind = kind
+        self.times = times
+        self.calls = 0
+        self.active = True
+
+    def __call__(self, *args, **kwargs):
+        self.calls += 1
+        if self.active and (self.times is None or self.calls <= self.times):
+            raise StoreError(f"synthetic {self.kind} refusal", kind=self.kind)
+        return self.real(*args, **kwargs)
+
+
+# ---- R1: lease before intent --------------------------------------------------
+
+@pytest.mark.parametrize("kind,code", [
+    ("slot", WorkerErrorCode.UNAVAILABLE),
+    ("lease", WorkerErrorCode.RECONCILIATION_REQUIRED),
+])
+def test_r1_transient_lease_refusal_writes_no_intent_and_same_key_is_retryable(
+    pilot_env, monkeypatch, kind, code,
+):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+    gate = _LeaseGate(fixture.store, kind, times=1)
+    monkeypatch.setattr(fixture.store, "acquire_lease", gate)
+
+    refused = pilot.start(request)
+
+    assert refused.state is WorkerState.BLOCKED
+    assert refused.error is not None and refused.error.code is code
+    assert f"Store refused lease: {kind}" in refused.error.message
+    assert _attempt_row(fixture, request) is None
+    assert _commit_count(repository, candidate_revision) == 0
+    assert _lease_statuses(fixture, request) == []
+
+    retried = pilot.start(request)
+
+    assert retried.state is WorkerState.SUCCEEDED
+    assert gate.calls == 2
+    assert _commit_count(repository, candidate_revision) == 1
+    assert _attempt_row(fixture, request)["state"] == "COMPLETED"
+
+
+def test_r1_real_slot_exhaustion_is_retryable_after_a_slot_frees(pilot_env):
+    """Same as above against the real Store: occupy every slot, then free them."""
+    fixture, pilot, repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+    assert fixture.store._conn.execute("SELECT slot_no FROM slots").fetchall()
+    # Occupy every slot with a foreign holder (FK checks off only for this seeding).
+    fixture.store._conn.execute("PRAGMA foreign_keys = OFF")
+    try:
+        with fixture.store._tx() as tx:
+            tx.execute("UPDATE slots SET lease_id = 999999, expires_at = 9e18")
+    finally:
+        fixture.store._conn.execute("PRAGMA foreign_keys = ON")
+    refused = pilot.start(request)
+    assert refused.state is WorkerState.BLOCKED
+    assert refused.error is not None and refused.error.code is WorkerErrorCode.UNAVAILABLE
+    assert _attempt_row(fixture, request) is None
+    assert _commit_count(repository, candidate_revision) == 0
+
+    with fixture.store._tx() as tx:
+        tx.execute("UPDATE slots SET lease_id = NULL, expires_at = NULL")
+    assert pilot.start(request).state is WorkerState.SUCCEEDED
+    assert _commit_count(repository, candidate_revision) == 1
+
+
+@pytest.mark.parametrize("kind,code", [
+    ("epoch", WorkerErrorCode.FENCE_REJECTED),
+    ("retry", WorkerErrorCode.RETRY_EXHAUSTED),
+    ("terminal", WorkerErrorCode.UNSUPPORTED_STATE),
+    ("budget", WorkerErrorCode.BUDGET_EXHAUSTED),
+])
+def test_r1_terminal_lease_refusal_is_persisted_blocked_and_replayed_identically(
+    pilot_env, monkeypatch, kind, code,
+):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+    gate = _LeaseGate(fixture.store, kind)
+    monkeypatch.setattr(fixture.store, "acquire_lease", gate)
+
+    first = pilot.start(request)
+
+    assert first.state is WorkerState.BLOCKED
+    assert first.error is not None and first.error.code is code
+    row = _attempt_row(fixture, request)
+    assert row is not None and row["state"] == "COMPLETED"
+    assert gate.calls == 1
+
+    gate.active = False  # Store would now grant the lease; the stored refusal still wins.
+    second = pilot.start(request)
+
+    assert second == first
+    assert gate.calls == 1
+    assert _commit_count(repository, candidate_revision) == 0
+    assert _lease_statuses(fixture, request) == []
+
+
+@pytest.mark.parametrize("kind,state", [
+    ("schema", WorkerState.BLOCKED),
+    ("busy", WorkerState.INCONCLUSIVE),
+])
+def test_r1_unmapped_lease_kind_goes_through_store_failure_and_is_not_persisted(
+    pilot_env, monkeypatch, kind, state,
+):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+    monkeypatch.setattr(fixture.store, "acquire_lease", _LeaseGate(fixture.store, kind))
+
+    response = pilot.start(request)
+
+    assert response.state is state
+    assert response.error is not None
+    assert response.error.code is WorkerErrorCode.RECONCILIATION_REQUIRED
+    assert response.error.message.startswith("lease acquisition: StoreError: kind=" + kind)
+    assert ("(not retryable)" in response.error.message) == (state is WorkerState.BLOCKED)
+    assert _attempt_row(fixture, request) is None
+    assert _commit_count(repository, candidate_revision) == 0
+
+
+@pytest.mark.parametrize("verdict", [WorkerState.BLOCKED, WorkerState.INCONCLUSIVE])
+def test_r1_lease_is_released_when_validation_after_acquire_refuses(
+    pilot_env, monkeypatch, verdict,
+):
+    """A lease acquired before the intent must not leak when the attempt never starts."""
+    fixture, pilot, repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+    real_validate = pilot._validate_request
+    calls = {"count": 0}
+
+    def validate(req):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            return real_validate(req)
+        return _pilot_response(req, verdict, error=WorkerError(
+            WorkerErrorCode.UNAVAILABLE, "synthetic late refusal"))
+
+    monkeypatch.setattr(pilot, "_validate_request", validate)
+
+    response = pilot.start(request)
+
+    assert calls["count"] == 2
+    if verdict is WorkerState.BLOCKED:
+        assert response.state is WorkerState.BLOCKED
+        assert response.error.code is WorkerErrorCode.UNAVAILABLE
+        assert _attempt_row(fixture, request)["state"] == "COMPLETED"
+    else:
+        assert response.state is WorkerState.INCONCLUSIVE
+        assert response.error.code is WorkerErrorCode.RECONCILIATION_REQUIRED
+        row = _attempt_row(fixture, request)
+        assert row is None or row["state"] != "COMPLETED"
+    assert _lease_statuses(fixture, request) == ["RELEASED"]
+    assert _commit_count(repository, candidate_revision) == 0
+    assert fixture.store.receipts_for_task(fixture.task_id) == []
+
+
+def test_r1_lease_is_released_when_the_attempt_raises_before_the_charge(pilot_env, monkeypatch):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+
+    def boom(*_a, **_k):
+        raise RuntimeError("PRIVATE_BUDGET_DETAIL")
+
+    monkeypatch.setattr(fixture.store, "charge_idempotent", boom)
+    response = pilot.start(request)
+
+    assert response.state is WorkerState.INCONCLUSIVE
+    assert response.error.code is WorkerErrorCode.RECONCILIATION_REQUIRED
+    assert "PRIVATE_BUDGET_DETAIL" not in response.error.message
+    assert _lease_statuses(fixture, request) == ["RELEASED"]
+    assert _commit_count(repository, candidate_revision) == 0
+
+
+def test_r2_same_operation_key_with_different_payload_stays_blocked_invalid_request(pilot_env):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+    assert pilot.start(request).state is WorkerState.SUCCEEDED
+    changed = _request(fixture, candidate_revision, content="value = 'tampered'\n")
+
+    refused = pilot.start(changed)
+
+    assert refused.state is WorkerState.BLOCKED
+    assert refused.error is not None and refused.error.code is WorkerErrorCode.INVALID_REQUEST
+    assert _commit_count(repository, candidate_revision) == 1
+
+
+# ---- R2: transient allow-list -------------------------------------------------
+
+@pytest.mark.parametrize("kind", [
+    "schema", "signature", "authorization", "supervisor", "manifest", "key", "lifecycle", "epoch",
+])
+def test_r2_non_transient_store_kinds_are_blocked_and_not_retryable(pilot_env, kind):
+    fixture, _pilot, _repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+
+    response = _store_failure(request, StoreError("PRIVATE_TEXT", kind=kind), "ctx")
+
+    assert response.state is WorkerState.BLOCKED
+    assert response.error.code is WorkerErrorCode.RECONCILIATION_REQUIRED
+    assert response.error.message == f"ctx: StoreError: kind={kind} (not retryable)"
+    assert "PRIVATE_TEXT" not in response.error.message
+
+
+@pytest.mark.parametrize("kind", ["busy", "slot", "lease"])
+def test_r2_transient_store_kinds_are_inconclusive_and_retryable(pilot_env, kind):
+    fixture, _pilot, _repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+
+    response = _store_failure(request, StoreError("PRIVATE_TEXT", kind=kind), "ctx")
+
+    assert response.state is WorkerState.INCONCLUSIVE
+    assert response.error.code is WorkerErrorCode.RECONCILIATION_REQUIRED
+    assert response.error.message == f"ctx: StoreError: kind={kind}"
+    assert "not retryable" not in response.error.message
+
+
+def test_r2_duplicate_kind_is_blocked_invalid_request(pilot_env):
+    fixture, _pilot, _repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+    response = _store_failure(request, StoreError("x", kind="duplicate"), "ctx")
+    assert response.state is WorkerState.BLOCKED
+    assert response.error.code is WorkerErrorCode.INVALID_REQUEST
+
+
+@pytest.mark.parametrize("kind,state,suffix", [
+    ("schema", WorkerState.BLOCKED, " (not retryable)"),
+    ("busy", WorkerState.INCONCLUSIVE, ""),
+])
+def test_r2_resume_fence_store_error_goes_through_store_failure(
+    pilot_env, monkeypatch, kind, state, suffix,
+):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    original = _request(fixture, candidate_revision)
+    _inject_app_checkpoint_interrupt(pilot)
+    assert pilot.start(original).state is WorkerState.INCONCLUSIVE
+    pilot.adapter.checkpoint_hook = None
+
+    def fail(*_a, **_k):
+        raise StoreError("synthetic", kind=kind)
+
+    monkeypatch.setattr(fixture.store, "resume_epoch_idempotent", fail)
+    second = _request(fixture, candidate_revision, attempt=2, epoch=original.epoch + 1)
+
+    response = pilot.resume(_resume_for(original, second))
+
+    assert response.state is state
+    assert response.error.code is WorkerErrorCode.RECONCILIATION_REQUIRED
+    assert response.error.message == f"resume fence: StoreError: kind={kind}{suffix}"
+    assert fixture.store.current_epoch(fixture.story_id) == original.epoch
+    assert _commit_count(repository, candidate_revision) == 0
+
+
+# ---- R3: probe verified on the applied-resume path -----------------------------
+
+def _apply_resume_epoch_then_fail(fixture, pilot, candidate_revision):
+    original = _request(fixture, candidate_revision)
+    _inject_app_checkpoint_interrupt(pilot)
+    assert pilot.start(original).state is WorkerState.INCONCLUSIVE
+    pilot.adapter.checkpoint_hook = None
+    second = _request(fixture, candidate_revision, attempt=2, epoch=original.epoch + 1)
+    real_execute = pilot._execute_attempt
+
+    def fail_after_epoch(*_a, **_k):
+        raise RuntimeError("injected failure after the epoch advance")
+
+    pilot._execute_attempt = fail_after_epoch
+    with pytest.raises(RuntimeError, match="injected failure"):
+        pilot.resume(_resume_for(original, second))
+    pilot._execute_attempt = real_execute
+    assert fixture.store.current_epoch(fixture.story_id) == original.epoch + 1
+    return original, second
+
+
+def test_r3_applied_resume_path_still_refuses_an_unsigned_probe(pilot_env):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    original, second = _apply_resume_epoch_then_fail(fixture, pilot, candidate_revision)
+
+    fixture.store.sandbox_mode = True
+    try:
+        response = pilot.resume(
+            _resume_for(original, second), probe={"nonce": "forged-nonce", "inventory": {}},
+        )
+    finally:
+        fixture.store.sandbox_mode = False
+
+    assert response.state is WorkerState.BLOCKED
+    assert response.error is not None and response.error.code is WorkerErrorCode.UNAVAILABLE
+    assert "signature/attestation" in response.error.message
+    assert _commit_count(repository, candidate_revision) == 0
+
+
+def test_r3_valid_probe_with_consumed_nonce_is_accepted_only_on_the_applied_path(
+    pilot_env, monkeypatch,
+):
+    """validate_fresh_probe is stubbed here: this isolates the seen-run/nonce rule."""
+    import tools.vst.preflight as preflight
+
+    _fixture, pilot, _repository, _candidate_revision = pilot_env
+    monkeypatch.setattr(preflight, "validate_fresh_probe", lambda *a, **k: True)
+    probe = {"nonce": "consumed-nonce"}
+    pilot.supervisor._seen_probe_nonces.add("consumed-nonce")
+    pilot.supervisor._seen_run_ids.add("consumed-run")
+
+    assert pilot._valid_unconsumed_resume_probe(probe, "consumed-run") is False
+    assert pilot._valid_unconsumed_resume_probe(probe, "consumed-run", check_unseen=False) is True
+    assert pilot._valid_unconsumed_resume_probe(
+        {"nonce": "  "}, "consumed-run", check_unseen=False) is False
+    assert pilot._valid_unconsumed_resume_probe(None, "consumed-run", check_unseen=False) is False
+
+
+# ---- R4: current_epoch StoreError never raises -----------------------------------
+
+def _raise_store_error(kind):
+    def fail(_story):
+        raise StoreError("synthetic", kind=kind)
+    return fail
+
+
+@pytest.mark.parametrize("kind,state", [
+    ("busy", WorkerState.INCONCLUSIVE), ("schema", WorkerState.BLOCKED),
+])
+def test_r4_start_returns_typed_response_when_current_epoch_fails(
+    pilot_env, monkeypatch, kind, state,
+):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+    monkeypatch.setattr(fixture.store, "current_epoch", _raise_store_error(kind))
+
+    response = pilot.start(request)
+
+    assert response.state is state
+    assert response.error is not None
+    assert response.error.message.startswith("epoch lookup: StoreError: kind=" + kind)
+    monkeypatch.undo()
+    assert _commit_count(repository, candidate_revision) == 0
+    assert _attempt_row(fixture, request) is None
+
+
+@pytest.mark.parametrize("failing_call", [2, 3, 4, 5])
+def test_r4_start_never_raises_when_current_epoch_fails_later_in_the_flow(
+    pilot_env, monkeypatch, failing_call,
+):
+    fixture, pilot, _repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+    real = fixture.store.current_epoch
+    calls = {"count": 0}
+
+    def flaky(story):
+        calls["count"] += 1
+        if calls["count"] == failing_call:
+            raise StoreError("synthetic", kind="busy")
+        return real(story)
+
+    monkeypatch.setattr(fixture.store, "current_epoch", flaky)
+
+    response = pilot.start(request)
+
+    assert isinstance(response, pilot_module.WorkerResponse)
+    assert calls["count"] >= failing_call  # the injected failure was actually reached
+    assert response.state in {WorkerState.SUCCEEDED, WorkerState.INCONCLUSIVE, WorkerState.BLOCKED}
+
+
+def test_r4_resume_returns_typed_response_when_current_epoch_fails(pilot_env, monkeypatch):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    original = _request(fixture, candidate_revision)
+    _inject_app_checkpoint_interrupt(pilot)
+    assert pilot.start(original).state is WorkerState.INCONCLUSIVE
+    pilot.adapter.checkpoint_hook = None
+    second = _request(fixture, candidate_revision, attempt=2, epoch=original.epoch + 1)
+    monkeypatch.setattr(fixture.store, "current_epoch", _raise_store_error("busy"))
+
+    response = pilot.resume(_resume_for(original, second))
+
+    assert response.state is WorkerState.INCONCLUSIVE
+    assert response.error.message == "epoch lookup: StoreError: kind=busy"
+    monkeypatch.undo()
+    assert fixture.store.current_epoch(fixture.story_id) == original.epoch
+    assert _commit_count(repository, candidate_revision) == 0
+
+
+# ---- R5: commit verification ------------------------------------------------------
+
+def _fail_cat_file_probe(monkeypatch, *, times: int | None):
+    real = pilot_module._run_git
+    state = {"failed": 0}
+
+    def run(repository, args, timeout):
+        if args[:2] == ["cat-file", "-e"] and (times is None or state["failed"] < times):
+            state["failed"] += 1
+            raise subprocess.TimeoutExpired(["git"], timeout)
+        return real(repository, args, timeout)
+
+    monkeypatch.setattr(pilot_module, "_run_git", run)
+    return state
+
+
+def test_r5_transient_git_failure_is_inconclusive_once_and_retry_reverifies_to_success(
+    pilot_env, monkeypatch,
+):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+    state = _fail_cat_file_probe(monkeypatch, times=1)
+
+    first = pilot.start(request)
+
+    assert state["failed"] == 1
+    assert first.state is WorkerState.INCONCLUSIVE
+    assert first.error.code is WorkerErrorCode.RECONCILIATION_REQUIRED
+    assert "candidate commit verification failed: TimeoutExpired" in first.error.message
+    assert first.progress.startswith("observed candidate_head=")
+    assert _commit_count(repository, candidate_revision) == 1
+
+    second = pilot.start(request)
+
+    assert second.state is WorkerState.SUCCEEDED
+    assert second.candidate_head == _git(repository, "rev-parse", "--verify", "HEAD")
+    assert _commit_count(repository, candidate_revision) == 1
+    assert pilot.status(request).state is WorkerState.SUCCEEDED
+
+
+def test_r5_replayed_succeeded_start_reverifies_every_call(pilot_env, monkeypatch):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+    first = pilot.start(request)
+    assert first.state is WorkerState.SUCCEEDED
+    _fail_cat_file_probe(monkeypatch, times=None)
+
+    replay = pilot.start(request)
+
+    assert replay.state is WorkerState.INCONCLUSIVE
+    assert replay.error.code is WorkerErrorCode.RECONCILIATION_REQUIRED
+    monkeypatch.undo()
+    assert pilot.start(request) == first
+    assert _commit_count(repository, candidate_revision) == 1
+
+
+def _lying_start(pilot, head):
+    def lying(req):
+        return _pilot_response(
+            req, WorkerState.SUCCEEDED, candidate_head=head,
+            changed_paths=(req.change_path,), progress="forged success",
+        )
+    pilot.adapter.start = lying
+
+
+def test_r5_committed_blob_differing_from_change_content_is_inconclusive(pilot_env):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+    wrong = _make_side_commit(repository, candidate_revision, "src/synthetic.py", "value = 'other'\n")
+    _lying_start(pilot, wrong)
+
+    response = pilot.start(request)
+
+    assert response.state is WorkerState.INCONCLUSIVE
+    assert response.error.code is WorkerErrorCode.RECONCILIATION_REQUIRED
+    assert "differs from the requested change_content" in response.error.message
+    assert fixture.store.receipts_for_task(fixture.task_id) == []
+
+
+def test_r5_empty_diff_is_reconciliation_required_not_scope_denied(pilot_env):
+    fixture, pilot, _repository, candidate_revision = pilot_env
+    request = _request(fixture, candidate_revision)
+    _lying_start(pilot, candidate_revision)
+
+    response = pilot.start(request)
+
+    assert response.state is WorkerState.INCONCLUSIVE
+    assert response.error.code is WorkerErrorCode.RECONCILIATION_REQUIRED
+    assert "no change relative to the trusted revision" in response.error.message
+
+
+# ---- R6: commit_verifier for non-HandWritten adapters -------------------------------
+
+def _wrap_as_foreign_adapter(pilot):
+    """A non-HandWritten adapter that delegates to the real one (real commit, SUCCEEDED)."""
+    real = pilot.adapter
+
+    class Foreign:
+        def __getattr__(self, name):
+            return getattr(real, name)
+
+        def start(self, request):
+            return real.start(request)
+
+        def resume(self, request):
+            return real.resume(request)
+
+    pilot.adapter = Foreign()
+    assert not isinstance(pilot.adapter, HandWrittenWorkerAdapter)
+
+
+def test_r6_constructor_rejects_a_non_callable_verifier(pilot_env):
+    fixture, pilot, _repository, _candidate_revision = pilot_env
+    with pytest.raises(TypeError):
+        SyntheticStoryPilot(fixture, pilot.supervisor, pilot.adapter, commit_verifier="nope")
+
+
+def test_r6_foreign_adapter_success_without_verifier_is_inconclusive_then_promoted_on_retry(
+    pilot_env,
+):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    assert pilot.commit_verifier is None
+    _wrap_as_foreign_adapter(pilot)
+    request = _request(fixture, candidate_revision)
+
+    refused = pilot.start(request)
+
+    assert refused.state is WorkerState.INCONCLUSIVE
+    assert refused.error.code is WorkerErrorCode.UNSUPPORTED_STATE
+    assert "no commit verifier" in refused.error.message
+    assert refused.progress.startswith("observed candidate_head=")
+    assert fixture.store.receipts_for_task(fixture.task_id) == []
+
+    seen = []
+    pilot.commit_verifier = lambda req, resp: seen.append((req, resp)) or None
+    promoted = pilot.start(request)
+
+    assert promoted.state is WorkerState.SUCCEEDED
+    assert len(seen) >= 1 and seen[-1][0] == request
+    assert seen[-1][1].state is WorkerState.SUCCEEDED
+    assert _commit_count(repository, candidate_revision) == 1
+
+
+def test_r6_raising_verifier_is_inconclusive_and_hides_exception_text(pilot_env):
+    fixture, pilot, _repository, candidate_revision = pilot_env
+    _wrap_as_foreign_adapter(pilot)
+
+    def boom(_request, _response):
+        raise RuntimeError("PRIVATE_VERIFIER_DETAIL")
+
+    pilot.commit_verifier = boom
+    response = pilot.start(_request(fixture, candidate_revision))
+
+    assert response.state is WorkerState.INCONCLUSIVE
+    assert response.error.code is WorkerErrorCode.RECONCILIATION_REQUIRED
+    assert response.error.message == "commit verifier failed: RuntimeError"
+
+
+@pytest.mark.parametrize("verdict", ["ok", True, {"state": "SUCCEEDED"}])
+def test_r6_untyped_verifier_verdict_is_inconclusive(pilot_env, verdict):
+    fixture, pilot, _repository, candidate_revision = pilot_env
+    _wrap_as_foreign_adapter(pilot)
+    pilot.commit_verifier = lambda _req, _resp: verdict
+
+    response = pilot.start(_request(fixture, candidate_revision))
+
+    assert response.state is WorkerState.INCONCLUSIVE
+    assert response.error.code is WorkerErrorCode.UNSUPPORTED_STATE
+    assert "untyped verdict" in response.error.message
+
+
+@pytest.mark.parametrize("downgrade", [WorkerState.INCONCLUSIVE, WorkerState.BLOCKED])
+def test_r6_downgrading_verifier_refuses_the_success_claim(pilot_env, downgrade):
+    fixture, pilot, _repository, candidate_revision = pilot_env
+    _wrap_as_foreign_adapter(pilot)
+    pilot.commit_verifier = lambda req, _resp: _pilot_response(
+        req, downgrade, error=WorkerError(WorkerErrorCode.SCOPE_DENIED, "verifier says no"))
+
+    response = pilot.start(_request(fixture, candidate_revision))
+
+    assert response.state is downgrade
+    assert response.error.message == "verifier says no"
+    assert fixture.store.receipts_for_task(fixture.task_id) == []
+
+
+def test_r6_handwritten_adapter_ignores_the_verifier_and_uses_its_repository(pilot_env):
+    fixture, pilot, repository, candidate_revision = pilot_env
+    pilot.commit_verifier = lambda *_a: pytest.fail("verifier must not run for HandWritten")
+    assert pilot.start(_request(fixture, candidate_revision)).state is WorkerState.SUCCEEDED
+    assert _commit_count(repository, candidate_revision) == 1
+
+
+# ---- R8: STOP message from adapter state ---------------------------------------------
+
+@pytest.mark.parametrize("state,code", [
+    (WorkerState.FAILED, WorkerErrorCode.EXECUTION_FAILED),
+    (WorkerState.BLOCKED, WorkerErrorCode.INVALID_REQUEST),
+])
+def test_r8_stop_message_reports_failed_or_blocked_adapter_stop(
+    pilot_env, monkeypatch, state, code,
+):
+    fixture, pilot, _repository, candidate_revision = pilot_env
+    original = _request(fixture, candidate_revision)
+    _inject_app_checkpoint_interrupt(pilot)
+    assert pilot.start(original).state is WorkerState.INCONCLUSIVE
+    monkeypatch.setattr(
+        pilot.adapter, "stop",
+        lambda _req: _pilot_response(original, state, error=WorkerError(code, "synthetic")),
+    )
+
+    response = pilot.stop(_stop_request(original))
+
+    assert response.state is WorkerState.INCONCLUSIVE
+    assert response.error.code is WorkerErrorCode.INTERRUPTED
+    assert response.error.message == (
+        f"epoch fenced; adapter.stop reported {state.value}; "
+        "worker process cleanup is NOT_VERIFIED"
+    )
+    assert f"adapter_stop={state.value}:{code.value}" in response.progress
+    assert fixture.store.current_epoch(fixture.story_id) == original.epoch + 1
+
+
+def test_r8_stop_message_for_untyped_adapter_result(pilot_env, monkeypatch):
+    fixture, pilot, _repository, candidate_revision = pilot_env
+    original = _request(fixture, candidate_revision)
+    _inject_app_checkpoint_interrupt(pilot)
+    assert pilot.start(original).state is WorkerState.INCONCLUSIVE
+    monkeypatch.setattr(pilot.adapter, "stop", lambda _req: None)
+
+    response = pilot.stop(_stop_request(original))
+
+    assert response.error.message == (
+        "epoch fenced; adapter.stop returned an untyped result; "
+        "worker process cleanup is NOT_VERIFIED"
+    )
+    assert "adapter_stop=UNTYPED" in response.progress
+
+
 # AC-5 (fresh signed probe), AC-6 (actual WSL boundary), and runtime behavior
 # across WSL are intentionally NOT_RUN: this file has no trusted probe issuer,
 # and a synthetic signed fixture cannot establish the host boundary.

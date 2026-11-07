@@ -23,13 +23,16 @@ MAX_PROGRESS_BYTES = 4 * 1024
 MAX_EVIDENCE_REFS = 32
 MAX_ALLOWED_PATHS = 128
 MAX_PATH_BYTES = 512
+_GIT_SHORT_NAME = re.compile(r"git~\d+", re.IGNORECASE)
 
 
 def is_canonical_repo_path(path: object) -> bool:
     """True only for the one accepted form: relative, forward-slash, no aliases.
 
-    Rejects backslashes, control characters, empty/dot/dot-dot components, any
-    ``:`` (drive letters and NTFS streams) and any ``.git`` component.
+    Rejects backslashes, control characters (including DEL), empty/dot/dot-dot
+    components, any ``:`` (drive letters and NTFS streams), any ``.git``
+    component, Windows short-name aliases of it (``GIT~1``) and components that
+    end in a dot or a space (silently stripped by Windows).
     """
     if not isinstance(path, str) or not path:
         return False
@@ -38,10 +41,13 @@ def is_canonical_repo_path(path: object) -> bool:
             return False
     except UnicodeEncodeError:
         return False
-    if "\\" in path or path.startswith("/") or any(ord(character) < 32 for character in path):
+    if "\\" in path or path.startswith("/") or any(
+        ord(character) < 32 or ord(character) == 0x7F for character in path
+    ):
         return False
     return all(
         part not in {"", ".", ".."} and ":" not in part and part.casefold() != ".git"
+        and not part.endswith((".", " ")) and _GIT_SHORT_NAME.fullmatch(part) is None
         for part in path.split("/")
     )
 

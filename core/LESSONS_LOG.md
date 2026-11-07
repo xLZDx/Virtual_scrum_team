@@ -1650,3 +1650,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: FAILURE (process): a second session committed to the same branch while a subagent edited pilot.py, so the subagent's first edits were overwritten and a broken fix plus wrong BLOCKED statuses entered the history. Missed by: no lock between sessions; found by the implementation-engineer.
 - Rule: before editing, compare HEAD and `git status` with the last known state; if another session is writing, stop and coordinate or move work to a separate branch.
+
+## 2026-11-07 — Sandbox resume probe imported removed functions
+
+- Kind: FAILURE: the S3 pilot (integrated from a pre-S2 base) imported verify_fresh_probe and verify_network_policy_attestation that no longer exist, so every sandbox-mode resume raised ImportError; two review rounds read the code and did not notice it, the e2e-runner found it by writing a scenario that executed the path.
+- Missed by: author of the old integration, both reviewers (static reading), the earlier 9+9 tests (never exercised sandbox resume).
+- Rule: when re-integrating code onto a changed base, execute every branch of every changed seam in at least one test; static review does not prove an import resolves.
