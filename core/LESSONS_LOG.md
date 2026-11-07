@@ -1635,3 +1635,47 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Kind: FAILURE (mine): the plan had no task rows for S0 and S1, so the reports I rendered showed only S2-S5 (and wrote that S3-S5 had no task lists, which was wrong: their plan documents list tasks). The operator saw S1 and its results missing.
 - Missed by: author (I rendered without comparing to the previous program report); no gate checks sprint coverage.
 - Rule: before handing over a program report, compare its sprint list and totals with the previous report and the roadmap table; every roadmap sprint needs task rows.
+
+## 2026-11-07 — Plan contradicted the registry for S3-S5
+
+- Kind: FAILURE (mine): I put S3 0/5, S4 0/6 NOT_STARTED in the plan and wrote that no task lists existed, while core/BACKLOG.md recorded passing tests and approvals for VST-027..038. The operator saw two reports of one program disagree.
+- Missed by: author (did not read the registry rows before assigning statuses); no gate compares plan statuses with the registry.
+- Rule: before assigning a task status, read the registry row and the branch history for that task; a status that contradicts recorded evidence is wrong until reconciled.
+
+## 2026-11-07 — S3 adapter focused tests
+
+- Kind: SUCCESS: the S3 adapter tests written on an older base still passed 9/9 after the S2-4E store changes, and the test agent added 6 assertions for unasserted contract clauses; reading the registry first found the existing S3 work instead of redoing it.
+
+## 2026-11-07 — Two sessions in one checkout
+
+- Kind: FAILURE (process): a second session committed to the same branch while a subagent edited pilot.py, so the subagent's first edits were overwritten and a broken fix plus wrong BLOCKED statuses entered the history. Missed by: no lock between sessions; found by the implementation-engineer.
+- Rule: before editing, compare HEAD and `git status` with the last known state; if another session is writing, stop and coordinate or move work to a separate branch.
+
+## 2026-11-07 — Sandbox resume probe imported removed functions
+
+- Kind: FAILURE: the S3 pilot (integrated from a pre-S2 base) imported verify_fresh_probe and verify_network_policy_attestation that no longer exist, so every sandbox-mode resume raised ImportError; two review rounds read the code and did not notice it, the e2e-runner found it by writing a scenario that executed the path.
+- Missed by: author of the old integration, both reviewers (static reading), the earlier 9+9 tests (never exercised sandbox resume).
+- Rule: when re-integrating code onto a changed base, execute every branch of every changed seam in at least one test; static review does not prove an import resolves.
+
+## 2026-11-07 — S3-A delivery path
+
+- Kind: SUCCESS: reading the registry first found the existing S3 work; two independent review rounds plus the e2e-runner caught 5 MAJOR defects (one a dead import in the original integration) before GPT-PM saw the code, and the final review returned a bare APPROVE.
+
+## 2026-11-07 — Report scheme
+
+- Kind: SHORTCOMING (mine): after the operator asked for the old-scheme program status report I first kept refreshing the new plan report; the operator had to ask again. Rule: when the operator names an earlier report format, rebuild that exact artifact first and say which one it is.
+
+## 2026-11-07 — Defects behind an approved gate
+
+- Kind: FAILURE (process): the S3-A code gate was approved while the pilot gate wrapper always raised TypeError and symlink commits were accepted; both were found only when the S3-C scenario matrix executed those paths.
+- Missed by: author, both static reviewers, the earlier tests and GPT-PM (reviews read code; no test executed these branches).
+- Rule: map the plan's scenario denominator to tests before asking for the code gate, not after; a branch no test executes is unreviewed.
+
+## 2026-11-07 — S3-C delivery
+
+- Kind: SUCCESS: the scenario matrix was written against the plan's denominator, executed the unreviewed branches and found two real defects before the sprint PR was merged; the narrow GPT-PM round on the delta returned a bare APPROVE. Bounded scope was stated up front, so the NOT_RUN rows stayed visible instead of being averaged into the approval.
+
+
+## 2026-11-08 — S3 bounded closure
+
+- Kind: SUCCESS: the sprint was closed against the real evidence (2 accepted, 3 parked by decision) instead of counting parked rows as passed; NOT_RUN rows are named in the plan, registry and both reports.
