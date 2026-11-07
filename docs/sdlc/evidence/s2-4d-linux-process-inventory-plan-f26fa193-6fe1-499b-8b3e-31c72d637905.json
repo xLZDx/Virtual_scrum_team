@@ -1,0 +1,64 @@
+{
+  "authorization_id": "f26fa193-6fe1-499b-8b3e-31c72d637905",
+  "task_id": "S2-4D",
+  "owner": "Codex",
+  "disposition": "APPROVE — READ-ONLY INVENTORY ONLY",
+  "target_distribution": "Ubuntu-24.04",
+  "authorization_limits": {
+    "invocations": 1,
+    "timeout_seconds": 30,
+    "keeper_launches": 0,
+    "collector_invocations": 0,
+    "payload_builder_invocations": 0,
+    "applier_invocations": 0,
+    "test_run_invocations": 0,
+    "retries": 0,
+    "process_signals": "prohibited",
+    "distro_termination": "prohibited",
+    "configuration_or_service_or_store_mutation": "prohibited",
+    "process_cmdline_read": "prohibited",
+    "environment_variable_read": "prohibited"
+  },
+  "preflight_required": "Confirm Ubuntu-24.04 is already running and original Windows process identities still match; abort without WSL invocation if either condition fails.",
+  "exact_command": {
+    "executable": "wsl.exe",
+    "argv": [
+      "--distribution",
+      "Ubuntu-24.04",
+      "--exec",
+      "/usr/bin/python3",
+      "-I",
+      "-B",
+      "-S",
+      "-c",
+      "import os, json, datetime, sys\nPROC = \"/proc\"\nMAX_BYTES = 4_000_000\ntry:\n    boot_id = open(\"/proc/sys/kernel/random/boot_id\", \"r\", encoding=\"ascii\").read().strip()\n    boot_time = None\n    for line in open(\"/proc/stat\", \"r\", encoding=\"ascii\"):\n        if line.startswith(\"btime \"):\n            boot_time = int(line.split()[1])\n            break\n    hz = os.sysconf(\"SC_CLK_TCK\")\n    pids = sorted((int(name) for name in os.listdir(PROC) if name.isdigit()))\n    rows = []\n    for pid in pids:\n        base = f\"/proc/{pid}\"\n        row = {\"pid\": pid, \"ppid\": None, \"uid\": None, \"start_ticks\": None, \"start_utc\": None, \"state\": None, \"exe\": None, \"name\": None, \"read_errors\": []}\n        try:\n            raw = open(base + \"/stat\", \"r\", encoding=\"ascii\").read()\n            close = raw.rfind(\")\")\n            if close < 0:\n                raise ValueError(\"malformed stat\")\n            fields = raw[close + 2:].split()\n            row[\"state\"] = fields[0]\n            row[\"ppid\"] = int(fields[1])\n            row[\"start_ticks\"] = int(fields[19])\n            if boot_time is not None:\n                row[\"start_utc\"] = datetime.datetime.fromtimestamp(boot_time + row[\"start_ticks\"] / hz, datetime.timezone.utc).isoformat()\n        except Exception as exc:\n            row[\"read_errors\"].append(\"stat:\" + type(exc).__name__)\n        try:\n            for line in open(base + \"/status\", \"r\", encoding=\"ascii\"):\n                if line.startswith(\"Uid:\"):\n                    row[\"uid\"] = [int(x) for x in line.split()[1:5]]\n                    break\n        except Exception as exc:\n            row[\"read_errors\"].append(\"status:\" + type(exc).__name__)\n        try:\n            row[\"name\"] = open(base + \"/comm\", \"r\", encoding=\"utf-8\", errors=\"replace\").read().rstrip(\"\\n\")\n        except Exception as exc:\n            row[\"read_errors\"].append(\"comm:\" + type(exc).__name__)\n        try:\n            row[\"exe\"] = os.readlink(base + \"/exe\")\n        except Exception as exc:\n            row[\"read_errors\"].append(\"exe:\" + type(exc).__name__)\n        rows.append(row)\n    by_pid = {r[\"pid\"]: r for r in rows}\n    for row in rows:\n        row[\"children\"] = sorted(r[\"pid\"] for r in rows if r[\"ppid\"] == row[\"pid\"])\n    candidates = [r[\"pid\"] for r in rows if (r[\"name\"] or \"\").lower().startswith(\"python\") or os.path.basename(r[\"exe\"] or \"\").lower().startswith(\"python\")]\n    result = {\"schema\": \"s2-4d-linux-process-inventory-v1\", \"boot_id\": boot_id, \"boot_time_epoch\": boot_time, \"clock_ticks_per_second\": hz, \"observed_utc\": datetime.datetime.now(datetime.timezone.utc).isoformat(), \"process_count\": len(rows), \"python_candidates\": candidates, \"processes\": rows, \"cmdline_read\": False, \"environ_read\": False, \"truncated\": False}\n    encoded = json.dumps(result, separators=(\",\", \":\"), ensure_ascii=True)\n    if len(encoded.encode(\"utf-8\")) > MAX_BYTES:\n        compact = {\"schema\": result[\"schema\"], \"boot_id\": boot_id, \"observed_utc\": result[\"observed_utc\"], \"process_count\": len(rows), \"python_candidates\": candidates, \"truncated\": True, \"truncation_reason\": \"inventory exceeds 4,000,000 UTF-8 bytes\", \"cmdline_read\": False, \"environ_read\": False}\n        encoded = json.dumps(compact, separators=(\",\", \":\"), ensure_ascii=True)\n    sys.stdout.write(encoded + \"\\n\")\nexcept Exception as exc:\n    sys.stderr.write(json.dumps({\"error\": type(exc).__name__, \"message\": str(exc)}, separators=(\",\", \":\")) + \"\\n\")\n    raise SystemExit(2)\n"
+    ]
+  },
+  "script": "import os, json, datetime, sys\nPROC = \"/proc\"\nMAX_BYTES = 4_000_000\ntry:\n    boot_id = open(\"/proc/sys/kernel/random/boot_id\", \"r\", encoding=\"ascii\").read().strip()\n    boot_time = None\n    for line in open(\"/proc/stat\", \"r\", encoding=\"ascii\"):\n        if line.startswith(\"btime \"):\n            boot_time = int(line.split()[1])\n            break\n    hz = os.sysconf(\"SC_CLK_TCK\")\n    pids = sorted((int(name) for name in os.listdir(PROC) if name.isdigit()))\n    rows = []\n    for pid in pids:\n        base = f\"/proc/{pid}\"\n        row = {\"pid\": pid, \"ppid\": None, \"uid\": None, \"start_ticks\": None, \"start_utc\": None, \"state\": None, \"exe\": None, \"name\": None, \"read_errors\": []}\n        try:\n            raw = open(base + \"/stat\", \"r\", encoding=\"ascii\").read()\n            close = raw.rfind(\")\")\n            if close < 0:\n                raise ValueError(\"malformed stat\")\n            fields = raw[close + 2:].split()\n            row[\"state\"] = fields[0]\n            row[\"ppid\"] = int(fields[1])\n            row[\"start_ticks\"] = int(fields[19])\n            if boot_time is not None:\n                row[\"start_utc\"] = datetime.datetime.fromtimestamp(boot_time + row[\"start_ticks\"] / hz, datetime.timezone.utc).isoformat()\n        except Exception as exc:\n            row[\"read_errors\"].append(\"stat:\" + type(exc).__name__)\n        try:\n            for line in open(base + \"/status\", \"r\", encoding=\"ascii\"):\n                if line.startswith(\"Uid:\"):\n                    row[\"uid\"] = [int(x) for x in line.split()[1:5]]\n                    break\n        except Exception as exc:\n            row[\"read_errors\"].append(\"status:\" + type(exc).__name__)\n        try:\n            row[\"name\"] = open(base + \"/comm\", \"r\", encoding=\"utf-8\", errors=\"replace\").read().rstrip(\"\\n\")\n        except Exception as exc:\n            row[\"read_errors\"].append(\"comm:\" + type(exc).__name__)\n        try:\n            row[\"exe\"] = os.readlink(base + \"/exe\")\n        except Exception as exc:\n            row[\"read_errors\"].append(\"exe:\" + type(exc).__name__)\n        rows.append(row)\n    by_pid = {r[\"pid\"]: r for r in rows}\n    for row in rows:\n        row[\"children\"] = sorted(r[\"pid\"] for r in rows if r[\"ppid\"] == row[\"pid\"])\n    candidates = [r[\"pid\"] for r in rows if (r[\"name\"] or \"\").lower().startswith(\"python\") or os.path.basename(r[\"exe\"] or \"\").lower().startswith(\"python\")]\n    result = {\"schema\": \"s2-4d-linux-process-inventory-v1\", \"boot_id\": boot_id, \"boot_time_epoch\": boot_time, \"clock_ticks_per_second\": hz, \"observed_utc\": datetime.datetime.now(datetime.timezone.utc).isoformat(), \"process_count\": len(rows), \"python_candidates\": candidates, \"processes\": rows, \"cmdline_read\": False, \"environ_read\": False, \"truncated\": False}\n    encoded = json.dumps(result, separators=(\",\", \":\"), ensure_ascii=True)\n    if len(encoded.encode(\"utf-8\")) > MAX_BYTES:\n        compact = {\"schema\": result[\"schema\"], \"boot_id\": boot_id, \"observed_utc\": result[\"observed_utc\"], \"process_count\": len(rows), \"python_candidates\": candidates, \"truncated\": True, \"truncation_reason\": \"inventory exceeds 4,000,000 UTF-8 bytes\", \"cmdline_read\": False, \"environ_read\": False}\n        encoded = json.dumps(compact, separators=(\",\", \":\"), ensure_ascii=True)\n    sys.stdout.write(encoded + \"\\n\")\nexcept Exception as exc:\n    sys.stderr.write(json.dumps({\"error\": type(exc).__name__, \"message\": str(exc)}, separators=(\",\", \":\")) + \"\\n\")\n    raise SystemExit(2)\n",
+  "permitted_proc_reads": [
+    "/proc/[pid]/stat",
+    "/proc/[pid]/status",
+    "/proc/[pid]/comm",
+    "/proc/[pid]/exe (readlink)",
+    "/proc/stat",
+    "/proc/sys/kernel/random/boot_id"
+  ],
+  "forbidden_proc_reads": [
+    "/proc/[pid]/cmdline",
+    "/proc/[pid]/environ",
+    "process memory"
+  ],
+  "evidence_requirements": [
+    "UTC preflight and inspection timestamps",
+    "Windows running distro evidence",
+    "exact Linux command",
+    "exit code",
+    "complete raw stdout and stderr",
+    "SHA-256 of raw artifacts",
+    "boot ID",
+    "process PID/PPID/UID/start time/state/executable/name",
+    "parent/child relationships",
+    "uncertainty and truncation indicators"
+  ],
+  "created_before_authorized_invocation": true
+}

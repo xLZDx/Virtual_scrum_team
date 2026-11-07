@@ -1,0 +1,54 @@
+{
+  "scope": "Read-only named systemd unit property diagnostic; no activation",
+  "observed_utc": "2026-11-05T05:25:38.995802+00:00",
+  "commands": [
+    {
+      "unit": "vst-runner.service",
+      "argv": [
+        "wsl.exe",
+        "--distribution",
+        "Ubuntu-24.04",
+        "--user",
+        "root",
+        "--exec",
+        "/usr/bin/systemctl",
+        "show",
+        "vst-runner.service",
+        "--property=LoadState",
+        "--property=ActiveState",
+        "--property=SubState",
+        "--property=Result",
+        "--property=MainPID",
+        "--property=ControlPID",
+        "--no-pager"
+      ],
+      "returncode": 0,
+      "stdout": "MainPID=0\nControlPID=0\nResult=success\nLoadState=loaded\nActiveState=inactive\nSubState=dead\n",
+      "stderr": ""
+    },
+    {
+      "unit": "vst-dispatch-owner.socket",
+      "argv": [
+        "wsl.exe",
+        "--distribution",
+        "Ubuntu-24.04",
+        "--user",
+        "root",
+        "--exec",
+        "/usr/bin/systemctl",
+        "show",
+        "vst-dispatch-owner.socket",
+        "--property=LoadState",
+        "--property=ActiveState",
+        "--property=SubState",
+        "--property=Result",
+        "--property=MainPID",
+        "--property=ControlPID",
+        "--no-pager"
+      ],
+      "returncode": 0,
+      "stdout": "ControlPID=0\nResult=success\nLoadState=loaded\nActiveState=inactive\nSubState=dead\n",
+      "stderr": ""
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "schema": "VST_S2_4D_TERMINAL_RECONCILIATION_V1",
+  "task": "S2-4D - bounded configuration refresh",
+  "decision_id": "db31f8bc-e5c6-4bb8-ae76-15ab2f26ebc5",
+  "observed_utc": "2026-11-05T13:34:39.1275530Z",
+  "source_head": "dc978a0e3f02c11220deea3ac3f014cb2f1718a1",
+  "bundle_sha256": "4c13f2991f39cf12b84af4b0440621ab1adaa74ca1894dfda29eec1006cd7138",
+  "attempt_terminal_status": "PREFLIGHT_STOPPED_NO_APPLIER",
+  "keeper": {
+    "host_pid": 61496,
+    "started_utc": "2026-11-05T15:31:47.5102339+02:00",
+    "readiness_verified": true,
+    "boot_id": "84c624a7-bc08-45a7-b60e-2ca715578597",
+    "pid1_stat_sha256": "6f12aa192dab6832cf0ac7080109861a908fbee1c1c97f95e1ca4f4f965257b0",
+    "cleanup": {
+      "attempted_utc": "2026-11-05T15:32:17.5984185+02:00",
+      "stdin_close": "SENT_X_AND_CLOSED",
+      "wait_exit": true,
+      "kill": "NOT_RUN",
+      "exit_code": 0,
+      "errors": []
+    }
+  },
+  "failure": {
+    "stage": "host stdout readiness monitor before inventory",
+    "exception": "System.Management.Automation.RuntimeException: Keeper readiness timed out after 30s; raw stdout/stderr retained",
+    "root_cause": "CopyToAsync used buffered FileStream; polling saw no bytes until cleanup flushed/disposed it",
+    "raw_output_after_cleanup_confirms_readiness": true,
+    "inventory": "NOT_CREATED",
+    "payload": "NOT_BUILT",
+    "target_mutation": "NOT_RUN"
+  },
+  "authorization": {
+    "applier_invocations": 0,
+    "authorization_consumed": false,
+    "disposition": "keeper closed; grant expired under same-keeper-session rule; not reusable"
+  },
+  "raw_streams": {
+    "stdout_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-db31f8bc-e5c6-4bb8-ae76-15ab2f26ebc5-01.keeper.stdout.raw",
+    "stdout_bytes": 411,
+    "stdout_sha256": "7427d0d770ed3f0368ac23750c1d7195ea7e885f58c42e3baaac71dc3d3b57c4",
+    "readiness_line_sha256": "894861f9ca4acc072b374ded32cc98435b8ddde21b806206a01dba141ca942a0",
+    "stderr_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-db31f8bc-e5c6-4bb8-ae76-15ab2f26ebc5-01.keeper.stderr.raw",
+    "stderr_bytes": 0,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "attempt_artifacts": [
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-db31f8bc-e5c6-4bb8-ae76-15ab2f26ebc5-01.attempt.json",
+      "bytes": 5284,
+      "sha256": "067a1418e09193a90bf1bdbba932595c12f2a576b071f7ce0f64e6cd63d6a681"
+    },
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-db31f8bc-e5c6-4bb8-ae76-15ab2f26ebc5-01.attempt.json.bak.322f53ecf43b49459e54f5fe1797b47c",
+      "bytes": 3421,
+      "sha256": "e9428b41da363a369ed0862afaa8793290672901a669c7755cee1bfccc78ebd0"
+    },
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-db31f8bc-e5c6-4bb8-ae76-15ab2f26ebc5-01.attempt.json.bak.85fce144678440dfa11756192fc4100b",
+      "bytes": 4533,
+      "sha256": "a49bdbe085f2733130979c2a1f9dced13353da634fcad05a97e38c3f44cfabef"
+    },
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-db31f8bc-e5c6-4bb8-ae76-15ab2f26ebc5-01.keeper.stderr.raw",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-db31f8bc-e5c6-4bb8-ae76-15ab2f26ebc5-01.keeper.stdout.raw",
+      "bytes": 411,
+      "sha256": "7427d0d770ed3f0368ac23750c1d7195ea7e885f58c42e3baaac71dc3d3b57c4"
+    }
+  ],
+  "process_check": {
+    "checked_utc": "2026-11-05T13:34:39.1598565Z",
+    "keeper_pid_present": false,
+    "relevant_wsl_process_present": false,
+    "running_distributions": "docker-desktop",
+    "scope": "point-in-time read-only host process check"
+  },
+  "provenance": [
+    "Attempt JSON, atomic backups and raw streams are preserved unchanged.",
+    "Attempt records applier_invocations=0, authorization_consumed=false, inventory/payload/applier null.",
+    "Raw stdout after cleanup contains valid ready=true JSON with the same boot ID; stderr is empty.",
+    "Host process check found no keeper PID 61496 or relevant wsl.exe; WSL reports only docker-desktop running."
+  ]
+}

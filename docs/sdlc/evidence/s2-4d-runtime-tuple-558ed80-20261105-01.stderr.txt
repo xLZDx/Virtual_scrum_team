@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "<string>", line 56, in <module>
+  File "<string>", line 22, in read_json_safe
+ValueError: unsafe JSON file identity: /etc/vst-runner/bootstrap-request.json

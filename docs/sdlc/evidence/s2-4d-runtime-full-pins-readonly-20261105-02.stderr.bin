@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "<string>", line 22, in <module>
+  File "/mnt/d/Repo/Virtual_scrum_team/tools/qa/s2_runtime_qualification_wsl.py", line 864, in _runtime_identity
+    _tree_digest(selector, AUTH["source_pins"]["runtime"])
+  File "/mnt/d/Repo/Virtual_scrum_team/tools/qa/s2_runtime_qualification_wsl.py", line 804, in _tree_digest
+    data = _secure_bytes(path, 16 * 1024 * 1024)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/d/Repo/Virtual_scrum_team/tools/qa/s2_runtime_qualification_wsl.py", line 765, in _secure_bytes
+    before = os.lstat(path)
+             ^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071/tools/qa/install_wsl_runner_runtime.sh'

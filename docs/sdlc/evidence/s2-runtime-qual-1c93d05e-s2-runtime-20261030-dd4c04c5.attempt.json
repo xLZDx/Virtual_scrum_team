@@ -1,0 +1,1675 @@
+{
+  "authorization_input_sha256": "78ea362da6aa900e9b8e656105867c74eaae0dab5cafd63464041ad35ad94e45",
+  "authorization_reply_id": "6826683b-3bea-5be4-a4e6-5315b47d5438",
+  "authorization_request_id": "1c93d05e-13e8-4d34-b94a-81372e7e381e",
+  "exit_code": 2,
+  "identity": {
+    "bootstrap_request_id": "ba3faaadb50447b79df509619b6ee010",
+    "bundle_sha256": "3e0bc434d04f3374ebf980520042cd1911c189994aa4aaf8040c961155569902",
+    "config_bundle_sha256": "ae0f3bf961aab9a0ff314f23611174f8f2fb1672c3c31519156803a21486e3c5",
+    "nonce": "1fd3cb4e69e54bc6aa5e63458ae82818",
+    "qualification_source_head": "e42c82ff297902991b9b6e1aa322f44ca08bffb9",
+    "run_id": "s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e",
+    "runtime_selector": "/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
+    "runtime_source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
+    "selector_test_id": "tests/vst/test_s2_assignment_basis.py::test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment",
+    "task_manifest_sha256": "195a471a68892ad0cf21e191113f86a9dfb616501d5f4034e377eaad0ba17529"
+  },
+  "protocol": {
+    "authorization_reply_id": "6826683b-3bea-5be4-a4e6-5315b47d5438",
+    "authorization_request_id": "1c93d05e-13e8-4d34-b94a-81372e7e381e",
+    "commands": [
+      {
+        "argv": [
+          "/usr/bin/systemctl",
+          "show",
+          "vst-s2-qual-9004e3a0acb8655b.service",
+          "--no-pager",
+          "--property=LoadState",
+          "--property=ActiveState",
+          "--property=SubState",
+          "--property=Result",
+          "--property=MainPID",
+          "--property=ControlGroup",
+          "--property=PrivateDevices",
+          "--property=ProtectSystem",
+          "--property=ProtectKernelTunables",
+          "--property=ProtectKernelModules",
+          "--property=ProtectKernelLogs",
+          "--property=ProtectControlGroups",
+          "--property=NoNewPrivileges",
+          "--property=RuntimeMaxUSec",
+          "--property=InaccessiblePaths"
+        ],
+        "exit_code": 0,
+        "finished_utc": "2026-11-05T06:42:44.936174+00:00",
+        "id": "current_transient_unit",
+        "started_utc": "2026-11-05T06:42:44.927399+00:00",
+        "stderr_bytes": 0,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_truncated": false,
+        "stdout_bytes": 824,
+        "stdout_sha256": "9d8a088b0b1bf67a88978b464e2c8500caf8c647ddddf5123bde19c2701532b9",
+        "stdout_truncated": false,
+        "timed_out": false
+      }
+    ],
+    "finished_utc": "2026-11-05T06:42:44.940387+00:00",
+    "identity": {
+      "bootstrap_request_id": "ba3faaadb50447b79df509619b6ee010",
+      "bundle_sha256": "3e0bc434d04f3374ebf980520042cd1911c189994aa4aaf8040c961155569902",
+      "config_bundle_sha256": "ae0f3bf961aab9a0ff314f23611174f8f2fb1672c3c31519156803a21486e3c5",
+      "nonce": "1fd3cb4e69e54bc6aa5e63458ae82818",
+      "run_id": "s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e",
+      "runtime_selector": "/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
+      "runtime_source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
+      "selector_test_id": "tests/vst/test_s2_assignment_basis.py::test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment",
+      "task_manifest_sha256": "195a471a68892ad0cf21e191113f86a9dfb616501d5f4034e377eaad0ba17529"
+    },
+    "prestart": {
+      "mount_inventory": {
+        "effective_masks": {
+          "/dev/hugepages": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1044,
+            "type": "directory",
+            "uid": 0
+          },
+          "/dev/shm": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1045,
+            "type": "directory",
+            "uid": 0
+          },
+          "/home": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1046,
+            "type": "directory",
+            "uid": 0
+          },
+          "/init": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1043,
+            "type": "regular",
+            "uid": 0
+          },
+          "/mnt": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1047,
+            "type": "directory",
+            "uid": 0
+          },
+          "/proc/acpi": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1056,
+            "type": "directory",
+            "uid": 0
+          },
+          "/proc/bus": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1065,
+            "type": "directory",
+            "uid": 0
+          },
+          "/proc/fs": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1066,
+            "type": "directory",
+            "uid": 0
+          },
+          "/proc/irq": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1067,
+            "type": "directory",
+            "uid": 0
+          },
+          "/proc/kallsyms": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1068,
+            "type": "regular",
+            "uid": 0
+          },
+          "/proc/kcore": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1069,
+            "type": "regular",
+            "uid": 0
+          },
+          "/proc/kmsg": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1070,
+            "type": "regular",
+            "uid": 0
+          },
+          "/proc/latency_stats": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1075,
+            "type": "regular",
+            "uid": 0
+          },
+          "/proc/mtrr": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1077,
+            "type": "regular",
+            "uid": 0
+          },
+          "/proc/scsi": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1078,
+            "type": "directory",
+            "uid": 0
+          },
+          "/proc/sys/fs/binfmt_misc": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1080,
+            "type": "directory",
+            "uid": 0
+          },
+          "/root": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1082,
+            "type": "directory",
+            "uid": 0
+          },
+          "/run/WSL": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1083,
+            "type": "directory",
+            "uid": 0
+          },
+          "/run/credentials": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1084,
+            "type": "directory",
+            "uid": 0
+          },
+          "/run/lock": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1058,
+            "type": "directory",
+            "uid": 0
+          },
+          "/run/shm": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1059,
+            "type": "directory",
+            "uid": 0
+          },
+          "/run/user": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1060,
+            "type": "directory",
+            "uid": 0
+          },
+          "/sys/fs/bpf": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1061,
+            "type": "directory",
+            "uid": 0
+          },
+          "/sys/fs/cgroup/system.slice/vst-s2-qual-9004e3a0acb8655b.service/memory.pressure": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1062,
+            "type": "regular",
+            "uid": 0
+          },
+          "/sys/fs/fuse/connections": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1053,
+            "type": "directory",
+            "uid": 0
+          },
+          "/sys/fs/selinux": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1086,
+            "type": "directory",
+            "uid": 0
+          },
+          "/sys/kernel/config": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1054,
+            "type": "directory",
+            "uid": 0
+          },
+          "/sys/kernel/debug": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1051,
+            "type": "directory",
+            "uid": 0
+          },
+          "/sys/kernel/tracing": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1052,
+            "type": "directory",
+            "uid": 0
+          },
+          "/tmp/.X11-unix": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1071,
+            "type": "directory",
+            "uid": 0
+          },
+          "/usr/lib/modules": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1072,
+            "type": "directory",
+            "uid": 0
+          },
+          "/usr/lib/wsl": {
+            "gid": 0,
+            "mode": 0,
+            "mount_id": 1063,
+            "type": "directory",
+            "uid": 0
+          }
+        },
+        "execution_unit": {
+          "cmdline": [
+            "/usr/bin/python3.12",
+            "-I",
+            "-B",
+            "-S",
+            "-"
+          ],
+          "mount_namespace_distinct_from_pid1": true,
+          "open_fds": [
+            "0",
+            "1",
+            "2"
+          ],
+          "pid": 397,
+          "properties": {
+            "ActiveState": "active",
+            "ControlGroup": "/system.slice/vst-s2-qual-9004e3a0acb8655b.service",
+            "InaccessiblePaths": "/dev/hugepages /dev/shm /home /init /mnt /proc/acpi /proc/bus /proc/fs /proc/irq /proc/kallsyms /proc/kcore /proc/kmsg /proc/latency_stats /proc/mtrr /proc/scsi /proc/sys/fs/binfmt_misc /root /run/WSL /run/credentials /run/lock /run/shm /run/user /sys/fs/bpf /sys/fs/cgroup/system.slice/vst-s2-qual-9004e3a0acb8655b.service/memory.pressure /sys/fs/fuse/connections /sys/fs/selinux /sys/kernel/config /sys/kernel/debug /sys/kernel/tracing /tmp/.X11-unix /usr/lib/modules /usr/lib/wsl",
+            "LoadState": "loaded",
+            "MainPID": "397",
+            "NoNewPrivileges": "yes",
+            "PrivateDevices": "yes",
+            "ProtectControlGroups": "yes",
+            "ProtectKernelLogs": "yes",
+            "ProtectKernelModules": "yes",
+            "ProtectKernelTunables": "yes",
+            "ProtectSystem": "strict",
+            "Result": "success",
+            "RuntimeMaxUSec": "40min",
+            "SubState": "running"
+          },
+          "uid": 0,
+          "unit": "vst-s2-qual-9004e3a0acb8655b.service"
+        },
+        "private_dev": {
+          "entries": {
+            "char": {
+              "gid": 0,
+              "mode": 493,
+              "type": "directory",
+              "uid": 0
+            },
+            "core": {
+              "gid": 0,
+              "mode": 511,
+              "target": "/proc/kcore",
+              "type": "symlink",
+              "uid": 0
+            },
+            "fd": {
+              "gid": 0,
+              "mode": 511,
+              "target": "/proc/self/fd",
+              "type": "symlink",
+              "uid": 0
+            },
+            "full": {
+              "gid": 0,
+              "major": 1,
+              "minor": 7,
+              "mode": 438,
+              "type": "character",
+              "uid": 0
+            },
+            "hugepages": {
+              "gid": 0,
+              "mode": 0,
+              "type": "directory",
+              "uid": 0
+            },
+            "log": {
+              "gid": 0,
+              "mode": 511,
+              "target": "/run/systemd/journal/dev-log",
+              "type": "symlink",
+              "uid": 0
+            },
+            "mqueue": {
+              "gid": 0,
+              "mode": 1023,
+              "type": "directory",
+              "uid": 0
+            },
+            "null": {
+              "gid": 0,
+              "major": 1,
+              "minor": 3,
+              "mode": 438,
+              "type": "character",
+              "uid": 0
+            },
+            "ptmx": {
+              "gid": 0,
+              "major": 5,
+              "minor": 2,
+              "mode": 438,
+              "type": "character",
+              "uid": 0
+            },
+            "pts": {
+              "gid": 0,
+              "mode": 493,
+              "type": "directory",
+              "uid": 0
+            },
+            "random": {
+              "gid": 0,
+              "major": 1,
+              "minor": 8,
+              "mode": 438,
+              "type": "character",
+              "uid": 0
+            },
+            "shm": {
+              "gid": 0,
+              "mode": 0,
+              "type": "directory",
+              "uid": 0
+            },
+            "stderr": {
+              "gid": 0,
+              "mode": 511,
+              "target": "/proc/self/fd/2",
+              "type": "symlink",
+              "uid": 0
+            },
+            "stdin": {
+              "gid": 0,
+              "mode": 511,
+              "target": "/proc/self/fd/0",
+              "type": "symlink",
+              "uid": 0
+            },
+            "stdout": {
+              "gid": 0,
+              "mode": 511,
+              "target": "/proc/self/fd/1",
+              "type": "symlink",
+              "uid": 0
+            },
+            "tty": {
+              "gid": 0,
+              "major": 5,
+              "minor": 0,
+              "mode": 438,
+              "type": "character",
+              "uid": 0
+            },
+            "urandom": {
+              "gid": 0,
+              "major": 1,
+              "minor": 9,
+              "mode": 438,
+              "type": "character",
+              "uid": 0
+            },
+            "zero": {
+              "gid": 0,
+              "major": 1,
+              "minor": 5,
+              "mode": 438,
+              "type": "character",
+              "uid": 0
+            }
+          },
+          "entry_count": 18,
+          "nested_entries": {
+            "char": {
+              "1:3": {
+                "gid": 0,
+                "mode": 511,
+                "target": "../null",
+                "type": "symlink",
+                "uid": 0
+              },
+              "1:5": {
+                "gid": 0,
+                "mode": 511,
+                "target": "../zero",
+                "type": "symlink",
+                "uid": 0
+              },
+              "1:7": {
+                "gid": 0,
+                "mode": 511,
+                "target": "../full",
+                "type": "symlink",
+                "uid": 0
+              },
+              "1:8": {
+                "gid": 0,
+                "mode": 511,
+                "target": "../random",
+                "type": "symlink",
+                "uid": 0
+              },
+              "1:9": {
+                "gid": 0,
+                "mode": 511,
+                "target": "../urandom",
+                "type": "symlink",
+                "uid": 0
+              },
+              "5:0": {
+                "gid": 0,
+                "mode": 511,
+                "target": "../tty",
+                "type": "symlink",
+                "uid": 0
+              },
+              "5:2": {
+                "gid": 0,
+                "mode": 511,
+                "target": "../ptmx",
+                "type": "symlink",
+                "uid": 0
+              }
+            },
+            "hugepages": {},
+            "mqueue": {},
+            "pts": {
+              "0": {
+                "gid": 5,
+                "major": 136,
+                "minor": 0,
+                "mode": 400,
+                "type": "character",
+                "uid": 0
+              },
+              "1": {
+                "gid": 5,
+                "major": 136,
+                "minor": 1,
+                "mode": 384,
+                "type": "character",
+                "uid": 0
+              },
+              "ptmx": {
+                "gid": 0,
+                "major": 5,
+                "minor": 2,
+                "mode": 0,
+                "type": "character",
+                "uid": 0
+              }
+            },
+            "shm": {}
+          },
+          "nested_mountpoints": [
+            "/dev/hugepages",
+            "/dev/mqueue",
+            "/dev/pts",
+            "/dev/shm"
+          ]
+        },
+        "row_count": 44,
+        "rows": [
+          {
+            "device": "8:80",
+            "filesystem": "ext4",
+            "line": 1,
+            "line_sha256": "eed8331da9c635474bad73f9138eced15e75efa61c30aee0203fdabad3545359",
+            "mount_id": 1042,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "relatime"
+            ],
+            "mount_root": "/",
+            "mountpoint": "/",
+            "optional_fields": [
+              "shared:301"
+            ],
+            "parent_id": 779,
+            "source": "/dev/sdf",
+            "super_options": [
+              "rw",
+              "discard",
+              "errors=remount-ro",
+              "data=ordered"
+            ]
+          },
+          {
+            "device": "0:22",
+            "filesystem": "sysfs",
+            "line": 2,
+            "line_sha256": "dbd2d275301f7b6138f7b3e52f37b077eeae0b316db5bd08d94490f8461e6572",
+            "mount_id": 1049,
+            "mount_options": [
+              "rw",
+              "nosuid",
+              "nodev",
+              "noexec",
+              "noatime"
+            ],
+            "mount_root": "/",
+            "mountpoint": "/sys",
+            "optional_fields": [
+              "shared:302",
+              "master:48"
+            ],
+            "parent_id": 1042,
+            "source": "sysfs",
+            "super_options": [
+              "rw"
+            ]
+          },
+          {
+            "device": "0:23",
+            "filesystem": "cgroup2",
+            "line": 3,
+            "line_sha256": "8950ce465eaf9244b7b6e01f8d20b71557f99dba36b42e6eb80f11a47bc65309",
+            "mount_id": 1050,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec",
+              "relatime"
+            ],
+            "mount_root": "/",
+            "mountpoint": "/sys/fs/cgroup",
+            "optional_fields": [
+              "shared:303",
+              "master:56"
+            ],
+            "parent_id": 1049,
+            "source": "cgroup2",
+            "super_options": [
+              "rw",
+              "nsdelegate"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 4,
+            "line_sha256": "b4ab64576d38fef2aa4e120242f972e8eb6c42f809fec7bea8c6befc1b1b2028",
+            "mount_id": 1057,
+            "mount_options": [
+              "rw",
+              "nosuid",
+              "nodev"
+            ],
+            "mount_root": "/",
+            "mountpoint": "/run",
+            "optional_fields": [
+              "shared:311",
+              "master:51"
+            ],
+            "parent_id": 1042,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:169",
+            "filesystem": "tmpfs",
+            "line": 5,
+            "line_sha256": "c98dd9a48d127b47dc5018d8e0ce76294c3ce26fd8fa3ec460bb62a7519ffd5f",
+            "mount_id": 1073,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "noexec"
+            ],
+            "mount_root": "/",
+            "mountpoint": "/dev",
+            "optional_fields": [
+              "shared:318"
+            ],
+            "parent_id": 1042,
+            "source": "tmpfs",
+            "super_options": [
+              "rw",
+              "size=4096k",
+              "nr_inodes=65536",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:119",
+            "filesystem": "devpts",
+            "line": 6,
+            "line_sha256": "e3a37e497bbdfa1402e33849c6103f5a1899dd1e186744df31a33e8ed7cfcb74",
+            "mount_id": 1074,
+            "mount_options": [
+              "rw",
+              "nosuid",
+              "noexec",
+              "noatime"
+            ],
+            "mount_root": "/",
+            "mountpoint": "/dev/pts",
+            "optional_fields": [
+              "shared:319",
+              "master:50"
+            ],
+            "parent_id": 1073,
+            "source": "devpts",
+            "super_options": [
+              "rw",
+              "gid=5",
+              "mode=620",
+              "ptmxmode=000"
+            ]
+          },
+          {
+            "device": "0:94",
+            "filesystem": "mqueue",
+            "line": 7,
+            "line_sha256": "e0a47d1de7d99b495e8ff4bfcc364827d72aa7a43b5258f4fe3799edc20aeace",
+            "mount_id": 1076,
+            "mount_options": [
+              "rw",
+              "nosuid",
+              "nodev",
+              "noexec",
+              "relatime"
+            ],
+            "mount_root": "/",
+            "mountpoint": "/dev/mqueue",
+            "optional_fields": [
+              "shared:320",
+              "master:60"
+            ],
+            "parent_id": 1073,
+            "source": "mqueue",
+            "super_options": [
+              "rw"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 8,
+            "line_sha256": "7d6acffa84274a09d172119d35c2a57352e86c666c7996b13ee0e5c2cd9130a8",
+            "mount_id": 1044,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/dev/hugepages",
+            "optional_fields": [
+              "shared:321",
+              "master:51"
+            ],
+            "parent_id": 1073,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 9,
+            "line_sha256": "248710b0ace35dcbdddae37aa76b832f508a9436a7af44eef791d25eedaa728e",
+            "mount_id": 1045,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/dev/shm",
+            "optional_fields": [
+              "shared:322",
+              "master:51"
+            ],
+            "parent_id": 1073,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 10,
+            "line_sha256": "ba8b431f2ef7bc0210c259ea20baff3a029a92363d7342bf0ccc815b192bd960",
+            "mount_id": 1046,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/home",
+            "optional_fields": [
+              "shared:323",
+              "master:51"
+            ],
+            "parent_id": 1042,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 11,
+            "line_sha256": "f6c04e6dad72a6ac907527ff688378076da2617e4c608e687d7358454562e5e9",
+            "mount_id": 1043,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/reg",
+            "mountpoint": "/init",
+            "optional_fields": [
+              "shared:324",
+              "master:51"
+            ],
+            "parent_id": 1042,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 12,
+            "line_sha256": "431d90f3070a4b7caed4b7b34844f4f5aea75b958870d505d6e8e95bb8c52b6f",
+            "mount_id": 1047,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/mnt",
+            "optional_fields": [
+              "shared:325",
+              "master:51"
+            ],
+            "parent_id": 1042,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:170",
+            "filesystem": "proc",
+            "line": 13,
+            "line_sha256": "8b55a103b8bbf30ae33ea88d3752f25f5e75f463b12b5bb139ebd1313493f9b8",
+            "mount_id": 1048,
+            "mount_options": [
+              "rw",
+              "nosuid",
+              "nodev",
+              "noexec",
+              "relatime"
+            ],
+            "mount_root": "/",
+            "mountpoint": "/proc",
+            "optional_fields": [
+              "shared:326"
+            ],
+            "parent_id": 1042,
+            "source": "proc",
+            "super_options": [
+              "rw"
+            ]
+          },
+          {
+            "device": "0:33",
+            "filesystem": "binfmt_misc",
+            "line": 14,
+            "line_sha256": "2315d511e2c4ea43ead651732786c9fba9c56694448530e7f952ed588a2f2570",
+            "mount_id": 1055,
+            "mount_options": [
+              "rw",
+              "nosuid",
+              "relatime"
+            ],
+            "mount_root": "/",
+            "mountpoint": "/proc/sys/fs/binfmt_misc",
+            "optional_fields": [
+              "shared:327",
+              "master:55"
+            ],
+            "parent_id": 1048,
+            "source": "binfmt_misc",
+            "super_options": [
+              "rw"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 15,
+            "line_sha256": "a08e352c15bd7abda117088b525ef020779d2a9bd03c63e37921f428beb0d0b4",
+            "mount_id": 1056,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/proc/acpi",
+            "optional_fields": [
+              "shared:328",
+              "master:51"
+            ],
+            "parent_id": 1048,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 16,
+            "line_sha256": "ff86d4c83462ab7e3dbd499f4df5a73c3ac217df478054d1c9034da0cf34e2a1",
+            "mount_id": 1065,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/proc/bus",
+            "optional_fields": [
+              "shared:329",
+              "master:51"
+            ],
+            "parent_id": 1048,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 17,
+            "line_sha256": "0731a01401b6629f6a0a537ca79a6f179d17a2550f5e895e1bc200083420133d",
+            "mount_id": 1066,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/proc/fs",
+            "optional_fields": [
+              "shared:330",
+              "master:51"
+            ],
+            "parent_id": 1048,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 18,
+            "line_sha256": "398f3c06d6cd1d7a3d98a30202e25511c3e7b7eaf26f201b3903b43d782d2c10",
+            "mount_id": 1067,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/proc/irq",
+            "optional_fields": [
+              "shared:331",
+              "master:51"
+            ],
+            "parent_id": 1048,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 19,
+            "line_sha256": "9080f8955e9da7cdc70cb4d74a4533cbd950bc05da27c91573e69d5a42adb338",
+            "mount_id": 1068,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/reg",
+            "mountpoint": "/proc/kallsyms",
+            "optional_fields": [
+              "shared:332",
+              "master:51"
+            ],
+            "parent_id": 1048,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 20,
+            "line_sha256": "7f6adc8d7cba8c1ed3280760f5e1fd5b41d3bea38aeb7f6595641c87e5f6fea4",
+            "mount_id": 1069,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/reg",
+            "mountpoint": "/proc/kcore",
+            "optional_fields": [
+              "shared:333",
+              "master:51"
+            ],
+            "parent_id": 1048,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 21,
+            "line_sha256": "d07689a1f0892ee8d865ac4039b8197c0ac6f756f0d52a1e80d319e5e7495fab",
+            "mount_id": 1070,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/reg",
+            "mountpoint": "/proc/kmsg",
+            "optional_fields": [
+              "shared:334",
+              "master:51"
+            ],
+            "parent_id": 1048,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 22,
+            "line_sha256": "9adf4d3e86040ae6ddb15f22c56b656252a802114a891b6cdf471ad3e7f3d53c",
+            "mount_id": 1075,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/reg",
+            "mountpoint": "/proc/latency_stats",
+            "optional_fields": [
+              "shared:335",
+              "master:51"
+            ],
+            "parent_id": 1048,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 23,
+            "line_sha256": "5df74cf3800777e9aa680378beaa64fa9daa1ed53cf43cbc4b79214849c89d33",
+            "mount_id": 1077,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/reg",
+            "mountpoint": "/proc/mtrr",
+            "optional_fields": [
+              "shared:336",
+              "master:51"
+            ],
+            "parent_id": 1048,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 24,
+            "line_sha256": "351243a9611305268fff6fcc07296d759e65be9cf0b6be41b55cc655b1bbcdd2",
+            "mount_id": 1078,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/proc/scsi",
+            "optional_fields": [
+              "shared:337",
+              "master:51"
+            ],
+            "parent_id": 1048,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:170",
+            "filesystem": "proc",
+            "line": 25,
+            "line_sha256": "dd725d8f74d84d6106ddc3b49c188d19237afc076b9c62c8656c30929a834da0",
+            "mount_id": 1079,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec",
+              "relatime"
+            ],
+            "mount_root": "/sys",
+            "mountpoint": "/proc/sys",
+            "optional_fields": [
+              "shared:338"
+            ],
+            "parent_id": 1048,
+            "source": "proc",
+            "super_options": [
+              "rw"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 26,
+            "line_sha256": "b85be98560765ed25aba093bc755305ef5fcacd502347581e7f36e8046fb9d26",
+            "mount_id": 1080,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/proc/sys/fs/binfmt_misc",
+            "optional_fields": [
+              "shared:339",
+              "master:51"
+            ],
+            "parent_id": 1079,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:170",
+            "filesystem": "proc",
+            "line": 27,
+            "line_sha256": "a4f7a66da62b831945072f62da9d9c03731267f6ba4a10ff4388b4644a6a0811",
+            "mount_id": 1081,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec",
+              "relatime"
+            ],
+            "mount_root": "/sysrq-trigger",
+            "mountpoint": "/proc/sysrq-trigger",
+            "optional_fields": [
+              "shared:340"
+            ],
+            "parent_id": 1048,
+            "source": "proc",
+            "super_options": [
+              "rw"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 28,
+            "line_sha256": "7bfec01ebaa6d81ba98ef8d7f88920cdb06ee860de60d3bfcd2b3f714f0fcf24",
+            "mount_id": 1082,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/root",
+            "optional_fields": [
+              "shared:341",
+              "master:51"
+            ],
+            "parent_id": 1042,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 29,
+            "line_sha256": "e5621485227f22eba24b1c89e2e5b85f9a5841fa09243f8100dd32052f989b46",
+            "mount_id": 1083,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/run/WSL",
+            "optional_fields": [
+              "shared:312",
+              "master:51"
+            ],
+            "parent_id": 1057,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 30,
+            "line_sha256": "ca5a8fd37e635da6ac841377abc9cc10c684414bf238da9f623f393d4ac96aa7",
+            "mount_id": 1084,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/run/credentials",
+            "optional_fields": [
+              "shared:313",
+              "master:51"
+            ],
+            "parent_id": 1057,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 31,
+            "line_sha256": "059265ccf84e39ee0835577d8b4108b7cfe833948de2cabd509f540361edcbd4",
+            "mount_id": 1058,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/run/lock",
+            "optional_fields": [
+              "shared:314",
+              "master:51"
+            ],
+            "parent_id": 1057,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 32,
+            "line_sha256": "dd7811992bb92051d127b511b081ebd3e5cc5e828fba3d9ac27d1b3dd274e6fc",
+            "mount_id": 1059,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/run/shm",
+            "optional_fields": [
+              "shared:315",
+              "master:51"
+            ],
+            "parent_id": 1057,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 33,
+            "line_sha256": "b7e00149ef2031bba7105d5b2070a562af8c444e9828e3ff9035f5e9739815fd",
+            "mount_id": 1085,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev"
+            ],
+            "mount_root": "/systemd/propagate/vst-s2-qual-9004e3a0acb8655b.service",
+            "mountpoint": "/run/systemd/incoming",
+            "optional_fields": [
+              "master:51"
+            ],
+            "parent_id": 1057,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 34,
+            "line_sha256": "d0d2aa70b0607e83851dc34bbfbd9062f2b4e01e0f4ddf9a0df2d7a1232f47ef",
+            "mount_id": 1060,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/run/user",
+            "optional_fields": [
+              "shared:317",
+              "master:51"
+            ],
+            "parent_id": 1057,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 35,
+            "line_sha256": "06c6b39d448dc523a68ddf2c26eab2beefbddff3e6c7196304e59d4b4fab581b",
+            "mount_id": 1061,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/sys/fs/bpf",
+            "optional_fields": [
+              "shared:305",
+              "master:51"
+            ],
+            "parent_id": 1049,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 36,
+            "line_sha256": "18540bf3648807ceb2502a3168832e6c4752e6d3cca7a52764876e8dd0dd9f61",
+            "mount_id": 1062,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/reg",
+            "mountpoint": "/sys/fs/cgroup/system.slice/vst-s2-qual-9004e3a0acb8655b.service/memory.pressure",
+            "optional_fields": [
+              "shared:304",
+              "master:51"
+            ],
+            "parent_id": 1050,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 37,
+            "line_sha256": "81ebf443adfce7aa4aa48629fd8cd532a06c2b02a522c0d208ba686097369cc6",
+            "mount_id": 1053,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/sys/fs/fuse/connections",
+            "optional_fields": [
+              "shared:306",
+              "master:51"
+            ],
+            "parent_id": 1049,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 38,
+            "line_sha256": "97af516b5a0636790a952eeaaf8d72de5e97c8cb6c1f477eaf87e1bbf01d37a2",
+            "mount_id": 1086,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/sys/fs/selinux",
+            "optional_fields": [
+              "shared:307",
+              "master:51"
+            ],
+            "parent_id": 1049,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 39,
+            "line_sha256": "a9017cd3a3ee00dc892fda0f6d8cef9b8e656622e19f2b43c76b94278d4bea4c",
+            "mount_id": 1054,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/sys/kernel/config",
+            "optional_fields": [
+              "shared:308",
+              "master:51"
+            ],
+            "parent_id": 1049,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 40,
+            "line_sha256": "10448687030bd5f7d76b83c52c08e4dfaf72356816d611e4fad5c604f13ce5bd",
+            "mount_id": 1051,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/sys/kernel/debug",
+            "optional_fields": [
+              "shared:309",
+              "master:51"
+            ],
+            "parent_id": 1049,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 41,
+            "line_sha256": "133c0a01271b859851560fda29c086e167c00bc09b5cae8bdcbc97a4c2c13a1f",
+            "mount_id": 1052,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/sys/kernel/tracing",
+            "optional_fields": [
+              "shared:310",
+              "master:51"
+            ],
+            "parent_id": 1049,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 42,
+            "line_sha256": "5bae869b08d65ceb729ada1878002c6e7f7c3444b23a20a74eb8678307f2235f",
+            "mount_id": 1071,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/tmp/.X11-unix",
+            "optional_fields": [
+              "shared:342",
+              "master:51"
+            ],
+            "parent_id": 1042,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 43,
+            "line_sha256": "2561fcbb158dc4de8635d0ea0bcd90b5fa65b3303aca48a7a94c8366fe1408d7",
+            "mount_id": 1072,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/usr/lib/modules",
+            "optional_fields": [
+              "shared:343",
+              "master:51"
+            ],
+            "parent_id": 1042,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          },
+          {
+            "device": "0:120",
+            "filesystem": "tmpfs",
+            "line": 44,
+            "line_sha256": "638da9b272a9501e92a3a79be51cb607462358ff56b40e95ce8e09070b624aab",
+            "mount_id": 1063,
+            "mount_options": [
+              "ro",
+              "nosuid",
+              "nodev",
+              "noexec"
+            ],
+            "mount_root": "/systemd/inaccessible/dir",
+            "mountpoint": "/usr/lib/wsl",
+            "optional_fields": [
+              "shared:344",
+              "master:51"
+            ],
+            "parent_id": 1042,
+            "source": "none",
+            "super_options": [
+              "rw",
+              "mode=755"
+            ]
+          }
+        ],
+        "sha256": "fd2fa063577fa71211e207fcfd3ee581aa775be1e8f752414e98d1e12ce53817",
+        "unapproved_host_mounts": []
+      }
+    },
+    "reason": "independent mask/device verification failed: private /dev/pts contains an unexpected entry: 0; private /dev/pts contains an unexpected entry: 1",
+    "retry_cap": 0,
+    "schema": "VST_S2_RUNTIME_QUALIFICATION_PROTOCOL_V1",
+    "stages": {},
+    "started_utc": "2026-11-05T06:42:44.927079+00:00",
+    "terminal": "HOLD",
+    "top_level_wsl_processes": 1,
+    "zero_retry_confirmed": true
+  },
+  "retry": "PROHIBITED",
+  "retry_cap": 0,
+  "schema": "VST_S2_RUNTIME_QUALIFICATION_ATTEMPT_V1",
+  "source_pins_verified": true,
+  "state": "HOLD",
+  "stderr_bytes": 0,
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_bytes": 24606,
+  "stdout_sha256": "b19ae3e6c0e38a9ae85a8cbe7844618296230a1926176585b24bb45abf5832a6",
+  "transient_unit": "vst-s2-qual-9004e3a0acb8655b.service",
+  "wsl_distribution": "Ubuntu-24.04"
+}

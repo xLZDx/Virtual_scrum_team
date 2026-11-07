@@ -1,0 +1,12 @@
+head=908463f076335a27fbc2694a51b983e58821d366
+source_sha256=24e53a80dc4a728384407fe52d4121854e9c08b1cc2154bc0456aa49fd8465bf
+test_sha256=8cde11d0397041f9ad4c14ae091b78e41d286f9db0961eb247b96804d9426db4
+test_diff_sha256=ca6ceee3bf6071a7340794bb1a1bc2324b1528f1dc6b6a94435de8e1d1fbf352
+test_file_crlf_pairs=0
+focused_command=python -m pytest -q --tb=short tests/vst/test_s2_runtime_configuration_apply.py -k embedded_unit_admission
+focused_result=12 passed, 30 deselected, 1 warning
+combined_command=python -m pytest -q --tb=line tests/vst/test_s2_runtime_configuration_apply.py tests/vst/test_s2_runtime_config_inventory.py
+combined_exit_code=0
+combined_result=105 passed, 1 warning in 33.02s
+warning=pytest_asyncio DeprecationWarning: asyncio.get_event_loop_policy is deprecated and slated for removal in Python 3.16
+combined_capture=stdout/stderr redirected directly as binary files

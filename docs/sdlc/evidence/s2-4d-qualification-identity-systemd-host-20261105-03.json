@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "python",
+    "-m",
+    "pytest",
+    "-q",
+    "--tb=line",
+    "tests/vst/test_s2_runtime_qualification_harness.py"
+  ],
+  "cwd": "D:\\Repo\\Virtual_scrum_team",
+  "files": {
+    "test_sha256": "58e0754ad890fe395687ebe9acca3e91716a892fb57e0c1dd85545d202cafa5e",
+    "wsl_helper_sha256": "2c020ef8306c8e9856cf8c7dbf1c83a816d4114320b50b8d9a59bb4b6a7d6666"
+  },
+  "head": "558ed801cdf96dc6f35515fc17e59bbaefe5fec9",
+  "returncode": 0,
+  "stderr_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-qualification-identity-systemd-host-20261105-03.stderr.bin",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-qualification-identity-systemd-host-20261105-03.stdout.bin",
+  "stdout_sha256": "ca632491043486844813445a1e8d05069acaa1e3ed00cd56349cb3fde19ab439"
+}

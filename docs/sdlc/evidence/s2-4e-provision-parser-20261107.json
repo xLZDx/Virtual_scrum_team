@@ -1,0 +1,52 @@
+{
+  "evidence_id": "S2-4E Windows provisioner parser compatibility",
+  "task_id": "S2-4E-WINDOWS-OWNER-RUNNER",
+  "acceptance": "REQ-003",
+  "owner": "Codex",
+  "reviewer_role": "functional-test-reviewer",
+  "project_head": "7adb18316babe41f46ed894afe82620173736947",
+  "source_path": "tests/vst/provision_s2_4e_windows.ps1",
+  "source_git_state": "Untracked at capture; not part of project HEAD",
+  "source_sha256_after": "B28F35F1545AED7F69B2A3DE3257D64C777916653662BA3E14864DBBC3A92005",
+  "source_sha256_before": null,
+  "environment": "Windows PowerShell 5.1.26100.9711",
+  "parser_command": "[System.Management.Automation.Language.Parser]::ParseFile($p,[ref]$t,[ref]$e) | Out-Null",
+  "invocation": "powershell.exe -NoLogo -NoProfile -NonInteractive -EncodedCommand <Base64(UTF-16LE PowerShell script)>; script initializes $p to D:\\Repo\\Virtual_scrum_team\\tests\\vst\\provision_s2_4e_windows.ps1, sets $e/$t=$null, calls Parser.ParseFile, prints first 12 errors as line:column message, then prints PS version.",
+  "before_result": {
+    "status": "PARSE_FAILED",
+    "errors": [
+      {
+        "line": 118,
+        "column": 13,
+        "message": "Missing closing ')' after expression in 'if' statement."
+      },
+      {
+        "line": 110,
+        "column": 28,
+        "message": "Missing closing '}' in statement block or type definition."
+      },
+      {
+        "line": 118,
+        "column": 83,
+        "message": "Unexpected token ')' in expression or statement."
+      },
+      {
+        "line": 154,
+        "column": 1,
+        "message": "Unexpected token '}' in expression or statement."
+      }
+    ]
+  },
+  "after_result": {
+    "status": "PARSE_OK",
+    "parser_errors": [],
+    "source_sha256": "B28F35F1545AED7F69B2A3DE3257D64C777916653662BA3E14864DBBC3A92005"
+  },
+  "limitations": [
+    "The pre-fix script was untracked and its exact content hash was not captured; project HEAD identifies the repository baseline, not that pre-fix script snapshot.",
+    "This is parser/syntax compatibility evidence only; no provisioner installation or script execution was performed.",
+    "No Windows services, runtime configuration, credentials, or Owner-to-Runner runtime behavior were verified.",
+    "No pytest, CI, lint, typecheck, build, or verify command was run.",
+    "The before parse errors were captured before the parent agent corrected the script; the after parse was rerun by the subagent against the current worktree source hash."
+  ]
+}

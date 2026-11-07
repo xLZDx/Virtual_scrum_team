@@ -1,0 +1,85 @@
+{
+  "task": "S2-4D",
+  "head": "e1f6d9363ed9b85c998786a2688ca79f4aeca8ff",
+  "upstream": "e1f6d9363ed9b85c998786a2688ca79f4aeca8ff",
+  "command": "python tools/qa/verify_s2_runtime_config_inventory.py docs/sdlc/evidence/s2-4-runtime-config-target-inventory-20261105-operator-01.stdout.json --expected-sha256 d039e9cc6f71d37b61ad7468579cf57b69713697690d2e7edaf395863308b580 --expected-head e1f6d9363ed9b85c998786a2688ca79f4aeca8ff --capture-sha256 befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119",
+  "output": [
+    {
+      "Exception": {
+        "SerializedRemoteException": null,
+        "SerializedRemoteInvocationInfo": null,
+        "ErrorRecord": {
+          "Exception": "System.Management.Automation.ParentContainsErrorRecordException: REFUSE: selected runtime path differs from the pinned S2 runtime",
+          "TargetObject": null,
+          "CategoryInfo": "NotSpecified: (:) [], ParentContainsErrorRecordException",
+          "FullyQualifiedErrorId": "RuntimeException",
+          "ErrorDetails": null,
+          "InvocationInfo": null,
+          "ScriptStackTrace": null,
+          "PipelineIterationInfo": ""
+        },
+        "WasThrownFromThrowStatement": false,
+        "TargetSite": null,
+        "Message": "REFUSE: selected runtime path differs from the pinned S2 runtime",
+        "Data": {},
+        "InnerException": null,
+        "HelpLink": null,
+        "Source": null,
+        "HResult": -2146233087,
+        "StackTrace": null
+      },
+      "TargetObject": "REFUSE: selected runtime path differs from the pinned S2 runtime",
+      "CategoryInfo": {
+        "Category": 0,
+        "Activity": "",
+        "Reason": "RemoteException",
+        "TargetName": "REFUSE: selected runtime path differs from the pinned S2 runtime",
+        "TargetType": "String"
+      },
+      "FullyQualifiedErrorId": "NativeCommandError",
+      "ErrorDetails": null,
+      "InvocationInfo": {
+        "MyCommand": {
+          "Path": "C:\\Python314\\python.exe",
+          "Extension": ".exe",
+          "Definition": "C:\\Python314\\python.exe",
+          "Source": "C:\\Python314\\python.exe",
+          "Version": "3.14.3150.1013",
+          "Visibility": 0,
+          "OutputType": "System.String",
+          "Name": "python.exe",
+          "CommandType": 32,
+          "ModuleName": "",
+          "Module": null,
+          "RemotingCapability": 1,
+          "Parameters": null,
+          "ParameterSets": null
+        },
+        "BoundParameters": {},
+        "UnboundArguments": [],
+        "ScriptLineNumber": 2,
+        "OffsetInLine": 425,
+        "HistoryId": -1,
+        "ScriptName": "",
+        "Line": "$h=git rev-parse HEAD; $u=git rev-parse '@{u}'; $cmd='python tools/qa/verify_s2_runtime_config_inventory.py docs/sdlc/evidence/s2-4-runtime-config-target-inventory-20261105-operator-01.stdout.json --expected-sha256 d039e9cc6f71d37b61ad7468579cf57b69713697690d2e7edaf395863308b580 --expected-head e1f6d9363ed9b85c998786a2688ca79f4aeca8ff --capture-sha256 befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119'; $o=& python tools/qa/verify_s2_runtime_config_inventory.py docs/sdlc/evidence/s2-4-runtime-config-target-inventory-20261105-operator-01.stdout.json --expected-sha256 d039e9cc6f71d37b61ad7468579cf57b69713697690d2e7edaf395863308b580 --expected-head e1f6d9363ed9b85c998786a2688ca79f4aeca8ff --capture-sha256 befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119 2>&1; $ec=$LASTEXITCODE; $record=[ordered]@{task='S2-4D';head=$h;upstream=$u;command=$cmd;output=@($o);exit_code=$ec}; $record|ConvertTo-Json -Depth 4|Set-Content docs/sdlc/evidence/s2-4d-inventory-validation-20261105.attempt.json -Encoding utf8; Write-Output ($record|ConvertTo-Json -Depth 4); exit $ec",
+        "Statement": "& python tools/qa/verify_s2_runtime_config_inventory.py docs/sdlc/evidence/s2-4-runtime-config-target-inventory-20261105-operator-01.stdout.json --expected-sha256 d039e9cc6f71d37b61ad7468579cf57b69713697690d2e7edaf395863308b580 --expected-head e1f6d9363ed9b85c998786a2688ca79f4aeca8ff --capture-sha256 befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119 2>&1",
+        "PositionMessage": "At line:2 char:425\r\n+ … 008119'; $o=& python tools/qa/verify_s2_runtime_config_inventory.py d …\r\n+               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+        "PSScriptRoot": "",
+        "PSCommandPath": null,
+        "InvocationName": "&",
+        "PipelineLength": 0,
+        "PipelinePosition": 0,
+        "ExpectingInput": false,
+        "CommandOrigin": 1,
+        "DisplayScriptPosition": null
+      },
+      "ScriptStackTrace": "at <ScriptBlock>, <No file>: line 2",
+      "PipelineIterationInfo": [
+        0,
+        0
+      ],
+      "PSMessageDetails": null
+    }
+  ],
+  "exit_code": 1
+}

@@ -1,0 +1,15 @@
+{
+  "authorization_request_id": "eb9d0b7e-621a-4cb7-95db-c611d1f78b4b",
+  "approved_max_invocations": 1,
+  "approved_command": "wsl.exe --distribution Ubuntu-24.04 --user root --exec /usr/bin/python3.12 -I -B -S /mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py",
+  "actual_command": "wsl.exe --distribution Ubuntu-24.04 --user root --exec /usr/bin/python3.12 -I -B -S /mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py",
+  "repository_head": "943ee9af3361df74f513e5c4f361a57ca1b2df8f",
+  "branch": "s2-canonical-continuation",
+  "collector_sha256": "1692bfd6f4439e2f41ed31fd9a7d60111d5308d9c66a13884acbfdc297d6342f",
+  "exit_code": 1,
+  "combined_output": "/usr/bin/python3.12: can't open file '/mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py': [Errno 2] No such file or directory",
+  "result": "NOT_RUN",
+  "reason": "The Ubuntu-24.04 WSL invocation did not have the D: repository mounted at /mnt/d before Python attempted to open the collector. The authorized one-shot invocation is consumed; no retry or manual mount was performed.",
+  "runtime_mutation": "NOT_RUN",
+  "recorded_utc_date": "2026-11-04"
+}

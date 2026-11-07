@@ -1,0 +1,75 @@
+{
+  "schema": "VST_S2_4D_TERMINAL_RECONCILIATION_V1",
+  "task": "S2-4D - bounded WSL first-start and readonly inventory assessment",
+  "decision_id": "cbd18159-d92f-43b8-aa75-289694328a6b",
+  "observed_utc": "2026-11-05T14:03:53.0629389Z",
+  "source_head": "dc978a0e3f02c11220deea3ac3f014cb2f1718a1",
+  "bundle_sha256": "4c13f2991f39cf12b84af4b0440621ab1adaa74ca1894dfda29eec1006cd7138",
+  "attempt": {
+    "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-cbd18159-d92f-43b8-aa75-289694328a6b-01.attempt.json",
+    "sha256": "013aa217b32671822452d9d10c670915c2dc0b5fdb5d7114903a99e034e4a576",
+    "result": "READINESS_OR_INVENTORY_FAILED_NO_CONFIG_APPLY",
+    "started_utc": "2026-11-05T16:00:25.4935456+02:00",
+    "finished_utc": "2026-11-05T16:00:40.4906631+02:00",
+    "host_pid": 40996,
+    "command": "wsl.exe --distribution Ubuntu-24.04 --user root --exec /usr/bin/python3.12 -I -B -S -c import sys,pathlib,json; print(json.dumps({\"ready\":True,\"pid1_stat\":pathlib.Path(\"/proc/1/stat\").read_text(),\"boot_id\":pathlib.Path(\"/proc/sys/kernel/random/boot_id\").read_text().strip()}),flush=True); sys.stdin.buffer.read(1)",
+    "error": "System.IO.IOException: The process cannot access the file 'D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-cbd18159-d92f-43b8-aa75-289694328a6b-01.keeper.stdout.raw' because it is being used by another process.\r\n   at Microsoft.Win32.SafeHandles.SafeFileHandle.CreateFile(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options)\r\n   at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable`1 unixCreateMode)\r\n   at System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable`1 unixCreateMode)\r\n   at System.IO.Strategies.FileStreamHelpers.ChooseStrategyCore(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable`1 unixCreateMode)\r\n   at System.IO.File.OpenRead(String path)\r\n   at Microsoft.PowerShell.Commands.GetFileHashCommand.ComputeFileHash(String path, String& hash)",
+    "applier_invocations": 0,
+    "authorization_consumed": false,
+    "inventory": "NOT_RUN",
+    "applier": "NOT_RUN"
+  },
+  "stdout": {
+    "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-cbd18159-d92f-43b8-aa75-289694328a6b-01.keeper.stdout.raw",
+    "bytes": 47,
+    "sha256": "a6d37a662b1d5a3ab051c79d150d7d57028e6f5185b8a6dc4173315c1a1b422e",
+    "captured_text": "Provisioning the new WSL instance Ubuntu-24.04\n"
+  },
+  "stderr": {
+    "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-cbd18159-d92f-43b8-aa75-289694328a6b-01.keeper.stderr.raw",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "cleanup": {
+    "attempted_utc": "2026-11-05T16:00:30.3005003+02:00",
+    "stdin_close": "SENT_X_AND_CLOSED",
+    "wait_exit": false,
+    "kill": "TREE_KILLED",
+    "exit_code": -1,
+    "errors": []
+  },
+  "process_check": {
+    "checked_utc": "2026-11-05T14:03:53.1373930Z",
+    "host_pid_40996_present": false,
+    "relevant_wsl_process_present": false,
+    "wsl_list_verbose": "NAME              STATE           VERSION\r\n\r\n* Ubuntu-24.04      Stopped         2\r\n\r\n  docker-desktop    Running         2"
+  },
+  "conclusion": "The wrapper attempted Get-FileHash on keeper.stdout.raw while the process pipe writer still held it, causing IOException and early process-tree termination. The 180-second authorization deadline was not reached. WSL emitted only its known provisioning banner; readiness was not received. No inventory, payload, applier or target mutation occurred. Grant is consumed by one launch/expired and cannot be reused.",
+  "artifacts": [
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-cbd18159-d92f-43b8-aa75-289694328a6b-01.attempt.json",
+      "bytes": 5375,
+      "sha256": "013aa217b32671822452d9d10c670915c2dc0b5fdb5d7114903a99e034e4a576"
+    },
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-cbd18159-d92f-43b8-aa75-289694328a6b-01.attempt.json.bak.5833ccbc4aec48b8b130eedba3941b19",
+      "bytes": 3429,
+      "sha256": "8f63d9376158cc0c2dd5008e4fb90065879785c9b605f5d5742573802ab9f85d"
+    },
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-cbd18159-d92f-43b8-aa75-289694328a6b-01.attempt.json.bak.d9488ca1a47040a3b489d9b4549360aa",
+      "bytes": 1741,
+      "sha256": "3e78aa33f80dcddf9c029f6104236e18f04e1d2a45a81a0b40d21ef3a7b9a1cc"
+    },
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-cbd18159-d92f-43b8-aa75-289694328a6b-01.keeper.stderr.raw",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-cbd18159-d92f-43b8-aa75-289694328a6b-01.keeper.stdout.raw",
+      "bytes": 47,
+      "sha256": "a6d37a662b1d5a3ab051c79d150d7d57028e6f5185b8a6dc4173315c1a1b422e"
+    }
+  ]
+}

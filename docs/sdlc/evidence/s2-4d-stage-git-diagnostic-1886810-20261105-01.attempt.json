@@ -1,0 +1,23 @@
+{
+  "task": "S2-4D",
+  "deployed_head": "1886810e79b8fc1815f92708559a8798d7740dab",
+  "diagnostic": "READ_ONLY GIT stage verification and fixed-path metadata only; no transaction/config/bootstrap/service mutation",
+  "argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/usr/bin/python3.12",
+    "-I",
+    "-B",
+    "-S",
+    "-c",
+    "import os,stat,json,subprocess\nstage='/var/lib/vst-runner/.vst-task-source-stage-67361bb4aa23355d9a6bc7877a987ba688559eda-7d28dca04f0a4ae49c0eb0198a551e85'\nresult={\"stage\":stage,\"git_environment\":{\"GIT_CONFIG_NOSYSTEM\":\"1\",\"GIT_CONFIG_GLOBAL\":\"/dev/null\",\"GIT_prefixed_variables_removed\":True},\"commands\":[]}\nfor p in ['/var/lib/vst-runner','/var/lib/vst-runner/.vst-task-source-stage-67361bb4aa23355d9a6bc7877a987ba688559eda-7d28dca04f0a4ae49c0eb0198a551e85','/var/lib/vst-runner/private','/var/lib/vst-runner/private/snapshot-transaction-incomplete.json','/var/lib/vst-runner/private/store.sqlite3','/var/lib/vst-runner/private/fence-ledger.json']:\n try:\n  s=os.lstat(p); result.setdefault('paths',{})[p]={\"kind\":\"symlink\" if stat.S_ISLNK(s.st_mode) else \"directory\" if stat.S_ISDIR(s.st_mode) else \"regular\" if stat.S_ISREG(s.st_mode) else \"special\",\"uid\":s.st_uid,\"gid\":s.st_gid,\"mode\":oct(stat.S_IMODE(s.st_mode)),\"device\":s.st_dev,\"inode\":s.st_ino,\"size\":s.st_size}\n except FileNotFoundError: result.setdefault('paths',{})[p]={\"state\":\"absent\"}\n except Exception as e: result.setdefault('paths',{})[p]={\"error\":type(e).__name__+': '+str(e)}\ndef demote(): os.setgroups([]);os.setgid(988);os.setuid(997)\nenv={k:v for k,v in os.environ.items() if not k.startswith('GIT_')};env['GIT_CONFIG_NOSYSTEM']='1';env['GIT_CONFIG_GLOBAL']=os.devnull\nfor name,args in [('head',['rev-parse','--verify','HEAD']),('tree',['rev-parse','--verify','HEAD^{tree}']),('shallow',['rev-parse','--is-shallow-repository'])]:\n argv=['/usr/bin/git','-C',stage,'--no-replace-objects',*args]\n try:\n  p=subprocess.run(argv,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=False,timeout=15,env=env,preexec_fn=demote)\n  result['commands'].append({\"name\":name,\"argv\":argv,\"returncode\":p.returncode,\"stdout\":p.stdout.decode('utf-8','replace'),\"stderr\":p.stderr.decode('utf-8','replace')})\n except Exception as e:result['commands'].append({\"name\":name,\"argv\":argv,\"error\":type(e).__name__+': '+str(e)})\nprint(json.dumps(result,sort_keys=True,separators=(',',':')))\n"
+  ],
+  "exit_code": 0,
+  "stdout_sha256": "0812dcdc29c21aa4e293967d7ddffd4c15a34bda3cc63c51a611117a0ee4cb4d",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "captured_utc": "2026-11-05T04:26:40.372359+00:00"
+}

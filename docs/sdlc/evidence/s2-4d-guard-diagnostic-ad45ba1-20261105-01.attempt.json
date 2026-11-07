@@ -1,0 +1,24 @@
+{
+  "task": "S2-4D",
+  "deployed_head": "1886810e79b8fc1815f92708559a8798d7740dab",
+  "event": "root installer reached published guards+daemon-reload; refused Runner guard validation before transaction creation",
+  "operation": "read-only WSL systemd Conditions/load/active/DropInPaths/cat and exact nonsecret guard files; checked marker/ledger/store presence; no mutation",
+  "argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/usr/bin/python3.12",
+    "-I",
+    "-B",
+    "-S",
+    "-c",
+    "import os,stat,hashlib,subprocess,json,base64\nunits=['vst-runner.service','vst-dispatcher.service']\nout={'schema':'VST_S2_4D_GUARD_DIAGNOSTIC_V1','mode':'read-only exact systemd queries and guard-file bytes; no reload/start or writes','units':{},'files':{}}\ncommands=[]\nfor unit in units:\n for name,args in [\n  ('conditions_value',['/usr/bin/systemctl','show',unit,'--property','Conditions','--value']),\n  ('conditions_named',['/usr/bin/systemctl','show',unit,'--property','Conditions']),\n  ('identity_named',['/usr/bin/systemctl','show',unit,'--property','LoadState,ActiveState,SubState,DropInPaths,Conditions'])]:\n  try:\n   p=subprocess.run(args,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=False,timeout=15,env={'LC_ALL':'C','PATH':'/usr/bin:/bin'})\n   commands.append({'unit':unit,'name':name,'argv':args,'returncode':p.returncode,'stdout_b64':base64.b64encode(p.stdout).decode('ascii'),'stderr_b64':base64.b64encode(p.stderr).decode('ascii'),'stdout_utf8':p.stdout.decode('utf-8','backslashreplace'),'stderr_utf8':p.stderr.decode('utf-8','backslashreplace')})\n  except Exception as e:commands.append({'unit':unit,'name':name,'argv':args,'exception':type(e).__name__+': '+str(e)})\n args=['/usr/bin/systemctl','cat',unit]\n try:\n  p=subprocess.run(args,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=False,timeout=15,env={'LC_ALL':'C','PATH':'/usr/bin:/bin'})\n  commands.append({'unit':unit,'name':'cat_unit','argv':args,'returncode':p.returncode,'stdout_b64':base64.b64encode(p.stdout).decode('ascii'),'stderr_b64':base64.b64encode(p.stderr).decode('ascii'),'stdout_utf8':p.stdout.decode('utf-8','backslashreplace'),'stderr_utf8':p.stderr.decode('utf-8','backslashreplace')})\n except Exception as e:commands.append({'unit':unit,'name':'cat_unit','argv':args,'exception':type(e).__name__+': '+str(e)})\n guard='/etc/systemd/system/'+unit+'.d/90-s2-snapshot-recovery-guard.conf'\n try:\n  s=os.lstat(guard); fd=os.open(guard,os.O_RDONLY|os.O_NOFOLLOW); data=os.read(fd,65537); os.close(fd)\n  out['files'][guard]={'kind':'symlink' if stat.S_ISLNK(s.st_mode) else 'regular' if stat.S_ISREG(s.st_mode) else 'other','uid':s.st_uid,'gid':s.st_gid,'mode':oct(stat.S_IMODE(s.st_mode)),'device':s.st_dev,'inode':s.st_ino,'size':s.st_size,'sha256':hashlib.sha256(data).hexdigest(),'bytes_b64':base64.b64encode(data).decode('ascii'),'bytes_utf8':data.decode('utf-8','backslashreplace')}\n except FileNotFoundError:out['files'][guard]={'state':'absent'}\n except Exception as e:out['files'][guard]={'error':type(e).__name__+': '+str(e)}\nfor pth in ['/var/lib/vst-runner/private/snapshot-transaction-incomplete.json','/var/lib/vst-runner/private/fence-ledger.json','/var/lib/vst-runner/private/store.sqlite3']:\n try:\n  s=os.lstat(pth);out.setdefault('state_paths',{})[pth]={'state':'present','uid':s.st_uid,'gid':s.st_gid,'mode':oct(stat.S_IMODE(s.st_mode)),'kind':'symlink' if stat.S_ISLNK(s.st_mode) else 'dir' if stat.S_ISDIR(s.st_mode) else 'file' if stat.S_ISREG(s.st_mode) else 'other','size':s.st_size}\n except FileNotFoundError:out.setdefault('state_paths',{})[pth]={'state':'absent'}\n except Exception as e:out.setdefault('state_paths',{})[pth]={'error':type(e).__name__+': '+str(e)}\nout['commands']=commands\nprint(json.dumps(out,sort_keys=True,separators=(',',':')))\n"
+  ],
+  "exit_code": 0,
+  "stdout_sha256": "ba824a9538aed3485851a3ad9b45c43444d63aa1ba3963f82d1b6eab081bcfe7",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "captured_utc": "2026-11-05T04:37:55.641418+00:00"
+}

@@ -1,0 +1,33 @@
+{
+  "task": "S2-4D",
+  "operation": "apply exact accepted runtime configuration without service activation",
+  "authorization_source": "Operator autonomous GO",
+  "argv": [
+    "C:\\Python314\\python.exe",
+    "tools/qa/apply_s2_runtime_configuration.py",
+    "--inventory",
+    "docs/sdlc/evidence/s2-4-runtime-config-target-inventory-20261105-operator-02.stdout.json",
+    "--inventory-sha256",
+    "46336c47cd5cab0b60e5f623725d65acdc66bedc7aef84dee6d41c3951bdf342",
+    "--approved-deployment-commit",
+    "e1f6d9363ed9b85c998786a2688ca79f4aeca8ff",
+    "--distribution",
+    "Ubuntu-24.04"
+  ],
+  "previous_host_refusal_resolved": "Working and index bytes equal HEAD; git index metadata refreshed. Target mutation not reached by prior config attempts.",
+  "started_utc": "2026-11-05T02:14:56.454584+00:00",
+  "invocations": 1,
+  "test_run": "NOT_RUN",
+  "exit_code": 2,
+  "stdout": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-20261105-operator-03.stdout.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "stderr": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-20261105-operator-03.stderr.txt",
+    "bytes": 54,
+    "sha256": "cd02acfc206131e028c6c65a684fb0b552457bbb912d9c357c4fed9ddf0cb2a8"
+  },
+  "finished_utc": "2026-11-05T02:15:16.322411+00:00"
+}

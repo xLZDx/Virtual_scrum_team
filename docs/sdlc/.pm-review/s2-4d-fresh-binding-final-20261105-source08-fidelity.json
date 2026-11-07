@@ -1,0 +1,30 @@
+{
+  "path": "tests/vst/test_s2_runtime_config_bundle.py",
+  "full_candidate_sha256": "2733102b0deda21d73fe3500525e1cb45f503775a64953d424ec925bfeb451de",
+  "baseline_head": "b02377168d8f511fc5d0d4a15f79ee020126ad5d",
+  "baseline_file_sha256": "13538050e167dee4800ab9f9a429767635594773d172188709ef4ccf3f2f4095",
+  "unredacted_scoped_diff_sha256": "7a86e87f63b3c5d02ac564dd68355cedd93b33ef6ac597ec7441ccb7a11b3035",
+  "full_file_attachment": "OMITTED: transport credential detector flags unchanged private-key rejection marker literals; no source edited/redacted",
+  "unchanged_marker_metadata": [
+    {
+      "line": 78,
+      "literal_bytes": 27,
+      "single_line": true
+    },
+    {
+      "line": 79,
+      "literal_bytes": 35,
+      "single_line": true
+    },
+    {
+      "line": 80,
+      "literal_bytes": 30,
+      "single_line": true
+    },
+    {
+      "line": 307,
+      "literal_bytes": 11,
+      "single_line": true
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "baseline": "ad45ba1bc8134cfc6caddf205d74204a216dc881",
+  "files": [
+    {
+      "path": "tools/qa/runtime_snapshot_transaction.py",
+      "sha256": "45c6f5c0d0591c9a81ac5f7dae6db243bb3fbb25fbde99e42a4ee147783a3bbe",
+      "bytes": 128597
+    },
+    {
+      "path": "tools/qa/apply_s2_runtime_configuration.py",
+      "sha256": "4368ea4a4b1ae2a8cf7f76e2695711be6c461b3738c5e60d7ce9079275c5eefb",
+      "bytes": 95916
+    },
+    {
+      "path": "tools/qa/collect_s2_runtime_config_inventory.py",
+      "sha256": "d24db7bb13b13860d031bf1bdfe26191e3201436ba857cc7cae4bda48d87bede",
+      "bytes": 21643
+    },
+    {
+      "path": "tests/vst/test_s2_runtime_configuration_apply.py",
+      "sha256": "53154ac7949d7a7796fb0306e3ce3d8d480746361b6e25b3543e0a34b403d552",
+      "bytes": 33758
+    },
+    {
+      "path": "tests/vst/test_s2_runtime_bootstrap_transaction.py",
+      "sha256": "7a730ac480e8a180f07a56a6c634538d714349bad8dfea8631ae620d7b4b9e76",
+      "bytes": 72245
+    }
+  ],
+  "diff_sha256": "1b1f18630d487c13f5741cfaedaa1058239d6c6c63194e803f1b4440ba561f85",
+  "diff_bytes": 16723
+}

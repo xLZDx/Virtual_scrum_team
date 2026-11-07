@@ -1,0 +1,33 @@
+{
+  "task": "S2-4D",
+  "operation": "apply exact accepted runtime configuration without service activation",
+  "authorization_source": "Operator active autonomous GO; unchanged accepted source/config",
+  "previous_attempt_result": "Host-only refusal before WSL; exact CRLF-only test checkout repaired to accepted Git blob by functional-test-reviewer",
+  "argv": [
+    "C:\\Python314\\python.exe",
+    "tools/qa/apply_s2_runtime_configuration.py",
+    "--inventory",
+    "docs/sdlc/evidence/s2-4-runtime-config-target-inventory-20261105-operator-02.stdout.json",
+    "--inventory-sha256",
+    "46336c47cd5cab0b60e5f623725d65acdc66bedc7aef84dee6d41c3951bdf342",
+    "--approved-deployment-commit",
+    "e1f6d9363ed9b85c998786a2688ca79f4aeca8ff",
+    "--distribution",
+    "Ubuntu-24.04"
+  ],
+  "started_utc": "2026-11-05T02:14:06.857219+00:00",
+  "invocations": 1,
+  "test_run": "NOT_RUN",
+  "exit_code": 2,
+  "stdout": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-20261105-operator-02.stdout.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "stderr": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-20261105-operator-02.stderr.txt",
+    "bytes": 61,
+    "sha256": "a0cba07d9a8c05d71cc3a49eaa5ff348e025610cff4aa3217e454de16f251e01"
+  },
+  "finished_utc": "2026-11-05T02:14:10.486889+00:00"
+}

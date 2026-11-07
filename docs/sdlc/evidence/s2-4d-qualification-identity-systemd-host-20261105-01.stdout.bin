@@ -1,0 +1,37 @@
+...........F...FFFFFFFFF.FFF............................................ [ 65%]
+......................................                                   [100%]
+================================== FAILURES ===================================
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_qualification_harness.py:194: KeyError: '/opt/vst-runtime-1111111111111111111111111111111111111111\\tools\\qa\\runtime-check.py'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_qualification_harness.py:194: KeyError: '/opt/vst-runtime-1111111111111111111111111111111111111111\\tools\\qa\\runtime-check.py'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_qualification_harness.py:186: KeyError: '--property=LoadState'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_qualification_harness.py:186: KeyError: '--property=LoadState'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_qualification_harness.py:186: KeyError: '--property=LoadState'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_qualification_harness.py:186: KeyError: '--property=LoadState'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_qualification_harness.py:186: KeyError: '--property=LoadState'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_qualification_harness.py:186: KeyError: '--property=LoadState'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_qualification_harness.py:186: KeyError: '--property=LoadState'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_qualification_harness.py:186: KeyError: '--property=LoadState'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_qualification_harness.py:186: KeyError: '--property=LoadState'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_qualification_harness.py:186: KeyError: '--property=LoadState'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_qualification_harness.py:186: KeyError: '--property=LoadState'
+============================== warnings summary ===============================
+tests/vst/test_s2_runtime_qualification_harness.py::test_read_json_preserves_raw_crlf_bytes
+  C:\Users\koros\AppData\Roaming\Python\Python314\site-packages\pytest_asyncio\plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_identity_keeps_runtime_marker_and_source_pins_separate
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_identity_still_refuses_runtime_marker_or_pin_mismatch[runtime-source-pin]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_systemd_show_parses_reordered_named_service_and_socket_properties
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_systemd_show_rejects_missing_ambiguous_or_malformed_named_properties[missing-controlpid]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_systemd_show_rejects_missing_ambiguous_or_malformed_named_properties[missing-mainpid]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_systemd_show_rejects_missing_ambiguous_or_malformed_named_properties[unknown]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_systemd_show_rejects_missing_ambiguous_or_malformed_named_properties[duplicate]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_systemd_show_rejects_missing_ambiguous_or_malformed_named_properties[malformed]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_systemd_show_rejects_missing_ambiguous_or_malformed_named_properties[nonnumeric-mainpid]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_systemd_show_rejects_missing_ambiguous_or_malformed_named_properties[nonnumeric-controlpid]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_prestart_unit_gate_accepts_named_inactive_services_and_socket_without_mainpid
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_prestart_unit_gate_refuses_nonzero_service_or_socket_pid[active-service-pid]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_prestart_unit_gate_refuses_nonzero_service_or_socket_pid[active-socket-control-pid]
+13 failed, 97 passed, 1 warning in 2.50s

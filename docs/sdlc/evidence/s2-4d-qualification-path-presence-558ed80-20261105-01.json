@@ -1,0 +1,27 @@
+{
+  "scope": "Read-only exact qualifier forbidden-path presence diagnostic; no launch",
+  "observed_utc": "2026-11-05T05:35:28.800696+00:00",
+  "argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/usr/bin/python3.12",
+    "-I",
+    "-B",
+    "-S",
+    "-c",
+    "import os,json; print(json.dumps({p:os.path.lexists(p) for p in ['/var/lib/vst-runner/private/store.sqlite3', '/run/vst-supervisor/supervisor.sock', '/run/vst-supervisor/dispatch-owner.sock', '/run/vst-runner/runner.sock', '/etc/vst-runner/issuance-request.json']},sort_keys=True))"
+  ],
+  "returncode": 0,
+  "presence": {
+    "/etc/vst-runner/issuance-request.json": false,
+    "/run/vst-runner/runner.sock": false,
+    "/run/vst-supervisor/dispatch-owner.sock": false,
+    "/run/vst-supervisor/supervisor.sock": false,
+    "/var/lib/vst-runner/private/store.sqlite3": false
+  },
+  "stderr": ""
+}

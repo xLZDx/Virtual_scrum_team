@@ -1,0 +1,48 @@
+{
+  "candidate": {
+    "bootstrap_request_id": "d41c291011c845d9b96860e14b45d822",
+    "canonical_sha256": "b0ae8eb60e94f914f012a989a6ef606c9f70b4acddc59941cad275f50cd59bd3",
+    "nonce": "7dd635ca213e485da5340aad72844303",
+    "path": "docs/sdlc/evidence/s2-4d-runtime-grant-candidate-dc978a0-v2-20261105.json",
+    "qualification_source_pin_count": 2,
+    "raw_sha256": "0c16c74bac829b7c8dd4e878c2a5850115acdd89d85486e78a7769f26df348ad",
+    "run_id": "s2-runtime-20261105-22c5997c20034ba58911cb7a93980e31",
+    "runtime_source_pin_count": 47
+  },
+  "execution": "local deterministic payload construction only; no payload persisted",
+  "inventory": {
+    "age_seconds_at_build": 256.899,
+    "boot_id": "faf845b4-e863-48d7-bb82-182bf528cb96",
+    "captured_utc": "2026-11-05T11:44:38.582803+00:00",
+    "configuration_destinations": 27,
+    "path": "docs/sdlc/evidence/s2-4d-fresh-binding-config-inventory-dry-dc978a0-v2-final-02.inventory.json",
+    "sha256": "5e10077754344f3eeed61e955854aa44b37ecec7db6dfc254dd96045150b8590",
+    "store_present": false,
+    "unit_records": 9
+  },
+  "not_run": [
+    "WSL",
+    "configuration apply",
+    "runtime/TestRun",
+    "selector",
+    "service mutation"
+  ],
+  "payload": {
+    "bytes": 3852379,
+    "changed_destinations": [
+      "/etc/vst-runner/bootstrap-request.json",
+      "/etc/vst-runner/network-profile.json",
+      "/etc/vst-runner/supervisor-service.json"
+    ],
+    "destination_count": 27,
+    "sha256": "c050b6156927ca83b2a3317c518fb0a545ad698595582aa8ce6b2463b7751326",
+    "transaction_helper_sha256": "76a985ec375cd3c8ef1a5d5e1c5ac1a514d310adbf932916aad551e4a6e849f2"
+  },
+  "result": "PASS",
+  "runtime_source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
+  "schema": "VST_S2_CONFIG_PAYLOAD_DRY_METADATA_V1",
+  "source_commit": "dc978a0e3f02c11220deea3ac3f014cb2f1718a1",
+  "task_id": "S2-4D",
+  "task_source_head": "67361bb4aa23355d9a6bc7877a987ba688559eda",
+  "upstream_commit": "dc978a0e3f02c11220deea3ac3f014cb2f1718a1"
+}

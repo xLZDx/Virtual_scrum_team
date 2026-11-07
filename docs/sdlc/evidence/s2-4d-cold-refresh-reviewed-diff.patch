@@ -1,0 +1,365 @@
+diff --git a/tests/vst/test_s2_runtime_bootstrap_transaction.py b/tests/vst/test_s2_runtime_bootstrap_transaction.py
+index 1af8353..4ea59c7 100644
+--- a/tests/vst/test_s2_runtime_bootstrap_transaction.py
++++ b/tests/vst/test_s2_runtime_bootstrap_transaction.py
+@@ -962,0 +963,60 @@ def test_bootstrap_predecessor_emits_one_pinned_baseline_then_requires_ledger_ma
++def test_candidate_refresh_helper_reobserves_existing_ledger_without_bootstrap_primitive(
++        monkeypatch):
++    record = _bootstrap_record()
++    proof = _candidate_proof(record)
++    tx = {"activation_state": {"vst-runner.service": False,
++                                "vst-dispatcher.service": False},
++          "marker_path": "/isolated/marker", "transaction_id": "a" * 32,
++          "marker_identity": (1, 2)}
++    events = []
++
++    monkeypatch.setattr(TX, "verify_durable_marker",
++                        lambda *args: events.append(("marker", args)))
++    monkeypatch.setattr(TX, "_journal_masks", lambda _tx: events.append(("masks", None)))
++    monkeypatch.setattr(TX, "_verify_bootstrap_guards",
++                        lambda _tx: events.append(("guards", None)))
++    monkeypatch.setattr(TX, "observe_bootstrap_predecessor",
++                        lambda **kwargs: events.append(("observe", kwargs)) or proof)
++    monkeypatch.setattr(TX, "_invoke_pinned_bootstrap",
++                        lambda *_args, **_kwargs: pytest.fail(
++                            "existing candidate refresh must not create a baseline"))
++
++    result = TX.ensure_bootstrap_predecessor(tx, create_baseline=False)
++
++    assert result is proof
++    assert [event[0] for event in events] == [
++        "marker", "masks", "guards", "observe", "observe"]
++    assert events[3][1] == {"allow_missing_ledger": True, "allow_candidate_root": True}
++    assert events[4][1] == {"allow_missing_ledger": True, "allow_candidate_root": True}
++
++
++def test_default_bootstrap_helper_does_not_opt_into_candidate_root(monkeypatch):
++    record = _bootstrap_record()
++    proof = _candidate_proof(record)
++    tx = {"activation_state": {"vst-runner.service": False,
++                                "vst-dispatcher.service": False},
++          "marker_path": "/isolated/marker", "transaction_id": "a" * 32,
++          "marker_identity": (1, 2)}
++    calls = []
++
++    monkeypatch.setattr(TX, "verify_durable_marker", lambda *_args: None)
++    monkeypatch.setattr(TX, "_journal_masks", lambda _tx: None)
++    monkeypatch.setattr(TX, "_verify_bootstrap_guards", lambda _tx: None)
++
++    def observe(**kwargs):
++        calls.append(kwargs)
++        if kwargs["allow_candidate_root"]:
++            return proof
++        raise TX.SnapshotContractError("candidate root refused by default observation")
++
++    monkeypatch.setattr(TX, "observe_bootstrap_predecessor", observe)
++    monkeypatch.setattr(TX, "_invoke_pinned_bootstrap",
++                        lambda *_args, **_kwargs: pytest.fail(
++                            "default predecessor path must not bootstrap an existing candidate"))
++
++    with pytest.raises(TX.SnapshotContractError, match="candidate root refused by default"):
++        TX.ensure_bootstrap_predecessor(tx)
++
++    assert calls == [{"allow_missing_ledger": True, "allow_candidate_root": False}]
++
++
+diff --git a/tests/vst/test_s2_runtime_configuration_apply.py b/tests/vst/test_s2_runtime_configuration_apply.py
+index 6259703..0cdb849 100644
+--- a/tests/vst/test_s2_runtime_configuration_apply.py
++++ b/tests/vst/test_s2_runtime_configuration_apply.py
+@@ -631 +631 @@ def test_recovery_guard_check_delegates_to_typed_helper_and_requires_both_units(
+-def _run_embedded_bootstrap_admission(unit_properties):
++def _run_embedded_bootstrap_admission(unit_properties, cold_proof=None):
+@@ -675 +675 @@ def _run_embedded_bootstrap_admission(unit_properties):
+-        return {"observed": True}
++        return cold_proof or {"live_root": {"kind": "predecessor"}}
+@@ -687,0 +688,2 @@ def _run_embedded_bootstrap_admission(unit_properties):
++        "TASK_HEAD": APPLY.TASK_SOURCE_HEAD,
++        "TASK_TREE": _embedded_task_tree(),
+@@ -689 +691,2 @@ def _run_embedded_bootstrap_admission(unit_properties):
+-    body = [by_name["parse_unit_identity"], units_assignment, protected_assignment,
++    body = [by_name["parse_unit_identity"], by_name["verify_cold_refresh"],
++            units_assignment, protected_assignment,
+@@ -707 +710,2 @@ def test_embedded_admission_observes_only_exact_prestart_cold_pair():
+-    assert observations == [{"allow_missing_ledger": True}]
++    assert observations == [{"allow_missing_ledger": True,
++                             "allow_candidate_root": True}]
+@@ -710,0 +715,222 @@ def test_embedded_admission_observes_only_exact_prestart_cold_pair():
++def _candidate_cold_proof(**overrides):
++    task_tree = _embedded_task_tree()
++    proof = {
++        "live_root": {"kind": "candidate", "device": 3, "inode": 4, "mode": 0o555,
++                      "head": APPLY.TASK_SOURCE_HEAD, "tree_sha1": task_tree},
++        "ledger_absent": False,
++        "ledger_empty": False,
++        "ledger_record": {"state": "BOOTSTRAP_EMPTY", "record_sha256": "a" * 64},
++        "generation_absent": False,
++        "generation_matches_ledger": True,
++    }
++    proof.update(overrides)
++    return proof
++
++
++def _embedded_task_tree():
++    import ast
++
++    tree = ast.parse(APPLY._REMOTE)
++    assignment = next(node for node in tree.body if isinstance(node, ast.Assign)
++                      and any(isinstance(target, ast.Name) and target.id == "TASK_TREE"
++                              for target in node.targets))
++    return ast.literal_eval(assignment.value)
++
++
++def _run_embedded_cold_refresh_check(proof, transaction=None):
++    import ast
++
++    tree = ast.parse(APPLY._REMOTE)
++    check = next(node for node in tree.body if isinstance(node, ast.FunctionDef)
++                 and node.name == "verify_cold_refresh")
++    namespace = {"TASK_HEAD": APPLY.TASK_SOURCE_HEAD, "TASK_TREE": _embedded_task_tree()}
++    exec(compile(ast.Module(body=[check], type_ignores=[]),
++                 "<embedded-cold-refresh-proof-check>", "exec"), namespace)
++    return namespace["verify_cold_refresh"](proof, transaction)
++
++
++def test_cold_refresh_proof_accepts_exact_readonly_candidate_with_existing_bootstrap_record():
++    assert _run_embedded_cold_refresh_check(_candidate_cold_proof()) is True
++    assert _run_embedded_cold_refresh_check(
++        {"live_root": {"kind": "predecessor"}}) is False
++
++
++@pytest.mark.parametrize("mutation", [
++    {"root": {"head": "f" * 40}},
++    {"root": {"tree_sha1": "f" * 40}},
++    {"root": {"mode": 0o755}},
++    {"ledger_absent": True},
++    {"ledger_empty": True},
++    {"ledger_record": None},
++    {"generation_absent": True},
++    {"generation_matches_ledger": False},
++], ids=["wrong-head", "wrong-tree", "writable-root", "absent-ledger",
++       "empty-ledger", "missing-bootstrap-record", "missing-generation",
++       "generation-mismatch"])
++def test_cold_refresh_proof_rejects_missing_or_nonmatching_candidate_receipt(mutation):
++    proof = _candidate_cold_proof()
++    if "root" in mutation:
++        proof["live_root"].update(mutation["root"])
++    else:
++        proof.update(mutation)
++    with pytest.raises(SystemExit, match="exact existing candidate and ledger"):
++        _run_embedded_cold_refresh_check(proof)
++
++
++@pytest.mark.parametrize("field", ["device", "inode", "mode", "head", "tree_sha1"])
++def test_cold_refresh_proof_must_match_recorded_transaction_root_identity(field):
++    proof = _candidate_cold_proof()
++    transaction = {"old_" + name: proof["live_root"][name]
++                   for name in ("device", "inode", "mode", "head", "tree_sha1")}
++    transaction["old_" + field] = "mismatch" if field in {"head", "tree_sha1"} else -1
++
++    with pytest.raises(SystemExit, match="differs from the transaction predecessor"):
++        _run_embedded_cold_refresh_check(proof, transaction)
++
++
++def test_embedded_candidate_admission_opts_into_candidate_observation_only_for_cold_pair():
++    cold = _named_unit_output()
++    properties = {unit: cold for unit in (
++        "vst-supervisor.service", "vst-signer.service", "vst-runner.service",
++        "vst-dispatcher.service", "vst-dispatch-owner.service",
++        "vst-dispatch-owner.socket", "vst-assignment-bootstrap.service",
++        "vst-dispatch-issuer.service", "vst-sandbox-probe.service")}
++    namespace, observations, _calls = _run_embedded_bootstrap_admission(
++        properties, _candidate_cold_proof())
++
++    assert namespace["bootstrap_predecessor"] is True
++    assert namespace["bootstrap_candidate_refresh"] is True
++    assert observations == [{"allow_missing_ledger": True, "allow_candidate_root": True}]
++
++
++@pytest.mark.parametrize("field", ["device", "inode", "mode", "head", "tree_sha1"])
++def test_embedded_candidate_refresh_rechecks_root_binding_before_journaling(field):
++    import ast
++
++    proof = _candidate_cold_proof()
++    transaction = {"old_" + name: proof["live_root"][name]
++                   for name in ("device", "inode", "mode", "head", "tree_sha1")}
++    events = []
++    rechecked = dict(proof, live_root=dict(proof["live_root"]))
++    rechecked["live_root"][field] = "changed" if field in {"head", "tree_sha1"} else -1
++
++    tree = ast.parse(APPLY._REMOTE)
++    refresh = next(node for node in ast.walk(tree) if isinstance(node, ast.If)
++                   and any(isinstance(child, ast.Call)
++                           and isinstance(child.func, ast.Subscript)
++                           and isinstance(child.func.value, ast.Name)
++                           and child.func.value.id == "helper_ns"
++                           and isinstance(child.func.slice, ast.Constant)
++                           and child.func.slice.value == "ensure_bootstrap_predecessor"
++                           for child in ast.walk(node)))
++    check = next(node for node in tree.body if isinstance(node, ast.FunctionDef)
++                 and node.name == "verify_cold_refresh")
++    helper = {
++        "_cold_proof_current": lambda _proof, **kwargs: events.append(
++            ("recheck", kwargs)) or rechecked,
++        "ensure_bootstrap_predecessor": lambda *_args, **kwargs: events.append(
++            ("ensure", kwargs)) or proof,
++        "record_dispatcher_bootstrap_quiescent": lambda *_args, **_kwargs: events.append(
++            ("dispatcher-receipt", None)),
++        "record_runner_bootstrap_empty": lambda *_args, **_kwargs: events.append(
++            ("runner-receipt", None)),
++    }
++    namespace = {"TASK_HEAD": APPLY.TASK_SOURCE_HEAD, "TASK_TREE": _embedded_task_tree(),
++                 "bootstrap_predecessor": True, "bootstrap_candidate_refresh": True,
++                 "bootstrap_initial_proof": proof, "transaction": transaction,
++                 "helper_ns": helper}
++    with pytest.raises(SystemExit):
++        exec(compile(ast.Module(body=[check, refresh], type_ignores=[]),
++                     "<embedded-cold-refresh-transaction>", "exec"), namespace)
++
++    assert events == [("recheck", {"allow_missing": False})]
++
++
++def test_embedded_candidate_refresh_uses_existing_ledger_without_bootstrap_creation():
++    import ast
++
++    proof = _candidate_cold_proof()
++    transaction = {"old_" + name: proof["live_root"][name]
++                   for name in ("device", "inode", "mode", "head", "tree_sha1")}
++    events = []
++    tree = ast.parse(APPLY._REMOTE)
++    refresh = next(node for node in ast.walk(tree) if isinstance(node, ast.If)
++                   and any(isinstance(child, ast.Call)
++                           and isinstance(child.func, ast.Subscript)
++                           and isinstance(child.func.value, ast.Name)
++                           and child.func.value.id == "helper_ns"
++                           and isinstance(child.func.slice, ast.Constant)
++                           and child.func.slice.value == "ensure_bootstrap_predecessor"
++                           for child in ast.walk(node)))
++    check = next(node for node in tree.body if isinstance(node, ast.FunctionDef)
++                 and node.name == "verify_cold_refresh")
++    helper = {
++        "_cold_proof_current": lambda _proof, **kwargs: events.append(
++            ("recheck", kwargs)) or proof,
++        "ensure_bootstrap_predecessor": lambda *_args, **kwargs: events.append(
++            ("ensure", kwargs)) or proof,
++        "record_dispatcher_bootstrap_quiescent": lambda *_args, **_kwargs: events.append(
++            ("dispatcher-receipt", None)),
++        "record_runner_bootstrap_empty": lambda *_args, **_kwargs: events.append(
++            ("runner-receipt", None)),
++    }
++    namespace = {"TASK_HEAD": APPLY.TASK_SOURCE_HEAD, "TASK_TREE": _embedded_task_tree(),
++                 "bootstrap_predecessor": True, "bootstrap_candidate_refresh": True,
++                 "bootstrap_initial_proof": proof, "transaction": transaction,
++                 "helper_ns": helper}
++    exec(compile(ast.Module(body=[check, refresh], type_ignores=[]),
++                 "<embedded-cold-refresh-transaction>", "exec"), namespace)
++
++    assert events == [
++        ("recheck", {"allow_missing": False}),
++        ("ensure", {"create_baseline": False}),
++        ("dispatcher-receipt", None),
++        ("runner-receipt", None),
++    ]
++
++
++def test_embedded_candidate_refresh_rejects_changed_root_returned_by_helper_before_receipts():
++    import ast
++
++    proof = _candidate_cold_proof()
++    transaction = {"old_" + name: proof["live_root"][name]
++                   for name in ("device", "inode", "mode", "head", "tree_sha1")}
++    post_ensure = dict(proof, live_root=dict(proof["live_root"]))
++    post_ensure["live_root"]["inode"] += 1
++    events = []
++    tree = ast.parse(APPLY._REMOTE)
++    refresh = next(node for node in ast.walk(tree) if isinstance(node, ast.If)
++                   and any(isinstance(child, ast.Call)
++                           and isinstance(child.func, ast.Subscript)
++                           and isinstance(child.func.value, ast.Name)
++                           and child.func.value.id == "helper_ns"
++                           and isinstance(child.func.slice, ast.Constant)
++                           and child.func.slice.value == "ensure_bootstrap_predecessor"
++                           for child in ast.walk(node)))
++    check = next(node for node in tree.body if isinstance(node, ast.FunctionDef)
++                 and node.name == "verify_cold_refresh")
++    helper = {
++        "_cold_proof_current": lambda _proof, **kwargs: events.append(
++            ("recheck", kwargs)) or proof,
++        "ensure_bootstrap_predecessor": lambda *_args, **kwargs: events.append(
++            ("ensure", kwargs)) or post_ensure,
++        "record_dispatcher_bootstrap_quiescent": lambda *_args, **_kwargs: events.append(
++            ("dispatcher-receipt", None)),
++        "record_runner_bootstrap_empty": lambda *_args, **_kwargs: events.append(
++            ("runner-receipt", None)),
++    }
++    namespace = {"TASK_HEAD": APPLY.TASK_SOURCE_HEAD, "TASK_TREE": _embedded_task_tree(),
++                 "bootstrap_predecessor": True, "bootstrap_candidate_refresh": True,
++                 "bootstrap_initial_proof": proof, "transaction": transaction,
++                 "helper_ns": helper}
++
++    with pytest.raises(SystemExit, match="differs from the transaction predecessor"):
++        exec(compile(ast.Module(body=[check, refresh], type_ignores=[]),
++                     "<embedded-cold-refresh-after-helper>", "exec"), namespace)
++
++    assert events == [
++        ("recheck", {"allow_missing": False}),
++        ("ensure", {"create_baseline": False}),
++    ]
++
++
+diff --git a/tools/qa/apply_s2_runtime_configuration.py b/tools/qa/apply_s2_runtime_configuration.py
+index 2b71b55..0f0a5cc 100644
+--- a/tools/qa/apply_s2_runtime_configuration.py
++++ b/tools/qa/apply_s2_runtime_configuration.py
+@@ -645,0 +646,17 @@ def parse_unit_identity(output):
++def verify_cold_refresh(proof, transaction=None):
++    root = proof["live_root"]
++    if root["kind"] == "predecessor":
++        return False
++    if (root["kind"] != "candidate" or root["head"] != TASK_HEAD
++            or root["tree_sha1"] != TASK_TREE or root["mode"] != 0o555
++            or proof["ledger_absent"] or proof["ledger_empty"]
++            or proof["ledger_record"] is None or proof["generation_absent"]
++            or proof["generation_matches_ledger"] is not True):
++        raise SystemExit("cold configuration refresh lacks its exact existing candidate and ledger")
++    if transaction is not None:
++        fields = ("device", "inode", "mode", "head", "tree_sha1")
++        if any(root[field] != transaction["old_" + field] for field in fields):
++            raise SystemExit("cold configuration refresh root differs from the transaction predecessor")
++    return True
++
++
+@@ -679,0 +697,2 @@ bootstrap_predecessor = False
++bootstrap_candidate_refresh = False
++bootstrap_initial_proof = None
+@@ -686 +705,3 @@ if (not unit_before["vst-runner.service"]["invocation_id"]
+-        helper_ns["observe_bootstrap_predecessor"](allow_missing_ledger=True)
++        bootstrap_initial_proof = helper_ns["observe_bootstrap_predecessor"](
++            allow_missing_ledger=True, allow_candidate_root=True)
++        bootstrap_candidate_refresh = verify_cold_refresh(bootstrap_initial_proof)
+@@ -1005 +1026,9 @@ try:
+-        bootstrap_proof = helper_ns["ensure_bootstrap_predecessor"](transaction)
++        if bootstrap_candidate_refresh:
++            verify_cold_refresh(bootstrap_initial_proof, transaction)
++            current_cold_proof = helper_ns["_cold_proof_current"](
++                bootstrap_initial_proof, allow_missing=False)
++            verify_cold_refresh(current_cold_proof, transaction)
++        bootstrap_proof = helper_ns["ensure_bootstrap_predecessor"](
++            transaction, create_baseline=not bootstrap_candidate_refresh)
++        if bootstrap_candidate_refresh and not verify_cold_refresh(bootstrap_proof, transaction):
++            raise SystemExit("cold configuration refresh lost its exact existing candidate")
+diff --git a/tools/qa/collect_s2_runtime_config_inventory.py b/tools/qa/collect_s2_runtime_config_inventory.py
+index 4af081e..97d781e 100644
+--- a/tools/qa/collect_s2_runtime_config_inventory.py
++++ b/tools/qa/collect_s2_runtime_config_inventory.py
+@@ -10 +10 @@ CAPTURE_SHA = "befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119"
+-APPLIER_SHA = "c563417271bb5e6a5c2e10cbb129713c22ec3fd0e8c54d541a72aba63ff8c3b4"
++APPLIER_SHA = "5c02647b103462502be5385eb0381acec5e989b32c787979d0841037cdb4e35c"
+diff --git a/tools/qa/runtime_snapshot_transaction.py b/tools/qa/runtime_snapshot_transaction.py
+index 8ff8032..acea24c 100644
+--- a/tools/qa/runtime_snapshot_transaction.py
++++ b/tools/qa/runtime_snapshot_transaction.py
+@@ -1423 +1423,2 @@ def ensure_bootstrap_predecessor(transaction: dict[str, Any], *,
+-    return observe_bootstrap_predecessor(allow_missing_ledger=not create_baseline)
++    return observe_bootstrap_predecessor(
++        allow_missing_ledger=not create_baseline, allow_candidate_root=not create_baseline)

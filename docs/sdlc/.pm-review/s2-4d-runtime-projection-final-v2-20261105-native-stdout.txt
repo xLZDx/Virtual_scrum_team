@@ -1,0 +1,3 @@
+{"cache_provider_disabled": true, "cwd": "/mnt/d/Repo/Virtual_scrum_team", "plugin_autoload_disabled": true, "pytest": "7.4.4", "python": "3.12.3", "selected_node_ids": ["tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_accepts_exact_installed_projection_and_empty_source", "tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_modified_or_unsafe_projection", "tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_malformed_runtime_marker"]}
+............                                                             [100%]
+12 passed in 0.96s

@@ -1,0 +1,31 @@
+mount=/tmp/s2-4d-bootstrap-d-ro-20261105 options=ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3
+repo=/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team
+head=2b86f091d07ae3b6525e1d088b61d062d9a4dbca
+75164fe4f807455d857857ca6fb29ef7073d9388b2586d769ac12d8d81b2b2e3  tests/vst/test_s2_runtime_bootstrap_transaction.py
+3df32048d5afc15fe55a13ac485201bd86940303629313e848a3e5b0af11d60b  tests/vst/test_s2_runtime_configuration_apply.py
+1099effc5d75c24236dbd3eaaa81093be41440e69949516485ea3745a15219df  tools/qa/runtime_snapshot_transaction.py
+c66df10dc7909c6944c674f7a7d513c850665970c70a2f7c17ae20b2d28657d3  tools/qa/apply_s2_runtime_configuration.py
+be0629eed440fac782c57f6af71187a87e933f528b94dbabe391cd81618c05f4  tools/qa/collect_s2_runtime_config_inventory.py
+{"frozen_sha256": {"tests/vst/test_s2_runtime_bootstrap_transaction.py": "75164fe4f807455d857857ca6fb29ef7073d9388b2586d769ac12d8d81b2b2e3", "tests/vst/test_s2_runtime_configuration_apply.py": "3df32048d5afc15fe55a13ac485201bd86940303629313e848a3e5b0af11d60b", "tools/qa/apply_s2_runtime_configuration.py": "c66df10dc7909c6944c674f7a7d513c850665970c70a2f7c17ae20b2d28657d3", "tools/qa/collect_s2_runtime_config_inventory.py": "be0629eed440fac782c57f6af71187a87e933f528b94dbabe391cd81618c05f4", "tools/qa/runtime_snapshot_transaction.py": "1099effc5d75c24236dbd3eaaa81093be41440e69949516485ea3745a15219df"}, "pytest_disable_plugin_autoload": "1", "pytest_file": "/usr/lib/python3/dist-packages/pytest/__init__.py", "pytest_version": "7.4.4", "python_version": "3.12.3 (main, Jul 15 2026, 23:46:41) [GCC 13.3.0]", "sys_path": ["/usr/lib/python312.zip", "/usr/lib/python3.12", "/usr/lib/python3.12/lib-dynload", "/usr/lib/python3/dist-packages", "/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team"], "uid": 0}
+.....F..FFFFFF...........F...F..                                         [100%]
+=================================== FAILURES ===================================
+/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team/tests/vst/test_s2_runtime_bootstrap_transaction.py:109: AssertionError: Regex pattern did not match.
+/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team/tools/qa/runtime_snapshot_transaction.py:1057: AttributeError: 'str' object has no attribute 'decode'. Did you mean: 'encode'?
+/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team/tools/qa/runtime_snapshot_transaction.py:1057: AttributeError: 'str' object has no attribute 'decode'. Did you mean: 'encode'?
+/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team/tools/qa/runtime_snapshot_transaction.py:1057: AttributeError: 'str' object has no attribute 'decode'. Did you mean: 'encode'?
+/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team/tools/qa/runtime_snapshot_transaction.py:1057: AttributeError: 'str' object has no attribute 'decode'. Did you mean: 'encode'?
+/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team/tools/qa/runtime_snapshot_transaction.py:1057: AttributeError: 'str' object has no attribute 'decode'. Did you mean: 'encode'?
+/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team/tools/qa/runtime_snapshot_transaction.py:1057: AttributeError: 'str' object has no attribute 'decode'. Did you mean: 'encode'?
+/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team/tools/qa/runtime_snapshot_transaction.py:1444: KeyError: 'journal_path'
+/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team/tools/qa/runtime_snapshot_transaction.py:1426: KeyError: 'journal_path'
+=========================== short test summary info ============================
+FAILED tests/vst/test_s2_runtime_bootstrap_transaction.py::test_bootstrap_record_rejects_tampered_canonical_hash
+FAILED tests/vst/test_s2_runtime_bootstrap_transaction.py::test_bootstrap_observer_returns_real_cold_receipt_inputs_from_isolated_posix_fixture
+FAILED tests/vst/test_s2_runtime_bootstrap_transaction.py::test_bootstrap_observer_accepts_only_exact_readonly_candidate_identity
+FAILED tests/vst/test_s2_runtime_bootstrap_transaction.py::test_bootstrap_observer_rejects_duplicate_unknown_and_malformed_systemd_properties[ActiveState=inactive\nActiveState=inactive\nSubState=dead\nInvocationID=\nControlGroup=\n]
+FAILED tests/vst/test_s2_runtime_bootstrap_transaction.py::test_bootstrap_observer_rejects_duplicate_unknown_and_malformed_systemd_properties[ActiveState=inactive\nSubState=dead\nInvocationID=\nControlGroup=\nUnexpected=value\n]
+FAILED tests/vst/test_s2_runtime_bootstrap_transaction.py::test_bootstrap_observer_rejects_duplicate_unknown_and_malformed_systemd_properties[ActiveState=inactive\nSubState=dead\nInvocationID=\nControlGroup=\nMalformed\n]
+FAILED tests/vst/test_s2_runtime_bootstrap_transaction.py::test_bootstrap_observer_refuses_active_job_store_process_or_history[pending-job-pending job]
+FAILED tests/vst/test_s2_runtime_bootstrap_transaction.py::test_cold_runner_receipt_is_distinct_and_requires_generation_bound_fence
+FAILED tests/vst/test_s2_runtime_bootstrap_transaction.py::test_candidate_live_recovery_accepts_fresh_proof_bound_to_durable_cold_receipt
+9 failed, 23 passed in 0.59s

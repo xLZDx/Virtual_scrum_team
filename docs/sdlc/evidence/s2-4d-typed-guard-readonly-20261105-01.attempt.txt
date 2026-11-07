@@ -1,0 +1,59 @@
+Outer command: wsl.exe -d Ubuntu-24.04 -- /bin/bash -c <base64-decode-then-bash payload>
+Payload: printf '%s' '<base64 of exact Bash script below>' | base64 -d | /bin/bash
+
+Bash script:
+set -eu
+mount_dir=/tmp/s2-4d-bootstrap-d-ro-20261105
+mkdir -p "$mount_dir"
+set +e
+mountpoint -q "$mount_dir"
+mount_rc=$?
+set -e
+if [ "$mount_rc" -eq 32 ]; then
+  mount -t drvfs D: "$mount_dir" -o ro
+elif [ "$mount_rc" -ne 0 ]; then
+  echo "mountpoint returned unexpected status $mount_rc" >&2
+  exit 92
+fi
+mount_opts=$(findmnt -n -o OPTIONS --target "$mount_dir")
+case ",$mount_opts," in
+  *,ro,*) ;;
+  *) echo "source mount is not read-only: $mount_opts" >&2; exit 93 ;;
+esac
+repo="$mount_dir/Repo/Virtual_scrum_team"
+cd "$repo"
+printf 'mount=%s options=%s\nrepo=%s\nhead=' "$mount_dir" "$mount_opts" "$repo"
+git rev-parse HEAD
+sha256sum tools/qa/runtime_snapshot_transaction.py tools/qa/apply_s2_runtime_configuration.py tools/qa/collect_s2_runtime_config_inventory.py
+/usr/bin/python3.12 -I -B -S - "$repo" <<'PY'
+import hashlib, importlib.util, json, os, pathlib, sys
+repo = pathlib.Path(sys.argv[1]).resolve()
+expected = {
+    'tools/qa/runtime_snapshot_transaction.py': '45c6f5c0d0591c9a81ac5f7dae6db243bb3fbb25fbde99e42a4ee147783a3bbe',
+    'tools/qa/apply_s2_runtime_configuration.py': '4368ea4a4b1ae2a8cf7f76e2695711be6c461b3738c5e60d7ce9079275c5eefb',
+    'tools/qa/collect_s2_runtime_config_inventory.py': 'd24db7bb13b13860d031bf1bdfe26191e3201436ba857cc7cae4bda48d87bede',
+}
+actual = {rel: hashlib.sha256((repo / rel).read_bytes()).hexdigest() for rel in expected}
+for rel, digest in expected.items():
+    if actual[rel] != digest:
+        raise SystemExit(f'FROZEN_SHA_MISMATCH {rel}: expected {digest}, got {actual[rel]}')
+sys.path.append('/usr/lib/python3/dist-packages')
+sys.path.append(str(repo))
+helper = repo / 'tools/qa/runtime_snapshot_transaction.py'
+spec = importlib.util.spec_from_file_location('s2_runtime_snapshot_transaction_readonly_guard_probe', helper)
+if spec is None or spec.loader is None:
+    raise SystemExit('Unable to create exact helper import spec')
+module = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = module
+spec.loader.exec_module(module)
+result = {'schema':'VST_S2_4D_TYPED_GUARD_READONLY_V1','python_version':sys.version,'uid':os.geteuid(),'helper_sha256':actual['tools/qa/runtime_snapshot_transaction.py'],'frozen_sha256':actual,'calls':[]}
+for unit in ('vst-runner.service','vst-dispatcher.service'):
+    try:
+        loaded = module.persistent_guard_loaded(unit)
+        result['calls'].append({'unit':unit,'result':loaded,'error':None})
+    except Exception as exc:
+        result['calls'].append({'unit':unit,'result':None,'error':type(exc).__name__+': '+str(exc)})
+print(json.dumps(result,sort_keys=True,separators=(',',':')),flush=True)
+if any(call['error'] is not None for call in result['calls']):
+    raise SystemExit(1)
+PY

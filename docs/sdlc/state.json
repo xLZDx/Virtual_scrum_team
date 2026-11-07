@@ -2,7 +2,7 @@
   "title": "Sprint",
   "phase": 8,
   "mode": "hard",
-  "paused": false,
+  "paused": true,
   "history": [
     {
       "phase": 1,
@@ -91,5 +91,5 @@
   "sprint_id": "39b7cc253f5d",
   "started_epoch": 1793237366.075696,
   "start_head": "2e6a796eaa04664812cf1266322b083f18770fa1",
-  "updated": "2026-10-30T08:47:49+00:00"
+  "updated": "2026-11-05T20:14:18+00:00"
 }

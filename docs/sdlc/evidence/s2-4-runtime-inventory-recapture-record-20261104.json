@@ -1,0 +1,17 @@
+{
+  "task": "S2-4",
+  "source_record": "docs/sdlc/evidence/s2-4-runtime-inventory-recapture-20261104.json",
+  "inventory_artifact": "docs/sdlc/evidence/s2-4-runtime-inventory-stdout-20261104.json",
+  "inventory_sha256": "c5f10399e5f1bea13517d47192ea9c62c65ee8643beb96a353769bd01f0d6360",
+  "inventory_bytes": 35285,
+  "stderr_artifact": "docs/sdlc/evidence/s2-4-runtime-inventory-stderr-20261104.txt",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "exit_code_artifact": "docs/sdlc/evidence/s2-4-runtime-inventory-exit-code-20261104.txt",
+  "exit_code": 0,
+  "gpt_pm_request_id": "4c9d26f1-6bb5-42d8-bd91-0eeb2f89982d",
+  "gpt_pm_reply_id": "106d8346-3aae-5fd2-b131-e2ea49eafcea",
+  "gpt_pm_disposition": "Replacement read-only inventory was justified; initial wrapper held for quoting correction. Corrected single-string Start-Process argument was used after confirming all evidence destinations absent. No runtime mutation, validator, test, E5, Owner-to-Runner, or production operation authorized.",
+  "capture_result": "COMPLETE_JSON_CAPTURED",
+  "capture_time_utc": "2026-11-04T13:38:12.205138Z",
+  "scope": "One collector invocation with D: mounted read-only. The complete raw stdout parses as JSON. This is inventory evidence only, not validation or runtime acceptance."
+}

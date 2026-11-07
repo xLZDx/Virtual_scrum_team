@@ -1,0 +1,13 @@
+........................................................................ [ 72%]
+.....................F......                                             [100%]
+================================== FAILURES ===================================
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_config_inventory.py:781: AssertionError: assert {'/etc/vst-ru...service.json'} == {'/etc/vst-ru...service.json'}
+============================== warnings summary ===============================
+tests/vst/test_s2_runtime_config_bundle.py::test_bundle_manifest_covers_every_payload_with_exact_bytes_and_safe_scope
+  C:\Users\koros\AppData\Roaming\Python\Python314\site-packages\pytest_asyncio\plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/vst/test_s2_runtime_config_inventory.py::test_apply_payload_preserves_validated_canonical_octal_mode
+1 failed, 99 passed, 1 warning in 20.62s

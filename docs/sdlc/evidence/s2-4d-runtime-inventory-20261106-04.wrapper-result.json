@@ -1,0 +1,15 @@
+{
+  "head": "e1b849b3319d0eec552be1d709eb2d5a4d09c0a7",
+  "collector_sha256": "f57588f1d459af5691325d84dd7905cca0b87989c4d2ecdfe0c15b9954f04b27",
+  "command": "wsl.exe -d Ubuntu-24.04 --user root -- /bin/bash -s",
+  "started_utc": "2026-11-06T14:09:05.2712510+00:00",
+  "ended_utc": "2026-11-06T14:12:05.6359559+00:00",
+  "wsl_exit": 0,
+  "stdout_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-runtime-inventory-20261106-04.stdout.json",
+  "stdout_bytes": 36351,
+  "stdout_sha256": "75aeab1917982f2a34edefb749a08bec2022b7dd663d3c2115fbf6e02ee47cd7",
+  "stderr_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-runtime-inventory-20261106-04.stderr.txt",
+  "stderr_bytes": 148,
+  "stderr_sha256": "e06a5511961d040265c9c5755b87797d8e2fdf28478588b6378f1b31dd03c0ad",
+  "stage": "fresh inventory only; apply not yet run"
+}

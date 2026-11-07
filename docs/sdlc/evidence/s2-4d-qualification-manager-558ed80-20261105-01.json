@@ -1,0 +1,38 @@
+{
+  "scope": "Read-only exact qualification prestart manager commands; no activation",
+  "observed_utc": "2026-11-05T05:30:35.455262+00:00",
+  "commands": [
+    {
+      "argv": [
+        "wsl.exe",
+        "--distribution",
+        "Ubuntu-24.04",
+        "--user",
+        "root",
+        "--exec",
+        "/usr/bin/systemctl",
+        "list-jobs",
+        "--no-legend",
+        "--no-pager"
+      ],
+      "returncode": 0,
+      "stdout_repr": "b''",
+      "stderr_repr": "b''"
+    },
+    {
+      "argv": [
+        "wsl.exe",
+        "--distribution",
+        "Ubuntu-24.04",
+        "--user",
+        "root",
+        "--exec",
+        "/usr/bin/systemctl",
+        "is-system-running"
+      ],
+      "returncode": 0,
+      "stdout_repr": "b'running\\n'",
+      "stderr_repr": "b''"
+    }
+  ]
+}

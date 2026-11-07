@@ -1,0 +1,89 @@
+{
+  "experiment_id": "s2-ro-hardening-audit-20261101-pm08-04",
+  "outer_process": {
+    "exit_code": 2,
+    "runtime_max_sec": 60,
+    "stderr_bytes": 0,
+    "stderr_prefix": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr_truncated": false,
+    "stdout_bytes": 1364,
+    "stdout_prefix": "{\"authorization_reply_id\":null,\"authorization_request_id\":null,\"commands\":[{\"argv\":[\"/usr/bin/systemctl\",\"show\",\"vst-s2-qual-9a3c2d809d9b3e5d.service\",\"--no-pager\",\"--property=LoadState\",\"--property=ActiveState\",\"--property=SubState\",\"--property=Result\",\"--property=MainPID\",\"--property=ControlGroup\",\"--property=PrivateDevices\",\"--property=ProtectSystem\",\"--property=ProtectKernelTunables\",\"--property=ProtectKernelModules\",\"--property=ProtectKernelLogs\",\"--property=ProtectControlGroups\",\"--property=NoNewPrivileges\",\"--property=RuntimeMaxUSec\",\"--property=InaccessiblePaths\"],\"exit_code\":0,\"finished_utc\":\"2026-10-31T22:17:45.573696+00:00\",\"id\":\"current_transient_unit\",\"started_utc\":\"2026-10-31T22:17:45.565262+00:00\",\"stderr_bytes\":0,\"stderr_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"stderr_truncated\":false,\"stdout_bytes\":848,\"stdout_sha256\":\"420cb1d06c9fc591adc20f7d3028e6e09afc8fd0521229658f81231be3231c0f\",\"stdout_truncated\":false,\"timed_out\":false}],\"finished_utc\":\"2026-10-31T22:17:45.573842+00:00\",\"identity\":{},\"prestart\":{},\"reason\":\"transient-unit inaccessible path set differs from the exact approved target set\",\"retry_cap\":0,\"schema\":\"VST_S2_RUNTIME_QUALIFICATION_PROTOCOL_V1\",\"stages\":{},\"started_utc\":\"2026-10-31T22:17:45.565072+00:00\",\"terminal\":\"HOLD\",\"top_level_wsl_processes\":1,\"zero_retry_confirmed\":true}",
+    "stdout_sha256": "5c2d86fb6bbdd0952dc27a9e7437dad8a7caedd7d165444a80e26d0817f3a713",
+    "stdout_truncated": false,
+    "systemd_properties": [
+      "--property=PrivateDevices=yes",
+      "--property=ProtectSystem=strict",
+      "--property=ProtectKernelTunables=yes",
+      "--property=ProtectKernelModules=yes",
+      "--property=ProtectKernelLogs=yes",
+      "--property=ProtectControlGroups=yes",
+      "--property=NoNewPrivileges=yes",
+      "--property=RuntimeMaxSec=60s",
+      "--property=InaccessiblePaths=-/dev/hugepages -/dev/shm -/home -/mnt -/proc/acpi -/proc/bus -/proc/fs -/proc/irq -/proc/kallsyms -/proc/kcore -/proc/kmsg -/proc/latency_stats -/proc/mtrr -/proc/scsi -/proc/sys/fs/binfmt_misc -/root -/run/WSL -/run/credentials -/run/lock -/run/shm -/run/user -/sys/fs/bpf -/sys/fs/cgroup/system.slice/vst-s2-qual-9a3c2d809d9b3e5d.service/memory.pressure -/sys/fs/fuse/connections -/sys/fs/selinux -/sys/kernel/config -/sys/kernel/debug -/sys/kernel/tracing -/tmp/.X11-unix -/usr/lib/modules -/usr/lib/wsl"
+    ],
+    "timed_out": false,
+    "unit_name": "vst-s2-qual-9a3c2d809d9b3e5d.service",
+    "writer_error": null
+  },
+  "protocol": {
+    "authorization_reply_id": null,
+    "authorization_request_id": null,
+    "commands": [
+      {
+        "argv": [
+          "/usr/bin/systemctl",
+          "show",
+          "vst-s2-qual-9a3c2d809d9b3e5d.service",
+          "--no-pager",
+          "--property=LoadState",
+          "--property=ActiveState",
+          "--property=SubState",
+          "--property=Result",
+          "--property=MainPID",
+          "--property=ControlGroup",
+          "--property=PrivateDevices",
+          "--property=ProtectSystem",
+          "--property=ProtectKernelTunables",
+          "--property=ProtectKernelModules",
+          "--property=ProtectKernelLogs",
+          "--property=ProtectControlGroups",
+          "--property=NoNewPrivileges",
+          "--property=RuntimeMaxUSec",
+          "--property=InaccessiblePaths"
+        ],
+        "exit_code": 0,
+        "finished_utc": "2026-10-31T22:17:45.573696+00:00",
+        "id": "current_transient_unit",
+        "started_utc": "2026-10-31T22:17:45.565262+00:00",
+        "stderr_bytes": 0,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_truncated": false,
+        "stdout_bytes": 848,
+        "stdout_sha256": "420cb1d06c9fc591adc20f7d3028e6e09afc8fd0521229658f81231be3231c0f",
+        "stdout_truncated": false,
+        "timed_out": false
+      }
+    ],
+    "finished_utc": "2026-10-31T22:17:45.573842+00:00",
+    "identity": {},
+    "prestart": {},
+    "reason": "transient-unit inaccessible path set differs from the exact approved target set",
+    "retry_cap": 0,
+    "schema": "VST_S2_RUNTIME_QUALIFICATION_PROTOCOL_V1",
+    "stages": {},
+    "started_utc": "2026-10-31T22:17:45.565072+00:00",
+    "terminal": "HOLD",
+    "top_level_wsl_processes": 1,
+    "zero_retry_confirmed": true
+  },
+  "reason": "transient-unit inaccessible path set differs from the exact approved target set",
+  "schema": "VST_S2_RUNTIME_MOUNT_AUDIT_OUTER_V1",
+  "source_identity": {
+    "baseline_decoder_sha256": "31f345bc648524e9ba206115df14e01a806d627c2c13b2204cf45a9685b40799",
+    "baseline_revision": "788ea48fd48f8c4a78a3c7bed50d7b0776ef2b1d",
+    "helper_sha256": "e113e70a10986664fc66e560bfcb09df5f80a7ec7afaa71c432ae37710f2623b",
+    "launcher_sha256": "02c1d55cbf46cf9f16e4fd693e1e7ab08a16da7bc1dd4d5d27ef7d86af83bc8e"
+  },
+  "terminal": "HOLD"
+}

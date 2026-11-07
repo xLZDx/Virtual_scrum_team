@@ -1,0 +1,41 @@
+{
+  "schema": "VST_S2_RUNTIME_TUPLE_HOST_SOURCE_AND_REPLAY_V1",
+  "captured_utc": "2026-11-05T05:11:40.505217+00:00",
+  "qualification_source_head": "558ed801cdf96dc6f35515fc17e59bbaefe5fec9",
+  "runtime_source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
+  "launcher_sha256": "11e2eea024fa5bfae7d7899d1ea05e20fb358b1e845a88167d0e95fbaa426d5a",
+  "source_pins": {
+    "runtime": {
+      "tools/vst/assignment_basis.py": "c2159f18cf25597118d13623b4ecf24fcd1e40626d03ca32fa1ec8fb920f51de",
+      "tools/vst/contracts.py": "bf01d990a94cd71887f8d9f81019333f3bf43d5950a655de3646e9bb3d585ea4",
+      "tools/vst/dispatch_instruction.py": "b2d0194c69b678cc108f78b6c4b1cf6fd20a1fdcbdb4869e5b6548c4883a1e05",
+      "tools/vst/dispatch_issuance.py": "e3e062042b615d633914bf957b5901647ff644fe319c8b07de461ed0a6b81c4a",
+      "tools/vst/dispatch_owner_client.py": "d825f1cdc320a5babc419e89f9f181961da8426c3d3a2a915257091d9d1641b1",
+      "tools/vst/dispatch_owner_service.py": "483241d6e18d25a073a75fde8c3ebe65925bcb17bd5536b5b7ffe7056484bd8e",
+      "tools/vst/dispatch_owner_transport.py": "0bf582319359ae1c1cf04ec4928e5a994d98c5d40c47aab7d0130d1d7856ebb0",
+      "tools/vst/dispatcher_service.py": "0f23727307c14aed691ab2d0ae338eef472453f5eabd4f85de70e916692c2fc3",
+      "tools/vst/root_dispatch_issuer.py": "049e1c207bf1b19d4db50c4be0103a56307de1c677c75f017bdd6b74cac3bba9",
+      "tools/vst/runner.py": "02c60162ed1bbda61e1341d055aa893ce1cf52c3bbecbc545e7e67eb902a07ee",
+      "tools/vst/runner_service.py": "c81619a9de113807cbc2722ecea313f47f696ac20b4b9696e7458eadce6aa6dc",
+      "tools/vst/store.py": "f3a0e217b372dfd48f2e4c9b864f7f1d4a726659f15544be88ac489d41702aa3",
+      "tools/vst/supervisor.py": "37505153128e2b7dade0ec2d29aabf8ad043fb82e8221d30efc68a96bb938ff1",
+      "tools/vst/supervisor_service.py": "05d31dd8461a9de28eb892ed768963d340989eb0f272175384c324c496b33522"
+    },
+    "qualification": {
+      "tools/qa/run_s2_runtime_qualification.py": "11e2eea024fa5bfae7d7899d1ea05e20fb358b1e845a88167d0e95fbaa426d5a",
+      "tools/qa/s2_runtime_qualification_wsl.py": "d68d613f8f1c33b84696ffe726a67a5b8358769d57cfff1d15962bdc2f1d7c43"
+    }
+  },
+  "configured_identity_pending_actual_target_comparison": {
+    "run_id": "s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e",
+    "bootstrap_request_id": "ba3faaadb50447b79df509619b6ee010",
+    "nonce": "1fd3cb4e69e54bc6aa5e63458ae82818"
+  },
+  "historical_replay_scan": {
+    "scanned_files": 12,
+    "oversized_skipped_as_launcher": [],
+    "errors": [],
+    "matches": [],
+    "scope": "same fixed glob and identifier fields as launcher, configured triple only; future authorization request_id not yet allocated"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "request_id": "b379a207-ec32-4e13-9293-20e3d7ae4950",
+  "reply_id": "3d594849-7386-52cf-b18d-0bcfa7afd9f0",
+  "job_id": "0467ed1f-1e29-4e25-9599-46f54dfb37a1",
+  "user_turn_id": "5e2f01b1-733b-4c52-83ab-8928ce910316",
+  "stage": "collector",
+  "command": [
+    "/usr/bin/python3",
+    "tools/qa/collect_s2_runtime_config_inventory.py"
+  ],
+  "started_utc": "2026-10-30T11:35:12.836+02:00",
+  "finished_utc": "2026-10-30T11:35:15.813+02:00",
+  "exit_code": 0,
+  "stdout_bytes": 35349,
+  "stdout_sha256": "35f04776968b077cc75c9e53162d8d5039c0f44d97ead31c00b88a6e1e13f934",
+  "stdout_path": "docs\\sdlc\\evidence\\s2-runtime-qual-b379a207-s2-runtime-20261030-2b5e04a3-collector.stdout.bin",
+  "stderr_bytes": 0,
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_path": "docs\\sdlc\\evidence\\s2-runtime-qual-b379a207-s2-runtime-20261030-2b5e04a3-collector.stderr.bin",
+  "details": {
+    "stderr_bytes": 0,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_bytes": 35349,
+    "stdout_sha256": "35f04776968b077cc75c9e53162d8d5039c0f44d97ead31c00b88a6e1e13f934"
+  }
+}

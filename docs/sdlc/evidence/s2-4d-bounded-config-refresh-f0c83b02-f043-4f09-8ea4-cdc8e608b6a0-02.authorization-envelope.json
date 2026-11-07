@@ -1,0 +1,85 @@
+{
+  "schema": "VST_S2_4D_AUTHORIZATION_ENVELOPE_V1",
+  "created_utc": "2026-11-05T15:07:14.4213206Z",
+  "decision_id": "f0c83b02-f043-4f09-8ea4-cdc8e608b6a0",
+  "operation": "S2-4D_BOUNDED_CONFIG_REFRESH",
+  "executor": "Codex primary",
+  "authorization_transport": "PM_BRIDGE",
+  "authorization_request_id": "f0c83b02-f043-4f09-8ea4-cdc8e608b6a0",
+  "authorization_job_id": "b7552a11-428d-453b-81b5-b5eac2e44b4d",
+  "authorization_user_turn_id": "98fa26e3-7a1d-4036-b21c-df0acea5966b",
+  "authorization_reply_id": "e5367e39-20ac-5590-8e3e-73012c8d98d0",
+  "authorization_payload_sha256": "0074fdbb77a70bfecc866a79f432dc57856cea520bfafe5ade3c2b5ca0313119",
+  "authorization_conversation_id": "6aec7b11-909c-83ed-b8dc-9638d7c2ed8d",
+  "authorization_reply_updated_utc": "2026-11-05T14:59:34.4880000Z",
+  "source_head": "dc978a0e3f02c11220deea3ac3f014cb2f1718a1",
+  "upstream": "origin/s2-canonical-continuation",
+  "bundle_manifest_sha256": "4c13f2991f39cf12b84af4b0440621ab1adaa74ca1894dfda29eec1006cd7138",
+  "runtime_source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
+  "task_source_head": "67361bb4aa23355d9a6bc7877a987ba688559eda",
+  "installer": {
+    "run_id": "s2-runtime-20261105-cbd53635c3eb47bfbf7a7e594399cdd7",
+    "bootstrap_request_id": "f4adc20007b44d6b8a4580ef6a2d1ed4",
+    "supervisor_probe_nonce": "cd7f47554f384611a89328af6d1d87e0"
+  },
+  "one_shot": {
+    "keeper_sessions": 1,
+    "max_applier_invocations": 1,
+    "retry_cap": 0
+  },
+  "execution": {
+    "keeper_argv": [
+      "wsl.exe",
+      "--distribution",
+      "Ubuntu-24.04",
+      "--user",
+      "root",
+      "--exec",
+      "/usr/bin/python3.12",
+      "-I",
+      "-B",
+      "-S",
+      "-c",
+      "import json,re,sys; p=open(\"/proc/1/stat\",encoding=\"ascii\").read().strip(); b=open(\"/proc/sys/kernel/random/boot_id\",encoding=\"ascii\").read().strip(); c=open(\"/proc/1/comm\",encoding=\"ascii\").read().strip(); ready=(c==\"systemd\" and p.startswith(\"1 (systemd) \") and bool(re.fullmatch(r\"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\",b))); print(json.dumps({\"ready\":ready,\"boot_id\":b,\"pid1_stat\":p},separators=(\",\",\":\"))); sys.stdout.flush(); sys.stdin.buffer.read(1) if ready else sys.exit(2)"
+    ],
+    "collector_argv": [
+      "wsl.exe",
+      "--distribution",
+      "Ubuntu-24.04",
+      "--user",
+      "root",
+      "--exec",
+      "/usr/bin/python3.12",
+      "-I",
+      "-B",
+      "-S",
+      "/mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py"
+    ],
+    "applier_argv_template": [
+      "C:\\Python314\\python.exe",
+      "-I",
+      "-B",
+      "-S",
+      "tools/qa/apply_s2_runtime_configuration.py",
+      "--inventory",
+      "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-f0c83b02-f043-4f09-8ea4-cdc8e608b6a0-01.inventory.json",
+      "--inventory-sha256",
+      "<sha256-of-exact-inventory-bytes>",
+      "--approved-deployment-commit",
+      "dc978a0e3f02c11220deea3ac3f014cb2f1718a1",
+      "--distribution",
+      "Ubuntu-24.04"
+    ],
+    "inventory_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-f0c83b02-f043-4f09-8ea4-cdc8e608b6a0-01.inventory.json"
+  },
+  "supersedes": {
+    "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-f0c83b02-f043-4f09-8ea4-cdc8e608b6a0-01.authorization-envelope.json",
+    "sha256": "70e99f5fa7968a0e2199dd0591f93c7b924094bb8ac89aeb61a7a231ff7d1c46",
+    "reason": "Prelaunch-only envelope defect: readiness command exited before reading the keep-alive sentinel. No keeper invocation occurred; authorization remains unused."
+  },
+  "history": {
+    "prior_attempt_disposition": "AUTHORIZATION_ATTRIBUTION_UNKNOWN / READINESS_ONLY / NO_APPLIER",
+    "prior_grants_reusable": false,
+    "prior_source_bundle_inventory_usable_as_apply_input": false
+  }
+}

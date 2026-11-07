@@ -1,0 +1,38 @@
+{
+  "experiment_id": "s2-ro-hardening-audit-20261101-pm08-03",
+  "outer_process": {
+    "exit_code": 1,
+    "runtime_max_sec": 60,
+    "stderr_bytes": 103,
+    "stderr_prefix": "  File \"<stdin>\", line 13\nSyntaxError: from __future__ imports must occur at the beginning of the file\n",
+    "stderr_sha256": "f42acd43916edda57d9c5f116ac4509889294850c0fa9c82d9e91652ab00884b",
+    "stderr_truncated": false,
+    "stdout_bytes": 0,
+    "stdout_prefix": "",
+    "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_truncated": false,
+    "systemd_properties": [
+      "--property=PrivateDevices=yes",
+      "--property=ProtectSystem=strict",
+      "--property=ProtectKernelTunables=yes",
+      "--property=ProtectKernelModules=yes",
+      "--property=ProtectKernelLogs=yes",
+      "--property=ProtectControlGroups=yes",
+      "--property=NoNewPrivileges=yes",
+      "--property=RuntimeMaxSec=60s",
+      "--property=InaccessiblePaths=-/dev/hugepages -/dev/shm -/home -/mnt -/proc/acpi -/proc/bus -/proc/fs -/proc/irq -/proc/kallsyms -/proc/kcore -/proc/kmsg -/proc/latency_stats -/proc/mtrr -/proc/scsi -/proc/sys/fs/binfmt_misc -/root -/run/WSL -/run/credentials -/run/lock -/run/shm -/run/user -/sys/fs/bpf -/sys/fs/cgroup/system.slice/vst-s2-qual-33c5ab5a48529e1f.service/memory.pressure -/sys/fs/fuse/connections -/sys/fs/selinux -/sys/kernel/config -/sys/kernel/debug -/sys/kernel/tracing -/tmp/.X11-unix -/usr/lib/modules -/usr/lib/wsl"
+    ],
+    "timed_out": false,
+    "unit_name": "vst-s2-qual-33c5ab5a48529e1f.service",
+    "writer_error": null
+  },
+  "reason": "read-only experiment did not return bounded JSON evidence",
+  "schema": "VST_S2_RUNTIME_MOUNT_AUDIT_OUTER_V1",
+  "source_identity": {
+    "baseline_decoder_sha256": "31f345bc648524e9ba206115df14e01a806d627c2c13b2204cf45a9685b40799",
+    "baseline_revision": "788ea48fd48f8c4a78a3c7bed50d7b0776ef2b1d",
+    "helper_sha256": "e113e70a10986664fc66e560bfcb09df5f80a7ec7afaa71c432ae37710f2623b",
+    "launcher_sha256": "2c0637a030d639cc82e2c033715437856dba804b9d792956d42f591612844faf"
+  },
+  "terminal": "HOLD"
+}

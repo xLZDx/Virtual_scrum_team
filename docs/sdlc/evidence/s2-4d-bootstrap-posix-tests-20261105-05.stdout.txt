@@ -1,0 +1,21 @@
+mount=/tmp/s2-4d-bootstrap-d-ro-20261105 options=ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3
+repo=/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team
+head=2b86f091d07ae3b6525e1d088b61d062d9a4dbca
+a68eae5623a731cd214a64670c3ce50af0a0d5e1998ba8d48a445b54d74444fa  tests/vst/test_s2_runtime_bootstrap_transaction.py
+3df32048d5afc15fe55a13ac485201bd86940303629313e848a3e5b0af11d60b  tests/vst/test_s2_runtime_configuration_apply.py
+3b2f44d69660ac7f9dc47de6e7124f0a477d9d759e378b0d9d31e90110c86f1a  tools/qa/runtime_snapshot_transaction.py
+c66df10dc7909c6944c674f7a7d513c850665970c70a2f7c17ae20b2d28657d3  tools/qa/apply_s2_runtime_configuration.py
+be0629eed440fac782c57f6af71187a87e933f528b94dbabe391cd81618c05f4  tools/qa/collect_s2_runtime_config_inventory.py
+{"frozen_sha256": {"tests/vst/test_s2_runtime_bootstrap_transaction.py": "a68eae5623a731cd214a64670c3ce50af0a0d5e1998ba8d48a445b54d74444fa", "tests/vst/test_s2_runtime_configuration_apply.py": "3df32048d5afc15fe55a13ac485201bd86940303629313e848a3e5b0af11d60b", "tools/qa/apply_s2_runtime_configuration.py": "c66df10dc7909c6944c674f7a7d513c850665970c70a2f7c17ae20b2d28657d3", "tools/qa/collect_s2_runtime_config_inventory.py": "be0629eed440fac782c57f6af71187a87e933f528b94dbabe391cd81618c05f4", "tools/qa/runtime_snapshot_transaction.py": "3b2f44d69660ac7f9dc47de6e7124f0a477d9d759e378b0d9d31e90110c86f1a"}, "pytest_disable_plugin_autoload": "1", "pytest_file": "/usr/lib/python3/dist-packages/pytest/__init__.py", "pytest_version": "7.4.4", "python_version": "3.12.3 (main, Jul 15 2026, 23:46:41) [GCC 13.3.0]", "sys_path": ["/usr/lib/python312.zip", "/usr/lib/python3.12", "/usr/lib/python3.12/lib-dynload", "/usr/lib/python3/dist-packages", "/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team"], "uid": 0}
+......F..............F......F..F............                             [100%]
+=================================== FAILURES ===================================
+/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team/tests/vst/test_s2_runtime_bootstrap_transaction.py:130: AssertionError: assert [{'allow_cand...dger': False}] == [{'allow_miss...dger': False}]
+/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team/tests/vst/test_s2_runtime_bootstrap_transaction.py:486: assert 'import hashlib,os,sys' in 'exec("\\nimport hashlib, json, os, stat, sys\\nfd = os.open(\'/etc/vst-runner/fence.json\', os.O_RDONLY | os.O_NOFOLL...e prepared ledger\')\\nos.close(ledger_fd)\\nprint(json.dumps(record, sort_keys=True, separators=(\',\', \':\')))\\n")'
+/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team/tools/qa/runtime_snapshot_transaction.py:367: FileNotFoundError: [Errno 2] No such file or directory: '/var/lib/vst-runner/private/fence-ledger.json'
+/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team/tests/vst/test_s2_runtime_bootstrap_transaction.py:843: AssertionError: assert {'allow_candi...ledger': True} == {'allow_missing_ledger': True}
+=========================== short test summary info ============================
+FAILED tests/vst/test_s2_runtime_bootstrap_transaction.py::test_cold_proof_requires_exact_schema_and_a_fresh_full_recheck
+FAILED tests/vst/test_s2_runtime_bootstrap_transaction.py::test_pinned_bootstrap_invokes_only_the_pinned_primitive_and_validates_its_receipt
+FAILED tests/vst/test_s2_runtime_bootstrap_transaction.py::test_nonempty_partial_ledger_is_rejected_without_replacement_or_truncation
+FAILED tests/vst/test_s2_runtime_bootstrap_transaction.py::test_bootstrap_predecessor_emits_one_pinned_baseline_then_requires_ledger_match
+4 failed, 40 passed in 1.04s

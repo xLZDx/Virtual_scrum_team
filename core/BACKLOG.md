@@ -378,23 +378,30 @@ Windows/POSIX acceptance. Restricted process/crash/mutation/policy scenarios sta
 authorization. Owner: Codex for source/evidence coordination; GPT-PM for gate adjudication; operator
 for genuinely privileged provisioning or human attestation. Do not start S3.
 
-## Future backlog task SAAS-01 — multi-tenant hosted service (queued; not active)
+## Future backlog task SAAS-01 — Linux SaaS control plane for Windows-local agents (queued; not active)
 
-**Priority:** Preserve Windows-local execution as the first-class, independently usable product
-mode. Add a Linux-hosted SaaS deployment as a later product capability, after the currently planned
-S2–S5 work; this task does not change the active sprint or authorize hosted deployment.
+**Priority:** Windows-local execution and locally installed agents remain the first-class product
+path. Add a Linux-hosted SaaS control plane later, after the currently planned S2–S5 work; this task
+does not change the active sprint or authorize hosted deployment. Linux hosts coordinate tenants,
+requests, queue state, and result metadata; they do not replace or remotely execute the user's local
+analysis logic.
 
 **Acceptance criteria:**
 
 1. The Windows-local product remains usable without a SaaS account, network connection, or Linux
    service, and keeps the same analysis/result contract as the hosted mode.
-2. An authenticated SaaS API accepts a tenant-scoped request, records a correlation ID, queues the
-   job, and returns findings and terminal errors with source and run provenance.
-3. Requests, source artifacts, credentials, results, and logs are isolated by tenant; authorization
-   and cross-tenant isolation have falsifiable functional/E2E coverage.
-4. API and worker capacity can scale horizontally without a hard-coded product-level maximum
+2. An authenticated SaaS API accepts a tenant-scoped **metadata-only** request, records a correlation
+   ID, queues/routes it to that tenant's Windows-local agent, and returns structured finding/status
+   metadata and terminal errors with source and run provenance. Execution and analysis remain on the
+   user's Windows machine.
+3. Define and enforce an explicit transport allowlist: source contents, source artifacts, file
+   excerpts, prompts, credentials, secrets, and payload-bearing logs stay local; only approved job
+   metadata and structured finding/result metadata may cross the SaaS boundary. Tenant identity,
+   authorization, and cross-tenant isolation have falsifiable functional/E2E coverage.
+4. SaaS API and queue capacity can scale horizontally without a hard-coded product-level maximum
    account count. Define and measure supported concurrency/throughput targets, quotas, fair-use
-   limits, and back-pressure; do not claim physically unlimited capacity.
+   limits, and back-pressure; do not claim physically unlimited capacity or let quotas weaken
+   tenant isolation.
 5. Documented retention/deletion and per-tenant credential controls are enforced and tested before
    any customer data is accepted.
 

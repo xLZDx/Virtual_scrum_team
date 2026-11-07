@@ -1,0 +1,17 @@
+{
+  "previous_candidate_sha256": "0bd491d09eb4d869d1ca21e7a0c5b3c1bd504c52eceb75c1359d843b640dbe75",
+  "candidate_sha256": "d770349ccebb3fee6dd659a615db428c794ce1984729c20bca6cdbf088aa4cd7",
+  "canonical_tuple_sha256": "eed9b79bfd1a886cfebca67b9c6ab6d16e6fe3e0baa97983f879837b4d43f981",
+  "qualification_head": "df5f713b38cf0a385285f062c819cd06c0470f37",
+  "qualification_pins": {
+    "tools/qa/run_s2_runtime_qualification.py": "11e2eea024fa5bfae7d7899d1ea05e20fb358b1e845a88167d0e95fbaa426d5a",
+    "tools/qa/s2_runtime_qualification_wsl.py": "2c020ef8306c8e9856cf8c7dbf1c83a816d4114320b50b8d9a59bb4b6a7d6666"
+  },
+  "changed_fields": [
+    "identity.qualification_source_head",
+    "source_pins.qualification.tools/qa/s2_runtime_qualification_wsl.py"
+  ],
+  "configuration_map_unchanged": true,
+  "runtime_pins_unchanged": true,
+  "no_authorization_in_candidate": true
+}

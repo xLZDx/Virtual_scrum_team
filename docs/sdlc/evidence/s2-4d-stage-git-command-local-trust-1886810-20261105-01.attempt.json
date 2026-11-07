@@ -1,0 +1,23 @@
+{
+  "task": "S2-4D",
+  "deployed_head": "1886810e79b8fc1815f92708559a8798d7740dab",
+  "operation": "READONLY exact stage Git identity replay; -c safe.directory only for exact root-owned stage, no persisted configuration or mutation",
+  "argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/usr/bin/python3.12",
+    "-I",
+    "-B",
+    "-S",
+    "-c",
+    "import os,subprocess,json\nstage='/var/lib/vst-runner/.vst-task-source-stage-67361bb4aa23355d9a6bc7877a987ba688559eda-7d28dca04f0a4ae49c0eb0198a551e85'\ndef demote(): os.setgroups([]);os.setgid(988);os.setuid(997)\nenv={k:v for k,v in os.environ.items() if not k.startswith('GIT_')};env['GIT_CONFIG_NOSYSTEM']='1';env['GIT_CONFIG_GLOBAL']=os.devnull\nout=[]\nfor name,args in [('head',['rev-parse','--verify','HEAD']),('tree',['rev-parse','--verify','HEAD^{tree}']),('shallow',['rev-parse','--is-shallow-repository'])]:\n argv=['/usr/bin/git','-C',stage,'-c','safe.directory='+stage,'--no-replace-objects',*args]\n p=subprocess.run(argv,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=False,timeout=15,env=env,preexec_fn=demote)\n out.append({'name':name,'argv':argv,'returncode':p.returncode,'stdout':p.stdout.decode('utf-8','replace'),'stderr':p.stderr.decode('utf-8','replace')})\nprint(json.dumps({'stage':stage,'mode':'per-command exact safe.directory; no persistent config','commands':out},sort_keys=True,separators=(',',':')))\n"
+  ],
+  "exit_code": 0,
+  "stdout_sha256": "bc63c30ce96db655ff211c02fe8909b6e8f34d1b95dcaf416fe69465a029664b",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "captured_utc": "2026-11-05T04:27:15.765582+00:00"
+}

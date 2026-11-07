@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "python",
+    "-m",
+    "pytest",
+    "-q",
+    "--tb=line",
+    "tests/vst/test_s2_runtime_configuration_apply.py",
+    "tests/vst/test_s2_runtime_config_inventory.py",
+    "tests/vst/test_s2_runtime_bootstrap_transaction.py"
+  ],
+  "cwd": "D:\\Repo\\Virtual_scrum_team",
+  "returncode": 0,
+  "stderr_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bootstrap-guard-host-20261105-03.stderr.bin",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bootstrap-guard-host-20261105-03.stdout.bin",
+  "stdout_sha256": "ebb09d5f577caef086edbcebe1c1bb44364eb21fb5818636c97c2665d1e6a4db"
+}

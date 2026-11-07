@@ -1,0 +1,134 @@
+{
+  "artifact": "S2 focused functional tests",
+  "as_of": "2026-10-30",
+  "repository": "D:\\Repo\\Virtual_scrum_team",
+  "head_before_and_after": "aedf712c07eb0cc531852d18443faa497e19bb2d",
+  "environment": {
+    "os": "Windows",
+    "shell": "PowerShell",
+    "python": "Python 3.14.3",
+    "pytest": "repository-installed pytest (version not recorded)"
+  },
+  "working_tree": {
+    "clean": false,
+    "provenance_note": "Tests ran at HEAD plus uncommitted shared-worktree changes. Relevant pre-existing source/config changes included tools/vst/slice.py, tools/vst/preflight_capture.py, tools/qa/verify_s2_runtime_config_inventory.py, tools/qa/collect_s2_runtime_config_inventory.py, docs/sdlc/runtime-config/bundle-manifest.json, and docs/sdlc/runtime-config/installation-layout.json. Eight owned test files were modified; docs/sdlc/runtime-config/probe-request.json was deleted under prior explicit authorization. Other dirty files were present and untouched by this test owner.",
+    "test_owner_source_edits": [
+      "tests/vst/test_s2_dispatch_owner_service.py",
+      "tests/vst/test_s2_e8_synthetic_lifecycle.py",
+      "tests/vst/test_s2_preflight_capture.py",
+      "tests/vst/test_s2_preflight_host_capture.py",
+      "tests/vst/test_s2_runtime_config_bundle.py",
+      "tests/vst/test_s2_runtime_config_inventory.py",
+      "tests/vst/test_s2_sandbox_probe.py",
+      "tests/vst/test_s2_store_lifecycle.py"
+    ]
+  },
+  "restricted_coverage": {
+    "synthetic_lifecycle_ids_run": [
+      "test_report_explicitly_does_not_claim_real_e8_acceptance",
+      "test_restricted_process_stop_resume_and_mutation_scenarios_remain_unrun",
+      "test_report_marks_budget_overflow_as_rejected",
+      "test_bounded_synthetic_candidate_report_has_no_worker_remote",
+      "test_caller_probe_values_are_not_upgraded_to_environment_egress_evidence",
+      "test_store_is_closed_when_supervisor_setup_fails"
+    ],
+    "excluded_by_k": [
+      "test_real_sandbox_inventory_has_all_required_properties",
+      "test_e8_sandbox_bakeoff_scenarios_not_run",
+      "test_posix_read_only_reviewer_cannot_write_worktree_or_store_fixture"
+    ],
+    "process_kill_crash_mutation_or_real_e8_runtime_executed": false,
+    "e2e_executed": false
+  },
+  "attempts": [
+    {
+      "label": "first captured focused attempt before FakePath and fixture corrections",
+      "command": "C:\\Python314\\python.exe -m pytest -q -rs -p no:cacheprovider tests/vst/test_s2_dispatch_owner_service.py tests/vst/test_s2_preflight_capture.py tests/vst/test_s2_preflight_host_capture.py tests/vst/test_s2_runtime_config_bundle.py tests/vst/test_s2_runtime_config_inventory.py tests/vst/test_s2_sandbox_probe.py tests/vst/test_s2_store_lifecycle.py tests/vst/test_s2_e8_synthetic_lifecycle.py::test_report_explicitly_does_not_claim_real_e8_acceptance tests/vst/test_s2_e8_synthetic_lifecycle.py::test_restricted_process_stop_resume_and_mutation_scenarios_remain_unrun tests/vst/test_s2_e8_synthetic_lifecycle.py::test_report_marks_budget_overflow_as_rejected tests/vst/test_s2_e8_synthetic_lifecycle.py::test_bounded_synthetic_candidate_report_has_no_worker_remote tests/vst/test_s2_e8_synthetic_lifecycle.py::test_caller_probe_values_are_not_upgraded_to_environment_egress_evidence tests/vst/test_s2_e8_synthetic_lifecycle.py::test_store_is_closed_when_supervisor_setup_fails",
+      "output_log": "docs/sdlc/evidence/s2-focused-safe-rerun-2026-10-30.log",
+      "exit_code": 1,
+      "duration_seconds": 28.23,
+      "result": "41 failed, 92 passed, 68 skipped, 1 warning",
+      "primary_defects": [
+        "FakePath had no stable string representation, causing collector mock KeyError",
+        "test fixtures used obsolete helper_sha256 rather than runtime_capture_sha256 contract",
+        "payload count was incorrectly conflated with installed destination count; 33 payloads are valid while the independent destination set remains 25"
+      ]
+    },
+    {
+      "label": "intermediate rerun after adding FakePath string form but before fixing profile path key",
+      "command": "C:\\Python314\\python.exe -m pytest -q -rs -p no:cacheprovider -k 'not test_real_sandbox_inventory_has_all_required_properties and not test_e8_sandbox_bakeoff_scenarios_not_run and not test_posix_read_only_reviewer_cannot_write_worktree_or_store_fixture' tests/vst/test_s2_dispatch_owner_service.py tests/vst/test_s2_preflight_capture.py tests/vst/test_s2_preflight_host_capture.py tests/vst/test_s2_runtime_config_bundle.py tests/vst/test_s2_runtime_config_inventory.py tests/vst/test_s2_sandbox_probe.py tests/vst/test_s2_store_lifecycle.py tests/vst/test_s2_e8_synthetic_lifecycle.py::test_report_explicitly_does_not_claim_real_e8_acceptance tests/vst/test_s2_e8_synthetic_lifecycle.py::test_restricted_process_stop_resume_and_mutation_scenarios_remain_unrun tests/vst/test_s2_e8_synthetic_lifecycle.py::test_report_marks_budget_overflow_as_rejected tests/vst/test_s2_e8_synthetic_lifecycle.py::test_bounded_synthetic_candidate_report_has_no_worker_remote tests/vst/test_s2_e8_synthetic_lifecycle.py::test_caller_probe_values_are_not_upgraded_to_environment_egress_evidence tests/vst/test_s2_e8_synthetic_lifecycle.py::test_store_is_closed_when_supervisor_setup_fails",
+      "output_log": "docs/sdlc/evidence/s2-focused-safe-rerun-2026-10-30-final.log",
+      "exit_code": 1,
+      "duration_seconds": 27.73,
+      "result": "17 failed, 116 passed, 60 skipped, 8 deselected, 1 warning",
+      "root_cause": "Seven environment collector tests still failed because FakePath's string form used Windows path spelling for the Linux-style profile path; inventory candidate remains 33 instead of 25. Full output is retained in output_log."
+    },
+    {
+      "label": "focused rerun after test-only fixture/mock corrections",
+      "command": "C:\\Python314\\python.exe -m pytest -q -rs -p no:cacheprovider -k 'not test_real_sandbox_inventory_has_all_required_properties and not test_e8_sandbox_bakeoff_scenarios_not_run and not test_posix_read_only_reviewer_cannot_write_worktree_or_store_fixture' tests/vst/test_s2_dispatch_owner_service.py tests/vst/test_s2_preflight_capture.py tests/vst/test_s2_preflight_host_capture.py tests/vst/test_s2_runtime_config_bundle.py tests/vst/test_s2_runtime_config_inventory.py tests/vst/test_s2_sandbox_probe.py tests/vst/test_s2_store_lifecycle.py tests/vst/test_s2_e8_synthetic_lifecycle.py::test_report_explicitly_does_not_claim_real_e8_acceptance tests/vst/test_s2_e8_synthetic_lifecycle.py::test_restricted_process_stop_resume_and_mutation_scenarios_remain_unrun tests/vst/test_s2_e8_synthetic_lifecycle.py::test_report_marks_budget_overflow_as_rejected tests/vst/test_s2_e8_synthetic_lifecycle.py::test_bounded_synthetic_candidate_report_has_no_worker_remote tests/vst/test_s2_e8_synthetic_lifecycle.py::test_caller_probe_values_are_not_upgraded_to_environment_egress_evidence tests/vst/test_s2_e8_synthetic_lifecycle.py::test_store_is_closed_when_supervisor_setup_fails",
+      "output_log": "docs/sdlc/evidence/s2-focused-safe-rerun-2026-10-30-final2.log",
+      "exit_code": 1,
+      "duration_seconds": 22.94,
+      "result": "10 failed, 123 passed, 60 skipped, 8 deselected, 1 warning",
+      "warning": "pytest_asyncio: asyncio.get_event_loop_policy is deprecated and scheduled for removal in Python 3.16",
+      "failed_nodeids": [
+        "tests/vst/test_s2_runtime_config_bundle.py::test_bundle_manifest_covers_every_payload_with_exact_bytes_and_safe_scope",
+        "tests/vst/test_s2_runtime_config_inventory.py::test_candidate_config_identity_and_bundle_pins_match_exact_inputs",
+        "tests/vst/test_s2_runtime_config_inventory.py::test_complete_inventory_accepts_exact_read_only_nine_p_mount",
+        "tests/vst/test_s2_runtime_config_inventory.py::test_inventory_rejects_incomplete_or_noncanonical_runtime_selector[missing]",
+        "tests/vst/test_s2_runtime_config_inventory.py::test_inventory_rejects_incomplete_or_noncanonical_runtime_selector[wrong_kind]",
+        "tests/vst/test_s2_runtime_config_inventory.py::test_inventory_rejects_incomplete_or_noncanonical_runtime_selector[extra_key]",
+        "tests/vst/test_s2_runtime_config_inventory.py::test_inventory_requires_exact_26_baseline_fingerprints[missing]",
+        "tests/vst/test_s2_runtime_config_inventory.py::test_inventory_requires_exact_26_baseline_fingerprints[extra]",
+        "tests/vst/test_s2_runtime_config_inventory.py::test_inventory_requires_exact_26_baseline_fingerprints[tampered]",
+        "tests/vst/test_s2_runtime_config_inventory.py::test_apply_payload_preserves_validated_canonical_octal_mode"
+      ],
+      "failure_root_cause": "The bundle payload count assertion incorrectly expected 25 instead of matching all payload paths. Separately, the inventory fixture still supplied the predecessor's 26 file set instead of the candidate's 25 destinations, so later inventory assertions were rejected before their target conditions. Full tracebacks are in output_log."
+    },
+    {
+      "label": "rerun after correcting the payload-count assertion in the bundle coverage test",
+      "command": "C:\\Python314\\python.exe -m pytest -q -rs -p no:cacheprovider -k 'not test_real_sandbox_inventory_has_all_required_properties and not test_e8_sandbox_bakeoff_scenarios_not_run and not test_posix_read_only_reviewer_cannot_write_worktree_or_store_fixture' tests/vst/test_s2_dispatch_owner_service.py tests/vst/test_s2_preflight_capture.py tests/vst/test_s2_preflight_host_capture.py tests/vst/test_s2_runtime_config_bundle.py tests/vst/test_s2_runtime_config_inventory.py tests/vst/test_s2_sandbox_probe.py tests/vst/test_s2_store_lifecycle.py tests/vst/test_s2_e8_synthetic_lifecycle.py::test_report_explicitly_does_not_claim_real_e8_acceptance tests/vst/test_s2_e8_synthetic_lifecycle.py::test_restricted_process_stop_resume_and_mutation_scenarios_remain_unrun tests/vst/test_s2_e8_synthetic_lifecycle.py::test_report_marks_budget_overflow_as_rejected tests/vst/test_s2_e8_synthetic_lifecycle.py::test_bounded_synthetic_candidate_report_has_no_worker_remote tests/vst/test_s2_e8_synthetic_lifecycle.py::test_caller_probe_values_are_not_upgraded_to_environment_egress_evidence tests/vst/test_s2_e8_synthetic_lifecycle.py::test_store_is_closed_when_supervisor_setup_fails",
+      "output_log": "docs/sdlc/evidence/s2-focused-safe-rerun-2026-10-30-final3.log",
+      "exit_code": 1,
+      "duration_seconds": 21.59,
+      "result": "10 failed, 123 passed, 60 skipped, 8 deselected, 1 warning",
+      "failed_nodeids": [
+        "tests/vst/test_s2_runtime_config_bundle.py::test_bundle_manifest_covers_every_payload_with_exact_bytes_and_safe_scope",
+        "tests/vst/test_s2_runtime_config_inventory.py::test_candidate_config_identity_and_bundle_pins_match_exact_inputs",
+        "tests/vst/test_s2_runtime_config_inventory.py::test_complete_inventory_accepts_exact_read_only_nine_p_mount",
+        "tests/vst/test_s2_runtime_config_inventory.py::test_inventory_rejects_incomplete_or_noncanonical_runtime_selector[missing]",
+        "tests/vst/test_s2_runtime_config_inventory.py::test_inventory_rejects_incomplete_or_noncanonical_runtime_selector[wrong_kind]",
+        "tests/vst/test_s2_runtime_config_inventory.py::test_inventory_rejects_incomplete_or_noncanonical_runtime_selector[extra_key]",
+        "tests/vst/test_s2_runtime_config_inventory.py::test_inventory_requires_exact_26_baseline_fingerprints[missing]",
+        "tests/vst/test_s2_runtime_config_inventory.py::test_inventory_requires_exact_26_baseline_fingerprints[extra]",
+        "tests/vst/test_s2_runtime_config_inventory.py::test_inventory_requires_exact_26_baseline_fingerprints[tampered]",
+        "tests/vst/test_s2_runtime_config_inventory.py::test_apply_payload_preserves_validated_canonical_octal_mode"
+      ],
+      "failure_classification": {
+        "payload_count_oracle_defect": "test_candidate_config_identity_and_bundle_pins_match_exact_inputs still asserts payload member count equals 25; it repeats the same payload-vs-destination conflation but was not changed under the single-assertion scope.",
+        "bundle_scope_fixture_drift": "test_bundle_manifest... now passes payload coverage but fails later because the host-path override bytes differ from the test's pinned expected bytes at byte index 95.",
+        "inventory_fixture_cascade": "The complete inventory, three runtime-selector cases, three baseline-fingerprint cases, and apply-payload case all fail before their specific assertion because valid_inventory has a configuration_files set that does not equal the validator's exact 25 candidate destinations. These are fixture-shape cascade failures, not seven distinct validator defects."
+      },
+      "warning": "pytest_asyncio: asyncio.get_event_loop_policy is deprecated and scheduled for removal in Python 3.16"
+    },
+    {
+      "label": "focused safe rerun after aligning candidate inventory fixture and override expectations",
+      "command": "C:\\Python314\\python.exe -m pytest -q -rs -p no:cacheprovider -k 'not test_real_sandbox_inventory_has_all_required_properties and not test_e8_sandbox_bakeoff_scenarios_not_run and not test_posix_read_only_reviewer_cannot_write_worktree_or_store_fixture' tests/vst/test_s2_dispatch_owner_service.py tests/vst/test_s2_preflight_capture.py tests/vst/test_s2_preflight_host_capture.py tests/vst/test_s2_runtime_config_bundle.py tests/vst/test_s2_runtime_config_inventory.py tests/vst/test_s2_sandbox_probe.py tests/vst/test_s2_store_lifecycle.py tests/vst/test_s2_e8_synthetic_lifecycle.py::test_report_explicitly_does_not_claim_real_e8_acceptance tests/vst/test_s2_e8_synthetic_lifecycle.py::test_restricted_process_stop_resume_and_mutation_scenarios_remain_unrun tests/vst/test_s2_e8_synthetic_lifecycle.py::test_report_marks_budget_overflow_as_rejected tests/vst/test_s2_e8_synthetic_lifecycle.py::test_bounded_synthetic_candidate_report_has_no_worker_remote tests/vst/test_s2_e8_synthetic_lifecycle.py::test_caller_probe_values_are_not_upgraded_to_environment_egress_evidence tests/vst/test_s2_e8_synthetic_lifecycle.py::test_store_is_closed_when_supervisor_setup_fails",
+      "output_log": "docs/sdlc/evidence/s2-focused-safe-rerun-2026-10-30-final4.txt",
+      "exit_code": 0,
+      "duration_seconds": 25.18,
+      "result": "133 passed, 60 skipped, 8 deselected, 1 warning",
+      "warnings": [
+        "pytest_asyncio: asyncio.get_event_loop_policy is deprecated and scheduled for removal in Python 3.16"
+      ],
+      "test_only_changes": [
+        "Candidate inventory fixture now uses exactly the 25 destinations derived from the 17 installation entries, 5 unit overrides, and 3 absent-only unit entries; predecessor fingerprint evidence remains 26.",
+        "Payload member count no longer assumes 25; manifest payload path identity remains checked.",
+        "Host-path override expected bytes are checked separately per file; runner ProtectHome=no is asserted only for runner, with both host masks and TemporaryFileSystem directives preserved."
+      ],
+      "prohibited_runtime_selectors": "Real sandbox inventory, real E8 bakeoff, and POSIX write-attempt selector were excluded by -k. Synthetic lifecycle report/unit tests only were selected. No E2E, process-kill, crash, mutation, or runtime selector was run."
+    }
+  ],
+  "platform_skips": "Windows lacks designated root-owned POSIX/systemd environment, Unix activation sockets, and provisioned sandbox. Exact skip reasons and counts are in the complete rerun log.",
+  "initial_uncaptured_attempt_note": "An earlier unredirected full-module attempt returned 41 failed, 87 passed, 68 skipped, 5 errors, exit 1. The tool response was truncated, so its full stdout/stderr cannot be reconstructed; it is not represented as a complete log. Three subsequent complete captured attempts are listed above."
+}

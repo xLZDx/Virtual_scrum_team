@@ -1,0 +1,16 @@
+Command:
+wsl.exe -d Ubuntu-24.04 -- /usr/bin/python3.12 -I -B -S -c <Python source below>
+
+Python source:
+import sys, os, stat, hashlib, json
+sys.path.append('/usr/lib/python3/dist-packages')
+import pytest, _pytest
+paths=[sys.executable, pytest.__file__, _pytest.__file__]
+modules=[]
+for p in paths:
+ s=os.stat(p)
+ modules.append({'path':p,'uid':s.st_uid,'gid':s.st_gid,'mode':oct(stat.S_IMODE(s.st_mode)),'sha256':hashlib.sha256(open(p,'rb').read()).hexdigest()})
+print(json.dumps({'python_version':sys.version,'pytest_version':pytest.__version__,'sys_executable':sys.executable,'sys_path':sys.path,'modules':modules},sort_keys=True))
+
+Additional sys.path entry: /usr/lib/python3/dist-packages (appended in process)
+Flags: -I -B -S; no install/network/services/bootstrap calls.

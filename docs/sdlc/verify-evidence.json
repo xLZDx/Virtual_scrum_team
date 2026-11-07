@@ -1,4 +1,6 @@
 {
+  "record_status": "HISTORICAL_ONLY",
+  "retirement_decision": "Operator removed the WSL inventory/configuration-apply/qualification QA harness from active project scope on 2026-11-06; runs below remain historical evidence and are not active acceptance requirements.",
   "tested_head": "adda2692451217e7de469d3102ac7cd3b4b35cee",
   "runs": [
     {

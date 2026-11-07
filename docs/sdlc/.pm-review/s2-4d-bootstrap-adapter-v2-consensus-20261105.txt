@@ -1,0 +1,46 @@
+SPRINT: S2. TASK: S2-4D (current and only active task).
+Final concrete SOURCE/contract review request; no whole-sprint acceptance or runtime TestRun authority claimed.
+Baseline HEAD/upstream: 2b86f091d07ae3b6525e1d088b61d062d9a4dbca (accepted named-systemd parser); prior 908463f Windows stdin transport accepted. Do not reopen accepted manifest/runtime-vs-task identity contracts: runtime ee69f9fbf074a4c73d2d5d1da81c627a57d06071; task67361bb4aa23355d9a6bc7877a987ba688559eda.
+Residual task criterion: actual applier refuses currently inactive protected units because it unconditionally requires current InvocationID/ControlGroup and STOPPED_EMPTY. Actual readonly target has absent ledger/generation/Store, zero reserved UID processes, no protected jobs/cgroups, exact reviewed a600774 predecessor root. This does not establish never-ever-started history.
+Concrete five-file candidate adds a distinct authentic cold predecessor adapter using pinned immutable EE runner_fence.bootstrap_empty, typed RUNNER_BOOTSTRAP_EMPTY journal receipt, fresh quiescence/marker/owned masks/startguards checks, strict exact source/config/root identities, real one-record BOOTSTRAP_EMPTY+matching generation, atomic existing-root snapshot exchange and recovery. Existing active/hot STOPPED_EMPTY path remains strict. No invented systemd invocation or forged receipt. Config applier integration handles both normal and recovery flows; collector pins exact new applier source; focused tests cover branch wiring and helper.
+Reliability discovery: pinned primitive fsyncs new ledger file but not its parent before publishing generation elsewhere. MAJOR remediated by precreating exact root0:0 regular0600 nlink1 zero ledger under existing lifecycle lock, validating inode, fsyncing file AND parent before calling primitive. Empty ledger is explicit non-authoritative state. Generation repair accepts only exact one authentic record. Candidate exchange/recovery require durable receipt and matching generation. Nonempty/torn ledger is never truncated/reset; partial-tail crash remains fail-closed under marker/guards. No real powercut tested.
+Internal reviews: inherited handoff records prior full adapter code/security no-material-findings at helper1099 (not newly executed here). Actual independent current-turn reliability-reviewer /root/s2_4d_bootstrap_recovery_review verified helper3b exact SHA, resolved original MAJOR with no direct safety regression. Actual independent current-turn code-reviewer /root/s2_4d_durability_narrow_code verified helper3b and found no material direct regression. Both configured role model gpt-6-luna; invocation effort omitted/inherited (not independently resolved; no invented effort claim). Both read-only, neither ran tests. Bounded lock release before invoking primitive avoids nested flock deadlock; competing bootstrap fails closed; authentic old-live recovery remains available. Internal current findings consensus: original MAJOR resolved; no open B/M.
+Test roles: functional-test-reviewer /root/s2_4d_bootstrap_contract_tests authored tests; e2e-runner /root/s2_4d_bootstrap_posix_verification_v2 executed native suite. Functional host suite: python -m pytest -q --tb=line tests/vst/test_s2_runtime_configuration_apply.py tests/vst/test_s2_runtime_config_inventory.py tests/vst/test_s2_runtime_bootstrap_transaction.py; evidence host-tests-20261105-05:109passed,1POSIXmodule skipped,1pytest_asyncio warning,exit0. Host executed applier/collector source hashes unchanged since that run; helper1099 ->3b durability changes are POSIX-only and verified below. Do not call host skips PASS.
+Native final exact helper3b/testsea5526 run: WSL Ubuntu24.04 /usr/bin/python3.12 -I -B -S, Python3.12.3/systempytest7.4.4, only systemdist-packages+ro repo added, PYTEST_DISABLE_PLUGIN_AUTOLOAD=1, no cache. pytest.main(['-q','--tb=line','-p','no:cacheprovider','tests/vst/test_s2_runtime_bootstrap_transaction.py']). 44passed in0.63s,exit0,stderr empty. Real tmp filesystem fsync ordering/failure, inode races, renameat2 exchange and predecessor config restore; protected service/Git proof and bootstrap callback mocked. Four prior -05 failures were stale expectations/fixture missing stat path redirect and are corrected; product3b unchanged. Original failed evidence retained, final -06 exact output attached. No duplicate109host run needed for changed POSIX module.
+Actual readonly target observer on exact helper3b: observe_bootstrap_predecessor(allow_missing_ledger=True), exit0 at2026-11-05T04:14:05Z; no ensure/bootstrap/exchange call. No service activation/config publication/Store open/TestRun occurred. Full captured evidence attached.
+Overall S2-4D remains OPEN after source approval: next approved-source commit+normalpush (applier requires pushed canonicalHEAD), fresh held-lifetime config apply under operator delegated sandbox-setup GO, then actual separately correlated one-shot report-bound runtime qualification. Required selector still NOT_RUN. Source approval does not substitute runtime proof or production authority.
+Please perform one complete adversarial sweep of this exact bounded candidate and direct integrations using supplied actual functional/E2E and internal review evidence. Report complete concrete B/M/minor list; do not demand duplicate execution merely because you did not personally run tests. If no issue, explicitly APPROVE exact five candidate source/test SHA256 values for commit+normalpush, preserving runtime NOT_RUN and overallS2D OPEN. No documentation wording gate. Do not redact non-secret source expressions; identify any retrieval ambiguity instead of silently changing source.
+
+Exact immutable input identity:
+{
+  "baseline": "2b86f091d07ae3b6525e1d088b61d062d9a4dbca",
+  "files": [
+    {
+      "path": "tools/qa/runtime_snapshot_transaction.py",
+      "sha256": "3b2f44d69660ac7f9dc47de6e7124f0a477d9d759e378b0d9d31e90110c86f1a",
+      "bytes": 126101
+    },
+    {
+      "path": "tools/qa/apply_s2_runtime_configuration.py",
+      "sha256": "c66df10dc7909c6944c674f7a7d513c850665970c70a2f7c17ae20b2d28657d3",
+      "bytes": 96152
+    },
+    {
+      "path": "tools/qa/collect_s2_runtime_config_inventory.py",
+      "sha256": "be0629eed440fac782c57f6af71187a87e933f528b94dbabe391cd81618c05f4",
+      "bytes": 21643
+    },
+    {
+      "path": "tests/vst/test_s2_runtime_configuration_apply.py",
+      "sha256": "3df32048d5afc15fe55a13ac485201bd86940303629313e848a3e5b0af11d60b",
+      "bytes": 30464
+    },
+    {
+      "path": "tests/vst/test_s2_runtime_bootstrap_transaction.py",
+      "sha256": "ea5526399a209c253bf4f21210348f103a6a8054670426b22090a1c9a1c473b6",
+      "bytes": 59216
+    }
+  ],
+  "diff_sha256": "d04a8caa9120d844bcd8163a6797e26aa515a0b27173fc0d57a0e94eed4adafb",
+  "diff_bytes": 120207
+}

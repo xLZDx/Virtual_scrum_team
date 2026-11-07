@@ -1,0 +1,181 @@
+diff --git a/tests/vst/test_s2_runtime_configuration_apply.py b/tests/vst/test_s2_runtime_configuration_apply.py
+index c60ebc1..efe0845 100644
+--- a/tests/vst/test_s2_runtime_configuration_apply.py
++++ b/tests/vst/test_s2_runtime_configuration_apply.py
+@@ -453,3 +453,113 @@ def test_main_wsl_call_uses_short_loader_and_framed_remote_source(
+     assert kwargs["input"] == APPLY._remote_stdin(expected_source, expected_payload)
+     assert kwargs["input"][8:8 + len(expected_source.encode("utf-8"))] == expected_source.encode("utf-8")
+     assert kwargs["input"][8 + len(expected_source.encode("utf-8")):] == expected_payload
++
++
++def _run_embedded_unit_admission(output, *, unit="vst-supervisor.service",
++                                 protected_units=("vst-supervisor.service",)):
++    import ast
++    from types import SimpleNamespace
++
++    tree = ast.parse(APPLY._REMOTE)
++    parser = next(node for node in tree.body
++                  if isinstance(node, ast.FunctionDef) and node.name == "parse_unit_identity")
++    admission = next(node for node in tree.body
++                     if isinstance(node, ast.For) and isinstance(node.target, ast.Name)
++                     and node.target.id == "unit")
++    calls = []
++
++    class Completed:
++        returncode = 0
++        stderr = ""
++
++        def __init__(self, stdout):
++            self.stdout = stdout
++
++    def fake_run(argv, **_kwargs):
++        calls.append(argv)
++        if "--property=LoadState" in argv:
++            return Completed("loaded\n")
++        if "--property=ActiveState,SubState,InvocationID,ControlGroup,UnitFileState" in argv:
++            return Completed(output)
++        raise AssertionError(f"unexpected systemd command: {argv!r}")
++
++    namespace = {
++        "subprocess": SimpleNamespace(run=fake_run, DEVNULL=object(), PIPE=object()),
++        "units": (unit,),
++        "protected_units": protected_units,
++        "unit_before": {},
++    }
++    exec(compile(ast.Module(body=[parser, admission], type_ignores=[]),
++                 "<embedded-unit-admission>", "exec"), namespace)
++    return namespace["unit_before"], calls
++
++
++def _named_unit_output(*, active="inactive", sub="dead", invocation="",
++                       control_group="", file_state="disabled", order=None):
++    values = {
++        "ActiveState": active,
++        "SubState": sub,
++        "InvocationID": invocation,
++        "ControlGroup": control_group,
++        "UnitFileState": file_state,
++    }
++    keys = order or ["ControlGroup", "ActiveState", "SubState", "UnitFileState", "InvocationID"]
++    return "".join(f"{key}={values[key]}\n" for key in keys)
++
++
++def test_embedded_unit_admission_reads_named_reordered_empty_systemd_properties():
++    before, calls = _run_embedded_unit_admission(_named_unit_output())
++
++    assert before["vst-supervisor.service"] == {
++        "active": False,
++        "substate": "dead",
++        "invocation_id": "",
++        "control_group": "",
++        "unit_file_state": "disabled",
++    }
++    property_call = calls[1]
++    assert property_call == [
++        "/usr/bin/systemctl", "show",
++        "--property=ActiveState,SubState,InvocationID,ControlGroup,UnitFileState",
++        "vst-supervisor.service",
++    ]
++    assert "--value" not in property_call
++
++
++@pytest.mark.parametrize("bad_output", [
++    "ActiveState=inactive\nSubState=dead\nInvocationID=\nControlGroup=\n",
++    "ActiveState=inactive\nActiveState=inactive\nSubState=dead\nInvocationID=\nControlGroup=\nUnitFileState=disabled\n",
++    "ActiveState=inactive\nSubState=dead\nInvocationID=\nControlGroup=\nUnitFileState=disabled\nUnexpected=x\n",
++    "ActiveState=inactive\nSubState=dead\nInvocationID=\nControlGroup=\nUnitFileState\n",
++], ids=["missing", "duplicate", "unknown", "malformed"])
++def test_embedded_unit_admission_rejects_ambiguous_properties_before_target_actions(bad_output):
++    with pytest.raises(SystemExit, match="unit activation properties"):
++        _run_embedded_unit_admission(bad_output)
++
++
++@pytest.mark.parametrize("active", ["active", "inactive"])
++def test_embedded_unit_admission_preserves_allowed_protected_active_states(active):
++    before, _calls = _run_embedded_unit_admission(
++        _named_unit_output(active=active, sub="running" if active == "active" else "dead",
++                           invocation="1" * 32 if active == "active" else ""))
++
++    assert before["vst-supervisor.service"]["active"] is (active == "active")
++
++
++@pytest.mark.parametrize("active, file_state, message", [
++    ("failed", "disabled", "transitioning or failed"),
++    ("activating", "disabled", "transitioning or failed"),
++    ("inactive", "masked", "unowned mask"),
++    ("inactive", "masked-runtime", "unowned mask"),
++])
++def test_embedded_unit_admission_keeps_failed_transition_and_mask_guards(
++        active, file_state, message):
++    with pytest.raises(SystemExit, match=message):
++        _run_embedded_unit_admission(
++            _named_unit_output(active=active, file_state=file_state))
++
++
++def test_embedded_unit_admission_rejects_active_unrelated_service():
++    with pytest.raises(SystemExit, match="unrelated S2 service is active"):
++        _run_embedded_unit_admission(
++            _named_unit_output(active="active", invocation="2" * 32), protected_units=())
+diff --git a/tools/qa/apply_s2_runtime_configuration.py b/tools/qa/apply_s2_runtime_configuration.py
+index d028de6..3dc8c74 100644
+--- a/tools/qa/apply_s2_runtime_configuration.py
++++ b/tools/qa/apply_s2_runtime_configuration.py
+@@ -628,6 +628,21 @@ units = ("vst-supervisor.service", "vst-signer.service", "vst-runner.service",
+          "vst-dispatcher.service", "vst-dispatch-owner.service", "vst-dispatch-owner.socket",
+          "vst-assignment-bootstrap.service", "vst-dispatch-issuer.service", "vst-sandbox-probe.service")
+ protected_units = ("vst-runner.service", "vst-dispatcher.service")
++
++
++def parse_unit_identity(output):
++    expected = {"ActiveState", "SubState", "InvocationID", "ControlGroup", "UnitFileState"}
++    values = {}
++    for line in output.splitlines():
++        key, separator, value = line.partition("=")
++        if not separator or key not in expected or key in values:
++            raise ValueError("unit activation properties are ambiguous")
++        values[key] = value
++    if set(values) != expected:
++        raise ValueError("unit activation properties are incomplete")
++    return values
++
++
+ unit_before = {}
+ for unit in units:
+     loaded = subprocess.run(["/usr/bin/systemctl", "show", "--property=LoadState", "--value", unit],
+@@ -640,15 +655,18 @@ for unit in units:
+     if loaded.stdout.strip() == "not-found":
+         continue
+     properties = subprocess.run(
+-        ["/usr/bin/systemctl", "show", "--property=ActiveState,SubState,InvocationID,ControlGroup,UnitFileState", "--value", unit],
++        ["/usr/bin/systemctl", "show", "--property=ActiveState,SubState,InvocationID,ControlGroup,UnitFileState", unit],
+         stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+         text=True, check=False, timeout=10)
+     if properties.returncode != 0:
+         raise SystemExit("cannot establish unit activation identity: " + unit)
+-    values = properties.stdout.splitlines()
+-    if len(values) != 5:
+-        raise SystemExit("unit activation properties are incomplete: " + unit)
+-    active_state, substate, invocation_id, control_group, unit_file_state = values
++    try:
++        values = parse_unit_identity(properties.stdout)
++    except ValueError as exc:
++        raise SystemExit(str(exc) + ": " + unit) from exc
++    active_state, substate = values["ActiveState"], values["SubState"]
++    invocation_id, control_group = values["InvocationID"], values["ControlGroup"]
++    unit_file_state = values["UnitFileState"]
+     if active_state not in ("active", "inactive"):
+         raise SystemExit("unit is transitioning or failed; refusing configuration apply: " + unit)
+     if unit_file_state in ("masked", "masked-runtime"):
+diff --git a/tools/qa/collect_s2_runtime_config_inventory.py b/tools/qa/collect_s2_runtime_config_inventory.py
+index 83c0257..dbb3243 100644
+--- a/tools/qa/collect_s2_runtime_config_inventory.py
++++ b/tools/qa/collect_s2_runtime_config_inventory.py
+@@ -7,7 +7,7 @@ REQUEST_ID = "ba3faaadb50447b79df509619b6ee010"
+ NONCE = "1fd3cb4e69e54bc6aa5e63458ae82818"
+ RUNTIME = "/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
+ CAPTURE_SHA = "befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119"
+-APPLIER_SHA = "fb5450576ddd74a6987b576b2e3c6d2166fffe1444b9d578914b6414fe802e3b"
++APPLIER_SHA = "24e53a80dc4a728384407fe52d4121854e9c08b1cc2154bc0456aa49fd8465bf"
+ VALIDATOR_SHA = "6f946bd8634299a8576a64be14e9410893036a5ed7564f2b3e7eb9171cd6f3af"
+ CONTRACTS_SHA = "bf01d990a94cd71887f8d9f81019333f3bf43d5950a655de3646e9bb3d585ea4"
+ BUNDLE_SHA = "8f487494a1a6bc08c0ce567075a32945ca0c1a22c5ec03e7213ac3e2f4466741"

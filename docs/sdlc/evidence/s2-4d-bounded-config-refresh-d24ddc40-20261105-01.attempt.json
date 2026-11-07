@@ -1,0 +1,135 @@
+{
+  "applier_invocations": 0,
+  "authorization": {
+    "abort_on_mismatch": true,
+    "bootstrap_request_id": "f4adc20007b44d6b8a4580ef6a2d1ed4",
+    "bundle_manifest_sha256": "4c13f2991f39cf12b84af4b0440621ab1adaa74ca1894dfda29eec1006cd7138",
+    "decision": "AUTHORIZE_BOUNDED_CONFIG_REFRESH",
+    "decision_id": "d24ddc40-2be9-40ef-bc83-60d7d8a87d2c",
+    "fresh_inventory_required": true,
+    "key_generation_authorized": false,
+    "max_applier_attempts": 1,
+    "max_inventory_age_at_apply_seconds": 300,
+    "operation": "S2-4D_BOUNDED_CONFIG_REFRESH",
+    "probe_nonce": "cd7f47554f384611a89328af6d1d87e0",
+    "production_authorized": false,
+    "retry_cap": 0,
+    "run_id": "s2-runtime-20261105-cbd53635c3eb47bfbf7a7e594399cdd7",
+    "runtime_selector_authorized": false,
+    "same_keeper_session_required": true,
+    "service_activation_authorized": false,
+    "source_head": "dc978a0e3f02c11220deea3ac3f014cb2f1718a1",
+    "store_deletion_authorized": false,
+    "test_run_authorized": false
+  },
+  "authorization_consumed": false,
+  "error": "RuntimeError: repo mount is not the expected read-only D: mount",
+  "finished_utc": "2026-11-05T12:59:20.925218+00:00",
+  "head": "dc978a0e3f02c11220deea3ac3f014cb2f1718a1",
+  "inventory": {
+    "argv": [
+      "wsl.exe",
+      "--distribution",
+      "Ubuntu-24.04",
+      "--user",
+      "root",
+      "--exec",
+      "/bin/sh",
+      "-c",
+      "if /usr/bin/mountpoint -q /mnt/d; then :; else rc=$?; [ \"$rc\" -eq 32 ] || exit \"$rc\"; /usr/bin/mount -t drvfs D: /mnt/d -o ro || exit $?; fi; exec /usr/bin/python3.12 -I -B -S /mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py"
+    ],
+    "exit_code": 0,
+    "finished_utc": "2026-11-05T12:59:20.913325+00:00",
+    "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-d24ddc40-20261105-01.inventory.json",
+    "sha256": "e1bf375cfcb913578de24c578ac0248855b2699e3bd3eaf6fe2d244dcf3b80cc",
+    "started_utc": "2026-11-05T12:59:17.860298+00:00",
+    "stderr_bytes": 0,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_bytes": 36340
+  },
+  "keeper": {
+    "argv": [
+      "wsl.exe",
+      "--distribution",
+      "Ubuntu-24.04",
+      "--user",
+      "root",
+      "--exec",
+      "/usr/bin/python3.12",
+      "-I",
+      "-B",
+      "-S",
+      "-c",
+      "import sys,pathlib,json; print(json.dumps({'ready':True,'pid1_stat':pathlib.Path('/proc/1/stat').read_text(),'boot_id':pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip()}),flush=True); sys.stdin.buffer.read(1)"
+    ],
+    "boot_id": "84c624a7-bc08-45a7-b60e-2ca715578597",
+    "exit_code": 0,
+    "finished_utc": "2026-11-05T12:59:20.986189+00:00",
+    "pid": 28376,
+    "pid1_stat_sha256": "d597de1f0f1b7d249ada9f9f69938405692fc2cd9c9bd4f8f7c64c6d2b17fa33",
+    "ready": true,
+    "ready_utc": "2026-11-05T12:59:17.852571+00:00",
+    "started_utc": "2026-11-05T12:59:11.673015+00:00"
+  },
+  "limits": [
+    "no tests/pytest/CI/lint/typecheck/verify",
+    "no runtime selector/TestRun",
+    "no service activation/key generation/Store deletion",
+    "no retry",
+    "no code/docs/report edits"
+  ],
+  "local_inputs": {
+    "bootstrap_request_id": "f4adc20007b44d6b8a4580ef6a2d1ed4",
+    "bundle_state": "PREPARED_NOT_INSTALLED",
+    "probe_nonce": "cd7f47554f384611a89328af6d1d87e0",
+    "run_id": "s2-runtime-20261105-cbd53635c3eb47bfbf7a7e594399cdd7",
+    "runtime_source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
+    "sha256": {
+      "docs/sdlc/runtime-config/bootstrap-request.json": "be1802a65d4705c5d01e578742133fd8c46f84fb9321374d55484920ba2e377a",
+      "docs/sdlc/runtime-config/bundle-manifest.json": "4c13f2991f39cf12b84af4b0440621ab1adaa74ca1894dfda29eec1006cd7138",
+      "docs/sdlc/runtime-config/deployment-source-manifest.json": "e8929c51d7e4bd2de95a9b9cc7cf58e00871e5f778b170e70ccee9f77962900a",
+      "docs/sdlc/runtime-config/run-binding.json": "b80b506af43eeec8814dcf58ab72c0b5089a197b228cf3700a186e52549e75f9",
+      "docs/sdlc/runtime-config/supervisor-service.json": "484362e883b69e307d7a20f0b189a49604266bc8dfa9fc22c4092748912ab772",
+      "tools/qa/apply_s2_runtime_configuration.py": "5c02647b103462502be5385eb0381acec5e989b32c787979d0841037cdb4e35c",
+      "tools/qa/collect_s2_runtime_config_inventory.py": "429d5cfd7c4fde3bfbe34da3d625a2f92474873fbc096bdbf599aeb5b8d45bcf",
+      "tools/qa/verify_s2_runtime_config_inventory.py": "c334c6cdcf2677c8f3d87f52c74951d61717e64f7dbe0f77cc0541cc32f5d135"
+    },
+    "task_source_head": "67361bb4aa23355d9a6bc7877a987ba688559eda"
+  },
+  "payload_dry": "NOT_RUN",
+  "post_apply_verification": "NOT_RUN",
+  "preflight_stop": {
+    "action": "stopped before payload build and before any applier invocation",
+    "finished_utc": "2026-11-05T12:59:20.925218+00:00",
+    "message": "RuntimeError: repo mount is not the expected read-only D: mount",
+    "target_evidence": {
+      "filesystem_options": "9p ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3",
+      "mount_source": "D:",
+      "read_only_confirmed_by_token": "ro in comma-separated mount options"
+    },
+    "type": "local evidence-wrapper mount option tokenization error"
+  },
+  "repo": "D:\\Repo\\Virtual_scrum_team",
+  "result": "PREFLIGHT_STOPPED_NO_APPLIER",
+  "schema": "VST_S2_4D_BOUNDED_CONFIG_REFRESH_ATTEMPT_V1",
+  "stages": [
+    {
+      "finished_utc": "2026-11-05T12:59:11.669303+00:00",
+      "result": "PASS",
+      "stage": "local exact-head/bundle identity check"
+    },
+    {
+      "finished_utc": "2026-11-05T12:59:17.856081+00:00",
+      "result": "PASS",
+      "stage": "same keeper ready"
+    },
+    {
+      "finished_utc": "2026-11-05T12:59:20.919351+00:00",
+      "result": "PASS",
+      "stage": "same-keeper fresh read-only inventory"
+    }
+  ],
+  "started_utc": "2026-11-05T12:59:10.002318+00:00",
+  "task": "S2-4D \u2014 Reconcile report-bound manifest and TestRun scope",
+  "upstream": "dc978a0e3f02c11220deea3ac3f014cb2f1718a1"
+}

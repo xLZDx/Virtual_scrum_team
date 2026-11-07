@@ -1,0 +1,356 @@
+FFFFFFFFF                                                                [100%]
+=================================== FAILURES ===================================
+_ test_supervisor_fresh_start_consumes_direct_observation_before_api_is_returned _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cb8d6bfc980>
+
+    @pytest.mark.skipif(capture.os.name == "nt", reason="Supervisor service contract requires POSIX path semantics")
+    def test_supervisor_fresh_start_consumes_direct_observation_before_api_is_returned(monkeypatch):
+>       harness = _supervisor_loader_harness(monkeypatch, store_mode="fresh")
+
+tests/vst/test_s2_preflight_capture.py:483: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cb8d6bfc980>
+
+    def _supervisor_loader_harness(monkeypatch, *, store_mode, source_drift=False,
+                                   observation_override=None):
+        import posixpath as path_module
+WSL_EXIT_CODE=1
+        from tools.vst import store as store_module
+        from tools.vst import supervisor as supervisor_module
+        from tools.vst import supervisor_service as service
+    
+        config = json.loads((
+>           capture.Path(__file__).resolve().parents[2]
+            / "docs" / "sdlc" / "runtime-config" / "supervisor-service.json"
+        ).read_text(encoding="utf-8"))
+E       AttributeError: module 'tools.vst.preflight_capture' has no attribute 'Path'
+
+tests/vst/test_s2_preflight_capture.py:372: AttributeError
+_ test_supervisor_restart_revalidates_environment_without_replaying_one_start_claim _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cb8d6c837d0>
+
+    @pytest.mark.skipif(capture.os.name == "nt", reason="Supervisor service contract requires POSIX path semantics")
+    def test_supervisor_restart_revalidates_environment_without_replaying_one_start_claim(monkeypatch):
+>       harness = _supervisor_loader_harness(monkeypatch, store_mode="recovery")
+
+tests/vst/test_s2_preflight_capture.py:509: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cb8d6c837d0>
+
+    def _supervisor_loader_harness(monkeypatch, *, store_mode, source_drift=False,
+                                   observation_override=None):
+        import posixpath as path_module
+        from tools.vst import store as store_module
+        from tools.vst import supervisor as supervisor_module
+        from tools.vst import supervisor_service as service
+    
+        config = json.loads((
+>           capture.Path(__file__).resolve().parents[2]
+            / "docs" / "sdlc" / "runtime-config" / "supervisor-service.json"
+        ).read_text(encoding="utf-8"))
+E       AttributeError: module 'tools.vst.preflight_capture' has no attribute 'Path'
+
+tests/vst/test_s2_preflight_capture.py:372: AttributeError
+_ test_supervisor_restart_refuses_source_or_config_hash_drift_before_store_open _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cb8d6c82510>
+
+    @pytest.mark.skipif(capture.os.name == "nt", reason="Supervisor service contract requires POSIX path semantics")
+    def test_supervisor_restart_refuses_source_or_config_hash_drift_before_store_open(monkeypatch):
+>       harness = _supervisor_loader_harness(monkeypatch, store_mode="recovery", source_drift=True)
+
+tests/vst/test_s2_preflight_capture.py:540: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cb8d6c82510>
+
+    def _supervisor_loader_harness(monkeypatch, *, store_mode, source_drift=False,
+                                   observation_override=None):
+        import posixpath as path_module
+        from tools.vst import store as store_module
+        from tools.vst import supervisor as supervisor_module
+        from tools.vst import supervisor_service as service
+    
+        config = json.loads((
+>           capture.Path(__file__).resolve().parents[2]
+            / "docs" / "sdlc" / "runtime-config" / "supervisor-service.json"
+        ).read_text(encoding="utf-8"))
+E       AttributeError: module 'tools.vst.preflight_capture' has no attribute 'Path'
+
+tests/vst/test_s2_preflight_capture.py:372: AttributeError
+_ test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open[result] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cb8d6c514f0>
+invalid = 'result'
+
+    @pytest.mark.skipif(capture.os.name == "nt", reason="Supervisor service contract requires POSIX path semantics")
+    @pytest.mark.parametrize("invalid", ["result", "spec", "network_profile", "mount_namespace", "network_namespace", "pid_namespace"])
+    def test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open(monkeypatch, invalid):
+        def invalidate(probe, hashes):
+            if invalid == "result":
+                probe["result"] = "FAIL"
+            elif invalid == "spec":
+                probe["inventory"]["spec_sha256"] = "f" * 64
+            elif invalid == "network_profile":
+                probe["inventory"]["network_profile_sha256"] = "f" * 64
+            elif invalid == "mount_namespace":
+                probe["inventory"]["namespace_inodes"]["mount"] = 10
+            elif invalid == "network_namespace":
+                probe["inventory"]["namespace_inodes"]["network"] = 11
+            else:
+                probe["inventory"]["namespace_inodes"]["pid"] = 99
+    
+>       harness = _supervisor_loader_harness(
+            monkeypatch, store_mode="recovery", observation_override=invalidate,
+        )
+
+tests/vst/test_s2_preflight_capture.py:567: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cb8d6c514f0>
+
+    def _supervisor_loader_harness(monkeypatch, *, store_mode, source_drift=False,
+                                   observation_override=None):
+        import posixpath as path_module
+        from tools.vst import store as store_module
+        from tools.vst import supervisor as supervisor_module
+        from tools.vst import supervisor_service as service
+    
+        config = json.loads((
+>           capture.Path(__file__).resolve().parents[2]
+            / "docs" / "sdlc" / "runtime-config" / "supervisor-service.json"
+        ).read_text(encoding="utf-8"))
+E       AttributeError: module 'tools.vst.preflight_capture' has no attribute 'Path'
+
+tests/vst/test_s2_preflight_capture.py:372: AttributeError
+_ test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open[spec] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cb8d6c83500>
+invalid = 'spec'
+
+    @pytest.mark.skipif(capture.os.name == "nt", reason="Supervisor service contract requires POSIX path semantics")
+    @pytest.mark.parametrize("invalid", ["result", "spec", "network_profile", "mount_namespace", "network_namespace", "pid_namespace"])
+    def test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open(monkeypatch, invalid):
+        def invalidate(probe, hashes):
+            if invalid == "result":
+                probe["result"] = "FAIL"
+            elif invalid == "spec":
+                probe["inventory"]["spec_sha256"] = "f" * 64
+            elif invalid == "network_profile":
+                probe["inventory"]["network_profile_sha256"] = "f" * 64
+            elif invalid == "mount_namespace":
+                probe["inventory"]["namespace_inodes"]["mount"] = 10
+            elif invalid == "network_namespace":
+                probe["inventory"]["namespace_inodes"]["network"] = 11
+            else:
+                probe["inventory"]["namespace_inodes"]["pid"] = 99
+    
+>       harness = _supervisor_loader_harness(
+            monkeypatch, store_mode="recovery", observation_override=invalidate,
+        )
+
+tests/vst/test_s2_preflight_capture.py:567: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cb8d6c83500>
+
+    def _supervisor_loader_harness(monkeypatch, *, store_mode, source_drift=False,
+                                   observation_override=None):
+        import posixpath as path_module
+        from tools.vst import store as store_module
+        from tools.vst import supervisor as supervisor_module
+        from tools.vst import supervisor_service as service
+    
+        config = json.loads((
+>           capture.Path(__file__).resolve().parents[2]
+            / "docs" / "sdlc" / "runtime-config" / "supervisor-service.json"
+        ).read_text(encoding="utf-8"))
+E       AttributeError: module 'tools.vst.preflight_capture' has no attribute 'Path'
+
+tests/vst/test_s2_preflight_capture.py:372: AttributeError
+_ test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open[network_profile] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cb8d6c83680>
+invalid = 'network_profile'
+
+    @pytest.mark.skipif(capture.os.name == "nt", reason="Supervisor service contract requires POSIX path semantics")
+    @pytest.mark.parametrize("invalid", ["result", "spec", "network_profile", "mount_namespace", "network_namespace", "pid_namespace"])
+    def test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open(monkeypatch, invalid):
+        def invalidate(probe, hashes):
+            if invalid == "result":
+                probe["result"] = "FAIL"
+            elif invalid == "spec":
+                probe["inventory"]["spec_sha256"] = "f" * 64
+            elif invalid == "network_profile":
+                probe["inventory"]["network_profile_sha256"] = "f" * 64
+            elif invalid == "mount_namespace":
+                probe["inventory"]["namespace_inodes"]["mount"] = 10
+            elif invalid == "network_namespace":
+                probe["inventory"]["namespace_inodes"]["network"] = 11
+            else:
+                probe["inventory"]["namespace_inodes"]["pid"] = 99
+    
+>       harness = _supervisor_loader_harness(
+            monkeypatch, store_mode="recovery", observation_override=invalidate,
+        )
+
+tests/vst/test_s2_preflight_capture.py:567: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cb8d6c83680>
+
+    def _supervisor_loader_harness(monkeypatch, *, store_mode, source_drift=False,
+                                   observation_override=None):
+        import posixpath as path_module
+        from tools.vst import store as store_module
+        from tools.vst import supervisor as supervisor_module
+        from tools.vst import supervisor_service as service
+    
+        config = json.loads((
+>           capture.Path(__file__).resolve().parents[2]
+            / "docs" / "sdlc" / "runtime-config" / "supervisor-service.json"
+        ).read_text(encoding="utf-8"))
+E       AttributeError: module 'tools.vst.preflight_capture' has no attribute 'Path'
+
+tests/vst/test_s2_preflight_capture.py:372: AttributeError
+_ test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open[mount_namespace] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cb8d6aab2c0>
+invalid = 'mount_namespace'
+
+    @pytest.mark.skipif(capture.os.name == "nt", reason="Supervisor service contract requires POSIX path semantics")
+    @pytest.mark.parametrize("invalid", ["result", "spec", "network_profile", "mount_namespace", "network_namespace", "pid_namespace"])
+    def test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open(monkeypatch, invalid):
+        def invalidate(probe, hashes):
+            if invalid == "result":
+                probe["result"] = "FAIL"
+            elif invalid == "spec":
+                probe["inventory"]["spec_sha256"] = "f" * 64
+            elif invalid == "network_profile":
+                probe["inventory"]["network_profile_sha256"] = "f" * 64
+            elif invalid == "mount_namespace":
+                probe["inventory"]["namespace_inodes"]["mount"] = 10
+            elif invalid == "network_namespace":
+                probe["inventory"]["namespace_inodes"]["network"] = 11
+            else:
+                probe["inventory"]["namespace_inodes"]["pid"] = 99
+    
+>       harness = _supervisor_loader_harness(
+            monkeypatch, store_mode="recovery", observation_override=invalidate,
+        )
+
+tests/vst/test_s2_preflight_capture.py:567: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cb8d6aab2c0>
+
+    def _supervisor_loader_harness(monkeypatch, *, store_mode, source_drift=False,
+                                   observation_override=None):
+        import posixpath as path_module
+        from tools.vst import store as store_module
+        from tools.vst import supervisor as supervisor_module
+        from tools.vst import supervisor_service as service
+    
+        config = json.loads((
+>           capture.Path(__file__).resolve().parents[2]
+            / "docs" / "sdlc" / "runtime-config" / "supervisor-service.json"
+        ).read_text(encoding="utf-8"))
+E       AttributeError: module 'tools.vst.preflight_capture' has no attribute 'Path'
+
+tests/vst/test_s2_preflight_capture.py:372: AttributeError
+_ test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open[network_namespace] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cb8d6aa8200>
+invalid = 'network_namespace'
+
+    @pytest.mark.skipif(capture.os.name == "nt", reason="Supervisor service contract requires POSIX path semantics")
+    @pytest.mark.parametrize("invalid", ["result", "spec", "network_profile", "mount_namespace", "network_namespace", "pid_namespace"])
+    def test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open(monkeypatch, invalid):
+        def invalidate(probe, hashes):
+            if invalid == "result":
+                probe["result"] = "FAIL"
+            elif invalid == "spec":
+                probe["inventory"]["spec_sha256"] = "f" * 64
+            elif invalid == "network_profile":
+                probe["inventory"]["network_profile_sha256"] = "f" * 64
+            elif invalid == "mount_namespace":
+                probe["inventory"]["namespace_inodes"]["mount"] = 10
+            elif invalid == "network_namespace":
+                probe["inventory"]["namespace_inodes"]["network"] = 11
+            else:
+                probe["inventory"]["namespace_inodes"]["pid"] = 99
+    
+>       harness = _supervisor_loader_harness(
+            monkeypatch, store_mode="recovery", observation_override=invalidate,
+        )
+
+tests/vst/test_s2_preflight_capture.py:567: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cb8d6aa8200>
+
+    def _supervisor_loader_harness(monkeypatch, *, store_mode, source_drift=False,
+                                   observation_override=None):
+        import posixpath as path_module
+        from tools.vst import store as store_module
+        from tools.vst import supervisor as supervisor_module
+        from tools.vst import supervisor_service as service
+    
+        config = json.loads((
+>           capture.Path(__file__).resolve().parents[2]
+            / "docs" / "sdlc" / "runtime-config" / "supervisor-service.json"
+        ).read_text(encoding="utf-8"))
+E       AttributeError: module 'tools.vst.preflight_capture' has no attribute 'Path'
+
+tests/vst/test_s2_preflight_capture.py:372: AttributeError
+_ test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open[pid_namespace] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cb8d6aaac60>
+invalid = 'pid_namespace'
+
+    @pytest.mark.skipif(capture.os.name == "nt", reason="Supervisor service contract requires POSIX path semantics")
+    @pytest.mark.parametrize("invalid", ["result", "spec", "network_profile", "mount_namespace", "network_namespace", "pid_namespace"])
+    def test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open(monkeypatch, invalid):
+        def invalidate(probe, hashes):
+            if invalid == "result":
+                probe["result"] = "FAIL"
+            elif invalid == "spec":
+                probe["inventory"]["spec_sha256"] = "f" * 64
+            elif invalid == "network_profile":
+                probe["inventory"]["network_profile_sha256"] = "f" * 64
+            elif invalid == "mount_namespace":
+                probe["inventory"]["namespace_inodes"]["mount"] = 10
+            elif invalid == "network_namespace":
+                probe["inventory"]["namespace_inodes"]["network"] = 11
+            else:
+                probe["inventory"]["namespace_inodes"]["pid"] = 99
+    
+>       harness = _supervisor_loader_harness(
+            monkeypatch, store_mode="recovery", observation_override=invalidate,
+        )
+
+tests/vst/test_s2_preflight_capture.py:567: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cb8d6aaac60>
+
+    def _supervisor_loader_harness(monkeypatch, *, store_mode, source_drift=False,
+                                   observation_override=None):
+        import posixpath as path_module
+        from tools.vst import store as store_module
+        from tools.vst import supervisor as supervisor_module
+        from tools.vst import supervisor_service as service
+    
+        config = json.loads((
+>           capture.Path(__file__).resolve().parents[2]
+            / "docs" / "sdlc" / "runtime-config" / "supervisor-service.json"
+        ).read_text(encoding="utf-8"))
+E       AttributeError: module 'tools.vst.preflight_capture' has no attribute 'Path'
+
+tests/vst/test_s2_preflight_capture.py:372: AttributeError
+9 failed, 21 deselected in 0.32s
+EXIT_CODE=1

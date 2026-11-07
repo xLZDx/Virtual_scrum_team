@@ -1,0 +1,55 @@
+{
+  "schema": "S2_RUNTIME_QUALIFICATION_ONE_SHOT_ATTEMPT_V1",
+  "request_id": "d71586a1-9894-4b01-aafa-6dd5d0af7e48",
+  "authorization": "GPT-PM S2-4.12c; retry_cap=0",
+  "head": "7d1d16f6348e6c00a5a568b5cfbc8caf309194b9",
+  "tuple": {
+    "run_id": "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910",
+    "bootstrap_request_id": "e520e04f58ad5e6a431a3a20b0efb87c",
+    "nonce": "0aac24fec9a2a5c53c5e9da21cbb4a42",
+    "runtime_selector": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2"
+  },
+  "invocation": {
+    "command": "C:\\Windows\\System32\\wsl.exe --distribution Ubuntu-24.04 --user root --exec /usr/bin/python3.12 -I -B -S -c <inline one-shot post-apply status + conditional Stage A wrapper>",
+    "started_utc": "2026-10-30T11:41:20.496569+00:00",
+    "wsl_process_exit_code": 0,
+    "wrapper_result": "HOLD",
+    "wrapper_reason": "repo path unavailable in WSL: FileNotFoundError(2, No such file or directory)",
+    "collector_invoked": false,
+    "preflight_invoked": false,
+    "stderr": ""
+  },
+  "source_pins": {
+    "tools/qa/collect_s2_runtime_config_inventory.py": "453fe70732c7309158cab7a0876b6bb7347b895056969ef87dbf988dd8cfa838",
+    "tools/qa/verify_s2_runtime_config_inventory.py": "ad2f1a1f2a5b13f63279e72a53ee27a81ee5d057186a51592dac4d3f7f7ae8d9",
+    "tools/qa/apply_s2_runtime_configuration.py": "7d208f72853b72666bd22b7d171d9b29f9bd2a96d77a19affea21f51d3009415",
+    "tools/vst/preflight_host_capture.py": "0f3b7b6fe11798ebc806a55bd4d6f687e7974b6f4394b2065e15defab8255083",
+    "docs/sdlc/runtime-config/bundle-manifest.json": "388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45",
+    "docs/sdlc/runtime-config/installation-layout.json": "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19"
+  },
+  "stages": {
+    "post_apply_status": {
+      "verdict": "BLOCKED",
+      "reason": "inline status wrapper could not chdir to /mnt/d/Repo/Virtual_scrum_team",
+      "exit_code": null
+    },
+    "root_preflight": "NOT_RUN",
+    "owner_runner_claim_probe": "NOT_RUN",
+    "exact_selector_testrun": "NOT_RUN",
+    "restricted_selectors": "NOT_RUN",
+    "production_activation": "NOT_RUN"
+  },
+  "artifacts": {
+    "wsl_stdout": {
+      "path": "docs/sdlc/evidence/s2-runtime-qual-d71586a1-s2-runtime-20261030-2b5e04a3-wsl.stdout.bin",
+      "bytes": 529,
+      "sha256": "f9b4a7663a30d0d8297146bf8069ad13fafc56b6a122f652d05c0a3255320a81"
+    },
+    "wsl_stderr": "NOT_CREATED (no WSL stderr bytes returned)",
+    "post_apply_inventory": "NOT_CREATED",
+    "preflight_record": "NOT_CREATED",
+    "claim_receipt": "NOT_CREATED",
+    "testrun_receipt": "NOT_CREATED"
+  },
+  "disposition": "STOPPED_AT_FIRST_ACCESS_FAILURE; no retry or alternate invocation attempted"
+}

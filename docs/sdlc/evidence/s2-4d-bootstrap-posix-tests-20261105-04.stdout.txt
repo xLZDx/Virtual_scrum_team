@@ -1,0 +1,11 @@
+mount=/tmp/s2-4d-bootstrap-d-ro-20261105 options=ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3
+repo=/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team
+head=2b86f091d07ae3b6525e1d088b61d062d9a4dbca
+f4a860e66b15c9202b33b3565d9845f081074ef07aa7d494be26cd4f9f751bf3  tests/vst/test_s2_runtime_bootstrap_transaction.py
+3df32048d5afc15fe55a13ac485201bd86940303629313e848a3e5b0af11d60b  tests/vst/test_s2_runtime_configuration_apply.py
+1099effc5d75c24236dbd3eaaa81093be41440e69949516485ea3745a15219df  tools/qa/runtime_snapshot_transaction.py
+c66df10dc7909c6944c674f7a7d513c850665970c70a2f7c17ae20b2d28657d3  tools/qa/apply_s2_runtime_configuration.py
+be0629eed440fac782c57f6af71187a87e933f528b94dbabe391cd81618c05f4  tools/qa/collect_s2_runtime_config_inventory.py
+{"frozen_sha256": {"tests/vst/test_s2_runtime_bootstrap_transaction.py": "f4a860e66b15c9202b33b3565d9845f081074ef07aa7d494be26cd4f9f751bf3", "tests/vst/test_s2_runtime_configuration_apply.py": "3df32048d5afc15fe55a13ac485201bd86940303629313e848a3e5b0af11d60b", "tools/qa/apply_s2_runtime_configuration.py": "c66df10dc7909c6944c674f7a7d513c850665970c70a2f7c17ae20b2d28657d3", "tools/qa/collect_s2_runtime_config_inventory.py": "be0629eed440fac782c57f6af71187a87e933f528b94dbabe391cd81618c05f4", "tools/qa/runtime_snapshot_transaction.py": "1099effc5d75c24236dbd3eaaa81093be41440e69949516485ea3745a15219df"}, "pytest_disable_plugin_autoload": "1", "pytest_file": "/usr/lib/python3/dist-packages/pytest/__init__.py", "pytest_version": "7.4.4", "python_version": "3.12.3 (main, Jul 15 2026, 23:46:41) [GCC 13.3.0]", "sys_path": ["/usr/lib/python312.zip", "/usr/lib/python3.12", "/usr/lib/python3.12/lib-dynload", "/usr/lib/python3/dist-packages", "/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team"], "uid": 0}
+..................................                                       [100%]
+34 passed in 0.65s

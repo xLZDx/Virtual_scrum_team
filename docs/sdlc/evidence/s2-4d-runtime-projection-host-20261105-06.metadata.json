@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "C:\\Python314\\python.exe",
+    "-m",
+    "pytest",
+    "-q",
+    "--tb=line",
+    "tests/vst/test_s2_runtime_qualification_harness.py"
+  ],
+  "cwd": "D:\\Repo\\Virtual_scrum_team",
+  "python": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+  "returncode": 0,
+  "stdout_sha256": "238cf124e8a7f567fdc85df06e598cc7c650575291b1494d871e242078a15fcf",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

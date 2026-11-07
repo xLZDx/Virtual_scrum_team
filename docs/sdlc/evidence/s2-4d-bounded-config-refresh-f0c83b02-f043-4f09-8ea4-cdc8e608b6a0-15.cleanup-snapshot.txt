@@ -1,0 +1,46 @@
+COMMAND: Get-CimInstance Win32_Process | Where-Object { $ids -contains $_.ProcessId } | Select-Object ProcessId, ParentProcessId, Name, CreationDate, ExecutablePath, CommandLine | ConvertTo-Json -Depth 4
+OBSERVED_UTC: 2026-11-05T16:59:09.7216513Z
+EXIT_CODE: 0
+RAW_OUTPUT:
+[
+  {
+    "ProcessId": 42016,
+    "ParentProcessId": 38760,
+    "Name": "wsl.exe",
+    "CreationDate": "2026-11-05T17:15:11.33617+02:00",
+    "ExecutablePath": "C:\\Windows\\system32\\wsl.exe",
+    "CommandLine": "\"C:\\Windows\\system32\\wsl.exe\""
+  },
+  {
+    "ProcessId": 40072,
+    "ParentProcessId": 42016,
+    "Name": "conhost.exe",
+    "CreationDate": "2026-11-05T17:15:11.351592+02:00",
+    "ExecutablePath": "C:\\WINDOWS\\system32\\conhost.exe",
+    "CommandLine": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4"
+  },
+  {
+    "ProcessId": 20620,
+    "ParentProcessId": 42016,
+    "Name": "wsl.exe",
+    "CreationDate": "2026-11-05T17:15:11.588986+02:00",
+    "ExecutablePath": "C:\\Program Files\\WSL\\wsl.exe",
+    "CommandLine": "\"C:\\Windows\\system32\\wsl.exe\""
+  },
+  {
+    "ProcessId": 15892,
+    "ParentProcessId": 20620,
+    "Name": "wslhost.exe",
+    "CreationDate": "2026-11-05T17:15:20.51393+02:00",
+    "ExecutablePath": "C:\\Program Files\\WSL\\wslhost.exe",
+    "CommandLine": " --distro-id {366d1ca4-c5b5-4eb5-8583-15220fa8a286} --vm-id {70549578-0fbd-4a05-a841-b63d4d92f73b} --handle 936 --event 964 --parent 968"
+  },
+  {
+    "ProcessId": 25072,
+    "ParentProcessId": 15892,
+    "Name": "conhost.exe",
+    "CreationDate": "2026-11-05T17:15:20.631821+02:00",
+    "ExecutablePath": "C:\\WINDOWS\\system32\\conhost.exe",
+    "CommandLine": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4"
+  }
+]

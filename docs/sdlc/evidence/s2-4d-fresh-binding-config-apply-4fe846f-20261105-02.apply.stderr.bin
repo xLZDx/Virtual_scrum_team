@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "<string>", line 16, in <module>
+  File "<vst-s2-runtime-remote>", line 264, in <module>
+  File "runtime_snapshot_transaction.py", line 1148, in observe_bootstrap_predecessor
+_vst_s2_runtime_snapshot_transaction.SnapshotContractError: candidate root is accepted only during explicit cold recovery

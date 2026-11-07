@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "python",
+    "-m",
+    "pytest",
+    "-q",
+    "--tb=line",
+    "tests/vst/test_s2_runtime_config_inventory.py"
+  ],
+  "cwd": "D:\\Repo\\Virtual_scrum_team",
+  "files": {
+    "collector_sha256": "01316a062277b7d21bbab0eee89706884287069a7fb4e2cc9b79f0c70a3775fc",
+    "test_sha256": "c878462dbdb3f36f39fab241d263786e4ab4fbb7e015b8f0e6897ea341de357e",
+    "validator_sha256": "cd98cc7e9ce2b5975fd2e0a9089a96d654358cdb585cae871aec257136377c8d"
+  },
+  "head": "11c90281c514465db8b89b90b76b6cd80f1a8111",
+  "returncode": 0,
+  "stderr_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-config-inventory-guard-host-20261105-01.stderr.bin",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-config-inventory-guard-host-20261105-01.stdout.bin",
+  "stdout_sha256": "c0a132fa74f703fbe8683691e498f5c921fbbc6fae2a13ed131446619beffc1f"
+}

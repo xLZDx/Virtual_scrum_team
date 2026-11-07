@@ -1,0 +1,72 @@
+{
+  "schema": "VST_S2_4D_WSL_FIRST_START_ASSESSMENT_V1",
+  "task": "S2-4D - bounded WSL first-start and readonly inventory assessment",
+  "repo": "D:\\Repo\\Virtual_scrum_team",
+  "authorization": {
+    "decision": "AUTHORIZE_BOUNDED_WSL_FIRST_START_ASSESSMENT",
+    "decision_id": "cbd18159-d92f-43b8-aa75-289694328a6b",
+    "max_wsl_first_start_launches": 1,
+    "max_duration_seconds": 180,
+    "config_applier_authorized": false,
+    "retry_authorized": false,
+    "tests_authorized": false,
+    "selector_authorized": false,
+    "service_activation_authorized": false,
+    "key_generation_authorized": false,
+    "store_change_authorized": false,
+    "production_authorized": false
+  },
+  "paths": {
+    "attempt": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-cbd18159-d92f-43b8-aa75-289694328a6b-01.attempt.json",
+    "keeperOut": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-cbd18159-d92f-43b8-aa75-289694328a6b-01.keeper.stdout.raw",
+    "keeperErr": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-cbd18159-d92f-43b8-aa75-289694328a6b-01.keeper.stderr.raw",
+    "inventory": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-cbd18159-d92f-43b8-aa75-289694328a6b-01.inventory.json",
+    "inventoryErr": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-cbd18159-d92f-43b8-aa75-289694328a6b-01.inventory.stderr.raw"
+  },
+  "atomic_backups": [
+    "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-cbd18159-d92f-43b8-aa75-289694328a6b-01.attempt.json.bak.d9488ca1a47040a3b489d9b4549360aa"
+  ],
+  "started_utc": "2026-11-05T14:00:25.4935456+00:00",
+  "keeper": {
+    "host_pid": 40996,
+    "started_utc": "2026-11-05T14:00:25.6671221+00:00",
+    "argv": [
+      "wsl.exe",
+      "--distribution",
+      "Ubuntu-24.04",
+      "--user",
+      "root",
+      "--exec",
+      "/usr/bin/python3.12",
+      "-I",
+      "-B",
+      "-S",
+      "-c",
+      "import sys,pathlib,json; print(json.dumps({\"ready\":True,\"pid1_stat\":pathlib.Path(\"/proc/1/stat\").read_text(),\"boot_id\":pathlib.Path(\"/proc/sys/kernel/random/boot_id\").read_text().strip()}),flush=True); sys.stdin.buffer.read(1)"
+    ],
+    "stdout_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-cbd18159-d92f-43b8-aa75-289694328a6b-01.keeper.stdout.raw",
+    "stderr_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-cbd18159-d92f-43b8-aa75-289694328a6b-01.keeper.stderr.raw",
+    "state": "READING_DIRECT_STDOUT_PIPE",
+    "readiness_timeout_seconds": 180,
+    "exit_code": "UNKNOWN"
+  },
+  "inventory": null,
+  "result": "ASSESSMENT_RUNNING",
+  "error": null,
+  "cleanup": null,
+  "keeper_command": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/usr/bin/python3.12",
+    "-I",
+    "-B",
+    "-S",
+    "-c",
+    "import sys,pathlib,json; print(json.dumps({\"ready\":True,\"pid1_stat\":pathlib.Path(\"/proc/1/stat\").read_text(),\"boot_id\":pathlib.Path(\"/proc/sys/kernel/random/boot_id\").read_text().strip()}),flush=True); sys.stdin.buffer.read(1)"
+  ],
+  "keeper_started_utc": "2026-11-05T14:00:25.6671221+00:00"
+}

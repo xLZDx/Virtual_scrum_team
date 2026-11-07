@@ -1,0 +1,76 @@
+{
+  "authorization_id": "6a51a043-7914-4d94-beb1-978685a8ed61",
+  "observed_utc": "2026-11-05T21:31:39.7701929Z",
+  "command": "$ids = @(65448, 96784, 66872, 42016, 40072, 20620, 15892, 25072); Get-CimInstance Win32_Process | Where-Object { $ids -contains $_.ProcessId } | Select-Object ProcessId, ParentProcessId, Name, CreationDate, ExecutablePath | ConvertTo-Json -Depth 4",
+  "exit_code": 0,
+  "processes": [
+    {
+      "pid": 42016,
+      "ppid": 38760,
+      "name": "wsl.exe",
+      "creation_utc": "2026-11-05T15:15:11.3361700Z",
+      "executable": "C:\\Windows\\system32\\wsl.exe",
+      "present": true
+    },
+    {
+      "pid": 40072,
+      "ppid": 42016,
+      "name": "conhost.exe",
+      "creation_utc": "2026-11-05T15:15:11.3515920Z",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "present": true
+    },
+    {
+      "pid": 20620,
+      "ppid": 42016,
+      "name": "wsl.exe",
+      "creation_utc": "2026-11-05T15:15:11.5889860Z",
+      "executable": "C:\\Program Files\\WSL\\wsl.exe",
+      "present": true
+    },
+    {
+      "pid": 15892,
+      "ppid": 20620,
+      "name": "wslhost.exe",
+      "creation_utc": "2026-11-05T15:15:20.5139300Z",
+      "executable": "C:\\Program Files\\WSL\\wslhost.exe",
+      "present": true
+    },
+    {
+      "pid": 25072,
+      "ppid": 15892,
+      "name": "conhost.exe",
+      "creation_utc": "2026-11-05T15:15:20.6318210Z",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "present": true
+    },
+    {
+      "pid": 65448,
+      "ppid": 40192,
+      "name": "pwsh.exe",
+      "creation_utc": "2026-11-05T21:21:18.5310620Z",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.CodexPrimaryRuntime.v26-1103-91-0_26.1103.91.0_x64__3k8sg7r9htsxt\\dependencies\\native\\powershell\\pwsh.exe",
+      "present": true
+    },
+    {
+      "pid": 96784,
+      "ppid": 65448,
+      "name": "wsl.exe",
+      "creation_utc": "2026-11-05T21:21:21.9305260Z",
+      "executable": "C:\\Windows\\system32\\wsl.exe",
+      "present": true
+    },
+    {
+      "pid": 66872,
+      "ppid": 96784,
+      "name": "wsl.exe",
+      "creation_utc": "2026-11-05T21:21:22.3517900Z",
+      "executable": "C:\\Program Files\\WSL\\wsl.exe",
+      "present": true
+    }
+  ],
+  "absent_pids": [],
+  "executor_session_id": 93960,
+  "executor_poll": "not performed under this authorization",
+  "signals_or_termination": "none"
+}

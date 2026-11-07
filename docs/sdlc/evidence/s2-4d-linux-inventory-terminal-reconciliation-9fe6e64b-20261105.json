@@ -1,0 +1,225 @@
+{
+  "authorization_id": "9fe6e64b-f66b-4b7a-8a98-74c0735d4e1f",
+  "inventory_authorization_id": "f26fa193-6fe1-499b-8b3e-31c72d637905",
+  "session_id": 93960,
+  "observed_utc": "2026-11-05T21:25:33.1951877Z",
+  "poll_operation": "one non-input poll, maximum wait 5 seconds",
+  "poll_result": "session still active; no exit code or stdout/stderr returned",
+  "linux_inventory_status": "NOT_CONFIRMED",
+  "linux_process_identity": "UNKNOWN",
+  "linux_boot_id": "NOT_OBTAINED",
+  "windows_snapshot_scope": "original five PIDs plus all current wsl.exe/wslhost.exe and their descendants",
+  "processes": [
+    {
+      "pid": 3068,
+      "ppid": 61140,
+      "name": "conhost.exe",
+      "creation_utc": "2026-11-05T12:12:59.3186470Z",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "present": true,
+      "original_bound_pid": false
+    },
+    {
+      "pid": 4228,
+      "ppid": 25908,
+      "name": "conhost.exe",
+      "creation_utc": "2026-11-05T12:12:59.2902630Z",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "present": true,
+      "original_bound_pid": false
+    },
+    {
+      "pid": 11928,
+      "ppid": 50020,
+      "name": "wslhost.exe",
+      "creation_utc": "2026-11-05T12:13:01.8611650Z",
+      "executable": "C:\\Program Files\\WSL\\wslhost.exe",
+      "present": true,
+      "original_bound_pid": false
+    },
+    {
+      "pid": 13036,
+      "ppid": 24836,
+      "name": "conhost.exe",
+      "creation_utc": "2026-11-05T12:12:59.2671420Z",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "present": true,
+      "original_bound_pid": false
+    },
+    {
+      "pid": 13472,
+      "ppid": 24836,
+      "name": "msrdc.exe",
+      "creation_utc": "2026-11-05T12:12:59.4768500Z",
+      "executable": "C:\\Program Files\\WSL\\msrdc.exe",
+      "present": true,
+      "original_bound_pid": false
+    },
+    {
+      "pid": 15884,
+      "ppid": 11928,
+      "name": "conhost.exe",
+      "creation_utc": "2026-11-05T12:13:01.9116050Z",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "present": true,
+      "original_bound_pid": false
+    },
+    {
+      "pid": 15892,
+      "ppid": 20620,
+      "name": "wslhost.exe",
+      "creation_utc": "2026-11-05T15:15:20.5139300Z",
+      "executable": "C:\\Program Files\\WSL\\wslhost.exe",
+      "present": true,
+      "original_bound_pid": true
+    },
+    {
+      "pid": 17052,
+      "ppid": 55700,
+      "name": "wsl.exe",
+      "creation_utc": "2026-11-05T12:12:56.6624830Z",
+      "executable": "C:\\Program Files\\WSL\\wsl.exe",
+      "present": true,
+      "original_bound_pid": false
+    },
+    {
+      "pid": 20620,
+      "ppid": 42016,
+      "name": "wsl.exe",
+      "creation_utc": "2026-11-05T15:15:11.5889860Z",
+      "executable": "C:\\Program Files\\WSL\\wsl.exe",
+      "present": true,
+      "original_bound_pid": true
+    },
+    {
+      "pid": 24068,
+      "ppid": 6952,
+      "name": "wslhost.exe",
+      "creation_utc": "2026-11-05T15:15:12.5338670Z",
+      "executable": "C:\\Program Files\\WSL\\wslhost.exe",
+      "present": true,
+      "original_bound_pid": false
+    },
+    {
+      "pid": 24836,
+      "ppid": 6952,
+      "name": "wslhost.exe",
+      "creation_utc": "2026-11-05T12:12:59.1873780Z",
+      "executable": "C:\\Program Files\\WSL\\wslhost.exe",
+      "present": true,
+      "original_bound_pid": false
+    },
+    {
+      "pid": 25072,
+      "ppid": 15892,
+      "name": "conhost.exe",
+      "creation_utc": "2026-11-05T15:15:20.6318210Z",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "present": true,
+      "original_bound_pid": true
+    },
+    {
+      "pid": 25908,
+      "ppid": 6952,
+      "name": "wslhost.exe",
+      "creation_utc": "2026-11-05T12:12:59.2262680Z",
+      "executable": "C:\\Program Files\\WSL\\wslhost.exe",
+      "present": true,
+      "original_bound_pid": false
+    },
+    {
+      "pid": 26736,
+      "ppid": 24068,
+      "name": "conhost.exe",
+      "creation_utc": "2026-11-05T15:15:12.6661370Z",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "present": true,
+      "original_bound_pid": false
+    },
+    {
+      "pid": 40072,
+      "ppid": 42016,
+      "name": "conhost.exe",
+      "creation_utc": "2026-11-05T15:15:11.3515920Z",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "present": true,
+      "original_bound_pid": true
+    },
+    {
+      "pid": 42016,
+      "ppid": 38760,
+      "name": "wsl.exe",
+      "creation_utc": "2026-11-05T15:15:11.3361700Z",
+      "executable": "C:\\Windows\\system32\\wsl.exe",
+      "present": true,
+      "original_bound_pid": true
+    },
+    {
+      "pid": 42884,
+      "ppid": 24068,
+      "name": "msrdc.exe",
+      "creation_utc": "2026-11-05T15:15:13.0256840Z",
+      "executable": "C:\\Program Files\\WSL\\msrdc.exe",
+      "present": true,
+      "original_bound_pid": false
+    },
+    {
+      "pid": 50020,
+      "ppid": 55700,
+      "name": "wsl.exe",
+      "creation_utc": "2026-11-05T12:12:56.6625720Z",
+      "executable": "C:\\Program Files\\WSL\\wsl.exe",
+      "present": true,
+      "original_bound_pid": false
+    },
+    {
+      "pid": 52972,
+      "ppid": 50020,
+      "name": "conhost.exe",
+      "creation_utc": "2026-11-05T12:13:01.6773490Z",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "present": true,
+      "original_bound_pid": false
+    },
+    {
+      "pid": 55276,
+      "ppid": 17052,
+      "name": "conhost.exe",
+      "creation_utc": "2026-11-05T12:12:56.6693820Z",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "present": true,
+      "original_bound_pid": false
+    },
+    {
+      "pid": 61140,
+      "ppid": 17052,
+      "name": "wslhost.exe",
+      "creation_utc": "2026-11-05T12:12:59.2439010Z",
+      "executable": "C:\\Program Files\\WSL\\wslhost.exe",
+      "present": true,
+      "original_bound_pid": false
+    },
+    {
+      "pid": 66872,
+      "ppid": 96784,
+      "name": "wsl.exe",
+      "creation_utc": "2026-11-05T21:21:22.3517900Z",
+      "executable": "C:\\Program Files\\WSL\\wsl.exe",
+      "present": true,
+      "original_bound_pid": false
+    },
+    {
+      "pid": 96784,
+      "ppid": 65448,
+      "name": "wsl.exe",
+      "creation_utc": "2026-11-05T21:21:21.9305260Z",
+      "executable": "C:\\Windows\\system32\\wsl.exe",
+      "present": true,
+      "original_bound_pid": false
+    }
+  ],
+  "termination_or_signals": "none",
+  "retry": "none",
+  "runtime_or_test_operations": "none",
+  "partial_stdout_stderr": "not read or certified; executor remains active"
+}
