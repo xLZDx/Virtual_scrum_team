@@ -1697,3 +1697,7 @@ Request a766bc2a-46eb-4ae0-9a0f-96f23c073449, reply 350b36cb-f9de-5308-8ac3-9aeb
 - Supervisor and Store calls go through a queue to serve_forever's thread. That is the SCM service thread that created the Store, and it also closes the Store.
 - This keeps sqlite's same-thread rule and serializes Store access.
 - Evidence: the Application event at 18:13:45 shows `ProgrammingError` at store.py:1019 on the e97eea2 elevated run.
+
+## 2026-11-07 — S2-4E manifest base_head e97eea29e6248f1454c064a6b1b66d533d37e191 -> c4eb827908d5e3d4ad464c9035f7c444ce6335a1
+
+The rebinding adds the Supervisor store-thread fix.

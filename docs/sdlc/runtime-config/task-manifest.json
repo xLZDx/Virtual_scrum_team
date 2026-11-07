@@ -3,7 +3,7 @@
   "project_id": "Virtual_scrum_team",
   "phase": 7,
   "story_id": "S2-4E",
-  "base_head": "e97eea29e6248f1454c064a6b1b66d533d37e191",
+  "base_head": "c4eb827908d5e3d4ad464c9035f7c444ce6335a1",
   "scope": [
     "tests/vst/test_s2_owner_completed_receipt_contract.py",
     "tests/vst/test_s2_owner_runner_windows_e2e.py",

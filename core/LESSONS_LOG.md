@@ -1482,3 +1482,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Fix: role threads only accept and parse requests. Every Supervisor/Store call is queued to the serving thread (the Store-creating thread) and runs there one at a time; the waiting thread times out after 60 s.
 - Rule: any Windows endpoint that adds threads must prove with a real Store (sqlite) that the connection is used only on its creating thread.
 - Success worth keeping: the event-log handler plus the installer's VST_EVENT dump turned a blind retry into a one-pass diagnosis.
+
+## 2026-11-07 — S2-4E manifest rebound to c4eb827908d5e3d4ad464c9035f7c444ce6335a1 (Supervisor store thread)
+
+- Kind: NEUTRAL.
