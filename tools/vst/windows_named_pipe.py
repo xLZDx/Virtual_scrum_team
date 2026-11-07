@@ -141,6 +141,10 @@ def _api() -> tuple[ctypes.WinDLL, ctypes.WinDLL]:
     kernel32.GetNamedPipeClientProcessId.argtypes = [
         wintypes.HANDLE, ctypes.POINTER(wintypes.ULONG),
     ]
+    kernel32.GetNamedPipeClientSessionId.restype = wintypes.BOOL
+    kernel32.GetNamedPipeClientSessionId.argtypes = [
+        wintypes.HANDLE, ctypes.POINTER(wintypes.ULONG),
+    ]
     kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
     kernel32.OpenProcessToken.argtypes = [
         wintypes.HANDLE, wintypes.DWORD, ctypes.POINTER(wintypes.HANDLE),
@@ -416,19 +420,34 @@ def _verify_client_sid(
     if not advapi32.ImpersonateNamedPipeClient(pipe):
         raise _last_error("cannot authenticate named-pipe client")
     token = wintypes.HANDLE()
+    token_denied = False
     try:
         if not advapi32.OpenThreadToken(
             kernel32.GetCurrentThread(), _TOKEN_QUERY, True, ctypes.byref(token),
         ):
-            raise _last_error("cannot inspect named-pipe client identity")
-        if any(_check_token_user_sid(token, sid) for sid in allowed_user_sids):
+            if ctypes.get_last_error() != _ERROR_ACCESS_DENIED:
+                raise _last_error("cannot inspect named-pipe client identity")
+            token_denied = True
+        elif any(_check_token_user_sid(token, sid) for sid in allowed_user_sids):
             return
-        raise ContractError("Windows named-pipe client SID is unauthorized")
+        else:
+            raise ContractError("Windows named-pipe client SID is unauthorized")
     finally:
         if token:
             kernel32.CloseHandle(token)
         if not advapi32.RevertToSelf():
             raise _last_error("cannot revert named-pipe client impersonation")
+    # The client's token denies this (restricted service) server TOKEN_QUERY. The
+    # kernel already admitted the client through the pipe DACL, which grants only the
+    # allowed user SIDs, LocalSystem and this server; services and LocalSystem
+    # services run in session 0, so an interactive-session client must hold an
+    # allowed user SID.
+    session = wintypes.ULONG()
+    if not kernel32.GetNamedPipeClientSessionId(pipe, ctypes.byref(session)):
+        raise _last_error("cannot identify named-pipe client session")
+    if token_denied and session.value != 0:
+        return
+    raise ContractError("Windows named-pipe client identity could not be verified")
 
 
 class WindowsNamedPipeConnection:

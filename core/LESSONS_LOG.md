@@ -1445,3 +1445,19 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — S2-4E manifest rebound to 37e5b1ef4c1f0529283a30760610811b36e7ff32 (pipe client identification)
 
 - Kind: NEUTRAL.
+
+## 2026-11-07 — Security-review MINORs on the pipe identification change
+
+- Kind: SHORTCOMING (found by security-reviewer: no BLOCKER/MAJOR, 2 MINOR).
+- Facts and fixes:
+  - MINOR 1: ContractError text is not value-free (124 f-string sites), and the event-log handler sat on the root logger. Fix: ContractError text is cut to 200 printable characters, the record template is sanitized, and the handler is attached only to the `tools.vst` and `vst` loggers. The docstring now states what is recorded.
+  - MINOR 2: the Owner user-SID pipe still opened the client token, which carries the same unknown risk. Fix: ACCESS_DENIED on OpenThreadToken falls back to the pipe DACL plus GetNamedPipeClientSessionId != 0. Session 0 hosts the services and LocalSystem.
+- Probes `pipe_id_37e5b1e` (functional-test-reviewer) passed:
+  - the client pid must match the SCM pid;
+  - a wrong pid is rejected;
+  - the service-not-running cases behave correctly;
+  - user-SID accept and reject work;
+  - the event-log handler sanitizes its text;
+  - compile and parse are clean.
+- Process slip: the coordinator edited windows_named_pipe.py and windows_service_host.py while that probe agent was running. The probes are re-run on the committed code.
+- Rule: do not edit files a running probe or review agent is reading. Queue the edits instead.

@@ -558,13 +558,16 @@ def read_role_private_file(path: str, *, service_sid: str, service_root: str,
 
 
 def _sanitized_exception_lines(exc: BaseException | None) -> list[str]:
-    """Value-free description of an exception chain for the Application event log.
+    """Bounded description of an exception chain for the Application event log.
 
-    The Application log is readable by local users, so only exception type names,
-    code locations, ContractError messages (fixed, value-free strings in this
-    codebase) and OSError errno/winerror codes are recorded. Other messages, and
-    OSError text (it carries file paths), are omitted. Each entry is formatted
-    independently so one unprintable exception cannot drop the whole description.
+    The Application log is readable by local users. Recorded: exception type
+    names, code locations, OSError errno/winerror codes, and ContractError
+    messages cut to 200 printable characters. ContractError messages are contract
+    diagnostics and may name request fields, ids or slots; they never carry key
+    material, and they are kept because without them a refusal is undiagnosable.
+    Other messages, and OSError text (it carries file paths), are omitted. Each
+    entry is formatted independently so one unprintable exception cannot drop the
+    whole description.
     """
     import traceback
 
@@ -575,7 +578,8 @@ def _sanitized_exception_lines(exc: BaseException | None) -> list[str]:
         seen += 1
         try:
             if isinstance(current, ContractError):
-                lines.append("%s: %s" % (type(current).__name__, current))
+                message = "".join(ch if ch.isprintable() else "?" for ch in str(current)[:200])
+                lines.append("%s: %s" % (type(current).__name__, message))
             elif isinstance(current, OSError):
                 lines.append("%s: errno=%s winerror=%s" % (
                     type(current).__name__, current.errno,
@@ -648,8 +652,9 @@ class _EventLogHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         try:
+            template = "".join(ch if ch.isprintable() else "?" for ch in str(record.msg)[:500])
             lines = ["VST service %s %s: %s" % (
-                self._service_name, record.levelname, str(record.msg)[:500],
+                self._service_name, record.levelname, template,
             )]
             if record.exc_info and record.exc_info[1] is not None:
                 lines.extend(_sanitized_exception_lines(record.exc_info[1]))
@@ -783,7 +788,10 @@ def main() -> None:
     sys.argv = [sys.argv[0], "--windows-scm", *role_arguments]
     try:
         advapi, _kernel = _win_api()
-        logging.getLogger().addHandler(_EventLogHandler(advapi, service_name_for_role(role)))
+        # Only this package's loggers; third-party WARNING records are not forwarded.
+        handler = _EventLogHandler(advapi, service_name_for_role(role))
+        for logger_name in {__package__ or "tools.vst", "vst"}:
+            logging.getLogger(logger_name).addHandler(handler)
     except Exception:
         pass
     try:

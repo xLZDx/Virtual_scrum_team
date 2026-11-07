@@ -1677,3 +1677,8 @@ The rebinding adds the manifest-derived harness time limits.
 ## 2026-11-07 — S2-4E manifest base_head c2ffcda6a602c9326769d979545f09da804ed68d -> 37e5b1ef4c1f0529283a30760610811b36e7ff32
 
 The rebinding adds the pipe client identification and event-log refusal changes.
+
+## 2026-11-07 — Owner pipe fallback and bounded event-log text
+
+- Owner (user-SID) listener: if OpenThreadToken is denied, the client is accepted only because the kernel admitted it through the pipe DACL (allowed user SIDs, LocalSystem, the server) and GetNamedPipeClientSessionId is non-zero. Any other failure, or session 0, is refused.
+- Event-log text: ContractError messages are cut to 200 printable characters. Residual risk accepted: local users can read contract diagnostics (field names, ids). These never contain key material, and refusals must stay diagnosable. The handler is attached to the `tools.vst` and `vst` loggers only.
