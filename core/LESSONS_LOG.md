@@ -1421,3 +1421,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — S2-4E manifest rebound to c2ffcda6a602c9326769d979545f09da804ed68d (MAJOR-01 fix)
 
 - Kind: NEUTRAL. Needed because the protected app snapshot is built from base_head.
+
+## 2026-11-07 — GPT-PM approved S2-4E code at 15f09f7 after one MAJOR round
+
+- Kind: SUCCESS. Two internal agent passes before GPT left a single MAJOR (a harness timeout), which was closed in one verification round.
+- Rule: keep running internal probe and review passes before the GPT gate.

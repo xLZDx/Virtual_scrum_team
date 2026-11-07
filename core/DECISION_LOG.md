@@ -1657,3 +1657,10 @@ The scheduled E2E task limit is manifest timeout_sec + 300 s, and the E2E receip
 ## 2026-11-07 — S2-4E manifest base_head 64ab73736a9fe598442e867e7583664530053cde -> c2ffcda6a602c9326769d979545f09da804ed68d
 
 The rebinding adds the manifest-derived harness time limits.
+
+## 2026-11-07 — GPT-PM APPROVE for the S2-4E code delta at 15f09f7
+
+- Round 1 (request a06d2890-6b38-4504-b796-27e199bb7532, reply 7209d52d-e1fc-52e2-9159-590abec4ba43): MAJOR-01, harness time limits. It was fixed in c2ffcda.
+- Round 2 (request fdf3e9b3-458c-4379-8d8f-48eae140a8a9, reply ee58b7b8-2e1c-537b-aa3b-425a7ebf5ab8, correlated): APPROVE with BLOCKER 0 and MAJOR 0. The basis was the f86e698..15f09f7 diff and the agent probe evidence.
+- Non-blocking observation: the PowerShell [int] cast happens before the range check, while Python checks the type strictly. Recorded and not changed.
+- The elevated Windows SCM E2E is NOT_RUN until the operator installs.
