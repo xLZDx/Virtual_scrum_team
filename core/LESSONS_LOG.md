@@ -1635,3 +1635,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Kind: FAILURE (mine): the plan had no task rows for S0 and S1, so the reports I rendered showed only S2-S5 (and wrote that S3-S5 had no task lists, which was wrong: their plan documents list tasks). The operator saw S1 and its results missing.
 - Missed by: author (I rendered without comparing to the previous program report); no gate checks sprint coverage.
 - Rule: before handing over a program report, compare its sprint list and totals with the previous report and the roadmap table; every roadmap sprint needs task rows.
+
+## 2026-11-07 — Plan contradicted the registry for S3-S5
+
+- Kind: FAILURE (mine): I put S3 0/5, S4 0/6 NOT_STARTED in the plan and wrote that no task lists existed, while core/BACKLOG.md recorded passing tests and approvals for VST-027..038. The operator saw two reports of one program disagree.
+- Missed by: author (did not read the registry rows before assigning statuses); no gate compares plan statuses with the registry.
+- Rule: before assigning a task status, read the registry row and the branch history for that task; a status that contradicts recorded evidence is wrong until reconciled.
