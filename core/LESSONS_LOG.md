@@ -1250,3 +1250,12 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Layer that caught it: exact focused functional run.
 - Rule: mutate only the property a test intends to falsify; assert the earliest permitted fail-closed result when deliberately changing multiple properties.
 - Fix status: the test now flips one byte at unchanged length. Both suites need a complete rerun at the new exact HEAD; no product-source change.
+
+## 2026-11-07 — Normalize S2 plan statuses and record the S2-4E OS-elevation block
+
+- Kind: SHORTCOMING (status wording).
+- Facts: the plan-close hook read S2-4D and S2-5 as UNKNOWN because their status cell was "ACCEPTED — bounded source/test" and not the bare token. The provisioner run from a non-elevated shell refused with "Install requires an elevated Windows token." A recheck after that showed no VST root and 0 VST services.
+- Root cause: qualifiers were put in the status column and not the evidence column. The elevation guard worked as designed.
+- Layer that caught it: the project-plan stop hook (statuses) and the provisioner's own guard (elevation).
+- Rule: put only a bare status token in plan status cells and qualifiers in Evidence. Give the operator the exact "Run as administrator" step for elevated installers.
+- Fix status: S2-4D and S2-5 are now ACCEPTED (the bounded scope is recorded in Evidence). S2-4E is now BLOCKED_OPERATOR until the provisioner runs elevated. No code changed.

@@ -1567,3 +1567,7 @@ changes the versioned runtime symlink and fixed service units. Permit this direc
 metadata-only check; do not read or replace its contents. Continue requiring absent runtime
 paths, inactive units, no pending jobs and empty cgroups. The selector code and focused tests
 are in change0603. Runtime selection and the owner-to-Runner request remain unperformed.
+
+## 2026-11-07 — S2-4E waits on operator-granted OS elevation
+
+Two attempts have not started the provisioner: the first UAC prompt was canceled, and the second run used a non-elevated shell, which the guard at 	ests/vst/provision_s2_4e_windows.ps1 line 164 refused before any change. A recheck shows no C:\ProgramData\VST and 0 VST services. S2-4E is marked BLOCKED_OPERATOR. The next step is an elevated run by the operator, then one e2e-runner trigger of the scheduled task. The refusal transcript is kept in docs/sdlc/evidence/s2-4e-windows-provision.log.
