@@ -1755,3 +1755,7 @@ The rebinding adds the Windows public-key fingerprint branch.
 ## 2026-11-07 — Dispatcher client intent schema aligned with the Store payload
 
 SupervisorClient.next_dispatch_intent now accepts instruction and key_id (required) and the four optional delegated-key fields, and validates the signed instruction against the intent fields. Evidence: docs/sdlc/evidence/s2-4e-e2e-run-20261107-2.out (second E2E run, Dispatcher stopped on the old schema).
+
+## 2026-11-07 — S2-4E manifest base_head 2bff3a3 -> fd5178efb30979765fbe1d7a03b9bfee732009b3
+
+The rebinding adds the Dispatcher client intent schema fix.

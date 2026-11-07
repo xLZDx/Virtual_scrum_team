@@ -1585,3 +1585,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Missed by: author, tests (no client-to-real-Supervisor-output test), reviewers.
 - Fix: the client accepts the 12 base keys plus instruction and key_id, with four optional string fields, and cross-validates the signed instruction like submit_dispatch_intent does.
 - Rule: every client-side response validator needs one test fed with the real producer output, not a hand-written dict.
+
+## 2026-11-07 — S2-4E manifest rebound to fd5178e (intent schema)
+
+- Kind: NEUTRAL.
