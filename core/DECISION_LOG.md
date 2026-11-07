@@ -1719,3 +1719,7 @@ Probe `store_thread_c4eb827` at ae07e7a: 5 sequential and 6 concurrent requests 
 ## 2026-11-07 — Reliability hardening before the next elevated attempt
 
 Supervisor RPC timeouts in Runner and Owner are 30 s, OpenSSL timeout 20 s, Owner accept tolerates up to 5 consecutive per-connection failures, and repository-evidence git runs without index locks. The manifest timeout of 900 s is unaffected: the dispatch and Runner client maxima already exceed it.
+
+## 2026-11-07 — S2-4E manifest base_head c4eb827908d5e3d4ad464c9035f7c444ce6335a1 -> 3536cbfe323cbe85555ad2c318e46c41e37eafce
+
+The rebinding adds the reliability hardening.

@@ -1511,3 +1511,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
   - git under the Runner token;
   - TemporaryDirectory under the write-restricted token.
 - Rule: walk the whole remaining chain for the environment mismatch class (read-only dirs, restricted tokens, thread affinity, short timeouts) before each elevated attempt, not only the stage that failed last.
+
+## 2026-11-07 — S2-4E manifest rebound to 3536cbfe323cbe85555ad2c318e46c41e37eafce (reliability hardening)
+
+- Kind: NEUTRAL.
