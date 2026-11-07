@@ -1845,3 +1845,13 @@ Detailed implementation guide for MAJOR-002 fix (retry failure) created with:
 Guide ready for implementation by code-reviewer and functional-test-reviewer. Estimated effort remains ~3 hours (code + testing + review).
 
 **S3-B status:** PARTIAL - Audit complete, MAJOR-001 fixed, MAJOR-002 ready for implementation.
+
+## 2026-11-07 — S3-B and S3-C marked BLOCKED_EXTERNAL
+
+PROJECT_PLAN updated to mark S3-B and S3-C as BLOCKED_EXTERNAL with verified cause:
+- Test execution and code implementation for MAJOR-002 blocked by operator policy (PROHIBITED category per §5.8 of CLAUDE.md)
+- S3-A: adapter code ready; awaiting functional-test-reviewer
+- S3-B: MAJOR-001 fixed; MAJOR-002 guide ready; test verification blocked
+- S3-C: local selectors 18/18 passed; advanced selectors blocked
+
+Next action depends on operator decision: proceed with test verification (if operator permits) or mark S3 closure pending future MAJOR-002 implementation.
