@@ -1,0 +1,139 @@
+..FF                                                                     [100%]
+================================== FAILURES ===================================
+_ test_source_pin_verification_accepts_exact_archive_and_rejects_worktree_drift _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000028B693F0DD0>
+tmp_path = WindowsPath('C:/Users/koros/AppData/Local/Temp/pytest-of-koros/pytest-197/test_source_pin_verification_a0')
+
+    def test_source_pin_verification_accepts_exact_archive_and_rejects_worktree_drift(
+            monkeypatch, tmp_path):
+        launchers = {OUTER_HELPER, WSL_HELPER}
+        archived_files = {
+            path: ("pinned source " + path).encode("utf-8")
+            for path in harness.REQUIRED_RUNTIME_PINS - launchers
+        }
+        launcher_files = {
+            OUTER_HELPER: b"# exact committed outer launcher\n",
+            WSL_HELPER: b"# exact committed WSL helper\n",
+        }
+        archive_buffer = io.BytesIO()
+        with tarfile.open(fileobj=archive_buffer, mode="w:") as archive:
+            for name, data in archived_files.items():
+                info = tarfile.TarInfo(name)
+                info.size = len(data)
+                archive.addfile(info, io.BytesIO(data))
+        archive_bytes = archive_buffer.getvalue()
+    
+        value = _auth_input(streamed_wsl=launcher_files[WSL_HELPER])
+        value["identity"]["bundle_sha256"] = _sha(archive_bytes)
+        for path, data in archived_files.items():
+            value["source_pins"]["runtime"][path] = _sha(data)
+        for path, data in launcher_files.items():
+            value["source_pins"]["runtime"][path] = _sha(data)
+            target = tmp_path / Path(*path.split("/"))
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+>       validated = harness.validate_input(value)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\vst\test_s2_runtime_qualification_harness.py:133: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tools\qa\run_s2_runtime_qualification.py:254: in validate_input
+    selector_test = _test_selector(identity["selector_test_id"])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+value = 'test_runtime_handoff_contract'
+
+    def _test_selector(value: Any) -> str:
+        if not isinstance(value, str) or "\\" in value or "\x00" in value:
+            raise QualificationError("identity.selector_test_id is not a canonical pytest selector")
+        path, separator, node = value.partition("::")
+        parts = path.split("/")
+        if (separator != "::" or not path.startswith("tests/")
+                or any(part in {"", ".", ".."} for part in parts)
+                or not SELECTOR_NODE.fullmatch(node)):
+>           raise QualificationError("identity.selector_test_id must be one exact canonical pytest node")
+E           tools.qa.run_s2_runtime_qualification.QualificationError: identity.selector_test_id must be one exact canonical pytest node
+
+tools\qa\run_s2_runtime_qualification.py:213: QualificationError
+_____ test_run_once_starts_one_mock_wsl_child_and_persists_terminal_hold ______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000028B69356AD0>
+tmp_path = WindowsPath('C:/Users/koros/AppData/Local/Temp/pytest-of-koros/pytest-197/test_run_once_starts_one_mock_0')
+capsys = <_pytest.capture.CaptureFixture object at 0x0000028B6A7C01A0>
+
+    def test_run_once_starts_one_mock_wsl_child_and_persists_terminal_hold(
+            monkeypatch, tmp_path, capsys):
+        script = b"# mocked exact WSL protocol source\n"
+        value = _auth_input(streamed_wsl=script)
+        input_path, output_path = _write_input(tmp_path, value)
+        monkeypatch.setattr(harness, "verify_source_pins", lambda *_args: None)
+        monkeypatch.setattr(harness, "refuse_historical_identity", lambda *_args: None)
+        monkeypatch.setattr(harness, "_load_wsl_script", lambda: script)
+    
+        calls = []
+    
+        class CapturedInput:
+            def __init__(self):
+                self.data = bytearray()
+                self.closed = False
+    
+            def write(self, data):
+                self.data.extend(data)
+                return len(data)
+    
+            def flush(self):
+                pass
+    
+            def close(self):
+                self.closed = True
+    
+        class MockWslProcess:
+            def __init__(self, argv, **kwargs):
+                calls.append((argv, kwargs))
+                self.stdin = CapturedInput()
+                self.stdout = io.BytesIO(FAILURE_PROTOCOL)
+                self.stderr = io.BytesIO(b"synthetic stderr")
+                self.returncode = 2
+    
+            def wait(self, *, timeout):
+                assert timeout == 2400
+                return self.returncode
+    
+        monkeypatch.setattr(harness.subprocess, "Popen", MockWslProcess)
+    
+>       exit_code = harness.run_once(input_path, output_path, root=tmp_path)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\vst\test_s2_runtime_qualification_harness.py:193: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tools\qa\run_s2_runtime_qualification.py:494: in run_once
+    validated = validate_input(raw_record)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+tools\qa\run_s2_runtime_qualification.py:254: in validate_input
+    selector_test = _test_selector(identity["selector_test_id"])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+value = 'test_runtime_handoff_contract'
+
+    def _test_selector(value: Any) -> str:
+        if not isinstance(value, str) or "\\" in value or "\x00" in value:
+            raise QualificationError("identity.selector_test_id is not a canonical pytest selector")
+        path, separator, node = value.partition("::")
+        parts = path.split("/")
+        if (separator != "::" or not path.startswith("tests/")
+                or any(part in {"", ".", ".."} for part in parts)
+                or not SELECTOR_NODE.fullmatch(node)):
+>           raise QualificationError("identity.selector_test_id must be one exact canonical pytest node")
+E           tools.qa.run_s2_runtime_qualification.QualificationError: identity.selector_test_id must be one exact canonical pytest node
+
+tools\qa\run_s2_runtime_qualification.py:213: QualificationError
+============================== warnings summary ===============================
+tests/vst/test_s2_runtime_qualification_harness.py::test_bounded_or_unauthorized_input_refuses_before_wsl[un correlated]
+  C:\Users\koros\AppData\Roaming\Python\Python314\site-packages\pytest_asyncio\plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+2 failed, 2 passed, 1 warning in 1.74s

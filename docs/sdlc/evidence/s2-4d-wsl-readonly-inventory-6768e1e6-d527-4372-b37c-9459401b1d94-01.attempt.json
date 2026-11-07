@@ -1,0 +1,105 @@
+{
+  "applier_invocations": 0,
+  "cleanup": {
+    "attempted": true,
+    "errors": [],
+    "exit_code": 0,
+    "kill": "NOT_NEEDED",
+    "stdin": "SENT_X_AND_CLOSED",
+    "waited": true
+  },
+  "created_utc": "2026-11-05T14:32:30.019740+00:00",
+  "decision_id": "6768e1e6-d527-4372-b37c-9459401b1d94",
+  "finished_utc": "2026-11-05T14:32:45.149513+00:00",
+  "inventory": {
+    "command": [
+      "C:\\Windows\\system32\\wsl.exe",
+      "--distribution",
+      "Ubuntu-24.04",
+      "--user",
+      "root",
+      "--exec",
+      "/bin/sh",
+      "-c",
+      "if /usr/bin/mountpoint -q /mnt/d; then :; else rc=$?; [ \"$rc\" -eq 32 ] || exit \"$rc\"; /usr/bin/mount -t drvfs D: /mnt/d -o ro || exit $?; fi; exec /usr/bin/python3.12 -I -B -S /mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py"
+    ],
+    "exit_code": 0,
+    "pid": 42852,
+    "started_utc": "2026-11-05T14:32:42.480226+00:00",
+    "stderr": {
+      "bytes": 0,
+      "extra_after_readiness": false,
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-readonly-inventory-6768e1e6-d527-4372-b37c-9459401b1d94-01.inventory.stderr.raw",
+      "reader_error": null,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "stdout": {
+      "bytes": 36345,
+      "extra_after_readiness": false,
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-readonly-inventory-6768e1e6-d527-4372-b37c-9459401b1d94-01.inventory.stdout.raw",
+      "reader_error": null,
+      "sha256": "9a002c2145cba8c104bb76a0a95365f382c097cd479401056a3f993487725813"
+    }
+  },
+  "inventory_started": true,
+  "keeper": {
+    "banner_sequence": false,
+    "command": [
+      "C:\\Windows\\system32\\wsl.exe",
+      "--distribution",
+      "Ubuntu-24.04",
+      "--user",
+      "root",
+      "--exec",
+      "/usr/bin/python3.12",
+      "-I",
+      "-B",
+      "-S",
+      "-c",
+      "import sys,pathlib,json; print(json.dumps({\"ready\":True,\"pid1_stat\":pathlib.Path(\"/proc/1/stat\").read_text(),\"boot_id\":pathlib.Path(\"/proc/sys/kernel/random/boot_id\").read_text().strip()},separators=(\",\",\":\")),flush=True); sys.stdin.buffer.read(1)"
+    ],
+    "pid": 39056,
+    "readiness": {
+      "boot_id": "84c624a7-bc08-45a7-b60e-2ca715578597",
+      "pid1_stat": "1 (systemd) S 0 1 1 0 -1 4194560 5727 52216 117 1271 126 332 294 457 20 0 1 0 837509 22302720 3066 18446744073709551615 109114187730944 109114187774817 140724930063104 0 0 0 671173123 4096 1260 1 0 0 17 3 0 0 0 0 0 109114187804624 109114187808784 109115087650816 140724930064280 140724930064291 140724930064291 140724930064365 0\n",
+      "ready": true
+    },
+    "readiness_utc": "2026-11-05T14:32:42.319444+00:00",
+    "started_utc": "2026-11-05T14:32:30.051392+00:00",
+    "state": "READY_KEEPER_OPEN",
+    "stderr": {
+      "bytes": 0,
+      "extra_after_readiness": false,
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-readonly-inventory-6768e1e6-d527-4372-b37c-9459401b1d94-01.keeper.stderr.raw",
+      "reader_error": null,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "stdout": {
+      "bytes": 409,
+      "extra_after_readiness": false,
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-readonly-inventory-6768e1e6-d527-4372-b37c-9459401b1d94-01.keeper.stdout.raw",
+      "reader_error": null,
+      "sha256": "d957aab8bd43110ca57b44483a953d2299eafcbc81a2e694ecd20526bbd046dd"
+    }
+  },
+  "launch_started": true,
+  "paths": {
+    "attempt": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-readonly-inventory-6768e1e6-d527-4372-b37c-9459401b1d94-01.attempt.json",
+    "inventory_stderr": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-readonly-inventory-6768e1e6-d527-4372-b37c-9459401b1d94-01.inventory.stderr.raw",
+    "inventory_stdout": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-readonly-inventory-6768e1e6-d527-4372-b37c-9459401b1d94-01.inventory.stdout.raw",
+    "keeper_stderr": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-readonly-inventory-6768e1e6-d527-4372-b37c-9459401b1d94-01.keeper.stderr.raw",
+    "keeper_stdout": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-readonly-inventory-6768e1e6-d527-4372-b37c-9459401b1d94-01.keeper.stdout.raw"
+  },
+  "primary_error": "RuntimeError('read-only D:/9p mount predicate failed')",
+  "result": "FAILED_AFTER_LAUNCH_NO_APPLY",
+  "schema": "VST_S2_4D_WSL_READONLY_INVENTORY_ATTEMPT_V1",
+  "scope": {
+    "config_applier": false,
+    "max_duration_seconds": 180,
+    "max_wsl_first_start_launches": 1,
+    "retry": 0,
+    "selector": false,
+    "tests": false
+  },
+  "task": "S2-4D bounded WSL first-start and read-only inventory"
+}

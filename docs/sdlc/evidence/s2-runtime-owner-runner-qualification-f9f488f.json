@@ -1,0 +1,581 @@
+{
+  "schema": "VST_S2_RUNTIME_OWNER_RUNNER_QUALIFICATION_V1",
+  "authorization": {
+    "request_id": "733857ce-024e-42ab-b65a-25e12162dc38",
+    "decision": "AUTHORIZE",
+    "repo_head": "f9f488f332275b5d49924d0d5e7cf26fc1c5a27f",
+    "helper_sha256": "0f3b7b6fe11798ebc806a55bd4d6f687e7974b6f4394b2065e15defab8255083",
+    "applier_sha256": "7d208f72853b72666bd22b7d171d9b29f9bd2a96d77a19affea21f51d3009415",
+    "validator_sha256": "f006bf286dbc48f02194ebac58981d172371e0e008277e3646d288a63ab9bff6",
+    "bundle_manifest_sha256": "388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45",
+    "installation_layout_sha256": "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19",
+    "runtime_source_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
+    "run_id": "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910",
+    "bootstrap_request_id": "e520e04f58ad5e6a431a3a20b0efb87c",
+    "nonce": "0aac24fec9a2a5c53c5e9da21cbb4a42",
+    "runtime_selector": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2",
+    "retry_cap": 0,
+    "maximum_test_run_executions": 1,
+    "sole_test_selector": "tests/vst/test_s2_assignment_basis.py::test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment"
+  },
+  "inventory_invocation": {
+    "command": "wsl.exe --distribution Ubuntu-24.04 --user root --exec /usr/bin/python3.12 -I -B -S -",
+    "exit_code": 0,
+    "stdout_path": "docs/sdlc/evidence/s2-runtime-target-inventory-f9f488f.json",
+    "stdout_sha256": "d4dc31bcd0eb97478677a844b80c2f7ccfbb9d176a8197b52c4a7ea7cdb340a9",
+    "stdout_bytes": 13771,
+    "stderr_sha256": "6fbe8ed40060430486e31349c4833f791b9c24ff71b038cced163ce2cbd56ce4",
+    "stderr": "INVENTORY_SHA256=d4dc31bcd0eb97478677a844b80c2f7ccfbb9d176a8197b52c4a7ea7cdb340a9\n"
+  },
+  "inventory_raw_stdout_utf8": "{\"attestation_present\":false,\"boot_id\":\"270cd88b-183f-426c-8add-872d9e98bcec\",\"candidate_identity_collision\":false,\"captured_utc\":\"2026-10-30T07:36:58.654Z\",\"configuration_files\":{\"/etc/systemd/system/vst-assignment-bootstrap.service\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0644\",\"sha256\":\"e714fb88699ae07fbd96ccd8758cb58d1db8bcf075d52145c6e8a3ec8931f43f\",\"size\":1016,\"state\":\"PRESENT\",\"uid\":0},\"/etc/systemd/system/vst-dispatch-issuer.service\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0644\",\"sha256\":\"d798f141e33d15444afccb1ac26213665571f19e70f1dc61fbd7f60b23140c7d\",\"size\":1027,\"state\":\"PRESENT\",\"uid\":0},\"/etc/systemd/system/vst-runner.service.d/90-s2-host-path-mask.conf\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0644\",\"sha256\":\"8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062\",\"size\":153,\"state\":\"PRESENT\",\"uid\":0},\"/etc/systemd/system/vst-runner.service.d/rate-limits.conf\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0644\",\"sha256\":\"c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590\",\"size\":51,\"state\":\"PRESENT\",\"uid\":0},\"/etc/systemd/system/vst-sandbox-probe.service\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0644\",\"sha256\":\"d80c171238985ffcc7f19c6eac74276c7ea7615ebf85d63391b6f2dbf097f33f\",\"size\":637,\"state\":\"PRESENT\",\"uid\":0},\"/etc/systemd/system/vst-sandbox-probe.service.d/90-s2-host-path-mask.conf\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0644\",\"sha256\":\"8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062\",\"size\":153,\"state\":\"PRESENT\",\"uid\":0},\"/etc/systemd/system/vst-signer.service.d/rate-limits.conf\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0644\",\"sha256\":\"c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590\",\"size\":51,\"state\":\"PRESENT\",\"uid\":0},\"/etc/systemd/system/vst-supervisor.service.d/rate-limits.conf\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0644\",\"sha256\":\"c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590\",\"size\":51,\"state\":\"PRESENT\",\"uid\":0},\"/etc/vst-runner/assignment-delegation-policy.json\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0644\",\"sha256\":\"3dabe39f15ee280d1fac78c83989ce71ec868410b665fa26e199378f27deb427\",\"size\":1411,\"state\":\"PRESENT\",\"uid\":0},\"/etc/vst-runner/bootstrap-request.json\":{\"gid\":980,\"kind\":\"regular\",\"mode\":\"0640\",\"sha256\":\"456b17bec9aa13ee2b5d9c93f4ef7e5c6c68d87c167016904acdbf3edd59b62c\",\"size\":4104,\"state\":\"PRESENT\",\"uid\":0},\"/etc/vst-runner/dispatch-instruction-public.pem\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0644\",\"sha256\":\"b3586ac2f707058a8933759b8abbf4f5b8b84e7fde70f644d9d77d523b7af162\",\"size\":113,\"state\":\"PRESENT\",\"uid\":0},\"/etc/vst-runner/dispatch-instruction-trust.json\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0644\",\"sha256\":\"c88d90f75653168b417b15f11d1dc6086433d7d4c948757ac30b967fac8db350\",\"size\":196,\"state\":\"PRESENT\",\"uid\":0},\"/etc/vst-runner/dispatch-owner-service.json\":{\"gid\":982,\"kind\":\"regular\",\"mode\":\"0640\",\"sha256\":\"1df674c4198df4246ed6490fd1ae9eaadd8a8be18ba54c5852019694de4a99c1\",\"size\":65,\"state\":\"PRESENT\",\"uid\":0},\"/etc/vst-runner/dispatcher-service.json\":{\"gid\":983,\"kind\":\"regular\",\"mode\":\"0640\",\"sha256\":\"3f35183f011a1bdb4b3ec8fa45480178dc91d6281b26bdc30e3d50185f2842cc\",\"size\":166,\"state\":\"PRESENT\",\"uid\":0},\"/etc/vst-runner/execution-grant-public.pem\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0644\",\"sha256\":\"bbf647ee13e5aafdceccfce9bbb41dc9f79f15f4578a19dfb4ddcf11442a45ad\",\"size\":113,\"state\":\"PRESENT\",\"uid\":0},\"/etc/vst-runner/fence.json\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0600\",\"sha256\":\"8b96cf8d743bd6fc5c4bc51a3a988f7477f7466e6d40748e9462d88dce9da556\",\"size\":440,\"state\":\"PRESENT\",\"uid\":0},\"/etc/vst-runner/model-provenance.json\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0644\",\"sha256\":\"a78f908212da5715a951c62d17e2ec720ad6065c13164191d3aef0bf506d6303\",\"size\":567,\"state\":\"PRESENT\",\"uid\":0},\"/etc/vst-runner/network-profile.json\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0644\",\"sha256\":\"ee2e58db916c4bd3056478a9d0f07824d360012b7324c4aafe887a098103b39c\",\"size\":1176,\"state\":\"PRESENT\",\"uid\":0},\"/etc/vst-runner/probe-entrypoint.py\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0644\",\"sha256\":\"2bb8a72935a003411a57eeb5f70b01f0e6407955dfd0c2abf3981ce3a57e19b1\",\"size\":1566,\"state\":\"PRESENT\",\"uid\":0},\"/etc/vst-runner/probe-request.json\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0644\",\"sha256\":\"6709b6af549de742e9dbcac7018029021a091e037c0a24bf69dc8c076c116eff\",\"size\":118,\"state\":\"PRESENT\",\"uid\":0},\"/etc/vst-runner/reviewer-registry.json\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0644\",\"sha256\":\"678dbe279d91ba96fa3b6e79da13c2c2be8270cbc08bbaaae9f7bf724078e6fd\",\"size\":269,\"state\":\"PRESENT\",\"uid\":0},\"/etc/vst-runner/reviewer-use-policy.json\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0644\",\"sha256\":\"a69dfcb56d54aadf7d9b2d966edbf4867145a861b23c2313e03fc0bc36766c97\",\"size\":875,\"state\":\"PRESENT\",\"uid\":0},\"/etc/vst-runner/runner-service.json\":{\"gid\":988,\"kind\":\"regular\",\"mode\":\"0640\",\"sha256\":\"2121baaf8598b80c139ba452eeab11760c8b0240d0e177220e9e792545c70579\",\"size\":1256,\"state\":\"PRESENT\",\"uid\":0},\"/etc/vst-runner/signer-service.json\":{\"gid\":988,\"kind\":\"regular\",\"mode\":\"0640\",\"sha256\":\"4d4d53fccd20d415b13a69b9ad4151eff6c15532ae4a6460a09fc32b2a869ad3\",\"size\":510,\"state\":\"PRESENT\",\"uid\":0},\"/etc/vst-runner/supervisor-service.json\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0600\",\"sha256\":\"76b87c5183fd93f58e8e6049aace8ec67365fb2d1392f5ca1eee35778bd042ec\",\"size\":3462,\"state\":\"PRESENT\",\"uid\":0},\"/etc/vst-runner/task-manifest.json\":{\"gid\":0,\"kind\":\"regular\",\"mode\":\"0644\",\"sha256\":\"9c1f6f11f7e92294a3bad3425febfae2ef432d269e53aa6ff0ce3bb3e895296a\",\"size\":3596,\"state\":\"PRESENT\",\"uid\":0}},\"container_sockets\":{\"/run/containerd/containerd.sock\":false,\"/run/docker.sock\":false,\"/run/podman/podman.sock\":false,\"/var/run/docker.sock\":false},\"installed_bootstrap_identity\":{\"request_id\":\"212a23e66ee94a7d87355b11e07e34fe\",\"run_id\":\"s2-runtime-20261030-334296bd0779488d837a27e283b50b6a\"},\"mount\":{\"filesystem_options\":{\"command\":\"/usr/bin/findmnt -n -o FSTYPE,OPTIONS --target /mnt/d\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:57.468602+00:00\",\"stderr\":\"\",\"stdout\":\"9p     ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3\\n\"},\"source\":{\"command\":\"/usr/bin/findmnt -n -o SOURCE --target /mnt/d\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:57.465456+00:00\",\"stderr\":\"\",\"stdout\":\"D:\\n\"}},\"observations\":{\"configuration_destination_count\":{\"expected\":26,\"observed\":26},\"initial_mount_source\":{\"command\":\"/usr/bin/findmnt -n -o SOURCE --target /mnt/d\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:57.447361+00:00\",\"stderr\":\"\",\"stdout\":\"/dev/sdf\\n\"},\"kernel\":{\"command\":\"/usr/bin/uname -r\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:58.653354+00:00\",\"stderr\":\"\",\"stdout\":\"6.6.114.1-microsoft-standard-WSL2\\n\"},\"mount_fstype_options\":{\"command\":\"/usr/bin/findmnt -n -o FSTYPE,OPTIONS --target /mnt/d\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:57.468602+00:00\",\"stderr\":\"\",\"stdout\":\"9p     ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3\\n\"},\"mount_source\":{\"command\":\"/usr/bin/findmnt -n -o SOURCE --target /mnt/d\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:57.465456+00:00\",\"stderr\":\"\",\"stdout\":\"D:\\n\"},\"repo_head\":{\"command\":\"git -C /mnt/d/Repo/Virtual_scrum_team rev-parse HEAD\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:57.472071+00:00\",\"stderr\":\"\",\"stdout\":\"f9f488f332275b5d49924d0d5e7cf26fc1c5a27f\\n\"},\"systemd_jobs\":{\"command\":\"/usr/bin/systemctl list-jobs --no-legend --no-pager\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:58.547714+00:00\",\"stderr\":\"\",\"stdout\":\"\"},\"systemd_state\":{\"command\":\"/usr/bin/systemctl is-system-running\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:58.542152+00:00\",\"stderr\":\"\",\"stdout\":\"running\\n\"},\"systemd_version\":{\"command\":\"/usr/bin/systemctl --version\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:58.552709+00:00\",\"stderr\":\"\",\"stdout\":\"systemd 255 (255.4-1ubuntu8.17)\\n+PAM +AUDIT +SELINUX +APPARMOR +IMA +SMACK +SECCOMP +GCRYPT -GNUTLS +OPENSSL +ACL +BLKID +CURL +ELFUTILS +FIDO2 +IDN2 -IDN +IPTC +KMOD +LIBCRYPTSETUP +LIBFDISK +PCRE2 -PWQUALITY +P11KIT +QRENCODE +TPM2 +BZIP2 +LZ4 +XZ +ZLIB +ZSTD -BPF_FRAMEWORK -XKBCOMMON +UTMP +SYSVINIT default-hierarchy=unified\\n\"},\"temporary_mount\":{\"command\":\"/usr/bin/mount -t drvfs D: /mnt/d -o ro\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:57.452180+00:00\",\"stderr\":\"\",\"stdout\":\"\"},\"temporary_unmount\":{\"command\":\"/usr/bin/umount /mnt/d\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:58.654682+00:00\",\"stderr\":\"\",\"stdout\":\"\"},\"unit_vst-assignment-bootstrap.service\":{\"command\":\"/usr/bin/systemctl show vst-assignment-bootstrap.service --property=LoadState --property=ActiveState --property=SubState --property=Job --value\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:58.556406+00:00\",\"stderr\":\"\",\"stdout\":\"loaded\\ninactive\\ndead\\n\\n\"},\"unit_vst-dispatch-issuer.service\":{\"command\":\"/usr/bin/systemctl show vst-dispatch-issuer.service --property=LoadState --property=ActiveState --property=SubState --property=Job --value\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:58.568256+00:00\",\"stderr\":\"\",\"stdout\":\"loaded\\ninactive\\ndead\\n\\n\"},\"unit_vst-dispatch-owner.service\":{\"command\":\"/usr/bin/systemctl show vst-dispatch-owner.service --property=LoadState --property=ActiveState --property=SubState --property=Job --value\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:58.578682+00:00\",\"stderr\":\"\",\"stdout\":\"loaded\\ninactive\\ndead\\n\\n\"},\"unit_vst-dispatch-owner.socket\":{\"command\":\"/usr/bin/systemctl show vst-dispatch-owner.socket --property=LoadState --property=ActiveState --property=SubState --property=Job --value\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:58.590764+00:00\",\"stderr\":\"\",\"stdout\":\"loaded\\ninactive\\ndead\\n\\n\"},\"unit_vst-dispatcher.service\":{\"command\":\"/usr/bin/systemctl show vst-dispatcher.service --property=LoadState --property=ActiveState --property=SubState --property=Job --value\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:58.601438+00:00\",\"stderr\":\"\",\"stdout\":\"loaded\\ninactive\\ndead\\n\\n\"},\"unit_vst-runner.service\":{\"command\":\"/usr/bin/systemctl show vst-runner.service --property=LoadState --property=ActiveState --property=SubState --property=Job --value\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:58.611125+00:00\",\"stderr\":\"\",\"stdout\":\"loaded\\ninactive\\ndead\\n\\n\"},\"unit_vst-sandbox-probe.service\":{\"command\":\"/usr/bin/systemctl show vst-sandbox-probe.service --property=LoadState --property=ActiveState --property=SubState --property=Job --value\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:58.621874+00:00\",\"stderr\":\"\",\"stdout\":\"loaded\\ninactive\\ndead\\n\\n\"},\"unit_vst-signer.service\":{\"command\":\"/usr/bin/systemctl show vst-signer.service --property=LoadState --property=ActiveState --property=SubState --property=Job --value\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:58.630689+00:00\",\"stderr\":\"\",\"stdout\":\"loaded\\ninactive\\ndead\\n\\n\"},\"unit_vst-supervisor.service\":{\"command\":\"/usr/bin/systemctl show vst-supervisor.service --property=LoadState --property=ActiveState --property=SubState --property=Job --value\",\"exit_code\":0,\"started_utc\":\"2026-10-30T07:36:58.641396+00:00\",\"stderr\":\"\",\"stdout\":\"loaded\\ninactive\\ndead\\n\\n\"}},\"preflight_present\":false,\"readiness\":{\"accounts\":{\"vst-runner\":{\"gid\":988,\"group_name\":\"vst-runner\",\"uid\":997},\"vst-worker\":{\"gid\":989,\"group_name\":\"vst-worker\",\"uid\":999}},\"attestation_present\":false,\"boot_id\":\"270cd88b-183f-426c-8add-872d9e98bcec\",\"candidate_identity_collision\":false,\"container_sockets\":{\"/run/containerd/containerd.sock\":false,\"/run/docker.sock\":false,\"/run/podman/podman.sock\":false,\"/var/run/docker.sock\":false},\"distro\":\"Ubuntu-24.04\",\"installed_bootstrap_identity\":{\"request_id\":\"212a23e66ee94a7d87355b11e07e34fe\",\"run_id\":\"s2-runtime-20261030-334296bd0779488d837a27e283b50b6a\"},\"kernel\":\"6.6.114.1-microsoft-standard-WSL2\",\"pid1\":{\"comm\":\"systemd\",\"error\":\"FileNotFoundError: [Errno 2] No such file or directory: '/proc/1/ns/mount'\",\"net_ns_inode\":4026531840,\"start_ticks\":5122751},\"preflight_present\":false,\"runtime_selector\":\"/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2\",\"shutdown_scheduled\":false,\"store_present\":false,\"systemd\":\"running\",\"systemd_jobs\":\"\",\"systemd_version\":\"systemd 255 (255.4-1ubuntu8.17)\",\"units\":{\"vst-assignment-bootstrap.service\":[\"loaded\",\"inactive\",\"dead\",\"\"],\"vst-dispatch-issuer.service\":[\"loaded\",\"inactive\",\"dead\",\"\"],\"vst-dispatch-owner.service\":[\"loaded\",\"inactive\",\"dead\",\"\"],\"vst-dispatch-owner.socket\":[\"loaded\",\"inactive\",\"dead\",\"\"],\"vst-dispatcher.service\":[\"loaded\",\"inactive\",\"dead\",\"\"],\"vst-runner.service\":[\"loaded\",\"inactive\",\"dead\",\"\"],\"vst-sandbox-probe.service\":[\"loaded\",\"inactive\",\"dead\",\"\"],\"vst-signer.service\":[\"loaded\",\"inactive\",\"dead\",\"\"],\"vst-supervisor.service\":[\"loaded\",\"inactive\",\"dead\",\"\"]}},\"runtime_selector\":{\"kind\":\"symlink\",\"link_target\":\"/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2\",\"state\":\"PRESENT\"},\"schema\":\"VST_S2_RUNTIME_CONFIG_TARGET_INVENTORY_V1\",\"source_head\":\"80c2b81deac364ed6466600fd46af47aafe805e2\",\"source_identity\":{\"applier_sha256\":\"7d208f72853b72666bd22b7d171d9b29f9bd2a96d77a19affea21f51d3009415\",\"applier_sha256_matches_head_blob\":true,\"bundle_manifest_sha256\":\"388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45\",\"bundle_manifest_sha256_matches_head_blob\":true,\"helper_sha256\":\"0f3b7b6fe11798ebc806a55bd4d6f687e7974b6f4394b2065e15defab8255083\",\"helper_sha256_matches_head_blob\":true,\"implementation_source_commit\":\"6fb47d966814005ea51992c37d8af342a7cb4219\",\"installation_layout_sha256\":\"47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19\",\"installation_layout_sha256_matches_head_blob\":true,\"repo_head\":\"f9f488f332275b5d49924d0d5e7cf26fc1c5a27f\",\"runtime_source_head\":\"80c2b81deac364ed6466600fd46af47aafe805e2\",\"validator_sha256\":\"f006bf286dbc48f02194ebac58981d172371e0e008277e3646d288a63ab9bff6\",\"validator_sha256_matches_head_blob\":true},\"store_present\":false}\n",
+  "inventory": {
+    "attestation_present": false,
+    "boot_id": "270cd88b-183f-426c-8add-872d9e98bcec",
+    "candidate_identity_collision": false,
+    "captured_utc": "2026-10-30T07:36:58.654Z",
+    "configuration_files": {
+      "/etc/systemd/system/vst-assignment-bootstrap.service": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "e714fb88699ae07fbd96ccd8758cb58d1db8bcf075d52145c6e8a3ec8931f43f",
+        "size": 1016,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/systemd/system/vst-dispatch-issuer.service": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "d798f141e33d15444afccb1ac26213665571f19e70f1dc61fbd7f60b23140c7d",
+        "size": 1027,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/systemd/system/vst-runner.service.d/90-s2-host-path-mask.conf": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
+        "size": 153,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/systemd/system/vst-runner.service.d/rate-limits.conf": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+        "size": 51,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/systemd/system/vst-sandbox-probe.service": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "d80c171238985ffcc7f19c6eac74276c7ea7615ebf85d63391b6f2dbf097f33f",
+        "size": 637,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/systemd/system/vst-sandbox-probe.service.d/90-s2-host-path-mask.conf": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
+        "size": 153,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/systemd/system/vst-signer.service.d/rate-limits.conf": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+        "size": 51,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/systemd/system/vst-supervisor.service.d/rate-limits.conf": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+        "size": 51,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/assignment-delegation-policy.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "3dabe39f15ee280d1fac78c83989ce71ec868410b665fa26e199378f27deb427",
+        "size": 1411,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/bootstrap-request.json": {
+        "gid": 980,
+        "kind": "regular",
+        "mode": "0640",
+        "sha256": "456b17bec9aa13ee2b5d9c93f4ef7e5c6c68d87c167016904acdbf3edd59b62c",
+        "size": 4104,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/dispatch-instruction-public.pem": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "b3586ac2f707058a8933759b8abbf4f5b8b84e7fde70f644d9d77d523b7af162",
+        "size": 113,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/dispatch-instruction-trust.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "c88d90f75653168b417b15f11d1dc6086433d7d4c948757ac30b967fac8db350",
+        "size": 196,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/dispatch-owner-service.json": {
+        "gid": 982,
+        "kind": "regular",
+        "mode": "0640",
+        "sha256": "1df674c4198df4246ed6490fd1ae9eaadd8a8be18ba54c5852019694de4a99c1",
+        "size": 65,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/dispatcher-service.json": {
+        "gid": 983,
+        "kind": "regular",
+        "mode": "0640",
+        "sha256": "3f35183f011a1bdb4b3ec8fa45480178dc91d6281b26bdc30e3d50185f2842cc",
+        "size": 166,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/execution-grant-public.pem": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "bbf647ee13e5aafdceccfce9bbb41dc9f79f15f4578a19dfb4ddcf11442a45ad",
+        "size": 113,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/fence.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0600",
+        "sha256": "8b96cf8d743bd6fc5c4bc51a3a988f7477f7466e6d40748e9462d88dce9da556",
+        "size": 440,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/model-provenance.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "a78f908212da5715a951c62d17e2ec720ad6065c13164191d3aef0bf506d6303",
+        "size": 567,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/network-profile.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "ee2e58db916c4bd3056478a9d0f07824d360012b7324c4aafe887a098103b39c",
+        "size": 1176,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/probe-entrypoint.py": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "2bb8a72935a003411a57eeb5f70b01f0e6407955dfd0c2abf3981ce3a57e19b1",
+        "size": 1566,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/probe-request.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "6709b6af549de742e9dbcac7018029021a091e037c0a24bf69dc8c076c116eff",
+        "size": 118,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/reviewer-registry.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "678dbe279d91ba96fa3b6e79da13c2c2be8270cbc08bbaaae9f7bf724078e6fd",
+        "size": 269,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/reviewer-use-policy.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "a69dfcb56d54aadf7d9b2d966edbf4867145a861b23c2313e03fc0bc36766c97",
+        "size": 875,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/runner-service.json": {
+        "gid": 988,
+        "kind": "regular",
+        "mode": "0640",
+        "sha256": "2121baaf8598b80c139ba452eeab11760c8b0240d0e177220e9e792545c70579",
+        "size": 1256,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/signer-service.json": {
+        "gid": 988,
+        "kind": "regular",
+        "mode": "0640",
+        "sha256": "4d4d53fccd20d415b13a69b9ad4151eff6c15532ae4a6460a09fc32b2a869ad3",
+        "size": 510,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/supervisor-service.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0600",
+        "sha256": "76b87c5183fd93f58e8e6049aace8ec67365fb2d1392f5ca1eee35778bd042ec",
+        "size": 3462,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/task-manifest.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "9c1f6f11f7e92294a3bad3425febfae2ef432d269e53aa6ff0ce3bb3e895296a",
+        "size": 3596,
+        "state": "PRESENT",
+        "uid": 0
+      }
+    },
+    "container_sockets": {
+      "/run/containerd/containerd.sock": false,
+      "/run/docker.sock": false,
+      "/run/podman/podman.sock": false,
+      "/var/run/docker.sock": false
+    },
+    "installed_bootstrap_identity": {
+      "request_id": "212a23e66ee94a7d87355b11e07e34fe",
+      "run_id": "s2-runtime-20261030-334296bd0779488d837a27e283b50b6a"
+    },
+    "mount": {
+      "filesystem_options": {
+        "command": "/usr/bin/findmnt -n -o FSTYPE,OPTIONS --target /mnt/d",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:57.468602+02:00",
+        "stderr": "",
+        "stdout": "9p     ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3\n"
+      },
+      "source": {
+        "command": "/usr/bin/findmnt -n -o SOURCE --target /mnt/d",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:57.465456+02:00",
+        "stderr": "",
+        "stdout": "D:\n"
+      }
+    },
+    "observations": {
+      "configuration_destination_count": {
+        "expected": 26,
+        "observed": 26
+      },
+      "initial_mount_source": {
+        "command": "/usr/bin/findmnt -n -o SOURCE --target /mnt/d",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:57.447361+02:00",
+        "stderr": "",
+        "stdout": "/dev/sdf\n"
+      },
+      "kernel": {
+        "command": "/usr/bin/uname -r",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:58.653354+02:00",
+        "stderr": "",
+        "stdout": "6.6.114.1-microsoft-standard-WSL2\n"
+      },
+      "mount_fstype_options": {
+        "command": "/usr/bin/findmnt -n -o FSTYPE,OPTIONS --target /mnt/d",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:57.468602+02:00",
+        "stderr": "",
+        "stdout": "9p     ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3\n"
+      },
+      "mount_source": {
+        "command": "/usr/bin/findmnt -n -o SOURCE --target /mnt/d",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:57.465456+02:00",
+        "stderr": "",
+        "stdout": "D:\n"
+      },
+      "repo_head": {
+        "command": "git -C /mnt/d/Repo/Virtual_scrum_team rev-parse HEAD",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:57.472071+02:00",
+        "stderr": "",
+        "stdout": "f9f488f332275b5d49924d0d5e7cf26fc1c5a27f\n"
+      },
+      "systemd_jobs": {
+        "command": "/usr/bin/systemctl list-jobs --no-legend --no-pager",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:58.547714+02:00",
+        "stderr": "",
+        "stdout": ""
+      },
+      "systemd_state": {
+        "command": "/usr/bin/systemctl is-system-running",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:58.542152+02:00",
+        "stderr": "",
+        "stdout": "running\n"
+      },
+      "systemd_version": {
+        "command": "/usr/bin/systemctl --version",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:58.552709+02:00",
+        "stderr": "",
+        "stdout": "systemd 255 (255.4-1ubuntu8.17)\n+PAM +AUDIT +SELINUX +APPARMOR +IMA +SMACK +SECCOMP +GCRYPT -GNUTLS +OPENSSL +ACL +BLKID +CURL +ELFUTILS +FIDO2 +IDN2 -IDN +IPTC +KMOD +LIBCRYPTSETUP +LIBFDISK +PCRE2 -PWQUALITY +P11KIT +QRENCODE +TPM2 +BZIP2 +LZ4 +XZ +ZLIB +ZSTD -BPF_FRAMEWORK -XKBCOMMON +UTMP +SYSVINIT default-hierarchy=unified\n"
+      },
+      "temporary_mount": {
+        "command": "/usr/bin/mount -t drvfs D: /mnt/d -o ro",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:57.45218+02:00",
+        "stderr": "",
+        "stdout": ""
+      },
+      "temporary_unmount": {
+        "command": "/usr/bin/umount /mnt/d",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:58.654682+02:00",
+        "stderr": "",
+        "stdout": ""
+      },
+      "unit_vst-assignment-bootstrap.service": {
+        "command": "/usr/bin/systemctl show vst-assignment-bootstrap.service --property=LoadState --property=ActiveState --property=SubState --property=Job --value",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:58.556406+02:00",
+        "stderr": "",
+        "stdout": "loaded\ninactive\ndead\n\n"
+      },
+      "unit_vst-dispatch-issuer.service": {
+        "command": "/usr/bin/systemctl show vst-dispatch-issuer.service --property=LoadState --property=ActiveState --property=SubState --property=Job --value",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:58.568256+02:00",
+        "stderr": "",
+        "stdout": "loaded\ninactive\ndead\n\n"
+      },
+      "unit_vst-dispatch-owner.service": {
+        "command": "/usr/bin/systemctl show vst-dispatch-owner.service --property=LoadState --property=ActiveState --property=SubState --property=Job --value",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:58.578682+02:00",
+        "stderr": "",
+        "stdout": "loaded\ninactive\ndead\n\n"
+      },
+      "unit_vst-dispatch-owner.socket": {
+        "command": "/usr/bin/systemctl show vst-dispatch-owner.socket --property=LoadState --property=ActiveState --property=SubState --property=Job --value",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:58.590764+02:00",
+        "stderr": "",
+        "stdout": "loaded\ninactive\ndead\n\n"
+      },
+      "unit_vst-dispatcher.service": {
+        "command": "/usr/bin/systemctl show vst-dispatcher.service --property=LoadState --property=ActiveState --property=SubState --property=Job --value",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:58.601438+02:00",
+        "stderr": "",
+        "stdout": "loaded\ninactive\ndead\n\n"
+      },
+      "unit_vst-runner.service": {
+        "command": "/usr/bin/systemctl show vst-runner.service --property=LoadState --property=ActiveState --property=SubState --property=Job --value",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:58.611125+02:00",
+        "stderr": "",
+        "stdout": "loaded\ninactive\ndead\n\n"
+      },
+      "unit_vst-sandbox-probe.service": {
+        "command": "/usr/bin/systemctl show vst-sandbox-probe.service --property=LoadState --property=ActiveState --property=SubState --property=Job --value",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:58.621874+02:00",
+        "stderr": "",
+        "stdout": "loaded\ninactive\ndead\n\n"
+      },
+      "unit_vst-signer.service": {
+        "command": "/usr/bin/systemctl show vst-signer.service --property=LoadState --property=ActiveState --property=SubState --property=Job --value",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:58.630689+02:00",
+        "stderr": "",
+        "stdout": "loaded\ninactive\ndead\n\n"
+      },
+      "unit_vst-supervisor.service": {
+        "command": "/usr/bin/systemctl show vst-supervisor.service --property=LoadState --property=ActiveState --property=SubState --property=Job --value",
+        "exit_code": 0,
+        "started_utc": "2026-10-30T09:36:58.641396+02:00",
+        "stderr": "",
+        "stdout": "loaded\ninactive\ndead\n\n"
+      }
+    },
+    "preflight_present": false,
+    "readiness": {
+      "accounts": {
+        "vst-runner": {
+          "gid": 988,
+          "group_name": "vst-runner",
+          "uid": 997
+        },
+        "vst-worker": {
+          "gid": 989,
+          "group_name": "vst-worker",
+          "uid": 999
+        }
+      },
+      "attestation_present": false,
+      "boot_id": "270cd88b-183f-426c-8add-872d9e98bcec",
+      "candidate_identity_collision": false,
+      "container_sockets": {
+        "/run/containerd/containerd.sock": false,
+        "/run/docker.sock": false,
+        "/run/podman/podman.sock": false,
+        "/var/run/docker.sock": false
+      },
+      "distro": "Ubuntu-24.04",
+      "installed_bootstrap_identity": {
+        "request_id": "212a23e66ee94a7d87355b11e07e34fe",
+        "run_id": "s2-runtime-20261030-334296bd0779488d837a27e283b50b6a"
+      },
+      "kernel": "6.6.114.1-microsoft-standard-WSL2",
+      "pid1": {
+        "comm": "systemd",
+        "error": "FileNotFoundError: [Errno 2] No such file or directory: '/proc/1/ns/mount'",
+        "net_ns_inode": 4026531840,
+        "start_ticks": 5122751
+      },
+      "preflight_present": false,
+      "runtime_selector": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2",
+      "shutdown_scheduled": false,
+      "store_present": false,
+      "systemd": "running",
+      "systemd_jobs": "",
+      "systemd_version": "systemd 255 (255.4-1ubuntu8.17)",
+      "units": {
+        "vst-assignment-bootstrap.service": [
+          "loaded",
+          "inactive",
+          "dead",
+          ""
+        ],
+        "vst-dispatch-issuer.service": [
+          "loaded",
+          "inactive",
+          "dead",
+          ""
+        ],
+        "vst-dispatch-owner.service": [
+          "loaded",
+          "inactive",
+          "dead",
+          ""
+        ],
+        "vst-dispatch-owner.socket": [
+          "loaded",
+          "inactive",
+          "dead",
+          ""
+        ],
+        "vst-dispatcher.service": [
+          "loaded",
+          "inactive",
+          "dead",
+          ""
+        ],
+        "vst-runner.service": [
+          "loaded",
+          "inactive",
+          "dead",
+          ""
+        ],
+        "vst-sandbox-probe.service": [
+          "loaded",
+          "inactive",
+          "dead",
+          ""
+        ],
+        "vst-signer.service": [
+          "loaded",
+          "inactive",
+          "dead",
+          ""
+        ],
+        "vst-supervisor.service": [
+          "loaded",
+          "inactive",
+          "dead",
+          ""
+        ]
+      }
+    },
+    "runtime_selector": {
+      "kind": "symlink",
+      "link_target": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2",
+      "state": "PRESENT"
+    },
+    "schema": "VST_S2_RUNTIME_CONFIG_TARGET_INVENTORY_V1",
+    "source_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
+    "source_identity": {
+      "applier_sha256": "7d208f72853b72666bd22b7d171d9b29f9bd2a96d77a19affea21f51d3009415",
+      "applier_sha256_matches_head_blob": true,
+      "bundle_manifest_sha256": "388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45",
+      "bundle_manifest_sha256_matches_head_blob": true,
+      "helper_sha256": "0f3b7b6fe11798ebc806a55bd4d6f687e7974b6f4394b2065e15defab8255083",
+      "helper_sha256_matches_head_blob": true,
+      "implementation_source_commit": "6fb47d966814005ea51992c37d8af342a7cb4219",
+      "installation_layout_sha256": "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19",
+      "installation_layout_sha256_matches_head_blob": true,
+      "repo_head": "f9f488f332275b5d49924d0d5e7cf26fc1c5a27f",
+      "runtime_source_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
+      "validator_sha256": "f006bf286dbc48f02194ebac58981d172371e0e008277e3646d288a63ab9bff6",
+      "validator_sha256_matches_head_blob": true
+    },
+    "store_present": false
+  },
+  "disposition": "STOPPED_AFTER_VALIDATOR_REFUSAL",
+  "subsequent_steps": {
+    "configuration_apply": "NOT_RUN",
+    "root_preflight": "NOT_RUN",
+    "durable_claim_or_probe": "NOT_RUN",
+    "TestRun": "NOT_RUN"
+  },
+  "validation_invocation": {
+    "command": "python tools/qa/verify_s2_runtime_config_inventory.py docs/sdlc/evidence/s2-runtime-target-inventory-f9f488f.json --expected-sha256 d4dc31bcd0eb97478677a844b80c2f7ccfbb9d176a8197b52c4a7ea7cdb340a9 --expected-head f9f488f332275b5d49924d0d5e7cf26fc1c5a27f --helper-sha256 0f3b7b6fe11798ebc806a55bd4d6f687e7974b6f4394b2065e15defab8255083",
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "REFUSE: source identity differs from its exact pin: applier_sha256",
+    "result": "REFUSE; stop sequence; no apply, preflight, or TestRun permitted"
+  },
+  "stop_condition": {
+    "predicate": "committed validator rejects authorized inventory source_identity.applier_sha256",
+    "inventory_value": "7d208f72853b72666bd22b7d171d9b29f9bd2a96d77a19affea21f51d3009415",
+    "validator_expected_value": "ac512db996eff8ca8572a1bcf14e9a14081cb77b621bff7a7369a10df8bcf52d",
+    "authorization_pin_matches_inventory": true
+  },
+  "updated_utc": "2026-10-30T07:38:14.858214+00:00"
+}

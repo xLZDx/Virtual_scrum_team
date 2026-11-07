@@ -1,0 +1,55 @@
+{
+  "authorization_correlation": {
+    "job_id": "b6493aea-7625-4496-b4b9-a1433a1f0b40",
+    "payload_sha256": "87f1b4017083ccee6f9d7111c64aa2debacbbe2916b653227ee162574e79085e",
+    "reply_id": "244d0e5d-9aee-5a05-821b-02765eaba612",
+    "request_id": "7cc93f69-991e-493e-b1a5-8c55f95e8f30",
+    "retry_cap": 0,
+    "user_turn_id": "2a127312-3ea4-4760-a75b-8a23fd178897",
+    "verbatim_verdict": "APPROVE \u2014 one bounded qualification attempt"
+  },
+  "branch": "s2-canonical-continuation",
+  "candidate": {
+    "bootstrap_request_id": "ba3faaadb50447b79df509619b6ee010",
+    "nonce": "1fd3cb4e69e54bc6aa5e63458ae82818",
+    "private_material_root": "/var/lib/vst-config-preparation/s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e",
+    "run_id": "s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e"
+  },
+  "next_step": "Codex must obtain or provision the exact candidate-bound root-controlled staging directory under an independently authorized setup action; then repeat only the read-only fingerprint and validation sequence before considering the one-shot run.",
+  "probe": {
+    "effect": "Read-only. No target files changed; no configuration installed; no runtime selector or service started.",
+    "exit_code": 1,
+    "host_command": "wsl.exe --distribution Ubuntu-24.04 --user root --exec /usr/bin/python3.12 -I -B -S -c <inline read-only fingerprint probe>",
+    "output_policy": "No key bytes or file digests were emitted to stdout/chat; probe stopped before opening any key file.",
+    "precise_probe_start_utc": "NOT_CAPTURED",
+    "reported_wall_time_seconds": 5.429,
+    "scoped_files_if_root_exists": [
+      "store-event.key",
+      "startup-supervisor.key",
+      "receipt-and-probe.key",
+      "execution-grant-private.pem",
+      "dispatch-instruction-private.pem",
+      "independent-review.key"
+    ],
+    "target_checks_before_stop": [
+      "effective UID 0",
+      "/etc/os-release is Ubuntu 24.04",
+      "lstat of exact candidate private_material_root"
+    ],
+    "terminal_result": "CANDIDATE_ROOT_ABSENT"
+  },
+  "qualification_attempt": {
+    "attempt_record_created": false,
+    "auth_envelope_created": false,
+    "fresh_runtime_e5_proven": false,
+    "owner_to_runner_testrun_proven": false,
+    "run_once_invoked": false,
+    "state": "NOT_RUN_BLOCKED_BY_ABSENT_CANDIDATE_PRIVATE_MATERIAL_ROOT",
+    "test_selector_executed": false
+  },
+  "qualification_head": "de1c2561080750d1c39af29c3efe0f0c70e40e61",
+  "recorded_utc": "2026-10-30T22:50:01Z",
+  "repository": "Virtual_scrum_team",
+  "schema": "VST_S2_RUNTIME_PRIVATE_STAGING_READONLY_PROBE_V1",
+  "task_id": "S2-4-runtime-owner-runner-qualification"
+}

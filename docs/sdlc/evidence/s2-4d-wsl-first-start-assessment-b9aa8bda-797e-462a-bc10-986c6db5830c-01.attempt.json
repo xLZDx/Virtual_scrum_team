@@ -1,0 +1,25 @@
+{
+  "schema": "VST_S2_4D_WSL_FIRST_START_ASSESSMENT_V1",
+  "decision_id": "b9aa8bda-797e-462a-bc10-986c6db5830c",
+  "task": "S2-4D bounded WSL first-start and read-only inventory assessment",
+  "max_launches": 1,
+  "max_duration_seconds": 180,
+  "applier_authorized": false,
+  "retry_authorized": false,
+  "repo": "D:\\Repo\\Virtual_scrum_team",
+  "paths": {
+    "inventory_stdout": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-b9aa8bda-797e-462a-bc10-986c6db5830c-01.inventory.stdout.raw",
+    "keeper_stderr": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-b9aa8bda-797e-462a-bc10-986c6db5830c-01.keeper.stderr.raw",
+    "keeper_stdout": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-b9aa8bda-797e-462a-bc10-986c6db5830c-01.keeper.stdout.raw",
+    "attempt": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-b9aa8bda-797e-462a-bc10-986c6db5830c-01.attempt.json",
+    "inventory_stderr": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-b9aa8bda-797e-462a-bc10-986c6db5830c-01.inventory.stderr.raw"
+  },
+  "started_utc": "2026-11-05T14:23:10.5635884Z",
+  "launch_started": false,
+  "inventory_started": false,
+  "applier_invocations": 0,
+  "keeper": null,
+  "inventory": null,
+  "primary_error": null,
+  "cleanup": null
+}

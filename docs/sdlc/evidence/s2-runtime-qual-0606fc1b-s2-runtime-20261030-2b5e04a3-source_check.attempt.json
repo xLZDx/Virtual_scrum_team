@@ -1,0 +1,20 @@
+{
+  "command": [
+    "single Ubuntu-24.04 WSL process: mount/path/git/blob/worktree verification"
+  ],
+  "details": {},
+  "exit_code": 0,
+  "finished_utc": "2026-10-30T09:28:42.186+00:00",
+  "job_id": "7a3b3a2d-549d-4dd0-be22-e48a885f0d82",
+  "reply_id": "fb9dc05e-8b09-5725-b72c-72c1bc1ffd62",
+  "request_id": "0606fc1b-c66b-4034-aaa3-f74acac1bea0",
+  "stage": "source_check",
+  "started_utc": "2026-10-30T09:28:42.186+00:00",
+  "stderr_bytes": 0,
+  "stderr_path": "docs/sdlc/evidence/s2-runtime-qual-0606fc1b-s2-runtime-20261030-2b5e04a3-source_check.stderr.bin",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_bytes": 2213,
+  "stdout_path": "docs/sdlc/evidence/s2-runtime-qual-0606fc1b-s2-runtime-20261030-2b5e04a3-source_check.stdout.bin",
+  "stdout_sha256": "44240cfa693986202303cbde285fa4451097df90b82b6244ad1d4e79018bef21",
+  "user_turn_id": "58381f5e-f39a-4198-b793-4a3c13328333"
+}

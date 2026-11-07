@@ -1,0 +1,22 @@
+{
+  "task": "S2-4D",
+  "operation": "read-only exact Git blob diagnostic after prepublication refusal",
+  "argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/usr/bin/python3.12",
+    "-I",
+    "-B",
+    "-S",
+    "-c",
+    "import subprocess,hashlib,json,os,pathlib\nrepo='/mnt/d/Repo/Virtual_scrum_team'\nhead='908463f076335a27fbc2694a51b983e58821d366'\npath='docs/sdlc/runtime-config/bundle-manifest.json'\nargv=['/usr/bin/git','-C',repo,'--no-replace-objects','show',head+':'+path]\nr=subprocess.run(argv,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=False)\nsafe={k:v for k,v in os.environ.items() if not k.upper().startswith('GIT_')}\ns=subprocess.run(argv,env=safe,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=False)\nprint(json.dumps({'argv':argv,'raw':{'exit':r.returncode,'bytes':len(r.stdout),'sha256':hashlib.sha256(r.stdout).hexdigest(),'stderr':r.stderr.decode('utf-8','replace')},'sanitized':{'exit':s.returncode,'bytes':len(s.stdout),'sha256':hashlib.sha256(s.stdout).hexdigest(),'stderr':s.stderr.decode('utf-8','replace')},'git_environment_names':[k for k in os.environ if k.upper().startswith('GIT_')],'working_sha256':hashlib.sha256(pathlib.Path(repo,path).read_bytes()).hexdigest()}))\n"
+  ],
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "Traceback (most recent call last):\n  File \"<string>\", line 9, in <module>\n  File \"/usr/lib/python3.12/pathlib.py\", line 1021, in read_bytes\n    with self.open(mode='rb') as f:\n         ^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/pathlib.py\", line 1015, in open\n    return io.open(self, mode, buffering, encoding, errors, newline)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: '/mnt/d/Repo/Virtual_scrum_team/docs/sdlc/runtime-config/bundle-manifest.json'\n",
+  "recorded_utc": "2026-11-05T02:42:08.637036+00:00"
+}

@@ -33,19 +33,15 @@ Execution (subprocess.Popen, shell=False):
   (EXIT_OUTPUT_TRUNCATED), which makes the derived result FAIL (the parser saw
   partial output). The truncated flag is also available in the optional
   `report` dict.
-- process-tree containment. Windows: right after Popen the child is assigned to
-  a Job Object created with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE (ctypes, stdlib
-  only). On EVERY exit path (normal exit, timeout/deadline, output cap, any
-  exception) the runner calls TerminateJobObject and then CloseHandle, so all
-  descendants die even after the root process has exited (taskkill /T cannot do
-  that: the root pid is gone). Known tiny race: the child is not created
-  suspended, so a grandchild spawned before the assignment is not a member. If
-  the assignment fails (e.g. the process already belongs to a non-nestable job)
-  the runner falls back to taskkill /PID <pid> /T /F (failures ignored; best
-  effort once the root exited) and reports job_object=False. On timeout
-  taskkill /T /F is always run as an extra fallback. POSIX: the process group
-  (the child is started in its own session) is killed with SIGKILL on timeout
-  and after a normal exit. Timeout exit code -1.
+- process-tree containment. Strict Windows mode creates the process suspended,
+  assigns it to a Job Object created with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+  then resumes its primary thread. Assignment or resume failure terminates and
+  refuses the command before it executes. On EVERY exit path the runner calls
+  TerminateJobObject and then CloseHandle. Non-strict Windows callers retain the
+  legacy best-effort taskkill fallback. Distinct-UID POSIX worker launches use
+  a runner-delegated cgroup-v2 scope, killed and confirmed empty on every exit
+  path. Same-UID compatibility calls retain process-group cleanup. Timeout
+  exit code -1.
 - capture completeness: after both pipes were joined, a reader thread that is
   still alive, a read error of any kind (any Exception in the reader), or a root
   process that is still running 10 s after the kill, means the captured output
@@ -71,13 +67,20 @@ Standard library only; no network.
 
 from __future__ import annotations
 
+import functools
 import hashlib
+import json
+import logging
 import os
 import re
+import select
 import signal
+import stat
 import subprocess
 import threading
 import time
+import uuid
+from contextlib import contextmanager
 from typing import Callable
 
 from .contracts import (
@@ -92,6 +95,7 @@ from .contracts import (
     manifest_sha256,
     validate_receipt,
     validate_task_manifest,
+    TRUSTED_PARSER_CATALOG,
 )
 from .signing import MIN_KEY_BYTES, sign
 
@@ -218,6 +222,272 @@ def _hash_artifacts(paths: list[str], cwd: str) -> dict[str, str]:
 # ------------------------------------------------------------------- execution
 
 
+_POSIX_GATE = (
+    "import json, os, sys\n"
+    "env_fd, gate_fd = int(sys.argv[1]), int(sys.argv[2])\n"
+    "chunks = []\n"
+    "while True:\n"
+    " chunk = os.read(env_fd, 65536)\n"
+    " if not chunk: break\n"
+    " chunks.append(chunk)\n"
+    "os.close(env_fd)\n"
+    "worker_env = json.loads(b''.join(chunks))\n"
+    "if os.read(gate_fd, 1) != b'1': sys.exit(125)\n"
+    "os.close(gate_fd)\n"
+    "argv = sys.argv[3:]\n"
+    "os.execvpe(argv[0], argv, worker_env)\n"
+)
+_POSIX_CGROUP_CLEANUP_FAILED = threading.Event()
+_POSIX_CGROUP_RUN_LOCK = threading.Lock()
+_POSIX_CGROUP_RUNTIME_DIR = "/run/vst-runner"
+_POSIX_WORKER_EXEC_HELPER_PREFIX = "/usr/local/libexec/vst-s4-worker-exec-"
+_POSIX_WORKER_EXEC_HELPER_PATH = re.compile(
+    r"^/usr/local/libexec/vst-s4-worker-exec-[0-9a-f]{40}$"
+)
+_POSIX_WORKER_EXEC_HELPER_HEAD = re.compile(r"^[0-9a-f]{40}$")
+
+
+@contextmanager
+def _posix_cgroup_process_lock(deadline: float):
+    """Serialize cgroup admission across runner processes and reconcile leftovers."""
+    if os.name == "nt":
+        yield
+        return
+    try:
+        import fcntl
+    except ImportError as exc:
+        raise OSError("POSIX cgroup admission requires flock support") from exc
+
+    runtime_dir = _POSIX_CGROUP_RUNTIME_DIR
+    dir_stat = os.stat(runtime_dir, follow_symlinks=False)
+    if not stat.S_ISDIR(dir_stat.st_mode) or dir_stat.st_uid != os.geteuid():
+        raise OSError("runner runtime directory must be a real directory owned by the runner")
+    if dir_stat.st_mode & (stat.S_IRGRP | stat.S_IWGRP | stat.S_IRWXO):
+        raise OSError("runner runtime directory must deny group read/write and all other access")
+
+    lock_path = os.path.join(runtime_dir, "cgroup-admission.lock")
+    flags = os.O_CREAT | os.O_RDWR | getattr(os, "O_CLOEXEC", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(lock_path, flags, 0o600)
+    try:
+        lock_stat = os.fstat(fd)
+        if (
+            not stat.S_ISREG(lock_stat.st_mode)
+            or lock_stat.st_uid != os.geteuid()
+            or lock_stat.st_mode & (stat.S_IRWXG | stat.S_IRWXO)
+        ):
+            raise OSError("runner cgroup admission lock must be a private runner-owned regular file")
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError("runner cgroup admission lock deadline expired")
+                time.sleep(min(0.02, remaining))
+        _DelegatedCgroup.reconcile_stale(deadline)
+        yield
+    finally:
+        os.close(fd)
+
+
+def _serialize_distinct_uid_launch(function: Callable) -> Callable:
+    """Serialize distinct-UID workers without exceeding their admission budget."""
+    @functools.wraps(function)
+    def wrapped(*args, **kwargs):
+        if (
+            os.name != "nt"
+            and kwargs.get("worker_uid") is not None
+            and kwargs.get("worker_gid") is not None
+        ):
+            requested_limit = args[2] if len(args) > 2 else kwargs["limit_sec"]
+            deadline = kwargs.get("_deadline_at")
+            if deadline is None:
+                deadline = time.monotonic() + max(0.0, float(requested_limit))
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not _POSIX_CGROUP_RUN_LOCK.acquire(timeout=remaining):
+                return EXIT_TIMEOUT, "", {
+                    "stdout_truncated": False,
+                    "stderr_truncated": False,
+                    "timed_out": True,
+                    "capture_incomplete": False,
+                    "job_object": False,
+                    "skipped_by_deadline": True,
+                    "admission_wait_expired": True,
+                }
+            try:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return EXIT_TIMEOUT, "", {
+                        "stdout_truncated": False,
+                        "stderr_truncated": False,
+                        "timed_out": True,
+                        "capture_incomplete": False,
+                        "job_object": False,
+                        "skipped_by_deadline": True,
+                        "admission_wait_expired": True,
+                    }
+                kwargs["_deadline_at"] = deadline
+                process_lock = _posix_cgroup_process_lock(deadline)
+                try:
+                    process_lock.__enter__()
+                except TimeoutError:
+                    return EXIT_TIMEOUT, "", {
+                        "stdout_truncated": False,
+                        "stderr_truncated": False,
+                        "timed_out": True,
+                        "capture_incomplete": False,
+                        "job_object": False,
+                        "skipped_by_deadline": True,
+                        "admission_wait_expired": True,
+                    }
+                except OSError as exc:
+                    return EXIT_CAPTURE_INCOMPLETE, "", {
+                        "stdout_truncated": False,
+                        "stderr_truncated": False,
+                        "timed_out": False,
+                        "capture_incomplete": True,
+                        "job_object": False,
+                        "posix_cgroup_refused": str(exc),
+                    }
+                try:
+                    return function(*args, **kwargs)
+                finally:
+                    process_lock.__exit__(None, None, None)
+            finally:
+                _POSIX_CGROUP_RUN_LOCK.release()
+        return function(*args, **kwargs)
+    return wrapped
+
+
+def _write_pipe_before_deadline(fd: int, data: bytes, deadline: float, proc) -> None:
+    """Send gate environment data without blocking beyond command admission time."""
+    os.set_blocking(fd, False)
+    view = memoryview(data)
+    while view:
+        if proc.poll() is not None:
+            raise OSError("POSIX exec gate exited before environment handoff")
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise subprocess.TimeoutExpired("POSIX exec gate", 0)
+        _readable, writable, _exceptional = select.select([], [fd], [], min(remaining, 0.05))
+        if not writable:
+            continue
+        try:
+            written = os.write(fd, view[:65536])
+        except BlockingIOError:
+            continue
+        if written <= 0:
+            raise OSError("POSIX exec gate environment pipe closed")
+        view = view[written:]
+
+
+class _DelegatedCgroup:
+    """A unique kill scope below the runner's delegated cgroup-v2 subtree."""
+
+    def __init__(self, path: str) -> None:
+        self.path = path
+        self._closed = False
+
+    @staticmethod
+    def _runner_parent() -> str:
+        with open("/proc/self/cgroup", encoding="ascii") as stream:
+            entries = [line.rstrip("\n").split(":", 2) for line in stream]
+        unified = next(
+            (entry[2] for entry in entries
+             if len(entry) == 3 and entry[:2] == ["0", ""]),
+            None,
+        )
+        if not unified or ".." in unified.split("/"):
+            raise OSError("unified cgroup-v2 delegation is unavailable")
+        parent = os.path.realpath(os.path.join("/sys/fs/cgroup", unified.lstrip("/")))
+        root = os.path.realpath("/sys/fs/cgroup")
+        if os.path.commonpath((root, parent)) != root:
+            raise OSError("runner cgroup path escaped the cgroup-v2 mount")
+        return parent
+
+    @classmethod
+    def reconcile_stale(cls, deadline: float) -> None:
+        """Remove only provably empty stale scopes; never kill or adopt them."""
+        parent = cls._runner_parent()
+        try:
+            entries = list(os.scandir(parent))
+        except OSError as exc:
+            raise OSError("cannot enumerate delegated cgroup before worker admission") from exc
+        for entry in entries:
+            if not entry.name.startswith("vst-command-"):
+                continue
+            if not re.fullmatch(r"vst-command-[0-9]+-[0-9a-f]{32}", entry.name):
+                raise OSError("unrecognized runner command cgroup blocks worker admission")
+            if entry.is_symlink() or not entry.is_dir(follow_symlinks=False):
+                raise OSError("runner command cgroup is not a real child cgroup")
+            path = os.path.realpath(entry.path)
+            if os.path.dirname(path) != parent or os.path.basename(path) != entry.name:
+                raise OSError("runner command cgroup escaped its delegated parent")
+            if time.monotonic() >= deadline:
+                raise OSError("stale-scope reconciliation deadline expired")
+            try:
+                with open(os.path.join(path, "cgroup.events"), encoding="ascii") as stream:
+                    events = dict(line.split() for line in stream if line.strip())
+                with open(os.path.join(path, "cgroup.procs"), encoding="ascii") as stream:
+                    pids = [line.strip() for line in stream if line.strip()]
+            except (OSError, ValueError) as exc:
+                raise OSError("stale command scope emptiness cannot be verified") from exc
+            if events.get("populated") != "0" or pids:
+                raise OSError("unknown or populated stale command scope blocks worker admission")
+            try:
+                os.rmdir(path)
+            except OSError as exc:
+                raise OSError("verified empty stale command scope could not be removed") from exc
+
+    @classmethod
+    def create(cls) -> "_DelegatedCgroup":
+        parent = cls._runner_parent()
+        path = os.path.join(parent, f"vst-command-{os.getpid()}-{uuid.uuid4().hex}")
+        os.mkdir(path, 0o700)
+        scope = cls(path)
+        try:
+            for name in ("cgroup.procs", "cgroup.events", "cgroup.kill"):
+                if not os.path.isfile(os.path.join(path, name)):
+                    raise OSError(f"delegated cgroup control is missing: {name}")
+            for name in ("cgroup.procs", "cgroup.kill"):
+                fd = os.open(os.path.join(path, name), os.O_WRONLY)
+                os.close(fd)
+        except BaseException:
+            try:
+                os.rmdir(path)
+            except OSError:
+                pass
+            raise
+        return scope
+
+    def attach(self, pid: int) -> None:
+        with open(os.path.join(self.path, "cgroup.procs"), "w", encoding="ascii") as stream:
+            stream.write(f"{pid}\n")
+
+    def kill_and_remove(self, timeout: float = 10.0) -> bool:
+        if self._closed:
+            return True
+        try:
+            with open(os.path.join(self.path, "cgroup.kill"), "w", encoding="ascii") as stream:
+                stream.write("1\n")
+            deadline = time.monotonic() + timeout
+            while time.monotonic() < deadline:
+                with open(os.path.join(self.path, "cgroup.events"), encoding="ascii") as stream:
+                    events = dict(line.split() for line in stream if line.strip())
+                if events.get("populated") == "0":
+                    os.rmdir(self.path)
+                    self._closed = True
+                    return True
+                time.sleep(0.02)
+        except (OSError, ValueError):
+            _POSIX_CGROUP_CLEANUP_FAILED.set()
+            return False
+        _POSIX_CGROUP_CLEANUP_FAILED.set()
+        return False
+
+
 class _Capture:
     """Reads one pipe in a thread, keeping at most `cap` bytes."""
 
@@ -260,10 +530,15 @@ class _Capture:
         return bytes(self.data).decode("utf-8", errors="replace")
 
 
-def _spawn_kwargs() -> dict:
+_CREATE_SUSPENDED = 0x00000004
+
+
+def _spawn_kwargs(*, suspended: bool = False) -> dict:
     if os.name == "nt":
         flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         flags |= getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        if suspended:
+            flags |= _CREATE_SUSPENDED  # documented Win32 creation flag
         return {"creationflags": flags}
     return {"start_new_session": True}
 
@@ -349,8 +624,27 @@ def _win_api():
         k32.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
         k32.CloseHandle.restype = wintypes.BOOL
         k32.CloseHandle.argtypes = [wintypes.HANDLE]
+        class _ThreadEntry32(ctypes.Structure):
+            _fields_ = [
+                ("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD),
+                ("th32ThreadID", wintypes.DWORD), ("th32OwnerProcessID", wintypes.DWORD),
+                ("tpBasePri", wintypes.LONG), ("tpDeltaPri", wintypes.LONG),
+                ("dwFlags", wintypes.DWORD),
+            ]
+
+        k32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+        k32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+        k32.Thread32First.restype = wintypes.BOOL
+        k32.Thread32First.argtypes = [wintypes.HANDLE, ctypes.POINTER(_ThreadEntry32)]
+        k32.Thread32Next.restype = wintypes.BOOL
+        k32.Thread32Next.argtypes = [wintypes.HANDLE, ctypes.POINTER(_ThreadEntry32)]
+        k32.OpenThread.restype = wintypes.HANDLE
+        k32.OpenThread.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        k32.ResumeThread.restype = wintypes.DWORD
+        k32.ResumeThread.argtypes = [wintypes.HANDLE]
         _WIN_API = type("_WinApi", (), {
-            "ctypes": ctypes, "k32": k32, "ExtendedLimits": _ExtendedLimits})
+            "ctypes": ctypes, "k32": k32, "ExtendedLimits": _ExtendedLimits,
+            "ThreadEntry32": _ThreadEntry32})
         return _WIN_API
     except Exception:  # noqa: BLE001 - any binding failure means "no job object"
         _WIN_API = False
@@ -363,11 +657,9 @@ class _JobObject:
     Created with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, so even if the runner dies
     the OS kills the whole tree when the last handle closes. Descendants of a
     member are members too, and membership survives the exit of the root, which
-    is what taskkill /T cannot do after the root has exited. Known tiny race:
-    the child is assigned right after Popen (no CREATE_SUSPENDED), so a
-    grandchild spawned in that window would not be a member. If assignment
-    fails (for example the process already belongs to a non-nestable job) the
-    caller falls back to taskkill and reports job_object=False.
+    is what taskkill /T cannot do after the root has exited. Strict callers
+    create the process suspended, assign it, and resume it only after successful
+    assignment. Compatibility callers retain the legacy taskkill fallback.
     """
 
     def __init__(self, api, handle) -> None:
@@ -401,25 +693,40 @@ class _JobObject:
             return cls(api, job)
         except Exception:  # noqa: BLE001 - never let job setup break the run
             if job:
-                try:
-                    k32.CloseHandle(job)
-                except Exception:  # noqa: BLE001
-                    pass
+                closed = False
+                for _ in range(2):
+                    try:
+                        closed = bool(k32.CloseHandle(job))
+                    except Exception:  # noqa: BLE001 - cleanup failures must remain visible
+                        closed = False
+                    if closed:
+                        break
+                if not closed:
+                    logging.getLogger(__name__).error(
+                        "failed to close Windows Job Object after setup failure"
+                    )
             return None
 
-    def terminate_and_close(self) -> None:
-        """TerminateJobObject then CloseHandle; idempotent, never raises."""
-        handle, self._handle = self._handle, None
+    def terminate_and_close(self) -> bool:
+        """TerminateJobObject then CloseHandle; report unconfirmed cleanup."""
+        handle = self._handle
         if not handle:
-            return
+            return True
+        terminated = False
+        closed = False
         try:
-            self._api.k32.TerminateJobObject(handle, _JOB_TERMINATE_EXIT_CODE)
+            terminated = bool(
+                self._api.k32.TerminateJobObject(handle, _JOB_TERMINATE_EXIT_CODE)
+            )
         except Exception:  # noqa: BLE001
             pass
         try:
-            self._api.k32.CloseHandle(handle)
+            closed = bool(self._api.k32.CloseHandle(handle))
         except Exception:  # noqa: BLE001
             pass
+        if closed:
+            self._handle = None
+        return terminated and closed
 
 
 def _kill_tree(proc: subprocess.Popen) -> None:
@@ -437,10 +744,56 @@ def _kill_tree(proc: subprocess.Popen) -> None:
         pass
 
 
+def _resume_suspended_primary_thread(pid: int) -> bool:
+    """Resume a CREATE_SUSPENDED process using documented Win32 APIs.
+
+    The process has not executed user code and cannot create threads yet, so
+    its Toolhelp thread snapshot identifies the primary thread without using
+    CPython's private Popen handles or undocumented Windows APIs. The pinned
+    Python 3.14 subprocess implementation closes the CreateProcess thread
+    handle, so public Popen methods cannot resume it directly.
+    """
+    api = _win_api()
+    if api is None:
+        return False
+    k32 = api.k32
+    invalid_handle = api.ctypes.c_void_p(-1).value
+    snapshot = k32.CreateToolhelp32Snapshot(0x00000004, 0)  # TH32CS_SNAPTHREAD
+    if not snapshot or snapshot == invalid_handle:
+        return False
+    thread = None
+    try:
+        entry = api.ThreadEntry32()
+        entry.dwSize = api.ctypes.sizeof(entry)
+        more = bool(k32.Thread32First(snapshot, api.ctypes.byref(entry)))
+        while more:
+            if entry.th32OwnerProcessID == pid:
+                thread = k32.OpenThread(0x0002, False, entry.th32ThreadID)  # THREAD_SUSPEND_RESUME
+                break
+            more = bool(k32.Thread32Next(snapshot, api.ctypes.byref(entry)))
+        if not thread:
+            return False
+        # The process was created with exactly one suspend count. Any other
+        # result means it did not enter the expected state; fail closed.
+        return k32.ResumeThread(thread) == 1
+    except Exception:  # noqa: BLE001 - strict callers refuse on API failure
+        return False
+    finally:
+        if thread:
+            k32.CloseHandle(thread)
+        k32.CloseHandle(snapshot)
+
+
+@_serialize_distinct_uid_launch
 def _run_one(
-    argv: list[str], cwd: str, limit_sec: float, env: dict[str, str], cap: int
+    argv: list[str], cwd: str, limit_sec: float, env: dict[str, str], cap: int,
+    *, require_job_object: bool = False, worker_uid: int | None = None,
+    worker_gid: int | None = None, worker_exec_helper_path: str | None = None,
+    _deadline_at: float | None = None,
+    _before_spawn: Callable[[], None] | None = None,
 ) -> tuple[int, str, dict]:
     """Run one argv without a shell; return (exit_code, stdout_text, info)."""
+    command_deadline = _deadline_at if _deadline_at is not None else time.monotonic() + limit_sec
     info = {
         "stdout_truncated": False,
         "stderr_truncated": False,
@@ -448,50 +801,219 @@ def _run_one(
         "capture_incomplete": False,
         "job_object": False,
     }
+    if command_deadline <= time.monotonic():
+        return EXIT_TIMEOUT, "", {
+            **info,
+            "timed_out": True,
+            "skipped_by_deadline": True,
+            "admission_wait_expired": True,
+        }
+    cgroup: _DelegatedCgroup | None = None
+    gate_release_fd: int | None = None
+    env_read: int | None = None
+    gate_read: int | None = None
+    env_write: int | None = None
     try:
+        # The root-configured, version-pinned setuid helper performs only the configured
+        # vst-runner to vst-worker identity drop. The Python service itself has
+        # no SETUID/SETGID capability; command control remains manifest-pinned.
+        child_argv = argv
+        child_env = env
+        pass_fds: tuple[int, ...] = ()
+        if os.name != "nt" and worker_uid is not None and worker_gid is not None:
+            if (not isinstance(worker_exec_helper_path, str)
+                    or not _POSIX_WORKER_EXEC_HELPER_PATH.fullmatch(worker_exec_helper_path)):
+                raise ContractError("POSIX worker helper path must be an exact versioned installation path")
+            if _POSIX_CGROUP_CLEANUP_FAILED.is_set():
+                return EXIT_CAPTURE_INCOMPLETE, "", {
+                    **info, "capture_incomplete": True,
+                    "posix_cgroup_refused": "a prior cleanup was not confirmed in this runner process",
+                }
+            try:
+                cgroup = _DelegatedCgroup.create()
+            except OSError as exc:
+                return EXIT_CAPTURE_INCOMPLETE, "", {
+                    **info, "capture_incomplete": True,
+                    "posix_cgroup_refused": str(exc),
+                }
+            env_read, env_write = os.pipe()
+            gate_read, gate_release_fd = os.pipe()
+            child_argv = [
+                worker_exec_helper_path, "-I", "-c", _POSIX_GATE,
+                str(env_read), str(gate_read), *argv,
+            ]
+            child_env = {"PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C"}
+            pass_fds = (env_read, gate_read)
+        if _before_spawn is not None:
+            _before_spawn()
         proc = subprocess.Popen(
-            argv,
+            child_argv,
             shell=False,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             cwd=cwd,
-            env=env,
+            env=child_env,
             bufsize=0,
-            **_spawn_kwargs(),
+            pass_fds=pass_fds,
+            **_spawn_kwargs(suspended=os.name == "nt" and require_job_object),
         )
     except OSError:
+        for fd in (env_read, gate_read, env_write, gate_release_fd):
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+        cgroup_clean = cgroup is None or cgroup.kill_and_remove()
         # Missing executable, missing/invalid cwd, no permission, or any other
         # OS-level failure to start. Non-OSError exceptions propagate.
+        if not cgroup_clean:
+            return EXIT_CAPTURE_INCOMPLETE, "", {
+                **info, "capture_incomplete": True,
+                "posix_cgroup_cleanup_failed": True,
+            }
         return EXIT_MISSING_EXECUTABLE, "", info
+    except BaseException:
+        for fd in (env_read, gate_read, env_write, gate_release_fd):
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+        if cgroup is not None:
+            cgroup.kill_and_remove()
+        raise
+    if cgroup is not None:
+        os.close(env_read)
+        env_read = None
+        os.close(gate_read)
+        gate_read = None
+        try:
+            payload = json.dumps(env, separators=(",", ":")).encode("utf-8")
+            env_pipe = os.fdopen(env_write, "wb")
+            env_write = None
+            with env_pipe as stream:
+                _write_pipe_before_deadline(stream.fileno(), payload, command_deadline, proc)
+            cgroup.attach(proc.pid)
+        except subprocess.TimeoutExpired:
+            info["timed_out"] = True
+            if gate_release_fd is not None:
+                os.close(gate_release_fd)
+                gate_release_fd = None
+            cleanup_confirmed = cgroup.kill_and_remove()
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                cleanup_confirmed = False
+            for stream in (proc.stdout, proc.stderr):
+                if stream is not None:
+                    stream.close()
+            info["capture_incomplete"] = not cleanup_confirmed
+            info["posix_gate_timeout"] = True
+            return (
+                EXIT_CAPTURE_INCOMPLETE if not cleanup_confirmed else EXIT_TIMEOUT,
+                "", info,
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            info["posix_cgroup_refused"] = str(exc)
+            if env_write is not None:
+                os.close(env_write)
+                env_write = None
+            if gate_release_fd is not None:
+                os.close(gate_release_fd)
+                gate_release_fd = None
+            cgroup.kill_and_remove()
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                pass
+            for stream in (proc.stdout, proc.stderr):
+                if stream is not None:
+                    stream.close()
+            return EXIT_CAPTURE_INCOMPLETE, "", {**info, "capture_incomplete": True}
     job: _JobObject | None = None
     out: _Capture | None = None
     err: _Capture | None = None
     completed = False
     kill_failed = False
+    cleanup_failed = False
+
+    def cleanup_job() -> None:
+        nonlocal cleanup_failed
+        if job is not None and not job.terminate_and_close():
+            cleanup_failed = True
+            _kill_tree(proc)  # best-effort fallback when Win32 cleanup is unconfirmed
+
+    def cleanup_cgroup() -> None:
+        nonlocal cleanup_failed
+        if cgroup is not None and not cgroup.kill_and_remove():
+            cleanup_failed = True
+
     try:
         # Windows: put the child in a kill-on-close Job Object right away so every
-        # descendant dies on any exit path, even after the root has exited. If the
-        # attachment fails the run continues (taskkill fallback, job_object=False
-        # in the report).
+        # descendant dies on any exit path, even after the root has exited. Strict
+        # callers refuse to run when assignment fails; compatibility callers retain
+        # taskkill fallback and report job_object=False.
         job = _JobObject.attach(proc) if os.name == "nt" else None
         info["job_object"] = job is not None
+        if os.name == "nt" and require_job_object and job is None:
+            info["job_object_refused"] = True
+            _kill_tree(proc)
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                kill_failed = True
+            completed = True
+            # Do not run the requested command without confirmed job containment.
+            if proc.stdout is not None:
+                proc.stdout.close()
+            if proc.stderr is not None:
+                proc.stderr.close()
+            return EXIT_CAPTURE_INCOMPLETE, "", {**info, "capture_incomplete": True}
+        if os.name == "nt" and require_job_object and not _resume_suspended_primary_thread(proc.pid):
+            info["job_object_refused"] = True
+            if job is not None:
+                cleanup_job()
+            _kill_tree(proc)
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                kill_failed = True
+            completed = True
+            if proc.stdout is not None:
+                proc.stdout.close()
+            if proc.stderr is not None:
+                proc.stderr.close()
+            return EXIT_CAPTURE_INCOMPLETE, "", {**info, "capture_incomplete": True}
         out = _Capture(proc.stdout, cap)
         err = _Capture(proc.stderr, cap)
+        if gate_release_fd is not None:
+            if command_deadline > time.monotonic():
+                os.write(gate_release_fd, b"1")
+                os.close(gate_release_fd)
+                gate_release_fd = None
+            else:
+                info["timed_out"] = True
         try:
-            proc.wait(timeout=limit_sec)
+            proc.wait(timeout=max(0.0, command_deadline - time.monotonic()))
         except subprocess.TimeoutExpired:
             info["timed_out"] = True
             if job is not None:
-                job.terminate_and_close()
-            _kill_tree(proc)  # taskkill /T /F fallback (also the no-job path)
+                cleanup_job()
+            if cgroup is not None:
+                cleanup_cgroup()
+            else:
+                _kill_tree(proc)  # taskkill /T /F fallback (also the no-job path)
             try:
                 proc.wait(timeout=10)
             except subprocess.TimeoutExpired:
                 kill_failed = True  # the root survived the kill: output is unreliable
         else:
             if job is not None:
-                job.terminate_and_close()
+                cleanup_job()
+            elif cgroup is not None:
+                cleanup_cgroup()  # also kills descendants after normal root exit
             elif os.name == "nt":
                 _taskkill_tree(proc.pid)  # no job: best effort, failures ignored
             else:
@@ -502,11 +1024,19 @@ def _run_one(
         completed = True
     finally:
         if job is not None:
-            job.terminate_and_close()  # idempotent; covers unexpected exceptions
-        if not completed:
+            cleanup_job()  # idempotent; covers unexpected exceptions
+        if cgroup is not None:
+            cleanup_cgroup()  # retry an unconfirmed kill/removal before reporting
+        elif not completed:
             # ANY exception (including a failed reader-thread start): kill the
-            # whole tree (process group on POSIX, taskkill /T on Windows).
+            # process group or Windows tree as applicable.
             _kill_tree(proc)
+        if gate_release_fd is not None:
+            try:
+                os.close(gate_release_fd)
+            except OSError:
+                pass
+            gate_release_fd = None
         for capture in (out, err):
             if capture is not None:
                 capture.finish()
@@ -520,7 +1050,9 @@ def _run_one(
     assert out is not None and err is not None
     info["stdout_truncated"] = out.truncated
     info["stderr_truncated"] = err.truncated
-    info["capture_incomplete"] = out.incomplete or err.incomplete or kill_failed
+    info["capture_incomplete"] = (
+        out.incomplete or err.incomplete or kill_failed or cleanup_failed
+    )
     if info["capture_incomplete"]:
         code = EXIT_CAPTURE_INCOMPLETE
     elif info["timed_out"]:
@@ -691,7 +1223,10 @@ def run_and_sign(
 
     If `report` is a dict it is filled with {"commands": [{"stdout_truncated",
     "stderr_truncated", "timed_out", "capture_incomplete", "job_object",
-    "skipped_by_deadline"}, ...], "capture_incomplete": bool}. "job_object" is
+    "skipped_by_deadline", optional "skipped_after_capture_incomplete"}, ...],
+    "capture_incomplete": bool}. Commands after unconfirmed tree cleanup are
+    recorded as not run; no later command is launched in the same run.
+    "job_object" is
     True only if the command ran inside a Windows Job Object (always False on
     POSIX, for commands skipped by the deadline and for -2 start failures).
     """
@@ -710,9 +1245,19 @@ def run_and_sign(
     recorded: list[dict] = []
     outputs: list[str] = []
     infos: list[dict] = []
+    stop_after_capture_incomplete = False
     for argv in argvs:
-        remaining = deadline_at - time.monotonic()
-        if remaining <= 0:
+        now = time.monotonic()
+        remaining = deadline_at - now
+        if stop_after_capture_incomplete:
+            exit_code, stdout = EXIT_CAPTURE_INCOMPLETE, ""
+            info = {
+                "stdout_truncated": False, "stderr_truncated": False,
+                "timed_out": False, "capture_incomplete": True,
+                "job_object": False, "skipped_by_deadline": False,
+                "skipped_after_capture_incomplete": True,
+            }
+        elif remaining <= 0:
             recorded.append({"argv": list(argv), "exit_code": EXIT_TIMEOUT})
             outputs.append("")
             infos.append(
@@ -721,13 +1266,19 @@ def run_and_sign(
                  "job_object": False, "skipped_by_deadline": True}
             )
             continue
-        exit_code, stdout, info = _run_one(
-            list(argv), cwd, min(float(per_command), remaining), env, max_output_bytes
-        )
-        info["skipped_by_deadline"] = False
+        else:
+            exit_code, stdout, info = _run_one(
+                list(argv), cwd, min(float(per_command), remaining), env, max_output_bytes,
+                require_job_object=True,
+                _deadline_at=min(deadline_at, now + float(per_command)),
+            )
+            if not info.get("admission_wait_expired"):
+                info["skipped_by_deadline"] = False
         recorded.append({"argv": list(argv), "exit_code": exit_code})
         outputs.append(stdout)
         infos.append(info)
+        if exit_code == EXIT_CAPTURE_INCOMPLETE or info["capture_incomplete"]:
+            stop_after_capture_incomplete = True
     if report is not None:
         report["commands"] = infos
         report["capture_incomplete"] = any(info["capture_incomplete"] for info in infos)
@@ -763,3 +1314,351 @@ def run_and_sign(
     receipt["result"] = derive_result(receipt)
     receipt["signature"] = sign(receipt_without_signature(receipt), key)
     return validate_receipt(receipt)
+
+
+def _git_bytes(cwd: str, *args: str) -> bytes:
+    try:
+        # Read-only evidence: never take the index lock (the repository may be read-only).
+        result = subprocess.run(
+            ["git", "-c", "core.fsmonitor=false", *args], cwd=cwd, stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
+            timeout=10, check=False, env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ContractError(f"cannot derive repository evidence: {exc}") from exc
+    if result.returncode != 0:
+        raise ContractError("git evidence command failed")
+    return result.stdout
+
+
+def _derive_head(cwd: str) -> str:
+    head = _git_bytes(cwd, "rev-parse", "--verify", "HEAD").decode("ascii", "strict").strip()
+    _req_hex(head, "repository HEAD", 40)
+    return head
+
+
+def _diff_paths(cwd: str, base_head: str) -> tuple[bytes, list[str], list[tuple[str, str]], list[str]]:
+    raw = _git_bytes(cwd, "diff", "--binary", "--find-renames", base_head, "--")
+    ordinary_raw = _git_bytes(cwd, "ls-files", "--others", "--exclude-standard", "-z")
+    ignored_raw = _git_bytes(cwd, "ls-files", "--others", "--ignored", "--exclude-standard", "-z")
+    # Inventory both classes explicitly: ignored files remain part of the diff evidence.
+    ordinary = ordinary_raw.decode("utf-8", "surrogateescape").split("\0")
+    ignored = ignored_raw.decode("utf-8", "surrogateescape").split("\0")
+    untracked = sorted({path for path in (*ordinary, *ignored) if path})
+    for path in untracked:
+        full_path = os.path.join(cwd, path)
+        if os.path.islink(full_path):
+            continue
+        if not os.path.isfile(full_path):
+            raise ContractError("untracked candidate contains a non-regular filesystem object")
+        mode = os.stat(full_path, follow_symlinks=False).st_mode & 0o777
+        raw += b"\0VST-UNTRACKED\0" + path.encode("utf-8", "surrogateescape") + b"\0"
+        raw += mode.to_bytes(2, "big")
+        with open(full_path, "rb") as handle:
+            data = handle.read()
+        raw += hashlib.sha256(data).digest() + len(data).to_bytes(8, "big") + data
+    names = _git_bytes(cwd, "diff", "--name-status", "-z", "--find-renames", base_head, "--")
+    fields = names.decode("utf-8", "surrogateescape").split("\0")
+    changed: list[str] = list(untracked)
+    renames: list[tuple[str, str]] = []
+    i = 0
+    while i < len(fields) and fields[i]:
+        status = fields[i]
+        i += 1
+        if status.startswith("R") or status.startswith("C"):
+            if i + 1 >= len(fields):
+                raise ContractError("malformed git rename evidence")
+            source, target = fields[i], fields[i + 1]
+            i += 2
+            changed.append(target)
+            renames.append((source, target))
+        else:
+            if i >= len(fields):
+                raise ContractError("malformed git path evidence")
+            changed.append(fields[i])
+            i += 1
+    raw_names = _git_bytes(cwd, "diff", "--raw", "-z", "--find-renames", base_head, "--")
+    raw_fields = raw_names.decode("utf-8", "surrogateescape").split("\0")
+    symlinks: set[str] = set()
+    i = 0
+    while i < len(raw_fields) and raw_fields[i]:
+        metadata = raw_fields[i].split()
+        i += 1
+        if len(metadata) < 5 or i >= len(raw_fields):
+            raise ContractError("malformed raw git mode evidence")
+        first = raw_fields[i]
+        i += 1
+        second = None
+        if metadata[4].startswith(("R", "C")):
+            if i >= len(raw_fields):
+                raise ContractError("malformed raw git rename evidence")
+            second = raw_fields[i]
+            i += 1
+        if metadata[0].lstrip(":") == "120000" or metadata[1] == "120000":
+            symlinks.add(first)
+            if second is not None:
+                symlinks.add(second)
+    symlinks.update(path for path in changed if os.path.islink(os.path.join(cwd, path)))
+    return raw, changed, renames, sorted(symlinks)
+
+
+def run_manifest_commands(
+    *, manifest: dict, slot: str, attempt: int, epoch: int, resolved_model: str,
+    invocation_id: str, runner_id: str, signer_socket: str, cwd: str,
+    worker_uid: int, worker_gid: int,
+    worker_exec_helper_head: str,
+    worker_exec_helper_path: str,
+    verify_worker_exec_helper: Callable[[], None],
+    run_id: str | None = None, model_provenance_sha256: str | None = None,
+    execution_authority: Any | None = None,
+    created_at: str, prev_receipt_sha256: str | None = None,
+    artifact_paths: list[str] | None = None, timeout_sec: int | None = None,
+    deadline_sec: int | None = None, max_output_bytes: int = DEFAULT_MAX_OUTPUT_BYTES,
+    extra_env: dict[str, str] | None = None, report: dict | None = None,
+    worker_executor: Any | None = None, signer_server_sid: str | None = None,
+    signer_server_service: str | None = None,
+) -> dict:
+    """Run every manifest-pinned v2 command, derive HEAD, and request signatures.
+
+    The worker does not supply a candidate head, commands, parser callable, or
+    signing key. The authenticated signer signs the exact evidence request and
+    the separate deterministic diff-gate body. Production calls require a
+    verified, daemon-bound execution authority that durably claims the grant
+    before the first child process and stores the exact completed receipt.
+    """
+    from .diffgate import git_diff_evidence
+    from .execution_grant import ExecutionAuthority
+    from .sandbox import (require_distinct_worker_identity,
+                          require_runner_can_access_signer,
+                          require_worker_cannot_access_signer)
+    from .signer import (
+        authorize_runner_over_pipe, authorize_runner_over_socket,
+        sign_diff_over_pipe, sign_diff_over_socket, sign_over_pipe,
+        sign_over_socket,
+    )
+
+    valid = validate_task_manifest(manifest)
+    if valid.get("contract_version") != 2:
+        raise ContractError("run_manifest_commands requires manifest contract v2")
+    if type(execution_authority) is not ExecutionAuthority:
+        raise ContractError("manifest execution requires a verified persistent-runner authorization")
+    for name, value in (("slot", slot), ("resolved_model", resolved_model),
+                        ("invocation_id", invocation_id), ("runner_id", runner_id),
+                        ("created_at", created_at), ("cwd", cwd), ("signer_socket", signer_socket)):
+        _req_str(value, name)
+    _req_str(run_id, "run_id")
+    _req_hex(model_provenance_sha256, "model_provenance_sha256", 64)
+    if not os.path.isdir(cwd):
+        raise ContractError("cwd must be an existing repository directory")
+    if os.name == "nt":
+        if (worker_executor is None or not callable(getattr(worker_executor, "run", None))
+                or not isinstance(signer_server_sid, str)
+                or not re.fullmatch(r"S-1-\d+(?:-\d+){1,15}", signer_server_sid)
+                or signer_server_service != "VSTSigner"):
+            raise ContractError("Windows execution requires the SCM Worker and Signer service endpoints")
+    else:
+        if worker_executor is not None or signer_server_sid is not None:
+            raise ContractError("Windows service transports cannot be configured on the POSIX runner path")
+        if (not isinstance(worker_uid, int) or isinstance(worker_uid, bool) or worker_uid < 1 or
+                not isinstance(worker_gid, int) or isinstance(worker_gid, bool) or worker_gid < 1):
+            raise ContractError("worker_uid and worker_gid must be positive POSIX ids")
+        if (worker_uid, worker_gid) != (999, 989) or (os.geteuid(), os.getegid()) != (997, 988):
+            raise ContractError("POSIX manifest execution requires the fixed vst-runner to vst-worker helper")
+        if (not isinstance(worker_exec_helper_path, str)
+                or not _POSIX_WORKER_EXEC_HELPER_PATH.fullmatch(worker_exec_helper_path)
+                or not isinstance(worker_exec_helper_head, str)
+                or not _POSIX_WORKER_EXEC_HELPER_HEAD.fullmatch(worker_exec_helper_head)
+                or worker_exec_helper_path != _POSIX_WORKER_EXEC_HELPER_PREFIX + worker_exec_helper_head
+                or not callable(verify_worker_exec_helper)):
+            raise ContractError("manifest execution requires the exact helper path for its full configured build head")
+        require_distinct_worker_identity(worker_uid)
+        require_runner_can_access_signer(signer_socket)
+        require_worker_cannot_access_signer(signer_socket, worker_uid=worker_uid, worker_gid=worker_gid)
+    _req_int(attempt, "attempt", 1, MAX_COUNTER)
+    _req_int(epoch, "epoch", 1, MAX_COUNTER)
+    if prev_receipt_sha256 is not None:
+        _req_hex(prev_receipt_sha256, "prev_receipt_sha256", 64)
+    if attempt == 1 and prev_receipt_sha256 is not None:
+        raise ContractError("prev_receipt_sha256 must be null when attempt == 1")
+    slot_types = {entry["slot"]: entry["receipt_type"] for entry in valid["required_receipts"]}
+    if slot_types.get(slot) != "TestRun":
+        raise ContractError("slot is not a TestRun slot in the manifest")
+    manifest_hash = manifest_sha256(valid)
+    pinned = [item for item in valid["mandatory_commands"] if item["slot"] == slot]
+    if not pinned:
+        raise ContractError("manifest has no mandatory commands for this slot")
+    argvs = [item["argv"] for item in pinned]
+    required_ids = sorted(item["test_id"] for item in valid["required_tests"] if item["slot"] == slot)
+    acceptance = sorted({a for item in valid["required_tests"] if item["slot"] == slot for a in item["acceptance"]})
+    limit = valid["timeout_sec"]
+    per_command = limit if timeout_sec is None else _req_int(timeout_sec, "timeout_sec", 1, limit)
+    deadline = limit if deadline_sec is None else _req_int(deadline_sec, "deadline_sec", 1, limit)
+    _req_int(max_output_bytes, "max_output_bytes", 1, MAX_OUTPUT_BYTES_LIMIT)
+    paths = [] if artifact_paths is None else artifact_paths
+    _req_str_list(paths, "artifact_paths", unique=True)
+    for path in paths:
+        _validate_repo_path(path, f"artifact_paths[{path!r}]")
+        if contained_artifact_path(cwd, path) is None:
+            raise ContractError(f"artifact path escapes run directory: {path!r}")
+    env = build_environment(_check_env(extra_env))
+    request_id = execution_authority.grant.get("request_id")
+    _req_str(request_id, "authorized request_id")
+    replay = execution_authority.authorize_and_claim({
+        "manifest_sha256": manifest_hash, "task_id": valid["task_id"], "slot": slot,
+        "attempt": attempt, "epoch": epoch, "run_id": run_id,
+        "invocation_id": invocation_id, "request_id": request_id,
+        "runner_id": runner_id, "resolved_model": resolved_model,
+        "model_provenance_sha256": model_provenance_sha256,
+        "execution_deadline_sec": deadline,
+        "service_generation": execution_authority.service_generation,
+    })
+    if replay is not None:
+        return validate_receipt(replay)
+    if os.name == "nt":
+        authorize_runner_over_pipe(
+            signer_socket, expected_server_sid=signer_server_sid,
+            expected_server_service=signer_server_service,
+            grant=execution_authority.grant,
+        )
+    else:
+        authorize_runner_over_socket(signer_socket, grant=execution_authority.grant)
+    deadline_at = time.monotonic() + deadline
+    commands: list[dict] = []
+    parser_results: list[dict] = []
+    infos: list[dict] = []
+    stop_after_capture_incomplete = False
+    reservation_confirmed = False
+    command_launch_deadline = deadline_at
+
+    def verify_and_reserve_before_spawn() -> None:
+        nonlocal reservation_confirmed
+        if time.monotonic() >= command_launch_deadline:
+            raise ContractError("command deadline expired before child launch")
+        if not reservation_confirmed:
+            execution_authority.reserve()
+            reservation_confirmed = True
+        if time.monotonic() >= command_launch_deadline:
+            raise ContractError("command deadline expired after launch reservation")
+        if os.name != "nt":
+            verify_worker_exec_helper()
+
+    for item in pinned:
+        parser_key = (item["parser_id"], item["parser_version"], item["parser_sha256"])
+        parser = TRUSTED_PARSER_CATALOG.get(parser_key)
+        if parser is None:
+            raise ContractError("manifest parser is not present in trusted built-in catalog")
+        now = time.monotonic()
+        remaining = deadline_at - now
+        if stop_after_capture_incomplete:
+            exit_code, stdout = EXIT_CAPTURE_INCOMPLETE, ""
+            info = {
+                "stdout_truncated": False, "stderr_truncated": False,
+                "timed_out": False, "capture_incomplete": True,
+                "job_object": False, "skipped_by_deadline": False,
+                "skipped_after_capture_incomplete": True,
+            }
+        elif remaining <= 0:
+            exit_code, stdout = EXIT_TIMEOUT, ""
+            info = {"stdout_truncated": False, "stderr_truncated": False, "timed_out": False,
+                    "capture_incomplete": False, "job_object": False, "skipped_by_deadline": True}
+        else:
+            command_launch_deadline = min(deadline_at, now + float(per_command))
+            command_timeout = min(float(per_command), remaining)
+            if os.name == "nt":
+                verify_and_reserve_before_spawn()
+                exit_code, stdout, info = worker_executor.run(
+                    grant=execution_authority.grant, manifest=valid, slot=slot,
+                    argv=item["argv"], timeout_sec=max(1, int(command_timeout)),
+                    max_output_bytes=max_output_bytes,
+                )
+            else:
+                exit_code, stdout, info = _run_one(
+                    item["argv"], cwd, command_timeout, env,
+                    max_output_bytes, require_job_object=True,
+                    worker_uid=worker_uid, worker_gid=worker_gid,
+                    worker_exec_helper_path=worker_exec_helper_path,
+                    _deadline_at=min(deadline_at, now + float(per_command)),
+                    _before_spawn=verify_and_reserve_before_spawn,
+                )
+            if not info.get("admission_wait_expired"):
+                info["skipped_by_deadline"] = False
+        parsed = parser(stdout)
+        if (not isinstance(parsed, tuple) or len(parsed) != 3 or
+                any(not isinstance(group, list) or any(not isinstance(x, str) for x in group) for group in parsed)):
+            raise ContractError("trusted parser returned invalid typed results")
+        executed, skipped, xfail = parsed
+        commands.append({"argv": list(item["argv"]), "exit_code": exit_code})
+        parser_results.append({
+            "argv": list(item["argv"]), "parser_id": item["parser_id"],
+            "parser_version": item["parser_version"], "parser_sha256": item["parser_sha256"],
+            "parser_result": {"executed_test_ids": executed, "skipped_test_ids": skipped,
+                              "xfail_test_ids": xfail},
+        })
+        infos.append(info)
+        if exit_code == EXIT_CAPTURE_INCOMPLETE or info["capture_incomplete"]:
+            stop_after_capture_incomplete = True
+    if not reservation_confirmed:
+        raise ContractError(
+            "no command reached its launch path before the deadline; refusing an unreserved receipt"
+        )
+    candidate_head = _derive_head(cwd)
+    executed_all = [test_id for result in parser_results for test_id in result["parser_result"]["executed_test_ids"]]
+    skipped_all = [test_id for result in parser_results for test_id in result["parser_result"]["skipped_test_ids"]]
+    xfail_all = [test_id for result in parser_results for test_id in result["parser_result"]["xfail_test_ids"]]
+    digests = _hash_artifacts(paths, cwd)
+    diff_bytes, changed, renames, symlinks = _diff_paths(cwd, valid["base_head"])
+    diff = git_diff_evidence(cwd, valid, candidate_head, diff_bytes, changed,
+                             symlink_paths=symlinks, rename_pairs=renames)
+    if os.name == "nt":
+        diff["signature"] = sign_diff_over_pipe(
+            signer_socket, f"{request_id}:diff", {k: v for k, v in diff.items()},
+            expected_server_sid=signer_server_sid,
+            expected_server_service=signer_server_service,
+            execution_grant=execution_authority.grant,
+        )
+    else:
+        diff["signature"] = sign_diff_over_socket(
+            signer_socket, f"{request_id}:diff", {k: v for k, v in diff.items()},
+            execution_grant=execution_authority.grant,
+        )
+    request = {
+        "request_id": request_id, "task_id": valid["task_id"], "slot": slot,
+        "attempt": attempt, "epoch": epoch, "manifest_sha256": manifest_hash,
+        "candidate_head": candidate_head, "commands": commands,
+        "parser_results": parser_results, "artifact_digests": digests,
+    }
+    if os.name == "nt":
+        request_sig = sign_over_pipe(
+            signer_socket, request, expected_server_sid=signer_server_sid,
+            expected_server_service=signer_server_service,
+            execution_grant=execution_authority.grant,
+        )
+    else:
+        request_sig = sign_over_socket(
+            signer_socket, request, execution_grant=execution_authority.grant
+        )
+    receipt = {
+        "contract_version": 2,
+        "receipt_id": f"{valid['task_id']}:{slot}:{attempt}:{invocation_id}",
+        "receipt_type": "TestRun", "task_id": valid["task_id"],
+        "manifest_sha256": manifest_hash, "slot": slot, "attempt": attempt,
+        "prev_receipt_sha256": prev_receipt_sha256, "candidate_head": candidate_head,
+        "epoch": epoch, "runner_id": runner_id, "role_sha256": valid["role_sha256"],
+        "resolved_model": resolved_model, "invocation_id": invocation_id,
+        "result": "FAIL", "created_at": created_at, "expected_test_ids": required_ids,
+        "executed_test_ids": executed_all, "skipped_test_ids": skipped_all,
+        "xfail_test_ids": xfail_all, "commands": commands,
+        "covered_acceptance": acceptance, "artifact_digests": digests,
+        "parser_results": parser_results, "diff_gate": diff,
+        "runner_attestation": {"request": request, "signature": request_sig},
+        "signature": request_sig,
+    }
+    receipt["result"] = derive_result(receipt)
+    validated_receipt = validate_receipt(receipt)
+    execution_authority.complete(validated_receipt)
+    if report is not None:
+        report["commands"] = infos
+        report["capture_incomplete"] = any(info["capture_incomplete"] for info in infos)
+        report["candidate_head"] = candidate_head
+        report["diff_gate"] = diff
+    return validated_receipt

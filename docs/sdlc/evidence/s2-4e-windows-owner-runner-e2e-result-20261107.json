@@ -1,0 +1,39 @@
+{
+  "evidence_id": "S2-4E REQ-003 Windows Owner-to-Runner E2E attempt",
+  "task_id": "S2-4E",
+  "acceptance": "REQ-003",
+  "captured_utc": "2026-11-07T11:10:33Z",
+  "repository_head": "7adb18316babe41f46ed894afe82620173736947",
+  "result": "NOT_RUN",
+  "trigger_count": 0,
+  "installer_start_result": "The operation was canceled by the user.",
+  "installer_result_source": "Parent agent reported the exact Start-Process error after UAC elevation was canceled; no setup was performed.",
+  "observations": [
+    {
+      "result": "ProgramDataVstExists=false; ProvisionLogExists=false; OwnerFileExists=false; OutputExists=false; all six services MISSING",
+      "command": "$p=Join-Path $env:ProgramData 'VST'; $log='D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4e-windows-provision.log'; $names='VSTOwner','VSTSupervisor','VSTDispatcher','VSTRunner','VSTSigner','VSTWorker'; $svcs=@(foreach($n in $names){$s=Get-Service -Name $n -ErrorAction SilentlyContinue; if($s){[pscustomobject]@{Name=$n;Status=[string]$s.Status}}else{[pscustomobject]@{Name=$n;Status='MISSING'}}}); $owner=Join-Path $p 'setup-owner.json'; $out=Join-Path $p 'e2e-output.log'; [pscustomobject]@{ProgramDataVstExists=(Test-Path $p);ProvisionLogExists=(Test-Path $log);OwnerFileExists=(Test-Path $owner);OutputExists=(Test-Path $out);Services=$svcs} | ConvertTo-Json -Compress; if(Test-Path $log){Get-Content -LiteralPath $log -Tail 12}"
+    },
+    {
+      "result": "At 13:09:02 and 13:09:39 local time: setup-owner.json absent; provisioning log absent; all six services MISSING.",
+      "command": "$deadline=(Get-Date).AddSeconds(75); $log='D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4e-windows-provision.log'; $names='VSTOwner','VSTSupervisor','VSTDispatcher','VSTRunner','VSTSigner','VSTWorker'; do { Start-Sleep -Seconds 15; $svcs=@(foreach($n in $names){$s=Get-Service -Name $n -ErrorAction SilentlyContinue; if($s){[pscustomobject]@{Name=$n;Status=[string]$s.Status}}else{[pscustomobject]@{Name=$n;Status='MISSING'}}}); $owner=Join-Path $env:ProgramData 'VST\\setup-owner.json'; $ready=(Test-Path $owner) -and (@($svcs | Where-Object Status -ne 'Running').Count -eq 0); [pscustomobject]@{At=(Get-Date -Format 'HH:mm:ss');Ready=$ready;Services=$svcs;LogExists=(Test-Path $log);OwnerFileExists=(Test-Path $owner)} | ConvertTo-Json -Compress; if($ready){break}; if(Test-Path $log){Get-Content -LiteralPath $log -Tail 6} } while((Get-Date) -lt $deadline)"
+    },
+    {
+      "command": "$deadline=(Get-Date).AddSeconds(50); $log='D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4e-windows-provision.log'; $names='VSTOwner','VSTSupervisor','VSTDispatcher','VSTRunner','VSTSigner','VSTWorker'; do { Start-Sleep -Seconds 15; $svcs=@(foreach($n in $names){$s=Get-Service -Name $n -ErrorAction SilentlyContinue; if($s){[pscustomobject]@{Name=$n;Status=[string]$s.Status}}else{[pscustomobject]@{Name=$n;Status='MISSING'}}}); $owner=Join-Path $env:ProgramData 'VST\\setup-owner.json'; $ready=(Test-Path $owner) -and (@($svcs | Where-Object Status -ne 'Running').Count -eq 0); [pscustomobject]@{At=(Get-Date -Format 'HH:mm:ss');Ready=$ready;Services=$svcs;LogExists=(Test-Path $log);OwnerFileExists=(Test-Path $owner)} | ConvertTo-Json -Compress; if($ready){break}; if(Test-Path $log){Get-Content -LiteralPath $log -Tail 6} } while((Get-Date) -lt $deadline)",
+      "result": "At 13:09:39 local: Ready=false; setup-owner.json absent; provisioning log absent; all six services MISSING."
+    }
+  ],
+  "scheduled_task_name": null,
+  "scheduled_task_started": false,
+  "scheduled_task_result": null,
+  "e2e_output_path": "C:\\ProgramData\\VST\\e2e-output.log",
+  "e2e_output_present": false,
+  "blocker": "UAC elevation was canceled, so the authorized setup did not provision the VST services or registered E2E task. Per instruction, no elevation retry and no E2E trigger were attempted.",
+  "owner": "Operator for the required Windows UAC consent; Codex coordinates the single authorized setup and e2e-runner owns execution after prerequisites are ready.",
+  "next_action": "Operator-mediated elevated execution of the existing provisioner (or a renewed UAC attempt explicitly requested by the operator), followed by one scheduled E2E trigger by e2e-runner. The previous UAC request has completed canceled.",
+  "limitations": [
+    "No scheduled task trigger was submitted; no selector was consumed.",
+    "No tests were authored or modified.",
+    "No CI, pytest, lint, typecheck, verify, build, WSL, or VPS action was run.",
+    "Environment provisioning and runtime behavior remain NOT_RUN."
+  ]
+}

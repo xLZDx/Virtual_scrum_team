@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Virtual Scrum Team — program status and Sprint 2</title><style>
+:root{color-scheme:dark;--bg:#111722;--panel:#1b2432;--line:#354155;--text:#eef3fb;--muted:#b8c4d5;--green:#33b27a;--blue:#5d91e8;--amber:#e4ad37;--gray:#3b4659}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,"Segoe UI",sans-serif}
+main{max-width:1700px;margin:auto;padding:20px}header,.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;margin:0 0 14px}
+h1{font-size:clamp(1.7rem,3vw,2.4rem);margin:0 0 8px}h2{margin:0 0 10px;font-size:1.4rem}p{margin:8px 0}.muted,small{color:var(--muted)}
+.bar{display:flex;height:22px;border-radius:10px;overflow:hidden;background:var(--gray);margin:10px 0}.closed-fill{background:var(--green)}.partial-fill{background:var(--blue)}.open-fill{background:var(--gray)}
+.legend{display:flex;flex-wrap:wrap;gap:10px 18px;margin:8px 0;color:var(--muted);font-size:.9rem}.legend span{display:inline-flex;align-items:center;gap:6px}.swatch{width:12px;height:12px;border-radius:3px;display:inline-block}
+.swatch.closed,.swatch.accepted{background:var(--green)}.swatch.partial{background:var(--blue)}.swatch.open{background:var(--gray)}.swatch.deferred{background:var(--amber)}
+.sprint-chart{display:grid;gap:5px;overflow:auto}.sprint-header,.sprint-row{display:grid;grid-template-columns:minmax(220px,1.35fr) minmax(120px,.8fr) minmax(145px,.9fr) minmax(150px,.8fr) minmax(150px,.8fr);gap:10px;align-items:center;min-width:900px}
+.sprint-header{font-size:.8rem;color:var(--muted);font-weight:700;padding:5px}.sprint-row{padding:7px;border-bottom:1px solid var(--line)}.sprint-row .bar{height:14px;margin:0}.sprint-row strong{font-size:.85rem}.sprint-row small{font-size:.8rem}.sprint-row .muted{font-size:.75rem}
+table{width:100%;border-collapse:collapse;min-width:1500px}th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{position:sticky;top:0;background:#263246}td{font-size:.88rem}td:first-child{font-family:ui-monospace,monospace;font-weight:700;white-space:nowrap}.accepted{color:#83e2b0;font-weight:700}.deferred{color:#ffd26b;font-weight:700}.table-wrap{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:9px}
+.note{border-left:3px solid var(--amber);padding:8px 12px;background:#252a2c}
+</style></head><body><main>
+<header class="hero"><h1>Whole program — overall closure and work status</h1><p><b>4/40 VST IDs are marked CLOSED in the registry (10%).</b> This is registry distribution, not a verified share of every project task. <b>Whole-project closed-and-pushed percentage: NOT VERIFIED</b> because complete task-ID to remote-commit mapping is unavailable.</p>
+<div class="bar" role="img" aria-label="4 CLOSED, 26 PARTIAL, 10 OPEN out of 40 VST registry IDs"><span class="closed-fill" style="width:10%" title="4/40 CLOSED"></span><span class="partial-fill" style="width:65%" title="26/40 PARTIAL"></span><span class="open-fill" style="width:25%" title="10/40 OPEN"></span></div>
+<div class="legend"><span><i class="swatch closed"></i>CLOSED: 4/40 (10%)</span><span><i class="swatch partial"></i>PARTIAL: 26/40 (65%)</span><span><i class="swatch open"></i>OPEN: 10/40 (25%)</span></div><p class="muted">As of: 2026-11-07 22:20 +02:00 (Europe/Chisinau) · HEAD 9aa26a5 · S2: 9/9 plan tasks accepted, PR #2 open and ready for review; S3 not started. The VST registry numbers above are unchanged since 2026-11-06.</p></header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:#fff;color:#0f172a;
+  border:1px solid #cbd5e1;border-left:3px solid #2563eb;border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  color:#0f172a;font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:#475569;text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:#0f172a;word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:#1e293b;background:#f8fafc;
+  border:1px solid #94a3b8;border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:#2563eb}
+.rc-copy:focus-visible{outline:2px solid #1d4ed8;outline-offset:2px}
+.rc-copy.is-done{color:#166534;border-color:currentColor}
+.rc-copy.is-fail{color:#991b1b;border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>Virtual_scrum_team</dd>
+    <dt>Folder</dt><dd>D:\Repo\Virtual_scrum_team</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-canonical-continuation @ 9aa26a5</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+
+
+
+
+<section class="panel"><h2>Task distribution by sprint</h2><p class="muted">Each row is one VST ID; categories sum to 40. Bars show registry states, not acceptance completion. The registry does not split S0/S1 IDs. NR means exact duration or exact-ID diff is not established.</p>
+<div class="sprint-chart"><div class="sprint-header"><span>Sprint / registry IDs</span><span>Status bar</span><span>Closed / partial / open · total</span><span>Git window (exact ID)</span><span>Diff shares: code / docs / tests / other</span></div><div class="sprint-row"><span><b>S0 + S1</b><br><small>VST-001–008; registry does not split IDs</small></span><div class="bar" role="img" aria-label="CLOSED 3/8; PARTIAL 1/8; OPEN 4/8"><span class="closed-fill" style="width:37.5000%" title="CLOSED 3/8"></span><span class="partial-fill" style="width:12.5000%" title="PARTIAL 1/8"></span><span class="open-fill" style="width:50.0000%" title="OPEN 4/8"></span></div><strong>3/8 · 1/8 · 4/8</strong><span class="muted">NR — no planned duration<br>no exact task-ID mapping</span><span class="muted">NR — no exact-ID diff</span></div><div class="sprint-row"><span><b>S2</b><br><small>VST-009–020, VST-025–026</small></span><div class="bar" role="img" aria-label="CLOSED 1/14; PARTIAL 13/14; OPEN 0/14"><span class="closed-fill" style="width:7.1429%" title="CLOSED 1/14"></span><span class="partial-fill" style="width:92.8571%" title="PARTIAL 13/14"></span><span class="open-fill" style="width:0.0000%" title="OPEN 0/14"></span></div><strong>1/14 · 13/14 · 0/14</strong><span class="muted">NR — no planned duration<br>no exact task-ID mapping</span><span class="muted">NR — no exact-ID diff</span></div><div class="sprint-row"><span><b>S3</b><br><small>VST-027–031</small></span><div class="bar" role="img" aria-label="CLOSED 0/5; PARTIAL 4/5; OPEN 1/5"><span class="closed-fill" style="width:0.0000%" title="CLOSED 0/5"></span><span class="partial-fill" style="width:80.0000%" title="PARTIAL 4/5"></span><span class="open-fill" style="width:20.0000%" title="OPEN 1/5"></span></div><strong>0/5 · 4/5 · 1/5</strong><span class="muted">NR — no planned duration<br>no exact task-ID mapping</span><span class="muted">NR — no exact-ID diff</span></div><div class="sprint-row"><span><b>S4</b><br><small>VST-032–038, VST-040</small></span><div class="bar" role="img" aria-label="CLOSED 0/8; PARTIAL 8/8; OPEN 0/8"><span class="closed-fill" style="width:0.0000%" title="CLOSED 0/8"></span><span class="partial-fill" style="width:100.0000%" title="PARTIAL 8/8"></span><span class="open-fill" style="width:0.0000%" title="OPEN 0/8"></span></div><strong>0/8 · 8/8 · 0/8</strong><span class="muted">NR — no planned duration<br>no exact task-ID mapping</span><span class="muted">NR — no exact-ID diff</span></div><div class="sprint-row"><span><b>S5</b><br><small>VST-041</small></span><div class="bar" role="img" aria-label="CLOSED 0/1; PARTIAL 0/1; OPEN 1/1"><span class="closed-fill" style="width:0.0000%" title="CLOSED 0/1"></span><span class="partial-fill" style="width:0.0000%" title="PARTIAL 0/1"></span><span class="open-fill" style="width:100.0000%" title="OPEN 1/1"></span></div><strong>0/1 · 0/1 · 1/1</strong><span class="muted">NR — no planned duration<br>no exact task-ID mapping</span><span class="muted">NR — no exact-ID diff</span></div><div class="sprint-row"><span><b>Unassigned</b><br><small>VST-021–024; sprint not specified</small></span><div class="bar" role="img" aria-label="CLOSED 0/4; PARTIAL 0/4; OPEN 4/4"><span class="closed-fill" style="width:0.0000%" title="CLOSED 0/4"></span><span class="partial-fill" style="width:0.0000%" title="PARTIAL 0/4"></span><span class="open-fill" style="width:100.0000%" title="OPEN 4/4"></span></div><strong>0/4 · 0/4 · 4/4</strong><span class="muted">NR — no planned duration<br>no exact task-ID mapping</span><span class="muted">NR — no exact-ID diff</span></div></div><div class='legend'><span><i class='swatch closed'></i>Green — CLOSED in registry</span><span><i class='swatch partial'></i>Blue — PARTIAL; acceptance remains</span><span><i class='swatch open'></i>Gray — OPEN / NOT_STARTED</span></div>
+<p class="muted">Shared denominator: 40 VST IDs from core/BACKLOG.md. S0/S1 share one row because the registry does not split those IDs. Registry state does not replace Sprint S2 task acceptance.</p></section>
+<section class="panel"><h2>Sprint S2 — all planned tasks and statuses</h2><p><b>9/9 plan items are accepted: 8 in bounded source/test scope and S2-4E by a real Windows service-process E2E.</b> E5 and production remain NOT_RUN; this is not production readiness. The separate S2 VST registry shows 1/14 CLOSED and 13/14 PARTIAL.</p><div class='legend'><span><i class='swatch accepted'></i>Green — bounded acceptance accepted</span></div><p class="muted">Times and diff shares use only commits explicitly tagged with the exact task ID; they are not labor hours. One commit yields a 0-minute window. For S2-4D, exact-tagged eb9b0ed is shown; final untagged commit 96a8da7 is excluded from its diff share.</p>
+<div class="table-wrap"><table><thead><tr><th>Task</th><th>Plan acceptance</th><th>Status</th><th>Accepted / evidence</th><th>Remaining / dependency</th><th>Owner</th><th>Next action</th><th>Git window / duration</th><th>Diff shares: code/docs/tests/other</th></tr></thead><tbody><tr><td class="">S2-1</td><td class="">Signed instruction, Store admission, recovery (REQ-001/002/004)</td><td class="accepted">ACCEPTED · source/test</td><td class="">Pushed e332ec4; GPT-PM f92b750e; recorded tests/reviews in backlog/evidence.</td><td class="">Runtime and production not proven by this task.</td><td class="">Codex; GPT-PM review</td><td class="">Do not reopen without a regression or changed requirement.</td><td class="">9a6f581 · 2026-10-29 23:37:55 +02:00 · 1 commit · 0 min</td><td class="">0 / 100 / 0 / 0%</td></tr><tr><td class="">S2-2</td><td class="">Authenticated owner transport to Store-backed dispatcher (REQ-002/003)</td><td class="accepted">ACCEPTED · source/test</td><td class="">Pushed e987a24; GPT-PM b0f60d46; bounded source/test scope accepted.</td><td class="">Live systemd/PID credentials, pidfd, socket metadata and Runner runtime not proven.</td><td class="">Codex; GPT-PM review</td><td class="">Preserve runtime limits; do not repeat accepted tests.</td><td class="">34da339 · 2026-10-29 23:41:10 +02:00 · 1 commit · 0 min</td><td class="">0 / 100 / 0 / 0%</td></tr><tr><td class="">S2-3</td><td class="">Reviewed bundle and bounded inactive stage-only preparation (REQ-004/005/006)</td><td class="accepted">ACCEPTED · bounded preparation</td><td class="">Pushed ae07f87; GPT-PM ac2d25a2 approved the stage-only manifest; historical WSL preparation.</td><td class="">Does not prove active services, E5, Runner or production. WSL QA harness is out of active scope.</td><td class="">Codex; GPT-PM review</td><td class="">Retain as historical evidence; do not resume WSL harness.</td><td class="">57c734e · 2026-10-29 23:26:30 +02:00 · 1 commit · 0 min</td><td class="">0 / 100 / 0 / 0%</td></tr><tr><td class="">S2-4A</td><td class="">Issuer V1 and V2 verifier source/test</td><td class="accepted">ACCEPTED · source/test</td><td class="">GPT-PM request 8fc2e0ba / exact approval c978360; V2 slice aa349632, pushed e09c78b.</td><td class="">No production signing key or issuer is claimed.</td><td class="">Codex; GPT-PM review</td><td class="">Do not reopen without a concrete regression.</td><td class="">NO_TASK_ID_COMMITS</td><td class="">NR / NR / NR / NR</td></tr><tr><td class="">S2-4B</td><td class="">Preparation steps 4.1–4.12a; stage-only source</td><td class="accepted">ACCEPTED · source/test</td><td class="">Pushed 19338ba; change records 0597–0609; focused test/review records.</td><td class="">Live Runner/runtime not proven.</td><td class="">Codex</td><td class="">Do not repeat accepted preparation.</td><td class="">NO_TASK_ID_COMMITS</td><td class="">NR / NR / NR / NR</td></tr><tr><td class="">S2-4C</td><td class="">Hardening 4.12b: worker identity, mount audit, inventory binding</td><td class="accepted">ACCEPTED · source/test</td><td class="">Pushed 67361bb; GPT-PM exact-byte review; recorded tests/reviews.</td><td class="">Does not prove live E5/production.</td><td class="">Codex; GPT-PM review</td><td class="">Do not reopen without a concrete regression.</td><td class="">NO_TASK_ID_COMMITS</td><td class="">NR / NR / NR / NR</td></tr><tr><td class="">S2-4D</td><td class="">REQ-003: persisted Store handoff; remove unused WSL QA harness</td><td class="accepted">ACCEPTED · bounded source/test</td><td class="">Windows selector 1 passed; bundle-contract module 11 passed. GPT-PM a2c98c0f / reply f981ea40 APPROVE exact candidate 96a8da7; 0 BLOCKER/MAJOR. Internal code-reviewer/code-explorer found no BLOCKER/MAJOR.</td><td class="">Selector proves Store handoff equality only, not live Runner/E5/production. WSL collector/apply/qualification scripts and their Git-source checks are excluded from active scope.</td><td class="">Codex; GPT-PM final code review</td><td class="">Accepted in bounded source/test scope; do not run retired harness.</td><td class="">eb9b0ed · 2026-11-06 17:10:57 +02:00 · 1 tagged commit · 0 min; final 96a8da7 untagged and excluded</td><td class="">10.4 / 1.0 / 29.1 / 59.5% (tagged diff only; final acceptance commit excluded)</td></tr><tr><td class="">S2-4E</td><td class="">Before S3: local Windows Owner→Supervisor/Store→Dispatcher→Runner path; Runner executes only the authorized one-use grant in a Windows Job Object and returns a bound receipt.</td><td class="accepted">ACCEPTED · Windows E2E</td><td class="">Real elevated run 4 (installed from 57c22d3): LAST_TASK_RESULT=0, one test OK in 8.119 s; evidence <a href="../docs/sdlc/evidence/s2-4e-e2e-run-20261107-4.out">run 4 output</a>. Four runs found and fixed four defects. Regression test: 17 passed as root in WSL, 9 fail on the pre-fix client. GPT-PM round 7 (request 3338d1ba-cdb0-4fcf-a105-e96fb9cd2cf5, delta 34e934d..8fa7399): APPROVE, 0 BLOCKER/MAJOR. Pushed; PR #2 ready, merge pending.</td><td class="">One Owner→Runner journey only. Owner-route module NOT_RUN natively on Windows (POSIX-root fixture). The client does not verify the Ed25519 signature; Supervisor/Dispatcher does. E5/production NOT_RUN.</td><td class="">Codex; GPT-PM review</td><td class="">Operator decides on the merge of PR #2; S3 needs separate approval.</td><td class="">02:37:44 → 19:53:40 +02:00, 30 tagged commits, 17 h 16 min</td><td class="">1.8 / 94.2 / 4.0 / 0.0% (92 / 4822 / 205 / 0 changed lines of 5119; tagged commits only, most product-fix commits carry no task ID)</td></tr><tr><td class="">S2-5</td><td class="">Final exact-head code review and S2 bounded acceptance (REQ-006)</td><td class="accepted">ACCEPTED · bounded source/test</td><td class="">Exact code candidate 96a8da7 pushed to origin/s2-canonical-continuation; GPT-PM a2c98c0f/f981ea40 APPROVE; focused tests and internal review accepted.</td><td class="">Runtime/E5/production remain NOT_RUN and NOT_ACCEPTED.</td><td class="">Codex; GPT-PM supplied final approval</td><td class="">Keep code acceptance separate from runtime status.</td><td class="">NO_TASK_ID_COMMITS</td><td class="">NR / NR / NR / NR</td></tr></tbody></table></div><p class="note">All nine S2 tasks are accepted; S2 closes when PR #2 is merged, and S3 has not started. E5/production remain NOT_RUN. The AF ledger is not the backlog: docs/sdlc/state.json has phase 8 paused; docs/sdlc/gate-approval.md refers to the older 2026-10-30 HEAD 7d1d16f.</p></section>
+<section class="panel"><h2>Evidence and boundaries</h2><p><b>Bounded source/test:</b> exact candidate 96a8da7bf5af5c9d5b37e56287c48472cb239254 is on origin/s2-canonical-continuation. GPT-PM request a2c98c0f-a741-4ad6-8330-8cbde5bc3571 / reply f981ea40-d56c-58aa-8c5e-87631a900140: APPROVE, 0 BLOCKER/MAJOR.</p><p>Agent-owned tests ran both scenarios at revision eb9b0ed; current source/test SHA-256 values match candidate 96a8da7. REQ-003 selector — 1 passed; bundle contract — 11 passed. Commands and hashes: <a href='../docs/sdlc/evidence/s2-4d-req003-windows-selector-20261106-02.attempt.json'>selector attempt</a>, <a href='../docs/sdlc/evidence/s2-4d-runtime-config-bundle-windows-20261106-02.attempt.json'>bundle rerun</a>, <a href='../docs/sdlc/acceptance.md'>acceptance</a>. The first bundle attempt had 1 failure / 10 passes; its selector-path assertion was corrected and the agent rerun passed 11.</p><p>Internal code-reviewer and code-explorer found no BLOCKER/MAJOR at the product boundary. This is not runtime evidence. S2-4E Windows-local Owner-to-Runner ran for real on 2026-11-07 (run 4, exit 0; see the task table). E5/production remain separately NOT_RUN.</p><p>WSL QA harness and Git-source checks are out of active scope. Full pytest, CI, lint, typecheck, migration/legal scripts, and restricted selectors were not run.</p><p>S2 is delivered in PR #2 (ready for review, merge pending). S3 has not started and needs separate operator approval.</p><p>Sources: <a href='../PROJECT_PLAN.md'>PROJECT_PLAN.md</a>, <a href='../docs/sdlc/backlog.md'>S2 backlog checkpoint</a>, <a href='../docs/sdlc/acceptance.md'>acceptance.md</a>, <a href='../core/BACKLOG.md'>VST registry</a>. No project evidence.py or documented equivalent exists; attempt records are bounded to their own commands.</p>
+<p>Registry formula: CLOSED / 40. Whole-program closure percentage and full pushed-task numerator are not verified. AF phase count is process history, not a task denominator.</p></section>
+</main>
+
+
+
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body></html>

@@ -1,0 +1,44 @@
+{
+  "6228_outer_wrapper_is_in_scope": false,
+  "candidate_file": "s2-4d-runtime-grant-candidate-e42c82f-20261105.json",
+  "candidate_sha256": "a87d911ba70d1f86c68ff086b080f3bf5ecc42492e63a67434bfde485b7abe3d",
+  "captured_utc": "2026-11-05T06:34:43.771394+00:00",
+  "file_count": 12,
+  "files_scanned": [
+    "s2-runtime-qual-0606fc1b-s2-runtime-20261030-2b5e04a3-chain.attempt.json",
+    "s2-runtime-qual-0606fc1b-s2-runtime-20261030-2b5e04a3-collector.attempt.json",
+    "s2-runtime-qual-0606fc1b-s2-runtime-20261030-2b5e04a3-source_check.attempt.json",
+    "s2-runtime-qual-3a3a0e67-s2-runtime-20261030-2b5e04a3.attempt.json",
+    "s2-runtime-qual-7f3f3b3c-s2-runtime-20261030-2b5e04a3.attempt.json",
+    "s2-runtime-qual-b379a207-s2-runtime-20261030-2b5e04a3-collector.attempt.json",
+    "s2-runtime-qual-b379a207-s2-runtime-20261030-2b5e04a3-source_check.attempt.json",
+    "s2-runtime-qual-b379a207-s2-runtime-20261030-2b5e04a3-validator.attempt.json",
+    "s2-runtime-qual-b3a9b780-s2-runtime-20261030-2b5e04a3.attempt.json",
+    "s2-runtime-qual-c8c6ecb5-s2-runtime-20261030-2b5e04a3.attempt.json",
+    "s2-runtime-qual-d71586a1-s2-runtime-20261030-2b5e04a3.attempt.json",
+    "s2-runtime-qual-dc22ee55-s2-runtime-20261030-2b5e04a3.attempt.json"
+  ],
+  "glob": "s2-runtime-qual-*.attempt.json",
+  "grant_authorization_received_or_fabricated": false,
+  "head": "e42c82ff297902991b9b6e1aa322f44ca08bffb9",
+  "identity_values_searched": {
+    "bootstrap_request_id": "ba3faaadb50447b79df509619b6ee010",
+    "grant_request_id": "1c93d05e-13e8-4d34-b94a-81372e7e381e",
+    "nonce": "1fd3cb4e69e54bc6aa5e63458ae82818",
+    "run_id": "s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e"
+  },
+  "match_count": 0,
+  "matches_by_identity_field": {
+    "bootstrap_request_id": [],
+    "grant_request_id": [],
+    "nonce": [],
+    "run_id": []
+  },
+  "parse_errors": [],
+  "scan_complete": true,
+  "schema": "VST_S2_4D_HISTORICAL_IDENTITY_SCAN_V1",
+  "spent_6228_inner_attempt_exists": false,
+  "spent_6228_inner_attempt_file": "s2-runtime-qual-6228a031-s2-runtime-20261030-dd4c04c5.attempt.json",
+  "task": "S2-4D",
+  "upstream": "e42c82ff297902991b9b6e1aa322f44ca08bffb9"
+}

@@ -1,0 +1,186 @@
+{
+  "argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/bin/sh",
+    "-c",
+    "if /usr/bin/mountpoint -q /mnt/d; then :; else rc=$?; [ \"$rc\" -eq 32 ] || exit \"$rc\"; /usr/bin/mount -t drvfs D: /mnt/d -o ro || exit $?; fi\nexec /usr/bin/python3.12 -I -B -S -c 'import os,json,runpy,stat,datetime\nrunpy.run_path('\\''/mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py'\\'',run_name=\"__main__\")\npaths=[\"/var/lib/vst-runner/private/snapshot-transaction-incomplete.json\",\"/run/systemd/system/vst-runner.service\",\"/run/systemd/system/vst-dispatcher.service\"]\nrows={}\nfor path in paths:\n try:\n  item=os.lstat(path)\n  rows[path]={\"exists\":True,\"device\":item.st_dev,\"inode\":item.st_ino,\"uid\":item.st_uid,\"gid\":item.st_gid,\"mode\":format(stat.S_IMODE(item.st_mode),\"04o\"),\"type\":stat.S_IFMT(item.st_mode),\"nlink\":item.st_nlink,\"size\":item.st_size}\n except FileNotFoundError:\n  rows[path]={\"exists\":False}\nprint(json.dumps({\"schema\":\"S2_4D_POST_APPLY_FAILURE_LSTAT_V1\",\"observed_utc\":datetime.datetime.now(datetime.timezone.utc).isoformat(),\"paths\":rows},sort_keys=True,separators=(\",\",\":\")))\n'"
+  ],
+  "artifacts": {
+    "comparison": {
+      "bytes": 4117,
+      "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-failure-observation-4fe846f-20261105-02.comparison.json",
+      "sha256": "d394b4fb573e1e1d27e10d52ef214d169958fe18d170060231965a583560e82b"
+    },
+    "exit_code": {
+      "bytes": 2,
+      "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-failure-observation-4fe846f-20261105-02.exit-code.txt",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "inventory": {
+      "bytes": 36345,
+      "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-failure-observation-4fe846f-20261105-02.inventory.json",
+      "sha256": "00b32fda3a889b90fa22d37e4bbb49bb88b3866a00cba6d2686e731532179f22"
+    },
+    "lstat": {
+      "bytes": 311,
+      "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-failure-observation-4fe846f-20261105-02.lstat.json",
+      "sha256": "e269e98cbb2b08e4f12d00b061f6e8bf2c4a568ec6e5e10451e9ed04de4a5bf7"
+    },
+    "stderr": {
+      "bytes": 0,
+      "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-failure-observation-4fe846f-20261105-02.stderr.bin",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "stdout": {
+      "bytes": 36656,
+      "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-failure-observation-4fe846f-20261105-02.stdout.bin",
+      "sha256": "379f469a7222ad52019edf442ca0f7386b9a9b3208e93e3f6f8eb3fe68a28b31"
+    }
+  },
+  "collector_source_sha256": "39f07005985eace76cfe99ab9ac764402122598051e3240336e65fd342960971",
+  "comparison": {
+    "candidate_identity_collision": false,
+    "configuration_fingerprint_differences": [],
+    "destination_count": 27,
+    "installed_bootstrap_identity": {
+      "request_id": "ba3faaadb50447b79df509619b6ee010",
+      "run_id": "s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e"
+    },
+    "lstat": {
+      "observed_utc": "2026-11-05T07:54:02.644873+00:00",
+      "paths": {
+        "/run/systemd/system/vst-dispatcher.service": {
+          "exists": false
+        },
+        "/run/systemd/system/vst-runner.service": {
+          "exists": false
+        },
+        "/var/lib/vst-runner/private/snapshot-transaction-incomplete.json": {
+          "exists": false
+        }
+      },
+      "schema": "S2_4D_POST_APPLY_FAILURE_LSTAT_V1"
+    },
+    "mount": {
+      "filesystem_options": {
+        "command": "/usr/bin/findmnt -n -o FSTYPE,OPTIONS --target /mnt/d",
+        "exit_code": 0,
+        "finished_utc": "2026-11-05T07:54:01.205491+00:00",
+        "started_utc": "2026-11-05T07:54:01.202853+00:00",
+        "stderr": "",
+        "stdout": "9p     ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3\n"
+      },
+      "source": {
+        "command": "/usr/bin/findmnt -n -o SOURCE --target /mnt/d",
+        "exit_code": 0,
+        "finished_utc": "2026-11-05T07:54:01.202822+00:00",
+        "started_utc": "2026-11-05T07:54:01.197527+00:00",
+        "stderr": "",
+        "stdout": "D:\n"
+      }
+    },
+    "post_boot_id": "faf845b4-e863-48d7-bb82-182bf528cb96",
+    "post_capture_utc": "2026-11-05T07:54:02.644425+00:00",
+    "post_failure_inventory_sha256": "00b32fda3a889b90fa22d37e4bbb49bb88b3866a00cba6d2686e731532179f22",
+    "pre_boot_id": "faf845b4-e863-48d7-bb82-182bf528cb96",
+    "pre_capture_utc": "2026-11-05T07:48:13.520452+00:00",
+    "pre_inventory_sha256": "3cd143e14be72cb602e1727e1c2bdf12c437a2352d067e12bd1b44c388fbf2f5",
+    "runtime_selector": {
+      "kind": "symlink",
+      "link_target": "/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
+      "state": "PRESENT"
+    },
+    "source_head": "4fe846fc1c3172f02a4fe915936ecc9c249ac61d",
+    "source_identity": {
+      "applier_sha256": "c563417271bb5e6a5c2e10cbb129713c22ec3fd0e8c54d541a72aba63ff8c3b4",
+      "applier_sha256_matches_head_blob": true,
+      "bundle_manifest_sha256": "4c13f2991f39cf12b84af4b0440621ab1adaa74ca1894dfda29eec1006cd7138",
+      "bundle_manifest_sha256_matches_head_blob": true,
+      "contracts_sha256": "bf01d990a94cd71887f8d9f81019333f3bf43d5950a655de3646e9bb3d585ea4",
+      "contracts_sha256_matches_head_blob": true,
+      "implementation_source_commit": "16549bb8f10113b2f05f41b3aa390bad80dab97e",
+      "installation_layout_sha256": "f46e97704a89b5da339701bb71b6e71c4ce846ae96cb4504929869352d0315dd",
+      "installation_layout_sha256_matches_head_blob": true,
+      "repo_head": "4fe846fc1c3172f02a4fe915936ecc9c249ac61d",
+      "runtime_capture_sha256": "befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119",
+      "runtime_capture_sha256_matches_head_blob": true,
+      "runtime_source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
+      "validator_sha256": "c334c6cdcf2677c8f3d87f52c74951d61717e64f7dbe0f77cc0541cc32f5d135",
+      "validator_sha256_matches_head_blob": true
+    },
+    "store_present": false,
+    "unit_state_differences": [],
+    "units": {
+      "vst-assignment-bootstrap.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-dispatch-issuer.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-dispatch-owner.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-dispatch-owner.socket": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-dispatcher.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-runner.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-sandbox-probe.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-signer.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-supervisor.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ]
+    }
+  },
+  "exit_code": 0,
+  "finished_utc": "2026-11-05T07:54:02.670628+00:00",
+  "head": "4fe846fc1c3172f02a4fe915936ecc9c249ac61d",
+  "operation": "read-only post-failure observation",
+  "schema": "S2_4D_POST_APPLY_FAILURE_OBSERVATION_ATTEMPT_V1",
+  "started_utc": "2026-11-05T07:53:56.417075+00:00",
+  "stderr_bytes": 0,
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_bytes": 36656,
+  "stdout_sha256": "379f469a7222ad52019edf442ca0f7386b9a9b3208e93e3f6f8eb3fe68a28b31",
+  "task": "S2-4D"
+}

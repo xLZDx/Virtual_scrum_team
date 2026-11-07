@@ -1,0 +1,93 @@
+{
+  "task": "S2-4D",
+  "head": "1886810e79b8fc1815f92708559a8798d7740dab",
+  "authorization_source": "Operator autonomous GO for sandbox setup; exact source approved ae97205e and pushed",
+  "started_utc": "2026-11-05T04:25:06.770743+00:00",
+  "test_run": "NOT_RUN",
+  "apply_invocations": 1,
+  "keeper_argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/usr/bin/python3.12",
+    "-I",
+    "-B",
+    "-S",
+    "-c",
+    "import sys,pathlib,json; print(json.dumps({'ready':True,'pid1_stat':pathlib.Path('/proc/1/stat').read_text()}),flush=True); sys.stdin.buffer.read(1)"
+  ],
+  "keeper_host_pid": 47324,
+  "keeper_ready": {
+    "ready": true,
+    "pid1_stat": "1 (systemd) S 0 1 1 0 -1 4194560 5103 52604 121 873 33 57 108 87 20 0 1 0 1203361 22228992 3076 18446744073709551615 95420099325952 95420099369825 140727618917008 0 0 0 671173123 4096 1260 1 0 0 17 1 0 0 0 0 0 95420099399632 95420099403792 95420150734848 140727618920344 140727618920355 140727618920355 140727618920429 0\n"
+  },
+  "inventory_argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/bin/sh",
+    "-c",
+    "if /usr/bin/mountpoint -q /mnt/d; then :; else rc=$?; [ \"$rc\" -eq 32 ] || exit \"$rc\"; /usr/bin/mount -t drvfs D: /mnt/d -o ro || exit $?; fi\nexec /usr/bin/python3.12 -I -B -S /mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py"
+  ],
+  "inventory_exit_code": 0,
+  "inventory_sha256": "b266af9c2fd40e0e5df9a22f605e08d630fd654c4da0dc343345f68233206f29",
+  "inventory_pid1": {
+    "comm": "systemd",
+    "gid": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "mount_ns_inode": 4026532859,
+    "net_ns_inode": 4026531840,
+    "start_ticks": 1203361,
+    "uid": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "apply_argv": [
+    "C:\\Python314\\python.exe",
+    "tools/qa/apply_s2_runtime_configuration.py",
+    "--inventory",
+    "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-config-apply-1886810-20261105-01.inventory.json",
+    "--inventory-sha256",
+    "b266af9c2fd40e0e5df9a22f605e08d630fd654c4da0dc343345f68233206f29",
+    "--approved-deployment-commit",
+    "1886810e79b8fc1815f92708559a8798d7740dab",
+    "--distribution",
+    "Ubuntu-24.04"
+  ],
+  "exit_code": 1,
+  "keeper_exit_code": 0,
+  "finished_utc": "2026-11-05T04:25:35.681030+00:00",
+  ".exit-code": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-1886810-20261105-01.exit-code.txt",
+    "bytes": 3,
+    "sha256": "f1b2f662800122bed0ff255693df89c4487fbdcf453d3524a42d4ec20c3d9c04"
+  },
+  ".inventory": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-1886810-20261105-01.inventory.json",
+    "bytes": 35844,
+    "sha256": "b266af9c2fd40e0e5df9a22f605e08d630fd654c4da0dc343345f68233206f29"
+  },
+  ".stderr": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-1886810-20261105-01.stderr.txt",
+    "bytes": 712,
+    "sha256": "565ec2c96f812e200fc95983266d4729d2c3813956dea412cc0758c184da53ef"
+  },
+  ".stdout": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-1886810-20261105-01.stdout.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

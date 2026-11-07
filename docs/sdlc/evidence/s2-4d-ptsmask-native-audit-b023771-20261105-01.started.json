@@ -1,0 +1,32 @@
+{
+  "authorization_input": "AUTH={}",
+  "cwd": "D:\\Repo\\Virtual_scrum_team",
+  "experiment_id": "s2-4d-ptsmask-audit-20261105-04c5443092104f74",
+  "grant_file_sha256": "53fb992a33d6a2cf9ee6966929fe44c86724d658d7faeaeecc1fefe53e99c6ad",
+  "grant_job_id": "b29f2a8d-c4cc-4b4b-9c0f-fa49ef76c2cc",
+  "grant_payload_sha256": "3826cba8a594737e9becd2b7172bce8a1b48c18bfad37a930518e0588d55121b",
+  "grant_reply_id": "2ab1c83c-941c-5756-aca7-c4471a3d627c",
+  "grant_request_id": "3155384f-f956-4ff5-8a53-e3346f751b3c",
+  "grant_user_turn_id": "a78f18d8-4389-4eb6-9c18-1857c31a624f",
+  "head": "b02377168d8f511fc5d0d4a15f79ee020126ad5d",
+  "helper_sha256": "a60e8e61a7828934bcdbebb592d2a4b470ccf5a2ac27d8a6b343f6f4b59ff243",
+  "launcher_sha256": "ea3de649263406fb2b622cff467f726b9b148ec1f7763c665d21ad993f756dcf",
+  "mode": "MOUNT_AUDIT_ONLY=True",
+  "outer_argv": [
+    "C:\\Python314\\python.exe",
+    "tools/qa/run_s2_runtime_qualification.py",
+    "--mount-audit-only",
+    "--experiment-id",
+    "s2-4d-ptsmask-audit-20261105-04c5443092104f74",
+    "--expected-launcher-sha256",
+    "ea3de649263406fb2b622cff467f726b9b148ec1f7763c665d21ad993f756dcf",
+    "--expected-helper-sha256",
+    "a60e8e61a7828934bcdbebb592d2a4b470ccf5a2ac27d8a6b343f6f4b59ff243"
+  ],
+  "schema": "VST_S2_4D_PTS_MASK_AUDIT_STARTED_V1",
+  "shell": false,
+  "started_utc": "2026-11-05T07:04:20.851881+00:00",
+  "task": "S2-4D",
+  "timeout_seconds": 120,
+  "upstream": "b02377168d8f511fc5d0d4a15f79ee020126ad5d"
+}

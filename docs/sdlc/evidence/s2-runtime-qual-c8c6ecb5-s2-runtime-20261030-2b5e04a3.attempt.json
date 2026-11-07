@@ -1,0 +1,43 @@
+{
+  "schema": "S2_RUNTIME_QUALIFICATION_ONE_SHOT_ATTEMPT_V1",
+  "request_id": "c8c6ecb5-5c77-44b0-8c2c-5fe7e6d9933f",
+  "authorization": "GPT-PM one-shot S2-4.12c; consumed by first wrapper invocation; retry_cap=0",
+  "head": "7d1d16f6348e6c00a5a568b5cfbc8caf309194b9",
+  "tuple": {
+    "run_id": "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910",
+    "bootstrap_request_id": "e520e04f58ad5e6a431a3a20b0efb87c",
+    "nonce": "0aac24fec9a2a5c53c5e9da21cbb4a42",
+    "runtime_selector": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2"
+  },
+  "invocation": {
+    "command": "C:\\Windows\\System32\\wsl.exe --distribution Ubuntu-24.04 --user root --exec /usr/bin/python3.12 -I -B -S -c <inline authorized one-shot wrapper>",
+    "powershell_exit_code": 1,
+    "wsl_process_started": false,
+    "mount_attempted": false,
+    "runtime_operations_started": false,
+    "launch_error": "ResourceUnavailable: Program 'wsl.exe' failed to run: StandardOutputEncoding is only supported when standard output is redirected. PowerShell location: line 263 at invocation of C:WindowsSystem32wsl.exe."
+  },
+  "stages": {
+    "mount": "NOT_RUN",
+    "source_head_and_pins": "NOT_RUN",
+    "post_apply_status": "NOT_RUN",
+    "root_captured_preflight": "NOT_RUN",
+    "owner_runner_claim_probe": "NOT_RUN",
+    "exact_selector_testrun": "NOT_RUN",
+    "restricted_selectors": "NOT_RUN",
+    "production_activation": "NOT_RUN"
+  },
+  "artifacts": {
+    "host_launch_stderr": {
+      "path": "docs/sdlc/evidence/s2-runtime-qual-c8c6ecb5-s2-runtime-20261030-2b5e04a3-host-launch.stderr.txt",
+      "bytes": 203,
+      "sha256": "2ef18f51555884c04dff7acaf8d883904dffdbad1b60a42d300c1426d6812693"
+    },
+    "post_apply_inventory": "NOT_CREATED",
+    "preflight_record": "NOT_CREATED",
+    "claim_receipt": "NOT_CREATED",
+    "testrun_receipt": "NOT_CREATED"
+  },
+  "disposition": "TERMINAL HOLD before WSL start; authorization consumed by first wrapper invocation; no retry or alternate invocation",
+  "recorded_utc": "2026-10-30T11:50:12.1303708Z"
+}

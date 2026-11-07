@@ -1,0 +1,31 @@
+{
+  "attempt_file": "s2-4d-runtime-full-pins-readonly-20261105-02.attempt.json",
+  "cwd": "D:\\Repo\\Virtual_scrum_team",
+  "exit_code": 1,
+  "exit_code_file": "s2-4d-runtime-full-pins-readonly-20261105-02.exit-code.txt",
+  "finished_utc": "2026-11-05T05:59:17.618713+00:00",
+  "inner_python_source_sha256": "21649afdb76f212537a0f061352cf626e90e826a91f27a66f56eee58441db5c6",
+  "outer_argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/bin/sh",
+    "-c",
+    "if /usr/bin/mountpoint -q /mnt/d; then :; else rc=$?; [ \"$rc\" -eq 32 ] || exit \"$rc\"; /usr/bin/mount -t drvfs D: /mnt/d -o ro || exit $?; fi\nexec /usr/bin/python3.12 -I -B -S -c 'import ast,hashlib,json,os,pathlib,stat,sys\nrepo=pathlib.Path('\\''/mnt/d/Repo/Virtual_scrum_team'\\'')\nhelper=repo/'\\''tools/qa/s2_runtime_qualification_wsl.py'\\''\ncandidate_path=repo/'\\''docs/sdlc/evidence/s2-4d-runtime-grant-candidate-df5f713-20261105.json'\\''\ndiagnostic_path=repo/'\\''docs/sdlc/evidence/s2-4d-runtime-archive-diagnostic-df5f713-20261105.json'\\''\nexpected_helper='\\''2c020ef8306c8e9856cf8c7dbf1c83a816d4114320b50b8d9a59bb4b6a7d6666'\\''\nraw=helper.read_bytes(); helper_sha=hashlib.sha256(raw).hexdigest()\nif helper_sha != expected_helper: raise SystemExit('\\''FROZEN_HELPER_SHA_MISMATCH '\\''+helper_sha)\ncandidate_raw=candidate_path.read_bytes(); candidate=json.loads(candidate_raw)\ndiag_raw=diagnostic_path.read_bytes(); diag=json.loads(diag_raw)\nidentity=candidate['\\''identity'\\'']; pins=diag['\\''archives'\\'']['\\''canonical_lf'\\'']['\\''file_sha256'\\'']\nif len(pins)!=47 or diag['\\''archives'\\'']['\\''canonical_lf'\\'']['\\''regular_file_count'\\'']!=47: raise SystemExit('\\''CANONICAL_PIN_COUNT_MISMATCH '\\''+str(len(pins)))\nif diag['\\''archives'\\'']['\\''canonical_lf'\\'']['\\''archive_sha256'\\'']!=identity['\\''bundle_sha256'\\''] or diag['\\''runtime_head'\\'']!=identity['\\''runtime_source_head'\\'']: raise SystemExit('\\''ARCHIVE_IDENTITY_MISMATCH'\\'')\nold=candidate['\\''source_pins'\\'']['\\''runtime'\\'']\nif any(pins.get(k)!=v for k,v in old.items()): raise SystemExit('\\''SUBMITTED_PIN_SUBSET_MISMATCH'\\'')\nnamespace={'\\''hashlib'\\'':hashlib,'\\''json'\\'':json,'\\''os'\\'':os,'\\''stat'\\'':stat,'\\''AUTH'\\'':{'\\''source_pins'\\'':{'\\''runtime'\\'':pins}}}\ntree=ast.parse(raw.decode('\\''utf-8'\\'','\\''strict'\\''))\nwanted={'\\''_pairs'\\'','\\''_secure_bytes'\\'','\\''_json_file'\\'','\\''_tree_digest'\\'','\\''_runtime_identity'\\''}\nselected=[n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name in wanted]\nif {n.name for n in selected}!=wanted: raise SystemExit('\\''AST_SELECTION_MISMATCH'\\'')\nexec(compile(ast.Module(body=selected,type_ignores=[]),str(helper),'\\''exec'\\''),namespace)\nnamespace['\\''_runtime_identity'\\''](identity)\nresult={'\\''operation'\\'':'\\''AST-extracted existing _runtime_identity; read-only file/hash validation'\\'','\\''runtime_source_head'\\'':identity['\\''runtime_source_head'\\''],'\\''runtime_selector'\\'':identity['\\''runtime_selector'\\''],'\\''bundle_sha256'\\'':identity['\\''bundle_sha256'\\''],'\\''canonical_archive_sha256'\\'':diag['\\''archives'\\'']['\\''canonical_lf'\\'']['\\''archive_sha256'\\''],'\\''runtime_pin_count'\\'':len(pins),'\\''all_runtime_pins_matched'\\'':True,'\\''submitted_candidate_pin_count'\\'':len(old),'\\''submitted_candidate_pins_exact_subset'\\'':True,'\\''canonical_pin_map_sha256'\\'':hashlib.sha256(json.dumps(pins,sort_keys=True,separators=('\\'','\\'','\\'':'\\''),ensure_ascii=True,allow_nan=False).encode('\\''ascii'\\'')).hexdigest(),'\\''helper_sha256'\\'':helper_sha,'\\''candidate_sha256'\\'':hashlib.sha256(candidate_raw).hexdigest(),'\\''diagnostic_sha256'\\'':hashlib.sha256(diag_raw).hexdigest(),'\\''launcher_invoked'\\'':False,'\\''configuration_read'\\'':False,'\\''services_touched'\\'':False}\nsys.stdout.write(json.dumps(result,sort_keys=True,separators=('\\'','\\'','\\'':'\\''))+'\\''\\\\n'\\'')\n'"
+  ],
+  "schema": "VST_S2_4D_RUNTIME_FULL_PINS_READONLY_V1",
+  "shell": false,
+  "started_utc": "2026-11-05T05:59:14.500813+00:00",
+  "stderr_bytes": 773,
+  "stderr_file": "s2-4d-runtime-full-pins-readonly-20261105-02.stderr.bin",
+  "stderr_sha256": "fa4cca9ecb47a7295f8d7c2f6a44991fedc37b7b089b48d83567f2a8f4718966",
+  "stdout_bytes": 0,
+  "stdout_file": "s2-4d-runtime-full-pins-readonly-20261105-02.stdout.bin",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "task": "S2-4D",
+  "timed_out": false,
+  "timeout_seconds": 40
+}\n

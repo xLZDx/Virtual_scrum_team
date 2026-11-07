@@ -1,0 +1,29 @@
+{
+  "argv": [
+    "C:\\Python314\\python.exe",
+    "-m",
+    "pytest",
+    "-q",
+    "--tb=line",
+    "tests/vst/test_s2_runtime_config_bundle.py",
+    "tests/vst/test_s2_runtime_config_inventory.py"
+  ],
+  "cwd": "D:\\Repo\\Virtual_scrum_team",
+  "python": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+  "source_and_test_sha256": {
+    "tests/vst/test_s2_runtime_config_bundle.py": "2733102b0deda21d73fe3500525e1cb45f503775a64953d424ec925bfeb451de",
+    "tests/vst/test_s2_runtime_config_inventory.py": "6c766fe0c9770124a2a3299670288b497da169506ff22f297262fd50e4af1e63",
+    "tools/qa/apply_s2_runtime_configuration.py": "c563417271bb5e6a5c2e10cbb129713c22ec3fd0e8c54d541a72aba63ff8c3b4",
+    "tools/qa/verify_s2_runtime_config_inventory.py": "91f16810ac283b07ae047461ff27abd5780bd01e2eba126048504ace329503d8",
+    "tools/qa/collect_s2_runtime_config_inventory.py": "a9471920497a963772d7474896c2624865113d9ba4e9cb86f58819bb4abac359",
+    "docs/sdlc/runtime-config/bundle-manifest.json": "4c13f2991f39cf12b84af4b0440621ab1adaa74ca1894dfda29eec1006cd7138",
+    "docs/sdlc/runtime-config/installation-layout.json": "f46e97704a89b5da339701bb71b6e71c4ce846ae96cb4504929869352d0315dd",
+    "docs/sdlc/runtime-config/bootstrap-request.json": "be1802a65d4705c5d01e578742133fd8c46f84fb9321374d55484920ba2e377a",
+    "docs/sdlc/runtime-config/network-profile.json": "f0d4e76b13a59b92575e16b5ef1cc5880760a405a5248c6cf79e23a2044bf1c4",
+    "docs/sdlc/runtime-config/run-binding.json": "b80b506af43eeec8814dcf58ab72c0b5089a197b228cf3700a186e52549e75f9",
+    "docs/sdlc/runtime-config/supervisor-service.json": "484362e883b69e307d7a20f0b189a49604266bc8dfa9fc22c4092748912ab772"
+  },
+  "returncode": 1,
+  "stdout_sha256": "a5db7a0f8017079a53cb905d0c3349cc0f2e964edeb3d1711b16932044741f5e",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

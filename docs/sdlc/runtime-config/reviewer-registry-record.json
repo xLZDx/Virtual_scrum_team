@@ -1,0 +1,14 @@
+{
+  "declaration_scope": "local technical reviewer identity only; no external GPT-PM credential or review result is asserted",
+  "registry": {
+    "entries": [
+      {
+        "key_id": "s2-local-independent-review-20261030",
+        "principal": "vst-independent-reviewer"
+      }
+    ],
+    "signature": "7669c0782d22666a361acf4c6154b1ba46b9d0d1ce171ac5e43919884772cbb3",
+    "version": "s2-runtime-reviewers-20261030-v2"
+  },
+  "unsigned_body_sha256": "54cff371ded18ba866a7304eb41b1b5ab5d1f523305480db2076fc1969920f53"
+}

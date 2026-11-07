@@ -1,0 +1,4 @@
+.........                                                                [100%]
+9 passed, 21 deselected in 0.32s
+WSL_EXIT_CODE=0
+EXIT_CODE=0

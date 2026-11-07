@@ -1,0 +1,46 @@
+{
+  "allowed_assignments": [
+    {
+      "phase": 7,
+      "project_id": "Virtual_scrum_team",
+      "story_id": "S2-4",
+      "task_id": "S2-4-runtime-owner-runner-qualification",
+      "task_manifest_sha256": "195a471a68892ad0cf21e191113f86a9dfb616501d5f4034e377eaad0ba17529",
+      "test_run_slots": [
+        "runtime-tests"
+      ]
+    }
+  ],
+  "allowed_bootstrap_operations": [
+    "open_story",
+    "register_task",
+    "acquire_epoch",
+    "acquire_lease"
+  ],
+  "bootstrap_peer": {
+    "cgroup": "/system.slice/vst-assignment-bootstrap.service",
+    "gid": 980,
+    "role": "assignment_bootstrap",
+    "uid": 978
+  },
+  "expires_at_utc": "2026-11-05T20:31:32Z",
+  "issuer_peer": {
+    "cgroup": "/system.slice/vst-dispatch-issuer.service",
+    "gid": 981,
+    "role": "delegated_issuer",
+    "uid": 979
+  },
+  "lease_ttl_seconds": 1800,
+  "manifest_sha256": "c23a7cbd541eed59e0d0486a9d3289f58f4a8ac61aa2c06778bee082d9cd416a",
+  "maximum_handoff_ttl_seconds": 300,
+  "owner_principal": "Codex",
+  "owner_ttl_seconds": 3600,
+  "policy_id": "s2-runtime-qualification-20261104-a01",
+  "repository": "Virtual_scrum_team",
+  "revocation_id": "s2-runtime-qualification-20261104-a01-v1",
+  "runner_id": "s2-ubuntu2404-runner",
+  "schema": "VST_S2_ASSIGNMENT_DELEGATION_POLICY_V1",
+  "source_head": "67361bb4aa23355d9a6bc7877a987ba688559eda",
+  "sprint_id": "39b7cc253f5d",
+  "valid_from_utc": "2026-11-04T20:31:32Z"
+}

@@ -1,0 +1,138 @@
+{
+  "task_id": "S2-4E-WINDOWS-OWNER-RUNNER",
+  "project_id": "Virtual_scrum_team",
+  "phase": 7,
+  "story_id": "S2-4E",
+  "base_head": "fd5178efb30979765fbe1d7a03b9bfee732009b3",
+  "scope": [
+    "tests/vst/test_s2_owner_completed_receipt_contract.py",
+    "tests/vst/test_s2_owner_runner_windows_e2e.py",
+    "tests/vst/s2_4e_windows_provision.py",
+    "tests/vst/provision_s2_4e_windows.ps1"
+  ],
+  "forbidden_actions": [
+    "CI",
+    "pytest",
+    "lint",
+    "typecheck",
+    "verify",
+    "migration/legal verification scripts",
+    "WSL",
+    "VPS",
+    "production signing",
+    "activation",
+    "migration",
+    "process-kill",
+    "crash-recovery",
+    "E8",
+    "policy-selectors",
+    "mutation-campaigns"
+  ],
+  "owner_role": "e2e-runner",
+  "role_sha256": "1bc928a38595ac1ad1d7edd5d572dcc30b293265711ddc3b7f74dddc0c660869",
+  "skills": [
+    {
+      "id": "e2e-testing-contract",
+      "sha256": "581360614f3f6b13f070cc0823dff74154d9df31769b8b2ba934a0eaa61a0544"
+    }
+  ],
+  "model_policy": "gpt-6-luna",
+  "tools": [
+    "C:\\Python314\\python.exe",
+    "unittest"
+  ],
+  "acceptance": [
+    "REQ-003"
+  ],
+  "required_receipts": [
+    {
+      "slot": "runtime-tests",
+      "receipt_type": "TestRun"
+    },
+    {
+      "slot": "independent-review",
+      "receipt_type": "IndependentReview"
+    }
+  ],
+  "author_principal": "Codex",
+  "required_tests": [
+    {
+      "slot": "runtime-tests",
+      "test_id": "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_lookup_before_grant_is_none_and_does_not_issue_or_mutate",
+      "acceptance": [
+        "REQ-003"
+      ]
+    },
+    {
+      "slot": "runtime-tests",
+      "test_id": "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_wrong_principal_or_instruction_cannot_observe_receipt",
+      "acceptance": [
+        "REQ-003"
+      ]
+    },
+    {
+      "slot": "runtime-tests",
+      "test_id": "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_reserved_execution_is_not_reported_as_complete",
+      "acceptance": [
+        "REQ-003"
+      ]
+    },
+    {
+      "slot": "runtime-tests",
+      "test_id": "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_complete_receipt_is_exactly_bound_to_owner_and_distinct_grant_ids",
+      "acceptance": [
+        "REQ-003"
+      ]
+    }
+  ],
+  "allowed_commands": [
+    {
+      "slot": "runtime-tests",
+      "argv": [
+        "C:\\Python314\\python.exe",
+        "-B",
+        "-c",
+        "import sys,unittest\nfor name in sys.argv[1:]:\n suite=unittest.defaultTestLoader.loadTestsFromName(name)\n result=unittest.TextTestRunner(stream=sys.stdout,verbosity=2).run(suite)\n if result.testsRun != 1 or not result.wasSuccessful() or result.skipped or result.expectedFailures or result.unexpectedSuccesses: sys.exit(1)\n sys.stdout.write(\"\\nPASS \"+name+\"\\n\")\n",
+        "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_lookup_before_grant_is_none_and_does_not_issue_or_mutate",
+        "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_wrong_principal_or_instruction_cannot_observe_receipt",
+        "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_reserved_execution_is_not_reported_as_complete",
+        "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_complete_receipt_is_exactly_bound_to_owner_and_distinct_grant_ids"
+      ]
+    }
+  ],
+  "required_rules": [],
+  "timeout_sec": 900,
+  "cost_cap": 0,
+  "retry_cap": 0,
+  "contract_version": 2,
+  "reviewer_registry": {
+    "version": "s2-runtime-reviewers-20261030-v2",
+    "sha256": "54cff371ded18ba866a7304eb41b1b5ab5d1f523305480db2076fc1969920f53"
+  },
+  "mandatory_commands": [
+    {
+      "slot": "runtime-tests",
+      "argv": [
+        "C:\\Python314\\python.exe",
+        "-B",
+        "-c",
+        "import sys,unittest\nfor name in sys.argv[1:]:\n suite=unittest.defaultTestLoader.loadTestsFromName(name)\n result=unittest.TextTestRunner(stream=sys.stdout,verbosity=2).run(suite)\n if result.testsRun != 1 or not result.wasSuccessful() or result.skipped or result.expectedFailures or result.unexpectedSuccesses: sys.exit(1)\n sys.stdout.write(\"\\nPASS \"+name+\"\\n\")\n",
+        "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_lookup_before_grant_is_none_and_does_not_issue_or_mutate",
+        "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_wrong_principal_or_instruction_cannot_observe_receipt",
+        "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_reserved_execution_is_not_reported_as_complete",
+        "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_complete_receipt_is_exactly_bound_to_owner_and_distinct_grant_ids"
+      ],
+      "parser_id": "vst.pass-lines",
+      "parser_version": "1",
+      "parser_sha256": "6a71c0d97a1aeb5647f8b54c13ce3551cfb6d7e052403262cef51192b642bdba"
+    }
+  ],
+  "change_scope": {
+    "allowed_paths": [
+      "docs/sdlc/runtime-config/task-manifest.json",
+      "tests/vst/test_s2_owner_completed_receipt_contract.py",
+      "tests/vst/s2_4e_windows_provision.py",
+      "tests/vst/provision_s2_4e_windows.ps1"
+    ]
+  }
+}

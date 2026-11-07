@@ -1,0 +1,119 @@
+{
+  "accounts": {
+    "vst-dispatch-owner": {
+      "returncode": 2,
+      "stderr": "",
+      "stdout": ""
+    },
+    "vst-dispatcher": {
+      "returncode": 2,
+      "stderr": "",
+      "stdout": ""
+    },
+    "vst-runner": {
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "vst-runner:x:997:988::/nonexistent:/usr/sbin/nologin"
+    },
+    "vst-signer": {
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "vst-signer:x:995:987::/nonexistent:/usr/sbin/nologin"
+    },
+    "vst-supervisor": {
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "vst-supervisor:x:994:986::/nonexistent:/usr/sbin/nologin"
+    },
+    "vst-worker": {
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "vst-worker:x:999:989::/nonexistent:/usr/sbin/nologin"
+    }
+  },
+  "distribution": "Ubuntu-24.04",
+  "e5": "NOT_INSPECTED; no attestation inferred",
+  "observed_utc": "2026-10-29T22:30:12.395853+00:00",
+  "paths": {
+    "/etc/vst-runner": {
+      "state": "ABSENT"
+    },
+    "/etc/vst-runner/assignment-delegation-policy.json": {
+      "state": "ABSENT"
+    },
+    "/etc/vst-runner/dispatch-instruction-trust.json": {
+      "state": "ABSENT"
+    },
+    "/etc/vst-runner/dispatch-owner-service.json": {
+      "state": "ABSENT"
+    },
+    "/etc/vst-runner/dispatcher-service.json": {
+      "state": "ABSENT"
+    },
+    "/etc/vst-runner/runner-service.json": {
+      "state": "ABSENT"
+    },
+    "/etc/vst-runner/signer-service.json": {
+      "state": "ABSENT"
+    },
+    "/etc/vst-runner/supervisor-service.json": {
+      "state": "ABSENT"
+    },
+    "/opt/vst-runtime": {
+      "gid": 0,
+      "kind": "symlink",
+      "mode": "0o777",
+      "state": "PRESENT",
+      "target": "/opt/vst-runtime-d5001797cb94113efd9a8dc26e4a15f2dc130976",
+      "uid": 0
+    },
+    "/opt/vst-runtime-ef465cd8790518e405164c82ec1598f843ae8a58": {
+      "gid": 0,
+      "kind": "directory",
+      "mode": "0o755",
+      "state": "PRESENT",
+      "uid": 0
+    },
+    "/run/vst-runner": {
+      "state": "ABSENT"
+    },
+    "/run/vst-supervisor": {
+      "state": "ABSENT"
+    }
+  },
+  "pid1": "systemd",
+  "scope": "read-only metadata; no config/key contents, activation, probe or tests",
+  "source_head": "531874302f0c559fd83872fcb5d1880f41ca1bea",
+  "units": {
+    "vst-dispatch-owner.service": {
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "LoadState=not-found\nActiveState=inactive\nSubState=dead"
+    },
+    "vst-dispatch-owner.socket": {
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "LoadState=not-found\nActiveState=inactive\nSubState=dead"
+    },
+    "vst-dispatcher.service": {
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "LoadState=not-found\nActiveState=inactive\nSubState=dead"
+    },
+    "vst-runner.service": {
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "LoadState=loaded\nActiveState=inactive\nSubState=dead"
+    },
+    "vst-signer.service": {
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "LoadState=loaded\nActiveState=inactive\nSubState=dead"
+    },
+    "vst-supervisor.service": {
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "LoadState=loaded\nActiveState=inactive\nSubState=dead"
+    }
+  }
+}

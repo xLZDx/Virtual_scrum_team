@@ -1,0 +1,29 @@
+[Unit]
+Description=Virtual Scrum Team bounded bootstrap_assignment caller
+After=vst-supervisor.service
+Requires=vst-supervisor.service
+RequiresMountsFor=/etc/vst-runner /opt/vst-runtime
+
+[Service]
+Type=oneshot
+User=vst-assignment-bootstrap
+Group=vst-assignment-bootstrap
+SupplementaryGroups=vst-supervisor-client
+ExecStart=/usr/bin/python3.12 -I -S -c "import sys; sys.path.insert(0, '/opt/vst-runtime'); import json; from tools.vst.supervisor_service import SupervisorClient; body=json.load(open('/etc/vst-runner/bootstrap-request.json')); print(json.dumps(SupervisorClient('/run/vst-supervisor/supervisor.sock').call('bootstrap_assignment', body), sort_keys=True))"
+Restart=no
+TimeoutStartSec=30s
+PrivateTmp=yes
+PrivateNetwork=yes
+PrivateDevices=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+ProtectHome=yes
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+NoNewPrivileges=yes
+RestrictSUIDSGID=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0077

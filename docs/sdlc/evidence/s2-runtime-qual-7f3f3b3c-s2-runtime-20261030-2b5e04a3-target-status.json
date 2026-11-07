@@ -1,0 +1,117 @@
+{
+  "captured_status_utc": "2026-10-30T13:28:37.730467+02:00",
+  "finished_status_utc": "2026-10-30T13:28:37.786885+02:00",
+  "inventory_captured_utc": "2026-10-30T13:28:34.332497+02:00",
+  "inventory_age_seconds": 3.45437,
+  "current_boot_id": "b0d0e05e-8705-44ab-9f32-277742e4a343",
+  "inventory_boot_id": "b0d0e05e-8705-44ab-9f32-277742e4a343",
+  "boot_same": true,
+  "runtime_selector": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2",
+  "runtime_same": true,
+  "unit_status": {
+    "vst-assignment-bootstrap.service": {
+      "MainPID": "0",
+      "Result": "success",
+      "ControlGroup": "",
+      "PrivateNetwork": "yes",
+      "LoadState": "loaded",
+      "ActiveState": "inactive",
+      "SubState": "dead",
+      "InvocationID": ""
+    },
+    "vst-dispatch-issuer.service": {
+      "MainPID": "0",
+      "Result": "success",
+      "ControlGroup": "",
+      "PrivateNetwork": "yes",
+      "LoadState": "loaded",
+      "ActiveState": "inactive",
+      "SubState": "dead",
+      "InvocationID": ""
+    },
+    "vst-dispatch-owner.service": {
+      "MainPID": "0",
+      "Result": "success",
+      "ControlGroup": "",
+      "PrivateNetwork": "yes",
+      "LoadState": "loaded",
+      "ActiveState": "inactive",
+      "SubState": "dead",
+      "InvocationID": ""
+    },
+    "vst-dispatch-owner.socket": {
+      "Result": "success",
+      "ControlGroup": "",
+      "PrivateNetwork": "no",
+      "LoadState": "loaded",
+      "ActiveState": "inactive",
+      "SubState": "dead",
+      "InvocationID": ""
+    },
+    "vst-dispatcher.service": {
+      "MainPID": "0",
+      "Result": "success",
+      "ControlGroup": "",
+      "PrivateNetwork": "yes",
+      "LoadState": "loaded",
+      "ActiveState": "inactive",
+      "SubState": "dead",
+      "InvocationID": ""
+    },
+    "vst-runner.service": {
+      "MainPID": "0",
+      "Result": "success",
+      "ControlGroup": "",
+      "PrivateNetwork": "yes",
+      "LoadState": "loaded",
+      "ActiveState": "inactive",
+      "SubState": "dead",
+      "InvocationID": ""
+    },
+    "vst-sandbox-probe.service": {
+      "MainPID": "0",
+      "Result": "success",
+      "ControlGroup": "",
+      "PrivateNetwork": "yes",
+      "LoadState": "loaded",
+      "ActiveState": "inactive",
+      "SubState": "dead",
+      "InvocationID": ""
+    },
+    "vst-signer.service": {
+      "MainPID": "0",
+      "Result": "success",
+      "ControlGroup": "",
+      "PrivateNetwork": "no",
+      "LoadState": "loaded",
+      "ActiveState": "inactive",
+      "SubState": "dead",
+      "InvocationID": ""
+    },
+    "vst-supervisor.service": {
+      "MainPID": "0",
+      "Result": "success",
+      "ControlGroup": "",
+      "PrivateNetwork": "no",
+      "LoadState": "loaded",
+      "ActiveState": "inactive",
+      "SubState": "dead",
+      "InvocationID": ""
+    }
+  },
+  "units_readiness_pass": true,
+  "systemd_jobs": "",
+  "no_systemd_jobs": true,
+  "target_path_presence": {
+    "/var/lib/vst-runner/private/store.sqlite3": false,
+    "/var/lib/vst-runner/private/preflight.json": false,
+    "/run/vst-preflight/network-policy-attestation.json": false,
+    "/run/vst-supervisor/supervisor.sock": false,
+    "/run/vst-runner/runner.sock": false
+  },
+  "no_candidate_claim_or_store": true,
+  "no_runtime_state": true,
+  "all_26_baseline_validator_pass": true,
+  "inventory_fresh_le_300s": true,
+  "eligible_for_single_apply": true
+}

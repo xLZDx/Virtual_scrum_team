@@ -1,0 +1,45 @@
+SPRINT:S2 — Isolated worker sandbox. TASK:S2-4D — Reconcile report-bound manifest and TestRun scope.
+Final bounded SOURCE remediation only against approved/pushedad45ba1bc8134cfc6caddf205d74204a216dc881. Preserve prior bootstrap and exact Gittrust decisions ae97205e/6bc91aa6; no broadreopening of acceptedcode. Current task stillOPEN; no liveTestRun occurred.
+Actual single applyad45ba1 passed Gitstage, published exact rootowned persistentguardpair and daemon-reloaded, then refused beforecreate_transaction because systemctl Conditions is [unprintable], not literal syntax. Readonlyguard/DBus diagnostics prove bothdropins loaded, exactroot0644 SHA05e12ed07359a8ec83b161dda0d79ac4f15c27c366e75f1e5beefa9c76fafb37; bothnativeConditions are a(sbbsi) rows [ConditionPathExists,false,true,/var/lib/vst-runner/private/snapshot-transaction-incomplete.json,0]. Marker/ledger/Store absent. No blindretry/deletion/serviceactivation.
+Concrete3source +2test delta: helper adds strict bounded typed D-Bus parser (64KiB,256rows, exacttype/keys/fieldtypes,lengths,int32status), fixedwhitelisted2unit read-only busctl over systembus. Accepts exact ConditionPathExists mandatory/nontrigger=false, negate=true, fixedmarkerpath; ignores last-evaluation status because loadeddefinition is required. Existingguardfingerprintchecks remain. Normalapply, recovery, bootstrap nowdelegate sharedhelper; no textual/unprintablefallback. Collectorupdatesonly exactAPPLIER_SHA. No manifest/config/key/permission/lifecycle/transaction changes.
+Fieldmeaning primarysource https://www.freedesktop.org/software/systemd/man/latest/org.freedesktop.systemd1.html Conditions: type,trigger,reversed,parameter,laststatus. ActualUbuntu255typedpayload/readverified; this is not a latest-doc assumption about installedoutput.
+Internal actual independent code-reviewer /root/s2_4d_durability_narrow_code configuredgpt-6-luna (effortomitted/inherited), no materialB/M; security-reviewer /root/s2_4d_git_trust_security configuredgpt-6-luna explicitmedium noactionableB/M/minor. Read-onlysource reviews, no independentlyexecutedtests; exactcurrent3source delta. Reachedconsensus noopenin-scope findings. Neitherreopenedbootstrap/Gitacceptedbaseline.
+Actual testauthor functional-test-reviewer /root/s2_4d_bootstrap_contract_tests; actualexecutor e2e-runner /root/s2_4d_bootstrap_posix_verification_v2. Newtests use actualcapturedtypedpayload plusmalformed/duplicate/oversize/type/bool/integer/status/missing/wrongcondition/trigger/negate/path cases, fixedunitquery/failure/timeout and normal/recoverycallsite delegation. FinalWindows required command python -m pytest -q --tb=line tests/vst/test_s2_runtime_configuration_apply.py tests/vst/test_s2_runtime_config_inventory.py tests/vst/test_s2_runtime_bootstrap_transaction.py :112passed,1POSIXmodule skipped,1pytest_asyncio warning,13.80s,actualsubprocessreturncode0,stderr empty; exactsource/testhashes inhost03metadata. Earlierhost02samecommand112passsummary didnotcaptureexactpytestexit; repeatedonceONLYtoclosecapturegap, host03authoritative.
+NativeWSLUbuntu24.04 /usr/bin/python3.12 -I -B -S systempytest7.4.4,Python3.12.3,root,rosourcemount,pluginautoload disabled/cache disabled. Native -08 actuallyexecuted bothfocusedapply/bootstrap modules (executor received narrowerscope afterstart):113passed,3failed assertions only (duplicate-keyerrorregex twice andbusctlargvindexonce). Product45 unchanged. Author fixedONLYthose3expectations, newbootstraptestSHA7a730ac4; targeted -09 exact3failednodeIDs:3passed0.36s,exit0,stderr empty. Other113passingcases unchanged/sourceunchanged; preserveasapplicablebaseline. DO NOTpresentasone116passcommand. Finaltwo testfilehashes inmanifest. No duplicatedfullnative run.
+Actual read-onlyintegration e2erunner on exacthelper45 persistent_guard_loaded forbothrealprotectedunits:true,true,exit0 (typed-guard-readonly-20261105-01); nosystemdstarts/configwrites/bootstrap/ensure/exchange. Strongdirectadapterevidence, not realconfigapplysuccess.
+Additionalfailedcommand transparentlyretained: author mistakenly selected tests/vst/test_s2_runtime_inventory_collector.py instead of required tests/vst/test_s2_runtime_config_inventory.py; extraoldcollectorfixture suitegave35TypeErrors/66pass/1skip (guard-host-01.stdout.txt SHA691251c6885e19080a00beeb801d070e3cd39f71160a7369ba805e1d7850955c). Its stalefixturearguments/signatures areoutsidecurrentdelta; productcollectorchangedONLYAPPLIER_SHA, assemblyfunctionandthatoldtestmodule unchanged atbaselinead45ba1. Not countedPASS, not usedasacceptanceevidence, and no removed requirementreintroduced. Correctrequiredsuite recordedabove112pass0exit; allrepotestsNOTCLAIMEDgreen.
+Please one complete adversarial sweep of this exactdelta/directintegrations usingactualfunctional/E2E/internalreviewevidence; no duplicateexecution merelybecauseyouwerenottheexecutor. Ifclear, explicitlyAPPROVE exact5fileSHA256candidate forcommit+normalpush; newsourcepush isneededbeforeactualapplybecauseapplierenforcespushedcanonicalHEAD. Sourceapprovaldoesnotgrantproduction,liveOwnerRunner orcloseS2D. ExistingoperatorautonomoussandboxsetupGOseparate; actualreport-boundTestRunstillNOT_RUNandneedsitsowncorrelatedone-shotadjudication aftersuccessfulconfiginstall. No documentationwordinggate.
+
+Exactcandidateidentity:
+{
+  "baseline": "ad45ba1bc8134cfc6caddf205d74204a216dc881",
+  "files": [
+    {
+      "path": "tools/qa/runtime_snapshot_transaction.py",
+      "sha256": "45c6f5c0d0591c9a81ac5f7dae6db243bb3fbb25fbde99e42a4ee147783a3bbe",
+      "bytes": 128597
+    },
+    {
+      "path": "tools/qa/apply_s2_runtime_configuration.py",
+      "sha256": "4368ea4a4b1ae2a8cf7f76e2695711be6c461b3738c5e60d7ce9079275c5eefb",
+      "bytes": 95916
+    },
+    {
+      "path": "tools/qa/collect_s2_runtime_config_inventory.py",
+      "sha256": "d24db7bb13b13860d031bf1bdfe26191e3201436ba857cc7cae4bda48d87bede",
+      "bytes": 21643
+    },
+    {
+      "path": "tests/vst/test_s2_runtime_configuration_apply.py",
+      "sha256": "53154ac7949d7a7796fb0306e3ce3d8d480746361b6e25b3543e0a34b403d552",
+      "bytes": 33758
+    },
+    {
+      "path": "tests/vst/test_s2_runtime_bootstrap_transaction.py",
+      "sha256": "7a730ac480e8a180f07a56a6c634538d714349bad8dfea8631ae620d7b4b9e76",
+      "bytes": 72245
+    }
+  ],
+  "diff_sha256": "1b1f18630d487c13f5741cfaedaa1058239d6c6c63194e803f1b4440ba561f85",
+  "diff_bytes": 16723
+}

@@ -1,0 +1,17 @@
+WSL test environment attempt (no pytest test command was executed)
+
+Environment inventory command:
+wsl.exe --list --quiet
+Observed distributions: docker-desktop; Ubuntu-24.04
+
+Repository/runtime availability command:
+wsl.exe -d Ubuntu-24.04 --exec sh -lc 'cd /mnt/d/Repo/Virtual_scrum_team && python3 --version && python3 -m pytest --version && git rev-parse HEAD && git status --short -- tests/vst/test_s2_preflight_capture.py'
+Exact error:
+sh: 1: cd: can't cd to /mnt/d/Repo/Virtual_scrum_team
+Exit code: 2
+
+Mount inspection command:
+wsl.exe -d Ubuntu-24.04 --exec sh -lc 'pwd; ls -la /mnt; ls -la /mnt/d 2>&1 | head -30'
+Observed: /mnt/d exists but contains only . and .. (empty). Mount output had no Windows drive/DrvFs mount. Therefore the authorized checkout and its Python/pytest environment are unavailable inside the existing distro. No copying, mounting, provisioning, installation, or alternate checkout was attempted.
+
+The Windows pytest result remains separately recorded in s2-4-supervisor-recovery-loader-test-run-2026-10-30.json and is NOT_RUN for all 9 selected cases because the explicit POSIX semantics skip applies.

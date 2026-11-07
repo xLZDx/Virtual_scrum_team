@@ -1,0 +1,43 @@
+ssssssssssssssssssssss.ssss......sssss....sssssssssssssss..............s [ 37%]
+......sss............................................................... [ 74%]
+.................sss....ss..sssss................                        [100%]
+============================== warnings summary ===============================
+tests/vst/test_s2_dispatch_owner_service.py::test_s2_owner_service_accepts_only_one_bounded_canonical_instruction_frame
+  C:\Users\koros\AppData\Roaming\Python\Python314\site-packages\pytest_asyncio\plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+SKIPPED [1] tests\vst\test_s2_dispatch_owner_service.py:110: S2 Ed25519 trust-boundary tests require the designated root-owned POSIX test environment
+SKIPPED [1] tests\vst\test_s2_dispatch_owner_service.py:134: S2 Ed25519 trust-boundary tests require the designated root-owned POSIX test environment
+SKIPPED [1] tests\vst\test_s2_dispatch_owner_service.py:162: S2 Ed25519 trust-boundary tests require the designated root-owned POSIX test environment
+SKIPPED [2] tests\vst\test_s2_dispatch_owner_service.py:184: S2 Ed25519 trust-boundary tests require the designated root-owned POSIX test environment
+SKIPPED [2] tests\vst\test_s2_dispatch_owner_service.py:222: S2 Ed25519 trust-boundary tests require the designated root-owned POSIX test environment
+SKIPPED [1] tests\vst\test_s2_dispatch_owner_service.py:253: S2 Ed25519 trust-boundary tests require the designated root-owned POSIX test environment
+SKIPPED [1] tests\vst\test_s2_dispatch_owner_service.py:266: S2 Ed25519 trust-boundary tests require the designated root-owned POSIX test environment
+SKIPPED [3] tests\vst\test_s2_dispatch_owner_service.py:283: S2 Ed25519 trust-boundary tests require the designated root-owned POSIX test environment
+SKIPPED [1] tests\vst\test_s2_dispatch_owner_service.py:304: S2 Ed25519 trust-boundary tests require the designated root-owned POSIX test environment
+SKIPPED [2] tests\vst\test_s2_dispatch_owner_service.py:317: S2 Ed25519 trust-boundary tests require the designated root-owned POSIX test environment
+SKIPPED [4] tests\vst\test_s2_dispatch_owner_service.py:330: NOT_RUN: root-owned no-follow file checks require POSIX
+SKIPPED [1] tests\vst\test_s2_dispatch_owner_service.py:389: NOT_RUN: root-owned no-follow file checks require POSIX
+SKIPPED [1] tests\vst\test_s2_dispatch_owner_service.py:421: NOT_RUN: systemd cgroup and uid/gid identity checks require POSIX
+SKIPPED [1] tests\vst\test_s2_dispatch_owner_service.py:518: NOT_RUN: supervisor absolute-path identity uses POSIX runtime paths
+SKIPPED [1] tests\vst\test_s2_dispatch_owner_service.py:541: systemd Unix-domain listener ordering requires POSIX
+SKIPPED [3] tests\vst\test_s2_dispatch_owner_service.py:604: NOT_RUN: systemd cgroup and uid/gid identity checks require POSIX
+SKIPPED [5] tests\vst\test_s2_dispatch_owner_service.py:663: NOT_RUN: root-owned public-key file checks require POSIX
+SKIPPED [1] tests\vst\test_s2_dispatch_owner_service.py:756: NOT_RUN: systemd cgroup and uid/gid identity checks require POSIX
+SKIPPED [2] tests\vst\test_s2_dispatch_owner_service.py:775: NOT_RUN: Unix activation sockets are unavailable on this platform
+SKIPPED [3] tests\vst\test_s2_dispatch_owner_service.py:796: NOT_RUN: Unix activation sockets are unavailable on this platform
+SKIPPED [5] tests\vst\test_s2_dispatch_owner_service.py:823: S2 Ed25519 trust-boundary tests require the designated root-owned POSIX test environment
+SKIPPED [4] tests\vst\test_s2_dispatch_owner_service.py:860: S2 Ed25519 trust-boundary tests require the designated root-owned POSIX test environment
+SKIPPED [1] tests\vst\test_s2_preflight_capture.py:274: durable marker contract requires POSIX file descriptors
+SKIPPED [1] tests\vst\test_s2_preflight_capture.py:473: Supervisor service contract requires POSIX path semantics
+SKIPPED [1] tests\vst\test_s2_preflight_capture.py:495: Supervisor service contract requires POSIX path semantics
+SKIPPED [1] tests\vst\test_s2_preflight_capture.py:515: Supervisor service contract requires POSIX path semantics
+SKIPPED [1] tests\vst\test_s2_store_lifecycle.py:26: NOT_RUN: FileExternalAnchor permissions/locking acceptance requires POSIX sandbox
+SKIPPED [1] tests\vst\test_s2_store_lifecycle.py:41: NOT_RUN: FileExternalAnchor requires POSIX sandbox
+SKIPPED [1] tests\vst\test_s2_store_lifecycle.py:58: NOT_RUN: external anchor restore detection requires POSIX sandbox
+SKIPPED [1] tests\vst\test_s2_store_lifecycle.py:165: NOT_RUN: interrupted anchor recovery requires POSIX sandbox
+SKIPPED [1] tests\vst\test_s2_store_lifecycle.py:178: NOT_RUN: interrupted external-anchor suffix recovery requires the provisioned POSIX sandbox
+SKIPPED [5] tests\vst\test_s2_store_lifecycle.py:320: NOT_RUN: POSIX external-anchor failure states require the provisioned POSIX sandbox
+133 passed, 60 skipped, 8 deselected, 1 warning in 25.18s

@@ -1,0 +1,16 @@
+{
+  "command": "C:\\Python314\\python.exe -B tools/qa/apply_s2_runtime_configuration.py --inventory \"D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-runtime-inventory-20261106-07.stdout.json\" --inventory-sha256 572fd89af95d5a4e8b73ca56d2cad521cc182ec88f5d7e861787f16a669006a8 --approved-deployment-commit 4301af467fc8387dd80b2b214d669cbab1bd5e92",
+  "head": "4301af467fc8387dd80b2b214d669cbab1bd5e92",
+  "inventory_sha256": "572fd89af95d5a4e8b73ca56d2cad521cc182ec88f5d7e861787f16a669006a8",
+  "timeout_ms": 300000,
+  "started_utc": "2026-11-06T14:43:21.2208705+00:00",
+  "finished_utc": "2026-11-06T14:43:47.9959670+00:00",
+  "timed_out": false,
+  "exit": 1,
+  "stdout_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-runtime-apply-20261106-01.stdout.txt",
+  "stdout_bytes": 0,
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-runtime-apply-20261106-01.stderr.txt",
+  "stderr_bytes": 108,
+  "stderr_sha256": "a09a14c14965841b817849494ee515d14dfbbd763abd98ed51dcc69fadf6b89e"
+}

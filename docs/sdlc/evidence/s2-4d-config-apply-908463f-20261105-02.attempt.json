@@ -1,0 +1,93 @@
+{
+  "task": "S2-4D",
+  "head": "908463f076335a27fbc2694a51b983e58821d366",
+  "authorization_source": "Operator autonomous GO; unchanged reviewed installer source",
+  "previous_refusal": "Before configuration publication: WSL distro restarted between calls, mount lost; Git exited128 missing repository. PID1 start_ticks changed while kernel boot ID unchanged.",
+  "keeper_argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/usr/bin/python3.12",
+    "-I",
+    "-B",
+    "-S",
+    "-c",
+    "import sys,pathlib,json; print(json.dumps({'ready':True,'pid1_stat':pathlib.Path('/proc/1/stat').read_text()}),flush=True); sys.stdin.buffer.read(1)"
+  ],
+  "started_utc": "2026-11-05T02:44:36.293911+00:00",
+  "test_run": "NOT_RUN",
+  "apply_invocations": 1,
+  "keeper_host_pid": 28560,
+  "keeper_ready": {
+    "ready": true,
+    "pid1_stat": "1 (systemd) S 0 1 1 0 -1 4194560 5242 53699 111 1301 66 115 189 199 20 0 1 0 600252 22233088 2903 18446744073709551615 105191769645056 105191769688929 140736672058608 0 0 0 671173123 4096 1260 1 0 0 17 16 0 0 0 0 0 105191769718736 105191769722896 105192091197440 140736672063384 140736672063395 140736672063395 140736672063469 0\n"
+  },
+  "inventory_exit_code": 0,
+  "inventory_sha256": "461eee52242df6a3d4b9a6670f88e8cee6aec6218fa1d8eb83c401068f47e73b",
+  "inventory_pid1": {
+    "comm": "systemd",
+    "gid": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "mount_ns_inode": 4026532782,
+    "net_ns_inode": 4026531840,
+    "start_ticks": 600252,
+    "uid": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "apply_argv": [
+    "C:\\Python314\\python.exe",
+    "tools/qa/apply_s2_runtime_configuration.py",
+    "--inventory",
+    "docs\\sdlc\\evidence\\s2-4d-config-apply-908463f-20261105-02.inventory.json",
+    "--inventory-sha256",
+    "461eee52242df6a3d4b9a6670f88e8cee6aec6218fa1d8eb83c401068f47e73b",
+    "--approved-deployment-commit",
+    "908463f076335a27fbc2694a51b983e58821d366",
+    "--distribution",
+    "Ubuntu-24.04"
+  ],
+  "exit_code": 1,
+  "keeper_exit_code": 0,
+  "inventory": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-908463f-20261105-02.inventory.json",
+    "bytes": 35849,
+    "sha256": "461eee52242df6a3d4b9a6670f88e8cee6aec6218fa1d8eb83c401068f47e73b"
+  },
+  "inventory_err": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-908463f-20261105-02.inventory.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "stdout": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-908463f-20261105-02.stdout.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "stderr": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-908463f-20261105-02.stderr.txt",
+    "bytes": 87,
+    "sha256": "d2601ea78edb64055c16195879dd4a2b3344f0cbe6cfe481b690a0b3e07ab045"
+  },
+  "keeper_out": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-908463f-20261105-02.keeper.stdout.txt",
+    "bytes": 363,
+    "sha256": "63452d030e300542f3b8592428fc3b89150da52d223a2ff06da8c141f8595f3d"
+  },
+  "keeper_err": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-908463f-20261105-02.keeper.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "finished_utc": "2026-11-05T02:45:14.400340+00:00"
+}

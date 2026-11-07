@@ -1,0 +1,146 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Virtual_scrum_team — project plan</title><style>
+:root{--bg:#10151f;--panel:#1a2230;--line:#303b4d;--text:#eef3fb;--muted:#b4c0d1;--green:#33b27a;--blue:#5d91e8;--amber:#e4ad37;--red:#df6464;--gray:#3b4659}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}main{max-width:1500px;margin:auto;padding:24px}h1{font-size:clamp(1.8rem,4vw,2.8rem);line-height:1.15;margin:6px 0 10px}h2{font-size:1.45rem;margin:24px 0 12px}h3{font-size:1.08rem;margin:3px 0 8px}h4{margin:8px 0 4px;color:#dce7f7}p{margin:8px 0}a{color:#a9caff}code{color:#c4d6f4;overflow-wrap:anywhere}.muted{color:var(--muted);font-size:.92rem}.hero,.panel,.sprint,.gate{background:var(--panel);border:1px solid var(--line);border-radius:14px}.hero{padding:24px;background:linear-gradient(125deg,#1b2638,#18202d)}.panel{padding:18px;margin:14px 0}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:16px}.metric{background:#263246;border-radius:10px;padding:12px 15px;display:flex;flex-direction:column}.metric b{font-size:1.5rem}.metric span{font-size:.9rem;color:var(--muted)}.bar{height:22px;border-radius:10px;overflow:hidden;background:#384457;display:flex;margin:12px 0 8px}.bar span{height:100%}.closed,.swatch.closed{background:var(--green)}.approved,.swatch.approved{background:#287956}.inprogress,.swatch.inprogress{background:var(--blue)}.blocked,.swatch.blocked{background:var(--amber)}.notstarted,.swatch.notstarted{background:var(--gray)}.legend,.counts{display:flex;gap:8px 18px;flex-wrap:wrap;color:var(--muted);font-size:.9rem}.legend span{display:inline-flex;align-items:center;gap:5px}.swatch{width:12px;height:12px;border-radius:3px;display:inline-block}.sprint-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}.sprint{padding:14px}.program-progress{height:26px}.sprint-bar{height:18px;margin:7px 0}.progress-caption{margin:5px 0}.sprint-progress-line{display:flex;justify-content:space-between;gap:10px;margin:2px 0}.sprint-state-counts{font-size:.84rem;color:var(--muted);margin:3px 0 0}.current-note,.note{border-left:3px solid var(--amber);padding:8px 12px;background:#252a2c;border-radius:4px}.toolbar{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}input,select,button{font:inherit;background:#202b3b;color:var(--text);border:1px solid #52627a;border-radius:8px;padding:9px 12px}input{flex:1;min-width:min(100%,300px)}button{cursor:pointer}.gate{margin:8px 0;overflow:hidden}summary{cursor:pointer;padding:12px 14px;display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:center}summary:hover{background:#202b3b}.id{font:700 1rem ui-monospace,monospace;color:#b9d3ff}.gate-title{font-weight:650}.pill{font-size:.75rem;padding:4px 9px;border-radius:999px;white-space:nowrap;background:#374256}.pill.closed{background:#17563b}.pill.implementation_approved{background:#155d55}.pill.in_progress{background:#264d83}.pill.blocked{background:#72551c}.grid{padding:4px 16px 16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 20px}.grid section{border-top:1px solid var(--line);padding-top:7px;min-width:0}.grid .wide{grid-column:1/-1}ul{padding-left:22px;margin:5px 0}li{margin:4px 0}.tbl{width:100%;border-collapse:collapse}.tbl td,.tbl th{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}.hide{display:none!important}@media(max-width:720px){main{padding:12px}summary{grid-template-columns:85px 1fr}summary .pill{grid-column:2}.grid{grid-template-columns:1fr}.grid .wide{grid-column:auto}}
+.program-visual{margin-top:14px}.program-total{display:flex;align-items:baseline;gap:8px;font-size:1.15rem;margin:4px 0}.bar{height:18px}.overall-progress{height:26px}.overall-progress .remaining{background:#3b4659}.sprint-chart-list{display:grid;gap:5px;margin:8px 0 20px;overflow-x:auto}.sprint-chart-row,.sprint-chart-columns{display:grid;grid-template-columns:minmax(165px,25%) minmax(72px,.5fr) minmax(160px,1fr) minmax(145px,.9fr) minmax(145px,.9fr);gap:7px;align-items:center;min-width:760px}.sprint-chart-columns{font-size:.68rem;color:var(--muted);font-weight:700;padding:3px 4px}.sprint-chart-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sprint-chart-bar{height:12px;margin:0}.sprint-chart-bar.task-status-unknown{background:repeating-linear-gradient(135deg,#374256,#374256 6px,#46536a 6px,#46536a 8px);border:1px dashed #71809a}.sprint-duration,.sprint-ratio{font-size:.68rem;line-height:1.25;overflow-wrap:anywhere}.sprint-ratio{font-variant-numeric:tabular-nums}.task-coverage{height:14px;margin:.3rem 0 .8rem}.task-coverage .open,.swatch.open{background:var(--amber)}.sprint-chart-bar .notstarted,.task-bar .notstarted,.task-coverage .notstarted{background:var(--amber)}.task-coverage .unknown,.swatch.unknown{background:repeating-linear-gradient(135deg,#374256,#374256 6px,#46536a 6px,#46536a 8px)}.gate-chart-list{display:grid;gap:4px;margin:8px 0}.gate-chart-row{display:grid;grid-template-columns:minmax(280px,1fr) 82px minmax(120px,38%) 170px;gap:10px;align-items:center;padding:3px 5px;border-bottom:1px solid var(--line)}.gate-chart-name{display:flex;gap:10px;min-width:0}.gate-chart-name code{flex:none}.gate-chart-name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sprint-tag{font-size:.8rem;color:var(--muted);text-align:center}.gate-status-bar{height:12px;margin:0}.gate-chart-row .pill{justify-self:start;white-space:nowrap}.swatch.remaining{background:#3b4659}@media(max-width:900px){.gate-chart-row{grid-template-columns:minmax(180px,1fr) 68px minmax(70px,32%) 140px}.sprint-chart-row{grid-template-columns:minmax(150px,40%) minmax(90px,1fr) 48px}}@media(max-width:640px){.gate-chart-row{grid-template-columns:minmax(0,1fr) auto;gap:4px 8px}.gate-chart-name{grid-column:1}.sprint-tag{grid-column:2}.gate-status-bar{grid-column:1}.gate-chart-row .pill{grid-column:2;grid-row:2}}
+.chart-jump{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}.chart-jump a{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:5px 11px;background:#263246;text-decoration:none}.chart-jump a:hover{background:#32425a}.chart-note{color:var(--muted);margin:6px 0 12px}.gate-chart-list{scroll-margin-top:12px}.sprint-chart-bar.source-closed,.swatch.source-closed{background:#277b65}.sprint-chart-bar.active-unmapped{background:repeating-linear-gradient(135deg,#4d79c7,#4d79c7 7px,#5c8fe6 7px,#5c8fe6 14px)}.sprint-chart-bar.observed-work{background:#6687c9}.sprint-chart-bar.notstarted{background:var(--amber)}.sprint-chart-bar .source-closed-fill,.swatch.source-closed{background:#277b65}.sprint-chart-bar .active-unmapped-fill{background:transparent}.sprint-chart-bar .observed-work-fill,.swatch.observed-work{background:#6687c9}.task-coverage .source-closed-fill{background:#277b65}.task-coverage .observed-work-fill{background:#6687c9}.pill.not_started{background:var(--amber);color:#241900}.sprint-chart-bar.partial-map{display:flex;overflow:hidden}.sprint-chart-bar .observed-work-fill{background:#5b8ee6;min-width:3px}.sprint-chart-bar .unmapped-fill,.task-coverage .unmapped-fill{background:repeating-linear-gradient(135deg,#374256,#374256 6px,#65738a 6px,#65738a 8px)}.sprint-chart-bar .unmapped-fill{min-width:0}.swatch.unknown{background:repeating-linear-gradient(135deg,#374256,#374256 6px,#65738a 6px,#65738a 8px)}.sprint-chart-row>strong{font-size:.68rem;line-height:1.2;overflow-wrap:anywhere}.sprint-status-legend{font-size:.7rem;line-height:1.2}
+.current-sprint-panel{scroll-margin-top:12px}.current-sprint-panel .task-bar{height:22px}.current-sprint-panel .task-summary{display:flex;gap:8px 18px;flex-wrap:wrap;color:var(--muted)}.current-sprint-panel .task-summary span{display:inline-flex;align-items:center;gap:6px}.current-sprint-panel .task-table-wrap{overflow:auto;max-height:72vh;border:1px solid var(--line);border-radius:10px}.current-sprint-panel .task-table{width:100%;min-width:1450px;border-collapse:collapse}.current-sprint-panel .task-table th:nth-last-child(2),.current-sprint-panel .task-table td:nth-last-child(3){min-width:235px}.current-sprint-panel .task-table td:last-child{min-width:220px}.current-sprint-panel .task-table th:last-child,.current-sprint-panel .task-table td:last-child{min-width:130px}.current-sprint-panel .task-table td,.current-sprint-panel .task-table th{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}.current-sprint-panel .task-table th{position:sticky;top:0;background:#263246;z-index:1}.current-sprint-panel .task-table td:nth-child(1){min-width:120px}.current-sprint-panel .task-table td:nth-child(2){min-width:280px;max-width:420px}.current-sprint-panel .task-table td:nth-child(4),.current-sprint-panel .task-table td:nth-child(5),.current-sprint-panel .task-table td:nth-child(6){min-width:230px}.current-sprint-panel .task-criterion summary{display:block;padding:0;cursor:pointer;font-weight:600}.current-sprint-panel .task-criterion p{color:var(--muted);white-space:normal}.task-pill{display:inline-block;padding:3px 9px;border-radius:999px;font-size:.82rem;font-weight:700;white-space:nowrap}.task-pill.done{background:#17563b}.task-pill.active{background:#264d83}.task-pill.open{background:#374256}.task-pill.notstarted{background:#8a6321;color:#fff}
+
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:#fff;color:#0f172a;
+  border:1px solid #cbd5e1;border-left:3px solid #2563eb;border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  color:#0f172a;font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:#475569;text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:#0f172a;word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:#1e293b;background:#f8fafc;
+  border:1px solid #94a3b8;border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:#2563eb}
+.rc-copy:focus-visible{outline:2px solid #1d4ed8;outline-offset:2px}
+.rc-copy.is-done{color:#166534;border-color:currentColor}
+.rc-copy.is-fail{color:#991b1b;border-color:currentColor}
+</style></head><body><main>
+<header class="hero"><p class="muted">Срез: 2026-11-07 · Режим: single_sprint · Одобренные спринты: S2 · План подтверждён оператором: true</p><h1>Virtual_scrum_team — Название</h1><section class="hero-program-progress" aria-labelledby="whole-program-title"><h2 id="whole-program-title">Вся программа — общий процент закрытия и статусы</h2><p><strong>Принято задач (accepted): 18 / 34 (52.9%).</strong> из них проверено на remote: 18. Формула: принятые задачи / все задачи плана, без учёта заменённых (SUPERSEDED). Частичное, в работе и заблокированное в числитель не входит.</p><div id="program-progress"><div class="bar overall-progress" role="img" aria-label="18/34"><span class="closed" style="width:52.9412%"></span><span class="notstarted" style="width:47.0588%"></span></div></div><div class="legend"><span><i class="swatch closed"></i>Принято: 18 (52.9%)</span><span><i class="swatch inprogress"></i>В работе / на ревью / частично: 0 (0.0%)</span><span><i class="swatch blocked"></i>Заблокировано: 0 (0.0%)</span><span><i class="swatch notstarted"></i>Не начато / отложено: 16 (47.1%)</span></div></section></header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:#fff;color:#0f172a;
+  border:1px solid #cbd5e1;border-left:3px solid #2563eb;border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  color:#0f172a;font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:#475569;text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:#0f172a;word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:#1e293b;background:#f8fafc;
+  border:1px solid #94a3b8;border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:#2563eb}
+.rc-copy:focus-visible{outline:2px solid #1d4ed8;outline-offset:2px}
+.rc-copy.is-done{color:#166534;border-color:currentColor}
+.rc-copy.is-fail{color:#991b1b;border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>Virtual_scrum_team</dd>
+    <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-canonical-continuation @ 9aa26a5</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+
+
+<section class="panel"><h3 id="sprint-charts">Прогресс по спринтам (6)</h3><div class="sprint-chart-list"><div class="sprint-chart-columns"><span>Спринт</span><span>Полоса задач</span><span>Принято / всего</span></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S0</b> Inventory and baseline</span><div class="bar sprint-chart-bar" role="img" aria-label="3/3"><span class="closed" style="width:100.0000%"></span></div><strong>3/3</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S1</b> Control-plane core</span><div class="bar sprint-chart-bar" role="img" aria-label="6/6"><span class="closed" style="width:100.0000%"></span></div><strong>6/6</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S2</b> <span class="pill">активный</span> Isolated worker sandbox</span><div class="bar sprint-chart-bar" role="img" aria-label="9/9"><span class="closed" style="width:100.0000%"></span></div><strong>9/9</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S3</b> Worker pilot</span><div class="bar sprint-chart-bar" role="img" aria-label="0/5"><span class="notstarted" style="width:100.0000%"></span></div><strong>0/5</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S4</b> QA automation</span><div class="bar sprint-chart-bar" role="img" aria-label="0/6"><span class="notstarted" style="width:100.0000%"></span></div><strong>0/6</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S5</b> AEVE gate</span><div class="bar sprint-chart-bar" role="img" aria-label="0/5"><span class="notstarted" style="width:100.0000%"></span></div><strong>0/5</strong></div>
+</div></section>
+<section class="panel current-sprint-panel" id="current-sprint-tasks"><h2>Активный спринт S2 — Isolated worker sandbox</h2><p><strong>9/9 принято.</strong> Цель: Qualify the existing Store-authorized signed dispatch path (DispatchOwnerService, Supervisor/Store admission, StoreBackedDispatcher) through the real Runner boundary; S3 does not start before S2 closes. Task rows follow the S2 stories and S2-4 subtasks in docs/sdlc/backlog.md. · Открытых задач в активном спринте: <b>нет</b>. Заблокировано оператором или внешней зависимостью — остановка допустима</p><div class="bar task-bar" role="img" aria-label="9/9"><span class="closed" style="width:100.0000%"></span></div><div class="legend"><span><i class="swatch closed"></i>Принято: 9 (100.0%)</span><span><i class="swatch inprogress"></i>В работе / на ревью / частично: 0 (0.0%)</span><span><i class="swatch blocked"></i>Заблокировано: 0 (0.0%)</span><span><i class="swatch notstarted"></i>Не начато / отложено: 0 (0.0%)</span></div><div class="task-table-wrap"><table class="task-table"><thead><tr><th>Задача</th><th>Название</th><th>Критерий приёмки</th><th>Статус</th><th>Доказательства</th><th>Владелец / следующий шаг</th><th>Зависимость</th><th>Коммит</th></tr></thead><tbody>
+<tr class="task-done"><td><code>S2-1</code></td><td>Fail-closed signed instruction, Store admission and recovery</td><td>Invalid or replayed instructions rejected before durable intent; source/test acceptance only (REQ-001, REQ-002, REQ-004)</td><td><span class="task-pill">ACCEPTED</span></td><td>GPT-PM request f92b750e accepted bounded scope; M03 130/130, adapter 38/38 (inherited reports); backlog &quot;Delivered&quot;</td><td>Codex</td><td></td><td><code>e332ec4</code></td></tr>
+<tr class="task-done"><td><code>S2-2</code></td><td>Authenticated owner transport to Store-backed dispatcher</td><td>Transport forwards only, fails closed on malformed input; 34 passed WSL (REQ-002, REQ-003)</td><td><span class="task-pill">ACCEPTED</span></td><td>GPT-PM request b0f60d46 accepted source/test scope; peer creds, pidfd and fs metadata still mocked; change 0588</td><td>Codex</td><td>S2-1</td><td><code>e987a24</code></td></tr>
+<tr class="task-done"><td><code>S2-3</code></td><td>Immutable non-secret runtime bundle and bounded WSL stage-only preparation</td><td>Exact reviewed bundle published stage-only, selected=false (REQ-004, REQ-005, REQ-006)</td><td><span class="task-pill">ACCEPTED</span></td><td>GPT-PM request ac2d25a2 approved post-stage manifest; TP-10 refusal matrix remains PARTIAL</td><td>Codex</td><td>S2-2</td><td><code>ae07f87</code></td></tr>
+<tr class="task-done"><td><code>S2-4A</code></td><td>Instruction issuer (root V1) and V2 verifier source/test</td><td>Issuer code and tests approved for exact bytes</td><td><span class="task-pill">ACCEPTED</span></td><td>GPT-PM request 8fc2e0ba approved c978360; V2 verifier approved aa349632, ledger e09c78b</td><td>Codex</td><td>S2-3</td><td><code>e09c78b</code></td></tr>
+<tr class="task-done"><td><code>S2-4B</code></td><td>Runtime preparation steps 4.1-4.12a (probe-signature removal, root capture, StageOnly, selector, config applier and install)</td><td>Each step delivered with focused tests and pushed; no live Runner evidence claimed</td><td><span class="task-pill">ACCEPTED</span></td><td>Backlog &quot;Delivered&quot; records and change records 0597-0609; 4.12a GPT-PM request 69174c68 approved 19338ba; focused suites reported by functional-test-reviewer, not rerun here</td><td>Codex</td><td>S2-4A</td><td><code>19338ba</code></td></tr>
+<tr class="task-done"><td><code>S2-4C</code></td><td>Runtime qualification hardening 4.12b (worker identity settling, mount audit, inventory binding)</td><td>Exact code/test bytes approved; fail-closed mismatch evidence retained</td><td><span class="task-pill">ACCEPTED</span></td><td>GPT-PM decision S2-4-PM08-CODE-REVIEW-20261101-29 approved exact bytes pushed as 67361bb; e2e-runner 3+32+6 passed at base 470de537 plus worktree delta; no clean post-commit rerun</td><td>Codex</td><td>S2-4B</td><td><code>67361bb</code></td></tr>
+<tr class="task-done"><td><code>S2-4D</code></td><td>REQ-003 source/test acceptance for stored owner-to-Runner handoff</td><td>Exact assignment-basis selector and focused bundle contract coverage; inspect the retained `tools/vst` product path. Retired WSL QA harness and Git-source checks are excluded from active scope.</td><td><span class="task-pill">ACCEPTED</span></td><td>Bounded source/test acceptance. Windows selector 1 passed; bundle contract module 11 passed; internal code review found no BLOCKER/MAJOR; GPT-PM request `a2c98c0f` / reply `f981ea40` approved exact candidate `96a8da7` with 0 BLOCKER/MAJOR.</td><td>Codex; GPT-PM supplied final code review</td><td>S2-4C</td><td><code>96a8da7</code></td></tr>
+<tr class="task-done"><td><code>S2-4E</code></td><td>Windows-local Owner→Runner functional path</td><td>Before S3 Worker pilot, a real Windows-local journey forwards an already-signed Owner instruction through Supervisor/Store admission and Store-backed Dispatcher to the Runner; the Runner executes only the Store-authorized one-use grant under Windows Job Object containment and returns a bound receipt. Functional and process E2E evidence must come from the assigned test agents. This does not require E5, production credentials, WSL, or a VPS and does not claim production readiness.</td><td><span class="task-pill">ACCEPTED</span></td><td>Real Windows process E2E passed on 2026-11-07 (run 4, `LAST_TASK_RESULT=0`, `docs/sdlc/evidence/s2-4e-e2e-run-20261107-4.out`); GPT-PM round 7 APPROVE (0 B/M) for `34e934d..8fa7399`. Pushed with the single S2 PR (#2, ready for review, merge pending).</td><td>Codex</td><td>S2-4D</td><td><code>57c22d3</code></td></tr>
+<tr class="task-done"><td><code>S2-5</code></td><td>Final S2 bounded code review, exact-head approval and acceptance</td><td>Record the bounded source/test disposition after internal review, mapped tests, exact-head GPT-PM decision and successful push; keep runtime/E5 separate.</td><td><span class="task-pill">ACCEPTED</span></td><td>Bounded source/test acceptance. GPT-PM request `a2c98c0f` / correlated reply `f981ea40` approved exact candidate `96a8da7`; commit is present on `origin/s2-canonical-continuation`. Full matrix: `docs/sdlc/acceptance.md`.</td><td>Codex; GPT-PM supplied final code review</td><td>S2-4D</td><td><code>96a8da7</code></td></tr>
+</tbody></table></div></section>
+<section class="panel"><h2>Дорожная карта</h2><div class="task-table-wrap"><table class="task-table"><thead><tr><th>Спринт</th><th>Название</th><th>Статус</th><th>Цель</th></tr></thead><tbody>
+<tr><td>S0</td><td>Inventory and baseline</td><td>ACCEPTED</td><td>S0 inventory documents (docs/sdlc/s0/); approved by GPT-PM and merged with S1 (PR #1, merge d5cd7f5).</td></tr>
+<tr><td>S1</td><td>Control-plane core</td><td>ACCEPTED</td><td>State store, contracts, signing, gate and runner in tools/vst; approved and merged (PR #1, d5cd7f5, closure c5a8eb1).</td></tr>
+<tr><td>S2</td><td>Isolated worker sandbox</td><td>IN_REVIEW</td><td>All S2 tasks are accepted. The bounded source/test scope (S2-1..S2-5) and the real Windows-local Owner-to-Runner process E2E (S2-4E, run 4 green) are pushed on s2-canonical-continuation; PR #2 is open and ready for review, merge pending. Current E5 and production qualification remain NOT_RUN; do not report production readiness.</td></tr>
+<tr><td>S3</td><td>Worker pilot</td><td>NOT_STARTED — waits for the operator&#x27;s separate approval after S2 closes (PR #2 open, merge pending)</td><td>Single isolated story adapter on the S2 sandbox; compare BMad Loop, hand-written loop and a durable engine on one crash/resume fixture; vendor-neutral worker interface. Existing PR #3 predates this work; it is not evidence that S3 has started or that S2 is closed.</td></tr>
+<tr><td>S4</td><td>QA automation</td><td>NOT_STARTED</td><td>Real native runners for functional, integration, API, E2E, regression and seeded failures with reproducible artifacts; a skipped test never satisfies DoD.</td></tr>
+<tr><td>S5</td><td>AEVE gate</td><td>NOT_STARTED</td><td>Bounded static review with hashes and an independent evidence/coverage receipt; truthful analyzer status; stale HEAD fails.</td></tr>
+</tbody></table></div></section>
+</main>
+
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body></html>

@@ -1,0 +1,7 @@
+wsl: Failed to start the systemd user session for 'root'. See journalctl for more details.
+WRAPPER_MOUNT_INITIAL=945 /mnt/d D:     9p     ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3
+WRAPPER_HEAD=eb9b0ed53c66cfb21dc9a2e23265772293daaabb
+WRAPPER_COLLECTOR_SHA256=f57588f1d459af5691325d84dd7905cca0b87989c4d2ecdfe0c15b9954f04b27
+WRAPPER_STAGE=collector-start
+WRAPPER_COLLECTOR_EXIT=1
+WRAPPER_CLEANUP=unmounted

@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S2 — изолированная worker-среда</title>
+  <style>
+    body { font: 16px/1.55 system-ui, sans-serif; max-width: 1180px; margin: 2rem auto; padding: 0 1rem; color: #18212b; }
+    h1, h2 { line-height: 1.2; } table { border-collapse: collapse; width: 100%; margin: 1rem 0 2rem; }
+    th, td { border: 1px solid #9aa8b5; padding: .55rem; text-align: left; vertical-align: top; }
+    th { background: #edf2f6; } code { overflow-wrap: anywhere; }
+    .partial { color: #805700; } .pass { color: #176b38; }
+  </style>
+</head>
+<body>
+<header><h1>S2 — изолированная worker-среда: статус и приёмка</h1></header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>Virtual_scrum_team</dd>
+    <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team-s2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-isolated-worker-sandbox @ a2a5d5a</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<main>
+  <p><strong>Состояние на 25 октября 2026:</strong> код S2 включает fail-closed исправление preflight nonce на product HEAD <code>6ee97cb06b52900c3c2ab2a9b1b415ae117a7932</code>. Более поздняя разрешённая часть WSL E2E прошла на точном source/test HEAD <code>ed723a953d51b92827d3977c96e833258a38342c</code>; подробности приведены ниже. Фаза 8 — одобрение GPT-PM точного итогового HEAD — не пройдена. Некоторые платформенные сценарии остаются <code>NOT_RUN</code>, а отдельные production resource limits — <code>NOT_VERIFIED</code>. Push/PR не выполнялся.</p>
+  <p>«E1–E8» — восемь эпиков S2. «NOT_RUN» означает, что сценарий не исполнялся; «NOT_VERIFIED» — свойство не доказано. Пропуски в предыдущем Windows прогоне (14) и более позднем WSL прогоне (11) не являются успешными тестами.</p>
+
+  <h2>Доказательства</h2>
+  <ul>
+    <li>Функциональный recovery-модуль на source HEAD <code>dc95915018b80f498d5cf775363712fb915fe04e</code>: 4 passed, 0 skipped; Python 3.14.3, pytest 8.4.2; одна pytest-asyncio deprecation warning. Команда — в [change 0085](../docs/changes/0085-s2-windows-snapshot-functional-rerun.md).</li>
+    <li>Свежие тесты точного commit <code>c2771b5968afcdd2b027f1c008fc8023fd0e0f12</code>: Windows functional recovery — 4 passed/0 skipped; WSL runner/probe — 86 passed, 11 skipped и 4 запрещённых mutation cases сняты с отбора; bounded Store lifecycle — 19 passed. E4, actual inventory и E8 skips остаются NOT_RUN. Точные команды, blob verification, среда и критерии: <code>docs/sdlc/evidence/s2-exact-head-functional-e2e-2026-10-25.md</code>.</li>
+    <li>Windows runner/store E2E на том же source HEAD: 80 passed, 14 skipped, 0 failed; Python 3.14.3, pytest 8.4.2; одна deprecation warning. Выбранный Ubuntu-24.04 WSL2 POSIX lock сценарий: 1 passed. Сценарии с пропуском остаются NOT_RUN. См. [change 0083](../docs/changes/0083-s2-e2e-bounded-source-snapshot.md) и evidence в <code>docs/sdlc/evidence/</code>.</li>
+    <li>Более поздний разрешённый WSL2 прогон на точном committed HEAD <code>ed723a953d51b92827d3977c96e833258a38342c</code>: Store lifecycle — 19 passed; runner/sandbox lifecycle — 90 passed, 11 skipped; всего 109 passed, 11 skipped из 120 собранных. Среда: Ubuntu 24.04.5 на WSL2, Python 3.12.3, pytest 7.4.4. Четыре значения E4, одна настоящая inventory probe и шесть сценариев E8 остаются NOT_RUN. Точные команды и scope: <code>docs/sdlc/evidence/s2-e2e-wsl-ed723a-2026-10-25.md</code>; change 0209.</li>
+    <li>E6 diff-gate модуль на точном source/test HEAD <code>6b426b775e7ce92ad2fe6d42c1ede7f620ee4994</code>: 17 passed, 0 skipped, 0 failed; Ubuntu 24.04.5 WSL2, Python 3.12.3, pytest 7.4.4, запуск от <code>vst-runner</code>. Использовались синтетические пути и diff evidence, запрещённые операции не запускались. Команда: <code>docs/sdlc/evidence/s2-e6-diffgate-wsl-6b426b7.md</code>; change 0210.</li>
+    <li>Read-only E4 skip triage на repository HEAD <code>50647fb</code> установил: четыре значения не являются runnable pytest selectors. Очистка process group/descendants запрещена; key-file boundary уже покрывает реальный прошедший selector; parent Job Object nesting требует Windows. Дополнительный тест не запускался. Evidence: <code>docs/sdlc/evidence/s2-e4-skip-triage-2026-10-25.md</code>; change 0211.</li>
+    <li>Read-only E4 skip triage на repository HEAD <code>50647fb</code> установил: четыре значения не являются runnable pytest selectors. Очистка process group и descendants запрещена; key-file boundary уже покрывает реальный прошедший WSL selector; parent Job Object nesting требует Windows. Дополнительный тест не запускался. См. <code>docs/sdlc/evidence/s2-e4-skip-triage-2026-10-25.md</code> и change 0211.</li>
+    <li>S2 E5/VST-014 nonce контракт: на product HEAD <code>6ee97cb</code> designated functional-test-reviewer проверил пропущенное значение, валидный explicit nonce и отклонение пустого/non-string до probing; 4 passed, 22 deselected, 0 failed на test HEAD <code>deed6ab</code> (Python 3.14.3, pytest 8.4.2). Код ревью: GPT-6 Luna low, security review: GPT-6 Luna medium; code reviewer сообщил об отсутствии BLOCKER/MAJOR/MINOR; security reviewer — об отсутствии security findings. Evidence 0165; implementation 0162; test cases 0163.</li>
+    <li>Отдельный run-scoped WSL2 signer/sandbox inventory с подписью и network-policy attestation прошёл на прежнем source run <code>280e2d0</code>; это не доказательство постоянного production deployment или поведения другого HEAD. Evidence: <code>docs/sdlc/evidence/s2-e5-runmanifest-wsl-280e2d0.md</code>, <code>s2-e5-operator-attestation.json</code>, change 0063.</li>
+    <li>Fresh security и reliability reviewers (GPT-6 Luna, low effort) и database reviewer (GPT-6 Luna, medium effort) не нашли code-level BLOCKER/MAJOR на source HEAD <code>dc959…</code>. Для nonce change 0162 отдельные code reviewer (GPT-6 Luna, low) и security reviewer (GPT-6 Luna, medium) на code HEAD <code>6ee97cb</code> не нашли BLOCKER/MAJOR/MINOR/INFO. Обзоры read-only, не запускали проверки. Остатки среды и процессного cleanup сохранены отдельно в STATE/backlog.</li>
+    <li>Repository HEAD S2 до сверки нового evidence: <code>ed723a953d51b92827d3977c96e833258a38342c</code>. Product implementation остаётся на отдельно указанном source HEAD; более позднее WSL E2E доказательство не означает новую правку реализации. Источники: <code>docs/sdlc/STATE.md</code>, S2 plan и records 0076–0085/0162–0166/0209.</li>
+  </ul>
+
+  <h2>Матрица приёмки</h2>
+  <table>
+    <thead><tr><th>Критерий</th><th>Смысл</th><th>Состояние</th><th>Доказательства</th><th>Остаток и зависимость</th><th>Владелец и следующий шаг</th></tr></thead>
+    <tbody>
+      <tr><td>E1 — ключ рецензента</td><td>Независимый reviewer credential отличается от worker credential; receipt authority проверяется.</td><td>Код и focused контрактные сценарии пройдены.</td><td>Records 0056–0058 и final source test/review records 0083–0085.</td><td>Локальные подписи не доказывают production key custody за пределами записанного run.</td><td>Оператор отвечает за делегированный проект; Codex исполняет. При решении S2-M01/M02/M03 сохранять scope доказательств этого run.</td></tr>
+      <tr><td>E2 — runner-derived HEAD и изоляция signer</td><td>Runner самостоятельно связывает evidence с candidate commit; worker не получает ключ и signer IPC.</td><td class="partial">Код и локальные негативные сценарии PASS; один WSL run boundary PASS только для своего run.</td><td>Windows E2E 80 pass/14 skip; run-scoped WSL signer evidence `280e2d0`.</td><td>WSL signer boundary не перепривязан к каждому будущему run; скрытые/production deployment claims не сделаны.</td><td>Оператор — accountable owner; technical service owner неизвестен. Следующий шаг — свежая signed attestation для отдельного production-qualified run.</td></tr>
+      <tr><td>E3 — внешняя якорная голова событий</td><td>Rollback/restore обнаруживается через внешний event head, recovery ограничен.</td><td class="partial">Полный WSL Store lifecycle модуль прошёл 19/19 на exact commit; девять POSIX-only anchor cases выполнены без skipped. Это доказывает локальный fixture contract для данного run, но не production worker/mount binding.</td><td>На `c2771b5` WSL модуль включал idempotency/fork rejection, обнаружение restore старой БД, interrupted recovery для одной/нескольких записей и пять invalid suffix states. Точная mapping и ограничения — evidence 0222; прежнее implementation evidence — records 0043, 0056–0058.</td><td>Run-bound привязка worker/mount и OS quotas остаются NOT_VERIFIED по E5/M03. Aggregate pytest output не сохранил node-level строки.</td><td>Оператор — accountable; technical platform owner UNKNOWN. Следующий шаг — закрыть runtime binding/quotas E5; сохранять E3 результат в границах exact local WSL fixture.</td></tr>
+      <tr><td>E4 — process containment</td><td>POSIX identity/permissions/process group и Windows Job Object nesting.</td><td class="partial">Часть WSL identity, file/socket и lock boundary доказана; полная containment не принята.</td><td>Run-scoped WSL evidence, test record 0083 и triage 0211.</td><td>Очистка process group/descendants запрещена; key-file placeholder покрыт реальным прошедшим selector; parent Job Object nesting требует Windows-host. Полная POSIX containment остаётся NOT_RUN.</td><td>Оператор владеет разрешением запрещённых сценариев; технический platform owner UNKNOWN. Следующий шаг: запрещённые кейсы оставить NOT_RUN; Job Object проверить только на авторизованном Windows host.</td></tr>
+      <tr><td>E5 — sandbox spec и preflight</td><td>Dedicated WSL2 конфигурация, подписанная инвентаризация, закрытый egress и per-run secret boundary.</td><td class="partial">Для run <code>280e2d0</code> прошли run-scoped inventory и network-policy attestation Ubuntu-24.04 WSL2; exact-commit probe tests прошли, но фактическая inventory остаётся NOT_RUN. Полная operational binding и лимиты ресурсов не проверены.</td><td>Подписанные inventory, network-policy attestation и run manifest для <code>280e2d0</code> (change 0063); exact-commit runner/probe tests — evidence 0222; nonce test evidence 0165; GPT-PM M03 — 0212.</td><td>Подписанный callback не доказанно привязан к фактическому worker environment/workspace; OS memory, temporary-storage, process-count quotas и исключение обходных writer не подтверждены. Run-scoped pass не доказывает постоянный deployment.</td><td>Оператор accountable; технический service owner UNKNOWN. Следующий шаг — предоставить фактическую привязку environment/workspace и enforcement quota, затем назначенные test owners повторяют bound probe.</td></tr>
+      <tr><td>E6 — diff gate и read-only reviewer</td><td>Опасные/вне allowlist изменения не проходят; reviewer credential не может писать в snapshot.</td><td class="pass">Код, focused negative tests и один WSL write-denial boundary прошли.</td><td>Record 0056 и `s2-e5-runmanifest-wsl-280e2d0.md`; source review на `dc959` без BLOCKER/MAJOR.</td><td>Доказательство write denial привязано к одной run-конфигурации.</td><td>Codex — executor. Сохранить узкий scope результата; он не закрывает три MODIFY finding.</td></tr>
+      <tr><td>E7 — STOP, rollback, idempotency, breaker, recovery</td><td>Повторы безопасны, состояния durable, STOP закрывает старую эпоху, recovery не принимает сомнительный результат.</td><td class="partial">Реализованные сценарии и разрешённые focused tests прошли на exact commit; завершение процесса и cleanup не доказаны.</td><td>Windows recovery — 4/4; WSL Store lifecycle — 19/19; ранее Windows lifecycle/store E2E — 80 passed, 14 skipped; выбранный WSL lock — 1/1. Точное evidence — 0222.</td><td>Process-kill/kill-table и post-start overflow cleanup — NOT_RUN; OS memory/storage quotas and workspace binding — NOT_VERIFIED.</td><td>Оператор — accountable owner; назначенные test owners исполняют только разрешённые прогоны. Следующий шаг — сохранить причины NOT_RUN и не заявлять production readiness.</td></tr>
+      <tr><td>E8 — isolated worker crash/resume bake-off</td><td>Один crash/resume fixture сравнивает workers с новым fence/receipt и пределами бюджета.</td><td class="partial">Безопасный STOP/resume/budget/idempotency/scope-denial subset пройден; полное acceptance не выполнено.</td><td>WSL safe subset и contract test IDs записаны в backlog/evidence.</td><td>Полный crash/cleanup запускает запрещённые child termination/mutation пути; candidate comparison также заблокирован отсутствием authorized candidates.</td><td>Оператор владеет разрешением на точный crash fixture и candidate authorization. Следующий шаг — не запускать до явной применимой авторизации.</td></tr>
+      <tr><td>S2.D1/D2 — команды и waivers</td><td>Каждый slot связан с обязательной командой/parser; waiver не превращает FAIL в APPROVE.</td><td>PASS, focused selectors на exact HEAD <code>a2a5d5a</code>: 12 passed, 0 skipped/failed.</td><td>Четыре selectors в <code>test_s2_contract_gate.py</code>; команды и среда: <code>s2-section9-contract-rerun-a2a5d5.md</code>.</td><td>Допустимы только waiver для NOT_RUN/INCONCLUSIVE/BLOCKED. Это локальная проверка контракта, не новая signed environment acceptance.</td><td>Codex фиксирует evidence; включить в следующий exact GPT-PM review.</td></tr>
+      <tr><td>Production resource limits</td><td>Жёсткие OS memory/temp quotas, точная source workspace binding, внешние writer исключены.</td><td>NOT_VERIFIED.</td><td>State и reviewer findings не заявляют доказательство этих deployment границ.</td><td>Нужна проверяемая платформа/конфигурация и привязанный runtime artifact.</td><td>Оператор accountable; технический сервисный владелец UNKNOWN. Следующий шаг — определить и подтвердить ограничения до production использования.</td></tr>
+      <tr><td>Phase 8 exact-head gate</td><td>GPT-PM проверяет exact final branch HEAD; затем допускается один PR.</td><td>Коррелированный review на <code>12758c9</code> вернул <code>MAJOR — MODIFY</code>; follow-up для текущего exact HEAD пока не разрешён: PM Bridge вернул <code>Transport closed</code> на send, health и job-status запросах.</td><td>Предыдущий request <code>460d72c5-e4a7-4b92-b5e4-9f6a16221a9d</code>, reply <code>2c5bfa37-3502-46e6-8092-dcd77904f5e4</code>; у follow-up request <code>5f95bf0c-0e62-4aa3-90e3-2f42e247e129</code> состояние доставки/ответа не подтверждено. Полный предыдущий ответ — evidence 0212.</td><td>Открыты три acceptance finding: platform proof E4, worker/environment/resource binding E5, crash/resume E8. Для HEAD <code>f683a37</code> нет коррелированного verdict.</td><td>Оператор — accountable за делегированную поставку; technical platform owner UNKNOWN. После восстановления PM Bridge сначала проверить тот же request ID и только затем решать, нужен ли resend; закрыть findings. Не push/PR без коррелированного APPROVE.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Упорядоченные следующие шаги</h2>
+  <ol>
+    <li>Разрешить S2-M01/M02/M03 из exact-head review 0212: получить допустимое E8/E4 runtime evidence или валидное scoped operator решение; предоставить реальное E5 environment/workspace/resource binding evidence. Technical platform owner UNKNOWN.</li>
+    <li>Запрещённые process-kill, kill-table, post-start cleanup и Windows Job Object сценарии оставить NOT_RUN, пока не изменятся конкретные policy/platform gates. E4 skip placeholder не перезапускать.</li>
+    <li>После evidence или принятого scoped решения запросить свежий GPT-PM review для нового exact branch HEAD. Не push/open PR без APPROVE.</li>
+    <li>До production qualification получить доказательство OS memory/storage quotas, workspace binding и исключения внешних writer; технический owner не установлен.</li>
+    <li>Не выполнять merge, пока exact-head gate не вернёт APPROVE.</li>
+  </ol>
+</main>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

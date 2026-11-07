@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Виртуальная Scrum-команда — программа и Sprint 2</title><style>
+:root{color-scheme:dark;--bg:#111722;--panel:#1b2432;--line:#354155;--text:#eef3fb;--muted:#b8c4d5;--green:#33b27a;--blue:#5d91e8;--amber:#e4ad37;--gray:#3b4659}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,"Segoe UI",sans-serif}
+main{max-width:1700px;margin:auto;padding:20px}header,.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;margin:0 0 14px}
+h1{font-size:clamp(1.7rem,3vw,2.4rem);margin:0 0 8px}h2{margin:0 0 10px;font-size:1.4rem}p{margin:8px 0}.muted,small{color:var(--muted)}
+.bar{display:flex;height:22px;border-radius:10px;overflow:hidden;background:var(--gray);margin:10px 0}.closed-fill{background:var(--green)}.partial-fill{background:var(--blue)}.open-fill{background:var(--gray)}
+.legend{display:flex;flex-wrap:wrap;gap:10px 18px;margin:8px 0;color:var(--muted);font-size:.9rem}.legend span{display:inline-flex;align-items:center;gap:6px}.swatch{width:12px;height:12px;border-radius:3px;display:inline-block}
+.swatch.closed,.swatch.accepted{background:var(--green)}.swatch.partial{background:var(--blue)}.swatch.open{background:var(--gray)}.swatch.deferred{background:var(--amber)}
+.sprint-chart{display:grid;gap:5px;overflow:auto}.sprint-header,.sprint-row{display:grid;grid-template-columns:minmax(220px,1.35fr) minmax(120px,.8fr) minmax(145px,.9fr) minmax(150px,.8fr) minmax(150px,.8fr);gap:10px;align-items:center;min-width:900px}
+.sprint-header{font-size:.8rem;color:var(--muted);font-weight:700;padding:5px}.sprint-row{padding:7px;border-bottom:1px solid var(--line)}.sprint-row .bar{height:14px;margin:0}.sprint-row strong{font-size:.85rem}.sprint-row small{font-size:.8rem}.sprint-row .muted{font-size:.75rem}
+table{width:100%;border-collapse:collapse;min-width:1500px}th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{position:sticky;top:0;background:#263246}td{font-size:.88rem}td:first-child{font-family:ui-monospace,monospace;font-weight:700;white-space:nowrap}.accepted{color:#83e2b0;font-weight:700}.deferred{color:#ffd26b;font-weight:700}.table-wrap{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:9px}
+.note{border-left:3px solid var(--amber);padding:8px 12px;background:#252a2c}
+</style></head><body><main>
+<header class="hero"><h1>Весь проект — общий прогресс и статус закрытия</h1><p><b>4/40 VST-ID отмечены CLOSED в реестре (10%).</b> Это распределение записей реестра, а не доказанная доля всех задач проекта. <b>Процент проекта «закрыто и запушено»: NOT VERIFIED</b> — нет полного сопоставления всех task-ID с remote-коммитами.</p>
+<div class="bar" role="img" aria-label="4 CLOSED, 26 PARTIAL, 10 OPEN out of 40 VST registry IDs"><span class="closed-fill" style="width:10%" title="4/40 CLOSED"></span><span class="partial-fill" style="width:65%" title="26/40 PARTIAL"></span><span class="open-fill" style="width:25%" title="10/40 OPEN"></span></div>
+<div class="legend"><span><i class="swatch closed"></i>ЗАКРЫТО: 4/40 (10%)</span><span><i class="swatch partial"></i>ЧАСТИЧНО: 26/40 (65%)</span><span><i class="swatch open"></i>ОТКРЫТО: 10/40 (25%)</span></div><p class="muted">Срез: 2026-11-06 19:18 +02:00 (Europe/Chisinau) · repository Virtual_scrum_team · code candidate 96a8da7; report checkpoint d96267c; subsequent commits are docs-only.</p></header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:#fff;color:#0f172a;
+  border:1px solid #cbd5e1;border-left:3px solid #2563eb;border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  color:#0f172a;font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:#475569;text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:#0f172a;word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:#1e293b;background:#f8fafc;
+  border:1px solid #94a3b8;border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:#2563eb}
+.rc-copy:focus-visible{outline:2px solid #1d4ed8;outline-offset:2px}
+.rc-copy.is-done{color:#166534;border-color:currentColor}
+.rc-copy.is-fail{color:#991b1b;border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>Virtual_scrum_team</dd>
+    <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; s2-canonical-continuation; report checkpoint d96267c; reviewed code candidate 96a8da7</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+<section class="panel"><h2>Распределение задач по спринтам</h2><p class="muted">Одна строка — один VST-ID; категории суммируются к 40. Полосы показывают распределение статусов, а не процент выполнения критериев. Для S0/S1 реестр не разделяет ID. NR означает, что точная длительность или exact-ID diff не подтверждены.</p>
+<div class="sprint-chart"><div class="sprint-header"><span>Спринт / состав реестра</span><span>Полоса статусов</span><span>Закрыто / частично / открыто · всего</span><span>Git окно (точный ID)</span><span>Доли diff: код / docs / тесты / прочее</span></div><div class="sprint-row"><span><b>S0 + S1</b><br><small>VST-001–008; registry does not split IDs</small></span><div class="bar" role="img" aria-label="ЗАКРЫТО 3/8; ЧАСТИЧНО 1/8; ОТКРЫТО 4/8"><span class="closed-fill" style="width:37.5000%" title="ЗАКРЫТО 3/8"></span><span class="partial-fill" style="width:12.5000%" title="ЧАСТИЧНО 1/8"></span><span class="open-fill" style="width:50.0000%" title="ОТКРЫТО 4/8"></span></div><strong>3/8 · 1/8 · 4/8</strong><span class="muted">NR — нет плановой длительности<br>нет exact-ID commit mapping</span><span class="muted">NR — нет exact-ID diff</span></div><div class="sprint-row"><span><b>S2</b><br><small>VST-009–020, VST-025–026</small></span><div class="bar" role="img" aria-label="ЗАКРЫТО 1/14; ЧАСТИЧНО 13/14; ОТКРЫТО 0/14"><span class="closed-fill" style="width:7.1429%" title="ЗАКРЫТО 1/14"></span><span class="partial-fill" style="width:92.8571%" title="ЧАСТИЧНО 13/14"></span><span class="open-fill" style="width:0.0000%" title="ОТКРЫТО 0/14"></span></div><strong>1/14 · 13/14 · 0/14</strong><span class="muted">NR — нет плановой длительности<br>нет exact-ID commit mapping</span><span class="muted">NR — нет exact-ID diff</span></div><div class="sprint-row"><span><b>S3</b><br><small>VST-027–031</small></span><div class="bar" role="img" aria-label="ЗАКРЫТО 0/5; ЧАСТИЧНО 4/5; ОТКРЫТО 1/5"><span class="closed-fill" style="width:0.0000%" title="ЗАКРЫТО 0/5"></span><span class="partial-fill" style="width:80.0000%" title="ЧАСТИЧНО 4/5"></span><span class="open-fill" style="width:20.0000%" title="ОТКРЫТО 1/5"></span></div><strong>0/5 · 4/5 · 1/5</strong><span class="muted">NR — нет плановой длительности<br>нет exact-ID commit mapping</span><span class="muted">NR — нет exact-ID diff</span></div><div class="sprint-row"><span><b>S4</b><br><small>VST-032–038, VST-040</small></span><div class="bar" role="img" aria-label="ЗАКРЫТО 0/8; ЧАСТИЧНО 8/8; ОТКРЫТО 0/8"><span class="closed-fill" style="width:0.0000%" title="ЗАКРЫТО 0/8"></span><span class="partial-fill" style="width:100.0000%" title="ЧАСТИЧНО 8/8"></span><span class="open-fill" style="width:0.0000%" title="ОТКРЫТО 0/8"></span></div><strong>0/8 · 8/8 · 0/8</strong><span class="muted">NR — нет плановой длительности<br>нет exact-ID commit mapping</span><span class="muted">NR — нет exact-ID diff</span></div><div class="sprint-row"><span><b>S5</b><br><small>VST-041</small></span><div class="bar" role="img" aria-label="ЗАКРЫТО 0/1; ЧАСТИЧНО 0/1; ОТКРЫТО 1/1"><span class="closed-fill" style="width:0.0000%" title="ЗАКРЫТО 0/1"></span><span class="partial-fill" style="width:0.0000%" title="ЧАСТИЧНО 0/1"></span><span class="open-fill" style="width:100.0000%" title="ОТКРЫТО 1/1"></span></div><strong>0/1 · 0/1 · 1/1</strong><span class="muted">NR — нет плановой длительности<br>нет exact-ID commit mapping</span><span class="muted">NR — нет exact-ID diff</span></div><div class="sprint-row"><span><b>Без спринта</b><br><small>VST-021–024; sprint not specified</small></span><div class="bar" role="img" aria-label="ЗАКРЫТО 0/4; ЧАСТИЧНО 0/4; ОТКРЫТО 4/4"><span class="closed-fill" style="width:0.0000%" title="ЗАКРЫТО 0/4"></span><span class="partial-fill" style="width:0.0000%" title="ЧАСТИЧНО 0/4"></span><span class="open-fill" style="width:100.0000%" title="ОТКРЫТО 4/4"></span></div><strong>0/4 · 0/4 · 4/4</strong><span class="muted">NR — нет плановой длительности<br>нет exact-ID commit mapping</span><span class="muted">NR — нет exact-ID diff</span></div></div><div class='legend'><span><i class='swatch closed'></i>Зелёный — CLOSED в реестре</span><span><i class='swatch partial'></i>Синий — PARTIAL, остаток приёмки</span><span><i class='swatch open'></i>Серый — OPEN / NOT_STARTED</span></div>
+<p class="muted">Общий знаменатель: 40 VST-ID из core/BACKLOG.md. Для S0/S1 одна строка, реестр не делит эти ID. Реестр не заменяет task acceptance Sprint S2.</p></section>
+<section class="panel"><h2>Sprint S2 — все плановые задачи и статусы</h2><p><b>8/9 пунктов плана приняты в bounded source/test scope; 1/9 — runtime/E5 deferred, NOT_RUN.</b> Это не означает production readiness. Реестр VST для S2 отдельно показывает 1/14 CLOSED и 13/14 PARTIAL.</p><div class='legend'><span><i class='swatch accepted'></i>Зелёный — bounded acceptance принято</span><span><i class='swatch deferred'></i>Янтарный — deferred / NOT_RUN</span></div><p class="muted">Окно и доли считаются только по коммитам, явно помеченным точным task ID; это не трудозатраты. Один коммит даёт окно 0 минут. Для S2-4D exact-tagged eb9b0ed показан отдельно; финальный untagged commit 96a8da7 в эту долю не включён.</p>
+<div class="table-wrap"><table><thead><tr><th>Task</th><th>Критерий плана</th><th>Статус</th><th>Принято / доказательство</th><th>Остаток / зависимость</th><th>Owner</th><th>Следующий шаг</th><th>Окно Git / длительность</th><th>Доли diff: code/docs/tests/other</th></tr></thead><tbody><tr><td class="">S2-1</td><td class="">Подписанная инструкция, допуск Store, recovery (REQ-001/002/004)</td><td class="accepted">ПРИНЯТО · source/test</td><td class="">Push e332ec4; GPT-PM f92b750e; зафиксированные тесты/reviews в backlog/evidence.</td><td class="">Runtime и production этим таском не доказаны.</td><td class="">Codex; GPT-PM review</td><td class="">Не переоткрывать без регрессии или изменения требований.</td><td class="">9a6f581 · 2026-10-29 23:37:55 +02:00 · 1 commit · 0 мин</td><td class="">0 / 100 / 0 / 0%</td></tr><tr><td class="">S2-2</td><td class="">Аутентифицированный owner transport к Store-backed dispatcher (REQ-002/003)</td><td class="accepted">ПРИНЯТО · source/test</td><td class="">Push e987a24; GPT-PM b0f60d46; ограниченный source/test scope принят.</td><td class="">Live systemd/PID credentials, pidfd, socket metadata и Runner runtime не доказаны.</td><td class="">Codex; GPT-PM review</td><td class="">Сохранить runtime-ограничения; не повторять принятые тесты.</td><td class="">34da339 · 2026-10-29 23:41:10 +02:00 · 1 commit · 0 мин</td><td class="">0 / 100 / 0 / 0%</td></tr><tr><td class="">S2-3</td><td class="">Reviewed bundle и ограниченная inactive stage-only подготовка (REQ-004/005/006)</td><td class="accepted">ПРИНЯТО · bounded preparation</td><td class="">Push ae07f87; GPT-PM ac2d25a2 утвердил stage-only manifest; WSL-подготовка — историческая.</td><td class="">Не доказывает активные сервисы, E5, Runner или production. WSL QA harness вне активного scope.</td><td class="">Codex; GPT-PM review</td><td class="">Оставить историческим evidence; не возобновлять WSL harness.</td><td class="">57c734e · 2026-10-29 23:26:30 +02:00 · 1 commit · 0 мин</td><td class="">0 / 100 / 0 / 0%</td></tr><tr><td class="">S2-4A</td><td class="">Issuer V1 и V2 verifier source/test</td><td class="accepted">ПРИНЯТО · source/test</td><td class="">GPT-PM request 8fc2e0ba / exact approval c978360; V2 slice aa349632, push e09c78b.</td><td class="">Production signing key или live issuer не заявлены.</td><td class="">Codex; GPT-PM review</td><td class="">Не переоткрывать без конкретной регрессии.</td><td class="">NO_TASK_ID_COMMITS</td><td class="">NR / NR / NR / NR</td></tr><tr><td class="">S2-4B</td><td class="">Подготовительные шаги 4.1–4.12a; stage-only source</td><td class="accepted">ПРИНЯТО · source/test</td><td class="">Push 19338ba; change records 0597–0609; focused test/review records.</td><td class="">Live Runner/runtime не доказан.</td><td class="">Codex</td><td class="">Не повторять принятую подготовку.</td><td class="">NO_TASK_ID_COMMITS</td><td class="">NR / NR / NR / NR</td></tr><tr><td class="">S2-4C</td><td class="">Hardening 4.12b: worker identity, mount audit, inventory binding</td><td class="accepted">ПРИНЯТО · source/test</td><td class="">Push 67361bb; GPT-PM exact-byte review; сохранённые тесты/reviews.</td><td class="">Live E5/production не доказаны.</td><td class="">Codex; GPT-PM review</td><td class="">Не переоткрывать без конкретной регрессии.</td><td class="">NO_TASK_ID_COMMITS</td><td class="">NR / NR / NR / NR</td></tr><tr><td class="">S2-4D</td><td class="">REQ-003: сохранённая Store handoff; убрать лишний WSL QA harness</td><td class="accepted">ПРИНЯТО · bounded source/test</td><td class="">Windows selector: 1 passed; bundle-contract module: 11 passed. GPT-PM a2c98c0f / reply f981ea40 APPROVE для exact candidate 96a8da7; 0 BLOCKER/MAJOR. Внутренние code-reviewer/code-explorer не нашли BLOCKER/MAJOR.</td><td class="">Selector доказывает только Store handoff equality, не live Runner/E5/production. WSL collector/apply/qualification scripts и Git-source checks исключены из активного scope.</td><td class="">Codex; GPT-PM final code review</td><td class="">Принято в bounded source/test scope; удалённый harness не запускать.</td><td class="">eb9b0ed · 2026-11-06 17:10:57 +02:00 · 1 tagged commit · 0 мин; final 96a8da7 untagged и исключён</td><td class="">10.4 / 1.0 / 29.1 / 59.5% (только tagged diff; финальный commit без ID исключён)</td></tr><tr><td class="">S2-4E</td><td class="">Live E5 и production Owner-to-Runner qualification</td><td class="deferred">ОТЛОЖЕНО · NOT_RUN</td><td class="">Нет текущего E5, production identity/configuration или live service-to-Runner результата.</td><td class="">Runtime/production acceptance не подтверждена; production readiness не заявляется.</td><td class="">Codex</td><td class="">Сохранять NOT_RUN; не возобновлять WSL QA harness.</td><td class="">NO_TASK_ID_COMMITS</td><td class="">NR / NR / NR / NR</td></tr><tr><td class="">S2-5</td><td class="">Финальная exact-head code review и S2 bounded acceptance (REQ-006)</td><td class="accepted">ПРИНЯТО · bounded source/test</td><td class="">Точный кандидат 96a8da7 запушен в origin/s2-canonical-continuation; GPT-PM a2c98c0f/f981ea40 APPROVE; focused tests и внутренний review приняты.</td><td class="">Runtime/E5/production остаются NOT_RUN и NOT_ACCEPTED.</td><td class="">Codex; GPT-PM дал финальный approval</td><td class="">Сохранять раздельно code acceptance и runtime status.</td><td class="">NO_TASK_ID_COMMITS</td><td class="">NR / NR / NR / NR</td></tr></tbody></table></div><p class="note">S2 code scope принят; S2 не объявляется production-ready. S2-4E остаётся NOT_ACCEPTED/NOT_RUN. AF ledger не является backlog: docs/sdlc/state.json показывает phase 8 paused; docs/sdlc/gate-approval.md ссылается на старый HEAD 7d1d16f от 2026-10-30.</p></section>
+<section class="panel"><h2>Доказательства и границы</h2><p><b>Bounded source/test:</b> exact candidate 96a8da7bf5af5c9d5b37e56287c48472cb239254 находится на origin/s2-canonical-continuation. GPT-PM request a2c98c0f-a741-4ad6-8330-8cbde5bc3571 / reply f981ea40-d56c-58aa-8c5e-87631a900140: APPROVE, 0 BLOCKER/MAJOR.</p><p>Агенты-владельцы тестов запускали оба сценария на revision eb9b0ed; текущие source/test SHA-256 совпадают с candidate 96a8da7. REQ-003 selector — 1 passed; bundle contract — 11 passed. Команды и хеши: <a href='../docs/sdlc/evidence/s2-4d-req003-windows-selector-20261106-02.attempt.json'>selector attempt</a>, <a href='../docs/sdlc/evidence/s2-4d-runtime-config-bundle-windows-20261106-02.attempt.json'>bundle rerun</a>, <a href='../docs/sdlc/acceptance.md'>acceptance</a>. Первый bundle attempt: 1 failed / 10 passed; исправлен assertion пути selector, повтор агента дал 11 passed.</p><p>Internal code-reviewer и code-explorer не нашли BLOCKER/MAJOR на продуктовой границе. Это не runtime-доказательство. Live Owner-to-Runner / актуальный E5 / production: NOT_RUN и NOT_ACCEPTED.</p><p>WSL QA harness и Git-source checks исключены из активного scope. Полный pytest, CI, lint, typecheck, migration/legal scripts и ограниченные selectors не запускались.</p><p>PR #3 S3 уже существует как OPEN/DRAFT, head ba453630; он появился до этой работы над S2 и не изменялся. Здесь новый S3 task не начинался.</p><p>Источники: <a href='../PROJECT_PLAN.md'>PROJECT_PLAN.md</a>, <a href='../docs/sdlc/backlog.md'>S2 backlog checkpoint</a>, <a href='../docs/sdlc/acceptance.md'>acceptance.md</a>, <a href='../core/BACKLOG.md'>VST registry</a>. Проектного evidence.py или документированной эквивалентной команды нет; attempt-записи доказывают только свои команды.</p>
+<p>Формула реестра: CLOSED / 40. Процент закрытия всей программы и полный numerator pushed tasks не подтверждены. AF phase count — процессная история, не task denominator.</p></section>
+</main>
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body></html>

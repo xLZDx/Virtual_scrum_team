@@ -1,0 +1,20 @@
+mount=/tmp/s2-4d-bootstrap-d-ro-20261105 options=ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3
+repo=/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team
+head=ad45ba1bc8134cfc6caddf205d74204a216dc881
+53154ac7949d7a7796fb0306e3ce3d8d480746361b6e25b3543e0a34b403d552  tests/vst/test_s2_runtime_configuration_apply.py
+92a477290e423d30c0eaeb90cc8941526259ffa35d92606836c71b88224131c7  tests/vst/test_s2_runtime_bootstrap_transaction.py
+45c6f5c0d0591c9a81ac5f7dae6db243bb3fbb25fbde99e42a4ee147783a3bbe  tools/qa/runtime_snapshot_transaction.py
+4368ea4a4b1ae2a8cf7f76e2695711be6c461b3738c5e60d7ce9079275c5eefb  tools/qa/apply_s2_runtime_configuration.py
+d24db7bb13b13860d031bf1bdfe26191e3201436ba857cc7cae4bda48d87bede  tools/qa/collect_s2_runtime_config_inventory.py
+{"frozen_sha256": {"tests/vst/test_s2_runtime_bootstrap_transaction.py": "92a477290e423d30c0eaeb90cc8941526259ffa35d92606836c71b88224131c7", "tests/vst/test_s2_runtime_configuration_apply.py": "53154ac7949d7a7796fb0306e3ce3d8d480746361b6e25b3543e0a34b403d552", "tools/qa/apply_s2_runtime_configuration.py": "4368ea4a4b1ae2a8cf7f76e2695711be6c461b3738c5e60d7ce9079275c5eefb", "tools/qa/collect_s2_runtime_config_inventory.py": "d24db7bb13b13860d031bf1bdfe26191e3201436ba857cc7cae4bda48d87bede", "tools/qa/runtime_snapshot_transaction.py": "45c6f5c0d0591c9a81ac5f7dae6db243bb3fbb25fbde99e42a4ee147783a3bbe"}, "pytest_disable_plugin_autoload": "1", "pytest_file": "/usr/lib/python3/dist-packages/pytest/__init__.py", "pytest_version": "7.4.4", "python_version": "3.12.3 (main, Jul 15 2026, 23:46:41) [GCC 13.3.0]", "sys_path": ["/usr/lib/python312.zip", "/usr/lib/python3.12", "/usr/lib/python3.12/lib-dynload", "/usr/lib/python3/dist-packages", "/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team"], "uid": 0}
+........................................................................ [ 62%]
+................FF.......F..................                             [100%]
+=================================== FAILURES ===================================
+/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team/tests/vst/test_s2_runtime_bootstrap_transaction.py:875: AssertionError: Regex pattern did not match.
+/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team/tests/vst/test_s2_runtime_bootstrap_transaction.py:875: AssertionError: Regex pattern did not match.
+/tmp/s2-4d-bootstrap-d-ro-20261105/Repo/Virtual_scrum_team/tests/vst/test_s2_runtime_bootstrap_transaction.py:900: AssertionError: assert ['get-propert...get-property'] == ['/org/freede...er_2eservice']
+=========================== short test summary info ============================
+FAILED tests/vst/test_s2_runtime_bootstrap_transaction.py::test_persistent_guard_parser_refuses_duplicate_malformed_opaque_and_wrongly_typed_payloads[duplicate-data]
+FAILED tests/vst/test_s2_runtime_bootstrap_transaction.py::test_persistent_guard_parser_refuses_duplicate_malformed_opaque_and_wrongly_typed_payloads[duplicate-type]
+FAILED tests/vst/test_s2_runtime_bootstrap_transaction.py::test_persistent_guard_loaded_queries_only_fixed_pair_with_typed_json
+3 failed, 113 passed in 28.51s

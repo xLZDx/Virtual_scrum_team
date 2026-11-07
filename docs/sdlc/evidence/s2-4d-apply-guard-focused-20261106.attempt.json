@@ -1,0 +1,32 @@
+{
+  "task": "S2-4D / S2-4-runtime-owner-runner-qualification / REQ-003",
+  "purpose": "Focused functional regression for guarded apply child repository mount and pinned manifest validation. This is not runtime apply or REQ-003 evidence.",
+  "command": "python -B -m pytest -q -p no:cacheprovider tests/vst/test_s2_runtime_configuration_apply.py::test_remote_apply_mount_is_exact_readonly_and_owned_cleanup_runs tests/vst/test_s2_runtime_configuration_apply.py::test_remote_apply_owned_rw_mount_is_normally_cleaned_when_ro_remount_fails tests/vst/test_s2_runtime_configuration_apply.py::test_remote_apply_mount_guard_refuses_preexisting_rw_or_wrong_source tests/vst/test_s2_runtime_configuration_apply.py::test_remote_apply_cleanup_refuses_replaced_mount_id tests/vst/test_s2_runtime_configuration_apply.py::test_remote_apply_cleanup_reports_metadata_check_failure tests/vst/test_s2_runtime_configuration_apply.py::test_remote_apply_accepts_exact_pinned_manifests_without_git_read tests/vst/test_s2_runtime_configuration_apply.py::test_remote_apply_rejects_tampered_bundle_or_layout_hash tests/vst/test_s2_runtime_configuration_apply.py::test_main_fails_closed_when_owned_repo_mount_cleanup_marker_reports_failure",
+  "selectors": [
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_remote_apply_mount_is_exact_readonly_and_owned_cleanup_runs",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_remote_apply_owned_rw_mount_is_normally_cleaned_when_ro_remount_fails",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_remote_apply_mount_guard_refuses_preexisting_rw_or_wrong_source",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_remote_apply_cleanup_refuses_replaced_mount_id",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_remote_apply_cleanup_reports_metadata_check_failure",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_remote_apply_accepts_exact_pinned_manifests_without_git_read",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_remote_apply_rejects_tampered_bundle_or_layout_hash",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_main_fails_closed_when_owned_repo_mount_cleanup_marker_reports_failure"
+  ],
+  "result": {
+    "exit_code": 0,
+    "summary": "12 passed, 1 warning in 0.52s",
+    "warning": "DeprecationWarning from pytest_asyncio: asyncio.get_event_loop_policy is deprecated and slated for removal in Python 3.16",
+    "run_started_at": "NOT_CAPTURED",
+    "run_finished_at": "NOT_CAPTURED",
+    "tool_reported_wall_time_seconds": 2.4,
+    "stdout_capture": "The exec tool returned one combined output field. Its displayed text is preserved in the adjacent .console-output.txt transcript; byte-exact stdout was not separately captured.",
+    "stderr_capture": "NOT_SEPARATELY_CAPTURED_BY_EXEC_TOOL",
+    "runtime_apply": "NOT_RUN",
+    "REQ003_selector_runtime": "NOT_RUN"
+  },
+  "revision": "4301af467fc8387dd80b2b214d669cbab1bd5e92",
+  "working_tree_identity": "Tests were run against the shared worktree at this HEAD; the worktree had uncommitted source and test changes by the initiating agent and other concurrent work. No clean-tree assertion is made.",
+  "source_sha256": "a01ba443fd19c4c3f6be8199378027f31613c02ee92a3d33bb8b68f60c94132e",
+  "test_file_sha256": "10bd90eaad14593b9056f3ec771a0c3781cb1256280f68828ee9d44911d4acac",
+  "capture_provenance": "Transcribed from the functions.exec tool response returned for this test command. This is not an independent shell redirection capture."
+}

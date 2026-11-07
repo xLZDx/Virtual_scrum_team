@@ -1,0 +1,1504 @@
+diff --git a/docs/sdlc/runtime-config/task-manifest.json b/docs/sdlc/runtime-config/task-manifest.json
+index 7538b15..5864413 100644
+--- a/docs/sdlc/runtime-config/task-manifest.json
++++ b/docs/sdlc/runtime-config/task-manifest.json
+@@ -1,96 +1,138 @@
+ {
+-  "acceptance": [
+-    "REQ-003"
+-  ],
+-  "allowed_commands": [
+-    {
+-      "argv": [
+-        "/usr/bin/python3",
+-        "-c",
+-        "import sys\nsys.dont_write_bytecode = True\nimport os,pytest\nclass _PassLines:\n def __init__(self): self.phases={}\n def pytest_runtest_logreport(self,report):\n  p=self.phases.setdefault(report.nodeid,{})\n  p[report.when]=bool(report.passed and not getattr(report,'wasxfail',False))\n  if report.when=='teardown':\n   if all(p.get(x) is True for x in ('setup','call','teardown')): os.write(1,('\\nPASS '+report.nodeid+'\\n').encode('utf-8'))\n   self.phases.pop(report.nodeid,None)\nraise SystemExit(pytest.main(['-q','-s','-p','no:cacheprovider',*sys.argv[1:]],plugins=[_PassLines()]))",
+-        "tests/vst/test_s2_assignment_basis.py::test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment"
+-      ],
+-      "slot": "runtime-tests"
+-    }
++  "task_id": "S2-4E-WINDOWS-OWNER-RUNNER",
++  "project_id": "Virtual_scrum_team",
++  "phase": 7,
++  "story_id": "S2-4E",
++  "base_head": "326e1489e9913b8ab75ca57860e2f2e263e993f1",
++  "scope": [
++    "tests/vst/test_s2_owner_completed_receipt_contract.py",
++    "tests/vst/test_s2_owner_runner_windows_e2e.py",
++    "tests/vst/s2_4e_windows_provision.py",
++    "tests/vst/provision_s2_4e_windows.ps1"
+   ],
+-  "author_principal": "Codex",
+-  "base_head": "67361bb4aa23355d9a6bc7877a987ba688559eda",
+-  "change_scope": {
+-    "allowed_paths": [
+-      "tests/vst/test_s2_assignment_basis.py"
+-    ]
+-  },
+-  "contract_version": 2,
+-  "cost_cap": 0,
+   "forbidden_actions": [
+-    "network",
+-    "mutation-campaigns",
++    "CI",
++    "pytest",
++    "lint",
++    "typecheck",
++    "verify",
++    "migration/legal verification scripts",
++    "WSL",
++    "VPS",
++    "production signing",
++    "activation",
++    "migration",
+     "process-kill",
+     "crash-recovery",
+     "E8",
+     "policy-selectors",
+-    "production-signing",
+-    "activation",
+-    "migration"
++    "mutation-campaigns"
+   ],
+-  "mandatory_commands": [
++  "owner_role": "e2e-runner",
++  "role_sha256": "1bc928a38595ac1ad1d7edd5d572dcc30b293265711ddc3b7f74dddc0c660869",
++  "skills": [
+     {
+-      "argv": [
+-        "/usr/bin/python3",
+-        "-c",
+-        "import sys\nsys.dont_write_bytecode = True\nimport os,pytest\nclass _PassLines:\n def __init__(self): self.phases={}\n def pytest_runtest_logreport(self,report):\n  p=self.phases.setdefault(report.nodeid,{})\n  p[report.when]=bool(report.passed and not getattr(report,'wasxfail',False))\n  if report.when=='teardown':\n   if all(p.get(x) is True for x in ('setup','call','teardown')): os.write(1,('\\nPASS '+report.nodeid+'\\n').encode('utf-8'))\n   self.phases.pop(report.nodeid,None)\nraise SystemExit(pytest.main(['-q','-s','-p','no:cacheprovider',*sys.argv[1:]],plugins=[_PassLines()]))",
+-        "tests/vst/test_s2_assignment_basis.py::test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment"
+-      ],
+-      "parser_id": "vst.pass-lines",
+-      "parser_sha256": "6a71c0d97a1aeb5647f8b54c13ce3551cfb6d7e052403262cef51192b642bdba",
+-      "parser_version": "1",
+-      "slot": "runtime-tests"
++      "id": "e2e-testing-contract",
++      "sha256": "581360614f3f6b13f070cc0823dff74154d9df31769b8b2ba934a0eaa61a0544"
+     }
+   ],
+   "model_policy": "gpt-6-luna",
+-  "owner_role": "functional-test-reviewer",
+-  "phase": 7,
+-  "project_id": "Virtual_scrum_team",
++  "tools": [
++    "C:\\Python314\\python.exe",
++    "unittest"
++  ],
++  "acceptance": [
++    "REQ-003"
++  ],
+   "required_receipts": [
+     {
+-      "receipt_type": "TestRun",
+-      "slot": "runtime-tests"
++      "slot": "runtime-tests",
++      "receipt_type": "TestRun"
+     },
+     {
+-      "receipt_type": "IndependentReview",
+-      "slot": "independent-review"
++      "slot": "independent-review",
++      "receipt_type": "IndependentReview"
+     }
+   ],
+-  "required_rules": [],
++  "author_principal": "Codex",
+   "required_tests": [
+     {
++      "slot": "runtime-tests",
++      "test_id": "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_lookup_before_grant_is_none_and_does_not_issue_or_mutate",
++      "acceptance": [
++        "REQ-003"
++      ]
++    },
++    {
++      "slot": "runtime-tests",
++      "test_id": "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_wrong_principal_or_instruction_cannot_observe_receipt",
+       "acceptance": [
+         "REQ-003"
+-      ],
++      ]
++    },
++    {
++      "slot": "runtime-tests",
++      "test_id": "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_reserved_execution_is_not_reported_as_complete",
++      "acceptance": [
++        "REQ-003"
++      ]
++    },
++    {
+       "slot": "runtime-tests",
+-      "test_id": "tests/vst/test_s2_assignment_basis.py::test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment"
++      "test_id": "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_complete_receipt_is_exactly_bound_to_owner_and_distinct_grant_ids",
++      "acceptance": [
++        "REQ-003"
++      ]
+     }
+   ],
++  "allowed_commands": [
++    {
++      "slot": "runtime-tests",
++      "argv": [
++        "C:\\Python314\\python.exe",
++        "-B",
++        "-c",
++        "import sys,unittest\nfor name in sys.argv[1:]:\n suite=unittest.defaultTestLoader.loadTestsFromName(name)\n result=unittest.TextTestRunner(stream=sys.stdout,verbosity=2).run(suite)\n if result.testsRun != 1 or not result.wasSuccessful() or result.skipped or result.expectedFailures or result.unexpectedSuccesses: sys.exit(1)\n sys.stdout.write(\"\\nPASS \"+name+\"\\n\")\n",
++        "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_lookup_before_grant_is_none_and_does_not_issue_or_mutate",
++        "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_wrong_principal_or_instruction_cannot_observe_receipt",
++        "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_reserved_execution_is_not_reported_as_complete",
++        "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_complete_receipt_is_exactly_bound_to_owner_and_distinct_grant_ids"
++      ]
++    }
++  ],
++  "required_rules": [],
++  "timeout_sec": 900,
++  "cost_cap": 0,
+   "retry_cap": 0,
++  "contract_version": 2,
+   "reviewer_registry": {
+-    "sha256": "54cff371ded18ba866a7304eb41b1b5ab5d1f523305480db2076fc1969920f53",
+-    "version": "s2-runtime-reviewers-20261030-v2"
++    "version": "s2-runtime-reviewers-20261030-v2",
++    "sha256": "54cff371ded18ba866a7304eb41b1b5ab5d1f523305480db2076fc1969920f53"
+   },
+-  "role_sha256": "fa79e47fbc28931ed28e3779e5aaf4996f97ec611d4766c494996d0066a7762a",
+-  "scope": [
+-    "tests/vst/test_s2_assignment_basis.py"
+-  ],
+-  "skills": [
++  "mandatory_commands": [
+     {
+-      "id": "functional-testing",
+-      "sha256": "b47b639acdc899fffa2cb0f5ff2777d738bd39a6c3a4ca3fbf33fa010c8779e6"
++      "slot": "runtime-tests",
++      "argv": [
++        "C:\\Python314\\python.exe",
++        "-B",
++        "-c",
++        "import sys,unittest\nfor name in sys.argv[1:]:\n suite=unittest.defaultTestLoader.loadTestsFromName(name)\n result=unittest.TextTestRunner(stream=sys.stdout,verbosity=2).run(suite)\n if result.testsRun != 1 or not result.wasSuccessful() or result.skipped or result.expectedFailures or result.unexpectedSuccesses: sys.exit(1)\n sys.stdout.write(\"\\nPASS \"+name+\"\\n\")\n",
++        "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_lookup_before_grant_is_none_and_does_not_issue_or_mutate",
++        "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_wrong_principal_or_instruction_cannot_observe_receipt",
++        "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_reserved_execution_is_not_reported_as_complete",
++        "tests.vst.test_s2_owner_completed_receipt_contract.OwnerCompletedReceiptContractTests.test_complete_receipt_is_exactly_bound_to_owner_and_distinct_grant_ids"
++      ],
++      "parser_id": "vst.pass-lines",
++      "parser_version": "1",
++      "parser_sha256": "6a71c0d97a1aeb5647f8b54c13ce3551cfb6d7e052403262cef51192b642bdba"
+     }
+   ],
+-  "story_id": "S2-4",
+-  "task_id": "S2-4-runtime-owner-runner-qualification",
+-  "timeout_sec": 120,
+-  "tools": [
+-    "/usr/bin/python3",
+-    "pytest"
+-  ]
++  "change_scope": {
++    "allowed_paths": [
++      "docs/sdlc/runtime-config/task-manifest.json",
++      "tests/vst/test_s2_owner_completed_receipt_contract.py",
++      "tests/vst/s2_4e_windows_provision.py",
++      "tests/vst/provision_s2_4e_windows.ps1"
++    ]
++  }
+ }
+diff --git a/tests/vst/provision_s2_4e_windows.ps1 b/tests/vst/provision_s2_4e_windows.ps1
+new file mode 100644
+index 0000000..1d5c119
+--- /dev/null
++++ b/tests/vst/provision_s2_4e_windows.ps1
+@@ -0,0 +1,384 @@
++[CmdletBinding()]
++param(
++    [ValidateSet('Install', 'Cleanup')]
++    [string]$Action = 'Install',
++    [string]$RepoRoot = 'D:\Repo\Virtual_scrum_team',
++    [string]$Python = 'C:\Python314\python.exe',
++    [string]$OpenSSLSource = 'C:\Program Files\Git\usr\bin\openssl.exe',
++    [string]$Git = 'C:\Program Files\Git\cmd\git.exe'
++)
++
++$ErrorActionPreference = 'Stop'
++$transcriptPath = Join-Path $RepoRoot 'docs\sdlc\evidence\s2-4e-windows-provision.log'
++Start-Transcript -Path $transcriptPath -Append | Out-Null
++trap {
++    try { Write-Host ("INSTALLER_ERROR: {0}: {1}" -f $_.Exception.GetType().Name, $_.Exception.Message) } catch {}
++    try { Stop-Transcript | Out-Null } catch {}
++    exit 1
++}
++$serviceNames = @('VSTOwner', 'VSTSupervisor', 'VSTDispatcher', 'VSTRunner', 'VSTSigner', 'VSTWorker')
++$serviceRoles = @{
++    VSTOwner = 'owner'; VSTSupervisor = 'supervisor'; VSTDispatcher = 'dispatcher'
++    VSTRunner = 'runner'; VSTSigner = 'signer'; VSTWorker = 'worker'
++}
++$root = Join-Path $env:ProgramData 'VST'
++$adminSid = 'S-1-5-32-544'
++$systemSid = 'S-1-5-18'
++
++function Invoke-Sc([string[]]$Arguments) {
++    & "$env:SystemRoot\System32\sc.exe" @Arguments | Out-Null
++    if ($LASTEXITCODE -ne 0) { throw "SCM operation failed: $($Arguments -join ' ') (exit $LASTEXITCODE)" }
++}
++
++function Set-ExplicitAcl([string]$Path, [bool]$Directory, [hashtable]$Grants) {
++    $sid = New-Object Security.Principal.SecurityIdentifier($adminSid)
++    if ($Directory) { $acl = New-Object Security.AccessControl.DirectorySecurity }
++    else { $acl = New-Object Security.AccessControl.FileSecurity }
++    $acl.SetAccessRuleProtection($true, $false)
++    $acl.SetOwner($sid)
++    foreach ($entry in $Grants.GetEnumerator()) {
++        $trustee = New-Object Security.Principal.SecurityIdentifier($entry.Key)
++        $rights = [Security.AccessControl.FileSystemRights]$entry.Value
++        if ($Directory) {
++            $inheritance = [Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [Security.AccessControl.InheritanceFlags]::ObjectInherit
++            $rule = New-Object Security.AccessControl.FileSystemAccessRule($trustee, $rights, $inheritance, [Security.AccessControl.PropagationFlags]::None, [Security.AccessControl.AccessControlType]::Allow)
++        } else {
++            $rule = New-Object Security.AccessControl.FileSystemAccessRule($trustee, $rights, [Security.AccessControl.AccessControlType]::Allow)
++        }
++        [void]$acl.AddAccessRule($rule)
++    }
++    Set-Acl -LiteralPath $Path -AclObject $acl
++}
++
++function Get-ServiceSid([string]$Name) {
++    $account = New-Object Security.Principal.NTAccount("NT SERVICE\$Name")
++    return $account.Translate([Security.Principal.SecurityIdentifier]).Value
++}
++
++function Assert-TrustedRuntimeTree([string]$Path) {
++    $trusted = @($systemSid, $adminSid)
++    try { $trusted += (New-Object Security.Principal.NTAccount('NT SERVICE\TrustedInstaller')).Translate([Security.Principal.SecurityIdentifier]).Value } catch {}
++    # Write-capable bits only. FileSystemRights.Modify must not be used here: it also contains the
++    # read/execute bits, so every ordinary ReadAndExecute grant would be misreported as writable.
++    # Generic write/all bits are included because raw ACEs may carry them unmapped.
++    $writeMask = [int64][Security.AccessControl.FileSystemRights]::Write -bor
++        [int64]0x40000000 -bor [int64]0x10000000 -bor
++        [Security.AccessControl.FileSystemRights]::Delete -bor
++        [Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles -bor
++        [Security.AccessControl.FileSystemRights]::ChangePermissions -bor
++        [Security.AccessControl.FileSystemRights]::TakeOwnership -bor
++        [Security.AccessControl.FileSystemRights]::CreateDirectories -bor
++        [Security.AccessControl.FileSystemRights]::CreateFiles
++    $items = @((Get-Item -LiteralPath $Path -Force))
++    if ((Get-Item -LiteralPath $Path -Force).PSIsContainer) {
++        $items += Get-ChildItem -LiteralPath $Path -Recurse -Force
++    }
++    foreach ($item in $items) {
++        $acl = Get-Acl -LiteralPath $item.FullName
++        # Read the owner and rules as SIDs directly: names such as
++        # "APPLICATION PACKAGE AUTHORITY\ALL APPLICATION PACKAGES" cannot be translated back to SIDs.
++        $ownerSid = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
++        if ($ownerSid -notin $trusted) { throw "Untrusted owner on service runtime path: $($item.FullName)" }
++        foreach ($rule in $acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])) {
++            if ($rule.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow) { continue }
++            # An inherit-only ACE grants nothing on this object; every descendant is scanned with its own ACL.
++            if ($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) { continue }
++            $trusteeSid = $rule.IdentityReference.Value
++            if ($trusteeSid -notin $trusted -and (([int64]$rule.FileSystemRights -band [int64]$writeMask) -ne 0)) {
++                throw "A non-admin principal can modify service runtime code: $($item.FullName)"
++            }
++        }
++    }
++    $pathRoot = [IO.Path]::GetPathRoot([IO.Path]::GetFullPath($Path))
++    $ancestor = Split-Path -Parent ([IO.Path]::GetFullPath($Path))
++    while ($ancestor -and $ancestor -ne $pathRoot.TrimEnd('\')) {
++        $acl = Get-Acl -LiteralPath $ancestor
++        foreach ($rule in $acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])) {
++            if ($rule.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow) { continue }
++            if ($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) { continue }
++            $trusteeSid = $rule.IdentityReference.Value
++            if ($trusteeSid -notin $trusted -and
++                    (([int64]$rule.FileSystemRights -band [int64][Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles) -ne 0)) {
++                throw "A non-admin principal can replace the trusted runtime directory: $ancestor"
++            }
++        }
++        $nextAncestor = Split-Path -Parent $ancestor
++        if ($nextAncestor -eq $ancestor) { break }
++        $ancestor = $nextAncestor
++    }
++}
++
++function Get-BytesSha256([byte[]]$Bytes) {
++    $sha = [Security.Cryptography.SHA256]::Create()
++    try { return ([BitConverter]::ToString($sha.ComputeHash($Bytes))).Replace('-', '').ToLowerInvariant() }
++    finally { $sha.Dispose() }
++}
++
++function Remove-OwnedSetup {
++    if (-not (Test-Path -LiteralPath $root -PathType Container)) { return }
++    $markerPath = Join-Path $root 'setup-owner.json'
++    if (-not (Test-Path -LiteralPath $markerPath -PathType Leaf)) { throw 'Refusing cleanup: VST root has no provisioner marker.' }
++    $marker = Get-Content -LiteralPath $markerPath -Raw | ConvertFrom-Json
++    $resolvedRoot = (Resolve-Path -LiteralPath $root).Path
++    $expectedRoot = [IO.Path]::GetFullPath((Join-Path $env:ProgramData 'VST'))
++    if ($resolvedRoot -ne $expectedRoot -or $marker.test_only -ne $true -or $marker.project_id -ne 'Virtual_scrum_team' -or
++            (@($marker.service_names) -join ',') -ne ($serviceNames -join ',')) {
++        throw 'Refusing cleanup: path or ownership marker does not match this test setup.'
++    }
++    $taskName = [string]$marker.task_name
++    if ($taskName) {
++        $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
++        if ($task -and [string]$task.State -eq 'Running') {
++            throw 'Refusing cleanup while the one-shot Owner-to-Runner E2E task is running; wait for its result first.'
++        }
++        if ($task) { Unregister-ScheduledTask -TaskName $taskName -Confirm:$false }
++    }
++    foreach ($name in $serviceNames) {
++        $service = Get-Service -Name $name -ErrorAction SilentlyContinue
++        if ($service) {
++            $serviceConfig = Get-CimInstance -ClassName Win32_Service -Filter "Name='$name'"
++            $expectedLauncher = Join-Path (Join-Path $root 'launchers') ("run-{0}.py" -f $serviceRoles[$name])
++            $expectedPython = if ($marker.python_path) { [string]$marker.python_path } else { [IO.Path]::GetFullPath($Python) }
++            $expectedImage = '"{0}" "{1}"' -f $expectedPython, $expectedLauncher
++            if (-not $serviceConfig -or $serviceConfig.PathName.Trim() -ine $expectedImage) {
++                throw "Refusing cleanup: service $name does not point to this setup's launcher."
++            }
++            if ($service.Status -ne 'Stopped') {
++                Stop-Service -Name $name -Force
++                $deadline = [DateTime]::UtcNow.AddSeconds(30)
++                do {
++                    Start-Sleep -Milliseconds 250
++                    $service = Get-Service -Name $name
++                    if ($service.Status -eq 'Stopped') { break }
++                    if ([DateTime]::UtcNow -ge $deadline) { throw "Service $name did not stop; preserving its files." }
++                } while ($true)
++            }
++            Invoke-Sc @('delete', $name)
++        }
++    }
++    Remove-Item -LiteralPath $root -Recurse -Force
++    Write-Output '{"cleanup":"removed test-only VST root and services"}'
++}
++
++if ($Action -eq 'Cleanup') {
++    $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
++    if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Cleanup requires an elevated Windows token.' }
++    Remove-OwnedSetup
++    try { Stop-Transcript | Out-Null } catch {}
++    exit 0
++}
++
++$principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
++if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Install requires an elevated Windows token.' }
++$repo = [IO.Path]::GetFullPath($RepoRoot)
++$pythonPath = [IO.Path]::GetFullPath($Python)
++$opensslSourcePath = [IO.Path]::GetFullPath($OpenSSLSource)
++$gitPath = [IO.Path]::GetFullPath($Git)
++if (-not (Test-Path -LiteralPath $repo -PathType Container)) { throw 'Project root is unavailable.' }
++if (-not (Test-Path -LiteralPath $pythonPath -PathType Leaf)) { throw 'Configured Windows Python is unavailable.' }
++if (-not (Test-Path -LiteralPath $opensslSourcePath -PathType Leaf)) { throw 'Git for Windows OpenSSL is unavailable.' }
++if (-not (Test-Path -LiteralPath $gitPath -PathType Leaf)) { throw 'Configured Git for Windows executable is unavailable.' }
++Assert-TrustedRuntimeTree (Split-Path -Parent $pythonPath)
++Assert-TrustedRuntimeTree (Split-Path -Parent $opensslSourcePath)
++$gitRoot = Split-Path -Parent (Split-Path -Parent $gitPath)
++Assert-TrustedRuntimeTree $gitRoot
++$sourceManifest = Join-Path $repo 'docs\sdlc\runtime-config\task-manifest.json'
++$candidateFiles = @(
++    'docs\sdlc\runtime-config\task-manifest.json',
++    'tests\vst\test_s2_owner_completed_receipt_contract.py',
++    'tests\vst\test_s2_owner_runner_windows_e2e.py',
++    'tests\vst\s2_4e_windows_provision.py',
++    'tests\vst\provision_s2_4e_windows.ps1'
++)
++$candidateContents = @{}
++$candidateHashes = @{}
++foreach ($relativePath in $candidateFiles) {
++    $bytes = [IO.File]::ReadAllBytes((Join-Path $repo $relativePath))
++    $candidateContents[$relativePath] = $bytes
++    $candidateHashes[$relativePath] = Get-BytesSha256 $bytes
++}
++$candidateManifest = [Text.Encoding]::UTF8.GetString($candidateContents['docs\sdlc\runtime-config\task-manifest.json']).TrimStart([char]0xFEFF) | ConvertFrom-Json
++if ($candidateManifest.task_id -ne 'S2-4E-WINDOWS-OWNER-RUNNER' -or @($candidateManifest.acceptance).Count -ne 1 -or $candidateManifest.acceptance[0] -ne 'REQ-003' -or $candidateManifest.retry_cap -ne 0 -or $candidateManifest.base_head -notmatch '^[0-9a-f]{40}$') {
++    throw 'Source manifest does not match the approved one-shot REQ-003 contract.'
++}
++$baseHead = [string]$candidateManifest.base_head
++if (Test-Path -LiteralPath $root) { throw 'Refusing to overwrite existing %ProgramData%\VST.' }
++foreach ($name in $serviceNames) {
++    if (Get-Service -Name $name -ErrorAction SilentlyContinue) { throw "Refusing to replace existing service $name." }
++}
++
++$runId = 's2-4e-win-' + [guid]::NewGuid().ToString('N').Substring(0, 16)
++$data = $root
++$store = Join-Path $root 'store'
++$signer = Join-Path $root 'signer'
++$issuer = Join-Path $root 'issuer-private'
++$bin = Join-Path $root 'bin'
++$launchers = Join-Path $root 'launchers'
++$app = Join-Path $root 'app'
++$appManifest = Join-Path $app 'docs\sdlc\runtime-config\task-manifest.json'
++$log = Join-Path $root 'e2e-output.log'
++$taskName = 'VST-S2E-' + $runId
++$gitHooks = Join-Path $root 'git-hooks'
++$emptyGitConfig = Join-Path $root 'empty-gitconfig'
++$user = [Security.Principal.WindowsIdentity]::GetCurrent().Name
++$userSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
++
++New-Item -ItemType Directory -Path $root -Force | Out-Null
++Set-ExplicitAcl $root $true @{$systemSid='FullControl'; $adminSid='FullControl'}
++New-Item -ItemType Directory -Path $store, $signer, $issuer, $bin, $launchers, $gitHooks -Force | Out-Null
++[IO.File]::WriteAllBytes($emptyGitConfig, [byte[]]@())
++$setupMarker = [ordered]@{project_id='Virtual_scrum_team'; run_id=$runId; task_name=$taskName; service_names=$serviceNames; python_path=$pythonPath; test_only=$true}
++$setupMarker | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $root 'setup-owner.json') -Encoding UTF8
++$safeAppPath = $app.Replace('\', '/')
++$safeHooksPath = $gitHooks.Replace('\', '/')
++[IO.File]::WriteAllText($emptyGitConfig, "[safe]`ndirectory = $safeAppPath`n[core]`nhooksPath = $safeHooksPath`n", [Text.UTF8Encoding]::new($false))
++
++# A separate shallow Git context at the task's exact base HEAD is required by
++# the product Runner when it derives the signed candidate_head/diff receipt.
++# Fetch the manifest's exact base commit by hash, not the branch tip: later
++# commits on the branch must not change the accepted task baseline.
++$oldGitConfig = $env:GIT_CONFIG_NOSYSTEM
++$oldGlobalGitConfig = $env:GIT_CONFIG_GLOBAL
++$oldGitPrompt = $env:GIT_TERMINAL_PROMPT
++try {
++    $env:GIT_CONFIG_NOSYSTEM = '1'
++    $env:GIT_CONFIG_GLOBAL = $emptyGitConfig
++    $env:GIT_TERMINAL_PROMPT = '0'
++    New-Item -ItemType Directory -Path $app | Out-Null
++    Set-ExplicitAcl $app $true @{$systemSid='FullControl'; $adminSid='FullControl'}
++    & $gitPath -C $app -c "core.hooksPath=$gitHooks" init --quiet
++    if ($LASTEXITCODE -ne 0) { throw "Could not initialize the protected task Git context (exit $LASTEXITCODE)." }
++    & $gitPath -C $app remote add origin $repo
++    if ($LASTEXITCODE -ne 0) { throw "Could not configure the protected task Git source (exit $LASTEXITCODE)." }
++    & $gitPath -C $app -c "core.hooksPath=$gitHooks" fetch --quiet --depth=1 --no-tags origin $baseHead
++    if ($LASTEXITCODE -ne 0) { throw "Could not fetch the task base HEAD into the protected context (exit $LASTEXITCODE)." }
++    & $gitPath -C $app -c "core.hooksPath=$gitHooks" checkout --quiet --detach FETCH_HEAD
++    if ($LASTEXITCODE -ne 0) { throw "Could not check out the task base HEAD (exit $LASTEXITCODE)." }
++    $snapshotHead = (& $gitPath -C $app rev-parse --verify HEAD).Trim()
++    if ($LASTEXITCODE -ne 0 -or $snapshotHead -cne $baseHead) { throw 'Protected task Git context does not match manifest base_head.' }
++} finally {
++    $env:GIT_CONFIG_NOSYSTEM = $oldGitConfig
++    $env:GIT_CONFIG_GLOBAL = $oldGlobalGitConfig
++    $env:GIT_TERMINAL_PROMPT = $oldGitPrompt
++}
++foreach ($relativePath in $candidateFiles) {
++    $destination = Join-Path $app $relativePath
++    [IO.File]::WriteAllBytes($destination, [byte[]]$candidateContents[$relativePath])
++    if ((Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant() -cne $candidateHashes[$relativePath]) {
++        throw "Protected source snapshot hash mismatch: $relativePath"
++    }
++}
++$snapshotManifest = Get-Content -LiteralPath $appManifest -Raw | ConvertFrom-Json
++if ($snapshotManifest.base_head -cne $snapshotHead) { throw 'Protected candidate manifest base_head does not match the Git context.' }
++# Lock the copied code snapshot to SYSTEM/Administrators before executing its helper elevated.
++Set-ExplicitAcl $app $true @{$systemSid='FullControl'; $adminSid='FullControl'}
++foreach ($path in (Get-ChildItem -LiteralPath $app -File -Recurse -Force)) {
++    Set-ExplicitAcl $path.FullName $false @{$systemSid='FullControl'; $adminSid='FullControl'}
++}
++foreach ($path in (Get-ChildItem -LiteralPath $app -Directory -Recurse -Force)) {
++    Set-ExplicitAcl $path.FullName $true @{$systemSid='FullControl'; $adminSid='FullControl'}
++}
++
++$sourceBin = Split-Path -Parent $opensslSourcePath
++Copy-Item -LiteralPath $opensslSourcePath -Destination (Join-Path $bin 'openssl.exe')
++foreach ($dll in @('msys-crypto-3.dll', 'msys-ssl-3.dll', 'msys-2.0.dll')) {
++    $dllPath = Join-Path $sourceBin $dll
++    if (-not (Test-Path -LiteralPath $dllPath -PathType Leaf)) { throw "Required OpenSSL runtime dependency is missing: $dll" }
++    Copy-Item -LiteralPath $dllPath -Destination (Join-Path $bin $dll)
++}
++
++$serviceSids = @{}
++foreach ($name in $serviceNames) {
++    $role = $serviceRoles[$name]
++    $launcher = Join-Path $launchers ("run-{0}.py" -f $role)
++    # Write-restricted service tokens cannot write to the shared system TEMP, so each
++    # role gets its own protected temp directory (created below once its SID exists).
++    $roleTemp = Join-Path (Join-Path $root 'tmp') $role
++$launcherText = "import os, sys, tempfile`nos.environ['TEMP'] = os.environ['TMP'] = r'$roleTemp'`ntempfile.tempdir = r'$roleTemp'`nos.environ['PATH'] = r'$(Split-Path -Parent $gitPath)' + os.pathsep + r'$env:SystemRoot\System32'`nos.environ['GIT_CONFIG_NOSYSTEM'] = '1'`nos.environ['GIT_CONFIG_GLOBAL'] = r'$emptyGitConfig'`nos.environ['GIT_TERMINAL_PROMPT'] = '0'`nsys.dont_write_bytecode = True`nsys.path.insert(0, r'$app')`nfrom tools.vst.windows_service_host import main`nsys.argv = [__file__, '--role', '$role']`nmain()`n"
++    Set-Content -LiteralPath $launcher -Value $launcherText -Encoding Ascii
++    $binaryPath = '"{0}" "{1}"' -f $pythonPath, $launcher
++    # Windows PowerShell 5.1 strips embedded quotes and drops empty arguments when calling
++    # native programs, so `sc.exe create binPath= "<quoted>" password= ''` is corrupted.
++    # New-Service passes the image path through the SCM API unchanged; the virtual
++    # account is then assigned without a password.
++    New-Service -Name $name -BinaryPathName $binaryPath -StartupType Manual | Out-Null
++    Invoke-Sc @('config', $name, 'obj=', "NT SERVICE\$name")
++    Invoke-Sc @('sidtype', $name, 'restricted')
++    $serviceSids[$name] = Get-ServiceSid $name
++}
++
++$allRead = @{$systemSid='FullControl'; $adminSid='FullControl'}
++foreach ($sid in $serviceSids.Values) { $allRead[$sid] = 'ReadAndExecute' }
++Set-ExplicitAcl $root $true $allRead
++Set-ExplicitAcl $data $true $allRead
++Set-ExplicitAcl $bin $true $allRead
++Set-ExplicitAcl $launchers $true $allRead
++Set-ExplicitAcl $app $true $allRead
++$storeGrants = @{$systemSid='FullControl'; $adminSid='FullControl'; $serviceSids['VSTSupervisor']='FullControl'}
++$signerGrants = @{$systemSid='FullControl'; $adminSid='FullControl'; $serviceSids['VSTSigner']='FullControl'}
++$issuerGrants = @{$systemSid='FullControl'; $adminSid='FullControl'}
++Set-ExplicitAcl $store $true $storeGrants
++Set-ExplicitAcl $signer $true $signerGrants
++Set-ExplicitAcl $issuer $true $issuerGrants
++$tempRoot = Join-Path $root 'tmp'
++New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
++Set-ExplicitAcl $tempRoot $true $allRead
++foreach ($name in $serviceNames) {
++    $roleTemp = Join-Path $tempRoot $serviceRoles[$name]
++    New-Item -ItemType Directory -Path $roleTemp -Force | Out-Null
++    Set-ExplicitAcl $roleTemp $true @{$systemSid='FullControl'; $adminSid='FullControl'; $serviceSids[$name]='FullControl'}
++}
++
++$opensslPath = Join-Path $bin 'openssl.exe'
++$pythonArgs = @('-B', '-m', 'tests.vst.s2_4e_windows_provision', '--root', $root, '--repo', $app, '--openssl', $opensslPath, '--owner-sid', $userSid, '--run-id', $runId)
++$previousLocation = Get-Location
++try {
++    Set-Location -LiteralPath $app
++    & $pythonPath @pythonArgs
++    if ($LASTEXITCODE -ne 0) { throw "Test input preparation failed with exit code $LASTEXITCODE." }
++} finally { Set-Location $previousLocation }
++
++$readFileGrants = @{$systemSid='FullControl'; $adminSid='FullControl'}
++foreach ($sid in $serviceSids.Values) { $readFileGrants[$sid] = 'ReadAndExecute' }
++foreach ($path in (Get-ChildItem -LiteralPath $data -File -Force)) { Set-ExplicitAcl $path.FullName $false $readFileGrants }
++foreach ($path in (Get-ChildItem -LiteralPath $bin -File -Force)) { Set-ExplicitAcl $path.FullName $false $readFileGrants }
++foreach ($path in (Get-ChildItem -LiteralPath $launchers -File -Force)) { Set-ExplicitAcl $path.FullName $false $readFileGrants }
++foreach ($path in (Get-ChildItem -LiteralPath $app -File -Recurse -Force)) { Set-ExplicitAcl $path.FullName $false $allRead }
++foreach ($path in (Get-ChildItem -LiteralPath $app -Directory -Recurse -Force)) { Set-ExplicitAcl $path.FullName $true $allRead }
++$supervisorRead = @{$systemSid='FullControl'; $adminSid='FullControl'; $serviceSids['VSTSupervisor']='Read'}
++foreach ($name in @('event.key', 'startup.key', 'resolution.key', 'grant-private.pem')) {
++    Set-ExplicitAcl (Join-Path $store $name) $false $supervisorRead
++}
++$signerRead = @{$systemSid='FullControl'; $adminSid='FullControl'; $serviceSids['VSTSigner']='Read'}
++Set-ExplicitAcl (Join-Path $signer 'receipt.key') $false $signerRead
++$ownerPrivateGrant = @{$systemSid='FullControl'; $adminSid='FullControl'}
++Set-ExplicitAcl (Join-Path $issuer 'owner-private.pem') $false $ownerPrivateGrant
++
++$testTask = Join-Path $root 'run-e2e.ps1'
++$testTaskText = @"
++`$env:VST_S2E_INSTRUCTION_INPUT = '$(Join-Path $data 'owner-instruction.json')'
++`$env:VST_S2E_MANIFEST_INPUT = '$appManifest'
++Set-Location -LiteralPath '$app'
++& '$pythonPath' -B -m tests.vst.test_s2_owner_runner_windows_e2e *> '$log'
++exit `$LASTEXITCODE
++"@
++Set-Content -LiteralPath $testTask -Value $testTaskText -Encoding UTF8
++Set-ExplicitAcl $testTask $false $readFileGrants
++$taskAction = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$testTask`""
++$taskPrincipal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Highest
++$taskSettings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 5) -MultipleInstances IgnoreNew
++Register-ScheduledTask -TaskName $taskName -Action $taskAction -Principal $taskPrincipal -Settings $taskSettings | Out-Null
++
++foreach ($name in @('VSTSupervisor', 'VSTWorker', 'VSTSigner', 'VSTRunner', 'VSTDispatcher', 'VSTOwner')) {
++    Start-Service -Name $name
++    $deadline = [DateTime]::UtcNow.AddSeconds(30)
++    do {
++        Start-Sleep -Milliseconds 250
++        $service = Get-Service -Name $name
++        if ($service.Status -eq 'Running') { break }
++        if ([DateTime]::UtcNow -ge $deadline) { throw "Service $name did not enter RUNNING state." }
++    } while ($true)
++}
++
++Write-Output (ConvertTo-Json -Compress ([ordered]@{setup='READY'; run_id=$runId; task_id='S2-4E-WINDOWS-OWNER-RUNNER'; service_task=$taskName; output_log=$log; test_only=$true}))
++Stop-Transcript | Out-Null
+diff --git a/tests/vst/s2_4e_windows_provision.py b/tests/vst/s2_4e_windows_provision.py
+new file mode 100644
+index 0000000..4eaf4f0
+--- /dev/null
++++ b/tests/vst/s2_4e_windows_provision.py
+@@ -0,0 +1,212 @@
++"""Create disposable, test-only Owner -> Runner inputs for the Windows SCM E2E.
++
++This helper is invoked only by the elevated, one-shot local provisioner. It
++does not install or start Windows services and it does not create production
++keys, assignments, preflight evidence, or credentials.
++"""
++from __future__ import annotations
++
++import argparse
++import base64
++import hashlib
++import json
++import os
++from pathlib import Path
++import secrets
++import subprocess
++import sys
++from datetime import datetime, timedelta, timezone
++
++from tools.vst.contracts import manifest_sha256
++from tools.vst.dispatch_instruction import (
++    DISPATCH_INSTRUCTION_PURPOSE,
++    dispatch_instruction_signing_bytes,
++    validate_dispatch_instruction,
++)
++from tools.vst.store import Store
++
++
++def _write_json(path: Path, value: dict) -> None:
++    with path.open("xb") as stream:
++        stream.write(json.dumps(value, sort_keys=True, indent=2).encode("utf-8") + b"\n")
++
++
++def _run(argv: list[str]) -> None:
++    result = subprocess.run(
++        argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
++        stderr=subprocess.PIPE, check=False, timeout=10,
++        env={"SYSTEMROOT": os.environ.get("SYSTEMROOT", r"C:\Windows"), "PATH": ""},
++    )
++    if result.returncode:
++        raise RuntimeError(f"test-only key operation failed ({result.returncode})")
++
++
++def _ed25519_pair(openssl: Path, private: Path, public: Path) -> None:
++    _run([str(openssl), "genpkey", "-algorithm", "ED25519", "-out", str(private)])
++    _run([str(openssl), "pkey", "-in", str(private), "-pubout", "-out", str(public)])
++
++
++def seed(root: Path, repo: Path, openssl: Path, owner_sid: str, run_id: str) -> dict:
++    if os.name != "nt" or not root.is_absolute() or not repo.is_absolute():
++        raise RuntimeError("Windows provisioner requires absolute Windows paths")
++    data = root
++    store_root = root / "store"
++    signer_root = root / "signer"
++    issuer_root = root / "issuer-private"
++    for directory in (data, store_root, signer_root, issuer_root):
++        directory.mkdir(parents=True, exist_ok=True)
++
++    source_manifest = repo / "docs" / "sdlc" / "runtime-config" / "task-manifest.json"
++    manifest = json.loads(source_manifest.read_text(encoding="utf-8"))
++    if (manifest.get("task_id") != "S2-4E-WINDOWS-OWNER-RUNNER"
++            or manifest.get("retry_cap") != 0
++            or manifest.get("acceptance") != ["REQ-003"]):
++        raise RuntimeError("current task manifest is not the authorized S2-4E one-shot manifest")
++
++    owner_key_id = "s2e-owner-test-key"
++    grant_key_id = "s2e-runner-test-grant"
++    owner_private = issuer_root / "owner-private.pem"
++    owner_public = data / "owner-public.pem"
++    grant_private = store_root / "grant-private.pem"
++    grant_public = data / "grant-public.pem"
++    _ed25519_pair(openssl, owner_private, owner_public)
++    _ed25519_pair(openssl, grant_private, grant_public)
++
++    event_key = secrets.token_bytes(32)
++    startup_key = secrets.token_bytes(32)
++    resolution_key = secrets.token_bytes(32)
++    receipt_key = secrets.token_bytes(32)
++    event_key_path = store_root / "event.key"
++    startup_key_path = store_root / "startup.key"
++    resolution_key_path = store_root / "resolution.key"
++    receipt_key_path = signer_root / "receipt.key"
++    for path, payload in (
++        (event_key_path, event_key), (startup_key_path, startup_key),
++        (resolution_key_path, resolution_key), (receipt_key_path, receipt_key),
++    ):
++        with path.open("xb") as stream:
++            stream.write(payload)
++
++    store_path = store_root / "store.sqlite3"
++    anchor_path = store_root / "store.anchor"
++    ledger_path = signer_root / "signing.sqlite3"
++    model = manifest["model_policy"]
++    model_digest = hashlib.sha256(b"S2-4E local test-only model provenance").hexdigest()
++    audience = "vst-runner-service-v1"
++    owner_registry = {
++        owner_key_id: {
++            "principal": "Codex",
++            "purpose": DISPATCH_INSTRUCTION_PURPOSE,
++            "public_key_path": str(owner_public),
++        },
++    }
++
++    runtime = {
++        "data_root": str(data), "store_root": str(store_root),
++        "signer_root": str(signer_root),
++    }
++    owner_config = {
++        "principal": "Codex", "openssl_path": str(openssl),
++        "trust_registry": owner_registry, "interactive_owner_sid": owner_sid,
++    }
++    supervisor_config = {
++        "store_path": str(store_path), "anchor_path": str(anchor_path),
++        "event_key_path": str(event_key_path),
++        "startup_supervisor_key_path": str(startup_key_path),
++        "execution_resolution_key_path": str(resolution_key_path),
++        "execution_grant_key_id": grant_key_id,
++        "execution_grant_private_key_path": str(grant_private),
++        "execution_grant_trust_keys": {grant_key_id: str(grant_public)},
++        "openssl_path": str(openssl), "execution_grant_audience": audience,
++        "dispatch_instruction_trust_keys": owner_registry,
++        "model_provenance": {model: model_digest}, "run_id": run_id,
++        "dispatch_owner_principal": "Codex",
++    }
++    runner_config = {"repository_root": str(root / "app"), "runner_id": "VSTRunner"}
++    signer_config = {"receipt_key_path": str(receipt_key_path), "ledger_path": str(ledger_path)}
++    for name, value in (
++        ("runtime.json", runtime), ("owner.json", owner_config),
++        ("supervisor.json", supervisor_config), ("runner.json", runner_config),
++        ("signer.json", signer_config),
++    ):
++        _write_json(data / name, value)
++
++    manifest_digest = manifest_sha256(manifest)
++    with Store(
++        str(store_path), event_key=event_key, anchor_path=str(anchor_path),
++        sandbox_mode=False, supervisor_key=startup_key,
++        execution_resolution_key=resolution_key, supervisor_runner_id="VSTSupervisor",
++    ) as store:
++        store.init_slots(1)
++        story_id = manifest["story_id"]
++        store.open_story(story_id, manifest["project_id"], manifest["phase"])
++        # The Runner claim/reserve/complete each require
++        # min(owner, lease) expiry - now >= manifest timeout_sec + completion margin.
++        # The operator starts the E2E task some time after seeding, so keep ample slack.
++        epoch = store.acquire_epoch(story_id, "Codex", ttl_sec=7200)
++        store.register_task(manifest)
++        store.acquire_lease(
++            manifest["task_id"], story_id, "VSTRunner", epoch, 1, 5400,
++            supervisor_key=startup_key,
++        )
++
++    unsigned = {
++        "version": 1, "algorithm": "Ed25519", "purpose": DISPATCH_INSTRUCTION_PURPOSE,
++        "request_id": secrets.token_hex(16), "task_id": manifest["task_id"],
++        "slot": "runtime-tests", "attempt": 1, "epoch": epoch, "run_id": run_id,
++        "key_id": owner_key_id,
++        "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=90)).replace(
++            microsecond=0,
++        ).strftime("%Y-%m-%dT%H:%M:%SZ"),
++    }
++    payload_path = issuer_root / "owner-instruction-signing-input.bin"
++    signature_path = issuer_root / "owner-instruction-signature.bin"
++    # The signing-bytes helper validates the complete v1 envelope (signature included)
++    # and then drops the signature, so a well-formed placeholder is required here.
++    placeholder = {**unsigned, "signature": "A" * 86}
++    with payload_path.open("xb") as stream:
++        stream.write(dispatch_instruction_signing_bytes(placeholder))
++    _run([
++        str(openssl), "pkeyutl", "-sign", "-rawin", "-inkey", str(owner_private),
++        "-in", str(payload_path), "-out", str(signature_path),
++    ])
++    signature = base64.urlsafe_b64encode(signature_path.read_bytes()).decode("ascii").rstrip("=")
++    instruction = validate_dispatch_instruction({**unsigned, "signature": signature})
++    _write_json(data / "owner-instruction.json", instruction)
++    payload_path.unlink()
++    signature_path.unlink()
++
++    result = {
++        "project_id": "Virtual_scrum_team", "run_id": run_id,
++        "task_id": manifest["task_id"],
++        "manifest_sha256": manifest_digest, "owner_key_id": owner_key_id,
++        "grant_key_id": grant_key_id, "instruction_request_id": instruction["request_id"],
++        "service_names": ["VSTOwner", "VSTSupervisor", "VSTDispatcher", "VSTRunner", "VSTSigner", "VSTWorker"],
++        "runtime_root": str(root), "instruction_path": str(data / "owner-instruction.json"),
++        "manifest_path": str(source_manifest), "test_only": True,
++    }
++    _write_json(root / "provisioned.json", result)
++    print(json.dumps(result, sort_keys=True, separators=(",", ":")))
++    return result
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--root", type=Path, required=True)
++    parser.add_argument("--repo", type=Path, required=True)
++    parser.add_argument("--openssl", type=Path, required=True)
++    parser.add_argument("--owner-sid", required=True)
++    parser.add_argument("--run-id", required=True)
++    args = parser.parse_args()
++    try:
++        seed(args.root, args.repo, args.openssl, args.owner_sid, args.run_id)
++    except Exception as exc:
++        # Exception text carries useful path/contract context but never key bytes;
++        # OpenSSL stderr is intentionally omitted by _run to avoid leaking material.
++        print(f"S2-4E test setup failed: {type(exc).__name__}: {exc}", file=sys.stderr)
++        return 1
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/tools/vst/dispatcher_service.py b/tools/vst/dispatcher_service.py
+index 1c96072..0942c02 100644
+--- a/tools/vst/dispatcher_service.py
++++ b/tools/vst/dispatcher_service.py
+@@ -73,9 +73,21 @@ class StoreBackedDispatcher:
+     def shutdown(self) -> None:
+         self._shutdown.set()
+ 
++    def _next_dispatch_intent(self) -> dict[str, Any]:
++        """Bounded retry for the idempotent read only (issue/dispatch stay fail-stop)."""
++        attempts = 20
++        for attempt in range(attempts):
++            try:
++                return self.supervisor.next_dispatch_intent(self._cursor)
++            except (OSError, ConnectionError):
++                if attempt == attempts - 1 or self._shutdown.is_set():
++                    raise
++                self._shutdown.wait(min(0.2, 0.05 + 0.01 * attempt))
++        raise AssertionError("unreachable")  # pragma: no cover
++
+     def serve_forever(self) -> None:
+         while not self._shutdown.is_set():
+-            delivery = self.supervisor.next_dispatch_intent(self._cursor)
++            delivery = self._next_dispatch_intent()
+             intent = delivery["intent"]
+             if intent is None:
+                 self._cursor = delivery["cursor_idle"]
+diff --git a/tools/vst/windows_named_pipe.py b/tools/vst/windows_named_pipe.py
+index 98bbf0a..c758bc2 100644
+--- a/tools/vst/windows_named_pipe.py
++++ b/tools/vst/windows_named_pipe.py
+@@ -1,8 +1,9 @@
+ """Authenticated, bounded Windows named-pipe transport primitives for VST services.
+ 
+-The pipe DACL admits only the configured service SIDs plus LocalSystem. Both
+-ends verify the remote process token's service SID and that the peer PID is the
+-currently registered PID of the configured SCM service before exchanging data.
++The pipe DACL admits only the configured service SIDs plus LocalSystem, and only
++the server SID may create pipe instances. The server verifies the client token's
++SID; both ends verify that the peer PID is the currently registered PID of the
++configured SCM service before exchanging data.
+ This module provides bounded byte-stream operations, not a drop-in socket API:
+ Windows named pipes do not support a socket-style write-half shutdown. Protocol
+ framing, authorization, signing, and Store decisions remain with callers.
+@@ -11,6 +12,7 @@ framing, authorization, signing, and Store decisions remain with callers.
+ from __future__ import annotations
+ 
+ import ctypes
++import logging
+ import os
+ import re
+ import threading
+@@ -21,6 +23,7 @@ from typing import Iterable
+ from .contracts import ContractError
+ 
+ 
++_LOG = logging.getLogger(__name__)
+ _PIPE_PREFIX = r"\\.\pipe\vst-"
+ _SID_RE = re.compile(r"S-1-\d+(?:-\d+){1,15}\Z", re.ASCII)
+ _PIPE_NAME_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,79}\Z", re.ASCII)
+@@ -32,6 +35,11 @@ _ERROR_NO_DATA = 232
+ _ERROR_PIPE_CONNECTED = 535
+ _ERROR_PIPE_LISTENING = 536
+ _ERROR_SEM_TIMEOUT = 121
++_ERROR_NO_IMPERSONATION_TOKEN = 1309
++_TOKEN_USER_CLASS = 1
++_TOKEN_GROUPS_CLASS = 2
++_SE_GROUP_ENABLED = 0x00000004
++_SE_GROUP_USE_FOR_DENY_ONLY = 0x00000010
+ 
+ _PIPE_ACCESS_DUPLEX = 0x00000003
+ _PIPE_REJECT_REMOTE_CLIENTS = 0x00000008
+@@ -41,10 +49,19 @@ _PIPE_READMODE_BYTE = 0x00000000
+ _PIPE_WAIT = 0x00000000
+ _PIPE_NOWAIT = 0x00000001
+ _PIPE_UNLIMITED_INSTANCES = 255
+-_GENERIC_READ = 0x80000000
+-_GENERIC_WRITE = 0x40000000
+-_GENERIC_READ_SDDL = "GR"
+-_GENERIC_WRITE_SDDL = "GW"
++# Explicit pipe rights (FILE_READ_DATA|FILE_WRITE_DATA|FILE_READ_ATTRIBUTES|
++# FILE_WRITE_ATTRIBUTES|SYNCHRONIZE). GENERIC_WRITE would add FILE_APPEND_DATA,
++# which on a pipe is FILE_CREATE_PIPE_INSTANCE (0x4) and must stay server-only.
++_PEER_PIPE_ACCESS = 0x00100183
++_FILE_CREATE_PIPE_INSTANCE = 0x00000004
++# The server needs the full FILE_GENERIC_READ|WRITE set (0x12019f, incl. CREATE_PIPE_INSTANCE)
++# so that CreateNamedPipeW for later instances (which requests GENERIC_READ|WRITE) passes the
++# DACL check; peers never get any of these extra bits.
++_SERVER_PIPE_ACCESS = 0x0012019F | _FILE_CREATE_PIPE_INSTANCE
++_SECURITY_SQOS_PRESENT = 0x00100000
++_SECURITY_IDENTIFICATION = 0x00010000
++_ERROR_PIPE_BUSY = 231
++_HANDSHAKE_TIMEOUT_SEC = 5.0
+ _OPEN_EXISTING = 3
+ _FILE_ATTRIBUTE_NORMAL = 0x00000080
+ _TOKEN_QUERY = 0x0008
+@@ -149,7 +166,10 @@ def _api() -> tuple[ctypes.WinDLL, ctypes.WinDLL]:
+     ]
+     advapi32.RevertToSelf.argtypes = []
+     kernel32.GetCurrentThread.argtypes = []
++    kernel32.LocalFree.restype = wintypes.HLOCAL
+     kernel32.LocalFree.argtypes = [wintypes.HLOCAL]
++    kernel32.FlushFileBuffers.restype = wintypes.BOOL
++    kernel32.FlushFileBuffers.argtypes = [wintypes.HANDLE]
+     advapi32.OpenSCManagerW.restype = wintypes.HANDLE
+     advapi32.OpenSCManagerW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD]
+     advapi32.OpenServiceW.restype = wintypes.HANDLE
+@@ -190,6 +210,10 @@ def _validated_sids(values: Iterable[str]) -> tuple[str, ...]:
+     return result
+ 
+ 
++_MAX_CONNECT_WAIT_SEC = 30.0
++_MAX_CLIENT_IO_TIMEOUT_SEC = 3600.0
++
++
+ def _validated_timeout(value: object, *, label: str) -> float:
+     if (isinstance(value, bool) or not isinstance(value, (int, float))
+             or not 0.1 <= value <= 30.0):
+@@ -197,19 +221,74 @@ def _validated_timeout(value: object, *, label: str) -> float:
+     return float(value)
+ 
+ 
+-def _security_descriptor(allowed_sids: tuple[str, ...]) -> tuple[ctypes.c_void_p, ctypes.WinDLL]:
++def _security_descriptor(server_sid: str, peer_sids: tuple[str, ...]) -> ctypes.c_void_p:
++    """Build the pipe DACL; the caller frees the result with kernel32.LocalFree.
++
++    Peers (and LocalSystem) get explicit connect/read/write masks only. Only the
++    server's own SID additionally holds FILE_CREATE_PIPE_INSTANCE, so no peer can
++    create or squat a pipe instance. No generic-all/owner/DACL-management rights.
++    """
+     _kernel32, advapi32 = _api()
+-    # LocalSystem retains the minimum rights needed to connect to and service
+-    # the endpoint. Configured peers receive only the byte-stream rights they
+-    # need; do not grant generic-all/owner/DACL-management rights.
+-    trustees = tuple(dict.fromkeys(("S-1-5-18", *allowed_sids)))
+-    dacl = "D:P" + "".join(f"(A;;{_GENERIC_READ_SDDL}{_GENERIC_WRITE_SDDL};;;{sid})" for sid in trustees)
++    masks: dict[str, int] = {"S-1-5-18": _PEER_PIPE_ACCESS}
++    for sid in peer_sids:
++        masks[sid] = _PEER_PIPE_ACCESS
++    masks[server_sid] = _SERVER_PIPE_ACCESS
++    dacl = "D:P" + "".join(f"(A;;0x{mask:x};;;{sid})" for sid, mask in masks.items())
+     descriptor = ctypes.c_void_p()
+     if not advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW(
+         dacl, _SDDL_REVISION_1, ctypes.byref(descriptor), None,
+     ):
+         raise _last_error("cannot build named-pipe security descriptor")
+-    return descriptor, advapi32
++    return descriptor
++
++
++def _primary_token_has_enabled_sid(token: wintypes.HANDLE, sid: ctypes.c_void_p) -> bool:
++    _kernel32, advapi32 = _api()
++    advapi32.GetTokenInformation.restype = wintypes.BOOL
++    advapi32.GetTokenInformation.argtypes = [
++        wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD,
++        ctypes.POINTER(wintypes.DWORD),
++    ]
++    advapi32.EqualSid.restype = wintypes.BOOL
++    advapi32.EqualSid.argtypes = [wintypes.LPVOID, wintypes.LPVOID]
++    # The token user (e.g. S-1-5-18 for LocalSystem) is not listed among the groups
++    # but counts as membership, exactly as in CheckTokenMembership.
++    needed = wintypes.DWORD()
++    advapi32.GetTokenInformation(token, _TOKEN_USER_CLASS, None, 0, ctypes.byref(needed))
++    if needed.value <= 0 or needed.value > 4096:
++        raise ContractError("Windows token user is unavailable")
++    user_buffer = ctypes.create_string_buffer(needed.value)
++    if not advapi32.GetTokenInformation(
++        token, _TOKEN_USER_CLASS, user_buffer, needed.value, ctypes.byref(needed),
++    ):
++        raise _last_error("cannot read Windows token user")
++    user_sid = ctypes.cast(user_buffer, ctypes.POINTER(wintypes.LPVOID)).contents.value
++    if advapi32.EqualSid(user_sid, sid):
++        return True
++    needed = wintypes.DWORD()
++    advapi32.GetTokenInformation(token, _TOKEN_GROUPS_CLASS, None, 0, ctypes.byref(needed))
++    if needed.value <= 0 or needed.value > 1024 * 1024:
++        raise ContractError("Windows token groups are unavailable")
++    buffer = ctypes.create_string_buffer(needed.value)
++    if not advapi32.GetTokenInformation(
++        token, _TOKEN_GROUPS_CLASS, buffer, needed.value, ctypes.byref(needed),
++    ):
++        raise _last_error("cannot read Windows token groups")
++
++    class _SidAndAttributes(ctypes.Structure):
++        _fields_ = [("Sid", wintypes.LPVOID), ("Attributes", wintypes.DWORD)]
++
++    count = ctypes.cast(buffer, ctypes.POINTER(wintypes.DWORD)).contents.value
++    offset = ctypes.sizeof(ctypes.c_void_p)  # GroupCount DWORD padded to pointer alignment
++    entries = ctypes.cast(
++        ctypes.addressof(buffer) + offset, ctypes.POINTER(_SidAndAttributes * count),
++    ).contents
++    for entry in entries:
++        if not advapi32.EqualSid(entry.Sid, sid):
++            continue
++        attributes = entry.Attributes
++        return bool(attributes & _SE_GROUP_ENABLED) and not attributes & _SE_GROUP_USE_FOR_DENY_ONLY
++    return False
+ 
+ 
+ def _check_token_sid(token: wintypes.HANDLE, expected_sid: str) -> bool:
+@@ -219,9 +298,14 @@ def _check_token_sid(token: wintypes.HANDLE, expected_sid: str) -> bool:
+         raise ContractError("configured Windows service SID is invalid")
+     try:
+         member = wintypes.BOOL()
+-        if not advapi32.CheckTokenMembership(token, sid, ctypes.byref(member)):
++        if advapi32.CheckTokenMembership(token, sid, ctypes.byref(member)):
++            return bool(member.value)
++        if ctypes.get_last_error() != _ERROR_NO_IMPERSONATION_TOKEN:
+             raise _last_error("cannot verify Windows named-pipe peer SID")
+-        return bool(member.value)
++        # CheckTokenMembership accepts only impersonation tokens. For a primary
++        # process token, read its groups (TOKEN_QUERY suffices) and require the
++        # SID to be enabled and not deny-only.
++        return _primary_token_has_enabled_sid(token, sid)
+     finally:
+         _kernel32, _advapi32 = _api()
+         _kernel32.LocalFree(sid)
+@@ -264,26 +348,6 @@ def _check_token_user_sid(token: wintypes.HANDLE, expected_sid: str) -> bool:
+         kernel32.LocalFree(sid_text)
+ 
+ 
+-def _verify_server_sid(pipe: wintypes.HANDLE, expected_sid: str) -> None:
+-    kernel32, advapi32 = _api()
+-    pid = wintypes.ULONG()
+-    if not kernel32.GetNamedPipeServerProcessId(pipe, ctypes.byref(pid)) or pid.value <= 0:
+-        raise _last_error("cannot identify named-pipe server process")
+-    process = kernel32.OpenProcess(_PROCESS_QUERY_LIMITED_INFORMATION, False, pid.value)
+-    if not process:
+-        raise _last_error("cannot open named-pipe server process")
+-    token = wintypes.HANDLE()
+-    try:
+-        if not advapi32.OpenProcessToken(process, _TOKEN_QUERY, ctypes.byref(token)):
+-            raise _last_error("cannot inspect named-pipe server identity")
+-        if not _check_token_sid(token, expected_sid):
+-            raise ContractError("Windows named-pipe server service SID is unauthorized")
+-    finally:
+-        if token:
+-            kernel32.CloseHandle(token)
+-        kernel32.CloseHandle(process)
+-
+-
+ def _service_process_id(service_name: str) -> int:
+     """Return the active PID registered for one Windows service name."""
+     kernel32, advapi32 = _api()
+@@ -358,11 +422,12 @@ class WindowsNamedPipeConnection:
+ 
+     def __init__(
+         self, handle: wintypes.HANDLE, *, timeout_sec: float = 10.0,
+-        prefetched: bytes = b"",
++        prefetched: bytes = b"", server_side: bool = False,
+     ) -> None:
+         if not isinstance(timeout_sec, (int, float)) or isinstance(timeout_sec, bool) or timeout_sec <= 0:
+             raise ContractError("Windows named-pipe timeout is invalid")
+         self._handle = handle
++        self._server_side = bool(server_side)
+         self._timeout_sec = float(timeout_sec)
+         self._closed = False
+         if not isinstance(prefetched, bytes):
+@@ -420,9 +485,9 @@ class WindowsNamedPipeConnection:
+             written = wintypes.DWORD()
+             if not kernel32.WriteFile(self._handle, buffer, len(chunk), ctypes.byref(written), None):
+                 code = ctypes.get_last_error()
+-                if code == _ERROR_NO_DATA and time.monotonic() < deadline:
+-                    time.sleep(0.005)
+-                    continue
++                if code in (_ERROR_NO_DATA, _ERROR_BROKEN_PIPE):
++                    # Peer closed: terminal, never spin until the deadline.
++                    raise BrokenPipeError(code, "Windows named-pipe peer closed the connection")
+                 raise _last_error("cannot write Windows named-pipe data")
+             if written.value <= 0:
+                 if time.monotonic() >= deadline:
+@@ -435,6 +500,10 @@ class WindowsNamedPipeConnection:
+         if not self._closed:
+             kernel32, _advapi32 = _api()
+             self._closed = True
++            if self._server_side:
++                # Deliver buffered response bytes before the instance is torn down.
++                kernel32.FlushFileBuffers(self._handle)
++                kernel32.DisconnectNamedPipe(self._handle)
+             kernel32.CloseHandle(self._handle)
+ 
+     def __enter__(self) -> "WindowsNamedPipeConnection":
+@@ -487,27 +556,50 @@ class WindowsNamedPipeClient:
+         _validated_sids((expected_server_sid,))
+         self.expected_server_sid = expected_server_sid
+         self.expected_server_service = _service_name(expected_server_service)
+-        self.timeout_sec = _validated_timeout(timeout_sec, label="client timeout")
++        # The I/O timeout covers a whole request/response, which for dispatch can last
++        # as long as the task itself; only the endpoint wait is bounded to 30 seconds.
++        if (isinstance(timeout_sec, bool) or not isinstance(timeout_sec, (int, float))
++                or not 0.1 <= timeout_sec <= _MAX_CLIENT_IO_TIMEOUT_SEC):
++            raise ContractError("Windows named-pipe client timeout is outside its allowed range")
++        self.timeout_sec = float(timeout_sec)
+ 
+     def connect(self) -> WindowsNamedPipeConnection:
+         kernel32, _advapi32 = _api()
+-        timeout_ms = int(self.timeout_sec * 1000)
+-        if not kernel32.WaitNamedPipeW(self.path, timeout_ms):
+-            code = ctypes.get_last_error()
+-            if code == _ERROR_SEM_TIMEOUT:
++        deadline = time.monotonic() + min(self.timeout_sec, _MAX_CONNECT_WAIT_SEC)
++        backoff = 0.02
++        handle = wintypes.HANDLE(-1).value
++        # The server keeps one pending instance, but a client can still arrive while
++        # that instance is being replaced (FILE_NOT_FOUND), find every instance busy
++        # (PIPE_BUSY) or time out in WaitNamedPipe (SEM_TIMEOUT): retry those only.
++        while True:
++            remaining = deadline - time.monotonic()
++            if remaining <= 0:
+                 raise TimeoutError("Windows named-pipe endpoint did not become available")
+-            raise _last_error("Windows named-pipe endpoint is unavailable")
+-        handle = kernel32.CreateFileW(
+-            self.path, _GENERIC_READ | _GENERIC_WRITE, 0, None, _OPEN_EXISTING,
+-            _FILE_ATTRIBUTE_NORMAL, None,
+-        )
+-        if handle == wintypes.HANDLE(-1).value:
+-            raise _last_error("cannot open Windows named-pipe endpoint")
++            wait_ms = max(1, min(int(remaining * 1000), 1000))
++            if kernel32.WaitNamedPipeW(self.path, wait_ms):
++                handle = kernel32.CreateFileW(
++                    self.path, _PEER_PIPE_ACCESS, 0, None, _OPEN_EXISTING,
++                    _FILE_ATTRIBUTE_NORMAL | _SECURITY_SQOS_PRESENT | _SECURITY_IDENTIFICATION,
++                    None,
++                )
++                if handle != wintypes.HANDLE(-1).value:
++                    break
++                code = ctypes.get_last_error()
++                failure = _last_error("cannot open Windows named-pipe endpoint")
++            else:
++                code = ctypes.get_last_error()
++                failure = _last_error("Windows named-pipe endpoint is unavailable")
++            if code not in (_ERROR_FILE_NOT_FOUND, _ERROR_PIPE_BUSY, _ERROR_SEM_TIMEOUT):
++                raise failure
++            time.sleep(min(backoff, max(0.0, deadline - time.monotonic())))
++            backoff = min(backoff * 2, 0.1)
+         try:
+             mode = wintypes.DWORD(_PIPE_READMODE_BYTE | _PIPE_NOWAIT)
+             if not kernel32.SetNamedPipeHandleState(handle, ctypes.byref(mode), None, None):
+                 raise _last_error("cannot configure Windows named-pipe client")
+-            _verify_server_sid(handle, self.expected_server_sid)
++            # Server authenticity: only the server SID may create instances (pipe DACL)
++            # and the pipe's server PID must be the SCM-registered service process. The
++            # server's process token is not opened: another virtual account may not.
+             _verify_service_process(
+                 handle, service_name=self.expected_server_service, server=True,
+             )
+@@ -551,8 +643,49 @@ class WindowsNamedPipeListener:
+         self._closed = False
+         self._close_event = threading.Event()
+         self._state_lock = threading.Lock()
+-        self._active_handle: wintypes.HANDLE | None = None
+         self._accept_lock = threading.Lock()
++        # The listener always owns one pending (listening) instance after first use;
++        # only the very first instance carries FILE_FLAG_FIRST_PIPE_INSTANCE.
++        self._pending: wintypes.HANDLE | None = None
++        self._first_created = False
++
++    def _create_instance(self, *, first: bool) -> wintypes.HANDLE:
++        kernel32, _advapi32 = _api()
++        client_sids = (
++            tuple(sid for sid, _service in self.allowed_client_services)
++            + self.allowed_client_user_sids
++        )
++        descriptor = _security_descriptor(self.server_sid, client_sids)
++        try:
++            attributes = _SecurityAttributes(ctypes.sizeof(_SecurityAttributes), descriptor, False)
++            handle = kernel32.CreateNamedPipeW(
++                self.path,
++                _PIPE_ACCESS_DUPLEX | (_FILE_FLAG_FIRST_PIPE_INSTANCE if first else 0),
++                _PIPE_TYPE_BYTE | _PIPE_READMODE_BYTE | _PIPE_NOWAIT | _PIPE_REJECT_REMOTE_CLIENTS,
++                _PIPE_UNLIMITED_INSTANCES, 64 * 1024, 64 * 1024, 0,
++                ctypes.byref(attributes),
++            )
++        finally:
++            kernel32.LocalFree(descriptor)
++        if handle == wintypes.HANDLE(-1).value or not handle:
++            raise _last_error("cannot create authenticated Windows named-pipe endpoint")
++        return handle
++
++    def _pending_handle(self) -> wintypes.HANDLE:
++        with self._state_lock:
++            if self._closed:
++                raise OSError("Windows named-pipe listener is closed")
++            if self._pending is None:
++                self._pending = self._create_instance(first=not self._first_created)
++                self._first_created = True
++            return self._pending
++
++    def _discard_pending(self, handle: wintypes.HANDLE) -> None:
++        kernel32, _advapi32 = _api()
++        with self._state_lock:
++            if self._pending == handle:
++                self._pending = None
++        kernel32.CloseHandle(handle)
+ 
+     def accept(self, timeout_sec: float | None = None) -> WindowsNamedPipeConnection | None:
+         if self._closed:
+@@ -562,96 +695,96 @@ class WindowsNamedPipeListener:
+         timeout = _validated_timeout(timeout, label="accept timeout")
+         if not self._accept_lock.acquire(blocking=False):
+             raise ContractError("Windows named-pipe listener already has an active accept")
+-        handle = wintypes.HANDLE(-1).value
++        connected = None
+         transferred = False
+         try:
+-            client_sids = (
+-                tuple(sid for sid, _service in self.allowed_client_services)
+-                + self.allowed_client_user_sids
+-            )
+-            descriptor, advapi32 = _security_descriptor((self.server_sid, *client_sids))
+-            try:
+-                attributes = _SecurityAttributes(ctypes.sizeof(_SecurityAttributes), descriptor, False)
+-                deadline = time.monotonic() + timeout
+-                handle = kernel32.CreateNamedPipeW(
+-                    self.path,
+-                    _PIPE_ACCESS_DUPLEX | _FILE_FLAG_FIRST_PIPE_INSTANCE | _PIPE_REJECT_REMOTE_CLIENTS,
+-                    _PIPE_TYPE_BYTE | _PIPE_READMODE_BYTE | _PIPE_NOWAIT,
+-                    _PIPE_UNLIMITED_INSTANCES, 64 * 1024, 64 * 1024, 0,
+-                    ctypes.byref(attributes),
+-                )
+-            finally:
+-                advapi32.LocalFree(descriptor)
+-            if handle == wintypes.HANDLE(-1).value:
+-                raise _last_error("cannot create authenticated Windows named-pipe endpoint")
+-            with self._state_lock:
+-                if self._closed:
+-                    kernel32.CloseHandle(handle)
+-                    handle = wintypes.HANDLE(-1).value
++            pending = self._pending_handle()
++            deadline = time.monotonic() + timeout
++            while True:
++                if self._close_event.is_set():
+                     raise OSError("Windows named-pipe listener is closed")
+-                self._active_handle = handle
+-            _verify_service_process(
+-                handle, service_name=self.server_service, server=True,
+-            )
+-            while time.monotonic() < deadline and not self._close_event.is_set():
+-                if kernel32.ConnectNamedPipe(handle, None):
++                if time.monotonic() >= deadline:
++                    return None  # same pending instance stays listening
++                if kernel32.ConnectNamedPipe(pending, None):
+                     break
+                 code = ctypes.get_last_error()
+-                if code == _ERROR_PIPE_CONNECTED:
++                # NO_DATA: a client connected and already left; it is dropped below.
++                if code in (_ERROR_PIPE_CONNECTED, _ERROR_NO_DATA):
+                     break
+                 if code != _ERROR_PIPE_LISTENING:
+-                    raise _last_error("cannot accept Windows named-pipe client")
++                    failure = _last_error("cannot accept Windows named-pipe client")
++                    self._discard_pending(pending)
++                    raise failure
+                 time.sleep(0.005)
+-            else:
+-                if self._close_event.is_set():
++            # A client is attached: the next pending instance must exist before this
++            # one is handed out, so there is never a gap without a listening instance.
++            connected = pending
++            try:
++                replacement = self._create_instance(first=False)
++            except BaseException:
++                with self._state_lock:
++                    if self._pending == connected:
++                        self._pending = None
++                raise
++            with self._state_lock:
++                if self._closed:
++                    kernel32.CloseHandle(replacement)
++                    self._pending = None
+                     raise OSError("Windows named-pipe listener is closed")
++                self._pending = replacement
++            try:
++                mode = wintypes.DWORD(_PIPE_READMODE_BYTE | _PIPE_NOWAIT)
++                if not kernel32.SetNamedPipeHandleState(connected, ctypes.byref(mode), None, None):
++                    raise _last_error("cannot configure Windows named-pipe server")
++                first_byte = _read_initial_client_byte(
++                    connected, deadline=time.monotonic() + _HANDSHAKE_TIMEOUT_SEC,
++                    close_event=self._close_event,
++                )
++                if first_byte is None:
++                    return None
++                _verify_client_sid(
++                    connected, self.allowed_client_services, self.allowed_client_user_sids,
++                )
++            except (OSError, ContractError) as exc:
++                if self._close_event.is_set():
++                    raise OSError("Windows named-pipe listener is closed") from exc
++                _LOG.warning("dropped Windows named-pipe client on %s: %s", self.path, exc)
+                 return None
+-            mode = wintypes.DWORD(_PIPE_READMODE_BYTE | _PIPE_NOWAIT)
+-            if not kernel32.SetNamedPipeHandleState(handle, ctypes.byref(mode), None, None):
+-                raise _last_error("cannot configure Windows named-pipe server")
+-            first_byte = _read_initial_client_byte(
+-                handle, deadline=time.monotonic() + self.timeout_sec,
+-                close_event=self._close_event,
+-            )
+-            if first_byte is None:
+-                return None
+-            _verify_client_sid(
+-                handle, self.allowed_client_services, self.allowed_client_user_sids,
+-            )
+             connection = WindowsNamedPipeConnection(
+-                handle, timeout_sec=self.timeout_sec, prefetched=first_byte,
++                connected, timeout_sec=self.timeout_sec, prefetched=first_byte,
++                server_side=True,
+             )
+             with self._state_lock:
+                 if self._closed:
+                     raise OSError("Windows named-pipe listener closed during accept")
+-                self._active_handle = None
+-                transferred = True
++            transferred = True
+             return connection
+-        except Exception:
+-            if handle != wintypes.HANDLE(-1).value:
+-                with self._state_lock:
+-                    closed_by_close = self._closed and self._active_handle is None
+-                if not closed_by_close:
+-                    kernel32.DisconnectNamedPipe(handle)
+-            raise
+         finally:
+-            with self._state_lock:
+-                if self._active_handle == handle:
+-                    self._active_handle = None
+-                closed_by_close = self._closed
+-            if handle != wintypes.HANDLE(-1).value and not closed_by_close and not transferred:
+-                kernel32.CloseHandle(handle)
++            if connected is not None and not transferred:
++                kernel32.DisconnectNamedPipe(connected)
++                kernel32.CloseHandle(connected)
+             self._accept_lock.release()
++            if self._closed:
++                self._close_pending()
+ 
+-    def close(self) -> None:
++    def _close_pending(self) -> None:
+         kernel32, _advapi32 = _api()
++        with self._state_lock:
++            handle = self._pending
++            self._pending = None
++        if handle is not None:
++            kernel32.CloseHandle(handle)
++
++    def close(self) -> None:
+         with self._state_lock:
+             if self._closed:
+                 return
+             self._closed = True
+             self._close_event.set()
+-            handle = self._active_handle
+-            self._active_handle = None
+-        if handle is not None:
+-            kernel32.DisconnectNamedPipe(handle)
+-            kernel32.CloseHandle(handle)
++        # An active accept notices the close event and releases the pending instance
++        # itself; otherwise release it here.
++        if self._accept_lock.acquire(blocking=False):
++            try:
++                self._close_pending()
++            finally:
++                self._accept_lock.release()
+diff --git a/tools/vst/windows_service_host.py b/tools/vst/windows_service_host.py
+index 7018495..a86575f 100644
+--- a/tools/vst/windows_service_host.py
++++ b/tools/vst/windows_service_host.py
+@@ -61,6 +61,7 @@ _SERVICE_CONFIG_SERVICE_SID_INFO = 5
+ _SERVICE_SID_TYPE_UNRESTRICTED = 1
+ _SERVICE_SID_TYPE_RESTRICTED = 3
+ _SE_FILE_OBJECT = 1
++_OWNER_SECURITY_INFORMATION = 0x00000001
+ _DACL_SECURITY_INFORMATION = 0x00000004
+ _SE_DACL_PROTECTED = 0x1000
+ _ACL_SIZE_INFORMATION = 2
+@@ -150,18 +151,20 @@ class WindowsRuntimeConfig:
+             allowed_sids={system_sid, administrators_sid, *all_service_sids},
+             writable_sids={system_sid, administrators_sid}, require_protected=True,
+         )
+-        assert_path_acl(
+-            supplied["store_root"],
+-            allowed_sids={system_sid, administrators_sid, identities["supervisor"].service_sid},
+-            writable_sids={system_sid, administrators_sid, identities["supervisor"].service_sid},
+-            require_protected=True,
+-        )
+-        assert_path_acl(
+-            supplied["signer_root"],
+-            allowed_sids={system_sid, administrators_sid, identities["signer"].service_sid},
+-            writable_sids={system_sid, administrators_sid, identities["signer"].service_sid},
+-            require_protected=True,
+-        )
++        for root_name, owner_role in (("store_root", "supervisor"), ("signer_root", "signer")):
++            owner_sids = {system_sid, administrators_sid, identities[owner_role].service_sid}
++            try:
++                assert_path_acl(
++                    supplied[root_name], allowed_sids=owner_sids, writable_sids=owner_sids,
++                    require_protected=True,
++                )
++            except OSError as exc:
++                # A private role root is deliberately unreadable (even its ACL) to the
++                # other roles. Access denied is therefore the expected boundary for
++                # them; the owning role re-verifies this root in full before it reads
++                # any key from it (read_role_private_file / read_signer_private_key).
++                if exc.errno != 5:
++                    raise
+         return cls(
+             data_root=supplied["data_root"], store_root=supplied["store_root"],
+             signer_root=supplied["signer_root"], role_identities=identities,
+@@ -425,7 +428,9 @@ def assert_path_acl(path: str, *, allowed_sids: set[str], writable_sids: set[str
+     dacl = ctypes.c_void_p()
+     descriptor = ctypes.c_void_p()
+     result = advapi.GetNamedSecurityInfoW(
+-        absolute, _SE_FILE_OBJECT, _DACL_SECURITY_INFORMATION,
++        # The owner is verified below, so it must be requested together with the DACL;
++        # requesting only the DACL leaves the owner pointer NULL on every path.
++        absolute, _SE_FILE_OBJECT, _OWNER_SECURITY_INFORMATION | _DACL_SECURITY_INFORMATION,
+         ctypes.byref(owner), ctypes.byref(group), ctypes.byref(dacl), None,
+         ctypes.byref(descriptor),
+     )
+@@ -547,6 +552,40 @@ def read_role_private_file(path: str, *, service_sid: str, service_root: str,
+     return content
+ 
+ 
++def _report_service_failure(advapi: Any, service_name: str, exc: BaseException) -> None:
++    """Record a start/run failure in the Windows Application event log (best effort).
++
++    Only the exception type, message and code locations are recorded; contract
++    errors never carry key bytes. A logging failure must not mask the stop status.
++    """
++    try:
++        import traceback
++
++        text = "VST service %s stopped: %s" % (
++            service_name, "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
++        )
++        text = text[:30000]
++        advapi.RegisterEventSourceW.restype = wintypes.HANDLE
++        advapi.RegisterEventSourceW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR]
++        advapi.ReportEventW.restype = wintypes.BOOL
++        advapi.ReportEventW.argtypes = [
++            wintypes.HANDLE, wintypes.WORD, wintypes.WORD, wintypes.DWORD, wintypes.LPVOID,
++            wintypes.WORD, wintypes.DWORD, ctypes.POINTER(wintypes.LPCWSTR), wintypes.LPVOID,
++        ]
++        advapi.DeregisterEventSource.restype = wintypes.BOOL
++        advapi.DeregisterEventSource.argtypes = [wintypes.HANDLE]
++        source = advapi.RegisterEventSourceW(None, service_name)
++        if not source:
++            return
++        try:
++            strings = (wintypes.LPCWSTR * 1)(text)
++            advapi.ReportEventW(source, 0x0001, 0, 1, None, 1, 0, strings, None)
++        finally:
++            advapi.DeregisterEventSource(source)
++    except Exception:
++        return
++
++
+ def run_scm_service(service_name: str, target_factory: Callable[[], Any]) -> None:
+     """Run one real own-process service through StartServiceCtrlDispatcherW."""
+     if os.name != "nt":
+@@ -614,7 +653,9 @@ def run_scm_service(service_name: str, target_factory: Callable[[], Any]) -> Non
+             publish(SERVICE_RUNNING, SERVICE_ACCEPT_STOP)
+             target.serve_forever()
+             publish(SERVICE_STOPPED)
+-        except Exception:
++        except Exception as exc:
++            # Never fail silently: SCM itself only reports "Incorrect function".
++            _report_service_failure(advapi, service_name, exc)
+             try:
+                 publish(SERVICE_STOPPED, winerror=1)
+             except Exception:
+@@ -667,7 +708,17 @@ def main() -> None:
+     except (KeyError, ImportError) as exc:
+         raise ContractError("SCM role is not available in the local runtime") from exc
+     sys.argv = [sys.argv[0], "--windows-scm", *role_arguments]
+-    service.main()
++    try:
++        service.main()
++    except Exception as exc:
++        # Failures before run_scm_service (config load, ACL checks, key reads) would
++        # otherwise reach SCM only as "service did not respond"; record them first.
++        try:
++            advapi, _kernel = _win_api()
++            _report_service_failure(advapi, service_name_for_role(role), exc)
++        except Exception:
++            pass
++        raise
+ 
+ 
+ if __name__ == "__main__":

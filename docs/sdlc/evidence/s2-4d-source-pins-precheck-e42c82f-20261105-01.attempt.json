@@ -1,0 +1,33 @@
+{
+  "attempt_file": "s2-4d-source-pins-precheck-e42c82f-20261105-01.attempt.json",
+  "candidate_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-runtime-grant-candidate-e42c82f-20261105.json",
+  "candidate_sha256": "a87d911ba70d1f86c68ff086b080f3bf5ecc42492e63a67434bfde485b7abe3d",
+  "cwd": "D:\\Repo\\Virtual_scrum_team",
+  "exit_code": 0,
+  "exit_code_file": "s2-4d-source-pins-precheck-e42c82f-20261105-01.exit-code.txt",
+  "finished_utc": "2026-11-05T06:33:36.764729+00:00",
+  "head_expected": "e42c82ff297902991b9b6e1aa322f44ca08bffb9",
+  "inner_source_sha256": "7de5c1c063d00a6f81c3b74f671696fb709ec84a3b6191d4872d03aa0fdd2cf1",
+  "launcher_sha256": "bfad0665c6081e23a4b1052510370db793c2908df5c17e78a690bb84ec25f09d",
+  "outer_argv": [
+    "C:\\Python314\\python.exe",
+    "-I",
+    "-B",
+    "-S",
+    "-c",
+    "import datetime,hashlib,importlib.util,json,pathlib,subprocess,sys\nroot=pathlib.Path(r'D:\\Repo\\Virtual_scrum_team'); ev=root/'docs/sdlc/evidence'; candidate_path=ev/'s2-4d-runtime-grant-candidate-e42c82f-20261105.json'; module_path=root/'tools/qa/run_s2_runtime_qualification.py'\ndef git(*args): return subprocess.run(['git','-C',str(root),*args],stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,shell=False,check=True,text=True,timeout=20).stdout.strip()\nhead=git('rev-parse','HEAD'); upstream=git('rev-parse','@{upstream}')\nif head!='e42c82ff297902991b9b6e1aa322f44ca08bffb9' or upstream!=head: raise SystemExit('HEAD_UPSTREAM_MISMATCH head='+head+' upstream='+upstream)\ncandidate_raw=candidate_path.read_bytes(); candidate=json.loads(candidate_raw)\nif candidate.get('schema')!='VST_S2_RUNTIME_AUTH_CANDIDATE_V1' or 'authorization' in candidate: raise SystemExit('CANDIDATE_SCHEMA_OR_AUTH_FIELD_INVALID')\nspec=importlib.util.spec_from_file_location('s2_runtime_qualification_importsafe',module_path)\nif spec is None or spec.loader is None: raise SystemExit('IMPORT_SPEC_UNAVAILABLE')\nmodule=importlib.util.module_from_spec(spec); spec.loader.exec_module(module)\nmodule.verify_source_pins(root,{'identity':candidate['identity'],'source_pins':candidate['source_pins']})\nresult={'operation':'import-safe verify_source_pins only','result':'PASS','head':head,'upstream':upstream,'candidate_sha256':hashlib.sha256(candidate_raw).hexdigest(),'runtime_source_head':candidate['identity']['runtime_source_head'],'qualification_source_head':candidate['identity']['qualification_source_head'],'runtime_pin_count':len(candidate['source_pins']['runtime']),'qualification_pin_count':len(candidate['source_pins']['qualification']),'authorization_fabricated':False,'launcher_main_called':False,'launcher_called':False,'WSL_called':False,'target_mutated':False}\nprint(json.dumps(result,sort_keys=True,separators=(',',':')))\n"
+  ],
+  "schema": "VST_S2_4D_SOURCE_PINS_PREFLIGHT_V1",
+  "shell": false,
+  "started_utc": "2026-11-05T06:33:35.682666+00:00",
+  "stderr_bytes": 0,
+  "stderr_file": "s2-4d-source-pins-precheck-e42c82f-20261105-01.stderr.bin",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_bytes": 574,
+  "stdout_file": "s2-4d-source-pins-precheck-e42c82f-20261105-01.stdout.bin",
+  "stdout_sha256": "7159cbfd3f1363a81334cf7b478ea7aabc9fd4f781ede685ae9d360d3d982e9b",
+  "task": "S2-4D",
+  "timed_out": false,
+  "timeout_seconds": 90,
+  "wsl_helper_sha256": "e98f40ec8d7cbaf43842db15adba2a874bb050b9f9675d931b7313217161d9ff"
+}

@@ -1,0 +1,42 @@
+{
+  "schema": "VST_S2_4D_PROCESS_TERMINAL_SNAPSHOT_V1",
+  "observed_utc": "2026-11-06T12:18:04.2018619Z",
+  "source_head": "0d140219331a184525bf2bea15c7766d7ceeef88",
+  "command": "Get-CimInstance Win32_Process -Filter \"ProcessId = <pid>\" for each of 42016,20620,15892,40072,25072; then wsl.exe --list --verbose",
+  "exit_code": 0,
+  "process_observations": [
+    {
+      "pid": 42016,
+      "state": "ABSENT"
+    },
+    {
+      "pid": 20620,
+      "state": "ABSENT"
+    },
+    {
+      "pid": 15892,
+      "state": "ABSENT"
+    },
+    {
+      "pid": 40072,
+      "state": "ABSENT"
+    },
+    {
+      "pid": 25072,
+      "state": "ABSENT"
+    }
+  ],
+  "wsl_distributions": [
+    {
+      "name": "Ubuntu-24.04",
+      "version": 2,
+      "state": "Stopped"
+    },
+    {
+      "name": "docker-desktop",
+      "version": 2,
+      "state": "Running"
+    }
+  ],
+  "conclusion": "All process identities from the consumed config-refresh attempt are absent at this snapshot. Ubuntu-24.04 is stopped. This is read-only terminal evidence only; no process, distro, service, or configuration was started, stopped, changed, or tested."
+}

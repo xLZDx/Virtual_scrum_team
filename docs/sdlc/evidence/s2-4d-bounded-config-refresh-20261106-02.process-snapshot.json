@@ -1,0 +1,48 @@
+{
+  "schema": "VST_S2_4D_PROCESS_TERMINAL_SNAPSHOT_V1",
+  "observed_utc": "2026-11-06T12:27:42.7966918Z",
+  "source_head": "0d140219331a184525bf2bea15c7766d7ceeef88",
+  "historical_source": "docs/sdlc/evidence/s2-4d-linux-inventory-parent-chain-4b098f5d-20261105.json",
+  "command": "Read original process creation UTC values from historical in-project snapshot; query Get-CimInstance Win32_Process for PIDs 65448, 96784, 66872; list WSL distributions; poll exec session 93960 with empty stdin.",
+  "exit_code": 0,
+  "target_processes": [
+    {
+      "name": "pwsh.exe",
+      "pid": 65448,
+      "original_creation_utc": "2026-11-05T21:21:18.5310620Z",
+      "current_state": "ABSENT",
+      "parent_pid": 40192
+    },
+    {
+      "name": "wsl.exe",
+      "pid": 96784,
+      "original_creation_utc": "2026-11-05T21:21:21.9305260Z",
+      "current_state": "ABSENT",
+      "parent_pid": 65448
+    },
+    {
+      "name": "wsl.exe",
+      "pid": 66872,
+      "original_creation_utc": "2026-11-05T21:21:22.3517900Z",
+      "current_state": "ABSENT",
+      "parent_pid": 96784
+    }
+  ],
+  "executor_session": {
+    "poll_result": "Unknown process id; no active exec session",
+    "id": 93960
+  },
+  "wsl_distributions": [
+    {
+      "name": "Ubuntu-24.04",
+      "state": "Stopped",
+      "version": 2
+    },
+    {
+      "name": "docker-desktop",
+      "state": "Running",
+      "version": 2
+    }
+  ],
+  "conclusion": "All three exact diagnostic process instances are absent. The referenced executor session is no longer active. Read-only evidence only; no WSL command, service, process, or configuration was started or modified."
+}

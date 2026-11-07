@@ -1,0 +1,692 @@
+{
+  "schema": "S2_4_12B_RUNTIME_QUALIFICATION_EVIDENCE_V1",
+  "recorded_utc": "2026-10-30T06:15:25.949048Z",
+  "project": "Virtual_scrum_team",
+  "source_head": "002e3617d51ed782fb46a63e9d7266696a6298e8",
+  "approved_implementation_head": "069be3b5193595c06a39ac72237452625b7514f4",
+  "authorization": {
+    "request_id": "b7aa8bba-98ef-409b-97fd-829b46aa538b",
+    "reply_id": "c2ec439c-354b-5d48-870e-0b82baabdb60",
+    "verdict": "AUTHORIZE",
+    "scope": "one fresh readiness inventory; conditionally one exact 26-destination config apply without service activation; one root-captured preflight; conditionally one REQ-003 TestRun selector",
+    "retry_cap": 0,
+    "maximum_test_runs": 1,
+    "selector": "tests/vst/test_s2_assignment_basis.py::test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment"
+  },
+  "bindings": {
+    "run_id": "s2-runtime-20261030-334296bd0779488d837a27e283b50b6a",
+    "bootstrap_request_id": "212a23e66ee94a7d87355b11e07e34fe",
+    "probe_nonce": "b57520d076e1acd355d310ed18364907",
+    "helper_sha256": "9723b34b0992c6405f89bb2722ff515b9da6d31e73ecf70cf29a95e8db42048e",
+    "applier_sha256": "e9b9ee37d6bfe6807ffdcce2395cb75f8e6a217c7a70fd93aede49a53871c56d",
+    "bundle_manifest_sha256": "03d9c692bf058ca61570d2a954a0faf6c088100e4036d38d88afb26b08d25e0a",
+    "installation_layout_sha256": "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19",
+    "runtime_selector": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2"
+  },
+  "target_inventory": {
+    "schema": "VST_S2_RUNTIME_CONFIG_TARGET_INVENTORY_V1",
+    "captured_utc": "2026-10-30T06:08:05.227864Z",
+    "source_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
+    "boot_id": "270cd88b-183f-426c-8add-872d9e98bcec",
+    "configuration_files": {
+      "/etc/systemd/system/vst-assignment-bootstrap.service": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "e714fb88699ae07fbd96ccd8758cb58d1db8bcf075d52145c6e8a3ec8931f43f",
+        "size": 1016,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/systemd/system/vst-dispatch-issuer.service": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "d798f141e33d15444afccb1ac26213665571f19e70f1dc61fbd7f60b23140c7d",
+        "size": 1027,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/systemd/system/vst-runner.service.d/90-s2-host-path-mask.conf": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
+        "size": 153,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/systemd/system/vst-runner.service.d/rate-limits.conf": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+        "size": 51,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/systemd/system/vst-sandbox-probe.service": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "d80c171238985ffcc7f19c6eac74276c7ea7615ebf85d63391b6f2dbf097f33f",
+        "size": 637,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/systemd/system/vst-sandbox-probe.service.d/90-s2-host-path-mask.conf": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062",
+        "size": 153,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/systemd/system/vst-signer.service.d/rate-limits.conf": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+        "size": 51,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/systemd/system/vst-supervisor.service.d/rate-limits.conf": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590",
+        "size": 51,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/assignment-delegation-policy.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "3dabe39f15ee280d1fac78c83989ce71ec868410b665fa26e199378f27deb427",
+        "size": 1411,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/bootstrap-request.json": {
+        "gid": 980,
+        "kind": "regular",
+        "mode": "0640",
+        "sha256": "2d0b8ceef145e3bafbc2e2cfc00349a358387e816b26d440915c54966df8c0c6",
+        "size": 4104,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/dispatch-instruction-public.pem": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "b3586ac2f707058a8933759b8abbf4f5b8b84e7fde70f644d9d77d523b7af162",
+        "size": 113,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/dispatch-instruction-trust.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "c88d90f75653168b417b15f11d1dc6086433d7d4c948757ac30b967fac8db350",
+        "size": 196,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/dispatch-owner-service.json": {
+        "gid": 982,
+        "kind": "regular",
+        "mode": "0640",
+        "sha256": "1df674c4198df4246ed6490fd1ae9eaadd8a8be18ba54c5852019694de4a99c1",
+        "size": 65,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/dispatcher-service.json": {
+        "gid": 983,
+        "kind": "regular",
+        "mode": "0640",
+        "sha256": "3f35183f011a1bdb4b3ec8fa45480178dc91d6281b26bdc30e3d50185f2842cc",
+        "size": 166,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/execution-grant-public.pem": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "bbf647ee13e5aafdceccfce9bbb41dc9f79f15f4578a19dfb4ddcf11442a45ad",
+        "size": 113,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/fence.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0600",
+        "sha256": "8b96cf8d743bd6fc5c4bc51a3a988f7477f7466e6d40748e9462d88dce9da556",
+        "size": 440,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/model-provenance.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "a78f908212da5715a951c62d17e2ec720ad6065c13164191d3aef0bf506d6303",
+        "size": 567,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/network-profile.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "5aca6ea5e91b319e2b248b8091a400fc2a058ef87899f3f10649b067236c406c",
+        "size": 1176,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/probe-entrypoint.py": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "2bb8a72935a003411a57eeb5f70b01f0e6407955dfd0c2abf3981ce3a57e19b1",
+        "size": 1566,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/probe-request.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "603245dc8860fb47e5ebb217e877b4c9c60fffadbaca7a54cca43f2818ea1474",
+        "size": 118,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/reviewer-registry.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "678dbe279d91ba96fa3b6e79da13c2c2be8270cbc08bbaaae9f7bf724078e6fd",
+        "size": 269,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/reviewer-use-policy.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "a69dfcb56d54aadf7d9b2d966edbf4867145a861b23c2313e03fc0bc36766c97",
+        "size": 875,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/runner-service.json": {
+        "gid": 988,
+        "kind": "regular",
+        "mode": "0640",
+        "sha256": "2121baaf8598b80c139ba452eeab11760c8b0240d0e177220e9e792545c70579",
+        "size": 1256,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/signer-service.json": {
+        "gid": 988,
+        "kind": "regular",
+        "mode": "0640",
+        "sha256": "4d4d53fccd20d415b13a69b9ad4151eff6c15532ae4a6460a09fc32b2a869ad3",
+        "size": 510,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/supervisor-service.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0600",
+        "sha256": "6bdaea6d171f5dac2baaf6b1bf8d2f694408981feb2e758c4b6f01fbac1fd9c3",
+        "size": 3462,
+        "state": "PRESENT",
+        "uid": 0
+      },
+      "/etc/vst-runner/task-manifest.json": {
+        "gid": 0,
+        "kind": "regular",
+        "mode": "0644",
+        "sha256": "9c1f6f11f7e92294a3bad3425febfae2ef432d269e53aa6ff0ce3bb3e895296a",
+        "size": 3596,
+        "state": "PRESENT",
+        "uid": 0
+      }
+    },
+    "runtime_selector": {
+      "kind": "symlink",
+      "link_target": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2",
+      "state": "PRESENT"
+    },
+    "readiness": {
+      "systemd": "running",
+      "jobs": "",
+      "wsl_distro_name": "Ubuntu-24.04",
+      "os_id": "ubuntu",
+      "os_version": "24.04",
+      "systemd_version": "systemd 255 (255.4-1ubuntu8.17)",
+      "boot_id": "270cd88b-183f-426c-8add-872d9e98bcec",
+      "drvfs_mount": "D: 9p ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3",
+      "runtime_selector": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2",
+      "candidate_collision": false,
+      "store_absent": true,
+      "preflight_absent": true,
+      "attestation_absent": true,
+      "previous_identity_retired": true,
+      "host_container_sockets_absent": true,
+      "installed_identity_observation": {
+        "supervisor_run_id": "s2-runtime-20261030-8102de64e7b4472ca2b5d2d56ed48510",
+        "probe_run_id": "s2-runtime-20261030-8102de64e7b4472ca2b5d2d56ed48510",
+        "bootstrap_run_id": "s2-runtime-20261030-8102de64e7b4472ca2b5d2d56ed48510",
+        "bootstrap_request_id": "c63842aefcf74f57af70a1b2f93b8271",
+        "probe_nonce": "5f5820a7cfc348cfa89de31af6c6d1a7",
+        "environment_id": "Ubuntu-24.04:S2:s2-runtime-20261030-8102de64e7b4472ca2b5d2d56ed48510",
+        "matches_retired_tuple": true
+      },
+      "units_all_loaded_inactive": true,
+      "units": {
+        "vst-assignment-bootstrap.service": {
+          "ActiveState": "inactive",
+          "LoadState": "loaded",
+          "MainPID": "0",
+          "PrivateNetwork": "yes",
+          "SubState": "dead"
+        },
+        "vst-dispatch-issuer.service": {
+          "ActiveState": "inactive",
+          "LoadState": "loaded",
+          "MainPID": "0",
+          "PrivateNetwork": "yes",
+          "SubState": "dead"
+        },
+        "vst-dispatch-owner.service": {
+          "ActiveState": "inactive",
+          "LoadState": "loaded",
+          "MainPID": "0",
+          "PrivateNetwork": "yes",
+          "SubState": "dead"
+        },
+        "vst-dispatch-owner.socket": {
+          "ActiveState": "inactive",
+          "LoadState": "loaded",
+          "PrivateNetwork": "no",
+          "SubState": "dead"
+        },
+        "vst-dispatcher.service": {
+          "ActiveState": "inactive",
+          "LoadState": "loaded",
+          "MainPID": "0",
+          "PrivateNetwork": "yes",
+          "SubState": "dead"
+        },
+        "vst-runner.service": {
+          "ActiveState": "inactive",
+          "LoadState": "loaded",
+          "MainPID": "0",
+          "PrivateNetwork": "yes",
+          "SubState": "dead"
+        },
+        "vst-sandbox-probe.service": {
+          "ActiveState": "inactive",
+          "LoadState": "loaded",
+          "MainPID": "0",
+          "PrivateNetwork": "yes",
+          "SubState": "dead"
+        },
+        "vst-signer.service": {
+          "ActiveState": "inactive",
+          "LoadState": "loaded",
+          "MainPID": "0",
+          "PrivateNetwork": "no",
+          "SubState": "dead"
+        },
+        "vst-supervisor.service": {
+          "ActiveState": "inactive",
+          "LoadState": "loaded",
+          "MainPID": "0",
+          "PrivateNetwork": "no",
+          "SubState": "dead"
+        }
+      },
+      "exact_configuration_fingerprint_comparison": "all 26 current fingerprints matched the prior inventory exactly; baseline_mismatches=[]",
+      "source_checkout_head": "002e3617d51ed782fb46a63e9d7266696a6298e8",
+      "helper_sha256": "9723b34b0992c6405f89bb2722ff515b9da6d31e73ecf70cf29a95e8db42048e",
+      "applier_sha256": "e9b9ee37d6bfe6807ffdcce2395cb75f8e6a217c7a70fd93aede49a53871c56d",
+      "bundle_manifest_sha256": "03d9c692bf058ca61570d2a954a0faf6c088100e4036d38d88afb26b08d25e0a",
+      "installation_layout_sha256": "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19"
+    }
+  },
+  "target_inventory_sha256": "c675980b1b1ba431102d5448fe72af93ecdf2d97fd00da1204a36205f0e38747",
+  "readiness_observation": {
+    "state": "READY_AFTER_NATURAL_JOB_COMPLETION",
+    "observed_utc": "2026-10-30T06:08:05.227864Z",
+    "pending_systemd_job": "none; prior motd-news start invocation ea3ced8b3b71403b98b2490066e6986c finished naturally",
+    "systemd": "running",
+    "drvfs_mount": "D: 9p ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3",
+    "destination_fingerprints": "26/26 equal the previous observed and authorized old baseline fingerprints",
+    "installed_identity": "exact prior consumed retired identity verified read-only",
+    "complete_fresh_inventory": "captured and pinned by target_inventory_sha256"
+  },
+  "execution_receipts": [
+    {
+      "kind": "single_exact_26_destination_configuration_apply",
+      "command": "python tools/qa/apply_s2_runtime_configuration.py --inventory <this evidence artifact in inventory form> --inventory-sha256 c675980b1b1ba431102d5448fe72af93ecdf2d97fd00da1204a36205f0e38747 --source-commit 002e3617d51ed782fb46a63e9d7266696a6298e8",
+      "completed_utc": "NOT_CAPTURED; command completed after readiness query 2026-10-30T06:09:56Z and before the corrected preflight",
+      "exit_code": 0,
+      "inventory_input_sha256": "c675980b1b1ba431102d5448fe72af93ecdf2d97fd00da1204a36205f0e38747",
+      "source_head": "80c2b81deac364ed6466600fd46af47aafe805e2",
+      "boot_id": "270cd88b-183f-426c-8add-872d9e98bcec",
+      "daemon_reload": "success",
+      "installed_count": 4,
+      "already_exact_count": 22,
+      "services_started_or_enabled": false,
+      "files": [
+        {
+          "path": "/etc/vst-runner/supervisor-service.json",
+          "result": "installed",
+          "sha256": "76b87c5183fd93f58e8e6049aace8ec67365fb2d1392f5ca1eee35778bd042ec"
+        },
+        {
+          "path": "/etc/vst-runner/runner-service.json",
+          "result": "already-exact",
+          "sha256": "2121baaf8598b80c139ba452eeab11760c8b0240d0e177220e9e792545c70579"
+        },
+        {
+          "path": "/etc/vst-runner/signer-service.json",
+          "result": "already-exact",
+          "sha256": "4d4d53fccd20d415b13a69b9ad4151eff6c15532ae4a6460a09fc32b2a869ad3"
+        },
+        {
+          "path": "/etc/vst-runner/dispatcher-service.json",
+          "result": "already-exact",
+          "sha256": "3f35183f011a1bdb4b3ec8fa45480178dc91d6281b26bdc30e3d50185f2842cc"
+        },
+        {
+          "path": "/etc/vst-runner/dispatch-owner-service.json",
+          "result": "already-exact",
+          "sha256": "1df674c4198df4246ed6490fd1ae9eaadd8a8be18ba54c5852019694de4a99c1"
+        },
+        {
+          "path": "/etc/vst-runner/fence.json",
+          "result": "already-exact",
+          "sha256": "8b96cf8d743bd6fc5c4bc51a3a988f7477f7466e6d40748e9462d88dce9da556"
+        },
+        {
+          "path": "/etc/vst-runner/assignment-delegation-policy.json",
+          "result": "already-exact",
+          "sha256": "3dabe39f15ee280d1fac78c83989ce71ec868410b665fa26e199378f27deb427"
+        },
+        {
+          "path": "/etc/vst-runner/dispatch-instruction-trust.json",
+          "result": "already-exact",
+          "sha256": "c88d90f75653168b417b15f11d1dc6086433d7d4c948757ac30b967fac8db350"
+        },
+        {
+          "path": "/etc/vst-runner/bootstrap-request.json",
+          "result": "installed",
+          "sha256": "456b17bec9aa13ee2b5d9c93f4ef7e5c6c68d87c167016904acdbf3edd59b62c"
+        },
+        {
+          "path": "/etc/vst-runner/execution-grant-public.pem",
+          "result": "already-exact",
+          "sha256": "bbf647ee13e5aafdceccfce9bbb41dc9f79f15f4578a19dfb4ddcf11442a45ad"
+        },
+        {
+          "path": "/etc/vst-runner/dispatch-instruction-public.pem",
+          "result": "already-exact",
+          "sha256": "b3586ac2f707058a8933759b8abbf4f5b8b84e7fde70f644d9d77d523b7af162"
+        },
+        {
+          "path": "/etc/vst-runner/probe-entrypoint.py",
+          "result": "already-exact",
+          "sha256": "2bb8a72935a003411a57eeb5f70b01f0e6407955dfd0c2abf3981ce3a57e19b1"
+        },
+        {
+          "path": "/etc/vst-runner/probe-request.json",
+          "result": "installed",
+          "sha256": "6709b6af549de742e9dbcac7018029021a091e037c0a24bf69dc8c076c116eff"
+        },
+        {
+          "path": "/etc/vst-runner/network-profile.json",
+          "result": "installed",
+          "sha256": "ee2e58db916c4bd3056478a9d0f07824d360012b7324c4aafe887a098103b39c"
+        },
+        {
+          "path": "/etc/vst-runner/model-provenance.json",
+          "result": "already-exact",
+          "sha256": "a78f908212da5715a951c62d17e2ec720ad6065c13164191d3aef0bf506d6303"
+        },
+        {
+          "path": "/etc/vst-runner/reviewer-registry.json",
+          "result": "already-exact",
+          "sha256": "678dbe279d91ba96fa3b6e79da13c2c2be8270cbc08bbaaae9f7bf724078e6fd"
+        },
+        {
+          "path": "/etc/vst-runner/task-manifest.json",
+          "result": "already-exact",
+          "sha256": "9c1f6f11f7e92294a3bad3425febfae2ef432d269e53aa6ff0ce3bb3e895296a"
+        },
+        {
+          "path": "/etc/vst-runner/reviewer-use-policy.json",
+          "result": "already-exact",
+          "sha256": "a69dfcb56d54aadf7d9b2d966edbf4867145a861b23c2313e03fc0bc36766c97"
+        },
+        {
+          "path": "/etc/systemd/system/vst-supervisor.service.d/rate-limits.conf",
+          "result": "already-exact",
+          "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590"
+        },
+        {
+          "path": "/etc/systemd/system/vst-runner.service.d/rate-limits.conf",
+          "result": "already-exact",
+          "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590"
+        },
+        {
+          "path": "/etc/systemd/system/vst-runner.service.d/90-s2-host-path-mask.conf",
+          "result": "already-exact",
+          "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062"
+        },
+        {
+          "path": "/etc/systemd/system/vst-sandbox-probe.service.d/90-s2-host-path-mask.conf",
+          "result": "already-exact",
+          "sha256": "8cb6b2fa46e2eaea1854cfc29a1d12725da3dfefb3383cbcb302b76e3b4b0062"
+        },
+        {
+          "path": "/etc/systemd/system/vst-signer.service.d/rate-limits.conf",
+          "result": "already-exact",
+          "sha256": "c0ae4900c88e6c9e4b57a5bf10d1fa7b637ea76e03b44aaa7c8efa8a9cb9a590"
+        },
+        {
+          "path": "/etc/systemd/system/vst-assignment-bootstrap.service",
+          "result": "already-exact",
+          "sha256": "e714fb88699ae07fbd96ccd8758cb58d1db8bcf075d52145c6e8a3ec8931f43f"
+        },
+        {
+          "path": "/etc/systemd/system/vst-dispatch-issuer.service",
+          "result": "already-exact",
+          "sha256": "d798f141e33d15444afccb1ac26213665571f19e70f1dc61fbd7f60b23140c7d"
+        },
+        {
+          "path": "/etc/systemd/system/vst-sandbox-probe.service",
+          "result": "already-exact",
+          "sha256": "d80c171238985ffcc7f19c6eac74276c7ea7615ebf85d63391b6f2dbf097f33f"
+        }
+      ]
+    }
+  ],
+  "readiness_attempts": [
+    {
+      "observed_utc": "2026-10-30T05:56:43Z",
+      "kind": "initial_read_only_stop_before_mount",
+      "result": "NOT_READY",
+      "facts": {
+        "ubuntu_24_04_state_before_observation": "Stopped",
+        "boot_id": "270cd88b-183f-426c-8add-872d9e98bcec",
+        "pid1": "systemd",
+        "systemd": "running",
+        "jobs": "none listed",
+        "runtime_selector": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2",
+        "mnt_d": "ABSENT",
+        "source_path": "ABSENT"
+      },
+      "disposition": "No apply, helper, claim, probe, or TestRun. Parent subsequently confirmed the prior correlated DrvFS read-only authorization covers the temporary exact-source mount."
+    },
+    {
+      "kind": "temporary_mount_and_source_identity",
+      "command": "wsl.exe -d Ubuntu-24.04 -u root --exec /usr/bin/mount -t drvfs D: /mnt/d -o ro",
+      "exit_code": 0,
+      "mount_observation": "D: 9p ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3",
+      "checkout_head": "002e3617d51ed782fb46a63e9d7266696a6298e8",
+      "helper_sha256": "9723b34b0992c6405f89bb2722ff515b9da6d31e73ecf70cf29a95e8db42048e",
+      "applier_sha256": "e9b9ee37d6bfe6807ffdcce2395cb75f8e6a217c7a70fd93aede49a53871c56d",
+      "bundle_manifest_sha256": "03d9c692bf058ca61570d2a954a0faf6c088100e4036d38d88afb26b08d25e0a",
+      "installation_layout_sha256": "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19",
+      "comment": "All exact identities matched. This mount disappeared after the WSL distro later went idle."
+    },
+    {
+      "kind": "readiness_script_attempt_without_persistent_mount",
+      "result": "FAILED_BEFORE_INVENTORY",
+      "error": "ModuleNotFoundError: No module named tools",
+      "follow_up_observation": "/mnt/d/Repo/Virtual_scrum_team was absent in that WSL invocation; the persistent mount had disappeared after WSL went idle.",
+      "disposition": "No complete inventory, destination reads, configuration application, claim, probe, or TestRun."
+    },
+    {
+      "observed_utc": "2026-10-30T06:04:02Z",
+      "kind": "fresh_read_only_inventory_stop",
+      "command": "wsl.exe -d Ubuntu-24.04 -u root --exec /usr/bin/python3.12 -I -B -S - (read-only readiness collector importing the exact committed preflight helper)",
+      "result": "STOP_BEFORE_CONFIGURATION_OR_CLAIM",
+      "error": "tools.vst.contracts.ContractError: systemd has an unexpected pending job",
+      "systemctl_list_jobs": "365 motd-news.service start running",
+      "systemctl_is_system_running": "running",
+      "drvfs_mount": "D: 9p ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3",
+      "keeper": "Long-lived WSL command keeps the temporary read-only mount and distro live; exec session 28369.",
+      "disposition": "The helper readiness gate refused before destination fingerprint collection. Do not cancel or bypass the motd-news job. No config apply, daemon reload, probe helper, durable claim, TestRun, retry, or key access occurred.",
+      "readiness_inventory_path": null,
+      "readiness_inventory_sha256": null
+    },
+    {
+      "observed_utc": "2026-10-30T06:08:05.227864Z",
+      "kind": "complete_fresh_read_only_readiness_inventory",
+      "command": "read-only collector importing exact committed preflight helper; full 26-destination hash and metadata inventory; direct retired-tuple identity read",
+      "result": "READY_FOR_EXACT_CONFIG_APPLY",
+      "inventory_source": "fresh collector output; all 26 fingerprints exactly matched prior inventory; no mismatches",
+      "inventory_sha256": "d91ca164def907a3f008e3364f80502253ff43b29a650580997168a86621ea9c",
+      "boot_id": "270cd88b-183f-426c-8add-872d9e98bcec",
+      "jobs": "none",
+      "systemd": "running",
+      "units": "all 9 relevant VST units loaded/inactive/dead",
+      "drvfs_mount": "D: 9p ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3",
+      "old_installed_binding": "exact retired tuple; verified read-only",
+      "collector_exit_code": 3,
+      "exit_code_explanation": "collector predicate falsely compared expected old installed IDs to new candidate IDs; direct read-only identity check confirmed exact retired tuple, while all other readiness gates passed",
+      "disposition": "No apply/claim/probe/TestRun had occurred at this snapshot. Snapshot retained and interpreted using explicit retired-tuple replacement authorization."
+    },
+    {
+      "observed_utc": "NOT_CAPTURED; occurred after the single configuration apply and before the corrected root preflight",
+      "kind": "authorized_root_preflight_invocation_wrong_argument_refusal",
+      "command": "preflight_host_capture.py with --expected-head incorrectly set to runtime selector commit 80c2b81…",
+      "result": "REFUSED_BEFORE_CLAIM",
+      "error": "probe capture refused: repository HEAD differs from the authorized source head",
+      "durable_claim_created": false,
+      "probe_started": false,
+      "disposition": "Corrected to authorized pushed repository HEAD before the single actual preflight."
+    }
+  ],
+  "post_stop_observations": [
+    {
+      "observed_utc": "2026-10-30T06:04:40Z",
+      "command": "systemctl list-jobs --no-legend --plain; systemctl is-system-running; findmnt --noheadings --mountpoint /mnt/d --output SOURCE,FSTYPE,OPTIONS",
+      "result": {
+        "jobs": "365 motd-news.service start running",
+        "systemd": "running",
+        "drvfs_mount": "D: 9p ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3"
+      }
+    },
+    {
+      "observed_utc": "2026-10-30T06:05:00Z",
+      "command": "systemctl show motd-news.service --property=LoadState,ActiveState,SubState,Result,MainPID,InvocationID,ControlGroup,ExecMainStatus,ExecStart; journalctl --unit=motd-news.service --since=-5m --output=short-iso --no-pager",
+      "result": {
+        "load_state": "loaded",
+        "active_state": "activating",
+        "sub_state": "start",
+        "result": "success",
+        "main_pid": "441",
+        "invocation_id": "ea3ced8b3b71403b98b2490066e6986c",
+        "exec_start": "/etc/update-motd.d/50-motd-news --force",
+        "journal": "2026-10-30T08:02:03+02:00 Razer systemd[1]: Starting motd-news.service - Message of the Day..."
+      }
+    },
+    {
+      "observed_utc": "2026-10-30T06:05:50Z",
+      "command": "systemctl list-jobs --no-legend --plain; systemctl show motd-news.service --property=ActiveState,SubState,MainPID,Result,InvocationID; findmnt --noheadings --mountpoint /mnt/d --output SOURCE,FSTYPE,OPTIONS",
+      "result": {
+        "jobs": "365 motd-news.service start running",
+        "active_state": "activating",
+        "sub_state": "start",
+        "main_pid": "441",
+        "result": "success",
+        "invocation_id": "ea3ced8b3b71403b98b2490066e6986c",
+        "drvfs_mount": "D: 9p ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3"
+      },
+      "disposition": "Job persisted after two natural waits totaling about 60 seconds. Per GPT-PM precondition and parent instruction, stop before apply/claim. No service/job was cancelled or stopped."
+    },
+    {
+      "observed_utc": "2026-10-30T06:09:20Z",
+      "command": "read-only JSON identity extraction from /etc/vst-runner/supervisor-service.json, probe-request.json, bootstrap-request.json, network-profile.json",
+      "result": "all values exactly match the retired prior run tuple",
+      "disposition": "This confirms the existing installed config is the explicitly authorized old state, not a candidate mismatch; no mutation or claim occurred."
+    }
+  ],
+  "post_apply_observations": [
+    {
+      "observed_utc": "2026-10-30T06:14:04.479784Z",
+      "command": "wsl read-only query of supervisor-configured preflight/store paths and systemctl show for vst-sandbox-probe.service",
+      "result": {
+        "preflight_record_present": false,
+        "store_present": false,
+        "probe_state": "loaded/failed/failed, MainPID=0, InvocationID=d8d4e79aa11a4d08a504a1b421a6f3a0"
+      },
+      "disposition": "The sole root-captured preflight invocation failed after durable one-start claim and probe activation; no retry or TestRun."
+    }
+  ],
+  "execution_disposition": {
+    "configuration_application": "COMPLETED_ONCE; exact 26-destination apply exit 0; 4 installed and 22 already exact; daemon-reload success",
+    "configuration_daemon_reload": "COMPLETED_ONCE; success; no services started or enabled",
+    "probe_or_preflight": "FAILED_AFTER_DURABLE_CLAIM; probe invocation d8d4e79aa11a4d08a504a1b421a6f3a0 ended with worker identity mismatch",
+    "durable_claim_created": true,
+    "test_run": "NOT_RUN; preflight did not succeed",
+    "retry": "PROHIBITED; authorization retry_cap=0 and identity is consumed",
+    "private_key_bytes_read_or_output": false,
+    "services_started_or_enabled": "No persistent VST services were started/enabled; only the authorized one-shot probe service was started once and failed.",
+    "previous_consumed_identity_reused": false,
+    "probe_invocation_id": "d8d4e79aa11a4d08a504a1b421a6f3a0",
+    "probe_failure": "probe process identity differs from configured worker (uid=[0,0,0,0], gid=[0,0,0,0]; expected uid=[999,999,999,999], gid=[989,989,989,989])",
+    "preflight_record_created": false,
+    "store_created": false,
+    "network_attestation": "NOT_VERIFIED; no successful preflight capture was published"
+  },
+  "post_claim_failure": {
+    "observed_utc": "NOT_CAPTURED; helper completion was followed by read-only state confirmation at 2026-10-30T06:14:04.479784Z",
+    "command": "wsl.exe -d Ubuntu-24.04 -u root --exec /usr/bin/python3.12 -I -B -S /mnt/d/Repo/Virtual_scrum_team/tools/vst/preflight_host_capture.py --run-id s2-runtime-20261030-334296bd0779488d837a27e283b50b6a --nonce b57520d076e1acd355d310ed18364907 --expected-head 002e3617d51ed782fb46a63e9d7266696a6298e8 --expected-sha256 9723b34b0992c6405f89bb2722ff515b9da6d31e73ecf70cf29a95e8db42048e --request-id 212a23e66ee94a7d87355b11e07e34fe --expected-supervisor-sha256 76b87c5183fd93f58e8e6049aace8ec67365fb2d1392f5ca1eee35778bd042ec --expected-profile-sha256 ee2e58db916c4bd3056478a9d0f07824d360012b7324c4aafe887a098103b39c --expected-bootstrap-sha256 456b17bec9aa13ee2b5d9c93f4ef7e5c6c68d87c167016904acdbf3edd59b62c --expected-manifest-sha256 c9dc31dce7419214d88a4da5dd645f5905ef01f8640154d357143f73afdcc860",
+    "result": "FAILED_AFTER_CLAIM; process identity mismatch; helper returned exit 1 after draining the one probe invocation",
+    "error": "probe capture refused: probe process identity differs from the configured worker (uid=[0, 0, 0, 0], gid=[0, 0, 0, 0]; expected uid=[999, 999, 999, 999], gid=[989, 989, 989, 989])",
+    "invocation_id": "d8d4e79aa11a4d08a504a1b421a6f3a0",
+    "durable_claim_created": true,
+    "test_run": "NOT_RUN",
+    "retry": "PROHIBITED; exact runtime authorization exhausted",
+    "confirmed_by_observation_utc": "2026-10-30T06:14:04.479784Z"
+  },
+  "next_action": "Stop permanently for this authorization. S2-4 remains open; any new runtime attempt requires a new explicit authorization and new identity because the existing run/request/nonce claim is consumed.",
+  "s2_disposition": "S2-4 runtime acceptance remains OPEN: exact config installed, but root preflight failed on UID/GID process identity; no TestRun occurred."
+}

@@ -1,0 +1,67 @@
+ROLE owner: composed OK (['VSTOwner'])
+
+ROLE supervisor: composed OK (['VSTSupervisor'])
+
+ROLE dispatcher: FAILED
+Traceback (most recent call last):
+  File "D:\Repo\Virtual_scrum_team\docs\sdlc\evidence\s2_4e_diag_supervisor.py", line 52, in child
+    module.main()
+    ~~~~~~~~~~~^^
+  File "D:\Repo\Virtual_scrum_team\tools\vst\dispatcher_service.py", line 145, in main
+    run_scm_service(service_name_for_role("dispatcher"), make_target)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Repo\Virtual_scrum_team\docs\sdlc\evidence\s2_4e_diag_supervisor.py", line 41, in fake_run
+    target = target_factory()
+  File "D:\Repo\Virtual_scrum_team\tools\vst\dispatcher_service.py", line 128, in make_target
+    runner = WindowsRunnerClient(
+        runtime.pipe_name("runner_dispatch"),
+    ...<2 lines>...
+        timeout_sec=MAX_DISPATCH_TIMEOUT_SEC,
+    )
+  File "D:\Repo\Virtual_scrum_team\tools\vst\runner_service.py", line 462, in __init__
+    self._pipe = WindowsNamedPipeClient(
+                 ~~~~~~~~~~~~~~~~~~~~~~^
+        pipe_name, expected_server_sid=runner_sid,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        expected_server_service=runner_service, timeout_sec=timeout_sec,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\Repo\Virtual_scrum_team\tools\vst\windows_named_pipe.py", line 490, in __init__
+    self.timeout_sec = _validated_timeout(timeout_sec, label="client timeout")
+                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Repo\Virtual_scrum_team\tools\vst\windows_named_pipe.py", line 196, in _validated_timeout
+    raise ContractError(f"Windows named-pipe {label} is outside its allowed range")
+tools.vst.contracts.ContractError: Windows named-pipe client timeout is outside its allowed range
+
+ROLE runner: FAILED
+Traceback (most recent call last):
+  File "D:\Repo\Virtual_scrum_team\docs\sdlc\evidence\s2_4e_diag_supervisor.py", line 52, in child
+    module.main()
+    ~~~~~~~~~~~^^
+  File "D:\Repo\Virtual_scrum_team\tools\vst\runner_service.py", line 1110, in main
+    worker = WindowsWorkerClient(
+        runtime.pipe_name("runner_worker"), worker_sid=worker_identity.service_sid,
+        worker_service=worker_identity.service_name, timeout_sec=MAX_DISPATCH_TIMEOUT_SEC,
+    )
+  File "D:\Repo\Virtual_scrum_team\tools\vst\runner_service.py", line 268, in __init__
+    self._pipe = WindowsNamedPipeClient(
+                 ~~~~~~~~~~~~~~~~~~~~~~^
+        pipe_name, expected_server_sid=worker_sid,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        expected_server_service=worker_service, timeout_sec=timeout_sec,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\Repo\Virtual_scrum_team\tools\vst\windows_named_pipe.py", line 490, in __init__
+    self.timeout_sec = _validated_timeout(timeout_sec, label="client timeout")
+                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Repo\Virtual_scrum_team\tools\vst\windows_named_pipe.py", line 196, in _validated_timeout
+    raise ContractError(f"Windows named-pipe {label} is outside its allowed range")
+tools.vst.contracts.ContractError: Windows named-pipe client timeout is outside its allowed range
+
+ROLE signer: composed OK (['VSTSigner'])
+
+ROLE worker: composed OK (['VSTWorker'])
+
+SUMMARY: 2 of 6 roles failed

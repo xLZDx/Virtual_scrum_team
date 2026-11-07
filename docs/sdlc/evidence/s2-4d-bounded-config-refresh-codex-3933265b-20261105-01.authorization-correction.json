@@ -1,0 +1,27 @@
+{
+  "schema": "VST_S2_4D_AUTHORIZATION_ID_CORRECTION_V1",
+  "created_utc": "2026-11-05T14:48:19.2538707Z",
+  "original_artifact": "s2-4d-bounded-config-refresh-codex-3933265b-20261105-01.terminal-reconciliation.json",
+  "original_sha256": "a30706484f3a40ac50316299661312e7974fbeaac225ec8f92d92c50dd53d757",
+  "correction": "The decision_id field in the original reconciliation incorrectly says 3933265b-50f9-4bd0-a713-1d4a8be0d3a6. The keeper command was issued after PM Bridge returned executor amendment 5cf98651-d87b-45f0-bffa-c366e854b79e and before any later decision; the actual authorization binding is 5cf98651-d87b-45f0-bffa-c366e854b79e. Decision 3933265b was superseded and must not be represented as governing the invocation.",
+  "execution_facts": {
+    "keeper_ready": true,
+    "boot_id": "84c624a7-bc08-45a7-b60e-2ca715578597",
+    "collector": "NOT_RUN",
+    "payload": "NOT_BUILT",
+    "applier_invocations": 0,
+    "target_mutation": "NOT_RUN",
+    "keeper_exit": 0
+  },
+  "process_check": {
+    "checked_utc": "2026-11-05T14:48:19.2636212Z",
+    "matching_processes": {
+      "ProcessId": 12496,
+      "Name": "pwsh.exe",
+      "CommandLine": "\"C:\\Program Files\\WindowsApps\\OpenAI.CodexPrimaryRuntime.v26-1103-91-0_26.1103.91.0_x64__3k8sg7r9htsxt\\dependencies\\native\\powershell\\pwsh.exe\" -Command \"try { [Console]::OutputEncoding=[System.Text.Encoding]::UTF8 } catch {}\n$processes=Get-CimInstance Win32_Process -ErrorAction SilentlyContinue|Where-Object {$_.CommandLine -match 'Ubuntu-24\\.04|s2-runtime|Virtual_scrum_team'}|Select-Object ProcessId,Name,CommandLine,CreationDate;$wsl=((& wsl.exe --list --verbose 2>&1|Out-String)-replace \\\"`0\\\",'').Trim();$r=[ordered]@{schema='VST_S2_4D_AUTHORIZATION_ID_CORRECTION_V1';created_utc=[DateTime]::UtcNow.ToString('o');original_artifact='s2-4d-bounded-config-refresh-codex-3933265b-20261105-01.terminal-reconciliation.json';original_sha256='a30706484f3a40ac50316299661312e7974fbeaac225ec8f92d92c50dd53d757';correction='The decision_id field in the original reconciliation incorrectly says 3933265b-50f9-4bd0-a713-1d4a8be0d3a6. The keeper command was issued after PM Bridge returned executor amendment 5cf98651-d87b-45f0-bffa-c366e854b79e and before any later decision; the actual authorization binding is 5cf98651-d87b-45f0-bffa-c366e854b79e. Decision 3933265b was superseded and must not be represented as governing the invocation.';execution_facts=[ordered]@{keeper_ready=$true;boot_id='84c624a7-bc08-45a7-b60e-2ca715578597';collector='NOT_RUN';payload='NOT_BUILT';applier_invocations=0;target_mutation='NOT_RUN';keeper_exit=0};process_check=[ordered]@{checked_utc=[DateTime]::UtcNow.ToString('o');matching_processes=$processes;wsl_list=$wsl};no_new_runtime_actions='This correction is a metadata sidecar only. Original artifact remains unchanged.'};$p='docs/sdlc/evidence/s2-4d-bounded-config-refresh-codex-3933265b-20261105-01.authorization-correction.json';if(Test-Path $p){throw 'Refusing overwrite'};Set-Content -LiteralPath $p -Value ($r|ConvertTo-Json -Depth 5) -Encoding utf8;[pscustomobject]@{path=(Resolve-Path $p).Path;sha256=(Get-FileHash -Algorithm SHA256 $p).Hash.ToLower();bytes=(Get-Item $p).Length}|ConvertTo-Json -Compress\"",
+      "CreationDate": "2026-11-05T16:48:15.514129+02:00"
+    },
+    "wsl_list": "NAME              STATE           VERSION\r\n\r\n* Ubuntu-24.04      Stopped         2\r\n\r\n  docker-desktop    Running         2"
+  },
+  "no_new_runtime_actions": "This correction is a metadata sidecar only. Original artifact remains unchanged."
+}

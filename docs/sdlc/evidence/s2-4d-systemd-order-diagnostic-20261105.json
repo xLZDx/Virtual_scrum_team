@@ -1,0 +1,8 @@
+{
+  "task": "S2-4D",
+  "operation": "read-only systemd property-order diagnostic",
+  "exit_code": 0,
+  "stdout": "{\"value_exit\": 0, \"value_stdout\": \"\\ninactive\\ndead\\ndisabled\\n\\n\", \"value_stderr\": \"\", \"named_exit\": 0, \"named_stdout\": \"ControlGroup=\\nActiveState=inactive\\nSubState=dead\\nUnitFileState=disabled\\nInvocationID=\\n\", \"named_stderr\": \"\"}\n",
+  "stderr": "",
+  "utc": "2026-11-05T02:46:14.986962+00:00"
+}

@@ -1,0 +1,21 @@
+{
+  "external_GPT_PM_credential": false,
+  "identity_registration_is_review_result": false,
+  "key_id": "s2-local-independent-review-20261030",
+  "may_satisfy_final_PM_Bridge_approval": false,
+  "principal": "vst-independent-reviewer",
+  "private_directory_mode": "0700",
+  "private_key_mode": "0600",
+  "required_record_fields": [
+    "actual reviewer role/task identity",
+    "exact reviewed source/artifact hash",
+    "actual verdict and findings",
+    "tool-delivered outcome record reference"
+  ],
+  "resistance_to_malicious_policy_owner_root_claimed": false,
+  "root_registry_issuer_is_trusted": true,
+  "schema": "VST_LOCAL_INDEPENDENT_REVIEW_WITNESS_POLICY_V1",
+  "self_approval_allowed": false,
+  "sign_only_after": "actual separately executed reviewer-agent outcome is durably recorded and binds the exact reviewed artifact/source identity",
+  "signing_uid": 993
+}

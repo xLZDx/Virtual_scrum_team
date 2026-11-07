@@ -1,0 +1,42 @@
+{
+  "command": [
+    "C:\\Python314\\python.exe",
+    "-m",
+    "pytest",
+    "-q",
+    "--tb=line",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_admission_observes_only_exact_prestart_cold_pair",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_admission_rejects_mixed_or_started_pair_without_cold_observation",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_cold_refresh_proof_accepts_exact_readonly_candidate_with_existing_bootstrap_record",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_cold_refresh_proof_rejects_missing_or_nonmatching_candidate_receipt",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_cold_refresh_proof_must_match_recorded_transaction_root_identity",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_candidate_admission_opts_into_candidate_observation_only_for_cold_pair",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_candidate_refresh_rechecks_root_binding_before_journaling",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_candidate_refresh_uses_existing_ledger_without_bootstrap_creation",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_candidate_refresh_rejects_changed_root_returned_by_helper_before_receipts"
+  ],
+  "cwd": "D:\\Repo\\Virtual_scrum_team",
+  "exit_code": 0,
+  "head": "4fe846fc1c3172f02a4fe915936ecc9c249ac61d",
+  "selected_nodeids": [
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_admission_observes_only_exact_prestart_cold_pair",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_admission_rejects_mixed_or_started_pair_without_cold_observation",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_cold_refresh_proof_accepts_exact_readonly_candidate_with_existing_bootstrap_record",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_cold_refresh_proof_rejects_missing_or_nonmatching_candidate_receipt",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_cold_refresh_proof_must_match_recorded_transaction_root_identity",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_candidate_admission_opts_into_candidate_observation_only_for_cold_pair",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_candidate_refresh_rechecks_root_binding_before_journaling",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_candidate_refresh_uses_existing_ledger_without_bootstrap_creation",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_candidate_refresh_rejects_changed_root_returned_by_helper_before_receipts"
+  ],
+  "source_sha256": {
+    "tools/qa/apply_s2_runtime_configuration.py": "5c02647b103462502be5385eb0381acec5e989b32c787979d0841037cdb4e35c",
+    "tools/qa/runtime_snapshot_transaction.py": "76a985ec375cd3c8ef1a5d5e1c5ac1a514d310adbf932916aad551e4a6e849f2"
+  },
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_sha256": "cd9263d1e0784bd231815958150ce652ac0f3c64af1d5c5e66bf581b6c3171f1",
+  "test_sha256": {
+    "tests/vst/test_s2_runtime_bootstrap_transaction.py": "ff76b0a20ad8494a7321f98de209bacb976c842ee65a12f18ff6a34f20165537",
+    "tests/vst/test_s2_runtime_configuration_apply.py": "ba8b22f09b1857e1feba0b0896e65a4b4d2fb8fe3b364bfa7f59d2a08af42bed"
+  }
+}

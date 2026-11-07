@@ -1,0 +1,124 @@
+{
+  "collector_head_blob_sha256": "01316a062277b7d21bbab0eee89706884287069a7fb4e2cc9b79f0c70a3775fc",
+  "collector_is_read_only": true,
+  "collector_path": "tools/qa/collect_s2_runtime_config_inventory.py",
+  "collector_worktree_matches_head_blob": true,
+  "collector_worktree_sha256": "01316a062277b7d21bbab0eee89706884287069a7fb4e2cc9b79f0c70a3775fc",
+  "configuration_reinstalled": false,
+  "cwd": "D:\\Repo\\Virtual_scrum_team",
+  "exit_code": 0,
+  "exit_code_file": "s2-4d-consumed-binding-current-inventory-e42c82f-20261105-01.exit-code.txt",
+  "finished_utc": "2026-11-05T06:59:03.782738+00:00",
+  "head": "e42c82ff297902991b9b6e1aa322f44ca08bffb9",
+  "outer_argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/bin/sh",
+    "-c",
+    "if /usr/bin/mountpoint -q /mnt/d; then opts=$(/usr/bin/findmnt -n -o OPTIONS --target /mnt/d) || exit $?; case \",$opts,\" in *,ro,*) :;; *) echo 'D_MOUNT_NOT_READ_ONLY' >&2; exit 41;; esac; else rc=$?; [ \"$rc\" -eq 32 ] || exit \"$rc\"; /usr/bin/mount -t drvfs D: /mnt/d -o ro || exit $?; fi\nexec /usr/bin/python3.12 -I -B -S /mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py"
+  ],
+  "private_key_bytes_emitted": false,
+  "schema": "VST_S2_4D_CONSUMED_BINDING_CURRENT_INVENTORY_V1",
+  "services_activated": false,
+  "shell": false,
+  "started_utc": "2026-11-05T06:58:58.944194+00:00",
+  "stderr_bytes": 0,
+  "stderr_file": "s2-4d-consumed-binding-current-inventory-e42c82f-20261105-01.stderr.bin",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdin": "DEVNULL",
+  "stdout_bytes": 36336,
+  "stdout_file": "s2-4d-consumed-binding-current-inventory-e42c82f-20261105-01.stdout.bin",
+  "stdout_sha256": "10f17b89bd56ab1bbd584b63e0f362fe4f925a568717ab3a63c9308e9ed90365",
+  "summary": {
+    "boot_id": "faf845b4-e863-48d7-bb82-182bf528cb96",
+    "candidate_identity_collision": true,
+    "configuration_absent_count": 0,
+    "configuration_fingerprint_count": 27,
+    "configuration_present_count": 27,
+    "installed_bootstrap_identity": {
+      "request_id": "ba3faaadb50447b79df509619b6ee010",
+      "run_id": "s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e"
+    },
+    "inventory_json_parsed": true,
+    "inventory_schema": "VST_S2_RUNTIME_CONFIG_TARGET_INVENTORY_V1",
+    "marker_file_read_separately": false,
+    "mount_options": "9p     ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3",
+    "mount_source": "D:",
+    "observation_count": 62,
+    "runtime_marker_state": "NOT_REPORTED_BY_EXISTING_COLLECTOR",
+    "runtime_selector": {
+      "kind": "symlink",
+      "link_target": "/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
+      "state": "PRESENT"
+    },
+    "source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
+    "store_present": false,
+    "unit_count": 9,
+    "units": {
+      "vst-assignment-bootstrap.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-dispatch-issuer.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-dispatch-owner.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-dispatch-owner.socket": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-dispatcher.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-runner.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-sandbox-probe.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-signer.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-supervisor.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ]
+    },
+    "units_all_inactive": true
+  },
+  "summary_corrected_from_raw_stdout": true,
+  "task": "S2-4D",
+  "timed_out": false,
+  "timeout_seconds": 180,
+  "upstream": "e42c82ff297902991b9b6e1aa322f44ca08bffb9"
+}

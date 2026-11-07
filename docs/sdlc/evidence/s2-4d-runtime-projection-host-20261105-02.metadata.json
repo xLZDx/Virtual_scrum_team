@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "C:\\Python314\\python.exe",
+    "-m",
+    "pytest",
+    "-q",
+    "--tb=line",
+    "tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_identity_keeps_runtime_marker_and_source_pins_separate",
+    "tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_identity_still_refuses_runtime_marker_or_pin_mismatch"
+  ],
+  "cwd": "D:\\Repo\\Virtual_scrum_team",
+  "python": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+  "returncode": 1,
+  "stdout_sha256": "2c8a0a41e19ef1004763e0bdfbc4e864ace074c4b2b3479eb264c856436aba04",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

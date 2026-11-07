@@ -1,0 +1,14 @@
+MOUNTPOINT_EXIT=32
+PRE_FINDMNT_TARGET_EXIT=0 VALUE=/
+PRE_FINDMNT_SOURCE_EXIT=0 VALUE=/dev/sdf
+PRE_FINDMNT_FSTYPE_OPTIONS_EXIT=0 VALUE=ext4   rw,relatime,discard,errors=remount-ro,data=ordered
+MOUNT_COMMAND_EXIT=0 OUTPUT=
+POST_MOUNT_TARGET=/mnt/d SOURCE=D: FSTYPE=9p OPTIONS=rw,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3
+POST_MOUNTINFO=736 430 0:169 / /mnt/d rw,relatime - 9p D: rw,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3
+REMOUNT_RO_EXIT=0 OUTPUT=mount: D: mounted on /mnt/d.
+FINAL_TARGET=/mnt/d SOURCE=D: FSTYPE=9p OPTIONS=ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3
+FINAL_MOUNTINFO=736 430 0:169 / /mnt/d ro,relatime - 9p D: ro,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3
+INVENTORY_BEGIN
+COLLECTOR_EXIT=0
+CLEANUP_UMOUNT_EXIT=0
+MOUNT_AFTER=absent

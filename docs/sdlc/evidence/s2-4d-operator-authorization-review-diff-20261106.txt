@@ -1,0 +1,307 @@
+diff --git a/tests/vst/test_s2_runtime_qualification_harness.py b/tests/vst/test_s2_runtime_qualification_harness.py
+index 5bd7a09..e78b808 100644
+--- a/tests/vst/test_s2_runtime_qualification_harness.py
++++ b/tests/vst/test_s2_runtime_qualification_harness.py
+@@ -189,6 +189,23 @@ def _auth_input(*, streamed_wsl: bytes = b"# mocked WSL helper\n") -> dict:
+     }
+ 
+ 
++def _operator_auth_input(*, streamed_wsl: bytes = b"# mocked WSL helper\n") -> dict:
++    value = _auth_input(streamed_wsl=streamed_wsl)
++    statement = "Operator authorizes one S2-4D REQ-003 run through the exact existing selector, retry_cap=0."
++    value["authorization"] = {
++        "source": "OPERATOR",
++        "operator_principal": "operator",
++        "operator_authorization_id": "operator-s2-4d-req003-20261106-01",
++        "operator_statement": statement,
++        "operator_statement_sha256": _sha(statement.encode("utf-8")),
++        "verdict": "AUTHORIZE_ONE_SHOT",
++        "retry_cap": 0,
++        "allowed_operation": "S2-4_OWNER_RUNNER_TESTRUN",
++    }
++    value["identity"]["selector_test_id"] = harness.OPERATOR_REQ003_SELECTOR
++    return value
++
++
+ def _write_input(root: Path, value: dict | bytes) -> tuple[Path, Path]:
+     input_path = root / "authorization.json"
+     output_path = root / "docs" / "sdlc" / "evidence" / "attempt.json"
+@@ -2268,6 +2285,62 @@ def test_closed_identity_schema_requires_qualification_source_head():
+         harness.validate_input(value)
+ 
+ 
++def test_operator_authorization_accepts_only_exact_one_shot_req003_contract():
++    value = _operator_auth_input()
++
++    validated = harness.validate_input(value)
++
++    assert validated["authorization"] == {
++        "source": "OPERATOR",
++        "request_id": "operator-s2-4d-req003-20261106-01",
++        "operator_principal": "operator",
++        "operator_statement_sha256": value["authorization"]["operator_statement_sha256"],
++        "verdict": "AUTHORIZE_ONE_SHOT",
++        "retry_cap": 0,
++        "allowed_operation": "S2-4_OWNER_RUNNER_TESTRUN",
++    }
++    assert validated["identity"]["selector_test_id"] == harness.OPERATOR_REQ003_SELECTOR
++    assert "reply_id" not in validated["authorization"]
++    assert "payload_sha256" not in validated["authorization"]
++
++
++@pytest.mark.parametrize("mutation", [
++    "wrong-statement-digest",
++    "retry-enabled",
++    "wrong-operation",
++    "wrong-selector",
++    "mixed-pm-metadata",
++])
++def test_operator_authorization_rejects_scope_or_provenance_widening(mutation):
++    value = _operator_auth_input()
++    if mutation == "wrong-statement-digest":
++        value["authorization"]["operator_statement_sha256"] = "0" * 64
++    elif mutation == "retry-enabled":
++        value["authorization"]["retry_cap"] = 1
++    elif mutation == "wrong-operation":
++        value["authorization"]["allowed_operation"] = "S2-4_ANY_TEST"
++    elif mutation == "wrong-selector":
++        value["identity"]["selector_test_id"] = (
++            "tests/vst/test_s2_runtime_qualification_harness.py::test_runtime_handoff_contract"
++        )
++    else:
++        value["authorization"]["reply_id"] = "invented-pm-reply-0123456789"
++
++    with pytest.raises(harness.QualificationError):
++        harness.validate_input(value)
++
++
++def test_pm_bridge_authorization_contract_remains_unchanged():
++    value = _auth_input()
++
++    validated = harness.validate_input(value)
++
++    assert validated["authorization"]["source"] == "PM_BRIDGE"
++    assert validated["authorization"]["request_id"] == "2" * 32
++    assert validated["authorization"]["reply_id"] == "reply-0123456789abcdef"
++    assert validated["authorization"]["retry_cap"] == 0
++
++
+ def test_qualification_source_pins_cover_exactly_the_two_launcher_paths():
+     value = _auth_input()
+     value["source_pins"]["qualification"]["tools/qa/unapproved.py"] = HEX
+@@ -2530,6 +2603,69 @@ def test_run_once_starts_one_mock_wsl_child_and_persists_terminal_hold(
+     assert capsys.readouterr().out
+ 
+ 
++def test_operator_one_shot_run_records_provenance_and_refuses_replay(
++        monkeypatch, tmp_path, capsys):
++    script = MOCK_WSL_SOURCE
++    value = _operator_auth_input(streamed_wsl=script)
++    input_path, default_output_path = _write_input(tmp_path, value)
++    output_path = default_output_path.with_name("s2-runtime-qual-operator-001.attempt.json")
++    monkeypatch.setattr(harness, "verify_source_pins", lambda *_args: None)
++    monkeypatch.setattr(harness, "_load_wsl_script", lambda: script)
++    calls = []
++
++    def fake_wsl(injected_script, *, unit_name, runtime_max_sec):
++        calls.append((injected_script, unit_name, runtime_max_sec))
++        return {
++            "exit_code": 2,
++            "timed_out": False,
++            "writer_error": None,
++            "unit_name": unit_name,
++            "runtime_max_sec": runtime_max_sec,
++            "systemd_properties": ["RuntimeMaxSec=2400"],
++            "stdout": {
++                "bytes": len(FAILURE_PROTOCOL), "sha256": _sha(FAILURE_PROTOCOL),
++                "prefix": FAILURE_PROTOCOL, "truncated": False,
++            },
++            "stderr": {
++                "bytes": 0, "sha256": _sha(b""),
++                "prefix": b"", "truncated": False,
++            },
++        }
++
++    monkeypatch.setattr(harness, "_run_bounded_wsl", fake_wsl)
++
++    exit_code = harness.run_once(input_path, output_path, root=tmp_path)
++
++    assert exit_code == 2
++    assert len(calls) == 1
++    injected_tree = ast.parse(calls[0][0].decode("ascii"))
++    auth_literal = next(ast.literal_eval(node.value) for node in injected_tree.body
++                        if isinstance(node, ast.Assign)
++                        and any(isinstance(target, ast.Name) and target.id == "AUTH"
++                                for target in node.targets))
++    injected = json.loads(auth_literal)
++    assert injected["authorization"] == harness.validate_input(value)["authorization"]
++    assert "reply_id" not in injected["authorization"]
++
++    attempt = json.loads(output_path.read_text(encoding="utf-8"))
++    assert attempt["authorization_source"] == "OPERATOR"
++    assert attempt["authorization_request_id"] == "operator-s2-4d-req003-20261106-01"
++    assert attempt["authorization_reply_id"] is None
++    assert attempt["authorization_operator_reference"] == "operator"
++    assert attempt["authorization_operator_statement_sha256"] == value[
++        "authorization"]["operator_statement_sha256"]
++    assert attempt["identity"]["selector_test_id"] == harness.OPERATOR_REQ003_SELECTOR
++    assert attempt["retry_cap"] == 0
++
++    replay_output = output_path.with_name("attempt-replay.json")
++    with pytest.raises(harness.QualificationError,
++                       match="authorization reuses an identity present"):
++        harness.run_once(input_path, replay_output, root=tmp_path)
++    assert len(calls) == 1
++    assert not replay_output.exists()
++    assert capsys.readouterr().out
++
++
+ @pytest.mark.parametrize("unsupported", [1, None, [], {}])
+ def test_pm08_python_literal_refuses_unsupported_value_types(unsupported):
+     with pytest.raises(harness.QualificationError, match="no safe Python literal encoding"):
+diff --git a/tools/qa/run_s2_runtime_qualification.py b/tools/qa/run_s2_runtime_qualification.py
+index a0b2cfa..2404675 100644
+--- a/tools/qa/run_s2_runtime_qualification.py
++++ b/tools/qa/run_s2_runtime_qualification.py
+@@ -1,8 +1,9 @@
+ """Run one authorized, mount-free S2-4 Owner→Runner/TestRun qualification.
+ 
+ Input schema VST_S2_RUNTIME_AUTH_INPUT_V1 is deliberately closed. It contains
+-only correlated authorization metadata, immutable source/configuration pins,
+-and one test selector; it must never contain credentials or private key bytes.
++PM_BRIDGE correlated authorization metadata or a scoped OPERATOR instruction,
++immutable source/configuration pins, and one test selector; it must never
++contain credentials or private key bytes.
+ The launcher validates the complete input before it creates an exclusive
+ attempt record or starts WSL. Any started attempt is consumed even if its
+ outcome is unknown: this command never retries.
+@@ -37,6 +38,14 @@ AUTH_FIELDS = frozenset({
+     "source", "correlated", "verdict", "request_id", "job_id", "user_turn_id",
+     "reply_id", "payload_sha256", "retry_cap", "allowed_operation",
+ })
++OPERATOR_AUTH_FIELDS = frozenset({
++    "source", "operator_principal", "operator_authorization_id", "operator_statement",
++    "operator_statement_sha256", "verdict", "retry_cap", "allowed_operation",
++})
++OPERATOR_REQ003_SELECTOR = (
++    "tests/vst/test_s2_assignment_basis.py::"
++    "test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment"
++)
+ TOP_FIELDS = frozenset({"schema", "authorization", "identity", "source_pins"})
+ IDENTITY_FIELDS = frozenset({
+     "runtime_source_head", "qualification_source_head", "run_id", "bootstrap_request_id",
+@@ -238,21 +247,61 @@ def validate_input(value: Any) -> dict[str, Any]:
+     if record["schema"] != "VST_S2_RUNTIME_AUTH_INPUT_V1":
+         raise QualificationError("authorization input schema is not supported")
+ 
+-    auth = _exact_object(record["authorization"], AUTH_FIELDS, "authorization")
+-    if (auth["source"] != "PM_BRIDGE" or auth["correlated"] is not True
+-            or auth["verdict"] != "AUTHORIZE_ONE_SHOT"
+-            or type(auth["retry_cap"]) is not int or auth["retry_cap"] != 0
+-            or auth["allowed_operation"] != "S2-4_OWNER_RUNNER_TESTRUN"):
+-        raise QualificationError("authorization is not a correlated one-shot S2-4 grant")
+-    if not isinstance(auth["request_id"], str) or not REQUEST_ID.fullmatch(auth["request_id"]):
+-        raise QualificationError("authorization request_id is malformed")
+-    if not isinstance(auth["job_id"], str) or not OPAQUE_ID.fullmatch(auth["job_id"]):
+-        raise QualificationError("authorization job_id is malformed")
+-    if not isinstance(auth["user_turn_id"], str) or not OPAQUE_ID.fullmatch(auth["user_turn_id"]):
+-        raise QualificationError("authorization user_turn_id is malformed")
+-    if not isinstance(auth["reply_id"], str) or not OPAQUE_ID.fullmatch(auth["reply_id"]):
+-        raise QualificationError("authorization reply_id is malformed")
+-    _digest(auth["payload_sha256"], "authorization.payload_sha256")
++    raw_auth = record["authorization"]
++    if not isinstance(raw_auth, dict):
++        raise QualificationError("authorization must be an object")
++    source = raw_auth.get("source")
++    if source == "PM_BRIDGE":
++        auth = _exact_object(raw_auth, AUTH_FIELDS, "authorization")
++        if (auth["correlated"] is not True
++                or auth["verdict"] != "AUTHORIZE_ONE_SHOT"
++                or type(auth["retry_cap"]) is not int or auth["retry_cap"] != 0
++                or auth["allowed_operation"] != "S2-4_OWNER_RUNNER_TESTRUN"):
++            raise QualificationError("authorization is not a correlated one-shot S2-4 grant")
++        if not isinstance(auth["request_id"], str) or not REQUEST_ID.fullmatch(auth["request_id"]):
++            raise QualificationError("authorization request_id is malformed")
++        if not isinstance(auth["job_id"], str) or not OPAQUE_ID.fullmatch(auth["job_id"]):
++            raise QualificationError("authorization job_id is malformed")
++        if not isinstance(auth["user_turn_id"], str) or not OPAQUE_ID.fullmatch(auth["user_turn_id"]):
++            raise QualificationError("authorization user_turn_id is malformed")
++        if not isinstance(auth["reply_id"], str) or not OPAQUE_ID.fullmatch(auth["reply_id"]):
++            raise QualificationError("authorization reply_id is malformed")
++        _digest(auth["payload_sha256"], "authorization.payload_sha256")
++    elif source == "OPERATOR":
++        # This is a local record of the operator's direct instruction, not an
++        # external signature or a claim of cryptographic operator identity.
++        supplied_auth = _exact_object(raw_auth, OPERATOR_AUTH_FIELDS, "operator authorization")
++        statement = supplied_auth["operator_statement"]
++        try:
++            statement_bytes = statement.encode("utf-8") if isinstance(statement, str) else b""
++        except UnicodeEncodeError as exc:
++            raise QualificationError("operator statement is not valid UTF-8 text") from exc
++        if (supplied_auth["operator_principal"] != "operator"
++                or not isinstance(supplied_auth["operator_authorization_id"], str)
++                or not OPAQUE_ID.fullmatch(supplied_auth["operator_authorization_id"])
++                or not isinstance(statement, str) or not statement.strip()
++                or len(statement_bytes) > 4096
++                or supplied_auth["verdict"] != "AUTHORIZE_ONE_SHOT"
++                or type(supplied_auth["retry_cap"]) is not int or supplied_auth["retry_cap"] != 0
++                or supplied_auth["allowed_operation"] != "S2-4_OWNER_RUNNER_TESTRUN"):
++            raise QualificationError("operator authorization is not a scoped one-shot S2-4 instruction")
++        statement_digest = _digest(
++            supplied_auth["operator_statement_sha256"],
++            "authorization.operator_statement_sha256",
++        )
++        if hashlib.sha256(statement_bytes).hexdigest() != statement_digest:
++            raise QualificationError("operator statement digest does not match its recorded text")
++        auth = {
++            "source": "OPERATOR",
++            "request_id": supplied_auth["operator_authorization_id"],
++            "operator_principal": "operator",
++            "operator_statement_sha256": statement_digest,
++            "verdict": supplied_auth["verdict"],
++            "retry_cap": 0,
++            "allowed_operation": supplied_auth["allowed_operation"],
++        }
++    else:
++        raise QualificationError("authorization source is unsupported")
+ 
+     identity = _exact_object(record["identity"], IDENTITY_FIELDS, "identity")
+     runtime_head = _head(identity["runtime_source_head"], "identity.runtime_source_head")
+@@ -273,6 +322,8 @@ def validate_input(value: Any) -> dict[str, Any]:
+     for name in ("bundle_sha256", "config_bundle_sha256", "task_manifest_sha256"):
+         _digest(identity[name], "identity." + name)
+     selector_test = _test_selector(identity["selector_test_id"])
++    if source == "OPERATOR" and selector_test != OPERATOR_REQ003_SELECTOR:
++        raise QualificationError("operator authorization is limited to the exact S2-4D REQ-003 selector")
+ 
+     config_hashes = identity["config_sha256"]
+     if not isinstance(config_hashes, dict) or not 1 <= len(config_hashes) <= 128:
+@@ -705,7 +756,11 @@ def run_once(input_path: Path, output_path: Path, *, root: Path) -> int:
+         "state": "STARTING",
+         "authorization_input_sha256": hashlib.sha256(raw_bytes).hexdigest(),
+         "authorization_request_id": validated["authorization"]["request_id"],
+-        "authorization_reply_id": validated["authorization"]["reply_id"],
++        "authorization_source": validated["authorization"]["source"],
++        "authorization_reply_id": validated["authorization"].get("reply_id"),
++        "authorization_operator_reference": validated["authorization"].get("operator_principal"),
++        "authorization_operator_statement_sha256": validated["authorization"].get(
++            "operator_statement_sha256"),
+         "identity": {key: validated["identity"][key] for key in (
+             "runtime_source_head", "qualification_source_head", "run_id", "bootstrap_request_id",
+             "nonce", "runtime_selector", "bundle_sha256", "config_bundle_sha256",
+diff --git a/tools/qa/s2_runtime_qualification_wsl.py b/tools/qa/s2_runtime_qualification_wsl.py
+index 61e8628..abf6f54 100644
+--- a/tools/qa/s2_runtime_qualification_wsl.py
++++ b/tools/qa/s2_runtime_qualification_wsl.py
+@@ -1366,8 +1366,11 @@ _identity = AUTH.get("identity", {}) if isinstance(AUTH, dict) else {}
+ _authorization = AUTH.get("authorization", {}) if isinstance(AUTH, dict) else {}
+ R = {
+     "schema": "VST_S2_RUNTIME_QUALIFICATION_PROTOCOL_V1",
++    "authorization_source": _authorization.get("source"),
+     "authorization_request_id": _authorization.get("request_id"),
+     "authorization_reply_id": _authorization.get("reply_id"),
++    "authorization_operator_reference": _authorization.get("operator_principal"),
++    "authorization_operator_statement_sha256": _authorization.get("operator_statement_sha256"),
+     "identity": {key: _identity[key] for key in (
+         "runtime_source_head", "run_id", "bootstrap_request_id",
+         "nonce", "runtime_selector", "bundle_sha256", "config_bundle_sha256",

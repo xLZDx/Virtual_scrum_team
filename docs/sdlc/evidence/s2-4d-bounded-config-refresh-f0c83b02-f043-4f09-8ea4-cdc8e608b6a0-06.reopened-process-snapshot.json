@@ -1,0 +1,51 @@
+{
+  "schema": "VST_S2_4D_REOPENED_PROCESS_SNAPSHOT_V1",
+  "task_id": "S2-4D",
+  "recorded_utc": "2026-11-05T15:32:30.6709222Z",
+  "operator_instruction": "ПРОДОЛЖАЙ исходную задачу",
+  "resumed_after": "Operator closed S2-4D as-is on 2026-11-05T15:29:46.4555893Z",
+  "acceptance": "NOT_SATISFIED",
+  "decision_id": "f0c83b02-f043-4f09-8ea4-cdc8e608b6a0",
+  "latest_snapshot_utc": "2026-11-05T15:31:48.8367729Z",
+  "process_tree": [
+    {
+      "pid": 42016,
+      "name": "wsl.exe",
+      "parent_pid": 38760,
+      "created": "2026-11-05T17:15:11.33617+02:00"
+    },
+    {
+      "pid": 40072,
+      "name": "conhost.exe",
+      "parent_pid": 42016,
+      "created": "2026-11-05T17:15:11.351592+02:00"
+    },
+    {
+      "pid": 20620,
+      "name": "wsl.exe",
+      "parent_pid": 42016,
+      "created": "2026-11-05T17:15:11.588986+02:00"
+    },
+    {
+      "pid": 15892,
+      "name": "wslhost.exe",
+      "parent_pid": 20620,
+      "created": "2026-11-05T17:15:20.51393+02:00"
+    },
+    {
+      "pid": 25072,
+      "name": "conhost.exe",
+      "parent_pid": 15892,
+      "created": "2026-11-05T17:15:20.631821+02:00"
+    }
+  ],
+  "parent_pid_38760": "NOT_PRESENT",
+  "keeper_python": "UNKNOWN",
+  "collector": "NOT_RUN",
+  "payload": "NOT_BUILT",
+  "applier_invocations": 0,
+  "target_mutation": "NOT_RUN",
+  "old_grant": "CONSUMED_NO_RETRY",
+  "action_taken": "Read-only Win32_Process snapshot only",
+  "next": "Separate GPT-PM cleanup adjudication; no process termination and no new keeper under current authority."
+}

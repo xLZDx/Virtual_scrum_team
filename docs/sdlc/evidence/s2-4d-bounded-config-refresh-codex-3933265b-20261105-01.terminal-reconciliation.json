@@ -1,0 +1,22 @@
+{
+  "schema": "VST_S2_4D_TERMINAL_RECONCILIATION_V1",
+  "task": "S2-4D bounded config refresh",
+  "decision_id": "3933265b-50f9-4bd0-a713-1d4a8be0d3a6",
+  "observed_utc": "2026-11-05T14:45:27.9152355Z",
+  "source_head": "dc978a0e3f02c11220deea3ac3f014cb2f1718a1",
+  "bundle_sha256": "4c13f2991f39cf12b84af4b0440621ab1adaa74ca1894dfda29eec1006cd7138",
+  "command": "wsl.exe --distribution Ubuntu-24.04 --user root --exec /usr/bin/python3.12 -I -B -S -c <readiness JSON; stdin.buffer.read(1)>",
+  "exit_code": 0,
+  "readiness": {
+    "pid1_stat": "1 (systemd) ...",
+    "boot_id": "84c624a7-bc08-45a7-b60e-2ca715578597",
+    "ready": true
+  },
+  "failure": "The noninteractive exec_command process closed stdin after command output; keeper read EOF and exited before collector launch.",
+  "collector": "NOT_RUN",
+  "payload": "NOT_BUILT",
+  "applier_invocations": 0,
+  "authorization_consumed_by_keeper_start": true,
+  "target_mutation": "NOT_RUN",
+  "conclusion": "Grant expired when keeper exited; cannot reuse. No fresh inventory or config application occurred."
+}

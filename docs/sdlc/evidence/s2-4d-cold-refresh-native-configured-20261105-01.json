@@ -1,0 +1,48 @@
+{
+  "task": "S2-4D sourcefix focused POSIX pytest verification",
+  "executor": {
+    "agent_type": "e2e-runner",
+    "configured_model": "gpt-6-luna",
+    "reasoning_effort": "low",
+    "source": "current configured agent launch assignment"
+  },
+  "head": "4fe846fc1c3172f02a4fe915936ecc9c249ac61d",
+  "source_sha256": {
+    "tools/qa/apply_s2_runtime_configuration.py": "5c02647b103462502be5385eb0381acec5e989b32c787979d0841037cdb4e35c",
+    "tools/qa/runtime_snapshot_transaction.py": "76a985ec375cd3c8ef1a5d5e1c5ac1a514d310adbf932916aad551e4a6e849f2",
+    "tools/qa/collect_s2_runtime_config_inventory.py": "429d5cfd7c4fde3bfbe34da3d625a2f92474873fbc096bdbf599aeb5b8d45bcf",
+    "tests/vst/test_s2_runtime_bootstrap_transaction.py": "ff76b0a20ad8494a7321f98de209bacb976c842ee65a12f18ff6a34f20165537"
+  },
+  "environment": "Ubuntu 24.04 WSL; /usr/bin/python3.12 -I -B -S; system pytest 7.4.4 imported from /usr/lib/python3/dist-packages; PYTEST_DISABLE_PLUGIN_AUTOLOAD=1; cache provider disabled; D: mounted read-only within same WSL invocation.",
+  "test_ids": [
+    "tests/vst/test_s2_runtime_bootstrap_transaction.py::test_candidate_refresh_helper_reobserves_existing_ledger_without_bootstrap_primitive",
+    "tests/vst/test_s2_runtime_bootstrap_transaction.py::test_default_bootstrap_helper_does_not_opt_into_candidate_root"
+  ],
+  "command_argv": [
+    "/usr/bin/python3.12",
+    "-I",
+    "-B",
+    "-S",
+    "-c",
+    "import sys; sys.path.insert(0, '/usr/lib/python3/dist-packages'); import pytest; print('pytest_version=' + pytest.__version__); raise SystemExit(pytest.main(['-p', 'no:cacheprovider', '-p', 'no:faulthandler', 'tests/vst/test_s2_runtime_bootstrap_transaction.py::test_candidate_refresh_helper_reobserves_existing_ledger_without_bootstrap_primitive', 'tests/vst/test_s2_runtime_bootstrap_transaction.py::test_default_bootstrap_helper_does_not_opt_into_candidate_root', '-q']))"
+  ],
+  "cwd": "/mnt/d/Repo/Virtual_scrum_team",
+  "exit_code": 0,
+  "stdout": "pytest_version=7.4.4\n..                                                                       [100%]\n2 passed in 0.35s\n",
+  "stderr": "",
+  "preliminary_attempts": [
+    {
+      "stage": "initial path probe",
+      "outcome": "NOT_RUN",
+      "exit_code": 1,
+      "evidence": "FileNotFoundError: /mnt/d/Repo/Virtual_scrum_team because the fresh WSL invocation had no D: mount."
+    },
+    {
+      "stage": "first read-only mount + pytest invocation",
+      "outcome": "NOT_RUN",
+      "exit_code": 1,
+      "evidence": "Mount succeeded; python reported No module named pytest because -S suppresses site packages; no tests collected."
+    }
+  ],
+  "scope": "Only the two specified mocked/temp helper cases. No runtime, service, applier, configuration write, protectedkeys, or realbootstrap operations."
+}

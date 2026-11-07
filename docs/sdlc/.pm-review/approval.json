@@ -1,0 +1,29 @@
+{
+  "approval_id": "PMG-20261030-7d1d16f6",
+  "kind": "code",
+  "head": "7d1d16f6348e6c00a5a568b5cfbc8caf309194b9",
+  "base": "2e6a796eaa04664812cf1266322b083f18770fa1",
+  "base_sha": "2e6a796eaa04664812cf1266322b083f18770fa1",
+  "verdict": "APPROVE",
+  "request_id": "044fac3a-da95-491b-8621-3d2dc919f6d8",
+  "reply_id": "0cebb4b1-1947-5213-940d-8b76ec0e8b9d",
+  "input_hash": "005725f46a3669ec19b3841ea9e6b2755cad137b60562d8a8f35d51c29b55eff",
+  "expected_input_hash": "005725f46a3669ec19b3841ea9e6b2755cad137b60562d8a8f35d51c29b55eff",
+  "diff_sha256": "81e719bc2f5a4d1e58500559f80f490e90f37d27ba18d33066e0faeb14a56859",
+  "diff_in_prompt_sha256": "b2b88d9e6e657b70b0e781792ed21d656c6f93c9bad762c5d5ebc7d3faa1540e",
+  "evidence_sha256": "f505950cb507e5f325b684d78b548655bedbf0f8436a3151e57158d098965ba8",
+  "sprint_id": "39b7cc253f5d",
+  "artifacts": {
+    "requirements.md": "c17974c311e1c660b25520af85b8477ccd18784b8b81e7be3bbdbe81f7009394",
+    "backlog.md": "0fc87c4432af216613075e4d9cf65892bb25d56402cb9770597bb980193d6470",
+    "design.md": "d43a99939d2282bcb5617e142991f05eb9c1b52653241125b6d0b9bcc369088d",
+    "test-plan.md": "e5574dda828a4b640a330466b404ea76a9b0be407adea38f7e556c73d5680ece",
+    "review-record.md": "1964eff1b98e4132b705f911d5433cae1114f73c9166bb945e07b295663185ac",
+    "change-records/s2-source-implementation.md": "59ce397bea39fd675f45adf5e8758ac4184d621afaa5dfaf33c8f8008624d21c",
+    "verify-evidence.md": "8128cb3825593c902ae89476f24a28507e0ddf4d536dc32e21a5238896e4447d",
+    "verify-evidence.json": "f505950cb507e5f325b684d78b548655bedbf0f8436a3151e57158d098965ba8"
+  },
+  "reply_sha256": "9ba566471add6aa39969682f7472c683c4f404fc6494aa9f041cfaf051572364",
+  "recorded": "2026-10-30T08:51:37+00:00",
+  "reviewer": "GPT-PM via PM Bridge review.js"
+}

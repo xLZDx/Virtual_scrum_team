@@ -1,0 +1,8 @@
+head=e1f6d9363ed9b85c998786a2688ca79f4aeca8ff
+source_sha256=fb5450576ddd74a6987b576b2e3c6d2166fffe1444b9d578914b6414fe802e3b
+test_sha256=114389dc71773fb731ffe725982efb487913eaf198a54f62707e2ad02e9c0741
+command=python -m pytest -q --tb=line tests/vst/test_s2_runtime_configuration_apply.py tests/vst/test_s2_runtime_config_inventory.py
+exit_code=0
+result=93 passed, 1 warning in 51.05s
+warning=pytest_asyncio DeprecationWarning: asyncio.get_event_loop_policy is deprecated and slated for removal in Python 3.16
+capture=Start-Process redirected process stdout and stderr to binary files

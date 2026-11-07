@@ -1,0 +1,146 @@
+{
+  "task": "S2-4E",
+  "date": "2026-11-07",
+  "head": "aef7aaa0f9909d93270a6ebb1cd1684d11c702b0",
+  "subject": "uncommitted diff of tests/vst/provision_s2_4e_windows.ps1 (working-copy sha256 below)",
+  "working_copy_sha256": "7fcc204672d0430c6b0950bfc131db5e57c61dcc7872d260a333e5fc11677233",
+  "runtime": "powershell.exe 5.1.26100.9711, non-elevated",
+  "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File docs\\sdlc\\evidence\\s2-4e-acl-mask-fix-test.ps1 -OutJson docs\\sdlc\\evidence\\s2-4e-acl-mask-fix-20261107.json",
+  "harness_note": "T2b/T3 use a copy of the function with ONE line changed: current user SID added to $trusted, so non-elevated file ownership and the user-owned %TEMP% ancestor chain do not mask the write-mask logic. T2a (Python314, Git trees) and the real-tree mutants use the unmodified function text; the real-tree mutants only swap the owner/rules/trustee lines back to the old Translate form.",
+  "not_run": [
+    "raw GENERIC_WRITE/GENERIC_ALL unmapped ACE (cannot be created via icacls/Set-Acl without elevation)",
+    "installer itself",
+    "elevated run",
+    "S-1-15-2-2 (ALL RESTRICTED APPLICATION PACKAGES) covered only indirectly via the real Git trees, no dedicated fixture"
+  ],
+  "results": [
+    {
+      "case": "T1_parse_ps51",
+      "description": "powershell.exe parses edited file with no errors",
+      "result": "PASS",
+      "detail": "PSVersion=5.1.26100.9711 parseErrors=0"
+    },
+    {
+      "case": "T2a_python314_no_throw",
+      "description": "unmodified function does not throw on C:\\Python314",
+      "result": "PASS",
+      "detail": "threw=False msg="
+    },
+    {
+      "case": "T2a_real_tree_no_throw_C__Program_Files_Git_usr_bin",
+      "description": "unmodified function does not throw on C:\\Program Files\\Git\\usr\\bin",
+      "result": "PASS",
+      "detail": "threw=False msg="
+    },
+    {
+      "case": "T2a_real_tree_no_throw_C__Program_Files_Git",
+      "description": "unmodified function does not throw on C:\\Program Files\\Git",
+      "result": "FAIL",
+      "detail": "threw=True msg=Untrusted owner on service runtime path: C:\\Program Files\\Git\\etc\\hosts"
+    },
+    {
+      "case": "T2c_mutant_translate_throws_C__Program_Files_Git_usr_bin",
+      "description": "mutant (old .Access + Translate): C:\\Program Files\\Git\\usr\\bin throws Translate error",
+      "result": "PASS",
+      "detail": "threw=True msg=Exception calling \"Translate\" with \"1\" argument(s): \"Some or all identity references could not be translated.\""
+    },
+    {
+      "case": "T2c_mutant_translate_throws_C__Program_Files_Git",
+      "description": "mutant (old .Access + Translate): C:\\Program Files\\Git throws Translate error",
+      "result": "PASS",
+      "detail": "threw=True msg=Exception calling \"Translate\" with \"1\" argument(s): \"Some or all identity references could not be translated.\""
+    },
+    {
+      "case": "T2c_mutant_translate_python314_still_ok",
+      "description": "mutant: C:\\Python314 still passes (confirms only package-SID trees expose the defect)",
+      "result": "PASS",
+      "detail": "threw=False msg="
+    },
+    {
+      "case": "T2b0_control_no_users_grant",
+      "description": "harness variant: file without Users grant does not throw",
+      "result": "PASS",
+      "detail": "threw=False msg="
+    },
+    {
+      "case": "T2b1_users_modify_throws",
+      "description": "Users:(M) on file -> throws can-modify",
+      "result": "PASS",
+      "detail": "threw=True msg=A non-admin principal can modify service runtime code: C:\\Users\\koros\\AppData\\Local\\Temp\\s24e_acl_test_c2a6ecb48a904d8b8cad80ac961d3f10\\modify\\runtime.py"
+    },
+    {
+      "case": "T2b2_users_write_only_throws",
+      "description": "Users:(W) on file -> throws can-modify",
+      "result": "PASS",
+      "detail": "threw=True msg=A non-admin principal can modify service runtime code: C:\\Users\\koros\\AppData\\Local\\Temp\\s24e_acl_test_c2a6ecb48a904d8b8cad80ac961d3f10\\write\\runtime.py"
+    },
+    {
+      "case": "T2b3_users_rx_no_throw",
+      "description": "Users:(RX) on file -> no throw",
+      "result": "PASS",
+      "detail": "threw=False msg="
+    },
+    {
+      "case": "T2c_mutant_modify_in_mask_python314_throws",
+      "description": "mutant (Modify re-added): C:\\Python314 now throws (positive test is sensitive)",
+      "result": "PASS",
+      "detail": "threw=True msg=A non-admin principal can modify service runtime code: C:\\Python314"
+    },
+    {
+      "case": "T2c_mutant_modify_in_mask_rx_throws",
+      "description": "mutant: Users:(RX) fixture wrongly throws (reproduces original defect)",
+      "result": "PASS",
+      "detail": "threw=True msg=A non-admin principal can modify service runtime code: C:\\Users\\koros\\AppData\\Local\\Temp\\s24e_acl_test_c2a6ecb48a904d8b8cad80ac961d3f10\\rx"
+    },
+    {
+      "case": "T3_inheritonly_skipped",
+      "description": "inherit-only Users:(M) on empty dir -> no throw",
+      "result": "PASS",
+      "detail": "threw=False msg="
+    },
+    {
+      "case": "T3_mutant_no_inheritonly_guard_throws",
+      "description": "mutant without InheritOnly guard -> throws on same fixture",
+      "result": "PASS",
+      "detail": "threw=True msg=A non-admin principal can modify service runtime code: C:\\Users\\koros\\AppData\\Local\\Temp\\s24e_acl_test_c2a6ecb48a904d8b8cad80ac961d3f10\\inheritonly"
+    },
+    {
+      "case": "T2b_pkg_fixture_has_ace",
+      "description": "fixture really carries an S-1-15-2-1 ACE",
+      "result": "PASS",
+      "detail": "aceCount=1 rights=ReadAndExecute, Synchronize"
+    },
+    {
+      "case": "T2b_pkg_rx_no_throw",
+      "description": "S-1-15-2-1:(RX) on file -> no throw",
+      "result": "PASS",
+      "detail": "threw=False msg="
+    },
+    {
+      "case": "T2b_pkg_modify_throws",
+      "description": "S-1-15-2-1:(M) on file -> throws can-modify",
+      "result": "PASS",
+      "detail": "threw=True msg=A non-admin principal can modify service runtime code: C:\\Users\\koros\\AppData\\Local\\Temp\\s24e_acl_test_c2a6ecb48a904d8b8cad80ac961d3f10\\pkgm\\runtime.py"
+    },
+    {
+      "case": "T2c_mutant_translate_pkg_rx_throws",
+      "description": "mutant (old Translate): S-1-15-2-1:(RX) fixture throws Translate error",
+      "result": "PASS",
+      "detail": "threw=True msg=Exception calling \"Translate\" with \"1\" argument(s): \"Some or all identity references could not be translated.\""
+    },
+    {
+      "case": "T_cleanup",
+      "description": "temp fixture dir removed",
+      "result": "PASS",
+      "detail": "C:\\Users\\koros\\AppData\\Local\\Temp\\s24e_acl_test_c2a6ecb48a904d8b8cad80ac961d3f10"
+    }
+  ],
+  "findings": [
+    {
+      "case": "T2a_real_tree_no_throw_C__Program_Files_Git",
+      "result": "FAIL",
+      "diagnosis": "No Translate error any more. Function now rejects on a genuine owner check: C:\\Program Files\\Git\\etc\\{hosts,mtab,networks,protocols,services} are owned by the interactive user (RAZER\\koros, S-1-5-21-...-1001) who also holds FullControl on them. That is a machine state (user-writable files inside the Git tree), not a function defect; handed back to the implementer to decide whether Git root is a tree the installer must accept."
+    }
+  ],
+  "summary": "20 cases: 19 PASS, 1 FAIL (see findings)"
+}

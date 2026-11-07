@@ -1,0 +1,22 @@
+{
+  "schema": "VST_S2_4D_READONLY_PROCESS_SNAPSHOT_V1",
+  "task_id": "S2-4D",
+  "original_decision_id": "f0c83b02-f043-4f09-8ea4-cdc8e608b6a0",
+  "observed_utc": "2026-11-05T15:27:33.4523435Z",
+  "method": "Win32_Process read-only snapshot with exact PID, parent PID, creation time and executable path; recursive descendant set from recorded process IDs. No WSL command, process mutation, kill, or distro shutdown was run.",
+  "original_parent_pid_38760": "NOT_PRESENT",
+  "target_process_tree": [
+    { "pid": 42016, "parent_pid": 38760, "name": "wsl.exe", "created_local": "2026-11-05T17:15:11.33617+02:00", "image": "C:\\Windows\\system32\\wsl.exe" },
+    { "pid": 40072, "parent_pid": 42016, "name": "conhost.exe", "created_local": "2026-11-05T17:15:11.351592+02:00", "image": "C:\\WINDOWS\\system32\\conhost.exe" },
+    { "pid": 20620, "parent_pid": 42016, "name": "wsl.exe", "created_local": "2026-11-05T17:15:11.588986+02:00", "image": "C:\\Program Files\\WSL\\wsl.exe" },
+    { "pid": 15892, "parent_pid": 20620, "name": "wslhost.exe", "created_local": "2026-11-05T17:15:20.51393+02:00", "image": "C:\\Program Files\\WSL\\wslhost.exe" },
+    { "pid": 25072, "parent_pid": 15892, "name": "conhost.exe", "created_local": "2026-11-05T17:15:20.631821+02:00", "image": "C:\\WINDOWS\\system32\\conhost.exe" }
+  ],
+  "wsl_python_keeper_identity": "UNKNOWN",
+  "linux_side_collector_identity": "UNKNOWN",
+  "assessment": "The exact decision-bound WSL process tree remains present. GPT-PM's required terminal-state condition is not satisfied. No new keeper, collector, payload build, applier, kill, or distribution termination is authorized or executed.",
+  "related_prior_evidence": [
+    "docs/sdlc/evidence/s2-4d-bounded-config-refresh-f0c83b02-f043-4f09-8ea4-cdc8e608b6a0-03.terminal-reconciliation.json",
+    "docs/sdlc/evidence/s2-4d-bounded-config-refresh-f0c83b02-f043-4f09-8ea4-cdc8e608b6a0-04.process-snapshot-wrapper-plan.json"
+  ]
+}

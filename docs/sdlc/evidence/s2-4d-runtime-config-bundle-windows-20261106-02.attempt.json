@@ -1,0 +1,24 @@
+{
+  "task": "S2-4D / REQ-003 QA-helper removal regression",
+  "command": "python -B -m pytest -q -p no:cacheprovider tests/vst/test_s2_runtime_config_bundle.py",
+  "environment": "Windows project checkout; no WSL",
+  "revision": "eb9b0ed53c66cfb21dc9a2e23265772293daaabb",
+  "revision_provenance": "Last observed HEAD before these tests; no Git query performed per task instruction",
+  "source_and_test_sha256": {
+    "tools\\vst\\store.py": "f3a0e217b372dfd48f2e4c9b864f7f1d4a726659f15544be88ac489d41702aa3",
+    "tools\\vst\\assignment_basis.py": "c2159f18cf25597118d13623b4ecf24fcd1e40626d03ca32fa1ec8fb920f51de",
+    "tools\\vst\\contracts.py": "bf01d990a94cd71887f8d9f81019333f3bf43d5950a655de3646e9bb3d585ea4",
+    "tests\\vst\\test_s2_runtime_config_bundle.py": "14963b9556a1e8cb84f9ac3564b91059efa4f59c95c236d8b6b6355d49baaf61"
+  },
+  "started_utc": "2026-11-06T15:45:32.9735301Z",
+  "finished_utc": "2026-11-06T15:45:40.8498755Z",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-runtime-config-bundle-windows-20261106-02.stdout.bin",
+  "stdout_bytes": 631,
+  "stdout_sha256": "0105a76d04b99ea98248ceb51ac90fc9b007227e880a232a5d09594eeeec6de6",
+  "stderr_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-runtime-config-bundle-windows-20261106-02.stderr.bin",
+  "stderr_bytes": 0,
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "scope": "Only tests/vst/test_s2_runtime_config_bundle.py; no WSL, collector, configuration apply, CI, or Git checks."
+}

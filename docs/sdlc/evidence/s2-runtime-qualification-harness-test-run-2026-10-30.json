@@ -1,0 +1,23 @@
+{
+  "task": "S2-4 runtime qualification harness contract tests",
+  "scope": "Mock-only tests of bounded authorization/refusal-before-WSL, exact source pinning, one-child/no-retry behavior, and terminal HOLD evidence. No real WSL, runtime, service, credential, or restricted selector was invoked.",
+  "head": "aedf712c07eb0cc531852d18443faa497e19bb2d",
+  "worktree": "DIRTY; scoped status showed the new test and both harness implementation modules untracked. Shared checkout already contains other changes; no staging performed. Test result is against this dirty tree, not a clean committed revision.",
+  "environment": "Windows PowerShell; Python 3.14.3 via C:\\Python314\\python.exe",
+  "command": "C:\\Python314\\python.exe -m pytest -q -rs -p no:cacheprovider tests/vst/test_s2_runtime_qualification_harness.py",
+  "exit_code": 0,
+  "result": "4 passed, 1 warning in 0.38s",
+  "warning": "pytest-asyncio DeprecationWarning: asyncio.get_event_loop_policy is deprecated and slated for removal in Python 3.16; associated with test_bounded_or_unauthorized_input_refuses_before_wsl[un correlated].",
+  "test_cases": [
+    {"nodeid": "tests/vst/test_s2_runtime_qualification_harness.py::test_bounded_or_unauthorized_input_refuses_before_wsl[un correlated]", "acceptance": "S2-4: uncorrelated auth is refused before WSL; no attempt record is created."},
+    {"nodeid": "tests/vst/test_s2_runtime_qualification_harness.py::test_bounded_or_unauthorized_input_refuses_before_wsl[oversized]", "acceptance": "S2-4: over-limit auth input is refused before WSL; no attempt record is created."},
+    {"nodeid": "tests/vst/test_s2_runtime_qualification_harness.py::test_source_pin_verification_accepts_exact_archive_and_rejects_worktree_drift", "acceptance": "S2-4: exact pinned archive/blob is accepted; modified launcher worktree is refused."},
+    {"nodeid": "tests/vst/test_s2_runtime_qualification_harness.py::test_run_once_starts_one_mock_wsl_child_and_persists_terminal_hold", "acceptance": "S2-4: one mock WSL child, no retries, and terminal HOLD attempt evidence with output hashes."}
+  ],
+  "logs": {
+    "successful_run": "docs/sdlc/evidence/s2-runtime-qualification-harness-tests-final-2026-10-30.txt",
+    "initial_test_fixture_failure": "docs/sdlc/evidence/s2-runtime-qualification-harness-tests-2026-10-30.txt"
+  },
+  "initial_run": "Same command initially exited 1 with 2 failed/2 passed because the auth fixture used a non-canonical selector_test_id. The fixture was corrected to a canonical tests/...::test id; the final rerun above passed. This was a test fixture defect, not a product-code change.",
+  "skips": "None reported."
+}

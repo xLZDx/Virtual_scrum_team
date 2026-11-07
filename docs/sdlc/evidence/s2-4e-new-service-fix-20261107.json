@@ -1,0 +1,21 @@
+{
+  "task": "S2-4E",
+  "date": "2026-11-07",
+  "base_head": "f7b24c3",
+  "file": "tests/vst/provision_s2_4e_windows.ps1",
+  "working_copy_sha256": "9c4834cbbd856afae23c9c6a822701d657100d9c93770e0febc8401d1ed18d22",
+  "shell": "Windows PowerShell 5.1.26100.9711 (powershell.exe -NoProfile)",
+  "elevated": false,
+  "installer_run": false,
+  "cases": [
+    {"id": "C1", "name": "PS 5.1 parser, 0 errors", "result": "PASS", "evidence": "[Parser]::ParseFile -> parse_errors=0"},
+    {"id": "C2", "name": "argv of Invoke-Sc config call", "result": "PASS", "evidence": "python stand-in with the same `& exe @Arguments` splat: ['config','VSTOwner','obj=','NT SERVICE\VSTOwner'] (4 args, no empty, no quote mangling)"},
+    {"id": "C3", "name": "argv of Invoke-Sc sidtype call", "result": "PASS", "evidence": "['sidtype','VSTOwner','restricted']"},
+    {"id": "C4", "name": "argv of Invoke-Sc delete call", "result": "PASS", "evidence": "['delete','VSTOwner']"},
+    {"id": "C5", "name": "Negative control: old create form reproduces defect", "result": "PASS", "evidence": "binPath arrives as 'C:\Python314\python.exe C:\ProgramData\VST\launchers\run-owner.py' (quotes stripped) and empty password= is dropped, matching the reported 1639 argv dump"},
+    {"id": "C6", "name": "Cleanup expected image equals New-Service PathName", "result": "NOT_RUN", "evidence": "INFERENCE only: New-Service passes -BinaryPathName to CreateService unchanged, and Win32_Service.PathName echoes the stored ImagePath; the quoted '\"py\" \"launcher\"' string in install and cleanup are built by the same format. Needs an elevated create to measure."},
+    {"id": "C7", "name": "sc.exe config obj= accepted without password for NT SERVICE\VSTOwner", "result": "NOT_RUN", "evidence": "needs elevation; sc.exe config with a virtual account and no password is expected to be accepted"},
+    {"id": "C8", "name": "Stop-Transcript before exit 0 in Cleanup", "result": "PASS", "evidence": "static diff review: try { Stop-Transcript | Out-Null } catch {} inserted at line 167; parse OK"},
+    {"id": "C9", "name": "Other native calls with embedded quotes or empty args", "result": "PASS", "evidence": "only native calls: Invoke-Sc delete/config/sidtype (plain tokens), line 322-326 `& $pythonPath @pythonArgs` (paths w/o embedded quotes, no empty args), line 351 inside generated run-e2e.ps1 (single-quoted paths, no empty args). New-ScheduledTaskAction -Argument is a cmdlet string, not a native argv."}
+  ]
+}

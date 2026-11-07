@@ -24,20 +24,29 @@ import hashlib
 import json
 import os
 import sqlite3
+import stat
+import subprocess
 import sys
+import tempfile
+import threading
+import time
+from contextlib import contextmanager
 from typing import Any, Callable
 
 from . import gate as gate_module
 from .contracts import (
     SUPERVISOR_SLOT,
     ContractError,
+    canonical_bytes,
     derive_result,
     manifest_sha256,
     receipt_sha256,
     validate_task_manifest,
 )
-from .runner import run_and_sign
+from .runner import build_environment, run_and_sign
+from .lifecycle import STOP_TRANSITIONS
 from .signing import WAIVER_LABEL, sign
+from .supervisor import Supervisor
 from .store import MARKER_RESULTS, SUPERVISOR_RECEIPT_PREFIX, Store, StoreError
 
 SYNTHETIC_HEAD = "1234567890abcdef1234567890abcdef12345678"
@@ -145,6 +154,8 @@ class SliceFixture:
         operator_key: bytes = OPERATOR_KEY,
         event_key: bytes = EVENT_KEY,
         retry_cap: int = 1,
+        anchor_path: str | None = None,
+        sandbox_mode: bool = False,
     ) -> None:
         if len({bytes(key), bytes(supervisor_key), bytes(operator_key), bytes(event_key)}) != 4:
             raise ValueError("worker, supervisor, operator and event keys must be distinct")
@@ -161,7 +172,11 @@ class SliceFixture:
         self.runner_id = WORKER_ID
         self.manifest = build_synthetic_manifest(self.task_id, self.current_head, retry_cap)
         self.manifest_hash = manifest_sha256(self.manifest)
-        self.store = Store(os.path.join(workdir, "state.db"), clock, event_key=event_key)
+        self.store = Store(
+            os.path.join(workdir, "state.db"), clock, event_key=event_key,
+            anchor_path=anchor_path, sandbox_mode=sandbox_mode,
+            supervisor_key=supervisor_key if sandbox_mode else None,
+        )
         self.store.init_slots(2)
         self.store.open_story(self.story_id, self.manifest["project_id"], 1)
         self.store.register_task(self.manifest)
@@ -1086,6 +1101,1210 @@ def run_scenarios(workdir: str) -> dict[str, dict]:
         finally:
             fixture.close()
     return report
+
+
+class SyntheticOperationBackend:
+    """Supervisor-only adapter for a local bare Git remote."""
+
+    _LOCAL_STORAGE_LOCK = threading.RLock()
+    _MAX_PACK_BYTES = 64 * 1024 * 1024
+    _MAX_PACK_OBJECTS = 250_000
+    _MAX_GIT_DIAGNOSTIC_BYTES = 8 * 1024
+    _MAX_SOURCE_OBJECT_STORAGE_BYTES = 512 * 1024 * 1024
+    _MAX_SOURCE_OBJECT_COUNT = 250_000
+    _MAX_SOURCE_STORE_ENTRIES = 500_000
+    _MAX_PREFLIGHT_OUTPUT_BYTES = 4096
+    _MAX_IDEMPOTENCY_RECORD_BYTES = 64 * 1024
+    _MAX_TARGET_OBJECT_STORAGE_BYTES = 512 * 1024 * 1024
+    _MAX_PACK_INDEX_BYTES = (_MAX_PACK_OBJECTS * 48) + 4096
+    _STORAGE_LOCK_FILE_BYTES = 2
+    _STORAGE_STATE_BYTES = {"HEALTHY": b"H", "IN_PROGRESS": b"I", "POISONED": b"P"}
+
+    def __init__(
+        self, bare_path: str, *, source_repo: str, command_timeout_sec: int = 10,
+    ) -> None:
+        if isinstance(command_timeout_sec, bool) or not isinstance(command_timeout_sec, int) or command_timeout_sec < 1:
+            raise ValueError("command_timeout_sec must be a positive integer")
+        if not isinstance(bare_path, str) or not bare_path.strip():
+            raise ValueError("bare_path must be a non-empty path")
+        if not isinstance(source_repo, str) or not source_repo.strip():
+            raise ValueError("source_repo must be a non-empty path")
+        self.bare_path = os.path.realpath(bare_path)
+        self.source_repo = source_repo
+        self.command_timeout_sec = command_timeout_sec
+
+    def _git_env(self, object_dir: str | None = None) -> dict[str, str]:
+        env = {
+            name: os.environ[name]
+            for name in (
+                "PATH", "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "TEMP", "TMP",
+                "TMPDIR", "LANG", "LC_ALL",
+            )
+            if name in os.environ
+        }
+        env.update({
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_NO_REPLACE_OBJECTS": "1",
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_OPTIONAL_LOCKS": "0",
+            "GIT_PAGER": "cat",
+            "GIT_NO_LAZY_FETCH": "1",
+        })
+        if object_dir is not None:
+            env["GIT_OBJECT_DIRECTORY"] = os.path.abspath(object_dir)
+        return env
+
+    def _target_git_env(self) -> dict[str, str]:
+        return self._git_env(os.path.join(self.bare_path, "objects"))
+
+    def _git(self, *args: str, input_bytes: bytes | None = None) -> str:
+        completed = subprocess.run(
+            ["git", "--git-dir", self.bare_path, *args],
+            input=input_bytes, stdin=None if input_bytes is not None else subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            check=False, timeout=self.command_timeout_sec, env=self._target_git_env(),
+        )
+        if completed.returncode:
+            raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
+        return completed.stdout.decode("utf-8", "replace").strip()
+
+    @contextmanager
+    def _target_storage_lock(self):
+        """Serialize every target object write across processes/supervisors."""
+        object_dir = os.path.abspath(os.path.join(self.bare_path, "objects"))
+        if self._is_link_or_junction(object_dir):
+            raise RuntimeError("synthetic target object directory must not be a symlink")
+        if not os.path.isdir(object_dir):
+            raise RuntimeError("synthetic target object directory is unavailable")
+        deadline = time.monotonic() + self.command_timeout_sec
+        local_lock = self._LOCAL_STORAGE_LOCK
+        if not local_lock.acquire(timeout=self.command_timeout_sec):
+            raise TimeoutError("timed out waiting for in-process synthetic target storage lock")
+        lock_path = os.path.join(self.bare_path, ".vst-object-storage.lock")
+        if self._is_link_or_junction(lock_path):
+            local_lock.release()
+            raise RuntimeError("synthetic target storage lock must not be a symlink")
+        fd = None
+        lock_file = None
+        os_locked = False
+        try:
+            try:
+                fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_RDWR, 0o600)
+            except FileExistsError:
+                fd = os.open(lock_path, os.O_RDWR)
+            lock_file = os.fdopen(fd, "r+b", buffering=0)
+            fd = None
+            size = os.fstat(lock_file.fileno()).st_size
+            if size == 0:
+                os.ftruncate(lock_file.fileno(), self._STORAGE_LOCK_FILE_BYTES)
+                os.fsync(lock_file.fileno())
+            elif size != self._STORAGE_LOCK_FILE_BYTES:
+                raise StoreError(
+                    "synthetic target has a legacy or malformed storage lock; refusing writes",
+                    kind="blocked",
+                )
+            while True:
+                lock_file.seek(0)
+                try:
+                    if os.name == "nt":
+                        import msvcrt
+                        msvcrt.locking(lock_file.fileno(), msvcrt.LK_NBLCK, 1)
+                    else:
+                        import fcntl
+                        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    os_locked = True
+                    break
+                except OSError as exc:
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError("timed out waiting for synthetic target storage lock") from exc
+                    time.sleep(0.01)
+            lock_file.seek(1)
+            state = lock_file.read(1)
+            lease = {"file": lock_file, "state": "HEALTHY"}
+            if state == self._STORAGE_STATE_BYTES["IN_PROGRESS"]:
+                self._write_storage_state(lease, "POISONED")
+                raise StoreError(
+                    "synthetic target has an interrupted object write and is poisoned",
+                    kind="blocked",
+                )
+            if state == self._STORAGE_STATE_BYTES["POISONED"]:
+                raise StoreError("synthetic target is poisoned; refusing object writes", kind="blocked")
+            if state not in {b"\0", self._STORAGE_STATE_BYTES["HEALTHY"]}:
+                self._write_storage_state(lease, "POISONED")
+                raise StoreError("synthetic target storage state is malformed and fail-closed", kind="blocked")
+            if state == b"\0":
+                self._write_storage_state(lease, "HEALTHY")
+            yield lease
+        finally:
+            try:
+                if os_locked:
+                    if os.name == "nt":
+                        import msvcrt
+                        lock_file.seek(0)
+                        msvcrt.locking(lock_file.fileno(), msvcrt.LK_UNLCK, 1)
+                    else:
+                        import fcntl
+                        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+            finally:
+                os_locked = False
+                try:
+                    if lock_file is not None:
+                        lock_file.close()
+                finally:
+                    try:
+                        if fd is not None:
+                            os.close(fd)
+                    finally:
+                        local_lock.release()
+
+    def _write_storage_state(self, lease: dict[str, Any], state: str) -> None:
+        state_byte = self._STORAGE_STATE_BYTES[state]
+        lock_file = lease["file"]
+        lock_file.seek(1)
+        written = lock_file.write(state_byte)
+        if written != 1:
+            raise OSError("short write while updating synthetic target storage state")
+        lock_file.flush()
+        os.fsync(lock_file.fileno())
+        lease["state"] = state
+
+    @staticmethod
+    def _raise_walk_error(error: OSError) -> None:
+        raise error
+
+    def _target_object_storage_bytes(self) -> int:
+        object_dir = os.path.join(self.bare_path, "objects")
+        total = 0
+        for root, directories, files in os.walk(
+            object_dir, followlinks=False, onerror=self._raise_walk_error,
+        ):
+            for name in directories:
+                path = os.path.join(root, name)
+                if self._is_link_or_junction(path):
+                    raise RuntimeError("synthetic target object directory contains a symlink")
+            for name in files:
+                path = os.path.join(root, name)
+                if self._is_link_or_junction(path):
+                    raise RuntimeError("synthetic target object store contains a symlink")
+                total += os.stat(path, follow_symlinks=False).st_size
+                if total > self._MAX_TARGET_OBJECT_STORAGE_BYTES:
+                    return total
+        return total
+
+    def _reserve_target_object_storage(self, additional_bytes: int) -> None:
+        current = self._target_object_storage_bytes()
+        if current + additional_bytes > self._MAX_TARGET_OBJECT_STORAGE_BYTES:
+            raise StoreError(
+                "synthetic target object storage cap would be exceeded",
+                kind="budget",
+            )
+
+    def _run_bounded_git(
+        self, command: list[str], *, env: dict[str, str],
+        output_limit: int | None = None,
+    ) -> tuple[bytes, bytes, int]:
+        """Run trusted Git plumbing with fixed-size output capture and timeout."""
+        output_limit = self._MAX_PREFLIGHT_OUTPUT_BYTES if output_limit is None else output_limit
+        outputs = {"stdout": bytearray(), "stderr": bytearray()}
+        overflow = {"stdout": False, "stderr": False}
+        reader_errors: dict[str, BaseException | None] = {"stdout": None, "stderr": None}
+        readers: list[threading.Thread] = []
+        process: subprocess.Popen | None = None
+
+        def drain(name: str, stream) -> None:
+            try:
+                while True:
+                    chunk = stream.read(4096)
+                    if not chunk:
+                        return
+                    remaining = output_limit - len(outputs[name])
+                    if remaining > 0:
+                        outputs[name].extend(chunk[:remaining])
+                    if len(chunk) > remaining:
+                        overflow[name] = True
+            except BaseException as exc:  # preserve every capture failure
+                reader_errors[name] = exc
+                try:
+                    if process is not None:
+                        process.kill()
+                except OSError:
+                    # The parent wait has its own deadline and repeats kill
+                    # and reap if this first cleanup attempt fails.
+                    pass
+
+        def kill_and_reap() -> None:
+            child = process
+            if child is None:
+                return
+            if child.poll() is None:
+                try:
+                    child.kill()
+                except OSError as exc:
+                    if child.poll() is None:
+                        raise RuntimeError(
+                            "bounded Git process could not be killed after capture failure"
+                        ) from exc
+            try:
+                child.wait(timeout=1)
+            except (subprocess.TimeoutExpired, OSError) as exc:
+                raise RuntimeError(
+                    "bounded Git process could not be reaped after capture failure"
+                ) from exc
+
+        def cleanup() -> None:
+            cleanup_error: BaseException | None = None
+            try:
+                kill_and_reap()
+            except BaseException as exc:
+                cleanup_error = exc
+            child = process
+            if child is not None:
+                for reader in readers:
+                    if reader.ident is not None:
+                        try:
+                            reader.join(timeout=1)
+                        except BaseException as exc:
+                            if cleanup_error is None:
+                                cleanup_error = exc
+                for stream in (child.stdout, child.stderr):
+                    if stream is not None:
+                        try:
+                            stream.close()
+                        except BaseException as exc:
+                            if cleanup_error is None:
+                                cleanup_error = exc
+            if cleanup_error is not None:
+                raise RuntimeError("bounded Git process cleanup was incomplete") from cleanup_error
+
+        process = subprocess.Popen(
+            command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, env=env, bufsize=0,
+        )
+
+        try:
+            child = process
+            assert child is not None
+            for name, stream in (("stdout", child.stdout), ("stderr", child.stderr)):
+                reader = threading.Thread(target=drain, args=(name, stream), daemon=True)
+                readers.append(reader)
+                reader.start()
+            returncode = child.wait(timeout=self.command_timeout_sec)
+        except subprocess.TimeoutExpired as exc:
+            raise TimeoutError("bounded Git preflight command exceeded its time limit") from exc
+        finally:
+            cleanup()
+        if any(overflow.values()):
+            raise RuntimeError("bounded Git command output exceeded its limit")
+        if any(reader.is_alive() for reader in readers):
+            raise RuntimeError("bounded Git preflight output reader did not finish")
+        failed_reader = next(((name, error) for name, error in reader_errors.items() if error is not None), None)
+        if failed_reader is not None:
+            name, error = failed_reader
+            raise RuntimeError(f"bounded Git preflight {name} capture failed") from error
+        return bytes(outputs["stdout"]), bytes(outputs["stderr"]), returncode
+
+    @staticmethod
+    def _is_lower_hex(value: str) -> bool:
+        return bool(value) and all(character in "0123456789abcdef" for character in value)
+
+    @staticmethod
+    def _is_link_or_junction(path: str) -> bool:
+        is_junction = getattr(os.path, "isjunction", lambda candidate: False)
+        if os.path.islink(path) or is_junction(path):
+            return True
+        reparse_attribute = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+        if reparse_attribute:
+            try:
+                return bool(os.lstat(path).st_file_attributes & reparse_attribute)
+            except (AttributeError, OSError):
+                return False
+        return False
+
+    def _source_repository_paths(self) -> tuple[str, str, str]:
+        supplied_root = os.path.abspath(self.source_repo)
+        if self._is_link_or_junction(supplied_root):
+            raise RuntimeError("synthetic source repository must not be a symlink")
+        source_root = os.path.realpath(supplied_root)
+        git_dir = os.path.join(source_root, ".git")
+        if self._is_link_or_junction(git_dir) or not os.path.isdir(git_dir):
+            raise RuntimeError("synthetic source must be a self-contained repository with a .git directory")
+        if os.path.lexists(os.path.join(git_dir, "commondir")):
+            raise RuntimeError("synthetic worktree repositories with external common Git directories are unsupported")
+        git_dir_real = os.path.realpath(git_dir)
+        if os.path.commonpath((source_root, git_dir_real)) != source_root:
+            raise RuntimeError("synthetic source Git directory escapes its repository root")
+        object_dir = os.path.join(git_dir_real, "objects")
+        if self._is_link_or_junction(object_dir) or not os.path.isdir(object_dir):
+            raise RuntimeError("synthetic source object directory is unavailable or symlinked")
+        for alternate_file in (
+            os.path.join(object_dir, "info", "alternates"),
+            os.path.join(object_dir, "info", "http-alternates"),
+        ):
+            if os.path.lexists(alternate_file):
+                raise RuntimeError("synthetic source object alternates are unsupported")
+        object_dir_real = os.path.realpath(object_dir)
+        if os.path.commonpath((git_dir_real, object_dir_real)) != git_dir_real:
+            raise RuntimeError("synthetic source object directory escapes its Git directory")
+        return source_root, git_dir_real, object_dir_real
+
+    def _source_object_storage_bytes(self, object_dir: str) -> int:
+        total = entries = 0
+        deadline = time.monotonic() + self.command_timeout_sec
+        for root, directories, files in os.walk(
+            object_dir, followlinks=False, onerror=self._raise_walk_error,
+        ):
+            if time.monotonic() >= deadline:
+                raise TimeoutError("synthetic source object-store scan exceeded its time limit")
+            for name in directories:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("synthetic source object-store scan exceeded its time limit")
+                entries += 1
+                path = os.path.join(root, name)
+                if self._is_link_or_junction(path):
+                    raise RuntimeError("synthetic source object store contains a symlink directory")
+                if entries > self._MAX_SOURCE_STORE_ENTRIES:
+                    raise RuntimeError("synthetic source object store exceeds the entry-count limit")
+            for name in files:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("synthetic source object-store scan exceeded its time limit")
+                entries += 1
+                path = os.path.join(root, name)
+                if self._is_link_or_junction(path):
+                    raise RuntimeError("synthetic source object store contains a symlink file")
+                source_stat = os.stat(path, follow_symlinks=False)
+                if not stat.S_ISREG(source_stat.st_mode):
+                    raise RuntimeError("synthetic source object store contains a non-regular file")
+                total += source_stat.st_size
+                if entries > self._MAX_SOURCE_STORE_ENTRIES:
+                    raise RuntimeError("synthetic source object store exceeds the entry-count limit")
+                if total > self._MAX_SOURCE_OBJECT_STORAGE_BYTES:
+                    raise RuntimeError("synthetic source object store exceeds the 512 MiB limit")
+        return total
+
+    def _source_object_counts(self, git_dir: str, object_dir: str) -> tuple[int, int]:
+        output, diagnostic, returncode = self._run_bounded_git(
+            ["git", "--git-dir", git_dir, "count-objects", "-v"],
+            env=self._git_env(object_dir),
+        )
+        if returncode:
+            raise RuntimeError(diagnostic.decode("utf-8", "replace"))
+        fields: dict[str, int] = {}
+        for line in output.decode("utf-8", "strict").splitlines():
+            key, separator, value = line.partition(": ")
+            if not separator:
+                raise RuntimeError("Git count-objects returned malformed preflight output")
+            if key == "alternate":
+                raise RuntimeError("synthetic source object alternates are unsupported")
+            if key not in {"count", "size", "in-pack", "packs", "size-pack", "prune-packable", "garbage", "size-garbage"}:
+                raise RuntimeError("Git count-objects returned an unknown preflight field")
+            if key in fields or not value.isdecimal():
+                raise RuntimeError("Git count-objects returned a malformed numeric field")
+            fields[key] = int(value)
+        if not {"count", "in-pack", "size", "size-pack"}.issubset(fields):
+            raise RuntimeError("Git count-objects omitted required object counts or sizes")
+        return fields["count"] + fields["in-pack"], (fields["size"] + fields["size-pack"]) * 1024
+
+    def _copy_source_object_file(
+        self, entry, destination: str, copied: list[int], deadline: float,
+    ) -> None:
+        source_path = entry.path
+        before = entry.stat(follow_symlinks=False)
+        if not stat.S_ISREG(before.st_mode) or self._is_link_or_junction(source_path):
+            raise RuntimeError("synthetic source object entry changed type during snapshot")
+        os.makedirs(os.path.dirname(destination), exist_ok=True)
+        if os.name == "nt":
+            fd = self._open_windows_source_object_file(source_path)
+            try:
+                opened = self._windows_source_object_file_identity(fd)
+                if opened[2] != 1:
+                    raise RuntimeError("synthetic source object file has an external hard-link alias")
+                initial_identity = opened
+                remaining = opened[1]
+            except BaseException:
+                os.close(fd)
+                raise
+        else:
+            flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+            fd = os.open(source_path, flags)
+            try:
+                opened = os.fstat(fd)
+                if (not stat.S_ISREG(opened.st_mode) or opened.st_dev != before.st_dev
+                        or opened.st_ino != before.st_ino or opened.st_size != before.st_size
+                        or opened.st_nlink != 1 or self._is_link_or_junction(source_path)):
+                    raise RuntimeError("synthetic source object file changed or is hard-linked during snapshot")
+                initial_identity = (opened.st_dev, opened.st_ino, opened.st_size, opened.st_nlink)
+                remaining = opened.st_size
+            except BaseException:
+                os.close(fd)
+                raise
+        try:
+            with os.fdopen(fd, "rb", closefd=False) as source, open(destination, "xb") as target:
+                while remaining:
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError("synthetic source snapshot copy exceeded its time limit")
+                    chunk = source.read(min(64 * 1024, remaining))
+                    if not chunk:
+                        raise RuntimeError("synthetic source object file truncated during snapshot")
+                    target.write(chunk)
+                    copied[0] += len(chunk)
+                    if copied[0] > self._MAX_SOURCE_OBJECT_STORAGE_BYTES:
+                        raise RuntimeError("synthetic source snapshot exceeds the 512 MiB limit")
+                    remaining -= len(chunk)
+                if source.read(1):
+                    raise RuntimeError("synthetic source object file grew during snapshot")
+            if os.name == "nt":
+                final_identity = self._windows_source_object_file_identity(fd)
+            else:
+                final_stat = os.fstat(fd)
+                final_identity = (
+                    final_stat.st_dev, final_stat.st_ino, final_stat.st_size, final_stat.st_nlink,
+                )
+            if final_identity != initial_identity or self._is_link_or_junction(source_path):
+                raise RuntimeError("synthetic source object file changed during snapshot")
+        finally:
+            os.close(fd)
+
+    @staticmethod
+    def _open_windows_source_object_file(path: str) -> int:
+        """Open a source object without following reparse points or allowing replacement."""
+        import ctypes
+        from ctypes import wintypes
+        import msvcrt
+
+        class FileAttributeTagInfo(ctypes.Structure):
+            _fields_ = [("FileAttributes", wintypes.DWORD), ("ReparseTag", wintypes.DWORD)]
+
+        class FileStandardInfo(ctypes.Structure):
+            _fields_ = [
+                ("AllocationSize", ctypes.c_longlong), ("EndOfFile", ctypes.c_longlong),
+                ("NumberOfLinks", wintypes.DWORD), ("DeletePending", wintypes.BOOLEAN),
+                ("Directory", wintypes.BOOLEAN),
+            ]
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        create_file = kernel32.CreateFileW
+        create_file.argtypes = [
+            wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID,
+            wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE,
+        ]
+        create_file.restype = wintypes.HANDLE
+        get_info = kernel32.GetFileInformationByHandleEx
+        get_info.argtypes = [wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD]
+        get_info.restype = wintypes.BOOL
+        close_handle = kernel32.CloseHandle
+        close_handle.argtypes = [wintypes.HANDLE]
+        close_handle.restype = wintypes.BOOL
+
+        generic_read = 0x80000000
+        share_read = 0x00000001
+        open_existing = 3
+        open_reparse_point = 0x00200000
+        handle = create_file(
+            path, generic_read, share_read, None, open_existing, open_reparse_point, None,
+        )
+        invalid_handle = ctypes.c_void_p(-1).value
+        if not handle or handle == invalid_handle:
+            raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            attributes = FileAttributeTagInfo()
+            standard = FileStandardInfo()
+            if not get_info(handle, 9, ctypes.byref(attributes), ctypes.sizeof(attributes)):
+                raise ctypes.WinError(ctypes.get_last_error())
+            if not get_info(handle, 1, ctypes.byref(standard), ctypes.sizeof(standard)):
+                raise ctypes.WinError(ctypes.get_last_error())
+            if attributes.FileAttributes & 0x400 or standard.Directory:
+                raise RuntimeError("synthetic source object entry is a reparse point or directory")
+            if standard.NumberOfLinks != 1:
+                raise RuntimeError("synthetic source object file has an external hard-link alias")
+            if standard.EndOfFile < 0:
+                raise RuntimeError("synthetic source object file has an invalid size")
+            fd = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+            handle = None
+            return fd
+        finally:
+            if handle is not None:
+                close_handle(handle)
+
+    @staticmethod
+    def _windows_source_object_file_identity(fd: int) -> tuple[int, int, int, bytes]:
+        """Return volume/file ID, size and link count from the opened Windows handle."""
+        import ctypes
+        from ctypes import wintypes
+        import msvcrt
+
+        class FileStandardInfo(ctypes.Structure):
+            _fields_ = [
+                ("AllocationSize", ctypes.c_longlong), ("EndOfFile", ctypes.c_longlong),
+                ("NumberOfLinks", wintypes.DWORD), ("DeletePending", wintypes.BOOLEAN),
+                ("Directory", wintypes.BOOLEAN),
+            ]
+
+        class FileId128(ctypes.Structure):
+            _fields_ = [("Identifier", ctypes.c_ubyte * 16)]
+
+        class FileIdInfo(ctypes.Structure):
+            _fields_ = [("VolumeSerialNumber", ctypes.c_ulonglong), ("FileId", FileId128)]
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        get_info = kernel32.GetFileInformationByHandleEx
+        get_info.argtypes = [wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD]
+        get_info.restype = wintypes.BOOL
+        handle = msvcrt.get_osfhandle(fd)
+        standard = FileStandardInfo()
+        identity = FileIdInfo()
+        if not get_info(handle, 1, ctypes.byref(standard), ctypes.sizeof(standard)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        if not get_info(handle, 18, ctypes.byref(identity), ctypes.sizeof(identity)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        return (
+            identity.VolumeSerialNumber,
+            standard.EndOfFile,
+            standard.NumberOfLinks,
+            bytes(identity.FileId.Identifier),
+        )
+
+    def _copy_source_object_store(self, source_objects: str, snapshot_objects: str) -> int:
+        copied = [0]
+        entry_count = [0]
+        deadline = time.monotonic() + self.command_timeout_sec
+
+        def count_entry() -> None:
+            entry_count[0] += 1
+            if entry_count[0] > self._MAX_SOURCE_STORE_ENTRIES:
+                raise RuntimeError("synthetic source snapshot exceeds the entry-count limit")
+
+        with os.scandir(source_objects) as source_entries:
+            for entry in source_entries:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("synthetic source snapshot copy exceeded its time limit")
+                count_entry()
+                name = entry.name
+                if self._is_link_or_junction(entry.path):
+                    raise RuntimeError("synthetic source object store contains a symlink")
+                if name == "info":
+                    continue
+                if name == "pack" and entry.is_dir(follow_symlinks=False):
+                    with os.scandir(entry.path) as pack_entries:
+                        for pack_entry in pack_entries:
+                            if time.monotonic() >= deadline:
+                                raise TimeoutError("synthetic source snapshot copy exceeded its time limit")
+                            count_entry()
+                            if self._is_link_or_junction(pack_entry.path):
+                                raise RuntimeError("synthetic source pack directory contains a symlink")
+                            pack_name = pack_entry.name
+                            suffix = ".pack" if pack_name.endswith(".pack") else ".idx" if pack_name.endswith(".idx") else None
+                            if suffix is None:
+                                continue
+                            object_hash = pack_name[5:-len(suffix)] if pack_name.startswith("pack-") else ""
+                            if len(object_hash) not in {40, 64} or not self._is_lower_hex(object_hash):
+                                raise RuntimeError("synthetic source pack file has an invalid name")
+                            if not pack_entry.is_file(follow_symlinks=False):
+                                raise RuntimeError("synthetic source pack entry is not a regular file")
+                            self._copy_source_object_file(
+                                pack_entry, os.path.join(snapshot_objects, "pack", pack_name), copied, deadline,
+                            )
+                elif entry.is_dir(follow_symlinks=False) and len(name) == 2 and self._is_lower_hex(name):
+                    with os.scandir(entry.path) as loose_entries:
+                        for loose_entry in loose_entries:
+                            if time.monotonic() >= deadline:
+                                raise TimeoutError("synthetic source snapshot copy exceeded its time limit")
+                            count_entry()
+                            if self._is_link_or_junction(loose_entry.path):
+                                raise RuntimeError("synthetic source loose-object directory contains a symlink")
+                            if len(loose_entry.name) not in {38, 62} or not self._is_lower_hex(loose_entry.name):
+                                continue
+                            if not loose_entry.is_file(follow_symlinks=False):
+                                raise RuntimeError("synthetic source loose object is not a regular file")
+                            self._copy_source_object_file(
+                                loose_entry,
+                                os.path.join(snapshot_objects, name, loose_entry.name), copied, deadline,
+                            )
+                else:
+                    raise RuntimeError("synthetic source object store has an unsupported root entry")
+                if copied[0] > self._MAX_SOURCE_OBJECT_STORAGE_BYTES:
+                    raise RuntimeError("synthetic source snapshot exceeds the 512 MiB limit")
+        return copied[0]
+
+    @contextmanager
+    def _source_object_snapshot(self, head: str):
+        """Copy only local object files into an isolated Git object database."""
+        _, source_git_dir, source_objects = self._source_repository_paths()
+        self._source_object_storage_bytes(source_objects)
+        source_count, source_size_bytes = self._source_object_counts(source_git_dir, source_objects)
+        if source_count > self._MAX_SOURCE_OBJECT_COUNT:
+            raise RuntimeError("synthetic source repository exceeds the 250,000 object limit")
+        if source_size_bytes > self._MAX_SOURCE_OBJECT_STORAGE_BYTES:
+            raise RuntimeError("Git count-objects reports a source ODB larger than 512 MiB")
+        with tempfile.TemporaryDirectory(prefix=".vst-source-snapshot-", dir=self.bare_path) as temp_root:
+            template = os.path.join(temp_root, "empty-template")
+            snapshot_git_dir = os.path.join(temp_root, "source.git")
+            os.makedirs(template)
+            init_output, init_error, init_returncode = self._run_bounded_git(
+                ["git", "init", "--bare", f"--template={template}", snapshot_git_dir],
+                env=self._git_env(),
+            )
+            if init_returncode:
+                raise RuntimeError(init_error.decode("utf-8", "replace"))
+            snapshot_objects = os.path.join(snapshot_git_dir, "objects")
+            self._copy_source_object_store(source_objects, snapshot_objects)
+            snapshot_bytes = self._source_object_storage_bytes(snapshot_objects)
+            snapshot_count, snapshot_size_bytes = self._source_object_counts(snapshot_git_dir, snapshot_objects)
+            if snapshot_count > self._MAX_SOURCE_OBJECT_COUNT or snapshot_size_bytes > self._MAX_SOURCE_OBJECT_STORAGE_BYTES:
+                raise RuntimeError("sanitized source object snapshot exceeds its preflight limits")
+            if snapshot_bytes > self._MAX_SOURCE_OBJECT_STORAGE_BYTES or snapshot_count > self._MAX_SOURCE_OBJECT_COUNT:
+                raise RuntimeError("sanitized source object snapshot exceeds its preflight limits")
+            snapshot_env = self._git_env(snapshot_objects)
+            _, diagnostic, returncode = self._run_bounded_git(
+                ["git", "--git-dir", snapshot_git_dir, "cat-file", "-e", f"{head}^{{commit}}"],
+                env=snapshot_env,
+            )
+            if returncode:
+                raise RuntimeError(
+                    "candidate commit is not present in the isolated local source object store: "
+                    + diagnostic.decode("utf-8", "replace")
+                )
+            yield snapshot_git_dir, snapshot_env
+
+    def _import_head(self, head: str) -> None:
+        with self._target_storage_lock() as lease:
+            self._reserve_target_object_storage(
+                self._MAX_PACK_BYTES + self._MAX_PACK_INDEX_BYTES,
+            )
+            self._write_storage_state(lease, "IN_PROGRESS")
+            try:
+                self._import_head_locked(head, lease)
+            except BaseException:
+                if not lease.get("cleanup_uncertain"):
+                    try:
+                        self._write_storage_state(lease, "HEALTHY")
+                    except OSError:
+                        # The durable IN_PROGRESS slot remains fail-closed.
+                        pass
+                raise
+            else:
+                self._write_storage_state(lease, "HEALTHY")
+            if self._target_object_storage_bytes() > self._MAX_TARGET_OBJECT_STORAGE_BYTES:
+                raise StoreError(
+                    "synthetic target object storage cap was exceeded during pack import",
+                    kind="budget",
+                )
+
+    def _import_head_locked(self, head: str, lease: dict[str, Any]) -> None:
+        with self._source_object_snapshot(head) as (source_git_dir, source_env):
+            self._transfer_snapshot_head_locked(head, source_git_dir, source_env, lease)
+
+    def _transfer_snapshot_head_locked(
+        self, head: str, source_git_dir: str, source_env: dict[str, str],
+        lease: dict[str, Any],
+    ) -> None:
+        source_command = [
+            "git", "-c", "pack.threads=1", "-c", "pack.windowMemory=16m",
+            "-c", "pack.window=10", "-c", "pack.deltaCacheSize=16777216",
+            "-c", "pack.deltaCacheLimit=32768", "--git-dir", source_git_dir,
+            "pack-objects", "--stdout", "--revs",
+        ]
+        target_command = [
+            "git", "--git-dir", self.bare_path, "index-pack", "--strict", "--stdin",
+        ]
+        source = target = None
+        source_diagnostic = bytearray()
+        target_diagnostic = bytearray()
+        expired = threading.Event()
+        finished = threading.Event()
+
+        def drain(stream, output: bytearray) -> None:
+            while True:
+                chunk = stream.read(4096)
+                if not chunk:
+                    return
+                remaining = self._MAX_GIT_DIAGNOSTIC_BYTES - len(output)
+                if remaining > 0:
+                    output.extend(chunk[:remaining])
+
+        def kill_after_timeout() -> None:
+            if finished.is_set():
+                return
+            expired.set()
+            for process in (source, target):
+                if process is not None and process.poll() is None:
+                    try:
+                        process.kill()
+                    except OSError:
+                        pass
+
+        timer = threading.Timer(self.command_timeout_sec, kill_after_timeout)
+        source_stderr_thread = target_stderr_thread = None
+        cleanup_uncertain = False
+        try:
+            source = subprocess.Popen(
+                source_command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, env=source_env, bufsize=0,
+            )
+            target = subprocess.Popen(
+                target_command, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE, env=self._target_git_env(), bufsize=0,
+            )
+            source_stderr_thread = threading.Thread(
+                target=drain, args=(source.stderr, source_diagnostic), daemon=True,
+            )
+            target_stderr_thread = threading.Thread(
+                target=drain, args=(target.stderr, target_diagnostic), daemon=True,
+            )
+            source_stderr_thread.start()
+            target_stderr_thread.start()
+            timer_start = time.monotonic()
+            timer.start()
+            source.stdin.write((head + "\n").encode("ascii"))
+            source.stdin.close()
+
+            total_bytes = 0
+            pack_header = bytearray()
+            while True:
+                chunk = source.stdout.read(64 * 1024)
+                if not chunk:
+                    break
+                total_bytes += len(chunk)
+                if total_bytes > self._MAX_PACK_BYTES:
+                    raise RuntimeError("Git source object pack exceeds the 64 MiB limit")
+                if len(pack_header) < 12:
+                    pack_header.extend(chunk[:12 - len(pack_header)])
+                    if len(pack_header) == 12:
+                        if pack_header[:4] != b"PACK":
+                            raise RuntimeError("Git source did not produce a valid pack header")
+                        object_count = int.from_bytes(pack_header[8:12], "big")
+                        if object_count > self._MAX_PACK_OBJECTS:
+                            raise RuntimeError("Git source object pack exceeds the object-count limit")
+                target.stdin.write(chunk)
+            if expired.is_set():
+                raise TimeoutError("Git source pack import exceeded its time limit")
+            if total_bytes == 0 or len(pack_header) < 12:
+                raise RuntimeError("Git source repository produced an empty or truncated object pack")
+            target.stdin.close()
+            deadline = timer_start + self.command_timeout_sec
+            source.wait(timeout=max(0.001, deadline - time.monotonic()))
+            target.wait(timeout=max(0.001, deadline - time.monotonic()))
+            if expired.is_set():
+                raise TimeoutError("Git source pack import exceeded its time limit")
+            if source.returncode:
+                raise RuntimeError(source_diagnostic.decode("utf-8", "replace"))
+            if target.returncode:
+                raise RuntimeError(target_diagnostic.decode("utf-8", "replace"))
+        except subprocess.TimeoutExpired as exc:
+            raise TimeoutError("Git source pack import exceeded its time limit") from exc
+        finally:
+            finished.set()
+            timer.cancel()
+            for process in (source, target):
+                if process is not None and process.poll() is None:
+                    try:
+                        process.kill()
+                    except OSError:
+                        pass
+            for process in (source, target):
+                if process is not None:
+                    try:
+                        process.wait(timeout=1)
+                    except subprocess.TimeoutExpired:
+                        try:
+                            process.kill()
+                        except OSError:
+                            pass
+                        try:
+                            process.wait(timeout=1)
+                        except (subprocess.TimeoutExpired, OSError):
+                            cleanup_uncertain = True
+                    except OSError:
+                        cleanup_uncertain = True
+                    if process.returncode is None:
+                        cleanup_uncertain = True
+            for worker in (source_stderr_thread, target_stderr_thread):
+                if worker is not None:
+                    worker.join(timeout=1)
+            for stream in (
+                source.stdin if source else None, source.stdout if source else None,
+                source.stderr if source else None, target.stdin if target else None,
+                target.stderr if target else None,
+            ):
+                if stream is not None:
+                    try:
+                        stream.close()
+                    except OSError:
+                        pass
+            if cleanup_uncertain:
+                lease["cleanup_uncertain"] = True
+                try:
+                    self._write_storage_state(lease, "POISONED")
+                except OSError as poison_error:
+                    # The previously fsynced IN_PROGRESS slot remains valid and
+                    # blocks future writers even if this final marker write fails.
+                    raise RuntimeError(
+                        "Git child cleanup is unconfirmed; target remains IN_PROGRESS"
+                    ) from poison_error
+                raise RuntimeError("Git child cleanup is unconfirmed; target is poisoned")
+        self._git("cat-file", "-e", f"{head}^{{commit}}")
+
+    def _is_ancestor(self, ancestor: str, descendant: str) -> bool:
+        completed = subprocess.run(
+            ["git", "--git-dir", self.bare_path, "merge-base", "--is-ancestor", ancestor, descendant],
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            check=False, timeout=self.command_timeout_sec,
+        )
+        if completed.returncode == 0:
+            return True
+        if completed.returncode == 1:
+            return False
+        raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
+
+    def _update_ref(self, ref: str, head: str, expected: str | None) -> None:
+        old_value = expected or ("0" * 40)
+        try:
+            self._git("update-ref", ref, head, old_value)
+        except RuntimeError:
+            try:
+                if self.ref_head(ref) == head:
+                    return
+            except RuntimeError:
+                pass
+            raise StoreError("bare target ref changed during synthetic publication", kind="duplicate")
+
+    def ref_head(self, ref: str) -> str:
+        return self._git("rev-parse", "--verify", ref)
+
+    def _bind_operation(self, kind: str, operation_key: str, payload: dict) -> None:
+        with self._target_storage_lock() as lease:
+            self._bind_operation_locked(kind, operation_key, payload, lease)
+
+    def _bind_operation_locked(
+        self, kind: str, operation_key: str, payload: dict, lease: dict[str, Any],
+    ) -> None:
+        key_hash = hashlib.sha256(f"{kind}\0{operation_key}".encode("utf-8")).hexdigest()
+        ref = f"refs/vst/idempotency/{key_hash}"
+        record = canonical_bytes({"kind": kind, "payload": payload})
+        try:
+            existing_oid = self._git("rev-parse", "--verify", ref)
+        except RuntimeError:
+            existing_oid = None
+        if existing_oid is not None:
+            existing, diagnostic, returncode = self._run_bounded_git(
+                ["git", "--git-dir", self.bare_path, "cat-file", "blob", existing_oid],
+                env=self._target_git_env(), output_limit=self._MAX_IDEMPOTENCY_RECORD_BYTES,
+            )
+            if returncode:
+                raise RuntimeError(diagnostic.decode("utf-8", "replace"))
+            if existing != record:
+                raise StoreError("remote idempotency key reused with different payload", kind="duplicate")
+            return
+        if len(record) > self._MAX_IDEMPOTENCY_RECORD_BYTES:
+            raise StoreError("synthetic idempotency record exceeds the 64 KiB limit", kind="budget")
+        self._reserve_target_object_storage(len(record) + (len(record) // 100) + 256)
+        self._write_storage_state(lease, "IN_PROGRESS")
+        try:
+            new_oid = self._git("hash-object", "-w", "--stdin", input_bytes=record)
+        except BaseException:
+            try:
+                self._write_storage_state(lease, "POISONED")
+            except OSError:
+                pass
+            raise
+        self._write_storage_state(lease, "HEALTHY")
+        try:
+            self._git("update-ref", ref, new_oid, "0" * 40)
+        except RuntimeError:
+            # Another supervisor process may have won the create-only ref race.
+            raced_oid = self._git("rev-parse", "--verify", ref)
+            raced = subprocess.run(
+                ["git", "--git-dir", self.bare_path, "cat-file", "blob", raced_oid],
+                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                check=True, timeout=self.command_timeout_sec,
+            ).stdout
+            if raced != record:
+                raise StoreError("remote idempotency key reused with different payload", kind="duplicate")
+
+    def push(self, payload: dict, *, operation_key: str) -> dict:
+        branch, head = payload["branch"], payload["head"]
+        if not isinstance(branch, str) or not branch.replace("-", "").replace("_", "").isalnum():
+            raise ValueError("invalid synthetic branch")
+        if not isinstance(head, str) or len(head) != 40 or any(ch not in "0123456789abcdef" for ch in head):
+            raise ValueError("candidate head must be a 40-character git id")
+        self._bind_operation("push", operation_key, payload)
+        ref = f"refs/heads/{branch}"
+        try:
+            current = self._git("rev-parse", "--verify", ref)
+        except RuntimeError:
+            current = None
+        if current != head:
+            self._import_head(head)
+            if current is not None and not self._is_ancestor(current, head):
+                raise StoreError("synthetic branch update is not a fast-forward", kind="duplicate")
+            self._update_ref(ref, head, current)
+        return {"operation_key": operation_key, "ref": ref, "head": head}
+
+    def open_pull_request(self, payload: dict, *, operation_key: str) -> dict:
+        head = payload["head"]
+        if not isinstance(head, str) or len(head) != 40 or any(ch not in "0123456789abcdef" for ch in head):
+            raise ValueError("pull-request head must be a 40-character git id")
+        self._bind_operation("pull_request", operation_key, payload)
+        pr_key = hashlib.sha256(operation_key.encode("utf-8")).hexdigest()[:20]
+        ref = f"refs/pull-requests/{pr_key}/head"
+        try:
+            current = self._git("rev-parse", "--verify", ref)
+        except RuntimeError:
+            current = None
+        if current is not None and current != head:
+            raise StoreError("pull-request key already points at a different head", kind="duplicate")
+        if current is None:
+            self._import_head(head)
+            self._update_ref(ref, head, None)
+        return {"operation_key": operation_key, "ref": ref, "head": head}
+
+
+class HandWrittenWorker:
+    """Minimal synthetic worker with scoped edits and no remote/push API."""
+
+    def __init__(self, repository: str, allowed_paths: tuple[str, ...] = ("src/synthetic.py",)):
+        self.repository = os.path.realpath(repository)
+        self.allowed_paths = frozenset(allowed_paths)
+
+    def _run(
+        self, action: str, path: str, content: str = "", timeout_sec: float | None = None,
+    ) -> subprocess.CompletedProcess:
+        worker_code = r'''import os, subprocess, sys
+repo, action, rel, content, timeout_text = sys.argv[1:6]
+timeout = float(timeout_text) if timeout_text else None
+if rel.startswith(("/", "\\")) or ".." in rel.replace("\\", "/").split("/"):
+    raise SystemExit(30)
+root = os.path.realpath(repo)
+target = os.path.realpath(os.path.join(root, rel))
+if os.path.commonpath((root, target)) != root:
+    raise SystemExit(31)
+if action in ("edit", "crash"):
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    with open(target, "w", encoding="utf-8", newline="\n") as stream:
+        stream.write(content if action == "edit" else "# partial synthetic edit\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+    if action == "crash":
+        os._exit(97)
+elif action == "commit":
+    subprocess.run(["git", "add", "--", rel], cwd=root, check=True, stdin=subprocess.DEVNULL, timeout=timeout)
+    subprocess.run(
+        ["git", "commit", "-m", content], cwd=root, check=True,
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, timeout=timeout,
+    )
+    print(subprocess.check_output(["git", "rev-parse", "--verify", "HEAD"], cwd=root, text=True, timeout=timeout).strip())
+else:
+    raise SystemExit(32)
+'''
+        return subprocess.run(
+            [sys.executable, "-I", "-c", worker_code, self.repository, action, path, content,
+             "" if timeout_sec is None else str(timeout_sec)],
+            cwd=self.repository, env=build_environment(), stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, timeout=timeout_sec,
+        )
+
+    def edit(self, path: str, content: str, *, timeout_sec: float | None = None) -> None:
+        if path not in self.allowed_paths or path.startswith(("/", "\\")) or ".." in path.split("/"):
+            raise ValueError("worker edit is outside the declared synthetic scope")
+        completed = self._run("edit", path, content, timeout_sec)
+        if completed.returncode:
+            raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
+
+    def crash_mid_edit(self, path: str = "src/synthetic.py") -> None:
+        if path not in self.allowed_paths:
+            raise ValueError("worker edit is outside the declared synthetic scope")
+        completed = self._run("crash", path)
+        if completed.returncode != 97:
+            raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
+        raise RuntimeError("synthetic worker child exited during edit (exit code 97)")
+
+    def commit_candidate(
+        self, message: str = "synthetic candidate", *, timeout_sec: float | None = None,
+    ) -> str:
+        heads = []
+        for path in sorted(self.allowed_paths):
+            completed = self._run("commit", path, message, timeout_sec)
+            if completed.returncode:
+                raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
+            heads.append(completed.stdout.decode("ascii").strip())
+        return heads[-1]
+
+
+def run_lifecycle_scenarios(
+    workdir: str,
+    *,
+    probe_provider: Callable[[str, str], dict],
+) -> dict[str, dict]:
+    """Run only the safe synthetic candidate and budget flow in a new work directory.
+
+    Crash, process-kill, STOP, resume/restart, out-of-scope mutation, and external-egress scenarios
+    are deliberately not invoked. ``probe_provider`` supplies caller-owned fixture data and is not
+    host-isolation evidence. ``workdir`` must not already exist, preventing fixture initialization
+    from overwriting a caller's existing files.
+    """
+    os.mkdir(workdir)
+    remote = os.path.join(workdir, "local-bare.git")
+    repository = os.path.join(workdir, "worker-repository")
+    control = os.path.join(workdir, "control")
+    anchor_path = os.path.join(workdir, "control-anchor", "events.jsonl")
+
+    def git(cwd: str, *args: str) -> str:
+        completed = subprocess.run(
+            ["git", "-C", cwd, *args], stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+        )
+        if completed.returncode:
+            raise RuntimeError(completed.stderr.decode("utf-8", "replace"))
+        return completed.stdout.decode("utf-8", "replace").strip()
+
+    subprocess.run(["git", "init", "--bare", remote], check=True, stdout=subprocess.DEVNULL)
+    os.makedirs(repository, exist_ok=True)
+    subprocess.run(["git", "init", repository], check=True, stdout=subprocess.DEVNULL)
+    git(repository, "config", "user.name", "Synthetic Worker")
+    git(repository, "config", "user.email", "synthetic-worker@example.invalid")
+    initial_file = os.path.join(repository, "src", "synthetic.py")
+    os.makedirs(os.path.dirname(initial_file), exist_ok=True)
+    with open(initial_file, "w", encoding="utf-8", newline="\n") as stream:
+        stream.write("value = 'base'\n")
+    git(repository, "add", "--", "src/synthetic.py")
+    git(repository, "commit", "-m", "synthetic base")
+    backend = SyntheticOperationBackend(remote, source_repo=repository)
+    base_head = git(repository, "rev-parse", "--verify", "HEAD")
+    backend.push({"branch": "main", "head": base_head}, operation_key="bootstrap")
+
+    clock = FakeClock()
+    fixture = SliceFixture(
+        control, SLICE_KEY, clock, supervisor_key=SUPERVISOR_KEY,
+        operator_key=OPERATOR_KEY, event_key=EVENT_KEY, anchor_path=anchor_path,
+        # This is a synthetic report flow, not an environment qualification.
+        # Keep production sandbox admission tied to Supervisor-owned observations.
+        sandbox_mode=False,
+    )
+    worker = HandWrittenWorker(repository)
+    run_id = "synthetic-safe-run"
+    nonce = "synthetic-safe-nonce"
+
+    def make_probe(run: str, run_nonce: str) -> dict:
+        return probe_provider(run, run_nonce)
+
+    report: dict[str, dict] = {}
+    probe_observations: list[dict[str, Any]] = []
+
+    try:
+        supervisor = Supervisor(
+            fixture.store, operation_backend=backend, failure_threshold=2,
+            run_id=run_id, probe_nonce=nonce,
+            operator_key=OPERATOR_KEY,
+        )
+        fixture.begin(1, ttl_sec=600)
+        initial_probe = make_probe(run_id, nonce)
+        initial_properties = initial_probe.get("checked_properties", {})
+        probe_observations.append({
+            "run_id": run_id,
+            "reported_result": initial_probe.get("result"),
+            "reported_external_egress_blocked": initial_properties.get("external_egress_blocked"),
+            "reported_empty_external_allowlist": initial_properties.get("empty_external_allowlist"),
+            "scope": "caller_supplied_probe_data_not_independent_environment_evidence",
+        })
+        supervisor.start_worker(lambda: worker, probe=initial_probe)
+
+        worker.edit("src/synthetic.py", "value = 'synthetic candidate'\n")
+        candidate_head = worker.commit_candidate()
+        fixture.current_head = candidate_head
+
+        test_receipt = fixture.make_test_receipt(1, EXPECTED_TEST_IDS)
+        receipt_first = supervisor.create_receipt(
+            "worker-test-receipt-1", test_receipt, fixture.story_id, SLICE_KEY,
+        )
+        receipt_retry = supervisor.create_receipt(
+            "worker-test-receipt-1", test_receipt, fixture.story_id, SLICE_KEY,
+        )
+        fixture.store.append_receipt(
+            fixture.make_static_receipt(), fixture.story_id, SLICE_KEY,
+        )
+        fixture.store.append_receipt(
+            fixture.make_review_receipt(REVIEWER, AUTHOR), fixture.story_id, SLICE_KEY,
+        )
+        fixture.end()
+        decision = supervisor.evaluate_gate(
+            fixture.task_id, candidate_head, fixture.epoch, SLICE_KEY,
+            supervisor_key=SUPERVISOR_KEY, operator_key=OPERATOR_KEY,
+        )
+        push_payload = {"branch": "main", "head": candidate_head}
+        pushed = supervisor.simulate_push("candidate-push-1", push_payload)
+        pr = supervisor.simulate_pull_request(
+            "candidate-pr-1", {"head": candidate_head, "title": "Synthetic candidate"},
+        )
+
+        exact_budget = fixture.store.charge(
+            fixture.task_id, 100, supervisor_key=SUPERVISOR_KEY,
+            runner_id=SUPERVISOR_RUNNER,
+        )
+        budget_exhausted = False
+        try:
+            fixture.store.charge(
+                fixture.task_id, 1, supervisor_key=SUPERVISOR_KEY,
+                runner_id=SUPERVISOR_RUNNER,
+            )
+        except StoreError as exc:
+            budget_exhausted = exc.kind == "budget"
+        lease_budget_blocked = False
+        try:
+            fixture.store.acquire_lease(
+                fixture.task_id, fixture.story_id, fixture.runner_id, fixture.epoch,
+                3, 600, supervisor_key=SUPERVISOR_KEY,
+            )
+        except StoreError as exc:
+            if exc.kind != "budget":
+                raise
+            lease_budget_blocked = True
+
+        report["scope"] = {
+            "environment_scope": "synthetic",
+            "e8_acceptance": "NOT_ESTABLISHED",
+            "real_e5_e6_s1_environment_qualification": "NOT_RUN",
+            "process_crash_and_kill_scenarios": "NOT_RUN",
+            "stop_and_resume_scenarios": "NOT_RUN",
+            "out_of_scope_mutation_scenario": "NOT_RUN",
+            "real_blocked_egress_attempt": "NOT_RUN",
+            "external_candidate_comparison": "NOT_RUN",
+            "operator_worker_choice": "NOT_ESTABLISHED",
+            "probe_provider_scope": "caller_supplied_data_not_independent_environment_evidence",
+        }
+        report["restricted_scenarios"] = {
+            "child_process_self_exit": "NOT_RUN",
+            "process_kill_containment": "NOT_RUN",
+            "stop": "NOT_RUN",
+            "crash_resume_and_store_restart": "NOT_RUN",
+            "out_of_scope_write_attempt": "NOT_RUN",
+            "out_of_scope_target_created": False,
+            "external_egress_attempt": "NOT_RUN",
+        }
+        report["synthetic_candidate"] = {
+            "candidate_head": candidate_head,
+            "worker_has_remote_config": bool(git(repository, "remote")),
+            "synthetic_gate_verdict": decision["verdict"],
+            "receipt_retry_returned_same_result": receipt_first == receipt_retry,
+            "supervisor_push": pushed,
+            "supervisor_pull_request": pr,
+        }
+        report["caller_supplied_probe_observations"] = {
+            "runs": probe_observations,
+            "real_environment_egress_verified": False,
+        }
+        report["restart_idempotency"] = {
+            "scenario": "NOT_RUN",
+            "reason": "restricted_crash_recovery_scenario_not_executed",
+        }
+        report["budget_exhaustion"] = {
+            "remaining_at_exact_cap": exact_budget,
+            "overflow_rejected": budget_exhausted,
+            "overflow_outcome": "REJECTED" if budget_exhausted else "NOT_REJECTED",
+            "new_lease_budget_rejected": lease_budget_blocked,
+        }
+        return report
+    finally:
+        fixture.close()
 
 
 def main(argv: list[str]) -> int:

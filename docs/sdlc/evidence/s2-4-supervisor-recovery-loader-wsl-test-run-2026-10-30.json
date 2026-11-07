@@ -1,0 +1,52 @@
+{
+  "task": "S2-4 Supervisor loader recovery cases, isolated WSL execution",
+  "source_head": "aedf712c07eb0cc531852d18443faa497e19bb2d",
+  "source_worktree": "Dirty: tests/vst/test_s2_preflight_capture.py was already modified before this run and contains current test-only changes. No source edits were made for this run.",
+  "environment": {
+    "distribution": "Ubuntu-24.04 (already installed)",
+    "python": "3.12.3",
+    "pytest": "7.4.4",
+    "dependency_probe": "cryptography and pytest imports succeeded; no package installation performed"
+  },
+  "transfer": {
+    "method": "One-time tar archive piped over stdin into a Python TemporaryDirectory under /tmp in Ubuntu-24.04",
+    "archive_sha256": "16FFC13A586EBDF04D1624BB59C722DD6F53284B8C943431126AAC88DC31A834",
+    "temporary_archive_and_runner": "Removed from Windows TEMP after execution; verified absent.",
+    "temporary_execution_directory": "Python TemporaryDirectory cleanup; verified no /tmp/vst-s2-preflight.* directory remained.",
+    "files": [
+      {"path":"tests/vst/test_s2_preflight_capture.py","sha256":"0219D734EFB94CDFB24C332208D76302DB1821E19144FBA75820D03E5877C302"},
+      {"path":"tools/vst/__init__.py","sha256":"01C1C19343F8DA7F605775ECBF7909D6E8AAD7B3BD17A08065F1D712F8A6DB9F"},
+      {"path":"tools/vst/contracts.py","sha256":"BF01D990A94CD71887F8D9F81019333F3BF43D5950A655DE3646E9BB3D585EA4"},
+      {"path":"tools/vst/preflight.py","sha256":"49CB640203473C2295303F60FEABD82C372E0B697A73502F56B52C4EF5259020"},
+      {"path":"tools/vst/preflight_capture.py","sha256":"BEFD58BE96AF1823E0FD9B9F0A75217819BF099B674FC61D590FFAF693008119"},
+      {"path":"tools/vst/peer_pidfd.py","sha256":"6950BC239FA2C7A706A03412DEA3C8BEF3519A104332A66C5E5317E311B5688F"},
+      {"path":"tools/vst/dispatch_instruction.py","sha256":"B2D0194C69B678CC108F78B6C4B1CF6FD20A1FDCBDB4869E5B6548C4883A1E05"},
+      {"path":"tools/vst/store.py","sha256":"F3A0E217B372DFD48F2E4C9B864F7F1D4A726659F15544BE88AC489D41702AA3"},
+      {"path":"tools/vst/supervisor.py","sha256":"37505153128E2B7DADE0EC2D29AABF8AD043FB82E8221D30EFC68A96BB938FF1"},
+      {"path":"tools/vst/supervisor_service.py","sha256":"05D31DD8461A9DE28EB892ED768963D340989EB0F272175384C324C496B33522"},
+      {"path":"tools/vst/execution_grant.py","sha256":"F99810D04664F6D95E336BE2138001C2E255E6AE9E8EB531B806D745FC4C7C43"},
+      {"path":"tools/vst/signing.py","sha256":"CE0832C4BAB76A07619743B295B9DF9958FD11E229CD315C5862113C9692122C"},
+      {"path":"tools/vst/lifecycle.py","sha256":"DB81DE532229CCA96855BE286AE5565ACFF31E0910BE09AFBC39885132E47A34"},
+      {"path":"tools/vst/runner_fence.py","sha256":"32C682EDDB78747B91E319CEE365E2E12C54EDDA3096316992E5D0FE025D67AB"},
+      {"path":"docs/SANDBOX_SPEC.md","sha256":"D001F9305E8FE38AE5C3EA06CBD377EC95926783A0277E29EC025F34CABACBFA"},
+      {"path":"docs/sdlc/runtime-config/supervisor-service.json","sha256":"7D98B2A7F66A14153B9E497CB117F5138AE537669D68B55222A94A418DEBECD9"}
+    ]
+  },
+  "pytest_command": "python3 -m pytest -q -rs -p no:cacheprovider tests/vst/test_s2_preflight_capture.py -k 'supervisor_fresh_start or supervisor_restart'",
+  "result": "FAIL: 9 failed, 21 deselected in 0.32s; WSL exit code 1.",
+  "failure": "All 9 selected cases fail during fixture setup at tests/vst/test_s2_preflight_capture.py:372: AttributeError: module 'tools.vst.preflight_capture' has no attribute 'Path'. Assertions about Supervisor recovery were not reached. This is a test fixture defect surfaced by POSIX execution, not evidence for or against the production recovery behavior.",
+  "nodeids": [
+    "tests/vst/test_s2_preflight_capture.py::test_supervisor_fresh_start_consumes_direct_observation_before_api_is_returned",
+    "tests/vst/test_s2_preflight_capture.py::test_supervisor_restart_revalidates_environment_without_replaying_one_start_claim",
+    "tests/vst/test_s2_preflight_capture.py::test_supervisor_restart_refuses_source_or_config_hash_drift_before_store_open",
+    "tests/vst/test_s2_preflight_capture.py::test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open[result]",
+    "tests/vst/test_s2_preflight_capture.py::test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open[spec]",
+    "tests/vst/test_s2_preflight_capture.py::test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open[network_profile]",
+    "tests/vst/test_s2_preflight_capture.py::test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open[mount_namespace]",
+    "tests/vst/test_s2_preflight_capture.py::test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open[network_namespace]",
+    "tests/vst/test_s2_preflight_capture.py::test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open[pid_namespace]"
+  ],
+  "full_output": "docs/sdlc/evidence/s2-4-supervisor-recovery-loader-wsl-tests-2026-10-30.txt",
+  "previous_windows_result": "Preserved separately: all same 9 selected cases skipped on Windows because Supervisor service contract requires POSIX path semantics; see s2-4-supervisor-recovery-loader-test-run-2026-10-30.json.",
+  "scope": "Only the named selectors ran. No Git clone/worktree, mount changes, dependency installation, systemd/VST service, or other project access."
+}

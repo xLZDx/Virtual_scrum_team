@@ -1,0 +1,20 @@
+{
+  "task_id": "S2-4E",
+  "captured_utc": "2026-11-07 09:38:20 UTC",
+  "repository_head": "7adb18316babe41f46ed894afe82620173736947",
+  "captured_by": "Codex",
+  "inventory_command": "$names = @('VSTOwner','VSTSupervisor','VSTDispatcher','VSTRunner','VSTSigner','VSTWorker'); $services = @(Get-CimInstance Win32_Service | Where-Object { $names -contains $_.Name } | Select-Object Name,State); $principal = [Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent()); $runtime = Test-Path (Join-Path $env:ProgramData 'VST\\runtime.json'); [pscustomobject]@{ Admin = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator); Services = $services; Runtime = $runtime; Instruction = [bool]$env:VST_S2E_INSTRUCTION_INPUT; Manifest = [bool]$env:VST_S2E_MANIFEST_INPUT } | ConvertTo-Json -Compress",
+  "inventory_exit_code": 0,
+  "inventory_output": {
+    "Admin": false,
+    "Services": [],
+    "Runtime": false,
+    "Instruction": false,
+    "Manifest": false
+  },
+  "process_e2e_command": "python tests/vst/test_s2_owner_runner_windows_e2e.py",
+  "process_e2e_status": "NOT_RUN",
+  "reason": "The current process is not elevated; all six VST SCM services, %ProgramData%\\VST\\runtime.json, VST_S2E_INSTRUCTION_INPUT, and VST_S2E_MANIFEST_INPUT are absent. The harness consumes provisioned inputs and does not install services, create keys, or self-elevate.",
+  "mutations_performed": false,
+  "owner": "Operator for elevated host provisioning; e2e-runner for the process E2E after prerequisites exist"
+}

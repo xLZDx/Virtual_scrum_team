@@ -1,0 +1,137 @@
+{"cache_provider_disabled": true, "cwd": "/mnt/d/Repo/Virtual_scrum_team", "plugin_autoload_disabled": true, "pytest": "7.4.4", "python": "3.12.3", "selected_node_ids": ["tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_accepts_exact_installed_projection_and_empty_source", "tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_modified_or_unsafe_projection", "tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_malformed_runtime_marker"]}
+FFFFFFFFFFFF                                                             [100%]
+=================================== FAILURES ===================================
+__ test_wsl_runtime_tree_accepts_exact_installed_projection_and_empty_source ___
+tests/vst/test_s2_runtime_qualification_harness.py:456: in test_wsl_runtime_tree_accepts_exact_installed_projection_and_empty_source
+    assert fixture["functions"]["_runtime_identity"](fixture["identity"]) == fixture["marker"]
+tools/qa/s2_runtime_qualification_wsl.py:904: in _runtime_identity
+    marker = _json_file(selector + "/.vst-runtime-manifest.json", 65536)
+tools/qa/s2_runtime_qualification_wsl.py:792: in _json_file
+    value = json.loads(_secure_bytes(path, maximum), object_pairs_hook=_pairs,
+tools/qa/s2_runtime_qualification_wsl.py:770: in _secure_bytes
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'O_RDONLY'
+_ test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[missing-source] __
+tests/vst/test_s2_runtime_qualification_harness.py:500: in test_wsl_runtime_tree_refuses_modified_or_unsafe_projection
+    fixture["functions"]["_runtime_identity"](fixture["identity"])
+tools/qa/s2_runtime_qualification_wsl.py:904: in _runtime_identity
+    marker = _json_file(selector + "/.vst-runtime-manifest.json", 65536)
+tools/qa/s2_runtime_qualification_wsl.py:792: in _json_file
+    value = json.loads(_secure_bytes(path, maximum), object_pairs_hook=_pairs,
+tools/qa/s2_runtime_qualification_wsl.py:770: in _secure_bytes
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'O_RDONLY'
+___ test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[extra-file] ____
+tests/vst/test_s2_runtime_qualification_harness.py:500: in test_wsl_runtime_tree_refuses_modified_or_unsafe_projection
+    fixture["functions"]["_runtime_identity"](fixture["identity"])
+tools/qa/s2_runtime_qualification_wsl.py:904: in _runtime_identity
+    marker = _json_file(selector + "/.vst-runtime-manifest.json", 65536)
+tools/qa/s2_runtime_qualification_wsl.py:792: in _json_file
+    value = json.loads(_secure_bytes(path, maximum), object_pairs_hook=_pairs,
+tools/qa/s2_runtime_qualification_wsl.py:770: in _secure_bytes
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'O_RDONLY'
+_ test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[changed-source] __
+tests/vst/test_s2_runtime_qualification_harness.py:500: in test_wsl_runtime_tree_refuses_modified_or_unsafe_projection
+    fixture["functions"]["_runtime_identity"](fixture["identity"])
+tools/qa/s2_runtime_qualification_wsl.py:904: in _runtime_identity
+    marker = _json_file(selector + "/.vst-runtime-manifest.json", 65536)
+tools/qa/s2_runtime_qualification_wsl.py:792: in _json_file
+    value = json.loads(_secure_bytes(path, maximum), object_pairs_hook=_pairs,
+tools/qa/s2_runtime_qualification_wsl.py:770: in _secure_bytes
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'O_RDONLY'
+_ test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[symlink-source] __
+tests/vst/test_s2_runtime_qualification_harness.py:500: in test_wsl_runtime_tree_refuses_modified_or_unsafe_projection
+    fixture["functions"]["_runtime_identity"](fixture["identity"])
+tools/qa/s2_runtime_qualification_wsl.py:904: in _runtime_identity
+    marker = _json_file(selector + "/.vst-runtime-manifest.json", 65536)
+tools/qa/s2_runtime_qualification_wsl.py:792: in _json_file
+    value = json.loads(_secure_bytes(path, maximum), object_pairs_hook=_pairs,
+tools/qa/s2_runtime_qualification_wsl.py:770: in _secure_bytes
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'O_RDONLY'
+_ test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[hardlink-source] _
+tests/vst/test_s2_runtime_qualification_harness.py:500: in test_wsl_runtime_tree_refuses_modified_or_unsafe_projection
+    fixture["functions"]["_runtime_identity"](fixture["identity"])
+tools/qa/s2_runtime_qualification_wsl.py:904: in _runtime_identity
+    marker = _json_file(selector + "/.vst-runtime-manifest.json", 65536)
+tools/qa/s2_runtime_qualification_wsl.py:792: in _json_file
+    value = json.loads(_secure_bytes(path, maximum), object_pairs_hook=_pairs,
+tools/qa/s2_runtime_qualification_wsl.py:770: in _secure_bytes
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'O_RDONLY'
+_ test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[wrong-file-mode] _
+tests/vst/test_s2_runtime_qualification_harness.py:500: in test_wsl_runtime_tree_refuses_modified_or_unsafe_projection
+    fixture["functions"]["_runtime_identity"](fixture["identity"])
+tools/qa/s2_runtime_qualification_wsl.py:904: in _runtime_identity
+    marker = _json_file(selector + "/.vst-runtime-manifest.json", 65536)
+tools/qa/s2_runtime_qualification_wsl.py:792: in _json_file
+    value = json.loads(_secure_bytes(path, maximum), object_pairs_hook=_pairs,
+tools/qa/s2_runtime_qualification_wsl.py:770: in _secure_bytes
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'O_RDONLY'
+___ test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[wrong-owner] ___
+tests/vst/test_s2_runtime_qualification_harness.py:500: in test_wsl_runtime_tree_refuses_modified_or_unsafe_projection
+    fixture["functions"]["_runtime_identity"](fixture["identity"])
+tools/qa/s2_runtime_qualification_wsl.py:904: in _runtime_identity
+    marker = _json_file(selector + "/.vst-runtime-manifest.json", 65536)
+tools/qa/s2_runtime_qualification_wsl.py:792: in _json_file
+    value = json.loads(_secure_bytes(path, maximum), object_pairs_hook=_pairs,
+tools/qa/s2_runtime_qualification_wsl.py:770: in _secure_bytes
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'O_RDONLY'
+_ test_wsl_runtime_tree_refuses_malformed_runtime_marker[missing-marker-field] _
+tests/vst/test_s2_runtime_qualification_harness.py:523: in test_wsl_runtime_tree_refuses_malformed_runtime_marker
+    fixture["functions"]["_runtime_identity"](fixture["identity"])
+tools/qa/s2_runtime_qualification_wsl.py:904: in _runtime_identity
+    marker = _json_file(selector + "/.vst-runtime-manifest.json", 65536)
+tools/qa/s2_runtime_qualification_wsl.py:792: in _json_file
+    value = json.loads(_secure_bytes(path, maximum), object_pairs_hook=_pairs,
+tools/qa/s2_runtime_qualification_wsl.py:770: in _secure_bytes
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'O_RDONLY'
+__ test_wsl_runtime_tree_refuses_malformed_runtime_marker[extra-marker-field] __
+tests/vst/test_s2_runtime_qualification_harness.py:523: in test_wsl_runtime_tree_refuses_malformed_runtime_marker
+    fixture["functions"]["_runtime_identity"](fixture["identity"])
+tools/qa/s2_runtime_qualification_wsl.py:904: in _runtime_identity
+    marker = _json_file(selector + "/.vst-runtime-manifest.json", 65536)
+tools/qa/s2_runtime_qualification_wsl.py:792: in _json_file
+    value = json.loads(_secure_bytes(path, maximum), object_pairs_hook=_pairs,
+tools/qa/s2_runtime_qualification_wsl.py:770: in _secure_bytes
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'O_RDONLY'
+__ test_wsl_runtime_tree_refuses_malformed_runtime_marker[bad-marker-digest] ___
+tests/vst/test_s2_runtime_qualification_harness.py:523: in test_wsl_runtime_tree_refuses_malformed_runtime_marker
+    fixture["functions"]["_runtime_identity"](fixture["identity"])
+tools/qa/s2_runtime_qualification_wsl.py:904: in _runtime_identity
+    marker = _json_file(selector + "/.vst-runtime-manifest.json", 65536)
+tools/qa/s2_runtime_qualification_wsl.py:792: in _json_file
+    value = json.loads(_secure_bytes(path, maximum), object_pairs_hook=_pairs,
+tools/qa/s2_runtime_qualification_wsl.py:770: in _secure_bytes
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'O_RDONLY'
+_ test_wsl_runtime_tree_refuses_malformed_runtime_marker[noncanonical-marker] __
+tests/vst/test_s2_runtime_qualification_harness.py:523: in test_wsl_runtime_tree_refuses_malformed_runtime_marker
+    fixture["functions"]["_runtime_identity"](fixture["identity"])
+tools/qa/s2_runtime_qualification_wsl.py:904: in _runtime_identity
+    marker = _json_file(selector + "/.vst-runtime-manifest.json", 65536)
+tools/qa/s2_runtime_qualification_wsl.py:792: in _json_file
+    value = json.loads(_secure_bytes(path, maximum), object_pairs_hook=_pairs,
+tools/qa/s2_runtime_qualification_wsl.py:770: in _secure_bytes
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'O_RDONLY'
+=========================== short test summary info ============================
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_accepts_exact_installed_projection_and_empty_source
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[missing-source]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[extra-file]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[changed-source]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[symlink-source]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[hardlink-source]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[wrong-file-mode]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[wrong-owner]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_malformed_runtime_marker[missing-marker-field]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_malformed_runtime_marker[extra-marker-field]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_malformed_runtime_marker[bad-marker-digest]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_malformed_runtime_marker[noncanonical-marker]
+12 failed in 2.42s

@@ -1,0 +1,22 @@
+{
+  "baseline": "11c90281c514465db8b89b90b76b6cd80f1a8111",
+  "files": [
+    {
+      "path": "tools/qa/verify_s2_runtime_config_inventory.py",
+      "sha256": "cd98cc7e9ce2b5975fd2e0a9089a96d654358cdb585cae871aec257136377c8d",
+      "bytes": 28917
+    },
+    {
+      "path": "tools/qa/collect_s2_runtime_config_inventory.py",
+      "sha256": "01316a062277b7d21bbab0eee89706884287069a7fb4e2cc9b79f0c70a3775fc",
+      "bytes": 21643
+    },
+    {
+      "path": "tests/vst/test_s2_runtime_config_inventory.py",
+      "sha256": "c878462dbdb3f36f39fab241d263786e4ab4fbb7e015b8f0e6897ea341de357e",
+      "bytes": 41700
+    }
+  ],
+  "diff_sha256": "ced74263b2bbd1f3e3f020041c0c7c2e1265f27d35c8b30235705de783aa0df8",
+  "diff_bytes": 10393
+}
