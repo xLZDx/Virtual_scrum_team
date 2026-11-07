@@ -104,20 +104,32 @@ class HandWrittenWorkerAdapter:
 
     def _existing_effect_head(self, request: WorkerRequest) -> str | None:
         marker = f"vst-worker-effect {request.effect_key}"
-        completed = subprocess.run(
-            ["git", "log", "--all", "--format=%H%x00%s", "--fixed-strings", "--grep", marker],
-            cwd=self.worker.repository,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=False,
-            timeout=min(self.timeout_sec, request.timeout_sec),
+        timeout = min(self.timeout_sec, request.timeout_sec)
+        # Only commits reachable from the candidate HEAD are searched (no --all),
+        # so a marker on an unrelated ref or branch is never trusted.
+        completed = _run_git(
+            self.worker.repository,
+            ["log", "HEAD", "--format=%H%x00%s", "--fixed-strings", "--grep", marker, "--"],
+            timeout,
         )
         if completed.returncode:
             raise RuntimeError("could not inspect synthetic worker operation history")
+        expected_blob = request.change_content.encode("utf-8")
         for line in completed.stdout.decode("ascii", "replace").splitlines():
             head, separator, subject = line.partition("\x00")
-            if separator and subject == marker and len(head) == 40:
+            if not (separator and subject == marker and len(head) == 40):
+                continue
+            # The marker text alone is not proof: the commit must descend from
+            # the trusted candidate revision and carry exactly the requested blob.
+            if _run_git(
+                self.worker.repository,
+                ["merge-base", "--is-ancestor", request.candidate_revision, head], timeout,
+            ).returncode:
+                continue
+            blob = _run_git(
+                self.worker.repository, ["cat-file", "blob", f"{head}:{request.change_path}"], timeout,
+            )
+            if blob.returncode == 0 and blob.stdout == expected_blob:
                 return head
         return None
 
@@ -949,6 +961,49 @@ class SyntheticStoryPilot:
         ):
             raise StoreError("handwritten adapter still reports an active invocation", kind="lifecycle")
 
+    def _git_validate_commit(self, commit_hash: str) -> bool | str:
+        """Verify commit exists. Return True on success, error string on failure."""
+        try:
+            result = subprocess.run(
+                ["git", "cat-file", "-e", f"{commit_hash}^{{commit}}"],
+                cwd=self.fixture.sandbox_path,
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                check=False, timeout=10,
+            )
+            return True if result.returncode == 0 else f"commit {commit_hash[:8]} not found"
+        except Exception as exc:
+            return f"git error: {type(exc).__name__}"
+
+    def _git_validate_ancestry(self, base_head: str, candidate_head: str) -> bool | str:
+        """Verify candidate_head descends from base_head. Return True on success, error string on failure."""
+        try:
+            result = subprocess.run(
+                ["git", "merge-base", "--is-ancestor", base_head, candidate_head],
+                cwd=self.fixture.sandbox_path,
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                check=False, timeout=10,
+            )
+            return True if result.returncode == 0 else f"not ancestor of base_head"
+        except Exception as exc:
+            return f"git error: {type(exc).__name__}"
+
+    def _git_validate_diff_scope(self, base_head: str, candidate_head: str, allowed_paths: set) -> bool | str:
+        """Verify all changed files are in allowed_paths. Return True on success, error string on failure."""
+        try:
+            result = subprocess.run(
+                ["git", "diff", "--name-only", f"{base_head}..{candidate_head}"],
+                cwd=self.fixture.sandbox_path,
+                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                check=False, timeout=10, text=True,
+            )
+            if result.returncode != 0:
+                return f"diff failed: {result.stderr[:100]}"
+            changed = set(l for l in result.stdout.strip().split('\n') if l)
+            if not changed.issubset(allowed_paths):
+                return f"paths outside scope: {', '.join(sorted(list(changed - allowed_paths))[:3])}"
+            return True
+        except Exception as exc:
+            return f"git error: {type(exc).__name__}"
     def _validate_response(self, request: WorkerRequest, response: WorkerResponse) -> WorkerResponse:
         if not isinstance(response, WorkerResponse):
             return _response(request, WorkerState.BLOCKED, error=WorkerError(
@@ -970,6 +1025,23 @@ class SyntheticStoryPilot:
             return _response(request, WorkerState.BLOCKED, error=WorkerError(
                 WorkerErrorCode.INVALID_REQUEST, "adapter response identity/fence does not match request"))
         if response.state == WorkerState.SUCCEEDED:
+            # MAJOR-001 FIX: Validate candidate_head exists and descends from base_head
+            if response.candidate_head:
+                commit_check = self._git_validate_commit(response.candidate_head)
+                if commit_check is not True:
+                    return _response(request, WorkerState.INCONCLUSIVE, error=WorkerError(
+                        WorkerErrorCode.INVALID_REQUEST, f"candidate_head validation failed: {commit_check}"))
+                
+                ancestry_check = self._git_validate_ancestry(request.base_head, response.candidate_head)
+                if ancestry_check is not True:
+                    return _response(request, WorkerState.INCONCLUSIVE, error=WorkerError(
+                        WorkerErrorCode.INVALID_REQUEST, f"candidate_head {ancestry_check}"))
+                
+                diff_check = self._git_validate_diff_scope(request.base_head, response.candidate_head,
+                                                           set(request.allowed_paths) if request.allowed_paths else set())
+                if diff_check is not True:
+                    return _response(request, WorkerState.INCONCLUSIVE, error=WorkerError(
+                        WorkerErrorCode.SCOPE_DENIED, f"candidate diff: {diff_check}"))
             if not response.changed_paths or not set(response.changed_paths).issubset(set(request.allowed_paths)):
                 return _response(request, WorkerState.BLOCKED, error=WorkerError(
                     WorkerErrorCode.SCOPE_DENIED, "adapter reported changes outside allowed paths"))
@@ -1127,5 +1199,7 @@ def _response_from_dict(data: dict) -> WorkerResponse:
         budget_cap=data.get("budget_cap", 0),
         budget_units=data.get("budget_units", 0),
     )
+
+
 
 

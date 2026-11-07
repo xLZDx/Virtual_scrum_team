@@ -1812,3 +1812,15 @@ S3-B audit completed for pilot.py (S3-A adapter) and BMad Loop v0.10.0. Evidence
 **Status:** S3-B PARTIAL. Security audit findings block S3 completion until operator decides: remediate blockers or accept as design constraints.
 
 **Sandbox-compatibility:** DEPENDENT on MAJOR-001/002 resolution. Process containment inherited from S2-4E (Windows Job Object) but failure scenarios now exposed.
+
+## 2026-11-07 — MAJOR-001 remediated: git validation for candidate_head
+
+S3-A pilot.py MAJOR-001 (unvalidated candidate_head) has been fixed. Added three helper methods:
+- _git_validate_commit: Verifies candidate_head exists in repository
+- _git_validate_ancestry: Verifies candidate_head descends from base_head  
+- _git_validate_diff_scope: Verifies all changed paths are within allowed_paths
+
+The _validate_response method now calls these validators for all SUCCEEDED responses. Failures return INCONCLUSIVE with appropriate error codes instead of accepting unvalidated commits.
+
+**Status:** MAJOR-001 FIXED in code; needs functional-test-reviewer verification before push.
+**Remaining:** MAJOR-002 (retry failure) requires more complex refactoring; status TBD.
