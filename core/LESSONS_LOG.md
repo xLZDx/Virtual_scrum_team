@@ -1403,3 +1403,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Rule: validate every role/selector argument at the boundary, and format each log component independently.
 - Accepted (not fixed): a same-trust peer that never reads a response larger than 64 KB stalls the single-threaded accept loop for at most the I/O timeout (P5: 3004 ms).
 - Must be checked by the elevated E2E: per-role temp dirs granted Modify (code-reviewer MINOR 3).
+
+## 2026-11-07 — S2-4E manifest rebound to 64ab73736a9fe598442e867e7583664530053cde (event-log and role-validation fixes)
+
+- Kind: NEUTRAL. Needed because the protected app snapshot is built from base_head.
