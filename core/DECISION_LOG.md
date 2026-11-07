@@ -1743,3 +1743,7 @@ Removed the early assert_current_service_identity call from dispatch_owner_servi
 ## 2026-11-07 — S2-4E manifest base_head 3536cbfe323cbe85555ad2c318e46c41e37eafce -> 75bb0a0f6295f7730bfe89d372f210b316a47a4e
 
 The rebinding adds the Owner identity-check fix.
+
+## 2026-11-07 — Windows branch for the dispatch signer public-key fingerprint
+
+root_dispatch_issuer.public_key_fingerprint has a Windows branch: lstat, regular file, no reparse point, size 1..65536, hash of the exact bytes. The ACL and owner of the file were verified when the Supervisor loaded its trust registry, so the POSIX uid/mode checks are not reproduced. Evidence: the first real E2E run, docs/sdlc/evidence/s2-4e-e2e-run-20261107-1.out.

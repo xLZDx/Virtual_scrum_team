@@ -79,6 +79,23 @@ def is_verified_issuance_context(value: Any) -> bool:
 
 def public_key_fingerprint(path: str) -> str:
     """Fingerprint the exact root-pinned public-key file bytes."""
+    if os.name == "nt":
+        # No O_NOFOLLOW / uid on Windows. The service load already verified this file's
+        # ACL and owner (administrator/SYSTEM-only write); here refuse links and
+        # non-regular files and hash the exact bytes.
+        try:
+            info = os.lstat(path)
+            if (not stat.S_ISREG(info.st_mode)
+                    or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+                    or info.st_size < 1 or info.st_size > 65536):
+                raise ContractError("dispatch signer public key file is unsafe")
+            with open(path, "rb") as stream:
+                data = stream.read(65537)
+        except OSError as exc:
+            raise ContractError("dispatch signer public key is unavailable") from exc
+        if not data or len(data) > 65536:
+            raise ContractError("dispatch signer public key file is invalid")
+        return hashlib.sha256(data).hexdigest()
     try:
         fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
         try:
