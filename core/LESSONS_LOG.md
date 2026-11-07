@@ -1570,3 +1570,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Root cause: the Windows service path reused POSIX helpers; unit tests used fakes, and the sanitized event log hid the StoreError text, but its cause chain still pointed at the exact line.
 - Fix: a Windows branch in public_key_fingerprint (regular file, no reparse point, size limits, exact-bytes SHA-256). The ACL and owner of the key file are already verified by the service load. Checked with a temp file: the hash matches, and an empty file is refused.
 - Rule: grep the whole Windows-reachable path for POSIX-only calls (O_NOFOLLOW, st_uid, st_mode bits, geteuid, fcntl, pidfd) once, instead of discovering them one elevated run at a time.
+
+## 2026-11-07 — S2-4E manifest rebound to 2bff3a302055c3f38e630cd7807bbb77a8340881 (public-key fingerprint)
+
+- Kind: NEUTRAL.
