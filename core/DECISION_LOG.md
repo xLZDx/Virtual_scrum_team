@@ -1833,3 +1833,15 @@ S3-B candidate audit complete. Evidence:
 - License mismatch: Open (NOASSERTION vs MIT in BMad Loop)
 
 **S3-B status:** PARTIAL. Waiting for operator decision on MAJOR-002 remediation scope (include in S3 or defer). MAJOR-001 fix ready for functional-test-reviewer verification.
+
+## 2026-11-07 — MAJOR-002 implementation guide completed
+
+Detailed implementation guide for MAJOR-002 fix (retry failure) created with:
+- Exact line numbers and code locations
+- Before/after code samples (3 modification points)
+- Testing requirements (3 synthetic scenarios)
+- Integration checklist (8 steps)
+
+Guide ready for implementation by code-reviewer and functional-test-reviewer. Estimated effort remains ~3 hours (code + testing + review).
+
+**S3-B status:** PARTIAL - Audit complete, MAJOR-001 fixed, MAJOR-002 ready for implementation.
