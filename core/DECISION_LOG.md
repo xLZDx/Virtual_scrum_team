@@ -1622,3 +1622,7 @@ The operator asked for a complete agent review and fix batch, then another agent
 ## 2026-11-07 — Named-pipe server authenticity without cross-service token access
 
 Clients no longer open the server process token, which other virtual accounts are denied. Server authenticity rests on the pipe DACL: only the server SID holds FILE_CREATE_PIPE_INSTANCE; peers get 0x100183. It also rests on GetNamedPipeServerProcessId matching the SCM pid of the expected service. Clients connect with SECURITY_SQOS_PRESENT|SECURITY_IDENTIFICATION.
+
+## 2026-11-07 — S2-4E manifest base_head 9e1266a45c2c7c2fa15bc8fd8d6a11d6cf255cea -> 326e1489e9913b8ab75ca57860e2f2e263e993f1
+
+The rebinding adds batch 2 (named-pipe lifecycle, pre-SCM failure reporting, Dispatcher read retry).

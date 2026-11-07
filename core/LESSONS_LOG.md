@@ -1358,3 +1358,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Root cause: the pipe layer was only ever exercised with mocks; one request per connection hid the multi-request lifecycle.
 - Rule: test IPC primitives with real multi-request, multi-process sessions before review.
 - Open risk: FlushFileBuffers on a server close can block if a client never reads. To be checked in the follow-up agent pass.
+
+## 2026-11-07 — S2-4E manifest rebound to 326e1489e9913b8ab75ca57860e2f2e263e993f1 (pipe batch)
+
+- Kind: NEUTRAL.
