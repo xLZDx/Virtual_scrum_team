@@ -1701,3 +1701,13 @@ Request a766bc2a-46eb-4ae0-9a0f-96f23c073449, reply 350b36cb-f9de-5308-8ac3-9aeb
 ## 2026-11-07 — S2-4E manifest base_head e97eea29e6248f1454c064a6b1b66d533d37e191 -> c4eb827908d5e3d4ad464c9035f7c444ce6335a1
 
 The rebinding adds the Supervisor store-thread fix.
+
+## 2026-11-07 — Operator-started elevated helper for the S2-4E install and E2E
+
+- The operator asked the agent to run everything itself. The agent's shells are not elevated, and the platform forbids typing into terminal windows (click-only tier; UIPI also blocks input into an elevated window).
+- Decision: tests/vst/s2_4e_admin_runner.ps1 is started once by the operator in the already-open elevated window. It then runs only four fixed actions from request files in D:\tmp\s2_4e_admin_runner:
+  - reinstall: provisioner Cleanup, then Install;
+  - cleanup;
+  - e2e: start the VST-S2E-* scheduled task once and report LastTaskResult plus the e2e log;
+  - status.
+- It accepts no free-form commands, so it adds no new capability beyond the provisioner the operator already authorized.

@@ -1486,3 +1486,10 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — S2-4E manifest rebound to c4eb827908d5e3d4ad464c9035f7c444ce6335a1 (Supervisor store thread)
 
 - Kind: NEUTRAL.
+
+## 2026-11-07 — Elevated attempts needed the operator for every retry
+
+- Kind: SHORTCOMING (operator feedback: tired of re-running the install by hand).
+- Facts: every attempt required the operator to paste a command into an elevated window. The agent cannot type into it.
+- Fix: a one-time elevated helper with a file-queue and fixed actions (s2_4e_admin_runner.ps1).
+- Rule: when a workflow needs elevation repeatedly, provide a bounded elevated helper at the first elevated step instead of per-attempt commands.
