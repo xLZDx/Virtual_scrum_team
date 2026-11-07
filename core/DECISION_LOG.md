@@ -1882,3 +1882,7 @@ The second verification review (python-reviewer, silent-failure-hunter) found 2 
 ## 2026-11-07 — S3-A approved and pushed; PR 4 is the S3 PR
 
 GPT-PM request 5f62e471-ba2c-481e-abf5-4258f8e12110 (delta 7c94c6c..3cad14e) returned APPROVE with 0 BLOCKER and 0 MAJOR for S3-A (VST-027) only. Branch s3-worker-pilot was pushed without force and PR 4 (draft, base main) is the single S3 pull request; the older draft PR 3 (pre-S2-4E base) was closed as superseded. S3-A is ACCEPTED in the plan. S3-B (candidate audits; acquisition not authorized), S3-C (fixture: local synthetic runs only), S3-D (needs a sandbox decision) and S3-E (operator choice) are open.
+
+## 2026-11-07 — Program status report rebuilt in the old scheme; S3-B blocked; VST-027 done
+
+VST_PROGRAM_STATUS_2026-11-07 (RU and EN) was rebuilt for the active sprint S3 (task table S3-A..E with exact-ID Git windows, registry 5/40 CLOSED after VST-027 moved to done). S3-B is BLOCKED_OPERATOR with a verified cause: the remaining source, security and sandbox audit of Temporal and BMad Loop needs the operator to authorize acquiring the pinned sources into quarantine (plan section 2.3; acquisition NOT APPROVED). License facts verified through the GitHub API only: BMad Loop LICENSE at 8d33e927 is MIT plus a trademark notice (this explains NOASSERTION), Temporal v1.32.1 is MIT. S3-C work (35 new scenarios, two product defects found: pilot evaluate TypeError and a symlink promoted to SUCCEEDED) is uncommitted and being retested; the S3-A approval does not cover those fixes.

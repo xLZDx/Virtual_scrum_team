@@ -1660,3 +1660,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — S3-A delivery path
 
 - Kind: SUCCESS: reading the registry first found the existing S3 work; two independent review rounds plus the e2e-runner caught 5 MAJOR defects (one a dead import in the original integration) before GPT-PM saw the code, and the final review returned a bare APPROVE.
+
+## 2026-11-07 — Report scheme
+
+- Kind: SHORTCOMING (mine): after the operator asked for the old-scheme program status report I first kept refreshing the new plan report; the operator had to ask again. Rule: when the operator names an earlier report format, rebuild that exact artifact first and say which one it is.
