@@ -377,3 +377,28 @@ current signed E5 and sandbox provenance, active services, POSIX identity/cgroup
 Windows/POSIX acceptance. Restricted process/crash/mutation/policy scenarios stay `NOT_RUN` absent
 authorization. Owner: Codex for source/evidence coordination; GPT-PM for gate adjudication; operator
 for genuinely privileged provisioning or human attestation. Do not start S3.
+
+## Future backlog task SAAS-01 — multi-tenant hosted service (queued; not active)
+
+**Priority:** Preserve Windows-local execution as the first-class, independently usable product
+mode. Add a Linux-hosted SaaS deployment as a later product capability, after the currently planned
+S2–S5 work; this task does not change the active sprint or authorize hosted deployment.
+
+**Acceptance criteria:**
+
+1. The Windows-local product remains usable without a SaaS account, network connection, or Linux
+   service, and keeps the same analysis/result contract as the hosted mode.
+2. An authenticated SaaS API accepts a tenant-scoped request, records a correlation ID, queues the
+   job, and returns findings and terminal errors with source and run provenance.
+3. Requests, source artifacts, credentials, results, and logs are isolated by tenant; authorization
+   and cross-tenant isolation have falsifiable functional/E2E coverage.
+4. API and worker capacity can scale horizontally without a hard-coded product-level maximum
+   account count. Define and measure supported concurrency/throughput targets, quotas, fair-use
+   limits, and back-pressure; do not claim physically unlimited capacity.
+5. Documented retention/deletion and per-tenant credential controls are enforced and tested before
+   any customer data is accepted.
+
+**Owner:** Codex for implementation and evidence; GPT-PM for architecture/contract review; operator
+for any paid hosting account or production launch decision. **Next:** schedule SAAS-01 into a later
+sprint after the active S2→S5 sequence; keep Windows-local Owner→Runner work as the current S2
+priority.
