@@ -1,0 +1,260 @@
+{
+  "apply_invocations": 0,
+  "approval_request_id": "d18c5007-6319-4d70-b183-e71db9205aa3",
+  "approval_sha256": "02ac5a56aaa1e84329d6a2d16c91940cd3c564cc0858a9d54df0b7fd367220ca",
+  "approved_file_sha256": {
+    "docs/sdlc/runtime-config/bootstrap-request.json": "be1802a65d4705c5d01e578742133fd8c46f84fb9321374d55484920ba2e377a",
+    "docs/sdlc/runtime-config/bundle-manifest.json": "4c13f2991f39cf12b84af4b0440621ab1adaa74ca1894dfda29eec1006cd7138",
+    "docs/sdlc/runtime-config/network-profile.json": "f0d4e76b13a59b92575e16b5ef1cc5880760a405a5248c6cf79e23a2044bf1c4",
+    "docs/sdlc/runtime-config/run-binding.json": "b80b506af43eeec8814dcf58ab72c0b5089a197b228cf3700a186e52549e75f9",
+    "docs/sdlc/runtime-config/supervisor-service.json": "484362e883b69e307d7a20f0b189a49604266bc8dfa9fc22c4092748912ab772",
+    "tests/vst/test_s2_runtime_config_bundle.py": "2733102b0deda21d73fe3500525e1cb45f503775a64953d424ec925bfeb451de",
+    "tests/vst/test_s2_runtime_config_inventory.py": "497df55b1cebfefe234c2cda1741a62ead2edaebbddbc34bff156f94f418bef3",
+    "tools/qa/apply_s2_runtime_configuration.py": "c563417271bb5e6a5c2e10cbb129713c22ec3fd0e8c54d541a72aba63ff8c3b4",
+    "tools/qa/collect_s2_runtime_config_inventory.py": "39f07005985eace76cfe99ab9ac764402122598051e3240336e65fd342960971",
+    "tools/qa/verify_s2_runtime_config_inventory.py": "c334c6cdcf2677c8f3d87f52c74951d61717e64f7dbe0f77cc0541cc32f5d135"
+  },
+  "artifacts": {
+    "s2-4d-fresh-binding-config-apply-4fe846f-20261105-01.inventory.exit-code.txt": {
+      "bytes": 2,
+      "path": "docs\\sdlc\\evidence\\s2-4d-fresh-binding-config-apply-4fe846f-20261105-01.inventory.exit-code.txt",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "s2-4d-fresh-binding-config-apply-4fe846f-20261105-01.inventory.json": {
+      "bytes": 36347,
+      "path": "docs\\sdlc\\evidence\\s2-4d-fresh-binding-config-apply-4fe846f-20261105-01.inventory.json",
+      "sha256": "61a5249c29fd776ecee697f5ee5b9344c5cc2e34d9432cbeedaf903a4960ed2d"
+    },
+    "s2-4d-fresh-binding-config-apply-4fe846f-20261105-01.inventory.stderr.bin": {
+      "bytes": 0,
+      "path": "docs\\sdlc\\evidence\\s2-4d-fresh-binding-config-apply-4fe846f-20261105-01.inventory.stderr.bin",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "s2-4d-fresh-binding-config-apply-4fe846f-20261105-01.inventory.stdout.bin": {
+      "bytes": 36347,
+      "path": "docs\\sdlc\\evidence\\s2-4d-fresh-binding-config-apply-4fe846f-20261105-01.inventory.stdout.bin",
+      "sha256": "61a5249c29fd776ecee697f5ee5b9344c5cc2e34d9432cbeedaf903a4960ed2d"
+    },
+    "s2-4d-fresh-binding-config-apply-4fe846f-20261105-01.keeper.stdout.txt": {
+      "bytes": 363,
+      "path": "docs\\sdlc\\evidence\\s2-4d-fresh-binding-config-apply-4fe846f-20261105-01.keeper.stdout.txt",
+      "sha256": "ad4bc86423ea8281456b60f69f060eea8b8e3c22f2643ac035eb36a7b2711c5a"
+    }
+  },
+  "authorization": "AUTHORIZE_BOUNDED_CONFIG_REFRESH",
+  "branch": "s2-canonical-continuation",
+  "head": "4fe846fc1c3172f02a4fe915936ecc9c249ac61d",
+  "head_expected": "4fe846fc1c3172f02a4fe915936ecc9c249ac61d",
+  "inventory_argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/bin/sh",
+    "-c",
+    "if /usr/bin/mountpoint -q /mnt/d; then :; else rc=$?; [ \"$rc\" -eq 32 ] || exit \"$rc\"; /usr/bin/mount -t drvfs D: /mnt/d -o ro || exit $?; fi\nexec /usr/bin/python3.12 -I -B -S /mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py"
+  ],
+  "inventory_bytes": 36347,
+  "inventory_sha256": "61a5249c29fd776ecee697f5ee5b9344c5cc2e34d9432cbeedaf903a4960ed2d",
+  "inventory_summary": {
+    "boot_id": "faf845b4-e863-48d7-bb82-182bf528cb96",
+    "candidate_identity_collision": false,
+    "captured_utc": "2026-11-05T07:43:59.240805+00:00",
+    "configuration_destination_count": 27,
+    "installed_bootstrap_identity": {
+      "request_id": "ba3faaadb50447b79df509619b6ee010",
+      "run_id": "s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e"
+    },
+    "mount": {
+      "filesystem_options": {
+        "command": "/usr/bin/findmnt -n -o FSTYPE,OPTIONS --target /mnt/d",
+        "exit_code": 0,
+        "finished_utc": "2026-11-05T07:43:53.844396+00:00",
+        "started_utc": "2026-11-05T07:43:53.839197+00:00",
+        "stderr": "",
+        "stdout": "9p     ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3\n"
+      },
+      "source": {
+        "command": "/usr/bin/findmnt -n -o SOURCE --target /mnt/d",
+        "exit_code": 0,
+        "finished_utc": "2026-11-05T07:43:53.839164+00:00",
+        "started_utc": "2026-11-05T07:43:53.832198+00:00",
+        "stderr": "",
+        "stdout": "D:\n"
+      }
+    },
+    "runtime_selector": {
+      "kind": "symlink",
+      "link_target": "/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
+      "state": "PRESENT"
+    },
+    "source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
+    "source_identity": {
+      "applier_sha256": "c563417271bb5e6a5c2e10cbb129713c22ec3fd0e8c54d541a72aba63ff8c3b4",
+      "applier_sha256_matches_head_blob": true,
+      "bundle_manifest_sha256": "4c13f2991f39cf12b84af4b0440621ab1adaa74ca1894dfda29eec1006cd7138",
+      "bundle_manifest_sha256_matches_head_blob": true,
+      "contracts_sha256": "bf01d990a94cd71887f8d9f81019333f3bf43d5950a655de3646e9bb3d585ea4",
+      "contracts_sha256_matches_head_blob": true,
+      "implementation_source_commit": "16549bb8f10113b2f05f41b3aa390bad80dab97e",
+      "installation_layout_sha256": "f46e97704a89b5da339701bb71b6e71c4ce846ae96cb4504929869352d0315dd",
+      "installation_layout_sha256_matches_head_blob": true,
+      "repo_head": "4fe846fc1c3172f02a4fe915936ecc9c249ac61d",
+      "runtime_capture_sha256": "befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119",
+      "runtime_capture_sha256_matches_head_blob": true,
+      "runtime_source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
+      "validator_sha256": "c334c6cdcf2677c8f3d87f52c74951d61717e64f7dbe0f77cc0541cc32f5d135",
+      "validator_sha256_matches_head_blob": true
+    },
+    "store_present": false,
+    "unit_states": {
+      "vst-assignment-bootstrap.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-dispatch-issuer.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-dispatch-owner.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-dispatch-owner.socket": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-dispatcher.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-runner.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-sandbox-probe.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-signer.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ],
+      "vst-supervisor.service": [
+        "loaded",
+        "inactive",
+        "dead",
+        "0"
+      ]
+    }
+  },
+  "keeper_argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/usr/bin/python3.12",
+    "-I",
+    "-B",
+    "-S",
+    "-c",
+    "import sys,pathlib,json; print(json.dumps({'ready':True,'pid1_stat':pathlib.Path('/proc/1/stat').read_text()}),flush=True); sys.stdin.buffer.read(1)"
+  ],
+  "keeper_host_pid": 47224,
+  "keeper_ready": {
+    "pid1_stat": "1 (systemd) S 0 1 1 0 -1 4194560 5740 52585 107 882 98 276 300 307 20 0 1 0 2394840 22421504 2986 18446744073709551615 111312579670016 111312579713889 140735923264288 0 0 0 671173123 4096 1260 1 0 0 17 15 0 0 0 0 0 111312579743696 111312579747856 111312969629696 140735923265432 140735923265443 140735923265443 140735923265517 0\n",
+    "ready": true
+  },
+  "operation": "bounded config refresh",
+  "prefix": "s2-4d-fresh-binding-config-apply-4fe846f-20261105-01",
+  "python_executable": "C:\\Python314\\python.exe",
+  "stages": [
+    {
+      "approval_sha256": "02ac5a56aaa1e84329d6a2d16c91940cd3c564cc0858a9d54df0b7fd367220ca",
+      "stage": "preflight_pass",
+      "utc": "2026-11-05T07:43:40.245685+00:00",
+      "verified_files": 10
+    },
+    {
+      "argv": [
+        "wsl.exe",
+        "--distribution",
+        "Ubuntu-24.04",
+        "--user",
+        "root",
+        "--exec",
+        "/usr/bin/python3.12",
+        "-I",
+        "-B",
+        "-S",
+        "-c",
+        "import sys,pathlib,json; print(json.dumps({'ready':True,'pid1_stat':pathlib.Path('/proc/1/stat').read_text()}),flush=True); sys.stdin.buffer.read(1)"
+      ],
+      "stage": "keeper_starting",
+      "utc": "2026-11-05T07:43:40.248499+00:00"
+    },
+    {
+      "host_pid": 47224,
+      "pid1_stat_sha256": "373fe9943b7ecc9ea94e958a6e16c82020d3bad0a7cc66e88449d4c550b14b6f",
+      "stage": "keeper_ready",
+      "utc": "2026-11-05T07:43:52.915760+00:00"
+    },
+    {
+      "argv": [
+        "wsl.exe",
+        "--distribution",
+        "Ubuntu-24.04",
+        "--user",
+        "root",
+        "--exec",
+        "/bin/sh",
+        "-c",
+        "if /usr/bin/mountpoint -q /mnt/d; then :; else rc=$?; [ \"$rc\" -eq 32 ] || exit \"$rc\"; /usr/bin/mount -t drvfs D: /mnt/d -o ro || exit $?; fi\nexec /usr/bin/python3.12 -I -B -S /mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py"
+      ],
+      "pid": 44424,
+      "stage": "inventory_started",
+      "utc": "2026-11-05T07:43:52.918778+00:00"
+    },
+    {
+      "exit_code": 0,
+      "stage": "inventory_finished",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_bytes": 36347,
+      "stdout_sha256": "61a5249c29fd776ecee697f5ee5b9344c5cc2e34d9432cbeedaf903a4960ed2d",
+      "utc": "2026-11-05T07:43:59.296198+00:00"
+    },
+    {
+      "candidate_identity_collision": false,
+      "destinations": 27,
+      "inventory_sha256": "61a5249c29fd776ecee697f5ee5b9344c5cc2e34d9432cbeedaf903a4960ed2d",
+      "stage": "inventory_readiness_pass",
+      "store_present": false,
+      "units": 9,
+      "utc": "2026-11-05T07:43:59.302529+00:00"
+    }
+  ],
+  "started_utc": "2026-11-05T07:43:39.026788+00:00",
+  "task": "S2-4D",
+  "upstream": "4fe846fc1c3172f02a4fe915936ecc9c249ac61d"
+}

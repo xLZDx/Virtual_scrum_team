@@ -1,0 +1,806 @@
+{
+  "tested_head": "0da595e6574856ed0c85a181941e822031b80787",
+  "runs": [
+    {
+      "command": "& 'C:\\Python314\\python.exe' -m pytest -q tests/vst/test_s2_assignment_bootstrap.py tests/vst/test_s2_dispatch_issuance_contract.py tests/vst/test_s2_assignment_basis.py tests/vst/test_s2_machine_source_contracts.py",
+      "total": 68,
+      "passed": 62,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 6,
+      "log": "Windows, exit code 0; pytest output: 62 passed, 6 skipped, 1 warning in 1.16s. The six skips are POSIX-only root-owned OpenSSL/machine authorization fixtures; they are NOT_RUN on Windows, not passes.",
+      "tested_head": "524a2d69aa4bc709b7777b131edd79c8fe24250e"
+    },
+    {
+      "tested_head": "62bb632909205fe21a6b61b4ac5b56dbc8176285",
+      "command": "& 'C:\\Python314\\python.exe' -m pytest -q tests/vst/test_s2_assignment_bootstrap.py tests/vst/test_s2_dispatch_issuance_contract.py tests/vst/test_s2_assignment_basis.py tests/vst/test_s2_machine_source_contracts.py",
+      "total": 68,
+      "passed": 62,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 6,
+      "log": "Windows, exit code 0; pytest output: 62 passed, 6 skipped, 1 warning in 1.09s. Six POSIX-only root-owned OpenSSL/machine authorization cases skipped; they are NOT_RUN on Windows, not passes."
+    },
+    {
+      "tested_head": "56cd816b1b03b39c3f4b4a70ecf00d96ef95d321",
+      "command": "wsl.exe -d Ubuntu-24.04 --user root -- sh -lc 'set -eu; if ! mountpoint -q /mnt/d; then mkdir -p /mnt/d; mount -t drvfs D: /mnt/d; fi; grep -F \"D: /mnt/d \" /proc/mounts; cd /mnt/d/Repo/Virtual_scrum_team; printf \"HEAD=\"; git rev-parse HEAD; git rev-parse HEAD | grep -Fx 56cd816b1b03b39c3f4b4a70ecf00d96ef95d321; python3 --version; python3 -m pytest --version; sha256sum tests/vst/test_s2_signed_dispatch_instruction.py tests/vst/test_s2_store_backed_pubsub.py tests/vst/test_s2_dispatch_owner_service.py tests/vst/test_s2_dispatch_owner_latch.py; /usr/bin/time -f \"DURATION_SEC=%e\" python3 -m pytest -q tests/vst/test_s2_signed_dispatch_instruction.py tests/vst/test_s2_store_backed_pubsub.py tests/vst/test_s2_dispatch_owner_service.py tests/vst/test_s2_dispatch_owner_latch.py'",
+      "total": 130,
+      "passed": 130,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "Ubuntu 24.04 WSL; Python 3.12.3; pytest 7.4.4; exit 0; 17.58s pytest duration (19.38s wall). The corrected test file SHA-256 matches committed blob in dcb5d63; see docs/sdlc/evidence/s2-cross-generation-outcome-recovery-rerun-56cd816-worktree-20261029.md.",
+      "test_blobs": {
+        "tests/vst/test_s2_signed_dispatch_instruction.py": "13b436675383e98449520c15c640a87fcb84370ade534475b5ad2c63ece8b76f",
+        "tests/vst/test_s2_store_backed_pubsub.py": "435262304ca08fef9ed371748fa8184086ada46a8f016b4751a997db37f228e7",
+        "tests/vst/test_s2_dispatch_owner_service.py": "fc7e194cb45700446438c776281be789f8ad0551edc5c506887af35af020df71",
+        "tests/vst/test_s2_dispatch_owner_latch.py": "dd747aa5c42cf4745197c77b0138c2e71bdd9690ed3d779d00969142382d35f1"
+      }
+    },
+    {
+      "tested_head": "00312f0b845f5f914254eab33be2fa8224f53159",
+      "command": "node --test tests/vst/test_af_attachment_review.mjs",
+      "total": 35,
+      "passed": 35,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "Windows; Node.js v24.13.1; exit 0; 178.55s. AFAT-01–12 functional cases. Test SHA-256 1c42e35d6ae8b790e5c722f44217620b53f018b82809f7d6fea99f5450243c5d; source SHA-256 9cdb51192e8fcb037cedd8980cd819b35fbc76c02f076adcb0071f3d3ab1b54e.",
+      "test_blobs": {
+        "tests/vst/test_af_attachment_review.mjs": "1c42e35d6ae8b790e5c722f44217620b53f018b82809f7d6fea99f5450243c5d"
+      },
+      "source_blobs": {
+        "tools/af_attachment_review.mjs": "9cdb51192e8fcb037cedd8980cd819b35fbc76c02f076adcb0071f3d3ab1b54e"
+      },
+      "evidence": "Execution reported by actual functional-test-reviewer agent; no files edited."
+    },
+    {
+      "tested_head": "00312f0b845f5f914254eab33be2fa8224f53159",
+      "command": "node --test tests/af/test_s2_attachment_adapter_e2e.mjs",
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "Windows; Node.js v24.13.1; exit 0; approximately 19.6s. Authenticated loopback transport, durable receipt handling, and dump-only prompt generation. Test SHA-256 9cc0b44f6fca5b4a0ff7b9f843866b24f0f9e8178fee4575f405049f9c9ddd07; source SHA-256 9cdb51192e8fcb037cedd8980cd819b35fbc76c02f076adcb0071f3d3ab1b54e.",
+      "test_blobs": {
+        "tests/af/test_s2_attachment_adapter_e2e.mjs": "9cc0b44f6fca5b4a0ff7b9f843866b24f0f9e8178fee4575f405049f9c9ddd07"
+      },
+      "source_blobs": {
+        "tools/af_attachment_review.mjs": "9cdb51192e8fcb037cedd8980cd819b35fbc76c02f076adcb0071f3d3ab1b54e"
+      },
+      "evidence": "Execution reported by actual e2e-runner agent; no files edited."
+    },
+    {
+      "tested_head": "2befed5515455c4dbf022cad68e839a8a2ce799c",
+      "command": "wsl.exe -d Ubuntu-24.04 --user root -- sh -lc <recorded command in docs/sdlc/evidence/s2-exacthead-branch-refresh-2befed5-20261029.md>",
+      "total": 130,
+      "passed": 130,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "Ubuntu 24.04 WSL; Python 3.12.3; pytest 7.4.4; exit 0; pytest 5.95s, wall 6.67s. Exact command, SHA-256 values, and output are recorded in the linked evidence file.",
+      "evidence": "docs/sdlc/evidence/s2-exacthead-branch-refresh-2befed5-20261029.md"
+    },
+    {
+      "tested_head": "2befed5515455c4dbf022cad68e839a8a2ce799c",
+      "command": "node --test tests/vst/test_af_attachment_review.mjs",
+      "total": 35,
+      "passed": 35,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "Windows; Node.js 24.13.1; exit 0; duration 127.395s. Test SHA-256 5f11eea71b36d96336f6301452ad559ece56c90889a6bc2cf9c137304e93b4a7; test Git blob 6bacf543ec6971c5f1d421648140bdbf793fad9f. Exact-head actual functional-test-reviewer run.",
+      "evidence": "docs/sdlc/evidence/s2-exacthead-branch-refresh-2befed5-20261029.md"
+    },
+    {
+      "tested_head": "2befed5515455c4dbf022cad68e839a8a2ce799c",
+      "command": "node --test tests/af/test_s2_attachment_adapter_e2e.mjs",
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "Windows PowerShell; Node version not captured; exit 0; 13.643s Node duration / 13.783s wall. Test SHA-256 9cc0b44f6fca5b4a0ff7b9f843866b24f0f9e8178fee4575f405049f9c9ddd07. Fixture output is not a real GPT-PM review.",
+      "evidence": "docs/sdlc/evidence/s2-exacthead-branch-refresh-2befed5-20261029.md"
+    },
+    {
+      "tested_head": "206a746fdae942fd6ab6f36c882bb0c3d18ec539",
+      "command": "python tests/af/test_s2_review_source_fidelity.py -v",
+      "total": 5,
+      "passed": 5,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "Windows NT 10.0.26300.0; Python 3.14.3; Git 2.53.0.windows.1; PowerShell; exit 0; duration 30.164s. Attachment size 5766789; SHA-256 833efc361a34266767e331ebf6a2724cecba3e03512e4443ddf6cd661d93311b. Test SHA-256 f3b44778a9a89bb298c9f68b5f64bbbf517cd4e022f12691686129b1e998b220; verifier SHA-256 91f66464a3adecc01ef554731fe71ea6c836f5f68fbd9caf10be9b2596d8a962. Exact committed HEAD.",
+      "evidence": "docs/sdlc/evidence/s2-review-redaction-independent-review-2befed5-20261029.md"
+    },
+    {
+      "tested_head": "0da595e6574856ed0c85a181941e822031b80787",
+      "command": "node --test tests/vst/test_af_attachment_review.mjs",
+      "total": 38,
+      "passed": 38,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "Actual functional-test-reviewer run; Windows NT 10.0.26300.0; PowerShell; Node v24.13.1; Git 2.53.0.windows.1; exit 0; duration 149843.3314 ms. Tester confirmed test and adapter Git blobs matched exact HEAD before and after; no tracked files changed. Test SHA-256 5FA69F2F34722AD96FEFAF2A2C8A98C9B18D29298F5E726FDDC0BEFBC30FAEA1; adapter SHA-256 1933B1775C87E21088C82BC435B36C056A1795E306334716B26724E07DD08631.",
+      "test_blobs": {
+        "tests/vst/test_af_attachment_review.mjs": "6349f338312cdc144c8f62e0a55d5095b00ba198"
+      },
+      "source_blobs": {
+        "tools/af_attachment_review.mjs": "75c61d538d5e00f3ae926c8f2023d34f1e54c852"
+      },
+      "evidence": "docs/sdlc/evidence/s2-af-correlated-reply-parser-20261029.md"
+    }
+  ],
+  "not_run": [
+    {
+      "item": "Current E5 and Windows host policy observation at tested_head",
+      "reason": "No host collection or signed run-bound E5 observation was performed in this test run. The latest sanitized public observation at source d3f326f reports the fixed PowerShell 7 context cannot resolve Get-NetFirewallProfile and effective-rule/endpoint/path/cross-source normalization is incomplete; state remains UNKNOWN, not zero counts or PASS."
+    },
+    {
+      "item": "Real installed runtime, Store freshness/migration, production root keys/configuration, signing, or service activation",
+      "reason": "No install, Store migration/freshness, production root key/configuration, signing, or service activation occurred. Current source plan is UNSIGNED_REVIEW_CANDIDATE with activation NOT_AUTHORIZED_BY_THIS_PLAN, Store UNKNOWN, and target inventory/compiler provenance NOT_VERIFIED. The separate read-only Ubuntu metadata artifact is bound to source 524a2d69 and was not recollected at 62bb632; it reports /var/lib/vst-runner absent, ten fixed config paths absent, three of six unit files absent, and all six queried units inactive. Metadata is not runtime approval."
+    },
+    {
+      "item": "Real process/worker kill, crash/restart/recovery, mutation campaign, E8 bake-off, and restricted S4/policy selectors",
+      "reason": "Excluded actual worker/process kill, crash, recovery, mutation, E8 and S4/policy acceptance scenarios remain prohibited and NOT_RUN. Permitted in-process callback/SQLite reopen and pre-spawn injected-timeout fixtures are explicitly separate. Bounded metadata collector child handling is not evidence for excluded worker cleanup/crash acceptance."
+    },
+    {
+      "item": "Fresh GPT-PM exact-head decision for the current S2-1 code attachment",
+      "reason": "Pending one fresh exact-head AF/PM Bridge decision after recording the requested 242f5d5..c978360 changed-path inventory. The delta has five documentation paths and zero paths under tools/ or tests/; previously reviewed design, requirements and test plan did not change. The current decision remains the prior correlated MAJOR/HOLD; no approval is asserted."
+    }
+  ],
+  "findings": {
+    "open_blocker": 0,
+    "open_major": 0
+  },
+  "reviewers": [
+    {
+      "role": "database-reviewer",
+      "model": "gpt-6-luna",
+      "effort": "medium",
+      "verdict": "NO_CODE_BLOCKER_MAJOR"
+    },
+    {
+      "role": "security-reviewer",
+      "model": "gpt-6-luna",
+      "effort": "medium",
+      "verdict": "NO_CODE_BLOCKER_MAJOR"
+    },
+    {
+      "role": "code-reviewer",
+      "model": "gpt-6-luna",
+      "effort": "medium",
+      "verdict": "NO_CODE_BLOCKER_MAJOR"
+    },
+    {
+      "role": "security-reviewer",
+      "model": "gpt-6-luna",
+      "effort": "medium",
+      "verdict": "41/41 mapped source positions statically assessed PASS; no confirmed defect; runtime/production acceptance remains unproven"
+    },
+    {
+      "role": "code-reviewer",
+      "model": "gpt-6-luna",
+      "effort": "low",
+      "verdict": "No material issue in exact-source verifier after removal of per-line hashes; source identity only, not code approval"
+    },
+    {
+      "role": "functional-test-reviewer",
+      "model": "gpt-6-luna",
+      "effort": "medium",
+      "verdict": "5/5 focused verifier tests passed at exact HEAD 206a746fdae942fd6ab6f36c882bb0c3d18ec539"
+    },
+    {
+      "role": "functional-test-reviewer",
+      "model": "gpt-6-luna",
+      "effort": "medium",
+      "verdict": "38/38 passed at exact code HEAD 0da595e6574856ed0c85a181941e822031b80787; test and adapter blobs matched HEAD before/after."
+    },
+    {
+      "role": "code-reviewer",
+      "model": "gpt-6-luna",
+      "effort": "medium",
+      "verdict": "Full changed-scope static review and wrapper follow-up found no additional confirmed BLOCKER/MAJOR; this is not GPT-PM approval or runtime evidence."
+    },
+    {
+      "role": "security-reviewer",
+      "model": "gpt-6-luna",
+      "effort": "medium",
+      "verdict": "No confirmed reachable BLOCKER/MAJOR in assigned S2 source/trust-boundary scope; static only, runtime identity/E5 unproven."
+    },
+    {
+      "role": "database-reviewer",
+      "model": "gpt-6-luna",
+      "effort": "medium",
+      "verdict": "No confirmed database/concurrency BLOCKER/MAJOR in assigned Store/migration source scope; no live-Store or migration execution."
+    },
+    {
+      "role": "reliability-reviewer",
+      "model": "gpt-6-luna",
+      "effort": "medium",
+      "verdict": "No confirmed reliability BLOCKER/MAJOR in assigned Runner/recovery/service scope; static review, platform-bound selectors NOT_RUN."
+    },
+    {
+      "role": "code-reviewer",
+      "model": "gpt-6-luna",
+      "effort": "medium",
+      "verdict": "Read all six tools/tests paths changed from d3f326f to 242f5d5 and their complete deltas; no confirmed BLOCKER/MAJOR. This is delta-only static review and does not replace the inherited baseline review."
+    }
+  ],
+  "runtime_source_plan": {
+    "path": "docs/sdlc/evidence/s2-runtime-source-plan-62bb632-20261029.json",
+    "sha256": "9ebe75e52b7f7af7e50bce560818d1f3466a9241dc64e052770355187405c75",
+    "payload": {
+      "activation": "NOT_AUTHORIZED_BY_THIS_PLAN",
+      "archive_files": {
+        "docs/SANDBOX_SPEC.md": "7a0bcaa3eb7ca76b9771e0b7f49892eaa0cfa744ce4e523f5f94b997fed61997",
+        "tools/qa/install_wsl_runner_runtime.sh": "b9d3e116f2c466e40307ea6701115773c9fffcc1591d10df445d07af4e8be3fa",
+        "tools/qa/install_wsl_worker_helper.sh": "9e1d70c6df5a3ba195ba67581d4cf0485f1d0207ca0ddebecd7e9025883cead1",
+        "tools/qa/worker_exec.c": "ea76231fe4b3ae99902be7be43d3a7a970f9ea28c7b27258097f0ceb9d20d951",
+        "tools/vst/__init__.py": "01c1c19343f8da7f605775ecbf7909d6e8aad7b3bd17a08065f1d712f8a6db9f",
+        "tools/vst/assignment_basis.py": "c2159f18cf25597118d13623b4ecf24fcd1e40626d03ca32fa1ec8fb920f51de",
+        "tools/vst/bootstrap_runtime.py": "4b5823643c77d2f7ce64cd499a61ebea4bb0a222f2a261e822edb386a2c44bfc",
+        "tools/vst/contracts.py": "bf01d990a94cd71887f8d9f81019333f3bf43d5950a655de3646e9bb3d585ea4",
+        "tools/vst/diffgate.py": "3be2f59327b3b95701e26e7d441b1e47374467daab1f9e68d158f2f5cd8bb8b8",
+        "tools/vst/dispatch_instruction.py": "b2d0194c69b678cc108f78b6c4b1cf6fd20a1fdcbdb4869e5b6548c4883a1e05",
+        "tools/vst/dispatch_issuance.py": "e3e062042b615d633914bf957b5901647ff644fe319c8b07de461ed0a6b81c4a",
+        "tools/vst/dispatch_owner_client.py": "d825f1cdc320a5babc419e89f9f181961da8426c3d3a2a915257091d9d1641b1",
+        "tools/vst/dispatch_owner_latch.py": "390c5314cc150462b47ecb3dc3c363fc8d3d6a59e99e35dd6f2e613fb0cfb419",
+        "tools/vst/dispatch_owner_service.py": "483241d6e18d25a073a75fde8c3ebe65925bcb17bd5536b5b7ffe7056484bd8e",
+        "tools/vst/dispatch_owner_transport.py": "134ece4fd7e20b947ee3e91ea08909b359e03542bc0243c77e753b54591d4de4",
+        "tools/vst/dispatcher_service.py": "0f23727307c14aed691ab2d0ae338eef472453f5eabd4f85de70e916692c2fc3",
+        "tools/vst/execution_grant.py": "f99810d04664f6d95e336be2138001c2e255e6ae9e8eb531b806d745fc4c7c43",
+        "tools/vst/gate.py": "562474f756cd897b9239fc1573870e15924c547547412be2ab8813d23a71600f",
+        "tools/vst/lifecycle.py": "db81de532229cca96855be286ae5565acff31e0910be09afbc39885132e47a34",
+        "tools/vst/machine_authorization.py": "8c031f5547874b4811264e400d0b28166f1ca7b3d962ee0d04e75ba9d140e8ff",
+        "tools/vst/machine_observations.py": "9f3932c4496f3316ba0d4666fce72d36658e117fe79cc1c137b90a2fcccb7b11",
+        "tools/vst/preflight.py": "08393eb2f85691b1bdc18e06256cefc7dc6a0aa1f50aa2ba23086b8662e7b049",
+        "tools/vst/root_dispatch_issuer.py": "049e1c207bf1b19d4db50c4be0103a56307de1c677c75f017bdd6b74cac3bba9",
+        "tools/vst/runner.py": "02c60162ed1bbda61e1341d055aa893ce1cf52c3bbecbc545e7e67eb902a07ee",
+        "tools/vst/runner_fence.py": "32c682eddb78747b91e319cee365e2e12c54edda3096316992e5d0fe025d67ab",
+        "tools/vst/runner_service.py": "8e1e2196914dc14a45957f94a57a0ac460f9809184fbe2ceed8df1329c4420d9",
+        "tools/vst/runtime_bundle.py": "ae95afdd47f66cb3cd7192e3d4d3d892f5fc23e2c269b435561ae913272de293",
+        "tools/vst/sandbox.py": "b5946426d9749a00c76bfc666a0a6f2edb30e74e9985bf0b796caba08fe3b803",
+        "tools/vst/schemas/README.md": "be51b507d0406efd805ddd4a5518450c0ecf2d29135a39b1a44b2ab5f9bba3d0",
+        "tools/vst/signer.py": "948b2db9562a6886640f1baacece08a99fb76fea4afa43b4ac3ad4246a2f2070",
+        "tools/vst/signing.py": "41584757abb70db96d45859ba107e588a6796eeae14223a0159901a17d48630f",
+        "tools/vst/slice.py": "8e81e0ecbbd301fabefcbda3299d4f8b1415aa86c9b0a90795428dafcff3eb2f",
+        "tools/vst/store.py": "d0a5516531b0941654a5b262e24d2ee5d9513de888f0c8f9b2b1176ac09a7a12",
+        "tools/vst/supervisor.py": "62871979e5f1fbdd7e087202027781e60193463e3b2fbd78c57c062e3a37ab71",
+        "tools/vst/supervisor_service.py": "14b84e52268bf041fb437eb170ca39b2efc16cf69061ce88055f75147e4231e2",
+        "tools/vst/systemd/README.md": "bff939afec2dd5e4f4b46d18b2d4fe9ac9bcd1dc6525f97934b10174a235cb63",
+        "tools/vst/systemd/vst-dispatch-owner.service": "606aff7a866d0182d891e42df66e26160540372a8120480b13fef10e45fe9cfb",
+        "tools/vst/systemd/vst-dispatch-owner.socket": "a7855aefc05a04df1b51b798e2cf82c060716d638391573ac0b232de24724b6e",
+        "tools/vst/systemd/vst-dispatcher.service": "ed12e2f7d5ee2a7177139682a91d5ba714679497e7c0f50c565b2141302a6c16",
+        "tools/vst/systemd/vst-runner.service": "4915925e88b11fdf23fd10af5f3520eb921496dbd9a727743139bc91a9e3b8be",
+        "tools/vst/systemd/vst-signer.service": "33ed12ee7174c9136493cfba3cd4176a1c48ac9515afb79d5eb0740ff6d3502d",
+        "tools/vst/systemd/vst-supervisor.service": "aa64d16b7801f32146808706acffaa0ca9086653e5e3e9f5f5dac1bc07ab822c"
+      },
+      "archive_sha256": "c9ff878678a4c7cb8d76b103f66d7f00cbb69865ea7de07f4a16425e14d7f5b7",
+      "helper": {
+        "binary_sha256": null,
+        "build_recipe_sha256": "9e1d70c6df5a3ba195ba67581d4cf0485f1d0207ca0ddebecd7e9025883cead1",
+        "compiler_path": "/usr/bin/cc",
+        "compiler_provenance": "NOT_VERIFIED",
+        "gid": 988,
+        "mode": "4750",
+        "path": "/usr/local/libexec/vst-s4-worker-exec-62bb632909205fe21a6b61b4ac5b56dbc8176285",
+        "source_sha256": "ea76231fe4b3ae99902be7be43d3a7a970f9ea28c7b27258097f0ceb9d20d951",
+        "uid": 0
+      },
+      "permitted_operation": "stage-only-after-source-tests-and-exact-plan-review",
+      "runtime_path": "/opt/vst-runtime-62bb632909205fe21a6b61b4ac5b56dbc8176285",
+      "sandbox_spec_sha256": "7a0bcaa3eb7ca76b9771e0b7f49892eaa0cfa744ce4e523f5f94b997fed61997",
+      "schema": "VST_S2_RUNTIME_SOURCE_PLAN_V1",
+      "selection": "separate-post-staging-manifest-review-required",
+      "source_head": "62bb632909205fe21a6b61b4ac5b56dbc8176285",
+      "status": "UNSIGNED_REVIEW_CANDIDATE",
+      "store_disposition": "UNKNOWN",
+      "target_inventory": "NOT_VERIFIED",
+      "unit_sha256": {
+        "vst-dispatch-owner.service": "606aff7a866d0182d891e42df66e26160540372a8120480b13fef10e45fe9cfb",
+        "vst-dispatch-owner.socket": "a7855aefc05a04df1b51b798e2cf82c060716d638391573ac0b232de24724b6e",
+        "vst-dispatcher.service": "ed12e2f7d5ee2a7177139682a91d5ba714679497e7c0f50c565b2141302a6c16",
+        "vst-runner.service": "4915925e88b11fdf23fd10af5f3520eb921496dbd9a727743139bc91a9e3b8be",
+        "vst-signer.service": "33ed12ee7174c9136493cfba3cd4176a1c48ac9515afb79d5eb0740ff6d3502d",
+        "vst-supervisor.service": "aa64d16b7801f32146808706acffaa0ca9086653e5e3e9f5f5dac1bc07ab822c"
+      },
+      "unresolved": [
+        "current target/identity collision inventory",
+        "compiler provenance",
+        "source/test approval and exact staging-plan review"
+      ]
+    }
+  },
+  "runtime_metadata": {
+    "path": "docs/sdlc/evidence/s2-runtime-metadata-524a2d6-20261029.json",
+    "sha256": "9c69ec3ec170df20a3b119865eddd70f707ee465bb86d76f7ec5eff1b09f9094",
+    "schema": "S2_RUNTIME_METADATA_READONLY_V1",
+    "source_head": "524a2d69aa4bc709b7777b131edd79c8fe24250e",
+    "result_summary": "Ubuntu-24.04 read-only metadata: compiler cc present/version command OK; runtime selector and target present; /var/lib/vst-runner absent; ten fixed configuration paths absent; three of six systemd unit files present and all six queried units inactive; no contents read, no staging or permission changes.",
+    "payload": {
+      "collected_at_utc": "2026-10-29T13:35:46Z",
+      "compiler": {
+        "gid": 0,
+        "mode": "0777",
+        "path": "/usr/bin/cc",
+        "resolved_target": {
+          "gid": 0,
+          "mode": "0755",
+          "path": "/usr/bin/x86_64-linux-gnu-gcc-13",
+          "size": 1023032,
+          "state": "PRESENT",
+          "type": "regular-file",
+          "uid": 0
+        },
+        "resolved_target_sha256": "1b99826121ae6682a634e5efe09bd3e3df58ce58e0b28f849114ab5b89139c26",
+        "size": 20,
+        "state": "PRESENT",
+        "symlink_target": "/etc/alternatives/cc",
+        "type": "symlink",
+        "uid": 0,
+        "version_command": {
+          "exit_code": 0,
+          "first_line": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "status": "OK"
+        }
+      },
+      "distribution": "Ubuntu-24.04",
+      "fixed_runner_config_paths": [
+        {
+          "error": "ENOENT",
+          "path": "/etc/vst-runner/runner-service.json",
+          "state": "ABSENT"
+        },
+        {
+          "error": "ENOENT",
+          "path": "/etc/vst-runner/supervisor-service.json",
+          "state": "ABSENT"
+        },
+        {
+          "error": "ENOENT",
+          "path": "/etc/vst-runner/signer-service.json",
+          "state": "ABSENT"
+        },
+        {
+          "error": "ENOENT",
+          "path": "/etc/vst-runner/dispatcher-service.json",
+          "state": "ABSENT"
+        },
+        {
+          "error": "ENOENT",
+          "path": "/etc/vst-runner/dispatch-owner-service.json",
+          "state": "ABSENT"
+        },
+        {
+          "error": "ENOENT",
+          "path": "/etc/vst-runner/fence.json",
+          "state": "ABSENT"
+        },
+        {
+          "error": "ENOENT",
+          "path": "/etc/vst-runner/assignment-delegation-policy.json",
+          "state": "ABSENT"
+        },
+        {
+          "error": "ENOENT",
+          "path": "/etc/vst-runner/dispatch-instruction-trust.json",
+          "state": "ABSENT"
+        },
+        {
+          "error": "ENOENT",
+          "path": "/etc/vst-runner/machine-delegation-trust.json",
+          "state": "ABSENT"
+        },
+        {
+          "error": "ENOENT",
+          "path": "/etc/vst-runner/dispatch-owner-admission-blocked.json",
+          "state": "ABSENT"
+        }
+      ],
+      "fixed_systemd_unit_files": [
+        {
+          "gid": 0,
+          "mode": "0644",
+          "path": "/etc/systemd/system/vst-supervisor.service",
+          "sha256": "aa64d16b7801f32146808706acffaa0ca9086653e5e3e9f5f5dac1bc07ab822c",
+          "size": 886,
+          "state": "PRESENT",
+          "type": "regular-file",
+          "uid": 0
+        },
+        {
+          "gid": 0,
+          "mode": "0644",
+          "path": "/etc/systemd/system/vst-signer.service",
+          "sha256": "33ed12ee7174c9136493cfba3cd4176a1c48ac9515afb79d5eb0740ff6d3502d",
+          "size": 1020,
+          "state": "PRESENT",
+          "type": "regular-file",
+          "uid": 0
+        },
+        {
+          "gid": 0,
+          "mode": "0644",
+          "path": "/etc/systemd/system/vst-runner.service",
+          "sha256": "4915925e88b11fdf23fd10af5f3520eb921496dbd9a727743139bc91a9e3b8be",
+          "size": 1605,
+          "state": "PRESENT",
+          "type": "regular-file",
+          "uid": 0
+        },
+        {
+          "error": "ENOENT",
+          "path": "/etc/systemd/system/vst-dispatcher.service",
+          "state": "ABSENT"
+        },
+        {
+          "error": "ENOENT",
+          "path": "/etc/systemd/system/vst-dispatch-owner.service",
+          "state": "ABSENT"
+        },
+        {
+          "error": "ENOENT",
+          "path": "/etc/systemd/system/vst-dispatch-owner.socket",
+          "state": "ABSENT"
+        }
+      ],
+      "limitations": [
+        "metadata only",
+        "configuration contents not read",
+        "unit active states are observations, not runtime approval",
+        "runner data directory lstat only; Store presence or freshness UNKNOWN",
+        "no staging or permission change authorized"
+      ],
+      "runner_data_directory": {
+        "error": "ENOENT",
+        "path": "/var/lib/vst-runner",
+        "state": "ABSENT"
+      },
+      "runtime_selector": {
+        "link": {
+          "gid": 0,
+          "mode": "0777",
+          "path": "/opt/vst-runtime",
+          "size": 57,
+          "state": "PRESENT",
+          "symlink_target": "/opt/vst-runtime-d5001797cb94113efd9a8dc26e4a15f2dc130976",
+          "type": "symlink",
+          "uid": 0
+        },
+        "target_lstat": {
+          "gid": 0,
+          "mode": "0755",
+          "path": "/opt/vst-runtime-d5001797cb94113efd9a8dc26e4a15f2dc130976",
+          "size": 4096,
+          "state": "PRESENT",
+          "type": "directory",
+          "uid": 0
+        }
+      },
+      "schema": "S2_RUNTIME_METADATA_READONLY_V1",
+      "source_head": "524a2d69aa4bc709b7777b131edd79c8fe24250e",
+      "systemd_is_active": {
+        "exit_code": 3,
+        "status": "OK",
+        "units": [
+          {
+            "active_state": "inactive",
+            "unit": "vst-supervisor.service"
+          },
+          {
+            "active_state": "inactive",
+            "unit": "vst-signer.service"
+          },
+          {
+            "active_state": "inactive",
+            "unit": "vst-runner.service"
+          },
+          {
+            "active_state": "inactive",
+            "unit": "vst-dispatcher.service"
+          },
+          {
+            "active_state": "inactive",
+            "unit": "vst-dispatch-owner.service"
+          },
+          {
+            "active_state": "inactive",
+            "unit": "vst-dispatch-owner.socket"
+          }
+        ]
+      },
+      "transport": "stdin to /usr/bin/python3.12 -I -S; no filesystem mount"
+    }
+  },
+  "provenance": {
+    "framework_schema": "D:/Repo/Agentic_Framework/tools/af/evidence.py",
+    "current_public_reviews": {
+      "path": "docs/sdlc/evidence/s2-frozen-source-reviews-d3f326f-20261029.md",
+      "sha256": "9b3982b17d5ce6465cf5cfbca1072e99559068baa1d0aa7efce7bf4c2946a850",
+      "reviewed_head": "d3f326f37a40936402d3933d5266e0ffb01017f0",
+      "findings": "three actual reviews: database-reviewer, security-reviewer, code-reviewer; all gpt-6-luna/medium; no valid code BLOCKER/MAJOR in declared scope; not full S2 approval"
+    },
+    "inherited_public_test_reports": [
+      {
+        "path": "docs/sdlc/evidence/s2-final-functional-e987a24-20261029.md",
+        "sha256": "51ab94cb61591e51b0497081c6237e4e478d33827bdbd57827b6d84114f277a9",
+        "execution_head": "67d1d55e5556c6936516f3404202faecba1e6707",
+        "note": "prior-head functional and supplemental E7 results only; not run at 524a2d69"
+      },
+      {
+        "path": "docs/sdlc/evidence/s2-final-e2e-e987a24-20261029.md",
+        "sha256": "8a9c503df7b9b3e07039e3d629c4988ff698b14e167ab198da88d15ebcbf6b40",
+        "execution_head": "67d1d55e5556c6936516f3404202faecba1e6707",
+        "note": "prior-head E2E and WSL counterpart only; not run at 524a2d69"
+      }
+    ],
+    "current_test_blobs": {
+      "tests/vst/test_s2_assignment_bootstrap.py": "8d6c50da428ac68de95a9587caa4609e506427f95350c1b2022e8869b168cd70",
+      "tests/vst/test_s2_dispatch_issuance_contract.py": "397007d580a77abae7f7b7461ff2d6efb6ce3f2821e7006c30f04293d5be011b",
+      "tests/vst/test_s2_assignment_basis.py": "77f9c8724a84511b1882c9a3834ff4518fd8fef406df142b46a7de222dac5533",
+      "tests/vst/test_s2_machine_source_contracts.py": "93cd62e6b4c8f9aa2db758b90b6fd00e1e4b3552e193dd3936351df25d4c73ef",
+      "tests/vst/test_s2_signed_dispatch_instruction.py": "13b436675383e98449520c15c640a87fcb84370ade534475b5ad2c63ece8b76f",
+      "tests/vst/test_s2_store_backed_pubsub.py": "435262304ca08fef9ed371748fa8184086ada46a8f016b4751a997db37f228e7",
+      "tests/vst/test_s2_dispatch_owner_service.py": "fc7e194cb45700446438c776281be789f8ad0551edc5c506887af35af020df71",
+      "tests/vst/test_s2_dispatch_owner_latch.py": "dd747aa5c42cf4745197c77b0138c2e71bdd9690ed3d779d00969142382d35f1",
+      "tests/vst/test_af_attachment_review.mjs": "1c42e35d6ae8b790e5c722f44217620b53f018b82809f7d6fea99f5450243c5d",
+      "tests/af/test_s2_attachment_adapter_e2e.mjs": "9cc0b44f6fca5b4a0ff7b9f843866b24f0f9e8178fee4575f405049f9c9ddd07",
+      "tests/af/test_s2_review_source_fidelity.py": "798aed2b9df50e3d985d6721cf103817d8cbccb9"
+    },
+    "current_source_blobs": {
+      "tools/vst/assignment_basis.py": "c2159f18cf25597118d13623b4ecf24fcd1e40626d03ca32fa1ec8fb920f51de",
+      "tools/vst/store.py": "d0a5516531b0941654a5b262e24d2ee5d9513de888f0c8f9b2b1176ac09a7a12",
+      "tools/vst/dispatch_issuance.py": "e3e062042b615d633914bf957b5901647ff644fe319c8b07de461ed0a6b81c4a",
+      "tools/vst/root_dispatch_issuer.py": "049e1c207bf1b19d4db50c4be0103a56307de1c677c75f017bdd6b74cac3bba9",
+      "tools/vst/supervisor.py": "62871979e5f1fbdd7e087202027781e60193463e3b2fbd78c57c062e3a37ab71",
+      "tools/vst/supervisor_service.py": "14b84e52268bf041fb437eb170ca39b2efc16cf69061ce88055f75147e4231e2",
+      "tools/vst/machine_observations.py": "9f3932c4496f3316ba0d4666fce72d36658e117fe79cc1c137b90a2fcccb7b11",
+      "tools/vst/machine_authorization.py": "8c031f5547874b4811264e400d0b28166f1ca7b3d962ee0d04e75ba9d140e8ff",
+      "tools/af_attachment_review.mjs": "9cdb51192e8fcb037cedd8980cd819b35fbc76c02f076adcb0071f3d3ab1b54e",
+      "tools/verify_s2_review_source_fidelity.py": "8cce81cd2ff70a79f48be47db8a1b6d05608ab3d"
+    },
+    "prior_runtime_source_plan": {
+      "path": "docs/sdlc/evidence/s2-runtime-source-plan-524a2d6-20261029.json",
+      "sha256": "ad5e32ce72e9d601ae0da765a31bd1d425461f3ecf2f20d1cbff8389d094b876",
+      "payload": {
+        "activation": "NOT_AUTHORIZED_BY_THIS_PLAN",
+        "archive_files": {
+          "docs/SANDBOX_SPEC.md": "7a0bcaa3eb7ca76b9771e0b7f49892eaa0cfa744ce4e523f5f94b997fed61997",
+          "tools/qa/install_wsl_runner_runtime.sh": "b9d3e116f2c466e40307ea6701115773c9fffcc1591d10df445d07af4e8be3fa",
+          "tools/qa/install_wsl_worker_helper.sh": "9e1d70c6df5a3ba195ba67581d4cf0485f1d0207ca0ddebecd7e9025883cead1",
+          "tools/qa/worker_exec.c": "ea76231fe4b3ae99902be7be43d3a7a970f9ea28c7b27258097f0ceb9d20d951",
+          "tools/vst/__init__.py": "01c1c19343f8da7f605775ecbf7909d6e8aad7b3bd17a08065f1d712f8a6db9f",
+          "tools/vst/assignment_basis.py": "c2159f18cf25597118d13623b4ecf24fcd1e40626d03ca32fa1ec8fb920f51de",
+          "tools/vst/bootstrap_runtime.py": "4b5823643c77d2f7ce64cd499a61ebea4bb0a222f2a261e822edb386a2c44bfc",
+          "tools/vst/contracts.py": "bf01d990a94cd71887f8d9f81019333f3bf43d5950a655de3646e9bb3d585ea4",
+          "tools/vst/diffgate.py": "3be2f59327b3b95701e26e7d441b1e47374467daab1f9e68d158f2f5cd8bb8b8",
+          "tools/vst/dispatch_instruction.py": "b2d0194c69b678cc108f78b6c4b1cf6fd20a1fdcbdb4869e5b6548c4883a1e05",
+          "tools/vst/dispatch_issuance.py": "e3e062042b615d633914bf957b5901647ff644fe319c8b07de461ed0a6b81c4a",
+          "tools/vst/dispatch_owner_client.py": "d825f1cdc320a5babc419e89f9f181961da8426c3d3a2a915257091d9d1641b1",
+          "tools/vst/dispatch_owner_latch.py": "390c5314cc150462b47ecb3dc3c363fc8d3d6a59e99e35dd6f2e613fb0cfb419",
+          "tools/vst/dispatch_owner_service.py": "483241d6e18d25a073a75fde8c3ebe65925bcb17bd5536b5b7ffe7056484bd8e",
+          "tools/vst/dispatch_owner_transport.py": "134ece4fd7e20b947ee3e91ea08909b359e03542bc0243c77e753b54591d4de4",
+          "tools/vst/dispatcher_service.py": "0f23727307c14aed691ab2d0ae338eef472453f5eabd4f85de70e916692c2fc3",
+          "tools/vst/execution_grant.py": "f99810d04664f6d95e336be2138001c2e255e6ae9e8eb531b806d745fc4c7c43",
+          "tools/vst/gate.py": "562474f756cd897b9239fc1573870e15924c547547412be2ab8813d23a71600f",
+          "tools/vst/lifecycle.py": "db81de532229cca96855be286ae5565acff31e0910be09afbc39885132e47a34",
+          "tools/vst/machine_authorization.py": "8c031f5547874b4811264e400d0b28166f1ca7b3d962ee0d04e75ba9d140e8ff",
+          "tools/vst/machine_observations.py": "9f3932c4496f3316ba0d4666fce72d36658e117fe79cc1c137b90a2fcccb7b11",
+          "tools/vst/preflight.py": "08393eb2f85691b1bdc18e06256cefc7dc6a0aa1f50aa2ba23086b8662e7b049",
+          "tools/vst/root_dispatch_issuer.py": "049e1c207bf1b19d4db50c4be0103a56307de1c677c75f017bdd6b74cac3bba9",
+          "tools/vst/runner.py": "02c60162ed1bbda61e1341d055aa893ce1cf52c3bbecbc545e7e67eb902a07ee",
+          "tools/vst/runner_fence.py": "32c682eddb78747b91e319cee365e2e12c54edda3096316992e5d0fe025d67ab",
+          "tools/vst/runner_service.py": "8e1e2196914dc14a45957f94a57a0ac460f9809184fbe2ceed8df1329c4420d9",
+          "tools/vst/runtime_bundle.py": "ae95afdd47f66cb3cd7192e3d4d3d892f5fc23e2c269b435561ae913272de293",
+          "tools/vst/sandbox.py": "b5946426d9749a00c76bfc666a0a6f2edb30e74e9985bf0b796caba08fe3b803",
+          "tools/vst/schemas/README.md": "be51b507d0406efd805ddd4a5518450c0ecf2d29135a39b1a44b2ab5f9bba3d0",
+          "tools/vst/signer.py": "948b2db9562a6886640f1baacece08a99fb76fea4afa43b4ac3ad4246a2f2070",
+          "tools/vst/signing.py": "41584757abb70db96d45859ba107e588a6796eeae14223a0159901a17d48630f",
+          "tools/vst/slice.py": "8e81e0ecbbd301fabefcbda3299d4f8b1415aa86c9b0a90795428dafcff3eb2f",
+          "tools/vst/store.py": "d0a5516531b0941654a5b262e24d2ee5d9513de888f0c8f9b2b1176ac09a7a12",
+          "tools/vst/supervisor.py": "62871979e5f1fbdd7e087202027781e60193463e3b2fbd78c57c062e3a37ab71",
+          "tools/vst/supervisor_service.py": "14b84e52268bf041fb437eb170ca39b2efc16cf69061ce88055f75147e4231e2",
+          "tools/vst/systemd/README.md": "bff939afec2dd5e4f4b46d18b2d4fe9ac9bcd1dc6525f97934b10174a235cb63",
+          "tools/vst/systemd/vst-dispatch-owner.service": "606aff7a866d0182d891e42df66e26160540372a8120480b13fef10e45fe9cfb",
+          "tools/vst/systemd/vst-dispatch-owner.socket": "a7855aefc05a04df1b51b798e2cf82c060716d638391573ac0b232de24724b6e",
+          "tools/vst/systemd/vst-dispatcher.service": "ed12e2f7d5ee2a7177139682a91d5ba714679497e7c0f50c565b2141302a6c16",
+          "tools/vst/systemd/vst-runner.service": "4915925e88b11fdf23fd10af5f3520eb921496dbd9a727743139bc91a9e3b8be",
+          "tools/vst/systemd/vst-signer.service": "33ed12ee7174c9136493cfba3cd4176a1c48ac9515afb79d5eb0740ff6d3502d",
+          "tools/vst/systemd/vst-supervisor.service": "aa64d16b7801f32146808706acffaa0ca9086653e5e3e9f5f5dac1bc07ab822c"
+        },
+        "archive_sha256": "e985858501b4b0fa00ebba8eae6d2234aabd5f301937fa205e0bdad4f6f77df3",
+        "helper": {
+          "binary_sha256": null,
+          "build_recipe_sha256": "9e1d70c6df5a3ba195ba67581d4cf0485f1d0207ca0ddebecd7e9025883cead1",
+          "compiler_path": "/usr/bin/cc",
+          "compiler_provenance": "NOT_VERIFIED",
+          "gid": 988,
+          "mode": "4750",
+          "path": "/usr/local/libexec/vst-s4-worker-exec-524a2d69aa4bc709b7777b131edd79c8fe24250e",
+          "source_sha256": "ea76231fe4b3ae99902be7be43d3a7a970f9ea28c7b27258097f0ceb9d20d951",
+          "uid": 0
+        },
+        "permitted_operation": "stage-only-after-source-tests-and-exact-plan-review",
+        "runtime_path": "/opt/vst-runtime-524a2d69aa4bc709b7777b131edd79c8fe24250e",
+        "sandbox_spec_sha256": "7a0bcaa3eb7ca76b9771e0b7f49892eaa0cfa744ce4e523f5f94b997fed61997",
+        "schema": "VST_S2_RUNTIME_SOURCE_PLAN_V1",
+        "selection": "separate-post-staging-manifest-review-required",
+        "source_head": "524a2d69aa4bc709b7777b131edd79c8fe24250e",
+        "status": "UNSIGNED_REVIEW_CANDIDATE",
+        "store_disposition": "UNKNOWN",
+        "target_inventory": "NOT_VERIFIED",
+        "unit_sha256": {
+          "vst-dispatch-owner.service": "606aff7a866d0182d891e42df66e26160540372a8120480b13fef10e45fe9cfb",
+          "vst-dispatch-owner.socket": "a7855aefc05a04df1b51b798e2cf82c060716d638391573ac0b232de24724b6e",
+          "vst-dispatcher.service": "ed12e2f7d5ee2a7177139682a91d5ba714679497e7c0f50c565b2141302a6c16",
+          "vst-runner.service": "4915925e88b11fdf23fd10af5f3520eb921496dbd9a727743139bc91a9e3b8be",
+          "vst-signer.service": "33ed12ee7174c9136493cfba3cd4176a1c48ac9515afb79d5eb0740ff6d3502d",
+          "vst-supervisor.service": "aa64d16b7801f32146808706acffaa0ca9086653e5e3e9f5f5dac1bc07ab822c"
+        },
+        "unresolved": [
+          "current target/identity collision inventory",
+          "compiler provenance",
+          "source/test approval and exact staging-plan review"
+        ]
+      }
+    },
+    "latest_test_execution": {
+      "tested_head": "206a746fdae942fd6ab6f36c882bb0c3d18ec539",
+      "command": "python tests/af/test_s2_review_source_fidelity.py -v",
+      "result": "Windows NT 10.0.26300.0; Python 3.14.3; Git 2.53.0.windows.1; PowerShell; exit 0; duration 30.164s. Attachment size 5766789; SHA-256 833efc361a34266767e331ebf6a2724cecba3e03512e4443ddf6cd661d93311b. Test SHA-256 f3b44778a9a89bb298c9f68b5f64bbbf517cd4e022f12691686129b1e998b220; verifier SHA-256 91f66464a3adecc01ef554731fe71ea6c836f5f68fbd9caf10be9b2596d8a962. Exact committed HEAD.",
+      "test_blobs": {
+        "tests/af/test_s2_review_source_fidelity.py": "798aed2b9df50e3d985d6721cf103817d8cbccb9"
+      },
+      "source_blobs": {
+        "tools/verify_s2_review_source_fidelity.py": "8cce81cd2ff70a79f48be47db8a1b6d05608ab3d"
+      }
+    },
+    "latest_exact_head_review": {
+      "head": "00312f0b845f5f914254eab33be2fa8224f53159",
+      "base": "6117ba24b08a260b42402db6da0bf767864e1c04",
+      "request_id": "d2492272-ed6c-4eb7-9584-6bfe44af868e",
+      "job_id": "0396e9f8-6cdc-45e7-a769-f6c9e806f7f2",
+      "user_turn_id": "44287481-997b-4555-8ed7-4003ba640b03",
+      "reply_id": "60978efd-accd-52a3-a4be-e5049ae4cf68",
+      "correlated": true,
+      "send_phase": "sent",
+      "attachment_size_bytes": 5753229,
+      "attachment_sha256": "42c2621ae9382d2870cb231a25a96e8d758871520d6ed786efe824ba5ff406fb",
+      "gpt_verdict": "NOT REVIEWED — EXECUTION ENVIRONMENT UNAVAILABLE",
+      "formal_approval": false,
+      "af_result": "NOT_APPROVED; parser verdict UNRECOGNIZED because reply begins with ChatGPT wrapper text instead of required VERDICT line",
+      "evidence": "docs/sdlc/evidence/s2-exacthead-branch-refresh-00312f0-20261029.md"
+    }
+  },
+  "process_incidents": [
+    {
+      "role": "e2e-runner",
+      "source": "actual agent disclosure and committed public E2E report",
+      "event": "A broad rg command emitted matching excerpts from the protected pre-existing untracked evidence artifact despite the explicit exclusion instruction.",
+      "disposition": "No contents reproduced in this packet. Agent reported no modification; the artifact was not staged by Codex and remains untracked. Subsequent searches were constrained."
+    },
+    {
+      "role": "functional-test-reviewer",
+      "source": "actual agent disclosure during final committed-head evidence refresh",
+      "event": "An earlier broad workspace rg command also emitted matching excerpts from the same protected artifact despite the explicit exclusion instruction.",
+      "disposition": "No contents reproduced in this packet. Agent reported no modification or further read. Codex cannot independently verify an untracked protected file content without violating its read restriction; it remains excluded from staging."
+    }
+  ],
+  "latest_test_execution": {
+    "tested_head": "0da595e6574856ed0c85a181941e822031b80787",
+    "command": "node --test tests/vst/test_af_attachment_review.mjs",
+    "total": 38,
+    "passed": 38,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "log": "Actual functional-test-reviewer run; Windows NT 10.0.26300.0; PowerShell; Node v24.13.1; Git 2.53.0.windows.1; exit 0; duration 149843.3314 ms. Tester confirmed test and adapter Git blobs matched exact HEAD before and after; no tracked files changed. Test SHA-256 5FA69F2F34722AD96FEFAF2A2C8A98C9B18D29298F5E726FDDC0BEFBC30FAEA1; adapter SHA-256 1933B1775C87E21088C82BC435B36C056A1795E306334716B26724E07DD08631.",
+    "test_blobs": {
+      "tests/vst/test_af_attachment_review.mjs": "6349f338312cdc144c8f62e0a55d5095b00ba198"
+    },
+    "source_blobs": {
+      "tools/af_attachment_review.mjs": "75c61d538d5e00f3ae926c8f2023d34f1e54c852"
+    },
+    "evidence": "docs/sdlc/evidence/s2-af-correlated-reply-parser-20261029.md"
+  },
+  "latest_exact_head_review": {
+    "head": "242f5d56f5b48603141d148d71d724bec7fb2b37",
+    "base": "6117ba24b08a260b42402db6da0bf767864e1c04",
+    "request_id": "4986ec77-698e-4dd0-bdd9-7ca5c6281a46",
+    "job_id": "c6ea42b2-462e-41a1-83a2-1632850c22c8",
+    "reply_id": "541aa937-3513-570e-8b25-daaa99ae0854",
+    "input_sha256": "f7685bce6b5e30c0e266f7e4eebf009d1f64ad9d8f6c4583a90241fbf9488b42",
+    "attachment_size_bytes": 5876444,
+    "correlated": true,
+    "send_phase": "sent",
+    "review_status": "RAN",
+    "final": false,
+    "final_overridden": true,
+    "gpt_verdict": "MAJOR — full exact-source approval remains HOLD",
+    "formal_approval": false,
+    "receipt_written": true,
+    "af_result": "NOT_APPROVED: verdict=MAJOR; no approval artifact was written",
+    "findings": [
+      "S2-REVIEW-01 remains RESOLVED; no new redaction-fidelity issue found",
+      "AF correlated reply parser correction: NO CONFIRMED CODE BLOCKER/MAJOR",
+      "S2-REVIEW-02 remains MAJOR/OPEN: complete independent source/test path coverage not established"
+    ],
+    "evidence": "docs/sdlc/evidence/s2-exacthead-coverage-adjudication-20261029.md"
+  },
+  "review_history": [
+    {
+      "head": "2befed5515455c4dbf022cad68e839a8a2ce799c",
+      "base": "6117ba24b08a260b42402db6da0bf767864e1c04",
+      "request_id": "ad64e813-a507-4b4a-8601-d9fa1a8276b9",
+      "job_id": "9a75f58f-f517-4354-92c2-eae954f31c74",
+      "user_turn_id": "d0c0bdbe-d249-44d2-a87c-7b1889f338fe",
+      "reply_id": "c46b1b10-9b56-5d7c-bcf9-9f4b950dfa69",
+      "correlated": true,
+      "send_phase": "sent",
+      "attachment_size_bytes": 5766789,
+      "attachment_sha256": "833efc361a34266767e331ebf6a2724cecba3e03512e4443ddf6cd661d93311b",
+      "gpt_verdict": "MAJOR — exact-source HOLD",
+      "formal_approval": false,
+      "af_result": "NOT_APPROVED; no exact-head approval",
+      "findings": [
+        "S2-REVIEW-01: source expressions are redacted in the exact attachment, preventing source-fidelity verification",
+        "S2-REVIEW-02: full adversarial coverage cannot be certified from the redacted package"
+      ],
+      "evidence": "docs/sdlc/evidence/s2-exacthead-review-2befed5-20261029.md"
+    },
+    {
+      "head": "242f5d56f5b48603141d148d71d724bec7fb2b37",
+      "base": "6117ba24b08a260b42402db6da0bf767864e1c04",
+      "request_id": "4986ec77-698e-4dd0-bdd9-7ca5c6281a46",
+      "job_id": "c6ea42b2-462e-41a1-83a2-1632850c22c8",
+      "reply_id": "541aa937-3513-570e-8b25-daaa99ae0854",
+      "input_sha256": "f7685bce6b5e30c0e266f7e4eebf009d1f64ad9d8f6c4583a90241fbf9488b42",
+      "attachment_size_bytes": 5876444,
+      "correlated": true,
+      "send_phase": "sent",
+      "review_status": "RAN",
+      "final": false,
+      "final_overridden": true,
+      "gpt_verdict": "MAJOR — full exact-source approval remains HOLD",
+      "formal_approval": false,
+      "receipt_written": true,
+      "af_result": "NOT_APPROVED: verdict=MAJOR; no approval artifact was written",
+      "findings": [
+        "S2-REVIEW-01 remains RESOLVED; no new redaction-fidelity issue found",
+        "AF correlated reply parser correction: NO CONFIRMED CODE BLOCKER/MAJOR",
+        "S2-REVIEW-02 remains MAJOR/OPEN: complete independent source/test path coverage not established"
+      ],
+      "evidence": "docs/sdlc/evidence/s2-exacthead-coverage-adjudication-20261029.md"
+    }
+  ],
+  "exact_head_delta_reconciliation": {
+    "base_head": "242f5d56f5b48603141d148d71d724bec7fb2b37",
+    "review_head": "c97836029a5d94ff84dee5cb15d1757efd5525c3",
+    "commands": [
+      "git diff --name-status 242f5d56f5b48603141d148d71d724bec7fb2b37 c97836029a5d94ff84dee5cb15d1757efd5525c3",
+      "git diff --quiet 242f5d56f5b48603141d148d71d724bec7fb2b37 c97836029a5d94ff84dee5cb15d1757efd5525c3 -- tools tests",
+      "git diff --quiet 242f5d56f5b48603141d148d71d724bec7fb2b37 c97836029a5d94ff84dee5cb15d1757efd5525c3 -- docs/sdlc/design.md docs/sdlc/requirements.md docs/sdlc/test-plan.md"
+    ],
+    "changed_tracked_paths": [
+      "docs/changes/0579-s2-1-pm-coverage-adjudication.md",
+      "docs/sdlc/backlog.md",
+      "docs/sdlc/evidence/s2-exacthead-coverage-adjudication-20261029.md",
+      "docs/sdlc/review-record.md",
+      "docs/sdlc/verify-evidence.md"
+    ],
+    "changed_path_count": 5,
+    "documentation_paths": 5,
+    "source_paths": 0,
+    "test_paths": 0,
+    "source_test_diff_exit_code": 0,
+    "design_requirements_testplan_diff_exit_code": 0,
+    "source_test_blobs_changed": false,
+    "previous_reviewed_contract_files_changed": false,
+    "tests_rerun": false,
+    "test_rerun_reason": "No source or test paths changed from the previous PM-reviewed head 242f5d5 to c978360. The latest relevant execution remains the exact code-head run at 0da595e recorded above.",
+    "review_interpretation": "Documentation/evidence-only delta; no approval is implied. The previous PM response 42a2cb71-64fa-410d-932a-fba72b18336b requested this exact inventory and binding to c978360."
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "schema": "VST_S2_4D_PROCESS_SNAPSHOT_AND_WRAPPER_PLAN_V1",
+  "task_id": "S2-4D",
+  "decision_id": "f0c83b02-f043-4f09-8ea4-cdc8e608b6a0",
+  "snapshot": {
+    "observed_utc": "2026-11-05T15:24:58.7446692Z",
+    "method": "Read-only Win32_Process snapshot; no WSL command was issued.",
+    "target_parent_pid_38760": "NOT_FOUND",
+    "target_processes": [
+      { "pid": 42016, "parent_pid": 38760, "name": "wsl.exe", "created_local": "2026-11-05T17:15:11.33617+02:00", "image": "C:\\Windows\\system32\\wsl.exe" },
+      { "pid": 20620, "parent_pid": 42016, "name": "wsl.exe", "created_local": "2026-11-05T17:15:11.588986+02:00", "image": "C:\\Program Files\\WSL\\wsl.exe" },
+      { "pid": 15892, "parent_pid": 20620, "name": "wslhost.exe", "created_local": "2026-11-05T17:15:20.51393+02:00", "image": "C:\\Program Files\\WSL\\wslhost.exe" },
+      { "pid": 40072, "parent_pid": 42016, "name": "conhost.exe", "created_local": "2026-11-05T17:15:11.351592+02:00" },
+      { "pid": 25072, "parent_pid": 15892, "name": "conhost.exe", "created_local": "2026-11-05T17:15:20.631821+02:00" }
+    ],
+    "conclusion": "PROCESS_LIFECYCLE_UNRESOLVED; all three decision-bound WSL PIDs and both observed console descendants remain present. Keeper Python identity and any Linux-side collector process remain UNKNOWN. Do not launch another keeper or attempt process termination."
+  },
+  "corrected_wrapper_control_flow": {
+    "streams": [
+      "Redirect stdin, stdout, stderr; after start, create exactly one stdout ReadLineAsync task and retain that same task while polling its IsCompleted state and checking HasExited against a deadline.",
+      "Start exactly one stderr ReadToEndAsync task immediately so stderr drains concurrently without blocking stdout.",
+      "Do not call ReadLineAsync again while the retained task is pending. After the first stdout line completes, only then start one stdout ReadToEndAsync task to drain the remaining stream. No overlapping reader may own either stream."
+    ],
+    "keeper_lifetime": [
+      "Keep the single keeper process alive and stdin open through fresh collector, payload dry-preflight, at most one applier, and post-inventory.",
+      "Before collector, applier, and post-inventory, verify the keeper process has not exited using PID plus creation time; each collector result must independently prove the same WSL boot/runtime identity pinned from the keeper readiness result.",
+      "Record durable attempt state before and after each transition, including EOF, malformed readiness, process exit, timeout, stream failure, cleanup sentinel, and cleanup timeout.",
+      "On allowed completion, send one sentinel, close stdin, wait to the bounded timeout, then record exact process exit and finish draining stdout/stderr. On failure, send only the approved graceful sentinel and close stdin; never kill or start a retry. If the process tree remains, preserve UNKNOWN and stop."
+    ],
+    "scope": "This plan changes only the orchestration wrapper control flow. It authorizes no runtime action, tests, TestRun, install, key operation, service action, Store mutation, push, or merge."
+  },
+  "next": {
+    "owner": "Codex",
+    "action": "Repeat read-only Windows snapshots until all decision-bound PIDs and descendants are confirmed exited, recording PID and creation time. If identities cannot be resolved or the tree persists, return for separate GPT-PM cleanup adjudication. After the terminal snapshot, submit this wrapper plan and evidence for a fresh independent grant; current grant remains consumed.",
+    "task_state": "OPEN"
+  }
+}

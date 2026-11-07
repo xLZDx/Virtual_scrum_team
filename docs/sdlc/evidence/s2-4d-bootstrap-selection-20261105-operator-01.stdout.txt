@@ -1,0 +1,3 @@
+bootstrap_selection=complete
+services_started_or_reloaded=false
+store_opened_or_changed=false

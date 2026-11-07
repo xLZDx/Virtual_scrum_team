@@ -226,7 +226,7 @@ Project overlays:
 |---|---|---|
 | **S0: Ground truth** | Git HEAD/dirty inventory of every repo and installed profile; resolve Personal DC AEVE misbinding, model-policy drift and test-runner-scope conflicts; capability/risk/license matrix | `REPO_REGISTRY`, `PROFILE_RESOLUTION`, `TOOLS_CAPABILITY_MATRIX`; 0 silently overwritten files |
 | **S1: Contracts** | Source hash, role + skill manifests, permission matrix, states and schema validators | Negative schema tests pass; mismatched HEAD and `NOT_RUN` cannot pass |
-| **S2: Planning router** | Risk map → smallest qualified role/skill set; ten-phase artifacts; model policy | 39 roles classified `QUALIFIED/PARTIAL/UNAVAILABLE`; unresolved aliases block execution |
+| **S2: Isolated worker sandbox** | Isolate worker execution, signer authority, reviewer credentials, lifecycle recovery, and bounded sandbox evidence | Per-run WSL2 evidence exists; Windows Job Object nesting, prohibited process-kill cases, and full E8 crash/resume remain unverified. See `docs/sdlc/STATE.md` |
 | **S3: Worker pilot** | Single isolated BMad Loop story adapter; compare OpenHands/Aider only on controlled fixtures | Crash/STOP/retry/budget/worktree tests; no unauthorized write |
 | **S4: QA automation** | Wire real native runners for functional, integration, API, E2E, regression and seeded failures | Tests run with reproducible artifacts; skipped test cannot satisfy DoD |
 | **S5: AEVE gate** | Bounded static review + hashes, independent evidence/coverage receipt | Analyzer supported/unsupported status truthful; stale HEAD fails |
@@ -235,7 +235,7 @@ Project overlays:
 | **S8: End-to-end pilot** | First synthetic sprint, then approved FitnessUp sprint; PDCC security regression separately | Full ten phases and independent acceptance, without production side effects |
 | **S9: Scale** | Add broader ERP/ERP_MCP adapters; expand concurrency only after evidence | 13 required gates PASS where applicable; exact-head focused functional+E2E evidence (no CI, ADR-0001); rollback/runbook; only designated manual acceptance remains |
 
-Recommended implementation order: **S0 → S1 → S2 → S3 → S4 → S5 → S6 → S7 → S8 → S9**. Parallelize independent *verification* work within permitted bounds, but retain one authoritative state machine.
+Recommended implementation order: **S0 → S1 → S2 → S3 → S4 → S5 → S6 → S7 → S8 → S9**. S2 is the isolated worker sandbox sprint, not the planning-router capability. Parallelize independent *verification* work within permitted bounds, but retain one authoritative state machine.
 
 ## 11. Definition of Done for the organization
 

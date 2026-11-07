@@ -1,0 +1,8 @@
+{
+  "command": "wsl.exe -d Ubuntu-24.04 --user root -- /bin/bash -s",
+  "exit": 22,
+  "stdout": "cleanup=refused target=/ source=/dev/sdf\n",
+  "stderr": "wsl: Failed to start the systemd user session for 'root'. See journalctl for more details.\n",
+  "time_utc": "2026-11-06T14:16:58.6107746+00:00",
+  "purpose": "conditional ordinary unmount cleanup only"
+}

@@ -1,0 +1,23 @@
+diff --git a/tests/vst/test_s2_runtime_config_bundle.py b/tests/vst/test_s2_runtime_config_bundle.py
+index 0423ce1..abafa0f 100644
+--- a/tests/vst/test_s2_runtime_config_bundle.py
++++ b/tests/vst/test_s2_runtime_config_bundle.py
+@@ -324,7 +324,18 @@ def test_fresh_runtime_identity_is_crossbound_and_single_selector_only():
+     run_id = run_binding["run_id"]
+     nonce = run_binding["probe_nonce"]
+     request_id = bootstrap["request_id"]
++    assert (request_id, run_id, nonce) == (
++        "f4adc20007b44d6b8a4580ef6a2d1ed4",
++        "s2-runtime-20261105-cbd53635c3eb47bfbf7a7e594399cdd7",
++        "cd7f47554f384611a89328af6d1d87e0",
++    )
+     consumed_identities = {
++        ("ba3faaadb50447b79df509619b6ee010",
++         "s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e",
++         "1fd3cb4e69e54bc6aa5e63458ae82818"),
++        ("e520e04f58ad5e6a431a3a20b0efb87c",
++         "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910",
++         "0aac24fec9a2a5c53c5e9da21cbb4a42"),
+         ("3e56a61c5b1e45aea089c305b25e3187",
+          "s2-runtime-20261030-87d47f635f1c4231ab052a074dba4be8",
+          "0d2bb2c5f977478a924f7ec6629a339d"),

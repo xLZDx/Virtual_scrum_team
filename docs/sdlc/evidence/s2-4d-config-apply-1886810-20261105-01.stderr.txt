@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "<string>", line 16, in <module>
+  File "<vst-s2-runtime-remote>", line 533, in <module>
+  File "runtime_snapshot_transaction.py", line 552, in build_git_stage
+  File "runtime_snapshot_transaction.py", line 204, in _verify_git_readonly
+  File "runtime_snapshot_transaction.py", line 158, in _tree_identity
+  File "runtime_snapshot_transaction.py", line 136, in _git_output
+  File "runtime_snapshot_transaction.py", line 131, in _run
+_vst_s2_runtime_snapshot_transaction.SnapshotContractError: read-only Git verification failed: /usr/bin/git -C /var/lib/vst-runner/.vst-task-source-stage-67361bb4aa23355d9a6bc7877a987ba688559eda-7d28dca04f0a4ae49c0eb0198a551e85

@@ -1,0 +1,17 @@
+{
+  "requestId": "8fc2e0ba-07c9-49fc-b6b0-fac897e4408b",
+  "operation": "send-and-await",
+  "inputHash": "ee01e3592d9f1b190fec81abda79968cfd26bf1b3f71b862d73f2b456730ca82",
+  "headSha": "c97836029a5d94ff84dee5cb15d1757efd5525c3",
+  "baseSha": "6117ba24b08a260b42402db6da0bf767864e1c04",
+  "size": 5895155,
+  "attachmentPath": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\.pm-review\\s2-review-input-ee01e3592d9f1b190fec81abda79968cfd26bf1b3f71b862d73f2b456730ca82.txt",
+  "projectId": "virtual_scrum_team",
+  "conversationId": "6ae32e93-a4f0-83ed-9bd0-899549c90be8",
+  "createdAt": "2026-10-29T19:55:02.919Z",
+  "phase": "succeeded",
+  "instruction": "Review the attached complete canonical PM Bridge input as one adversarial S2 code-and-tests review, including its evidence. Do not claim review of historical documentation lines outside the attached input. Put the VERDICT line first, then the findings, then the three exact acknowledgement lines below.\nExact HEAD under review: c97836029a5d94ff84dee5cb15d1757efd5525c3\nReviewed range: 6117ba24b08a260b42402db6da0bf767864e1c04...c97836029a5d94ff84dee5cb15d1757efd5525c3\nFull attachment SHA-256: ee01e3592d9f1b190fec81abda79968cfd26bf1b3f71b862d73f2b456730ca82\nAttachment bytes: 5895155\nRequest ID: 8fc2e0ba-07c9-49fc-b6b0-fac897e4408b\nYour reply must include exactly identifiable acknowledgements on separate lines:\nREVIEW_INPUT_SHA256:ee01e3592d9f1b190fec81abda79968cfd26bf1b3f71b862d73f2b456730ca82\nREVIEW_HEAD:c97836029a5d94ff84dee5cb15d1757efd5525c3\nREVIEW_REQUEST_ID:8fc2e0ba-07c9-49fc-b6b0-fac897e4408b",
+  "instructionSha256": "f92fd5fb28186e1fd0f6d6c3652f752b7596fa24ebb496abe2de1ad977226ecf",
+  "jobId": "6d45187e-e858-4adb-aed8-a55d08e0bf45",
+  "replyId": "c0ff978a-76a3-5c9e-a0d4-e98fef016357"
+}

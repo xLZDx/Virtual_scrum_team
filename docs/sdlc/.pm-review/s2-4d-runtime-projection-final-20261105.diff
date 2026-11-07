@@ -1,0 +1,662 @@
+diff --git a/tests/vst/test_s2_runtime_qualification_harness.py b/tests/vst/test_s2_runtime_qualification_harness.py
+index fecb483..fcc2939 100644
+--- a/tests/vst/test_s2_runtime_qualification_harness.py
++++ b/tests/vst/test_s2_runtime_qualification_harness.py
+@@ -14,6 +14,7 @@ import os
+ import pathlib
+ import re
+ import stat
++import subprocess
+ import tarfile
+ from pathlib import Path
+ from types import SimpleNamespace
+@@ -46,6 +47,101 @@ def _sha(data: bytes) -> str:
+     return hashlib.sha256(data).hexdigest()
+ 
+ 
++RUNTIME_ARCHIVE_PATHS = (
++    "tools/vst", "tools/qa/install_wsl_runner_runtime.sh",
++    "tools/qa/install_wsl_worker_helper.sh", "tools/qa/verify_wsl_source_bundle.py",
++    "tools/qa/verify_wsl_runtime_stage.py", "tools/qa/worker_exec.c",
++    "docs/SANDBOX_SPEC.md",
++)
++RUNTIME_ARCHIVE_EXTRA_FILES = tuple(
++    f"tools/vst/archive-extra-{index:02d}.py" for index in range(27))
++RUNTIME_ARCHIVE_STANDALONE_FILES = (
++    "tools/qa/install_wsl_runner_runtime.sh", "tools/qa/install_wsl_worker_helper.sh",
++    "tools/qa/verify_wsl_source_bundle.py", "tools/qa/verify_wsl_runtime_stage.py",
++    "tools/qa/worker_exec.c", "docs/SANDBOX_SPEC.md",
++)
++
++
++def _runtime_archive_fixture_files():
++    paths = set(harness.REQUIRED_RUNTIME_PINS) | set(RUNTIME_ARCHIVE_EXTRA_FILES)
++    paths.update(RUNTIME_ARCHIVE_STANDALONE_FILES)
++    assert len(paths) == 47
++    return {path: (f"# archive fixture: {path}\n".encode("ascii")
++                   + b"second line\n") for path in paths}
++
++
++@pytest.fixture
++def hostile_git_archive_fixture(tmp_path, monkeypatch):
++    repo = tmp_path / "git-source"
++    repo.mkdir()
++    home = tmp_path / "git-home"
++    home.mkdir()
++    global_config = home / "global.gitconfig"
++    global_config.write_bytes(b"[core]\r\n\tautocrlf = true\r\n\teol = crlf\r\n")
++    monkeypatch.setenv("HOME", str(home))
++    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(global_config))
++    monkeypatch.setenv("GIT_CONFIG_SYSTEM", os.devnull)
++
++    def git(*args):
++        return subprocess.run(["git", *args], cwd=repo, stdout=subprocess.PIPE,
++                              stderr=subprocess.PIPE, check=True)
++
++    git("init", "--quiet")
++    git("config", "--local", "core.autocrlf", "true")
++    git("config", "--local", "core.eol", "crlf")
++    attribute_file = repo / ".gitattributes"
++    attribute_file.write_bytes(b"*.py text=auto\n*.sh text=auto\n*.md text=auto\n*.c text=auto\n")
++    runtime_files = _runtime_archive_fixture_files()
++    for relative, raw in runtime_files.items():
++        path = repo / Path(*relative.split("/"))
++        path.parent.mkdir(parents=True, exist_ok=True)
++        path.write_bytes(raw)
++    qualification_files = {
++        OUTER_HELPER: b"# qualification outer source\n",
++        WSL_HELPER: b"# qualification WSL source\n",
++    }
++    for relative, raw in qualification_files.items():
++        path = repo / Path(*relative.split("/"))
++        path.parent.mkdir(parents=True, exist_ok=True)
++        path.write_bytes(raw)
++    git("add", "--all")
++    git("-c", "user.name=S2 fixture", "-c", "user.email=s2-fixture@example.invalid",
++        "commit", "--quiet", "-m", "isolated source fixture")
++    head = git("rev-parse", "HEAD").stdout.decode("ascii").strip()
++    local_config = repo / ".git" / "config"
++    return {
++        "repo": repo,
++        "head": head,
++        "runtime_files": runtime_files,
++        "qualification_files": qualification_files,
++        "global_config": global_config,
++        "local_config": local_config,
++        "attributes": attribute_file,
++        "archive_paths": RUNTIME_ARCHIVE_PATHS,
++    }
++
++
++def _runtime_pins_from_archive(archive_bytes):
++    with tarfile.open(fileobj=io.BytesIO(archive_bytes), mode="r:") as bundle:
++        return {
++            member.name: _sha(bundle.extractfile(member).read())
++            for member in bundle.getmembers() if member.isfile()
++        }
++
++
++def _validated_archive_input(fixture, archive_bytes, runtime_pins):
++    value = _auth_input(streamed_wsl=fixture["qualification_files"][WSL_HELPER])
++    value["identity"]["runtime_source_head"] = fixture["head"]
++    value["identity"]["qualification_source_head"] = fixture["head"]
++    value["identity"]["runtime_selector"] = "/opt/vst-runtime-" + fixture["head"]
++    value["identity"]["bundle_sha256"] = _sha(archive_bytes)
++    value["source_pins"]["runtime"] = dict(runtime_pins)
++    value["source_pins"]["qualification"] = {
++        path: _sha(raw) for path, raw in fixture["qualification_files"].items()
++    }
++    return value, harness.validate_input(value)
++
++
+ def _auth_input(*, streamed_wsl: bytes = b"# mocked WSL helper\n") -> dict:
+     config_hashes = {path: HEX for path in harness.REQUIRED_CONFIG_PINS}
+     config_bundle_hash = _sha(json.dumps(
+@@ -160,7 +256,8 @@ def _wsl_prestart_functions():
+ 
+ 
+ def _wsl_identity_functions(*, config_json=None, config_bytes=None, runtime_json=None,
+-                            runtime_bytes=None, runtime_pins=None, unit_outputs=None):
++                            runtime_bytes=None, runtime_pins=None, unit_outputs=None,
++                            tree_digest=None):
+     """Load only identity and named-systemd functions with isolated file/command boundaries."""
+     source_path = Path(__file__).resolve().parents[2] / WSL_HELPER
+     tree = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
+@@ -223,11 +320,210 @@ def _wsl_identity_functions(*, config_json=None, config_bytes=None, runtime_json
+     }
+     module = ast.Module(body=[constant, *functions], type_ignores=[])
+     exec(compile(module, str(source_path), "exec"), namespace)
++    if tree_digest is not None:
++        namespace["_tree_digest"] = tree_digest
+     namespace["systemd_calls"] = calls
+     namespace["Hold"] = Hold
+     return namespace
+ 
+ 
++def _canonical_fixture_json(value):
++    return json.dumps(value, sort_keys=True, separators=(",", ":"),
++                      ensure_ascii=True, allow_nan=False).encode("ascii")
++
++
++def _runtime_marker_fixture():
++    return {
++        "schema": 3,
++        "head": RUNTIME_HEAD,
++        "archive_sha256": HEX,
++        "plan_sha256": "2" * 64,
++        "inventory_sha256": "3" * 64,
++        "compiler_path": "/usr/bin/cc",
++        "compiler_resolved_path": "/usr/bin/gcc-13",
++        "compiler_sha256": "4" * 64,
++        "compiler_symlink_target": "/etc/alternatives/cc",
++    }
++
++
++RUNTIME_ARCHIVE_ONLY = frozenset({
++    "tools/qa/install_wsl_runner_runtime.sh",
++    "tools/qa/install_wsl_worker_helper.sh",
++    "tools/qa/verify_wsl_source_bundle.py",
++    "tools/qa/verify_wsl_runtime_stage.py",
++    "tools/qa/worker_exec.c",
++})
++POSIX_ROOT = os.name != "nt" and hasattr(os, "geteuid") and os.geteuid() == 0
++
++
++def _wsl_runtime_tree_functions(runtime_root, selector_link, expected_pins):
++    """Load the real secure-read/runtime-tree functions with OS paths translated into tmp_path."""
++    source_path = Path(__file__).resolve().parents[2] / WSL_HELPER
++    tree = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
++    wanted = {"_secure_bytes", "_json_file", "_tree_digest", "_runtime_identity"}
++    functions = [node for node in tree.body if isinstance(node, ast.FunctionDef)
++                 and node.name in wanted]
++    assert {node.name for node in functions} == wanted
++    selector = "/opt/vst-runtime-" + RUNTIME_HEAD
++    real_os = os
++
++    def translate(path):
++        value = str(path)
++        if value == selector:
++            return str(runtime_root)
++        if value.startswith(selector + "/"):
++            return str(runtime_root / Path(*value[len(selector) + 1:].split("/")))
++        if value == "/opt/vst-runtime":
++            return str(selector_link)
++        return value
++
++    path_ops = SimpleNamespace(
++        join=lambda root, *parts: real_os.path.join(translate(root), *parts),
++        relpath=lambda path, start: real_os.path.relpath(translate(path), translate(start)),
++        sep=real_os.path.sep,
++    )
++    os_ops = SimpleNamespace(
++        lstat=lambda path: real_os.lstat(translate(path)),
++        readlink=lambda path: real_os.readlink(translate(path)),
++        walk=lambda root, *args, **kwargs: real_os.walk(translate(root), *args, **kwargs),
++        open=lambda path, flags: real_os.open(translate(path), flags),
++        fstat=real_os.fstat, read=real_os.read, close=real_os.close,
++        O_RDONLY=real_os.O_RDONLY,
++        O_NOFOLLOW=getattr(real_os, "O_NOFOLLOW", 0), path=path_ops,
++    )
++
++    def unique_pairs(pairs):
++        value = {}
++        for key, item in pairs:
++            if key in value:
++                raise ValueError("duplicate JSON key")
++            value[key] = item
++        return value
++
++    namespace = {
++        "hashlib": hashlib, "json": json, "os": os_ops, "stat": stat, "re": re,
++        "_pairs": unique_pairs, "_canonical": _canonical_fixture_json,
++        "AUTH": {"source_pins": {"runtime": expected_pins}},
++    }
++    exec(compile(ast.Module(body=functions, type_ignores=[]), str(source_path), "exec"),
++         namespace)
++    return namespace
++
++
++def _runtime_tree_fixture(tmp_path):
++    runtime_root = tmp_path / "installed-runtime"
++    runtime_root.mkdir(mode=0o755)
++    os.chmod(runtime_root, 0o755)
++    selector_link = tmp_path / "active-runtime"
++    os.symlink("/opt/vst-runtime-" + RUNTIME_HEAD, selector_link)
++    runtime_files = _runtime_archive_fixture_files()
++    empty_source = "tools/vst/archive-extra-00.py"
++    runtime_files[empty_source] = b""
++    pins = {path: _sha(raw) for path, raw in runtime_files.items()}
++    deployed = {path: raw for path, raw in runtime_files.items()
++                if path not in RUNTIME_ARCHIVE_ONLY}
++    assert len(pins) == 47 and len(deployed) == 42
++    for relative, raw in deployed.items():
++        path = runtime_root / Path(*relative.split("/"))
++        path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
++        path.write_bytes(raw)
++        os.chmod(path, 0o644)
++    for path in runtime_root.rglob("*"):
++        if path.is_dir():
++            os.chmod(path, 0o755)
++
++    marker = _runtime_marker_fixture()
++    marker_path = runtime_root / ".vst-runtime-manifest.json"
++    marker_path.write_bytes(_canonical_fixture_json(marker))
++    os.chmod(marker_path, 0o644)
++    functions = _wsl_runtime_tree_functions(runtime_root, selector_link, pins)
++    identity = {
++        "runtime_selector": "/opt/vst-runtime-" + RUNTIME_HEAD,
++        "runtime_source_head": RUNTIME_HEAD,
++        "qualification_source_head": QUALIFICATION_HEAD,
++        "bundle_sha256": HEX,
++    }
++    return {
++        "root": runtime_root, "selector_link": selector_link, "marker_path": marker_path,
++        "marker": marker, "identity": identity, "pins": pins, "deployed": deployed,
++        "functions": functions,
++    }
++
++
++@pytest.mark.skipif(not POSIX_ROOT, reason="installed runtime metadata checks require POSIX root")
++def test_wsl_runtime_tree_accepts_exact_installed_projection_and_empty_source(tmp_path):
++    fixture = _runtime_tree_fixture(tmp_path)
++
++    assert fixture["functions"]["_runtime_identity"](fixture["identity"]) == fixture["marker"]
++    assert not (fixture["root"] / "tools" / "qa").exists()
++    assert not (fixture["root"] / ".vst-source-manifest.json").exists()
++    assert len(fixture["pins"]) == 47
++    assert len(fixture["deployed"]) == 42
++
++    config = tmp_path / "empty-config.json"
++    config.write_bytes(b"")
++    os.chmod(config, 0o644)
++    with pytest.raises(ValueError):
++        fixture["functions"]["_secure_bytes"](str(config))
++
++
++@pytest.mark.skipif(not POSIX_ROOT, reason="installed runtime metadata checks require POSIX root")
++@pytest.mark.parametrize("mutation", [
++    "missing", "extra", "changed", "symlink", "hardlink", "wrong-mode", "wrong-owner",
++], ids=["missing-source", "extra-file", "changed-source", "symlink-source",
++       "hardlink-source", "wrong-file-mode", "wrong-owner"])
++def test_wsl_runtime_tree_refuses_modified_or_unsafe_projection(tmp_path, mutation):
++    fixture = _runtime_tree_fixture(tmp_path)
++    rel = "tools/vst/archive-extra-00.py"
++    source = fixture["root"] / rel
++    if mutation == "missing":
++        source.unlink()
++    elif mutation == "extra":
++        extra = fixture["root"] / "unexpected.txt"
++        extra.write_bytes(b"extra")
++        os.chmod(extra, 0o644)
++    elif mutation == "changed":
++        source.write_bytes(b"changed")
++        os.chmod(source, 0o644)
++    elif mutation == "symlink":
++        source.unlink()
++        source.symlink_to("/etc/passwd")
++    elif mutation == "hardlink":
++        source.write_bytes(b"hardlink source")
++        os.chmod(source, 0o644)
++        os.link(source, tmp_path / "outside-link")
++    elif mutation == "wrong-mode":
++        os.chmod(source, 0o600)
++    else:
++        os.chown(source, 1, 1)
++
++    with pytest.raises((OSError, ValueError)):
++        fixture["functions"]["_runtime_identity"](fixture["identity"])
++
++
++@pytest.mark.skipif(not POSIX_ROOT, reason="installed runtime metadata checks require POSIX root")
++@pytest.mark.parametrize("mutation", ["missing-key", "extra-key", "invalid-digest", "noncanonical"],
++                         ids=["missing-marker-field", "extra-marker-field", "bad-marker-digest",
++                              "noncanonical-marker"])
++def test_wsl_runtime_tree_refuses_malformed_runtime_marker(tmp_path, mutation):
++    fixture = _runtime_tree_fixture(tmp_path)
++    marker = dict(fixture["marker"])
++    if mutation == "missing-key":
++        del marker["inventory_sha256"]
++    elif mutation == "extra-key":
++        marker["unexpected"] = True
++    elif mutation == "invalid-digest":
++        marker["compiler_sha256"] = "not-a-digest"
++    if mutation == "noncanonical":
++        fixture["marker_path"].write_text(json.dumps(marker, indent=2), encoding="ascii")
++    else:
++        fixture["marker_path"].write_bytes(_canonical_fixture_json(marker))
++    os.chmod(fixture["marker_path"], 0o644)
++
++    with pytest.raises((OSError, ValueError)):
++        fixture["functions"]["_runtime_identity"](fixture["identity"])
++
++
+ def _config_identity_fixture(*, task_base_head="9" * 40, policy_source_head=None,
+                               policy_manifest_sha256=None, identity_manifest_sha256=None):
+     selector = "tests/vst/test_s2_runtime_qualification_harness.py::test_runtime_handoff_contract"
+@@ -363,30 +659,32 @@ def test_wsl_config_identity_rejects_task_manifest_hash_mismatch(mismatch):
+ 
+ def test_wsl_runtime_identity_keeps_runtime_marker_and_source_pins_separate():
+     selector = "/opt/vst-runtime-" + RUNTIME_HEAD
+-    source_path = os.path.join(selector, "tools", "qa", "runtime-check.py")
+-    source_bytes = b"pinned runtime source\n"
+-    pins = {"tools/qa/runtime-check.py": _sha(source_bytes)}
+-    marker = {"schema": 3, "head": RUNTIME_HEAD, "archive_sha256": HEX}
++    marker_path = selector + "/.vst-runtime-manifest.json"
++    marker = _runtime_marker_fixture()
++    pins = {"tools/vst/runtime-check.py": _sha(b"pinned runtime source\n"),
++            "docs/SANDBOX_SPEC.md": _sha(b"pinned docs\n")}
++    observed = []
+     functions = _wsl_identity_functions(
+-        runtime_json={selector + "/.vst-runtime-manifest.json": marker},
+-        runtime_bytes={source_path: source_bytes}, runtime_pins=pins)
++        runtime_json={marker_path: marker},
++        runtime_bytes={marker_path: _canonical_fixture_json(marker)}, runtime_pins=pins,
++        tree_digest=lambda root, expected: observed.append((root, expected)))
+     identity = {"runtime_selector": selector, "runtime_source_head": RUNTIME_HEAD,
+                 "qualification_source_head": QUALIFICATION_HEAD, "bundle_sha256": HEX}
+ 
+-    assert functions["_runtime_identity"](identity) is None
++    assert functions["_runtime_identity"](identity) == marker
++    assert observed == [(selector, pins)]
+ 
+ 
+ @pytest.mark.parametrize("mismatch", ["selector", "marker-head", "marker-archive", "source-pin"],
+                          ids=["selector", "marker-head", "archive-pin", "runtime-source-pin"])
+ def test_wsl_runtime_identity_still_refuses_runtime_marker_or_pin_mismatch(mismatch):
+     selector = "/opt/vst-runtime-" + RUNTIME_HEAD
+-    source_path = os.path.join(selector, "tools", "qa", "runtime-check.py")
+-    source_bytes = b"runtime source bytes\n"
+-    digest = _sha(source_bytes)
+-    marker = {"schema": 3, "head": RUNTIME_HEAD, "archive_sha256": HEX}
++    marker_path = selector + "/.vst-runtime-manifest.json"
++    marker = _runtime_marker_fixture()
+     identity = {"runtime_selector": selector, "runtime_source_head": RUNTIME_HEAD,
+                 "qualification_source_head": QUALIFICATION_HEAD, "bundle_sha256": HEX}
+-    pins = {"tools/qa/runtime-check.py": digest}
++    pins = {"tools/vst/runtime-check.py": _sha(b"runtime source bytes\n"),
++            "docs/SANDBOX_SPEC.md": _sha(b"docs bytes\n")}
+     if mismatch == "selector":
+         identity["runtime_selector"] = "/opt/vst-runtime-" + QUALIFICATION_HEAD
+     elif mismatch == "marker-head":
+@@ -394,10 +692,12 @@ def test_wsl_runtime_identity_still_refuses_runtime_marker_or_pin_mismatch(misma
+     elif mismatch == "marker-archive":
+         marker["archive_sha256"] = "f" * 64
+     else:
+-        pins["tools/qa/runtime-check.py"] = "f" * 64
++        pins["tools/vst/runtime-check.py"] = "f" * 64
+     functions = _wsl_identity_functions(
+-        runtime_json={selector + "/.vst-runtime-manifest.json": marker},
+-        runtime_bytes={source_path: source_bytes}, runtime_pins=pins)
++        runtime_json={marker_path: marker},
++        runtime_bytes={marker_path: _canonical_fixture_json(marker)}, runtime_pins=pins,
++        tree_digest=lambda _root, expected: (_ for _ in ()).throw(ValueError("pin mismatch"))
++        if mismatch == "source-pin" else (lambda _root, _expected: None))
+ 
+     with pytest.raises(ValueError):
+         functions["_runtime_identity"](identity)
+@@ -1907,13 +2207,90 @@ def test_qualification_source_pins_cover_exactly_the_two_launcher_paths():
+         harness.validate_input(value)
+ 
+ 
++def test_git_source_inspection_uses_canonical_lf_archive_under_hostile_config(
++        hostile_git_archive_fixture, monkeypatch):
++    fixture = hostile_git_archive_fixture
++    repo = fixture["repo"]
++    archive_args = ["archive", "--format=tar", fixture["head"], "--",
++                    *fixture["archive_paths"]]
++    explicit_argv = ["git", "-c", "core.autocrlf=false", "-c", "core.eol=lf",
++                     "-C", str(repo), "--no-replace-objects", *archive_args]
++    real_run = subprocess.run
++    explicit = real_run(explicit_argv, cwd=repo, env=dict(os.environ),
++                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
++    assert explicit.returncode == 0, explicit.stderr.decode("utf-8", "replace")
++    canonical_archive = explicit.stdout
++    before = {
++        "global_config": fixture["global_config"].read_bytes(),
++        "local_config": fixture["local_config"].read_bytes(),
++        "attributes": fixture["attributes"].read_bytes(),
++        "global_path": os.environ["GIT_CONFIG_GLOBAL"],
++        "system_path": os.environ["GIT_CONFIG_SYSTEM"],
++    }
++    helper_git_argv = []
++
++    def capture_git_argv(argv, *args, **kwargs):
++        if isinstance(argv, (list, tuple)) and argv and argv[0] == "git":
++            helper_git_argv.append(list(argv))
++        return real_run(argv, *args, **kwargs)
++
++    monkeypatch.setattr(harness.subprocess, "run", capture_git_argv)
++    helper_archive = harness._git(
++        repo, *archive_args, maximum=64 * 1024 * 1024)
++
++    assert helper_archive == canonical_archive
++    with tarfile.open(fileobj=io.BytesIO(helper_archive), mode="r:") as bundle:
++        contracts = bundle.extractfile("tools/vst/contracts.py").read()
++    assert contracts == fixture["runtime_files"]["tools/vst/contracts.py"]
++    assert b"\r\n" not in contracts
++    assert helper_git_argv
++    assert all(argv[1:5] == ["-c", "core.autocrlf=false", "-c", "core.eol=lf"]
++               for argv in helper_git_argv)
++
++    pins = _runtime_pins_from_archive(helper_archive)
++    assert len(pins) == 47
++    _value, validated = _validated_archive_input(
++        fixture, helper_archive, pins)
++    harness.verify_source_pins(repo, validated)
++
++    assert fixture["global_config"].read_bytes() == before["global_config"]
++    assert fixture["local_config"].read_bytes() == before["local_config"]
++    assert fixture["attributes"].read_bytes() == before["attributes"]
++    assert os.environ["GIT_CONFIG_GLOBAL"] == before["global_path"]
++    assert os.environ["GIT_CONFIG_SYSTEM"] == before["system_path"]
++
++
++def test_source_pin_verification_requires_exact_full_archive_closure(
++        hostile_git_archive_fixture):
++    fixture = hostile_git_archive_fixture
++    archive = harness._git(
++        fixture["repo"], "archive", "--format=tar", fixture["head"], "--",
++        *fixture["archive_paths"], maximum=64 * 1024 * 1024)
++    complete_pins = _runtime_pins_from_archive(archive)
++    assert len(complete_pins) == 47
++
++    reduced_to_minimum = {
++        path: complete_pins[path] for path in harness.REQUIRED_RUNTIME_PINS
++    }
++    extra_pin = {**complete_pins, "tools/vst/not-in-archive.py": "f" * 64}
++    tampered_pin = dict(complete_pins)
++    tampered_pin[next(iter(harness.REQUIRED_RUNTIME_PINS))] = "0" * 64
++    variants = {
++        "minimum-only": reduced_to_minimum,
++        "extra-path": extra_pin,
++        "wrong-digest": tampered_pin,
++    }
++    for _label, runtime_pins in variants.items():
++        _value, validated = _validated_archive_input(fixture, archive, runtime_pins)
++        with pytest.raises(harness.QualificationError,
++                           match="runtime source pins do not exactly cover the reviewed source archive"):
++            harness.verify_source_pins(fixture["repo"], validated)
++
++
+ def test_source_pin_verification_accepts_exact_archive_and_rejects_worktree_drift(
+         monkeypatch, tmp_path):
+     launchers = {OUTER_HELPER, WSL_HELPER}
+-    archived_files = {
+-        path: ("pinned source " + path).encode("utf-8")
+-        for path in harness.REQUIRED_RUNTIME_PINS - launchers
+-    }
++    archived_files = _runtime_archive_fixture_files()
+     launcher_files = {
+         OUTER_HELPER: b"# exact committed outer launcher\n",
+         WSL_HELPER: b"# exact committed WSL helper\n",
+@@ -1966,10 +2343,7 @@ def test_source_pin_verification_accepts_exact_archive_and_rejects_worktree_drif
+ 
+ def test_wrong_expected_qualification_head_refuses_before_attempt_or_wsl(
+         monkeypatch, tmp_path):
+-    archived_files = {
+-        path: ("pinned source " + path).encode("utf-8")
+-        for path in harness.REQUIRED_RUNTIME_PINS
+-    }
++    archived_files = _runtime_archive_fixture_files()
+     archive_buffer = io.BytesIO()
+     with tarfile.open(fileobj=archive_buffer, mode="w:") as archive:
+         for name, data in archived_files.items():
+diff --git a/tools/qa/run_s2_runtime_qualification.py b/tools/qa/run_s2_runtime_qualification.py
+index 6ef4834..21cde4e 100644
+--- a/tools/qa/run_s2_runtime_qualification.py
++++ b/tools/qa/run_s2_runtime_qualification.py
+@@ -323,7 +323,8 @@ def validate_input(value: Any) -> dict[str, Any]:
+ 
+ def _git(root: Path, *args: str, maximum: int = MAX_GIT_BLOB_BYTES) -> bytes:
+     result = subprocess.run(
+-        ["git", "-C", str(root), "--no-replace-objects", *args],
++        ["git", "-c", "core.autocrlf=false", "-c", "core.eol=lf",
++         "-C", str(root), "--no-replace-objects", *args],
+         stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+         check=False, timeout=30,
+     )
+diff --git a/tools/qa/s2_runtime_qualification_wsl.py b/tools/qa/s2_runtime_qualification_wsl.py
+index 8fe6efd..b473fe1 100644
+--- a/tools/qa/s2_runtime_qualification_wsl.py
++++ b/tools/qa/s2_runtime_qualification_wsl.py
+@@ -761,10 +761,11 @@ def _expected_runtime_timeout() -> str:
+     return "1min" if MOUNT_AUDIT_ONLY else "40min"
+ 
+ 
+-def _secure_bytes(path: str, maximum: int = 8 * 1024 * 1024) -> bytes:
++def _secure_bytes(path: str, maximum: int = 8 * 1024 * 1024, *, allow_empty: bool = False) -> bytes:
+     before = os.lstat(path)
+     if (not stat.S_ISREG(before.st_mode) or before.st_nlink != 1
+-            or before.st_mode & 0o022 or before.st_size < 1 or before.st_size > maximum):
++            or before.st_mode & 0o022 or before.st_size < (0 if allow_empty else 1)
++            or before.st_size > maximum):
+         raise ValueError("trusted file type, mode, link count, or size is invalid: " + path)
+     fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+     try:
+@@ -797,13 +798,59 @@ def _json_file(path: str, maximum: int = 2 * 1024 * 1024) -> dict:
+ 
+ def _tree_digest(root: str, expected: dict[str, str]) -> None:
+     root_info = os.lstat(root)
+-    if not stat.S_ISDIR(root_info.st_mode) or root_info.st_uid != 0 or root_info.st_mode & 0o022:
++    if (not stat.S_ISDIR(root_info.st_mode) or root_info.st_uid != 0 or root_info.st_gid != 0
++            or stat.S_IMODE(root_info.st_mode) != 0o755):
+         raise ValueError("versioned runtime root is not root-controlled")
++    # The installer copies tools/vst and docs, not its source-bundle QA tools.
++    archive_only = {
++        "tools/qa/install_wsl_runner_runtime.sh", "tools/qa/install_wsl_worker_helper.sh",
++        "tools/qa/verify_wsl_source_bundle.py", "tools/qa/verify_wsl_runtime_stage.py",
++        "tools/qa/worker_exec.c",
++    }
++    if not isinstance(expected, dict) or not archive_only <= expected.keys():
++        raise ValueError("runtime archive pins lack the fixed installation tools")
++    deployed = {}
+     for rel, digest in expected.items():
+-        path = os.path.join(root, *rel.split("/"))
+-        data = _secure_bytes(path, 16 * 1024 * 1024)
+-        if hashlib.sha256(data).hexdigest() != digest:
+-            raise ValueError("runtime source hash mismatch: " + rel)
++        if (not isinstance(rel, str) or rel.startswith("/") or "\\" in rel
++                or any(part in {"", ".", ".."} for part in rel.split("/"))
++                or not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest)):
++            raise ValueError("runtime archive pin is malformed")
++        if rel in archive_only:
++            continue
++        if not (rel.startswith("tools/vst/") or rel == "docs/SANDBOX_SPEC.md"):
++            raise ValueError("runtime archive pin is outside the installation contract")
++        deployed[rel] = digest
++    if "docs/SANDBOX_SPEC.md" not in deployed or not any(p.startswith("tools/vst/") for p in deployed):
++        raise ValueError("runtime archive pins lack the deployed source roots")
++    expected_dirs = {"/".join(rel.split("/")[:i])
++                     for rel in deployed for i in range(1, len(rel.split("/")))}
++    actual_dirs, actual_files = set(), {}
++
++    def failed_walk(error):
++        raise error
++
++    for current, directories, files in os.walk(root, followlinks=False, onerror=failed_walk):
++        for name in sorted(directories + files):
++            path = os.path.join(current, name)
++            rel = os.path.relpath(path, root).replace(os.sep, "/")
++            info = os.lstat(path)
++            if info.st_uid != 0 or info.st_gid != 0:
++                raise ValueError("runtime path is not root-owned: " + rel)
++            if stat.S_ISDIR(info.st_mode) and stat.S_IMODE(info.st_mode) == 0o755:
++                actual_dirs.add(rel)
++            elif (stat.S_ISREG(info.st_mode) and stat.S_IMODE(info.st_mode) == 0o644
++                  and info.st_nlink == 1):
++                data = _secure_bytes(path, 16 * 1024 * 1024, allow_empty=True)
++                actual_files[rel] = hashlib.sha256(data).hexdigest()
++            else:
++                raise ValueError("runtime path has an unsafe type, mode, or link count: " + rel)
++            if len(actual_dirs) + len(actual_files) > 50000:
++                raise ValueError("runtime tree exceeds its entry bound")
++    if (actual_dirs != expected_dirs
++            or set(actual_files) != set(deployed) | {".vst-runtime-manifest.json"}):
++        raise ValueError("deployed runtime tree has missing or unexpected paths")
++    if any(actual_files[rel] != digest for rel, digest in deployed.items()):
++        raise ValueError("deployed runtime source hash differs from the pinned archive")
+ 
+ 
+ def _config_identity(identity: dict) -> tuple[dict, dict, dict]:
+@@ -850,7 +897,7 @@ def _config_identity(identity: dict) -> tuple[dict, dict, dict]:
+     return config, bootstrap, task_manifest
+ 
+ 
+-def _runtime_identity(identity: dict) -> None:
++def _runtime_identity(identity: dict) -> dict:
+     selector = identity["runtime_selector"]
+     if selector != "/opt/vst-runtime-" + identity["runtime_source_head"]:
+         raise ValueError("runtime selector is not the full-hash versioned identity")
+@@ -858,10 +905,25 @@ def _runtime_identity(identity: dict) -> None:
+     if (marker.get("schema") != 3 or marker.get("head") != identity["runtime_source_head"]
+             or marker.get("archive_sha256") != identity["bundle_sha256"]):
+         raise ValueError("installed runtime marker differs from the authorized runtime bundle")
++    if (set(marker) != {"schema", "head", "archive_sha256", "plan_sha256", "inventory_sha256",
++                       "compiler_path", "compiler_resolved_path", "compiler_sha256",
++                       "compiler_symlink_target"}
++            or any(not isinstance(marker[name], str) or not re.fullmatch(r"[0-9a-f]{64}", marker[name])
++                   for name in ("plan_sha256", "inventory_sha256", "compiler_sha256"))
++            or marker["compiler_path"] != "/usr/bin/cc"
++            or marker["compiler_symlink_target"] != "/etc/alternatives/cc"
++            or not isinstance(marker["compiler_resolved_path"], str)
++            or not re.fullmatch(r"/usr/bin/[A-Za-z0-9._+-]+", marker["compiler_resolved_path"])):
++        raise ValueError("installed runtime marker provenance is malformed")
++    if _secure_bytes(selector + "/.vst-runtime-manifest.json", 65536) != _canonical(marker):
++        raise ValueError("installed runtime marker is not the canonical installation record")
+     link = os.lstat("/opt/vst-runtime")
+     if not stat.S_ISLNK(link.st_mode) or os.readlink("/opt/vst-runtime") != selector:
+         raise ValueError("active runtime symlink does not select the distinct authorized runtime")
+     _tree_digest(selector, AUTH["source_pins"]["runtime"])
++    if _json_file(selector + "/.vst-runtime-manifest.json", 65536) != marker:
++        raise ValueError("installed runtime marker changed during verification")
++    return marker
+ 
+ 
+ def _systemd_show(unit: str) -> dict:
+@@ -924,22 +986,12 @@ def _prestart_inventory(identity: dict) -> dict:
+     # No runtime, service, key, or configuration path is read until every
+     # mountinfo row has been inspected for Windows-backed mounts.
+     config = _json_file("/etc/vst-runner/supervisor-service.json")
+-    runtime = identity["runtime_selector"]
+-    _runtime_identity(identity)
++    runtime_manifest = _runtime_identity(identity)
+     _config_identity(identity)
+-    # Verify the deployment plan's complete no-symlink source inventory.
+-    source_manifest = _json_file(runtime + "/.vst-source-manifest.json", 8 * 1024 * 1024)
+-    runtime_manifest = _json_file(runtime + "/.vst-runtime-manifest.json", 65536)
+-    verify = ["/usr/bin/python3.12", "-I", "-B", "-S",
+-              runtime + "/tools/qa/verify_wsl_source_bundle.py",
+-              "--root", runtime, "--expected-head", identity["runtime_source_head"],
+-              "--archive-sha256", identity["bundle_sha256"],
+-              "--plan-sha256", runtime_manifest["plan_sha256"],
+-              "--inventory-sha256", runtime_manifest["inventory_sha256"]]
+-    _require_command(record("full_runtime_source_verification", verify, timeout=120),
+-                     "complete installed source verification")
++    # Complete deployed-tree verification above follows the installer's fixed projection.
+     R["prestart"]["runtime_source_manifest"] = {
+-        "schema": source_manifest.get("schema"),
++        "schema": runtime_manifest.get("schema"),
++        "verification": "complete-deployed-tree-from-authorized-archive",
+         "archive_sha256": runtime_manifest.get("archive_sha256"),
+         "head": runtime_manifest.get("head"),
+         "inventory_sha256": runtime_manifest.get("inventory_sha256"),

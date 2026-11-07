@@ -1,0 +1,4 @@
+  File "<string>", line 1
+    import os,json,runpy,stat,datetime\nrunpy.run_path('/mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py',run_name='__main__')\npaths=['/var/lib/vst-runner/private/snapshot-transaction-incomplete.json','/run/systemd/system/vst-runner.service','/run/systemd/system/vst-dispatcher.service']\nrows={}\nfor p in paths:\n try:\n  s=os.lstat(p); rows[p]={'exists':True,'device':s.st_dev,'inode':s.st_ino,'uid':s.st_uid,'gid':s.st_gid,'mode':format(stat.S_IMODE(s.st_mode),'04o'),'type':stat.S_IFMT(s.st_mode),'nlink':s.st_nlink,'size':s.st_size}\n except FileNotFoundError:\n  rows[p]={'exists':False}\nprint(json.dumps({'schema':'S2_4D_POST_APPLY_FAILURE_LSTAT_V1','observed_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'paths':rows},sort_keys=True,separators=(',',':')))
+                                       ^
+SyntaxError: unexpected character after line continuation character

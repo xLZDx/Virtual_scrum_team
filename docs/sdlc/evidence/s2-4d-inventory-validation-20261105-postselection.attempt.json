@@ -1,0 +1,19 @@
+{
+  "task": "S2-4D",
+  "head": "e1f6d9363ed9b85c998786a2688ca79f4aeca8ff",
+  "upstream": "e1f6d9363ed9b85c998786a2688ca79f4aeca8ff",
+  "command": "python tools/qa/verify_s2_runtime_config_inventory.py docs/sdlc/evidence/s2-4-runtime-config-target-inventory-20261105-operator-02.stdout.json --expected-sha256 46336c47cd5cab0b60e5f623725d65acdc66bedc7aef84dee6d41c3951bdf342 --expected-head e1f6d9363ed9b85c998786a2688ca79f4aeca8ff --capture-sha256 befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119",
+  "stdout": "PASS: complete S2 runtime inventory {\"captured_utc\": \"2026-11-05T02:11:02.217743+00:00\", \"configuration_destination_count\": 27, \"mount_fstype\": \"9p\", \"mount_read_only\": true, \"mount_source\": \"D:\", \"repo_head\": \"e1f6d9363ed9b85c998786a2688ca79f4aeca8ff\", \"runtime_selector\": \"/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071\", \"schema\": \"VST_S2_RUNTIME_CONFIG_TARGET_INVENTORY_V1\", \"source_head\": \"ee69f9fbf074a4c73d2d5d1da81c627a57d06071\"}",
+  "exit_code": 0,
+  "physical_checkout_normalization": {
+    "path": "tests/vst/test_s2_runtime_config_inventory.py",
+    "head": "e1f6d9363ed9b85c998786a2688ca79f4aeca8ff",
+    "precondition_git_status": "clean",
+    "pre_sha256": "b230a2195f353bdde25c14a9465af7618601a4ab24e77a4c7670f5495392010f",
+    "head_blob_sha256": "bb9fce715e9e95fa5d0054a8a91b9afe2dc93f05700f75a48e5297fda7bf7926",
+    "post_sha256": "bb9fce715e9e95fa5d0054a8a91b9afe2dc93f05700f75a48e5297fda7bf7926",
+    "pre_equals_head_after_crlf_to_lf": true,
+    "operation": "write exact HEAD blob bytes; no git restore/reset",
+    "semantic_diff": "none"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "command": "wsl.exe -d Ubuntu-24.04 --user root -- /bin/bash -s (single inline wrapper; full wrapper content supplied on stdin)",
+  "host_started_utc": "2026-11-06T15:18:54.3143076Z",
+  "host_finished_utc": "2026-11-06T15:23:30.5006794Z",
+  "host_exit_code": 1,
+  "timed_out": false,
+  "stdout_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-runtime-inventory-20261106-08.stdout.json",
+  "stderr_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-runtime-inventory-20261106-08.stderr.txt",
+  "stdout_bytes": 1765,
+  "stderr_bytes": 468,
+  "note": "Wrapper stderr contains mount, HEAD/hash, collector exit and cleanup markers; collector stdout is preserved as JSON bytes."
+}

@@ -1,0 +1,42 @@
+{
+  "schema": "vst-s2-4-qualification-head-pin-test/v1",
+  "task_id": "S2-4",
+  "acceptance_delta": "Bind the two host qualification launcher files to a separate exact qualification_source_head instead of falsely requiring them in the older runtime source tree.",
+  "execution": {
+    "role": "functional-test-reviewer",
+    "head": "16549bb8f10113b2f05f41b3aa390bad80dab97e",
+    "result": "PASS",
+    "passed": 5,
+    "failed": 0,
+    "exit_code": 0,
+    "warning_count": 1,
+    "warning": "pytest-asyncio deprecation warning; exact warning text was not retained in the execution report.",
+    "stdout_stderr_capture": "NOT_RETAINED; exact command and summarized result were returned by the designated test agent.",
+    "command": "python -B -m pytest -p no:cacheprovider tests/vst/test_s2_runtime_qualification_harness.py::test_closed_identity_schema_requires_qualification_source_head tests/vst/test_s2_runtime_qualification_harness.py::test_qualification_source_pins_cover_exactly_the_two_launcher_paths tests/vst/test_s2_runtime_qualification_harness.py::test_source_pin_verification_accepts_exact_archive_and_rejects_worktree_drift tests/vst/test_s2_runtime_qualification_harness.py::test_wrong_expected_qualification_head_refuses_before_attempt_or_wsl tests/vst/test_s2_runtime_qualification_harness.py::test_run_once_starts_one_mock_wsl_child_and_persists_terminal_hold"
+  },
+  "files": {
+    "implementation": {
+      "path": "tools/qa/run_s2_runtime_qualification.py",
+      "sha256": "e4fbf5b25e9359007b9640c06f7da304b545ec02a13f7464a7b693970b65dd47"
+    },
+    "tests": {
+      "path": "tests/vst/test_s2_runtime_qualification_harness.py",
+      "sha256": "b55b584aff6ae098b218ee0b2b3f8af931cbd324a52432e2648a9068cd100125"
+    }
+  },
+  "coverage": [
+    "qualification_source_head is required by the closed identity schema",
+    "qualification source pins contain exactly both launcher files and reject extra paths",
+    "runtime archive pins exclude qualification launchers and match the exact archive",
+    "committed qualification blobs and worktree launcher bytes must agree",
+    "wrong authorized qualification HEAD refuses before attempt creation or WSL invocation"
+  ],
+  "limits": {
+    "git_and_wsl_boundaries": "mocked",
+    "runtime_execution": "NOT_RUN",
+    "live_wsl_or_service_execution": "NOT_RUN",
+    "authorization_consumption": "NOT_RUN",
+    "candidate_identity_execution": "NOT_RUN",
+    "test_source_origin": "The designated test agent reports it edited only the listed test file; it found the implementation file already modified in the shared worktree."
+  }
+}

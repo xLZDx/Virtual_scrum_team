@@ -1,0 +1,27 @@
+{
+  "task": "S2-4D / S2-4-runtime-owner-runner-qualification / REQ-003",
+  "purpose": "Regression for mount identity replacement between initial RO remount and post-remount identity check.",
+  "command": "python -B -m pytest -q -p no:cacheprovider tests/vst/test_s2_runtime_configuration_apply.py::test_remote_apply_fails_closed_when_mount_id_changes_after_remount",
+  "selector": "tests/vst/test_s2_runtime_configuration_apply.py::test_remote_apply_fails_closed_when_mount_id_changes_after_remount",
+  "result": {
+    "exit_code": 0,
+    "summary": "1 passed, 1 warning in 0.34s",
+    "warning": "DeprecationWarning from pytest_asyncio: asyncio.get_event_loop_policy is deprecated and slated for removal in Python 3.16",
+    "run_started_at": "NOT_CAPTURED",
+    "run_finished_at": "NOT_CAPTURED",
+    "tool_reported_wall_time_seconds": 1.762,
+    "stdout_capture": "The exec tool returned one combined output field. Its displayed text is preserved in the adjacent .console-output.txt transcript; byte-exact stdout was not separately captured.",
+    "stderr_capture": "NOT_SEPARATELY_CAPTURED_BY_EXEC_TOOL",
+    "runtime_apply": "NOT_RUN",
+    "REQ003_selector_runtime": "NOT_RUN"
+  },
+  "revision": "4301af467fc8387dd80b2b214d669cbab1bd5e92",
+  "test_file_sha256": "6d526eb6345d27a92df4f54df94c487762d721d02cb1087046ca2ede749baf99",
+  "apply_source_sha256": "13f1d853b6fd75503e9ae2944f7dabf8c92dd97ffc4a89d9bf0382cc431adedf",
+  "behavior_asserted": [
+    "The apply-child guard records owned mount ID 501, then receives replacement ID 999 after remount,ro.",
+    "Preflight exits with repository mount identity changed during read-only remount before the extracted region reaches bundle_raw/inventory or configuration payload handling.",
+    "Cleanup refuses to unmount the changed mount ID and emits S2_REPO_MOUNT_CLEANUP=refused-mount-changed."
+  ],
+  "capture_provenance": "Transcribed from the functions.exec tool response returned for this single-selector command. This is not an independent shell redirection capture."
+}

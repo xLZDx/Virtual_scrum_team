@@ -1,0 +1,21 @@
+{
+  "task_id": "S2-4-runtime-owner-runner-qualification",
+  "acceptance": "REQ-003",
+  "head": "2adbc590637e78e0778e5b3f85f2a72fa32bdab7",
+  "upstream": "2adbc590637e78e0778e5b3f85f2a72fa32bdab7",
+  "launcher_sha256": "83dc10ba534c5e0de369a89ced85315d394e98e47b874df82d9e93e857fc4382",
+  "wsl_protocol_sha256": "b0834da826939f941889ff199feee7c1d9176d772209612bd106dba3888f7e81",
+  "test_source_sha256": "306c734137f700adb699aeddb7a5290d8fcc229fcd56f7409f1f13b44926582f",
+  "command": "python -B -m pytest -q -p no:cacheprovider tests/vst/test_s2_runtime_qualification_harness.py::test_operator_one_shot_run_records_provenance_and_refuses_replay",
+  "started_utc": "2026-11-06T13:58:51.9122041+00:00",
+  "finished_utc": "2026-11-06T13:58:54.5397389+00:00",
+  "exit_code": 0,
+  "stdout_path": "docs\\sdlc\\evidence\\s2-4d-operator-auth-one-shot-20261106.stdout.txt",
+  "stdout_bytes": 629,
+  "stdout_sha256": "2ef6763f4eb5c911bb377ea21e1d749bd8ddd246d3ce36422d3cd24b02cbe047",
+  "stderr_path": "docs\\sdlc\\evidence\\s2-4d-operator-auth-one-shot-20261106.stderr.txt",
+  "stderr_bytes": 0,
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "scope": "One mocked run_once OPERATOR authorization integration test; no WSL/runtime/test selector.",
+  "outcome": "PASS"
+}

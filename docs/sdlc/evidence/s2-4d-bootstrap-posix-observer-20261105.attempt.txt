@@ -1,0 +1,47 @@
+Outer command: wsl.exe -d Ubuntu-24.04 -- /bin/bash -c <base64-decode-then-bash payload>
+Payload: printf '%s' '<base64 of exact Bash script below>' | base64 -d | /bin/bash
+
+Bash script:
+set -eu
+mount_dir=/tmp/s2-4d-bootstrap-d-ro-20261105
+mkdir -p "$mount_dir"
+set +e
+mountpoint -q "$mount_dir"
+mount_rc=$?
+set -e
+if [ "$mount_rc" -eq 32 ]; then
+  mount -t drvfs D: "$mount_dir" -o ro
+elif [ "$mount_rc" -ne 0 ]; then
+  echo "mountpoint returned unexpected status $mount_rc" >&2
+  exit 92
+fi
+mount_opts=$(findmnt -n -o OPTIONS --target "$mount_dir")
+case ",$mount_opts," in
+  *,ro,*) ;;
+  *) echo "D source mount is not read-only: $mount_opts" >&2; exit 93 ;;
+esac
+repo="$mount_dir/Repo/Virtual_scrum_team"
+cd "$repo"
+printf 'mount=%s options=%s\nsource_repo=%s\nsource_head=' "$mount_dir" "$mount_opts" "$repo"
+git rev-parse HEAD
+sha256sum tools/qa/runtime_snapshot_transaction.py
+/usr/bin/python3.12 -I -B -S - "$repo" <<'PY'
+import hashlib, importlib.util, json, os, pathlib, sys
+repo = pathlib.Path(sys.argv[1]).resolve()
+helper = repo / 'tools/qa/runtime_snapshot_transaction.py'
+expected = '1099effc5d75c24236dbd3eaaa81093be41440e69949516485ea3745a15219df'
+actual = hashlib.sha256(helper.read_bytes()).hexdigest()
+if actual != expected:
+    raise SystemExit(f'FROZEN_SHA_MISMATCH expected={expected} actual={actual}')
+sys.path.append('/usr/lib/python3/dist-packages')
+sys.path.append(str(repo))
+print(json.dumps({'python_version':sys.version,'sys_executable':sys.executable,'uid':os.geteuid(),'helper_path':str(helper),'helper_sha256':actual,'sys_path':sys.path},sort_keys=True), flush=True)
+spec = importlib.util.spec_from_file_location('s2_runtime_snapshot_transaction_readonly_probe', helper)
+if spec is None or spec.loader is None:
+    raise SystemExit('Unable to create exact helper import spec')
+module = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = module
+spec.loader.exec_module(module)
+proof = module.observe_bootstrap_predecessor(allow_missing_ledger=True)
+print('READONLY_PROOF=' + json.dumps(proof,sort_keys=True,separators=(',',':')), flush=True)
+PY

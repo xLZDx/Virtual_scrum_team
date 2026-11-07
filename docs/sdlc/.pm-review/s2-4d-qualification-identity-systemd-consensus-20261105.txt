@@ -1,0 +1,37 @@
+SPRINT: S2 — Isolated worker sandbox
+TASK: S2-4D — Reconcile report-bound manifest and TestRun scope
+
+Final narrow source/contract remediation review against pushed baseline 558ed801cdf96dc6f35515fc17e59bbaefe5fec9. Previous runtime grant request ac87df4b-4c5b-4a18-8485-29583820a299 was HOLD, not authorization. Its actual reply accepted configuration application and tuple identity and found MAJOR-01: _config_identity incorrectly compared delegation policy source_head (task673) with runtime EE. No qualification attempt started or was consumed. Do not repeat installation, previous source approvals or accepted task/runtime separation.
+
+Two-file delta: qualifier helper and its tests. _config_identity now verifies canonical TaskManifest against authorized task_manifest_sha256 before reading its valid full lowercase 40-hex base_head; policy.source_head must equal that independently bound task base. Runtime selector/archive/source-tree checks remain independently bound to runtime_source_head. All config hashes, policy manifest digest, bootstrap/manifest equality, run/nonce and other guards remain intact.
+
+A direct adjacent deterministic prestart defect was independently confirmed before using the sole attempt: actual Runner systemctl --value output is 0,success,loaded,inactive,dead, not the requested order. Actual named service output has MainPID and ControlPID; the socket has ControlPID but no MainPID. _systemd_show now reads named properties, whitelists exact nine units, rejects missing/unknown/duplicate/malformed keys and nonnumeric PIDs, requires MainPID for services and ControlPID for all, and returns actual fields without inventing a socket MainPID. Prestart still requires loaded/inactive/dead and all available MainPID zero; additionally ControlPID must be zero. This corrects data interpretation and preserves fail-closed process admission. No runtime/config/manifest changes.
+
+Actual independent internal reviewers: code-reviewer /root/s2_4d_durability_narrow_code, configured gpt-6-luna, effort omitted/inherited; security-reviewer /root/s2_4d_git_trust_security, configured gpt-6-luna, explicit medium. Both inspected exact source2c delta and direct identity/unit integrations; no actionable BLOCKER/MAJOR/minor. Both read-only; no tests run by reviewers. Internal consensus clear.
+
+Actual functional-test-reviewer /root/s2_4d_bootstrap_contract_tests authored/executed only tests/vst/test_s2_runtime_qualification_harness.py. Exact command python -m pytest -q --tb=line tests/vst/test_s2_runtime_qualification_harness.py, captured using subprocess argv shell=False with actual return code and raw stdout/stderr hashes. Final host-03:110 passed, returncode0, one pytest_asyncio warning, stderr empty. Includes distinct runtime/task/qualification identity acceptance; policy wrong/taskbase/runtime confusion, bad manifest digest/base; separate runtime marker/source pin refusals; captured named service/socket/reordered fields; malformed/unknown/duplicate/missing/PID refusal; prestart nonzero PID denial. Initial runs failed only fixture Windows path-separator and argv-index assumptions; corrected tests, product2c unchanged. Final test SHA58e0754a.
+
+Actual e2e-runner /root/s2_4d_bootstrap_posix_verification_v2 executed bounded READ-ONLY target integration on source2c using only explicitly selected safe AST definitions; never executed helper top-level protocol. _runtime_identity PASS and _config_identity PASS against actual installed target and the previously supplied tuple. Exact _systemd_show invoked for all nine units via callback allowing only systemctl show: all loaded/inactive/dead, service MainPID0, socket MainPID absent, all ControlPID0, exit0. Source558+worktree2c is explicitly recorded, not falsely called clean-head qualification. Private bytes only hashed in existing function, not emitted. Actual manager diagnostic separately returned no jobs, running; exact five forbidden Store/socket/issuer-request paths all absent. No service starts, qualification, apply or re-provision.
+
+The actual installed config, runtime EE, task673 and all39 config hashes remain unchanged. Only qualification code changes. After exact source approval, commit+normal push is required; then update qualification_source_head and this helper's source pin in a NEW immutable grant candidate. Do not reuse the withheld grant or fabricate metadata. Request a new correlated one-shot grant for the refreshed exact tuple. S2-4D OPEN and report-bound TestRun NOT_RUN until actual execution/result. No production or general activation authority is requested here.
+
+Please re-review only MAJOR-01 remediation plus the confirmed named-property integration and direct regressions. If clear, APPROVE the two exact SHA256 values for commit and normal push. Accept supplied actual functional/E2E/reviewer evidence; do not demand duplicate execution solely because you were not the executor. No documentation gate. Whole repository suite not claimed green; previously disclosed legacy collector fixture errors remain separate unchanged baseline.
+
+Exact candidate identity:
+{
+  "baseline": "558ed801cdf96dc6f35515fc17e59bbaefe5fec9",
+  "files": [
+    {
+      "path": "tools/qa/s2_runtime_qualification_wsl.py",
+      "sha256": "2c020ef8306c8e9856cf8c7dbf1c83a816d4114320b50b8d9a59bb4b6a7d6666",
+      "bytes": 71317
+    },
+    {
+      "path": "tests/vst/test_s2_runtime_qualification_harness.py",
+      "sha256": "58e0754ad890fe395687ebe9acca3e91716a892fb57e0c1dd85545d202cafa5e",
+      "bytes": 103162
+    }
+  ],
+  "diff_sha256": "30fb0d7b0e95789bf61d1160ba778f3bebf018e4efeb4ff13df06e5b30389432",
+  "diff_bytes": 22440
+}

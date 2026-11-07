@@ -1,0 +1,26 @@
+SPRINT:S2 — Isolated worker sandbox. TASK:S2-4D — Reconcile report-bound manifest and TestRun scope.
+Narrow final remediation review only, against baseline1886810e79b8fc1815f92708559a8798d7740dab, approved exact prior5filecandidate by requestae97205e-f1c1-4fc9-9928-17d95332fb76/reply67e6f11d-dd9b-5d40-9bee-b87066eb10d3, committed+pushed. Preserve prior bootstrap/source/identity acceptance; do not broad-repeat it.
+Actual single real configapply at1886810 passed inventory/transport/unit checks but failed BEFORE configuration publication/transaction creation in build_git_stage workerGit. Root-owned stage0555 with rootownedparent0755 produced rc128 dubiousownership on demoted997:988 rev-parse HEAD/tree/shallow; same actual READONLY commands with commandlocal exact safe.directory succeeded HEAD67361bb4aa23355d9a6bc7877a987ba688559eda/tree0c4a8440a38027563d2455024af6b58072fe3b57/shallowtrue,stderr empty. Actual marker/Store/ledger remained absent. No blind retry or deletion. Diagnostic rawstdoutJSON attached.
+Concrete delta ONLY2files: helper new _snapshot_git_argv checks absolute canonical realpath/no*; lstat directory root:root and not group/otherwritable; supplies -c safe.directory=<exactroot> on each command, never wildcard/global/persistent trust. _git_output and direct binarydiff use shared builder; existing _run strips inherited GIT_* and disables system/global config. Internal callers fixed/validated stage/live paths; worker still demoted997:988, immutable snapshot proof/dirty detection unchanged. No applier/collector/manifest/lifecycle changes. Other source hashes remain as approved.
+Required focused tests authored by functional-test-reviewer /root/s2_4d_bootstrap_contract_tests and executed by e2e-runner /root/s2_4d_bootstrap_posix_verification_v2. Exact native focused command via /usr/bin/python3.12 -I -B -S, pytest.main(['-q','--tb=line','-p','no:cacheprovider','tests/vst/test_s2_runtime_bootstrap_transaction.py']), WSLUbuntu24.04,Python3.12.3,rootownedsystempytest7.4.4,roDmount,pluginautoload0. Final -07:48passed in1.38s,exit0,stderr empty, current2source/testhashes verified. Four new real tmp Git/rootworker cases build actual tiny shallowpack/stage through productbuild_git_stage, verify readonlyworker/status/diff/untracked/inventory under polluted GIT_*, reject unsafe roots and dirtysnapshot; subprocess envtest also confirms parentenvironment unchanged. Tmpfixture pins are deliberately its own HEAD/tree/objectcount; not a claim actual productionstage was mutated bytests. Existing44cold/durability tests still pass onhelpercc. Host109passed/1POSIXmodule skipped remains prior applicable baseline, no duplicatehostrun for POSIX-only delta. Actual full configapply still pending afterthisfix.
+Independent actual internal code reviewer /root/s2_4d_durability_narrow_code configuredgpt-6-luna (effort omitted/inherited), no material B/M; actual security-reviewer /root/s2_4d_git_trust_security configuredgpt-6-luna explicitmedium, no actionable B/M/minor. Both readonly, no testexecution, runtimeinventory evidence inherited not independently reproduced. Security reviewed exactscope/runtimeactor and observedparentpermissions; no unprivileged reachable path replacement with rootowned fixedparents. Internal consensus GO, no disputed/open finding.
+Please final adversarial review of exact narrow delta/direct integration and supplied functional/E2E/actualreview evidence. If clear explicitly APPROVE exact2candidate SHA256 values for commit+normalpush. Do not demand duplicateexecution simply because you did not run tests. Sourceapproval does not close S2D or grant runtime. Existing operator autonomous sandbox setupGO is separate; actual report-bound TestRun remains NOT_RUN and needs separately correlated one-shot adjudication after successful configinstall. No production claim.
+
+Exact candidate identity:
+{
+  "baseline": "1886810e79b8fc1815f92708559a8798d7740dab",
+  "files": [
+    {
+      "path": "tools/qa/runtime_snapshot_transaction.py",
+      "sha256": "cc6eb947d200231bb77bccc56eea109a717508d0d66a36af9b5691f9e828f4ee",
+      "bytes": 126760
+    },
+    {
+      "path": "tests/vst/test_s2_runtime_bootstrap_transaction.py",
+      "sha256": "8549aa61b29ca6e97ce1f8ce9fc00751e5aa6754cd0cf4d86cd34a0779fb6466",
+      "bytes": 67374
+    }
+  ],
+  "diff_sha256": "49d2120fec50e9982e525be9b0e702fea0a484b7107a7d93430d909603d17a7f",
+  "diff_bytes": 11152
+}

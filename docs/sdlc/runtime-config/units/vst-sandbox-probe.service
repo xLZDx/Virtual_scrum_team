@@ -1,0 +1,27 @@
+[Unit]
+Description=Virtual Scrum Team non-root run-bound preflight measurement
+After=local-fs.target
+RequiresMountsFor=/opt/vst-runtime /etc/vst-runner
+
+[Service]
+Type=oneshot
+User=vst-worker
+Group=vst-worker
+ExecStart=/usr/bin/python3.12 -I -S /etc/vst-runner/probe-entrypoint.py
+Restart=no
+TimeoutStartSec=90s
+PrivateTmp=yes
+PrivateNetwork=yes
+PrivateDevices=yes
+RestrictAddressFamilies=AF_UNIX AF_INET
+RestrictNamespaces=yes
+ProtectHome=yes
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+NoNewPrivileges=yes
+RestrictSUIDSGID=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0077

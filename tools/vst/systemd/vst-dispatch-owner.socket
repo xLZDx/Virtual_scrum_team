@@ -1,0 +1,20 @@
+[Unit]
+Description=Virtual Scrum Team signed dispatch-owner ingress socket
+After=vst-supervisor.service
+Requires=vst-supervisor.service
+RequiresMountsFor=/etc/vst-runner /opt/vst-runtime
+ConditionPathExists=!/etc/vst-runner/dispatch-owner-admission-blocked.json
+
+[Socket]
+ListenStream=/run/vst-supervisor/dispatch-owner.sock
+FileDescriptorName=dispatch-owner
+Accept=no
+Backlog=1
+SocketUser=root
+SocketGroup=vst-supervisor-client
+SocketMode=0660
+RemoveOnStop=yes
+Service=vst-dispatch-owner.service
+
+[Install]
+WantedBy=sockets.target

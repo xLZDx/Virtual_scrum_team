@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "python",
+    "-m",
+    "pytest",
+    "-q",
+    "--tb=line",
+    "tests/vst/test_s2_runtime_qualification_harness.py"
+  ],
+  "cwd": "D:\\Repo\\Virtual_scrum_team",
+  "files": {
+    "launcher_sha256": "bfad0665c6081e23a4b1052510370db793c2908df5c17e78a690bb84ec25f09d",
+    "test_sha256": "5720e2176bfe94eb35cd4670d13189d009c00c2f05df1b4cb1b7e654e29789c1"
+  },
+  "head": "df5f713b38cf0a385285f062c819cd06c0470f37",
+  "returncode": 0,
+  "stderr_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-runtime-source-closure-host-20261105-01.stderr.bin",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-runtime-source-closure-host-20261105-01.stdout.bin",
+  "stdout_sha256": "66f3b3c3a01d60922038e3e8b2e44dd2da2502756b320dfb9b7dca30fb20c17b"
+}

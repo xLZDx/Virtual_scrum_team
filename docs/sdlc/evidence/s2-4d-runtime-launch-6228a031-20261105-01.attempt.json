@@ -1,0 +1,33 @@
+{
+  "argv": [
+    "C:\\Python314\\python.exe",
+    "tools/qa/run_s2_runtime_qualification.py",
+    "--authorization-input",
+    "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-runtime-authorization-6228a031-20261105.json",
+    "--attempt-output",
+    "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-runtime-qual-6228a031-s2-runtime-20261030-dd4c04c5.attempt.json"
+  ],
+  "attempt_started_utc": "2026-11-05T05:49:19.431396+00:00",
+  "authorization_input_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-runtime-authorization-6228a031-20261105.json",
+  "authorization_input_sha256": "14f540e7dbf1617c111c1ff487f9357682eb15f80e36f94140f5b963e66a458f",
+  "authorized_grant_request_id": "6228a031-6cae-4dbe-b533-0584543832e3",
+  "authorized_tuple_sha256": "eed9b79bfd1a886cfebca67b9c6ab6d16e6fe3e0baa97983f879837b4d43f981",
+  "cwd": "D:\\Repo\\Virtual_scrum_team",
+  "exception": null,
+  "exit_code": 2,
+  "finished_utc": "2026-11-05T05:49:20.162494+00:00",
+  "launcher_attempt_exists": false,
+  "launcher_attempt_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-runtime-qual-6228a031-s2-runtime-20261030-dd4c04c5.attempt.json",
+  "launcher_path_sha256": "11e2eea024fa5bfae7d7899d1ea05e20fb358b1e845a88167d0e95fbaa426d5a",
+  "qualification_head": "df5f713b38cf0a385285f062c819cd06c0470f37",
+  "schema": "VST_S2_4D_RUNTIME_LAUNCH_CAPTURE_V1",
+  "shell": false,
+  "stderr_bytes": 101,
+  "stderr_sha256": "e8dc946d6429b3e41de80a50e3e70247dbf77d977aa4ffb24ad6ec4999f61a59",
+  "stdin": "DEVNULL",
+  "stdout_bytes": 0,
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "task": "S2-4D",
+  "timed_out": false,
+  "timeout_seconds": 2430
+}

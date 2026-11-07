@@ -1,0 +1,57 @@
+{
+  "task": "S2-4D cold-refresh focused host verification",
+  "executor": {
+    "agent_type": "functional-test-reviewer",
+    "configured_model": "NOT_VERIFIED by runner output",
+    "reasoning_effort": "low (launch assignment)"
+  },
+  "purpose": "Repeat this narrow host selector run because the earlier execution role profile was not independently verified; no new HEAD or source delta triggered a broad rerun.",
+  "head": "4fe846fc1c3172f02a4fe915936ecc9c249ac61d",
+  "cwd": "D:\\Repo\\Virtual_scrum_team",
+  "command_argv": [
+    "C:\\Python314\\python.exe",
+    "-m",
+    "pytest",
+    "-q",
+    "--tb=line",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_admission_observes_only_exact_prestart_cold_pair",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_admission_rejects_mixed_or_started_pair_without_cold_observation",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_cold_refresh_proof_accepts_exact_readonly_candidate_with_existing_bootstrap_record",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_cold_refresh_proof_rejects_missing_or_nonmatching_candidate_receipt",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_cold_refresh_proof_must_match_recorded_transaction_root_identity",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_candidate_admission_opts_into_candidate_observation_only_for_cold_pair",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_candidate_refresh_rechecks_root_binding_before_journaling",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_candidate_refresh_uses_existing_ledger_without_bootstrap_creation",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_candidate_refresh_rejects_changed_root_returned_by_helper_before_receipts"
+  ],
+  "selected_nodeids": [
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_admission_observes_only_exact_prestart_cold_pair",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_admission_rejects_mixed_or_started_pair_without_cold_observation",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_cold_refresh_proof_accepts_exact_readonly_candidate_with_existing_bootstrap_record",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_cold_refresh_proof_rejects_missing_or_nonmatching_candidate_receipt",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_cold_refresh_proof_must_match_recorded_transaction_root_identity",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_candidate_admission_opts_into_candidate_observation_only_for_cold_pair",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_candidate_refresh_rechecks_root_binding_before_journaling",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_candidate_refresh_uses_existing_ledger_without_bootstrap_creation",
+    "tests/vst/test_s2_runtime_configuration_apply.py::test_embedded_candidate_refresh_rejects_changed_root_returned_by_helper_before_receipts"
+  ],
+  "source_sha256": {
+    "tools/qa/apply_s2_runtime_configuration.py": "5c02647b103462502be5385eb0381acec5e989b32c787979d0841037cdb4e35c",
+    "tools/qa/runtime_snapshot_transaction.py": "76a985ec375cd3c8ef1a5d5e1c5ac1a514d310adbf932916aad551e4a6e849f2"
+  },
+  "test_sha256": {
+    "tests/vst/test_s2_runtime_bootstrap_transaction.py": "ff76b0a20ad8494a7321f98de209bacb976c842ee65a12f18ff6a34f20165537",
+    "tests/vst/test_s2_runtime_configuration_apply.py": "ba8b22f09b1857e1feba0b0896e65a4b4d2fb8fe3b364bfa7f59d2a08af42bed"
+  },
+  "exit_code": 0,
+  "stderr": "",
+  "environment": "Windows host, C:\\Python314\\python.exe; pytest invocation -q --tb=line. OS/build metadata beyond this was not captured.",
+  "limitations": [
+    "Focused selectors only; not the 102 baseline suite.",
+    "No runtime service, configuration apply, or target mutation.",
+    "Model metadata was not exposed to the assigned runner."
+  ],
+  "stdout_summary": "26 passed, 1 warning in 1.86s; pytest progress and warning text were summarized by the executor, raw stdout was not attached.",
+  "warning_summary": "pytest-asyncio deprecation: asyncio.get_event_loop_policy is deprecated and slated for removal in Python 3.16.",
+  "output_provenance": "Executor completion record in current turn; not a captured byte-for-byte stdout stream."
+}

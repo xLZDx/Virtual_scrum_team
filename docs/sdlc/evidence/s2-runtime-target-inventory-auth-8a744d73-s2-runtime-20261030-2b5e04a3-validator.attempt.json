@@ -1,0 +1,29 @@
+{
+  "command": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/bin/bash",
+    "-lc",
+    "set -e; cd /mnt/d/Repo/Virtual_scrum_team; exec /usr/bin/python3 tools/qa/verify_s2_runtime_config_inventory.py /mnt/d/Repo/Virtual_scrum_team/docs/sdlc/evidence/s2-runtime-target-inventory-auth-8a744d73-s2-runtime-20261030-2b5e04a3.stdout.bin --expected-sha256 bc171bce8e38b14b6ecf2cc6ef7bd771b4e2a7df7a758ec21e7ab6f7f06192d1 --expected-head 7d1d16f6348e6c00a5a568b5cfbc8caf309194b9 --helper-sha256 0f3b7b6fe11798ebc806a55bd4d6f687e7974b6f4394b2065e15defab8255083"
+  ],
+  "exit_code": 1,
+  "finished_utc": "2026-10-30T09:08:45.864+00:00",
+  "input_bytes": 35348,
+  "input_path": "docs/sdlc/evidence/s2-runtime-target-inventory-auth-8a744d73-s2-runtime-20261030-2b5e04a3.stdout.bin",
+  "input_sha256": "bc171bce8e38b14b6ecf2cc6ef7bd771b4e2a7df7a758ec21e7ab6f7f06192d1",
+  "job_id": "34ee8d4b-53a1-4c9c-bc58-68f6de450ae9",
+  "reply_id": "540b8a32-d2ae-53cf-8195-7afb94efef91",
+  "request_id": "8a744d73-a52c-489c-b0da-e8e9f9ccc831",
+  "started_utc": "2026-10-30T09:08:41.894+00:00",
+  "stderr_bytes": 81,
+  "stderr_path": "docs/sdlc/evidence/s2-runtime-target-inventory-auth-8a744d73-s2-runtime-20261030-2b5e04a3-validator.stderr.bin",
+  "stderr_sha256": "5ac9f8f1472d8238c34f509c29be183eedc3fd0e39c470f49557a53c7498b2f9",
+  "stdout_bytes": 0,
+  "stdout_path": "docs/sdlc/evidence/s2-runtime-target-inventory-auth-8a744d73-s2-runtime-20261030-2b5e04a3-validator.stdout.bin",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "user_turn_id": "1086034f-5d5c-4af7-9dc1-012c782ff972"
+}

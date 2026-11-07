@@ -1,0 +1,1 @@
+{"observed_utc":"2026-11-05T07:54:02.644873+00:00","paths":{"/run/systemd/system/vst-dispatcher.service":{"exists":false},"/run/systemd/system/vst-runner.service":{"exists":false},"/var/lib/vst-runner/private/snapshot-transaction-incomplete.json":{"exists":false}},"schema":"S2_4D_POST_APPLY_FAILURE_LSTAT_V1"}

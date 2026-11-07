@@ -1,0 +1,12 @@
+MOUNTPOINT_EXIT=32
+FINDMNT_TARGET_EXIT=0 VALUE=/
+FINDMNT_SOURCE_EXIT=0 VALUE=/dev/sdf
+FINDMNT_FSTYPE_OPTIONS_EXIT=0 VALUE=ext4   rw,relatime,discard,errors=remount-ro,data=ordered
+MOUNT_COMMAND_EXIT=0 OUTPUT=
+MOUNTPOINT_EXIT=0
+FINDMNT_TARGET_EXIT=0 VALUE=/mnt/d
+FINDMNT_SOURCE_EXIT=0 VALUE=D:
+FINDMNT_FSTYPE_OPTIONS_EXIT=0 VALUE=9p     rw,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3
+MOUNTINFO=751 430 0:164 / /mnt/d rw,relatime - 9p D: rw,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3
+CLEANUP_UMOUNT_EXIT=0
+MOUNT_AFTER=absent

@@ -1,0 +1,77 @@
+{"cache_provider_disabled": true, "cwd": "/mnt/d/Repo/Virtual_scrum_team", "plugin_autoload_disabled": true, "pytest": "7.4.4", "python": "3.12.3", "selected_node_ids": ["tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_accepts_exact_installed_projection_and_empty_source", "tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_modified_or_unsafe_projection", "tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_malformed_runtime_marker"]}
+FFFFFFFF....                                                             [100%]
+=================================== FAILURES ===================================
+__ test_wsl_runtime_tree_accepts_exact_installed_projection_and_empty_source ___
+tests/vst/test_s2_runtime_qualification_harness.py:457: in test_wsl_runtime_tree_accepts_exact_installed_projection_and_empty_source
+    assert fixture["functions"]["_runtime_identity"](fixture["identity"]) == fixture["marker"]
+tools/qa/s2_runtime_qualification_wsl.py:923: in _runtime_identity
+    _tree_digest(selector, AUTH["source_pins"]["runtime"])
+tools/qa/s2_runtime_qualification_wsl.py:835: in _tree_digest
+    rel = os.path.relpath(path, root).replace(os.sep, "/")
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'sep'
+_ test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[missing-source] __
+tests/vst/test_s2_runtime_qualification_harness.py:501: in test_wsl_runtime_tree_refuses_modified_or_unsafe_projection
+    fixture["functions"]["_runtime_identity"](fixture["identity"])
+tools/qa/s2_runtime_qualification_wsl.py:923: in _runtime_identity
+    _tree_digest(selector, AUTH["source_pins"]["runtime"])
+tools/qa/s2_runtime_qualification_wsl.py:835: in _tree_digest
+    rel = os.path.relpath(path, root).replace(os.sep, "/")
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'sep'
+___ test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[extra-file] ____
+tests/vst/test_s2_runtime_qualification_harness.py:501: in test_wsl_runtime_tree_refuses_modified_or_unsafe_projection
+    fixture["functions"]["_runtime_identity"](fixture["identity"])
+tools/qa/s2_runtime_qualification_wsl.py:923: in _runtime_identity
+    _tree_digest(selector, AUTH["source_pins"]["runtime"])
+tools/qa/s2_runtime_qualification_wsl.py:835: in _tree_digest
+    rel = os.path.relpath(path, root).replace(os.sep, "/")
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'sep'
+_ test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[changed-source] __
+tests/vst/test_s2_runtime_qualification_harness.py:501: in test_wsl_runtime_tree_refuses_modified_or_unsafe_projection
+    fixture["functions"]["_runtime_identity"](fixture["identity"])
+tools/qa/s2_runtime_qualification_wsl.py:923: in _runtime_identity
+    _tree_digest(selector, AUTH["source_pins"]["runtime"])
+tools/qa/s2_runtime_qualification_wsl.py:835: in _tree_digest
+    rel = os.path.relpath(path, root).replace(os.sep, "/")
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'sep'
+_ test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[symlink-source] __
+tests/vst/test_s2_runtime_qualification_harness.py:501: in test_wsl_runtime_tree_refuses_modified_or_unsafe_projection
+    fixture["functions"]["_runtime_identity"](fixture["identity"])
+tools/qa/s2_runtime_qualification_wsl.py:923: in _runtime_identity
+    _tree_digest(selector, AUTH["source_pins"]["runtime"])
+tools/qa/s2_runtime_qualification_wsl.py:835: in _tree_digest
+    rel = os.path.relpath(path, root).replace(os.sep, "/")
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'sep'
+_ test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[hardlink-source] _
+tests/vst/test_s2_runtime_qualification_harness.py:501: in test_wsl_runtime_tree_refuses_modified_or_unsafe_projection
+    fixture["functions"]["_runtime_identity"](fixture["identity"])
+tools/qa/s2_runtime_qualification_wsl.py:923: in _runtime_identity
+    _tree_digest(selector, AUTH["source_pins"]["runtime"])
+tools/qa/s2_runtime_qualification_wsl.py:835: in _tree_digest
+    rel = os.path.relpath(path, root).replace(os.sep, "/")
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'sep'
+_ test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[wrong-file-mode] _
+tests/vst/test_s2_runtime_qualification_harness.py:501: in test_wsl_runtime_tree_refuses_modified_or_unsafe_projection
+    fixture["functions"]["_runtime_identity"](fixture["identity"])
+tools/qa/s2_runtime_qualification_wsl.py:923: in _runtime_identity
+    _tree_digest(selector, AUTH["source_pins"]["runtime"])
+tools/qa/s2_runtime_qualification_wsl.py:835: in _tree_digest
+    rel = os.path.relpath(path, root).replace(os.sep, "/")
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'sep'
+___ test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[wrong-owner] ___
+tests/vst/test_s2_runtime_qualification_harness.py:501: in test_wsl_runtime_tree_refuses_modified_or_unsafe_projection
+    fixture["functions"]["_runtime_identity"](fixture["identity"])
+tools/qa/s2_runtime_qualification_wsl.py:923: in _runtime_identity
+    _tree_digest(selector, AUTH["source_pins"]["runtime"])
+tools/qa/s2_runtime_qualification_wsl.py:835: in _tree_digest
+    rel = os.path.relpath(path, root).replace(os.sep, "/")
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'sep'
+=========================== short test summary info ============================
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_accepts_exact_installed_projection_and_empty_source
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[missing-source]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[extra-file]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[changed-source]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[symlink-source]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[hardlink-source]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[wrong-file-mode]
+FAILED tests/vst/test_s2_runtime_qualification_harness.py::test_wsl_runtime_tree_refuses_modified_or_unsafe_projection[wrong-owner]
+8 failed, 4 passed in 2.60s

@@ -1,0 +1,70 @@
+{
+  "baseline": "b02377168d8f511fc5d0d4a15f79ee020126ad5d",
+  "files": [
+    {
+      "path": "docs/sdlc/runtime-config/bootstrap-request.json",
+      "sha256": "be1802a65d4705c5d01e578742133fd8c46f84fb9321374d55484920ba2e377a",
+      "bytes": 4104,
+      "attachment": "s2-4d-fresh-binding-final-20261105-source-00.txt"
+    },
+    {
+      "path": "docs/sdlc/runtime-config/bundle-manifest.json",
+      "sha256": "4c13f2991f39cf12b84af4b0440621ab1adaa74ca1894dfda29eec1006cd7138",
+      "bytes": 16509,
+      "attachment": "s2-4d-fresh-binding-final-20261105-source-01.txt"
+    },
+    {
+      "path": "docs/sdlc/runtime-config/network-profile.json",
+      "sha256": "f0d4e76b13a59b92575e16b5ef1cc5880760a405a5248c6cf79e23a2044bf1c4",
+      "bytes": 970,
+      "attachment": "s2-4d-fresh-binding-final-20261105-source-02.txt"
+    },
+    {
+      "path": "docs/sdlc/runtime-config/run-binding.json",
+      "sha256": "b80b506af43eeec8814dcf58ab72c0b5089a197b228cf3700a186e52549e75f9",
+      "bytes": 628,
+      "attachment": "s2-4d-fresh-binding-final-20261105-source-03.txt"
+    },
+    {
+      "path": "docs/sdlc/runtime-config/supervisor-service.json",
+      "sha256": "484362e883b69e307d7a20f0b189a49604266bc8dfa9fc22c4092748912ab772",
+      "bytes": 3389,
+      "attachment": "s2-4d-fresh-binding-final-20261105-source-04.txt"
+    },
+    {
+      "path": "tools/qa/apply_s2_runtime_configuration.py",
+      "sha256": "c563417271bb5e6a5c2e10cbb129713c22ec3fd0e8c54d541a72aba63ff8c3b4",
+      "bytes": 95916,
+      "attachment": "s2-4d-fresh-binding-final-20261105-source-05.txt"
+    },
+    {
+      "path": "tools/qa/collect_s2_runtime_config_inventory.py",
+      "sha256": "39f07005985eace76cfe99ab9ac764402122598051e3240336e65fd342960971",
+      "bytes": 21643,
+      "attachment": "s2-4d-fresh-binding-final-20261105-source-06.txt"
+    },
+    {
+      "path": "tools/qa/verify_s2_runtime_config_inventory.py",
+      "sha256": "c334c6cdcf2677c8f3d87f52c74951d61717e64f7dbe0f77cc0541cc32f5d135",
+      "bytes": 28391,
+      "attachment": "s2-4d-fresh-binding-final-20261105-source-07.txt"
+    },
+    {
+      "path": "tests/vst/test_s2_runtime_config_bundle.py",
+      "sha256": "2733102b0deda21d73fe3500525e1cb45f503775a64953d424ec925bfeb451de",
+      "bytes": 23889,
+      "review_material": [
+        "s2-4d-fresh-binding-final-20261105-source08-scoped.diff",
+        "s2-4d-fresh-binding-final-20261105-source08-fidelity.json"
+      ]
+    },
+    {
+      "path": "tests/vst/test_s2_runtime_config_inventory.py",
+      "sha256": "497df55b1cebfefe234c2cda1741a62ead2edaebbddbc34bff156f94f418bef3",
+      "bytes": 47270,
+      "attachment": "s2-4d-fresh-binding-final-20261105-source-09.txt"
+    }
+  ],
+  "diff_sha256": "be8b8ac4f59447e6edc7a177f0749f5e04e81d457c1a87401cd278f86ad2b94e",
+  "diff_bytes": 43221
+}

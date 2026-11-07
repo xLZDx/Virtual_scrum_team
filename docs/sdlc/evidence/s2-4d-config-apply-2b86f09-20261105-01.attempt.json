@@ -1,0 +1,93 @@
+{
+  "task": "S2-4D",
+  "head": "2b86f091d07ae3b6525e1d088b61d062d9a4dbca",
+  "authorization_source": "Operator autonomous GO for sandbox setup; exact source approved b4fc9eb2 and pushed",
+  "previous_failure_fixed": "Systemd property order; named property parser now deployed in exact source",
+  "keeper_argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/usr/bin/python3.12",
+    "-I",
+    "-B",
+    "-S",
+    "-c",
+    "import sys,pathlib,json; print(json.dumps({'ready':True,'pid1_stat':pathlib.Path('/proc/1/stat').read_text()}),flush=True); sys.stdin.buffer.read(1)"
+  ],
+  "started_utc": "2026-11-05T02:55:05.401870+00:00",
+  "test_run": "NOT_RUN",
+  "apply_invocations": 1,
+  "keeper_host_pid": 13508,
+  "keeper_ready": {
+    "ready": true,
+    "pid1_stat": "1 (systemd) S 0 1 1 0 -1 4194560 5067 53839 113 1312 24 30 102 91 20 0 1 0 663149 22220800 3026 18446744073709551615 110600980152320 110600980196193 140735930930800 0 0 0 671173123 4096 1260 1 0 0 17 6 0 0 0 0 0 110600980226000 110600980230160 110601237262336 140735930933144 140735930933155 140735930933155 140735930933229 0\n"
+  },
+  "inventory_exit_code": 0,
+  "inventory_sha256": "44a9f68b3ab84561bc46224407607143d55ef55aba13b947ad8aac07eed3919b",
+  "inventory_pid1": {
+    "comm": "systemd",
+    "gid": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "mount_ns_inode": 4026532783,
+    "net_ns_inode": 4026531840,
+    "start_ticks": 663149,
+    "uid": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "apply_argv": [
+    "C:\\Python314\\python.exe",
+    "tools/qa/apply_s2_runtime_configuration.py",
+    "--inventory",
+    "docs\\sdlc\\evidence\\s2-4d-config-apply-2b86f09-20261105-01.inventory.json",
+    "--inventory-sha256",
+    "44a9f68b3ab84561bc46224407607143d55ef55aba13b947ad8aac07eed3919b",
+    "--approved-deployment-commit",
+    "2b86f091d07ae3b6525e1d088b61d062d9a4dbca",
+    "--distribution",
+    "Ubuntu-24.04"
+  ],
+  "exit_code": 1,
+  "keeper_exit_code": 0,
+  "inventory": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-2b86f09-20261105-01.inventory.json",
+    "bytes": 35846,
+    "sha256": "44a9f68b3ab84561bc46224407607143d55ef55aba13b947ad8aac07eed3919b"
+  },
+  "inventory_err": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-2b86f09-20261105-01.inventory.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "stdout": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-2b86f09-20261105-01.stdout.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "stderr": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-2b86f09-20261105-01.stderr.txt",
+    "bytes": 54,
+    "sha256": "6da0a2f91d21185d23b6fb296ff8c939e341e4c6118e8209c2bc227139c56117"
+  },
+  "keeper_out": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-2b86f09-20261105-01.keeper.stdout.txt",
+    "bytes": 360,
+    "sha256": "034213a7c7de8c6945237d4296f849657aa9e21a6597fbb484420b38fd4aa56f"
+  },
+  "keeper_err": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-2b86f09-20261105-01.keeper.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "finished_utc": "2026-11-05T02:55:39.931553+00:00"
+}

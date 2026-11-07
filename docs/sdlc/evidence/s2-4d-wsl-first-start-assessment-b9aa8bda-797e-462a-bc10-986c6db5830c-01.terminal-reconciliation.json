@@ -1,0 +1,68 @@
+{
+  "schema": "VST_S2_4D_TERMINAL_RECONCILIATION_V1",
+  "task": "S2-4D - WSL first-start and read-only inventory",
+  "decision_id": "b9aa8bda-797e-462a-bc10-986c6db5830c",
+  "observed_utc": "2026-11-05T14:27:40.2060781Z",
+  "attempt": {
+    "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-b9aa8bda-797e-462a-bc10-986c6db5830c-01.attempt.json",
+    "sha256": "0c6c4d729deae35e160987ef07d105234d13d9f05ac2e83169727c5ba4a586ff",
+    "recorded_launch_started": false,
+    "recorded_inventory_started": false,
+    "applier_invocations": 0,
+    "keeper": null,
+    "inventory": null,
+    "primary_error": null,
+    "cleanup": null
+  },
+  "raw": {
+    "keeper_stdout_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-b9aa8bda-797e-462a-bc10-986c6db5830c-01.keeper.stdout.raw",
+    "keeper_stdout_sha256": "5b5d0c03f51152705291e5d143aa12296c4c153590038d7aba63a13c791dcf27",
+    "keeper_stdout_bytes": 403,
+    "readiness_json_confirmed": true,
+    "boot_id": "84c624a7-bc08-45a7-b60e-2ca715578597",
+    "keeper_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "inventory_stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "inventory_stdout_bytes": 0,
+    "inventory_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "inventory_stderr_bytes": 0
+  },
+  "runner_report": "Runner reports collector started around 2026-11-05T14:23:20Z, waited about 90s, then killed inventory on timeout; cleanup handler failed because PowerShell interpreted bare false as a command. This runner-reported sequence is not fully persisted in attempt JSON and is therefore not independently verified.",
+  "process_check": {
+    "checked_utc": "2026-11-05T14:27:40.3056216Z",
+    "wsl_list_verbose": "NAME              STATE           VERSION\r\n\r\n* Ubuntu-24.04      Stopped         2\r\n\r\n  docker-desktop    Running         2",
+    "matching_keeper_or_collector_processes_present": false
+  },
+  "conclusion": "One b9 launch was consumed. Readiness succeeded, but no valid inventory evidence exists. Applier was not invoked. No target configuration mutation is evidenced. Grant cannot be reused.",
+  "artifacts": [
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-b9aa8bda-797e-462a-bc10-986c6db5830c-01.attempt.json",
+      "bytes": 1440,
+      "sha256": "0c6c4d729deae35e160987ef07d105234d13d9f05ac2e83169727c5ba4a586ff"
+    },
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-b9aa8bda-797e-462a-bc10-986c6db5830c-01.failure-reconciliation.json",
+      "bytes": 3326,
+      "sha256": "50cb00d9fb3bc6290b1346dec497213bb8398a91a29d599624c306a5b84619df"
+    },
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-b9aa8bda-797e-462a-bc10-986c6db5830c-01.inventory.stderr.raw",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-b9aa8bda-797e-462a-bc10-986c6db5830c-01.inventory.stdout.raw",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-b9aa8bda-797e-462a-bc10-986c6db5830c-01.keeper.stderr.raw",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-wsl-first-start-assessment-b9aa8bda-797e-462a-bc10-986c6db5830c-01.keeper.stdout.raw",
+      "bytes": 403,
+      "sha256": "5b5d0c03f51152705291e5d143aa12296c4c153590038d7aba63a13c791dcf27"
+    }
+  ]
+}

@@ -177,6 +177,9 @@ def test_missing_required_receipt_is_not_approval(slot, unmet):
     assert f"missing receipt for slot '{slot}'" in d["reasons"]
     assert d["acceptance_unmet"] == unmet
     assert len(d["required_receipt_hashes"]) == 2
+    waived = ev(rs, waiver=broad_waiver())
+    assert waived["verdict"] == "MODIFY"
+    assert waived["waiver_record"] is None and waived["human_approvals"] == []
 
 
 def test_no_receipts_gives_modify_with_everything_unmet():
@@ -186,6 +189,9 @@ def test_no_receipts_gives_modify_with_everything_unmet():
     assert d["acceptance_unmet"] == ["AC-1", "AC-2"]
     for slot in ALL_SLOTS:
         assert f"missing receipt for slot '{slot}'" in d["reasons"]
+    waived = ev([], waiver=broad_waiver())
+    assert waived["verdict"] == "MODIFY"
+    assert waived["waiver_record"] is None and waived["human_approvals"] == []
 
 
 def test_unlisted_failing_receipt_blocks_approval_even_if_all_required_pass():
@@ -857,7 +863,7 @@ def _rules_manifest():
     )
 
 
-def test_static_missing_a_required_rule_is_an_unmet_slot_and_waivable():
+def test_static_pass_with_a_required_rule_gap_is_not_waivable():
     m2 = _rules_manifest()
     rs = [bound(m2, "TestRun"), bound(m2, "StaticAnalysis", covered_rules=["R1"]), bound(m2, "IndependentReview")]
     d = ev(rs, m=m2)
@@ -866,8 +872,9 @@ def test_static_missing_a_required_rule_is_an_unmet_slot_and_waivable():
     assert d["acceptance_unmet"] == []
     w = signed_waiver(manifest_sha256=mhash(m2), waived_slots=["static"], waived_acceptance=[])
     dw = ev(rs, m=m2, waiver=w)
-    assert dw["verdict"] == "APPROVED_WITH_WAIVER"
-    assert dw["waiver_record"] == "W-1"
+    assert dw["verdict"] == "MODIFY"
+    assert "waiver rejected: missing, failed, or rejected evidence cannot be waived" in reasons_text(dw)
+    assert dw["waiver_record"] is None and dw["human_approvals"] == []
 
 
 def test_static_covering_all_required_rules_plus_extra_is_accepted():
@@ -1185,10 +1192,12 @@ def test_waiver_may_cover_more_than_needed():
     assert ev(not_run_tests(), waiver=w)["verdict"] == "APPROVED_WITH_WAIVER"
 
 
-def test_waiver_for_missing_slot_receipt():
+def test_waiver_cannot_cover_missing_slot_receipt():
     rs = [r for r in happy_receipts() if r["slot"] != "tests"]
     d = ev(rs, waiver=valid_waiver())
-    assert d["verdict"] == "APPROVED_WITH_WAIVER"
+    assert d["verdict"] == "MODIFY"
+    assert "waiver rejected: missing, failed, or rejected evidence cannot be waived" in reasons_text(d)
+    assert d["waiver_record"] is None and d["human_approvals"] == []
 
 
 def test_waiver_expiry_boundary_current_epoch_equal_to_expires_epoch_is_valid():
@@ -1405,10 +1414,13 @@ def test_waiver_for_other_head_does_not_approve_current_head():
     assert d["verdict"] != "APPROVED_WITH_WAIVER"
 
 
-def test_waiver_can_cover_a_slot_that_only_has_an_older_epoch_attempt():
+def test_waiver_cannot_cover_a_slot_that_only_has_an_older_epoch_attempt():
     rs = [receipt("TestRun", epoch=EPOCH - 1), receipt("StaticAnalysis"), receipt("IndependentReview")]
     assert ev(rs)["verdict"] == "MODIFY"
-    assert ev(rs, waiver=valid_waiver())["verdict"] == "APPROVED_WITH_WAIVER"
+    d = ev(rs, waiver=valid_waiver())
+    assert d["verdict"] == "MODIFY"
+    assert "waiver rejected: missing, failed, or rejected evidence cannot be waived" in reasons_text(d)
+    assert d["waiver_record"] is None and d["human_approvals"] == []
 
 
 # --------------------------------------------------------------- NO_GO inputs
@@ -1565,27 +1577,26 @@ def test_never_approve_when_any_hard_or_soft_reason_exists(name):
         c.validate_gate_decision(d)
 
 
-HARD_SCENARIOS = [
+NON_WAIVABLE_SCENARIOS = [
     "unlisted", "stale_head", "stale_epoch", "epoch_takeover", "forged", "lying", "gap",
     "self_review", "other_task", "type_mismatch", "wrong_manifest_hash", "wrong_role", "author_mismatch",
     "bad_command", "wrong_expected_ids", "claimed_unknown_acceptance", "artifact_no_resolver",
     "terminal_marker", "unknown_marker", "forged_marker", "supervisor_key_on_worker_slot",
+    "missing", "empty", "old_epoch_attempt", "uncovered",
 ]
 
 
-@pytest.mark.parametrize("name", HARD_SCENARIOS)
-def test_hard_reason_scenarios_are_never_waivable(name):
+@pytest.mark.parametrize("name", NON_WAIVABLE_SCENARIOS)
+def test_nonwaivable_scenarios_reject_signed_waivers(name):
     rs = _bad_scenarios()[name]
     d = ev(rs, waiver=broad_waiver())
     assert d["verdict"] in {"MODIFY", "NO_GO"}
     assert d["waiver_record"] is None and d["human_approvals"] == []
 
 
-@pytest.mark.parametrize("name", ["missing", "empty", "old_epoch_attempt", "not_run", "inconclusive",
-                                  "blocked", "uncovered"])
-def test_soft_only_scenarios_are_waivable_with_a_broad_signed_waiver(name):
-    # Control for the previous test: the broad waiver itself is valid, so the
-    # HARD_SCENARIOS result above is due to the hard reasons, not a bad waiver.
+@pytest.mark.parametrize("name", ["not_run", "inconclusive", "blocked"])
+def test_permitted_nonpass_results_are_waivable_with_a_broad_signed_waiver(name):
+    # Positive controls: only these three non-PASS results are waiver eligible.
     rs = _bad_scenarios()[name]
     d = ev(rs, waiver=broad_waiver())
     assert d["verdict"] == "APPROVED_WITH_WAIVER", (name, d["reasons"])

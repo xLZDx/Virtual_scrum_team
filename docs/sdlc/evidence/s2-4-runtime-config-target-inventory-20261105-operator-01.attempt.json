@@ -1,0 +1,39 @@
+{
+  "task": "S2-4D",
+  "authorization_source": "Operator active autonomous-completion instruction; routine read-only evidence collection",
+  "prior_grant_reused": false,
+  "head": "e1f6d9363ed9b85c998786a2688ca79f4aeca8ff",
+  "argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/bin/sh",
+    "-c",
+    "if /usr/bin/mountpoint -q /mnt/d; then\n  :\nelse\n  rc=$?\n  [ \"$rc\" -eq 32 ] || exit \"$rc\"\n  /usr/bin/mount -t drvfs D: /mnt/d -o ro || exit $?\nfi\nexec /usr/bin/python3.12 -I -B -S /mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py"
+  ],
+  "started_utc": "2026-11-05T02:05:38.066270+00:00",
+  "internal_review": [
+    "code-explorer s2_4d_collector_launch: corrected launch sequence",
+    "security-reviewer s2_4d_inventory_wrapper_review: no security blocker"
+  ],
+  "invocations": 1,
+  "exit_code": 0,
+  "stdout": {
+    "path": "docs\\sdlc\\evidence\\s2-4-runtime-config-target-inventory-20261105-operator-01.stdout.json",
+    "bytes": 35848,
+    "sha256": "d039e9cc6f71d37b61ad7468579cf57b69713697690d2e7edaf395863308b580"
+  },
+  "stderr": {
+    "path": "docs\\sdlc\\evidence\\s2-4-runtime-config-target-inventory-20261105-operator-01.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "schema": "VST_S2_RUNTIME_CONFIG_TARGET_INVENTORY_V1",
+  "captured_head": "e1f6d9363ed9b85c998786a2688ca79f4aeca8ff",
+  "qualifying_head": true,
+  "observation_keys": "list",
+  "finished_utc": "2026-11-05T02:05:45.937380+00:00"
+}

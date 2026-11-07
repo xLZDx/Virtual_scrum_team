@@ -1,0 +1,47 @@
+{
+  "schema": "VST_S2_4D_TERMINAL_RECONCILIATION_V1",
+  "decision_id": "f0c83b02-f043-4f09-8ea4-cdc8e608b6a0",
+  "task_id": "S2-4D",
+  "owner": "Codex",
+  "authorization": {
+    "keeper_sessions_authorized": 1,
+    "keeper_sessions_started": 1,
+    "retry_cap": 0,
+    "applier_invocations_authorized": 1,
+    "applier_invocations_started": 0
+  },
+  "outcome": "ABORTED_BEFORE_COLLECTOR_AND_APPLIER",
+  "acceptance_evidence": {
+    "fresh_same_keeper_inventory": "NOT_RUN",
+    "dry_payload_preflight": "NOT_RUN",
+    "post_inventory": "NOT_RUN",
+    "target_mutation": "NOT_RUN",
+    "TestRun": "NOT_RUN"
+  },
+  "failure": {
+    "observed": "PowerShell ReadLineAsync failed because a prior asynchronous read remained pending; operation stopped before collector or applier.",
+    "keeper_pid": 42016,
+    "last_known_cleanup": "An approved stdin sentinel was written, but the WSL command did not exit within 30 seconds. No process kill or distribution termination was attempted.",
+    "process_snapshot_local_time": "2026-11-05T17:15:11+02:00",
+    "processes_still_visible_after_10_seconds": [
+      { "pid": 42016, "parent_pid": 38760, "name": "wsl.exe" },
+      { "pid": 20620, "parent_pid": 42016, "name": "wsl.exe" },
+      { "pid": 15892, "parent_pid": 20620, "name": "wslhost.exe" }
+    ],
+    "original_parent_pid_38760": "NOT_FOUND_IN_PROCESS_SNAPSHOT",
+    "ubuntu_24_04_state": "RUNNING",
+    "keeper_python_process_identity": "UNKNOWN",
+    "limitation": "The original stdin pipe handle is no longer available to this shell. Visible WSL processes do not establish that the keeper Python process remains alive; no further runtime command was issued."
+  },
+  "decision": "Treat the one-shot grant as consumed. Do not retry, start another keeper, run the collector, or invoke the applier under this grant. Preserve the visible WSL process tree; do not terminate it without a separately authorized safe procedure.",
+  "next_step": {
+    "owner": "Codex",
+    "dependency": "The original keeper process tree must reach a confirmed terminal state, followed by a fresh GPT-PM one-shot authorization; the current grant has retry_cap=0.",
+    "action": "Reconcile the process terminal state using non-mutating evidence. Only then request a fresh narrowly bound grant and repeat the prelaunch envelope with a corrected single-read stdin control flow."
+  },
+  "provenance": {
+    "attempt_log": "docs/sdlc/evidence/s2-4d-bounded-config-refresh-f0c83b02-f043-4f09-8ea4-cdc8e608b6a0-01.attempt.jsonl",
+    "prelaunch_envelope": "docs/sdlc/evidence/s2-4d-bounded-config-refresh-f0c83b02-f043-4f09-8ea4-cdc8e608b6a0-02.authorization-envelope.json",
+    "prelaunch_envelope_sha256": "ce5be01c11182c2758726a646627a3f2634378405dc6c1efb88aa66b1a6d6163"
+  }
+}

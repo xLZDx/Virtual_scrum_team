@@ -1,0 +1,175 @@
+{
+  "authorization_id": "4b098f5d-3a59-49f4-a938-5a5fd0500a4e",
+  "observed_utc": "2026-11-05T21:29:01.2372327Z",
+  "query": "Get-CimInstance Win32_Process | filter target IDs 65448,96784,66872,42016,40072,20620,15892,25072 plus observable ancestors and WSL-target descendants | select PID, PPID, name, creation date, executable path, command line",
+  "exit_code": 0,
+  "raw_output_sha256": "E0EC45112776B35D4AEC8E6434497997443BC086B2B3AD19AC7FDD6E5C343E16",
+  "command_line_sanitization": "Sensitive-looking values redacted before publication; raw command lines not written to disk",
+  "target_processes": [
+    {
+      "pid": 1716,
+      "ppid": 1588,
+      "name": "wininit.exe",
+      "creation_utc": "2026-11-04T16:16:29.7043650Z",
+      "executable": null,
+      "command_line": null,
+      "present": true,
+      "original_bound_pid": false,
+      "target_parent_65448": false
+    },
+    {
+      "pid": 1796,
+      "ppid": 1716,
+      "name": "services.exe",
+      "creation_utc": "2026-11-04T16:16:29.9683020Z",
+      "executable": null,
+      "command_line": null,
+      "present": true,
+      "original_bound_pid": false,
+      "target_parent_65448": false
+    },
+    {
+      "pid": 2592,
+      "ppid": 1796,
+      "name": "svchost.exe",
+      "creation_utc": "2026-11-04T16:16:30.4881240Z",
+      "executable": null,
+      "command_line": null,
+      "present": true,
+      "original_bound_pid": false,
+      "target_parent_65448": false
+    },
+    {
+      "pid": 15892,
+      "ppid": 20620,
+      "name": "wslhost.exe",
+      "creation_utc": "2026-11-05T15:15:20.5139300Z",
+      "executable": "C:\\Program Files\\WSL\\wslhost.exe",
+      "command_line": " --distro-id {366d1ca4-c5b5-4eb5-8583-15220fa8a286} --vm-id {70549578-0fbd-4a05-a841-b63d4d92f73b} --handle 936 --event 964 --parent 968",
+      "present": true,
+      "original_bound_pid": true,
+      "target_parent_65448": false
+    },
+    {
+      "pid": 20620,
+      "ppid": 42016,
+      "name": "wsl.exe",
+      "creation_utc": "2026-11-05T15:15:11.5889860Z",
+      "executable": "C:\\Program Files\\WSL\\wsl.exe",
+      "command_line": "\"C:\\Windows\\system32\\wsl.exe\"",
+      "present": true,
+      "original_bound_pid": true,
+      "target_parent_65448": false
+    },
+    {
+      "pid": 25072,
+      "ppid": 15892,
+      "name": "conhost.exe",
+      "creation_utc": "2026-11-05T15:15:20.6318210Z",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "command_line": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4",
+      "present": true,
+      "original_bound_pid": true,
+      "target_parent_65448": false
+    },
+    {
+      "pid": 40072,
+      "ppid": 42016,
+      "name": "conhost.exe",
+      "creation_utc": "2026-11-05T15:15:11.3515920Z",
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "command_line": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4",
+      "present": true,
+      "original_bound_pid": true,
+      "target_parent_65448": false
+    },
+    {
+      "pid": 40192,
+      "ppid": 51588,
+      "name": "codex.exe",
+      "creation_utc": "2026-11-05T12:08:26.2947410Z",
+      "executable": "C:\\Users\\koros\\AppData\\Local\\OpenAI\\Codex\\bin\\a159911ff70742e9\\codex.exe",
+      "command_line": "C:\\Users\\koros\\AppData\\Local\\OpenAI\\Codex\\bin\\a159911ff70742e9\\codex.exe -c features.code_mode_host=true app-server --analytics-default-enabled -c features.prefer_mxc=true -c plugins.codex-app-tools@openai-bundled.mcp_servers.codex_app.enabled=true",
+      "present": true,
+      "original_bound_pid": false,
+      "target_parent_65448": false
+    },
+    {
+      "pid": 42016,
+      "ppid": 38760,
+      "name": "wsl.exe",
+      "creation_utc": "2026-11-05T15:15:11.3361700Z",
+      "executable": "C:\\Windows\\system32\\wsl.exe",
+      "command_line": "\"C:\\Windows\\system32\\wsl.exe\"",
+      "present": true,
+      "original_bound_pid": true,
+      "target_parent_65448": false
+    },
+    {
+      "pid": 51588,
+      "ppid": 54052,
+      "name": "ChatGPT.exe",
+      "creation_utc": "2026-11-05T12:08:22.6493990Z",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1029.7803.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe",
+      "command_line": "\"C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1029.7803.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe\" ",
+      "present": true,
+      "original_bound_pid": false,
+      "target_parent_65448": false
+    },
+    {
+      "pid": 54052,
+      "ppid": 2592,
+      "name": "sihost.exe",
+      "creation_utc": "2026-11-05T12:07:44.7139750Z",
+      "executable": "C:\\WINDOWS\\system32\\sihost.exe",
+      "command_line": "sihost.exe",
+      "present": true,
+      "original_bound_pid": false,
+      "target_parent_65448": false
+    },
+    {
+      "pid": 65448,
+      "ppid": 40192,
+      "name": "pwsh.exe",
+      "creation_utc": "2026-11-05T21:21:18.5310620Z",
+      "executable": "C:\\Program Files\\WindowsApps\\OpenAI.CodexPrimaryRuntime.v26-1103-91-0_26.1103.91.0_x64__3k8sg7r9htsxt\\dependencies\\native\\powershell\\pwsh.exe",
+      "command_line": "\"C:\\Program Files\\WindowsApps\\OpenAI.CodexPrimaryRuntime.v26-1103-91-0_26.1103.91.0_x64__3k8sg7r9htsxt\\dependencies\\native\\powershell\\pwsh.exe\" -Command \"try { [Console]::OutputEncoding=[System.Text.Encoding]::UTF8 } catch {}\n$ErrorActionPreference='Stop'; $plan=Get-Content 'docs/sdlc/evidence/s2-4d-linux-process-inventory-plan-f26fa193-6fe1-499b-8b3e-31c72d637905.json' -Raw | ConvertFrom-Json; $out='docs/sdlc/evidence/s2-4d-linux-process-inventory-f26fa193-20261105.stdout.json'; $err='docs/sdlc/evidence/s2-4d-linux-process-inventory-f26fa193-20261105.stderr.txt'; if((Test-Path $out) -or (Test-Path $err)){throw 'Output artifact already exists'}; $started=[DateTime]::UtcNow.ToString('o'); $wslArgs=@($plan.exact_command.argv); & wsl.exe @wslArgs 1> $out 2> $err; $exit=$LASTEXITCODE; $finished=[DateTime]::UtcNow.ToString('o'); $hashes=@(Get-FileHash $out,$err -Algorithm SHA256 | Select-Object Path,Hash); [pscustomobject]@{Authorization=[REDACTED];StartedUtc=$started;FinishedUtc=$finished;Command='wsl.exe --distribution Ubuntu-24.04 --exec /usr/bin/python3 -I -B -S -c <script exactly as recorded in plan>';ExitCode=$exit;StdoutPath=$out;StderrPath=$err;ArtifactHashes=$hashes;StdoutBytes=(Get-Item $out).Length;StderrBytes=(Get-Item $err).Length} | ConvertTo-Json -Depth 5\"",
+      "present": true,
+      "original_bound_pid": false,
+      "target_parent_65448": true
+    },
+    {
+      "pid": 66872,
+      "ppid": 96784,
+      "name": "wsl.exe",
+      "creation_utc": "2026-11-05T21:21:22.3517900Z",
+      "executable": "C:\\Program Files\\WSL\\wsl.exe",
+      "command_line": "\"C:\\Windows\\system32\\wsl.exe\" --distribution Ubuntu-24.04 --exec /usr/bin/python3 -I -B -S -c \"import os, json, datetime, sys\nPROC = \\\"/proc\\\"\nMAX_BYTES = 4_000_000\ntry:\n    boot_id = open(\\\"/proc/sys/kernel/random/boot_id\\\", \\\"r\\\", encoding=\\\"ascii\\\").read().strip()\n    boot_time = None\n    for line in open(\\\"/proc/stat\\\", \\\"r\\\", encoding=\\\"ascii\\\"):\n        if line.startswith(\\\"btime \\\"):\n            boot_time = int(line.split()[1])\n            break\n    hz = os.sysconf(\\\"SC_CLK_TCK\\\")\n    pids = sorted((int(name) for name in os.listdir(PROC) if name.isdigit()))\n    rows = []\n    for pid in pids:\n        base = f\\\"/proc/{pid}\\\"\n        row = {\\\"pid\\\": pid, \\\"ppid\\\": None, \\\"uid\\\": None, \\\"start_ticks\\\": None, \\\"start_utc\\\": None, \\\"state\\\": None, \\\"exe\\\": None, \\\"name\\\": None, \\\"read_errors\\\": []}\n        try:\n            raw = open(base + \\\"/stat\\\", \\\"r\\\", encoding=\\\"ascii\\\").read()\n            close = raw.rfind(\\\")\\\")\n            if close < 0:\n                raise ValueError(\\\"malformed stat\\\")\n            fields = raw[close + 2:].split()\n            row[\\\"state\\\"] = fields[0]\n            row[\\\"ppid\\\"] = int(fields[1])\n            row[\\\"start_ticks\\\"] = int(fields[19])\n            if boot_time is not None:\n                row[\\\"start_utc\\\"] = datetime.datetime.fromtimestamp(boot_time + row[\\\"start_ticks\\\"] / hz, datetime.timezone.utc).isoformat()\n        except Exception as exc:\n            row[\\\"read_errors\\\"].append(\\\"stat:\\\" + type(exc).__name__)\n        try:\n            for line in open(base + \\\"/status\\\", \\\"r\\\", encoding=\\\"ascii\\\"):\n                if line.startswith(\\\"Uid:\\\"):\n                    row[\\\"uid\\\"] = [int(x) for x in line.split()[1:5]]\n                    break\n        except Exception as exc:\n            row[\\\"read_errors\\\"].append(\\\"status:\\\" + type(exc).__name__)\n        try:\n            row[\\\"name\\\"] = open(base + \\\"/comm\\\", \\\"r\\\", encoding=\\\"utf-8\\\", errors=\\\"replace\\\").read().rstrip(\\\"\\n\\\")\n        except Exception as exc:\n            row[\\\"read_errors\\\"].append(\\\"comm:\\\" + type(exc).__name__)\n        try:\n            row[\\\"exe\\\"] = os.readlink(base + \\\"/exe\\\")\n        except Exception as exc:\n            row[\\\"read_errors\\\"].append(\\\"exe:\\\" + type(exc).__name__)\n        rows.append(row)\n    by_pid = {r[\\\"pid\\\"]: r for r in rows}\n    for row in rows:\n        row[\\\"children\\\"] = sorted(r[\\\"pid\\\"] for r in rows if r[\\\"ppid\\\"] == row[\\\"pid\\\"])\n    candidates = [r[\\\"pid\\\"] for r in rows if (r[\\\"name\\\"] or \\\"\\\").lower().startswith(\\\"python\\\") or os.path.basename(r[\\\"exe\\\"] or \\\"\\\").lower().startswith(\\\"python\\\")]\n    result = {\\\"schema\\\": \\\"s2-4d-linux-process-inventory-v1\\\", \\\"boot_id\\\": boot_id, \\\"boot_time_epoch\\\": boot_time, \\\"clock_ticks_per_second\\\": hz, \\\"observed_utc\\\": datetime.datetime.now(datetime.timezone.utc).isoformat(), \\\"process_count\\\": len(rows), \\\"python_candidates\\\": candidates, \\\"processes\\\": rows, \\\"cmdline_read\\\": False, \\\"environ_read\\\": False, \\\"truncated\\\": False}\n    encoded = json.dumps(result, separators=(\\\",\\\", \\\":\\\"), ensure_ascii=True)\n    if len(encoded.encode(\\\"utf-8\\\")) > MAX_BYTES:\n        compact = {\\\"schema\\\": result[\\\"schema\\\"], \\\"boot_id\\\": boot_id, \\\"observed_utc\\\": result[\\\"observed_utc\\\"], \\\"process_count\\\": len(rows), \\\"python_candidates\\\": candidates, \\\"truncated\\\": True, \\\"truncation_reason\\\": \\\"inventory exceeds 4,000,000 UTF-8 bytes\\\", \\\"cmdline_read\\\": False, \\\"environ_read\\\": False}\n        encoded = json.dumps(compact, separators=(\\\",\\\", \\\":\\\"), ensure_ascii=True)\n    sys.stdout.write(encoded + \\\"\\n\\\")\nexcept Exception as exc:\n    sys.stderr.write(json.dumps({\\\"error\\\": type(exc).__name__, \\\"message\\\": str(exc)}, separators=(\\\",\\\", \\\":\\\")) + \\\"\\n\\\")\n    raise SystemExit(2)\n\"",
+      "present": true,
+      "original_bound_pid": false,
+      "target_parent_65448": false
+    },
+    {
+      "pid": 96784,
+      "ppid": 65448,
+      "name": "wsl.exe",
+      "creation_utc": "2026-11-05T21:21:21.9305260Z",
+      "executable": "C:\\Windows\\system32\\wsl.exe",
+      "command_line": "\"C:\\Windows\\system32\\wsl.exe\" --distribution Ubuntu-24.04 --exec /usr/bin/python3 -I -B -S -c \"import os, json, datetime, sys\nPROC = \\\"/proc\\\"\nMAX_BYTES = 4_000_000\ntry:\n    boot_id = open(\\\"/proc/sys/kernel/random/boot_id\\\", \\\"r\\\", encoding=\\\"ascii\\\").read().strip()\n    boot_time = None\n    for line in open(\\\"/proc/stat\\\", \\\"r\\\", encoding=\\\"ascii\\\"):\n        if line.startswith(\\\"btime \\\"):\n            boot_time = int(line.split()[1])\n            break\n    hz = os.sysconf(\\\"SC_CLK_TCK\\\")\n    pids = sorted((int(name) for name in os.listdir(PROC) if name.isdigit()))\n    rows = []\n    for pid in pids:\n        base = f\\\"/proc/{pid}\\\"\n        row = {\\\"pid\\\": pid, \\\"ppid\\\": None, \\\"uid\\\": None, \\\"start_ticks\\\": None, \\\"start_utc\\\": None, \\\"state\\\": None, \\\"exe\\\": None, \\\"name\\\": None, \\\"read_errors\\\": []}\n        try:\n            raw = open(base + \\\"/stat\\\", \\\"r\\\", encoding=\\\"ascii\\\").read()\n            close = raw.rfind(\\\")\\\")\n            if close < 0:\n                raise ValueError(\\\"malformed stat\\\")\n            fields = raw[close + 2:].split()\n            row[\\\"state\\\"] = fields[0]\n            row[\\\"ppid\\\"] = int(fields[1])\n            row[\\\"start_ticks\\\"] = int(fields[19])\n            if boot_time is not None:\n                row[\\\"start_utc\\\"] = datetime.datetime.fromtimestamp(boot_time + row[\\\"start_ticks\\\"] / hz, datetime.timezone.utc).isoformat()\n        except Exception as exc:\n            row[\\\"read_errors\\\"].append(\\\"stat:\\\" + type(exc).__name__)\n        try:\n            for line in open(base + \\\"/status\\\", \\\"r\\\", encoding=\\\"ascii\\\"):\n                if line.startswith(\\\"Uid:\\\"):\n                    row[\\\"uid\\\"] = [int(x) for x in line.split()[1:5]]\n                    break\n        except Exception as exc:\n            row[\\\"read_errors\\\"].append(\\\"status:\\\" + type(exc).__name__)\n        try:\n            row[\\\"name\\\"] = open(base + \\\"/comm\\\", \\\"r\\\", encoding=\\\"utf-8\\\", errors=\\\"replace\\\").read().rstrip(\\\"\\n\\\")\n        except Exception as exc:\n            row[\\\"read_errors\\\"].append(\\\"comm:\\\" + type(exc).__name__)\n        try:\n            row[\\\"exe\\\"] = os.readlink(base + \\\"/exe\\\")\n        except Exception as exc:\n            row[\\\"read_errors\\\"].append(\\\"exe:\\\" + type(exc).__name__)\n        rows.append(row)\n    by_pid = {r[\\\"pid\\\"]: r for r in rows}\n    for row in rows:\n        row[\\\"children\\\"] = sorted(r[\\\"pid\\\"] for r in rows if r[\\\"ppid\\\"] == row[\\\"pid\\\"])\n    candidates = [r[\\\"pid\\\"] for r in rows if (r[\\\"name\\\"] or \\\"\\\").lower().startswith(\\\"python\\\") or os.path.basename(r[\\\"exe\\\"] or \\\"\\\").lower().startswith(\\\"python\\\")]\n    result = {\\\"schema\\\": \\\"s2-4d-linux-process-inventory-v1\\\", \\\"boot_id\\\": boot_id, \\\"boot_time_epoch\\\": boot_time, \\\"clock_ticks_per_second\\\": hz, \\\"observed_utc\\\": datetime.datetime.now(datetime.timezone.utc).isoformat(), \\\"process_count\\\": len(rows), \\\"python_candidates\\\": candidates, \\\"processes\\\": rows, \\\"cmdline_read\\\": False, \\\"environ_read\\\": False, \\\"truncated\\\": False}\n    encoded = json.dumps(result, separators=(\\\",\\\", \\\":\\\"), ensure_ascii=True)\n    if len(encoded.encode(\\\"utf-8\\\")) > MAX_BYTES:\n        compact = {\\\"schema\\\": result[\\\"schema\\\"], \\\"boot_id\\\": boot_id, \\\"observed_utc\\\": result[\\\"observed_utc\\\"], \\\"process_count\\\": len(rows), \\\"python_candidates\\\": candidates, \\\"truncated\\\": True, \\\"truncation_reason\\\": \\\"inventory exceeds 4,000,000 UTF-8 bytes\\\", \\\"cmdline_read\\\": False, \\\"environ_read\\\": False}\n        encoded = json.dumps(compact, separators=(\\\",\\\", \\\":\\\"), ensure_ascii=True)\n    sys.stdout.write(encoded + \\\"\\n\\\")\nexcept Exception as exc:\n    sys.stderr.write(json.dumps({\\\"error\\\": type(exc).__name__, \\\"message\\\": str(exc)}, separators=(\\\",\\\", \\\":\\\")) + \\\"\\n\\\")\n    raise SystemExit(2)\n\"",
+      "present": true,
+      "original_bound_pid": false,
+      "target_parent_65448": false
+    }
+  ],
+  "unresolved_process_ids": [
+    65448,
+    96784,
+    66872,
+    42016,
+    40072,
+    20620,
+    15892,
+    25072
+  ],
+  "no_process_action": "true"
+}

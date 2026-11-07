@@ -192,18 +192,18 @@ def test_store_rejects_bad_path(bad):
     raises_kind("argument", Store, bad, FakeClock(), event_key=EVENT_KEY)
 
 
-def test_new_database_has_schema_version_three_and_wal(tmp_path):
+def test_new_database_has_schema_version_four_and_wal(tmp_path):
     path = str(tmp_path / "s.db")
     with open_store(path):
         pass
-    assert SCHEMA_VERSION == 3
-    assert rows(path, "PRAGMA user_version")[0][0] == 3
+    assert SCHEMA_VERSION == 4
+    assert rows(path, "PRAGMA user_version")[0][0] == 4
     assert rows(path, "PRAGMA journal_mode")[0][0].lower() == "wal"
     tables = {r["name"] for r in rows(path, "SELECT name FROM sqlite_master WHERE type='table'")}
     assert {"stories", "tasks", "leases", "slots", "receipts", "events", "budget", "meta"} <= tables
 
 
-def test_reopen_of_a_version_three_database_keeps_data(tmp_path):
+def test_reopen_of_a_version_four_database_keeps_data(tmp_path):
     path = str(tmp_path / "s.db")
     clock = FakeClock()
     with open_store(path, clock) as s:
@@ -228,7 +228,7 @@ def test_legacy_database_with_tables_but_no_version_is_refused(tmp_path):
     assert [r[0] for r in rows(path, "SELECT story_id FROM stories")] == ["keep-me"]
 
 
-@pytest.mark.parametrize("version", [1, 2, 4, 99])
+@pytest.mark.parametrize("version", [1, 2, 99])
 def test_foreign_schema_version_is_refused(tmp_path, version):
     path = str(tmp_path / "v.db")
     conn = sqlite3.connect(path)

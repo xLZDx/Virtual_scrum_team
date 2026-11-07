@@ -1,0 +1,4 @@
+wsl: Failed to start the systemd user session for 'root'. See journalctl for more details.
+INVENTORY_BEGIN
+COLLECTOR_EXIT=0
+WRAPPER_MOUNT_CREATED=1

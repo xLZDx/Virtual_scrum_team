@@ -1,0 +1,32 @@
+SPRINT:S2 — Isolated worker sandbox. TASK:S2-4D — Reconcile report-bound manifest and TestRun scope.
+Final bounded SOURCE/contract retry remediation vs approved/pushed11c90281c514465db8b89b90b76b6cd80f1a8111. Keep prior bootstrap/Git/typedguard approvals ae97205e,6bc91aa6,3c1b8c79. No broaderreview/reexecution.
+Actual11c configapply freshinventoryexit0 thenHOSTvalidatorrefusedexit2 beforeWSLapply: newrecoveryguards were requiredABSENT although earlierad45apply hadalready publishedexactpreparedguardpairbeforefailingunprintableConditions. Guardsare root0gid0mode0644 size93 SHA05e12ed07359a8ec83b161dda0d79ac4f15c27c366e75f1e5beefa9c76fafb37. Actualreadonly typedguard helperalreadytruebothunits, marker/ledger/Storeabsent. No blindretry, no guarddeletion or rollback undertaken.
+DeltaONLYvalidator+collectorpin+inventorytests. Validateexact27candidatedestinations, exact2addedguardpaths unchanged. For2guardpaths, allowpositiveABSENT OR exactcandidatefullfingerprint. DeriveguardexpectedbytesfromrawGitblob at expectedcommittedHEAD andverifybundlememberhash/size; metadata comesfrompinnedcandidate layout. No arbitraryexistingfileadmission; symlink/nonregular/unknown/missingfields/badowner/mode/size/hashrejected. Allother25previouscandidatefingerprints remainstrictconsumedbaseline; sourceidentity/boot/freshness/readiness/runidentity unchanged. CollectorVALIDATOR_SHAupdatedtoexactnewvalidator. Noapplier/helper/manifest/policy/runtimechanges.
+Actual independent code-reviewer /root/s2_4d_durability_narrow_code configuredgpt-6-luna effortomitted/inherited: no materialB/M; security-reviewer /root/s2_4d_git_trust_security configuredgpt-6-luna explicitmedium: no actionableB/M/minor. Read-only actualdelta reviews, no independentlyrun tests. Internal consensusGO/noopenin-scopefindings.
+Actual functional-test-reviewer /root/s2_4d_bootstrap_contract_tests owns authored/executed only tests/vst/test_s2_runtime_config_inventory.py. Exactcommand python -m pytest -q --tb=line tests/vst/test_s2_runtime_config_inventory.py, Python subprocess.run argv shellFalse withrawstdoutstderr/actualreturncode; 77passed,1pytest_asyncio warning,exit0,stderr empty. Casesbothabsent/exactpair/mixedpairs accept, tamperedhash/size/uid/gid/mode/kind/symlink/unknownpresence reject, pinnedguardmembertamper/unsafe source refuse, build_payloadcanonicalmodepassthrough withpreparedpair. Metadata/current3sourcehashes andrawstdoutattached. No requiredWSLtest forpurehostvalidator delta; prioractual typedguardintegration retained, no newruntime successclaim. Source/test frozen; productcodingdonebeforetestexecution.
+Source commit+normalpush neededbeforeactualfreshapply becauseexistingapplierrequirespushedcanonicalHEAD. CurrenttaskS2D remainsOPEN, reportboundTestRunNOT_RUN, no productionauthority. ExistingoperatorautonomoussandboxsetupGO separatefromsourceapproval. Nextactualapply willusefreshinventoryandexactsources; noreuseexpiredcapture.
+Please onecompleteadversarialsweep of thisexact3filedelta/directintegration using actualfunctional+internalreviewevidence. Ifclear approveexact3SHA256forcommit+normalpush; do not demandduplicatedexecutionmerelybecauseyoudidnotruntests. No documentationwordinggate. Preserveold35legacycollectorfixtureerrors as disclosedunchangedbaseline outsidecurrentdelta; notclaimedgreen and no removedrequirementsreintroduced. No wholeSprint/runtimeapproval sought.
+
+Exactcandidateidentity:
+{
+  "baseline": "11c90281c514465db8b89b90b76b6cd80f1a8111",
+  "files": [
+    {
+      "path": "tools/qa/verify_s2_runtime_config_inventory.py",
+      "sha256": "cd98cc7e9ce2b5975fd2e0a9089a96d654358cdb585cae871aec257136377c8d",
+      "bytes": 28917
+    },
+    {
+      "path": "tools/qa/collect_s2_runtime_config_inventory.py",
+      "sha256": "01316a062277b7d21bbab0eee89706884287069a7fb4e2cc9b79f0c70a3775fc",
+      "bytes": 21643
+    },
+    {
+      "path": "tests/vst/test_s2_runtime_config_inventory.py",
+      "sha256": "c878462dbdb3f36f39fab241d263786e4ab4fbb7e015b8f0e6897ea341de357e",
+      "bytes": 41700
+    }
+  ],
+  "diff_sha256": "ced74263b2bbd1f3e3f020041c0c7c2e1265f27d35c8b30235705de783aa0df8",
+  "diff_bytes": 10393
+}

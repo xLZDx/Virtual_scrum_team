@@ -1,0 +1,77 @@
+{
+  "record_type": "focused-test-execution-evidence",
+  "task": "S2-4 task-source snapshot",
+  "date": "2026-10-30",
+  "run_label": "windows-owner-map-run2",
+  "supersedes_run_label": "windows-owner-map-fixture failure record remains historical; this later run uses the corrected close wrapper",
+  "run_environment": {
+    "os_platform": "Windows (pytest reported platform win32)",
+    "working_directory": "D:\\Repo\\Virtual_scrum_team",
+    "python_executable": "C:\\Python314\\python.exe",
+    "python_version": "Python 3.14.3",
+    "pytest_version": "pytest 8.4.2",
+    "pluggy_version": "1.6.0",
+    "plugins": {
+      "anyio": "4.13.0",
+      "hypothesis": "6.165.7",
+      "pytest-asyncio": "0.26.0"
+    },
+    "pytest_asyncio_mode": "strict"
+  },
+  "git": {
+    "head_before": "aedf712c07eb0cc531852d18443faa497e19bb2d",
+    "head_after": "aedf712c07eb0cc531852d18443faa497e19bb2d",
+    "initial_relevant_status": [
+      " M tests/vst/test_s2_runtime_config_bundle.py",
+      " M tests/vst/test_s2_runtime_config_inventory.py"
+    ],
+    "final_relevant_status": [
+      " M tests/vst/test_s2_runtime_config_bundle.py",
+      " M tests/vst/test_s2_runtime_config_inventory.py"
+    ],
+    "dirty_change_origin": "UNKNOWN; assigned test files were modified before this run series; this runner made no edits"
+  },
+  "execution": {
+    "start_time": "UNKNOWN; not captured by command runner",
+    "end_time": "UNKNOWN; not captured by command runner",
+    "duration_reported_by_pytest_seconds": 7.41,
+    "command": "python -B -m pytest -p no:cacheprovider tests/vst/test_s2_runtime_config_bundle.py::test_task_source_snapshot_manifest_pins_canonical_archive_and_layout tests/vst/test_s2_runtime_config_inventory.py::test_apply_payload_preserves_validated_canonical_octal_mode tests/vst/test_s2_runtime_config_inventory.py::test_remote_task_snapshot_parser_rejects_unsafe_tar_members tests/vst/test_s2_runtime_config_inventory.py::test_remote_task_snapshot_installs_exact_read_only_tree_and_is_idempotent tests/vst/test_s2_runtime_config_inventory.py::test_remote_task_snapshot_refuses_nonexact_existing_tree_without_overwrite tests/vst/test_s2_runtime_config_inventory.py::test_remote_task_snapshot_rejects_unsafe_parent_without_writing",
+    "selectors": [
+      "tests/vst/test_s2_runtime_config_bundle.py::test_task_source_snapshot_manifest_pins_canonical_archive_and_layout",
+      "tests/vst/test_s2_runtime_config_inventory.py::test_apply_payload_preserves_validated_canonical_octal_mode",
+      "tests/vst/test_s2_runtime_config_inventory.py::test_remote_task_snapshot_parser_rejects_unsafe_tar_members",
+      "tests/vst/test_s2_runtime_config_inventory.py::test_remote_task_snapshot_installs_exact_read_only_tree_and_is_idempotent",
+      "tests/vst/test_s2_runtime_config_inventory.py::test_remote_task_snapshot_refuses_nonexact_existing_tree_without_overwrite",
+      "tests/vst/test_s2_runtime_config_inventory.py::test_remote_task_snapshot_rejects_unsafe_parent_without_writing"
+    ],
+    "collected_cases": 11,
+    "passed": 11,
+    "failed": 0,
+    "warnings": [
+      "tests/vst/test_s2_runtime_config_bundle.py::test_task_source_snapshot_manifest_pins_canonical_archive_and_layout: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16 (pytest_asyncio/plugin.py:1216)"
+    ],
+    "exit_code": 0,
+    "stdout_stderr_capture": "Combined by the command runner; streams were not separately captured",
+    "transcript_file": "docs/sdlc/evidence/s2-4-task-source-snapshot-windows-owner-map-run2-20261030.txt"
+  },
+  "scope": {
+    "test_files": [
+      "tests/vst/test_s2_runtime_config_bundle.py",
+      "tests/vst/test_s2_runtime_config_inventory.py"
+    ],
+    "source_or_runtime_changes": false,
+    "runtime_configuration_applied": false,
+    "systemd_or_service_actions": false,
+    "additional_test_selectors_run": false
+  },
+  "fixture_context": {
+    "change": "Functional-test-reviewer models ownership metadata and chown/fchown calls on both platforms; Windows-only mode/open/rename/directory-fd/stat/cleanup shims handle host differences. POSIX permission/filesystem operations remain native. The generic POSIX close path no longer replaces the directory-aware Windows close wrapper. The unsafe-parent test sets mocked root ownership before chmod 0777.",
+    "origin": "Functional-test-reviewer change already present in the shared checkout; not authored by this runner"
+  },
+  "limitations": [
+    "This is a native Windows run and does not establish actual POSIX filesystem semantics.",
+    "Ubuntu-24.04 WSL POSIX selector execution is NOT_RUN.",
+    "The canonical archive producer size/SHA comparison in the WSL checkout is NOT_RUN.",
+    "A prior temporary DrvFS mount command returned exit code 0 with no output, but findmnt --mountpoint returned exit code 1 with no output and the mountpoint remained on ext4; only the empty temporary mountpoint was removed. Existing mounts and global WSL configuration were untouched."
+  ]
+}

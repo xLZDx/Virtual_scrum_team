@@ -1,0 +1,120 @@
+{
+  "schema": "S2_4_12_RUNTIME_OWNER_RUNNER_ATTEMPT_V1",
+  "recorded_utc": "2026-10-30T03:44:17Z",
+  "project": "Virtual_scrum_team",
+  "source_head": "b38e723922102695cb20c579aea274dc46a86a18",
+  "installed_runtime_selector": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2",
+  "distribution": "Ubuntu-24.04 WSL2",
+  "boot_id": "270cd88b-183f-426c-8add-872d9e98bcec",
+  "authorization": {
+    "task_id": "S2-4-runtime-owner-runner-qualification",
+    "story_id": "S2-4",
+    "owner_role": "functional-test-reviewer",
+    "model_policy": "gpt-6-luna",
+    "retry_cap": 0,
+    "allowed_test_id": "tests/vst/test_s2_assignment_basis.py::test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment",
+    "test_run_receipt_required": true
+  },
+  "probe_binding": {
+    "run_id": "s2-runtime-20261030-87d47f635f1c4231ab052a074dba4be8",
+    "nonce": "0d2bb2c5f977478a924f7ec6629a339d",
+    "request_path": "/etc/vst-runner/probe-request.json",
+    "request_sha256": "6013485266a3120e1e698687c28effb511fddfeeb07822c55a1365638fbd5d71"
+  },
+  "precondition_observation": {
+    "command": "wsl.exe -d Ubuntu-24.04 -u root -- bash -lc '<UTC, boot_id, selector, relevant systemd units, jobs, Store checks>'",
+    "observed_utc": "2026-10-30T03:41:22Z",
+    "boot_id": "270cd88b-183f-426c-8add-872d9e98bcec",
+    "selector": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2",
+    "units": "vst-sandbox-probe, assignment-bootstrap, dispatch-issuer, supervisor, signer, runner, dispatcher, dispatch-owner.socket and dispatch-owner were loaded/inactive/dead",
+    "systemd_jobs": 0,
+    "store": "ABSENT"
+  },
+  "single_probe_invocation": {
+    "command": "wsl.exe -d Ubuntu-24.04 -u root -- systemctl start --no-block vst-sandbox-probe.service",
+    "command_exit_code": 0,
+    "stdout": "",
+    "invocation_id": "9ae0fc43f0534cc99dda2acb2f0661b0",
+    "main_pid": 373,
+    "observed_utc": "2026-10-30T03:41:58Z",
+    "observed_properties": {
+      "PrivateNetwork": "yes",
+      "ActiveState": "activating",
+      "SubState": "start",
+      "Result_at_observation": "success",
+      "ControlGroup": "/system.slice/vst-sandbox-probe.service"
+    },
+    "outcome": "INTERRUPTED_BY_SIGTERM_BEFORE_ROOT_CAPTURE",
+    "journal": [
+      {
+        "utc": "2026-10-30T03:41:51.926Z",
+        "invocation_id": "9ae0fc43f0534cc99dda2acb2f0661b0",
+        "message": "Starting vst-sandbox-probe.service - Virtual Scrum Team non-root run-bound preflight measurement..."
+      },
+      {
+        "utc": "2026-10-30T03:42:29.655Z",
+        "invocation_id": "9ae0fc43f0534cc99dda2acb2f0661b0",
+        "message": "vst-sandbox-probe.service: Main process exited, code=killed, status=15/TERM"
+      },
+      {
+        "utc": "2026-10-30T03:42:29.656Z",
+        "invocation_id": "9ae0fc43f0534cc99dda2acb2f0661b0",
+        "message": "vst-sandbox-probe.service: Failed with result 'signal'."
+      },
+      {
+        "utc": "2026-10-30T03:42:29.656Z",
+        "invocation_id": "9ae0fc43f0534cc99dda2acb2f0661b0",
+        "message": "Stopped vst-sandbox-probe.service - Virtual Scrum Team non-root run-bound preflight measurement."
+      }
+    ],
+    "journal_query": "journalctl -u vst-sandbox-probe.service --since '2026-10-30 03:41:40 UTC' -o json --no-pager",
+    "journal_evidence": "Four systemd manager records for the exact INVOCATION_ID above; no probe JSON record."
+  },
+  "root_observation_attempts": [
+    {
+      "attempt": 1,
+      "error": "bash: line 1: test: : integer expression expected",
+      "meaning": "MainPID lookup was empty during that command; no namespace facts or attestation were produced."
+    },
+    {
+      "attempt": 2,
+      "error": "C:Userskoros: line 1: test: : integer expression expected",
+      "meaning": "PowerShell/WSL shell quoting prevented the PID check; no namespace facts or attestation were produced."
+    },
+    {
+      "attempt": 3,
+      "error": "KeyError: 'P'",
+      "meaning": "The script did not export its PID variable to Python; it failed before reading runtime key material, observing namespaces or publishing an attestation."
+    }
+  ],
+  "final_state_read_only": {
+    "observed_utc": "2026-10-30T03:44:17Z",
+    "systemd": {
+      "LoadState": "loaded",
+      "ActiveState": "inactive",
+      "SubState": "dead",
+      "Result_current_property": "success (inactive-state default; invocation journal records signal failure)",
+      "ExecMainCode_current_property": 0,
+      "ExecMainStatus_current_property": 0,
+      "InvocationID_current_property": "empty after unit became inactive"
+    },
+    "dependent_units": "assignment-bootstrap, dispatch-issuer, supervisor, signer, runner, dispatcher, dispatch-owner.socket and dispatch-owner remained loaded/inactive/dead",
+    "systemd_jobs": 0,
+    "network_policy_attestation": "ABSENT",
+    "root_owned_preflight_record": "ABSENT",
+    "store": "ABSENT"
+  },
+  "disposition": {
+    "root_namespace_observation": "NOT_COMPLETED",
+    "root_network_policy_attestation": "NOT_PUBLISHED",
+    "preflight_capture": "NOT_RUN",
+    "bootstrap": "NOT_RUN",
+    "issuer": "NOT_RUN",
+    "supervisor_signer_runner_dispatcher_dispatch_owner": "NOT_STARTED",
+    "owner_to_runner_test_run": "NOT_RUN",
+    "retry": "PROHIBITED_BY_RETRY_CAP_0; one probe start already consumed and ended ambiguously/interrupted",
+    "source_code_edits": "NONE",
+    "private_key_material": "NOT_OUTPUT; script failed before key access"
+  },
+  "safe_next_action": "Codex owns diagnosis of why the exact systemd invocation received SIGTERM, using the captured journal and controls, then request a separately authorized fresh task/run before any new probe invocation. Do not reuse or resend this run_id/nonce."
+}

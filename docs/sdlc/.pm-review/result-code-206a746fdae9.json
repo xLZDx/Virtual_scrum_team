@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "error": "GPT reply must begin with one unquoted top-level VERDICT line",
+  "review_status": "NOT_RUN",
+  "final": false,
+  "truncated": false,
+  "final_overridden": false,
+  "verdict": "UNRECOGNIZED",
+  "correlated": false,
+  "receipt_written": false
+}

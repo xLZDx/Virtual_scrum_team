@@ -1,0 +1,24 @@
+{
+  "scope": "Read-only exact existing qualifier systemctl argv diagnostic; no qualification launched",
+  "argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/usr/bin/systemctl",
+    "show",
+    "vst-runner.service",
+    "--property=LoadState",
+    "--property=ActiveState",
+    "--property=SubState",
+    "--property=Result",
+    "--property=MainPID",
+    "--value"
+  ],
+  "returncode": 0,
+  "observed_utc": "2026-11-05T05:24:58.777083+00:00",
+  "stdout_repr": "b'0\\nsuccess\\nloaded\\ninactive\\ndead\\n'",
+  "stderr_repr": "b''"
+}

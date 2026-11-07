@@ -1,0 +1,24 @@
+{
+  "task": "S2-4 Supervisor loader recovery revalidation test delta",
+  "head": "aedf712c07eb0cc531852d18443faa497e19bb2d",
+  "environment": "Windows PowerShell; Python 3.14.3 via C:\\Python314\\python.exe",
+  "worktree": "DIRTY. tests/vst/test_s2_preflight_capture.py was already modified at task start (prior S2-4 test work); this turn added recovery revalidation assertions in that file. Multiple unrelated shared-worktree changes and untracked evidence artifacts exist. No implementation, backlog, or other docs files were edited; evidence only was added under docs/sdlc/evidence.",
+  "command": "C:\\Python314\\python.exe -m pytest -q -rs -p no:cacheprovider tests/vst/test_s2_preflight_capture.py -k 'supervisor_fresh_start or supervisor_restart'",
+  "exit_code": 0,
+  "pytest_summary": "9 skipped, 21 deselected in 0.74s",
+  "execution_status": "NOT_RUN: every selected Supervisor loader test was skipped by its explicit platform guard because capture.os.name == 'nt'; exact reason: Supervisor service contract requires POSIX path semantics. The exit code indicates pytest completed, not that these acceptance assertions executed.",
+  "selected_cases": [
+    {"nodeid": "tests/vst/test_s2_preflight_capture.py::test_supervisor_fresh_start_consumes_direct_observation_before_api_is_returned", "result": "SKIPPED: Supervisor service contract requires POSIX path semantics", "criteria": "Fresh path remains unchanged: configured nonce and identity are used, one direct observation is made, and no recovery options or old-claim verification are used."},
+    {"nodeid": "tests/vst/test_s2_preflight_capture.py::test_supervisor_restart_revalidates_environment_without_replaying_one_start_claim", "result": "SKIPPED: Supervisor service contract requires POSIX path semantics", "criteria": "Recovery verifies original durable claim first; makes one fresh observation using a distinct 64-hex nonce with require_fresh_store=False and persist_one_start_claim=False; validates current identity before/after; preserves original configured run/nonce/spec and deterministic Store digest; marks probe consumed."},
+    {"nodeid": "tests/vst/test_s2_preflight_capture.py::test_supervisor_restart_refuses_source_or_config_hash_drift_before_store_open", "result": "SKIPPED: Supervisor service contract requires POSIX path semantics", "criteria": "Recovery fails closed if current source/config identity drifts during fresh re-observation; Store is not opened."},
+    {"nodeid": "tests/vst/test_s2_preflight_capture.py::test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open[result]", "result": "SKIPPED: Supervisor service contract requires POSIX path semantics", "criteria": "Non-PASS result is refused before Store open."},
+    {"nodeid": "tests/vst/test_s2_preflight_capture.py::test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open[spec]", "result": "SKIPPED: Supervisor service contract requires POSIX path semantics", "criteria": "Spec mismatch is refused before Store open."},
+    {"nodeid": "tests/vst/test_s2_preflight_capture.py::test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open[network_profile]", "result": "SKIPPED: Supervisor service contract requires POSIX path semantics", "criteria": "Network profile mismatch is refused before Store open."},
+    {"nodeid": "tests/vst/test_s2_preflight_capture.py::test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open[mount_namespace]", "result": "SKIPPED: Supervisor service contract requires POSIX path semantics", "criteria": "Reused mount namespace is refused before Store open."},
+    {"nodeid": "tests/vst/test_s2_preflight_capture.py::test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open[network_namespace]", "result": "SKIPPED: Supervisor service contract requires POSIX path semantics", "criteria": "Reused network namespace is refused before Store open."},
+    {"nodeid": "tests/vst/test_s2_preflight_capture.py::test_supervisor_restart_refuses_invalid_fresh_observation_before_store_open[pid_namespace]", "result": "SKIPPED: Supervisor service contract requires POSIX path semantics", "criteria": "Unexpected PID namespace identity is refused before Store open."}
+  ],
+  "log": "docs/sdlc/evidence/s2-4-supervisor-recovery-loader-tests-final-2026-10-30.txt",
+  "test_source": "tests/vst/test_s2_preflight_capture.py",
+  "scope_limit": "No WSL startup, runtime/service launch, credentials, restricted selectors, implementation edits, backlog edits, or unrelated S2 work."
+}

@@ -1,0 +1,187 @@
+{
+  "apply_invocations": 0,
+  "approved_deployment_commit_used_for_dry_only": "4fe846fc1c3172f02a4fe915936ecc9c249ac61d",
+  "artifacts": {
+    "s2-4d-fresh-binding-config-inventory-dry-dc978a0-v2-01.inventory.exit-code.txt": {
+      "bytes": 2,
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-fresh-binding-config-inventory-dry-dc978a0-v2-01.inventory.exit-code.txt",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "s2-4d-fresh-binding-config-inventory-dry-dc978a0-v2-01.inventory.json": {
+      "bytes": 36339,
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-fresh-binding-config-inventory-dry-dc978a0-v2-01.inventory.json",
+      "sha256": "62d2855960d12af624af03e2e54176b3d4b94d67704d41f0605ff5d4b0d66ae3"
+    },
+    "s2-4d-fresh-binding-config-inventory-dry-dc978a0-v2-01.inventory.stderr.bin": {
+      "bytes": 0,
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-fresh-binding-config-inventory-dry-dc978a0-v2-01.inventory.stderr.bin",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "s2-4d-fresh-binding-config-inventory-dry-dc978a0-v2-01.inventory.stdout.bin": {
+      "bytes": 36339,
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-fresh-binding-config-inventory-dry-dc978a0-v2-01.inventory.stdout.bin",
+      "sha256": "62d2855960d12af624af03e2e54176b3d4b94d67704d41f0605ff5d4b0d66ae3"
+    },
+    "s2-4d-fresh-binding-config-inventory-dry-dc978a0-v2-01.keeper.stderr.bin": {
+      "bytes": 0,
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-fresh-binding-config-inventory-dry-dc978a0-v2-01.keeper.stderr.bin",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "s2-4d-fresh-binding-config-inventory-dry-dc978a0-v2-01.keeper.stdout.bin": {
+      "bytes": 407,
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-fresh-binding-config-inventory-dry-dc978a0-v2-01.keeper.stdout.bin",
+      "sha256": "32845871727d35f77a4ba92fe7beab8489a62be8c7bcdcb1337001eaf21e0a25"
+    }
+  },
+  "attempt_file": "s2-4d-fresh-binding-config-inventory-dry-dc978a0-v2-01.attempt.json",
+  "candidate_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-runtime-grant-candidate-dc978a0-v2-20261105.json",
+  "candidate_sha256": null,
+  "cwd": "D:\\Repo\\Virtual_scrum_team",
+  "elapsed_seconds": 9.836,
+  "exit_code": 1,
+  "finished_utc": "2026-11-05T11:28:05.890839+00:00",
+  "head_expected": "dc978a0e3f02c11220deea3ac3f014cb2f1718a1",
+  "head_observed": null,
+  "inventory_argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/bin/sh",
+    "-c",
+    "if /usr/bin/mountpoint -q /mnt/d; then :; else rc=$?; [ \"$rc\" -eq 32 ] || exit \"$rc\"; /usr/bin/mount -t drvfs D: /mnt/d -o ro || exit $?; fi\nexec /usr/bin/python3.12 -I -B -S /mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py"
+  ],
+  "inventory_sha256": "62d2855960d12af624af03e2e54176b3d4b94d67704d41f0605ff5d4b0d66ae3",
+  "inventory_summary": {
+    "configuration_destination_count": 27,
+    "store_present": false,
+    "unit_count": 9
+  },
+  "keeper_argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/usr/bin/python3.12",
+    "-I",
+    "-B",
+    "-S",
+    "-c",
+    "import sys,pathlib,json; print(json.dumps({'ready':True,'pid1_stat':pathlib.Path('/proc/1/stat').read_text(),'boot_id':pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip()}),flush=True); sys.stdin.buffer.read(1)"
+  ],
+  "keeper_identity": null,
+  "launcher_invocations": 0,
+  "payload_dry": null,
+  "result": {
+    "error": "INVENTORY_COUNT_MISMATCH",
+    "error_type": "RuntimeError",
+    "inventory_sha256": "62d2855960d12af624af03e2e54176b3d4b94d67704d41f0605ff5d4b0d66ae3",
+    "result": "FAIL",
+    "source_hashes": {
+      "tools/qa/apply_s2_runtime_configuration.py": "5c02647b103462502be5385eb0381acec5e989b32c787979d0841037cdb4e35c",
+      "tools/qa/collect_s2_runtime_config_inventory.py": "429d5cfd7c4fde3bfbe34da3d625a2f92474873fbc096bdbf599aeb5b8d45bcf",
+      "tools/qa/runtime_snapshot_transaction.py": "76a985ec375cd3c8ef1a5d5e1c5ac1a514d310adbf932916aad551e4a6e849f2",
+      "tools/qa/verify_s2_runtime_config_inventory.py": "c334c6cdcf2677c8f3d87f52c74951d61717e64f7dbe0f77cc0541cc32f5d135",
+      "tools/vst/preflight_capture.py": "befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119"
+    },
+    "stages": [
+      {
+        "file_hashes": {
+          "tools/qa/apply_s2_runtime_configuration.py": "5c02647b103462502be5385eb0381acec5e989b32c787979d0841037cdb4e35c",
+          "tools/qa/collect_s2_runtime_config_inventory.py": "429d5cfd7c4fde3bfbe34da3d625a2f92474873fbc096bdbf599aeb5b8d45bcf",
+          "tools/qa/runtime_snapshot_transaction.py": "76a985ec375cd3c8ef1a5d5e1c5ac1a514d310adbf932916aad551e4a6e849f2",
+          "tools/qa/verify_s2_runtime_config_inventory.py": "c334c6cdcf2677c8f3d87f52c74951d61717e64f7dbe0f77cc0541cc32f5d135",
+          "tools/vst/preflight_capture.py": "befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119"
+        },
+        "head": "dc978a0e3f02c11220deea3ac3f014cb2f1718a1",
+        "stage": "head_and_source_identity_pass",
+        "upstream": "dc978a0e3f02c11220deea3ac3f014cb2f1718a1",
+        "utc": "2026-11-05T11:27:57.659521+00:00"
+      },
+      {
+        "boot_id": "faf845b4-e863-48d7-bb82-182bf528cb96",
+        "pid1_stat_sha256": "cb7ac408bd734fb660f2bc1da566d7a0f8537aca4e1ad0dd0d48686249822dc0",
+        "stage": "keeper_ready",
+        "utc": "2026-11-05T11:28:03.364439+00:00"
+      },
+      {
+        "argv": [
+          "wsl.exe",
+          "--distribution",
+          "Ubuntu-24.04",
+          "--user",
+          "root",
+          "--exec",
+          "/bin/sh",
+          "-c",
+          "if /usr/bin/mountpoint -q /mnt/d; then :; else rc=$?; [ \"$rc\" -eq 32 ] || exit \"$rc\"; /usr/bin/mount -t drvfs D: /mnt/d -o ro || exit $?; fi\nexec /usr/bin/python3.12 -I -B -S /mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py"
+        ],
+        "stage": "inventory_started",
+        "utc": "2026-11-05T11:28:03.364461+00:00"
+      },
+      {
+        "exit_code": 0,
+        "stage": "keeper_released",
+        "utc": "2026-11-05T11:28:05.890770+00:00"
+      }
+    ]
+  },
+  "runtime_or_configuration_mutation": false,
+  "schema": "VST_S2_4D_FRESH_CONFIG_INVENTORY_DRY_V1",
+  "selector_invocations": 0,
+  "source_hashes": {
+    "tools/qa/apply_s2_runtime_configuration.py": "5c02647b103462502be5385eb0381acec5e989b32c787979d0841037cdb4e35c",
+    "tools/qa/collect_s2_runtime_config_inventory.py": "429d5cfd7c4fde3bfbe34da3d625a2f92474873fbc096bdbf599aeb5b8d45bcf",
+    "tools/qa/runtime_snapshot_transaction.py": "76a985ec375cd3c8ef1a5d5e1c5ac1a514d310adbf932916aad551e4a6e849f2",
+    "tools/qa/verify_s2_runtime_config_inventory.py": "c334c6cdcf2677c8f3d87f52c74951d61717e64f7dbe0f77cc0541cc32f5d135",
+    "tools/vst/preflight_capture.py": "befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119"
+  },
+  "stages": [
+    {
+      "file_hashes": {
+        "tools/qa/apply_s2_runtime_configuration.py": "5c02647b103462502be5385eb0381acec5e989b32c787979d0841037cdb4e35c",
+        "tools/qa/collect_s2_runtime_config_inventory.py": "429d5cfd7c4fde3bfbe34da3d625a2f92474873fbc096bdbf599aeb5b8d45bcf",
+        "tools/qa/runtime_snapshot_transaction.py": "76a985ec375cd3c8ef1a5d5e1c5ac1a514d310adbf932916aad551e4a6e849f2",
+        "tools/qa/verify_s2_runtime_config_inventory.py": "c334c6cdcf2677c8f3d87f52c74951d61717e64f7dbe0f77cc0541cc32f5d135",
+        "tools/vst/preflight_capture.py": "befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119"
+      },
+      "head": "dc978a0e3f02c11220deea3ac3f014cb2f1718a1",
+      "stage": "head_and_source_identity_pass",
+      "upstream": "dc978a0e3f02c11220deea3ac3f014cb2f1718a1",
+      "utc": "2026-11-05T11:27:57.659521+00:00"
+    },
+    {
+      "boot_id": "faf845b4-e863-48d7-bb82-182bf528cb96",
+      "pid1_stat_sha256": "cb7ac408bd734fb660f2bc1da566d7a0f8537aca4e1ad0dd0d48686249822dc0",
+      "stage": "keeper_ready",
+      "utc": "2026-11-05T11:28:03.364439+00:00"
+    },
+    {
+      "argv": [
+        "wsl.exe",
+        "--distribution",
+        "Ubuntu-24.04",
+        "--user",
+        "root",
+        "--exec",
+        "/bin/sh",
+        "-c",
+        "if /usr/bin/mountpoint -q /mnt/d; then :; else rc=$?; [ \"$rc\" -eq 32 ] || exit \"$rc\"; /usr/bin/mount -t drvfs D: /mnt/d -o ro || exit $?; fi\nexec /usr/bin/python3.12 -I -B -S /mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py"
+      ],
+      "stage": "inventory_started",
+      "utc": "2026-11-05T11:28:03.364461+00:00"
+    },
+    {
+      "exit_code": 0,
+      "stage": "keeper_released",
+      "utc": "2026-11-05T11:28:05.890770+00:00"
+    }
+  ],
+  "started_utc": "2026-11-05T11:27:56.055275+00:00",
+  "task": "S2-4D",
+  "upstream_observed": null
+}

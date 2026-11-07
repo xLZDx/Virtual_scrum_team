@@ -1,0 +1,41 @@
+{
+  "WSL_called": false,
+  "attempt_file": "s2-4d-source-pins-precheck-dc978a0-20261105-01.attempt.json",
+  "candidate_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-runtime-grant-candidate-dc978a0-20261105.json",
+  "candidate_sha256": null,
+  "command": [
+    "C:\\Python314\\python.exe",
+    "-I",
+    "-B",
+    "-S",
+    "-c",
+    "import-safe verify_source_pins(root, {identity, source_pins})"
+  ],
+  "cwd": "D:\\Repo\\Virtual_scrum_team",
+  "elapsed_seconds": 1.629,
+  "exit_code": 1,
+  "exit_code_file": "s2-4d-source-pins-precheck-dc978a0-20261105-01.exit-code.txt",
+  "finished_utc": "2026-11-05T11:20:44.106320+00:00",
+  "head_expected": "dc978a0e3f02c11220deea3ac3f014cb2f1718a1",
+  "head_observed": null,
+  "launcher_main_called": false,
+  "qualification_pin_count": 2,
+  "result": {
+    "error": "qualification launcher differs from its exact committed Git blob",
+    "error_type": "QualificationError",
+    "result": "FAIL"
+  },
+  "runtime_or_configuration_mutation": false,
+  "runtime_pin_count": 47,
+  "schema": "VST_S2_4D_SOURCE_PINS_PREFLIGHT_V1",
+  "started_utc": "2026-11-05T11:20:42.480550+00:00",
+  "stderr_bytes": 0,
+  "stderr_file": "s2-4d-source-pins-precheck-dc978a0-20261105-01.stderr.bin",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_bytes": 127,
+  "stdout_file": "s2-4d-source-pins-precheck-dc978a0-20261105-01.stdout.bin",
+  "stdout_sha256": "4b480973d308ddc55b32609a0e536e7453e33b4778439cff2a8bf0a90ec6b91f",
+  "task": "S2-4D",
+  "timed_out": false,
+  "upstream_observed": null
+}

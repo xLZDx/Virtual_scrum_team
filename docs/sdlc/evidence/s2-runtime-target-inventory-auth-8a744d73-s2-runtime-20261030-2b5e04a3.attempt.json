@@ -1,0 +1,27 @@
+{
+  "collector_source_sha256": "453fe70732c7309158cab7a0876b6bb7347b895056969ef87dbf988dd8cfa838",
+  "command": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/bin/bash",
+    "-lc",
+    "set -e\nif ! /usr/bin/mountpoint -q /mnt/d; then\n  /usr/bin/mkdir -p /mnt/d\n  /usr/bin/mount -t drvfs D: /mnt/d -o ro\nfi\nmount_info=$(/usr/bin/findmnt -n -o SOURCE,FSTYPE,OPTIONS --target /mnt/d)\nset -- $mount_info\n[ \"$#\" -eq 3 ]\n[ \"$1\" = 'D:' ]\n[ \"$2\" = '9p' ]\ncase \",$3,\" in *,ro,*) ;; *) echo 'STOP: D: mount is not read-only' >&2; exit 31;; esac\ncase \",$3,\" in *,rw,*) echo 'STOP: D: mount is writable' >&2; exit 32;; esac\nrepo=/mnt/d/Repo/Virtual_scrum_team\n[ -d \"$repo\" ]\ncd \"$repo\"\nbranch=$(/usr/bin/git branch --show-current)\nhead=$(/usr/bin/git rev-parse HEAD)\n[ \"$branch\" = 's2-canonical-continuation' ]\n[ \"$head\" = '7d1d16f6348e6c00a5a568b5cfbc8caf309194b9' ]\nfor item in \\\n  'tools/qa/collect_s2_runtime_config_inventory.py 453fe70732c7309158cab7a0876b6bb7347b895056969ef87dbf988dd8cfa838' \\\n  'tools/qa/verify_s2_runtime_config_inventory.py ad2f1a1f2a5b13f63279e72a53ee27a81ee5d057186a51592dac4d3f7f7ae8d9' \\\n  'tools/qa/apply_s2_runtime_configuration.py 7d208f72853b72666bd22b7d171d9b29f9bd2a96d77a19affea21f51d3009415' \\\n  'tools/vst/preflight_host_capture.py 0f3b7b6fe11798ebc806a55bd4d6f687e7974b6f4394b2065e15defab8255083' \\\n  'docs/sdlc/runtime-config/bundle-manifest.json 388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45' \\\n  'docs/sdlc/runtime-config/installation-layout.json 47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19'; do\n  set -- $item; path=$1; expected=$2\n  actual=$(/usr/bin/git show \"HEAD:$path\" | /usr/bin/sha256sum | /usr/bin/cut -d ' ' -f1)\n  [ \"$actual\" = \"$expected\" ]\ndone\nexec /usr/bin/python3 tools/qa/collect_s2_runtime_config_inventory.py\n"
+  ],
+  "exit_code": 0,
+  "finished_utc": "2026-10-30T09:08:21.299+00:00",
+  "job_id": "34ee8d4b-53a1-4c9c-bc58-68f6de450ae9",
+  "reply_id": "540b8a32-d2ae-53cf-8195-7afb94efef91",
+  "request_id": "8a744d73-a52c-489c-b0da-e8e9f9ccc831",
+  "started_utc": "2026-10-30T09:08:14.128+00:00",
+  "stderr_bytes": 0,
+  "stderr_path": "docs/sdlc/evidence/s2-runtime-target-inventory-auth-8a744d73-s2-runtime-20261030-2b5e04a3.stderr.bin",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_bytes": 35348,
+  "stdout_path": "docs/sdlc/evidence/s2-runtime-target-inventory-auth-8a744d73-s2-runtime-20261030-2b5e04a3.stdout.bin",
+  "stdout_sha256": "bc171bce8e38b14b6ecf2cc6ef7bd771b4e2a7df7a758ec21e7ab6f7f06192d1",
+  "user_turn_id": "1086034f-5d5c-4af7-9dc1-012c782ff972"
+}

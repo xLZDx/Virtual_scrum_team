@@ -1,0 +1,55 @@
+{
+  "grant_id": "S2-4D-REQ003-MOUNT-COLLECT-002",
+  "task_id": "S2-4-runtime-owner-runner-qualification",
+  "acceptance": "REQ-003",
+  "authorized_limits": {
+    "wrapper_runs": 1,
+    "collector_runs_max": 1,
+    "retry_cap": 0,
+    "expires_utc": "2026-11-06T17:00:00Z"
+  },
+  "preconditions": {
+    "head": "86a875b6df752f844508e657a995da70b03fe156",
+    "collector_sha256": "f57588f1d459af5691325d84dd7905cca0b87989c4d2ecdfe0c15b9954f04b27",
+    "both_matched_inside_wrapper": true
+  },
+  "wrapper_invocation": "wsl.exe -d Ubuntu-24.04 --user root -- /bin/bash -s",
+  "wrapper_started_utc": "2026-11-06T13:16:03Z",
+  "mount": {
+    "initial_mountpoint_exit": 32,
+    "created_by_wrapper": true,
+    "command": "mount -t drvfs D: /mnt/d -o ro",
+    "command_exit": 0,
+    "target": "/mnt/d",
+    "source": "D:",
+    "fstype": "9p",
+    "options": "ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3",
+    "ro_verified": true,
+    "rw_excluded": true,
+    "cleanup_command": "umount /mnt/d",
+    "cleanup_exit": 0,
+    "post_cleanup_mountpoint_exit": 32,
+    "mount_remains": false
+  },
+  "collector": {
+    "command": "/usr/bin/python3 /mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py",
+    "invocation_count": 1,
+    "started_utc": "2026-11-06T13:16:03Z",
+    "ended_utc": "2026-11-06T13:16:05Z",
+    "exit_code": 0,
+    "stdout": "One JSON inventory object was emitted; the tool response was truncated before the full JSON was retained locally. Captured excerpt showed candidate_identity_collision=false, installed_bootstrap_identity request_id=ba3faaadb50447b79df509619b6ee010 and run_id=s2-runtime-20261030-dd4c04c50f4e42d990ac9eeb9a23bc2e, repo_head=86a875b6df752f844508e657a995da70b03fe156, runtime_source_head=ee69f9fbf074a4c73d2d5d1da81c627a57d06071, systemd=running, all listed VST units inactive/dead, store_present=false. Full stdout is NOT locally persisted; do not use this excerpt as a complete target inventory.",
+    "stderr": "",
+    "complete_stdout_persisted": false,
+    "inventory_file_produced": false
+  },
+  "wrapper": {
+    "exit_code": 2,
+    "stderr": "/bin/bash: line 135: exit: 0\r: numeric argument required",
+    "cause": "PowerShell here-string CRLF left carriage return on numeric exit argument; collector itself had already exited 0; EXIT trap still ran and unmounted the wrapper-created mount",
+    "cleanup_completed": true
+  },
+  "target_configuration": "READ_ONLY; NOT_MODIFIED",
+  "selector_or_tests": "NOT_RUN",
+  "next_step": "The exact target inventory is incomplete because full stdout was not persisted. Do not reuse this grant or rerun; obtain a new explicit grant for a bounded capture if required.",
+  "recorded_utc": "2026-11-06T13:16:00Z"
+}

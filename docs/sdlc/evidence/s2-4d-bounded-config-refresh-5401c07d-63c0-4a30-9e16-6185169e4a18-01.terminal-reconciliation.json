@@ -1,0 +1,92 @@
+{
+  "schema": "VST_S2_4D_TERMINAL_RECONCILIATION_V1",
+  "task": "S2-4D - bounded configuration refresh",
+  "decision_id": "5401c07d-63c0-4a30-9e16-6185169e4a18",
+  "observed_utc": "2026-11-05T13:52:07.1556378Z",
+  "source_head": "dc978a0e3f02c11220deea3ac3f014cb2f1718a1",
+  "bundle_sha256": "4c13f2991f39cf12b84af4b0440621ab1adaa74ca1894dfda29eec1006cd7138",
+  "attempt_terminal_status": "PREFLIGHT_STOPPED_NO_APPLIER",
+  "keeper": {
+    "host_pid": 30600,
+    "started_utc": "2026-11-05T15:49:32.1379389+02:00",
+    "readiness": "NOT_REACHED",
+    "cleanup": {
+      "attempted_utc": "2026-11-05T15:49:40.3195422+02:00",
+      "stdin_close": "SENT_X_AND_CLOSED",
+      "wait_exit": false,
+      "kill": "TREE_KILLED",
+      "exit_code": -1,
+      "errors": []
+    }
+  },
+  "failure": {
+    "stage": "WSL launch output preflight before collector",
+    "exception": "System.Management.Automation.RuntimeException: Extra stdout after readiness; fail closed",
+    "first_stdout_line": "Provisioning the new WSL instance Ubuntu-24.04",
+    "second_stdout_line": "This might take a while...",
+    "stdout_saved_before_parse": true,
+    "inventory": "NOT_CREATED",
+    "payload": "NOT_BUILT",
+    "applier": "NOT_INVOKED",
+    "target_mutation": "NOT_RUN",
+    "environment_state": "WSL Ubuntu-24.04 emitted provisioning notice; distro is registered but currently Stopped"
+  },
+  "authorization": {
+    "applier_invocations": 0,
+    "authorization_consumed": false,
+    "disposition": "keeper was closed/killed; decision expires under one-keeper rule and is not reusable"
+  },
+  "raw_streams": {
+    "stdout_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-5401c07d-63c0-4a30-9e16-6185169e4a18-01.keeper.stdout.raw",
+    "stdout_bytes": 74,
+    "stdout_sha256": "589432752da5bea0a5a15dbfaec508459215178ffee81c9d03e760488ca855f4",
+    "stderr_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-5401c07d-63c0-4a30-9e16-6185169e4a18-01.keeper.stderr.raw",
+    "stderr_bytes": 0,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "attempt_artifacts": [
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-5401c07d-63c0-4a30-9e16-6185169e4a18-01.attempt.json",
+      "bytes": 5890,
+      "sha256": "0d3277ce4a25b9d690706873ae077f4a04284ef42c2db75ec199ba11c5c50869"
+    },
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-5401c07d-63c0-4a30-9e16-6185169e4a18-01.attempt.json.bak.01cace6b38d14949bd52f8fc51a99312",
+      "bytes": 5150,
+      "sha256": "9cf1ec1602f897161dc2ba84498169938a3574efb46764c87da6f499bf4c4b29"
+    },
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-5401c07d-63c0-4a30-9e16-6185169e4a18-01.attempt.json.bak.6b85a9fe8526444495a1d5c1f2336502",
+      "bytes": 3421,
+      "sha256": "25772640d668e684de2eb99d7a3fa1be8f9b9b2af95520bd9c608725774765b4"
+    },
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-5401c07d-63c0-4a30-9e16-6185169e4a18-01.attempt.json.bak.e90ff406d44348ae8c276f22de9d9323",
+      "bytes": 4583,
+      "sha256": "bc5e5c39ef219a8d524363dc652cf741252e48410eabadc47e6a030779efafcb"
+    },
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-5401c07d-63c0-4a30-9e16-6185169e4a18-01.keeper.stderr.raw",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-5401c07d-63c0-4a30-9e16-6185169e4a18-01.keeper.stdout.raw",
+      "bytes": 74,
+      "sha256": "589432752da5bea0a5a15dbfaec508459215178ffee81c9d03e760488ca855f4"
+    }
+  ],
+  "process_check": {
+    "checked_utc": "2026-11-05T13:52:07.1933342Z",
+    "host_pid_30600_present": false,
+    "relevant_wsl_process_present": false,
+    "wsl_list_verbose": "NAME              STATE           VERSION\r\n\r\n* Ubuntu-24.04      Stopped         2\r\n\r\n  docker-desktop    Running         2",
+    "scope": "point-in-time read-only host process/distro status"
+  },
+  "provenance": [
+    "Attempt record and raw streams are preserved unchanged.",
+    "Attempt records applier_invocations=0, authorization_consumed=false, inventory/payload/applier null.",
+    "Read-only WSL list shows Ubuntu-24.04 Stopped; host PID and matching WSL process absent.",
+    "Runner reports fail-closed before collector/apply; no runtime target mutation."
+  ]
+}

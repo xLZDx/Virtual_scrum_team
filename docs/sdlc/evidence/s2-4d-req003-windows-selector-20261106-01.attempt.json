@@ -1,0 +1,24 @@
+{
+  "task": "S2-4D / S2-4-runtime-owner-runner-qualification / REQ-003",
+  "command": "python -B -m pytest -q -p no:cacheprovider tests/vst/test_s2_assignment_basis.py::test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment",
+  "environment": "Windows project checkout; no WSL",
+  "revision": "eb9b0ed53c66cfb21dc9a2e23265772293daaabb",
+  "source_and_test_sha256": {
+    "tools/vst/store.py": "f3a0e217b372dfd48f2e4c9b864f7f1d4a726659f15544be88ac489d41702aa3",
+    "tools/vst/assignment_basis.py": "c2159f18cf25597118d13623b4ecf24fcd1e40626d03ca32fa1ec8fb920f51de",
+    "tools/vst/contracts.py": "bf01d990a94cd71887f8d9f81019333f3bf43d5950a655de3646e9bb3d585ea4",
+    "tests/vst/test_s2_assignment_basis.py": "77f9c8724a84511b1882c9a3834ff4518fd8fef406df142b46a7de222dac5533"
+  },
+  "started_utc": "2026-11-06T15:41:29.0616193Z",
+  "finished_utc": "2026-11-06T15:41:32.1026266Z",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-req003-windows-selector-20261106-01.stdout.bin",
+  "stdout_bytes": 626,
+  "stdout_sha256": "053695010edf8fb689fe40f59441b201b50d9efe08576be27a9df1d06d901dbb",
+  "stderr_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-req003-windows-selector-20261106-01.stderr.bin",
+  "stderr_bytes": 0,
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "scope": "Exactly one authorized selector only. No collector, configuration apply, WSL qualification, other tests, CI, or source verification.",
+  "limitation": "Local selector evidence only; not live Owner-to-Runner, E5, or production evidence."
+}

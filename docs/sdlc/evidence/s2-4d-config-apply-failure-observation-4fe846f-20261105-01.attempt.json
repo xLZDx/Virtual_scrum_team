@@ -1,0 +1,42 @@
+{
+  "argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/bin/sh",
+    "-c",
+    "if /usr/bin/mountpoint -q /mnt/d; then :; else rc=$?; [ \"$rc\" -eq 32 ] || exit \"$rc\"; /usr/bin/mount -t drvfs D: /mnt/d -o ro || exit $?; fi\nexec /usr/bin/python3.12 -I -B -S -c \"import os,json,runpy,stat,datetime\\\\nrunpy.run_path('/mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py',run_name='__main__')\\npaths=['/var/lib/vst-runner/private/snapshot-transaction-incomplete.json','/run/systemd/system/vst-runner.service','/run/systemd/system/vst-dispatcher.service']\\nrows={}\\nfor p in paths:\\n try:\\n  s=os.lstat(p); rows[p]={'exists':True,'device':s.st_dev,'inode':s.st_ino,'uid':s.st_uid,'gid':s.st_gid,'mode':format(stat.S_IMODE(s.st_mode),'04o'),'type':stat.S_IFMT(s.st_mode),'nlink':s.st_nlink,'size':s.st_size}\\n except FileNotFoundError:\\n  rows[p]={'exists':False}\\nprint(json.dumps({'schema':'S2_4D_POST_APPLY_FAILURE_LSTAT_V1','observed_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'paths':rows},sort_keys=True,separators=(',',':')))\""
+  ],
+  "artifacts": {
+    "exit_code": {
+      "bytes": 2,
+      "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-failure-observation-4fe846f-20261105-01.exit-code.txt",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    "stderr": {
+      "bytes": 949,
+      "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-failure-observation-4fe846f-20261105-01.stderr.bin",
+      "sha256": "ffa4451dcea144f0a3d376daf9f57d013fa90c8bdf5f20b875fe516faa697255"
+    },
+    "stdout": {
+      "bytes": 0,
+      "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-failure-observation-4fe846f-20261105-01.stdout.bin",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "collector_source_sha256": "39f07005985eace76cfe99ab9ac764402122598051e3240336e65fd342960971",
+  "exit_code": 1,
+  "finished_utc": "2026-11-05T07:52:43.776455+00:00",
+  "head": "4fe846fc1c3172f02a4fe915936ecc9c249ac61d",
+  "operation": "read-only post-failure observation",
+  "schema": "S2_4D_POST_APPLY_FAILURE_OBSERVATION_ATTEMPT_V1",
+  "started_utc": "2026-11-05T07:52:39.759975+00:00",
+  "stderr_bytes": 949,
+  "stderr_sha256": "ffa4451dcea144f0a3d376daf9f57d013fa90c8bdf5f20b875fe516faa697255",
+  "stdout_bytes": 0,
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "task": "S2-4D"
+}

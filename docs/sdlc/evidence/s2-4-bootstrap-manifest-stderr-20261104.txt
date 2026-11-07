@@ -1,0 +1,1 @@
+candidate_manifest_sha256=fafaf93158fee300f1b62ea53e8712e8c600b89a7d0b350399de62989cddcc52

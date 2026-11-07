@@ -1,0 +1,81 @@
+.................................................FFFFFFFFFFFFFFFFFFFFFFF [ 71%]
+F.............FFFFFFFFFFF....                                            [100%]
+================================== FAILURES ===================================
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:61: TypeError: assemble_inventory() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:61: TypeError: assemble_inventory() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:61: TypeError: assemble_inventory() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:61: TypeError: assemble_inventory() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:61: TypeError: assemble_inventory() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:61: TypeError: assemble_inventory() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:61: TypeError: assemble_inventory() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:61: TypeError: assemble_inventory() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:61: TypeError: assemble_inventory() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:61: TypeError: assemble_inventory() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:61: TypeError: assemble_inventory() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:61: TypeError: assemble_inventory() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:61: TypeError: assemble_inventory() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:61: TypeError: assemble_inventory() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:61: TypeError: assemble_inventory() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:61: TypeError: assemble_inventory() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:61: TypeError: assemble_inventory() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:39: TypeError: complete_readiness() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:39: TypeError: complete_readiness() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:39: TypeError: complete_readiness() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:39: TypeError: complete_readiness() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:39: TypeError: complete_readiness() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:39: TypeError: complete_readiness() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:39: TypeError: complete_readiness() got an unexpected keyword argument 'preflight_present'
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:246: TypeError: candidate_identity_collision() takes 2 positional arguments but 3 were given
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:262: TypeError: candidate_identity_collision() takes 2 positional arguments but 3 were given
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:262: TypeError: candidate_identity_collision() takes 2 positional arguments but 3 were given
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:262: TypeError: candidate_identity_collision() takes 2 positional arguments but 3 were given
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:262: TypeError: candidate_identity_collision() takes 2 positional arguments but 3 were given
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:282: TypeError: candidate_identity_collision() takes 2 positional arguments but 3 were given
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:282: TypeError: candidate_identity_collision() takes 2 positional arguments but 3 were given
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:282: TypeError: candidate_identity_collision() takes 2 positional arguments but 3 were given
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:282: TypeError: candidate_identity_collision() takes 2 positional arguments but 3 were given
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:282: TypeError: candidate_identity_collision() takes 2 positional arguments but 3 were given
+D:\Repo\Virtual_scrum_team\tests\vst\test_s2_runtime_inventory_collector.py:282: TypeError: candidate_identity_collision() takes 2 positional arguments but 3 were given
+============================== warnings summary ===============================
+tests/vst/test_s2_runtime_configuration_apply.py::test_payload_contains_exact_non_secret_candidate_and_pins_current_state
+  C:\Users\koros\AppData\Roaming\Python\Python314\site-packages\pytest_asyncio\plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_assemble_inventory_passes_existing_valid_fixture_to_real_validator
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_real_validator_rejects_missing_or_contradictory_assembled_readiness_fields[missing-units]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_real_validator_rejects_missing_or_contradictory_assembled_readiness_fields[missing-runtime_selector]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_real_validator_rejects_missing_or_contradictory_assembled_readiness_fields[missing-store_present]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_real_validator_rejects_missing_or_contradictory_assembled_readiness_fields[missing-preflight_present]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_real_validator_rejects_missing_or_contradictory_assembled_readiness_fields[missing-attestation_present]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_real_validator_rejects_missing_or_contradictory_assembled_readiness_fields[missing-container_sockets]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_real_validator_rejects_missing_or_contradictory_assembled_readiness_fields[missing-installed_bootstrap_identity]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_real_validator_rejects_missing_or_contradictory_assembled_readiness_fields[missing-candidate_identity_collision]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_real_validator_rejects_missing_or_contradictory_assembled_readiness_fields[contradictory-units]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_real_validator_rejects_missing_or_contradictory_assembled_readiness_fields[contradictory-runtime_selector]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_real_validator_rejects_missing_or_contradictory_assembled_readiness_fields[contradictory-store_present]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_real_validator_rejects_missing_or_contradictory_assembled_readiness_fields[contradictory-preflight_present]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_real_validator_rejects_missing_or_contradictory_assembled_readiness_fields[contradictory-attestation_present]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_real_validator_rejects_missing_or_contradictory_assembled_readiness_fields[contradictory-container_sockets]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_real_validator_rejects_missing_or_contradictory_assembled_readiness_fields[contradictory-installed_bootstrap_identity]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_real_validator_rejects_missing_or_contradictory_assembled_readiness_fields[contradictory-candidate_identity_collision]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_complete_readiness_attaches_exact_nine_units_and_observed_symlink_target
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_complete_readiness_rejects_non_exact_unit_observation_set[missing]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_complete_readiness_rejects_non_exact_unit_observation_set[extra]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_complete_readiness_does_not_trust_missing_or_non_symlink_selector[selector0]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_complete_readiness_does_not_trust_missing_or_non_symlink_selector[selector1]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_complete_readiness_does_not_trust_missing_or_non_symlink_selector[selector2]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_complete_readiness_rejects_missing_selector_observation
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_candidate_identity_collision_accepts_installed_baseline_as_non_collision
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_candidate_identity_collision_detects_every_candidate_identifier[bootstrap_run]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_candidate_identity_collision_detects_every_candidate_identifier[bootstrap_request]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_candidate_identity_collision_detects_every_candidate_identifier[probe_run]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_candidate_identity_collision_detects_every_candidate_identifier[probe_nonce]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_candidate_identity_collision_fails_closed_on_missing_error_or_malformed_records[bootstrap0-probe0]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_candidate_identity_collision_fails_closed_on_missing_error_or_malformed_records[bootstrap1-probe1]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_candidate_identity_collision_fails_closed_on_missing_error_or_malformed_records[bootstrap2-probe2]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_candidate_identity_collision_fails_closed_on_missing_error_or_malformed_records[bootstrap3-probe3]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_candidate_identity_collision_fails_closed_on_missing_error_or_malformed_records[bootstrap4-probe4]
+FAILED tests/vst/test_s2_runtime_inventory_collector.py::test_candidate_identity_collision_fails_closed_on_missing_error_or_malformed_records[bootstrap5-probe5]
+35 failed, 66 passed, 1 skipped, 1 warning in 10.27s

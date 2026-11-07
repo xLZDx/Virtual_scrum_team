@@ -1,0 +1,44 @@
+{
+  "apply_invocations": 0,
+  "command": [
+    "C:\\Python314\\python.exe",
+    "-I",
+    "-B",
+    "-S",
+    "-c",
+    "import-safe build_payload(inventory_path, inventory_sha256, source_commit=HEAD, expected_repo_head=HEAD, capture_sha256)"
+  ],
+  "deployment_commit_for_dry_only": "dc978a0e3f02c11220deea3ac3f014cb2f1718a1",
+  "exit_code": 1,
+  "exit_code_file": "s2-4d-fresh-binding-payload-dry-dc978a0-v2-02.exit-code.txt",
+  "finished_utc": "2026-11-05T11:31:05.997147+00:00",
+  "head_expected": "dc978a0e3f02c11220deea3ac3f014cb2f1718a1",
+  "head_observed": null,
+  "inventory_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-fresh-binding-config-inventory-dry-dc978a0-v2-01.inventory.json",
+  "inventory_sha256": null,
+  "launcher_invocations": 0,
+  "result": {
+    "error": "DRY_PAYLOAD_EXPECTATION_MISMATCH",
+    "error_type": "RuntimeError",
+    "result": "FAIL"
+  },
+  "runtime_or_configuration_mutation": false,
+  "schema": "VST_S2_4D_CONFIG_PAYLOAD_DRY_PREFLIGHT_V1",
+  "selector_invocations": 0,
+  "source_hashes": {
+    "applier": "5c02647b103462502be5385eb0381acec5e989b32c787979d0841037cdb4e35c",
+    "capture": "befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119",
+    "collector": "429d5cfd7c4fde3bfbe34da3d625a2f92474873fbc096bdbf599aeb5b8d45bcf",
+    "snapshot_transaction": "76a985ec375cd3c8ef1a5d5e1c5ac1a514d310adbf932916aad551e4a6e849f2",
+    "validator": "c334c6cdcf2677c8f3d87f52c74951d61717e64f7dbe0f77cc0541cc32f5d135"
+  },
+  "started_utc": "2026-11-05T11:30:36.465888+00:00",
+  "stderr_bytes": 0,
+  "stderr_file": "s2-4d-fresh-binding-payload-dry-dc978a0-v2-02.stderr.bin",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_bytes": 89,
+  "stdout_file": "s2-4d-fresh-binding-payload-dry-dc978a0-v2-02.stdout.bin",
+  "stdout_sha256": "2c8a10a219c72e050ae4799ba501621da48862fb001f0a95359481719635724b",
+  "task": "S2-4D",
+  "upstream_observed": null
+}

@@ -1,0 +1,88 @@
+{
+  "schema": "VST_S2_4D_TERMINAL_RECONCILIATION_V1",
+  "task": "S2-4D - bounded configuration refresh",
+  "decision_id": "a34305e8-1f45-45df-a48e-bb4eb668bb8b",
+  "observed_utc": "2026-11-05T13:25:31.4403510Z",
+  "source_head": "dc978a0e3f02c11220deea3ac3f014cb2f1718a1",
+  "bundle_sha256": "4c13f2991f39cf12b84af4b0440621ab1adaa74ca1894dfda29eec1006cd7138",
+  "attempt_terminal_status": "PREFLIGHT_STOPPED_NO_APPLIER",
+  "keeper": {
+    "host_pid": 28048,
+    "started_utc": "2026-11-05T15:19:51.6414842+02:00",
+    "readiness_verified": true,
+    "boot_id": "84c624a7-bc08-45a7-b60e-2ca715578597",
+    "pid1_stat_sha256": "83ff74e8ed72727ce90d0a30ae6f75ee0c5589dea97eb3553ee3571ed1cddb61",
+    "cleanup": {
+      "attempted_utc": "2026-11-05T15:19:51.6758095+02:00",
+      "stdin_close": "SENT_X_AND_CLOSED",
+      "wait_exit": true,
+      "kill": "NOT_RUN",
+      "exit_code": 0,
+      "errors": []
+    }
+  },
+  "failure": {
+    "stage": "atomic attempt-record update after keeper readiness, before inventory",
+    "exception": "System.Management.Automation.MethodInvocationException: Exception calling \"Replace\" with \"3\" argument(s): \"The path is empty. (Parameter 'path')\"\r\n ---> System.ArgumentException: The path is empty. (Parameter 'path')\r\n   at System.IO.Path.GetFullPath(String path)\r\n   at CallSite.Target(Closure, CallSite, Type, Object, String, Object)\r\n   --- End of inner exception stack trace ---\r\n   at System.Management.Automation.ExceptionHandlingOps.CheckActionPreference(FunctionContext funcContext, Exception exception)\r\n   at System.Management.Automation.Interpreter.ActionCallInstruction`2.Run(InterpretedFrame frame)\r\n   at System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame)\r\n   at System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame)",
+    "cause": ".NET File.Replace(temp,destination,$null) rejects empty backup path",
+    "corrective_action": "use a unique, non-empty backup path for File.Replace; never pass null or empty",
+    "inventory": "NOT_CREATED",
+    "payload": "NOT_BUILT",
+    "target_mutation": "NOT_RUN"
+  },
+  "authorization": {
+    "applier_invocations": 0,
+    "authorization_consumed": false,
+    "disposition": "keeper session closed; a343 grant expired by same-keeper expiry, not reusable"
+  },
+  "raw_streams": {
+    "stdout_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-a34305e8-1f45-45df-a48e-bb4eb668bb8b-01.keeper.stdout.raw",
+    "stdout_bytes": 411,
+    "stdout_sha256": "5a7510a578fb567e94141a7942622feea7aaa78a231ce557fc15ce7a2a32df3a",
+    "readiness_line_sha256": "cc78d9c75e3b181e0c88e2aa0998b2a07f42b9d0cc23112d34bd6be97f6ad62a",
+    "stderr_path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-a34305e8-1f45-45df-a48e-bb4eb668bb8b-01.keeper.stderr.raw",
+    "stderr_bytes": 0,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "attempt_artifacts": [
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-a34305e8-1f45-45df-a48e-bb4eb668bb8b-01.attempt.json",
+      "sha256": "061520d93f39feaae00868db709e37bcdfb49fe4f557e56e9b2469a272abe5f7",
+      "meaning": "initial attempt snapshot",
+      "applier_invocations": 0,
+      "authorization_consumed": false
+    },
+    {
+      "path": "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-bounded-config-refresh-a34305e8-1f45-45df-a48e-bb4eb668bb8b-01.attempt.json.tmp.907353c643144b988b614ce26ae61255",
+      "sha256": "5ee054569c25a27a93b7fa2572f35b7be269381b868c29762980a7155e237f67",
+      "meaning": "terminal attempt snapshot",
+      "result": "PREFLIGHT_STOPPED_NO_APPLIER",
+      "applier_invocations": 0,
+      "authorization_consumed": false,
+      "inventory": null,
+      "payload": null,
+      "applier": null,
+      "cleanup": {
+        "attempted_utc": "2026-11-05T15:19:51.6758095+02:00",
+        "stdin_close": "SENT_X_AND_CLOSED",
+        "wait_exit": true,
+        "kill": "NOT_RUN",
+        "exit_code": 0,
+        "errors": []
+      }
+    }
+  ],
+  "process_check": {
+    "checked_utc": "2026-11-05T13:25:31.4870413Z",
+    "method": "Get-CimInstance Win32_Process for PID 28048 and relevant wsl.exe command lines; wsl.exe --list --running --quiet",
+    "keeper_pid_present": false,
+    "relevant_wsl_process_present": false,
+    "running_distributions": "docker-desktop",
+    "scope": "point-in-time read-only host process check"
+  },
+  "provenance": [
+    "Attempt JSON and its terminal temp snapshot are preserved unchanged.",
+    "Raw keeper stdout/stderr are preserved unchanged.",
+    "The e2e-runner reported no inventory, payload, applier invocation or target mutation; process check independently confirms no keeper PID or relevant wsl.exe remains."
+  ]
+}

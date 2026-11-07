@@ -1,0 +1,129 @@
+{
+  "schema": "VST_S2_RUNTIME_OWNER_RUNNER_QUALIFICATION_V1",
+  "recorded_utc": "2026-10-30T07:01:06Z",
+  "authorization": {
+    "request_id": "9357ee74-c0ac-4ed4-9568-1b4a192bf874",
+    "correlated_reply_id": "6d0a5e51-1809-5420-8c45-9ebc6beb9ec4",
+    "decision": "AUTHORIZE",
+    "repo_head": "1b5dd9d7a639b629465ac6fcf29e300ba80c18ca",
+    "helper_sha256": "0f3b7b6fe11798ebc806a55bd4d6f687e7974b6f4394b2065e15defab8255083",
+    "applier_sha256": "ac512db996eff8ca8572a1bcf14e9a14081cb77b621bff7a7369a10df8bcf52d",
+    "bundle_manifest_sha256": "388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45",
+    "installation_layout_sha256": "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19",
+    "run_id": "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910",
+    "bootstrap_request_id": "e520e04f58ad5e6a431a3a20b0efb87c",
+    "nonce": "0aac24fec9a2a5c53c5e9da21cbb4a42",
+    "runtime_selector": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2",
+    "retry_cap": 0,
+    "maximum_test_run_executions": 1,
+    "sole_test_selector": "tests/vst/test_s2_assignment_basis.py::test_assignment_basis_returns_exact_stored_wire_handoff_without_enrichment"
+  },
+  "preflight_parser_check": {
+    "state": "PASS",
+    "command": "inline Python parser predicate check; no target/WSL operation",
+    "predicate": "exactly two whitespace fields; FSTYPE exactly 9p; comma-tokenized OPTIONS contains whole token ro; nonzero exit, stderr, missing, extra, malformed, or ambiguous output refuses",
+    "case_count": 8,
+    "cases": [
+      {"stdout": "9p ro,relatime", "stderr": "", "exit_code": 0, "expected": true, "actual": true},
+      {"stdout": "9p rw,relatime", "stderr": "", "exit_code": 0, "expected": false, "actual": false},
+      {"stdout": "drvfs ro,relatime", "stderr": "", "exit_code": 0, "expected": false, "actual": false},
+      {"stdout": "9p ro,relatime extra", "stderr": "", "exit_code": 0, "expected": false, "actual": false},
+      {"stdout": "9p", "stderr": "", "exit_code": 0, "expected": false, "actual": false},
+      {"stdout": "", "stderr": "", "exit_code": 0, "expected": false, "actual": false},
+      {"stdout": "9p ro,relatime", "stderr": "warning", "exit_code": 0, "expected": false, "actual": false},
+      {"stdout": "9p ro,relatime", "stderr": "", "exit_code": 1, "expected": false, "actual": false}
+    ],
+    "result": "PASS"
+  },
+  "inventory_attempt": {
+    "state": "COLLECTED_BUT_INCOMPLETE_FOR_APPLY",
+    "captured_utc": "2026-10-30T07:00:45.326598Z",
+    "top_level_command": "PowerShell: $script | wsl.exe -d Ubuntu-24.04 -u root --exec /usr/bin/python3.12 -I -B -S -",
+    "exit_code": 0,
+    "findmnt": {
+      "command": "/usr/bin/findmnt -n -o FSTYPE,OPTIONS --target /mnt/d",
+      "stdout": "9p     ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3\n",
+      "stderr": "",
+      "exit_code": 0,
+      "source_command": "/usr/bin/findmnt -n -o SOURCE --target /mnt/d",
+      "source_stdout": "D:\n",
+      "source_stderr": "",
+      "source_exit_code": 0,
+      "predicate_result": "PASS: source D:, FSTYPE 9p, whole OPTIONS token ro"
+    },
+    "source_identity": {
+      "head": "1b5dd9d7a639b629465ac6fcf29e300ba80c18ca",
+      "implementation_source_commit": "6fb47d966814005ea51992c37d8af342a7cb4219",
+      "helper_sha256": "0f3b7b6fe11798ebc806a55bd4d6f687e7974b6f4394b2065e15defab8255083",
+      "applier_sha256": "ac512db996eff8ca8572a1bcf14e9a14081cb77b621bff7a7369a10df8bcf52d",
+      "bundle_manifest_sha256": "388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45",
+      "installation_layout_sha256": "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19"
+    },
+    "target_readiness": {
+      "distro": "Ubuntu-24.04",
+      "os": "Ubuntu 24.04",
+      "kernel": "6.6.114.1-microsoft-standard-WSL2",
+      "boot_id": "270cd88b-183f-426c-8add-872d9e98bcec",
+      "uptime_seconds": 49059.36,
+      "systemd": "running",
+      "systemd_jobs": "",
+      "shutdown_scheduled": false,
+      "worker_uid": "999",
+      "worker_group": "vst-worker:x:989:",
+      "runtime_selector": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2",
+      "store_present": false,
+      "preflight_present": false,
+      "attestation_present": false,
+      "container_sockets": {
+        "/run/containerd/containerd.sock": false,
+        "/run/docker.sock": false,
+        "/run/podman/podman.sock": false,
+        "/var/run/docker.sock": false
+      },
+      "candidate_identity_collision": false,
+      "installed_bootstrap_identity": {
+        "request_id": "212a23e66ee94a7d87355b11e07e34fe",
+        "run_id": "s2-runtime-20261030-334296bd0779488d837a27e283b50b6a"
+      },
+      "units": {
+        "vst-assignment-bootstrap.service": ["loaded", "inactive", "dead", "0"],
+        "vst-dispatch-issuer.service": ["loaded", "inactive", "dead", "0"],
+        "vst-dispatch-owner.service": ["loaded", "inactive", "dead", "0"],
+        "vst-dispatch-owner.socket": ["loaded", "inactive", "dead", "0"],
+        "vst-dispatcher.service": ["loaded", "inactive", "dead", "0"],
+        "vst-runner.service": ["loaded", "inactive", "dead", "0"],
+        "vst-sandbox-probe.service": ["loaded", "inactive", "dead", "0"],
+        "vst-signer.service": ["loaded", "inactive", "dead", "0"],
+        "vst-supervisor.service": ["loaded", "inactive", "dead", "0"]
+      }
+    },
+    "configuration_fingerprints": {
+      "count": 26,
+      "all_paths_regular_or_absent": true,
+      "comparison_to_consumed_334296_baseline": "NOT_PERFORMED",
+      "reason": "The collector returned the 26 fingerprints, but did not compare them to the exact consumed-tuple baseline before ending the one authorized inventory invocation."
+    },
+    "inventory_completeness_gaps": [
+      "PID 1 comm, start ticks, network namespace inode, and mount namespace inode were not captured.",
+      "vst-runner account UID/GID were not captured; only vst-worker UID 999 and group GID 989 were observed.",
+      "systemd version was not captured in this replacement inventory.",
+      "Exact comparison of all 26 current destination fingerprints against the permitted consumed-334296 installed baseline was not performed.",
+      "The full JSON stdout was emitted in the tool output but was not persisted verbatim; destination-specific values remain in the invocation transcript."
+    ],
+    "mount_attempt": "NOT_CAPTURED; existing mount was verified, and no mount replacement occurred.",
+    "disposition": "Inventory was read-only and returned successful mount/source/runtime pins, but it is not complete enough to authorize configuration application. Stop before mutation."
+  },
+  "subsequent_steps": {
+    "configuration_apply": "NOT_RUN",
+    "root_preflight": "NOT_RUN",
+    "durable_claim_or_probe": "NOT_RUN",
+    "report_bound_test_run": "NOT_RUN",
+    "retry_or_replacement_identity": "NOT_RUN"
+  },
+  "safety": {
+    "persistent_wsl_configuration_changed": false,
+    "persistent_vst_services_started_or_enabled": false,
+    "production_signing_or_private_key_export": false,
+    "network_or_policy_or_mutation_selector": false
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "schema": "VST_S2_RUNTIME_QUALIFICATION_ATTEMPT_V1",
+  "request_id": "7f3f3b3c-8113-4d29-9c7a-2b46fb8b08ad",
+  "authorization": "GPT-PM one-shot conditional recovery; retry_cap=0",
+  "head": "7d1d16f6348e6c00a5a568b5cfbc8caf309194b9",
+  "run_id": "s2-runtime-20261030-2b5e04a37cbc430f0adb239658a29910",
+  "bootstrap_request_id": "e520e04f58ad5e6a431a3a20b0efb87c",
+  "nonce": "0aac24fec9a2a5c53c5e9da21cbb4a42",
+  "runtime_selector": "/opt/vst-runtime-80c2b81deac364ed6466600fd46af47aafe805e2",
+  "execution": {
+    "continuous_wsl_process": "C:\\Windows\\System32\\wsl.exe --distribution Ubuntu-24.04 --user root --exec /usr/bin/python3.12 -I -B -S -c <one-shot wrapper>",
+    "started_utc": "2026-10-30T11:28:33.546525+00:00",
+    "read_only_mount": {
+      "source": "D:",
+      "target": "/mnt/d",
+      "fstype": "9p",
+      "options": "ro,relatime,aname=drvfs;path=D:;symlinkroot=/mnt/,cache=5,access=client,msize=65536,trans=fd,rfd=3,wfd=3"
+    },
+    "source_head_check": "PASS",
+    "source_hashes": {
+      "tools/qa/collect_s2_runtime_config_inventory.py": "453fe70732c7309158cab7a0876b6bb7347b895056969ef87dbf988dd8cfa838",
+      "tools/qa/verify_s2_runtime_config_inventory.py": "ad2f1a1f2a5b13f63279e72a53ee27a81ee5d057186a51592dac4d3f7f7ae8d9",
+      "tools/qa/apply_s2_runtime_configuration.py": "7d208f72853b72666bd22b7d171d9b29f9bd2a96d77a19affea21f51d3009415",
+      "tools/vst/preflight_host_capture.py": "0f3b7b6fe11798ebc806a55bd4d6f687e7974b6f4394b2065e15defab8255083",
+      "docs/sdlc/runtime-config/bundle-manifest.json": "388e6bb00f97b54bbd456994ccdd399317ab2e527c6f37d8a1b71ce20a280e45",
+      "docs/sdlc/runtime-config/installation-layout.json": "47d3e66f1d765c0b078428708d2d9bf6c0218085714878e11395d164d57d1c19"
+    }
+  },
+  "stages": [
+    {
+      "name": "collector",
+      "command": ["/usr/bin/python3", "tools/qa/collect_s2_runtime_config_inventory.py"],
+      "started_utc": "2026-10-30T11:28:33.546625+00:00",
+      "finished_utc": "2026-10-30T11:28:34.343700+00:00",
+      "exit_code": 0,
+      "stdout_bytes": 35345,
+      "stdout_sha256": "29543f0a065ff844a6413c4536f7b1b737c9223060f7c276f3b73efe67d9c5f5",
+      "stdout_path": "docs/sdlc/evidence/s2-runtime-qual-7f3f3b3c-s2-runtime-20261030-2b5e04a3-collector.stdout.bin",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_path": "docs/sdlc/evidence/s2-runtime-qual-7f3f3b3c-s2-runtime-20261030-2b5e04a3-collector.stderr.bin",
+      "host_persistence_ack": "PERSISTED 29543f0a065ff844a6413c4536f7b1b737c9223060f7c276f3b73efe67d9c5f5; byte length and SHA-256 matched before validator"
+    },
+    {
+      "name": "validator",
+      "command": ["/usr/bin/python3", "tools/qa/verify_s2_runtime_config_inventory.py", "/tmp/vst-s2-runtime-7f3f3b3c/inventory.stdout.bin", "--expected-sha256", "29543f0a065ff844a6413c4536f7b1b737c9223060f7c276f3b73efe67d9c5f5", "--expected-head", "7d1d16f6348e6c00a5a568b5cfbc8caf309194b9", "--helper-sha256", "0f3b7b6fe11798ebc806a55bd4d6f687e7974b6f4394b2065e15defab8255083"],
+      "started_utc": "2026-10-30T11:28:34.429887+00:00",
+      "finished_utc": "2026-10-30T11:28:37.730393+00:00",
+      "exit_code": 0,
+      "result": "PASS: complete S2 runtime inventory",
+      "configuration_destination_count": 26,
+      "stdout_bytes": 449,
+      "stdout_sha256": "7619b1d5d377f85403d5e6c7bf20e3c83bb924bcf6cbadab667d6829ecc158e8",
+      "stdout_path": "docs/sdlc/evidence/s2-runtime-qual-7f3f3b3c-s2-runtime-20261030-2b5e04a3-validator.stdout.bin",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_path": "docs/sdlc/evidence/s2-runtime-qual-7f3f3b3c-s2-runtime-20261030-2b5e04a3-validator.stderr.bin"
+    }
+  ],
+  "conditional_apply_predicates": {
+    "all_26_destinations_match_original_consumed_run_baseline": true,
+    "inventory_age_seconds_at_status_capture": 3.45437,
+    "boot_id_matches_inventory": true,
+    "boot_id": "b0d0e05e-8705-44ab-9f32-277742e4a343",
+    "runtime_selector_exact_and_unchanged": true,
+    "nine_vst_units_loaded_inactive_dead_mainpid_zero": true,
+    "systemd_jobs_empty": true,
+    "store_preflight_attestation_and_runtime_sockets_absent": true,
+    "candidate_identity_collision_false": true,
+    "status_artifact": "docs/sdlc/evidence/s2-runtime-qual-7f3f3b3c-s2-runtime-20261030-2b5e04a3-target-status.json",
+    "status_bytes": 3493,
+    "status_sha256": "b97727c4e684bc7409cfbbb6d52297dd806f68aed275a9ea23714dac5a6d4068"
+  },
+  "apply": {
+    "command": ["C:\\Python314\\python.exe", "tools/qa/apply_s2_runtime_configuration.py", "--inventory", "docs/sdlc/evidence/s2-runtime-qual-7f3f3b3c-s2-runtime-20261030-2b5e04a3-collector.stdout.bin", "--inventory-sha256", "29543f0a065ff844a6413c4536f7b1b737c9223060f7c276f3b73efe67d9c5f5", "--source-commit", "7d1d16f6348e6c00a5a568b5cfbc8caf309194b9"],
+    "started_utc": "2026-10-30T11:28:37.816Z",
+    "finished_utc": "2026-10-30T11:28:46.558Z",
+    "exit_code": 0,
+    "result": "daemon_reload success; configuration result recorded",
+    "inventory_sha256": "29543f0a065ff844a6413c4536f7b1b737c9223060f7c276f3b73efe67d9c5f5",
+    "files_total": 26,
+    "files_installed": [
+      "/etc/vst-runner/supervisor-service.json",
+      "/etc/vst-runner/bootstrap-request.json",
+      "/etc/vst-runner/probe-request.json",
+      "/etc/vst-runner/network-profile.json"
+    ],
+    "files_already_exact": 22,
+    "stdout_bytes": 4354,
+    "stdout_sha256": "73a4aa80794f8337f1afadfaf50d77b0ce76b3381e9327b86a72b3c376a4eadb",
+    "stdout_path": "docs/sdlc/evidence/s2-runtime-qual-7f3f3b3c-s2-runtime-20261030-2b5e04a3-apply.stdout.bin",
+    "stderr_bytes": 0,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr_path": "docs/sdlc/evidence/s2-runtime-qual-7f3f3b3c-s2-runtime-20261030-2b5e04a3-apply.stderr.bin"
+  },
+  "authorization_boundary": {
+    "preflight": "NOT_RUN",
+    "owner_runner_claim_probe": "NOT_RUN",
+    "exact_selector_testrun": "NOT_RUN",
+    "restricted_selectors": "NOT_RUN",
+    "production_activation": "NOT_RUN",
+    "retries": 0,
+    "reason": "GPT-PM authorization ends at capture of the one apply result"
+  },
+  "protocol_artifact": {
+    "path": "docs/sdlc/evidence/s2-runtime-qual-7f3f3b3c-s2-runtime-20261030-2b5e04a3-wsl-protocol.json",
+    "bytes": 5534,
+    "sha256": "15fc8e9db5d3cd9f408c4f91942f52d46bfc957401c04a03ccd331a91ae5140e"
+  }
+}

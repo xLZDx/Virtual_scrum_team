@@ -1,0 +1,92 @@
+{
+  "task": "S2-4D",
+  "head": "ad45ba1bc8134cfc6caddf205d74204a216dc881",
+  "authorization_source": "Existing operator autonomous sandbox-setup GO; source6bc91aa6 approved and normally pushed",
+  "started_utc": "2026-11-05T04:36:15.349843+00:00",
+  "test_run": "NOT_RUN",
+  "apply_invocations": 1,
+  "keeper_argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/usr/bin/python3.12",
+    "-I",
+    "-B",
+    "-S",
+    "-c",
+    "import sys,pathlib,json; print(json.dumps({'ready':True,'pid1_stat':pathlib.Path('/proc/1/stat').read_text()}),flush=True); sys.stdin.buffer.read(1)"
+  ],
+  "keeper_host_pid": 48352,
+  "keeper_ready": {
+    "ready": true,
+    "pid1_stat": "1 (systemd) S 0 1 1 0 -1 4194560 5198 52795 116 870 22 24 89 60 20 0 1 0 1270229 22274048 2999 18446744073709551615 100167474372608 100167474416481 140732593952832 0 0 0 671173123 4096 1260 1 0 0 17 8 0 0 0 0 0 100167474446288 100167474450448 100167781732352 140732593958808 140732593958819 140732593958819 140732593958893 0\n"
+  },
+  "inventory_argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/bin/sh",
+    "-c",
+    "if /usr/bin/mountpoint -q /mnt/d; then :; else rc=$?; [ \"$rc\" -eq 32 ] || exit \"$rc\"; /usr/bin/mount -t drvfs D: /mnt/d -o ro || exit $?; fi\nexec /usr/bin/python3.12 -I -B -S /mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py"
+  ],
+  "inventory_exit_code": 0,
+  "inventory_sha256": "c96e957e39b7e3f4b3eb036023d447d0bc006f94abd058ea9350fd6675aef3f7",
+  "apply_argv": [
+    "C:\\Python314\\python.exe",
+    "tools/qa/apply_s2_runtime_configuration.py",
+    "--inventory",
+    "D:\\Repo\\Virtual_scrum_team\\docs\\sdlc\\evidence\\s2-4d-config-apply-ad45ba1-20261105-01.inventory.json",
+    "--inventory-sha256",
+    "c96e957e39b7e3f4b3eb036023d447d0bc006f94abd058ea9350fd6675aef3f7",
+    "--approved-deployment-commit",
+    "ad45ba1bc8134cfc6caddf205d74204a216dc881",
+    "--distribution",
+    "Ubuntu-24.04"
+  ],
+  "exit_code": 1,
+  "keeper_exit_code": 0,
+  "finished_utc": "2026-11-05T04:36:54.854145+00:00",
+  "artifacts": {
+    "s2-4d-config-apply-ad45ba1-20261105-01.exit-code.txt": {
+      "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-ad45ba1-20261105-01.exit-code.txt",
+      "bytes": 3,
+      "sha256": "f1b2f662800122bed0ff255693df89c4487fbdcf453d3524a42d4ec20c3d9c04"
+    },
+    "s2-4d-config-apply-ad45ba1-20261105-01.inventory.json": {
+      "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-ad45ba1-20261105-01.inventory.json",
+      "bytes": 35849,
+      "sha256": "c96e957e39b7e3f4b3eb036023d447d0bc006f94abd058ea9350fd6675aef3f7"
+    },
+    "s2-4d-config-apply-ad45ba1-20261105-01.inventory.stderr.txt": {
+      "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-ad45ba1-20261105-01.inventory.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "s2-4d-config-apply-ad45ba1-20261105-01.keeper.stderr.txt": {
+      "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-ad45ba1-20261105-01.keeper.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "s2-4d-config-apply-ad45ba1-20261105-01.keeper.stdout.txt": {
+      "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-ad45ba1-20261105-01.keeper.stdout.txt",
+      "bytes": 359,
+      "sha256": "9fede486330dc6967af70f7588f4b0038fb0bac1d11861760668eb5b0d69e5a3"
+    },
+    "s2-4d-config-apply-ad45ba1-20261105-01.stderr.txt": {
+      "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-ad45ba1-20261105-01.stderr.txt",
+      "bytes": 78,
+      "sha256": "58129f8140de01ec11aeddd721aaa95dfc498ec2ce6919249218f3f914049ad8"
+    },
+    "s2-4d-config-apply-ad45ba1-20261105-01.stdout.txt": {
+      "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-ad45ba1-20261105-01.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

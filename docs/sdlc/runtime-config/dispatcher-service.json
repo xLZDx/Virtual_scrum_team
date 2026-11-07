@@ -1,0 +1,6 @@
+{
+  "idle_poll_sec": 0.25,
+  "rpc_timeout_sec": 5.0,
+  "runner_socket": "/run/vst-runner/runner.sock",
+  "supervisor_socket": "/run/vst-supervisor/supervisor.sock"
+}

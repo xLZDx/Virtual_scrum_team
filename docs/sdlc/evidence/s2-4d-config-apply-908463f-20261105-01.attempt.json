@@ -1,0 +1,56 @@
+{
+  "task": "S2-4D",
+  "head": "908463f076335a27fbc2694a51b983e58821d366",
+  "authorization_source": "Operator explicit autonomous GO for sandbox target preparation; source review c697062b approves exact code only",
+  "collector_argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/bin/sh",
+    "-c",
+    "if /usr/bin/mountpoint -q /mnt/d; then\n  :\nelse\n  rc=$?\n  [ \"$rc\" -eq 32 ] || exit \"$rc\"\n  /usr/bin/mount -t drvfs D: /mnt/d -o ro || exit $?\nfi\nexec /usr/bin/python3.12 -I -B -S /mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py"
+  ],
+  "started_utc": "2026-11-05T02:39:35.623426+00:00",
+  "test_run": "NOT_RUN",
+  "service_activation": "NOT_REQUESTED",
+  "apply_invocations": 1,
+  "inventory_exit_code": 0,
+  "apply_argv": [
+    "C:\\Python314\\python.exe",
+    "tools/qa/apply_s2_runtime_configuration.py",
+    "--inventory",
+    "docs\\sdlc\\evidence\\s2-4d-config-apply-908463f-20261105-01.inventory.json",
+    "--inventory-sha256",
+    "d705e9db7cb96b0393540d0c680c87f158523732fb2c40a29c4af8dd64eb1daf",
+    "--approved-deployment-commit",
+    "908463f076335a27fbc2694a51b983e58821d366",
+    "--distribution",
+    "Ubuntu-24.04"
+  ],
+  "inventory_sha256": "d705e9db7cb96b0393540d0c680c87f158523732fb2c40a29c4af8dd64eb1daf",
+  "exit_code": 1,
+  "inventory": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-908463f-20261105-01.inventory.json",
+    "bytes": 35843,
+    "sha256": "d705e9db7cb96b0393540d0c680c87f158523732fb2c40a29c4af8dd64eb1daf"
+  },
+  "inventory_err": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-908463f-20261105-01.inventory.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "stdout": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-908463f-20261105-01.stdout.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "stderr": {
+    "path": "docs\\sdlc\\evidence\\s2-4d-config-apply-908463f-20261105-01.stderr.txt",
+    "bytes": 108,
+    "sha256": "a09a14c14965841b817849494ee515d14dfbbd763abd98ed51dcc69fadf6b89e"
+  },
+  "finished_utc": "2026-11-05T02:40:48.814876+00:00"
+}

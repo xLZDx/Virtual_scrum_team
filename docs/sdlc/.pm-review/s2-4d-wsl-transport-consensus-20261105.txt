@@ -1,0 +1,19 @@
+SPRINT: S2 - Isolated worker sandbox
+TASK: S2-4D - Reconcile report-bound manifest and TestRun scope
+Concrete reopened criterion: Windows config apply/recovery must launch embedded root source without exceeding CreateProcess command-line length, preserving source/payload framing and all existing identity guards.
+Baseline: e1f6d9363ed9b85c998786a2688ca79f4aeca8ff, accepted prior source reviews62c95b1d and47d94dbf; no generic rereview requested.
+Observed regression: s2-4d-config-apply-20261105-operator-03.stderr.txt contains WinError206. Windows rejected the process before WSL invocation; no config mutation from this attempt.
+Independent internal consensus (actual agents, read-only):
+- code-reviewer /root/s2_4d_transport_code_review, configured gpt-6-luna, explicit medium effort: no findings. Reviewed concrete4-file delta, both branches, payload/argv retention, frame bounds, collector pin, and tests. Did not run tests/runtime.
+- security-reviewer /root/s2_4d_transport_security_review, configured gpt-6-luna, explicit medium effort: no reachable BLOCKER/MAJOR. Checked same delta/root programs, payload digest+identity guards, malformedframe refusal, no shell/staging, unchanged host Git guards. Did not run tests/runtime.
+No unresolved findings or disputes remain on this delta.
+Testing actual designated roles: functional-test-reviewer /root/s2_4d_inventory_validation authored loader/framing regression tests and candidate-source fixture correction; /root/s2_4d_transport_wiring_tests authored normal/recovery main call wiring tests and ran captured combined command.
+Command: python -m pytest -q --tb=line tests/vst/test_s2_runtime_configuration_apply.py tests/vst/test_s2_runtime_config_inventory.py
+Result: exit0;93passed,1warning in51.05s; pytest_asyncio event-loop-policy deprecation. Head baseline plus exact candidate worktree delta, not clean-HEAD execution. Actual native Windows Python subprocess tests cover source>32767chars, exact binary payload/argv, frame rejection, host bounds, both main branch WSL call framing (WSL mocked there). Test stdout copy is byte-identical to source capture, not a new run.
+Limitations: real WSL apply/recovery with the new transport NOT_RUN; report-bound TestRun NOT_RUN; full S2-4D acceptance still OPEN. Existing runtime TaskManifest is a bounded executable test fixture, distinct from project-plan task identity S2-4D. This review asks only exact candidate code approval for commit/push so enforced pushed-HEAD installation may then run under operator authorization. No source approval is promoted into TestRun/runtime/production acceptance.
+tools/qa/apply_s2_runtime_configuration.py SHA256 fb5450576ddd74a6987b576b2e3c6d2166fffe1444b9d578914b6414fe802e3b bytes 93643
+tools/qa/collect_s2_runtime_config_inventory.py SHA256 badc331724ce5d684423424c9c729e12a2756d123801aa84f9affceb1aa4ca21 bytes 21643
+tests/vst/test_s2_runtime_configuration_apply.py SHA256 114389dc71773fb731ffe725982efb487913eaf198a54f62707e2ad02e9c0741 bytes 20755
+tests/vst/test_s2_runtime_config_inventory.py SHA256 e753317042d2f56ddb4d63ca684fcaa90c3fc6ea54ef4827b456d4ed6aae9912 bytes 35920
+docs/sdlc/.pm-review/s2-4d-wsl-transport-20261105.diff SHA256 ee6f52d8841acdf820d2fae2e95dc13e032fe9fa32fff17f0b65aefaf31a99c8 bytes 12003
+Test stdout copy SHA256 6ac66b823b788caae929fb49582a24a93a99d917d766aa31561c3661bd6c85c8 bytes 717

@@ -1,0 +1,25 @@
+{
+  "capture_sha256": "befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119",
+  "changed_destinations": [
+    "/etc/vst-runner/bootstrap-request.json",
+    "/etc/vst-runner/network-profile.json",
+    "/etc/vst-runner/supervisor-service.json"
+  ],
+  "deployment_source_commit": "4fe846fc1c3172f02a4fe915936ecc9c249ac61d",
+  "destination_count": 27,
+  "inventory_sha256": "3cd143e14be72cb602e1727e1c2bdf12c437a2352d067e12bd1b44c388fbf2f5",
+  "payload_bytes": 3852311,
+  "payload_sha256": "5c2052156e39eda8dcc6216813dbe32116b225349cb5e81f16aa3823b9a1638f",
+  "runtime_source_head": "ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
+  "schema": "VST_S2_RUNTIME_CONFIG_APPLY_V2",
+  "task_source_head": "67361bb4aa23355d9a6bc7877a987ba688559eda",
+  "task_source_snapshot": {
+    "head": "67361bb4aa23355d9a6bc7877a987ba688559eda",
+    "object_count": 804,
+    "sha256": "2ce52ec7dfd3b1eb16c0704f133b491e8c571753ba8e3f6c9bfc931dd0328bd3",
+    "size": 2666915,
+    "tree_sha1": "0c4a8440a38027563d2455024af6b58072fe3b57"
+  },
+  "unchanged_destinations_count": 24,
+  "validator_head": "4fe846fc1c3172f02a4fe915936ecc9c249ac61d"
+}

@@ -1,0 +1,230 @@
+diff --git a/tests/vst/test_s2_runtime_config_inventory.py b/tests/vst/test_s2_runtime_config_inventory.py
+index a24908e..5be21e1 100644
+--- a/tests/vst/test_s2_runtime_config_inventory.py
++++ b/tests/vst/test_s2_runtime_config_inventory.py
+@@ -604,9 +604,9 @@ def test_apply_payload_preserves_validated_canonical_octal_mode(
+     raw_inventory = json.dumps(valid_inventory, sort_keys=True, separators=(",", ":")).encode()
+     inventory_path = tmp_path / "runtime-inventory.json"
+     inventory_path.write_bytes(raw_inventory)
+-    if not COMMITTED_VALIDATOR_MATCHES_WORKTREE:
+-        # Before commit, exercise payload serialization with the candidate validator already
+-        # covered by the unit tests, without claiming its bytes exist in Git HEAD.
++    if not COMMITTED_VALIDATOR_MATCHES_WORKTREE or not COMMITTED_APPLIER_MATCHES_WORKTREE:
++        # Exercise payload serialization against the exact candidate source in this worktree;
++        # the production pushed-HEAD guard remains covered by its explicit mismatch tests.
+         monkeypatch.setattr(applier, "_load_committed_inventory_validator",
+                             lambda _repo_head: inventory.validate_inventory)
+     monkeypatch.setattr(applier, "_validate_deployment_commit", lambda _commit: None)
+diff --git a/tests/vst/test_s2_runtime_configuration_apply.py b/tests/vst/test_s2_runtime_configuration_apply.py
+index b4c66d0..c60ebc1 100644
+--- a/tests/vst/test_s2_runtime_configuration_apply.py
++++ b/tests/vst/test_s2_runtime_configuration_apply.py
+@@ -335,3 +335,121 @@ def test_payload_rejects_non_full_or_nonexistent_source_commit(tmp_path, source_
+ 
+     with pytest.raises(ValueError):
+         APPLY.build_payload(path, digest, source_commit)
++
++
++def test_wsl_source_loader_preserves_long_utf8_source_binary_payload_and_argv():
++    import subprocess
++    import sys
++
++    source = "import json,sys\nraw=sys.stdin.buffer.read()\nsys.stdout.buffer.write(json.dumps({'argv':sys.argv[1:],'raw':raw.hex()}).encode())\n" + "#\n" * 18000
++    payload = b"\x00\xffpayload\r\n\x80"
++    framed = APPLY._remote_stdin(source, payload)
++    completed = subprocess.run(
++        [sys.executable, "-I", "-c", APPLY._WSL_SOURCE_LOADER, "kept-arg", "second"],
++        input=framed, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
++    )
++    assert len(source) > 32767
++    assert completed.returncode == 0, completed.stderr.decode(errors="replace")
++    observed = json.loads(completed.stdout)
++    assert observed["argv"] == ["kept-arg", "second"]
++    assert bytes.fromhex(observed["raw"]) == payload
++
++
++@pytest.mark.parametrize("frame, message", [
++    (b"short", "header is truncated"),
++    ((0).to_bytes(8, "big"), "size is invalid"),
++    ((512 * 1024 + 1).to_bytes(8, "big"), "size is invalid"),
++    ((4).to_bytes(8, "big") + b"ab", "frame is truncated"),
++])
++def test_wsl_source_loader_rejects_invalid_frame_before_source_execution(frame, message):
++    import subprocess
++    import sys
++
++    completed = subprocess.run(
++        [sys.executable, "-I", "-c", APPLY._WSL_SOURCE_LOADER],
++        input=frame, stdout=subprocess.PIPE,
++        stderr=subprocess.PIPE, check=False,
++    )
++    assert completed.returncode != 0
++    if frame == b"short":
++        assert completed.stdout == b""
++    else:
++        assert message.encode() in completed.stderr
++    assert b"source executed" not in completed.stderr
++
++
++def test_remote_stdin_rejects_source_and_payload_over_bounds():
++    with pytest.raises(ValueError, match="source exceeds"):
++        APPLY._remote_stdin("x" * (APPLY.MAX_REMOTE_SOURCE_BYTES + 1), b"")
++    with pytest.raises(ValueError, match="payload exceeds"):
++        APPLY._remote_stdin("pass", b"x" * (APPLY.MAX_APPLY_PAYLOAD_BYTES + 1))
++
++
++@pytest.mark.parametrize("recovery", [False, True], ids=["normal-apply", "recovery"])
++def test_main_wsl_call_uses_short_loader_and_framed_remote_source(
++        monkeypatch, tmp_path, recovery, capsys):
++    import sys
++
++    approved_commit = "a" * 40
++    payload = b"known-payload\x00\xff"
++    inventory_path = tmp_path / "inventory.json"
++    inventory_path.write_bytes(b"inventory")
++    calls = []
++
++    class Completed:
++        returncode = 0
++        stdout = b""
++        stderr = b""
++
++    def fake_run(argv, **kwargs):
++        if argv[0] == "git":
++            if "hash-object" in argv:
++                result = Completed()
++                result.stdout = "f" * 40 + "\n"
++                return result
++            if "rev-parse" in argv:
++                result = Completed()
++                if "tools/qa/apply_s2_runtime_configuration.py" in argv[-1]:
++                    result.stdout = "f" * 40 + "\n"
++                else:
++                    result.stdout = approved_commit + "\n" if kwargs.get("text") else b"b" * 40
++                return result
++        if argv[0] == "wsl.exe":
++            calls.append((argv, kwargs))
++            return Completed()
++        raise AssertionError(f"unexpected subprocess: {argv!r}")
++
++    monkeypatch.setattr(APPLY.subprocess, "run", fake_run)
++    if recovery:
++        monkeypatch.setattr(APPLY, "_git_blob", lambda _commit, _path: b"committed helper")
++        monkeypatch.setattr(sys, "argv", [str(SCRIPT), "--approved-deployment-commit", approved_commit,
++                                           "--recover-transaction", "c" * 32])
++        expected_source = APPLY._RECOVERY_REMOTE
++        expected_payload = json.dumps({
++            "schema": "VST_S2_RUNTIME_TRANSACTION_RECOVERY_V1",
++            "transaction_id": "c" * 32,
++            "transaction_helper_b64": base64.b64encode(b"committed helper").decode("ascii"),
++            "transaction_helper_sha256": _sha(b"committed helper"),
++        }, sort_keys=True, separators=(",", ":")).encode("ascii")
++        expected_args = [APPLY._sha(expected_payload), approved_commit,
++                         APPLY.WSL_REPOSITORY_ROOT, "c" * 32]
++    else:
++        monkeypatch.setattr(APPLY, "_current_inventory_validation_identity", lambda: ("d" * 40, "e" * 64))
++        monkeypatch.setattr(APPLY, "build_payload", lambda *_args, **_kwargs: payload)
++        monkeypatch.setattr(sys, "argv", [str(SCRIPT), "--approved-deployment-commit", approved_commit,
++                                           "--inventory", str(inventory_path), "--inventory-sha256", "f" * 64])
++        expected_source = APPLY._REMOTE
++        expected_payload = payload
++        expected_args = [APPLY._sha(payload), approved_commit, APPLY.WSL_REPOSITORY_ROOT]
++
++    assert APPLY.main() == 0
++    capsys.readouterr()
++    assert len(calls) == 1
++    argv, kwargs = calls[0]
++    assert argv == ["wsl.exe", "--distribution", "Ubuntu-24.04", "--user", "root", "--exec",
++                    "/usr/bin/python3.12", "-I", "-B", "-S", "-c", APPLY._WSL_SOURCE_LOADER,
++                    *expected_args]
++    assert len(APPLY._WSL_SOURCE_LOADER.encode("utf-8")) < 32767
++    assert kwargs["input"] == APPLY._remote_stdin(expected_source, expected_payload)
++    assert kwargs["input"][8:8 + len(expected_source.encode("utf-8"))] == expected_source.encode("utf-8")
++    assert kwargs["input"][8 + len(expected_source.encode("utf-8")):] == expected_payload
+diff --git a/tools/qa/apply_s2_runtime_configuration.py b/tools/qa/apply_s2_runtime_configuration.py
+index 5c63953..d028de6 100644
+--- a/tools/qa/apply_s2_runtime_configuration.py
++++ b/tools/qa/apply_s2_runtime_configuration.py
+@@ -27,6 +27,36 @@ SYSTEMD_ROOT = "/etc/systemd/system"
+ TASK_REPOSITORY_ROOT = "/var/lib/vst-runner/repository"
+ TASK_REPOSITORY_GIT_PACK_FORMAT = "git-pack-shallow-v1"
+ MAX_APPLY_PAYLOAD_BYTES = 16 * 1024 * 1024
++MAX_REMOTE_SOURCE_BYTES = 512 * 1024
++# Keep Windows CreateProcess argv small; the payload follows the framed source.
++_WSL_SOURCE_LOADER = """import sys
++
++def _vst_read_source():
++    stream = sys.stdin.buffer
++    header = stream.read(8)
++    if len(header) != 8:
++        raise SystemExit("remote source frame header is truncated")
++    size = int.from_bytes(header, "big")
++    if not 1 <= size <= 512 * 1024:
++        raise SystemExit("remote source frame size is invalid")
++    source = stream.read(size)
++    if len(source) != size:
++        raise SystemExit("remote source frame is truncated")
++    return source
++
++exec(compile(_vst_read_source(), "<vst-s2-runtime-remote>", "exec"))
++"""
++
++
++def _remote_stdin(source: str, payload: bytes) -> bytes:
++    source_bytes = source.encode("utf-8")
++    if not 1 <= len(source_bytes) <= MAX_REMOTE_SOURCE_BYTES:
++        raise ValueError("remote source exceeds its bounded frame")
++    if len(payload) > MAX_APPLY_PAYLOAD_BYTES:
++        raise ValueError("remote payload exceeds its size bound")
++    return len(source_bytes).to_bytes(8, "big") + source_bytes + payload
++
++
+ RUNTIME_SOURCE_HEAD = "ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
+ BUNDLE_MANIFEST_SHA256 = "8f487494a1a6bc08c0ce567075a32945ca0c1a22c5ec03e7213ac3e2f4466741"
+ INSTALLATION_LAYOUT_SHA256 = "f46e97704a89b5da339701bb71b6e71c4ce846ae96cb4504929869352d0315dd"
+@@ -1490,6 +1520,7 @@ print(json.dumps({"schema":"VST_S2_RUNTIME_TRANSACTION_RECOVERY_RESULT_V1",
+ 
+ def _validate_embedded_programs() -> None:
+     """Compile embedded root-side programs before any command can build a payload."""
++    compile(_WSL_SOURCE_LOADER, "<vst-s2-runtime-loader>", "exec")
+     compile(_REMOTE, "<vst-s2-runtime-apply>", "exec")
+     compile(_RECOVERY_REMOTE, "<vst-s2-runtime-recovery>", "exec")
+ 
+@@ -1536,10 +1567,10 @@ def main() -> int:
+             digest = _sha(recovery_payload)
+             wsl = subprocess.run(
+                 ["wsl.exe", "--distribution", args.distribution, "--user", "root", "--exec",
+-                 "/usr/bin/python3.12", "-I", "-B", "-S", "-c", _RECOVERY_REMOTE,
++                 "/usr/bin/python3.12", "-I", "-B", "-S", "-c", _WSL_SOURCE_LOADER,
+                  digest, args.approved_deployment_commit, WSL_REPOSITORY_ROOT,
+                  args.recover_transaction],
+-                input=recovery_payload, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
++                input=_remote_stdin(_RECOVERY_REMOTE, recovery_payload), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+             )
+             if wsl.stdout:
+                 print(wsl.stdout.decode("utf-8", errors="replace").rstrip())
+@@ -1558,9 +1589,9 @@ def main() -> int:
+         digest = _sha(payload)
+         wsl = subprocess.run(
+             ["wsl.exe", "--distribution", args.distribution, "--user", "root", "--exec",
+-             "/usr/bin/python3.12", "-I", "-B", "-S", "-c", _REMOTE,
++             "/usr/bin/python3.12", "-I", "-B", "-S", "-c", _WSL_SOURCE_LOADER,
+              digest, args.approved_deployment_commit, WSL_REPOSITORY_ROOT],
+-            input=payload, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
++            input=_remote_stdin(_REMOTE, payload), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+         )
+         if wsl.stdout:
+             print(wsl.stdout.decode("utf-8", errors="replace").rstrip())
+diff --git a/tools/qa/collect_s2_runtime_config_inventory.py b/tools/qa/collect_s2_runtime_config_inventory.py
+index edca3af..83c0257 100644
+--- a/tools/qa/collect_s2_runtime_config_inventory.py
++++ b/tools/qa/collect_s2_runtime_config_inventory.py
+@@ -7,7 +7,7 @@ REQUEST_ID = "ba3faaadb50447b79df509619b6ee010"
+ NONCE = "1fd3cb4e69e54bc6aa5e63458ae82818"
+ RUNTIME = "/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071"
+ CAPTURE_SHA = "befd58be96af1823e0fd9b9f0a75217819bf099b674fc61d590ffaf693008119"
+-APPLIER_SHA = "d72c4f66c33debb590f6e719757b9c3a609b377507c2bf6b19e73b112db8188d"
++APPLIER_SHA = "fb5450576ddd74a6987b576b2e3c6d2166fffe1444b9d578914b6414fe802e3b"
+ VALIDATOR_SHA = "6f946bd8634299a8576a64be14e9410893036a5ed7564f2b3e7eb9171cd6f3af"
+ CONTRACTS_SHA = "bf01d990a94cd71887f8d9f81019333f3bf43d5950a655de3646e9bb3d585ea4"
+ BUNDLE_SHA = "8f487494a1a6bc08c0ce567075a32945ca0c1a22c5ec03e7213ac3e2f4466741"

@@ -1,0 +1,51 @@
+Outer command: wsl.exe -d Ubuntu-24.04 -- /bin/bash -c <base64-decode-then-bash payload>
+Payload: printf '%s' '<base64 of exact Bash script below>' | base64 -d | /bin/bash
+
+Bash script:
+set -eu
+mount_dir=/tmp/s2-4d-bootstrap-d-ro-20261105
+mkdir -p "$mount_dir"
+set +e
+mountpoint -q "$mount_dir"
+mount_rc=$?
+set -e
+if [ "$mount_rc" -eq 32 ]; then
+  mount -t drvfs D: "$mount_dir" -o ro
+elif [ "$mount_rc" -ne 0 ]; then
+  echo "mountpoint returned unexpected status $mount_rc" >&2
+  exit 92
+fi
+mount_opts=$(findmnt -n -o OPTIONS --target "$mount_dir")
+case ",$mount_opts," in
+  *,ro,*) ;;
+  *) echo "D source mount is not read-only: $mount_opts" >&2; exit 93 ;;
+esac
+repo="$mount_dir/Repo/Virtual_scrum_team"
+cd "$repo"
+printf 'mount=%s options=%s\nrepo=%s\nhead=' "$mount_dir" "$mount_opts" "$repo"
+git rev-parse HEAD
+sha256sum tests/vst/test_s2_runtime_bootstrap_transaction.py tests/vst/test_s2_runtime_configuration_apply.py tools/qa/runtime_snapshot_transaction.py tools/qa/apply_s2_runtime_configuration.py tools/qa/collect_s2_runtime_config_inventory.py
+export PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+/usr/bin/python3.12 -I -B -S - "$repo" <<'PY'
+import hashlib, json, os, pathlib, sys
+repo = pathlib.Path(sys.argv[1]).resolve()
+sys.path.append('/usr/lib/python3/dist-packages')
+sys.path.append(str(repo))
+import pytest
+expected = {
+    'tests/vst/test_s2_runtime_bootstrap_transaction.py': 'a68eae5623a731cd214a64670c3ce50af0a0d5e1998ba8d48a445b54d74444fa',
+    'tests/vst/test_s2_runtime_configuration_apply.py': '3df32048d5afc15fe55a13ac485201bd86940303629313e848a3e5b0af11d60b',
+    'tools/qa/runtime_snapshot_transaction.py': '3b2f44d69660ac7f9dc47de6e7124f0a477d9d759e378b0d9d31e90110c86f1a',
+    'tools/qa/apply_s2_runtime_configuration.py': 'c66df10dc7909c6944c674f7a7d513c850665970c70a2f7c17ae20b2d28657d3',
+    'tools/qa/collect_s2_runtime_config_inventory.py': 'be0629eed440fac782c57f6af71187a87e933f528b94dbabe391cd81618c05f4',
+}
+observed = {}
+for rel, digest in expected.items():
+    actual = hashlib.sha256((repo / rel).read_bytes()).hexdigest()
+    observed[rel] = actual
+    if actual != digest:
+        raise SystemExit(f'FROZEN_SHA_MISMATCH {rel}: expected {digest}, got {actual}')
+print(json.dumps({'python_version': sys.version, 'pytest_version': pytest.__version__, 'pytest_file': pytest.__file__, 'uid': os.geteuid(), 'sys_path': sys.path, 'frozen_sha256': observed, 'pytest_disable_plugin_autoload': os.environ.get('PYTEST_DISABLE_PLUGIN_AUTOLOAD')}, sort_keys=True))
+test = repo / 'tests/vst/test_s2_runtime_bootstrap_transaction.py'
+raise SystemExit(pytest.main(['-q', '--tb=line', '-p', 'no:cacheprovider', str(test)]))
+PY

@@ -1,0 +1,36 @@
+{
+  "task": "S2-4D",
+  "purpose": "Fresh post-bootstrap-selection inventory before configuration apply",
+  "argv": [
+    "wsl.exe",
+    "--distribution",
+    "Ubuntu-24.04",
+    "--user",
+    "root",
+    "--exec",
+    "/bin/sh",
+    "-c",
+    "if /usr/bin/mountpoint -q /mnt/d; then\n  :\nelse\n  rc=$?\n  [ \"$rc\" -eq 32 ] || exit \"$rc\"\n  /usr/bin/mount -t drvfs D: /mnt/d -o ro || exit $?\nfi\nexec /usr/bin/python3.12 -I -B -S /mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py"
+  ],
+  "authorization_source": "Operator autonomous GO; routine read-only observation",
+  "started_utc": "2026-11-05T02:10:57.760404+00:00",
+  "exit_code": 0,
+  "stdout": {
+    "path": "docs\\sdlc\\evidence\\s2-4-runtime-config-target-inventory-20261105-operator-02.stdout.json",
+    "bytes": 35846,
+    "sha256": "46336c47cd5cab0b60e5f623725d65acdc66bedc7aef84dee6d41c3951bdf342"
+  },
+  "stderr": {
+    "path": "docs\\sdlc\\evidence\\s2-4-runtime-config-target-inventory-20261105-operator-02.stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "captured_utc": "2026-11-05T02:11:02.217743+00:00",
+  "head": "e1f6d9363ed9b85c998786a2688ca79f4aeca8ff",
+  "runtime_selector": {
+    "kind": "symlink",
+    "link_target": "/opt/vst-runtime-ee69f9fbf074a4c73d2d5d1da81c627a57d06071",
+    "state": "PRESENT"
+  },
+  "store_present": false
+}

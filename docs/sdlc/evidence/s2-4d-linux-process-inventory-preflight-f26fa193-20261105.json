@@ -1,0 +1,56 @@
+{
+  "authorization_id": "f26fa193-6fe1-499b-8b3e-31c72d637905",
+  "observed_utc": "2026-11-05T21:20:19.3867649Z",
+  "windows_command": "wsl.exe --list --running --quiet",
+  "windows_exit_code": 0,
+  "running_distributions": [
+    "Ubuntu-24.04",
+    "docker-desktop"
+  ],
+  "target_distribution_already_running": true,
+  "bound_process_command": "Get-CimInstance Win32_Process | Where-Object { $ids -contains $_.ProcessId } | Select-Object ProcessId,ParentProcessId,Name,CreationDate,ExecutablePath",
+  "identity_matches": [
+    {
+      "pid": 42016,
+      "executable": "C:\\Windows\\system32\\wsl.exe",
+      "matches": true,
+      "parent": 38760,
+      "name": "wsl.exe",
+      "creation_utc": "2026-11-05T15:15:11.3361700Z"
+    },
+    {
+      "pid": 40072,
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "matches": true,
+      "parent": 42016,
+      "name": "conhost.exe",
+      "creation_utc": "2026-11-05T15:15:11.3515920Z"
+    },
+    {
+      "pid": 20620,
+      "executable": "C:\\Program Files\\WSL\\wsl.exe",
+      "matches": true,
+      "parent": 42016,
+      "name": "wsl.exe",
+      "creation_utc": "2026-11-05T15:15:11.5889860Z"
+    },
+    {
+      "pid": 15892,
+      "executable": "C:\\Program Files\\WSL\\wslhost.exe",
+      "matches": true,
+      "parent": 20620,
+      "name": "wslhost.exe",
+      "creation_utc": "2026-11-05T15:15:20.5139300Z"
+    },
+    {
+      "pid": 25072,
+      "executable": "C:\\WINDOWS\\system32\\conhost.exe",
+      "matches": true,
+      "parent": 15892,
+      "name": "conhost.exe",
+      "creation_utc": "2026-11-05T15:15:20.6318210Z"
+    }
+  ],
+  "all_original_process_identities_match": true,
+  "action": "preflight only; no Linux command invoked"
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "S2_4_READ_ONLY_COMPILER_TARGET_OBSERVATION_V1",
+  "captured_start_utc": "2026-10-30T20:19:03.333623+00:00",
+  "captured_end_utc": "2026-10-30T20:19:09.893197+00:00",
+  "command": [
+    "wsl.exe",
+    "-d",
+    "Ubuntu-24.04",
+    "-u",
+    "root",
+    "--",
+    "/bin/sh",
+    "-c",
+    "set -eu\nprintf 'distro='\n. /etc/os-release\nprintf '%s\\n' \"$PRETTY_NAME\"\nprintf 'uid='\n/usr/bin/id -u\nprintf 'kernel='\n/usr/bin/uname -r\nprintf 'compiler_path=/usr/bin/cc\\n'\nprintf 'compiler_resolved='\nresolved=$(/usr/bin/readlink -e /usr/bin/cc)\nprintf '%s\\n' \"$resolved\"\nprintf 'compiler_sha256='\n/usr/bin/sha256sum \"$resolved\"\nprintf 'compiler_stat='\n/usr/bin/stat -Lc '%u:%g:%a %n' \"$resolved\"\nif /usr/bin/mountpoint -q /mnt/d; then\n  printf 'repo_mount='\n  /usr/bin/findmnt -n -o SOURCE,FSTYPE,OPTIONS --target /mnt/d\nelse\n  printf 'repo_mount=NOT_MOUNTED\\n'\nfi\nif [ -L /opt/vst-runtime ]; then\n  printf 'runtime_selector=SYMLINK:'\n  /usr/bin/readlink /opt/vst-runtime\nelif [ -e /opt/vst-runtime ]; then\n  printf 'runtime_selector=NON_SYMLINK\\n'\nelse\n  printf 'runtime_selector=ABSENT\\n'\nfi\nif [ -e /var/lib/vst-runner/private/store.sqlite3 ]; then\n  printf 'store=PRESENT\\n'\nelse\n  printf 'store=ABSENT\\n'\nfi\nfor s in vst-assignment-bootstrap.service vst-dispatch-issuer.service vst-dispatch-owner.service vst-dispatcher.service vst-runner.service vst-sandbox-probe.service vst-signer.service vst-supervisor.service; do\n  printf 'unit=%s ' \"$s\"\n  /usr/bin/systemctl show --property=LoadState --property=ActiveState --property=SubState --property=Job --value \"$s\" | /usr/bin/tr '\\n' ' '\n  printf '\\n'\ndone"
+  ],
+  "exit_code": 1,
+  "stdout": "distro=\nuid=0\nkernel=6.6.114.1-microsoft-standard-WSL2\ncompiler_path=/usr/bin/cc\ncompiler_resolved=\ncompiler_sha256=",
+  "stderr": "/usr/bin/sha256sum: '': No such file or directory\n",
+  "scope": "read-only system/compiler/selector/Store/unit observations; no bundle install, service start, runtime test or activation"
+}

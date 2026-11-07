@@ -1,0 +1,21 @@
+{
+  "task_id": "S2-4-runtime-owner-runner-qualification",
+  "acceptance": "REQ-003",
+  "authorization": "GPT-PM explicitly authorized one read-only collector invocation; cap=1; retry_cap=0; expires=2026-11-06T17:00:00Z",
+  "preflight": {
+    "head": "86a875b6df752f844508e657a995da70b03fe156",
+    "collector_sha256": "f57588f1d459af5691325d84dd7905cca0b87989c4d2ecdfe0c15b9954f04b27",
+    "matched": true
+  },
+  "invocation": {
+    "count": 1,
+    "command": "wsl.exe -d Ubuntu-24.04 -- /usr/bin/python3 /mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py",
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "/usr/bin/python3: can't open file '/mnt/d/Repo/Virtual_scrum_team/tools/qa/collect_s2_runtime_config_inventory.py': [Errno 2] No such file or directory"
+  },
+  "inventory": "NOT_PRODUCED",
+  "target_configuration": "NOT_MODIFIED",
+  "follow_up": "STOPPED_AFTER_SINGLE_ATTEMPT",
+  "recorded_utc": "2026-11-06"
+}
