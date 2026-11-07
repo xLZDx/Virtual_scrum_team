@@ -1626,3 +1626,14 @@ Clients no longer open the server process token, which other virtual accounts ar
 ## 2026-11-07 — S2-4E manifest base_head 9e1266a45c2c7c2fa15bc8fd8d6a11d6cf255cea -> 326e1489e9913b8ab75ca57860e2f2e263e993f1
 
 The rebinding adds batch 2 (named-pipe lifecycle, pre-SCM failure reporting, Dispatcher read retry).
+
+## 2026-11-07 — Second-pass fixes before the next elevated S2-4E attempt
+
+- Named-pipe close is CloseHandle only. Error 233 is treated as EOF. The handshake window is 2 s. TokenUser membership honours deny-only.
+- Supervisor and Signer skip access-denied only on another role's private root.
+- Service-failure event-log text is limited to:
+  - exception type names and file:line:function frames;
+  - messages of ContractError and OSError only;
+  - at most 4,000 characters.
+- The provisioner copies Git's native mingw64 openssl.exe with libcrypto-3-x64.dll and libssl-3-x64.dll, replacing the MSYS build. Per-role temp dirs grant Modify, not FullControl.
+- Evidence: docs/sdlc/evidence/s2-4e-probes-20261107.json, keys P1b_mingw64_openssl_D2 and P2b_D1_server_closehandle_only.

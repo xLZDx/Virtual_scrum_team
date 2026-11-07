@@ -1201,7 +1201,7 @@ def load_windows_supervisor_service(path: str | None = None) -> tuple[WindowsAut
         WindowsRuntimeConfig, assert_current_service_identity, assert_path_acl,
         read_role_private_file,
     )
-    runtime = WindowsRuntimeConfig.load()
+    runtime = WindowsRuntimeConfig.load(role="supervisor")
     identity = runtime.identity("supervisor")
     assert_current_service_identity(identity)
     config_path = path or os.path.join(runtime.data_root, "supervisor.json")

@@ -4,7 +4,9 @@ param(
     [string]$Action = 'Install',
     [string]$RepoRoot = 'D:\Repo\Virtual_scrum_team',
     [string]$Python = 'C:\Python314\python.exe',
-    [string]$OpenSSLSource = 'C:\Program Files\Git\usr\bin\openssl.exe',
+    # Native (mingw64) build: the MSYS build in usr\bin fails under a write-restricted
+    # service token because the cygwin runtime needs writable shared memory.
+    [string]$OpenSSLSource = 'C:\Program Files\Git\mingw64\bin\openssl.exe',
     [string]$Git = 'C:\Program Files\Git\cmd\git.exe'
 )
 
@@ -281,7 +283,8 @@ foreach ($path in (Get-ChildItem -LiteralPath $app -Directory -Recurse -Force)) 
 
 $sourceBin = Split-Path -Parent $opensslSourcePath
 Copy-Item -LiteralPath $opensslSourcePath -Destination (Join-Path $bin 'openssl.exe')
-foreach ($dll in @('msys-crypto-3.dll', 'msys-ssl-3.dll', 'msys-2.0.dll')) {
+# Import closure of mingw64 openssl.exe (probe P1b): only these two non-system DLLs.
+foreach ($dll in @('libcrypto-3-x64.dll', 'libssl-3-x64.dll')) {
     $dllPath = Join-Path $sourceBin $dll
     if (-not (Test-Path -LiteralPath $dllPath -PathType Leaf)) { throw "Required OpenSSL runtime dependency is missing: $dll" }
     Copy-Item -LiteralPath $dllPath -Destination (Join-Path $bin $dll)
@@ -326,7 +329,7 @@ Set-ExplicitAcl $tempRoot $true $allRead
 foreach ($name in $serviceNames) {
     $roleTemp = Join-Path $tempRoot $serviceRoles[$name]
     New-Item -ItemType Directory -Path $roleTemp -Force | Out-Null
-    Set-ExplicitAcl $roleTemp $true @{$systemSid='FullControl'; $adminSid='FullControl'; $serviceSids[$name]='FullControl'}
+    Set-ExplicitAcl $roleTemp $true @{$systemSid='FullControl'; $adminSid='FullControl'; $serviceSids[$name]='Modify'}
 }
 
 $opensslPath = Join-Path $bin 'openssl.exe'

@@ -1362,3 +1362,25 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — S2-4E manifest rebound to 326e1489e9913b8ab75ca57860e2f2e263e993f1 (pipe batch)
 
 - Kind: NEUTRAL.
+
+## 2026-11-07 — Second agent pass before the next elevated attempt (pipe close, token check, OpenSSL, temp ACL)
+
+- Kind: SHORTCOMING (found by agent review and non-elevated probes, not by the operator's run).
+- Facts: the second pass found these problems.
+  - The server `close()` used FlushFileBuffers + DisconnectNamedPipe. Flush blocks on a peer that never reads, and Disconnect discards unread data. Probe P2b: CloseHandle alone delivered 15 and 51,200 buffered bytes intact, then error 109; Disconnect then Close delivered 0 bytes, then error 233.
+  - `recv` did not treat error 233 as EOF.
+  - The TokenUser check ignored the deny-only attribute.
+  - The handshake window was 5 s.
+  - Every role re-raised access-denied on another role's private root.
+  - The event-log text carried full exception messages.
+  - The per-role temp dirs granted FullControl.
+  - The MSYS openssl.exe cannot run under a write-restricted token. Probe P1b: mingw64 openssl version, genpkey, sign and verify all exit 0, a tampered message fails verification, and the import closure is libcrypto-3-x64.dll + libssl-3-x64.dll only.
+  - Probe: the mingw64\bin owner/write-ACE check gives `items=160 violations=0`.
+- Root cause: the first design was validated only with mocks and an admin token; service-token behaviour was never probed before the elevated runs.
+- Layer: the author missed these; the agent probes caught them before the 11th elevated attempt.
+- Rule: probe every external binary and IPC primitive under an approximated service token before asking for an elevated run.
+- Accepted MINORs:
+  - A FIRST_PIPE_INSTANCE flag after a discarded instance can only deny service; the SCM pid check still protects clients.
+  - Dropped-client warnings go only to `logging`.
+  - The Dispatcher Supervisor client already uses a 5 s connect timeout (`dispatcher_service.py` main), so no change is needed.
+- Unverified: the probe token needed the logon SID to start processes. The real `sidtype restricted` service token is proven only by the elevated E2E.

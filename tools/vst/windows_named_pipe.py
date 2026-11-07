@@ -36,6 +36,7 @@ _ERROR_PIPE_CONNECTED = 535
 _ERROR_PIPE_LISTENING = 536
 _ERROR_SEM_TIMEOUT = 121
 _ERROR_NO_IMPERSONATION_TOKEN = 1309
+_ERROR_PIPE_NOT_CONNECTED = 233
 _TOKEN_USER_CLASS = 1
 _TOKEN_GROUPS_CLASS = 2
 _SE_GROUP_ENABLED = 0x00000004
@@ -61,7 +62,7 @@ _SERVER_PIPE_ACCESS = 0x0012019F | _FILE_CREATE_PIPE_INSTANCE
 _SECURITY_SQOS_PRESENT = 0x00100000
 _SECURITY_IDENTIFICATION = 0x00010000
 _ERROR_PIPE_BUSY = 231
-_HANDSHAKE_TIMEOUT_SEC = 5.0
+_HANDSHAKE_TIMEOUT_SEC = 2.0
 _OPEN_EXISTING = 3
 _FILE_ATTRIBUTE_NORMAL = 0x00000080
 _TOKEN_QUERY = 0x0008
@@ -263,8 +264,12 @@ def _primary_token_has_enabled_sid(token: wintypes.HANDLE, sid: ctypes.c_void_p)
     ):
         raise _last_error("cannot read Windows token user")
     user_sid = ctypes.cast(user_buffer, ctypes.POINTER(wintypes.LPVOID)).contents.value
+    user_attributes = ctypes.cast(
+        ctypes.addressof(user_buffer) + ctypes.sizeof(ctypes.c_void_p), ctypes.POINTER(wintypes.DWORD),
+    ).contents.value
     if advapi32.EqualSid(user_sid, sid):
-        return True
+        # A deny-only token user (restricted tokens) is not a member, as in CheckTokenMembership.
+        return not user_attributes & _SE_GROUP_USE_FOR_DENY_ONLY
     needed = wintypes.DWORD()
     advapi32.GetTokenInformation(token, _TOKEN_GROUPS_CLASS, None, 0, ctypes.byref(needed))
     if needed.value <= 0 or needed.value > 1024 * 1024:
@@ -455,7 +460,7 @@ class WindowsNamedPipeConnection:
             available = wintypes.DWORD()
             if not kernel32.PeekNamedPipe(self._handle, None, 0, None, ctypes.byref(available), None):
                 code = ctypes.get_last_error()
-                if code in (_ERROR_BROKEN_PIPE, _ERROR_NO_DATA):
+                if code in (_ERROR_BROKEN_PIPE, _ERROR_NO_DATA, _ERROR_PIPE_NOT_CONNECTED):
                     return b""
                 raise _last_error("cannot inspect Windows named-pipe data")
             if available.value:
@@ -463,7 +468,7 @@ class WindowsNamedPipeConnection:
                 read = wintypes.DWORD()
                 if not kernel32.ReadFile(self._handle, buffer, len(buffer), ctypes.byref(read), None):
                     code = ctypes.get_last_error()
-                    if code in (_ERROR_BROKEN_PIPE, _ERROR_NO_DATA):
+                    if code in (_ERROR_BROKEN_PIPE, _ERROR_NO_DATA, _ERROR_PIPE_NOT_CONNECTED):
                         return b""
                     raise _last_error("cannot read Windows named-pipe data")
                 return buffer.raw[:read.value]
@@ -500,10 +505,10 @@ class WindowsNamedPipeConnection:
         if not self._closed:
             kernel32, _advapi32 = _api()
             self._closed = True
-            if self._server_side:
-                # Deliver buffered response bytes before the instance is torn down.
-                kernel32.FlushFileBuffers(self._handle)
-                kernel32.DisconnectNamedPipe(self._handle)
+            # No FlushFileBuffers/DisconnectNamedPipe: Flush blocks until a (possibly
+            # stalled) peer reads everything, and Disconnect discards unread data.
+            # CloseHandle alone leaves already-written bytes readable by the client,
+            # which then sees EOF; the protocol is length-framed.
             kernel32.CloseHandle(self._handle)
 
     def __enter__(self) -> "WindowsNamedPipeConnection":

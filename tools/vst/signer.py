@@ -674,7 +674,7 @@ def main() -> None:
             read_signer_private_key, run_scm_service, service_name_for_role,
         )
 
-        runtime = WindowsRuntimeConfig.load()
+        runtime = WindowsRuntimeConfig.load(role="signer")
         config = read_runtime_json(runtime, "signer.json")
         if set(config) != {"receipt_key_path", "ledger_path"}:
             raise ContractError("Windows Signer config fields do not match its schema")

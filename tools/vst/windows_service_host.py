@@ -97,7 +97,8 @@ class WindowsRuntimeConfig:
     role_identities: Mapping[str, WindowsRoleIdentity]
 
     @classmethod
-    def load(cls, path: str | None = None, *, roots: Mapping[str, str] | None = None) -> "WindowsRuntimeConfig":
+    def load(cls, path: str | None = None, *, roots: Mapping[str, str] | None = None,
+             role: str | None = None) -> "WindowsRuntimeConfig":
         if os.name != "nt":
             raise ContractError("Windows SCM runtime is available only on Windows")
         config_path = path or os.path.join(
@@ -163,7 +164,8 @@ class WindowsRuntimeConfig:
                 # other roles. Access denied is therefore the expected boundary for
                 # them; the owning role re-verifies this root in full before it reads
                 # any key from it (read_role_private_file / read_signer_private_key).
-                if exc.errno != 5:
+                # The owning role itself must never skip its own root check.
+                if exc.errno != 5 or role == owner_role:
                     raise
         return cls(
             data_root=supplied["data_root"], store_root=supplied["store_root"],
@@ -555,16 +557,31 @@ def read_role_private_file(path: str, *, service_sid: str, service_root: str,
 def _report_service_failure(advapi: Any, service_name: str, exc: BaseException) -> None:
     """Record a start/run failure in the Windows Application event log (best effort).
 
-    Only the exception type, message and code locations are recorded; contract
-    errors never carry key bytes. A logging failure must not mask the stop status.
+    The Application log is readable by local users, so only exception type names,
+    code locations, and the messages of ContractError/OSError (fixed, value-free
+    strings in this codebase) are recorded. Other exception messages can embed
+    runtime values and are omitted. A logging failure must not mask the stop status.
     """
     try:
         import traceback
 
-        text = "VST service %s stopped: %s" % (
-            service_name, "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
-        )
-        text = text[:30000]
+        lines: list[str] = []
+        current: BaseException | None = exc
+        seen = 0
+        while current is not None and seen < 5:
+            seen += 1
+            if isinstance(current, (ContractError, OSError)):
+                lines.append("%s: %s" % (type(current).__name__, current))
+            else:
+                lines.append("%s (message omitted)" % type(current).__name__)
+            for frame in traceback.extract_tb(current.__traceback__)[-8:]:
+                lines.append("  at %s:%s in %s" % (
+                    os.path.basename(frame.filename), frame.lineno, frame.name,
+                ))
+            current = current.__cause__ or current.__context__
+            if current is not None:
+                lines.append("caused by:")
+        text = ("VST service %s stopped: %s" % (service_name, "\n".join(lines)))[:4000]
         advapi.RegisterEventSourceW.restype = wintypes.HANDLE
         advapi.RegisterEventSourceW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR]
         advapi.ReportEventW.restype = wintypes.BOOL
