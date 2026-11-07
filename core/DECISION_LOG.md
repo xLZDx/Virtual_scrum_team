@@ -1580,3 +1580,6 @@ The protected Git context now fetches the manifest base_head (7adb183) by hash, 
 ## 2026-11-07 — S2-4E services created via New-Service
 
 Service creation now uses New-Service (SCM API) plus sc config obj= NT SERVICE\<name>, because PS 5.1 corrupted the sc.exe create arguments. The operator authorized a second Cleanup of the partial root, which completed.
+## 2026-11-07 — S2-4E seed step dry-run
+
+The Python seed stage of the provisioner passed a non-elevated dry run in a scratch root after the signing-bytes placeholder fix; see the lessons log.

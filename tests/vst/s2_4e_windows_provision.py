@@ -158,8 +158,11 @@ def seed(root: Path, repo: Path, openssl: Path, owner_sid: str, run_id: str) -> 
     }
     payload_path = issuer_root / "owner-instruction-signing-input.bin"
     signature_path = issuer_root / "owner-instruction-signature.bin"
+    # The signing-bytes helper validates the complete v1 envelope (signature included)
+    # and then drops the signature, so a well-formed placeholder is required here.
+    placeholder = {**unsigned, "signature": "A" * 86}
     with payload_path.open("xb") as stream:
-        stream.write(dispatch_instruction_signing_bytes(unsigned))
+        stream.write(dispatch_instruction_signing_bytes(placeholder))
     _run([
         str(openssl), "pkeyutl", "-sign", "-rawin", "-inkey", str(owner_private),
         "-in", str(payload_path), "-out", str(signature_path),

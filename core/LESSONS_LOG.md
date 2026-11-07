@@ -1283,3 +1283,11 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Layer that missed it: the author; the earlier parser-only evidence could not detect it.
 - Rule: create services with New-Service (SCM API) and keep sc.exe calls to plain tokens. Dump the argv for every native call before an elevated run.
 - Fix status: New-Service plus sc config obj= without a password. Cleanup now closes its transcript. The elevated create and config steps are still unmeasured until the next install.
+## 2026-11-07 — Provisioner signed an unsigned dict through a full-envelope validator
+
+- Kind: FAILURE (found by the operator's elevated run).
+- Facts: test input preparation failed with "dispatch instruction fields do not match v1 contract". dispatch_instruction_signing_bytes validates the complete envelope (signature included) before dropping the signature. The provisioner passed the unsigned dict.
+- Root cause: the helper's contract was not read before it was used; the seed step was never executed before the elevated run.
+- Layer that missed it: the author and the source reviews. Fixed with a well-formed placeholder signature, then a non-elevated dry run of the whole seed step in a scratch root passed (exit 0, all keys/configs/store/instruction created).
+- Rule: run every non-privileged installer stage locally before asking the operator for an elevated attempt.
+- Fix status: fixed. The ACL, service and scheduled-task stages after the seed remain unmeasured until the next elevated run.
