@@ -1606,3 +1606,7 @@ _check_token_sid keeps CheckTokenMembership for impersonation tokens. On ERROR_N
 ## 2026-11-07 — S2-4E manifest base_head 34fbace -> 93835aac4c08d892b155962fe86260dd065b51d7
 
 The rebinding adds the primary-token membership fix in tools/vst/windows_named_pipe.py.
+
+## 2026-11-07 — Private role roots are verified by their owners
+
+WindowsRuntimeConfig.load treats ERROR_ACCESS_DENIED on store_root/signer_root as the intended isolation boundary for non-owner roles. The full owner-only verification stays in the key-reading paths of the Supervisor and Signer.

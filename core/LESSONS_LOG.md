@@ -1331,3 +1331,11 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — S2-4E manifest rebound to 93835aac4c08d892b155962fe86260dd065b51d7
 
 - Kind: NEUTRAL. The new product delta is the primary-token membership fix.
+
+## 2026-11-07 — Every role verified the other roles' private roots
+
+- Kind: FAILURE (product defect, cause read from the service event log).
+- Facts: VSTSupervisor stopped with OSError 5 from assert_path_acl(signer_root) in WindowsRuntimeConfig.load. Private roots are deliberately unreadable, even their ACLs, to other roles.
+- Root cause: a shared loader enforced the owner-only checks for every role; admin-run diagnostics could not see the access boundary.
+- Fix: in load(), access denied on store_root/signer_root is accepted as the expected boundary. Any other error, or a readable but wrong ACL, still fails. The owning roles re-verify their root in read_role_private_file / read_signer_private_key before reading keys.
+- Rule: run ACL verifiers under the real service identity; an administrator dry run hides access-denied boundaries.

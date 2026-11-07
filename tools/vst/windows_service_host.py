@@ -151,18 +151,20 @@ class WindowsRuntimeConfig:
             allowed_sids={system_sid, administrators_sid, *all_service_sids},
             writable_sids={system_sid, administrators_sid}, require_protected=True,
         )
-        assert_path_acl(
-            supplied["store_root"],
-            allowed_sids={system_sid, administrators_sid, identities["supervisor"].service_sid},
-            writable_sids={system_sid, administrators_sid, identities["supervisor"].service_sid},
-            require_protected=True,
-        )
-        assert_path_acl(
-            supplied["signer_root"],
-            allowed_sids={system_sid, administrators_sid, identities["signer"].service_sid},
-            writable_sids={system_sid, administrators_sid, identities["signer"].service_sid},
-            require_protected=True,
-        )
+        for root_name, owner_role in (("store_root", "supervisor"), ("signer_root", "signer")):
+            owner_sids = {system_sid, administrators_sid, identities[owner_role].service_sid}
+            try:
+                assert_path_acl(
+                    supplied[root_name], allowed_sids=owner_sids, writable_sids=owner_sids,
+                    require_protected=True,
+                )
+            except OSError as exc:
+                # A private role root is deliberately unreadable (even its ACL) to the
+                # other roles. Access denied is therefore the expected boundary for
+                # them; the owning role re-verifies this root in full before it reads
+                # any key from it (read_role_private_file / read_signer_private_key).
+                if exc.errno != 5:
+                    raise
         return cls(
             data_root=supplied["data_root"], store_root=supplied["store_root"],
             signer_root=supplied["signer_root"], role_identities=identities,
