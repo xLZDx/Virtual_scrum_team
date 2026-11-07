@@ -295,6 +295,8 @@ class SyntheticStoryPilot:
         return data
 
     def _effect_payload(self, request: WorkerRequest) -> dict:
+        # Only fields bound by effect_key: per-attempt values (sandbox_run_id,
+        # timeout_sec) would make an honest resume collide as a duplicate.
         return {
             "effect_key": request.effect_key,
             "run_id": request.run_id,
@@ -303,12 +305,10 @@ class SyntheticStoryPilot:
             "manifest_sha256": request.manifest_sha256,
             "task_id": request.task_id,
             "story_id": request.story_id,
-            "sandbox_run_id": request.sandbox_run_id,
             "base_head": request.base_head,
             "allowed_paths": list(request.allowed_paths),
             "change_path": request.change_path,
             "change_content": request.change_content,
-            "timeout_sec": request.timeout_sec,
         }
 
     def _validate_request(self, request: WorkerRequest) -> WorkerResponse | None:
@@ -428,14 +428,18 @@ class SyntheticStoryPilot:
         *,
         probe: dict | None = None,
         resume_context: ResumeRequest | None = None,
+        fresh_effect: bool = False,
     ) -> WorkerResponse:
         rejected = self._validate_request(request)
         if rejected is not None:
             return rejected
         operation_payload = self._operation_payload(request, resume_context)
-        prior, replay = self._stored_response(
-            request.operation_key, operation, payload=operation_payload
-        )
+        try:
+            prior, replay = self._stored_response(
+                request.operation_key, operation, payload=operation_payload
+            )
+        except StoreError as exc:
+            return _store_failure(request, exc, "operation lookup")
         if replay is not None:
             if replay.run_id != request.run_id or replay.attempt_id != request.attempt_id:
                 return _response(request, WorkerState.BLOCKED, error=WorkerError(
@@ -447,17 +451,25 @@ class SyntheticStoryPilot:
                 "prior start intent has no completed result; use the guarded resume path",
             ))
         stop_key = operation_key_for("stop", request.run_id, request.attempt_id)
-        stopped = self.fixture.store.lookup_idempotent_operation(
-            stop_key, operation="stop_attempt_fenced"
-        )
+        try:
+            stopped = self.fixture.store.lookup_idempotent_operation(
+                stop_key, operation="stop_attempt_fenced"
+            )
+        except StoreError as exc:
+            return _store_failure(request, exc, "STOP lookup")
         if stopped is not None:
             return _response(request, WorkerState.BLOCKED, error=WorkerError(
                 WorkerErrorCode.FENCE_REJECTED, "attempt has a durable STOP record"))
+        # These refusals are transient caller/setup conditions. They are not
+        # persisted, so the same operation key can be retried with a valid probe
+        # instead of being replayed as a permanent COMPLETED refusal. (This also
+        # removes the former hard-coded "s3_attempt" operation name that collided
+        # with the "s3_resume" key of a resume.)
         if self.fixture.store.sandbox_mode and probe is None:
-            return self._record_blocked_start(request, WorkerError(
+            return _response(request, WorkerState.BLOCKED, error=WorkerError(
                 WorkerErrorCode.UNAVAILABLE, "fresh signed sandbox probe is required"))
         if self.fixture.store.sandbox_mode and request.sandbox_run_id != self.supervisor.run_id:
-            return self._record_blocked_start(request, WorkerError(
+            return _response(request, WorkerState.BLOCKED, error=WorkerError(
                 WorkerErrorCode.INVALID_REQUEST, "sandbox run id differs from the supervisor-bound probe"))
         if not self._record_attempt_binding(request, operation):
             return _response(request, WorkerState.BLOCKED, error=WorkerError(
@@ -476,10 +488,10 @@ class SyntheticStoryPilot:
                         supervisor_key=self.fixture.supervisor_key,
                     )
                 except StoreError as exc:
-                    if exc.kind in {"epoch", "lease", "slot", "retry", "terminal", "budget"}:
+                    refusal_code = _LEASE_REFUSAL_CODES.get(exc.kind)
+                    if refusal_code is not None:
                         return _response_dict(_response(request, WorkerState.BLOCKED, error=WorkerError(
-                            WorkerErrorCode.FENCE_REJECTED if exc.kind == "epoch" else WorkerErrorCode.BUDGET_EXHAUSTED,
-                            f"Store refused lease: {exc.kind}",
+                            refusal_code, f"Store refused lease: {exc.kind}",
                         )))
                     raise
                 budget_key = _derived_key("budget", request.operation_key)
@@ -511,7 +523,8 @@ class SyntheticStoryPilot:
                         WorkerErrorCode.BUDGET_EXHAUSTED,
                         "request budget snapshot differs from the authoritative Store ledger",
                     ), budget_remaining=remaining))
-                response = self._run_effect(request, remaining, resume_context)
+                response = self._run_effect(
+                    request, remaining, resume_context, fresh_effect=fresh_effect)
                 lease_can_close = (
                     response.state in {WorkerState.SUCCEEDED, WorkerState.FAILED,
                                        WorkerState.BLOCKED, WorkerState.STOPPED}
@@ -550,24 +563,18 @@ class SyntheticStoryPilot:
                 request.operation_key, operation, operation_payload, perform
             )
             response = _response_from_dict(stored)
+        except StoreError as exc:
+            response = _store_failure(request, exc, "attempt")
         except Exception as exc:
             response = _response(request, WorkerState.INCONCLUSIVE, error=WorkerError(
-                WorkerErrorCode.RECONCILIATION_REQUIRED, type(exc).__name__,
+                WorkerErrorCode.RECONCILIATION_REQUIRED, _exception_label(exc),
             ))
         return self._validate_response(request, response)
-
-    def _record_blocked_start(self, request: WorkerRequest, error: WorkerError) -> WorkerResponse:
-        response = _response(request, WorkerState.BLOCKED, error=error)
-        payload = self._operation_payload(request)
-        stored = self.fixture.store.execute_idempotent(
-            request.operation_key, "s3_attempt", payload,
-            lambda _conn: _response_dict(response),
-        )
-        return _response_from_dict(stored)
 
     def _run_effect(
         self, request: WorkerRequest, remaining: int,
         resume_context: ResumeRequest | None = None,
+        *, fresh_effect: bool = False,
     ) -> WorkerResponse:
         if self.fixture.store.current_epoch(request.story_id) != request.fence:
             return _response(request, WorkerState.BLOCKED, error=WorkerError(
@@ -582,9 +589,15 @@ class SyntheticStoryPilot:
             )
             return _response_dict(self._validate_response(request, response))
 
+        # A retry after a recorded FAILED attempt must not replay that attempt's
+        # completed effect result, so it gets its own per-attempt Store key. The
+        # adapter still dedupes the Git effect through the effect_key marker.
+        store_effect_key = (
+            _derived_key("effect-retry", request.operation_key) if fresh_effect else request.effect_key
+        )
         try:
             result = self.fixture.store.execute_external_idempotent(
-                request.effect_key, "s3_worker_effect", payload, effect
+                store_effect_key, "s3_worker_effect", payload, effect
             )
         except AppLevelInterruption as exc:
             return _response(
@@ -608,7 +621,7 @@ class SyntheticStoryPilot:
         except Exception as exc:
             return _response(
                 request, WorkerState.INCONCLUSIVE,
-                error=WorkerError(WorkerErrorCode.RECONCILIATION_REQUIRED, type(exc).__name__),
+                error=WorkerError(WorkerErrorCode.RECONCILIATION_REQUIRED, _exception_label(exc)),
                 budget_remaining=remaining,
             )
         return _response_from_dict(result)
@@ -617,7 +630,10 @@ class SyntheticStoryPilot:
         if not isinstance(request, WorkerRequest):
             raise TypeError("request must be a WorkerRequest")
         operation = "s3_attempt" if request.attempt == 1 else "s3_resume"
-        stored, response = self._stored_response(request.operation_key, operation)
+        try:
+            stored, response = self._stored_response(request.operation_key, operation)
+        except StoreError as exc:
+            return _store_failure(request, exc, "status lookup")
         if response is not None:
             if response.state in {WorkerState.QUEUED, WorkerState.RUNNING}:
                 try:
@@ -767,8 +783,15 @@ class SyntheticStoryPilot:
         # The synchronous worker adapter cannot prove OS-level termination.
         # Store epoch fencing is durable; process cleanup remains INCONCLUSIVE.
         cleanup_error_type: str | None = None
+        adapter_stop_note = ""
         try:
-            self.adapter.stop(request)
+            adapter_stop = self.adapter.stop(request)
+            if isinstance(adapter_stop, WorkerResponse):
+                adapter_stop_note = f"; adapter_stop={adapter_stop.state.value}" + (
+                    "" if adapter_stop.error is None else f":{adapter_stop.error.code.value}"
+                )
+            else:
+                adapter_stop_note = "; adapter_stop=UNTYPED"
         except Exception as exc:
             cleanup_error_type = _bounded_exception_type(exc)
         cleanup_message = (
@@ -780,7 +803,7 @@ class SyntheticStoryPilot:
         return _stop_response(
             request, WorkerState.INCONCLUSIVE,
             WorkerError(WorkerErrorCode.INTERRUPTED, cleanup_message),
-            progress=f"new_fence={result['new_epoch']}",
+            progress=f"new_fence={result['new_epoch']}{adapter_stop_note}",
         )
 
     def resume(self, request: ResumeRequest, *, probe: dict | None = None) -> WorkerResponse:
@@ -788,13 +811,16 @@ class SyntheticStoryPilot:
             raise TypeError("request must be a ResumeRequest")
         new_request = request.request
         prior_operation = "s3_attempt" if request.prior_attempt == 1 else "s3_resume"
-        prior = self.fixture.store.lookup_idempotent_operation(
-            request.prior_operation_key, operation=prior_operation
-        )
         resume_payload = self._operation_payload(new_request, request)
-        existing_resume, replay = self._stored_response(
-            request.operation_key, "s3_resume", payload=resume_payload
-        )
+        try:
+            prior = self.fixture.store.lookup_idempotent_operation(
+                request.prior_operation_key, operation=prior_operation
+            )
+            existing_resume, replay = self._stored_response(
+                request.operation_key, "s3_resume", payload=resume_payload
+            )
+        except StoreError as exc:
+            return _store_failure(new_request, exc, "resume lookup")
         if replay is not None:
             return self._validate_response(new_request, replay)
         if existing_resume is not None:
@@ -813,9 +839,18 @@ class SyntheticStoryPilot:
         except (TypeError, ValueError, KeyError):
             return _response(new_request, WorkerState.BLOCKED, error=WorkerError(
                 WorkerErrorCode.UNSUPPORTED_STATE, "prior backend response is malformed"))
-        if prior_response.state != WorkerState.INCONCLUSIVE or prior_response.error is None or prior_response.error.code != WorkerErrorCode.INTERRUPTED:
+        prior_failed = (
+            prior_response.state == WorkerState.FAILED and prior_response.error is not None
+            and prior_response.error.code == WorkerErrorCode.EXECUTION_FAILED
+        )
+        prior_interrupted = (
+            prior_response.state == WorkerState.INCONCLUSIVE and prior_response.error is not None
+            and prior_response.error.code == WorkerErrorCode.INTERRUPTED
+        )
+        if not (prior_failed or prior_interrupted):
             return _response(new_request, WorkerState.BLOCKED, error=WorkerError(
-                WorkerErrorCode.UNSUPPORTED_STATE, "resume requires a recorded application checkpoint"))
+                WorkerErrorCode.UNSUPPORTED_STATE,
+                "resume requires a recorded application checkpoint or a worker-failed attempt"))
         if (prior_response.attempt_id != request.prior_attempt_id
                 or prior_response.epoch != request.prior_epoch
                 or prior_response.run_id != new_request.run_id):
@@ -830,9 +865,12 @@ class SyntheticStoryPilot:
             return _response(new_request, WorkerState.BLOCKED, error=WorkerError(
                 WorkerErrorCode.INVALID_REQUEST, "resume changed the prior effect or candidate binding"))
         outcome_key = _derived_key("outcome", request.prior_operation_key)
-        outcome_result = self.fixture.store.lookup_idempotent_operation(
-            outcome_key, operation="s3_attempt_outcome"
-        )
+        try:
+            outcome_result = self.fixture.store.lookup_idempotent_operation(
+                outcome_key, operation="s3_attempt_outcome"
+            )
+        except StoreError as exc:
+            return _store_failure(new_request, exc, "outcome lookup")
         if outcome_result is None or outcome_result["state"] != "COMPLETED":
             return _response(new_request, WorkerState.INCONCLUSIVE, error=WorkerError(
                 WorkerErrorCode.RECONCILIATION_REQUIRED, "prior app checkpoint is not durably reconciled"))
@@ -840,7 +878,13 @@ class SyntheticStoryPilot:
         if not isinstance(recovery, dict):
             return _response(new_request, WorkerState.BLOCKED, error=WorkerError(
                 WorkerErrorCode.UNSUPPORTED_STATE, "prior recovery result is malformed"))
-        if recovery.get("checkpoint") not in {
+        if prior_failed:
+            if (recovery.get("state") != WorkerState.FAILED.value
+                    or recovery.get("error_code") != WorkerErrorCode.EXECUTION_FAILED.value
+                    or recovery.get("checkpoint") is not None):
+                return _response(new_request, WorkerState.BLOCKED, error=WorkerError(
+                    WorkerErrorCode.UNSUPPORTED_STATE, "prior recovery result does not match the failed attempt"))
+        elif recovery.get("checkpoint") not in {
             Checkpoint.AFTER_EDIT_BEFORE_COMMIT.value,
             Checkpoint.AFTER_COMMIT_BEFORE_RESPONSE.value,
         }:
@@ -860,21 +904,42 @@ class SyntheticStoryPilot:
         if self.fixture.store.sandbox_mode and probe is None:
             return _response(new_request, WorkerState.BLOCKED, error=WorkerError(
                 WorkerErrorCode.UNAVAILABLE, "resume requires a fresh signed sandbox probe"))
-        if self.fixture.store.sandbox_mode and not self._valid_unconsumed_resume_probe(
-            probe, new_request.sandbox_run_id,
-        ):
-            return _response(new_request, WorkerState.BLOCKED, error=WorkerError(
-                WorkerErrorCode.UNAVAILABLE,
-                "resume probe signature/attestation is invalid or its run/nonce is not fresh"))
-        # Validate all non-transition request bindings against the current
-        # Store state before creating the durable resume binding or advancing
-        # the epoch. The actual request already carries the next epoch.
-        prior_fence_request = replace(
-            new_request, epoch=request.prior_epoch, fence=request.prior_epoch,
-        )
-        rejected = self._validate_request(prior_fence_request)
-        if rejected is not None:
-            return _response(new_request, WorkerState.BLOCKED, error=rejected.error)
+        try:
+            epoch_already_applied = (
+                self._applied_resume_epoch(epoch_operation_key) == new_request.epoch
+            )
+        except StoreError as exc:
+            return _store_failure(new_request, exc, "resume epoch lookup")
+        # When this exact resume already advanced the epoch durably, a retry must
+        # reach the Store's idempotent replay: the prior-epoch fence and the
+        # (possibly consumed) probe no longer describe the current Store state.
+        # _execute_attempt still validates the request against the new epoch, and
+        # the Store replay rejects any changed payload.
+        if not epoch_already_applied:
+            if self.fixture.store.sandbox_mode and not self._valid_unconsumed_resume_probe(
+                probe, new_request.sandbox_run_id,
+            ):
+                return _response(new_request, WorkerState.BLOCKED, error=WorkerError(
+                    WorkerErrorCode.UNAVAILABLE,
+                    "resume probe signature/attestation is invalid or its run/nonce is not fresh"))
+            # Validate all non-transition request bindings against the current
+            # Store state before creating the durable resume binding or advancing
+            # the epoch. The actual request already carries the next epoch.
+            prior_fence_request = replace(
+                new_request, epoch=request.prior_epoch, fence=request.prior_epoch,
+            )
+            rejected = self._validate_request(prior_fence_request)
+            if rejected is not None:
+                return _response(new_request, WorkerState.BLOCKED, error=rejected.error)
+            # Refuse before the durable epoch advance so an exhausted retry cap
+            # cannot strand the story with a new owner and no lease.
+            try:
+                failed_attempts = self.fixture.store.failed_attempts(new_request.task_id)
+            except StoreError as exc:
+                return _store_failure(new_request, exc, "retry cap lookup")
+            if failed_attempts >= int(self.fixture.manifest["retry_cap"]) + 1:
+                return _response(new_request, WorkerState.BLOCKED, error=WorkerError(
+                    WorkerErrorCode.RETRY_EXHAUSTED, "manifest retry cap reached; no further attempt"))
         if not self._record_attempt_binding(new_request, "s3_resume"):
             return _response(new_request, WorkerState.BLOCKED, error=WorkerError(
                 WorkerErrorCode.RECONCILIATION_REQUIRED,
@@ -919,8 +984,20 @@ class SyntheticStoryPilot:
                     return _response(new_request, WorkerState.INCONCLUSIVE, error=WorkerError(
                         WorkerErrorCode.RECONCILIATION_REQUIRED, type(exc).__name__))
         return self._execute_attempt(
-            new_request, "s3_resume", probe=probe, resume_context=request
+            new_request, "s3_resume", probe=probe, resume_context=request,
+            fresh_effect=prior_failed,
         )
+
+    def _applied_resume_epoch(self, epoch_operation_key: str) -> int | None:
+        """Epoch of an already-committed epoch_resume operation, else None."""
+        stored = self.fixture.store.lookup_idempotent_operation(
+            epoch_operation_key, operation="epoch_resume"
+        )
+        if stored is None or stored["state"] != "COMPLETED":
+            return None
+        result = stored.get("result")
+        epoch = result.get("epoch") if isinstance(result, dict) else None
+        return epoch if isinstance(epoch, int) and not isinstance(epoch, bool) else None
 
     def _valid_unconsumed_resume_probe(self, probe: dict | None, run_id: str) -> bool:
         """Verify signatures before Store epoch mutation without consuming the probe."""
@@ -961,49 +1038,55 @@ class SyntheticStoryPilot:
         ):
             raise StoreError("handwritten adapter still reports an active invocation", kind="lifecycle")
 
-    def _git_validate_commit(self, commit_hash: str) -> bool | str:
-        """Verify commit exists. Return True on success, error string on failure."""
-        try:
-            result = subprocess.run(
-                ["git", "cat-file", "-e", f"{commit_hash}^{{commit}}"],
-                cwd=self.fixture.sandbox_path,
-                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
-                check=False, timeout=10,
-            )
-            return True if result.returncode == 0 else f"commit {commit_hash[:8]} not found"
-        except Exception as exc:
-            return f"git error: {type(exc).__name__}"
+    def _verify_candidate_commit(
+        self, request: WorkerRequest, response: WorkerResponse,
+    ) -> WorkerResponse | None:
+        """Check a SUCCEEDED claim against the trusted candidate repository.
 
-    def _git_validate_ancestry(self, base_head: str, candidate_head: str) -> bool | str:
-        """Verify candidate_head descends from base_head. Return True on success, error string on failure."""
-        try:
-            result = subprocess.run(
-                ["git", "merge-base", "--is-ancestor", base_head, candidate_head],
-                cwd=self.fixture.sandbox_path,
-                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
-                check=False, timeout=10,
-            )
-            return True if result.returncode == 0 else f"not ancestor of base_head"
-        except Exception as exc:
-            return f"git error: {type(exc).__name__}"
+        The head must be a real commit descending from the trusted candidate
+        revision, and everything changed since that revision must stay inside
+        allowed_paths. Any failure, timeout or non-zero git status downgrades
+        the claim to INCONCLUSIVE; nothing is promoted on a failed check.
+        Adapters without a known trusted repository are not inspected.
+        """
+        if not isinstance(self.adapter, HandWrittenWorkerAdapter):
+            return None
+        repository = self.adapter.worker.repository
+        head = response.candidate_head
+        timeout = min(self.adapter.timeout_sec, request.timeout_sec)
 
-    def _git_validate_diff_scope(self, base_head: str, candidate_head: str, allowed_paths: set) -> bool | str:
-        """Verify all changed files are in allowed_paths. Return True on success, error string on failure."""
-        try:
-            result = subprocess.run(
-                ["git", "diff", "--name-only", f"{base_head}..{candidate_head}"],
-                cwd=self.fixture.sandbox_path,
-                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                check=False, timeout=10, text=True,
+        def refuse(code: WorkerErrorCode, message: str) -> WorkerResponse:
+            return _response(
+                request, WorkerState.INCONCLUSIVE, error=WorkerError(code, message),
+                progress=f"observed candidate_head={head}",
             )
-            if result.returncode != 0:
-                return f"diff failed: {result.stderr[:100]}"
-            changed = set(l for l in result.stdout.strip().split('\n') if l)
-            if not changed.issubset(allowed_paths):
-                return f"paths outside scope: {', '.join(sorted(list(changed - allowed_paths))[:3])}"
-            return True
-        except Exception as exc:
-            return f"git error: {type(exc).__name__}"
+
+        try:
+            if _run_git(repository, ["cat-file", "-e", f"{head}^{{commit}}"], timeout).returncode:
+                return refuse(WorkerErrorCode.RECONCILIATION_REQUIRED,
+                              "reported candidate head is not a commit in the candidate repository")
+            if _run_git(
+                repository, ["merge-base", "--is-ancestor", request.candidate_revision, head], timeout,
+            ).returncode:
+                return refuse(WorkerErrorCode.RECONCILIATION_REQUIRED,
+                              "reported candidate head does not descend from the trusted candidate revision")
+            diff = _run_git(
+                repository,
+                ["diff", "--name-only", "-z", "--no-renames", request.candidate_revision, head, "--"],
+                timeout,
+            )
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            return refuse(WorkerErrorCode.RECONCILIATION_REQUIRED,
+                          f"candidate commit verification failed: {type(exc).__name__}")
+        if diff.returncode:
+            return refuse(WorkerErrorCode.RECONCILIATION_REQUIRED,
+                          "could not list the paths changed by the reported candidate head")
+        changed = {item.decode("utf-8", "replace") for item in diff.stdout.split(b"\0") if item}
+        if not changed or not changed.issubset(set(request.allowed_paths)):
+            return refuse(WorkerErrorCode.SCOPE_DENIED,
+                          "candidate commit changes paths outside allowed_paths")
+        return None
+
     def _validate_response(self, request: WorkerRequest, response: WorkerResponse) -> WorkerResponse:
         if not isinstance(response, WorkerResponse):
             return _response(request, WorkerState.BLOCKED, error=WorkerError(
@@ -1025,29 +1108,18 @@ class SyntheticStoryPilot:
             return _response(request, WorkerState.BLOCKED, error=WorkerError(
                 WorkerErrorCode.INVALID_REQUEST, "adapter response identity/fence does not match request"))
         if response.state == WorkerState.SUCCEEDED:
-            # MAJOR-001 FIX: Validate candidate_head exists and descends from base_head
-            if response.candidate_head:
-                commit_check = self._git_validate_commit(response.candidate_head)
-                if commit_check is not True:
-                    return _response(request, WorkerState.INCONCLUSIVE, error=WorkerError(
-                        WorkerErrorCode.INVALID_REQUEST, f"candidate_head validation failed: {commit_check}"))
-                
-                ancestry_check = self._git_validate_ancestry(request.base_head, response.candidate_head)
-                if ancestry_check is not True:
-                    return _response(request, WorkerState.INCONCLUSIVE, error=WorkerError(
-                        WorkerErrorCode.INVALID_REQUEST, f"candidate_head {ancestry_check}"))
-                
-                diff_check = self._git_validate_diff_scope(request.base_head, response.candidate_head,
-                                                           set(request.allowed_paths) if request.allowed_paths else set())
-                if diff_check is not True:
-                    return _response(request, WorkerState.INCONCLUSIVE, error=WorkerError(
-                        WorkerErrorCode.SCOPE_DENIED, f"candidate diff: {diff_check}"))
             if not response.changed_paths or not set(response.changed_paths).issubset(set(request.allowed_paths)):
                 return _response(request, WorkerState.BLOCKED, error=WorkerError(
                     WorkerErrorCode.SCOPE_DENIED, "adapter reported changes outside allowed paths"))
             if self.fixture.store.current_epoch(request.story_id) != request.fence:
+                # Keep the commit the worker reported: the effect may be durable
+                # even though the claim can no longer be promoted.
                 return _response(request, WorkerState.INCONCLUSIVE, error=WorkerError(
-                    WorkerErrorCode.FENCE_REJECTED, "epoch changed after worker completion"))
+                    WorkerErrorCode.FENCE_REJECTED, "epoch changed after worker completion"),
+                    progress=f"observed candidate_head={response.candidate_head}")
+            verification = self._verify_candidate_commit(request, response)
+            if verification is not None:
+                return verification
         return response
 
     def evaluate(self, request: WorkerRequest) -> dict:
@@ -1059,6 +1131,50 @@ class SyntheticStoryPilot:
             self.fixture.store.current_epoch(request.story_id),
             self.fixture.key,
         )
+
+
+_LEASE_REFUSAL_CODES = {
+    "epoch": WorkerErrorCode.FENCE_REJECTED,
+    "lease": WorkerErrorCode.RECONCILIATION_REQUIRED,
+    "slot": WorkerErrorCode.UNAVAILABLE,
+    "retry": WorkerErrorCode.RETRY_EXHAUSTED,
+    "terminal": WorkerErrorCode.UNSUPPORTED_STATE,
+    "budget": WorkerErrorCode.BUDGET_EXHAUSTED,
+}
+_INTEGRITY_KINDS = frozenset({"integrity", "chain", "append_only"})
+
+
+def _run_git(repository: str, args: list[str], timeout: float) -> subprocess.CompletedProcess:
+    """Run one bounded, read-only git command with the hardened child environment."""
+    return subprocess.run(
+        ["git", *args], cwd=repository, env=build_environment(),
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        check=False, timeout=timeout,
+    )
+
+
+def _exception_label(exc: Exception) -> str:
+    """Bounded exception class name plus the StoreError kind, never exception text."""
+    name = _bounded_exception_type(exc)
+    kind = getattr(exc, "kind", None) if isinstance(exc, StoreError) else None
+    if isinstance(kind, str) and kind.isidentifier() and len(kind) <= 32:
+        suffix = " (integrity; not retryable)" if kind in _INTEGRITY_KINDS else ""
+        return f"{name}: kind={kind}{suffix}"
+    return name
+
+
+def _store_failure(request: WorkerRequest, exc: StoreError, context: str) -> WorkerResponse:
+    """Typed response for a Store failure; duplicate and integrity never look retryable."""
+    kind = getattr(exc, "kind", None)
+    if kind == "duplicate":
+        return _response(request, WorkerState.BLOCKED, error=WorkerError(
+            WorkerErrorCode.INVALID_REQUEST,
+            f"{context}: idempotency key reused with a different operation or payload"))
+    if kind in _INTEGRITY_KINDS:
+        return _response(request, WorkerState.BLOCKED, error=WorkerError(
+            WorkerErrorCode.RECONCILIATION_REQUIRED, f"{context}: {_exception_label(exc)}"))
+    return _response(request, WorkerState.INCONCLUSIVE, error=WorkerError(
+        WorkerErrorCode.RECONCILIATION_REQUIRED, f"{context}: {_exception_label(exc)}"))
 
 
 def _bounded_exception_type(exc: Exception) -> str:
@@ -1199,7 +1315,3 @@ def _response_from_dict(data: dict) -> WorkerResponse:
         budget_cap=data.get("budget_cap", 0),
         budget_units=data.get("budget_units", 0),
     )
-
-
-
-

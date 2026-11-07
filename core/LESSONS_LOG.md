@@ -1645,3 +1645,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — S3 adapter focused tests
 
 - Kind: SUCCESS: the S3 adapter tests written on an older base still passed 9/9 after the S2-4E store changes, and the test agent added 6 assertions for unasserted contract clauses; reading the registry first found the existing S3 work instead of redoing it.
+
+## 2026-11-07 — Two sessions in one checkout
+
+- Kind: FAILURE (process): a second session committed to the same branch while a subagent edited pilot.py, so the subagent's first edits were overwritten and a broken fix plus wrong BLOCKED statuses entered the history. Missed by: no lock between sessions; found by the implementation-engineer.
+- Rule: before editing, compare HEAD and `git status` with the last known state; if another session is writing, stop and coordinate or move work to a separate branch.

@@ -2410,13 +2410,28 @@ class Store:
                 raise StoreError("stored resume outcome is invalid", kind="integrity") from exc
             if canonical_bytes(stored_outcome) != canonical_bytes(recovery_outcome):
                 raise StoreError("resume outcome differs from the persisted attempt result", kind="duplicate")
-            if (recovery_outcome.get("state") != "INCONCLUSIVE"
-                    or recovery_outcome.get("error_code") != "INTERRUPTED"
-                    or recovery_outcome.get("checkpoint") not in {
-                        "after_edit_before_commit", "after_commit_before_response"
-                    }
-                    or recovery_outcome.get("execution_returned") is not True):
-                raise StoreError("resume outcome does not prove a named returned app checkpoint", kind="lifecycle")
+            returned_checkpoint = (
+                recovery_outcome.get("state") == "INCONCLUSIVE"
+                and recovery_outcome.get("error_code") == "INTERRUPTED"
+                and recovery_outcome.get("checkpoint") in {
+                    "after_edit_before_commit", "after_commit_before_response"
+                }
+                and recovery_outcome.get("execution_returned") is True
+            )
+            # A worker-attributed FAILED attempt (lease already RELEASED and
+            # counted by the retry cap in acquire_lease) may be retried under a
+            # newer epoch; the failed attempt's records stay unchanged.
+            worker_failed = (
+                recovery_outcome.get("state") == "FAILED"
+                and recovery_outcome.get("error_code") == "EXECUTION_FAILED"
+                and recovery_outcome.get("checkpoint") is None
+                and recovery_outcome.get("execution_returned") is False
+            )
+            if not (returned_checkpoint or worker_failed):
+                raise StoreError(
+                    "resume outcome proves neither a named returned app checkpoint nor a worker failure",
+                    kind="lifecycle",
+                )
             if recovery_outcome.get("attempt") != prior_attempt or recovery_outcome.get("epoch") != prior_epoch:
                 raise StoreError("resume checkpoint is bound to a different attempt fence", kind="integrity")
             conn.execute(
@@ -2428,7 +2443,8 @@ class Store:
                 raise StoreError("resume lost the owner compare-and-swap", kind="epoch")
             self._record_event_locked(
                 conn, story_id, expected_owner, "EPOCH_RELEASED",
-                {"epoch": prior_epoch, "reason": "APPLICATION_CHECKPOINT_RESUME"},
+                {"epoch": prior_epoch,
+                 "reason": "APPLICATION_CHECKPOINT_RESUME" if returned_checkpoint else "WORKER_FAILURE_RETRY"},
             )
             new_epoch = self._acquire_epoch_locked(
                 conn, story_id, new_owner, ttl, expected_epoch=prior_epoch

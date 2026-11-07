@@ -1866,3 +1866,11 @@ All S3 tasks classified:
 - S3-E (VST-031): BLOCKED_OPERATOR — depends on S3-D
 
 Sprint cannot progress without: (1) operator permit to run prohibited tests, OR (2) operator decisions on S3-D/E, OR (3) test-runner completion of ongoing runs.
+
+## 2026-11-07 — Correction of the concurrent-session S3 entries
+
+Another session committed to this checkout between b0d66d0 and 84cd6b6 (eb5e653 to 84cd6b6). Two of its statements are withdrawn. (1) "MAJOR-001 FIXED (eb5e653)" is wrong: the implementation-engineer found that commit read a non-existent attribute (the AttributeError was swallowed, so every SUCCEEDED response would have been downgraded) and checked ancestry from a synthetic head; it was replaced by _verify_candidate_commit in the remediation batch. (2) S3-A, S3-B and S3-C marked BLOCKED_EXTERNAL "by a test prohibition" is wrong: the test agents did run (15 adapter and 12 pilot tests passed before the remediation); the rows are restored to PARTIAL. The remediation batch (3 MAJOR and the minor findings from the python-reviewer and silent-failure-hunter reviews, plus retry after FAILED) is applied uncommitted and is being tested by the test agents.
+
+## 2026-11-07 — S3-A remediation tested
+
+After the remediation batch (3 MAJOR and the minor review findings, plus retry after FAILED within the retry cap) the test agents ran their complete modules once on HEAD 84cd6b6 plus the uncommitted change: tests/vst/test_s3_worker_adapter.py 83 passed (functional-test-reviewer), tests/vst/test_s3_worker_pilot_e2e.py 24 passed (e2e-runner); no product defect found. Known limits: non-hand-written adapters get no commit verification; slot and live-lease refusals stay stored as BLOCKED for that attempt id; the WORKER_FAILURE_RETRY event reason, the signed-probe sandbox path (AC-5, AC-6) and real process kill are NOT_RUN; mutation checks NOT_RUN.

@@ -18,12 +18,32 @@ from typing import Protocol
 _HEX40 = re.compile(r"[0-9a-f]{40}\Z")
 _HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 _SAFE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z")
-_SAFE_PATH = re.compile(r"[^\x00]+\Z")
 MAX_CHANGE_BYTES = 64 * 1024
 MAX_PROGRESS_BYTES = 4 * 1024
 MAX_EVIDENCE_REFS = 32
 MAX_ALLOWED_PATHS = 128
 MAX_PATH_BYTES = 512
+
+
+def is_canonical_repo_path(path: object) -> bool:
+    """True only for the one accepted form: relative, forward-slash, no aliases.
+
+    Rejects backslashes, control characters, empty/dot/dot-dot components, any
+    ``:`` (drive letters and NTFS streams) and any ``.git`` component.
+    """
+    if not isinstance(path, str) or not path:
+        return False
+    try:
+        if len(path.encode("utf-8")) > MAX_PATH_BYTES:
+            return False
+    except UnicodeEncodeError:
+        return False
+    if "\\" in path or path.startswith("/") or any(ord(character) < 32 for character in path):
+        return False
+    return all(
+        part not in {"", ".", ".."} and ":" not in part and part.casefold() != ".git"
+        for part in path.split("/")
+    )
 
 
 def operation_key_for(operation: str, run_id: str, attempt_id: str) -> str:
@@ -74,6 +94,7 @@ class WorkerErrorCode(str, Enum):
     BUDGET_EXHAUSTED = "BUDGET_EXHAUSTED"
     RECONCILIATION_REQUIRED = "RECONCILIATION_REQUIRED"
     UNSUPPORTED_STATE = "UNSUPPORTED_STATE"
+    RETRY_EXHAUSTED = "RETRY_EXHAUSTED"
 
 
 class Checkpoint(str, Enum):
@@ -155,20 +176,12 @@ class WorkerRequest:
         if (not isinstance(self.allowed_paths, tuple) or not self.allowed_paths
                 or len(self.allowed_paths) > MAX_ALLOWED_PATHS):
             raise ValueError("allowed_paths must contain 1..128 paths")
-        if any(
-            not isinstance(path, str) or not _SAFE_PATH.fullmatch(path)
-            or len(path.encode("utf-8")) > MAX_PATH_BYTES
-            or path.replace("\\", "/").startswith("/")
-            or ".." in path.replace("\\", "/").split("/")
-            for path in self.allowed_paths
-        ):
-            raise ValueError("allowed_paths entries must be non-empty text paths")
+        if any(not is_canonical_repo_path(path) for path in self.allowed_paths):
+            raise ValueError("allowed_paths entries must be canonical relative forward-slash paths")
         if len(set(self.allowed_paths)) != len(self.allowed_paths):
             raise ValueError("allowed_paths entries must be unique")
-        normalized = self.change_path.replace("\\", "/") if isinstance(self.change_path, str) else ""
-        if (not normalized or normalized not in self.allowed_paths or normalized.startswith("/")
-                or ".." in normalized.split("/") or "\x00" in normalized):
-            raise ValueError("change_path must be safe and included in allowed_paths")
+        if not is_canonical_repo_path(self.change_path) or self.change_path not in self.allowed_paths:
+            raise ValueError("change_path must be canonical and included in allowed_paths")
         if not isinstance(self.change_content, str):
             raise ValueError("change_content must be text")
         if len(self.change_content.encode("utf-8")) > MAX_CHANGE_BYTES:
@@ -236,13 +249,7 @@ class StopRequest:
             raise ValueError("manifest_sha256 must be a lowercase SHA-256 digest")
         if (not isinstance(self.allowed_paths, tuple) or not self.allowed_paths
                 or len(self.allowed_paths) > MAX_ALLOWED_PATHS
-                or any(
-                    not isinstance(path, str) or not path or "\x00" in path
-                    or len(path.encode("utf-8")) > MAX_PATH_BYTES
-                    or path.replace("\\", "/").startswith("/")
-                    or ".." in path.replace("\\", "/").split("/")
-                    for path in self.allowed_paths
-                )
+                or any(not is_canonical_repo_path(path) for path in self.allowed_paths)
                 or len(set(self.allowed_paths)) != len(self.allowed_paths)):
             raise ValueError("allowed_paths must contain at most 128 unique safe relative paths")
         if isinstance(self.budget_remaining, bool) or not isinstance(self.budget_remaining, int) or self.budget_remaining < 0:
@@ -351,10 +358,8 @@ class WorkerResponse:
             raise ValueError("evidence_refs must be a tuple of at most 32 bounded references")
         if (not isinstance(self.changed_paths, tuple)
                 or len(self.changed_paths) > MAX_ALLOWED_PATHS
-                or any(not isinstance(path, str) or not path
-                       or len(path.encode("utf-8")) > MAX_PATH_BYTES
-                       for path in self.changed_paths)):
-            raise ValueError("changed_paths must contain at most 128 bounded paths")
+                or any(not is_canonical_repo_path(path) for path in self.changed_paths)):
+            raise ValueError("changed_paths must contain at most 128 canonical paths")
         if self.candidate_head is not None and (
             not isinstance(self.candidate_head, str) or not _HEX40.fullmatch(self.candidate_head)
         ):
