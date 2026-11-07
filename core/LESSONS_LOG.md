@@ -1469,3 +1469,16 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — GPT-PM approved the pipe identification change (round 3)
 
 - Kind: NEUTRAL. The approval is static only; the elevated run is the real test.
+
+## 2026-11-07 — Elevated attempt at e97eea2: pipe auth passed, Supervisor Store used across threads
+
+- Kind: FAILURE (found by the elevated run; diagnosed in one pass from the new VST_EVENT/event-log output).
+- Facts:
+  - The Dispatcher -> Supervisor pipe connection was accepted, so the DACL + SCM-pid identification works under the real restricted service tokens.
+  - The Supervisor then refused next_dispatch_intent with `ProgrammingError` at store.py:1019 (`BEGIN` in `_read_tx_locked`), called from supervisor_service `_handle`.
+  - The Store's sqlite connection (check_same_thread=True) is created on the SCM service thread, but WindowsAuthenticatedSupervisorAPI ran each role's requests on per-role threads.
+  - The Dispatcher stopped with SupervisorRPCError (fail-stop by design).
+- Root cause: the Windows endpoint added per-role threads without moving Store access onto the owning thread. Probes and reviews used fake supervisors, so a real Store never crossed threads.
+- Fix: role threads only accept and parse requests. Every Supervisor/Store call is queued to the serving thread (the Store-creating thread) and runs there one at a time; the waiting thread times out after 60 s.
+- Rule: any Windows endpoint that adds threads must prove with a real Store (sqlite) that the connection is used only on its creating thread.
+- Success worth keeping: the event-log handler plus the installer's VST_EVENT dump turned a blind retry into a one-pass diagnosis.

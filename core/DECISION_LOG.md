@@ -1690,3 +1690,10 @@ Evidence: probes pipe_id_37e5b1e and pipe_id_e97eea2 in s2-4e-probes-20261107.js
 ## 2026-11-07 — GPT-PM APPROVE round 3 for the pipe identification change at b7235ef
 
 Request a766bc2a-46eb-4ae0-9a0f-96f23c073449, reply 350b36cb-f9de-5308-8ac3-9aebc41b2161 (correlated). Verdict: APPROVE, BLOCKER 0, MAJOR 0. The scope was the delta 7592676..b7235ef. The elevated E2E is still NOT_RUN.
+
+## 2026-11-07 — Windows Supervisor runs all Store calls on its serving thread
+
+- WindowsAuthenticatedSupervisorAPI role threads accept and parse requests only.
+- Supervisor and Store calls go through a queue to serve_forever's thread. That is the SCM service thread that created the Store, and it also closes the Store.
+- This keeps sqlite's same-thread rule and serializes Store access.
+- Evidence: the Application event at 18:13:45 shows `ProgrammingError` at store.py:1019 on the e97eea2 elevated run.

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import hashlib
+import queue
 import logging
 import os
 import select
@@ -783,6 +785,10 @@ class WindowsAuthenticatedSupervisorAPI:
         self._error_lock = threading.Lock()
         self._dispatch_api = object.__new__(AuthenticatedSupervisorAPI)
         self._dispatch_api.supervisor = supervisor
+        # The Store's sqlite connection belongs to the thread that created it (the SCM
+        # service thread, which also runs serve_forever). Role threads only accept and
+        # parse; every Supervisor/Store call runs on the serving thread, one at a time.
+        self._work: queue.Queue = queue.Queue()
 
     def shutdown(self) -> None:
         self._shutdown.set()
@@ -801,12 +807,26 @@ class WindowsAuthenticatedSupervisorAPI:
             thread.start()
         try:
             while any(thread.is_alive() for thread in threads):
-                for thread in threads:
-                    thread.join(0.1)
+                try:
+                    func, future = self._work.get(timeout=0.1)
+                except queue.Empty:
+                    pass
+                else:
+                    if future.set_running_or_notify_cancel():
+                        try:
+                            future.set_result(func())
+                        except BaseException as exc:
+                            future.set_exception(exc)
                 if self._errors:
                     self.shutdown()
         finally:
             self.shutdown()
+            while True:
+                try:
+                    _func, future = self._work.get_nowait()
+                except queue.Empty:
+                    break
+                future.cancel()
             for thread in threads:
                 thread.join()
         if self._errors:
@@ -834,6 +854,16 @@ class WindowsAuthenticatedSupervisorAPI:
                 self.shutdown()
                 return
 
+    def _on_store_thread(self, func: Any) -> Any:
+        """Run one Supervisor/Store call on the serving thread and wait for it."""
+        future: concurrent.futures.Future = concurrent.futures.Future()
+        self._work.put((func, future))
+        try:
+            return future.result(timeout=60.0)
+        except concurrent.futures.TimeoutError:
+            future.cancel()
+            raise
+
     def _handle(self, role: str, connection: Any) -> None:
         endpoint = self.endpoints[role]
         connection.settimeout(10.0)
@@ -860,11 +890,13 @@ class WindowsAuthenticatedSupervisorAPI:
                 if (set(body) != {"cursor"}
                         or (body["cursor"] is not None and not isinstance(body["cursor"], dict))):
                     raise ContractError("Windows dispatcher cursor request is invalid")
-                result = self.supervisor.next_dispatch_intent(
+                result = self._on_store_thread(lambda: self.supervisor.next_dispatch_intent(
                     cursor=body["cursor"], audience=f"windows-service:{endpoint.client_service}",
-                )
+                ))
             else:
-                result = self._dispatch_api._dispatch(operation, message["body"], peer)
+                result = self._on_store_thread(
+                    lambda: self._dispatch_api._dispatch(operation, message["body"], peer),
+                )
             response = {"ok": True, "result": result}
         except Exception:
             logging.getLogger(__name__).warning(
