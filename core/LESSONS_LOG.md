@@ -1670,3 +1670,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Kind: FAILURE (process): the S3-A code gate was approved while the pilot gate wrapper always raised TypeError and symlink commits were accepted; both were found only when the S3-C scenario matrix executed those paths.
 - Missed by: author, both static reviewers, the earlier tests and GPT-PM (reviews read code; no test executed these branches).
 - Rule: map the plan's scenario denominator to tests before asking for the code gate, not after; a branch no test executes is unreviewed.
+
+## 2026-11-07 — S3-C delivery
+
+- Kind: SUCCESS: the scenario matrix was written against the plan's denominator, executed the unreviewed branches and found two real defects before the sprint PR was merged; the narrow GPT-PM round on the delta returned a bare APPROVE. Bounded scope was stated up front, so the NOT_RUN rows stayed visible instead of being averaged into the approval.
