@@ -369,7 +369,14 @@ Set-Content -LiteralPath $testTask -Value $testTaskText -Encoding UTF8
 Set-ExplicitAcl $testTask $false $readFileGrants
 $taskAction = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$testTask`""
 $taskPrincipal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Highest
-$taskSettings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 5) -MultipleInstances IgnoreNew
+# The task must outlive the manifest execution timeout plus bounded margins for
+# Owner/Dispatcher/Runner IPC, receipt persistence and the E2E poll (manifest
+# timeout + 120 s), so Task Scheduler never kills a run the contract still allows.
+$manifestTimeoutSec = [int]$snapshotManifest.timeout_sec
+if ($manifestTimeoutSec -lt 1 -or $manifestTimeoutSec -gt 3600) { throw 'Snapshot manifest timeout_sec is outside 1..3600.' }
+$taskLimitSec = $manifestTimeoutSec + 300
+if ($taskLimitSec -le $manifestTimeoutSec + 120) { throw 'Scheduled-task limit does not cover the manifest timeout and E2E poll margin.' }
+$taskSettings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Seconds $taskLimitSec) -MultipleInstances IgnoreNew
 Register-ScheduledTask -TaskName $taskName -Action $taskAction -Principal $taskPrincipal -Settings $taskSettings | Out-Null
 
 foreach ($name in @('VSTSupervisor', 'VSTWorker', 'VSTSigner', 'VSTRunner', 'VSTDispatcher', 'VSTOwner')) {

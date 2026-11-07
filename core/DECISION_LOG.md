@@ -1649,3 +1649,7 @@ The rebinding adds the second-pass fixes (pipe close, token checks, sanitized ev
 ## 2026-11-07 — S2-4E manifest base_head fdb7fb603198f2db2d11caab68242c03952e113c -> 64ab73736a9fe598442e867e7583664530053cde
 
 The rebinding adds the event-log formatting hardening and the unknown-role rejection.
+
+## 2026-11-07 — S2-4E harness limits derived from the manifest timeout
+
+The scheduled E2E task limit is manifest timeout_sec + 300 s, and the E2E receipt poll is timeout_sec + 120 s; both are validated. This closes GPT-PM round-1 MAJOR-01 (request a06d2890-6b38-4504-b796-27e199bb7532, reply 7209d52d-e1fc-52e2-9159-590abec4ba43).

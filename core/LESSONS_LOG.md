@@ -1407,3 +1407,13 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — S2-4E manifest rebound to 64ab73736a9fe598442e867e7583664530053cde (event-log and role-validation fixes)
 
 - Kind: NEUTRAL. Needed because the protected app snapshot is built from base_head.
+
+## 2026-11-07 — GPT-PM MAJOR-01: harness time limits shorter than the manifest timeout
+
+- Kind: FAILURE (found by GPT-PM round 1, request a06d2890-6b38-4504-b796-27e199bb7532).
+- Facts: the provisioner registered the E2E scheduled task with a 5-minute ExecutionTimeLimit, and the E2E test polled for the receipt for a fixed 180 s. The manifest allows timeout_sec=900. A valid run of 3-15 minutes would have been killed or failed by the harness, not the product. Fix:
+  - the task limit is manifest timeout_sec + 300 s, validated at provisioning;
+  - the E2E poll is manifest timeout_sec + 120 s, validated before the one-shot submit. The helper was checked by e2e-runner: 900 -> 1020, and invalid types and ranges are rejected.
+- Root cause: harness limits were picked as constants instead of being derived from the contract they wrap.
+- Layer: missed by the author and both internal agent passes; caught by GPT-PM.
+- Rule: derive every harness timeout from the manifest/contract value plus an explicit margin, and assert the relationship.

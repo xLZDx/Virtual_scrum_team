@@ -31,7 +31,8 @@ ROOT = Path(__file__).resolve().parents[2]
 _HEADER = struct.Struct("!I")
 _MAX_OWNER_REQUEST = 64 * 1024
 _MAX_OWNER_RESPONSE = 256 * 1024
-_POLL_TIMEOUT_SEC = 180.0
+_POLL_MARGIN_SEC = 120.0
+_MAX_MANIFEST_TIMEOUT_SEC = 3600
 _POLL_INTERVAL_SEC = 0.25
 _OWNER_ROLE_CONFIG_FIELDS = {
     "principal", "openssl_path", "trust_registry", "interactive_owner_sid",
@@ -65,6 +66,18 @@ def _read_exact(connection: Any, count: int) -> bytes:
             raise OSError("Owner named pipe closed before the complete response frame")
         data.extend(chunk)
     return bytes(data)
+
+
+def _poll_deadline_sec(manifest: dict[str, Any]) -> float:
+    """Poll window = manifest execution timeout + margin (provisioner assumes +120 s)."""
+    timeout_sec = manifest.get("timeout_sec")
+    if (type(timeout_sec) is not int
+            or not 1 <= timeout_sec <= _MAX_MANIFEST_TIMEOUT_SEC):
+        raise ValueError(
+            f"manifest timeout_sec must be an int in 1..{_MAX_MANIFEST_TIMEOUT_SEC}, "
+            f"got {timeout_sec!r}"
+        )
+    return timeout_sec + _POLL_MARGIN_SEC
 
 
 def _owner_rpc(runtime: Any, message: dict[str, Any]) -> Any:
@@ -198,6 +211,12 @@ class S2OwnerRunnerWindowsProcessE2E(unittest.TestCase):
 
         runtime, instruction, manifest, manifest_digest = self._preflight()
 
+        # Validate before the one-shot submit so a bad manifest never burns the instruction.
+        try:
+            poll_window_sec = _poll_deadline_sec(manifest)
+        except ValueError as exc:
+            self.fail(str(exc))
+
         # Refuse to re-submit an instruction whose receipt already exists.
         existing = _owner_rpc(runtime, {
             "operation": "completed_receipt", "instruction": instruction,
@@ -216,7 +235,7 @@ class S2OwnerRunnerWindowsProcessE2E(unittest.TestCase):
             self.assertEqual(accepted.get(field), instruction[field], field)
         self.assertEqual(accepted.get("manifest_digest"), manifest_digest)
 
-        deadline = time.monotonic() + _POLL_TIMEOUT_SEC
+        deadline = time.monotonic() + poll_window_sec
         completed: dict[str, Any] | None = None
         while time.monotonic() < deadline:
             result = _owner_rpc(runtime, {
