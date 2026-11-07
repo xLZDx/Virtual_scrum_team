@@ -1684,3 +1684,10 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-08 — post-merge report refresh
 
 - Kind: SUCCESS: the owed program report was regenerated from PROJECT_PLAN.md instead of hand-edited, and the merge was bound to the exact approved head with --match-head-commit.
+
+
+## 2026-11-08 — product intent was not checked against the plan
+
+- Kind: SHORTCOMING: I ran S3 to bounded closure against its own plan for several turns without checking it against the operator purpose (replace token-heavy agents with an application); the operator had to ask how the work relates to the app.
+- Root cause: I treated the plan documents as the source of intent and optimised their internal consistency; nobody (author, reviewers, gate) compared the plan with the operator mission.
+- Rule: at the start of a sprint and when reporting closure, state in one line how the sprint serves the stated product goal, and re-read the goal from the operator, not only from the plan.

@@ -1904,3 +1904,8 @@ Operator decision recorded 2026-11-08 (answered in chat; the answer may have bee
 ## 2026-11-08 — PR 4 merged and program report refreshed
 
 Operator said to merge S3 into main; PR 4 was merged as b502c7c with the head 9f766aa (GPT-PM code approval at 98b548d, later commits documents only). The whole-program plan report was re-rendered on main after the merge. S4 and S5 are not started and need separate operator approval.
+
+
+## 2026-11-08 — Operator fixes the product goal: an application without agents
+
+Operator decision (chat, 2026-11-08): the product is an application that performs the work of the many token-consuming agents and skills by itself, as deterministic code; the only AI in the loop is an orchestrator that selects which checks to run and reads their results. Consequence: the repository documents (README, master blueprint) still describe AI workers governed by a control plane, so they disagree with this goal until re-scoped. The deterministic control plane from S1 and S2 (store, gate, diff gate, receipts, runner) is kept as the foundation; the worker comparison (Temporal, BMad Loop) stays parked. S4 and S5 are not started and will be re-scoped to this goal only after the operator approves the re-scoped list.
