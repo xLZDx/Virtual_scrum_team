@@ -1080,7 +1080,7 @@ def main() -> None:
                 runtime.pipe_name("supervisor_worker"),
                 expected_server_sid=runtime.identity("supervisor").service_sid,
                 expected_server_service=runtime.identity("supervisor").service_name,
-                timeout_sec=5.0,
+                timeout_sec=30.0,
             )
             config = WindowsWorkerServiceConfig.from_runtime(
                 runtime, repository_root=repository_root,
@@ -1104,7 +1104,7 @@ def main() -> None:
             runtime.pipe_name("supervisor_runner"),
             expected_server_sid=runtime.identity("supervisor").service_sid,
             expected_server_service=runtime.identity("supervisor").service_name,
-            timeout_sec=5.0,
+            timeout_sec=30.0,
         )
         worker_identity = runtime.identity("worker")
         worker = WindowsWorkerClient(

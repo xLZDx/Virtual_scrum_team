@@ -1318,10 +1318,11 @@ def run_and_sign(
 
 def _git_bytes(cwd: str, *args: str) -> bytes:
     try:
+        # Read-only evidence: never take the index lock (the repository may be read-only).
         result = subprocess.run(
-            ["git", *args], cwd=cwd, stdin=subprocess.DEVNULL,
+            ["git", "-c", "core.fsmonitor=false", *args], cwd=cwd, stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
-            timeout=10, check=False,
+            timeout=10, check=False, env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise ContractError(f"cannot derive repository evidence: {exc}") from exc

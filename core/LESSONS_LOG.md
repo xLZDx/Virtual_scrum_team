@@ -1497,3 +1497,17 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — Store-thread fix proven with a regression-catching probe
 
 - Kind: SUCCESS. The probe reproduced the elevated-run failure with the queue disabled and passed with it, so it can tell the difference.
+
+## 2026-11-07 — Pre-run walk of the remaining Windows service chain (reliability review)
+
+- Kind: SHORTCOMING (found by reliability-reviewer before the next elevated run; no proven BLOCKER).
+- Fixed MINORs:
+  - Supervisor RPC timeouts of 5 s in the Runner and Owner are now 30 s. A slow first OpenSSL start or an HMAC-chained commit could exceed 5 s, and a failure after reserve stops the Runner (ambiguous authority).
+  - The OpenSSL timeout is now 20 s.
+  - The Owner accept loop survives up to 5 consecutive per-connection OSErrors, with a warning to the event log.
+  - Repository-evidence git calls now run with GIT_OPTIONAL_LOCKS=0 and core.fsmonitor=false, because the app snapshot is read-only for services.
+- Unproven hypotheses to confirm at the elevated run, with diagnostics now in the event log:
+  - the Supervisor grant-key ACL;
+  - git under the Runner token;
+  - TemporaryDirectory under the write-restricted token.
+- Rule: walk the whole remaining chain for the environment mismatch class (read-only dirs, restricted tokens, thread affinity, short timeouts) before each elevated attempt, not only the stage that failed last.

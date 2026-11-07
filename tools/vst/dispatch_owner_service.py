@@ -231,13 +231,22 @@ class DispatchOwnerService:
 
         if not isinstance(listener, WindowsNamedPipeListener):
             raise ContractError("dispatch-owner Windows listener is not an authenticated named pipe")
+        accept_failures = 0
         while not self._shutdown.is_set():
             try:
                 conn = listener.accept(timeout_sec=0.5)
             except OSError:
                 if self._shutdown.is_set():
                     return
-                raise
+                # One broken client connection must not stop the Owner; a persistent
+                # listener failure (several in a row) still does.
+                accept_failures += 1
+                if accept_failures > 5:
+                    raise
+                _LOGGER.warning("dispatch-owner pipe accept failed", exc_info=True)
+                self._shutdown.wait(0.2)
+                continue
+            accept_failures = 0
             if conn is None:
                 continue
             with conn:
@@ -367,7 +376,7 @@ def main() -> None:
             runtime.pipe_name("supervisor_owner"),
             expected_server_sid=supervisor_identity.service_sid,
             expected_server_service=supervisor_identity.service_name,
-            timeout_sec=5.0,
+            timeout_sec=30.0,
         )
         service_config = DispatchOwnerServiceConfig(
             principal=principal, openssl_path=openssl_path,

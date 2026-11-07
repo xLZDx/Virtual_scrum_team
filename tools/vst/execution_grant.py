@@ -225,7 +225,7 @@ def _openssl_signature(
             result = subprocess.run(
                 argv, cwd="/", env={"LC_ALL": "C", "PATH": ""}, stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, close_fds=True,
-                pass_fds=inherited, timeout=5, check=False,
+                pass_fds=inherited, timeout=20, check=False,
             )
         except (OSError, subprocess.SubprocessError) as exc:
             raise ContractError("execution grant Ed25519 operation is unavailable") from exc
@@ -267,7 +267,7 @@ def _windows_openssl_signature(
                 argv, cwd=temp_dir, env={"SYSTEMROOT": os.environ.get("SYSTEMROOT", r"C:\Windows"),
                                          "PATH": ""}, stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, close_fds=True,
-                timeout=5, check=False,
+                timeout=20, check=False,
             )
     except (OSError, subprocess.SubprocessError) as exc:
         raise ContractError("execution grant Windows Ed25519 operation is unavailable") from exc

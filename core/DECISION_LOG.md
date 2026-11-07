@@ -1715,3 +1715,7 @@ The rebinding adds the Supervisor store-thread fix.
 ## 2026-11-07 — Supervisor store-thread fix verified by a real-pipe, real-Store probe
 
 Probe `store_thread_c4eb827` at ae07e7a: 5 sequential and 6 concurrent requests over real named pipes and the real WindowsSupervisorClient all run Store calls on the creating thread. The control without the queue reproduces the elevated-run ProgrammingError. shutdown returns in under 0.1 s. Limits: the Supervisor is stubbed, and SCM pid/SID checks are patched.
+
+## 2026-11-07 — Reliability hardening before the next elevated attempt
+
+Supervisor RPC timeouts in Runner and Owner are 30 s, OpenSSL timeout 20 s, Owner accept tolerates up to 5 consecutive per-connection failures, and repository-evidence git runs without index locks. The manifest timeout of 900 s is unaffected: the dispatch and Runner client maxima already exceed it.
