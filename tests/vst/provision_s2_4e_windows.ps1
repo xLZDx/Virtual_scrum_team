@@ -291,7 +291,10 @@ $serviceSids = @{}
 foreach ($name in $serviceNames) {
     $role = $serviceRoles[$name]
     $launcher = Join-Path $launchers ("run-{0}.py" -f $role)
-$launcherText = "import os, sys`nos.environ['PATH'] = r'$(Split-Path -Parent $gitPath)' + os.pathsep + r'$env:SystemRoot\System32'`nos.environ['GIT_CONFIG_NOSYSTEM'] = '1'`nos.environ['GIT_CONFIG_GLOBAL'] = r'$emptyGitConfig'`nos.environ['GIT_TERMINAL_PROMPT'] = '0'`nsys.dont_write_bytecode = True`nsys.path.insert(0, r'$app')`nfrom tools.vst.windows_service_host import main`nsys.argv = [__file__, '--role', '$role']`nmain()`n"
+    # Write-restricted service tokens cannot write to the shared system TEMP, so each
+    # role gets its own protected temp directory (created below once its SID exists).
+    $roleTemp = Join-Path (Join-Path $root 'tmp') $role
+$launcherText = "import os, sys, tempfile`nos.environ['TEMP'] = os.environ['TMP'] = r'$roleTemp'`ntempfile.tempdir = r'$roleTemp'`nos.environ['PATH'] = r'$(Split-Path -Parent $gitPath)' + os.pathsep + r'$env:SystemRoot\System32'`nos.environ['GIT_CONFIG_NOSYSTEM'] = '1'`nos.environ['GIT_CONFIG_GLOBAL'] = r'$emptyGitConfig'`nos.environ['GIT_TERMINAL_PROMPT'] = '0'`nsys.dont_write_bytecode = True`nsys.path.insert(0, r'$app')`nfrom tools.vst.windows_service_host import main`nsys.argv = [__file__, '--role', '$role']`nmain()`n"
     Set-Content -LiteralPath $launcher -Value $launcherText -Encoding Ascii
     $binaryPath = '"{0}" "{1}"' -f $pythonPath, $launcher
     # Windows PowerShell 5.1 strips embedded quotes and drops empty arguments when calling
@@ -317,6 +320,14 @@ $issuerGrants = @{$systemSid='FullControl'; $adminSid='FullControl'}
 Set-ExplicitAcl $store $true $storeGrants
 Set-ExplicitAcl $signer $true $signerGrants
 Set-ExplicitAcl $issuer $true $issuerGrants
+$tempRoot = Join-Path $root 'tmp'
+New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
+Set-ExplicitAcl $tempRoot $true $allRead
+foreach ($name in $serviceNames) {
+    $roleTemp = Join-Path $tempRoot $serviceRoles[$name]
+    New-Item -ItemType Directory -Path $roleTemp -Force | Out-Null
+    Set-ExplicitAcl $roleTemp $true @{$systemSid='FullControl'; $adminSid='FullControl'; $serviceSids[$name]='FullControl'}
+}
 
 $opensslPath = Join-Path $bin 'openssl.exe'
 $pythonArgs = @('-B', '-m', 'tests.vst.s2_4e_windows_provision', '--root', $root, '--repo', $app, '--openssl', $opensslPath, '--owner-sid', $userSid, '--run-id', $runId)

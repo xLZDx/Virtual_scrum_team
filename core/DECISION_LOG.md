@@ -1614,3 +1614,7 @@ WindowsRuntimeConfig.load treats ERROR_ACCESS_DENIED on store_root/signer_root a
 ## 2026-11-07 — S2-4E manifest base_head 93835aa -> 9e1266a45c2c7c2fa15bc8fd8d6a11d6cf255cea
 
 The rebinding adds the private-root boundary fix in tools/vst/windows_service_host.py.
+
+## 2026-11-07 — Operator-requested full review before the next attempt
+
+The operator asked for a complete agent review and fix batch, then another agent pass and a GPT-PM review, before any further elevated attempt. Batch 1 (provisioner/seed) is committed. Batch 2 (tools/vst) follows the Win32 reviewer's report.

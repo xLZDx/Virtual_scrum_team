@@ -140,10 +140,13 @@ def seed(root: Path, repo: Path, openssl: Path, owner_sid: str, run_id: str) -> 
         store.init_slots(1)
         story_id = manifest["story_id"]
         store.open_story(story_id, manifest["project_id"], manifest["phase"])
-        epoch = store.acquire_epoch(story_id, "Codex", ttl_sec=1800)
+        # The Runner claim/reserve/complete each require
+        # min(owner, lease) expiry - now >= manifest timeout_sec + completion margin.
+        # The operator starts the E2E task some time after seeding, so keep ample slack.
+        epoch = store.acquire_epoch(story_id, "Codex", ttl_sec=7200)
         store.register_task(manifest)
         store.acquire_lease(
-            manifest["task_id"], story_id, "VSTRunner", epoch, 1, 1200,
+            manifest["task_id"], story_id, "VSTRunner", epoch, 1, 5400,
             supervisor_key=startup_key,
         )
 
@@ -152,7 +155,7 @@ def seed(root: Path, repo: Path, openssl: Path, owner_sid: str, run_id: str) -> 
         "request_id": secrets.token_hex(16), "task_id": manifest["task_id"],
         "slot": "runtime-tests", "attempt": 1, "epoch": epoch, "run_id": run_id,
         "key_id": owner_key_id,
-        "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=30)).replace(
+        "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=90)).replace(
             microsecond=0,
         ).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }

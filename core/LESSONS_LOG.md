@@ -1343,3 +1343,10 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-07 — S2-4E manifest rebound to 9e1266a45c2c7c2fa15bc8fd8d6a11d6cf255cea (private-root boundary fix)
 
 - Kind: NEUTRAL.
+
+## 2026-11-07 — Full agent review before the next elevated attempt (batch 1: provisioner)
+
+- Kind: FAILURE (found by review, not by a run).
+- Facts: agents found a BLOCKER: the seeded lease of 1200 s left only 295 s between seeding and the Runner claim (store.py claim/reserve/complete need timeout_sec 900 + 5 s). They also found that the write-restricted service tokens had no writable TEMP for OpenSSL grant files and the Worker's test Store. Fixes: epoch 7200 s, lease 5400 s, instruction expiry 90 min; a protected per-role C:\ProgramData\VST\tmp\<role> (FullControl for that role only), set as TEMP/TMP and tempfile.tempdir in each launcher. Disproved findings: the e2e test file differs from base_head (no, only the manifest differs); lazy SQLite ledger creation (the file exists right after connect).
+- Root cause: the seed timings and the service environment were never exercised end to end.
+- Rule: before any elevated attempt, run a full multi-agent review of the whole journey, not just the failing step.
