@@ -1618,3 +1618,7 @@ The rebinding adds the private-root boundary fix in tools/vst/windows_service_ho
 ## 2026-11-07 — Operator-requested full review before the next attempt
 
 The operator asked for a complete agent review and fix batch, then another agent pass and a GPT-PM review, before any further elevated attempt. Batch 1 (provisioner/seed) is committed. Batch 2 (tools/vst) follows the Win32 reviewer's report.
+
+## 2026-11-07 — Named-pipe server authenticity without cross-service token access
+
+Clients no longer open the server process token, which other virtual accounts are denied. Server authenticity rests on the pipe DACL: only the server SID holds FILE_CREATE_PIPE_INSTANCE; peers get 0x100183. It also rests on GetNamedPipeServerProcessId matching the SCM pid of the expected service. Clients connect with SECURITY_SQOS_PRESENT|SECURITY_IDENTIFICATION.

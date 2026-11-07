@@ -73,9 +73,21 @@ class StoreBackedDispatcher:
     def shutdown(self) -> None:
         self._shutdown.set()
 
+    def _next_dispatch_intent(self) -> dict[str, Any]:
+        """Bounded retry for the idempotent read only (issue/dispatch stay fail-stop)."""
+        attempts = 20
+        for attempt in range(attempts):
+            try:
+                return self.supervisor.next_dispatch_intent(self._cursor)
+            except (OSError, ConnectionError):
+                if attempt == attempts - 1 or self._shutdown.is_set():
+                    raise
+                self._shutdown.wait(min(0.2, 0.05 + 0.01 * attempt))
+        raise AssertionError("unreachable")  # pragma: no cover
+
     def serve_forever(self) -> None:
         while not self._shutdown.is_set():
-            delivery = self.supervisor.next_dispatch_intent(self._cursor)
+            delivery = self._next_dispatch_intent()
             intent = delivery["intent"]
             if intent is None:
                 self._cursor = delivery["cursor_idle"]

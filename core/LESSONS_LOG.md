@@ -1350,3 +1350,11 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Facts: agents found a BLOCKER: the seeded lease of 1200 s left only 295 s between seeding and the Runner claim (store.py claim/reserve/complete need timeout_sec 900 + 5 s). They also found that the write-restricted service tokens had no writable TEMP for OpenSSL grant files and the Worker's test Store. Fixes: epoch 7200 s, lease 5400 s, instruction expiry 90 min; a protected per-role C:\ProgramData\VST\tmp\<role> (FullControl for that role only), set as TEMP/TMP and tempfile.tempdir in each launcher. Disproved findings: the e2e test file differs from base_head (no, only the manifest differs); lazy SQLite ledger creation (the file exists right after connect).
 - Root cause: the seed timings and the service environment were never exercised end to end.
 - Rule: before any elevated attempt, run a full multi-agent review of the whole journey, not just the failing step.
+
+## 2026-11-07 — Windows named-pipe layer reworked after the full Win32 review (batch 2)
+
+- Kind: FAILURE (found by review, not by a run).
+- Facts: the Win32 reviewer found 5 BLOCKERs and 6 MAJORs in tools/vst/windows_named_pipe.py and its callers: REJECT_REMOTE_CLIENTS in the wrong argument; advapi32.LocalFree; a FIRST_PIPE_INSTANCE recreated per accept (2nd request ACCESS_DENIED); no pending instance between accepts and no client retry; cross-service OpenProcessToken on the client; a bad client killing the service; sendall spinning on a closed peer; GW granting create-instance to peers; invisible start-up errors; a 1 s handshake window. The implementation agent fixed all of them and added a Dispatcher retry for the idempotent next_dispatch_intent read only. A non-elevated two-process smoke run passed: 9 request/response cycles across 3 clients, connect while no accept was in progress, and an unauthorized client dropped without killing the listener.
+- Root cause: the pipe layer was only ever exercised with mocks; one request per connection hid the multi-request lifecycle.
+- Rule: test IPC primitives with real multi-request, multi-process sessions before review.
+- Open risk: FlushFileBuffers on a server close can block if a client never reads. To be checked in the follow-up agent pass.

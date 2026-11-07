@@ -708,7 +708,17 @@ def main() -> None:
     except (KeyError, ImportError) as exc:
         raise ContractError("SCM role is not available in the local runtime") from exc
     sys.argv = [sys.argv[0], "--windows-scm", *role_arguments]
-    service.main()
+    try:
+        service.main()
+    except Exception as exc:
+        # Failures before run_scm_service (config load, ACL checks, key reads) would
+        # otherwise reach SCM only as "service did not respond"; record them first.
+        try:
+            advapi, _kernel = _win_api()
+            _report_service_failure(advapi, service_name_for_role(role), exc)
+        except Exception:
+            pass
+        raise
 
 
 if __name__ == "__main__":

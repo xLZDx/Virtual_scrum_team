@@ -1,8 +1,9 @@
 """Authenticated, bounded Windows named-pipe transport primitives for VST services.
 
-The pipe DACL admits only the configured service SIDs plus LocalSystem. Both
-ends verify the remote process token's service SID and that the peer PID is the
-currently registered PID of the configured SCM service before exchanging data.
+The pipe DACL admits only the configured service SIDs plus LocalSystem, and only
+the server SID may create pipe instances. The server verifies the client token's
+SID; both ends verify that the peer PID is the currently registered PID of the
+configured SCM service before exchanging data.
 This module provides bounded byte-stream operations, not a drop-in socket API:
 Windows named pipes do not support a socket-style write-half shutdown. Protocol
 framing, authorization, signing, and Store decisions remain with callers.
@@ -11,6 +12,7 @@ framing, authorization, signing, and Store decisions remain with callers.
 from __future__ import annotations
 
 import ctypes
+import logging
 import os
 import re
 import threading
@@ -21,6 +23,7 @@ from typing import Iterable
 from .contracts import ContractError
 
 
+_LOG = logging.getLogger(__name__)
 _PIPE_PREFIX = r"\\.\pipe\vst-"
 _SID_RE = re.compile(r"S-1-\d+(?:-\d+){1,15}\Z", re.ASCII)
 _PIPE_NAME_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,79}\Z", re.ASCII)
@@ -46,10 +49,19 @@ _PIPE_READMODE_BYTE = 0x00000000
 _PIPE_WAIT = 0x00000000
 _PIPE_NOWAIT = 0x00000001
 _PIPE_UNLIMITED_INSTANCES = 255
-_GENERIC_READ = 0x80000000
-_GENERIC_WRITE = 0x40000000
-_GENERIC_READ_SDDL = "GR"
-_GENERIC_WRITE_SDDL = "GW"
+# Explicit pipe rights (FILE_READ_DATA|FILE_WRITE_DATA|FILE_READ_ATTRIBUTES|
+# FILE_WRITE_ATTRIBUTES|SYNCHRONIZE). GENERIC_WRITE would add FILE_APPEND_DATA,
+# which on a pipe is FILE_CREATE_PIPE_INSTANCE (0x4) and must stay server-only.
+_PEER_PIPE_ACCESS = 0x00100183
+_FILE_CREATE_PIPE_INSTANCE = 0x00000004
+# The server needs the full FILE_GENERIC_READ|WRITE set (0x12019f, incl. CREATE_PIPE_INSTANCE)
+# so that CreateNamedPipeW for later instances (which requests GENERIC_READ|WRITE) passes the
+# DACL check; peers never get any of these extra bits.
+_SERVER_PIPE_ACCESS = 0x0012019F | _FILE_CREATE_PIPE_INSTANCE
+_SECURITY_SQOS_PRESENT = 0x00100000
+_SECURITY_IDENTIFICATION = 0x00010000
+_ERROR_PIPE_BUSY = 231
+_HANDSHAKE_TIMEOUT_SEC = 5.0
 _OPEN_EXISTING = 3
 _FILE_ATTRIBUTE_NORMAL = 0x00000080
 _TOKEN_QUERY = 0x0008
@@ -154,7 +166,10 @@ def _api() -> tuple[ctypes.WinDLL, ctypes.WinDLL]:
     ]
     advapi32.RevertToSelf.argtypes = []
     kernel32.GetCurrentThread.argtypes = []
+    kernel32.LocalFree.restype = wintypes.HLOCAL
     kernel32.LocalFree.argtypes = [wintypes.HLOCAL]
+    kernel32.FlushFileBuffers.restype = wintypes.BOOL
+    kernel32.FlushFileBuffers.argtypes = [wintypes.HANDLE]
     advapi32.OpenSCManagerW.restype = wintypes.HANDLE
     advapi32.OpenSCManagerW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD]
     advapi32.OpenServiceW.restype = wintypes.HANDLE
@@ -206,19 +221,25 @@ def _validated_timeout(value: object, *, label: str) -> float:
     return float(value)
 
 
-def _security_descriptor(allowed_sids: tuple[str, ...]) -> tuple[ctypes.c_void_p, ctypes.WinDLL]:
+def _security_descriptor(server_sid: str, peer_sids: tuple[str, ...]) -> ctypes.c_void_p:
+    """Build the pipe DACL; the caller frees the result with kernel32.LocalFree.
+
+    Peers (and LocalSystem) get explicit connect/read/write masks only. Only the
+    server's own SID additionally holds FILE_CREATE_PIPE_INSTANCE, so no peer can
+    create or squat a pipe instance. No generic-all/owner/DACL-management rights.
+    """
     _kernel32, advapi32 = _api()
-    # LocalSystem retains the minimum rights needed to connect to and service
-    # the endpoint. Configured peers receive only the byte-stream rights they
-    # need; do not grant generic-all/owner/DACL-management rights.
-    trustees = tuple(dict.fromkeys(("S-1-5-18", *allowed_sids)))
-    dacl = "D:P" + "".join(f"(A;;{_GENERIC_READ_SDDL}{_GENERIC_WRITE_SDDL};;;{sid})" for sid in trustees)
+    masks: dict[str, int] = {"S-1-5-18": _PEER_PIPE_ACCESS}
+    for sid in peer_sids:
+        masks[sid] = _PEER_PIPE_ACCESS
+    masks[server_sid] = _SERVER_PIPE_ACCESS
+    dacl = "D:P" + "".join(f"(A;;0x{mask:x};;;{sid})" for sid, mask in masks.items())
     descriptor = ctypes.c_void_p()
     if not advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW(
         dacl, _SDDL_REVISION_1, ctypes.byref(descriptor), None,
     ):
         raise _last_error("cannot build named-pipe security descriptor")
-    return descriptor, advapi32
+    return descriptor
 
 
 def _primary_token_has_enabled_sid(token: wintypes.HANDLE, sid: ctypes.c_void_p) -> bool:
@@ -327,26 +348,6 @@ def _check_token_user_sid(token: wintypes.HANDLE, expected_sid: str) -> bool:
         kernel32.LocalFree(sid_text)
 
 
-def _verify_server_sid(pipe: wintypes.HANDLE, expected_sid: str) -> None:
-    kernel32, advapi32 = _api()
-    pid = wintypes.ULONG()
-    if not kernel32.GetNamedPipeServerProcessId(pipe, ctypes.byref(pid)) or pid.value <= 0:
-        raise _last_error("cannot identify named-pipe server process")
-    process = kernel32.OpenProcess(_PROCESS_QUERY_LIMITED_INFORMATION, False, pid.value)
-    if not process:
-        raise _last_error("cannot open named-pipe server process")
-    token = wintypes.HANDLE()
-    try:
-        if not advapi32.OpenProcessToken(process, _TOKEN_QUERY, ctypes.byref(token)):
-            raise _last_error("cannot inspect named-pipe server identity")
-        if not _check_token_sid(token, expected_sid):
-            raise ContractError("Windows named-pipe server service SID is unauthorized")
-    finally:
-        if token:
-            kernel32.CloseHandle(token)
-        kernel32.CloseHandle(process)
-
-
 def _service_process_id(service_name: str) -> int:
     """Return the active PID registered for one Windows service name."""
     kernel32, advapi32 = _api()
@@ -421,11 +422,12 @@ class WindowsNamedPipeConnection:
 
     def __init__(
         self, handle: wintypes.HANDLE, *, timeout_sec: float = 10.0,
-        prefetched: bytes = b"",
+        prefetched: bytes = b"", server_side: bool = False,
     ) -> None:
         if not isinstance(timeout_sec, (int, float)) or isinstance(timeout_sec, bool) or timeout_sec <= 0:
             raise ContractError("Windows named-pipe timeout is invalid")
         self._handle = handle
+        self._server_side = bool(server_side)
         self._timeout_sec = float(timeout_sec)
         self._closed = False
         if not isinstance(prefetched, bytes):
@@ -483,9 +485,9 @@ class WindowsNamedPipeConnection:
             written = wintypes.DWORD()
             if not kernel32.WriteFile(self._handle, buffer, len(chunk), ctypes.byref(written), None):
                 code = ctypes.get_last_error()
-                if code == _ERROR_NO_DATA and time.monotonic() < deadline:
-                    time.sleep(0.005)
-                    continue
+                if code in (_ERROR_NO_DATA, _ERROR_BROKEN_PIPE):
+                    # Peer closed: terminal, never spin until the deadline.
+                    raise BrokenPipeError(code, "Windows named-pipe peer closed the connection")
                 raise _last_error("cannot write Windows named-pipe data")
             if written.value <= 0:
                 if time.monotonic() >= deadline:
@@ -498,6 +500,10 @@ class WindowsNamedPipeConnection:
         if not self._closed:
             kernel32, _advapi32 = _api()
             self._closed = True
+            if self._server_side:
+                # Deliver buffered response bytes before the instance is torn down.
+                kernel32.FlushFileBuffers(self._handle)
+                kernel32.DisconnectNamedPipe(self._handle)
             kernel32.CloseHandle(self._handle)
 
     def __enter__(self) -> "WindowsNamedPipeConnection":
@@ -559,23 +565,41 @@ class WindowsNamedPipeClient:
 
     def connect(self) -> WindowsNamedPipeConnection:
         kernel32, _advapi32 = _api()
-        timeout_ms = int(min(self.timeout_sec, _MAX_CONNECT_WAIT_SEC) * 1000)
-        if not kernel32.WaitNamedPipeW(self.path, timeout_ms):
-            code = ctypes.get_last_error()
-            if code == _ERROR_SEM_TIMEOUT:
+        deadline = time.monotonic() + min(self.timeout_sec, _MAX_CONNECT_WAIT_SEC)
+        backoff = 0.02
+        handle = wintypes.HANDLE(-1).value
+        # The server keeps one pending instance, but a client can still arrive while
+        # that instance is being replaced (FILE_NOT_FOUND), find every instance busy
+        # (PIPE_BUSY) or time out in WaitNamedPipe (SEM_TIMEOUT): retry those only.
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
                 raise TimeoutError("Windows named-pipe endpoint did not become available")
-            raise _last_error("Windows named-pipe endpoint is unavailable")
-        handle = kernel32.CreateFileW(
-            self.path, _GENERIC_READ | _GENERIC_WRITE, 0, None, _OPEN_EXISTING,
-            _FILE_ATTRIBUTE_NORMAL, None,
-        )
-        if handle == wintypes.HANDLE(-1).value:
-            raise _last_error("cannot open Windows named-pipe endpoint")
+            wait_ms = max(1, min(int(remaining * 1000), 1000))
+            if kernel32.WaitNamedPipeW(self.path, wait_ms):
+                handle = kernel32.CreateFileW(
+                    self.path, _PEER_PIPE_ACCESS, 0, None, _OPEN_EXISTING,
+                    _FILE_ATTRIBUTE_NORMAL | _SECURITY_SQOS_PRESENT | _SECURITY_IDENTIFICATION,
+                    None,
+                )
+                if handle != wintypes.HANDLE(-1).value:
+                    break
+                code = ctypes.get_last_error()
+                failure = _last_error("cannot open Windows named-pipe endpoint")
+            else:
+                code = ctypes.get_last_error()
+                failure = _last_error("Windows named-pipe endpoint is unavailable")
+            if code not in (_ERROR_FILE_NOT_FOUND, _ERROR_PIPE_BUSY, _ERROR_SEM_TIMEOUT):
+                raise failure
+            time.sleep(min(backoff, max(0.0, deadline - time.monotonic())))
+            backoff = min(backoff * 2, 0.1)
         try:
             mode = wintypes.DWORD(_PIPE_READMODE_BYTE | _PIPE_NOWAIT)
             if not kernel32.SetNamedPipeHandleState(handle, ctypes.byref(mode), None, None):
                 raise _last_error("cannot configure Windows named-pipe client")
-            _verify_server_sid(handle, self.expected_server_sid)
+            # Server authenticity: only the server SID may create instances (pipe DACL)
+            # and the pipe's server PID must be the SCM-registered service process. The
+            # server's process token is not opened: another virtual account may not.
             _verify_service_process(
                 handle, service_name=self.expected_server_service, server=True,
             )
@@ -619,8 +643,49 @@ class WindowsNamedPipeListener:
         self._closed = False
         self._close_event = threading.Event()
         self._state_lock = threading.Lock()
-        self._active_handle: wintypes.HANDLE | None = None
         self._accept_lock = threading.Lock()
+        # The listener always owns one pending (listening) instance after first use;
+        # only the very first instance carries FILE_FLAG_FIRST_PIPE_INSTANCE.
+        self._pending: wintypes.HANDLE | None = None
+        self._first_created = False
+
+    def _create_instance(self, *, first: bool) -> wintypes.HANDLE:
+        kernel32, _advapi32 = _api()
+        client_sids = (
+            tuple(sid for sid, _service in self.allowed_client_services)
+            + self.allowed_client_user_sids
+        )
+        descriptor = _security_descriptor(self.server_sid, client_sids)
+        try:
+            attributes = _SecurityAttributes(ctypes.sizeof(_SecurityAttributes), descriptor, False)
+            handle = kernel32.CreateNamedPipeW(
+                self.path,
+                _PIPE_ACCESS_DUPLEX | (_FILE_FLAG_FIRST_PIPE_INSTANCE if first else 0),
+                _PIPE_TYPE_BYTE | _PIPE_READMODE_BYTE | _PIPE_NOWAIT | _PIPE_REJECT_REMOTE_CLIENTS,
+                _PIPE_UNLIMITED_INSTANCES, 64 * 1024, 64 * 1024, 0,
+                ctypes.byref(attributes),
+            )
+        finally:
+            kernel32.LocalFree(descriptor)
+        if handle == wintypes.HANDLE(-1).value or not handle:
+            raise _last_error("cannot create authenticated Windows named-pipe endpoint")
+        return handle
+
+    def _pending_handle(self) -> wintypes.HANDLE:
+        with self._state_lock:
+            if self._closed:
+                raise OSError("Windows named-pipe listener is closed")
+            if self._pending is None:
+                self._pending = self._create_instance(first=not self._first_created)
+                self._first_created = True
+            return self._pending
+
+    def _discard_pending(self, handle: wintypes.HANDLE) -> None:
+        kernel32, _advapi32 = _api()
+        with self._state_lock:
+            if self._pending == handle:
+                self._pending = None
+        kernel32.CloseHandle(handle)
 
     def accept(self, timeout_sec: float | None = None) -> WindowsNamedPipeConnection | None:
         if self._closed:
@@ -630,96 +695,96 @@ class WindowsNamedPipeListener:
         timeout = _validated_timeout(timeout, label="accept timeout")
         if not self._accept_lock.acquire(blocking=False):
             raise ContractError("Windows named-pipe listener already has an active accept")
-        handle = wintypes.HANDLE(-1).value
+        connected = None
         transferred = False
         try:
-            client_sids = (
-                tuple(sid for sid, _service in self.allowed_client_services)
-                + self.allowed_client_user_sids
-            )
-            descriptor, advapi32 = _security_descriptor((self.server_sid, *client_sids))
-            try:
-                attributes = _SecurityAttributes(ctypes.sizeof(_SecurityAttributes), descriptor, False)
-                deadline = time.monotonic() + timeout
-                handle = kernel32.CreateNamedPipeW(
-                    self.path,
-                    _PIPE_ACCESS_DUPLEX | _FILE_FLAG_FIRST_PIPE_INSTANCE | _PIPE_REJECT_REMOTE_CLIENTS,
-                    _PIPE_TYPE_BYTE | _PIPE_READMODE_BYTE | _PIPE_NOWAIT,
-                    _PIPE_UNLIMITED_INSTANCES, 64 * 1024, 64 * 1024, 0,
-                    ctypes.byref(attributes),
-                )
-            finally:
-                advapi32.LocalFree(descriptor)
-            if handle == wintypes.HANDLE(-1).value:
-                raise _last_error("cannot create authenticated Windows named-pipe endpoint")
-            with self._state_lock:
-                if self._closed:
-                    kernel32.CloseHandle(handle)
-                    handle = wintypes.HANDLE(-1).value
-                    raise OSError("Windows named-pipe listener is closed")
-                self._active_handle = handle
-            _verify_service_process(
-                handle, service_name=self.server_service, server=True,
-            )
-            while time.monotonic() < deadline and not self._close_event.is_set():
-                if kernel32.ConnectNamedPipe(handle, None):
-                    break
-                code = ctypes.get_last_error()
-                if code == _ERROR_PIPE_CONNECTED:
-                    break
-                if code != _ERROR_PIPE_LISTENING:
-                    raise _last_error("cannot accept Windows named-pipe client")
-                time.sleep(0.005)
-            else:
+            pending = self._pending_handle()
+            deadline = time.monotonic() + timeout
+            while True:
                 if self._close_event.is_set():
                     raise OSError("Windows named-pipe listener is closed")
+                if time.monotonic() >= deadline:
+                    return None  # same pending instance stays listening
+                if kernel32.ConnectNamedPipe(pending, None):
+                    break
+                code = ctypes.get_last_error()
+                # NO_DATA: a client connected and already left; it is dropped below.
+                if code in (_ERROR_PIPE_CONNECTED, _ERROR_NO_DATA):
+                    break
+                if code != _ERROR_PIPE_LISTENING:
+                    failure = _last_error("cannot accept Windows named-pipe client")
+                    self._discard_pending(pending)
+                    raise failure
+                time.sleep(0.005)
+            # A client is attached: the next pending instance must exist before this
+            # one is handed out, so there is never a gap without a listening instance.
+            connected = pending
+            try:
+                replacement = self._create_instance(first=False)
+            except BaseException:
+                with self._state_lock:
+                    if self._pending == connected:
+                        self._pending = None
+                raise
+            with self._state_lock:
+                if self._closed:
+                    kernel32.CloseHandle(replacement)
+                    self._pending = None
+                    raise OSError("Windows named-pipe listener is closed")
+                self._pending = replacement
+            try:
+                mode = wintypes.DWORD(_PIPE_READMODE_BYTE | _PIPE_NOWAIT)
+                if not kernel32.SetNamedPipeHandleState(connected, ctypes.byref(mode), None, None):
+                    raise _last_error("cannot configure Windows named-pipe server")
+                first_byte = _read_initial_client_byte(
+                    connected, deadline=time.monotonic() + _HANDSHAKE_TIMEOUT_SEC,
+                    close_event=self._close_event,
+                )
+                if first_byte is None:
+                    return None
+                _verify_client_sid(
+                    connected, self.allowed_client_services, self.allowed_client_user_sids,
+                )
+            except (OSError, ContractError) as exc:
+                if self._close_event.is_set():
+                    raise OSError("Windows named-pipe listener is closed") from exc
+                _LOG.warning("dropped Windows named-pipe client on %s: %s", self.path, exc)
                 return None
-            mode = wintypes.DWORD(_PIPE_READMODE_BYTE | _PIPE_NOWAIT)
-            if not kernel32.SetNamedPipeHandleState(handle, ctypes.byref(mode), None, None):
-                raise _last_error("cannot configure Windows named-pipe server")
-            first_byte = _read_initial_client_byte(
-                handle, deadline=time.monotonic() + self.timeout_sec,
-                close_event=self._close_event,
-            )
-            if first_byte is None:
-                return None
-            _verify_client_sid(
-                handle, self.allowed_client_services, self.allowed_client_user_sids,
-            )
             connection = WindowsNamedPipeConnection(
-                handle, timeout_sec=self.timeout_sec, prefetched=first_byte,
+                connected, timeout_sec=self.timeout_sec, prefetched=first_byte,
+                server_side=True,
             )
             with self._state_lock:
                 if self._closed:
                     raise OSError("Windows named-pipe listener closed during accept")
-                self._active_handle = None
-                transferred = True
+            transferred = True
             return connection
-        except Exception:
-            if handle != wintypes.HANDLE(-1).value:
-                with self._state_lock:
-                    closed_by_close = self._closed and self._active_handle is None
-                if not closed_by_close:
-                    kernel32.DisconnectNamedPipe(handle)
-            raise
         finally:
-            with self._state_lock:
-                if self._active_handle == handle:
-                    self._active_handle = None
-                closed_by_close = self._closed
-            if handle != wintypes.HANDLE(-1).value and not closed_by_close and not transferred:
-                kernel32.CloseHandle(handle)
+            if connected is not None and not transferred:
+                kernel32.DisconnectNamedPipe(connected)
+                kernel32.CloseHandle(connected)
             self._accept_lock.release()
+            if self._closed:
+                self._close_pending()
+
+    def _close_pending(self) -> None:
+        kernel32, _advapi32 = _api()
+        with self._state_lock:
+            handle = self._pending
+            self._pending = None
+        if handle is not None:
+            kernel32.CloseHandle(handle)
 
     def close(self) -> None:
-        kernel32, _advapi32 = _api()
         with self._state_lock:
             if self._closed:
                 return
             self._closed = True
             self._close_event.set()
-            handle = self._active_handle
-            self._active_handle = None
-        if handle is not None:
-            kernel32.DisconnectNamedPipe(handle)
-            kernel32.CloseHandle(handle)
+        # An active accept notices the close event and releases the pending instance
+        # itself; otherwise release it here.
+        if self._accept_lock.acquire(blocking=False):
+            try:
+                self._close_pending()
+            finally:
+                self._accept_lock.release()
