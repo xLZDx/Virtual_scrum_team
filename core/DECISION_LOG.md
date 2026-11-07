@@ -1711,3 +1711,7 @@ The rebinding adds the Supervisor store-thread fix.
   - e2e: start the VST-S2E-* scheduled task once and report LastTaskResult plus the e2e log;
   - status.
 - It accepts no free-form commands, so it adds no new capability beyond the provisioner the operator already authorized.
+
+## 2026-11-07 — Supervisor store-thread fix verified by a real-pipe, real-Store probe
+
+Probe `store_thread_c4eb827` at ae07e7a: 5 sequential and 6 concurrent requests over real named pipes and the real WindowsSupervisorClient all run Store calls on the creating thread. The control without the queue reproduces the elevated-run ProgrammingError. shutdown returns in under 0.1 s. Limits: the Supervisor is stubbed, and SCM pid/SID checks are patched.

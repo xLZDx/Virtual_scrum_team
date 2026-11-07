@@ -1493,3 +1493,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Facts: every attempt required the operator to paste a command into an elevated window. The agent cannot type into it.
 - Fix: a one-time elevated helper with a file-queue and fixed actions (s2_4e_admin_runner.ps1).
 - Rule: when a workflow needs elevation repeatedly, provide a bounded elevated helper at the first elevated step instead of per-attempt commands.
+
+## 2026-11-07 — Store-thread fix proven with a regression-catching probe
+
+- Kind: SUCCESS. The probe reproduced the elevated-run failure with the queue disabled and passed with it, so it can tell the difference.

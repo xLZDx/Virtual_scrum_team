@@ -974,6 +974,37 @@
       ],
       "output_excerpt": "probe1: PASS, PASS\nprobe2: PASS, PASS\nprobe3: PASS, PASS, PASS\nprobe4: PASS, PASS\nprobe5: PASS, PASS, PASS, PASS, PASS, PASS\nprobe6: PASS, PASS\nprobe7: PASS, PASS, PASS\nprobe8: PASS, PASS, PASS",
       "code_delta": "pipe client identified by SCM pid; sanitized EventLog handler"
+    },
+    "store_thread_c4eb827": {
+      "command": "C:\\Python314\\python.exe probe.py (scratchpad script; real WindowsAuthenticatedSupervisorAPI + real WindowsNamedPipeListener/WindowsSupervisorClient over real pipes, real Store on temp sqlite, fake supervisor doing store._read_tx() SELECT; _service_process_id monkeypatched in server and client processes)",
+      "head": "ae07e7a",
+      "status": "PASS",
+      "substeps": {
+        "1_seq5_dispatcher_ok_on_main_thread": {
+          "status": "PASS",
+          "evidence": "5/5 ok:true from separate client process pid 51064; every call thread == main 6076; sqlite no ProgrammingError"
+        },
+        "2_concurrent_two_roles_ok": {
+          "status": "PASS",
+          "evidence": "dispatcher x3 (pid 35592) and signer/generation x3 (pid 111324) concurrently, all ok:true, 6 store calls all on thread 6076, intervals non-overlapping=True"
+        },
+        "3_control_direct_non_main_thread": {
+          "status": "PASS",
+          "evidence": {
+            "raised": "ProgrammingError",
+            "msg": "SQLite objects created in a thread can only be used in that same thread. The object was created in thread id 6076 and this is thread id 113396."
+          }
+        },
+        "3b_regression_inline_call_through_pipe": {
+          "status": "PASS",
+          "evidence": "with _on_store_thread=lambda f: f() the client got SupervisorRPCError kind=refused and server logged [['Windows Supervisor RPC request refused', \"ProgrammingError('SQLite objects created in a thread can only be used in that same thread. The object was created in thread id 6076 and this is thread id 105384.')\"]]"
+        },
+        "4_stop": {
+          "status": "PASS",
+          "evidence": "api stop request to serve_forever return 0.092s / 0.009s / 0.099s (bound 10s); role threads alive after: []"
+        }
+      },
+      "limits": "Fake supervisor (not real Supervisor.next_dispatch_intent); no SCM, server/client PID checks monkeypatched, server SID = current user SID with fake client SIDs; 60 s wait timeout and cancellation of queued futures with pending work not exercised; stop requested from a helper thread; the ProgrammingError site store._read_tx_locked BEGIN is reproduced, not store.py:1019 under the real Supervisor."
     }
   },
   "second_pass_a55fee0": {
