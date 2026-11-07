@@ -1384,3 +1384,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
   - Dropped-client warnings go only to `logging`.
   - The Dispatcher Supervisor client already uses a 5 s connect timeout (`dispatcher_service.py` main), so no change is needed.
 - Unverified: the probe token needed the logon SID to start processes. The real `sidtype restricted` service token is proven only by the elevated E2E.
+
+## 2026-11-07 — S2-4E manifest rebound to fdb7fb603198f2db2d11caab68242c03952e113c (second-pass fixes)
+
+- Kind: NEUTRAL. The protected app snapshot is built from base_head, so every tools/vst change needs this rebind.

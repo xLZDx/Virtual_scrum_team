@@ -1637,3 +1637,7 @@ The rebinding adds batch 2 (named-pipe lifecycle, pre-SCM failure reporting, Dis
   - at most 4,000 characters.
 - The provisioner copies Git's native mingw64 openssl.exe with libcrypto-3-x64.dll and libssl-3-x64.dll, replacing the MSYS build. Per-role temp dirs grant Modify, not FullControl.
 - Evidence: docs/sdlc/evidence/s2-4e-probes-20261107.json, keys P1b_mingw64_openssl_D2 and P2b_D1_server_closehandle_only.
+
+## 2026-11-07 — S2-4E manifest base_head 326e1489e9913b8ab75ca57860e2f2e263e993f1 -> fdb7fb603198f2db2d11caab68242c03952e113c
+
+The rebinding adds the second-pass fixes (pipe close, token checks, sanitized event log, native OpenSSL, Modify-only temp dirs).
