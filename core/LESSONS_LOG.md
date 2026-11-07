@@ -1267,3 +1267,11 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Layer that missed it: the author and the source-only reviews, because the function was never run against real ACLs. The operator's run and a read-only real-tree precheck caught it.
 - Rule: build permission masks from explicit write bits, read ACL owners and rules as SIDs, and dry-run every trust check against the real target trees before asking the operator to elevate.
 - Fix status: mask and SID reading fixed, with a security review of the mask showing no BLOCKER/MAJOR. Five user-owned MSYS files in C:\Program Files\Git\etc stay rejected by design; the operator chose to re-own them.
+## 2026-11-07 — Provisioner fetched the branch tip instead of the manifest base commit
+
+- Kind: FAILURE (installer defect found by the operator's elevated run).
+- Facts: the install failed with "Protected task Git context does not match manifest base_head." It fetched refs/heads/<branch> (aa7ad39), while the manifest pins 7adb183. functional-test-reviewer evidence: docs/sdlc/evidence/s2-4e-base-head-fetch-20261107.json (fetch by SHA gives the base_head; the old branch fetch gives a different head).
+- Root cause: the code assumed the branch tip stays equal to base_head. Every later commit (handoff, fixes) breaks that.
+- Layer that missed it: the author and the source reviews. Caught by the real elevated run.
+- Rule: bind snapshots to the pinned commit hash, never to a moving ref.
+- Fix status: the provisioner now fetches base_head by hash. The partial VST root was removed with the operator-authorized Cleanup action.

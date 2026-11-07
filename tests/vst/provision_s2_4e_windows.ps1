@@ -234,8 +234,8 @@ $safeHooksPath = $gitHooks.Replace('\', '/')
 
 # A separate shallow Git context at the task's exact base HEAD is required by
 # the product Runner when it derives the signed candidate_head/diff receipt.
-$sourceBranch = (& $gitPath -C $repo branch --show-current).Trim()
-if ($LASTEXITCODE -ne 0 -or -not $sourceBranch) { throw 'Project checkout must be on a named branch for the bounded task snapshot.' }
+# Fetch the manifest's exact base commit by hash, not the branch tip: later
+# commits on the branch must not change the accepted task baseline.
 $oldGitConfig = $env:GIT_CONFIG_NOSYSTEM
 $oldGlobalGitConfig = $env:GIT_CONFIG_GLOBAL
 $oldGitPrompt = $env:GIT_TERMINAL_PROMPT
@@ -249,7 +249,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Could not initialize the protected task Git context (exit $LASTEXITCODE)." }
     & $gitPath -C $app remote add origin $repo
     if ($LASTEXITCODE -ne 0) { throw "Could not configure the protected task Git source (exit $LASTEXITCODE)." }
-    & $gitPath -C $app -c "core.hooksPath=$gitHooks" fetch --quiet --depth=1 --no-tags origin "refs/heads/$sourceBranch"
+    & $gitPath -C $app -c "core.hooksPath=$gitHooks" fetch --quiet --depth=1 --no-tags origin $baseHead
     if ($LASTEXITCODE -ne 0) { throw "Could not fetch the task base HEAD into the protected context (exit $LASTEXITCODE)." }
     & $gitPath -C $app -c "core.hooksPath=$gitHooks" checkout --quiet --detach FETCH_HEAD
     if ($LASTEXITCODE -ne 0) { throw "Could not check out the task base HEAD (exit $LASTEXITCODE)." }

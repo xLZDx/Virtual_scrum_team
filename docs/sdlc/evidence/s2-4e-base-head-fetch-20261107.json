@@ -1,0 +1,20 @@
+{
+  "evidence_id": "S2-4E protected Git context fetches manifest base_head by SHA",
+  "task_id": "S2-4E-WINDOWS-OWNER-RUNNER",
+  "reviewer_role": "functional-test-reviewer",
+  "project_head": "aa7ad39a2ac8941f3502646fd0672ff5e5b64043",
+  "uncommitted_file": "tests/vst/provision_s2_4e_windows.ps1",
+  "installer_working_copy_sha256": "d8343dfdd502005e670b1b357887d985383a1be3051bddddcf23f3422d1d579c",
+  "manifest_base_head": "7adb18316babe41f46ed894afe82620173736947",
+  "branch_tip_at_capture": "aa7ad39a2ac8941f3502646fd0672ff5e5b64043",
+  "environment": "Windows PowerShell 5.1.26100.9711; git C:\Program Files\Git\cmd\git.exe; GIT_CONFIG_NOSYSTEM=1; GIT_CONFIG_GLOBAL=temp config with [safe] directory entries",
+  "cases": {
+    "parser_5_1": {"result": "PASS", "parse_errors": 0},
+    "no_sourceBranch_reference": {"result": "PASS", "method": "grep sourceBranch returned no matches"},
+    "new_fetch_by_sha": {"result": "PASS", "command": "git fetch --depth=1 --no-tags origin <base_head>; checkout --detach FETCH_HEAD; rev-parse HEAD", "head": "7adb18316babe41f46ed894afe82620173736947", "equals_base_head": true},
+    "old_fetch_branch_tip_negative": {"result": "PASS", "command": "git fetch --depth=1 --no-tags origin refs/heads/s2-canonical-continuation", "head": "aa7ad39a2ac8941f3502646fd0672ff5e5b64043", "equals_base_head": false, "meaning": "old code would throw 'Protected task Git context does not match manifest base_head.'"},
+    "temp_dir_cleanup": {"result": "NOT_RUN", "reason": "shell policy blocks recursive force delete; two dirs left under %TEMP%: s2-4e-bh-7a6327ce384943dab0bc1bdb2a75233d, s2-4e-bh-025554d5fe5a470bb87cd33d451a985b"}
+  },
+  "not_covered": ["elevated installer run", "ACL/service steps", "fetch of a SHA via a hardened remote (uploadpack.allowAnySHA1InWant is not needed for a local file remote)"],
+  "script": "C:\Users\koros\AppData\Local\Temp\basehead.ps1"
+}

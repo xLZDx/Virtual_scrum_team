@@ -1574,3 +1574,6 @@ Two attempts have not started the provisioner: the first UAC prompt was canceled
 ## 2026-11-07 — S2-4E provisioner trust-check fix and Git\etc ownership
 
 The write mask in Assert-TrustedRuntimeTree no longer includes Modify. The owner and rules are now read as SIDs, without translating account names. Five MSYS files in C:\Program Files\Git\etc (hosts, mtab, networks, protocols, services) are owned by the interactive user. The check keeps rejecting them; it was not weakened. The operator chose to re-own them to Administrators from an elevated shell before the next install attempt. Two security-review MINOR findings stay open and are deferred: reparse points in the trusted tree, and the narrow ancestor right check.
+## 2026-11-07 — S2-4E snapshot pinned to manifest base_head by hash
+
+The protected Git context now fetches the manifest base_head (7adb183) by hash, not the current branch tip, so the accepted baseline stays unchanged. The operator authorized removal of the partial C:\ProgramData\VST left by the failed attempt; the provisioner's own Cleanup action removed it after its marker check.
