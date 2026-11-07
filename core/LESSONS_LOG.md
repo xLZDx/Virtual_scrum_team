@@ -1327,3 +1327,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Root cause: a Win32 contract that the mocked tests could not exercise.
 - Fix: on 1309, _check_token_sid falls back to reading TokenUser and TokenGroups (TOKEN_QUERY only); a group SID must be enabled and not deny-only. A non-elevated check on this process's primary token gave the expected result in 6 of 6 cases (Users, Everyone and own user true; SYSTEM, deny-only Administrators and an unrelated service SID false).
 - Rule: exercise every token primitive with both primary and impersonation tokens.
+
+## 2026-11-07 — S2-4E manifest rebound to 93835aac4c08d892b155962fe86260dd065b51d7
+
+- Kind: NEUTRAL. The new product delta is the primary-token membership fix.

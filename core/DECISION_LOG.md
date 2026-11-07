@@ -1602,3 +1602,7 @@ Reason: the protected snapshot must contain the product fixes 22f1f1e, 7c0e012 a
 ## 2026-11-07 — Primary-token membership fallback
 
 _check_token_sid keeps CheckTokenMembership for impersonation tokens. On ERROR_NO_IMPERSONATION_TOKEN it falls back to TokenUser plus enabled, non-deny-only TokenGroups, so the LocalSystem and administrator exclusion keeps its meaning.
+
+## 2026-11-07 — S2-4E manifest base_head 34fbace -> 93835aac4c08d892b155962fe86260dd065b51d7
+
+The rebinding adds the primary-token membership fix in tools/vst/windows_named_pipe.py.
