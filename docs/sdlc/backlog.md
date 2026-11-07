@@ -2,7 +2,7 @@
 
 Sprint identity: Agentic_Framework sprint `39b7cc253f5d`, mapped to the already active project sprint **S2**. This is a tracking association, not a new sprint. Remote review found an already-open/draft S3 PR #3; this turn did not create or alter it.
 
-## Current execution checkpoint — 2026-11-06
+## Current execution checkpoint — 2026-11-07
 
 This table is the sole active task queue. Dated evidence and older narrative sections retain their
 historical scope; every older `Next:` line is archived chronology, not an executable instruction.
@@ -21,13 +21,17 @@ Permission to prepare a candidate does not make that candidate mandatory for S2.
 | 1 | S2-4 tracking reconciliation — DELIVERED in change0591 | Corrected stale writer/issuer HOLD and push-pending summaries against I01 SOURCE GO, code/test approval `c978360`, and successful task push through `e09c78b`. | No remaining action; retain as accepted evidence. Do not repeat reconciliation. |
 | 2 | S2-4 exact runtime inputs — DELIVERED `473e559` | Source compatibility fix a600774 is pushed; actual strict stage-only publication succeeded. Bundle32 artifacts, nine unit bindings and three rate-limit overrides are pinned to actual source/helper/task/policy/run identities. False local GPT-PM credential labeling was corrected; review and test evidence is retained in change0595. | No remaining action for the accepted bounded preparation; retain its limits and do not repeat the bundle work. |
 | 3 | S2-4D REQ-003 source/test acceptance — DELIVERED `96a8da7` | Removed five QA-only WSL inventory/apply/qualification scripts and four dedicated test modules; retained the Store-backed product path. Windows selector: 1 passed; bundle contract module: 11 passed. GPT-PM request `a2c98c0f-a741-4ad6-8330-8cbde5bc3571`, reply `f981ea40-d56c-58aa-8c5e-87631a900140`: APPROVE, 0 BLOCKER / 0 MAJOR. Commit pushed to `origin/s2-canonical-continuation`, updating S2 PR #2. | Codex: preserve the bounded test/runtime distinction in `docs/sdlc/acceptance.md`; runtime/E5/production remain `NOT_RUN`. |
-| 4 | S2-5 final bounded S2 code acceptance — ACCEPTED | Exact code/test candidate `96a8da7bf5af5c9d5b37e56287c48472cb239254` received correlated GPT-PM APPROVE after internal review and focused Windows tests. Full task/requirement disposition is in `docs/sdlc/acceptance.md`. | S2 code scope is closed. REQ-005 live runtime/E5/production remains explicitly NOT_RUN and not accepted; it is deferred from this bounded code closure. Codex records that boundary; no WSL workflow is to be resumed. |
+| 4 | S2-4E Windows-local Owner→Runner functional path — IN_PROGRESS | Source commit `c4558a8` is pushed; GPT-PM request `e4f0bb3a-75a2-4f87-b58a-7a5e53d11588` accepted the exact source delta with 0 B/M. Assigned functional-test-reviewer: Store contract 5/5 and receipt contract 4/4 passed. Route-level Owner→Dispatcher module is `NOT_RUN` because it requires prohibited pytest; Windows process E2E is `NOT_RUN` because the six SCM services/protected runtime inputs are absent and the harness does not self-elevate. | Codex coordinates; next: use an elevated local Windows setup with the real SCM services and protected test inputs, then e2e-runner runs the existing process harness. No WSL, VPS, current E5, or production claim. |
+| 5 | S2-5 final bounded S2 code acceptance — ACCEPTED for its reviewed scope | Exact code/test candidate `96a8da7bf5af5c9d5b37e56287c48472cb239254` received correlated GPT-PM APPROVE after internal review and focused Windows tests. Full task/requirement disposition is in `docs/sdlc/acceptance.md`. | This records the earlier bounded source/test disposition; it does not close the subsequently scoped S2-4E Windows-local task. S2 remains open until S2-4E acceptance; REQ-005 live E5/production remains `NOT_RUN` and excluded. |
 
 Operator scope decision (2026-11-06) supersedes older S2-4 WSL execution next-actions below:
 the WSL inventory/configuration-apply/qualification QA harness and its Git source checks were
 removed from active project scope. Older WSL commands/results remain chronology only and must not
 be executed or treated as current S2 acceptance. S2-4 closes at source/test scope; live runtime,
 E5 and production status remain `NOT_RUN` and are not claimed.
+
+Future product task `SAAS-01` is queued in `core/BACKLOG.md` for a later sprint after the planned
+S2–S5 sequence. Windows-local remains the current priority; the SaaS item is not active work.
 
 ## Historical source update — change0556 (current state above)
 
