@@ -1577,3 +1577,6 @@ The write mask in Assert-TrustedRuntimeTree no longer includes Modify. The owner
 ## 2026-11-07 — S2-4E snapshot pinned to manifest base_head by hash
 
 The protected Git context now fetches the manifest base_head (7adb183) by hash, not the current branch tip, so the accepted baseline stays unchanged. The operator authorized removal of the partial C:\ProgramData\VST left by the failed attempt; the provisioner's own Cleanup action removed it after its marker check.
+## 2026-11-07 — S2-4E services created via New-Service
+
+Service creation now uses New-Service (SCM API) plus sc config obj= NT SERVICE\<name>, because PS 5.1 corrupted the sc.exe create arguments. The operator authorized a second Cleanup of the partial root, which completed.

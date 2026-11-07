@@ -164,6 +164,7 @@ if ($Action -eq 'Cleanup') {
     $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
     if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Cleanup requires an elevated Windows token.' }
     Remove-OwnedSetup
+    try { Stop-Transcript | Out-Null } catch {}
     exit 0
 }
 
@@ -293,7 +294,12 @@ foreach ($name in $serviceNames) {
 $launcherText = "import os, sys`nos.environ['PATH'] = r'$(Split-Path -Parent $gitPath)' + os.pathsep + r'$env:SystemRoot\System32'`nos.environ['GIT_CONFIG_NOSYSTEM'] = '1'`nos.environ['GIT_CONFIG_GLOBAL'] = r'$emptyGitConfig'`nos.environ['GIT_TERMINAL_PROMPT'] = '0'`nsys.dont_write_bytecode = True`nsys.path.insert(0, r'$app')`nfrom tools.vst.windows_service_host import main`nsys.argv = [__file__, '--role', '$role']`nmain()`n"
     Set-Content -LiteralPath $launcher -Value $launcherText -Encoding Ascii
     $binaryPath = '"{0}" "{1}"' -f $pythonPath, $launcher
-    Invoke-Sc @('create', $name, 'binPath=', $binaryPath, 'start=', 'demand', 'obj=', "NT SERVICE\$name", 'password=', '')
+    # Windows PowerShell 5.1 strips embedded quotes and drops empty arguments when calling
+    # native programs, so `sc.exe create binPath= "<quoted>" password= ''` is corrupted.
+    # New-Service passes the image path through the SCM API unchanged; the virtual
+    # account is then assigned without a password.
+    New-Service -Name $name -BinaryPathName $binaryPath -StartupType Manual | Out-Null
+    Invoke-Sc @('config', $name, 'obj=', "NT SERVICE\$name")
     Invoke-Sc @('sidtype', $name, 'restricted')
     $serviceSids[$name] = Get-ServiceSid $name
 }

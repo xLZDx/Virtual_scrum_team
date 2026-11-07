@@ -1275,3 +1275,11 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Layer that missed it: the author and the source reviews. Caught by the real elevated run.
 - Rule: bind snapshots to the pinned commit hash, never to a moving ref.
 - Fix status: the provisioner now fetches base_head by hash. The partial VST root was removed with the operator-authorized Cleanup action.
+## 2026-11-07 — sc.exe create corrupted by Windows PowerShell 5.1 argument passing
+
+- Kind: FAILURE (installer defect found by the operator's elevated run).
+- Facts: service creation failed with exit 1639. An argv dump showed PS 5.1 stripping the embedded quotes in binPath and dropping the empty password argument. Evidence: docs/sdlc/evidence/s2-4e-new-service-fix-20261107.json (config/sidtype/delete argv intact; old create form reproduces the defect).
+- Root cause: native command calls in PS 5.1 do not preserve embedded quotes or empty strings.
+- Layer that missed it: the author; the earlier parser-only evidence could not detect it.
+- Rule: create services with New-Service (SCM API) and keep sc.exe calls to plain tokens. Dump the argv for every native call before an elevated run.
+- Fix status: New-Service plus sc config obj= without a password. Cleanup now closes its transcript. The elevated create and config steps are still unmeasured until the next install.
