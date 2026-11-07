@@ -1339,3 +1339,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Root cause: a shared loader enforced the owner-only checks for every role; admin-run diagnostics could not see the access boundary.
 - Fix: in load(), access denied on store_root/signer_root is accepted as the expected boundary. Any other error, or a readable but wrong ACL, still fails. The owning roles re-verify their root in read_role_private_file / read_signer_private_key before reading keys.
 - Rule: run ACL verifiers under the real service identity; an administrator dry run hides access-denied boundaries.
+
+## 2026-11-07 — S2-4E manifest rebound to 9e1266a45c2c7c2fa15bc8fd8d6a11d6cf255cea (private-root boundary fix)
+
+- Kind: NEUTRAL.

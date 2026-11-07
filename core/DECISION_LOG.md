@@ -1610,3 +1610,7 @@ The rebinding adds the primary-token membership fix in tools/vst/windows_named_p
 ## 2026-11-07 — Private role roots are verified by their owners
 
 WindowsRuntimeConfig.load treats ERROR_ACCESS_DENIED on store_root/signer_root as the intended isolation boundary for non-owner roles. The full owner-only verification stays in the key-reading paths of the Supervisor and Signer.
+
+## 2026-11-07 — S2-4E manifest base_head 93835aa -> 9e1266a45c2c7c2fa15bc8fd8d6a11d6cf255cea
+
+The rebinding adds the private-root boundary fix in tools/vst/windows_service_host.py.
