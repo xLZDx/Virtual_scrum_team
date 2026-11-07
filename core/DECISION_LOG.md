@@ -1899,3 +1899,8 @@ GPT-PM request c1867dbe-f76d-4567-83f8-9b9d46c580e5 (delta 3cad14e..98b548d) ret
 ## 2026-11-08 — S3 closed in bounded form by the operator decision
 
 Operator decision recorded 2026-11-08 (answered in chat; the answer may have been auto-accepted by the 5-minute question policy, reversible): do not acquire Temporal or BMad Loop, close S3 with the single built-in hand-written worker, and if a sandbox is ever needed use Windows-local without WSL. S3-A and the local synthetic part of S3-C are ACCEPTED; S3-B, S3-D and S3-E are PARKED, not accepted. The candidate comparison, the sandbox, credential-read and egress rows, the real probe issuer and a real process kill stay NOT_RUN. S4 and S5 are not started and need separate operator approval.
+
+
+## 2026-11-08 — PR 4 merged and program report refreshed
+
+Operator said to merge S3 into main; PR 4 was merged as b502c7c with the head 9f766aa (GPT-PM code approval at 98b548d, later commits documents only). The whole-program plan report was re-rendered on main after the merge. S4 and S5 are not started and need separate operator approval.

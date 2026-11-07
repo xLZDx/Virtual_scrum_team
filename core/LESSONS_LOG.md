@@ -1679,3 +1679,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-08 — S3 bounded closure
 
 - Kind: SUCCESS: the sprint was closed against the real evidence (2 accepted, 3 parked by decision) instead of counting parked rows as passed; NOT_RUN rows are named in the plan, registry and both reports.
+
+
+## 2026-11-08 — post-merge report refresh
+
+- Kind: SUCCESS: the owed program report was regenerated from PROJECT_PLAN.md instead of hand-edited, and the merge was bound to the exact approved head with --match-head-commit.
