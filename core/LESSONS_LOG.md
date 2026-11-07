@@ -1555,3 +1555,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Root cause: only the Owner called the live-SCM-PID check in main(). Every other role calls it inside its target factory, after registration. The check still runs for the Owner in service_main.
 - Layer: the author and the mock-only tests missed it; the real SCM caught it.
 - Rule: any "I am the live SCM process" assertion must run after run_scm_service's registration, never in main() before it.
+
+## 2026-11-07 — S2-4E manifest rebound to 75bb0a0f6295f7730bfe89d372f210b316a47a4e (Owner identity check)
+
+- Kind: NEUTRAL.

@@ -1739,3 +1739,7 @@ Request 989af31c-0377-486f-85ee-b9636b270134, reply de9d7818-577a-5253-9dfe-2b34
 ## 2026-11-07 — Owner no longer asserts its live SCM PID before SCM registration
 
 Removed the early assert_current_service_identity call from dispatch_owner_service.main(). run_scm_service's service_main performs the identical check after the process has registered with the SCM, as for every other role. Evidence: the Application event for VSTOwner at 18:54:04, `configured Windows service is not running`.
+
+## 2026-11-07 — S2-4E manifest base_head 3536cbfe323cbe85555ad2c318e46c41e37eafce -> 75bb0a0f6295f7730bfe89d372f210b316a47a4e
+
+The rebinding adds the Owner identity-check fix.
