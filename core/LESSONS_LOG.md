@@ -1629,3 +1629,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SHORTCOMING (mine): after the push the plan reports still showed 6/9 and a placeholder title; I had not re-rendered them. The operator spotted it. Also the S2-4E row had no commit hash, so it did not count as verified on the remote.
 - Rule: re-render the plan reports in the same step as any status change, and fill the Commit column for every accepted task.
+
+## 2026-11-07 — S0/S1 missing from the program report
+
+- Kind: FAILURE (mine): the plan had no task rows for S0 and S1, so the reports I rendered showed only S2-S5 (and wrote that S3-S5 had no task lists, which was wrong: their plan documents list tasks). The operator saw S1 and its results missing.
+- Missed by: author (I rendered without comparing to the previous program report); no gate checks sprint coverage.
+- Rule: before handing over a program report, compare its sprint list and totals with the previous report and the roadmap table; every roadmap sprint needs task rows.

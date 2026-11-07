@@ -1787,3 +1787,7 @@ On the operator go, s2-canonical-continuation was pushed without force (c2693c3.
 ## 2026-11-07 — Program report refreshed
 
 PROJECT_PLAN.md now shows S2 as IN_REVIEW (PR 2 ready, merge pending) and S2-4E with commit 57c22d3; the RU and EN plan reports were re-rendered (9/9 accepted tasks, 9 verified on the remote). S3 to S5 have no task lists, so the program percentage covers only the nine S2 tasks.
+
+## 2026-11-07 — S0/S1 restored in the plan; program status report 2026-11-07
+
+PROJECT_PLAN.md now carries task rows for S0 (3 inventory documents) and S1 (epics E1-E6), both ACCEPTED in PR 1 (d5cd7f5), and the planned tasks of S3 (5), S4 (6) and S5 (5) as NOT_STARTED from their plan documents: 18 of 34 accepted. VST_PROGRAM_STATUS_2026-11-07 (RU and EN) updates the 2026-11-06 report: S2 is 9/9 accepted (S2-4E by the real Windows E2E), the VST registry numbers are unchanged.

@@ -20,6 +20,27 @@ Sources: docs/sdlc/backlog.md (ordered S2 queue), docs/sdlc/acceptance.md (curre
 | S4 | QA automation | NOT_STARTED | Real native runners for functional, integration, API, E2E, regression and seeded failures with reproducible artifacts; a skipped test never satisfies DoD. |
 | S5 | AEVE gate | NOT_STARTED | Bounded static review with hashes and an independent evidence/coverage receipt; truthful analyzer status; stale HEAD fails. |
 
+## Sprint S0 - Inventory and baseline
+Goal: Ground-truth inventory of profiles, repositories and tool capabilities (docs/sdlc/s0/); approved by GPT-PM on head abc0d50 and merged with S1 (PR #1, merge d5cd7f5).
+
+| Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
+|---|---|---|---|---|---|---|---|
+| S0-1 | Profile resolution | Inventory document docs/sdlc/s0/PROFILE_RESOLUTION.md recorded from ground truth | ACCEPTED | GPT-PM request 50828a0d-f780-405b-b49c-30de58c5bd52 approved head abc0d50 (no new BLOCKER/MAJOR); record 0028. Not verified in S0: remote repository state, sonnet alias binding, gh authentication. | Codex | - | d5cd7f5 |
+| S0-2 | Repository registry | Inventory document docs/sdlc/s0/REPO_REGISTRY.md recorded from ground truth | ACCEPTED | GPT-PM request 50828a0d-f780-405b-b49c-30de58c5bd52 approved head abc0d50 (no new BLOCKER/MAJOR); record 0028. Not verified in S0: remote repository state, sonnet alias binding, gh authentication. | Codex | - | d5cd7f5 |
+| S0-3 | Tools capability matrix | Inventory document docs/sdlc/s0/TOOLS_CAPABILITY_MATRIX.md recorded from ground truth | ACCEPTED | GPT-PM request 50828a0d-f780-405b-b49c-30de58c5bd52 approved head abc0d50 (no new BLOCKER/MAJOR); record 0028. Not verified in S0: remote repository state, sonnet alias binding, gh authentication. | Codex | - | d5cd7f5 |
+
+## Sprint S1 - Control-plane core
+Goal: State store, contracts, signing, gate and runner in tools/vst (design baseline BD-1..BD-7); approved by GPT-PM on head abc0d50 and merged (PR #1, d5cd7f5, closure c5a8eb1).
+
+| Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
+|---|---|---|---|---|---|---|---|
+| S1-E1 | Contracts | JSON schemas and strict validator for TaskManifest, four receipt types and GateDecision; closed enums, no defaults | ACCEPTED | Four independent review rounds (12 of 14 reviewer runs MODIFY, all MAJOR findings fixed); GPT-PM APPROVE at abc0d50. Tests (E1-E3 1193, E4 289, E5 72 passed, 2 skipped) ran on the working tree, not re-run on the exact head; mutation checks NOT_RUN. See docs/sdlc/S1_RETROSPECTIVE.md. | Codex | - | d5cd7f5 |
+| S1-E2 | Gate | Pure verdict function per BD-4; stale head, missing receipt and unlisted FAIL give non-approval | ACCEPTED | Four independent review rounds (12 of 14 reviewer runs MODIFY, all MAJOR findings fixed); GPT-PM APPROVE at abc0d50. Tests (E1-E3 1193, E4 289, E5 72 passed, 2 skipped) ran on the working tree, not re-run on the exact head; mutation checks NOT_RUN. See docs/sdlc/S1_RETROSPECTIVE.md. | Codex | S1-E1 | d5cd7f5 |
+| S1-E3 | State store | SQLite store: epoch compare-and-swap, attempts, lease/slot tables, hash-chained receipts and event log | ACCEPTED | Four independent review rounds (12 of 14 reviewer runs MODIFY, all MAJOR findings fixed); GPT-PM APPROVE at abc0d50. Tests (E1-E3 1193, E4 289, E5 72 passed, 2 skipped) ran on the working tree, not re-run on the exact head; mutation checks NOT_RUN. See docs/sdlc/S1_RETROSPECTIVE.md. | Codex | S1-E1 | d5cd7f5 |
+| S1-E4 | Runner and signing | Runner records argv, exit codes and artifact hashes and signs receipts with a key outside the worker directory | ACCEPTED | Four independent review rounds (12 of 14 reviewer runs MODIFY, all MAJOR findings fixed); GPT-PM APPROVE at abc0d50. Tests (E1-E3 1193, E4 289, E5 72 passed, 2 skipped) ran on the working tree, not re-run on the exact head; mutation checks NOT_RUN. See docs/sdlc/S1_RETROSPECTIVE.md. | Codex | S1-E1 | d5cd7f5 |
+| S1-E5 | Vertical slice harness | Synthetic story through supervisor, worker stub, runner and gate with worker death, zombie write, stale head and retry after FAIL | ACCEPTED | Four independent review rounds (12 of 14 reviewer runs MODIFY, all MAJOR findings fixed); GPT-PM APPROVE at abc0d50. Tests (E1-E3 1193, E4 289, E5 72 passed, 2 skipped) ran on the working tree, not re-run on the exact head; mutation checks NOT_RUN. See docs/sdlc/S1_RETROSPECTIVE.md. | Codex | S1-E1 | d5cd7f5 |
+| S1-E6 | Process alignment | Orchestrator skill and DoD match BD-1; change record, logs and document registry regenerated | ACCEPTED | Four independent review rounds (12 of 14 reviewer runs MODIFY, all MAJOR findings fixed); GPT-PM APPROVE at abc0d50. Tests (E1-E3 1193, E4 289, E5 72 passed, 2 skipped) ran on the working tree, not re-run on the exact head; mutation checks NOT_RUN. See docs/sdlc/S1_RETROSPECTIVE.md. | Codex | S1-E1 | d5cd7f5 |
+
 ## Sprint S2 - Isolated worker sandbox
 Goal: Qualify the existing Store-authorized signed dispatch path (DispatchOwnerService, Supervisor/Store admission, StoreBackedDispatcher) through the real Runner boundary; S3 does not start before S2 closes. Task rows follow the S2 stories and S2-4 subtasks in docs/sdlc/backlog.md.
 
@@ -36,10 +57,35 @@ Goal: Qualify the existing Store-authorized signed dispatch path (DispatchOwnerS
 | S2-5 | Final S2 bounded code review, exact-head approval and acceptance | Record the bounded source/test disposition after internal review, mapped tests, exact-head GPT-PM decision and successful push; keep runtime/E5 separate. | ACCEPTED | Bounded source/test acceptance. GPT-PM request `a2c98c0f` / correlated reply `f981ea40` approved exact candidate `96a8da7`; commit is present on `origin/s2-canonical-continuation`. Full matrix: `docs/sdlc/acceptance.md`. | Codex; GPT-PM supplied final code review | S2-4D | 96a8da7 |
 
 ## Sprint S3 - Worker pilot
-Goal: Single isolated story adapter on the S2 sandbox (from AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md; no detailed task list exists, not expanded).
+Goal: Single isolated story adapter on the S2 sandbox; compare BMad Loop, a hand-written loop and a durable engine on one crash/resume fixture (docs/S3_WORKER_PILOT_PLAN_2026-10-24.md).
+
+| Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
+|---|---|---|---|---|---|---|---|
+| S3-A | Vendor-neutral single-story adapter and idempotent operations (VST-027) | Adapter contract and one synthetic story | NOT_STARTED | Planned only; not started. Plan: docs/S3_WORKER_PILOT_PLAN_2026-10-24.md | Operator accountable; Codex implements | previous sprint close |  |
+| S3-B | Candidate identity, immutable revision, license and compatibility audits (VST-028) | Candidate audited before any execution | NOT_STARTED | Planned only; not started. Plan: docs/S3_WORKER_PILOT_PLAN_2026-10-24.md | Operator accountable; Codex implements | previous sprint close |  |
+| S3-C | Shared crash/resume, STOP, retry and budget fixture (VST-029) | Deterministic fixture run by the test agents | NOT_STARTED | Planned only; not started. Plan: docs/S3_WORKER_PILOT_PLAN_2026-10-24.md | Operator accountable; Codex implements | previous sprint close |  |
+| S3-D | Sandbox-bound worktree, credentials, diff and egress proof (VST-030) | Proof inside the S2 sandbox | NOT_STARTED | Planned only; not started. Plan: docs/S3_WORKER_PILOT_PLAN_2026-10-24.md | Operator accountable; Codex implements | previous sprint close |  |
+| S3-E | Candidate comparison, residual risk and operator choice (VST-031) | Comparison recorded; operator decides | NOT_STARTED | Planned only; not started. Plan: docs/S3_WORKER_PILOT_PLAN_2026-10-24.md | Operator accountable; Codex implements | previous sprint close |  |
 
 ## Sprint S4 - QA automation
-Goal: Real native test runners with reproducible artifacts (from AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md; no detailed task list exists, not expanded).
+Goal: Real native test runners with reproducible artifacts; a skipped test never satisfies DoD (docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md).
+
+| Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
+|---|---|---|---|---|---|---|---|
+| S4-A | Category manifest, test-ID registry and denominator (VST-032) | Registry and denominator | NOT_STARTED | Planned only; not started. Plan: docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md | Operator accountable; Codex implements | previous sprint close |  |
+| S4-B | Pinned test environment and bounded native runner (VST-033) | Reproducible runner | NOT_STARTED | Planned only; not started. Plan: docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md | Operator accountable; Codex implements | previous sprint close |  |
+| S4-C | Functional, integration and Python API selectors (VST-034) | Selectors with artifacts | NOT_STARTED | Planned only; not started. Plan: docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md | Operator accountable; Codex implements | previous sprint close |  |
+| S4-D | E2E and regression selectors (VST-035) | Selectors with artifacts | NOT_STARTED | Planned only; not started. Plan: docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md | Operator accountable; Codex implements | previous sprint close |  |
+| S4-E | Synthetic seeded-failure fixture catalog (VST-036) | Seeded failures detected | NOT_STARTED | Planned only; not started. Plan: docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md | Operator accountable; Codex implements | previous sprint close |  |
+| S4-F | Evidence envelope, hashes and no-skip gate integration (VST-037) | Gate rejects skipped tests | NOT_STARTED | Planned only; not started. Plan: docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md | Operator accountable; Codex implements | previous sprint close |  |
 
 ## Sprint S5 - AEVE gate
-Goal: Bounded static review with independent evidence receipt (from AUTONOMOUS_CONTINUATION_PROMPT_S2_S5.md; no detailed task list exists, not expanded).
+Goal: Bounded static review with hashes and an independent evidence/coverage receipt; stale HEAD fails (docs/S5_AEVE_GATE_PLAN_2026-10-24.md).
+
+| Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
+|---|---|---|---|---|---|---|---|
+| S5-A | Versioned static evidence provenance contract (VST-038) | v1-compatible contract | NOT_STARTED | Planned only; not started. Plan: docs/S5_AEVE_GATE_PLAN_2026-10-24.md | Operator accountable; Codex implements | previous sprint close |  |
+| S5-B | Independent analyzer authority and signature binding (VST-039) | Signed analyzer provenance | NOT_STARTED | Planned only; not started. Plan: docs/S5_AEVE_GATE_PLAN_2026-10-24.md | Operator accountable; Codex implements | previous sprint close |  |
+| S5-C | Bounded read-only analyzer adapter and snapshot hashing (VST-040) | Deterministic snapshot | NOT_STARTED | Planned only; not started. Plan: docs/S5_AEVE_GATE_PLAN_2026-10-24.md | Operator accountable; Codex implements | previous sprint close |  |
+| S5-D | Truthful rule coverage and finding evidence map (VST-041) | Coverage reported truthfully | NOT_STARTED | Planned only; not started. Plan: docs/S5_AEVE_GATE_PLAN_2026-10-24.md | Operator accountable; Codex implements | previous sprint close |  |
+| S5-E | Exact-head gate and reproducible evidence integration (VST-042) | Stale head fails | NOT_STARTED | Planned only; not started. Plan: docs/S5_AEVE_GATE_PLAN_2026-10-24.md | Operator accountable; Codex implements | previous sprint close |  |
