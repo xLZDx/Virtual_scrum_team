@@ -1441,3 +1441,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Follow-up (same day): the cross-identity reproduction (probes `cross_identity_pipe_auth`, `cross_identity_pipe_auth_diag`) did NOT reproduce an OpenThreadToken denial. The hypothesis is unproven. Two changes were made instead:
   - Service peers are identified by the kernel-enforced pipe DACL plus the client pid matching the allowed service's SCM pid. This removes the impersonation and token-open step for service-to-service pipes.
   - Every service routes WARNING+ records (pipe drops, Supervisor/Runner/Signer refusals) to the Application event log with sanitized exception chains, and the installer prints those events on failure. The next elevated run therefore either passes this stage or names the exact failing step.
+
+## 2026-11-07 — S2-4E manifest rebound to 37e5b1ef4c1f0529283a30760610811b36e7ff32 (pipe client identification)
+
+- Kind: NEUTRAL.

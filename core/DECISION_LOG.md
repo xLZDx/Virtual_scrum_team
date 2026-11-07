@@ -1673,3 +1673,7 @@ The rebinding adds the manifest-derived harness time limits.
   - For pipes with allowed service peers, the client is accepted when the kernel admits it through the DACL and GetNamedPipeClientProcessId equals the SCM pid of an allowed service; the client token is no longer opened. User-SID pipes (Owner) keep the impersonation and token-user check.
   - Rationale: the DACL already restricts openers to the peer SIDs, LocalSystem and the server, and the SCM pid binds the connection to the exact service process. Child processes of a service are still rejected.
   - Pipe drops and RPC refusals are logged with exc_info. The SCM host installs an event-log handler that writes only the fixed message template and the sanitized exception chain.
+
+## 2026-11-07 — S2-4E manifest base_head c2ffcda6a602c9326769d979545f09da804ed68d -> 37e5b1ef4c1f0529283a30760610811b36e7ff32
+
+The rebinding adds the pipe client identification and event-log refusal changes.
