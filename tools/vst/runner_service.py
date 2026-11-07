@@ -878,7 +878,7 @@ class PersistentRunnerService:
             fatal_error = exc
             response = {"status": "REFUSED", "error_code": "EXECUTION_REFUSED"}
         except Exception:
-            logging.getLogger(__name__).warning("persistent runner request refused")
+            logging.getLogger(__name__).warning("persistent runner request refused", exc_info=True)
             response = {"status": "REFUSED", "error_code": "EXECUTION_REFUSED"}
         finally:
             if pidfd is not None:

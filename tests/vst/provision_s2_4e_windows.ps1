@@ -15,6 +15,12 @@ $transcriptPath = Join-Path $RepoRoot 'docs\sdlc\evidence\s2-4e-windows-provisio
 Start-Transcript -Path $transcriptPath -Append | Out-Null
 trap {
     try { Write-Host ("INSTALLER_ERROR: {0}: {1}" -f $_.Exception.GetType().Name, $_.Exception.Message) } catch {}
+    # Show the services' own sanitized failure/refusal events so one run is enough to diagnose.
+    try {
+        Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=(Get-Date).AddMinutes(-20)} -ErrorAction Stop |
+            Where-Object { $_.ProviderName -like 'VST*' } | Sort-Object TimeCreated | Select-Object -Last 20 |
+            ForEach-Object { Write-Host ("VST_EVENT {0:HH:mm:ss} {1}: {2}" -f $_.TimeCreated, $_.ProviderName, (($_.Properties | ForEach-Object { $_.Value }) -join ' | ')) }
+    } catch {}
     try { Stop-Transcript | Out-Null } catch {}
     exit 1
 }

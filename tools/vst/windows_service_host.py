@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ctypes
 import json
+import logging
 import os
 import re
 import stat
@@ -556,44 +557,47 @@ def read_role_private_file(path: str, *, service_sid: str, service_root: str,
     return content
 
 
-def _report_service_failure(advapi: Any, service_name: str, exc: BaseException) -> None:
-    """Record a start/run failure in the Windows Application event log (best effort).
+def _sanitized_exception_lines(exc: BaseException | None) -> list[str]:
+    """Value-free description of an exception chain for the Application event log.
 
     The Application log is readable by local users, so only exception type names,
     code locations, ContractError messages (fixed, value-free strings in this
     codebase) and OSError errno/winerror codes are recorded. Other messages, and
     OSError text (it carries file paths), are omitted. Each entry is formatted
-    independently so one unprintable exception cannot drop the whole event. A
-    logging failure must not mask the stop status.
+    independently so one unprintable exception cannot drop the whole description.
     """
-    try:
-        import traceback
+    import traceback
 
-        lines: list[str] = []
-        current: BaseException | None = exc
-        seen = 0
-        while current is not None and seen < 5:
-            seen += 1
-            try:
-                if isinstance(current, ContractError):
-                    lines.append("%s: %s" % (type(current).__name__, current))
-                elif isinstance(current, OSError):
-                    lines.append("%s: errno=%s winerror=%s" % (
-                        type(current).__name__, current.errno,
-                        getattr(current, "winerror", None),
-                    ))
-                else:
-                    lines.append("%s (message omitted)" % type(current).__name__)
-                for frame in traceback.extract_tb(current.__traceback__)[-8:]:
-                    lines.append("  at %s:%s in %s" % (
-                        os.path.basename(frame.filename), frame.lineno, frame.name,
-                    ))
-            except Exception:
-                lines.append("<unprintable %s>" % type(current).__name__)
-            current = current.__cause__ or current.__context__
-            if current is not None:
-                lines.append("caused by:")
-        text = ("VST service %s stopped: %s" % (service_name, "\n".join(lines)))[:4000]
+    lines: list[str] = []
+    current = exc
+    seen = 0
+    while current is not None and seen < 5:
+        seen += 1
+        try:
+            if isinstance(current, ContractError):
+                lines.append("%s: %s" % (type(current).__name__, current))
+            elif isinstance(current, OSError):
+                lines.append("%s: errno=%s winerror=%s" % (
+                    type(current).__name__, current.errno,
+                    getattr(current, "winerror", None),
+                ))
+            else:
+                lines.append("%s (message omitted)" % type(current).__name__)
+            for frame in traceback.extract_tb(current.__traceback__)[-8:]:
+                lines.append("  at %s:%s in %s" % (
+                    os.path.basename(frame.filename), frame.lineno, frame.name,
+                ))
+        except Exception:
+            lines.append("<unprintable %s>" % type(current).__name__)
+        current = current.__cause__ or current.__context__
+        if current is not None:
+            lines.append("caused by:")
+    return lines
+
+
+def _write_event(advapi: Any, source_name: str, text: str, event_type: int) -> None:
+    """Best-effort ReportEventW; never raises (event_type 1=error, 2=warning)."""
+    try:
         advapi.RegisterEventSourceW.restype = wintypes.HANDLE
         advapi.RegisterEventSourceW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR]
         advapi.ReportEventW.restype = wintypes.BOOL
@@ -603,16 +607,56 @@ def _report_service_failure(advapi: Any, service_name: str, exc: BaseException) 
         ]
         advapi.DeregisterEventSource.restype = wintypes.BOOL
         advapi.DeregisterEventSource.argtypes = [wintypes.HANDLE]
-        source = advapi.RegisterEventSourceW(None, service_name)
+        source = advapi.RegisterEventSourceW(None, source_name)
         if not source:
             return
         try:
-            strings = (wintypes.LPCWSTR * 1)(text)
-            advapi.ReportEventW(source, 0x0001, 0, 1, None, 1, 0, strings, None)
+            strings = (wintypes.LPCWSTR * 1)(text[:4000])
+            advapi.ReportEventW(source, event_type, 0, 1, None, 1, 0, strings, None)
         finally:
             advapi.DeregisterEventSource(source)
     except Exception:
         return
+
+
+def _report_service_failure(advapi: Any, service_name: str, exc: BaseException) -> None:
+    """Record a start/run failure in the Windows Application event log (best effort).
+
+    A logging failure must not mask the stop status.
+    """
+    try:
+        lines = _sanitized_exception_lines(exc)
+        text = "VST service %s stopped: %s" % (service_name, "\n".join(lines))
+    except Exception:
+        text = "VST service %s stopped: <unprintable failure>" % service_name
+    _write_event(advapi, service_name, text, 0x0001)
+
+
+class _EventLogHandler(logging.Handler):
+    """Forward WARNING+ records of a running service to the Application event log.
+
+    Refusals and dropped peers are otherwise invisible for an SCM service (no
+    console). Only the record's fixed message template and the sanitized
+    exception chain are written; the template's arguments are not, because
+    they can carry runtime values.
+    """
+
+    def __init__(self, advapi: Any, service_name: str):
+        super().__init__(level=logging.WARNING)
+        self._advapi = advapi
+        self._service_name = service_name
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            lines = ["VST service %s %s: %s" % (
+                self._service_name, record.levelname, str(record.msg)[:500],
+            )]
+            if record.exc_info and record.exc_info[1] is not None:
+                lines.extend(_sanitized_exception_lines(record.exc_info[1]))
+            event_type = 0x0001 if record.levelno >= logging.ERROR else 0x0002
+            _write_event(self._advapi, self._service_name, "\n".join(lines), event_type)
+        except Exception:
+            return
 
 
 def run_scm_service(service_name: str, target_factory: Callable[[], Any]) -> None:
@@ -737,6 +781,11 @@ def main() -> None:
     except (KeyError, ImportError) as exc:
         raise ContractError("SCM role is not available in the local runtime") from exc
     sys.argv = [sys.argv[0], "--windows-scm", *role_arguments]
+    try:
+        advapi, _kernel = _win_api()
+        logging.getLogger().addHandler(_EventLogHandler(advapi, service_name_for_role(role)))
+    except Exception:
+        pass
     try:
         service.main()
     except Exception as exc:

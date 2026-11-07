@@ -396,6 +396,23 @@ def _verify_client_sid(
     allowed_user_sids: tuple[str, ...] = (),
 ) -> None:
     kernel32, advapi32 = _api()
+    if allowed_services:
+        # Service peers are identified without opening their token: the kernel already
+        # enforced the pipe DACL (only the configured peer SIDs, LocalSystem and the
+        # server can open an instance), and the client process must be exactly the
+        # SCM-registered process of an allowed service. Opening a different virtual
+        # account's impersonation token is not reliable under restricted service SIDs.
+        pid = wintypes.ULONG()
+        if not kernel32.GetNamedPipeClientProcessId(pipe, ctypes.byref(pid)) or pid.value <= 0:
+            raise _last_error("cannot identify named-pipe client process")
+        for _sid, service_name in allowed_services:
+            try:
+                if int(pid.value) == _service_process_id(service_name):
+                    return
+            except ContractError:
+                continue  # that service is not running
+        if not allowed_user_sids:
+            raise ContractError("Windows named-pipe client is not a configured service process")
     if not advapi32.ImpersonateNamedPipeClient(pipe):
         raise _last_error("cannot authenticate named-pipe client")
     token = wintypes.HANDLE()
@@ -404,14 +421,6 @@ def _verify_client_sid(
             kernel32.GetCurrentThread(), _TOKEN_QUERY, True, ctypes.byref(token),
         ):
             raise _last_error("cannot inspect named-pipe client identity")
-        allowed = next((
-            (sid, service_name) for sid, service_name in allowed_services
-            if _check_token_sid(token, sid)
-        ), None)
-        if allowed is not None:
-            _sid, service_name = allowed
-            _verify_service_process(pipe, service_name=service_name, server=False)
-            return
         if any(_check_token_user_sid(token, sid) for sid in allowed_user_sids):
             return
         raise ContractError("Windows named-pipe client SID is unauthorized")
@@ -753,7 +762,7 @@ class WindowsNamedPipeListener:
             except (OSError, ContractError) as exc:
                 if self._close_event.is_set():
                     raise OSError("Windows named-pipe listener is closed") from exc
-                _LOG.warning("dropped Windows named-pipe client on %s: %s", self.path, exc)
+                _LOG.warning("dropped Windows named-pipe client on %s", self.path, exc_info=exc)
                 return None
             connection = WindowsNamedPipeConnection(
                 connected, timeout_sec=self.timeout_sec, prefetched=first_byte,

@@ -1426,3 +1426,18 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SUCCESS. Two internal agent passes before GPT left a single MAJOR (a harness timeout), which was closed in one verification round.
 - Rule: keep running internal probe and review passes before the GPT gate.
+
+## 2026-11-07 — Elevated attempt failed at VSTDispatcher: cross-service pipe client verification never probed
+
+- Kind: FAILURE (found by the operator's elevated install at base_head c2ffcda; recorded by the coordinator's own analysis).
+- Facts:
+  - For the first time, VSTSupervisor, VSTWorker, VSTSigner and VSTRunner started and stayed Running under their real restricted virtual-account tokens.
+  - VSTDispatcher stopped. Its Application event log entry reads `ContractError: Supervisor RPC frame ended early`, from dispatcher_service.py:81 via supervisor_service.py:80. The Supervisor closed the client during accept-time verification. That drop reason went only to Python logging, so it is lost.
+- Root cause (hypothesis, under reproduction): `_verify_client_sid` opens the client's impersonation token with OpenAsSelf=TRUE. That token's DACL is derived from the client's default DACL, which does not grant a different service identity.
+- Layer: the author missed it. Every probe ran server and client under the same user, which hides cross-identity access checks. The reviewers and GPT-PM reviewed statically. The coordinator asked for an elevated attempt without a cross-identity probe.
+- Rule:
+  - Before any elevated attempt, every IPC trust check must be exercised with server and client under DIFFERENT identities or DACLs, and must pass.
+  - Every server-side drop/refusal reason must be durably observable (event log or role log), never only in an unconfigured Python logger.
+- Follow-up (same day): the cross-identity reproduction (probes `cross_identity_pipe_auth`, `cross_identity_pipe_auth_diag`) did NOT reproduce an OpenThreadToken denial. The hypothesis is unproven. Two changes were made instead:
+  - Service peers are identified by the kernel-enforced pipe DACL plus the client pid matching the allowed service's SCM pid. This removes the impersonation and token-open step for service-to-service pipes.
+  - Every service routes WARNING+ records (pipe drops, Supervisor/Runner/Signer refusals) to the Application event log with sanitized exception chains, and the installer prints those events on failure. The next elevated run therefore either passes this stage or names the exact failing step.

@@ -1664,3 +1664,12 @@ The rebinding adds the manifest-derived harness time limits.
 - Round 2 (request fdf3e9b3-458c-4379-8d8f-48eae140a8a9, reply ee58b7b8-2e1c-537b-aa3b-425a7ebf5ab8, correlated): APPROVE with BLOCKER 0 and MAJOR 0. The basis was the f86e698..15f09f7 diff and the agent probe evidence.
 - Non-blocking observation: the PowerShell [int] cast happens before the range check, while Python checks the type strictly. Recorded and not changed.
 - The elevated Windows SCM E2E is NOT_RUN until the operator installs.
+
+## 2026-11-07 — Service-to-service pipe clients identified by DACL + SCM pid; refusals reach the event log
+
+- After the elevated attempt at c2ffcda, VSTDispatcher stopped with `Supervisor RPC frame ended early`: the Supervisor dropped it during accept-time client verification, for a reason that was not recorded.
+- A non-elevated reproduction did not reproduce the suspected cause.
+- Decision:
+  - For pipes with allowed service peers, the client is accepted when the kernel admits it through the DACL and GetNamedPipeClientProcessId equals the SCM pid of an allowed service; the client token is no longer opened. User-SID pipes (Owner) keep the impersonation and token-user check.
+  - Rationale: the DACL already restricts openers to the peer SIDs, LocalSystem and the server, and the SCM pid binds the connection to the exact service process. Child processes of a service are still rejected.
+  - Pipe drops and RPC refusals are logged with exc_info. The SCM host installs an event-log handler that writes only the fixed message template and the sanitized exception chain.

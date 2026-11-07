@@ -2,7 +2,7 @@
   "meta": {
     "date": "2026-11-07",
     "task": "S2-4E",
-    "revision": "a55fee0b77b2770ceefc2a6c3b96b0f89d391e68 (tools/tests clean)",
+    "revision": "7592676dc42738ce999fdc09567af6e73e9d9d46 (tools/tests clean)",
     "python": "3.14.3",
     "os": "Windows-11-10.0.26300-SP0",
     "process_is_elevated_admin": false
@@ -252,6 +252,512 @@
         }
       ],
       "output_excerpt": "[{'mode': 'close_only', 'payload': 15, 'server_written': 15, 'write_ok': True, 'client_received': 15, 'intact': True, 'terminal_error_after_drain': 109}, {'mode': 'close_only', 'payload': 51200, 'server_written': 51200, 'write_ok': True, 'client_received': 51200, 'intact': True, 'terminal_error_after_drain': 109}]\n{'mode': 'disconnect_then_close', 'payload': 15, 'server_written': 15, 'write_ok': True, 'client_received': 0, 'intact': False, 'terminal_error_after_drain': 233}"
+    },
+    "cross_identity_pipe_auth": {
+      "command": "python docs/sdlc/evidence/s2_4e_probe_cross_identity_pipe_auth.py",
+      "status": "H1_NOT_REPRODUCED",
+      "substeps": [
+        {
+          "name": "A write-restricted client, default DACL excludes server user (H1): pipe DACL admits client (CreateFile)",
+          "status": "PASS",
+          "detail": "createfile_error=0"
+        },
+        {
+          "name": "A write-restricted client, default DACL excludes server user (H1): V1 OpenThreadToken(TOKEN_QUERY, OpenAsSelf=TRUE)",
+          "status": "FAIL",
+          "detail": "expected failure; got {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}"
+        },
+        {
+          "name": "A write-restricted client, default DACL excludes server user (H1): V2 OpenThreadToken(OpenAsSelf=FALSE)",
+          "status": "INFO",
+          "detail": "{\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}"
+        },
+        {
+          "name": "A write-restricted client, default DACL excludes server user (H1): V3 client pid == child pid",
+          "status": "PASS",
+          "detail": "pipe_pid=127412 child_pid=127412 client_self_pid=127412 err=0"
+        },
+        {
+          "name": "A write-restricted client, default DACL excludes server user (H1): V4 client session id",
+          "status": "PASS",
+          "detail": "{\"ok\": true, \"session\": 4, \"error\": 0}"
+        },
+        {
+          "name": "A write-restricted client, default DACL excludes server user (H1): real _verify_client_sid outcome",
+          "status": "INFO",
+          "detail": "{\"result\": \"OK\", \"error\": 0}"
+        },
+        {
+          "name": "B CONTROL write-restricted client, default DACL grants server user: pipe DACL admits client (CreateFile)",
+          "status": "PASS",
+          "detail": "createfile_error=0"
+        },
+        {
+          "name": "B CONTROL write-restricted client, default DACL grants server user: V1 OpenThreadToken(TOKEN_QUERY, OpenAsSelf=TRUE)",
+          "status": "PASS",
+          "detail": "expected success; got {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}"
+        },
+        {
+          "name": "B CONTROL write-restricted client, default DACL grants server user: V2 OpenThreadToken(OpenAsSelf=FALSE)",
+          "status": "INFO",
+          "detail": "{\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}"
+        },
+        {
+          "name": "B CONTROL write-restricted client, default DACL grants server user: V3 client pid == child pid",
+          "status": "PASS",
+          "detail": "pipe_pid=45928 child_pid=45928 client_self_pid=45928 err=0"
+        },
+        {
+          "name": "B CONTROL write-restricted client, default DACL grants server user: V4 client session id",
+          "status": "PASS",
+          "detail": "{\"ok\": true, \"session\": 4, \"error\": 0}"
+        },
+        {
+          "name": "B CONTROL write-restricted client, default DACL grants server user: real _verify_client_sid outcome",
+          "status": "INFO",
+          "detail": "{\"result\": \"OK\", \"error\": 0}"
+        },
+        {
+          "name": "C unrestricted client, default DACL excludes server user: pipe DACL admits client (CreateFile)",
+          "status": "PASS",
+          "detail": "createfile_error=0"
+        },
+        {
+          "name": "C unrestricted client, default DACL excludes server user: V1 OpenThreadToken(TOKEN_QUERY, OpenAsSelf=TRUE)",
+          "status": "FAIL",
+          "detail": "expected failure; got {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}"
+        },
+        {
+          "name": "C unrestricted client, default DACL excludes server user: V2 OpenThreadToken(OpenAsSelf=FALSE)",
+          "status": "INFO",
+          "detail": "{\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}"
+        },
+        {
+          "name": "C unrestricted client, default DACL excludes server user: V3 client pid == child pid",
+          "status": "PASS",
+          "detail": "pipe_pid=79916 child_pid=79916 client_self_pid=79916 err=0"
+        },
+        {
+          "name": "C unrestricted client, default DACL excludes server user: V4 client session id",
+          "status": "PASS",
+          "detail": "{\"ok\": true, \"session\": 4, \"error\": 0}"
+        },
+        {
+          "name": "C unrestricted client, default DACL excludes server user: real _verify_client_sid outcome",
+          "status": "INFO",
+          "detail": "{\"result\": \"OK\", \"error\": 0}"
+        },
+        {
+          "name": "D CONTROL unrestricted client, natural default DACL: pipe DACL admits client (CreateFile)",
+          "status": "PASS",
+          "detail": "createfile_error=0"
+        },
+        {
+          "name": "D CONTROL unrestricted client, natural default DACL: V1 OpenThreadToken(TOKEN_QUERY, OpenAsSelf=TRUE)",
+          "status": "PASS",
+          "detail": "expected success; got {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}"
+        },
+        {
+          "name": "D CONTROL unrestricted client, natural default DACL: V2 OpenThreadToken(OpenAsSelf=FALSE)",
+          "status": "INFO",
+          "detail": "{\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}"
+        },
+        {
+          "name": "D CONTROL unrestricted client, natural default DACL: V3 client pid == child pid",
+          "status": "PASS",
+          "detail": "pipe_pid=123192 child_pid=123192 client_self_pid=123192 err=0"
+        },
+        {
+          "name": "D CONTROL unrestricted client, natural default DACL: V4 client session id",
+          "status": "PASS",
+          "detail": "{\"ok\": true, \"session\": 4, \"error\": 0}"
+        },
+        {
+          "name": "D CONTROL unrestricted client, natural default DACL: real _verify_client_sid outcome",
+          "status": "INFO",
+          "detail": "{\"result\": \"OK\", \"error\": 0}"
+        }
+      ],
+      "output_excerpt": "vel(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"V2_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_FALSE\": {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"real_verify_client_sid\": {\"result\": \"OK\", \"error\": 0}, \"launch\": \"CreateProcessAsUserW\", \"child_pid_from_CreateProcess\": 127412, \"child_exit\": \"0x00000000\", \"client_report\": {\"pid\": 127412, \"createfile\": 0, \"write_ok\": true, \"read_ok\": true, \"read_err\": 0, \"reply\": \"A\"}, \"expect_V1_ok\": false}, {\"label\": \"B CONTROL write-restricted client, default DACL grants server user\", \"server_read_request_byte\": \"R\", \"V3_client_pid\": {\"ok\": true, \"pid\": 45928, \"error\": 0}, \"V4_client_session\": {\"ok\": true, \"session\": 4, \"error\": 0}, \"V1_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_TRUE\": {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"V2_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_FALSE\": {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"real_verify_client_sid\": {\"result\": \"OK\", \"error\": 0}, \"launch\": \"CreateProcessAsUserW\", \"child_pid_from_CreateProcess\": 45928, \"child_exit\": \"0x00000000\", \"client_report\": {\"pid\": 45928, \"createfile\": 0, \"write_ok\": true, \"read_ok\": true, \"read_err\": 0, \"reply\": \"A\"}, \"expect_V1_ok\": true}, {\"label\": \"C unrestricted client, default DACL excludes server user\", \"server_read_request_byte\": \"R\", \"V3_client_pid\": {\"ok\": true, \"pid\": 79916, \"error\": 0}, \"V4_client_session\": {\"ok\": true, \"session\": 4, \"error\": 0}, \"V1_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_TRUE\": {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"V2_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_FALSE\": {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"real_verify_client_sid\": {\"result\": \"OK\", \"error\": 0}, \"launch\": \"CreateProcessAsUserW\", \"child_pid_from_CreateProcess\": 79916, \"child_exit\": \"0x00000000\", \"client_report\": {\"pid\": 79916, \"createfile\": 0, \"write_ok\": true, \"read_ok\": true, \"read_err\": 0, \"reply\": \"A\"}, \"expect_V1_ok\": false}, {\"label\": \"D CONTROL unrestricted client, natural default DACL\", \"server_read_request_byte\": \"R\", \"V3_client_pid\": {\"ok\": true, \"pid\": 123192, \"error\": 0}, \"V4_client_session\": {\"ok\": true, \"session\": 4, \"error\": 0}, \"V1_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_TRUE\": {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"V2_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_FALSE\": {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"real_verify_client_sid\": {\"result\": \"OK\", \"error\": 0}, \"launch\": \"CreateProcessAsUserW\", \"child_pid_from_CreateProcess\": 123192, \"child_exit\": \"0x00000000\", \"client_report\": {\"pid\": 123192, \"createfile\": 0, \"write_ok\": true, \"read_ok\": true, \"read_err\": 0, \"reply\": \"A\"}, \"expect_V1_ok\": true}]",
+      "hypothesis": "H1: OpenThreadToken(OpenAsSelf=TRUE) fails with 5 when the client token default DACL excludes the server identity",
+      "variants": [
+        {
+          "label": "A write-restricted client, default DACL excludes server user (H1)",
+          "server_read_request_byte": "R",
+          "V3_client_pid": {
+            "ok": true,
+            "pid": 127412,
+            "error": 0
+          },
+          "V4_client_session": {
+            "ok": true,
+            "session": 4,
+            "error": 0
+          },
+          "V1_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_TRUE": {
+            "ok": true,
+            "error": 0,
+            "token_type(2=impersonation)": 2,
+            "impersonation_level(0=anon,1=ident,2=imp)": 1,
+            "CheckTokenMembership_ok": true,
+            "CheckTokenMembership_error": 0,
+            "member_of_server_user_sid": true
+          },
+          "V2_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_FALSE": {
+            "ok": true,
+            "error": 0,
+            "token_type(2=impersonation)": 2,
+            "impersonation_level(0=anon,1=ident,2=imp)": 1,
+            "CheckTokenMembership_ok": true,
+            "CheckTokenMembership_error": 0,
+            "member_of_server_user_sid": true
+          },
+          "real_verify_client_sid": {
+            "result": "OK",
+            "error": 0
+          },
+          "launch": "CreateProcessAsUserW",
+          "child_pid_from_CreateProcess": 127412,
+          "child_exit": "0x00000000",
+          "client_report": {
+            "pid": 127412,
+            "createfile": 0,
+            "write_ok": true,
+            "read_ok": true,
+            "read_err": 0,
+            "reply": "A"
+          },
+          "expect_V1_ok": false
+        },
+        {
+          "label": "B CONTROL write-restricted client, default DACL grants server user",
+          "server_read_request_byte": "R",
+          "V3_client_pid": {
+            "ok": true,
+            "pid": 45928,
+            "error": 0
+          },
+          "V4_client_session": {
+            "ok": true,
+            "session": 4,
+            "error": 0
+          },
+          "V1_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_TRUE": {
+            "ok": true,
+            "error": 0,
+            "token_type(2=impersonation)": 2,
+            "impersonation_level(0=anon,1=ident,2=imp)": 1,
+            "CheckTokenMembership_ok": true,
+            "CheckTokenMembership_error": 0,
+            "member_of_server_user_sid": true
+          },
+          "V2_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_FALSE": {
+            "ok": true,
+            "error": 0,
+            "token_type(2=impersonation)": 2,
+            "impersonation_level(0=anon,1=ident,2=imp)": 1,
+            "CheckTokenMembership_ok": true,
+            "CheckTokenMembership_error": 0,
+            "member_of_server_user_sid": true
+          },
+          "real_verify_client_sid": {
+            "result": "OK",
+            "error": 0
+          },
+          "launch": "CreateProcessAsUserW",
+          "child_pid_from_CreateProcess": 45928,
+          "child_exit": "0x00000000",
+          "client_report": {
+            "pid": 45928,
+            "createfile": 0,
+            "write_ok": true,
+            "read_ok": true,
+            "read_err": 0,
+            "reply": "A"
+          },
+          "expect_V1_ok": true
+        },
+        {
+          "label": "C unrestricted client, default DACL excludes server user",
+          "server_read_request_byte": "R",
+          "V3_client_pid": {
+            "ok": true,
+            "pid": 79916,
+            "error": 0
+          },
+          "V4_client_session": {
+            "ok": true,
+            "session": 4,
+            "error": 0
+          },
+          "V1_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_TRUE": {
+            "ok": true,
+            "error": 0,
+            "token_type(2=impersonation)": 2,
+            "impersonation_level(0=anon,1=ident,2=imp)": 1,
+            "CheckTokenMembership_ok": true,
+            "CheckTokenMembership_error": 0,
+            "member_of_server_user_sid": true
+          },
+          "V2_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_FALSE": {
+            "ok": true,
+            "error": 0,
+            "token_type(2=impersonation)": 2,
+            "impersonation_level(0=anon,1=ident,2=imp)": 1,
+            "CheckTokenMembership_ok": true,
+            "CheckTokenMembership_error": 0,
+            "member_of_server_user_sid": true
+          },
+          "real_verify_client_sid": {
+            "result": "OK",
+            "error": 0
+          },
+          "launch": "CreateProcessAsUserW",
+          "child_pid_from_CreateProcess": 79916,
+          "child_exit": "0x00000000",
+          "client_report": {
+            "pid": 79916,
+            "createfile": 0,
+            "write_ok": true,
+            "read_ok": true,
+            "read_err": 0,
+            "reply": "A"
+          },
+          "expect_V1_ok": false
+        },
+        {
+          "label": "D CONTROL unrestricted client, natural default DACL",
+          "server_read_request_byte": "R",
+          "V3_client_pid": {
+            "ok": true,
+            "pid": 123192,
+            "error": 0
+          },
+          "V4_client_session": {
+            "ok": true,
+            "session": 4,
+            "error": 0
+          },
+          "V1_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_TRUE": {
+            "ok": true,
+            "error": 0,
+            "token_type(2=impersonation)": 2,
+            "impersonation_level(0=anon,1=ident,2=imp)": 1,
+            "CheckTokenMembership_ok": true,
+            "CheckTokenMembership_error": 0,
+            "member_of_server_user_sid": true
+          },
+          "V2_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_FALSE": {
+            "ok": true,
+            "error": 0,
+            "token_type(2=impersonation)": 2,
+            "impersonation_level(0=anon,1=ident,2=imp)": 1,
+            "CheckTokenMembership_ok": true,
+            "CheckTokenMembership_error": 0,
+            "member_of_server_user_sid": true
+          },
+          "real_verify_client_sid": {
+            "result": "OK",
+            "error": 0
+          },
+          "launch": "CreateProcessAsUserW",
+          "child_pid_from_CreateProcess": 123192,
+          "child_exit": "0x00000000",
+          "client_report": {
+            "pid": 123192,
+            "createfile": 0,
+            "write_ok": true,
+            "read_ok": true,
+            "read_err": 0,
+            "reply": "A"
+          },
+          "expect_V1_ok": true
+        }
+      ],
+      "server_user_sid": "S-1-5-21-1658137595-2520424230-3796741800-1001",
+      "throwaway_sid": "S-1-5-21-491070816-651733725-501348916-2224",
+      "limits": "same-user server vs. restricted client of the same user (DACL separation, not real virtual-account service SIDs); non-elevated; no SCM / service SID / session 0; client token made by CreateRestrictedToken, not by SCM.",
+      "verdict": {
+        "H1": "NOT confirmed by this probe. V1 OpenThreadToken(TOKEN_QUERY, OpenAsSelf=TRUE) succeeded (error 0) in all variants A-D, including write-restricted client with default DACL SY+throwaway only, and (diag) with an explicit DENY GA for the server user. The expected error 5 never occurred; the A-vs-B control therefore did not discriminate.",
+        "V2": "OpenAsSelf=FALSE at SecurityIdentification: success (error 0) in all variants, level=1 (identification), CheckTokenMembership works.",
+        "V3": "GetNamedPipeClientProcessId ok, pid == CreateProcess child pid in all variants.",
+        "V4": "GetNamedPipeClientSessionId ok (session 4) in all variants.",
+        "pipe_DACL": "CreateFile admitted the restricted client in all variants (error 0).",
+        "real_code": "tools.vst.windows_named_pipe._verify_client_sid on the same handle returned without exception in all variants.",
+        "instrument_check": "readback of TokenDefaultDacl ACE counts: original 3, deny+SY+thr 3, SY+thr 2 (setting is stored on the token). Child event-DACL readback returned empty string (instrument limitation, not interpreted).",
+        "diag_file": "s2_4e_probe_cross_identity_diag.py (key cross_identity_pipe_auth_diag)",
+        "limits": "Server and client share one user/logon session and the server is an unrestricted non-elevated token; the real server is a virtual account with sidtype restricted (write-restricted token with its own restricting SIDs), different service SID, session 0, possibly different integrity/logon session. DACL-by-default-DACL hypothesis is not the cause on this OS build for same-user pairs; different-user or restricted-server effects remain untested."
+      }
+    },
+    "cross_identity_pipe_auth_diag": {
+      "command": "python docs/sdlc/evidence/s2_4e_probe_cross_identity_diag.py",
+      "status": "INFO",
+      "substeps": [
+        {
+          "name": "A2 write-restricted, default DACL = SY + throwaway only",
+          "status": "INFO",
+          "detail": "{\"client_event_dacl\": \"\", \"V1\": {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"V2\": {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"real_verify\": {\"result\": \"OK\", \"error\": 0}}"
+        },
+        {
+          "name": "E write-restricted, default DACL = explicit DENY GA to server user, then SY + throwaway",
+          "status": "INFO",
+          "detail": "{\"client_event_dacl\": \"\", \"V1\": {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"V2\": {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"real_verify\": {\"result\": \"OK\", \"error\": 0}}"
+        },
+        {
+          "name": "D2 CONTROL write-restricted, natural (unmodified) default DACL",
+          "status": "INFO",
+          "detail": "{\"client_event_dacl\": \"\", \"V1\": {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"V2\": {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"real_verify\": {\"result\": \"OK\", \"error\": 0}}"
+        }
+      ],
+      "output_excerpt": "[{\"label\": \"A2 write-restricted, default DACL = SY + throwaway only\", \"server_read_request_byte\": \"R\", \"V3_client_pid\": {\"ok\": true, \"pid\": 84936, \"error\": 0}, \"V4_client_session\": {\"ok\": true, \"session\": 4, \"error\": 0}, \"V1_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_TRUE\": {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"V2_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_FALSE\": {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"real_verify_client_sid\": {\"result\": \"OK\", \"error\": 0}, \"launch\": \"CreateProcessAsUserW\", \"child_pid_from_CreateProcess\": 84936, \"child_exit\": \"0x00000000\", \"client_report\": {\"pid\": 84936, \"event_dacl_sddl\": \"\", \"createfile\": 0, \"write_ok\": true, \"read_ok\": true, \"read_err\": 0, \"reply\": \"A\"}}, {\"label\": \"E write-restricted, default DACL = explicit DENY GA to server user, then SY + throwaway\", \"server_read_request_byte\": \"R\", \"V3_client_pid\": {\"ok\": true, \"pid\": 57300, \"error\": 0}, \"V4_client_session\": {\"ok\": true, \"session\": 4, \"error\": 0}, \"V1_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_TRUE\": {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"V2_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_FALSE\": {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"real_verify_client_sid\": {\"result\": \"OK\", \"error\": 0}, \"launch\": \"CreateProcessAsUserW\", \"child_pid_from_CreateProcess\": 57300, \"child_exit\": \"0x00000000\", \"client_report\": {\"pid\": 57300, \"event_dacl_sddl\": \"\", \"createfile\": 0, \"write_ok\": true, \"read_ok\": true, \"read_err\": 0, \"reply\": \"A\"}}, {\"label\": \"D2 CONTROL write-restricted, natural (unmodified) default DACL\", \"server_read_request_byte\": \"R\", \"V3_client_pid\": {\"ok\": true, \"pid\": 103968, \"error\": 0}, \"V4_client_session\": {\"ok\": true, \"session\": 4, \"error\": 0}, \"V1_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_TRUE\": {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"V2_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_FALSE\": {\"ok\": true, \"error\": 0, \"token_type(2=impersonation)\": 2, \"impersonation_level(0=anon,1=ident,2=imp)\": 1, \"CheckTokenMembership_ok\": true, \"CheckTokenMembership_error\": 0, \"member_of_server_user_sid\": true}, \"real_verify_client_sid\": {\"result\": \"OK\", \"error\": 0}, \"launch\": \"CreateProcessAsUserW\", \"child_pid_from_CreateProcess\": 103968, \"child_exit\": \"0x00000000\", \"client_report\": {\"pid\": 103968, \"event_dacl_sddl\": \"\", \"createfile\": 0, \"write_ok\": true, \"read_ok\": true, \"read_err\": 0, \"reply\": \"A\"}}]",
+      "variants": [
+        {
+          "label": "A2 write-restricted, default DACL = SY + throwaway only",
+          "server_read_request_byte": "R",
+          "V3_client_pid": {
+            "ok": true,
+            "pid": 84936,
+            "error": 0
+          },
+          "V4_client_session": {
+            "ok": true,
+            "session": 4,
+            "error": 0
+          },
+          "V1_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_TRUE": {
+            "ok": true,
+            "error": 0,
+            "token_type(2=impersonation)": 2,
+            "impersonation_level(0=anon,1=ident,2=imp)": 1,
+            "CheckTokenMembership_ok": true,
+            "CheckTokenMembership_error": 0,
+            "member_of_server_user_sid": true
+          },
+          "V2_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_FALSE": {
+            "ok": true,
+            "error": 0,
+            "token_type(2=impersonation)": 2,
+            "impersonation_level(0=anon,1=ident,2=imp)": 1,
+            "CheckTokenMembership_ok": true,
+            "CheckTokenMembership_error": 0,
+            "member_of_server_user_sid": true
+          },
+          "real_verify_client_sid": {
+            "result": "OK",
+            "error": 0
+          },
+          "launch": "CreateProcessAsUserW",
+          "child_pid_from_CreateProcess": 84936,
+          "child_exit": "0x00000000",
+          "client_report": {
+            "pid": 84936,
+            "event_dacl_sddl": "",
+            "createfile": 0,
+            "write_ok": true,
+            "read_ok": true,
+            "read_err": 0,
+            "reply": "A"
+          }
+        },
+        {
+          "label": "E write-restricted, default DACL = explicit DENY GA to server user, then SY + throwaway",
+          "server_read_request_byte": "R",
+          "V3_client_pid": {
+            "ok": true,
+            "pid": 57300,
+            "error": 0
+          },
+          "V4_client_session": {
+            "ok": true,
+            "session": 4,
+            "error": 0
+          },
+          "V1_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_TRUE": {
+            "ok": true,
+            "error": 0,
+            "token_type(2=impersonation)": 2,
+            "impersonation_level(0=anon,1=ident,2=imp)": 1,
+            "CheckTokenMembership_ok": true,
+            "CheckTokenMembership_error": 0,
+            "member_of_server_user_sid": true
+          },
+          "V2_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_FALSE": {
+            "ok": true,
+            "error": 0,
+            "token_type(2=impersonation)": 2,
+            "impersonation_level(0=anon,1=ident,2=imp)": 1,
+            "CheckTokenMembership_ok": true,
+            "CheckTokenMembership_error": 0,
+            "member_of_server_user_sid": true
+          },
+          "real_verify_client_sid": {
+            "result": "OK",
+            "error": 0
+          },
+          "launch": "CreateProcessAsUserW",
+          "child_pid_from_CreateProcess": 57300,
+          "child_exit": "0x00000000",
+          "client_report": {
+            "pid": 57300,
+            "event_dacl_sddl": "",
+            "createfile": 0,
+            "write_ok": true,
+            "read_ok": true,
+            "read_err": 0,
+            "reply": "A"
+          }
+        },
+        {
+          "label": "D2 CONTROL write-restricted, natural (unmodified) default DACL",
+          "server_read_request_byte": "R",
+          "V3_client_pid": {
+            "ok": true,
+            "pid": 103968,
+            "error": 0
+          },
+          "V4_client_session": {
+            "ok": true,
+            "session": 4,
+            "error": 0
+          },
+          "V1_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_TRUE": {
+            "ok": true,
+            "error": 0,
+            "token_type(2=impersonation)": 2,
+            "impersonation_level(0=anon,1=ident,2=imp)": 1,
+            "CheckTokenMembership_ok": true,
+            "CheckTokenMembership_error": 0,
+            "member_of_server_user_sid": true
+          },
+          "V2_OpenThreadToken_TOKEN_QUERY_OpenAsSelf_FALSE": {
+            "ok": true,
+            "error": 0,
+            "token_type(2=impersonation)": 2,
+            "impersonation_level(0=anon,1=ident,2=imp)": 1,
+            "CheckTokenMembership_ok": true,
+            "CheckTokenMembership_error": 0,
+            "member_of_server_user_sid": true
+          },
+          "real_verify_client_sid": {
+            "result": "OK",
+            "error": 0
+          },
+          "launch": "CreateProcessAsUserW",
+          "child_pid_from_CreateProcess": 103968,
+          "child_exit": "0x00000000",
+          "client_report": {
+            "pid": 103968,
+            "event_dacl_sddl": "",
+            "createfile": 0,
+            "write_ok": true,
+            "read_ok": true,
+            "read_err": 0,
+            "reply": "A"
+          }
+        }
+      ],
+      "server_user_sid": "S-1-5-21-1658137595-2520424230-3796741800-1001",
+      "throwaway_sid": "S-1-5-21-908604871-639278829-679382544-4221"
     }
   },
   "second_pass_a55fee0": {

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import logging
 import os
 import select
 import secrets
@@ -866,6 +867,9 @@ class WindowsAuthenticatedSupervisorAPI:
                 result = self._dispatch_api._dispatch(operation, message["body"], peer)
             response = {"ok": True, "result": result}
         except Exception:
+            logging.getLogger(__name__).warning(
+                "Windows Supervisor RPC request refused", exc_info=True,
+            )
             response = {"ok": False, "error": "refused"}
         encoded = canonical_bytes(response)
         if len(encoded) > MAX_SUPERVISOR_MESSAGE_BYTES:

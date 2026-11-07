@@ -499,7 +499,7 @@ class AuthenticatedSigner:
         except ContractError:
             response = {"error": "unauthorized" if self.require_pinned_daemon else "invalid_request"}
         except Exception:
-            logging.getLogger(__name__).warning("signer request refused")
+            logging.getLogger(__name__).warning("signer request refused", exc_info=True)
             response = {"error": "unauthorized" if self.require_pinned_daemon else "invalid_request"}
         finally:
             if pidfd is not None:
