@@ -1304,3 +1304,12 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Kind: SHORTCOMING fixed (silent failure).
 - Facts: run_scm_service swallowed every exception and SCM showed only "Incorrect function". It now writes the exception type, message and traceback to the Application event log, using the service name as the source. A non-elevated self-check wrote and read back an event: "VST service VSTDiagSelfCheck stopped: tools.vst.contracts.ContractError: self-check of event reporting".
 - Rule: every catch-all around a service entrypoint must leave an observable cause.
+
+## 2026-11-07 — Named-pipe client conflated the connect wait with the response timeout
+
+- Kind: FAILURE (product defect, found by the all-roles elevated composition diagnostic: 4/6 roles OK, dispatcher and runner failed).
+- Facts: WindowsNamedPipeClient capped timeout_sec at 30 s, but the Dispatcher->Runner and Runner->Worker clients pass MAX_DISPATCH_TIMEOUT_SEC=1900 because they wait for task completion. Evidence: docs/sdlc/evidence/s2_4e_diag_supervisor.out.
+- Root cause: one value was used for both WaitNamedPipe and the per-request I/O deadline.
+- Layer that missed it: the author and the mocked tests. Caught by real composition.
+- Rule: give the connect wait and the I/O deadline separate bounds.
+- Fix status: the connect wait is capped at 30 s and the I/O timeout allows up to 3600 s. A non-elevated check accepts 1900 and rejects 3601.

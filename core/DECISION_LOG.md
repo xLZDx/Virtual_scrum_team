@@ -1590,3 +1590,7 @@ tools/vst/windows_service_host.py (outside the manifest change_scope) had a defe
 ## 2026-11-07 — Silent-failure finding closed inside S2-4E
 
 The run_scm_service start-up exception path now reports to the Windows Application event log. It ships in the same manifest rebinding as the owner/DACL fix.
+
+## 2026-11-07 — Named-pipe client timeout bounds
+
+The connect wait stays capped at 30 s. The client I/O timeout may reach 3600 s so that dispatch can wait for task completion (MAX_DISPATCH_TIMEOUT_SEC=1900).

@@ -190,6 +190,10 @@ def _validated_sids(values: Iterable[str]) -> tuple[str, ...]:
     return result
 
 
+_MAX_CONNECT_WAIT_SEC = 30.0
+_MAX_CLIENT_IO_TIMEOUT_SEC = 3600.0
+
+
 def _validated_timeout(value: object, *, label: str) -> float:
     if (isinstance(value, bool) or not isinstance(value, (int, float))
             or not 0.1 <= value <= 30.0):
@@ -487,11 +491,16 @@ class WindowsNamedPipeClient:
         _validated_sids((expected_server_sid,))
         self.expected_server_sid = expected_server_sid
         self.expected_server_service = _service_name(expected_server_service)
-        self.timeout_sec = _validated_timeout(timeout_sec, label="client timeout")
+        # The I/O timeout covers a whole request/response, which for dispatch can last
+        # as long as the task itself; only the endpoint wait is bounded to 30 seconds.
+        if (isinstance(timeout_sec, bool) or not isinstance(timeout_sec, (int, float))
+                or not 0.1 <= timeout_sec <= _MAX_CLIENT_IO_TIMEOUT_SEC):
+            raise ContractError("Windows named-pipe client timeout is outside its allowed range")
+        self.timeout_sec = float(timeout_sec)
 
     def connect(self) -> WindowsNamedPipeConnection:
         kernel32, _advapi32 = _api()
-        timeout_ms = int(self.timeout_sec * 1000)
+        timeout_ms = int(min(self.timeout_sec, _MAX_CONNECT_WAIT_SEC) * 1000)
         if not kernel32.WaitNamedPipeW(self.path, timeout_ms):
             code = ctypes.get_last_error()
             if code == _ERROR_SEM_TIMEOUT:
