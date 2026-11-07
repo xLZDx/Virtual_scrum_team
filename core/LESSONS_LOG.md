@@ -1641,3 +1641,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Kind: FAILURE (mine): I put S3 0/5, S4 0/6 NOT_STARTED in the plan and wrote that no task lists existed, while core/BACKLOG.md recorded passing tests and approvals for VST-027..038. The operator saw two reports of one program disagree.
 - Missed by: author (did not read the registry rows before assigning statuses); no gate compares plan statuses with the registry.
 - Rule: before assigning a task status, read the registry row and the branch history for that task; a status that contradicts recorded evidence is wrong until reconciled.
+
+## 2026-11-07 — S3 adapter focused tests
+
+- Kind: SUCCESS: the S3 adapter tests written on an older base still passed 9/9 after the S2-4E store changes, and the test agent added 6 assertions for unasserted contract clauses; reading the registry first found the existing S3 work instead of redoing it.

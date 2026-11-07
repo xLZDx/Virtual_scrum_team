@@ -1795,3 +1795,7 @@ PROJECT_PLAN.md now carries task rows for S0 (3 inventory documents) and S1 (epi
 ## 2026-11-07 — S2 merged; S3 started on the operator's order
 
 On the operator's order PR 2 was merged into main (merge 7c94c6c, GPT-PM round 7 APPROVE on the S2-4E delta; the docs-only commits after it carry no code). The S3 adapter integration commit db4e970 (old draft PR 3, base on the S2 branch) was cherry-picked cleanly onto main as c0f7c17 on branch s3-worker-pilot; focused tests on the new base are with the test agents. PROJECT_PLAN.md S3-S5 rows now follow the VST registry: S3-A/B/C PARTIAL, S3-D/E blocked on operator decisions (sandbox, candidate acquisition, worker choice), S4 PARTIAL on local unpushed branches, S5 not started (no AEVE source). Candidate acquisition (Temporal, BMad Loop) stays unapproved.
+
+## 2026-11-07 — S3 adapter tests green; BMad Loop public metadata recorded
+
+functional-test-reviewer ran tests/vst/test_s3_worker_adapter.py on HEAD c0f7c17: 15 passed (9 existing unchanged plus 6 added), no product defect. BMad Loop public metadata was read through the GitHub API only (no clone or execution) and is recorded in the plan row S3-B; the license field mismatch (NOASSERTION vs MIT in pyproject) is open for the license review.
