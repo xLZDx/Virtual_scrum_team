@@ -1731,3 +1731,7 @@ Closes GPT-PM round-4 BLOCKER-01 (mutable provisioner run elevated) and BLOCKER-
 ## 2026-11-07 — Elevated helper hardened a second time (single round) and Cleanup made fail-closed
 
 Inbox/outbox split with link refusal and CreateNew results, fail-closed handling of a pre-existing AdminRoot, a provisioner copied as a new file, and an admin-owned, link-free root plus a task-name pattern required by Cleanup. The residual risk that a same-user process can influence the repo inputs the provisioner installs is accepted and documented. The helper was never run, because it needs elevation.
+
+## 2026-11-07 — GPT-PM APPROVE round 5 for the elevated helper at 34e934d
+
+Request 989af31c-0377-486f-85ee-b9636b270134, reply de9d7818-577a-5253-9dfe-2b3490c1b3b4 (correlated). Verdict: APPROVE, BLOCKER 0, MAJOR 0. The BLOCKER-01 and BLOCKER-02 of round 4 are resolved. The residual risk (repo inputs run elevated by design) is accepted. The helper is NOT_RUN. The pin to supply is the provisioner SHA-256 f6aea1649274b584a0d9c91db10da8babf5566b21a678f89bcabf86f42848f90.

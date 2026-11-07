@@ -1541,3 +1541,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Per the NO SECONDARY BLOCKERS rule this is the single fix round for this helper. Remaining unproven hypotheses (the symlink privilege, CopyFile ACL behaviour) are accepted; the e2e task identity check (MINOR-3) and filtering of the e2e log tail (MINOR-4) are not done, since the same user is already trusted.
 - Layer: the author missed the threat model. The internal security review caught it before the second GPT round.
 - Not run: the helper itself, which needs elevation. Both scripts parse with 0 errors.
+
+## 2026-11-07 — GPT-PM approved the hardened helper in one verification round
+
+- Kind: SUCCESS. An internal security review before the external gate closed the real findings in a single round.
