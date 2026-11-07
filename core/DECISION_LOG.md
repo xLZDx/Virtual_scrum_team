@@ -1775,3 +1775,7 @@ Run 4 (installed from 57c22d3, run id s2-4e-win-9931058239fa4cef): LAST_TASK_RES
 ## 2026-11-07 — S2-4E status docs updated after GPT-PM round 7 APPROVE
 
 acceptance.md, backlog.md and PROJECT_PLAN.md now record S2-4E as done locally; push and the single S2 PR still need the operator go. Approval binds to head 8fa7399; these docs-only commits change no code.
+
+## 2026-11-07 — S2-4E marked ACCEPTED in PROJECT_PLAN
+
+Same evidence as the previous entry (GPT-PM round 7 APPROVE, E2E run 4 green); push and PR still wait for the operator go.

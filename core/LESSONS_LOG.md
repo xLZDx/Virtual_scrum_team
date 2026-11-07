@@ -1616,3 +1616,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Kind: SUCCESS, with one SHORTCOMING of mine: round 6 was sent with --include-path tests only, so the reviewer saw no production code and returned REVIEW INCOMPLETE; I resent as round 7 with tools, tests, evidence and manifest included.
 - Facts: round 7 request 3338d1ba-cdb0-4fcf-a105-e96fb9cd2cf5, delta 34e934d..8fa7399, APPROVE, 0 BLOCKER / 0 MAJOR.
 - Rule: check that --include-path covers every changed top-level directory of the delta (git diff --stat) before sending a final review.
+
+## 2026-11-07 — PROJECT_PLAN status vocabulary
+
+- Kind: SHORTCOMING (mine): I wrote the status DONE_LOCAL, which the plan gate does not know, so S2-4E counted as open. Rule: reuse the status words already present in the plan table.
