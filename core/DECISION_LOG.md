@@ -2627,3 +2627,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: the operator replied "continue" without choosing between A (amend the criterion, AEVE untouched) and B (AEVE change). Under the question policy the recommended option A applies. U2-1 acceptance now uses the coverage identity AEVE emits (executor ids and statuses, rules_version, analysis_sha256, uncovered, executor_gaps). Reversible: the operator can still ask for B later as an improvement.
 - Decision: U2-1 back to NOT_STARTED; the amended acceptance goes to GPT-PM as one task before coding (scope note u2-1-amended-plan).
+
+## 2026-11-08 — operator confirmed option A for U2-1
+
+- Evidence: operator message "А" answering the A/B question: amend the U2-1 acceptance, no AEVE change. This replaces the earlier by-default note.
+- Evidence: the first plan review request for the amended U2-1 failed before sending (PM Bridge orchestrator not active, error from review.js); PM Bridge mode was switched on and the same request is sent again.
