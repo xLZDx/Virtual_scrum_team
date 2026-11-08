@@ -2314,3 +2314,10 @@ Verification round for the two round-1 MAJOR findings (head 128f039): both close
 ## 2026-11-08 — GPT-PM APPROVE for U1-3 (request 00f33b44)
 
 One-task review of tools/uc/contracts.py and tests/uc/test_contracts.py (base 9587052, head 69a121a): APPROVE, no BLOCKER or MAJOR. U1-3 is ACCEPTED, not pushed. Accepted so far: U1-2, U1-3, U1-5, U1-6. Next one-task review: U1-4 (role_table.py, catalog/role_table.json and tests).
+
+## 2026-11-08 — U1-4 test completion: 829 passed, 0 failed, 3 skipped
+
+Agent-test execution by functional-test-reviewer and e2e-runner (full suite audit at 59e41cf baseline + new test additions): tests/uc 829 passed, 0 failed, 3 skipped (symlink creation not permitted). Tests include 14 in-process main() mode tests (valid/invalid builds, builds to new/existing destinations, validation variants) and 2 real-AEVE subprocess tests (build and validate against committed catalog/role_table.json, ~1 s each). All role-table validator assertions passed; no BLOCKER/MAJOR in current code.
+
+Evidence: tools/uc/role_table.py build and validate functions; catalog/role_table.json (93 entries with AEVE head 25a8fea, matrix digest 357592f3...dd2a8); tests/uc/test_role_table.py (56 test functions total, 14 new for this audit). Ready for GPT-PM review.
+

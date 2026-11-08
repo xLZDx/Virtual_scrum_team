@@ -345,3 +345,203 @@ def test_committed_table_loaded_by_router_lookup_resolves_agent_first(committed)
     from uc import router
     assert router._lookup(committed, "ml-engineer")["kind"] == "agent"
     assert router._lookup(committed, "no-such-role") is None
+
+
+# ------------------------------------------------------------------ CLI main(): in-process, probe and matrix patched
+def _write(path, doc):
+    path.write_text(json.dumps(doc), encoding="utf-8")
+    return path
+
+
+def built_pin():
+    return {"head": PIN_HEAD, "matrix_digest_sha256": PIN_DIGEST}
+
+
+@pytest.fixture()
+def cli(tmp_path, monkeypatch):
+    """Files for main() plus a patched AEVE probe/matrix (no AEVE call)."""
+    inventory = _write(tmp_path / "inventory.json", INVENTORY)
+    draft_file = _write(tmp_path / "roles.json", DRAFT)
+    monkeypatch.setattr(rt.aeve_probe, "probe", lambda *a, **k: PROBE)
+    monkeypatch.setattr(rt.aeve_probe, "load_matrix", lambda *a, **k: MATRIX)
+    return {"tmp": tmp_path, "inventory": inventory, "draft": draft_file, "out": tmp_path / "out" / "table.json"}
+
+
+def _build_argv(c, **over):
+    c["out"].parent.mkdir(exist_ok=True)
+    return ["build", "--aeve-root", str(c["tmp"]), "--inventory", str(over.get("inventory", c["inventory"])),
+            "--draft", str(over.get("draft", c["draft"])), "--out", str(over.get("out", c["out"]))]
+
+
+def _validate_argv(c, table):
+    return ["validate", "--aeve-root", str(c["tmp"]), "--inventory", str(c["inventory"]), "--table", str(table)]
+
+
+def _invalid_draft(c):
+    """Alias merged into a final role that is not in the inventory: the built table is internally inconsistent."""
+    bad_inventory = inv(("agent", "python-reviewer"), ("agent", "orphan-alias"))
+    bad_draft = draft(("agent", "python-reviewer", "check_plus_model", None, "r", ""),
+                      ("agent", "orphan-alias", "merge", "ghost-target", "r", ""),
+                      ("agent", "ghost-target", "check_plus_model", None, "r", ""))
+    return {"inventory": _write(c["tmp"] / "bad-inventory.json", bad_inventory),
+            "draft": _write(c["tmp"] / "bad-roles.json", bad_draft)}
+
+
+def _tmp_leftovers(directory):
+    return sorted(p.name for p in directory.iterdir() if p.name.endswith(".tmp"))
+
+
+def test_main_build_valid_writes_table_atomically_and_prints_valid(cli, capsys):
+    assert rt.main(_build_argv(cli)) == 0
+    printed = json.loads(capsys.readouterr().out)
+    assert printed["status"] == "VALID" and printed["aeve_pin"] == built_pin()
+    written = json.loads(cli["out"].read_text(encoding="utf-8"))
+    assert written == rt.build_role_table(INVENTORY, DRAFT, MATRIX, PROBE)
+    assert printed["counts"] == written["counts"]
+    assert _tmp_leftovers(cli["out"].parent) == []
+
+
+def test_main_build_then_validate_round_trip(cli, capsys):
+    assert rt.main(_build_argv(cli)) == 0
+    capsys.readouterr()
+    assert rt.main(_validate_argv(cli, cli["out"])) == 0
+    assert json.loads(capsys.readouterr().out)["status"] == "VALID"
+
+
+def test_main_build_invalid_input_exits_1_and_keeps_existing_destination_byte_for_byte(cli, capsys):
+    cli["out"].parent.mkdir()
+    original = b'{"previous": "committed table", "bytes": "\\u00e9"}\r\n'
+    cli["out"].write_bytes(original)
+    rc = rt.main(_build_argv(cli, **_invalid_draft(cli)))
+    out = capsys.readouterr().out
+    assert rc == 1 and "INVALID:" in out and '"status": "VALID"' not in out
+    assert cli["out"].read_bytes() == original
+    assert _tmp_leftovers(cli["out"].parent) == []
+
+
+def test_main_build_invalid_input_to_new_destination_creates_nothing(cli, capsys):
+    rc = rt.main(_build_argv(cli, **_invalid_draft(cli)))
+    assert rc == 1 and "INVALID:" in capsys.readouterr().out
+    assert list(cli["out"].parent.iterdir()) == []
+
+
+def test_main_build_refused_by_builder_does_not_write_or_leave_tmp(cli):
+    """The builder refuses (ValueError) an inventory item without a draft decision: nothing may be written."""
+    bad_inventory = _write(cli["tmp"] / "inv2.json", inv(("agent", "no-decision")))
+    cli["out"].parent.mkdir()
+    cli["out"].write_bytes(b"old")
+    try:
+        assert rt.main(_build_argv(cli, inventory=bad_inventory)) != 0
+    except ValueError:
+        pass
+    assert cli["out"].read_bytes() == b"old" and _tmp_leftovers(cli["out"].parent) == []
+
+
+def test_main_validate_valid_table_exit_0(cli, capsys):
+    table = _write(cli["tmp"] / "t.json", rt.build_role_table(INVENTORY, DRAFT, MATRIX, PROBE))
+    assert rt.main(_validate_argv(cli, table)) == 0
+    assert json.loads(capsys.readouterr().out)["status"] == "VALID"
+
+
+def _first_entry_bad_class(t):
+    t["entries"][0]["class"] = "WIZARD"
+
+
+def _drop_last_executor(t):
+    for e in t["entries"]:
+        if e["name"] == "python-reviewer" and e["kind"] == "agent":
+            e["executors"] = e["executors"][:-1]
+
+
+def _model_only_becomes_local(t):
+    for e in t["entries"]:
+        if e["name"] == "business-analyst":
+            e["class"] = "LOCAL"
+
+
+def _pin_drift(t):
+    t["aeve_pin"]["head"] = "9" * 40
+
+
+@pytest.mark.parametrize("tamper,expected", [
+    (_first_entry_bad_class, "bad class"),
+    (_drop_last_executor, "executors differ"),
+    (_model_only_becomes_local, "local class cannot be NOT_APPLICABLE"),
+    (_pin_drift, "head differs"),
+], ids=["bad-class", "executor-removed", "class-changed", "pin-drift"])
+def test_main_validate_tampered_table_exit_1(cli, capsys, tamper, expected):
+    table = rt.build_role_table(INVENTORY, DRAFT, MATRIX, PROBE)
+    tamper(table)
+    table["counts"] = rt._counts(table["entries"])  # keep counts consistent so only the tamper is reported
+    path = _write(cli["tmp"] / "t.json", table)
+    rc = rt.main(_validate_argv(cli, path))
+    out = capsys.readouterr().out
+    assert rc == 1 and "INVALID:" in out and expected in out
+
+
+def test_main_probe_failure_exits_2_with_blocked_json_and_writes_nothing(cli, capsys, monkeypatch):
+    def boom(*a, **k):
+        raise rt.aeve_probe.AeveProbeError("NOT_AN_AEVE_CHECKOUT", "x")
+    monkeypatch.setattr(rt.aeve_probe, "probe", boom)
+    cli["out"].parent.mkdir()
+    cli["out"].write_bytes(b"old")
+    assert rt.main(_build_argv(cli)) == 2
+    assert json.loads(capsys.readouterr().out) == {"status": "BLOCKED", "reason": "NOT_AN_AEVE_CHECKOUT", "detail": "x"}
+    assert cli["out"].read_bytes() == b"old" and _tmp_leftovers(cli["out"].parent) == []
+    table = _write(cli["tmp"] / "t.json", {})
+    assert rt.main(_validate_argv(cli, table)) == 2
+    assert json.loads(capsys.readouterr().out)["status"] == "BLOCKED"
+
+
+def test_main_matrix_failure_exits_2(cli, capsys, monkeypatch):
+    def boom(*a, **k):
+        raise rt.aeve_probe.AeveProbeError("MATRIX_FAILED", "exit 1")
+    monkeypatch.setattr(rt.aeve_probe, "load_matrix", boom)
+    assert rt.main(_build_argv(cli)) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "MATRIX_FAILED"
+
+
+# ------------------------------------------------------------------ CLI as a real subprocess against the real AEVE
+REAL_AEVE = pathlib.Path("D:/Repo/AEVE")
+_needs_aeve = pytest.mark.skipif(not (REAL_AEVE / "src" / "aeve" / "__main__.py").is_file(),
+                                 reason="real AEVE checkout D:/Repo/AEVE not present")
+
+
+def _cli(*args):
+    import subprocess
+    import sys
+    return subprocess.run([sys.executable, "-I", str(S.REPO_ROOT / "tools" / "uc" / "role_table.py"), *args],
+                          capture_output=True, text=True, timeout=200)
+
+
+@pytest.fixture(scope="module")
+def real_build_dir(tmp_path_factory):
+    return tmp_path_factory.mktemp("real-role-table")
+
+
+@pytest.mark.real_aeve
+@_needs_aeve
+def test_REAL_AEVE_cli_build_reproduces_the_committed_table(real_build_dir):
+    out = real_build_dir / "table.json"
+    res = _cli("build", "--aeve-root", str(REAL_AEVE), "--inventory", str(S.REPO_ROOT / "catalog" / "inventory.json"),
+               "--draft", str(S.REPO_ROOT / "catalog" / "roles.json"), "--out", str(out))
+    assert res.returncode == 0, res.stdout + res.stderr
+    printed = json.loads(res.stdout)
+    committed = S.real_table()
+    assert printed["status"] == "VALID" and printed["counts"] == committed["counts"]
+    assert printed["aeve_pin"] == committed["aeve_pin"]
+    assert json.loads(out.read_text(encoding="utf-8")) == committed
+    assert _tmp_leftovers(real_build_dir) == []
+
+
+@pytest.mark.real_aeve
+@_needs_aeve
+def test_REAL_AEVE_cli_validate_accepts_the_built_table(real_build_dir):
+    table = real_build_dir / "table.json"
+    if not table.is_file():
+        pytest.skip("the build test did not produce a table (it failed or was deselected)")
+    res = _cli("validate", "--aeve-root", str(REAL_AEVE), "--inventory", str(S.REPO_ROOT / "catalog" / "inventory.json"),
+               "--table", str(table))
+    assert res.returncode == 0, res.stdout + res.stderr
+    printed = json.loads(res.stdout)
+    assert printed["status"] == "VALID" and printed["counts"] == S.real_table()["counts"]

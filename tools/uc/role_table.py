@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import sys
 
@@ -205,14 +206,14 @@ def main(argv: list[str] | None = None) -> int:
     inventory = _load(args.inventory)
     if args.command == "build":
         table = build_role_table(inventory, _load(args.draft), matrix, record)
-        args.out.write_bytes((json.dumps(table, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8"))
         problems = validate_role_table(table, inventory, matrix, record)
-        if problems:
-            for line in problems:
-                print(line)
-            print(f"INVALID: {len(problems)} problem(s)")
-            return 1
-        args.out.write_bytes((json.dumps(table, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8"))
+        if not problems:
+            # Write only a validated table, to a temporary file first, then replace the destination atomically.
+            payload = (json.dumps(table, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8")
+            temporary = args.out.with_name(f"{args.out.name}.{os.getpid()}.tmp")
+            temporary.write_bytes(payload)
+            os.replace(temporary, args.out)
+    else:
         table = _load(args.table)
         problems = validate_role_table(table, inventory, matrix, record)
     if problems:
