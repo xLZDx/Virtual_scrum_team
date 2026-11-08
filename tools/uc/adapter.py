@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -25,7 +26,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 from uc import aeve_probe  # noqa: E402
 
-AEVE_REQUEST_SCHEMA = "aeve.review.request.v1"
+AEVE_REQUEST_SCHEMA = "aeve.review.request.v2"
 DEFAULT_TIMEOUT_SECONDS = 120.0
 DEFAULT_STDOUT_CAP = 8 * 1024 * 1024
 STDERR_CAP = 64 * 1024
@@ -43,6 +44,18 @@ class AdapterBlocked(Exception):
         super().__init__(f"{reason}: {detail}" if detail else reason)
         self.reason = reason
         self.detail = detail
+
+
+class AeveRefused(AdapterBlocked):
+    """AEVE answered with a short refusal envelope (no head or results); ``aeve_status``/``aeve_reason`` say why."""
+
+    def __init__(self, aeve_status: str, aeve_reason: str) -> None:
+        super().__init__("AEVE_REFUSED", f"{aeve_status}: {aeve_reason}")
+        self.aeve_status = aeve_status
+        self.aeve_reason = aeve_reason
+
+
+_REASON = re.compile(r"^[A-Z0-9_]{1,64}$")
 
 
 def build_aeve_request(
@@ -184,6 +197,19 @@ def run_review(
 def check_response(response: object, aeve_request: dict, exit_code: int, require_clean_tree: bool = False) -> dict:
     if not isinstance(response, dict):
         raise AdapterBlocked("BAD_OUTPUT", "response is not a JSON object")
+    if response.get("status") in ("NOT_COVERED", "BLOCKED", "INVALID") and "head" not in response:
+        # Short refusal envelope. It carries no review output, so only its reason is used; the
+        # zero-model, zero-execution flags and the request id are checked when AEVE reports them.
+        if "findings" in response or "results" in response:
+            raise AdapterBlocked("AEVE_CONTRACT_VIOLATION", "refusal envelope carries review output")
+        if response.get("request_id", aeve_request["request_id"]) != aeve_request["request_id"]:
+            raise AdapterBlocked("AEVE_CONTRACT_VIOLATION", "request_id differs from the request")
+        if response.get("llm_calls", 0) != 0 or response.get("executed_project_code", False) is not False                 or response.get("source_modified", False) is not False:
+            raise AdapterBlocked("AEVE_CONTRACT_VIOLATION", "refusal reports model calls, project-code execution or source modification")
+        reason = response.get("reason")
+        if not isinstance(reason, str) or not _REASON.match(reason):
+            raise AdapterBlocked("AEVE_CONTRACT_VIOLATION", "refusal has no well-formed reason")
+        raise AeveRefused(response["status"], reason)
     for key in REQUIRED_RESPONSE_KEYS:
         if key not in response:
             raise AdapterBlocked("AEVE_CONTRACT_VIOLATION", f"response lacks {key}")

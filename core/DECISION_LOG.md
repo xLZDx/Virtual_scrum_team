@@ -1969,3 +1969,8 @@ Task U1-4: tools/uc/role_table.py builds catalog/role_table.json from the invent
 ## 2026-11-08 — U1-5 AEVE CLI adapter written and hand-tested
 
 Task U1-5: tools/uc/adapter.py runs aeve review in an isolated child (neutral directory, -P -s -B, minimal environment, pinned application-data folder, shell off, stdout cap, timeout with process-tree kill) and treats every anomaly as BLOCKED. AEVE severity names (NIT, MINOR, MAJOR, BLOCKER) replaced my invented scale in the contracts. Observed response shape: aeve.review.result.v1 with status COMPLETE or PARTIAL, findings with rule_id, severity, file, line and an evidence hash. Hand tests passed as listed in the plan row; process-tree death of grandchildren and the changed_paths coverage rule are not verified. Agent tests NOT_RUN.
+
+
+## 2026-11-08 — U1-6 router and U1-7 entry command written and hand-tested
+
+Tasks U1-6 and U1-7: tools/uc/router.py resolves roles through the role table, sends one combined review to AEVE through the adapter and normalizes the answer into uc.role-result.v1 (enums, hashes and validated paths only; uncovered scope reduced to tokens); the same file is the entry command. Measured facts: AEVE refuses a request.v1 batch outright when it contains any of 15+ executors ("requires request v2"), so the adapter now sends request.v2 (adds only the optional architecture_policy; without a policy the architecture executors report NOT_COVERED inside a normal response); a per-executor retry loop cost 15-30 s per call and was removed; AEVE blocks a reused request_id unless iteration_of names the previous iteration. Agent tests NOT_RUN.

@@ -13,9 +13,10 @@ import re
 
 REQUEST_SCHEMA = "uc.role-request.v1"
 RESULT_SCHEMA = "uc.role-result.v1"
+BLOCKED_SCHEMA = "uc.blocked.v1"
 
 PURPOSES = ("advisory", "receipt")
-ROLE_CLASSES = ("LOCAL", "LOCAL_PLUS_MODEL", "MODEL_ONLY", "OUT_OF_SCOPE")
+ROLE_CLASSES = ("LOCAL", "LOCAL_PLUS_MODEL", "MODEL_ONLY", "OUT_OF_SCOPE", "UNKNOWN")
 ROLE_STATUSES = ("CLEAN", "FINDINGS", "PARTIAL", "NOT_COVERED", "NOT_RUN", "BLOCKED")
 EXECUTOR_STATUSES = ("COMPLETE", "PARTIAL", "BLOCKED", "NOT_COVERED", "NOT_RUN")
 SEVERITIES = ("NIT", "MINOR", "MAJOR", "BLOCKER")
@@ -243,4 +244,17 @@ def validate_result(document: object) -> dict:
         raise ContractError("EXIT_ZERO_WITH_OPEN_ITEMS", "result.exit_code")
     if exit_code != 0 and all_clean:
         raise ContractError("EXIT_NONZERO_WHEN_CLEAN", "result.exit_code")
+    return doc
+
+
+def validate_blocked(document: object) -> dict:
+    """The envelope returned when no role result can be produced at all."""
+    doc = _object(document, "blocked", {"schema_version", "request_id", "status", "reason", "detail"})
+    if doc["schema_version"] != BLOCKED_SCHEMA:
+        raise ContractError("WRONG_SCHEMA", "blocked.schema_version")
+    _string(doc["request_id"], "blocked.request_id", _ID)
+    if doc["status"] != "BLOCKED":
+        raise ContractError("NOT_ALLOWED_VALUE", "blocked.status")
+    _string(doc["reason"], "blocked.reason", re.compile(r"^[A-Z0-9_]{1,64}$"))
+    _string(doc["detail"], "blocked.detail", max_len=200)
     return doc
