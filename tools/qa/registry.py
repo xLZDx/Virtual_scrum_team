@@ -16,7 +16,7 @@ from typing import Any
 
 
 PRIMARY_CATEGORIES = frozenset(
-    {"functional", "integration", "api", "e2e", "identity", "seeded-failure"}
+    {"functional", "integration", "api", "e2e", "identity", "qa-tooling", "seeded-failure"}
 )
 ALL_CATEGORIES = PRIMARY_CATEGORIES | {"regression"}
 WINDOWS_PROFILE = "windows-cpython-3.14.3"

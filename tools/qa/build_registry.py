@@ -43,8 +43,8 @@ TEST_FILE_CATEGORIES = {
 # Modules that exist on main but were not classified on the S4 branch. Keyed by
 # full repository path; an unlisted module fails closed in _category_for_test_file.
 MAIN_TEST_FILE_CATEGORIES = {
-    "tests/qa/test_s4a_registry.py": "functional",
-    "tests/qa/test_s4b_runner.py": "functional",
+    "tests/qa/test_s4a_registry.py": "qa-tooling",
+    "tests/qa/test_s4b_runner.py": "qa-tooling",
     "tests/af/test_s2_review_source_fidelity.py": "functional",
     "tests/uc/test_adapter.py": "functional",
     "tests/uc/test_aeve_probe.py": "functional",
@@ -86,7 +86,7 @@ MAIN_TEST_FILE_CATEGORIES = {
     "tests/vst/test_s2_store_backed_pubsub.py": "integration",
     "tests/vst/test_s2_wsl_bundle_verifiers.py": "functional",
 }
-PRIMARY_CATEGORIES = ("functional", "integration", "api", "e2e", "identity", "seeded-failure")
+PRIMARY_CATEGORIES = ("functional", "integration", "api", "e2e", "identity", "qa-tooling", "seeded-failure")
 POLICY_NOT_RUN = {
     "tests/vst/test_e4_runner.py::test_timeout_records_exit_minus_one_and_fails":
         "NOT_RUN: this scenario invokes timeout process-tree cleanup; process-kill execution is prohibited for this S4 run.",
@@ -222,7 +222,7 @@ def build_registry(root_path: str | Path) -> dict:
                 "NOT_RUN: this selector launches a child that terminates via os._exit;"
                 " process-death execution is prohibited for this S4 run."
             )
-    for category in ("functional", "integration", "api", "e2e", "identity", "seeded-failure"):
+    for category in ("functional", "integration", "api", "e2e", "identity", "qa-tooling", "seeded-failure"):
         # A category that holds tests must keep at least one runnable selector; a
         # NOT_RUN/UNSUPPORTED category must hold none (registry validator contract).
         if category_ids[category] and not (
@@ -261,7 +261,7 @@ def build_registry(root_path: str | Path) -> dict:
                 "stderr": f"docs/sdlc/evidence/qa/{category}.stderr.txt",
             }
             for category in (
-                "functional", "integration", "api", "e2e", "identity", "regression", "seeded-failure"
+                "functional", "integration", "api", "e2e", "identity", "qa-tooling", "regression", "seeded-failure"
             )
         },
         "source_head": source_head,
