@@ -2638,3 +2638,7 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 - Evidence: GPT-PM request 9e8bf5a9: MAJOR-1 non-empty executor set does not establish required coverage; MAJOR-2 rules_version presence does not establish an approved ruleset. Both verified as real gaps in the amended wording. Fixed in the plan: PASS needs execution completeness plus policy coverage from a trusted versioned file catalog/analyzer_policy.json (mandatory executors and approved rules_version values; hash recorded in the receipt). Two deterministic negative cases added.
 - Evidence: operator answer to OD-7: asymmetric signature, the key held by a separate gate process outside the orchestrator and the worker. Recorded in the U2-2 row.
 - Decision: verification round of the two corrections goes to GPT-PM as one request.
+
+## 2026-11-08 — plan documents synced to the branch
+
+- Evidence: reports re-rendered after the U2-1 amendments and the OD-7 answer; the branch carries only plan, report and log commits on top of the approved U3-1 code, so the push publishes no unapproved code.
