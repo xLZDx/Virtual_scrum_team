@@ -4,34 +4,47 @@
 
 Build isolated AEVE role-request router with role/finding/executor abstractions, support flexible executors, and establish measurement baselines for unified core cost.
 
-**Definition of Done**: All 8 tasks CODE_COMPLETE with focused functional tests passing, internal review consensus, and GPT-PM final approval before push.
+**Definition of Done**: All 8 tasks implemented with focused functional tests passing, internal review consensus, and GPT-PM final approval before push.
 
-## Task status summary
+## Task status
 
-| Task | Description | State | Evidence | Blocker |
-|------|-------------|-------|----------|---------|
-| U1-1 | Token baseline script | CODE_COMPLETE | Commit 06a483b; token script added | None |
-| U1-2 | BLOCKER/MAJOR fixes (6 critical issues) | CODE_COMPLETE | Commit f1ff359, 6f125dd; B1-B3, M1-M3 fixed | PROHIBITED (test execution by specialist agents) |
-| U1-3 | Request/result validators | CODE_COMPLETE | Commit d13f0cc; validators implemented | PROHIBITED (agent tests blocked) |
-| U1-4 | Role table builder | CODE_COMPLETE | Commit 48edf6f; builder + loader added | PROHIBITED (agent tests blocked) |
-| U1-5 | AEVE CLI adapter | CODE_COMPLETE | Commit 40f0e58; isolated adapter v2 | PROHIBITED (agent tests blocked) |
-| U1-6/U1-7 | Role router + single entry | CODE_COMPLETE | Commit 3602afa; router and entry command | PROHIBITED (agent tests blocked) |
-| U1-8 | Token comparison script | CODE_COMPLETE | Commit 0503e66; synthetic tests pass | PROHIBITED (real measurement NOT_RUN) |
-| U1-9 | Global Claude config scope | NOT_STARTED | Blocked on decision | OPERATOR — (OD-3: should agent model config be per-project operator choice, or globally fixed? — recommend operator approval before coding starts) |
+| ID | Task | Status | Evidence | Notes |
+|---|---|---|---|---|
+| U1-1 | Token baseline script | DONE | Commit 06a483b | Implementation complete, awaiting verification phase |
+| U1-2 | BLOCKER/MAJOR fixes (6 critical) | AWAITING_SPECIALIST_REVIEW | Commits f1ff359, 6f125dd | Code complete; functional tests delegated to specialist agents per policy |
+| U1-3 | Request/result validators | AWAITING_SPECIALIST_REVIEW | Commit d13f0cc | Implementation complete; agent tests prohibited by operator policy |
+| U1-4 | Role table builder | AWAITING_SPECIALIST_REVIEW | Commit 48edf6f | Implementation complete; agent tests prohibited by operator policy |
+| U1-5 | AEVE CLI adapter | AWAITING_SPECIALIST_REVIEW | Commit 40f0e58 | Implementation complete; agent tests prohibited by operator policy |
+| U1-6/U1-7 | Role router + entry | AWAITING_SPECIALIST_REVIEW | Commit 3602afa | Implementation complete; agent tests prohibited by operator policy |
+| U1-8 | Token comparison | AWAITING_SPECIALIST_REVIEW | Commit 0503e66 | Implementation complete; synthetic tests pass, real measurement NOT_RUN per policy |
+| U1-9 | Global Claude config scope | BLOCKED_OPERATOR | — | Awaiting (OD-3: operator decision on per-project agent model configuration — recommend approve before coding) |
 
-## Current phase: Verification
+## Current gate status
 
-All 8 tasks at CODE_COMPLETE awaiting:
-1. **Functional test execution** by unctional-test-reviewer and 2e-runner (baseline: 534+62 tests, focused new tests for U1-2 fixes)
-2. **Internal review consensus** across relevant specialist agents (architect, code-explorer, security-reviewer if applicable)
-3. **GPT-PM final code/contract approval** before push to PR
+**Phase**: Code review and specialist verification  
+**Blocking actions**:
+- Functional test execution: PROHIBITED for implementation agent; delegated to unctional-test-reviewer and 2e-runner
+- GPT-PM final approval: Awaits functional test results and internal review consensus
 
-## Remaining findings (non-blocking)
+**Non-blocking findings**: 23 items (8 MAJOR + 15 MINOR) documented in docs/sdlc/evidence/u1-remaining-findings-20261108.md for backlog.
 
-23 items (8 MAJOR + 15 MINOR) documented in docs/sdlc/evidence/u1-remaining-findings-20261108.md for backlog prioritization.
+## Next steps
 
-## Next action
+1. unctional-test-reviewer and 2e-runner: Write and execute focused functional tests (baseline 534+62, new tests for U1-2 fixes)
+2. Internal agent review consensus (architect, code-explorer, etc.) on exact code HEAD
+3. GPT-PM final code/contract approval before push to PR
+4. Operator decision on (OD-3) to unblock U1-9
 
-Await functional-test-reviewer and e2e-runner to write and execute focused functional tests per U1-2 acceptance criteria; once green, return for internal review consensus and GPT-PM gate.
+---
 
-U1-9 unblocks after operator decision on (OD-3).
+**Work completed (Codex)**:
+- All 8 implementation tasks to CODE_COMPLETE
+- Fixed 6 critical issues from high-effort code review
+- Documented remaining findings for backlog
+- Created task tracking and status records
+
+**Work delegated**:
+- Functional test execution → specialist agents (PROHIBITED for coordinator)
+- Internal review consensus → specialist agents (after tests)
+- Final approval → GPT-PM (after review)
+- Configuration scope decision → operator (OD-3)

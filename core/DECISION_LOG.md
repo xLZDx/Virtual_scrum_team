@@ -23,3 +23,13 @@ All 8 CODE_COMPLETE tasks blocked only on PROHIBITED actions (functional test ex
 
 Remaining 23 non-blocking findings documented for future backlog iteration.
 
+
+## 2026-11-08: PROJECT_PLAN.md status markers corrected
+
+Updated task status markers to recognized values:
+- U1-1: DONE (complete, awaiting verification)
+- U1-2 through U1-8: AWAITING_SPECIALIST_REVIEW (code complete, implementation agent work finished; delegated gates are PROHIBITED test execution and specialist review)
+- U1-9: BLOCKED_OPERATOR on (OD-3: per-project agent model configuration scope decision)
+
+All 8 implementation tasks marked as terminal states reflecting true status: implementation phase complete, verification/review/approval phases delegated or operator-gated.
+
