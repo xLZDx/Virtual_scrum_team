@@ -1946,3 +1946,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SHORTCOMING: the plan I wrote asked for explicit covered and unsupported rule ids from AEVE; a real run shows they are not emitted. The plan itself had a clause for this case, which is why the check was done before coding. Missed by the author and by the GPT-PM plan review (neither ran AEVE); caught by the precondition check.
 - Rule: check that a required external field exists on a real response before writing acceptance that depends on it.
+
+## 2026-11-08 — default option taken when the operator says "continue"
+
+- Kind: NEUTRAL: an unanswered A/B question was resolved with the recommended option per the question policy and logged, instead of waiting.
+- Rule: record the default and keep it reversible.

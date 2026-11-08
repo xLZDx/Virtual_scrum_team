@@ -2622,3 +2622,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 ## 2026-11-08 — reports re-rendered with U2-1 BLOCKED_OPERATOR; documents pushed
 
 - Evidence: reports re-rendered after U2-1 was set BLOCKED_OPERATOR. The push adds only plan, report and log commits to branch u2-evidence-gate; the code on it (U3-1) already has GPT-PM approval (request e80884f4). Operator choice A or B for U2-1 is still open.
+
+## 2026-11-08 — U2-1 acceptance amended (option A) by default
+
+- Evidence: the operator replied "continue" without choosing between A (amend the criterion, AEVE untouched) and B (AEVE change). Under the question policy the recommended option A applies. U2-1 acceptance now uses the coverage identity AEVE emits (executor ids and statuses, rules_version, analysis_sha256, uncovered, executor_gaps). Reversible: the operator can still ask for B later as an improvement.
+- Decision: U2-1 back to NOT_STARTED; the amended acceptance goes to GPT-PM as one task before coding (scope note u2-1-amended-plan).
