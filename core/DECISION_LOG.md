@@ -2497,3 +2497,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 **Total:** 300+ tests passing across all U1 implementations
 
+
+## 2026-11-08 — U1-1 round 1 verdict MODIFY: manifest session_id validation
+
+- Evidence: GPT-PM (request f015edcd) returned MODIFY with 2 MAJOR. MAJOR-1 (undefined test helpers) was already fixed by 95ea4b6. MAJOR-2 (manifest session_id null gave TypeError) is fixed: verify_manifest validates every session_id and returns NOT_RUN MANIFEST_INVALID. Complete tests/uc: 948 passed, 0 failed, 3 skipped.
+- Decision: commit the CLI regression tests and ask GPT-PM for a verification round on U1-1 only; U1-8 is sent after it.

@@ -1870,3 +1870,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: FAILURE then SUCCESS: the first CLI tests found two defects (session ids able to leave the project, a traceback on an unwritable output); fixed with BAD_SESSION_ID and OUTPUT_UNWRITABLE. An untracked test file also vanished mid-task and had to be recreated, which shows uncommitted tests are fragile.
 - Caught by: the CLI tests, not the unit tests. Rule: commit new test files at once; keep a subprocess test per CLI entry point.
+
+## 2026-11-08 — U1-1 manifest session_id validation
+
+- Kind: SHORTCOMING: BAD_SESSION_ID was added for build-manifest but not for session ids read back from a manifest; GPT-PM found it with a null id. Missed by author and tests; caught by the reviewer.
+- Rule: when an input is validated on one path, grep every other path that reads the same field.
