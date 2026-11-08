@@ -166,10 +166,11 @@ def validate_request(document: object, allowed_roots: list[str], *, check_symlin
     roles = _list(doc["roles"], "request.roles", MAX_ROLES)
     if not roles:
         raise ContractError("EMPTY_LIST", "request.roles")
-    if len(set(roles)) != len(roles):
-        raise ContractError("DUPLICATE_ROLE", "request.roles")
+    # Type-check first, then deduplicate (set() fails on non-hashable)
     for index, item in enumerate(roles):
         _string(item, f"request.roles[{index}]", _ROLE)
+    if len(set(roles)) != len(roles):
+        raise ContractError("DUPLICATE_ROLE", "request.roles")
     _enum(doc["purpose"], "request.purpose", PURPOSES)
     if "criteria" in doc:
         for index, item in enumerate(_list(doc["criteria"], "request.criteria", MAX_CRITERIA)):
@@ -273,3 +274,4 @@ def validate_blocked(document: object) -> dict:
     _string(doc["reason"], "blocked.reason", re.compile(r"^[A-Z0-9_]{1,64}$"))
     _string(doc["detail"], "blocked.detail", max_len=200)
     return doc
+

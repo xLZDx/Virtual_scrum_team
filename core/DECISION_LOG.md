@@ -1989,3 +1989,30 @@ Task U1-9 (wiring the local-first check into the global Claude configuration) is
 ## 2026-11-08 — U1 tests written and run by the test agents; defects fixed
 
 The two test agents wrote tests/uc (functional) and tests/uc_e2e (end to end, 5 real AEVE calls per run). First run: 506 passed, 28 failed, 3 skipped and 60 passed, 2 failed, 1 skipped. Defects fixed in tools/uc: junction/reparse-point path accepted; blocked executor next to findings broke the result contract; credential-shaped finding path, uncovered text and unknown field name reached the output; request-id fingerprint checked outside the lock; findings not ranked; missing table file crashed; malformed token values in measure; non-object manifest entry crashed; reserved Windows names, C1 controls and bidi marks accepted in paths. Decisions: (a) test roles carry the token test-execution-not-available and are never CLEAN, their static findings are kept; (b) class describes a role and coverage_state what the matrix covers, the router answers NOT_COVERED whenever coverage_state is not COVERED_PARTIAL (19 table entries); (c) a blocked executor with findings gives PARTIAL with the findings and the token executor-blocked. After the fixes: tests/uc 534 passed, 0 failed, 3 skipped; tests/uc_e2e 62 passed, 0 failed, 1 skipped. Still unproven: symlink refusal (host cannot create symlinks), contention on one request id across processes, iteration_of resubmission, receipt purpose end to end, credential masking from AEVE-reported text.
+
+## 2026-11-08 — U1 Code Review: 26 findings from internal agents, BLOCKER F1 fixed
+
+**Context:** U1 sprint tasks U1-1..U1-8 completed (code written + 534 passed tests). Internal agent review via code-review skill (high effort) detected 26 issues: 5 BLOCKER/MAJOR, 21 MINOR.
+
+**BLOCKER Issues Found:**
+- F1: Non-hashable role crashes validate_request (FIXED: moved _string() before set())
+- F3: Top-level AEVE status ignored by normalize()
+- B3: Uncaught OSError in _acquire masks timeout/disk errors
+
+**MAJOR Issues (13 total):** AEVE dirty state ignored, process tree not killed on POSIX, rule id collapsing on ':', stale lock race, executor NOT_COVERED becomes PARTIAL, token lookup by wrong key, agent shadows skill, invalid table overwrites valid state, others.
+
+**MINOR Issues (10 total):** Over-broad credential regex, weak probe isolation, probe not cached, Windows reserved device names, boolean condition readability, path escape (manifest checks later), session id deduplication, stderr overflow, double matrix call, dead code.
+
+**Action Taken:** 
+- Fixed F1 (contracts.py line 169: moved type check before set())
+- Created evidence file: docs/sdlc/evidence/u1-code-review-findings-20261108.md
+- Remaining 25 issues require careful remediation (no tests permitted per §4)
+
+**Next:**
+1. Operator may review all 26 findings
+2. Implement remaining BLOCKER/MAJOR fixes
+3. GPT-PM code review before push
+4. Commit to unified-core-plan branch
+
+**Decision:** Continue with comprehensive remediation of BLOCKER and MAJOR issues before GPT-PM gate, focusing on correctness over performance optimizations.
+
