@@ -12,3 +12,14 @@ Commits 80f2c46–d42c3fa introduced a syntax error into tools/uc/measure.py (mi
 **Fix:** Replaced custom status "AWAITING_GPT_PM_REVIEW" with standard "IN_PROGRESS" for all U1-1..U1-8 tasks.
 Project plan gate now recognizes U1 tasks as actively in review phase (pending GPT-PM code approval).
 
+
+## 2026-11-08: PROJECT_PLAN.md created for U1 sprint tracking
+
+Created core/PROJECT_PLAN.md with complete U1 task status table (U1-1 through U1-9):
+- U1-1 through U1-8: CODE_COMPLETE, awaiting functional test execution and review phases
+- U1-9: NOT_STARTED, BLOCKED_OPERATOR on (OD-3: operator decision on per-project agent model configuration scope)
+
+All 8 CODE_COMPLETE tasks blocked only on PROHIBITED actions (functional test execution delegated to specialist agents) or external review gates (GPT-PM).
+
+Remaining 23 non-blocking findings documented for future backlog iteration.
+
