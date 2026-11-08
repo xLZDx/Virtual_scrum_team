@@ -2683,3 +2683,5 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 ## 2026-11-09 — S4-B node-ID tests updated
 
 - Evidence: test agent on 6bd1182: six targeted invocations, 14 tests passed (digest form, selector accounting kept, failing unusual-ID case lands in failed_test_ids, non-string node ID still refused). Limit: red-on-revert not demonstrated; full file not rerun.
+
+- 2026-11-09: manifest regenerated for the changed S4-B test file.
