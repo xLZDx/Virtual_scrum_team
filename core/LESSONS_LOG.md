@@ -1836,3 +1836,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Kind: FAILURE caught by GPT-PM: the probe's claim "AEVE is unchanged" was checked only before AEVE ran, and git resolution trusted every absolute PATH entry including the checkout under test.
 - Layer: author, the three internal reviews and the tests all missed it; the independent final reviewer found both.
 - Rule: a before-only integrity check is not a check; capture state on both sides of the call you are guarding, and exclude the object under test from every trust lookup.
+
+
+## 2026-11-08 — U1-2 verification round
+
+- Kind: SUCCESS: a verification note that lists each finding, the change and the test closed both findings in one round.

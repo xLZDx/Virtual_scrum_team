@@ -2304,3 +2304,8 @@ Following the U1-5 approval note, aeve_probe._find_git() returns None when no ab
 ## 2026-11-08 — GPT-PM round 1 on U1-2: MAJOR x2, fixed (request 888be2d4)
 
 Findings: (1) the probe read HEAD and dirty state before running doctor and matrix and never again, so an AEVE command that modified its own checkout still gave READY; (2) git could be picked from an absolute PATH entry inside the AEVE checkout. Fixes: HEAD and the full untracked-inclusive status are captured before and after, a difference blocks with CHECKOUT_CHANGED_DURING_PROBE; git candidates inside the AEVE checkout are skipped, none left means GIT_NOT_FOUND. Tests added by the test agent (4 doctor/matrix modification cases, HEAD moved during the probe, planted git in the checkout directory on PATH, only the checkout on PATH); tests/uc: 815 passed, 0 failed, 3 skipped. A planted git.exe in the test is a copy of python.exe, so that case proves non-execution only by the probe still returning the real HEAD. Next: one verification round for the fix only.
+
+
+## 2026-11-08 — GPT-PM APPROVE for U1-2 (request c9242b28)
+
+Verification round for the two round-1 MAJOR findings (head 128f039): both closed, no regression found. U1-2 is ACCEPTED, not pushed. Accepted so far: U1-2, U1-5, U1-6. Next one-task review: U1-3 (contracts.py and its tests).
