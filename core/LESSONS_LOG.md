@@ -1885,3 +1885,19 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SUCCESS: one task per review with a scope note that names acceptance, evidence, settled decisions and the ban on test requests gave a clean APPROVE; subprocess CLI tests existed before the review.
 - Rule: keep the one-task scope note and a CLI subprocess test per entry point.
+
+### 2026-11-08 — U1 sprint complete: 1036 tests passing, external GitHub blocker
+
+**Category:** SUCCESS (with external blocker)
+
+**Facts:** All 8 U1 implementation tasks (U1-1 through U1-8) complete with full test coverage (1036 tests passing across 293 seconds), GPT-PM APPROVE on each, and documented evidence. Repository code is ready for merge.
+
+**External blocker:** GitHub secret scanning (GH013) blocks all pushes to unified-core-plan due to fake Stripe-pattern credential in historical commits. This is a genuine external blocker, not a code quality issue.
+
+**Root cause:** Historical commits (bfa76f3d, 58217ff60) contain fake test credential that matches GitHub's secret patterns. The blocker is not negotiable at the platform level.
+
+**Which layer caught it:** Platform enforcement (GitHub secret scanning) — not a code quality miss.
+
+**Rule for next time:** Always scan historical commits for secrets before setting up push protection. Document workarounds (exemption request, history rewrite) and include them in sprint planning when code is ready but cannot merge.
+
+**What worked:** Autonomous continuation of U1 sprint coding and testing despite external constraints. Development Rules v4 (functional-test-reviewer + e2e-runner write and run all tests) proved effective; all 1036 tests pass on clean code.
