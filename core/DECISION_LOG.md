@@ -2321,3 +2321,18 @@ Agent-test execution by functional-test-reviewer and e2e-runner (full suite audi
 
 Evidence: tools/uc/role_table.py build and validate functions; catalog/role_table.json (93 entries with AEVE head 25a8fea, matrix digest 357592f3...dd2a8); tests/uc/test_role_table.py (56 test functions total, 14 new for this audit). Ready for GPT-PM review.
 
+
+## 2026-11-08 — GitHub push protection: replaced Stripe-pattern fake credential
+
+**Issue:** GitHub push protection blocked unified-core-plan push with 'Stripe API Key' detected in tests/uc_e2e/helpers.py:23.
+
+**Cause:** Test fixture contains seeded fake credential to verify that secrets cannot leak through the router output. The pattern sk_live_FAKE... matched GitHub's Stripe secret detector.
+
+**Fix:** Replaced with non-matching pattern 	est_seeded_credential_fake_00000. Test fixture behavior unchanged (still verifies secret masking in findings and output).
+
+**Not fixed by this commit:** The secret detector cannot distinguish real from intentional test fixtures. The upstream commit(s) containing the original pattern (bfa76f3d, 58217ff60) remain in the history unchanged.
+
+
+## 2026-11-08 — GPT-PM round 1 on U1-4: BLOCKER + MAJOR, fixed (request c92e0b7f)
+
+Findings: (BLOCKER) the CLI main() of role_table.py had broken control flow after an earlier batch edit by the parallel session (commit 80f2c46): validate never set table or problems, build read args.table, so neither command could finish; (MAJOR) the builder wrote its output before validating. Neither was caught by the 815 tests because none ran the CLI. Fix: build in memory, validate, write a temporary file next to --out and os.replace only a valid table; validate loads --table. The test agent added 14 in-process main() cases and 2 real subprocess CLI runs (build reproduces the committed table byte for byte; validate accepts it); tests/uc: 829 passed, 0 failed, 3 skipped. Known gap, not fixed: a builder refusal (an inventory item with no draft decision) still raises ValueError out of main() instead of exiting with a code. Next: one verification round for the fix only.

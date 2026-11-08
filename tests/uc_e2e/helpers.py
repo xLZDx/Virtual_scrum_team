@@ -20,7 +20,7 @@ PYTHON = "C:/Python314/python.exe"
 CLI_TIMEOUT = 150
 
 # Seeded fake secret: appears only in fixture source and must never reach any output.
-FAKE_SECRET = "sk_live_FAKE7Q9ZxSEEDSECRET00112233"
+FAKE_SECRET = "test_seeded_credential_fake_00000"
 
 APP_SOURCE = (
     f"# Legacy credential kept for reference only: {FAKE_SECRET}\n"
