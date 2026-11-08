@@ -2666,3 +2666,5 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: one run per lane on 7fcc796 (test agent): functional FAIL (pytest hit the 900 s bound, killed, no counts), integration and api BLOCKED ("candidate worktree has unrelated changes before execution" because the functional run left untracked evidence files). 507 of the 817 functional IDs are tests/qa/test_s4a_registry.py and test_s4b_runner.py, which alone run longer than the 3600 s runner maximum.
 - Decision (operator answer "Вынести tests/qa в отдельную категорию"): new primary category qa-tooling for tests/qa; it is not part of the functional lane or the regression aggregate. Evidence files of the failed attempt are committed as the honest first record; later lane runs commit their evidence before the next lane starts.
+
+- 2026-11-09: manifest regenerated for the qa-tooling category.
