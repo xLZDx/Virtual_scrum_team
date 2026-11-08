@@ -2599,3 +2599,7 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: tools/uc/branch_inventory.py, catalog/branch_landing_rules.json and the map docs/sdlc/evidence/u3-1-branch-inventory.json (target origin/main 83cfd64). All files of the five pushed branches are classified; ALREADY_IN_MAIN 290, LAND 195, EVIDENCE_ONLY 849, DROP 25 over the five maps (a file present on two branches counts once per branch). Complete tests/uc: 1110 passed, 0 failed, 3 skipped (test agent).
 - Decision: U3-1 runs before U2-1 so the existing S4/S5 code is reused, not rewritten (plan U2 goal). Landing itself is not part of U3-1 and needs the operator. First map was built against the stale local main 9587052; rebuilt against origin/main, counts unchanged.
+
+## 2026-11-08 — reports re-rendered with U3-1 IN_REVIEW; push held
+
+- Evidence: reports re-rendered after U3-1 moved to IN_REVIEW. The push of branch u2-evidence-gate is held until GPT-PM approves U3-1, because the branch contains code that has not passed the final review (rule: push only after approval); the stop hook's push demand is therefore not met on purpose.
