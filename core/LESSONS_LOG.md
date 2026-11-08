@@ -1934,3 +1934,6 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - 2026-11-08 S4-A collector and registry fixes
 - Kind: FAILURE: my port shared a blind spot between the generator and the validator (both ignored TestCase classes with other names), so 144 green tests and a valid manifest still undercounted the denominator. Caught by the reviewer reading the real corpus and then by an oracle test against pytest.
 - Rule: a collector needs an independent oracle (pytest --collect-only) in its tests, never only its own generator.
+
+- 2026-11-08 S4-A GPT-PM approval recorded
+- Kind: SUCCESS: fixes from the reviewer and a pytest oracle were batched before the single GPT-PM request, one round to approval.

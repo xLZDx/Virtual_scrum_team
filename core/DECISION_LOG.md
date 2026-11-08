@@ -2617,3 +2617,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 - 2026-11-08: manifest regenerated for the final S4-A test file.
 
 - 2026-11-08: S4-A scope note for the GPT-PM review; final functional run 274 passed on 27fc5a3.
+
+## 2026-11-08 — S4-A accepted
+
+- Evidence: GPT-PM verdict APPROVE (0 BLOCKER, 0 MAJOR) for S4-A; functional run 274 passed on 27fc5a3; 1939 selectors over 54 modules.
+- Decision: S4-A ACCEPTED, S4 sprint IN_PROGRESS, branch s4-a-registry pushed (the single S4 sprint PR is opened at sprint end). Next task: S4-B.
