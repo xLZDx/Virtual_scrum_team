@@ -2269,3 +2269,8 @@ Review request 27332bf4 (range 3602afa^..HEAD of tools/uc, final flag overridden
 **Evidence:** git show 9267b80:PROJECT_PLAN.md had IN_PROGRESS; working tree now has BLOCKED_EXTERNAL for U1-1..U1-8. Regex replacement verified on all 8 task rows.
 
 **Commit:** Required to pass DECISION_LOG gate.
+
+
+## 2026-11-08 — GPT-PM review of U1-6: verdict MAJOR, fixed with one deviation
+
+Request fba46927 (task named in the scope note, diff limited to tools/uc) returned one MAJOR: the request_id fingerprint was keyed by iteration_of, so the same request_id with different content and a different iteration_of was accepted, and a damaged record counted as absent. Accepted: a request_id is now bound to its reviewed root permanently (identity record, independent of iteration_of); a damaged or unreadable record blocks (FINGERPRINT_CORRUPT / FINGERPRINT_UNREADABLE, remedy: new request_id); records are written atomically. Not accepted: "use a new request_id for each iteration": the security review found AEVE rejects a new request_id carrying iteration_of (its ledger for that id is empty), so iteration_of stays the link of a resubmission under the same request_id, with per-iteration content binding. Tests for the change are NOT_RUN until the test agents re-run them.

@@ -128,19 +128,38 @@ def _fingerprint_path(directory: pathlib.Path, request_id: str, iteration_of: st
     return directory / f"{request_id}.{iteration_of or 'first'}.sha256"
 
 
-def _check_fingerprint(path: pathlib.Path, content_sha: str) -> None:
-    """Same request_id and iteration with different content is refused; an unreadable record counts as absent."""
+def _identity_path(directory: pathlib.Path, request_id: str) -> pathlib.Path:
+    return directory / f"{request_id}.identity.sha256"
+
+
+def _read_record(path: pathlib.Path) -> str | None:
+    """None when the record does not exist; a damaged record blocks (fail closed), it is never treated as absent."""
+    if not path.exists():
+        return None
     try:
         stored = path.read_text(encoding="utf-8").strip()
-    except (OSError, ValueError):
-        return
-    if re.fullmatch(r"[0-9a-f]{64}", stored) and stored != content_sha:
+    except (OSError, ValueError) as exc:
+        raise adapter.AdapterBlocked("FINGERPRINT_UNREADABLE", "a request record cannot be read; use a new request_id") from exc
+    if not re.fullmatch(r"[0-9a-f]{64}", stored):
+        raise adapter.AdapterBlocked("FINGERPRINT_CORRUPT", "a request record is damaged; use a new request_id")
+    return stored
+
+
+def _check_records(directory: pathlib.Path, request_id: str, iteration_of: str | None, content_sha: str,
+                   identity_sha: str) -> None:
+    """A request_id is bound to one reviewed root for good (whatever iteration_of says), and to one
+    content per iteration: a retry with the same iteration_of must carry the same content."""
+    identity = _read_record(_identity_path(directory, request_id))
+    if identity is not None and identity != identity_sha:
+        raise adapter.AdapterBlocked("REQUEST_ID_CONFLICT", "same request_id for a different reviewed root")
+    stored = _read_record(_fingerprint_path(directory, request_id, iteration_of))
+    if stored is not None and stored != content_sha:
         raise adapter.AdapterBlocked("REQUEST_ID_CONFLICT", "same request_id with different content")
 
 
-def _write_fingerprint(path: pathlib.Path, content_sha: str) -> None:
+def _write_record(path: pathlib.Path, value: str) -> None:
     temporary = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-    temporary.write_text(content_sha, encoding="utf-8")
+    temporary.write_text(value, encoding="utf-8")
     os.replace(temporary, path)
 
 
@@ -298,8 +317,8 @@ def review(role_request: dict, *, table: dict, aeve_root: pathlib.Path, state_di
         if record["tracked_dirty_paths"] or record.get("untracked_source_paths", 1):
             raise adapter.AdapterBlocked("AEVE_CHECKOUT_DIRTY", "the AEVE checkout differs from its pinned commit")
         lock = _RequestLock(directory, doc["request_id"])
-        fingerprint = _fingerprint_path(directory, doc["request_id"], doc.get("iteration_of"))
-        _check_fingerprint(fingerprint, content_sha)
+        identity_sha = hashlib.sha256(os.path.normcase(os.path.abspath(doc["root"])).encode("utf-8")).hexdigest()
+        _check_records(directory, doc["request_id"], doc.get("iteration_of"), content_sha, identity_sha)
         executor_ids = sorted({x for role in doc["roles"]
                                for e in [(_lookup(table, role) or {})] if e.get("coverage_state") == "COVERED_PARTIAL"
                                for x in e["executors"]})
@@ -309,7 +328,9 @@ def review(role_request: dict, *, table: dict, aeve_root: pathlib.Path, state_di
                              command_prefix=command_prefix, timeout=timeout)
         result = normalize(doc, table, response, None)
         contracts.validate_result(result)
-        _write_fingerprint(fingerprint, content_sha)  # recorded only after a result exists, so a failed run never poisons the id
+        # recorded only after a result exists, so a failed run never poisons the id
+        _write_record(_identity_path(directory, doc["request_id"]), identity_sha)
+        _write_record(_fingerprint_path(directory, doc["request_id"], doc.get("iteration_of")), content_sha)
         return result
     except (adapter.AdapterBlocked, aeve_probe.AeveProbeError) as exc:
         return _blocked(doc["request_id"], exc.reason, exc.detail)

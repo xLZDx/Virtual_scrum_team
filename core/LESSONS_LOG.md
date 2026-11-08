@@ -1803,3 +1803,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-08 — GPT-PM request for U1
 
 - Kind: SHORTCOMING (repeat): I sent a range again without naming one task, the same refusal as the plan review; I had logged the rule (state one item id) but the CLI call gave no place to state it. Rule: before a third attempt find how the CLI carries a task name; do not resend the same shape.
+
+
+## 2026-11-08 — GPT-PM verdict on U1-6
+
+- Kind: SUCCESS with a SHORTCOMING: naming one task in the scope note and limiting the diff to tools/uc made GPT-PM answer (the earlier two attempts were refused); the CLI flags --scope-note-file and --include-path existed all along and I had not read them. GPT-PM found a real defect the reviews and tests missed (iteration_of let a request_id change content).
+- Rule: read the review CLI flags before the first attempt; test that an identity key cannot be changed by a free field.
