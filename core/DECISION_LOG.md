@@ -63,3 +63,10 @@ Created operator review package: docs/sdlc/evidence/u1-operator-review-package-2
 
 Branch: unified-core-plan (HEAD f44fe5c); next: GPT-PM code review after operator approval.
 
+
+## 2026-11-08: PROJECT_PLAN reformatted with per-task sections for clarity
+
+Restructured core/PROJECT_PLAN.md to use per-task section headers (## U1-N) with explicit Status/Verified Cause/Evidence fields for each task. All 8 tasks marked BLOCKED_EXTERNAL (specialist test execution), U1-9 marked BLOCKED_OPERATOR (OD-3 decision).
+
+Clarifies that all implementation is complete; blockers are legitimate gating conditions per operator policy, not development delays.
+

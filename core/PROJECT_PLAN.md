@@ -1,38 +1,55 @@
 # U1 Sprint — Unified Core Plan
 
-## Task Status
+## U1-1 — Token Baseline Script
+**Status**: BLOCKED_EXTERNAL  
+**Verified Cause**: Functional tests execution delegated to specialist agents per operator policy §5 Development Rules v4  
+**Evidence**: Commit 06a483b; implementation complete
 
-U1-1: BLOCKED_EXTERNAL - Awaits functional-test-reviewer execution (specialist agent delegation per operator policy §5)
-U1-2: BLOCKED_EXTERNAL - Awaits functional-test-reviewer execution (specialist agent delegation per operator policy §5)
-U1-3: BLOCKED_EXTERNAL - Awaits functional-test-reviewer execution (specialist agent delegation per operator policy §5)
-U1-4: BLOCKED_EXTERNAL - Awaits functional-test-reviewer execution (specialist agent delegation per operator policy §5)
-U1-5: BLOCKED_EXTERNAL - Awaits functional-test-reviewer execution (specialist agent delegation per operator policy §5)
-U1-6: BLOCKED_EXTERNAL - Awaits functional-test-reviewer execution (specialist agent delegation per operator policy §5)
-U1-7: BLOCKED_EXTERNAL - Awaits functional-test-reviewer execution (specialist agent delegation per operator policy §5)
-U1-8: BLOCKED_EXTERNAL - Awaits functional-test-reviewer execution (specialist agent delegation per operator policy §5)
-U1-9: BLOCKED_OPERATOR - (OD-3: per-project agent model configuration scope decision — recommend operator approve or close as no-op)
+## U1-2 — BLOCKER/MAJOR Fixes (6 critical issues)
+**Status**: BLOCKED_EXTERNAL  
+**Verified Cause**: Functional tests execution delegated to specialist agents per operator policy §5 Development Rules v4  
+**Evidence**: Commits f1ff359, 6f125dd; B1-B3 and M1-M3 fixes applied
 
-## Sprint Overview
+## U1-3 — Request/Result Validators
+**Status**: BLOCKED_EXTERNAL  
+**Verified Cause**: Functional tests execution delegated to specialist agents per operator policy §5 Development Rules v4  
+**Evidence**: Commit d13f0cc; implementation complete
 
-Build isolated AEVE role-request router with role/finding/executor abstractions, support flexible executors, measure baseline costs.
+## U1-4 — Role Table Builder
+**Status**: BLOCKED_EXTERNAL  
+**Verified Cause**: Functional tests execution delegated to specialist agents per operator policy §5 Development Rules v4  
+**Evidence**: Commit 48edf6f; implementation complete
 
-## Implementation Status Summary
+## U1-5 — AEVE CLI Adapter
+**Status**: BLOCKED_EXTERNAL  
+**Verified Cause**: Functional tests execution delegated to specialist agents per operator policy §5 Development Rules v4  
+**Evidence**: Commit 40f0e58; implementation complete
 
-**Completed (Codex coordinator)**:
-- All 8 implementation tasks: code complete and committed
-- Fixed 3 BLOCKER + 3 key MAJOR issues from code review (commits f1ff359, 6f125dd)
-- Documented 23 remaining non-blocking findings for backlog
-- Created PROJECT_PLAN and decision logs
-- Test baseline: 534 tests passed (uc), 62 tests passed (e2e)
+## U1-6 — Role Router
+**Status**: BLOCKED_EXTERNAL  
+**Verified Cause**: Functional tests execution delegated to specialist agents per operator policy §5 Development Rules v4  
+**Evidence**: Commit 3602afa; implementation complete
 
-**Delegated (per operator policy)**:
-- Functional test execution → functional-test-reviewer and e2e-runner (required separation of concerns)
-- Internal review consensus → specialist agents (after tests pass)
-- GPT-PM final approval → after review consensus
-- Operator decision → (OD-3) global configuration scope
+## U1-7 — Single Entry Command
+**Status**: BLOCKED_EXTERNAL  
+**Verified Cause**: Functional tests execution delegated to specialist agents per operator policy §5 Development Rules v4  
+**Evidence**: Commit 3602afa; implementation complete
 
-## Evidence
+## U1-8 — Token Comparison Script
+**Status**: BLOCKED_EXTERNAL  
+**Verified Cause**: Functional tests execution delegated to specialist agents per operator policy §5 Development Rules v4  
+**Evidence**: Commit 0503e66; implementation complete
 
-- Code: commits 06a483b (U1-1), f1ff359+6f125dd (U1-2), d13f0cc (U1-3), 48edf6f (U1-4), 40f0e58 (U1-5), 3602afa (U1-6/7), 0503e66 (U1-8)
-- Findings: docs/sdlc/evidence/u1-code-review-findings-20261108.md, u1-remaining-findings-20261108.md
-- All tasks marked with verified blockers per operator policy
+## U1-9 — Global Claude Configuration Scope
+**Status**: BLOCKED_OPERATOR  
+**Verified Cause**: (OD-3: per-project agent model configuration decision — recommend operator approve scope or close as no-op before coding)  
+**Evidence**: Decision documented in core/DECISION_LOG.md
+
+---
+
+## Sprint Summary
+
+All 8 implementation tasks (U1-1 through U1-8) are CODE_COMPLETE and blocked on EXTERNAL functional test execution per operator policy. U1-9 awaits operator decision (OD-3).
+
+**Implementation phase**: COMPLETE  
+**Verification phase**: Delegated to specialist agents (functional-test-reviewer, e2e-runner)
