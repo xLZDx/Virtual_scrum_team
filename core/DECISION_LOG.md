@@ -2261,3 +2261,11 @@ At HEAD 59e41cf: tests/uc 776 passed, 0 failed, 3 skipped; tests/uc_e2e 94 passe
 ## 2026-11-08 — GPT-PM refused the U1 code range (third refusal)
 
 Review request 27332bf4 (range 3602afa^..HEAD of tools/uc, final flag overridden by the tool) came back as "RESEND: one task per review", TASK n/a, no verdict. Not resent. The CLI has no task selector: the scope is a whole commit or range. Open question for the operator: the way to name one task to GPT-PM (a scope note or a commit per task). Nothing was pushed.
+
+## 2026-11-08 — U1-1..U1-8 PROJECT_PLAN file corrected: BLOCKED_EXTERNAL now persisted
+
+**Fix:** Previous commit 9267b80 added decision log entry but file update didn't persist. This commit corrects the PROJECT_PLAN.md file to actually contain BLOCKED_EXTERNAL status for all 8 tasks.
+
+**Evidence:** git show 9267b80:PROJECT_PLAN.md had IN_PROGRESS; working tree now has BLOCKED_EXTERNAL for U1-1..U1-8. Regex replacement verified on all 8 task rows.
+
+**Commit:** Required to pass DECISION_LOG gate.
