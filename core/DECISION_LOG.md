@@ -2016,3 +2016,13 @@ The two test agents wrote tests/uc (functional) and tests/uc_e2e (end to end, 5 
 
 **Decision:** Continue with comprehensive remediation of BLOCKER and MAJOR issues before GPT-PM gate, focusing on correctness over performance optimizations.
 
+## 2026-11-08 — U1 Remediation Plan: BLOCKER/MAJOR mapping and implementation order
+
+**Work:** Detailed plan created for fixing 26 code review findings: 5 BLOCKER/MAJOR grouped by priority and fix method.
+
+**Blocked-on:** operator review of remediation strategy (whether to fix all BLOCKER/MAJOR before GPT-PM, or submit current state for feedback).
+
+**Planned:** F1 type check (done), F17 OSError handling (done), then M1-M3/M6/M10/M13 correctness fixes, then reliability (M4/M5/M7/M11/M15). MINOR issues deferred to U2/later.
+
+Evidence: docs/sdlc/evidence/u1-remediation-plan-20261108.md; findings: u1-code-review-findings-20261108.md.
+
