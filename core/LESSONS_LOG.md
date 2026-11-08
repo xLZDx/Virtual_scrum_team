@@ -1926,3 +1926,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SUCCESS: three real acceptance defects were found before any code was written, fixed in one batch and verified in one round.
 - Rule: have the plan reviewed before implementation; fix the whole MAJOR set in one batch.
+
+- 2026-11-08 S3-D Windows-local sandbox proof
+- Kind: SUCCESS and SHORTCOMING: reviewers and a live run as the real worker found false-PASS paths that 348 passing tests had not (icacls "(N)" deny-all, empty Package, partial deny masks, SDDL exclusion ACEs). Layer that caught them: reviewers and the live run, not the tests.
+- Rule: a security checker needs a live ground-truth run against a real principal before it is called verified; fixtures written from the author's model of the OS prove only that model.

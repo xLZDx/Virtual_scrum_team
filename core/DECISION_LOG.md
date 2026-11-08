@@ -2594,3 +2594,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: request 8c527065, APPROVE, 0 BLOCKER, 0 MAJOR, receipt written; U2-2, U3-7 and U5-6 corrections verified FIXED, no direct regressions. Together with request d1ca5bcc (U2-1) the planning contract of U1-U6 is approved.
 - Limit: this approves the planning contract only; no U2-U6 implementation, test or sprint start is authorized. Starting U2 (and U3-1, its prerequisite) needs the operator.
+
+## 2026-11-08 — S3-D Windows-local sandbox proof implemented
+
+- Evidence: functional agent run 574 passed, 0 failed; security and python reviews found false-PASS paths that were fixed in one batch; live run as the real worker account: account, secret isolation, egress, probe binding PASS; worktree confinement FAIL (repo writable through an inherited ACL on D:) and job object FAIL (no limits yet).
+- Decision: S3-D is delivered as code plus partial live evidence; the two FAILs are recorded, not hidden. Writable repository ACL is an operator decision. U2-1 stays IN_REVIEW with GPT-PM verdict MODIFY (g2 evidence hash must be analysis_sha256, no snapshot fallback).
