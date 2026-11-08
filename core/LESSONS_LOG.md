@@ -1719,3 +1719,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Kind: SUCCESS with FAILURE inside: four independent reviews found one BLOCKER-class design hole I had not seen (a findings-bearing review could become a PASS receipt) and several untestable criteria; my own cross-check earlier found only terminology problems.
 - Root cause: I designed the receipt from the gate contract and never asked what the gate does with findings (author); the cross-check compared words, not behavior.
 - Rule: for every producer-to-gate hand-off, state what the gate does with the producer worst-case output before approving the contract.
+
+
+## 2026-11-08 — GPT-PM review protocol
+
+- Kind: SHORTCOMING: I sent a six-sprint plan as one review and GPT-PM refused it with "one task per review"; I had not read its per-review protocol before sending.
+- Rule: frame a review as one named review item and state the item id on the first line of the scope note.

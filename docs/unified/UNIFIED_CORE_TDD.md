@@ -151,7 +151,7 @@ Token savings: a baseline manifest pins the existing sessions (identifiers plus 
 | R4 | Token savings are measured against a pinned baseline, not claimed | U1, U6 |
 | R5 | Local review results become signed receipts bound to the exact head; the gate fails closed on stale, forged, partial, findings-bearing or residual-bearing evidence | U2 |
 | R6 | Tests are accounted by exact ID; a skipped test never satisfies the gate | U3 |
-| R7 | Test execution has one decided local executor | U3 |
+| R7 | Test execution has two local executors built behind one interface and compared, and the operator decides which stays | U3 |
 | R8 | Roles without an executor are listed explicitly; new project-scope roles register without code changes and start as NOT_COVERED | U4 |
 | R9 | Coding runs under the worker adapter and diff gate, then the review loop iterates until local checks are clean | U5 |
 | R10 | The final package for GPT-PM contains the exact diff, test evidence, review results and head identity | U5 |
@@ -161,7 +161,8 @@ Token savings: a baseline manifest pins the existing sessions (identifiers plus 
 
 Accepted on 2026-11-08 (operator approved the plan; these defaults apply unless the operator changes them):
 - OD-1 adapter location: in Virtual_scrum_team (`tools/uc/`).
-- OD-2 test execution: the VST native runner on Windows. The AEVE Docker sandbox `project-test` needs a separate approval.
+- OD-2 test execution (changed by the operator on 2026-11-08): build both executors behind one interface, the VST native runner on Windows and AEVE's existing `sandbox project-test`, run the same tests through both, then the operator decides which stays (tasks U3-2 and U3-7). The AEVE executor runs only with a profile that excludes the mutation campaign, because mutation runs are forbidden by the operator's standing rules unless the operator names that exact run; this narrows the effect of AEVE decision D-076 for that executor only and changes nothing in AEVE.
+- OD-8 coding (operator, 2026-11-08): patches proposed by AEVE's repair lab (which never applies a patch itself) are applied by VST through the isolated worktree and the diff gate; the model writes code only for what AEVE proposed no patch for (task U5-2).
 - OD-4 fallback: a BLOCKED local role stays BLOCKED. A model agent replaces it only when the operator allows it for that run.
 - OD-5 the S4 branches land in reviewable parts; evidence is re-earned for every landed part; if the carve-out does not fit, only the registry and the no-skip gate are rewritten.
 
