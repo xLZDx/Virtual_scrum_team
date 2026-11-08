@@ -1,1 +1,2 @@
 candidate worktree has unrelated changes before execution
+(no stderr)

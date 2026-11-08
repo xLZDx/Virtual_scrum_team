@@ -1974,3 +1974,6 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - 2026-11-09 S4-C functional lane
 - Kind: SUCCESS: the lane now names its failures (8) and the real run exposed pre-existing red tests that no earlier gate showed because nobody ran the whole functional set through one runner.
+
+- 2026-11-09 S4-C integration lane
+- Kind: SUCCESS: the real run exposed 45 selectors that collect nothing and two red tests, all invisible to earlier per-file runs.
