@@ -2575,3 +2575,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 ## 2026-11-08 — U2 task plan reviewed one task at a time
 
 - Evidence: the bundled U2-U6 plan request was answered by GPT-PM with "RESEND: one task per review" (request c2cc2746), no verdict. The operator chose: one task per request, U2 only for now (6 requests, sequential); U3-U6 are not sent until the operator approves their start.
+
+## 2026-11-08 — U2-1 plan approved; U1-U6 plan bundle sent under an operator exception
+
+- Evidence: GPT-PM request d1ca5bcc, task definition U2-1, APPROVE, 0 BLOCKER, 0 MAJOR; note: U2-1 depends on U3-1 which needs operator authorization to start before U2-1. The per-task loop for U2-2..U2-6 was stopped at the operator's request.
+- Decision: on the operator's explicit one-time exception, the whole U1-U6 task decomposition goes to GPT-PM as one documentation request (scope note u1-u6-plan-bundle). If GPT-PM refuses again on the one-task rule, no third attempt is made without asking the operator.
