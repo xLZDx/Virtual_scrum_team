@@ -2580,3 +2580,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: GPT-PM request d1ca5bcc, task definition U2-1, APPROVE, 0 BLOCKER, 0 MAJOR; note: U2-1 depends on U3-1 which needs operator authorization to start before U2-1. The per-task loop for U2-2..U2-6 was stopped at the operator's request.
 - Decision: on the operator's explicit one-time exception, the whole U1-U6 task decomposition goes to GPT-PM as one documentation request (scope note u1-u6-plan-bundle). If GPT-PM refuses again on the one-task rule, no third attempt is made without asking the operator.
+
+## 2026-11-08 — GPT-PM verdict on the U1-U6 plan bundle: 3 MAJOR fixed in the plan
+
+- Evidence: request a3325339, headline MODIFY, 3 MAJOR, 0 BLOCKER (tool verdict field UNRECOGNIZED because the reply has no bare APPROVE/MAJOR token). MAJOR-1 U2-2: a worker-supplied AEVE response could be signed; fixed: the trusted component runs aeve review itself or accepts only authenticated analyzer output, plus a substituted-response case. MAJOR-2 U3-7: circular dependency on the operator decision; fixed: depends on OD-2 (permission to compare both executors), selection is the task outcome. MAJOR-3 U5-6: CLEAN control could contradict the U1 rule for LOCAL_PLUS_MODEL; fixed: control uses fully covered local roles only, plus a separate LOCAL_PLUS_MODEL fixture that must not return CLEAN.
+- Decision: plan edited only; no code started. A verification round of these three corrections is a separate request, not sent yet.

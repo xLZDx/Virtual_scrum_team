@@ -1916,3 +1916,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SHORTCOMING: S3 tasks stayed BLOCKED_EXTERNAL after the PR was merged and the operator had decided the open question, so the sprint bar looked unfinished. Missed by the author when recording the decision.
 - Rule: when an operator decision removes a blocker, update the task status in the same commit as the decision record.
+
+## 2026-11-08 — plan review found three acceptance defects
+
+- Kind: SHORTCOMING: the plan I wrote let the signer derive coverage from a worker-supplied response, listed an operator decision as a dependency of the task that produces its evidence, and asked for CLEAN where the U1 contract forbids it. Missed by the author; caught by GPT-PM on the plan bundle.
+- Rule: for every acceptance, ask who supplies the input (trust), what produces each dependency (cycles), and whether it contradicts an accepted contract.
