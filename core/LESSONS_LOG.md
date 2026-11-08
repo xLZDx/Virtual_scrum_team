@@ -1980,3 +1980,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - 2026-11-09 S4-C api lane
 - Kind: SUCCESS: one run per lane named every failure; one failure passes alone, which shows an order dependence that per-file runs never exposed.
+
+- 2026-11-09 artifact stage per category
+- Kind: FAILURE: my own commits of lane evidence broke the accepted real-manifest validation; the targeted new-test run caught it, not the earlier lane runs, because the lanes ran before the evidence was committed alongside the manifest test.
+- Rule: after committing evidence files, run the real-manifest test before moving on.

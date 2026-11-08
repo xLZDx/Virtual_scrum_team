@@ -555,43 +555,61 @@ def check_artifact_stage(root: Path, artifacts: dict[str, dict[str, str]]) -> di
     """
     if not isinstance(artifacts, dict):
         raise RegistryError("artifacts must be an object")
-    expected: list[str] = []
+    expected = 0
+    categories_present: list[str] = []
+    categories_absent: list[str] = []
     for category in sorted(artifacts):
         entry = artifacts[category]
         if not isinstance(category, str) or not isinstance(entry, dict):
             raise RegistryError("artifacts entries must map categories to path objects")
+        paths: list[str] = []
         for kind in ("report", "stdout", "stderr"):
             if not isinstance(entry.get(kind), str):
                 raise RegistryError(f"artifacts.{category}.{kind} must be a path string")
-            expected.append(entry[kind])
-    present: list[str] = []
-    absent: list[str] = []
-    for relative in expected:
-        try:
-            content = _read_repo_file(root, relative)
-        except MissingSourceError:
-            absent.append(relative)
-            continue
-        if not content:
-            raise RegistryError(f"evidence artifact is empty: {relative}")
-        present.append(relative)
-    if present and absent:
-        raise RegistryError(
-            f"evidence artifacts are partially present (present={len(present)}, absent={len(absent)})"
-        )
-    if absent:
+            paths.append(entry[kind])
+        expected += len(paths)
+        present: list[str] = []
+        absent: list[str] = []
+        for relative in paths:
+            try:
+                content = _read_repo_file(root, relative)
+            except MissingSourceError:
+                absent.append(relative)
+                continue
+            if not content:
+                raise RegistryError(f"evidence artifact is empty: {relative}")
+            present.append(relative)
+        # Lanes run one at a time, so categories may be present or absent independently;
+        # inside one category the three files are all-or-nothing.
+        if present and absent:
+            raise RegistryError(
+                f"evidence artifacts of category {category} are partially present "
+                f"(present={len(present)}, absent={len(absent)})"
+            )
+        (categories_present if present else categories_absent).append(category)
+    if not categories_present:
         return {
             "status": "SKIPPED",
             "reason": "no evidence artifacts exist yet; this is not evidence of a passing run",
-            "expected": len(expected),
+            "expected": expected,
             "present": 0,
+        }
+    if categories_absent:
+        return {
+            "status": "PARTIAL",
+            "scope": "existence-only",
+            "reason": "some categories have no evidence artifacts yet; this is not evidence of a passing run",
+            "expected": expected,
+            "present": 3 * len(categories_present),
+            "categories_present": categories_present,
+            "categories_absent": categories_absent,
         }
     return {
         "status": "PRESENT",
         "scope": "existence-only",
         "reason": None,
-        "expected": len(expected),
-        "present": len(present),
+        "expected": expected,
+        "present": 3 * len(categories_present),
     }
 
 
