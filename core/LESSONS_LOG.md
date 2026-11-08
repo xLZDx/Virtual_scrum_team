@@ -1762,3 +1762,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: NEUTRAL: the script was exercised on synthetic numbers; I state that in the plan row so synthetic input is never read as a measured token saving.
 - Rule: a comparison tool tested on invented data proves the logic only; the effect claim needs real pinned transcripts.
+
+
+## 2026-11-08 — U1-9 blocked
+
+- Kind: NEUTRAL: blocked with a verified cause (task text requires OD-3), not left as an open task.

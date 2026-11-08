@@ -1979,3 +1979,8 @@ Tasks U1-6 and U1-7: tools/uc/router.py resolves roles through the role table, s
 ## 2026-11-08 — U1-8 measurement script written; real measurement NOT_RUN
 
 Task U1-8: tools/uc/measure.py compares a before and an after token report per role and the entry-command result, and marks a role LOCAL_FIRST only when its local part ran and every token field shrank; fields are never summed. Checked on synthetic inputs only. The real paired measurement stays NOT_RUN until the operator or the plan fixes the U1-1 baseline session set and a residual-only run exists.
+
+
+## 2026-11-08 — U1-9 marked BLOCKED_OPERATOR
+
+Task U1-9 (wiring the local-first check into the global Claude configuration) is blocked on the operator's decision OD-3: it would change global settings, routing or hooks outside this repository, which the plan and the global contract reserve for explicit approval with a snapshot and a kill switch. Nothing outside the repository was touched. U1-1 to U1-8 code is written; the test agents run next.
