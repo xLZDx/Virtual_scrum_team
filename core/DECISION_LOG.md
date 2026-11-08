@@ -2279,3 +2279,8 @@ Request fba46927 (task named in the scope note, diff limited to tools/uc) return
 ## 2026-11-08 — U1-6 request-record tests green
 
 After 5b83c08 the test agent rewrote the stale tests and added tests for root binding, damaged records, atomic writes and concurrency: tests/uc 805 passed, 0 failed, 3 skipped (symlink creation not permitted). Next: one GPT-PM verification round on U1-6 for the fix only.
+
+
+## 2026-11-08 — GPT-PM APPROVE for U1-6 (round 2, request a382500a)
+
+Verdict APPROVE for the request-record changes of U1-6 (fix commit 5b83c08, tests 992dec6); GPT-PM withdrew its "new request_id per iteration" requirement after the AEVE ledger contract was stated. It does not approve other U1 tasks or unexecuted tests. U1-6 delivery state: implemented, reviewed by three internal reviewers, agent-tested (tests/uc 805 passed; tests/uc_e2e 94 passed at 59e41cf), GPT-PM approved; not pushed. Next: U1-5 (adapter) to GPT-PM.
