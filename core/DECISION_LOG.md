@@ -2429,3 +2429,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 **Ready:** U1-1 code now ready for GPT-PM one-task review.
 
+
+## 2026-11-08 — U1-1 and U1-8 tests complete; reviews of both tasks go to GPT-PM one at a time
+
+- Evidence: functional-test-reviewer ran the complete tests/uc set: 926 passed, 0 failed, 3 skipped (symlink creation not permitted on this host). Subprocess tests now cover both token_baseline and measure CLIs; BAD_SESSION_ID and OUTPUT_UNWRITABLE are tested.
+- Decision: commit tests with the U1-1 fixes, then send U1-1 and U1-8 to GPT-PM as separate reviews with the scope notes in docs/sdlc/evidence. The real paired measurement stays NOT_RUN.

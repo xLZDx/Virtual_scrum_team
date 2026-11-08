@@ -1,0 +1,9 @@
+REVIEW ITEM: U1-8 "[VST] Measured effect on paired tasks" (one task; the diff is limited to tools/uc/measure.py, tests/uc/test_measure.py and tests/uc/test_cli_measure.py).
+
+Context: Unified Core sprint U1. measure.py compares two token reports produced by token_baseline.py (U1-1, reviewed separately) for the same paired task - before (all review roles by model reviewers) and after (entry command first, model only on the residual slice) - together with the uc.role-result.v1 the entry command returned. Nothing is estimated.
+
+Acceptance for U1-8: a role is LOCAL_FIRST only if (a) the role result lists it with class LOCAL or LOCAL_PLUS_MODEL, a status other than NOT_COVERED/NOT_RUN/BLOCKED, at least one COMPLETE executor and no BLOCKED executor; (b) both reports have all four token fields as non-negative integers; (c) every field of after is at most the same field of before and at least one is lower. Otherwise NO_GAIN; a role missing from a report or a bad field gives NOT_MEASURED; a non-MEASURED report or an invalid role result gives NOT_RUN (exit 2). Fields are compared one by one, never summed. Aliases of one role: the weakest verdict wins regardless of row order.
+
+Evidence already in hand: tests/uc/test_measure.py (synthetic reports, hand-computed deltas) and tests/uc/test_cli_measure.py (subprocess tests of the CLI exit codes and unreadable-input path). The real paired measurement is NOT_RUN (no pinned baseline session set, no residual-only run yet); the synthetic tests are not a measurement and the code does not claim one. Contracts (U1-3) were approved earlier; do not re-review them.
+
+Please review ONLY measure.py and its tests for BLOCKER/MAJOR defects with a concrete failing input (a case that yields LOCAL_FIRST without a real saving, or a clean-looking result on bad input). Do not ask for full test runs, lint, typecheck or verification scripts (prohibited by the operator); documentation findings are out of scope.

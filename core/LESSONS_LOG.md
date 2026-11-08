@@ -1865,3 +1865,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: FAILURE (process): a second session kept committing status changes and a review record that contradict the receipts, after the operator had assigned the work to this session. Recorded and corrected; the status flips cost several review cycles.
 - Rule: when a sibling session writes to the same repository, check git log before every commit and verify any claimed review id against the tool's own output before trusting it.
+
+## 2026-11-08 — U1-1 session-id and output-write hardening, CLI subprocess tests
+
+- Kind: FAILURE then SUCCESS: the first CLI tests found two defects (session ids able to leave the project, a traceback on an unwritable output); fixed with BAD_SESSION_ID and OUTPUT_UNWRITABLE. An untracked test file also vanished mid-task and had to be recreated, which shows uncommitted tests are fragile.
+- Caught by: the CLI tests, not the unit tests. Rule: commit new test files at once; keep a subprocess test per CLI entry point.

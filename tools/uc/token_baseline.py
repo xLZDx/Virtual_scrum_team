@@ -101,6 +101,7 @@ def verify_manifest(manifest: object, project_dir: pathlib.Path) -> None:
     sessions = manifest.get("sessions")
     if not isinstance(sessions, list) or not sessions:
         raise BaselineNotRun("EMPTY_SESSION_SET")
+    manifest_paths = set()
     for session in sessions:
         files = session.get("files") if isinstance(session, dict) else None
         if not isinstance(files, list) or not files:
@@ -117,6 +118,15 @@ def verify_manifest(manifest: object, project_dir: pathlib.Path) -> None:
                 raise BaselineNotRun("FILE_MISSING", str(entry.get("path")))
             if sha256_file(path) != entry.get("sha256"):
                 raise BaselineNotRun("HASH_MISMATCH", str(entry.get("path")))
+            manifest_paths.add(path)
+        manifest_paths.add(project_dir / session.get("session_id", "x") / "subagents")
+    for session in sessions:
+        session_id = session.get("session_id")
+        sub_dir = (project_dir / session_id / "subagents").resolve()
+        if sub_dir.is_dir():
+            for p in sub_dir.iterdir():
+                if p.is_file() and p.suffix in (".jsonl", ".json") and p not in manifest_paths:
+                    raise BaselineNotRun("UNEXPECTED_TRANSCRIPT", str(p.relative_to(project_dir)))
 
 
 def _last_usage_per_message(path: pathlib.Path, defects: dict[str, int]) -> dict[str, dict]:
@@ -177,8 +187,11 @@ def compute(manifest: dict, project_dir: pathlib.Path) -> dict:
             if path.suffix != ".jsonl":
                 continue
             in_subagents = path.parent.name == "subagents"
+            usage_per_msg = _last_usage_per_message(path, defects)
+            if in_subagents and not usage_per_msg:
+                raise BaselineNotRun("EMPTY_SUBAGENT_TRANSCRIPT", entry["path"])
             role = _role_of_subagent(path) if in_subagents else ORCHESTRATOR_ROLE
-            for usage in _last_usage_per_message(path, defects).values():
+            for usage in usage_per_msg.values():
                 _add(totals, role, usage)
     if not totals:
         raise BaselineNotRun("NO_USAGE_FOUND", "no message with a usage block in the pinned transcripts")

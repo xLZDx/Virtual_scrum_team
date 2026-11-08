@@ -350,3 +350,44 @@ def test_cli_missing_session_not_run(project, tmp_path):
     res = run_cli("build-manifest", "--project-dir", str(project), "--sessions", "ghost", "--out", str(tmp_path / "m.json"))
     assert res.returncode == 2 and json.loads(res.stdout)["reason"] == "SESSION_MISSING"
     assert not (tmp_path / "m.json").exists()
+
+
+def test_compute_empty_subagent_transcript_is_not_run(project, tmp_path):
+    """Empty subagent files should cause NOT_RUN, not silently undercount."""
+    (project / "s.jsonl").write_text(line("m", usage(1, 2, 3, 4)), encoding="utf-8")
+    (project / "s" / "subagents").mkdir(parents=True)
+    (project / "s" / "subagents" / "agent-a.jsonl").write_text("", encoding="utf-8")
+    manifest, _ = build(project, tmp_path, sessions="s")
+    
+    # Verify the manifest was created successfully with both files
+    doc = manifest_doc(manifest)
+    assert len(doc["sessions"][0]["files"]) == 2
+    
+    # Try to report using the manifest - should fail due to empty subagent
+    res = run_report(tmp_path / "manifest.json", project)
+    assert res.returncode == 2
+    doc = json.loads(res.stdout)
+    assert doc["status"] == "NOT_RUN"
+    assert doc["reason"] == "EMPTY_SUBAGENT_TRANSCRIPT"
+
+
+def test_compute_unexpected_transcript_after_manifest_created_is_not_run(project, tmp_path):
+    """Transcripts added after manifest creation should be detected."""
+    (project / "s.jsonl").write_text(line("m", usage(1, 2, 3, 4)), encoding="utf-8")
+    manifest, _ = build(project, tmp_path, sessions="s")
+    
+    # Verify the manifest was created
+    doc = manifest_doc(manifest)
+    assert doc["status"] == "WRITTEN"
+    
+    # Now add a new subagent transcript that wasn't in the manifest
+    (project / "s" / "subagents").mkdir(parents=True, exist_ok=True)
+    (project / "s" / "subagents" / "agent-b.jsonl").write_text(line("m2", usage(10, 20, 30, 40)), encoding="utf-8")
+    
+    # Try to report using the original manifest - should fail
+    res = run_report(tmp_path / "manifest.json", project)
+    assert res.returncode == 2
+    doc = json.loads(res.stdout)
+    assert doc["status"] == "NOT_RUN"
+    assert doc["reason"] == "UNEXPECTED_TRANSCRIPT"
+
