@@ -1801,7 +1801,7 @@ def test_check_artifacts_full_set_is_present_by_default_but_not_checked_when_dis
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("data\n")
     stage = validate_registry(repo).artifact_stage
-    assert stage["status"] == "PRESENT" and stage["present"] == stage["expected"] == 21
+    assert stage["status"] == "PRESENT" and stage["present"] == stage["expected"] == 24
     assert validate_registry(repo, check_artifacts=False).artifact_stage["status"] == "NOT_CHECKED"
 
 

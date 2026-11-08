@@ -1984,3 +1984,6 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - 2026-11-09 artifact stage per category
 - Kind: FAILURE: my own commits of lane evidence broke the accepted real-manifest validation; the targeted new-test run caught it, not the earlier lane runs, because the lanes ran before the evidence was committed alongside the manifest test.
 - Rule: after committing evidence files, run the real-manifest test before moving on.
+
+- 2026-11-09 artifact-stage tests
+- Kind: SUCCESS: the per-category rule is pinned by three new tests including the not-a-success PARTIAL state.

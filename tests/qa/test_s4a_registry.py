@@ -885,7 +885,7 @@ def _artifact_paths(data: dict) -> list[str]:
 def test_artifact_stage_skipped_when_no_evidence_exists(repo: Path, validated):
     stage = validated.artifact_stage
     assert stage["status"] == "SKIPPED"
-    assert stage["present"] == 0 and stage["expected"] == 21
+    assert stage["present"] == 0 and stage["expected"] == 24
     assert "not evidence of a passing run" in stage["reason"]
 
 
@@ -894,8 +894,41 @@ def test_artifact_stage_present_when_all_evidence_exists_is_existence_only(repo:
         write(repo, rel, "x\n")
     registry = validate_registry(repo)
     assert registry.artifact_stage == {
-        "status": "PRESENT", "scope": "existence-only", "reason": None, "expected": 21, "present": 21,
+        "status": "PRESENT", "scope": "existence-only", "reason": None, "expected": 24, "present": 24,
     }
+
+
+def test_artifact_stage_all_eight_categories_present_is_present_24_of_24(repo: Path):
+    artifacts = load(repo)["artifacts"]
+    assert len(artifacts) == 8
+    for rel in _artifact_paths(load(repo)):
+        write(repo, rel, "x\n")
+    stage = check_artifact_stage(repo.resolve(), artifacts)
+    assert stage["status"] == "PRESENT"
+    assert stage["expected"] == stage["present"] == 24
+    assert "categories_absent" not in stage
+
+
+def test_artifact_stage_one_full_category_with_others_absent_is_partial_not_success(repo: Path):
+    artifacts = load(repo)["artifacts"]
+    for rel in artifacts["api"].values():
+        write(repo, rel, "x\n")
+    stage = check_artifact_stage(repo.resolve(), artifacts)
+    assert stage["status"] == "PARTIAL" and stage["status"] not in ("PRESENT", "SKIPPED")
+    assert stage["categories_present"] == ["api"]
+    assert stage["categories_absent"] == sorted(c for c in artifacts if c != "api")
+    assert len(stage["categories_absent"]) == 7
+    assert stage["present"] == 3 and stage["expected"] == 24
+    assert "not evidence of a passing run" in stage["reason"]
+    assert validate_registry(repo).artifact_stage["status"] == "PARTIAL"
+
+
+def test_artifact_stage_category_with_two_of_three_files_is_refused(repo: Path):
+    artifacts = load(repo)["artifacts"]
+    write(repo, artifacts["api"]["report"], "x\n")
+    write(repo, artifacts["api"]["stdout"], "x\n")
+    with pytest.raises(RegistryError, match="evidence artifacts of category api are partially present"):
+        check_artifact_stage(repo.resolve(), artifacts)
 
 
 def test_artifact_stage_partial_set_is_refused(repo: Path):
