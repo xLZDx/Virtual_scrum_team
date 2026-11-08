@@ -1699,3 +1699,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Evidence: D:\Repo\AEVE exists with 191 commits and PROJECT_PLAN.md active_sprint S18; the VST blueprint of 2026-10-23 lists it as a kept local repository.
 - Root cause: I treated the VST plan as the source of intent and a plan sentence as a fact (author); reviewers and gates compared the plan with itself, not with the filesystem or with the operator mission (reviewers, gate).
 - Rule: before starting a sprint, verify every external dependency named as missing on the real filesystem, and ask which repository owns the goal when a goal sentence names a different product than the repository in hand.
+
+
+## 2026-11-08 — Unified Core plan drafted
+
+- Kind: SUCCESS: before writing the plan I read the AEVE decision log and ran aeve matrix and the review runbook, so the plan rests on observed facts (44 of 57 partial, 13 uncovered, review contract, no host wiring) instead of the stale VST text.
+- Rule: a cross-repository plan cites the observed command output for each external fact.

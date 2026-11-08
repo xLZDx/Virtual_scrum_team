@@ -1,0 +1,1322 @@
+{
+  "checks": {
+    "comment-debt-scan": {
+      "existing_code": null,
+      "input": "source files",
+      "output": "findings with file and line",
+      "summary": "Find TODO/FIXME/HACK and docstring parameters that no longer match the signature",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "commit-hygiene": {
+      "existing_code": null,
+      "input": "commit range",
+      "output": "list of violations per commit",
+      "summary": "Check commit range against workflow rules (message length, English, log entries, no force push)",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "dependency-audit": {
+      "existing_code": null,
+      "input": "manifest and lockfile",
+      "output": "findings per dependency",
+      "summary": "Lockfile hash pinning, license identifiers, forbidden packages",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "diff-scope": {
+      "existing_code": "tools/vst/diffgate.py",
+      "input": "base ref, head ref, declared scope globs, protected path globs",
+      "output": "list of out-of-scope or protected changed files",
+      "summary": "Changed files stay inside the declared scope and avoid protected paths",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "doc-registry-links": {
+      "existing_code": "tools/build_document_registry.py",
+      "input": "markdown tree",
+      "output": "broken links and registry diff",
+      "summary": "Link check and document registry regeneration",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "evidence-binding": {
+      "existing_code": "tools/vst/gate.py",
+      "input": "receipt or approval record, HEAD",
+      "output": "bound, stale or missing",
+      "summary": "Check that an approval or receipt is bound to the exact current HEAD",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "findings-merge": {
+      "existing_code": null,
+      "input": "findings lists",
+      "output": "single ranked findings list",
+      "summary": "Deduplicate findings from several checks and rank by severity",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "git-activity-metrics": {
+      "existing_code": null,
+      "input": "git history, task IDs",
+      "output": "table of windows and shares with raw counts",
+      "summary": "Per task ID commit windows and added/deleted line shares by bucket",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "model-policy-lint": {
+      "existing_code": null,
+      "input": "agent and skill files, policy file",
+      "output": "violations per definition",
+      "summary": "Lint agent and skill definitions against the model and effort policy",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "network-config-lint": {
+      "existing_code": null,
+      "input": "config files",
+      "output": "findings with rule and line",
+      "summary": "Risky command and stale-reference patterns in router and switch configs",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "python-ast-lint": {
+      "existing_code": null,
+      "input": "python files",
+      "output": "findings with rule, file, line",
+      "summary": "Syntax-tree detectors: swallowed exceptions, bare except, mutable defaults, unused imports, missing timeouts",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "repo-facts": {
+      "existing_code": null,
+      "input": "repository path",
+      "output": "facts record with the commands that produced it",
+      "summary": "Collect git root, branch, HEAD, dirty files, languages and entry points",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "report-render": {
+      "existing_code": null,
+      "input": "PROJECT_PLAN.md, git history",
+      "output": "html reports in two languages",
+      "summary": "Render status reports from plan, registry and git",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "run-declared-command": {
+      "existing_code": "tools/vst/runner.py",
+      "input": "allowlisted argv, working directory, timeout",
+      "output": "exit code, duration, bounded stdout/stderr digest",
+      "summary": "Run an allowlisted build, typecheck, lint or test command and record the result",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "schema-validate": {
+      "existing_code": "tools/vst/contracts.py",
+      "input": "artifact file, schema",
+      "output": "list of violations with path and rule",
+      "summary": "Validate a structured artifact (JSON, front matter, contract) against its schema",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "secret-pii-scan": {
+      "existing_code": null,
+      "input": "file set or diff",
+      "output": "matches with rule id, file, line (value masked)",
+      "summary": "Pattern scan for secrets, tokens, PII and internal references",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "seo-static-lint": {
+      "existing_code": null,
+      "input": "site files",
+      "output": "findings with rule and file",
+      "summary": "Sitemap, robots, meta tags and schema markup presence checks",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "sql-migration-lint": {
+      "existing_code": null,
+      "input": "migration files",
+      "output": "findings with rule and file",
+      "summary": "Pattern checks for unsafe migrations (drop column, blocking index, missing rollback)",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "state-consistency": {
+      "existing_code": null,
+      "input": "PROJECT_PLAN.md, core/BACKLOG.md, core/DECISION_LOG.md, core/LESSONS_LOG.md",
+      "output": "list of contradictions with both sources",
+      "summary": "Find contradictions between plan, registry and logs (status, counts, denominators)",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "static-ui-lint": {
+      "existing_code": null,
+      "input": "html or ui source files",
+      "output": "findings with rule and file",
+      "summary": "Static accessibility and UI-state patterns (alt text, labels, focus order markers, empty/error states)",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "test-accounting": {
+      "existing_code": null,
+      "input": "required test-ID registry, run artifacts",
+      "output": "expected, collected, passed, skipped counts and the missing IDs",
+      "summary": "Compare required test IDs with collected and passed ones; a skipped test is not_run",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "token-usage-metrics": {
+      "existing_code": null,
+      "input": "transcript files",
+      "output": "usage table",
+      "summary": "Tokens and cost per role from session transcripts",
+      "verdicts": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    }
+  },
+  "entries": [
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "static-ui-lint"
+      ],
+      "merged_into": null,
+      "model_remainder": "Judge whether keyboard and screen-reader flows complete the task",
+      "name": "a11y-architect",
+      "rationale": "Static patterns are code; task-completion judgment needs a model.",
+      "scope": "core"
+    },
+    {
+      "decision": "model_only",
+      "kind": "agent",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "Boundary, ownership and tradeoff decisions",
+      "name": "architect",
+      "rationale": "Retained as the single architecture role; overlapping roles merge into it.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "run-declared-command"
+      ],
+      "merged_into": null,
+      "model_remainder": "Choose and write the minimal fix for the failure",
+      "name": "build-error-resolver",
+      "rationale": "Running the build and parsing the failure is code; the fix needs a model.",
+      "scope": "core"
+    },
+    {
+      "decision": "model_only",
+      "kind": "agent",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "Write testable requirements from an idea",
+      "name": "business-analyst",
+      "rationale": "Authoring.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "agent",
+      "mechanical_checks": [],
+      "merged_into": "architect",
+      "model_remainder": "",
+      "name": "code-architect",
+      "rationale": "Same design judgment as architect.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "repo-facts"
+      ],
+      "merged_into": null,
+      "model_remainder": "Trace the real execution path of a behavior",
+      "name": "code-explorer",
+      "rationale": "Structure facts are code; tracing intent needs a model.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "python-ast-lint",
+        "diff-scope",
+        "findings-merge"
+      ],
+      "merged_into": null,
+      "model_remainder": "Judge behavioral regressions across files",
+      "name": "code-reviewer",
+      "rationale": "Detectors and scope are code; the integrated judgment needs one model call.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "run-declared-command"
+      ],
+      "merged_into": null,
+      "model_remainder": "Rewrite changed code for clarity without changing behavior",
+      "name": "code-simplifier",
+      "rationale": "Rewriting is model work; proving behavior is unchanged is a command run.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "comment-debt-scan"
+      ],
+      "merged_into": null,
+      "model_remainder": "Decide whether a comment is misleading",
+      "name": "comment-analyzer",
+      "rationale": "Debt markers and signature drift are code.",
+      "scope": "core"
+    },
+    {
+      "decision": "drop",
+      "kind": "agent",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "",
+      "name": "conversation-analyzer",
+      "rationale": "Hookify transcript analysis; not a delivery check of this product.",
+      "scope": "infrastructure"
+    },
+    {
+      "decision": "merge",
+      "kind": "agent",
+      "mechanical_checks": [
+        "run-declared-command"
+      ],
+      "merged_into": "build-error-resolver",
+      "model_remainder": "",
+      "name": "cpp-build-resolver",
+      "rationale": "Same loop with a different toolchain command.",
+      "scope": "domain_pack"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "run-declared-command"
+      ],
+      "merged_into": null,
+      "model_remainder": "Judge memory safety and concurrency defects",
+      "name": "cpp-reviewer",
+      "rationale": "Sanitizers and static analyzers run as commands.",
+      "scope": "domain_pack"
+    },
+    {
+      "decision": "merge",
+      "kind": "agent",
+      "mechanical_checks": [
+        "run-declared-command"
+      ],
+      "merged_into": "build-error-resolver",
+      "model_remainder": "",
+      "name": "dart-build-resolver",
+      "rationale": "Same loop with a different toolchain command.",
+      "scope": "domain_pack"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "sql-migration-lint",
+        "run-declared-command"
+      ],
+      "merged_into": null,
+      "model_remainder": "Judge query plans, locking and integrity tradeoffs",
+      "name": "database-reviewer",
+      "rationale": "Pattern lint and plan capture are code.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "doc-registry-links",
+        "state-consistency"
+      ],
+      "merged_into": null,
+      "model_remainder": "Rewrite prose that the change made wrong",
+      "name": "doc-updater",
+      "rationale": "Finding stale documents is code; rewriting needs a model.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "run-declared-command",
+        "test-accounting"
+      ],
+      "merged_into": null,
+      "model_remainder": "Author journeys and triage failure cause (product, test, flake)",
+      "name": "e2e-runner",
+      "rationale": "Running and counting are code.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "python-ast-lint"
+      ],
+      "merged_into": null,
+      "model_remainder": "Judge auth, async and error-contract design",
+      "name": "fastapi-reviewer",
+      "rationale": "Syntax-tree detectors cover blocking calls and missing validation patterns.",
+      "scope": "domain_pack"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "run-declared-command"
+      ],
+      "merged_into": null,
+      "model_remainder": "Judge state ownership and widget lifecycle",
+      "name": "flutter-reviewer",
+      "rationale": "flutter analyze and tests run as commands.",
+      "scope": "domain_pack"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "test-accounting",
+        "run-declared-command"
+      ],
+      "merged_into": null,
+      "model_remainder": "Author tests and decide whether an assertion can fail",
+      "name": "functional-test-reviewer",
+      "rationale": "Retained as the single test role.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "model-policy-lint",
+        "token-usage-metrics"
+      ],
+      "merged_into": null,
+      "model_remainder": "Choose which configuration to change",
+      "name": "harness-optimizer",
+      "rationale": "Measurement is code.",
+      "scope": "infrastructure"
+    },
+    {
+      "decision": "model_only",
+      "kind": "agent",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "Write the change",
+      "name": "implementation-engineer",
+      "rationale": "Retained as the single authoring role.",
+      "scope": "core"
+    },
+    {
+      "decision": "drop",
+      "kind": "agent",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "",
+      "name": "loop-operator",
+      "rationale": "Scheduling and stall detection are runner and orchestrator functions.",
+      "scope": "infrastructure"
+    },
+    {
+      "decision": "model_only",
+      "kind": "agent",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "Implement labels, features and validation pipelines",
+      "name": "ml-engineer",
+      "rationale": "Domain authoring.",
+      "scope": "domain_pack"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "network-config-lint"
+      ],
+      "merged_into": null,
+      "model_remainder": "Judge design-level risks",
+      "name": "network-config-reviewer",
+      "rationale": "Pattern checks are code.",
+      "scope": "domain_pack"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "run-declared-command"
+      ],
+      "merged_into": null,
+      "model_remainder": "Interpret diagnostics into a root cause",
+      "name": "network-troubleshooter",
+      "rationale": "Read-only diagnostic commands are code.",
+      "scope": "domain_pack"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "secret-pii-scan"
+      ],
+      "merged_into": null,
+      "model_remainder": "Decide how to placeholderize internal names",
+      "name": "opensource-forker",
+      "rationale": "Stripping known patterns is code.",
+      "scope": "domain_pack"
+    },
+    {
+      "decision": "model_only",
+      "kind": "agent",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "Write README and contributing text",
+      "name": "opensource-packager",
+      "rationale": "Authoring; templates may become code later.",
+      "scope": "domain_pack"
+    },
+    {
+      "decision": "check",
+      "kind": "agent",
+      "mechanical_checks": [
+        "secret-pii-scan"
+      ],
+      "merged_into": null,
+      "model_remainder": "",
+      "name": "opensource-sanitizer",
+      "rationale": "Already a pass/fail scan.",
+      "scope": "domain_pack"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "run-declared-command"
+      ],
+      "merged_into": null,
+      "model_remainder": "Choose the optimization",
+      "name": "performance-optimizer",
+      "rationale": "Benchmarks and profiles are command runs.",
+      "scope": "core"
+    },
+    {
+      "decision": "model_only",
+      "kind": "agent",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "Split work into verifiable steps",
+      "name": "planner",
+      "rationale": "Retained as the single planning role.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "agent",
+      "mechanical_checks": [
+        "test-accounting"
+      ],
+      "merged_into": "functional-test-reviewer",
+      "model_remainder": "",
+      "name": "pr-test-analyzer",
+      "rationale": "Same question: do tests prove the change.",
+      "scope": "core"
+    },
+    {
+      "decision": "model_only",
+      "kind": "agent",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "Prioritize backlog and accept sprints",
+      "name": "product-owner",
+      "rationale": "Judgment and authority.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "static-ui-lint"
+      ],
+      "merged_into": null,
+      "model_remainder": "Judge journeys and information hierarchy",
+      "name": "product-ux-reviewer",
+      "rationale": "State coverage patterns are code.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "python-ast-lint"
+      ],
+      "merged_into": null,
+      "model_remainder": "Judge async, lifecycle and typing intent",
+      "name": "python-reviewer",
+      "rationale": "Detectors are code.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "agent",
+      "mechanical_checks": [
+        "run-declared-command"
+      ],
+      "merged_into": "build-error-resolver",
+      "model_remainder": "",
+      "name": "pytorch-build-resolver",
+      "rationale": "Same loop with a different toolchain command.",
+      "scope": "domain_pack"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "python-ast-lint",
+        "run-declared-command"
+      ],
+      "merged_into": null,
+      "model_remainder": "Decide which candidate is truly dead",
+      "name": "refactor-cleaner",
+      "rationale": "Candidate detection and the green-tree gate are code.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "python-ast-lint"
+      ],
+      "merged_into": null,
+      "model_remainder": "Judge retry, timeout and recovery design",
+      "name": "reliability-reviewer",
+      "rationale": "Missing-timeout and unbounded-retry patterns are code.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "report-render",
+        "git-activity-metrics"
+      ],
+      "merged_into": null,
+      "model_remainder": "Write the retrospective narrative",
+      "name": "reporting-analyst",
+      "rationale": "Numbers and tables are code.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "secret-pii-scan",
+        "dependency-audit",
+        "python-ast-lint"
+      ],
+      "merged_into": null,
+      "model_remainder": "Judge reachable attack paths",
+      "name": "security-reviewer",
+      "rationale": "Scans are code; exploitability is judgment.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "seo-static-lint"
+      ],
+      "merged_into": null,
+      "model_remainder": "Content mapping and strategy",
+      "name": "seo-specialist",
+      "rationale": "Technical audit is code.",
+      "scope": "domain_pack"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "python-ast-lint"
+      ],
+      "merged_into": null,
+      "model_remainder": "Judge whether a fallback hides failure",
+      "name": "silent-failure-hunter",
+      "rationale": "Swallowed-exception detection is code.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "agent",
+      "mechanical_checks": [
+        "test-accounting"
+      ],
+      "merged_into": "functional-test-reviewer",
+      "model_remainder": "",
+      "name": "tdd-guide",
+      "rationale": "Advisory only per ADR-0001; same test role.",
+      "scope": "core"
+    },
+    {
+      "decision": "model_only",
+      "kind": "agent",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "Author design and user documents",
+      "name": "technical-writer",
+      "rationale": "Retained as the single writing role.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "agent",
+      "mechanical_checks": [
+        "run-declared-command"
+      ],
+      "merged_into": null,
+      "model_remainder": "Judge whether types express invariants",
+      "name": "type-design-analyzer",
+      "rationale": "Type checker run is a command.",
+      "scope": "core"
+    },
+    {
+      "decision": "model_only",
+      "kind": "agent",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "Design journeys and states",
+      "name": "ui-designer",
+      "rationale": "Authoring.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [
+        "static-ui-lint"
+      ],
+      "merged_into": "a11y-architect",
+      "model_remainder": "",
+      "name": "a11y-contract",
+      "rationale": "Contract text for the same role.",
+      "scope": "core"
+    },
+    {
+      "decision": "drop",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "",
+      "name": "aeve-router",
+      "rationale": "Profile routing is the orchestrator's check selection in this product.",
+      "scope": "infrastructure"
+    },
+    {
+      "decision": "drop",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "",
+      "name": "af",
+      "rationale": "Sibling framework toggle, not part of this product.",
+      "scope": "infrastructure"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "skill",
+      "mechanical_checks": [
+        "findings-merge"
+      ],
+      "merged_into": null,
+      "model_remainder": "Independent model discovery rounds",
+      "name": "agent-consensus",
+      "rationale": "Dedup and quorum arithmetic are code.",
+      "scope": "core"
+    },
+    {
+      "decision": "check",
+      "kind": "skill",
+      "mechanical_checks": [
+        "token-usage-metrics",
+        "model-policy-lint"
+      ],
+      "merged_into": null,
+      "model_remainder": "",
+      "name": "agent-evaluation",
+      "rationale": "Measurement of tokens and policy is code.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": "architect",
+      "model_remainder": "",
+      "name": "architecture-contract",
+      "rationale": "Contract text for the same role.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": "implementation-engineer",
+      "model_remainder": "",
+      "name": "backend-engineer",
+      "rationale": "Same authoring role.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "skill",
+      "mechanical_checks": [
+        "state-consistency"
+      ],
+      "merged_into": null,
+      "model_remainder": "Prioritize and word acceptance criteria",
+      "name": "backlog-and-dod",
+      "rationale": "Consistency between backlog and plan is code.",
+      "scope": "core"
+    },
+    {
+      "decision": "check",
+      "kind": "skill",
+      "mechanical_checks": [
+        "evidence-binding",
+        "run-declared-command"
+      ],
+      "merged_into": null,
+      "model_remainder": "",
+      "name": "ci-release-contract",
+      "rationale": "Exact-head evidence is a binding check.",
+      "scope": "core"
+    },
+    {
+      "decision": "drop",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "",
+      "name": "codex-consensus",
+      "rationale": "Optional second-opinion model call, outside the deterministic app.",
+      "scope": "infrastructure"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "skill",
+      "mechanical_checks": [
+        "schema-validate"
+      ],
+      "merged_into": null,
+      "model_remainder": "Decide what belongs in memory",
+      "name": "context-memory-hygiene",
+      "rationale": "Size and structure limits are code.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [
+        "sql-migration-lint"
+      ],
+      "merged_into": "database-reviewer",
+      "model_remainder": "",
+      "name": "db-change-contract",
+      "rationale": "Contract text for the same role.",
+      "scope": "core"
+    },
+    {
+      "decision": "check",
+      "kind": "skill",
+      "mechanical_checks": [
+        "commit-hygiene",
+        "state-consistency"
+      ],
+      "merged_into": null,
+      "model_remainder": "",
+      "name": "delivery-efficiency",
+      "rationale": "Workflow rules become mechanical checks.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [
+        "test-accounting"
+      ],
+      "merged_into": "e2e-runner",
+      "model_remainder": "",
+      "name": "e2e-testing-contract",
+      "rationale": "Contract text for the same role.",
+      "scope": "core"
+    },
+    {
+      "decision": "check",
+      "kind": "skill",
+      "mechanical_checks": [
+        "token-usage-metrics"
+      ],
+      "merged_into": null,
+      "model_remainder": "",
+      "name": "export-session",
+      "rationale": "Transcript export is deterministic.",
+      "scope": "infrastructure"
+    },
+    {
+      "decision": "model_only",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "Methodology review for financial ML",
+      "name": "financial-ml-contract",
+      "rationale": "Domain judgment.",
+      "scope": "domain_pack"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": "implementation-engineer",
+      "model_remainder": "",
+      "name": "frontend-engineer",
+      "rationale": "Same authoring role.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [
+        "test-accounting"
+      ],
+      "merged_into": "functional-test-reviewer",
+      "model_remainder": "",
+      "name": "functional-testing",
+      "rationale": "Same test role.",
+      "scope": "core"
+    },
+    {
+      "decision": "check",
+      "kind": "skill",
+      "mechanical_checks": [
+        "repo-facts"
+      ],
+      "merged_into": null,
+      "model_remainder": "",
+      "name": "git-worktree-ops",
+      "rationale": "Checkout and worktree state is facts from git.",
+      "scope": "core"
+    },
+    {
+      "decision": "check",
+      "kind": "skill",
+      "mechanical_checks": [
+        "report-render",
+        "git-activity-metrics"
+      ],
+      "merged_into": null,
+      "model_remainder": "",
+      "name": "html-report",
+      "rationale": "Reports are generated from data.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": "planner",
+      "model_remainder": "",
+      "name": "implementation-planner",
+      "rationale": "Same planning role.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": "implementation-engineer",
+      "model_remainder": "",
+      "name": "implementation-workflow",
+      "rationale": "Same authoring role.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "skill",
+      "mechanical_checks": [
+        "schema-validate"
+      ],
+      "merged_into": null,
+      "model_remainder": "Judge boundary behavior",
+      "name": "integration-contract",
+      "rationale": "Contract schema validation is code.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [
+        "sql-migration-lint"
+      ],
+      "merged_into": "database-reviewer",
+      "model_remainder": "",
+      "name": "migration-safety",
+      "rationale": "Same database role.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": "ml-engineer",
+      "model_remainder": "",
+      "name": "ml-engineer",
+      "rationale": "Skill form of the agent role of the same name.",
+      "scope": "domain_pack"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "skill",
+      "mechanical_checks": [
+        "python-ast-lint"
+      ],
+      "merged_into": null,
+      "model_remainder": "Judge diagnosability",
+      "name": "observability-contract",
+      "rationale": "Presence of logging at failure paths is code.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [
+        "run-declared-command"
+      ],
+      "merged_into": "performance-optimizer",
+      "model_remainder": "",
+      "name": "performance-testing",
+      "rationale": "Same performance role.",
+      "scope": "core"
+    },
+    {
+      "decision": "drop",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "",
+      "name": "pm-bridge",
+      "rationale": "Transport to an external reviewer, not a delivery check.",
+      "scope": "infrastructure"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "skill",
+      "mechanical_checks": [
+        "evidence-binding",
+        "findings-merge"
+      ],
+      "merged_into": null,
+      "model_remainder": "The independent reviewer model call",
+      "name": "pm-gpt-review",
+      "rationale": "Binding and merging are code; the review itself is one external model call.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": "implementation-engineer",
+      "model_remainder": "",
+      "name": "polyglot-developer-assistant",
+      "rationale": "Same authoring role.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [
+        "doc-registry-links"
+      ],
+      "merged_into": "technical-writer",
+      "model_remainder": "",
+      "name": "release-documentation",
+      "rationale": "Same writing role.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [
+        "python-ast-lint"
+      ],
+      "merged_into": "reliability-reviewer",
+      "model_remainder": "",
+      "name": "reliability-contract",
+      "rationale": "Same reliability role.",
+      "scope": "core"
+    },
+    {
+      "decision": "check",
+      "kind": "skill",
+      "mechanical_checks": [
+        "repo-facts"
+      ],
+      "merged_into": null,
+      "model_remainder": "",
+      "name": "repo-recon",
+      "rationale": "Deterministic by its own description.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": "business-analyst",
+      "model_remainder": "",
+      "name": "requirements-elicitation",
+      "rationale": "Same requirements role.",
+      "scope": "core"
+    },
+    {
+      "decision": "drop",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "",
+      "name": "rosetta",
+      "rationale": "Plan/GO state is held by the state store.",
+      "scope": "infrastructure"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [
+        "git-activity-metrics",
+        "report-render"
+      ],
+      "merged_into": "reporting-analyst",
+      "model_remainder": "",
+      "name": "sdlc-metrics",
+      "rationale": "Same reporting role.",
+      "scope": "core"
+    },
+    {
+      "decision": "model_only",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "Select which checks to run and read their results",
+      "name": "sdlc-orchestrator",
+      "rationale": "This is the orchestrator: the one place a model stays by design.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [
+        "secret-pii-scan"
+      ],
+      "merged_into": "security-reviewer",
+      "model_remainder": "",
+      "name": "security-evidence-contract",
+      "rationale": "Same security role.",
+      "scope": "core"
+    },
+    {
+      "decision": "drop",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "",
+      "name": "skill-creator",
+      "rationale": "Authoring of skills; no skills in the target app.",
+      "scope": "infrastructure"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": "architect",
+      "model_remainder": "",
+      "name": "software-architect",
+      "rationale": "Same architecture role.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "skill",
+      "mechanical_checks": [
+        "state-consistency",
+        "report-render"
+      ],
+      "merged_into": null,
+      "model_remainder": "Write retrospective conclusions",
+      "name": "sprint-ceremonies",
+      "rationale": "Inputs and records are code.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "skill",
+      "mechanical_checks": [
+        "state-consistency"
+      ],
+      "merged_into": null,
+      "model_remainder": "Decide the next doable step",
+      "name": "task-status-continue",
+      "rationale": "Open-item classification can be read from plan state.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": "architect",
+      "model_remainder": "",
+      "name": "technical-design",
+      "rationale": "Design judgment of the architecture role.",
+      "scope": "core"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": "ui-designer",
+      "model_remainder": "",
+      "name": "ui-design-contract",
+      "rationale": "Same design role.",
+      "scope": "core"
+    },
+    {
+      "decision": "drop",
+      "kind": "skill",
+      "mechanical_checks": [],
+      "merged_into": null,
+      "model_remainder": "",
+      "name": "update-config",
+      "rationale": "Operator-only permission edit; not a check.",
+      "scope": "infrastructure"
+    },
+    {
+      "decision": "merge",
+      "kind": "skill",
+      "mechanical_checks": [
+        "static-ui-lint"
+      ],
+      "merged_into": "product-ux-reviewer",
+      "model_remainder": "",
+      "name": "ux-design-contract",
+      "rationale": "Same UX role.",
+      "scope": "core"
+    },
+    {
+      "decision": "check",
+      "kind": "skill",
+      "mechanical_checks": [
+        "test-accounting",
+        "evidence-binding"
+      ],
+      "merged_into": null,
+      "model_remainder": "",
+      "name": "verification-contract",
+      "rationale": "Evidence rules are mechanical.",
+      "scope": "core"
+    },
+    {
+      "decision": "check_plus_model",
+      "kind": "skill",
+      "mechanical_checks": [
+        "repo-facts",
+        "doc-registry-links"
+      ],
+      "merged_into": null,
+      "model_remainder": "Write the reference documents",
+      "name": "workspace-docgen",
+      "rationale": "Facts are code.",
+      "scope": "core"
+    }
+  ],
+  "inventory": "catalog/inventory.json",
+  "version": 1
+}

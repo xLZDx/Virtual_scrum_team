@@ -1,10 +1,10 @@
 ---
 project: Virtual_scrum_team
 as_of: 2026-11-08
-active_sprint: A
+active_sprint: U1
 scope: single_sprint
-approved_sprints: S2, S3, A, B, C
-operator_approved: true
+approved_sprints: S2, S3
+operator_approved: false
 ---
 # Virtual_scrum_team - project plan
 
@@ -17,11 +17,14 @@ Sources: docs/sdlc/backlog.md (ordered S2 queue), docs/sdlc/acceptance.md (curre
 | S1 | Control-plane core | ACCEPTED | State store, contracts, signing, gate and runner in tools/vst; approved and merged (PR #1, d5cd7f5, closure c5a8eb1). |
 | S2 | Isolated worker sandbox | ACCEPTED (merged) | All S2 tasks are accepted. The bounded source/test scope (S2-1..S2-5) and the real Windows-local Owner-to-Runner process E2E (S2-4E, run 4 green) are merged into main with PR #2 (7c94c6c). Current E5 and production qualification remain NOT_RUN; do not report production readiness. |
 | S3 | Worker pilot | CLOSED_BOUNDED — S3-A and the local part of S3-C accepted; S3-B, S3-D, S3-E parked by the operator's decision of 2026-11-08 (no external candidates, single built-in worker) | Single isolated story adapter on the S2 sandbox; compare BMad Loop, hand-written loop and a durable engine on one crash/resume fixture; vendor-neutral worker interface. Existing PR #3 predates this work; it is not evidence that S3 has started or that S2 is closed. |
-| S4 | QA automation | DEFERRED - folded into sprint B by the operator's goal of 2026-11-08; the partial work stays on local unpushed branches, not on main, not accepted | Real native runners for functional, integration, API, E2E, regression and seeded failures with reproducible artifacts; a skipped test never satisfies DoD. |
-| S5 | AEVE gate | DEFERRED - folded into sprint C by the operator's goal of 2026-11-08; not started, no AEVE source available | Bounded static review with hashes and an independent evidence/coverage receipt; truthful analyzer status; stale HEAD fails. |
-| A | Check catalog | IN_PROGRESS | Catalog of every agent and skill with the mechanical check that replaces it, the remainder that needs a model, and the first checks chosen for sprint B. |
-| B | Check runner | NOT_STARTED | One entry point for the orchestrator that runs selected deterministic checks and returns a structured result; first 5-8 checks from the catalog. |
-| C | Reports and integration | NOT_STARTED | Reports generated from state and the single command that replaces the many agents inside Claude Code. |
+| S4 | QA automation | SUPERSEDED - the work lands through sprint U3; five branches are pushed to origin (s4-canonical-continuation +349 commits, s4-native-qa-runner, s4-reproducible-qa-automation, s4-e2e-snapshot-20261025-180e330) but none is on main and none is accepted | Real native runners for functional, integration, API, E2E, regression and seeded failures with reproducible artifacts; a skipped test never satisfies DoD. |
+| S5 | AEVE gate | SUPERSEDED - the goal moves to sprint U2; AEVE exists at D:\Repo\AEVE (the old text 'no AEVE source available' was wrong); branch s5-bounded-aeve-evidence is pushed, not on main | Bounded static review with hashes and an independent evidence/coverage receipt; truthful analyzer status; stale HEAD fails. |
+| U1 | Local review path | NOT_STARTED | AEVE performs requested review roles locally with no model call; the orchestrator has one entry point; local-first routing is wired into the Claude host. Repos: Virtual_scrum_team, AEVE (install only), global Claude config. |
+| U2 | Evidence into the gate | NOT_STARTED | Local review results become signed receipts bound to the exact head; the VST gate fails closed on stale, forged, partial or unsupported evidence. Repo: Virtual_scrum_team. |
+| U3 | Testing core | NOT_STARTED | Test-ID accounting, hash-pinned native runner and the no-skip gate land from the S4 branches in reviewable parts; one local test executor is decided. Repo: Virtual_scrum_team. |
+| U4 | Coverage and growth | NOT_STARTED | Roles without an executor are explicit; project-scope roles register without code changes and start as NOT_COVERED; selected executors added. Repos: AEVE, Virtual_scrum_team. |
+| U5 | Coding under control | NOT_STARTED | Story to worker to diff gate to review loop to tests to receipts to the final GPT-PM package, proved on a synthetic story and one small real change. Repo: Virtual_scrum_team. |
+| U6 | Hardening and handover | NOT_STARTED | Install and rollback runbook, measured token savings, retrospective and the NOT_RUN register. Repos: both. |
 
 ## Sprint S0 - Inventory and baseline
 Goal: Ground-truth inventory of profiles, repositories and tool capabilities (docs/sdlc/s0/); approved by GPT-PM on head abc0d50 and merged with S1 (PR #1, merge d5cd7f5).
@@ -93,13 +96,72 @@ Goal: Bounded static review with hashes and an independent evidence/coverage rec
 | S5-D | Truthful rule coverage and finding evidence map (VST-041) | Coverage reported truthfully | NOT_STARTED | As S5-A: blocked by the missing AEVE rule inventory. | Operator accountable; Codex implements | previous sprint close |  |
 | S5-E | Exact-head gate and reproducible evidence integration (VST-042) | Stale head fails | NOT_STARTED | As S5-A: depends on S5-A..D. | Operator accountable; Codex implements | previous sprint close |  |
 
-
-## Sprint A - Check catalog
-Goal: Product goal of 2026-11-08: an application without agents. Catalog every agent and skill, state which part is a mechanical check that code can do and which part needs a model, and choose the first checks for sprint B. Output is data in catalog/ validated by code, not prose.
+## Sprint U1 - Local review path
+Goal: Review roles run locally through AEVE with structured, honest coverage and one orchestrator entry point, wired into the Claude host with a kill switch. Closes with agent tests, reviewer consensus, GPT-PM code approval and one PR per repository touched (docs/unified/UNIFIED_CORE_TDD.md, requirements R1-R4).
 
 | Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
 |---|---|---|---|---|---|---|---|
-| A-1 | Deterministic inventory extractor | A script reads every agent and skill definition from the installed global folders and writes catalog/inventory.json (name, kind, description, tools, model, source hash); count equals the files on disk | BLOCKED_OPERATOR | Code written (tools/catalog/extract_inventory.py) and run on the real definitions: 45 agents + 48 skills = 93, matches disk. Agent tests NOT_RUN. Paused: the same matrix already exists in AEVE (D:\Repo\AEVE, 57 contracts); files are uncommitted on branch sprint-a-check-catalog. | Codex implements; functional-test-reviewer tests | - | - |
-| A-2 | Role classification | catalog/roles.json has one entry per inventory item: mechanical checks it contains, what stays with a model, overlap with other roles, decision keep / merge / drop | BLOCKED_OPERATOR | catalog/roles.json written, 93 entries; uncommitted. Duplicates AEVE coverage work; paused pending the operator choice of repository. | Codex implements | A-1 | - |
-| A-3 | Catalog schema and validator | A stdlib validator rejects a missing, duplicate, unknown or unclassified item and any mechanical check without input, output and verdict states; tests by functional-test-reviewer | BLOCKED_OPERATOR | Validator tools/catalog/validate_catalog.py run on real data: VALID 93 items. Agent tests NOT_RUN. Paused with A-2. | Codex implements; functional-test-reviewer tests | A-2 | - |
-| A-4 | First checks for sprint B | 5-8 checks chosen from the catalog, each with input, output, pass / fail / not-run rule and the roles it replaces | BLOCKED_OPERATOR | Not started: depends on the operator choice of repository (AEVE or VST). | Codex implements | A-3 | - |
+| U1-1 | [VST] Role table and request/result contracts | Schemas uc.role-request.v1 and uc.role-result.v1 with validators; role table for all 93 agent and skill definitions, each classed LOCAL, LOCAL_PLUS_MODEL, MODEL_ONLY or OUT_OF_SCOPE and mapped to AEVE review domains and executors from the aeve matrix; a table that disagrees with the matrix fails validation. Draft input: catalog/roles.json, to be reviewed, not trusted. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | - | - |
+| U1-2 | [AEVE] Reproducible local install | AEVE installs from its checkout into a pinned virtual environment on this machine; aeve doctor is clean; version, commit and matrix hash are recorded; runtime needs no network. Read-only for the AEVE repository. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | - | - |
+| U1-3 | [VST] AEVE CLI adapter | Builds aeve.review.request.v1, calls the CLI with a timeout, explicit root and no shell string; maps exit codes 0, 3, 2; validates the response schema; never turns missing, partial or blocked evidence into PASS; a missing CLI or a timeout is BLOCKED with the exact error. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U1-1, U1-2 | - |
+| U1-4 | [VST] Router and result normalizer | Resolves each requested role through the table; unknown role is NOT_COVERED; findings are deduplicated and ranked; each role lists uncovered scope and model_residual; PARTIAL stays PARTIAL. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U1-3 | - |
+| U1-5 | [VST] Single entry command | One command takes a role request JSON and returns a role result JSON; iteration_of links resubmissions; the same request on the same head and snapshot reuses its iteration. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U1-4 | - |
+| U1-6 | [global Claude config] Local-first wiring | Reviewer roles are tried locally first; a snapshot of the previous routing, settings and hooks is taken before any change; a kill switch and a tested rollback exist; a BLOCKED local role falls back to a model agent only when the operator allowed it (decisions OD-3, OD-4). | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U1-5, operator approval | - |
+| U1-7 | [VST] Token-savings measurement | A script computes tokens per role from session transcripts for a fixed set of sessions and reports before and after; no baseline means NOT_RUN, never an estimate. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U1-6 | - |
+
+## Sprint U2 - Evidence into the gate
+Goal: A local review result bound to one exact head becomes a signed receipt and the VST gate refuses anything stale, forged or incomplete (requirement R5). Closes with agent tests, reviewer consensus, GPT-PM code approval and one PR.
+
+| Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
+|---|---|---|---|---|---|---|---|
+| U2-1 | [VST] Static-analysis provenance contract | A new receipt version or attestation carries analyzer identity, role-table hash, snapshot hash, covered and unsupported rules; v1 and v2 receipt bytes and hashes stay unchanged. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U1-5 | - |
+| U2-2 | [VST] Analyzer authority and signature binding | The analyzer signer is separate from the worker, the router and the orchestrator; the worker cannot read the key; a receipt signed by another identity is refused. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U2-1 | - |
+| U2-3 | [VST] Receipt builder | Builds a receipt from an adapter result for one exact head; refuses a moved head or a dirty tree. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U2-2 | - |
+| U2-4 | [VST] Gate rules | The gate returns INCONCLUSIVE or REJECT for stale head, forged signature, partial coverage presented as full, unsupported rule presented as supported, and role-table drift. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U2-3 | - |
+| U2-5 | [VST] Truthful coverage report | A report shows per role what code covered and what remains for a model; partial coverage is never rendered as a pass. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U2-4 | - |
+| U2-6 | [VST] Negative-case fixture catalog | Synthetic fixtures prove each refusal in U2-4 fails closed; no product code is mutated. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U2-4 | - |
+
+## Sprint U3 - Testing core
+Goal: Test accounting by exact ID, a hash-pinned native runner and a no-skip gate land from the pushed S4 branches in reviewable parts (requirements R6, R7). Closes with agent tests, reviewer consensus, GPT-PM code approval and one PR.
+
+| Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
+|---|---|---|---|---|---|---|---|
+| U3-1 | [VST] Inventory and landing plan of the S4 branches | Read-only map of s4-canonical-continuation (349 commits, 724 files), s4-native-qa-runner, s4-reproducible-qa-automation, s4-e2e-snapshot-20261025-180e330 and s5-bounded-aeve-evidence into parts that land, parts that stay evidence only and parts dropped, each with a reason. No merge in this task. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | - | - |
+| U3-2 | [VST] Land test-ID registry, categories and denominator | Registry binds every required test ID to one committed test and one category; duplicate, missing or unknown IDs are rejected before a run can produce an accepting result. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U3-1 | - |
+| U3-3 | [VST] Land the hash-pinned native runner and report envelope | A bounded runner executes a category on Windows and records argv, exit code, expected and collected IDs and artifact digests; report is bound to the candidate head. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U3-2 | - |
+| U3-4 | [VST] Land the no-skip gate integration | A skipped or uncollected required test makes the result non-approving; policy exclusions keep the report INCONCLUSIVE. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U3-3 | - |
+| U3-5 | [VST] Land the seeded-failure fixture catalog | Synthetic known-defect fixtures show that the oracle fails when it should; no product code is mutated; no mutation or CI runs. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U3-3 | - |
+| U3-6 | [VST] Decide and wire the local test executor (OD-2) | The operator decision on D-076 is recorded; test roles resolve to the chosen executor; the role result carries the test evidence with unrun items as NOT_RUN. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U3-4, operator decision | - |
+
+## Sprint U4 - Coverage and growth
+Goal: Every role is either covered, explicitly MODEL_ONLY, or explicitly NOT_COVERED, and new project-scope roles register without code changes (requirement R8). AEVE changes need their own sprint approval and branch in the AEVE repository.
+
+| Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
+|---|---|---|---|---|---|---|---|
+| U4-1 | [VST] Project-scope role registration | A manifest lists a project's .claude agents and skills; each is registered as NOT_COVERED or MODEL_ONLY until mapped; adding a role needs no code change; the role-table hash changes and is visible to the gate. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U1-1 | - |
+| U4-2 | [AEVE] Explicit MODEL_ONLY class in the matrix | planner, implementation-engineer and similar authoring roles are marked MODEL_ONLY instead of NOT_COVERED, with the reason. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U4-1, AEVE sprint approval | - |
+| U4-3 | [AEVE] Repository and worktree facts executor | git-worktree-ops obtains git root, branch, HEAD and dirty state deterministically. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U4-2 | - |
+| U4-4 | [AEVE] Metrics executors | performance-testing and agent-evaluation roles get executors that read recorded measurements; no new measurement is invented. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U4-2 | - |
+| U4-5 | [AEVE] Static UX and accessibility executors | product-ux-reviewer and ux-design-contract get static checks on real project UI files, beyond the fixed golden templates. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U4-2 | - |
+| U4-6 | [AEVE] Matrix and README refresh | The README and capability matrix state the current counts (the README still says 15 of 57); counts come from aeve matrix output. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U4-3, U4-4, U4-5 | - |
+
+## Sprint U5 - Coding under control
+Goal: A coding change runs through worker, diff gate, local review loop, tests and receipts and ends in the exact package for GPT-PM (requirements R9, R10). Closes with agent tests, reviewer consensus, GPT-PM code approval and one PR.
+
+| Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
+|---|---|---|---|---|---|---|---|
+| U5-1 | [VST] Pipeline state machine | The store models story, worker attempt, diff gate, review iterations, tests and receipts with epoch checks, idempotent steps and a stop path. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U2-6, U3-6 | - |
+| U5-2 | [VST] Review-loop driver | The loop resubmits with iteration_of until local checks are clean for the declared coverage or an iteration cap is reached; the cap result is BLOCKED, not a pass. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U5-1 | - |
+| U5-3 | [VST] Final package builder for GPT-PM | Builds the package with the exact diff, test evidence, review results and head identity; refuses when evidence is stale; a new commit invalidates it. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U5-2 | - |
+| U5-4 | [VST] Synthetic end-to-end story | A synthetic story with seeded defects passes through every stage; each defect is caught by a local check or a gate, not by a model. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U5-3 | - |
+| U5-5 | [VST] One small real change | One small real change in this repository runs through the pipeline; unrun items are NOT_RUN; the result is reported as measured, not as production-ready. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U5-4 | - |
+
+## Sprint U6 - Hardening and handover
+Goal: The system can be installed, rolled back and measured, and everything unrun is recorded (requirements R4, R11).
+
+| Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
+|---|---|---|---|---|---|---|---|
+| U6-1 | [both] Install and rollback runbook | Steps to install, wire, disable and roll back; kill switches listed; the rollback is exercised once. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U5-5 | - |
+| U6-2 | [both] Measured savings report | Tokens and cost per role before and after on a fixed session set, with limits; no measurement means NOT_RUN. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U1-7, U5-5 | - |
+| U6-3 | [both] Retrospective and NOT_RUN register | Every defect, shortcoming and unrun item of U1-U5 is recorded with its dependency. | NOT_STARTED | - | Coding agent implements; functional-test-reviewer and e2e-runner test | U6-1 | - |
+| U6-4 | [both] Cleanup proposals | Old scratch worktrees, the WSL copy and stale branches are listed with the section 9 checks; nothing is deleted without the operator's authorization. | NOT_STARTED | - | Coding agent proposes; operator decides | U6-3 | - |
