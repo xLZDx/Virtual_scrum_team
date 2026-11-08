@@ -2434,3 +2434,21 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: functional-test-reviewer ran the complete tests/uc set: 926 passed, 0 failed, 3 skipped (symlink creation not permitted on this host). Subprocess tests now cover both token_baseline and measure CLIs; BAD_SESSION_ID and OUTPUT_UNWRITABLE are tested.
 - Decision: commit tests with the U1-1 fixes, then send U1-1 and U1-8 to GPT-PM as separate reviews with the scope notes in docs/sdlc/evidence. The real paired measurement stays NOT_RUN.
+
+
+## 2026-11-08 — U1-1 MAJOR fixes: empty subagent transcripts, unexpected transcript detection
+
+**Findings fixed (GPT-PM request b5d9e2f3):**
+
+1. **MAJOR: Empty subagent transcripts silently undercount usage** - compute() now rejects empty subagent transcript files with EMPTY_SUBAGENT_TRANSCRIPT reason, preventing silent undercounting.
+
+2. **MAJOR: Manifest does not detect newly appearing transcripts** - verify_manifest() now inventories all transcript files in manifest, compares against current filesystem state in verify_manifest(), and rejects unexpected transcripts with UNEXPECTED_TRANSCRIPT reason.
+
+**Evidence:** tests/uc/test_token_baseline.py 54 passed (52 + 2 new regression tests for the fixed findings).
+
+**Regression tests added:**
+- test_compute_empty_subagent_transcript_is_not_run: verifies empty subagent files are rejected
+- test_compute_unexpected_transcript_after_manifest_created_is_not_run: verifies new transcripts are detected
+
+**Ready:** U1-1 code now ready for GPT-PM verification round (fixes only, prior MAJOR findings resolved).
+

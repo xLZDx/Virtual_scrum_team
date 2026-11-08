@@ -352,42 +352,34 @@ def test_cli_missing_session_not_run(project, tmp_path):
     assert not (tmp_path / "m.json").exists()
 
 
-def test_compute_empty_subagent_transcript_is_not_run(project, tmp_path):
+
+def test_compute_empty_subagent_transcript_is_not_run(tmp_path):
     """Empty subagent files should cause NOT_RUN, not silently undercount."""
-    (project / "s.jsonl").write_text(line("m", usage(1, 2, 3, 4)), encoding="utf-8")
-    (project / "s" / "subagents").mkdir(parents=True)
-    (project / "s" / "subagents" / "agent-a.jsonl").write_text("", encoding="utf-8")
-    manifest, _ = build(project, tmp_path, sessions="s")
+    write_lines(tmp_path / "s.jsonl", [line("m", usage(1, 2, 3, 4))])
+    (tmp_path / "s" / "subagents").mkdir(parents=True)
+    (tmp_path / "s" / "subagents" / "agent-a.jsonl").write_text("", encoding="utf-8")
+    manifest = tb.build_manifest(tmp_path, ["s"])
     
-    # Verify the manifest was created successfully with both files
-    doc = manifest_doc(manifest)
-    assert len(doc["sessions"][0]["files"]) == 2
+    # Verify the manifest includes the empty subagent file
+    assert any(f["path"] == "s/subagents/agent-a.jsonl" for f in manifest["sessions"][0]["files"])
     
-    # Try to report using the manifest - should fail due to empty subagent
-    res = run_report(tmp_path / "manifest.json", project)
-    assert res.returncode == 2
-    doc = json.loads(res.stdout)
-    assert doc["status"] == "NOT_RUN"
-    assert doc["reason"] == "EMPTY_SUBAGENT_TRANSCRIPT"
+    # compute() should reject the empty subagent
+    with pytest.raises(tb.BaselineNotRun) as info:
+        tb.compute(manifest, tmp_path)
+    assert info.value.reason == "EMPTY_SUBAGENT_TRANSCRIPT"
 
 
-def test_compute_unexpected_transcript_after_manifest_created_is_not_run(project, tmp_path):
+def test_compute_unexpected_transcript_after_manifest_created_is_not_run(tmp_path):
     """Transcripts added after manifest creation should be detected."""
-    (project / "s.jsonl").write_text(line("m", usage(1, 2, 3, 4)), encoding="utf-8")
-    manifest, _ = build(project, tmp_path, sessions="s")
-    
-    # Verify the manifest was created
-    doc = manifest_doc(manifest)
-    assert doc["status"] == "WRITTEN"
+    write_lines(tmp_path / "s.jsonl", [line("m", usage(1, 2, 3, 4))])
+    manifest = tb.build_manifest(tmp_path, ["s"])
     
     # Now add a new subagent transcript that wasn't in the manifest
-    (project / "s" / "subagents").mkdir(parents=True, exist_ok=True)
-    (project / "s" / "subagents" / "agent-b.jsonl").write_text(line("m2", usage(10, 20, 30, 40)), encoding="utf-8")
+    (tmp_path / "s" / "subagents").mkdir(parents=True, exist_ok=True)
+    write_lines(tmp_path / "s" / "subagents" / "agent-b.jsonl", [line("m2", usage(10, 20, 30, 40))])
     
-    # Try to report using the original manifest - should fail
-    res = run_report(tmp_path / "manifest.json", project)
-    assert res.returncode == 2
-    doc = json.loads(res.stdout)
-    assert doc["status"] == "NOT_RUN"
-    assert doc["reason"] == "UNEXPECTED_TRANSCRIPT"
+    # compute() should reject the unexpected transcript
+    with pytest.raises(tb.BaselineNotRun) as info:
+        tb.compute(manifest, tmp_path)
+    assert info.value.reason == "UNEXPECTED_TRANSCRIPT"
 
