@@ -2058,3 +2058,16 @@ Fixed 3 BLOCKER and 3 key MAJOR issues identified in 2026-11-08 high-effort code
 
 Remaining 23 findings (8 MAJOR, 15 MINOR) to be addressed in subsequent iterations. Tests baseline: 534 passed (uc) + 62 passed (e2e).
 
+
+## 2026-11-08: U1-2 code review remediation complete (23 remaining findings documented)
+
+3 BLOCKER and 3 key MAJOR issues from high-effort code review fixed and committed (f1ff359).  
+23 remaining findings (8 MAJOR + 15 MINOR) documented in u1-remaining-findings-20261108.md for future iteration.
+
+Remediation scope: B1 (already correct), B2 (AEVE top-level status), B3 (OSError wrapping), M1 (dirty state check), M2 (process tree kill), M3 (rule_id preservation).
+
+Current state: U1-2 CODE_COMPLETE; awaiting functional-test-reviewer and e2e-runner for test execution per U1-2 acceptance criteria.
+
+U1-1 through U1-8 remain IN_PROGRESS awaiting review and verification phases.  
+U1-9 remains BLOCKED_OPERATOR pending OD-3 (global Claude configuration scope decision).
+

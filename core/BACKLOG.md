@@ -409,3 +409,10 @@ analysis logic.
 for any paid hosting account or production launch decision. **Next:** schedule SAAS-01 into a later
 sprint after the active S2→S5 sequence; keep Windows-local Owner→Runner work as the current S2
 priority.
+## U1-2: BLOCKER/MAJOR fixes — CODE_COMPLETE (2026-11-08)
+
+**Fixed**: B1 (type check order—already correct), B2 (AEVE status check), B3 (OSError wrapping), M1 (dirty state), M2 (process groups), M3 (rule id)  
+**Remaining**: 8 MAJOR + 15 MINOR documented in u1-remaining-findings-20261108.md  
+**State**: Awaiting functional-test-reviewer and e2e-runner for test execution, then internal review consensus, then GPT-PM final review before push.  
+**Evidence**: docs/sdlc/evidence/u1-code-review-findings-20261108.md, u1-remaining-findings-20261108.md
+
