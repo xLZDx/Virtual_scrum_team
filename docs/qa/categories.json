@@ -48,7 +48,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "bf548b1b0afeef305c86398f272b35b44a1f9fa1",
+  "source_head": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
   "source_inventory": [
     {
       "path": "tests/af/test_s2_review_source_fidelity.py",
@@ -57,8 +57,8 @@
     },
     {
       "path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
-      "sha256": "445e496ede9e7cc338a24fd14f374261d843ed4d5c0a99ff3a299560c9ed89ad"
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
+      "sha256": "f6a0a50f910bf0bc3c3353a8b4f65e45f57367023f2ce1830d39439fa13eb418"
     },
     {
       "path": "tests/qa/test_s4b_runner.py",
@@ -391,7 +391,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_artifact_stage_direct_skipped_and_present",
       "selector": "tests/qa/test_s4a_registry.py::test_artifact_stage_direct_skipped_and_present",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -402,7 +402,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_artifact_stage_empty_file_is_refused_not_present_and_not_skipped",
       "selector": "tests/qa/test_s4a_registry.py::test_artifact_stage_empty_file_is_refused_not_present_and_not_skipped",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -413,7 +413,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_artifact_stage_malformed_artifacts_raise_registry_error",
       "selector": "tests/qa/test_s4a_registry.py::test_artifact_stage_malformed_artifacts_raise_registry_error",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -424,7 +424,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_artifact_stage_partial_set_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_artifact_stage_partial_set_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -435,7 +435,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_artifact_stage_present_when_all_evidence_exists_is_existence_only",
       "selector": "tests/qa/test_s4a_registry.py::test_artifact_stage_present_when_all_evidence_exists_is_existence_only",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -446,7 +446,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_artifact_stage_single_file_is_partial_not_present",
       "selector": "tests/qa/test_s4a_registry.py::test_artifact_stage_single_file_is_partial_not_present",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -457,7 +457,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_artifact_stage_skipped_when_no_evidence_exists",
       "selector": "tests/qa/test_s4a_registry.py::test_artifact_stage_skipped_when_no_evidence_exists",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -468,7 +468,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_artifact_stage_unreadable_path_is_an_error_not_absence",
       "selector": "tests/qa/test_s4a_registry.py::test_artifact_stage_unreadable_path_is_an_error_not_absence",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -479,7 +479,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_builder_categorizes_qa_modules_by_convention",
       "selector": "tests/qa/test_s4a_registry.py::test_builder_categorizes_qa_modules_by_convention",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -490,7 +490,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_builder_empty_categories_are_not_run_with_reason_never_supported",
       "selector": "tests/qa/test_s4a_registry.py::test_builder_empty_categories_are_not_run_with_reason_never_supported",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -501,7 +501,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_builder_output_round_trips_through_validator_even_with_new_module",
       "selector": "tests/qa/test_s4a_registry.py::test_builder_output_round_trips_through_validator_even_with_new_module",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -512,7 +512,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_builder_policy_and_process_death_selectors_are_not_run_with_empty_profiles",
       "selector": "tests/qa/test_s4a_registry.py::test_builder_policy_and_process_death_selectors_are_not_run_with_empty_profiles",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -523,7 +523,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_builder_policy_for_module_absent_from_tree_is_ignored",
       "selector": "tests/qa/test_s4a_registry.py::test_builder_policy_for_module_absent_from_tree_is_ignored",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -534,7 +534,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_builder_qa_module_without_s4_convention_raises",
       "selector": "tests/qa/test_s4a_registry.py::test_builder_qa_module_without_s4_convention_raises",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -545,7 +545,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_builder_records_current_head_and_per_file_sha256",
       "selector": "tests/qa/test_s4a_registry.py::test_builder_records_current_head_and_per_file_sha256",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -556,7 +556,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_builder_refuses_category_holding_only_not_run_selectors",
       "selector": "tests/qa/test_s4a_registry.py::test_builder_refuses_category_holding_only_not_run_selectors",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -567,7 +567,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_builder_refuses_integration_with_only_process_death_selectors",
       "selector": "tests/qa/test_s4a_registry.py::test_builder_refuses_integration_with_only_process_death_selectors",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -578,7 +578,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_builder_refuses_uncommitted_test_module",
       "selector": "tests/qa/test_s4a_registry.py::test_builder_refuses_uncommitted_test_module",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -589,7 +589,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_builder_stale_policy_not_run_selector_raises",
       "selector": "tests/qa/test_s4a_registry.py::test_builder_stale_policy_not_run_selector_raises",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -600,7 +600,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_builder_syntax_error_module_raises_registry_error",
       "selector": "tests/qa/test_s4a_registry.py::test_builder_syntax_error_module_raises_registry_error",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -611,7 +611,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_builder_unmapped_test_module_raises",
       "selector": "tests/qa/test_s4a_registry.py::test_builder_unmapped_test_module_raises",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -622,7 +622,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_check_tests_unchanged_since_direct",
       "selector": "tests/qa/test_s4a_registry.py::test_check_tests_unchanged_since_direct",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -633,7 +633,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_collector_agrees_with_pytest_collect_only",
       "selector": "tests/qa/test_s4a_registry.py::test_collector_agrees_with_pytest_collect_only",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -644,7 +644,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_collector_agrees_with_pytest_on_edge_constructs",
       "selector": "tests/qa/test_s4a_registry.py::test_collector_agrees_with_pytest_on_edge_constructs",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -655,7 +655,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_collector_basic_functions_and_prefixed_classes",
       "selector": "tests/qa/test_s4a_registry.py::test_collector_basic_functions_and_prefixed_classes",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -666,7 +666,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_collector_collects_unittest_testcase_subclasses_with_any_name",
       "selector": "tests/qa/test_s4a_registry.py::test_collector_collects_unittest_testcase_subclasses_with_any_name",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -677,7 +677,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_collector_cyclic_local_bases_do_not_hang_or_collect",
       "selector": "tests/qa/test_s4a_registry.py::test_collector_cyclic_local_bases_do_not_hang_or_collect",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -688,7 +688,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_collector_follows_local_base_chains_and_inherited_methods",
       "selector": "tests/qa/test_s4a_registry.py::test_collector_follows_local_base_chains_and_inherited_methods",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -699,7 +699,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_collector_harmless_compound_statements_and_nested_helpers_are_allowed",
       "selector": "tests/qa/test_s4a_registry.py::test_collector_harmless_compound_statements_and_nested_helpers_are_allowed",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -710,7 +710,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_collector_plain_class_without_testcase_or_test_prefix_is_not_collected",
       "selector": "tests/qa/test_s4a_registry.py::test_collector_plain_class_without_testcase_or_test_prefix_is_not_collected",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -721,7 +721,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_collector_unparseable_source_raises_registry_error",
       "selector": "tests/qa/test_s4a_registry.py::test_collector_unparseable_source_raises_registry_error",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -732,7 +732,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_collector_unresolvable_constructs_raise_instead_of_being_skipped",
       "selector": "tests/qa/test_s4a_registry.py::test_collector_unresolvable_constructs_raise_instead_of_being_skipped",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -743,7 +743,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_committed_edit_to_source_file_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_committed_edit_to_source_file_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -754,7 +754,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_count_passed_all_runnable_passed_keeps_not_run_in_denominator",
       "selector": "tests/qa/test_s4a_registry.py::test_count_passed_all_runnable_passed_keeps_not_run_in_denominator",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -765,7 +765,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_count_passed_both_required_profiles_counts_once",
       "selector": "tests/qa/test_s4a_registry.py::test_count_passed_both_required_profiles_counts_once",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -776,7 +776,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_count_passed_complete_is_false_when_partial_even_if_nonempty",
       "selector": "tests/qa/test_s4a_registry.py::test_count_passed_complete_is_false_when_partial_even_if_nonempty",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -787,7 +787,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_count_passed_empty_outcomes_counts_nothing",
       "selector": "tests/qa/test_s4a_registry.py::test_count_passed_empty_outcomes_counts_nothing",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -798,7 +798,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_count_passed_malformed_outer_shape_raises",
       "selector": "tests/qa/test_s4a_registry.py::test_count_passed_malformed_outer_shape_raises",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -809,7 +809,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_count_passed_malformed_profile_value_raises",
       "selector": "tests/qa/test_s4a_registry.py::test_count_passed_malformed_profile_value_raises",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -820,7 +820,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_count_passed_non_string_outcome_raises",
       "selector": "tests/qa/test_s4a_registry.py::test_count_passed_non_string_outcome_raises",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -831,7 +831,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_count_passed_old_flat_shape_raises_instead_of_counting_nothing",
       "selector": "tests/qa/test_s4a_registry.py::test_count_passed_old_flat_shape_raises_instead_of_counting_nothing",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -842,7 +842,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_count_passed_only_exact_passed_in_every_required_profile_counts",
       "selector": "tests/qa/test_s4a_registry.py::test_count_passed_only_exact_passed_in_every_required_profile_counts",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -853,7 +853,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_count_passed_outcomes_under_non_required_profile_cannot_help_or_hurt",
       "selector": "tests/qa/test_s4a_registry.py::test_count_passed_outcomes_under_non_required_profile_cannot_help_or_hurt",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -864,7 +864,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_count_passed_policy_not_run_selector_never_counts_even_if_reported_passed",
       "selector": "tests/qa/test_s4a_registry.py::test_count_passed_policy_not_run_selector_never_counts_even_if_reported_passed",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -875,7 +875,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_count_passed_posix_only_selector_needs_only_wsl_and_ignores_other_profiles",
       "selector": "tests/qa/test_s4a_registry.py::test_count_passed_posix_only_selector_needs_only_wsl_and_ignores_other_profiles",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -886,7 +886,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_count_passed_selector_needing_two_profiles_is_not_passed_with_one",
       "selector": "tests/qa/test_s4a_registry.py::test_count_passed_selector_needing_two_profiles_is_not_passed_with_one",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -897,7 +897,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_count_passed_unknown_profile_raises",
       "selector": "tests/qa/test_s4a_registry.py::test_count_passed_unknown_profile_raises",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -908,7 +908,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_count_passed_unknown_selector_raises_in_any_profile",
       "selector": "tests/qa/test_s4a_registry.py::test_count_passed_unknown_selector_raises_in_any_profile",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -919,7 +919,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_crlf_committed_source_hashes_like_lf_and_validates",
       "selector": "tests/qa/test_s4a_registry.py::test_crlf_committed_source_hashes_like_lf_and_validates",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -930,7 +930,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_deeply_nested_json_is_refused_as_registry_error",
       "selector": "tests/qa/test_s4a_registry.py::test_deeply_nested_json_is_refused_as_registry_error",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -941,7 +941,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_deleted_source_file_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_deleted_source_file_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -952,7 +952,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_denominator_empty_category_is_never_complete_and_full_category_is",
       "selector": "tests/qa/test_s4a_registry.py::test_denominator_empty_category_is_never_complete_and_full_category_is",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -963,7 +963,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_denominator_invariant_expected_equals_runnable_plus_not_run",
       "selector": "tests/qa/test_s4a_registry.py::test_denominator_invariant_expected_equals_runnable_plus_not_run",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -974,7 +974,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_denominator_per_category_and_regression_aggregate",
       "selector": "tests/qa/test_s4a_registry.py::test_denominator_per_category_and_regression_aggregate",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -985,7 +985,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_directory_outside_a_git_repository_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_directory_outside_a_git_repository_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -996,7 +996,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_dirty_paths_outside_guarded_directories_are_ignored",
       "selector": "tests/qa/test_s4a_registry.py::test_dirty_paths_outside_guarded_directories_are_ignored",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1007,7 +1007,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_duplicate_nested_json_key_hiding_a_value_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_duplicate_nested_json_key_hiding_a_value_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1018,7 +1018,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_duplicate_top_level_json_key_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_duplicate_top_level_json_key_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1029,7 +1029,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_edit_then_revert_with_same_bytes_is_stale_provenance",
       "selector": "tests/qa/test_s4a_registry.py::test_edit_then_revert_with_same_bytes_is_stale_provenance",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1040,7 +1040,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_extra_selector_not_in_source_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_extra_selector_not_in_source_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1051,7 +1051,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_foreign_git_environment_variables_are_ignored",
       "selector": "tests/qa/test_s4a_registry.py::test_foreign_git_environment_variables_are_ignored",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1062,7 +1062,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_garbage_manifest_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_garbage_manifest_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1073,7 +1073,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_head_blob_that_differs_from_manifest_is_refused_even_if_worktree_matches",
       "selector": "tests/qa/test_s4a_registry.py::test_head_blob_that_differs_from_manifest_is_refused_even_if_worktree_matches",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1084,7 +1084,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_identity_module_with_exact_selector_is_categorized_identity",
       "selector": "tests/qa/test_s4a_registry.py::test_identity_module_with_exact_selector_is_categorized_identity",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1095,7 +1095,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_identity_module_with_extra_selector_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_identity_module_with_extra_selector_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1106,7 +1106,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_identity_selector_recategorized_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_identity_selector_recategorized_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1117,7 +1117,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_ids_are_deterministic_across_regeneration",
       "selector": "tests/qa/test_s4a_registry.py::test_ids_are_deterministic_across_regeneration",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1128,7 +1128,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_ignored_bytecode_cache_is_tolerated",
       "selector": "tests/qa/test_s4a_registry.py::test_ignored_bytecode_cache_is_tolerated",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1139,7 +1139,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_ignored_file_in_guarded_paths_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_ignored_file_in_guarded_paths_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1150,7 +1150,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_index_flags_that_hide_worktree_edits_are_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_index_flags_that_hide_worktree_edits_are_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1161,7 +1161,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_missing_manifest_and_path_escape_are_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_missing_manifest_and_path_escape_are_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1172,7 +1172,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_modified_manifest_in_worktree_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_modified_manifest_in_worktree_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1183,7 +1183,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_modified_tracked_file_in_guarded_paths_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_modified_tracked_file_in_guarded_paths_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1194,7 +1194,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_new_unregistered_test_module_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_new_unregistered_test_module_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1205,7 +1205,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_non_ancestor_source_head_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_non_ancestor_source_head_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1216,7 +1216,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_non_test_helper_that_existed_at_source_head_is_accepted",
       "selector": "tests/qa/test_s4a_registry.py::test_non_test_helper_that_existed_at_source_head_is_accepted",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1227,7 +1227,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_non_utf8_manifest_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_non_utf8_manifest_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1238,7 +1238,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_platform_constants_are_registered_as_not_windows_runnable",
       "selector": "tests/qa/test_s4a_registry.py::test_platform_constants_are_registered_as_not_windows_runnable",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1249,7 +1249,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_platform_constants_are_well_formed_and_disjoint",
       "selector": "tests/qa/test_s4a_registry.py::test_platform_constants_are_well_formed_and_disjoint",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1260,7 +1260,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_platform_contract_ignores_modules_not_in_the_tree",
       "selector": "tests/qa/test_s4a_registry.py::test_platform_contract_ignores_modules_not_in_the_tree",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1271,7 +1271,18 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_platform_contract_selector_missing_from_present_module_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_platform_contract_selector_missing_from_present_module_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4a_registry.py::test_qa_tooling_is_outside_regression_and_functional_and_other_categories_are_rejected",
+      "selector": "tests/qa/test_s4a_registry.py::test_qa_tooling_is_outside_regression_and_functional_and_other_categories_are_rejected",
+      "source_path": "tests/qa/test_s4a_registry.py",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1282,7 +1293,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_real_manifest_at_head_validates",
       "selector": "tests/qa/test_s4a_registry.py::test_real_manifest_at_head_validates",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1293,7 +1304,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_real_manifest_contains_selectors_the_old_collector_missed",
       "selector": "tests/qa/test_s4a_registry.py::test_real_manifest_contains_selectors_the_old_collector_missed",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1304,7 +1315,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_registry_binds_to_head_and_source_head_is_ancestor",
       "selector": "tests/qa/test_s4a_registry.py::test_registry_binds_to_head_and_source_head_is_ancestor",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1315,7 +1326,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_replace_refs_do_not_change_what_is_hashed",
       "selector": "tests/qa/test_s4a_registry.py::test_replace_refs_do_not_change_what_is_hashed",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1326,7 +1337,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_repository_without_commits_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_repository_without_commits_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1337,7 +1348,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_required_runtime_profiles_per_constant_group",
       "selector": "tests/qa/test_s4a_registry.py::test_required_runtime_profiles_per_constant_group",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1348,7 +1359,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_runtime_profiles_follow_platform_contract_and_policy_not_run",
       "selector": "tests/qa/test_s4a_registry.py::test_runtime_profiles_follow_platform_contract_and_policy_not_run",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1359,7 +1370,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_selector_added_to_source_but_not_registry_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_selector_added_to_source_but_not_registry_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1370,7 +1381,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_source_head_ahead_of_head_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_source_head_ahead_of_head_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1381,7 +1392,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_tampered_manifest_top_level_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_tampered_manifest_top_level_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1392,7 +1403,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_tampered_source_inventory_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_tampered_source_inventory_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1403,7 +1414,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_tampered_test_assignments_are_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_tampered_test_assignments_are_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1414,7 +1425,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_tests_file_added_after_source_head_without_entry_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_tests_file_added_after_source_head_without_entry_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1425,7 +1436,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_uncommitted_edit_to_source_file_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_uncommitted_edit_to_source_file_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1436,7 +1447,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_unparseable_source_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_unparseable_source_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1447,7 +1458,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_unresolvable_or_non_canonical_source_head_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_unresolvable_or_non_canonical_source_head_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1458,7 +1469,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_untracked_file_in_a_directory_with_spaces_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_untracked_file_in_a_directory_with_spaces_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1469,7 +1480,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_untracked_file_in_guarded_paths_is_refused",
       "selector": "tests/qa/test_s4a_registry.py::test_untracked_file_in_guarded_paths_is_refused",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1480,7 +1491,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_valid_registry_has_one_primary_category_and_stable_id_per_selector",
       "selector": "tests/qa/test_s4a_registry.py::test_valid_registry_has_one_primary_category_and_stable_id_per_selector",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -1491,7 +1502,7 @@
       "test_id": "tests/qa/test_s4a_registry.py::test_validator_accepts_non_supported_category_with_no_ids",
       "selector": "tests/qa/test_s4a_registry.py::test_validator_accepts_non_supported_category_with_no_ids",
       "source_path": "tests/qa/test_s4a_registry.py",
-      "source_commit": "8c2d68f27d8cc843cf66065687b4fa294b40b27f",
+      "source_commit": "aee58c95d64dc402f2b326851c1ae5a0f0dfbd1a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -25279,6 +25290,7 @@
         "tests/qa/test_s4a_registry.py::test_platform_constants_are_well_formed_and_disjoint",
         "tests/qa/test_s4a_registry.py::test_platform_contract_ignores_modules_not_in_the_tree",
         "tests/qa/test_s4a_registry.py::test_platform_contract_selector_missing_from_present_module_is_refused",
+        "tests/qa/test_s4a_registry.py::test_qa_tooling_is_outside_regression_and_functional_and_other_categories_are_rejected",
         "tests/qa/test_s4a_registry.py::test_real_manifest_at_head_validates",
         "tests/qa/test_s4a_registry.py::test_real_manifest_contains_selectors_the_old_collector_missed",
         "tests/qa/test_s4a_registry.py::test_registry_binds_to_head_and_source_head_is_ancestor",

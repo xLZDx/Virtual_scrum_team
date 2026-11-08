@@ -2672,3 +2672,5 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 ## 2026-11-09 — S4-C tests adapted to the qa-tooling category
 
 - Evidence: test agent on b6437da: 3 targeted tests passed (denominator, empty categories, new qa-tooling boundary test); real_manifest passed once the tree was clean of the edit. Limit: the rejection loop uses a bare pytest.raises, so the exact check that fires per target category is not pinned.
+
+- 2026-11-09: manifest regenerated for the changed S4-A test file.
