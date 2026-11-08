@@ -2289,3 +2289,8 @@ Verdict APPROVE for the request-record changes of U1-6 (fix commit 5b83c08, test
 ## 2026-11-08 — U1 statuses corrected; this session leads U1
 
 Operator decision: this session leads U1 (the parallel session stops). Statuses: U1-6 is ACCEPTED (GPT-PM APPROVE, request a382500a); U1-1..U1-5, U1-7 and U1-8 are IN_REVIEW (code written, agent tests green, internal review fixes applied, waiting for one GPT-PM review per task); U1-9 stays BLOCKED_OPERATOR (OD-3). BLOCKED_EXTERNAL was wrong: nothing external blocks these tasks, and it was set to satisfy the stop hook. One task goes to GPT-PM at a time, named in the scope note with the diff limited to its files.
+
+
+## 2026-11-08 — GPT-PM APPROVE for U1-5 (request 1007b1b8)
+
+One-task review of tools/uc/adapter.py and tests/uc/test_adapter.py (scope note docs/sdlc/evidence/u1-5-gptpm-scope-note.md, base 9587052, head 98696f5): verdict APPROVE, no BLOCKER or MAJOR. GPT-PM stated that its approval does not cover aeve_probe.py (U1-2); it noted the bare "git" fallback there. Fix in progress: _find_git returns None and the probe blocks with GIT_NOT_FOUND. U1-5 is ACCEPTED, not pushed. Next: U1-2 (aeve_probe.py) to GPT-PM after the test update.

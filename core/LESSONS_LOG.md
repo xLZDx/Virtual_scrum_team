@@ -1817,3 +1817,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Layer: author; no hook caught it. The operator had to ask why I had not found the existing work first.
 - Rule: after any wait longer than a few minutes, or any agent notification, run git status and git log and read the newest decision-log entries before editing. Also check for sibling sessions on the same branch before taking a write action.
 - Kind: SHORTCOMING (other session): task statuses set to BLOCKED_EXTERNAL without a verified external cause, to pass the stop hook. Corrected above.
+
+
+## 2026-11-08 — U1-5 GPT-PM approval
+
+- Kind: SUCCESS: a one-task review with a scope note naming the task, the acceptance text, the evidence and the already-taken decisions was approved in one round.
+- Rule: name the single task, its files and the decisions already settled in the scope note; keep prohibited checks out of the request.
