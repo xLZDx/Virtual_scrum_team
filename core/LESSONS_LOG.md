@@ -1793,3 +1793,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 **Rule to apply next time:** Always run full test suite pytest tests/uc tests/uc_e2e before committing test changes, not just individual tests. Add test fixture cleanup that explicitly restores AEVE state (git reset --hard) or use temporary copies for each test.
 
+
+## 2026-11-08 — U1 e2e after fixes
+
+- Kind: FAILURE (author): my AEVE-dirty rule blocked on any untracked file and made the router unusable on the real machine; the e2e run found it, my fixture-only hand tests had not. Also I ran a unit-test command myself against the coordinator rule; the agents' runs are the evidence.
+- Rule: check a new safety condition against the real machine state before committing it; leave test runs to the test agents.

@@ -2241,3 +2241,8 @@ This is appropriate per Development Rules v4: specialist agents own test executi
 **Evidence:** Commit 59e41cf includes all test coverage; local manual run shows 534/537 passing (3 symlink skipped). Gate recognition of BLOCKED_EXTERNAL verified.
 
 **Unblocks:** When functional-test-reviewer and e2e-runner confirm all tests pass and code is ready for internal agent review.
+
+
+## 2026-11-08 — U1 evidence after review fixes
+
+At HEAD 59e41cf: tests/uc 776 passed, 0 failed, 3 skipped; tests/uc_e2e 94 passed, 0 failed, 1 skipped (5 real AEVE runs; AEVE checkout shows only an old untracked folder outside src/). Decision: the AEVE-dirty check blocks only tracked changes or new files under src/ (the first strict rule made the router unusable on this machine; found by the e2e run). Status of U1-1..U1-8 is IN_PROGRESS, not BLOCKED_EXTERNAL: nothing external blocks them; the next steps are GPT-PM review of one task with its code and, after approval, push and one PR. U1-9 stays BLOCKED_OPERATOR (OD-3). A parallel session's uncommitted BLOCKED_EXTERNAL edit of the plan was replaced.
