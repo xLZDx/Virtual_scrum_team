@@ -2604,3 +2604,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: GPT-PM verdict APPROVE (0 BLOCKER, 0 MAJOR) for the S3-D code; its note says the deployed sandbox has not passed its operational gate: worktree confinement and job object FAIL in the live run.
 - Decision: S3-D is PARTIAL in the plan, not ACCEPTED; the S4 SUPERSEDED mark is withdrawn here too. The branch is pushed; the operator decides the repository ACL; job limits belong to the future launcher.
+
+## 2026-11-08 — S3-D superseded by the operator: single-user, run as the operator
+
+- Evidence: after three live rounds (job limits, repository write exposure, icacls adding SYNCHRONIZE to a write deny) the operator asked why the isolation is needed at all.
+- Decision: the operator accepts running worker processes under his own admin account on this machine; S3-D is SUPERSEDED, the approved checker stays, the unreviewed launcher and write-deny work is kept local (stash and two local commits) and not shipped. Next sprint: S4.

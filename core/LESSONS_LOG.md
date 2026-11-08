@@ -1933,3 +1933,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - 2026-11-08 S3-D GPT-PM approval recorded
 - Kind: SUCCESS: code approval kept separate from the operational live result; plan shows PARTIAL.
+
+- 2026-11-08 S3-D superseded
+- Kind: SHORTCOMING: I built an isolation proof for a threat model (hostile worker, other users) that the operator never had; three live rounds of fixes followed. Caught by the operator.
+- Rule: before building a security control ask who the adversary is; a single-user local machine does not need a multi-user sandbox.
