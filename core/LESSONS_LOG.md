@@ -1971,3 +1971,6 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - 2026-11-09 S4-B node-ID tests
 - Kind: SUCCESS: the replaced tests now pin attribution of a failing unusual-ID case, which was the actual lost evidence.
+
+- 2026-11-09 S4-C functional lane
+- Kind: SUCCESS: the lane now names its failures (8) and the real run exposed pre-existing red tests that no earlier gate showed because nobody ran the whole functional set through one runner.

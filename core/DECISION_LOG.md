@@ -2685,3 +2685,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 - Evidence: test agent on 6bd1182: six targeted invocations, 14 tests passed (digest form, selector accounting kept, failing unusual-ID case lands in failed_test_ids, non-string node ID still refused). Limit: red-on-revert not demonstrated; full file not rerun.
 
 - 2026-11-09: manifest regenerated for the changed S4-B test file.
+
+## 2026-11-09 — S4-C functional lane result with attribution (e6deca8)
+
+- Evidence: runner record run_id s4c-functional-3: FAIL, 194.1 s, expected 603, passed 575, failed 8, skipped 20, xfail 0, uncollected 0, unexpected 0. Failed selectors (test agent reproduced each once outside the runner): tests/af/test_s2_review_source_fidelity.py x2 (attachment byte length mismatch, probable CRLF/Windows environment), tests/vst/test_s2_runtime_config_bundle.py x5 (pinned expectations S2-4-runtime-owner-runner-qualification versus committed bundle S2-4E-WINDOWS-OWNER-RUNNER: probable stale tests after commit 96a8da7 retired the S2 WSL harness; product side not ruled out) and one POSIX-only interpreter-path assertion. 20 skips (symlink, POSIX, WSL) carry no declared NOT_RUN reason, so the lane cannot be PASS.
+- Decision: these are pre-existing failures on main, not S4-C regressions. They are recorded as findings and are not fixed inside S4-C; the lane stays typed FAIL. Evidence files committed.
