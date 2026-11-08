@@ -2299,3 +2299,8 @@ One-task review of tools/uc/adapter.py and tests/uc/test_adapter.py (scope note 
 ## 2026-11-08 — U1-2: no bare git fallback in the AEVE probe
 
 Following the U1-5 approval note, aeve_probe._find_git() returns None when no absolute PATH entry has git, and the probe blocks with GIT_NOT_FOUND instead of running a bare "git" (which CreateProcess would resolve from the current directory first). The test agent updated the matching test and added one for GIT_NOT_FOUND; tests/uc: 806 passed, 0 failed, 3 skipped (symlink creation not permitted). Next: U1-2 (aeve_probe.py and its tests) to GPT-PM as one task.
+
+
+## 2026-11-08 — GPT-PM round 1 on U1-2: MAJOR x2, fixed (request 888be2d4)
+
+Findings: (1) the probe read HEAD and dirty state before running doctor and matrix and never again, so an AEVE command that modified its own checkout still gave READY; (2) git could be picked from an absolute PATH entry inside the AEVE checkout. Fixes: HEAD and the full untracked-inclusive status are captured before and after, a difference blocks with CHECKOUT_CHANGED_DURING_PROBE; git candidates inside the AEVE checkout are skipped, none left means GIT_NOT_FOUND. Tests added by the test agent (4 doctor/matrix modification cases, HEAD moved during the probe, planted git in the checkout directory on PATH, only the checkout on PATH); tests/uc: 815 passed, 0 failed, 3 skipped. A planted git.exe in the test is a copy of python.exe, so that case proves non-execution only by the probe still returning the real HEAD. Next: one verification round for the fix only.

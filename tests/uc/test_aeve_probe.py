@@ -28,6 +28,12 @@ mode = open(os.path.join(os.path.dirname(__file__), "mode.json"), encoding="utf-
 mode = json.loads(mode)
 cmd = sys.argv[1]
 spec = mode.get(cmd, {})
+root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+for action in spec.get("actions", []):
+    target = os.path.join(root, *action["path"].split("/"))
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    with open(target, "a", encoding="utf-8") as handle:
+        handle.write(action.get("text", "# touched by the stub\\n"))
 if spec.get("sleep"):
     import time; time.sleep(spec["sleep"])
 if spec.get("raw") is not None:
@@ -312,7 +318,10 @@ def test_find_git_without_any_git_on_absolute_path_returns_none(tmp_path, monkey
     assert aeve_probe._find_git() is None
 
 
-def test_probe_and_git_helper_raise_git_not_found_when_no_git(fake, monkeypatch):
+def test_probe_and_git_helper_raise_git_not_found_when_no_git(fake, tmp_path, monkeypatch):
+    empty = tmp_path / "no-git-here"
+    empty.mkdir()
+    monkeypatch.setenv("PATH", str(empty))  # _git re-resolves git when the cache is empty, so PATH must have none
     monkeypatch.setattr(aeve_probe, "_GIT", None)
     assert blocked_reason(fake) == "GIT_NOT_FOUND"
     with pytest.raises(aeve_probe.AeveProbeError) as info:
@@ -382,3 +391,88 @@ def test_untracked_directory_under_src_is_counted_once_per_status_line(fake):
     (fake / "src" / "newpkg").mkdir()
     (fake / "src" / "newpkg" / "m.py").write_text("x")
     assert aeve_probe.probe(fake)["untracked_source_paths"] == 1
+
+
+# ------------------------------------------------------------------ checkout must not change during the probe
+@pytest.mark.parametrize("which", ["doctor", "matrix"])
+@pytest.mark.parametrize("action", [
+    {"path": "src/aeve/__init__.py"},                       # modifies a tracked source file
+    {"path": "src/aeve/new_untracked_module.py"},           # creates an untracked file under src/
+], ids=["tracked-modified", "untracked-created"])
+def test_checkout_modified_by_doctor_or_matrix_is_blocked(fake, which, action):
+    spec = {"doctor": {"json": GOOD_DOCTOR}, "matrix": {"json": GOOD_MATRIX}}
+    spec[which] = dict(spec[which], actions=[action], exit=0)
+    set_mode(fake, **spec)
+    git(fake, "add", "-A")
+    git(fake, "commit", "-q", "-m", "mode")
+    assert blocked_reason(fake) == "CHECKOUT_CHANGED_DURING_PROBE"
+
+
+def test_checkout_unchanged_by_stubs_is_still_ready(fake):
+    set_mode(fake, doctor={"json": GOOD_DOCTOR, "actions": []}, matrix={"json": GOOD_MATRIX, "actions": []})
+    git(fake, "add", "-A")
+    git(fake, "commit", "-q", "-m", "mode")
+    assert aeve_probe.probe(fake)["aeve_head"] == head_of(fake)
+
+
+def test_head_moved_during_probe_is_blocked(fake, monkeypatch):
+    """The commit moves while the checkout state is being re-read (HEAD differs before and after)."""
+    real_git = aeve_probe._git
+    calls = {"rev": 0}
+
+    def moving(aeve_root, args, env, timeout):
+        out = real_git(aeve_root, args, env, timeout)
+        if args[:2] == ["rev-parse", "HEAD"]:
+            calls["rev"] += 1
+            if calls["rev"] == 1:
+                (aeve_root / "later.txt").write_text("x")
+                git(aeve_root, "add", "-A")
+                git(aeve_root, "commit", "-q", "-m", "moved")
+        return out
+
+    monkeypatch.setattr(aeve_probe, "_git", moving)
+    assert blocked_reason(fake) == "CHECKOUT_CHANGED_DURING_PROBE"
+
+
+# ------------------------------------------------------------------ git inside the AEVE checkout is never executed
+def _plant_fake_git(root):
+    """Planted git.exe / git inside the checkout. A copy of python.exe cannot do `git -C`: executing it would make the
+    probe fail, so a READY probe with the real HEAD proves the planted file was never run."""
+    import shutil
+    shutil.copy(sys.executable, root / "git.exe")
+    (root / "git").write_text("#!/bin/sh\necho planted > planted-git-ran.txt\n")
+
+
+def _real_git_dir():
+    import shutil
+    found = shutil.which("git")
+    assert found, "real git is required for this test"
+    return str(pathlib.Path(found).parent)
+
+
+def test_find_git_excludes_candidates_inside_the_aeve_checkout(fake, monkeypatch):
+    _plant_fake_git(fake)
+    monkeypatch.setenv("PATH", os.pathsep.join([str(fake), _real_git_dir()]))
+    found = aeve_probe._find_git(exclude=fake)
+    assert found is not None and not aeve_probe._inside(found, fake)
+    planted = aeve_probe._find_git()
+    assert planted is not None and aeve_probe._inside(planted, fake), "sanity: without exclusion the planted file wins"
+
+
+def test_checkout_dir_first_on_path_with_planted_git_is_never_executed(fake, monkeypatch):
+    _plant_fake_git(fake)
+    git(fake, "status", "--porcelain")  # keeps the real git working through the test's own helper (PATH untouched here)
+    expected_head = head_of(fake)
+    monkeypatch.setenv("PATH", os.pathsep.join([str(fake), _real_git_dir()]))
+    monkeypatch.setattr(aeve_probe, "_GIT", str(fake / "git.exe"))  # cached before the planting, as the issue describes
+    rec = aeve_probe.probe(fake)
+    assert rec["aeve_head"] == expected_head
+    assert not (fake / "planted-git-ran.txt").exists()
+
+
+def test_only_the_checkout_dir_on_path_gives_git_not_found(fake, monkeypatch):
+    _plant_fake_git(fake)
+    monkeypatch.setenv("PATH", str(fake))
+    monkeypatch.setattr(aeve_probe, "_GIT", str(fake / "git.exe"))
+    assert blocked_reason(fake) == "GIT_NOT_FOUND"
+    assert not (fake / "planted-git-ran.txt").exists()

@@ -65,14 +65,22 @@ def _run(argv: list[str], *, cwd: pathlib.Path, env: dict[str, str], timeout: fl
         raise AeveProbeError("EXEC_FAILED", f"{argv[0]}: {exc}") from exc
 
 
-def _find_git() -> str | None:
-    """git from an absolute PATH entry only: never the current directory, which CreateProcess searches first."""
+def _inside(candidate: str, root: pathlib.Path) -> bool:
+    try:
+        pathlib.Path(candidate).resolve().relative_to(root.resolve())
+        return True
+    except (ValueError, OSError):
+        return False
+
+
+def _find_git(exclude: pathlib.Path | None = None) -> str | None:
+    """git from an absolute PATH entry only: never the current directory, never inside ``exclude``."""
     for entry in os.environ.get("PATH", "").split(os.pathsep):
         if not entry or not os.path.isabs(entry):
             continue
         for name in ("git.exe", "git"):
             candidate = os.path.join(entry, name)
-            if os.path.isfile(candidate):
+            if os.path.isfile(candidate) and not (exclude is not None and _inside(candidate, exclude)):
                 return candidate
     return None  # no bare "git" fallback: CreateProcess would search the current directory first
 
@@ -81,12 +89,19 @@ _GIT = _find_git()
 
 
 def _git(aeve_root: pathlib.Path, args: list[str], env: dict[str, str], timeout: float) -> str:
-    if _GIT is None:
-        raise AeveProbeError("GIT_NOT_FOUND", "no git executable on an absolute PATH entry")
-    result = _run([_GIT, "-C", str(aeve_root), *args], cwd=aeve_root, env=env, timeout=timeout)
+    git = _GIT if _GIT is not None and not _inside(_GIT, aeve_root) else _find_git(exclude=aeve_root)
+    if git is None:
+        raise AeveProbeError("GIT_NOT_FOUND", "no trusted git executable on an absolute PATH entry outside the AEVE checkout")
+    result = _run([git, "-C", str(aeve_root), *args], cwd=aeve_root, env=env, timeout=timeout)
     if result.returncode != 0:
         raise AeveProbeError("GIT_FAILED", (result.stderr or "").strip()[:200])
     return result.stdout
+
+
+def _checkout_state(aeve_root: pathlib.Path, env: dict[str, str], timeout: float) -> list[str]:
+    """Every tracked change and every untracked file (ignored files excluded), as sorted porcelain lines."""
+    out = _git(aeve_root, ["status", "--porcelain", "--untracked-files=all"], env, timeout)
+    return sorted(line for line in out.splitlines() if line)
 
 
 def canonical_digest(value: object) -> str:
@@ -151,7 +166,7 @@ def probe(
         raise AeveProbeError("PYTHON_TOO_OLD", f"{major}.{minor} < {_MIN_PYTHON[0]}.{_MIN_PYTHON[1]}")
 
     head = _git(aeve_root, ["rev-parse", "HEAD"], env, timeout).strip()
-    status_lines = [line for line in _git(aeve_root, ["status", "--porcelain"], env, timeout).splitlines() if line]
+    status_lines = _checkout_state(aeve_root, env, timeout)
     tracked_dirty = [line for line in status_lines if not line.startswith("??")]
 
     doctor_run = _run([interpreter, "-P", "-s", "-B", "-m", "aeve", "doctor"], cwd=scratch, env=env, timeout=timeout)
@@ -166,6 +181,9 @@ def probe(
     for field in ("total_profiles", "status_counts", "rows", "executors"):
         if field not in matrix:
             raise AeveProbeError("BAD_OUTPUT", f"matrix lacks {field}")
+
+    if _git(aeve_root, ["rev-parse", "HEAD"], env, timeout).strip() != head or             _checkout_state(aeve_root, env, timeout) != status_lines:
+        raise AeveProbeError("CHECKOUT_CHANGED_DURING_PROBE", "the AEVE checkout changed while doctor or matrix ran")
 
     if doctor.get("llm_calls") != 0 or doctor.get("executed_project_code") is not False:
         raise AeveProbeError("MODEL_OR_EXECUTION_REPORTED", "doctor reports model calls or project code execution")

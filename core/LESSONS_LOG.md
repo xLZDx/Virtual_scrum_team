@@ -1829,3 +1829,10 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SHORTCOMING caught by the security review and then by GPT-PM: the probe kept a bare "git" fallback after the rest of the code resolved executables by absolute path, so the same planting risk survived in one file.
 - Rule: when one file is hardened against a risk, grep the sibling files for the same pattern in the same commit.
+
+
+## 2026-11-08 — U1-2 GPT-PM round 1
+
+- Kind: FAILURE caught by GPT-PM: the probe's claim "AEVE is unchanged" was checked only before AEVE ran, and git resolution trusted every absolute PATH entry including the checkout under test.
+- Layer: author, the three internal reviews and the tests all missed it; the independent final reviewer found both.
+- Rule: a before-only integrity check is not a check; capture state on both sides of the call you are guarding, and exclude the object under test from every trust lookup.
