@@ -1875,3 +1875,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SHORTCOMING: BAD_SESSION_ID was added for build-manifest but not for session ids read back from a manifest; GPT-PM found it with a null id. Missed by author and tests; caught by the reviewer.
 - Rule: when an input is validated on one path, grep every other path that reads the same field.
+
+## 2026-11-08 — U1-1 GPT-PM reply with contradictory headline
+
+- Kind: NEUTRAL: the verification reply carried headline MODIFY but withdrew its finding and ended with APPROVE; the tool read it as UNRECOGNIZED. Recorded as it is; no claim of a clean approval.
+- Rule: quote the reviewer's own final line and the tool's verdict field side by side.

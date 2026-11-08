@@ -2502,3 +2502,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: GPT-PM (request f015edcd) returned MODIFY with 2 MAJOR. MAJOR-1 (undefined test helpers) was already fixed by 95ea4b6. MAJOR-2 (manifest session_id null gave TypeError) is fixed: verify_manifest validates every session_id and returns NOT_RUN MANIFEST_INVALID. Complete tests/uc: 948 passed, 0 failed, 3 skipped.
 - Decision: commit the CLI regression tests and ask GPT-PM for a verification round on U1-1 only; U1-8 is sent after it.
+
+## 2026-11-08 — U1-1 accepted on the GPT-PM verification round (ambiguous headline)
+
+- Evidence: request 5684b345 reply: headline "MODIFY - 1 MAJOR", the single finding withdrawn by the reviewer as not valid, all four earlier findings listed FIXED, closing line "Final verdict: APPROVE", receipt_written true; the tool's verdict field read UNRECOGNIZED. Not a clean bare APPROVE.
+- Decision: U1-1 set to ACCEPTED on the substance (no open valid finding, reviewer's own final verdict APPROVE), with the ambiguity recorded here; the operator may ask for a clean resubmission. U1-8 goes to GPT-PM next.
