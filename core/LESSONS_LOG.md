@@ -1940,3 +1940,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - 2026-11-08 S4-B runner port
 - Kind: NEUTRAL: the registry artifact stage and the one-category-at-a-time runner conflicted; resolved with an explicit opt-out flag, not by weakening the default.
+
+- 2026-11-08 S4-B review fixes
+- Kind: SHORTCOMING: the first fix of ignored-file checks was too broad and would have blocked the accepted S4-A validator on the real repo; caught by running the check on the real tree before commit.
+- Rule: run every new fail-closed check on the real repository, not only on fixtures, before committing it.

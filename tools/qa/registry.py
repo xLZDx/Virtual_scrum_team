@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -100,21 +101,51 @@ def _exact_keys(value: object, keys: set[str], context: str) -> dict[str, Any]:
     return value
 
 
+_GIT_ENV_ALLOWLIST = (
+    "PATH", "PATHEXT", "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "COMSPEC", "TEMP", "TMP", "TMPDIR",
+    "USERPROFILE", "HOME", "HOMEDRIVE", "HOMEPATH", "APPDATA", "LOCALAPPDATA", "PROGRAMDATA",
+    "LANG", "LC_ALL",
+)
+_GIT_EXE: str | None = None
+
+
+def git_executable() -> str:
+    """Absolute path of git, resolved once per process (never re-resolved from a changed PATH)."""
+    global _GIT_EXE
+    if _GIT_EXE is None:
+        found = shutil.which("git")
+        if not found:
+            raise RegistryError("git executable cannot be resolved")
+        _GIT_EXE = os.path.abspath(found)
+    return _GIT_EXE
+
+
 def _git_env() -> dict[str, str]:
-    """Process environment without any GIT_* variable (case-insensitive on Windows)."""
-    return {key: value for key, value in os.environ.items() if not key.upper().startswith("GIT_")}
+    """Allowlisted environment: no GIT_* variable is inherited; optional locks are disabled."""
+    env = {name: os.environ[name] for name in _GIT_ENV_ALLOWLIST if name in os.environ}
+    env["GIT_OPTIONAL_LOCKS"] = "0"
+    return env
 
 
 def _git_command(root: Path, *args: str) -> list[str]:
     return [
-        "git",
+        git_executable(),
         "--no-replace-objects",
+        "-c",
+        "core.fsmonitor=false",
+        "-c",
+        f"core.hooksPath={os.devnull}",
         "-c",
         "safe.directory=",
         "-c",
         f"safe.directory={os.fspath(root)}",
         *args,
     ]
+
+
+def safe_git(root: Path, *args: str) -> bytes:
+    """Public wrapper: run one git query with the pinned executable and the allowlisted environment."""
+    return _safe_git(root, *args)
 
 
 def _safe_git(root: Path, *args: str) -> bytes:
@@ -127,7 +158,7 @@ def _safe_git(root: Path, *args: str) -> bytes:
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            timeout=10,
+            timeout=30,
             check=False,
             shell=False,
         )
@@ -226,8 +257,92 @@ def _read_head_blob(root: Path, relative: str) -> bytes:
     return _safe_git(root, "cat-file", "blob", f"HEAD:{relative}")
 
 
+_SCOPED_IGNORED_PREFIXES = ("tests/", "docs/qa/", "tools/qa/")
+
+
+def _ignored_entry_ok(root: Path, relative: str) -> bool:
+    """Only interpreter/pytest caches may be ignored inside the scoped trees."""
+    is_dir = relative.endswith("/")
+    parts = relative.rstrip("/").split("/")
+    if ".pytest_cache" in parts:
+        return True
+    if "__pycache__" not in parts:
+        return False
+    if is_dir:
+        if parts[-1] != "__pycache__":
+            return False
+        directory = root.joinpath(*parts)
+        try:
+            with os.scandir(directory) as entries:
+                return all(
+                    entry.is_file(follow_symlinks=False) and entry.name.endswith(".pyc") for entry in entries
+                )
+        except OSError:
+            return False
+    return len(parts) >= 2 and parts[-2] == "__pycache__" and parts[-1].endswith(".pyc")
+
+
+_ROOT_DANGEROUS_NAMES = frozenset(
+    {"conftest.py", "pytest.ini", "pyproject.toml", "tox.ini", "setup.cfg", "setup.py"}
+)
+_ROOT_DANGEROUS_SUFFIXES = (".py", ".pyc", ".pyd", ".pth")
+_ROOT_DANGEROUS_STEMS = ("sitecustomize", "usercustomize")
+_MAX_ROOT_DIR_WALK = 200_000
+
+
+def _root_ignored_is_dangerous(root: Path, relative: str) -> bool:
+    """Root-level ignored entry that could change pytest behavior or shadow the dependency target.
+
+    Other root-level ignored files (temp files, editor droppings) are harmless and never block.
+    """
+    name = relative.rstrip("/")
+    if not relative.endswith("/"):
+        lowered = name.lower()
+        return (
+            lowered in _ROOT_DANGEROUS_NAMES
+            or lowered.endswith(_ROOT_DANGEROUS_SUFFIXES)
+            or lowered.startswith(_ROOT_DANGEROUS_STEMS)
+        )
+    if name in {".pytest_cache", "__pycache__"}:
+        return not _ignored_entry_ok(root, relative)
+    seen = 0
+    for _current, directories, files in os.walk(root / name, followlinks=False):
+        for filename in files:
+            if filename in {"conftest.py", "__init__.py"}:
+                return True
+        seen += len(directories) + len(files)
+        if seen > _MAX_ROOT_DIR_WALK:
+            return True  # fail closed: too large to prove free of importable packages
+    return False
+
+
+def worktree_binding_violations(root: Path) -> list[str]:
+    """Ignored files and skip-worktree/assume-unchanged flags that could hide candidate content."""
+    violations: list[str] = []
+    output = _safe_git(root, "status", "--porcelain", "--ignored=matching", "--untracked-files=all", "-z")
+    for entry in output.split(b"\x00"):
+        if not entry.startswith(b"!! "):
+            continue
+        relative = os.fsdecode(entry[3:]).replace("\\", "/")
+        if relative.startswith(_SCOPED_IGNORED_PREFIXES):
+            if not _ignored_entry_ok(root, relative):
+                violations.append(f"ignored path: {relative}")
+        elif "/" not in relative.rstrip("/") and _root_ignored_is_dangerous(root, relative):
+            violations.append(f"ignored root path that can alter pytest or shadow dependencies: {relative}")
+    flags = _safe_git(root, "ls-files", "-v", "-z")
+    for entry in flags.split(b"\x00"):
+        if entry and entry[:1] != b"H":
+            violations.append(f"index flag {entry[:1].decode('ascii', 'replace')!r}: {os.fsdecode(entry[2:])}")
+    return violations
+
+
 def check_worktree_clean(root: Path) -> None:
-    """Fail closed when tests/, docs/qa/ or tools/qa/ have dirty or untracked paths."""
+    """Fail closed when tests/, docs/qa/ or tools/qa/ have dirty or untracked paths.
+
+    Also rejects ignored files (except interpreter/pytest caches) under tests/, docs/qa/,
+    tools/qa/ and the repository root level, and any non-'H' `git ls-files -v` flag
+    (skip-worktree / assume-unchanged), which would hide candidate content from git status.
+    """
     output = _safe_git(
         root, "status", "--porcelain", "--untracked-files=all", "-z", "--", "tests", "docs/qa", "tools/qa"
     )
@@ -237,6 +352,11 @@ def check_worktree_clean(root: Path) -> None:
         raise RegistryError(
             "working tree has uncommitted or untracked paths under tests/, docs/qa/ or tools/qa/"
             f" (count={len(entries)}): {sample}"
+        )
+    violations = worktree_binding_violations(root)
+    if violations:
+        raise RegistryError(
+            f"working tree has ignored or hidden paths (count={len(violations)}): {', '.join(violations[:5])}"
         )
 
 

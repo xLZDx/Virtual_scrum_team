@@ -24,6 +24,7 @@ _LOCK_LINE = re.compile(
 _HASH_LINE = re.compile(r"^\s+--hash=sha256:([0-9a-f]{64})\s*$")
 _WHEEL_NAME = re.compile(r"[A-Za-z0-9_.+-]+\.whl\Z")
 MAX_WHEEL_BYTES = 64 * 1024 * 1024
+MAX_TARGET_FILE_BYTES = 64 * 1024 * 1024
 
 
 class DependencyProvenanceError(ValueError):
@@ -230,8 +231,9 @@ def _verified_wheels(lock_path: Path, wheelhouse: Path) -> tuple[str, list[Verif
     lock_digest, locked = _locked_wheels(lock_path)
     if not wheelhouse.is_dir() or is_link_or_junction(wheelhouse):
         raise DependencyProvenanceError("dependency wheelhouse must be an existing real directory")
-    candidates = [path for path in wheelhouse.iterdir() if path.name.endswith(".whl")]
+    candidates = [path for path in wheelhouse.iterdir() if path.name.lower().endswith(".whl")]
     selected: list[VerifiedWheel] = []
+    matched_paths: set[Path] = set()
     for row in locked:
         matches: list[tuple[Path, bytes]] = []
         for path in candidates:
@@ -248,6 +250,7 @@ def _verified_wheels(lock_path: Path, wheelhouse: Path) -> tuple[str, list[Verif
         if len(matches) != 1:
             raise DependencyProvenanceError(f"locked wheel selection is ambiguous or missing for {row.name}")
         wheel_path, wheel_bytes = matches[0]
+        matched_paths.add(wheel_path)
         selected.append(
             VerifiedWheel(
                 row.name,
@@ -255,6 +258,11 @@ def _verified_wheels(lock_path: Path, wheelhouse: Path) -> tuple[str, list[Verif
                 row.sha256,
                 _wheel_file_map(wheel_path.name, wheel_bytes, row),
             )
+        )
+    extra = sorted(path.name for path in candidates if path not in matched_paths)
+    if extra:
+        raise DependencyProvenanceError(
+            f"wheelhouse contains {len(extra)} wheel file(s) that match no lock row (extra unlocked wheel rejected)"
         )
     return lock_digest, selected
 
@@ -277,7 +285,13 @@ def _target_inventory(target: Path) -> dict[str, bytes]:
                 info = path.lstat()
                 if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
                     raise DependencyProvenanceError("dependency target contains a non-regular or linked file")
-                result[relative] = path.read_bytes()
+                if info.st_size > MAX_TARGET_FILE_BYTES:
+                    raise DependencyProvenanceError("dependency target file exceeds the supported size bound")
+                with path.open("rb") as handle:
+                    content = handle.read(MAX_TARGET_FILE_BYTES + 1)
+                if len(content) != info.st_size:
+                    raise DependencyProvenanceError("dependency target file changed while being read")
+                result[relative] = content
             except OSError as exc:
                 raise DependencyProvenanceError(f"dependency target cannot be read ({type(exc).__name__})") from None
     return result

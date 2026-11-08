@@ -2627,3 +2627,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: tools/qa/run.py (Windows bounded runner with a Job Object and tree kill on timeout, registry-bound, durable BLOCKED/NOT_RUN/INCONCLUSIVE records), pytest_plugin.py, dependencies.py, prepare_dependencies.py, report.py, requirements.lock (six wheels pinned by SHA-256) ported from origin/s4-canonical-continuation; WSL and seeded-failure pieces dropped; validate_registry gained a keyword-only check_artifacts flag (default unchanged) because a partial set of evidence files made every second category run fail.
 - Decision: WSL stays NOT_RUN in every report by the operator decision; tests are written and run only by the test agents.
+
+## 2026-11-08 — S4-B review fixes (code)
+
+- Evidence: python-reviewer (4 MAJOR, 4 MINOR) and security-reviewer (4 MAJOR, 4 MINOR) read the runner; the test agent found an extra unlocked wheel accepted; fixes applied in one batch: isolated interpreter and pinned pytest config, hook allowlist, ignored-file and index-flag checks, git admin files hash, append-only evidence snapshot and lock, bounds, token redaction, Job Object limits.
+- Decision: operator decision recorded as accepted limits: no identity separation for the pytest child (single-user machine) and in-process reporting is candidate-attested evidence; the report has a trust_model field saying so. The root-level ignored-file rule was narrowed to files that can change pytest behavior because the broad rule broke validate_registry on the real repo (harmless ignored .tmp/.bak files at the root).
