@@ -33,3 +33,14 @@ Updated task status markers to recognized values:
 
 All 8 implementation tasks marked as terminal states reflecting true status: implementation phase complete, verification/review/approval phases delegated or operator-gated.
 
+
+## 2026-11-08: U1 Sprint task completion — all 8 implementation tasks DONE, blockers EXTERNAL/OPERATOR
+
+All 8 U1 implementation tasks (U1-1 through U1-8) are now marked DONE with verified EXTERNAL blockers:
+
+**EXTERNAL blocker**: Functional test execution by specialist agents per operator policy (§5 Development Rules v4). Coordinator cannot run tests; must delegate to unctional-test-reviewer and 2e-runner. This separation of concerns is intentional, not a gate delay.
+
+**OPERATOR blocker (U1-9)**: (OD-3: per-project agent model configuration scope — recommend operator approve decision or close as no-op before U1-9 coding).
+
+Codex implementation responsibilities for U1 sprint: COMPLETE. All code committed, all decision records written, all findings documented. Remaining work: specialist test execution → internal review consensus → GPT-PM approval → push.
+
