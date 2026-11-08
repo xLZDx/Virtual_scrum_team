@@ -2463,3 +2463,21 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 **Status:** All 54 tests still pass. Ready for resend to GPT-PM with corrected implementation.
 
+
+
+## 2026-11-08 — U1 sprint status: 6 ACCEPTED, 2 IN_REVIEW, 1 BLOCKED_OPERATOR
+
+**Accepted (ready to push after GitHub exemption):** U1-2, U1-3, U1-4, U1-5, U1-6, U1-7 (all have GPT-PM APPROVE)
+
+**In Review (awaiting resolution):**
+- U1-1: GPT-PM MODIFY (2 MAJORs on empty subagent transcripts and unexpected transcripts). Local fixes pass 54 tests but GPT-PM's independent adversarial tests still find the same issues. Options: (a) continue debugging with GPT-PM, (b) reconsider requirements with operator.
+- U1-8: GPT-PM MODIFY (1 MAJOR on task identity verification). Needs U1-1 to add task_id field to token_baseline reports; currently blocked.
+
+**Blocked (operator decision required):** U1-9 on (OD-3: per-project agent model configuration scope)
+
+**External blocker affecting all push:** GitHub secret scanning blocks unified-core-plan push due to fake credential in old commits (bfa76f3d, 58217ff60). Blocks all 6 ACCEPTED tasks from merging.
+
+**Requires operator guidance:**
+- How to resolve U1-1 MAJORs when local fixes don't match GPT-PM's adversarial tests?
+- GitHub exemption request or history rewrite for fake credential?
+
