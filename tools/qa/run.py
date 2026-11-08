@@ -709,8 +709,21 @@ def _resolve_cases(
     ids = [row.get("node_id") for row in rows if isinstance(row, dict)]
     if len(ids) != len(rows) or len(ids) != len(set(ids)):
         raise QARunError("pytest event file contains invalid or duplicate concrete node IDs")
-    if any(not isinstance(i, str) or not _SAFE_NODE_ID.fullmatch(i) for i in ids):
-        raise QARunError("pytest node ID contains characters outside the safe set; refused")
+    if any(not isinstance(i, str) for i in ids):
+        raise QARunError("pytest event file contains a non-string concrete node ID")
+    # A parametrized ID may hold characters outside the report-safe set (spaces, commas,
+    # non-ASCII). Accounting must not be lost for the whole lane: such an ID is reported
+    # as a digest of the raw ID, which stays unique and never echoes unsafe text.
+    def report_id(raw: str) -> str:
+        if _SAFE_NODE_ID.fullmatch(raw):
+            return raw
+        return "<unsafe-node:" + hashlib.sha256(raw.encode("utf-8", "surrogatepass")).hexdigest()[:24] + ">"
+
+    for row in rows:
+        row["node_id"] = report_id(row["node_id"])
+    ids = [row["node_id"] for row in rows]
+    if len(ids) != len(set(ids)):
+        raise QARunError("pytest event file contains duplicate concrete node IDs after digesting")
     selector_cases: dict[str, list[dict[str, str]]] = {test_id: [] for test_id in expected_ids}
     unexpected: list[str] = []
     case_outcomes: list[dict[str, str]] = []

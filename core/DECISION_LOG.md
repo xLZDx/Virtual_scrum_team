@@ -2674,3 +2674,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 - Evidence: test agent on b6437da: 3 targeted tests passed (denominator, empty categories, new qa-tooling boundary test); real_manifest passed once the tree was clean of the edit. Limit: the rejection loop uses a bare pytest.raises, so the exact check that fires per target category is not pinned.
 
 - 2026-11-09: manifest regenerated for the changed S4-A test file.
+
+## 2026-11-09 — S4-C functional lane run and a runner accounting defect
+
+- Evidence: functional lane on 60932a5 (test agent, one run): typed FAIL in 179.6 s (so the earlier 900 s timeout was the tests/qa tooling tests); pytest tail 8 failed, 1117 passed, 41 skipped; the runner record has no per-case accounting because "pytest node ID contains characters outside the safe set; refused" aborted _resolve_cases, so the 8 failures are unattributed.
+- Decision: S4-B defect (found by the first real lane run, not by its tests): a parametrized node ID with unusual characters must not abort accounting of the whole lane. tools/qa/run.py now reports such an ID as <unsafe-node:sha256[:24]> of the raw ID; the two S4-B tests that pinned the refusal are to be updated by the test agent. The evidence files of this run are committed as the record of the FAIL.

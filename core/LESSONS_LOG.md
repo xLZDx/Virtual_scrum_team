@@ -1964,3 +1964,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - 2026-11-09 S4-C tests for qa-tooling
 - Kind: SUCCESS: the new category boundary is pinned by a test that moves the selector into every other category and expects rejection.
+
+- 2026-11-09 runner node-ID accounting
+- Kind: FAILURE: S4-B refused a whole lane on one unusual parametrized ID, and its own test pinned that as correct; found by the first end-to-end lane run, missed by author, tests, both internal reviewers and GPT-PM.
+- Rule: a fail-closed check must degrade to a typed, attributable result for the affected item, never discard the evidence of the whole run.
