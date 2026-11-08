@@ -36,6 +36,8 @@ _TOKEN = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,63}$")
 _HEAD = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
 _HASH = re.compile(r"^[0-9a-f]{64}$")
 _DRIVE = re.compile(r"^[A-Za-z]:")
+_FORMAT_CHARS = frozenset("  ‪‫‬‭‮⁦⁧⁨⁩‎‏﻿")
+_RESERVED_NAMES = frozenset({"con", "prn", "aux", "nul", *(f"com{i}" for i in range(1, 10)), *(f"lpt{i}" for i in range(1, 10))})
 
 
 class ContractError(ValueError):
@@ -48,7 +50,7 @@ class ContractError(ValueError):
 
 
 def _has_control(text: str) -> bool:
-    return any(ord(ch) < 32 or ord(ch) == 127 for ch in text)
+    return any(ord(ch) < 32 or 127 <= ord(ch) <= 159 or ch in _FORMAT_CHARS for ch in text)
 
 
 def _object(value: object, where: str, required: set[str], optional: set[str] = frozenset()) -> dict:
@@ -60,7 +62,7 @@ def _object(value: object, where: str, required: set[str], optional: set[str] = 
         raise ContractError("MISSING_FIELD", f"{where}.{sorted(missing)[0]}")
     unknown = keys - required - optional
     if unknown:
-        raise ContractError("UNKNOWN_FIELD", f"{where}.{sorted(unknown)[0]}")
+        raise ContractError("UNKNOWN_FIELD", f"{where}.[unknown field]")
     return value
 
 
@@ -103,15 +105,28 @@ def validate_relative_posix_path(value: object, where: str) -> str:
     for part in parts:
         if part in ("", ".", "..") or part != part.strip() or part.endswith("."):
             raise ContractError("BAD_PATH", where)
+        if part.split(".", 1)[0].lower() in _RESERVED_NAMES:
+            raise ContractError("BAD_PATH", where)
     return text
 
 
+def _is_link_like(path: str) -> bool:
+    """A symbolic link, or on Windows a junction or any other reparse point."""
+    if os.path.islink(path):
+        return True
+    try:
+        attributes = getattr(os.lstat(path), "st_file_attributes", 0)
+    except OSError:
+        return False
+    return bool(attributes & 0x400)  # FILE_ATTRIBUTE_REPARSE_POINT
+
+
 def reject_symlink_components(root: str, relative_path: str, where: str) -> None:
-    """Refuse a path whose existing components under ``root`` include a symbolic link."""
+    """Refuse a path whose existing components under ``root`` include a link or reparse point."""
     current = root
     for part in relative_path.split("/"):
         current = os.path.join(current, part)
-        if os.path.islink(current):
+        if _is_link_like(current):
             raise ContractError("SYMLINK_COMPONENT", where)
         if not os.path.exists(current):
             return
@@ -207,7 +222,7 @@ def _validate_role_entry(value: object, where: str) -> dict:
             raise ContractError("CLEAN_WITH_OPEN_ITEMS", where)
         if not executors or any(e["status"] != "COMPLETE" for e in executors):
             raise ContractError("CLEAN_WITHOUT_COMPLETE_EXECUTORS", where)
-        if item["class"] in ("MODEL_ONLY", "OUT_OF_SCOPE"):
+        if item["class"] in ("MODEL_ONLY", "OUT_OF_SCOPE", "UNKNOWN"):
             raise ContractError("CLEAN_FOR_NON_LOCAL_CLASS", where)
     if status == "FINDINGS" and not findings:
         raise ContractError("FINDINGS_WITHOUT_FINDINGS", where)

@@ -100,6 +100,8 @@ def verify_manifest(manifest: object, project_dir: pathlib.Path) -> None:
         if not isinstance(files, list) or not files:
             raise BaselineNotRun("MANIFEST_INVALID", "session without files")
         for entry in files:
+            if not isinstance(entry, dict):
+                raise BaselineNotRun("MANIFEST_INVALID", "file entry is not an object")
             path = (project_dir / str(entry.get("path", ""))).resolve()
             try:
                 path.relative_to(project_dir.resolve())

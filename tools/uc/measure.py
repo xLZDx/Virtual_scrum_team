@@ -39,6 +39,25 @@ def _report_roles(report: object, where: str) -> dict:
     return report["roles"]
 
 
+def _count(value: object) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+
+def _verdict(b: object, a: object, local_ran: bool) -> dict:
+    if not isinstance(b, dict) or not isinstance(a, dict):
+        return {"verdict": "NOT_MEASURED", "reason": "role missing from the before or after report", "local_ran": local_ran}
+    deltas = {}
+    for field in TOKEN_FIELDS:
+        before_value, after_value = _count(b.get(field)), _count(a.get(field))
+        if before_value is None or after_value is None:
+            return {"verdict": "NOT_MEASURED", "reason": f"{field} missing or not a non-negative integer",
+                    "local_ran": local_ran}
+        deltas[field] = after_value - before_value
+    shrunk = all(d <= 0 for d in deltas.values()) and any(d < 0 for d in deltas.values())
+    return {"verdict": "LOCAL_FIRST" if local_ran and shrunk else "NO_GAIN", "local_ran": local_ran,
+            "delta_by_field": deltas}
+
+
 def compare(before: object, after: object, result: object) -> dict:
     """Return the per-role verdicts, or a NOT_RUN document with the reason."""
     try:
@@ -48,18 +67,14 @@ def compare(before: object, after: object, result: object) -> dict:
     except (ValueError, contracts.ContractError) as exc:
         return {"status": "NOT_RUN", "reason": str(exc)[:200], "roles": {}}
     verdicts: dict[str, dict] = {}
+    priority = {"NOT_MEASURED": 2, "NO_GAIN": 1, "LOCAL_FIRST": 0}
     for entry in role_result["roles"]:
         name = entry["canonical_role"]
         local_ran = entry["class"] in LOCAL_RAN_CLASSES and entry["status"] not in LOCAL_DID_NOT_RUN
-        b, a = before_roles.get(name), after_roles.get(name)
-        if b is None or a is None:
-            verdicts[name] = {"verdict": "NOT_MEASURED", "reason": "role missing from the before or after report",
-                              "local_ran": local_ran}
-            continue
-        deltas = {f: int(a.get(f, 0)) - int(b.get(f, 0)) for f in TOKEN_FIELDS}
-        shrunk = all(d <= 0 for d in deltas.values()) and any(d < 0 for d in deltas.values())
-        verdict = "LOCAL_FIRST" if local_ran and shrunk else "NO_GAIN"
-        verdicts[name] = {"verdict": verdict, "local_ran": local_ran, "delta_by_field": deltas}
+        verdict = _verdict(before_roles.get(name), after_roles.get(name), local_ran)
+        previous = verdicts.get(name)
+        if previous is None or priority[verdict["verdict"]] > priority[previous["verdict"]]:
+            verdicts[name] = verdict  # aliases of one role: the weakest verdict wins, whatever the row order
     return {"status": "MEASURED", "roles": verdicts}
 
 

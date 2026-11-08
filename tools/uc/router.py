@@ -34,12 +34,24 @@ TEST_ROLE_NAMES = frozenset({
 LOCK_WAIT_SECONDS = 30.0
 LOCK_STALE_SECONDS = 600.0
 _TOKEN_CLEAN = re.compile(r"[^a-z0-9_.-]+")
+# Shapes of well-known credentials; text that matches is never copied into a result.
+_SECRET = re.compile(
+    r"sk_(?:live|test)_[A-Za-z0-9]+|sk-[A-Za-z0-9]{16,}|AKIA[0-9A-Z]{8,}|gh[pousr]_[A-Za-z0-9]{10,}"
+    r"|xox[abprs]-[A-Za-z0-9-]+|AIza[0-9A-Za-z_-]{10,}|-----BEGIN"
+    r"|(?i:secret|passwd|password|api[_-]?key|token)[=_:-]*[A-Za-z0-9]{8,}")
+SEVERITY_RANK = {"BLOCKER": 0, "MAJOR": 1, "MINOR": 2, "NIT": 3}
+
+
+def has_secret(text: object) -> bool:
+    return _SECRET.search(str(text)) is not None
 _EXECUTOR_STATUS = {"COMPLETE": "COMPLETE", "PARTIAL": "PARTIAL", "BLOCKED": "BLOCKED",
                     "NOT_COVERED": "NOT_COVERED", "NOT_RUN": "NOT_RUN"}
 
 
 def to_token(text: object, fallback: str = "unspecified") -> str:
     """Reduce any text to a short lowercase token; nothing else from the text survives."""
+    if has_secret(text):
+        return "redacted"
     head = str(text).split(":", 1)[0].strip().lower()
     token = _TOKEN_CLEAN.sub("-", head).strip("-_.")[:64]
     return token if re.match(r"^[a-z0-9][a-z0-9_.-]{0,63}$", token) else fallback
@@ -57,18 +69,15 @@ def _lookup(table: dict, name: str) -> dict | None:
 
 
 def _acquire(state_dir: pathlib.Path, request_id: str, content_sha: str) -> pathlib.Path:
+    """Take the per-request lock, then check the fingerprint while holding it."""
     directory = state_dir / "uc-requests"
     directory.mkdir(parents=True, exist_ok=True)
     seen = directory / f"{request_id}.sha256"
-    if seen.is_file() and seen.read_text(encoding="utf-8").strip() != content_sha:
-        raise adapter.AdapterBlocked("REQUEST_ID_CONFLICT", "same request_id with different content")
     lock = directory / f"{request_id}.lock"
     deadline = time.monotonic() + LOCK_WAIT_SECONDS
     while True:
         try:
             os.close(os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY))
-            seen.write_text(content_sha, encoding="utf-8")
-            return lock
         except FileExistsError:
             try:
                 if time.time() - lock.stat().st_mtime > LOCK_STALE_SECONDS:
@@ -79,6 +88,20 @@ def _acquire(state_dir: pathlib.Path, request_id: str, content_sha: str) -> path
             if time.monotonic() > deadline:
                 raise adapter.AdapterBlocked("REQUEST_LOCKED", "another run with this request_id is in progress")
             time.sleep(0.1)
+            continue
+        try:
+            if seen.is_file():
+                if seen.read_text(encoding="utf-8").strip() != content_sha:
+                    raise adapter.AdapterBlocked("REQUEST_ID_CONFLICT", "same request_id with different content")
+            else:
+                seen.write_text(content_sha, encoding="utf-8")
+        except BaseException:
+            try:
+                lock.unlink()
+            except OSError:
+                pass
+            raise
+        return lock
 
 
 def _map_finding(raw: object, where: str) -> dict:
@@ -105,6 +128,10 @@ def _map_finding(raw: object, where: str) -> dict:
         contracts.validate_relative_posix_path(finding["path"], where)
     except contracts.ContractError as exc:
         raise adapter.AdapterBlocked("BAD_FINDING_PATH", exc.code) from exc
+    if has_secret(finding["path"]):
+        # Keep the finding, drop the credential-shaped name: the path is replaced by a stable digest.
+        digest = hashlib.sha256(finding["path"].encode("utf-8")).hexdigest()[:16]
+        finding["path"] = f"masked/{digest}"
     return finding
 
 
@@ -151,9 +178,12 @@ def normalize(role_request: dict, table: dict, response: dict | None, adapter_er
             if key not in seen:
                 seen.add(key)
                 unique.append(f)
+        unique.sort(key=lambda f: (SEVERITY_RANK[f["severity"]], f["path"], f["line"], f["column"], f["rule_id"]))
+        if blocked:
+            uncovered.append("executor-blocked")
         uncovered = sorted(set(uncovered))
         if blocked:
-            status = "BLOCKED"
+            status = "PARTIAL" if unique else "BLOCKED"  # findings are kept: they are real, but coverage is incomplete
         elif all(e["status"] == "NOT_RUN" for e in exec_out):
             status = "NOT_RUN"
         elif unique:
@@ -245,6 +275,8 @@ def _collect(doc: dict, executor_ids: list[str], *, aeve_root, state_dir, python
 def _blocked(request_id: str, reason: str, detail: str) -> dict:
     safe_id = request_id if isinstance(request_id, str) and re.match(r"^[A-Za-z0-9._-]{1,128}$", request_id) else "invalid"
     safe_detail = "".join(ch for ch in str(detail)[:200] if ord(ch) >= 32 and ord(ch) != 127)
+    if has_secret(safe_detail):
+        safe_detail = "detail withheld: credential-shaped text"
     return {"schema_version": contracts.BLOCKED_SCHEMA, "request_id": safe_id, "status": "BLOCKED",
             "reason": re.sub(r"[^A-Z0-9_]", "_", str(reason).upper())[:64] or "UNSPECIFIED", "detail": safe_detail}
 
@@ -266,7 +298,13 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ValueError):
         print(json.dumps(_blocked("invalid", "UNREADABLE_REQUEST", "request file is not readable JSON"), sort_keys=True))
         return 2
-    result = review(request, table=load_table(args.table), aeve_root=args.aeve_root, state_dir=args.state_dir,
+    try:
+        table = load_table(args.table)
+    except (OSError, ValueError):
+        print(json.dumps(_blocked(request.get("request_id", "invalid") if isinstance(request, dict) else "invalid",
+                                  "UNREADABLE_TABLE", "role table is not readable JSON"), sort_keys=True))
+        return 2
+    result = review(request, table=table, aeve_root=args.aeve_root, state_dir=args.state_dir,
                     allowed_roots=args.allowed_root, python=args.python, timeout=args.timeout)
     print(json.dumps(result, indent=2, sort_keys=True))
     if result.get("schema_version") == contracts.BLOCKED_SCHEMA:

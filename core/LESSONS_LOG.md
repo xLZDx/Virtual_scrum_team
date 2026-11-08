@@ -1767,3 +1767,10 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-08 — U1-9 blocked
 
 - Kind: NEUTRAL: blocked with a verified cause (task text requires OD-3), not left as an open task.
+
+
+## 2026-11-08 — U1 first test run
+
+- Kind: FAILURE found by the test agents, not by me: 9 defects in code I had hand-tested only on friendly inputs (junction path escape, request-id check outside the lock, credential-shaped text copied into results, a result that broke its own contract when one executor blocked).
+- Layer: author and hand tests missed them; the agent tests caught them.
+- Rule: hostile-path and concurrency cases belong in the first test list for any code that handles repository-controlled names; do not call hand tests on a fixture "tested".
