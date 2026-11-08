@@ -1841,3 +1841,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-08 — U1-2 verification round
 
 - Kind: SUCCESS: a verification note that lists each finding, the change and the test closed both findings in one round.
+
+
+## 2026-11-08 — U1-3 GPT-PM approval
+
+- Kind: SUCCESS: contracts approved in one round after the test agents' hostile-input cases (junction, bidi, reserved names, unknown-field echo) were added before review.
