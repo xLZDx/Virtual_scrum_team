@@ -2599,3 +2599,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: functional agent run 574 passed, 0 failed; security and python reviews found false-PASS paths that were fixed in one batch; live run as the real worker account: account, secret isolation, egress, probe binding PASS; worktree confinement FAIL (repo writable through an inherited ACL on D:) and job object FAIL (no limits yet).
 - Decision: S3-D is delivered as code plus partial live evidence; the two FAILs are recorded, not hidden. Writable repository ACL is an operator decision. U2-1 stays IN_REVIEW with GPT-PM verdict MODIFY (g2 evidence hash must be analysis_sha256, no snapshot fallback).
+
+## 2026-11-08 — S3-D code approved by GPT-PM
+
+- Evidence: GPT-PM verdict APPROVE (0 BLOCKER, 0 MAJOR) for the S3-D code; its note says the deployed sandbox has not passed its operational gate: worktree confinement and job object FAIL in the live run.
+- Decision: S3-D is PARTIAL in the plan, not ACCEPTED; the S4 SUPERSEDED mark is withdrawn here too. The branch is pushed; the operator decides the repository ACL; job limits belong to the future launcher.
