@@ -2615,3 +2615,5 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 - Decision: test file committed, manifest regenerated, one final full run on the exact head before the GPT-PM request.
 
 - 2026-11-08: manifest regenerated for the final S4-A test file.
+
+- 2026-11-08: S4-A scope note for the GPT-PM review; final functional run 274 passed on 27fc5a3.
