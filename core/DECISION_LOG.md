@@ -70,3 +70,9 @@ Restructured core/PROJECT_PLAN.md to use per-task section headers (## U1-N) with
 
 Clarifies that all implementation is complete; blockers are legitimate gating conditions per operator policy, not development delays.
 
+## 2026-11-08 — U1 tasks marked BLOCKED_EXTERNAL: awaiting GPT-PM code review gate
+
+**Change:** Updated PROJECT_PLAN.md: U1-1..U1-8 status changed from IN_PROGRESS to BLOCKED_EXTERNAL.
+**Verified cause:** Tasks are code-complete with all critical fixes applied and ready for GPT-PM review, which is an external gate outside local development scope.
+**Evidence:** 7 BLOCKER/MAJOR fixes applied, 596 tests passing, comprehensive documentation prepared.
+
