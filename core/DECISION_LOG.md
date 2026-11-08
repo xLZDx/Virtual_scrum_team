@@ -2351,3 +2351,14 @@ Findings: (BLOCKER) the CLI main() of role_table.py had broken control flow afte
 
 **Not blocked:** U1-1, U1-7, U1-8 code review pending (parallel tasks). Agent test execution for those tasks can proceed independently.
 
+
+## 2026-11-08 — U1-4 PROJECT_PLAN status marked BLOCKED_EXTERNAL
+
+**Update:** PROJECT_PLAN.md row for U1-4 status changed from IN_REVIEW to BLOCKED_EXTERNAL.
+
+**Verified cause:** GitHub repository rule GH013 push protection blocks push with detected secrets in historical commits (bfa76f3d, 58217ff60) containing Stripe-pattern fake credential used for test fixture (secret masking verification). The pattern is fixed in new code (commit 9ef9700) but remains in history ancestry.
+
+**Not an active code problem:** The new U1-4 implementation (96136ae, 9ef9700, 2a197a1) does not contain the Stripe pattern. The blocker is external: GitHub's secret scanning rule on old commits.
+
+**Resolution path:** (1) Request GitHub exemption via provided link, or (2) operator approval for destructive history rewrite.
+
