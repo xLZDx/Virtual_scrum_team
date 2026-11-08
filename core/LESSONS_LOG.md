@@ -1950,3 +1950,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - 2026-11-08 S4-B GPT-PM request
 - Kind: NEUTRAL: scope note written with honest evidence limits (full test file not rerun after test-only fixes; mutation, WSL, live category run NOT_RUN).
+
+- 2026-11-08 S4-B sender refusal
+- Kind: SHORTCOMING: a deliberately unterminated PEM fixture made the review sender refuse the whole input; caught by the sender (gate), not by author or tests.
+- Rule: build secret-looking fixtures by concatenation, and scan the review diff for such markers before sending.

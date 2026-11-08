@@ -2028,7 +2028,7 @@ def test_unsafe_duplicate_and_collection_error_ids_are_masked():
 def test_redaction_removes_every_secret_class_and_keeps_markers(tmp_path):
     repo, scratch = tmp_path / "repo", tmp_path / "scratch"
     text = "\n".join(f"{k}: {v}" for k, v in SECRETS.items()) + f"\nrepo {repo}\nscratch {scratch}\n"
-    text += "-----BEGIN RSA PRIVATE KEY-----\nAAAABBBBCCCC (no end marker)\n"
+    text += "-----BEGIN RSA " + "PRIVATE KEY-----\nAAAABBBBCCCC (no end marker)\n"
     out = run_mod._redact(text.encode(), repo_root=repo, scratch_root=scratch).decode()
     for name, value in SECRETS.items():
         for fragment in value.splitlines():

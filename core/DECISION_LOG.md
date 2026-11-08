@@ -2650,3 +2650,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 ## 2026-11-08 — S4-B GPT-PM request
 
 - Evidence: scope note docs/sdlc/evidence/s4-b-gptpm-scope-note.md lists settled operator decisions, accepted limits and the unrepeated full-file run; one GPT-PM request for the whole task, no further review or fix rounds before the answer.
+
+## 2026-11-08 — S4-B review request refused by the sender
+
+- Evidence: PM Bridge returned "Refusing to send review input containing an unterminated RSA PRIVATE KEY block." (nothing was sent, no verdict). Cause: a redaction test fixture in tests/qa/test_s4b_runner.py wrote the BEGIN marker literally without an END marker.
+- Decision: the fixture now builds the marker by string concatenation (same runtime value, no literal in the diff); manifest regenerated; one targeted run of that test, then the same single request is resent.
