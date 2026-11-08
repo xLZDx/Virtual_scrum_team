@@ -2336,3 +2336,18 @@ Evidence: tools/uc/role_table.py build and validate functions; catalog/role_tabl
 ## 2026-11-08 — GPT-PM round 1 on U1-4: BLOCKER + MAJOR, fixed (request c92e0b7f)
 
 Findings: (BLOCKER) the CLI main() of role_table.py had broken control flow after an earlier batch edit by the parallel session (commit 80f2c46): validate never set table or problems, build read args.table, so neither command could finish; (MAJOR) the builder wrote its output before validating. Neither was caught by the 815 tests because none ran the CLI. Fix: build in memory, validate, write a temporary file next to --out and os.replace only a valid table; validate loads --table. The test agent added 14 in-process main() cases and 2 real subprocess CLI runs (build reproduces the committed table byte for byte; validate accepts it); tests/uc: 829 passed, 0 failed, 3 skipped. Known gap, not fixed: a builder refusal (an inventory item with no draft decision) still raises ValueError out of main() instead of exiting with a code. Next: one verification round for the fix only.
+
+## 2026-11-08 — U1-4 ready for review; GitHub push protection blocks old commits in history
+
+**Status:** U1-4 code complete (role_table.py 200 LOC, role_table.json 93 entries), tests pass (829 passed, 3 skipped), locally committed (96136ae, 9ef9700, 2a197a1).
+
+**Blocker:** GitHub secret scanning blocks push due to Stripe-pattern fake credential in old commits (bfa76f3d, 58217ff60) used for testing secret masking. The pattern has been fixed in new code (9ef9700), but the old commits remain in history and trigger GH013 push protection.
+
+**Verification cause:** This is an EXTERNAL blocker (GitHub repository rule). The fake credential is intentional test fixture. Options: (1) request GitHub exemption via https://github.com/xLZDx/Virtual_scrum_team/security/secret-scanning/unblock-secret/3LorUBhHnv2NGzusMQiZqhgENqz, (2) operator approval for destructive history rewrite.
+
+**Workaround attempted:** Cherry-pick U1-4 commits to clean branch from main; failed due to DECISION_LOG merge conflicts (old history diverged).
+
+**Ready for:** GPT-PM code review can proceed with file attachments once exemption is obtained, or with push after history is rewritten.
+
+**Not blocked:** U1-1, U1-7, U1-8 code review pending (parallel tasks). Agent test execution for those tasks can proceed independently.
+
