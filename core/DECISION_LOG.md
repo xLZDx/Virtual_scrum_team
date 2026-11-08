@@ -2668,3 +2668,7 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 - Decision (operator answer "Вынести tests/qa в отдельную категорию"): new primary category qa-tooling for tests/qa; it is not part of the functional lane or the regression aggregate. Evidence files of the failed attempt are committed as the honest first record; later lane runs commit their evidence before the next lane starts.
 
 - 2026-11-09: manifest regenerated for the qa-tooling category.
+
+## 2026-11-09 — S4-C tests adapted to the qa-tooling category
+
+- Evidence: test agent on b6437da: 3 targeted tests passed (denominator, empty categories, new qa-tooling boundary test); real_manifest passed once the tree was clean of the edit. Limit: the rejection loop uses a bare pytest.raises, so the exact check that fires per target category is not pinned.

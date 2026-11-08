@@ -671,6 +671,54 @@ def test_identity_selector_recategorized_is_refused(tmp_path: Path):
         validate_registry(root)
 
 
+# ------------------------------------------------------------ qa-tooling
+
+QA_TOOLING_FILE = "tests/qa/test_s4a_registry.py"
+QA_TOOLING_SELECTOR = f"{QA_TOOLING_FILE}::test_tool"
+
+
+@pytest.fixture(scope="module")
+def qa_tooling_repo(tmp_path_factory) -> Path:
+    root = tmp_path_factory.mktemp("qat") / "repo"
+    init_repo(root)
+    write(root, QA_TOOLING_FILE, "def test_tool():\n    pass\n")
+    commit_all(root, "qa tooling module")
+    generate(root)
+    return root
+
+
+def test_qa_tooling_is_outside_regression_and_functional_and_other_categories_are_rejected(
+    qa_tooling_repo: Path, tmp_path: Path
+):
+    registry = validate_registry(qa_tooling_repo)
+    assert registry.selectors_by_id[QA_TOOLING_SELECTOR]["primary_category"] == "qa-tooling"
+    assert registry.category_inventory_ids["qa-tooling"] == [QA_TOOLING_SELECTOR]
+    assert QA_TOOLING_SELECTOR not in registry.category_inventory_ids["functional"]
+    data = load(qa_tooling_repo)
+    assert data["aggregates"]["regression_members"] == ["functional", "integration", "api", "e2e"]
+    assert "qa-tooling" not in data["aggregates"]["regression_members"]
+    assert QA_TOOLING_SELECTOR not in data["categories"]["regression"]["test_ids"]
+    assert QA_TOOLING_SELECTOR not in data["categories"]["regression"]["not_run_reasons"]
+    assert QA_TOOLING_SELECTOR not in data["categories"]["functional"]["test_ids"]
+    assert denominator(registry)["regression"] == {"expected": 22, "runnable": 8, "not_run": 14, "complete": False}
+    assert denominator(registry)["qa-tooling"] == {"expected": 1, "runnable": 1, "not_run": 0, "complete": True}
+
+    for target in ("functional", "integration", "api", "e2e", "identity", "seeded-failure"):
+        root = tmp_path / target
+        shutil.copytree(qa_tooling_repo, root)
+
+        def move(d, target=target):
+            d["categories"]["qa-tooling"]["test_ids"].remove(QA_TOOLING_SELECTOR)
+            d["categories"][target]["test_ids"].append(QA_TOOLING_SELECTOR)
+            if target in d["aggregates"]["regression_members"]:
+                d["categories"]["regression"]["test_ids"].append(QA_TOOLING_SELECTOR)
+            find_entry(d, QA_TOOLING_SELECTOR)["primary_category"] = target
+
+        tamper(root, move)
+        with pytest.raises(RegistryError):
+            validate_registry(root)
+
+
 # ------------------------------------------------------------ denominator
 
 def test_denominator_per_category_and_regression_aggregate(validated):
@@ -681,6 +729,7 @@ def test_denominator_per_category_and_regression_aggregate(validated):
         "functional": {"expected": 5, "runnable": 5, "not_run": 0, "complete": True},
         "identity": {"expected": 0, "runnable": 0, "not_run": 0, "complete": False},
         "integration": {"expected": 2, "runnable": 1, "not_run": 1, "complete": False},
+        "qa-tooling": {"expected": 0, "runnable": 0, "not_run": 0, "complete": False},
         "regression": {"expected": 22, "runnable": 8, "not_run": 14, "complete": False},
         "seeded-failure": {"expected": 0, "runnable": 0, "not_run": 0, "complete": False},
     }
@@ -996,7 +1045,7 @@ def test_builder_policy_and_process_death_selectors_are_not_run_with_empty_profi
 
 def test_builder_empty_categories_are_not_run_with_reason_never_supported(repo: Path):
     data = build_registry(repo)
-    for name in ("e2e", "identity", "seeded-failure"):
+    for name in ("e2e", "identity", "qa-tooling", "seeded-failure"):
         entry = data["categories"][name]
         assert entry["status"] == "NOT_RUN" and entry["test_ids"] == [] and entry["reason"]
 

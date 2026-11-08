@@ -1961,3 +1961,6 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - 2026-11-09 S4-C first run
 - Kind: SHORTCOMING: S4-A assigned the QA tooling own tests to the functional lane by file name; nobody ran the lane end to end before S4-C, so the 1 hour test cost and the dirty-tree block between lanes (runner writes evidence into the tree it requires clean) were found only now.
 - Rule: run every lane once through the real runner as soon as the runner exists; commit evidence between lane runs.
+
+- 2026-11-09 S4-C tests for qa-tooling
+- Kind: SUCCESS: the new category boundary is pinned by a test that moves the selector into every other category and expects rejection.
