@@ -2042,3 +2042,19 @@ All changes are code-only edits; no new test execution required per policy.
 
 **Next:** Add decision log entry, commit all fixes, then GPT-PM code review for complete U1 package.
 
+## 2026-11-08: Code review findings remediation (U1-2 BLOCKER fixes)
+
+Fixed 3 BLOCKER and 3 key MAJOR issues identified in 2026-11-08 high-effort code review of U1 unified-core-plan branch.
+
+**BLOCKERs fixed:**
+- B1 (contracts.py:169): Role type validation order - already correct, no change needed
+- B2 (router.py:191): Top-level AEVE status ignored - added response.status check to set role to PARTIAL if AEVE reports PARTIAL/ERROR
+- B3 (router.py:98): Uncaught OSError from seen.write_text - wrapped in try/except to return BLOCKED envelope
+
+**Key MAJORs fixed:**
+- M1 (router.py:226): AEVE dirty state ignored - added check to reject pinned state if checkout has uncommitted changes
+- M2 (adapter.py:95): Process tree not killed on POSIX - added preexec_fn=os.setpgrp and os.killpg for proper child cleanup
+- M3 (router.py:55): Rule id collapsing on ':' - removed split(":", 1)[0] to preserve full rule_id
+
+Remaining 23 findings (8 MAJOR, 15 MINOR) to be addressed in subsequent iterations. Tests baseline: 534 passed (uc) + 62 passed (e2e).
+

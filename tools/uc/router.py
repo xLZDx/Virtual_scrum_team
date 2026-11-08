@@ -234,6 +234,8 @@ def review(role_request: dict, *, table: dict, aeve_root: pathlib.Path, state_di
         pin = table.get("aeve_pin", {})
         if pin.get("head") != record["aeve_head"] or pin.get("matrix_digest_sha256") != record["matrix"]["digest_sha256"]:
             raise adapter.AdapterBlocked("AEVE_PIN_MISMATCH", "AEVE head or matrix digest differs from the role table pin")
+        if record.get("tracked_dirty_paths", 0) > 0 or record.get("untracked_paths", 0) > 0:
+            raise adapter.AdapterBlocked("AEVE_DIRTY", "AEVE checkout has uncommitted changes; pinned state cannot be verified")
         lock = _acquire(state_dir, doc["request_id"], content_sha)
         executor_ids = sorted({x for role in doc["roles"]
                                for e in [(_lookup(table, role) or {})] if e.get("coverage_state") == "COVERED_PARTIAL"

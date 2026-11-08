@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import pathlib
 import re
 import subprocess
@@ -92,7 +93,11 @@ def _kill_tree(process: subprocess.Popen) -> None:
             subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
                            capture_output=True, timeout=15, check=False, shell=False)
         else:
-            process.kill()
+            # Kill the entire process group (all children)
+            try:
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            except (OSError, ProcessLookupError):
+                process.kill()
     except (OSError, subprocess.SubprocessError):
         pass
     try:
@@ -143,9 +148,11 @@ def run_review(
         request_path.write_text(json.dumps(aeve_request, sort_keys=True), encoding="utf-8")
         argv = [*prefix, "review", "--request", str(request_path)]
         try:
+            preexec = os.setpgrp if os.name != "nt" else None
             process = subprocess.Popen(
                 argv, cwd=private, env=_child_env(aeve_root, state_dir),
                 stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
+                preexec_fn=preexec,
             )
         except OSError as exc:
             raise AdapterBlocked("EXEC_FAILED", str(exc)[:200]) from exc
