@@ -1880,3 +1880,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: NEUTRAL: the verification reply carried headline MODIFY but withdrew its finding and ended with APPROVE; the tool read it as UNRECOGNIZED. Recorded as it is; no claim of a clean approval.
 - Rule: quote the reviewer's own final line and the tool's verdict field side by side.
+
+## 2026-11-08 — U1-8 accepted on the first GPT-PM round
+
+- Kind: SUCCESS: one task per review with a scope note that names acceptance, evidence, settled decisions and the ban on test requests gave a clean APPROVE; subprocess CLI tests existed before the review.
+- Rule: keep the one-task scope note and a CLI subprocess test per entry point.

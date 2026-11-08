@@ -2507,3 +2507,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: request 5684b345 reply: headline "MODIFY - 1 MAJOR", the single finding withdrawn by the reviewer as not valid, all four earlier findings listed FIXED, closing line "Final verdict: APPROVE", receipt_written true; the tool's verdict field read UNRECOGNIZED. Not a clean bare APPROVE.
 - Decision: U1-1 set to ACCEPTED on the substance (no open valid finding, reviewer's own final verdict APPROVE), with the ambiguity recorded here; the operator may ask for a clean resubmission. U1-8 goes to GPT-PM next.
+
+## 2026-11-08 — U1-8 approved by GPT-PM
+
+- Evidence: request 0686f01e, verdict APPROVE, 0 BLOCKER, 0 MAJOR, receipt written. Reviewer note kept as a limit: measure.py compares an already chosen pair; the workflow supplying the three documents must make sure they belong to one paired run. Real paired measurement stays NOT_RUN.
+- Decision: U1-8 ACCEPTED. U1-9 stays BLOCKED_OPERATOR (OD-3). No push: GitHub push protection (GH013) and the parallel sessions need the operator.
