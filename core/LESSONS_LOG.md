@@ -1926,3 +1926,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SUCCESS: three real acceptance defects were found before any code was written, fixed in one batch and verified in one round.
 - Rule: have the plan reviewed before implementation; fix the whole MAJOR set in one batch.
+
+## 2026-11-08 — U3-1 branch inventory
+
+- Kind: SHORTCOMING then caught: the first map used a stale local main as the comparison target and the glob regex used `$` (matches before a trailing newline). The test agent found the regex defect and the stale target. Missed by the author; caught by the test agent.
+- Rule: compare against the remote-tracking ref after a fetch, and use fullmatch for anchored patterns.

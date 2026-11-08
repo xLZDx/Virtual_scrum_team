@@ -2594,3 +2594,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: request 8c527065, APPROVE, 0 BLOCKER, 0 MAJOR, receipt written; U2-2, U3-7 and U5-6 corrections verified FIXED, no direct regressions. Together with request d1ca5bcc (U2-1) the planning contract of U1-U6 is approved.
 - Limit: this approves the planning contract only; no U2-U6 implementation, test or sprint start is authorized. Starting U2 (and U3-1, its prerequisite) needs the operator.
+
+## 2026-11-08 — U3-1 branch inventory implemented
+
+- Evidence: tools/uc/branch_inventory.py, catalog/branch_landing_rules.json and the map docs/sdlc/evidence/u3-1-branch-inventory.json (target origin/main 83cfd64). All files of the five pushed branches are classified; ALREADY_IN_MAIN 290, LAND 195, EVIDENCE_ONLY 849, DROP 25 over the five maps (a file present on two branches counts once per branch). Complete tests/uc: 1110 passed, 0 failed, 3 skipped (test agent).
+- Decision: U3-1 runs before U2-1 so the existing S4/S5 code is reused, not rewritten (plan U2 goal). Landing itself is not part of U3-1 and needs the operator. First map was built against the stale local main 9587052; rebuilt against origin/main, counts unchanged.
