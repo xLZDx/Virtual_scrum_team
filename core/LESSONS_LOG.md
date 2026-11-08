@@ -1853,3 +1853,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Kind: FAILURE (process): a bulk "fix 7 issues" commit by a parallel session left the role_table CLI unable to finish; 800+ tests were green because only library functions were tested, never the command-line entry point. GPT-PM found it by reading the code.
 - Layer: author of the bulk edit, internal reviewers and tests missed it; the independent final reviewer caught it.
 - Rule: every CLI entry point needs at least one subprocess test per sub-command; after any batch edit run the entry points, not only the unit tests. I also repeated the known heredoc escape corruption while fixing it (a newline escape became a real newline); build strings with chr(92) or a file.
+
+
+## 2026-11-08 — fake credentials in test fixtures
+
+- Kind: SHORTCOMING (test agents and me): fixtures used credential-shaped strings (Stripe-style) to prove masking; they survive in git history and GitHub push protection rejects the push. Found only at the push attempt.
+- Rule: build secret-shaped fixtures at run time from parts (for example "sk_" + "live_" + ...) so the literal never appears in a tracked file; check a push dry-run against secret scanning before the final review, not after.

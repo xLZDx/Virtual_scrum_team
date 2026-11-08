@@ -2362,3 +2362,9 @@ Findings: (BLOCKER) the CLI main() of role_table.py had broken control flow afte
 
 **Resolution path:** (1) Request GitHub exemption via provided link, or (2) operator approval for destructive history rewrite.
 
+
+## 2026-11-08 — GPT-PM APPROVE for U1-4 (request 876746cf); a second session is still committing
+
+Verification round: both round-1 findings closed, no regression. U1-4 is ACCEPTED (it was marked BLOCKED_EXTERNAL by a parallel session in 485119c; the push-protection problem blocks every push, not this task's review, so the status was wrong and is corrected). Accepted so far: U1-2, U1-3, U1-4, U1-5, U1-6; in review: U1-1, U1-7, U1-8; U1-9 BLOCKED_OPERATOR.
+
+Two facts the operator must know. (1) Although the operator said this session leads U1, a parallel session is still committing on this branch (96136ae, 9ef9700, c45aeaa, 485119c, all after the decision) and it ran an attempted git push that GitHub rejected (GH013, secret scanning). Pushing needs the operator's explicit command, so that attempt was outside the rules; nothing reached the remote (git ls-remote shows no unified-core-plan branch). The operator should stop that session. (2) The rejected push shows a real obstacle for the eventual push: test fixtures in early commits (bfa76f3, 58217ff) contain Stripe-shaped fake credentials, and GitHub scans the whole pushed history. Options for the operator: allow the secrets through GitHub's one-time unblock link, or approve a local history rewrite of the unpushed commits (destructive, so operator-only). The fixture strings were already replaced in later commits (9ef9700), but history still holds them.
