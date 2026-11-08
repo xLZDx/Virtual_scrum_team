@@ -1906,3 +1906,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SUCCESS: asking all open decisions at once as options with a recommendation closed four blockers in one answer.
 - Rule: collect blockers into one AskUserQuestion with recommended options instead of repeating them in every closing line.
+
+## 2026-11-08 — first real baseline and push
+
+- Kind: SUCCESS: the CLI produced a MEASURED baseline on a real 6.7 MB session with 20 sub-agent transcripts on the first run; per-role fields stay separate. A push blocked by secret scanning was resolved by the operator through the GitHub exception, not by rewriting history.
+- Rule: a baseline is evidence only for roles that actually appear in it; do not extrapolate savings to roles with no messages.

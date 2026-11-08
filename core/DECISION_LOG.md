@@ -2548,3 +2548,9 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: operator answers in chat to four questions. (1) GH013 push protection: unblock through the GitHub link, history is not rewritten; the push itself still needs the operator's explicit push command. (2) OD-3 (changes to global Claude settings, routing, hooks): not approved for now, U1-9 PARKED until real measurements exist. (3) U1-1 stays ACCEPTED despite the ambiguous GPT-PM headline. (4) Real measurement: operator will choose the pinned session set; parallel sessions writing to this branch are to be stopped.
 - Decision: U1-9 set to PARKED; no global configuration touched; no push made; no next sprint started.
+
+## 2026-11-08 — U1 pushed; first real token baseline (U1-1)
+
+- Evidence: operator allowed the GitHub secret-scanning exception (test string in tests/uc_e2e/helpers.py) and the push; `git push -u origin unified-core-plan` created the remote branch (77 commits over origin/main, history not rewritten). No pull request opened yet.
+- Evidence: operator allowed real measurements. token_baseline.py on session 557da842-4774-4321-afaa-c4fe8ecf9f85 (project folder D--Repo): status MEASURED, roles orchestrator, implementation-engineer, functional-test-reviewer, python-reviewer, silent-failure-hunter, claude-code-guide; manifest and report saved in docs/sdlc/evidence/u1-1-baseline-*.json. Review roles in this session are small (python-reviewer 3 messages, silent-failure-hunter 5 messages), so the largest possible local saving is limited.
+- Limit: U1-8 (paired comparison) stays NOT_RUN. It needs an "after" token report from a run where the entry command went first and models handled only the residual; no such run exists and none was invented.
