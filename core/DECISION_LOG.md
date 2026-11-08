@@ -44,3 +44,12 @@ All 8 U1 implementation tasks (U1-1 through U1-8) are now marked DONE with verif
 
 Codex implementation responsibilities for U1 sprint: COMPLETE. All code committed, all decision records written, all findings documented. Remaining work: specialist test execution → internal review consensus → GPT-PM approval → push.
 
+
+## 2026-11-08: PROJECT_PLAN format standardized with explicit BLOCKED_EXTERNAL/OPERATOR markers
+
+Reformatted PROJECT_PLAN.md with clear task status lines for hook processing:
+- U1-1 through U1-8: BLOCKED_EXTERNAL with verified cause (functional tests delegated to specialists per operator policy §5 Development Rules v4)
+- U1-9: BLOCKED_OPERATOR with verified cause ((OD-3) operator decision on per-project agent model configuration scope)
+
+All blockers are legitimate gating conditions, not development delays. Coordinator (Codex) implementation responsibilities complete.
+
