@@ -2613,3 +2613,5 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: functional agent: 273 passed at a247414 incl. the 4 pytest-oracle edge tests and the real-manifest test; one more test pins the 4 selectors the first collector missed (FixtureGit x3, S2OwnerRunnerWindowsProcessE2E x1) and the e2e category of the latter.
 - Decision: test file committed, manifest regenerated, one final full run on the exact head before the GPT-PM request.
+
+- 2026-11-08: manifest regenerated for the final S4-A test file.
