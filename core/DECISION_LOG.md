@@ -2601,3 +2601,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 - Decision: S4 starts with S4-A before the U sprints, by the operator order; the manifest is regenerated in a second commit because the builder needs committed provenance for every test file.
 
 - 2026-11-08: docs/qa/categories.json regenerated after the S4-A code commit so the registry covers the new test file.
+
+## 2026-11-08 — S4-A review fixes: collector follows pytest, registry bound to HEAD blobs
+
+- Evidence: python-reviewer found 5 MAJOR (collector missed unittest.TestCase classes with other names: 4 real tests absent from the denominator; hashes taken from the working tree; empty categories read as success; category status not bound to content; pass counting ignored runtime profiles); an oracle test against pytest --collect-only then found 4 more collector disagreements (test prefix, *Tests plain classes, __init__ classes, testCamel).
+- Decision: the collector now follows pytest default collection and fails closed on constructs it cannot resolve; validation requires a clean tree for tests, docs/qa and tools/qa and hashes HEAD blobs; count_passed is per runtime profile; empty or NOT_RUN categories report complete=False. Mutation runs stay NOT_RUN by operator rule.

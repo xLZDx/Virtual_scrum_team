@@ -11,9 +11,12 @@ from typing import Any
 
 from .registry import (
     RUNTIME_PROFILES,
+    RegistryError,
     _function_selectors,
+    _read_head_blob,
     _latest_path_commit,
     git_head,
+    check_worktree_clean,
     git_root,
     inventory_test_files,
     required_runtime_profiles,
@@ -150,6 +153,7 @@ def _category_for_test_file(source_path: str) -> str:
 
 def build_registry(root_path: str | Path) -> dict:
     root = git_root(root_path)
+    check_worktree_clean(root)
     source_head = git_head(root)
     inventory: list[dict[str, str]] = []
     tests: list[dict[str, Any]] = []
@@ -157,7 +161,7 @@ def build_registry(root_path: str | Path) -> dict:
 
     for source_path in inventory_test_files(root):
         category = _category_for_test_file(source_path)
-        content = (root / Path(source_path)).read_bytes()
+        content = _read_head_blob(root, source_path)
         normalized_content = content.replace(b"\r\n", b"\n")
         commit = _latest_path_commit(root, source_path)
         inventory.append(
@@ -217,6 +221,13 @@ def build_registry(root_path: str | Path) -> dict:
                 "NOT_RUN: this selector launches a child that terminates via os._exit;"
                 " process-death execution is prohibited for this S4 run."
             )
+    for category in ("functional", "integration", "api", "e2e", "identity", "seeded-failure"):
+        # A category that holds tests must keep at least one runnable selector; a
+        # NOT_RUN/UNSUPPORTED category must hold none (registry validator contract).
+        if category_ids[category] and not (
+            set(category_ids[category]) - set(categories[category]["not_run_reasons"])
+        ):
+            raise RegistryError(f"category {category} holds only NOT_RUN selectors; cannot be SUPPORTED")
     runnable_ids = {
         category: sorted(
             selector for selector in category_ids[category]

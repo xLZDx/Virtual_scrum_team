@@ -1930,3 +1930,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - 2026-11-08 S4-A registry on main
 - Kind: SUCCESS: tests caught that the validator refuses a test module with no category, so every new test file needs a map entry before the manifest is rebuilt.
 - Rule: add the map entry and regenerate the manifest in the same task whenever a test file is added.
+
+- 2026-11-08 S4-A collector and registry fixes
+- Kind: FAILURE: my port shared a blind spot between the generator and the validator (both ignored TestCase classes with other names), so 144 green tests and a valid manifest still undercounted the denominator. Caught by the reviewer reading the real corpus and then by an oracle test against pytest.
+- Rule: a collector needs an independent oracle (pytest --collect-only) in its tests, never only its own generator.

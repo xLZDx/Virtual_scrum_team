@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import builtins
 import hashlib
 import json
 import os
@@ -63,6 +64,10 @@ class RegistryError(ValueError):
     """Raised when the committed registry cannot prove its exact denominator."""
 
 
+class MissingSourceError(RegistryError):
+    """A repository file does not exist (as opposed to being unreadable or unsafe)."""
+
+
 @dataclass(frozen=True)
 class ValidatedRegistry:
     data: dict[str, Any]
@@ -78,6 +83,15 @@ class ValidatedRegistry:
     artifact_stage: dict[str, Any]
 
 
+def _no_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise RegistryError(f"manifest contains a duplicate JSON key: {key!r}")
+        result[key] = value
+    return result
+
+
 def _exact_keys(value: object, keys: set[str], context: str) -> dict[str, Any]:
     if not isinstance(value, dict) or set(value) != keys:
         raise RegistryError(f"{context}: expected exact fields {sorted(keys)}")
@@ -86,19 +100,30 @@ def _exact_keys(value: object, keys: set[str], context: str) -> dict[str, Any]:
     return value
 
 
-def _safe_git(root: Path, *args: str) -> bytes:
-    command = [
+def _git_env() -> dict[str, str]:
+    """Process environment without any GIT_* variable (case-insensitive on Windows)."""
+    return {key: value for key, value in os.environ.items() if not key.upper().startswith("GIT_")}
+
+
+def _git_command(root: Path, *args: str) -> list[str]:
+    return [
         "git",
+        "--no-replace-objects",
         "-c",
         "safe.directory=",
         "-c",
         f"safe.directory={os.fspath(root)}",
         *args,
     ]
+
+
+def _safe_git(root: Path, *args: str) -> bytes:
+    command = _git_command(root, *args)
     try:
         result = subprocess.run(
             command,
             cwd=root,
+            env=_git_env(),
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -114,7 +139,10 @@ def _safe_git(root: Path, *args: str) -> bytes:
 
 
 def git_root(path: str | os.PathLike[str]) -> Path:
-    candidate = Path(path).resolve(strict=True)
+    try:
+        candidate = Path(path).resolve(strict=True)
+    except (OSError, TypeError, ValueError) as exc:
+        raise RegistryError(f"candidate root cannot be resolved ({type(exc).__name__})") from None
     if not candidate.is_dir():
         raise RegistryError("candidate root must be a directory")
     root_bytes = _safe_git(candidate, "rev-parse", "--show-toplevel")
@@ -142,21 +170,12 @@ def _latest_path_commit(root: Path, relative: str) -> str:
 
 
 def _is_ancestor(root: Path, ancestor: str, descendant: str) -> bool:
-    command = [
-        "git",
-        "-c",
-        "safe.directory=",
-        "-c",
-        f"safe.directory={os.fspath(root)}",
-        "merge-base",
-        "--is-ancestor",
-        ancestor,
-        descendant,
-    ]
+    command = _git_command(root, "merge-base", "--is-ancestor", ancestor, descendant)
     try:
         result = subprocess.run(
             command,
             cwd=root,
+            env=_git_env(),
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -171,14 +190,28 @@ def _is_ancestor(root: Path, ancestor: str, descendant: str) -> bool:
     return result.returncode == 0
 
 
-def _read_repo_file(root: Path, relative: str) -> bytes:
-    if relative.startswith("/") or "\\" in relative or ".." in relative.split("/"):
+def _check_relative(relative: object) -> str:
+    if (
+        not isinstance(relative, str)
+        or not relative
+        or "\x00" in relative
+        or relative.startswith("/")
+        or "\\" in relative
+        or ".." in relative.split("/")
+    ):
         raise RegistryError(f"non-canonical repository path: {relative!r}")
+    return relative
+
+
+def _read_repo_file(root: Path, relative: str) -> bytes:
+    _check_relative(relative)
     path = root.joinpath(*relative.split("/"))
     try:
         resolved = path.resolve(strict=True)
-    except OSError:
-        raise RegistryError(f"required source file is missing: {relative}") from None
+    except FileNotFoundError:
+        raise MissingSourceError(f"required source file is missing: {relative}") from None
+    except (OSError, ValueError) as exc:
+        raise RegistryError(f"cannot resolve source file: {relative} ({type(exc).__name__})") from None
     if not resolved.is_relative_to(root) or path.is_symlink():
         raise RegistryError(f"source path escapes the repository: {relative}")
     try:
@@ -187,51 +220,192 @@ def _read_repo_file(root: Path, relative: str) -> bytes:
         raise RegistryError(f"cannot read source file: {relative} ({type(exc).__name__})") from None
 
 
+def _read_head_blob(root: Path, relative: str) -> bytes:
+    """Return the committed bytes of a file at HEAD (never the working-tree copy)."""
+    _check_relative(relative)
+    return _safe_git(root, "cat-file", "blob", f"HEAD:{relative}")
+
+
+def check_worktree_clean(root: Path) -> None:
+    """Fail closed when tests/, docs/qa/ or tools/qa/ have dirty or untracked paths."""
+    output = _safe_git(
+        root, "status", "--porcelain", "--untracked-files=all", "-z", "--", "tests", "docs/qa", "tools/qa"
+    )
+    entries = [entry for entry in output.split(b"\x00") if entry]
+    if entries:
+        sample = ", ".join(os.fsdecode(entry) for entry in entries[:5])
+        raise RegistryError(
+            "working tree has uncommitted or untracked paths under tests/, docs/qa/ or tools/qa/"
+            f" (count={len(entries)}): {sample}"
+        )
+
+
+def check_tests_unchanged_since(
+    root: Path, source_head: str, head: str, inventory_paths: set[str]
+) -> None:
+    """Files under tests/ changed after source_head must be inventoried (hash-checked at HEAD)."""
+    output = _safe_git(root, "diff", "--name-only", "-z", source_head, head, "--", "tests")
+    changed = [os.fsdecode(entry) for entry in output.split(b"\x00") if entry]
+    unlisted = sorted(path for path in changed if path not in inventory_paths)
+    if unlisted:
+        raise RegistryError(
+            f"tests/ files changed after source_head without a manifest entry (count={len(unlisted)}): "
+            f"{', '.join(unlisted[:5])}"
+        )
+
+
+_UNITTEST_CASE_NAMES = frozenset({"TestCase", "IsolatedAsyncioTestCase"})
+_UNITTEST_MODULES = frozenset({"unittest", "unittest.case", "unittest.async_case"})
+
+
+def _contains_collectable(node: ast.AST) -> bool:
+    return any(
+        isinstance(child, ast.ClassDef)
+        or (isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and child.name.startswith("test"))
+        for child in ast.walk(node)
+    )
+
+
+def _contains_test_def(node: ast.AST) -> bool:
+    return any(
+        isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and child.name.startswith("test")
+        for child in ast.walk(node)
+    )
+
+
 def _function_selectors(source_path: str, content: bytes) -> set[str]:
+    """Statically list the selectors pytest collects from one test module.
+
+    Collected (pytest defaults): top-level functions whose name starts with "test";
+    top-level plain classes named Test* that define no __init__/__new__ (own or
+    inherited); top-level classes deriving (directly or through local classes) from
+    unittest.TestCase, whatever their name. Methods are those starting with "test",
+    including inherited ones of local bases. Anything not statically resolvable
+    (non-local/non-TestCase base, nested classes with tests, test defs under
+    compound statements) raises RegistryError instead of being skipped.
+    """
     try:
         source = content.decode("utf-8")
         tree = ast.parse(source, filename=source_path)
-    except (UnicodeError, SyntaxError) as exc:
+    except (UnicodeError, SyntaxError, ValueError, RecursionError) as exc:
         raise RegistryError(
             f"test source cannot be statically parsed: {source_path} ({type(exc).__name__})"
         ) from None
 
-    found: set[str] = set()
-    classes = {
-        node.name: node
-        for node in tree.body
-        if isinstance(node, ast.ClassDef)
-    }
-    test_class_names = {
-        name
-        for name in classes
-        if name.startswith("Test") or name.endswith("Tests")
-    }
+    def unresolved(what: str) -> RegistryError:
+        return RegistryError(f"{source_path}: {what}; pytest collection cannot be proven statically")
 
-    def collect_methods(class_name: str, seen: set[str] | None = None) -> set[str]:
-        visited = set() if seen is None else set(seen)
+    unittest_aliases: dict[str, str] = {}
+    testcase_names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.asname:
+                    if alias.name in _UNITTEST_MODULES:
+                        unittest_aliases[alias.asname] = alias.name
+                elif alias.name == "unittest" or alias.name.startswith("unittest."):
+                    unittest_aliases["unittest"] = "unittest"
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module in _UNITTEST_MODULES:
+            for alias in node.names:
+                if alias.name in _UNITTEST_CASE_NAMES:
+                    testcase_names.add(alias.asname or alias.name)
+
+    classes: dict[str, ast.ClassDef] = {}
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef):
+            classes[node.name] = node
+        elif not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _contains_collectable(node):
+            raise unresolved("collectable definition nested in a module-level compound statement")
+
+    def base_kind(base: ast.expr, class_name: str) -> tuple[str, str]:
+        if isinstance(base, ast.Name):
+            if base.id in classes:
+                return "local", base.id
+            if base.id in testcase_names:
+                return "testcase", ""
+            if isinstance(getattr(builtins, base.id, None), type):
+                return "plain", base.id
+        elif isinstance(base, ast.Attribute):
+            parts: list[str] = []
+            cursor: ast.expr = base
+            while isinstance(cursor, ast.Attribute):
+                parts.append(cursor.attr)
+                cursor = cursor.value
+            if isinstance(cursor, ast.Name):
+                parts.append(cursor.id)
+                parts.reverse()
+                if parts[-1] in _UNITTEST_CASE_NAMES and parts[0] in unittest_aliases:
+                    module = ".".join([unittest_aliases[parts[0]], *parts[1:-1]])
+                    if module in _UNITTEST_MODULES:
+                        return "testcase", ""
+        raise unresolved(f"class {class_name} has a base that cannot be resolved")
+
+    def is_testcase(class_name: str, visited: frozenset[str] = frozenset()) -> bool:
         if class_name in visited:
-            return set()
-        visited.add(class_name)
+            return False
+        visited = visited | {class_name}
+        result = False
+        for base in classes[class_name].bases:
+            kind, local = base_kind(base, class_name)
+            if kind == "testcase" or (kind == "local" and is_testcase(local, visited)):
+                result = True
+        return result
+
+    def has_init(class_name: str, seen: frozenset[str] = frozenset()) -> bool:
+        if class_name in seen:
+            return False
+        seen = seen | {class_name}
         node = classes[class_name]
-        methods = {
-            member.name
-            for member in node.body
-            if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
-            and member.name.startswith("test_")
-        }
+        for member in node.body:
+            if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if member.name in ("__init__", "__new__"):
+                    return True
+            elif isinstance(member, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+                targets = member.targets if isinstance(member, ast.Assign) else [member.target]
+                for target in targets:
+                    if isinstance(target, ast.Name) and target.id in ("__init__", "__new__"):
+                        return True
         for base in node.bases:
-            base_name = base.id if isinstance(base, ast.Name) else None
-            if base_name in classes:
-                methods.update(collect_methods(base_name, visited))
+            kind, name = base_kind(base, class_name)
+            if kind == "local" and has_init(name, seen):
+                return True
+            if kind == "plain":
+                builtin = getattr(builtins, name)
+                if builtin.__init__ is not object.__init__ or builtin.__new__ is not object.__new__:
+                    return True
+        return False
+
+    def collect_methods(class_name: str, seen: frozenset[str] = frozenset()) -> set[str]:
+        if class_name in seen:
+            return set()
+        seen = seen | {class_name}
+        node = classes[class_name]
+        methods: set[str] = set()
+        for member in node.body:
+            if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if member.name.startswith("test"):
+                    methods.add(member.name)
+            elif isinstance(member, ast.ClassDef):
+                if _contains_test_def(member):
+                    raise unresolved(f"nested class {member.name} in {class_name} contains test methods")
+            elif _contains_collectable(member):
+                raise unresolved(f"collectable definition in a compound statement of class {class_name}")
+        for base in node.bases:
+            kind, local = base_kind(base, class_name)
+            if kind == "local":
+                methods.update(collect_methods(local, seen))
         return methods
 
+    found: set[str] = set()
     for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test_"):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test"):
             found.add(f"{source_path}::{node.name}")
-    for class_name in sorted(test_class_names):
-        for method_name in sorted(collect_methods(class_name)):
-            found.add(f"{source_path}::{class_name}::{method_name}")
+    for class_name in sorted(classes):
+        # is_testcase() also resolves (or rejects) every base of every top-level class.
+        derives_testcase = is_testcase(class_name)
+        if derives_testcase or (class_name.startswith("Test") and not has_init(class_name)):
+            for method_name in sorted(collect_methods(class_name)):
+                found.add(f"{source_path}::{class_name}::{method_name}")
     return found
 
 
@@ -254,21 +428,33 @@ def check_artifact_stage(root: Path, artifacts: dict[str, dict[str, str]]) -> di
 
     The registry itself never needs report files. Reports are produced by later
     stages; while none exist the stage is reported as SKIPPED (never as passed),
-    when all exist it is PRESENT (existence only, content is validated by the
-    report stage), and a partial set fails closed.
+    when all exist and are non-empty it is PRESENT (existence and non-emptiness
+    only; content is validated by the report stage), and a partial set fails
+    closed. Only a missing file counts as absent; an unreadable, unsafe or empty
+    file raises RegistryError.
     """
+    if not isinstance(artifacts, dict):
+        raise RegistryError("artifacts must be an object")
     expected: list[str] = []
     for category in sorted(artifacts):
-        expected.extend(artifacts[category][kind] for kind in ("report", "stdout", "stderr"))
+        entry = artifacts[category]
+        if not isinstance(category, str) or not isinstance(entry, dict):
+            raise RegistryError("artifacts entries must map categories to path objects")
+        for kind in ("report", "stdout", "stderr"):
+            if not isinstance(entry.get(kind), str):
+                raise RegistryError(f"artifacts.{category}.{kind} must be a path string")
+            expected.append(entry[kind])
     present: list[str] = []
     absent: list[str] = []
     for relative in expected:
         try:
-            _read_repo_file(root, relative)
-        except RegistryError:
+            content = _read_repo_file(root, relative)
+        except MissingSourceError:
             absent.append(relative)
-        else:
-            present.append(relative)
+            continue
+        if not content:
+            raise RegistryError(f"evidence artifact is empty: {relative}")
+        present.append(relative)
     if present and absent:
         raise RegistryError(
             f"evidence artifacts are partially present (present={len(present)}, absent={len(absent)})"
@@ -280,36 +466,83 @@ def check_artifact_stage(root: Path, artifacts: dict[str, dict[str, str]]) -> di
             "expected": len(expected),
             "present": 0,
         }
-    return {"status": "PRESENT", "reason": None, "expected": len(expected), "present": len(present)}
-
-
-def denominator(registry: ValidatedRegistry) -> dict[str, dict[str, int]]:
-    """Expected selector counts per category. Nothing here counts as passed."""
     return {
-        category: {
-            "expected": len(registry.category_inventory_ids[category]),
-            "runnable": len(registry.category_test_ids[category]),
-            "not_run": len(registry.category_not_run[category]),
-        }
-        for category in sorted(registry.category_inventory_ids)
+        "status": "PRESENT",
+        "scope": "existence-only",
+        "reason": None,
+        "expected": len(expected),
+        "present": len(present),
     }
 
 
-def count_passed(registry: ValidatedRegistry, outcomes: dict[str, str]) -> dict[str, dict[str, int]]:
-    """Count passes against the denominator; fail closed on unknown selectors.
+def denominator(registry: ValidatedRegistry) -> dict[str, dict[str, Any]]:
+    """Expected selector counts per category. Nothing here counts as passed.
 
-    Only the exact outcome 'passed' for a runnable selector counts. Missing,
-    skipped, xfailed, errored or NOT_RUN selectors stay in the denominator
-    without being counted as passed.
+    `complete` is True only for a non-empty category in which every selector is
+    runnable (no NOT_RUN); an empty or NOT_RUN-bearing category is never complete.
     """
-    unknown = sorted(set(outcomes) - set(registry.selectors_by_id))
-    if unknown:
-        raise RegistryError(f"outcomes contain selectors absent from the registry (count={len(unknown)})")
-    result: dict[str, dict[str, int]] = {}
+    result: dict[str, dict[str, Any]] = {}
+    for category in sorted(registry.category_inventory_ids):
+        expected = len(registry.category_inventory_ids[category])
+        runnable = len(registry.category_test_ids[category])
+        not_run = len(registry.category_not_run[category])
+        result[category] = {
+            "expected": expected,
+            "runnable": runnable,
+            "not_run": not_run,
+            "complete": expected > 0 and not_run == 0 and runnable == expected,
+        }
+    return result
+
+
+def count_passed(
+    registry: ValidatedRegistry, outcomes: dict[str, dict[str, str]]
+) -> dict[str, dict[str, Any]]:
+    """Count passes against the denominator; fail closed on unknown profiles/selectors.
+
+    `outcomes` is {runtime_profile: {selector: outcome}}. A selector counts as
+    passed only if it is runnable and EVERY profile in
+    required_runtime_profiles(selector) reports the exact outcome "passed".
+    Missing, skipped, xfailed, errored or NOT_RUN selectors stay in the
+    denominator without being counted. A parametrized function counts as passed
+    only if all its cases passed; the caller aggregates the cases into one
+    "passed" outcome per selector and profile. Any other value shape raises.
+    `complete` is False when the category is empty or passed != expected.
+    """
+    if not isinstance(outcomes, dict):
+        raise RegistryError("outcomes must map runtime profiles to selector outcome maps")
+    for profile, per_profile in outcomes.items():
+        if not isinstance(profile, str) or profile not in RUNTIME_PROFILES:
+            raise RegistryError("outcomes contain an unknown runtime profile")
+        if not isinstance(per_profile, dict):
+            raise RegistryError("outcomes for a runtime profile must map selectors to outcomes")
+        unknown = [
+            selector for selector in per_profile
+            if not isinstance(selector, str) or selector not in registry.selectors_by_id
+        ]
+        if unknown:
+            raise RegistryError(
+                f"outcomes contain selectors absent from the registry (count={len(unknown)})"
+            )
+        if any(not isinstance(outcome, str) for outcome in per_profile.values()):
+            raise RegistryError("outcome values must be strings")
+
+    def selector_passed(selector: str) -> bool:
+        return all(
+            outcomes.get(profile, {}).get(selector) == "passed"
+            for profile in required_runtime_profiles(selector)
+        )
+
+    result: dict[str, dict[str, Any]] = {}
     for category, expected in sorted(registry.category_inventory_ids.items()):
         runnable = set(registry.category_test_ids[category])
-        passed = sum(1 for test_id in expected if test_id in runnable and outcomes.get(test_id) == "passed")
-        result[category] = {"expected": len(expected), "passed": passed, "not_passed": len(expected) - passed}
+        passed = sum(1 for test_id in expected if test_id in runnable and selector_passed(test_id))
+        result[category] = {
+            "expected": len(expected),
+            "passed": passed,
+            "not_passed": len(expected) - passed,
+            "complete": len(expected) > 0 and passed == len(expected),
+        }
     return result
 
 
@@ -318,10 +551,13 @@ def validate_registry(
     manifest_path: str = "docs/qa/categories.json",
 ) -> ValidatedRegistry:
     root = git_root(root_path)
+    check_worktree_clean(root)
     manifest_bytes = _read_repo_file(root, manifest_path)
     try:
-        data = json.loads(manifest_bytes)
-    except (UnicodeError, json.JSONDecodeError):
+        data = json.loads(manifest_bytes, object_pairs_hook=_no_duplicate_keys)
+    except RegistryError:
+        raise
+    except (UnicodeError, ValueError, RecursionError):
         raise RegistryError("category manifest is not valid UTF-8 JSON") from None
 
     data = _exact_keys(
@@ -340,7 +576,12 @@ def validate_registry(
         },
         "manifest",
     )
-    if data["schema_version"] != 2 or data["registry_version"] != "2":
+    if (
+        type(data["schema_version"]) is not int
+        or data["schema_version"] != 2
+        or not isinstance(data["registry_version"], str)
+        or data["registry_version"] != "2"
+    ):
         raise RegistryError("manifest schema or registry version is unsupported")
     profiles = data["runtime_profiles"]
     if profiles != list(RUNTIME_PROFILES):
@@ -381,7 +622,7 @@ def validate_registry(
             raise RegistryError(f"source_inventory[{index}].source_commit is invalid")
         if not isinstance(digest, str) or _HEX64.fullmatch(digest) is None:
             raise RegistryError(f"source_inventory[{index}].sha256 is invalid")
-        content = _read_repo_file(root, path)
+        content = _read_head_blob(root, path)
         normalized_content = content.replace(b"\r\n", b"\n")
         if hashlib.sha256(normalized_content).hexdigest() != digest:
             raise RegistryError(f"test source changed after registry generation: {path}")
@@ -393,6 +634,7 @@ def validate_registry(
     expected_files = set(inventory_test_files(root))
     if set(inventory_by_path) != expected_files:
         raise RegistryError("source_inventory does not cover every committed test module")
+    check_tests_unchanged_since(root, source_head, head, set(inventory_by_path))
 
     categories = data["categories"]
     if not isinstance(categories, dict) or set(categories) != ALL_CATEGORIES:
@@ -431,10 +673,11 @@ def validate_registry(
             raise RegistryError(f"tests[{index}] source_path does not match its selector")
         if source_commit != inventory_by_path[source_path]["source_commit"]:
             raise RegistryError(f"tests[{index}] source_commit is stale")
-        if category not in PRIMARY_CATEGORIES:
+        if not isinstance(category, str) or category not in PRIMARY_CATEGORIES:
             raise RegistryError(f"tests[{index}] primary category is invalid")
         if (
             not isinstance(runtime_profiles, list)
+            or any(not isinstance(profile, str) for profile in runtime_profiles)
             or runtime_profiles != sorted(set(runtime_profiles))
             or any(profile not in RUNTIME_PROFILES for profile in runtime_profiles)
         ):
@@ -492,7 +735,7 @@ def validate_registry(
             f"categories.{category}",
         )
         status, ids, reason = entry["status"], entry["test_ids"], entry["reason"]
-        if status not in {"SUPPORTED", "NOT_RUN", "UNSUPPORTED"}:
+        if not isinstance(status, str) or status not in {"SUPPORTED", "NOT_RUN", "UNSUPPORTED"}:
             raise RegistryError(f"categories.{category}.status is invalid")
         if not isinstance(ids, list) or any(not isinstance(value, str) for value in ids):
             raise RegistryError(f"categories.{category}.test_ids must be a string list")
@@ -505,8 +748,10 @@ def validate_registry(
             or any(not isinstance(value, str) or not value.strip() for value in not_run_reasons.values())
         ):
             raise RegistryError(f"categories.{category}.not_run_reasons is invalid")
-        if status == "SUPPORTED" and not ids:
-            raise RegistryError(f"categories.{category} cannot be SUPPORTED without tests")
+        if status == "SUPPORTED" and not (set(ids) - set(not_run_reasons)):
+            raise RegistryError(f"categories.{category} cannot be SUPPORTED without a runnable selector")
+        if status != "SUPPORTED" and ids:
+            raise RegistryError(f"categories.{category} with status {status} must have empty test_ids")
         if status != "SUPPORTED" and (not isinstance(reason, str) or not reason.strip()):
             raise RegistryError(f"categories.{category} requires an exact non-approving reason")
         category_inventory_ids[category] = list(ids)
