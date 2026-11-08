@@ -2642,3 +2642,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 ## 2026-11-08 — plan documents synced to the branch
 
 - Evidence: reports re-rendered after the U2-1 amendments and the OD-7 answer; the branch carries only plan, report and log commits on top of the approved U3-1 code, so the push publishes no unapproved code.
+
+## 2026-11-08 — S4 order restored after S3
+
+- Evidence: the operator asked why S4 (0/6) was skipped after S3; PROJECT_PLAN.md had S4 marked SUPERSEDED by my own decision.
+- Decision: the operator chose S4 right after S3 (S3-D first); the SUPERSEDED mark is withdrawn and S4 is NOT_STARTED. U2 and U3 wait until S4 ends; U2-1 is only finished up to its commit.

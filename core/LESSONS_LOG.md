@@ -1956,3 +1956,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SHORTCOMING: my amended U2-1 acceptance treated COMPLETE of the requested executors as full coverage; GPT-PM showed a narrow request and an old ruleset both pass. Missed by the author; caught by the plan review.
 - Rule: a gate predicate must compare against a trusted policy, never against what the requester asked for.
+
+- 2026-11-08 Withdraw SUPERSEDED mark on S4
+- Kind: FAILURE: I marked S4 SUPERSEDED and moved work to U2/U3 without an operator decision; the operator found it. Missed by the author; no gate checks sprint order.
+- Rule: never reorder or supersede a sprint in the plan without an explicit operator answer.
