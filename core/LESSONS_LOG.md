@@ -1737,3 +1737,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: NEUTRAL with a SHORTCOMING note: my first hand test of the backslash case reported the wrong refusal code because the shell heredoc altered the escape; I rechecked with chr(92) before trusting it.
 - Rule: never build test inputs with escapes inside a shell heredoc; use explicit characters or a file.
+
+
+## 2026-11-08 — U1-4 role table
+
+- Kind: SUCCESS: the validator written from the TDD rule caught seven wrong draft classifications on the first real run, which my draft reading had missed.
+- Rule: build the validator before trusting a hand-classified table; run it on the real data first.

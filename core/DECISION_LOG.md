@@ -1959,3 +1959,8 @@ Requests ee47b993 (round 1, head 725d5e7) and 88206080 (round 2, head af98502, o
 ## 2026-11-08 — U1-3 contracts written
 
 Task U1-3: tools/uc/contracts.py validates uc.role-request.v1 and uc.role-result.v1 strictly (unknown fields rejected, root allowlist, validated relative POSIX paths, result only enums, integers, hashes and validated paths, consistency rules between status, findings, residual and exit code). Exercised by hand on valid and hostile inputs; agent tests are NOT_RUN and follow the sprint code. One hand-test artifact was a shell heredoc turning a backslash into a control character, not a validator defect (rechecked with an explicit character).
+
+
+## 2026-11-08 — U1-4 role table built and validated
+
+Task U1-4: tools/uc/role_table.py builds catalog/role_table.json from the inventory, the draft decisions and the live AEVE matrix, pinned to AEVE head 25a8fea and matrix digest 357592f3. The validator first refused the draft in 7 places: roles the draft called model-only or out of scope (architect, code-architect, architecture-contract, software-architect, technical-design, financial-ml-contract, skill-creator) for which AEVE lists executors. Decision: class follows evidence, so those become LOCAL_PLUS_MODEL with draft_class and an upgrade flag kept; TDD section 4 now states the coverage_state rule. Counts: 93 entries; LOCAL 9, LOCAL_PLUS_MODEL 58, MODEL_ONLY 18, OUT_OF_SCOPE 8. The draft classification itself stays unreviewed. Agent tests NOT_RUN.

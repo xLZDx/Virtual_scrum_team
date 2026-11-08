@@ -1,0 +1,1367 @@
+{
+  "aeve_pin": {
+    "head": "25a8fea79f00885d8b4e019c755020848fb981c0",
+    "matrix_digest_sha256": "357592f3de7b3000695488d0e38b7d8af8d27841a794d0c4cec09724838dd2a8"
+  },
+  "counts": {
+    "by_class": {
+      "LOCAL": 9,
+      "LOCAL_PLUS_MODEL": 58,
+      "MODEL_ONLY": 18,
+      "OUT_OF_SCOPE": 8
+    },
+    "by_coverage_state": {
+      "COVERED_PARTIAL": 48,
+      "NOT_APPLICABLE": 26,
+      "NOT_COVERED_NO_EXECUTOR": 4,
+      "NOT_COVERED_NO_PROFILE": 15
+    },
+    "total": 93
+  },
+  "entries": [
+    {
+      "aeve_profile": "a11y-architect",
+      "canonical_role": "a11y-architect",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g5.a11y-markup",
+        "g5.a11y-status-template"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Judge whether keyboard and screen-reader flows complete the task",
+      "name": "a11y-architect",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "architect",
+      "canonical_role": "architect",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": true,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "MODEL_ONLY",
+      "executors": [
+        "g1.python-graph",
+        "g1.python-import-cycles",
+        "g5.dependency-boundary",
+        "g5.layering-shapes"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Boundary, ownership and tradeoff decisions",
+      "name": "architect",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "build-error-resolver",
+      "canonical_role": "build-error-resolver",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g6.python-diagnose"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Choose and write the minimal fix for the failure",
+      "name": "build-error-resolver",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "business-analyst",
+      "class": "MODEL_ONLY",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "MODEL_ONLY",
+      "executors": [],
+      "kind": "agent",
+      "model_remainder_hint": "Write testable requirements from an idea",
+      "name": "business-analyst",
+      "reason": "Authoring."
+    },
+    {
+      "aeve_profile": "architect",
+      "canonical_role": "architect",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": true,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "MODEL_ONLY",
+      "executors": [
+        "g1.python-graph",
+        "g1.python-import-cycles",
+        "g5.dependency-boundary",
+        "g5.layering-shapes"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Boundary, ownership and tradeoff decisions",
+      "name": "code-architect",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "code-explorer",
+      "canonical_role": "code-explorer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g1.change-impact",
+        "g1.python-graph",
+        "g1.repository-snapshot",
+        "g5.layering-shapes"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Trace the real execution path of a behavior",
+      "name": "code-explorer",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "code-reviewer",
+      "canonical_role": "code-reviewer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.diff-rules",
+        "g2.python-rules"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Judge behavioral regressions across files",
+      "name": "code-reviewer",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "code-simplifier",
+      "canonical_role": "code-simplifier",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.hygiene-rules"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Rewrite changed code for clarity without changing behavior",
+      "name": "code-simplifier",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "comment-analyzer",
+      "canonical_role": "comment-analyzer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.comment-rules"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Decide whether a comment is misleading",
+      "name": "comment-analyzer",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "conversation-analyzer",
+      "class": "OUT_OF_SCOPE",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "OUT_OF_SCOPE",
+      "executors": [],
+      "kind": "agent",
+      "model_remainder_hint": "",
+      "name": "conversation-analyzer",
+      "reason": "Hookify transcript analysis; not a delivery check of this product."
+    },
+    {
+      "aeve_profile": "build-error-resolver",
+      "canonical_role": "build-error-resolver",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g6.python-diagnose"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Choose and write the minimal fix for the failure",
+      "name": "cpp-build-resolver",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "cpp-reviewer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_COVERED_NO_PROFILE",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [],
+      "kind": "agent",
+      "model_remainder_hint": "Judge memory safety and concurrency defects",
+      "name": "cpp-reviewer",
+      "reason": "no AEVE profile"
+    },
+    {
+      "aeve_profile": "build-error-resolver",
+      "canonical_role": "build-error-resolver",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g6.python-diagnose"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Choose and write the minimal fix for the failure",
+      "name": "dart-build-resolver",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "database-reviewer",
+      "canonical_role": "database-reviewer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g3.sql-design-rules",
+        "g3.sql-migration",
+        "g3.sqlite-schema"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Judge query plans, locking and integrity tradeoffs",
+      "name": "database-reviewer",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "doc-updater",
+      "canonical_role": "doc-updater",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g6.doc-reference-integrity",
+        "g6.evidence-documents"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Rewrite prose that the change made wrong",
+      "name": "doc-updater",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "e2e-runner",
+      "canonical_role": "e2e-runner",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.e2e-script-rules"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Author journeys and triage failure cause (product, test, flake)",
+      "name": "e2e-runner",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "fastapi-reviewer",
+      "canonical_role": "fastapi-reviewer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.web-boundary-rules"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Judge auth, async and error-contract design",
+      "name": "fastapi-reviewer",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "flutter-reviewer",
+      "canonical_role": "flutter-reviewer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.dart-lexical-rules"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Judge state ownership and widget lifecycle",
+      "name": "flutter-reviewer",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "functional-test-reviewer",
+      "canonical_role": "functional-test-reviewer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.python-rules",
+        "g2.test-assertion-rules"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Author tests and decide whether an assertion can fail",
+      "name": "functional-test-reviewer",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "harness-optimizer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_COVERED_NO_PROFILE",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [],
+      "kind": "agent",
+      "model_remainder_hint": "Choose which configuration to change",
+      "name": "harness-optimizer",
+      "reason": "no AEVE profile"
+    },
+    {
+      "aeve_profile": "implementation-engineer",
+      "canonical_role": "implementation-engineer",
+      "class": "MODEL_ONLY",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "MODEL_ONLY",
+      "executors": [],
+      "kind": "agent",
+      "model_remainder_hint": "Write the change",
+      "name": "implementation-engineer",
+      "reason": "Retained as the single authoring role."
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "loop-operator",
+      "class": "OUT_OF_SCOPE",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "OUT_OF_SCOPE",
+      "executors": [],
+      "kind": "agent",
+      "model_remainder_hint": "",
+      "name": "loop-operator",
+      "reason": "Scheduling and stall detection are runner and orchestrator functions."
+    },
+    {
+      "aeve_profile": "ml-engineer",
+      "canonical_role": "ml-engineer",
+      "class": "MODEL_ONLY",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "MODEL_ONLY",
+      "executors": [],
+      "kind": "agent",
+      "model_remainder_hint": "Implement labels, features and validation pipelines",
+      "name": "ml-engineer",
+      "reason": "Domain authoring."
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "network-config-reviewer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_COVERED_NO_PROFILE",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [],
+      "kind": "agent",
+      "model_remainder_hint": "Judge design-level risks",
+      "name": "network-config-reviewer",
+      "reason": "no AEVE profile"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "network-troubleshooter",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_COVERED_NO_PROFILE",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [],
+      "kind": "agent",
+      "model_remainder_hint": "Interpret diagnostics into a root cause",
+      "name": "network-troubleshooter",
+      "reason": "no AEVE profile"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "opensource-forker",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_COVERED_NO_PROFILE",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [],
+      "kind": "agent",
+      "model_remainder_hint": "Decide how to placeholderize internal names",
+      "name": "opensource-forker",
+      "reason": "no AEVE profile"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "opensource-packager",
+      "class": "MODEL_ONLY",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "MODEL_ONLY",
+      "executors": [],
+      "kind": "agent",
+      "model_remainder_hint": "Write README and contributing text",
+      "name": "opensource-packager",
+      "reason": "Authoring; templates may become code later."
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "opensource-sanitizer",
+      "class": "LOCAL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_COVERED_NO_PROFILE",
+      "draft_class": "LOCAL",
+      "executors": [],
+      "kind": "agent",
+      "model_remainder_hint": "",
+      "name": "opensource-sanitizer",
+      "reason": "no AEVE profile"
+    },
+    {
+      "aeve_profile": "performance-optimizer",
+      "canonical_role": "performance-optimizer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.hygiene-rules"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Choose the optimization",
+      "name": "performance-optimizer",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "planner",
+      "canonical_role": "planner",
+      "class": "MODEL_ONLY",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "MODEL_ONLY",
+      "executors": [],
+      "kind": "agent",
+      "model_remainder_hint": "Split work into verifiable steps",
+      "name": "planner",
+      "reason": "Retained as the single planning role."
+    },
+    {
+      "aeve_profile": "functional-test-reviewer",
+      "canonical_role": "functional-test-reviewer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.python-rules",
+        "g2.test-assertion-rules"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Author tests and decide whether an assertion can fail",
+      "name": "pr-test-analyzer",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "product-owner",
+      "class": "MODEL_ONLY",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "MODEL_ONLY",
+      "executors": [],
+      "kind": "agent",
+      "model_remainder_hint": "Prioritize backlog and accept sprints",
+      "name": "product-owner",
+      "reason": "Judgment and authority."
+    },
+    {
+      "aeve_profile": "product-ux-reviewer",
+      "canonical_role": "product-ux-reviewer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_COVERED_NO_EXECUTOR",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [],
+      "kind": "agent",
+      "model_remainder_hint": "Judge journeys and information hierarchy",
+      "name": "product-ux-reviewer",
+      "reason": "AEVE has a profile but no deterministic executor"
+    },
+    {
+      "aeve_profile": "python-reviewer",
+      "canonical_role": "python-reviewer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.python-rules"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Judge async, lifecycle and typing intent",
+      "name": "python-reviewer",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "build-error-resolver",
+      "canonical_role": "build-error-resolver",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g6.python-diagnose"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Choose and write the minimal fix for the failure",
+      "name": "pytorch-build-resolver",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "refactor-cleaner",
+      "canonical_role": "refactor-cleaner",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.hygiene-rules",
+        "g6.python-deadcode"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Decide which candidate is truly dead",
+      "name": "refactor-cleaner",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "reliability-reviewer",
+      "canonical_role": "reliability-reviewer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.reliability-rules",
+        "g5.reliability-python"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Judge retry, timeout and recovery design",
+      "name": "reliability-reviewer",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "reporting-analyst",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_COVERED_NO_PROFILE",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [],
+      "kind": "agent",
+      "model_remainder_hint": "Write the retrospective narrative",
+      "name": "reporting-analyst",
+      "reason": "no AEVE profile"
+    },
+    {
+      "aeve_profile": "security-reviewer",
+      "canonical_role": "security-reviewer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.security-rules",
+        "g5.secret-scan"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Judge reachable attack paths",
+      "name": "security-reviewer",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "seo-specialist",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_COVERED_NO_PROFILE",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [],
+      "kind": "agent",
+      "model_remainder_hint": "Content mapping and strategy",
+      "name": "seo-specialist",
+      "reason": "no AEVE profile"
+    },
+    {
+      "aeve_profile": "silent-failure-hunter",
+      "canonical_role": "silent-failure-hunter",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.python-rules"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Judge whether a fallback hides failure",
+      "name": "silent-failure-hunter",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "functional-test-reviewer",
+      "canonical_role": "functional-test-reviewer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.python-rules",
+        "g2.test-assertion-rules"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Author tests and decide whether an assertion can fail",
+      "name": "tdd-guide",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "technical-writer",
+      "class": "MODEL_ONLY",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "MODEL_ONLY",
+      "executors": [],
+      "kind": "agent",
+      "model_remainder_hint": "Author design and user documents",
+      "name": "technical-writer",
+      "reason": "Retained as the single writing role."
+    },
+    {
+      "aeve_profile": "type-design-analyzer",
+      "canonical_role": "type-design-analyzer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.type-design-rules"
+      ],
+      "kind": "agent",
+      "model_remainder_hint": "Judge whether types express invariants",
+      "name": "type-design-analyzer",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "ui-designer",
+      "class": "MODEL_ONLY",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "MODEL_ONLY",
+      "executors": [],
+      "kind": "agent",
+      "model_remainder_hint": "Design journeys and states",
+      "name": "ui-designer",
+      "reason": "Authoring."
+    },
+    {
+      "aeve_profile": "a11y-architect",
+      "canonical_role": "a11y-architect",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g5.a11y-markup",
+        "g5.a11y-status-template"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "Judge whether keyboard and screen-reader flows complete the task",
+      "name": "a11y-contract",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "aeve-router",
+      "class": "OUT_OF_SCOPE",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "OUT_OF_SCOPE",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "",
+      "name": "aeve-router",
+      "reason": "Profile routing is the orchestrator's check selection in this product."
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "af",
+      "class": "OUT_OF_SCOPE",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "OUT_OF_SCOPE",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "",
+      "name": "af",
+      "reason": "Sibling framework toggle, not part of this product."
+    },
+    {
+      "aeve_profile": "agent-consensus",
+      "canonical_role": "agent-consensus",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g6.evidence-documents"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "Independent model discovery rounds",
+      "name": "agent-consensus",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "agent-evaluation",
+      "canonical_role": "agent-evaluation",
+      "class": "LOCAL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_COVERED_NO_EXECUTOR",
+      "draft_class": "LOCAL",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "",
+      "name": "agent-evaluation",
+      "reason": "AEVE has a profile but no deterministic executor"
+    },
+    {
+      "aeve_profile": "architect",
+      "canonical_role": "architect",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": true,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "MODEL_ONLY",
+      "executors": [
+        "g1.python-graph",
+        "g1.python-import-cycles",
+        "g5.dependency-boundary",
+        "g5.layering-shapes"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "Boundary, ownership and tradeoff decisions",
+      "name": "architecture-contract",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "implementation-engineer",
+      "canonical_role": "implementation-engineer",
+      "class": "MODEL_ONLY",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "MODEL_ONLY",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "Write the change",
+      "name": "backend-engineer",
+      "reason": "Retained as the single authoring role."
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "backlog-and-dod",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_COVERED_NO_PROFILE",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "Prioritize and word acceptance criteria",
+      "name": "backlog-and-dod",
+      "reason": "no AEVE profile"
+    },
+    {
+      "aeve_profile": "ci-release-contract",
+      "canonical_role": "ci-release-contract",
+      "class": "LOCAL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL",
+      "executors": [
+        "g6.evidence-documents"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "",
+      "name": "ci-release-contract",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "codex-consensus",
+      "canonical_role": "codex-consensus",
+      "class": "OUT_OF_SCOPE",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "OUT_OF_SCOPE",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "",
+      "name": "codex-consensus",
+      "reason": "Optional second-opinion model call, outside the deterministic app."
+    },
+    {
+      "aeve_profile": "context-memory-hygiene",
+      "canonical_role": "context-memory-hygiene",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g6.evidence-documents"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "Decide what belongs in memory",
+      "name": "context-memory-hygiene",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "database-reviewer",
+      "canonical_role": "database-reviewer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g3.sql-design-rules",
+        "g3.sql-migration",
+        "g3.sqlite-schema"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "Judge query plans, locking and integrity tradeoffs",
+      "name": "db-change-contract",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "delivery-efficiency",
+      "canonical_role": "delivery-efficiency",
+      "class": "LOCAL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL",
+      "executors": [
+        "g6.evidence-documents"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "",
+      "name": "delivery-efficiency",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "e2e-runner",
+      "canonical_role": "e2e-runner",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.e2e-script-rules"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "Author journeys and triage failure cause (product, test, flake)",
+      "name": "e2e-testing-contract",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "export-session",
+      "class": "LOCAL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_COVERED_NO_PROFILE",
+      "draft_class": "LOCAL",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "",
+      "name": "export-session",
+      "reason": "no AEVE profile"
+    },
+    {
+      "aeve_profile": "financial-ml-contract",
+      "canonical_role": "financial-ml-contract",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": true,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "MODEL_ONLY",
+      "executors": [
+        "g2.ml-temporal-rules"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "Methodology review for financial ML",
+      "name": "financial-ml-contract",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "implementation-engineer",
+      "canonical_role": "implementation-engineer",
+      "class": "MODEL_ONLY",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "MODEL_ONLY",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "Write the change",
+      "name": "frontend-engineer",
+      "reason": "Retained as the single authoring role."
+    },
+    {
+      "aeve_profile": "functional-test-reviewer",
+      "canonical_role": "functional-test-reviewer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.python-rules",
+        "g2.test-assertion-rules"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "Author tests and decide whether an assertion can fail",
+      "name": "functional-testing",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "git-worktree-ops",
+      "canonical_role": "git-worktree-ops",
+      "class": "LOCAL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_COVERED_NO_EXECUTOR",
+      "draft_class": "LOCAL",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "",
+      "name": "git-worktree-ops",
+      "reason": "AEVE has a profile but no deterministic executor"
+    },
+    {
+      "aeve_profile": "html-report",
+      "canonical_role": "html-report",
+      "class": "LOCAL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL",
+      "executors": [
+        "g6.html-report-contract"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "",
+      "name": "html-report",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "planner",
+      "canonical_role": "planner",
+      "class": "MODEL_ONLY",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "MODEL_ONLY",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "Split work into verifiable steps",
+      "name": "implementation-planner",
+      "reason": "Retained as the single planning role."
+    },
+    {
+      "aeve_profile": "implementation-engineer",
+      "canonical_role": "implementation-engineer",
+      "class": "MODEL_ONLY",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "MODEL_ONLY",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "Write the change",
+      "name": "implementation-workflow",
+      "reason": "Retained as the single authoring role."
+    },
+    {
+      "aeve_profile": "integration-contract",
+      "canonical_role": "integration-contract",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.web-boundary-rules"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "Judge boundary behavior",
+      "name": "integration-contract",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "database-reviewer",
+      "canonical_role": "database-reviewer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g3.sql-design-rules",
+        "g3.sql-migration",
+        "g3.sqlite-schema"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "Judge query plans, locking and integrity tradeoffs",
+      "name": "migration-safety",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "ml-engineer",
+      "canonical_role": "ml-engineer",
+      "class": "MODEL_ONLY",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "MODEL_ONLY",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "Implement labels, features and validation pipelines",
+      "name": "ml-engineer",
+      "reason": "Domain authoring."
+    },
+    {
+      "aeve_profile": "observability-contract",
+      "canonical_role": "observability-contract",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.observability-rules"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "Judge diagnosability",
+      "name": "observability-contract",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "performance-optimizer",
+      "canonical_role": "performance-optimizer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.hygiene-rules"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "Choose the optimization",
+      "name": "performance-testing",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "pm-bridge",
+      "canonical_role": "pm-bridge",
+      "class": "OUT_OF_SCOPE",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "OUT_OF_SCOPE",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "",
+      "name": "pm-bridge",
+      "reason": "Transport to an external reviewer, not a delivery check."
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "pm-gpt-review",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_COVERED_NO_PROFILE",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "The independent reviewer model call",
+      "name": "pm-gpt-review",
+      "reason": "no AEVE profile"
+    },
+    {
+      "aeve_profile": "implementation-engineer",
+      "canonical_role": "implementation-engineer",
+      "class": "MODEL_ONLY",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "MODEL_ONLY",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "Write the change",
+      "name": "polyglot-developer-assistant",
+      "reason": "Retained as the single authoring role."
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "technical-writer",
+      "class": "MODEL_ONLY",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "MODEL_ONLY",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "Author design and user documents",
+      "name": "release-documentation",
+      "reason": "Retained as the single writing role."
+    },
+    {
+      "aeve_profile": "reliability-reviewer",
+      "canonical_role": "reliability-reviewer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.reliability-rules",
+        "g5.reliability-python"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "Judge retry, timeout and recovery design",
+      "name": "reliability-contract",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "repo-recon",
+      "canonical_role": "repo-recon",
+      "class": "LOCAL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL",
+      "executors": [
+        "g1.repository-snapshot",
+        "g5.layering-shapes"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "",
+      "name": "repo-recon",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "business-analyst",
+      "class": "MODEL_ONLY",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "MODEL_ONLY",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "Write testable requirements from an idea",
+      "name": "requirements-elicitation",
+      "reason": "Authoring."
+    },
+    {
+      "aeve_profile": "rosetta",
+      "canonical_role": "rosetta",
+      "class": "OUT_OF_SCOPE",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "OUT_OF_SCOPE",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "",
+      "name": "rosetta",
+      "reason": "Plan/GO state is held by the state store."
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "reporting-analyst",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_COVERED_NO_PROFILE",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "Write the retrospective narrative",
+      "name": "sdlc-metrics",
+      "reason": "no AEVE profile"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "sdlc-orchestrator",
+      "class": "MODEL_ONLY",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "MODEL_ONLY",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "Select which checks to run and read their results",
+      "name": "sdlc-orchestrator",
+      "reason": "This is the orchestrator: the one place a model stays by design."
+    },
+    {
+      "aeve_profile": "security-reviewer",
+      "canonical_role": "security-reviewer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [
+        "g2.security-rules",
+        "g5.secret-scan"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "Judge reachable attack paths",
+      "name": "security-evidence-contract",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "skill-creator",
+      "canonical_role": "skill-creator",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": true,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "OUT_OF_SCOPE",
+      "executors": [
+        "g6.evidence-documents"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "",
+      "name": "skill-creator",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": "architect",
+      "canonical_role": "architect",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": true,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "MODEL_ONLY",
+      "executors": [
+        "g1.python-graph",
+        "g1.python-import-cycles",
+        "g5.dependency-boundary",
+        "g5.layering-shapes"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "Boundary, ownership and tradeoff decisions",
+      "name": "software-architect",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "sprint-ceremonies",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_COVERED_NO_PROFILE",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "Write retrospective conclusions",
+      "name": "sprint-ceremonies",
+      "reason": "no AEVE profile"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "task-status-continue",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_COVERED_NO_PROFILE",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "Decide the next doable step",
+      "name": "task-status-continue",
+      "reason": "no AEVE profile"
+    },
+    {
+      "aeve_profile": "architect",
+      "canonical_role": "architect",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": true,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "MODEL_ONLY",
+      "executors": [
+        "g1.python-graph",
+        "g1.python-import-cycles",
+        "g5.dependency-boundary",
+        "g5.layering-shapes"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "Boundary, ownership and tradeoff decisions",
+      "name": "technical-design",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "ui-designer",
+      "class": "MODEL_ONLY",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "MODEL_ONLY",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "Design journeys and states",
+      "name": "ui-design-contract",
+      "reason": "Authoring."
+    },
+    {
+      "aeve_profile": "update-config",
+      "canonical_role": "update-config",
+      "class": "OUT_OF_SCOPE",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_APPLICABLE",
+      "draft_class": "OUT_OF_SCOPE",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "",
+      "name": "update-config",
+      "reason": "Operator-only permission edit; not a check."
+    },
+    {
+      "aeve_profile": "product-ux-reviewer",
+      "canonical_role": "product-ux-reviewer",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_COVERED_NO_EXECUTOR",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "Judge journeys and information hierarchy",
+      "name": "ux-design-contract",
+      "reason": "AEVE has a profile but no deterministic executor"
+    },
+    {
+      "aeve_profile": "verification-contract",
+      "canonical_role": "verification-contract",
+      "class": "LOCAL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "COVERED_PARTIAL",
+      "draft_class": "LOCAL",
+      "executors": [
+        "g6.evidence-documents"
+      ],
+      "kind": "skill",
+      "model_remainder_hint": "",
+      "name": "verification-contract",
+      "reason": "AEVE lists deterministic executors for this role"
+    },
+    {
+      "aeve_profile": null,
+      "canonical_role": "workspace-docgen",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": false,
+      "coverage_state": "NOT_COVERED_NO_PROFILE",
+      "draft_class": "LOCAL_PLUS_MODEL",
+      "executors": [],
+      "kind": "skill",
+      "model_remainder_hint": "Write the reference documents",
+      "name": "workspace-docgen",
+      "reason": "no AEVE profile"
+    }
+  ],
+  "version": 1
+}

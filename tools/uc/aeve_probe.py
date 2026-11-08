@@ -87,6 +87,27 @@ def _parse_json(text: str, label: str) -> dict:
     return value
 
 
+def load_matrix(
+    aeve_root: pathlib.Path,
+    *,
+    python: str | None = None,
+    timeout: float = DEFAULT_TIMEOUT_SECONDS,
+) -> dict:
+    """Run ``aeve matrix`` in the isolated child environment and return its parsed JSON."""
+    aeve_root = aeve_root.resolve()
+    if not (aeve_root / "src" / "aeve" / "__main__.py").is_file():
+        raise AeveProbeError("NOT_AN_AEVE_CHECKOUT", str(aeve_root))
+    result = _run([python or sys.executable, "-m", "aeve", "matrix"], cwd=pathlib.Path(tempfile.gettempdir()),
+                  env=build_child_env(aeve_root), timeout=timeout)
+    if result.returncode != 0:
+        raise AeveProbeError("MATRIX_FAILED", f"exit {result.returncode}: {(result.stderr or '').strip()[:200]}")
+    matrix = _parse_json(result.stdout, "aeve matrix")
+    for field in ("total_profiles", "status_counts", "rows", "executors"):
+        if field not in matrix:
+            raise AeveProbeError("BAD_OUTPUT", f"matrix lacks {field}")
+    return matrix
+
+
 def probe(
     aeve_root: pathlib.Path,
     *,
