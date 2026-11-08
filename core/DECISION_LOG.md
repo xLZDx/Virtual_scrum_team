@@ -2452,3 +2452,14 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 **Ready:** U1-1 code now ready for GPT-PM verification round (fixes only, prior MAJOR findings resolved).
 
+
+
+## 2026-11-08 — U1-1 verify_manifest bug fix: remove incorrect directory entry
+
+**Bug:** verify_manifest() was adding directory paths instead of file paths to manifest_paths, causing the unexpected transcript check to fail. This line was incorrect:
+- manifest_paths.add(project_dir / session.get("session_id", "x") / "subagents")
+
+**Fix:** Removed the line that added directories. manifest_paths now only contains actual files from the manifest.
+
+**Status:** All 54 tests still pass. Ready for resend to GPT-PM with corrected implementation.
+

@@ -106,6 +106,9 @@ def verify_manifest(manifest: object, project_dir: pathlib.Path) -> None:
         files = session.get("files") if isinstance(session, dict) else None
         if not isinstance(files, list) or not files:
             raise BaselineNotRun("MANIFEST_INVALID", "session without files")
+        session_name = session.get("session_id")
+        if not isinstance(session_name, str) or not _SESSION_ID.match(session_name):
+            raise BaselineNotRun("MANIFEST_INVALID", "bad or missing session_id")
         for entry in files:
             if not isinstance(entry, dict):
                 raise BaselineNotRun("MANIFEST_INVALID", "file entry is not an object")
@@ -119,7 +122,6 @@ def verify_manifest(manifest: object, project_dir: pathlib.Path) -> None:
             if sha256_file(path) != entry.get("sha256"):
                 raise BaselineNotRun("HASH_MISMATCH", str(entry.get("path")))
             manifest_paths.add(path)
-        manifest_paths.add(project_dir / session.get("session_id", "x") / "subagents")
     for session in sessions:
         session_id = session.get("session_id")
         sub_dir = (project_dir / session_id / "subagents").resolve()
