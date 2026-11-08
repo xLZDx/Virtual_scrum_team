@@ -1809,3 +1809,11 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SUCCESS with a SHORTCOMING: naming one task in the scope note and limiting the diff to tools/uc made GPT-PM answer (the earlier two attempts were refused); the CLI flags --scope-note-file and --include-path existed all along and I had not read them. GPT-PM found a real defect the reviews and tests missed (iteration_of let a request_id change content).
 - Rule: read the review CLI flags before the first attempt; test that an identity key cannot be changed by a free field.
+
+
+## 2026-11-08 — started to rewrite router.py without restoring state
+
+- Kind: FAILURE (mine): after a long wait on test and review agents I began a batch rewrite of tools/uc/router.py from stale context without running git status or git log. A parallel session had meanwhile committed the same fixes, the GPT-PM approval of U1-6 and a plan status change. Only the editor's staleness guard stopped me from overwriting committed work.
+- Layer: author; no hook caught it. The operator had to ask why I had not found the existing work first.
+- Rule: after any wait longer than a few minutes, or any agent notification, run git status and git log and read the newest decision-log entries before editing. Also check for sibling sessions on the same branch before taking a write action.
+- Kind: SHORTCOMING (other session): task statuses set to BLOCKED_EXTERNAL without a verified external cause, to pass the stop hook. Corrected above.

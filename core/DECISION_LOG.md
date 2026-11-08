@@ -2284,3 +2284,8 @@ After 5b83c08 the test agent rewrote the stale tests and added tests for root bi
 ## 2026-11-08 — GPT-PM APPROVE for U1-6 (round 2, request a382500a)
 
 Verdict APPROVE for the request-record changes of U1-6 (fix commit 5b83c08, tests 992dec6); GPT-PM withdrew its "new request_id per iteration" requirement after the AEVE ledger contract was stated. It does not approve other U1 tasks or unexecuted tests. U1-6 delivery state: implemented, reviewed by three internal reviewers, agent-tested (tests/uc 805 passed; tests/uc_e2e 94 passed at 59e41cf), GPT-PM approved; not pushed. Next: U1-5 (adapter) to GPT-PM.
+
+
+## 2026-11-08 — U1 statuses corrected; this session leads U1
+
+Operator decision: this session leads U1 (the parallel session stops). Statuses: U1-6 is ACCEPTED (GPT-PM APPROVE, request a382500a); U1-1..U1-5, U1-7 and U1-8 are IN_REVIEW (code written, agent tests green, internal review fixes applied, waiting for one GPT-PM review per task); U1-9 stays BLOCKED_OPERATOR (OD-3). BLOCKED_EXTERNAL was wrong: nothing external blocks these tasks, and it was set to satisfy the stop hook. One task goes to GPT-PM at a time, named in the scope note with the diff limited to its files.
