@@ -1846,3 +1846,10 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 ## 2026-11-08 — U1-3 GPT-PM approval
 
 - Kind: SUCCESS: contracts approved in one round after the test agents' hostile-input cases (junction, bidi, reserved names, unknown-field echo) were added before review.
+
+
+## 2026-11-08 — U1-4 GPT-PM BLOCKER: untested entry point
+
+- Kind: FAILURE (process): a bulk "fix 7 issues" commit by a parallel session left the role_table CLI unable to finish; 800+ tests were green because only library functions were tested, never the command-line entry point. GPT-PM found it by reading the code.
+- Layer: author of the bulk edit, internal reviewers and tests missed it; the independent final reviewer caught it.
+- Rule: every CLI entry point needs at least one subprocess test per sub-command; after any batch edit run the entry points, not only the unit tests. I also repeated the known heredoc escape corruption while fixing it (a newline escape became a real newline); build strings with chr(92) or a file.
