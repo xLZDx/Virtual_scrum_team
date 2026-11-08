@@ -68,7 +68,7 @@ def compare(before: object, after: object, result: object) -> dict:
         return {"status": "NOT_RUN", "reason": str(exc)[:200], "roles": {}}
     verdicts: dict[str, dict] = {}
     priority = {"NOT_MEASURED": 2, "NO_GAIN": 1, "LOCAL_FIRST": 0}
-        name = entry["role"]  # Use requested name, not canonical, to match token report keys
+    for entry in role_result["roles"]:
         name = entry["canonical_role"]
         local_ran = entry["class"] in LOCAL_RAN_CLASSES and entry["status"] not in LOCAL_DID_NOT_RUN
         verdict = _verdict(before_roles.get(name), after_roles.get(name), local_ran)
