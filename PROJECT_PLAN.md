@@ -1,9 +1,9 @@
 ---
 project: Virtual_scrum_team
-as_of: 2026-11-07
-active_sprint: S3
+as_of: 2026-11-08
+active_sprint: A
 scope: single_sprint
-approved_sprints: S2, S3
+approved_sprints: S2, S3, A, B, C
 operator_approved: true
 ---
 # Virtual_scrum_team - project plan
@@ -17,8 +17,11 @@ Sources: docs/sdlc/backlog.md (ordered S2 queue), docs/sdlc/acceptance.md (curre
 | S1 | Control-plane core | ACCEPTED | State store, contracts, signing, gate and runner in tools/vst; approved and merged (PR #1, d5cd7f5, closure c5a8eb1). |
 | S2 | Isolated worker sandbox | ACCEPTED (merged) | All S2 tasks are accepted. The bounded source/test scope (S2-1..S2-5) and the real Windows-local Owner-to-Runner process E2E (S2-4E, run 4 green) are merged into main with PR #2 (7c94c6c). Current E5 and production qualification remain NOT_RUN; do not report production readiness. |
 | S3 | Worker pilot | CLOSED_BOUNDED — S3-A and the local part of S3-C accepted; S3-B, S3-D, S3-E parked by the operator's decision of 2026-11-08 (no external candidates, single built-in worker) | Single isolated story adapter on the S2 sandbox; compare BMad Loop, hand-written loop and a durable engine on one crash/resume fixture; vendor-neutral worker interface. Existing PR #3 predates this work; it is not evidence that S3 has started or that S2 is closed. |
-| S4 | QA automation | PARTIAL — evidence exists on local unpushed branches; not on main, not accepted | Real native runners for functional, integration, API, E2E, regression and seeded failures with reproducible artifacts; a skipped test never satisfies DoD. |
-| S5 | AEVE gate | NOT_STARTED — prepared only; no AEVE source or analyzer is available | Bounded static review with hashes and an independent evidence/coverage receipt; truthful analyzer status; stale HEAD fails. |
+| S4 | QA automation | DEFERRED - folded into sprint B by the operator's goal of 2026-11-08; the partial work stays on local unpushed branches, not on main, not accepted | Real native runners for functional, integration, API, E2E, regression and seeded failures with reproducible artifacts; a skipped test never satisfies DoD. |
+| S5 | AEVE gate | DEFERRED - folded into sprint C by the operator's goal of 2026-11-08; not started, no AEVE source available | Bounded static review with hashes and an independent evidence/coverage receipt; truthful analyzer status; stale HEAD fails. |
+| A | Check catalog | IN_PROGRESS | Catalog of every agent and skill with the mechanical check that replaces it, the remainder that needs a model, and the first checks chosen for sprint B. |
+| B | Check runner | NOT_STARTED | One entry point for the orchestrator that runs selected deterministic checks and returns a structured result; first 5-8 checks from the catalog. |
+| C | Reports and integration | NOT_STARTED | Reports generated from state and the single command that replaces the many agents inside Claude Code. |
 
 ## Sprint S0 - Inventory and baseline
 Goal: Ground-truth inventory of profiles, repositories and tool capabilities (docs/sdlc/s0/); approved by GPT-PM on head abc0d50 and merged with S1 (PR #1, merge d5cd7f5).
@@ -91,5 +94,12 @@ Goal: Bounded static review with hashes and an independent evidence/coverage rec
 | S5-E | Exact-head gate and reproducible evidence integration (VST-042) | Stale head fails | NOT_STARTED | As S5-A: depends on S5-A..D. | Operator accountable; Codex implements | previous sprint close |  |
 
 
+## Sprint A - Check catalog
+Goal: Product goal of 2026-11-08: an application without agents. Catalog every agent and skill, state which part is a mechanical check that code can do and which part needs a model, and choose the first checks for sprint B. Output is data in catalog/ validated by code, not prose.
 
-
+| Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
+|---|---|---|---|---|---|---|---|
+| A-1 | Deterministic inventory extractor | A script reads every agent and skill definition from the installed global folders and writes catalog/inventory.json (name, kind, description, tools, model, source hash); count equals the files on disk | BLOCKED_OPERATOR | Code written (tools/catalog/extract_inventory.py) and run on the real definitions: 45 agents + 48 skills = 93, matches disk. Agent tests NOT_RUN. Paused: the same matrix already exists in AEVE (D:\Repo\AEVE, 57 contracts); files are uncommitted on branch sprint-a-check-catalog. | Codex implements; functional-test-reviewer tests | - | - |
+| A-2 | Role classification | catalog/roles.json has one entry per inventory item: mechanical checks it contains, what stays with a model, overlap with other roles, decision keep / merge / drop | BLOCKED_OPERATOR | catalog/roles.json written, 93 entries; uncommitted. Duplicates AEVE coverage work; paused pending the operator choice of repository. | Codex implements | A-1 | - |
+| A-3 | Catalog schema and validator | A stdlib validator rejects a missing, duplicate, unknown or unclassified item and any mechanical check without input, output and verdict states; tests by functional-test-reviewer | BLOCKED_OPERATOR | Validator tools/catalog/validate_catalog.py run on real data: VALID 93 items. Agent tests NOT_RUN. Paused with A-2. | Codex implements; functional-test-reviewer tests | A-2 | - |
+| A-4 | First checks for sprint B | 5-8 checks chosen from the catalog, each with input, output, pass / fail / not-run rule and the roles it replaces | BLOCKED_OPERATOR | Not started: depends on the operator choice of repository (AEVE or VST). | Codex implements | A-3 | - |

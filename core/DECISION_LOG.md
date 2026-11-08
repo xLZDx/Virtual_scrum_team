@@ -1914,3 +1914,8 @@ Operator decision (chat, 2026-11-08): the product is an application that perform
 ## 2026-11-08 — Sprint A started in the wrong project; AEVE is the product the operator means
 
 The operator said the application is AEVE, a fully automated local system of checks that replaces review agents and skills, with a model only as orchestrator. AEVE exists at D:\Repo\AEVE (191 commits, S18 active as of 2026-11-01); its decisions D-003 (zero-LLM default, 2026-10-10), D-071 (AEVE as the local reviewer, 2026-10-19), D-072 (all 57 role and skill contracts as deterministic specialists, 2026-10-21) and D-076 (static-first, no test execution) already hold this goal. Sprint A in Virtual_scrum_team (catalog of 93 agents and skills) duplicates AEVE's existing 57-contract matrix and is paused; its files stay uncommitted on branch sprint-a-check-catalog. The earlier VST plan text "no AEVE source available" was wrong. No change was made in AEVE.
+
+
+## 2026-11-08 — Operator restates the main idea; sprint A tasks marked blocked
+
+Operator (chat, 2026-11-08): the main idea is that a coding agent asks for roles such as code reviewer, Python reviewer, silent-failure reviewer or end-to-end tester, and AEVE performs them locally as deterministic code with no extra model tokens; only after the local checks pass does a final review go to GPT. Sprint A tasks A-1..A-4 are marked BLOCKED_OPERATOR in PROJECT_PLAN.md because they duplicate AEVE and wait for the operator to choose the repository for further work; code for A-1..A-3 exists uncommitted and its agent tests are NOT_RUN.
