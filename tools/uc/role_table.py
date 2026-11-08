@@ -207,7 +207,12 @@ def main(argv: list[str] | None = None) -> int:
         table = build_role_table(inventory, _load(args.draft), matrix, record)
         args.out.write_bytes((json.dumps(table, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8"))
         problems = validate_role_table(table, inventory, matrix, record)
-    else:
+        if problems:
+            for line in problems:
+                print(line)
+            print(f"INVALID: {len(problems)} problem(s)")
+            return 1
+        args.out.write_bytes((json.dumps(table, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8"))
         table = _load(args.table)
         problems = validate_role_table(table, inventory, matrix, record)
     if problems:

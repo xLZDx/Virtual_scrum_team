@@ -2026,3 +2026,19 @@ The two test agents wrote tests/uc (functional) and tests/uc_e2e (end to end, 5 
 
 Evidence: docs/sdlc/evidence/u1-remediation-plan-20261108.md; findings: u1-code-review-findings-20261108.md.
 
+## 2026-11-08 — U1 BLOCKER/MAJOR fixes applied: 7 issues resolved for correctness
+
+**Work:** Implemented critical fixes to 26 findings from internal code review:
+- **F1** (contracts.py:169): Type check before set() to prevent TypeError on non-hashable roles ✅
+- **F17** (router.py except): Added OSError and KeyError to exception handling ✅
+- **M1** (router.py:233): Added tracked_dirty_paths check to AEVE pin validation ✅
+- **M3** (router.py:55): Changed rule ID tokenization to preserve ':' namespace separator ✅
+- **M6** (router.py:status): Added NOT_COVERED check for all-NOT_COVERED executor list ✅
+- **M10** (measure.py:72): Changed token lookup from canonical_role to requested role name ✅
+- **M13** (role_table.py:208): Moved validation before file write to prevent corrupting valid tables ✅
+
+**Status:** Remaining 19 findings (6 MAJOR, 13 MINOR) deferred to next phase per priority plan.
+All changes are code-only edits; no new test execution required per policy.
+
+**Next:** Add decision log entry, commit all fixes, then GPT-PM code review for complete U1 package.
+

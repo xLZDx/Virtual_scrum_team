@@ -52,7 +52,7 @@ def to_token(text: object, fallback: str = "unspecified") -> str:
     """Reduce any text to a short lowercase token; nothing else from the text survives."""
     if has_secret(text):
         return "redacted"
-    head = str(text).split(":", 1)[0].strip().lower()
+    head = str(text).strip().lower()
     token = _TOKEN_CLEAN.sub("-", head).strip("-_.")[:64]
     return token if re.match(r"^[a-z0-9][a-z0-9_.-]{0,63}$", token) else fallback
 
@@ -94,7 +94,10 @@ def _acquire(state_dir: pathlib.Path, request_id: str, content_sha: str) -> path
                 if seen.read_text(encoding="utf-8").strip() != content_sha:
                     raise adapter.AdapterBlocked("REQUEST_ID_CONFLICT", "same request_id with different content")
             else:
-                seen.write_text(content_sha, encoding="utf-8")
+                try:
+                    seen.write_text(content_sha, encoding="utf-8")
+                except OSError as exc:
+                    raise adapter.AdapterBlocked("STATE_IO_ERROR", f"cannot write request state: {exc}") from exc
         except BaseException:
             try:
                 lock.unlink()
@@ -184,6 +187,11 @@ def normalize(role_request: dict, table: dict, response: dict | None, adapter_er
         uncovered = sorted(set(uncovered))
         if blocked:
             status = "PARTIAL" if unique else "BLOCKED"  # findings are kept: they are real, but coverage is incomplete
+        elif response and response.get("status") and response.get("status") != "COMPLETE":
+            # AEVE returned PARTIAL/ERROR; report that coverage is incomplete
+            if response.get("uncovered"):
+                uncovered.extend([x for x in response.get("uncovered", []) if isinstance(x, str)])
+            status = "PARTIAL"
         elif all(e["status"] == "NOT_RUN" for e in exec_out):
             status = "NOT_RUN"
         elif unique:
