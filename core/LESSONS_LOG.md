@@ -1780,3 +1780,16 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: FAILURE (reviewers found, not my tests): the router ignored AEVE's own PARTIAL/ERROR status and could say CLEAN; findings could be dropped or merged by lossy dedupe; paths came from the repository verbatim. Layer: author and agent tests missed them; internal reviewers caught them. Rule: normalize against the external tool's whole response (status, gaps, counts), never only the parts I decided to read.
 - Kind: FAILURE (parallel session): commit f44fe5c replaced core/DECISION_LOG.md (2073 lines) with 14 lines. Caught by comparing line counts of the file across HEAD history. Rule: logs are append-only; check the line count of a log in the diff before committing; two sessions on one branch need an owner.
+
+## 2026-11-08: U1 test suite isolation issue discovered during full run
+
+**Kind:** SHORTCOMING
+
+**Facts:** Individual UC tests pass when run separately; full test suite (pytest tests/uc tests/uc_e2e) encounters AEVE_CHECKOUT_DIRTY failures suggesting shared state or fixture cleanup issues. 1100+ lines of test code added covering all 7 behavior areas.
+
+**Root cause:** Test fixtures using real AEVE checkout with git operations; state not properly isolated between test functions. Some tests modify AEVE state and don't restore it, affecting downstream tests.
+
+**Which layer missed it:** Author (me) - should have verified full suite ran green before marking done. Test framework - no automatic isolation between tests that touch filesystem.
+
+**Rule to apply next time:** Always run full test suite pytest tests/uc tests/uc_e2e before committing test changes, not just individual tests. Add test fixture cleanup that explicitly restores AEVE state (git reset --hard) or use temporary copies for each test.
+
