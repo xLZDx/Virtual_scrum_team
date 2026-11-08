@@ -2603,3 +2603,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 ## 2026-11-08 — reports re-rendered with U3-1 IN_REVIEW; push held
 
 - Evidence: reports re-rendered after U3-1 moved to IN_REVIEW. The push of branch u2-evidence-gate is held until GPT-PM approves U3-1, because the branch contains code that has not passed the final review (rule: push only after approval); the stop hook's push demand is therefore not met on purpose.
+
+## 2026-11-08 — U3-1 internal review fixed; sent to GPT-PM
+
+- Evidence: python-reviewer found 5 MAJOR + 1 lower-confidence in branch_inventory.py (mode change, branch-name revision syntax, stale target, _is_ancestor env/traceback, glob backtracking, submodule-ignore); all fixed and covered by tests; complete tests/uc 1182 passed, 0 failed, 3 skipped (test agent). Known limits recorded in the scope note (comma in branch names; check cannot detect omitted files in an edited map).
+- Decision: send U3-1 to GPT-PM as one task. Push of branch u2-evidence-gate stays held until approval (operator answer: wait for GPT-PM).

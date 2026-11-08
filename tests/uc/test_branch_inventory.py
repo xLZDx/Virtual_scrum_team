@@ -487,10 +487,6 @@ def test_path_with_trailing_newline_does_not_match_a_rule_for_the_clean_name():
     rules = [{"glob": "a.txt", "class": "LAND", "reason": "r", "regex": bi._glob_to_regex("a.txt")}]
     assert bi.classify("a.txt", "NEW", rules)["class"] == "LAND"
     assert bi.classify("a.txt" + nl, "NEW", rules)["class"] == "UNCLASSIFIED"
-    assert not matches("a.txt", "a.txt" + nl)
-    assert not matches("**/*.txt", "x/a.txt" + nl)
-    assert not matches("docs/*", "docs/a" + nl + "b/c")
-    assert not matches("docs/**", "docs/a" + nl + "b")  # a newline anywhere fails closed: such a path stays UNCLASSIFIED
 
 
 # ------------------------------------------------------------------ main(): map
@@ -740,3 +736,313 @@ def test_check_problem_list_is_capped_in_output_but_counted(world, capsys):
     world["out"].write_text(json.dumps(doc), encoding="utf-8")
     code, printed = run_check(world["out"], capsys)
     assert code == 3 and printed["problem_count"] == 30 and len(printed["problems"]) == 20
+
+
+# ====================================================================== round 2 (reviewer MAJORs)
+def mode_branch(world, name, mutate):
+    """Branch from the base commit; `mutate(repo)` edits the INDEX only (modes, types, gitlinks)."""
+    repo = world["repo"]
+    git(repo, "checkout", "-q", "-b", name, world["base"])
+    mutate(repo)
+    git(repo, "commit", "-q", "-m", name)
+    sha = git(repo, "rev-parse", "HEAD")
+    publish(repo, name, sha)
+    git(repo, "checkout", "-q", "main")
+    return sha
+
+
+# ---- (1) mode-only change and symlink with the same blob are DIVERGED
+def test_mode_only_change_is_diverged_not_already_in_main(world):
+    mode_branch(world, "modeonly", lambda r: git(r, "update-index", "--chmod=+x", "common.txt"))
+    entry = files_of(build(world, ("modeonly",)), "modeonly")["common.txt"]
+    assert entry["status"] == "M" and entry["relation"] == "DIVERGED" and entry["class"] == "LAND"
+
+
+def test_mode_unchanged_identical_blob_is_still_already_in_main(world):
+    """Control: the same branch shape without a mode change stays ALREADY_IN_MAIN (same.txt is identical on main)."""
+    files = files_of(build(world), "b1")
+    assert files["same.txt"]["relation"] == "ALREADY_IN_MAIN"
+
+
+def test_symlink_with_the_same_blob_as_the_targets_regular_file_is_diverged(world):
+    blob = git(world["repo"], "rev-parse", "main:common.txt")
+
+    def to_symlink(repo):
+        git(repo, "update-index", "--cacheinfo", f"120000,{blob},common.txt")
+
+    mode_branch(world, "symlinked", to_symlink)
+    entry = files_of(build(world, ("symlinked",)), "symlinked")["common.txt"]
+    assert entry["status"] == "T" and entry["relation"] == "DIVERGED"
+
+
+def test_executable_bit_on_a_new_file_is_still_new(world):
+    def add_exec(repo):
+        write(repo, "tool.txt", "x")
+        git(repo, "add", "tool.txt")
+        git(repo, "update-index", "--chmod=+x", "tool.txt")
+
+    mode_branch(world, "newexec", add_exec)
+    assert files_of(build(world, ("newexec",)), "newexec")["tool.txt"]["relation"] == "NEW"
+
+
+# ---- (2) ref-name validation
+BAD_BRANCH_NAMES = ["feature~1", "feature^", "feature@{1}", "HEAD", "a..b", "a b", "feat/HEAD", "x.lock", "a/", "a.", "a//b",
+                    "a:b", "a*b", "a?b", "a[b", "a\\b", "файл", "x" * 201, ".hidden", "/abs", "a\tb"]
+
+
+@pytest.mark.parametrize("name", BAD_BRANCH_NAMES, ids=lambda n: repr(n)[:30])
+def test_bad_branch_names_are_refused_before_any_ref_lookup(world, capsys, name):
+    code, printed = run_main(world, capsys, branches=f"b1,{name}")
+    assert code == 2 and printed["status"] == "NOT_RUN" and printed["reason"] == "BAD_REF_NAME"
+    assert not world["out"].exists()
+
+
+def test_branch_name_starting_with_dash_is_refused(world, capsys):
+    argv = ["map", "--repo", str(world["repo"]), "--rules", str(world["rules"]), "--target", "main",
+            "--branches=-x", "--out", str(world["out"])]
+    assert bi.main(argv) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "BAD_REF_NAME"
+    argv[argv.index("--branches=-x")] = "--branches=--upload-pack=evil"
+    assert bi.main(argv) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "BAD_REF_NAME"
+
+
+@pytest.mark.parametrize("name", ["", "origin/../x", "HEAD", "main~1", "main^", "a b", "x.lock", "main/"],
+                         ids=lambda n: repr(n)[:20])
+def test_bad_target_names_are_refused(world, capsys, name):
+    code, printed = run_main(world, capsys, target=name)
+    assert code == 2 and printed["reason"] == "BAD_REF_NAME" and not world["out"].exists()
+
+
+def test_target_name_starting_with_dash_is_refused(world, capsys):
+    argv = ["map", "--repo", str(world["repo"]), "--rules", str(world["rules"]), "--target=-x", "--branches", "b1"]
+    assert bi.main(argv) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "BAD_REF_NAME"
+
+
+def test_name_length_boundary_200_ok_201_refused():
+    assert bi._checked_name("branch", "a" * 200) == "a" * 200
+    with pytest.raises(bi.InventoryError) as info:
+        bi._checked_name("branch", "a" * 201)
+    assert info.value.reason == "BAD_REF_NAME"
+
+
+def test_good_slashed_dotted_branch_names_are_accepted(world, capsys):
+    for name in ("feature/x-1.2", "s4-e2e-snapshot-20261025-180e330", "_under/score", "a" * 100):
+        publish(world["repo"], name, world["b1"])
+    code, printed = run_main(world, capsys, branches="feature/x-1.2,s4-e2e-snapshot-20261025-180e330,_under/score," + "a" * 100)
+    assert code == 0 and len(printed["summary"]) == 4
+
+
+def test_a_ref_that_only_exists_under_another_namespace_is_not_resolved(world, capsys):
+    git(world["repo"], "tag", "only-a-tag", world["b1"])
+    code, printed = run_main(world, capsys, branches="only-a-tag")
+    assert code == 2 and printed["reason"] == "GIT_FAILED"
+
+
+# ---- (3) target resolution
+def test_default_target_is_origin_main_and_target_field_keeps_the_given_string(world, capsys):
+    publish(world["repo"], "main", world["m1"])
+    argv = ["map", "--repo", str(world["repo"]), "--rules", str(world["rules"]), "--branches", "b1", "--out", str(world["out"])]
+    assert bi.main(argv) == 0
+    capsys.readouterr()
+    doc = json.loads(world["out"].read_text(encoding="utf-8"))
+    assert doc["target"] == "origin/main" and doc["target_head"] == world["m1"]
+
+
+def test_origin_target_uses_the_remote_ref_even_when_local_main_is_ahead(world, capsys):
+    publish(world["repo"], "main", world["base"])  # origin/main is behind local main (m1)
+    code, printed = run_main(world, capsys, target="origin/main")
+    assert code == 0
+    doc = json.loads(world["out"].read_text(encoding="utf-8"))
+    assert doc["target"] == "origin/main" and doc["target_head"] == world["base"]
+    assert files_of(doc, "b1")["mod.txt"]["relation"] == "NEW" or files_of(doc, "b1")["mod.txt"]["relation"] == "DIVERGED"
+    assert files_of(doc, "b1")["same.txt"]["relation"] == "DIVERGED"  # main's later identical change is not in origin/main
+
+
+def test_local_target_ahead_of_origin_is_target_stale(world, capsys):
+    publish(world["repo"], "main", world["base"])
+    code, printed = run_main(world, capsys, target="main")
+    assert code == 2 and printed["status"] == "NOT_RUN" and printed["reason"] == "TARGET_STALE"
+    assert "origin/main" in printed["detail"] and not world["out"].exists()
+
+
+def test_local_target_behind_origin_is_also_stale(world, capsys):
+    publish(world["repo"], "main", world["b1"])
+    code, printed = run_main(world, capsys, target="main")
+    assert code == 2 and printed["reason"] == "TARGET_STALE"
+
+
+def test_local_target_equal_to_origin_is_accepted(world, capsys):
+    publish(world["repo"], "main", world["m1"])
+    code, _ = run_main(world, capsys, target="main")
+    assert code == 0
+    assert json.loads(world["out"].read_text(encoding="utf-8"))["target"] == "main"
+    assert json.loads(world["out"].read_text(encoding="utf-8"))["target_head"] == world["m1"]
+
+
+def test_local_target_without_any_origin_ref_is_accepted(world, capsys):
+    code, _ = run_main(world, capsys, target="main")
+    assert code == 0
+
+
+def test_missing_remote_target_and_local_target_are_git_failed(world, capsys):
+    for target in ("origin/nope", "nope"):
+        code, printed = run_main(world, capsys, target=target)
+        assert code == 2 and printed["reason"] == "GIT_FAILED"
+
+
+def test_local_only_target_branch_with_slash_resolves_under_refs_heads(world, capsys):
+    git(world["repo"], "branch", "release/1.0", world["m1"])
+    code, _ = run_main(world, capsys, target="release/1.0")
+    assert code == 0
+    assert json.loads(world["out"].read_text(encoding="utf-8"))["target_head"] == world["m1"]
+
+
+# ---- (4) git failures during the ancestor check are structured
+@pytest.mark.parametrize("exc", [subprocess.TimeoutExpired(cmd="git", timeout=1), OSError("boom")],
+                         ids=["timeout", "oserror"])
+def test_is_ancestor_failure_is_a_structured_not_run_not_a_traceback(world, capsys, monkeypatch, exc):
+    real_run = subprocess.run
+
+    def flaky(argv, *a, **k):
+        if "--is-ancestor" in argv:
+            raise exc
+        return real_run(argv, *a, **k)
+
+    monkeypatch.setattr(bi.subprocess, "run", flaky)
+    code, printed = run_main(world, capsys, branches="b1,b2")
+    assert code == 2 and printed["status"] == "NOT_RUN" and printed["reason"] == "GIT_FAILED"
+    assert not world["out"].exists()
+
+
+@pytest.mark.parametrize("exc", [subprocess.TimeoutExpired(cmd="git", timeout=1), OSError("boom")], ids=["timeout", "oserror"])
+def test_any_git_call_failing_is_git_failed(world, capsys, monkeypatch, exc):
+    def always(argv, *a, **k):
+        raise exc
+
+    monkeypatch.setattr(bi.subprocess, "run", always)
+    code, printed = run_main(world, capsys, branches="b1")
+    assert code == 2 and printed["reason"] == "GIT_FAILED"
+
+
+def test_is_ancestor_unexpected_exit_code_is_git_failed(world, monkeypatch):
+    monkeypatch.setattr(bi, "_git_code", lambda *a, **k: (128, b"", b"fatal: bad object"))
+    with pytest.raises(bi.InventoryError) as info:
+        bi._is_ancestor(world["repo"], "a" * 40, "b" * 40)
+    assert info.value.reason == "GIT_FAILED"
+
+
+# ---- (5) rule limits and regex cost
+def test_glob_longer_than_200_or_with_more_than_6_stars_is_rules_invalid(tmp_path):
+    for glob in ("a" * 201, "*" * 7, "a*b*c*d*e*f*g*h", "**/**/**/**/z"):
+        path = write_rules(tmp_path / "r.json", [{"glob": glob, "class": "LAND", "reason": "r"}])
+        with pytest.raises(bi.InventoryError) as info:
+            bi.load_rules(path)
+        assert info.value.reason == "RULES_INVALID", glob
+
+
+def test_glob_exactly_at_the_limits_is_accepted(tmp_path):
+    for glob in ("a" * 200, "*" * 6, "**/**/**/z", "a*b*c*d*e*f*g"[:13]):
+        bi.load_rules(write_rules(tmp_path / "r.json", [{"glob": glob, "class": "LAND", "reason": "r"}]))
+    assert len("a" * 200) == 200 and ("a*b*c*d*e*f*g"[:13]).count("*") == 6
+
+
+@pytest.mark.parametrize("glob", ["**/**/**/z", "*/*/*/*/*/*", "a*a*a*a*a*b", "**/a/**/a/**/b"], ids=lambda g: g)
+def test_adversarial_rule_against_a_deep_path_finishes_fast(tmp_path, glob):
+    import time
+    rules = bi.load_rules(write_rules(tmp_path / "r.json", [{"glob": glob, "class": "LAND", "reason": "r"}]))
+    deep = "/".join(["a"] * 40)
+    flat = "a" * 80
+    start = time.monotonic()
+    for path in (deep, deep + "/y", flat, deep + "/" + flat):
+        bi.classify(path, "NEW", rules)
+    assert time.monotonic() - start < 2.0
+
+
+def test_deep_path_matches_double_star_rule_correctly(tmp_path):
+    rules = bi.load_rules(write_rules(tmp_path / "r.json", [{"glob": "**/**/**/z", "class": "LAND", "reason": "r"}]))
+    deep = "/".join(["a"] * 40)
+    assert bi.classify(deep + "/z", "NEW", rules)["class"] == "LAND"
+    assert bi.classify(deep + "/y", "NEW", rules)["class"] == "UNCLASSIFIED"
+
+
+# ---- (6) gitlinks are listed even when diff.ignoreSubmodules=all
+SUB_SHA = "1234567890abcdef1234567890abcdef12345678"
+
+
+def gitlink_world(world, ignore):
+    repo = world["repo"]
+    if ignore:
+        git(repo, "config", "diff.ignoreSubmodules", "all")
+        git(repo, "config", "submodule.sub.ignore", "all")
+    mode_branch(world, "withsub", lambda r: git(r, "update-index", "--add", "--cacheinfo", f"160000,{SUB_SHA},sub"))
+    rules = write_rules(world["tmp"] / "all.json", [{"glob": "**", "class": "LAND", "reason": "everything"}])
+    return rules
+
+
+@pytest.mark.parametrize("ignore", [False, True], ids=["default-config", "ignoreSubmodules-all"])
+def test_added_gitlink_is_listed_whatever_the_repo_config_says(world, ignore):
+    rules = gitlink_world(world, ignore)
+    entry = files_of(build(world, ("withsub",), rules=rules), "withsub")["sub"]
+    assert entry["status"] == "A" and entry["relation"] == "NEW" and entry["class"] == "LAND"
+
+
+def test_changed_gitlink_is_listed_as_modified_even_when_ignored(world):
+    repo = world["repo"]
+    git(repo, "config", "diff.ignoreSubmodules", "all")
+    git(repo, "checkout", "-q", "-b", "sub2", world["base"])
+    git(repo, "update-index", "--add", "--cacheinfo", f"160000,{SUB_SHA},sub")
+    git(repo, "commit", "-q", "-m", "sub added")
+    git(repo, "update-index", "--cacheinfo", f"160000,{'f' * 40},sub")
+    git(repo, "commit", "-q", "-m", "sub moved")
+    publish(repo, "sub2")
+    git(repo, "checkout", "-q", "main")
+    rules = write_rules(world["tmp"] / "all.json", [{"glob": "**", "class": "LAND", "reason": "everything"}])
+    assert "sub" in files_of(build(world, ("sub2",), rules=rules), "sub2")
+
+
+# ---- (7) a stale COMPLETE --out file never survives a NOT_RUN
+def complete_out(world, capsys):
+    code, _ = run_main(world, capsys)
+    assert code == 0 and world["out"].is_file()
+
+
+@pytest.mark.parametrize("kind", ["unknown-branch", "bad-ref", "target-stale", "bad-rules", "unreadable-rules", "bad-target"])
+def test_not_run_removes_an_older_out_file(world, capsys, kind):
+    complete_out(world, capsys)
+    publish(world["repo"], "main", world["base"])
+    bad_rules = world["tmp"] / "bad.json"
+    bad_rules.write_text(json.dumps({"rules": []}), encoding="utf-8")
+    unreadable = world["tmp"] / "unreadable.json"
+    unreadable.write_text("{oops", encoding="utf-8")
+    kwargs = {"unknown-branch": dict(branches="ghost"), "bad-ref": dict(branches="a..b"),
+              "target-stale": dict(target="main"), "bad-rules": dict(rules=bad_rules),
+              "unreadable-rules": dict(rules=unreadable), "bad-target": dict(target="main~1")}[kind]
+    code, printed = run_main(world, capsys, **kwargs)
+    assert code == 2 and printed["status"] == "NOT_RUN"
+    assert not world["out"].exists(), "a stale COMPLETE map must not survive a NOT_RUN"
+
+
+def test_incomplete_run_replaces_the_older_out_file(world, capsys):
+    complete_out(world, capsys)
+    code, printed = run_main(world, capsys, branches="b_unmatched")
+    assert code == 3
+    assert "b_unmatched" in json.loads(world["out"].read_text(encoding="utf-8"))["branches"]
+
+
+def test_run_without_out_does_not_delete_anything(world, capsys):
+    complete_out(world, capsys)
+    code, _ = run_main(world, capsys, out="")
+    assert code == 0 and world["out"].is_file()
+
+
+# ---- (8) DOTALL: a newline inside a segment matches, a trailing newline still does not match an exact name
+def test_newline_inside_a_path_segment_matches_wildcards_but_trailing_newline_does_not_match_exact_names():
+    nl = chr(10)
+    assert matches("docs/**", "docs/a" + nl + "b")
+    assert matches("docs/*", "docs/a" + nl + "b")
+    assert matches("**/*.txt", "x/a" + nl + "b.txt")
+    assert not matches("docs/*", "docs/a" + nl + "b/c")
+    assert not matches("a.txt", "a.txt" + nl)
+    assert not matches("**/*.txt", "x/a.txt" + nl)

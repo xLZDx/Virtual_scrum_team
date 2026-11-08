@@ -42,7 +42,7 @@ class InventoryError(Exception):
         self.detail = detail
 
 
-def _git(repo: pathlib.Path, *args: str) -> bytes:
+def _git_code(repo: pathlib.Path, *args: str) -> tuple[int, bytes, bytes]:
     git = aeve_probe._find_git(exclude=repo)
     if git is None:
         raise InventoryError("GIT_NOT_FOUND")
@@ -53,15 +53,20 @@ def _git(repo: pathlib.Path, *args: str) -> bytes:
                               shell=False)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise InventoryError("GIT_FAILED", type(exc).__name__) from exc
-    if done.returncode != 0:
-        raise InventoryError("GIT_FAILED", done.stderr.decode("utf-8", "replace")[:200])
-    return done.stdout
+    return done.returncode, done.stdout, done.stderr
 
 
-def _tree(repo: pathlib.Path, ref: str) -> dict[str, str]:
-    """path -> blob id for every file of a ref."""
+def _git(repo: pathlib.Path, *args: str) -> bytes:
+    code, out, err = _git_code(repo, *args)
+    if code != 0:
+        raise InventoryError("GIT_FAILED", err.decode("utf-8", "replace")[:200])
+    return out
+
+
+def _tree(repo: pathlib.Path, ref: str) -> dict[str, tuple[str, str]]:
+    """path -> (mode, blob id) for every file of a ref."""
     out = _git(repo, "ls-tree", "-r", "-z", "--full-tree", ref)
-    tree: dict[str, str] = {}
+    tree: dict[str, tuple[str, str]] = {}
     for rec in out.split(b"\0"):
         if not rec:
             continue
@@ -69,13 +74,13 @@ def _tree(repo: pathlib.Path, ref: str) -> dict[str, str]:
         parts = meta.split()
         if len(parts) != 3:
             raise InventoryError("TREE_PARSE", rec[:80].decode("utf-8", "replace"))
-        tree[path.decode("utf-8", "surrogateescape")] = parts[2].decode("ascii")
+        tree[path.decode("utf-8", "surrogateescape")] = (parts[0].decode("ascii"), parts[2].decode("ascii"))
     return tree
 
 
 def _changed(repo: pathlib.Path, base: str, ref: str) -> dict[str, str]:
     """path -> status letter (A, M, D, T) of what the branch changed since the merge base."""
-    out = _git(repo, "diff", "--name-status", "-z", "--no-renames", f"{base}..{ref}")
+    out = _git(repo, "diff-tree", "-r", "--no-renames", "--name-status", "-z", base, ref)
     fields = [f for f in out.split(b"\0")]
     changed: dict[str, str] = {}
     i = 0
@@ -87,6 +92,10 @@ def _changed(repo: pathlib.Path, base: str, ref: str) -> dict[str, str]:
         changed[path] = status[0]
         i += 2
     return changed
+
+
+MAX_GLOB_LENGTH = 200
+MAX_GLOB_WILDCARDS = 6
 
 
 def _glob_to_regex(glob: str) -> re.Pattern:
@@ -108,7 +117,7 @@ def _glob_to_regex(glob: str) -> re.Pattern:
         else:
             out += re.escape(c)
             i += 1
-    return re.compile(out)
+    return re.compile(out, re.DOTALL)
 
 
 def load_rules(path: pathlib.Path) -> list[dict]:
@@ -125,6 +134,8 @@ def load_rules(path: pathlib.Path) -> list[dict]:
                 or not isinstance(rule.get("glob"), str) or not rule["glob"]
                 or not isinstance(rule.get("reason"), str) or not rule["reason"].strip()):
             raise InventoryError("RULES_INVALID", f"rule {n} needs glob, class in {CLASSES} and a reason")
+        if len(rule["glob"]) > MAX_GLOB_LENGTH or rule["glob"].count("*") > MAX_GLOB_WILDCARDS:
+            raise InventoryError("RULES_INVALID", f"rule {n} glob is too long or has too many wildcards")
         compiled.append({"glob": rule["glob"], "class": rule["class"], "reason": rule["reason"],
                          "regex": _glob_to_regex(rule["glob"])})
     return compiled
@@ -142,15 +153,44 @@ def classify(path: str, relation: str, rules: list[dict]) -> dict:
     return {"class": "UNCLASSIFIED", "reason": "no rule matches this path", "rule": None}
 
 
+_REF_NAME = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9._/-]{0,199}$")
+
+
+def _checked_name(kind: str, name: str) -> str:
+    """A branch or target name must be a plain ref name: no revision syntax, no option-like start."""
+    if (not isinstance(name, str) or not _REF_NAME.match(name) or ".." in name or name.endswith((".lock", "/", "."))
+            or "//" in name or name == "HEAD" or name.endswith("/HEAD")):
+        raise InventoryError("BAD_REF_NAME", f"{kind} name {str(name)[:60]!r} is not a plain ref name")
+    return name
+
+
+def _resolve(repo: pathlib.Path, full_ref: str) -> str:
+    code, out, err = _git_code(repo, "rev-parse", "--verify", "--end-of-options", f"{full_ref}^{{commit}}")
+    if code != 0:
+        raise InventoryError("GIT_FAILED", err.decode("utf-8", "replace")[:200])
+    return out.decode().strip()
+
+
 def build_map(repo: pathlib.Path, rules: list[dict], target: str, branches: list[str]) -> dict:
-    target_tree = _tree(repo, target)
-    target_sha = _git(repo, "rev-parse", target).decode().strip()
+    target = _checked_name("target", target)
+    if target.startswith("origin/"):
+        target_full = f"refs/remotes/{target}"
+    else:
+        target_full = f"refs/heads/{target}"
+    target_sha = _resolve(repo, target_full)
+    if target_full.startswith("refs/heads/"):
+        code, out, _ = _git_code(repo, "rev-parse", "--verify", "--quiet", "--end-of-options",
+                                 f"refs/remotes/origin/{target}^{{commit}}")
+        remote_sha = out.decode().strip() if code == 0 else None
+        if remote_sha is not None and remote_sha != target_sha:
+            raise InventoryError("TARGET_STALE", f"local {target} differs from origin/{target}; use origin/{target}")
+    target_tree = _tree(repo, target_sha)
     result = {"version": 1, "target": target, "target_head": target_sha, "branches": {}}
     refs = {}
     for name in branches:
-        refs[name] = _git(repo, "rev-parse", "--verify", f"refs/remotes/origin/{name}^{{commit}}").decode().strip()
+        refs[name] = _resolve(repo, f"refs/remotes/origin/{_checked_name('branch', name)}")
     for name, ref in refs.items():
-        base = _git(repo, "merge-base", target, ref).decode().strip()
+        base = _git(repo, "merge-base", target_sha, ref).decode().strip()
         branch_tree = _tree(repo, ref)
         changed = _changed(repo, base, ref)
         files = {}
@@ -174,14 +214,10 @@ def build_map(repo: pathlib.Path, rules: list[dict], target: str, branches: list
 
 
 def _is_ancestor(repo: pathlib.Path, a: str, b: str) -> bool:
-    git = aeve_probe._find_git(exclude=repo)
-    if git is None:
-        raise InventoryError("GIT_NOT_FOUND")
-    done = subprocess.run([git, "-C", str(repo), "merge-base", "--is-ancestor", a, b], capture_output=True,
-                          timeout=GIT_TIMEOUT, shell=False)
-    if done.returncode not in (0, 1):
-        raise InventoryError("GIT_FAILED", done.stderr.decode("utf-8", "replace")[:200])
-    return done.returncode == 0
+    code, _, err = _git_code(repo, "merge-base", "--is-ancestor", a, b)
+    if code not in (0, 1):
+        raise InventoryError("GIT_FAILED", err.decode("utf-8", "replace")[:200])
+    return code == 0
 
 
 def summarize(doc: dict) -> dict:
@@ -230,7 +266,7 @@ def main(argv: list[str] | None = None) -> int:
     m = sub.add_parser("map")
     m.add_argument("--repo", required=True, type=pathlib.Path)
     m.add_argument("--rules", required=True, type=pathlib.Path)
-    m.add_argument("--target", default="main")
+    m.add_argument("--target", default="origin/main")
     m.add_argument("--branches", required=True)
     m.add_argument("--out", type=pathlib.Path)
     c = sub.add_parser("check")
@@ -239,6 +275,11 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "map":
             branches = [b.strip() for b in args.branches.split(",") if b.strip()]
+            if args.out:
+                try:
+                    args.out.unlink(missing_ok=True)  # a failed run must not leave an older COMPLETE map behind
+                except OSError:
+                    pass
             doc = build_map(args.repo, load_rules(args.rules), args.target, branches)
             problems = check_map(doc)
             text = json.dumps(doc, indent=1, sort_keys=True)

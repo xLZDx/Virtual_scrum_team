@@ -17,9 +17,9 @@ SCRIPT = REPO_ROOT / "tools" / "uc" / "branch_inventory.py"
 NL = chr(10)
 
 
-def cli(*args, cwd=None):
+def cli(*args, cwd=None, env=None):
     res = subprocess.run([sys.executable, "-I", str(SCRIPT), *map(str, args)], capture_output=True, text=True,
-                         timeout=300, cwd=cwd)
+                         timeout=300, cwd=cwd, env=env)
     return res
 
 
@@ -181,8 +181,7 @@ def _have_remote_refs():
 def test_REAL_DATA_map_of_the_s4_s5_branches_matches_the_committed_evidence(tmp_path):
     out = tmp_path / "real-map.json"
     before = (git(REPO_ROOT, "rev-parse", "HEAD"), git(REPO_ROOT, "status", "--porcelain"))
-    res = cli("map", "--repo", REPO_ROOT, "--rules", REPO_ROOT / "catalog" / "branch_landing_rules.json", "--target", "origin/main",
-              "--branches", ",".join(REAL_BRANCHES), "--out", out, cwd=REPO_ROOT)
+    res = cli("map", "--repo", REPO_ROOT, "--rules", REPO_ROOT / "catalog" / "branch_landing_rules.json", "--branches", ",".join(REAL_BRANCHES), "--out", out, cwd=REPO_ROOT)
     assert doc_of(res)["status"] == "COMPLETE", res.stdout[:600]
     assert res.returncode == 0
     assert (git(REPO_ROOT, "rev-parse", "HEAD"), git(REPO_ROOT, "status", "--porcelain")) == before
@@ -199,3 +198,28 @@ def test_REAL_DATA_map_of_the_s4_s5_branches_matches_the_committed_evidence(tmp_
     assert fresh["branches"] == evidence["branches"] and fresh["summary"] == evidence["summary"]
     check = cli("check", "--map", out)
     assert check.returncode == 0 and doc_of(check)["status"] == "COMPLETE"
+
+
+def test_caller_git_dir_environment_does_not_change_the_result(world, tmp_path):
+    import os
+    decoy = tmp_path / "decoy"
+    decoy.mkdir()
+    git(decoy, "init", "-q")
+    write(decoy, "other.txt", "x")
+    commit_all(decoy, "decoy commit")
+    env = dict(os.environ, GIT_DIR=str(decoy / ".git"), GIT_WORK_TREE=str(decoy), GIT_INDEX_FILE=str(decoy / ".git" / "index"))
+    plain, hijacked = tmp_path / "plain.json", tmp_path / "hijacked.json"
+    res1 = cli(*map_args(world, "b1", plain))
+    res2 = cli(*map_args(world, "b1", hijacked), env=env)
+    assert res1.returncode == 0 and res2.returncode == 0, res2.stdout + res2.stderr
+    assert json.loads(plain.read_text(encoding="utf-8")) == json.loads(hijacked.read_text(encoding="utf-8"))
+    assert doc_of(res1) == doc_of(res2)
+
+
+def test_cli_bad_ref_name_and_stale_out(world, tmp_path):
+    out = tmp_path / "map.json"
+    assert cli(*map_args(world, "b1", out)).returncode == 0 and out.is_file()
+    res = cli("map", "--repo", world["repo"], "--rules", world["rules"], "--target", "main", "--branches=-x",
+              "--out", out)
+    assert res.returncode == 2 and doc_of(res)["reason"] == "BAD_REF_NAME"
+    assert not out.exists()
