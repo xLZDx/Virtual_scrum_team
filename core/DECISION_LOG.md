@@ -2608,3 +2608,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: python-reviewer found 5 MAJOR + 1 lower-confidence in branch_inventory.py (mode change, branch-name revision syntax, stale target, _is_ancestor env/traceback, glob backtracking, submodule-ignore); all fixed and covered by tests; complete tests/uc 1182 passed, 0 failed, 3 skipped (test agent). Known limits recorded in the scope note (comma in branch names; check cannot detect omitted files in an edited map).
 - Decision: send U3-1 to GPT-PM as one task. Push of branch u2-evidence-gate stays held until approval (operator answer: wait for GPT-PM).
+
+## 2026-11-08 — U3-1 approved by GPT-PM
+
+- Evidence: request e80884f4, APPROVE, 0 BLOCKER, 0 MAJOR, receipt written. Approval covers the reviewed code and contract scope only; landing of the inventoried branches is not authorized.
+- Decision: U3-1 ACCEPTED; branch u2-evidence-gate pushed (operator answer: push after approval). Next task in order: U2-1 (receipt version); it must first check that the AEVE output fields it needs exist.

@@ -1936,3 +1936,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SHORTCOMING: my first version trusted names and config (revision syntax in branch names, user git config, blob-only comparison, stale local target, unbounded regex). Missed by the author and by the first test pass; caught by the python-reviewer.
 - Rule: for any tool that shells out to git on untrusted names, validate names first, use plumbing commands, compare mode and blob, resolve against remote-tracking refs.
+
+## 2026-11-08 — U3-1 accepted on the first GPT-PM round
+
+- Kind: SUCCESS: independent internal review before the GPT round removed six defects, so the GPT-PM round was clean; the one-task scope note again named settled decisions and known limits.
+- Rule: keep internal review before the GPT round.
