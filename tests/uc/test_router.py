@@ -409,6 +409,18 @@ def fingerprint_file(world, request_id="req-1", iteration="first"):
     return world["state"] / "uc-requests" / f"{request_id}.{iteration}.sha256"
 
 
+def identity_file(world, request_id="req-1"):
+    return world["state"] / "uc-requests" / f"{request_id}.identity.sha256"
+
+
+def second_root(world):
+    other = world["tmp"] / "repo2"
+    other.mkdir(exist_ok=True)
+    (other / "a.py").write_text("x = 1\n")
+    (other / "b.py").write_text("y = 2\n")
+    return other
+
+
 def assert_blocked(doc, reason):
     assert doc.get("schema_version") == contracts.BLOCKED_SCHEMA, f"expected a blocked envelope, got {str(doc)[:300]}"
     contracts.validate_blocked(doc)
@@ -688,7 +700,7 @@ def test_state_after_conflict_holds_only_the_original_fingerprint_and_the_lock_f
     do_review(world, "emit(good(), 0)")
     do_review(world, "emit(good(), 0)", role_request(world, changed_paths=["b.py"]))  # conflict
     files = sorted(p.name for p in (world["state"] / "uc-requests").iterdir())
-    assert files == ["req-1.first.sha256", "req-1.lock"]
+    assert files == ["req-1.first.sha256", "req-1.identity.sha256", "req-1.lock"]
 
 
 def test_concurrent_same_id_same_content_is_serialized_not_overlapped(world):
@@ -775,21 +787,85 @@ def test_uncovered_only_request_that_returns_a_result_records_its_fingerprint(wo
     assert fingerprint_file(world).read_text(encoding="utf-8") == content_sha(request)
 
 
-@pytest.mark.parametrize("stored", ["", "   \n", "garbage", "xyz" * 30, "A" * 64, "1" * 63, "1" * 65, "\x00\x01"])
-def test_empty_or_garbled_fingerprint_counts_as_absent_and_is_repaired(world, stored):
+BAD_RECORDS = ["", "   \n", "garbage", "xyz" * 30, "A" * 64, "1" * 63, "1" * 65, "\x00\x01"]
+
+
+def run_marked(world, request=None, roots=None):
+    marker = world["tmp"] / "ran"
+    marker.unlink(missing_ok=True)
+    body = f"import pathlib; pathlib.Path({str(marker)!r}).write_text('x'); emit(good(), 0)"
+    prefix = S.write_stub(world["stubs"], body)
+    out = router.review(request or role_request(world), table=TABLE, aeve_root=world["aeve"], state_dir=world["state"],
+                        allowed_roots=roots or [str(world["root"])], command_prefix=prefix, timeout=20.0)
+    return out, marker
+
+
+@pytest.mark.parametrize("stored", BAD_RECORDS)
+def test_damaged_content_record_blocks_and_is_left_untouched(world, stored):
     path = fingerprint_file(world)
     path.parent.mkdir(parents=True)
     path.write_text(stored, encoding="utf-8")
-    request = role_request(world)
-    contracts.validate_result(do_review(world, "emit(good(), 0)", request))
-    assert path.read_text(encoding="utf-8") == content_sha(request)
+    out, marker = run_marked(world)
+    assert out.get("schema_version") == contracts.BLOCKED_SCHEMA
+    assert out["reason"] == "FINGERPRINT_CORRUPT", out
+    assert not marker.exists(), "AEVE must not run on a damaged record"
+    assert path.read_text(encoding="utf-8") == stored, "a damaged record is never silently repaired"
+    assert not identity_file(world).exists()
+    assert_lock_free(world)
 
 
-def test_non_utf8_fingerprint_counts_as_absent(world):
-    path = fingerprint_file(world)
+@pytest.mark.parametrize("stored", BAD_RECORDS)
+def test_damaged_identity_record_blocks_and_is_left_untouched(world, stored):
+    path = identity_file(world)
+    path.parent.mkdir(parents=True)
+    path.write_text(stored, encoding="utf-8")
+    out, marker = run_marked(world)
+    assert out["reason"] == "FINGERPRINT_CORRUPT", out
+    assert not marker.exists()
+    assert path.read_text(encoding="utf-8") == stored
+    assert not fingerprint_file(world).exists()
+
+
+@pytest.mark.parametrize("which", ["content", "identity"])
+def test_non_utf8_record_blocks_never_counts_as_absent(world, which):
+    path = fingerprint_file(world) if which == "content" else identity_file(world)
     path.parent.mkdir(parents=True)
     path.write_bytes(b"\xff\xfe\x00garbage")
-    contracts.validate_result(do_review(world, "emit(good(), 0)"))
+    out, marker = run_marked(world)
+    assert out.get("schema_version") == contracts.BLOCKED_SCHEMA
+    assert out["reason"] in ("FINGERPRINT_CORRUPT", "FINGERPRINT_UNREADABLE"), out
+    assert not marker.exists()
+
+
+@pytest.mark.parametrize("which", ["content", "identity"])
+def test_unreadable_record_blocks_with_fingerprint_unreadable(world, which, monkeypatch):
+    path = fingerprint_file(world) if which == "content" else identity_file(world)
+    path.parent.mkdir(parents=True)
+    path.write_text("a" * 64, encoding="utf-8")
+    real = pathlib.Path.read_text
+
+    def deny(self, *a, **k):
+        if self.name == path.name:
+            raise PermissionError("locked by another program")
+        return real(self, *a, **k)
+    monkeypatch.setattr(pathlib.Path, "read_text", deny)
+    out, marker = run_marked(world)
+    assert_blocked(out, "FINGERPRINT_UNREADABLE")
+    assert not marker.exists()
+
+
+def test_damaged_record_of_one_id_does_not_affect_another_id(world):
+    path = fingerprint_file(world)
+    path.parent.mkdir(parents=True)
+    path.write_text("garbage", encoding="utf-8")
+    contracts.validate_result(do_review(world, "emit(good(), 0)", role_request(world, request_id="req-2")))
+
+
+def test_damaged_record_for_another_iteration_does_not_block_this_one(world):
+    path = fingerprint_file(world, iteration="req-0")
+    path.parent.mkdir(parents=True)
+    path.write_text("garbage", encoding="utf-8")
+    contracts.validate_result(do_review(world, "emit(good(), 0)"))  # iteration_of absent -> "first" record
 
 
 def test_valid_fingerprint_of_other_content_conflicts_and_is_left_untouched(world):
@@ -1272,7 +1348,7 @@ def test_unexpected_exception_in_probe_is_internal_error_envelope(world, monkeyp
 def test_unexpected_exception_while_writing_the_fingerprint_is_internal_error(world, monkeypatch):
     def boom(*a, **k):
         raise PermissionError("disk")
-    monkeypatch.setattr(router, "_write_fingerprint", boom)
+    monkeypatch.setattr(router, "_write_record", boom)
     assert_blocked(do_review(world, "emit(good(), 0)"), "INTERNAL_ERROR")
 
 
@@ -1294,3 +1370,215 @@ def test_main_converts_internal_error_to_exit_2_with_json_not_a_traceback(world,
                       "--state-dir", str(world["state"]), "--allowed-root", str(world["root"])])
     assert rc == 2
     assert_blocked(json.loads(capsys.readouterr().out), "INTERNAL_ERROR")
+
+
+# ------------------------------------------------------------------ request_id <-> reviewed root binding
+def root_sha(root):
+    return hashlib.sha256(os.path.normcase(os.path.abspath(str(root))).encode("utf-8")).hexdigest()
+
+
+def both_roots(world, other):
+    return [str(world["root"]), str(other)]
+
+
+def test_identity_record_is_written_with_sha_of_normalised_root_and_no_tmp_left(world):
+    do_review(world, "emit(good(), 0)")
+    assert identity_file(world).read_text(encoding="utf-8") == root_sha(world["root"])
+    assert not list((world["state"] / "uc-requests").glob("*.tmp"))
+
+
+def test_identity_record_is_shared_across_iterations(world):
+    do_review(world, "emit(good(), 0)")
+    do_review(world, "emit(good(), 0)", role_request(world, iteration_of="req-0"))
+    assert identity_file(world).read_text(encoding="utf-8") == root_sha(world["root"])
+    assert sorted(p.name for p in (world["state"] / "uc-requests").glob("*.sha256")) == [
+        "req-1.first.sha256", "req-1.identity.sha256", "req-1.req-0.sha256"]
+
+
+def test_same_id_different_root_is_refused_and_does_not_run(world):
+    other = second_root(world)
+    contracts.validate_result(do_review(world, "emit(good(), 0)"))
+    out, marker = run_marked(world, role_request(world, root=str(other)), both_roots(world, other))
+    assert_blocked(out, "REQUEST_ID_CONFLICT")
+    assert not marker.exists()
+    assert identity_file(world).read_text(encoding="utf-8") == root_sha(world["root"]), "binding is never rewritten"
+    assert_lock_free(world)
+
+
+def test_same_id_different_root_is_refused_even_with_a_different_iteration_of(world):
+    other = second_root(world)
+    contracts.validate_result(do_review(world, "emit(good(), 0)"))
+    out, marker = run_marked(world, role_request(world, root=str(other), iteration_of="req-0"), both_roots(world, other))
+    assert_blocked(out, "REQUEST_ID_CONFLICT")
+    assert not marker.exists()
+    assert not fingerprint_file(world, iteration="req-0").exists()
+
+
+def test_same_id_different_root_is_refused_with_the_same_iteration_of(world):
+    other = second_root(world)
+    contracts.validate_result(do_review(world, "emit(good(), 0)", role_request(world, iteration_of="req-0")))
+    out, _ = run_marked(world, role_request(world, root=str(other), iteration_of="req-0"), both_roots(world, other))
+    assert_blocked(out, "REQUEST_ID_CONFLICT")
+
+
+def test_root_binding_is_per_id_not_global(world):
+    other = second_root(world)
+    contracts.validate_result(do_review(world, "emit(good(), 0)"))
+    out, _ = run_marked(world, role_request(world, request_id="req-2", root=str(other)), both_roots(world, other))
+    contracts.validate_result(out)
+
+
+def test_same_root_spelled_with_different_case_or_dot_segment_is_the_same_identity(world):
+    contracts.validate_result(do_review(world, "emit(good(), 0)", role_request(world, iteration_of="req-0")))
+    spelled = str(world["root"]).upper() if os.name == "nt" else str(world["root"])
+    alt = role_request(world, root=spelled + os.sep + ".", iteration_of="req-1")
+    out, _ = run_marked(world, alt, [str(world["root"])])
+    if out.get("schema_version") == contracts.BLOCKED_SCHEMA:
+        assert out["reason"] != "REQUEST_ID_CONFLICT", out  # refused for another reason is acceptable, not as a conflict
+    else:
+        contracts.validate_result(out)
+
+
+def test_iteration_resubmission_with_changed_content_same_root_is_allowed(world):
+    contracts.validate_result(do_review(world, "emit(good(), 0)"))
+    second = role_request(world, iteration_of="req-0", changed_paths=["a.py", "b.py"], criteria=["fixed"])
+    contracts.validate_result(do_review(world, "emit(good(), 0)", second))
+    third = role_request(world, iteration_of="req-0", changed_paths=["a.py", "b.py"], criteria=["fixed", "again"])
+    assert_blocked(do_review(world, "emit(good(), 0)", third), "REQUEST_ID_CONFLICT")  # same iteration_of, new content
+
+
+def test_blocked_run_writes_no_records_so_id_is_free_for_any_root(world):
+    other = second_root(world)
+    assert_blocked(do_review(world, "print('bad')"), "BAD_OUTPUT")
+    assert not identity_file(world).exists() and not fingerprint_file(world).exists()
+    out, _ = run_marked(world, role_request(world, root=str(other)), both_roots(world, other))
+    contracts.validate_result(out)
+    assert identity_file(world).read_text(encoding="utf-8") == root_sha(other)
+
+
+def test_conflict_run_writes_nothing_new(world):
+    other = second_root(world)
+    do_review(world, "emit(good(), 0)")
+    before = {p.name: p.read_bytes() for p in (world["state"] / "uc-requests").glob("*.sha256")}
+    run_marked(world, role_request(world, root=str(other), iteration_of="req-0"), both_roots(world, other))
+    after = {p.name: p.read_bytes() for p in (world["state"] / "uc-requests").glob("*.sha256")}
+    assert before == after
+    assert not list((world["state"] / "uc-requests").glob("*.tmp"))
+
+
+def test_failure_between_the_two_writes_leaves_no_tmp_and_the_same_root_can_retry(world, monkeypatch):
+    real = router._write_record
+    calls = []
+
+    def flaky(path, value):
+        calls.append(path.name)
+        if len(calls) == 2:
+            raise OSError("disk full")
+        real(path, value)
+    monkeypatch.setattr(router, "_write_record", flaky)
+    assert_blocked(do_review(world, "emit(good(), 0)"), "INTERNAL_ERROR")
+    monkeypatch.setattr(router, "_write_record", real)
+    assert not list((world["state"] / "uc-requests").glob("*.tmp"))
+    contracts.validate_result(do_review(world, "emit(good(), 0)"))
+    assert fingerprint_file(world).exists()
+
+
+def test_write_record_is_atomic_via_replace(world, monkeypatch):
+    seen = []
+    real = os.replace
+
+    def spy(src, dst):
+        seen.append((pathlib.Path(src).name, pathlib.Path(dst).name, pathlib.Path(src).read_text(encoding="utf-8")))
+        real(src, dst)
+    monkeypatch.setattr(router.os, "replace", spy)
+    do_review(world, "emit(good(), 0)")
+    assert {dst for _, dst, _ in seen} == {"req-1.identity.sha256", "req-1.first.sha256"}
+    assert all(src.endswith(".tmp") and len(val) == 64 for src, _, val in seen)
+
+
+# ------------------------------------------------------------------ concurrency of the id guard
+def test_waiter_with_a_different_root_is_refused_after_the_holder_records_its_identity(world, monkeypatch):
+    other = second_root(world)
+    monkeypatch.setattr(router, "LOCK_WAIT_SECONDS", 10.0)
+    release = hold_lock(world)
+    out = {}
+    marker = world["tmp"] / "b-ran"
+    body = f"import pathlib; pathlib.Path({str(marker)!r}).write_text('x'); emit(good(), 0)"
+    prefix = S.write_stub(world["stubs"], body)
+
+    def waiter():
+        out["r"] = router.review(role_request(world, root=str(other)), table=TABLE, aeve_root=world["aeve"],
+                                 state_dir=world["state"], allowed_roots=both_roots(world, other),
+                                 command_prefix=prefix, timeout=20.0)
+    thread = threading.Thread(target=waiter)
+    thread.start()
+    time.sleep(0.5)
+    assert "r" not in out, "waiter must be polling the lock"
+    identity_file(world).write_text(root_sha(world["root"]), encoding="utf-8")  # the holder records its root
+    release()
+    thread.join(30)
+    assert_blocked(out["r"], "REQUEST_ID_CONFLICT")
+    assert not marker.exists()
+    assert identity_file(world).read_text(encoding="utf-8") == root_sha(world["root"])
+
+
+def race(world, requests, sleep=1.0):
+    """Run several reviews of the same id at once; return their outcomes and the AEVE start timestamps."""
+    log = world["tmp"] / "starts.log"
+    body = f"""
+    open({str(log)!r}, 'a').write(json.dumps(time.time()) + chr(10))
+    time.sleep({sleep})
+    emit(good(), 0)
+    """
+    prefix = S.write_stub(world["stubs"], body)
+    allowed = sorted({r["root"] for r in requests})
+    results = [None] * len(requests)
+
+    def go(i):
+        results[i] = router.review(requests[i], table=TABLE, aeve_root=world["aeve"], state_dir=world["state"],
+                                   allowed_roots=allowed, command_prefix=prefix, timeout=30)
+    threads = [threading.Thread(target=go, args=(i,)) for i in range(len(requests))]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(90)
+    starts = log.read_text().splitlines() if log.exists() else []
+    return results, starts
+
+
+def split(results):
+    ok = [r for r in results if r and r.get("schema_version") != contracts.BLOCKED_SCHEMA]
+    bad = [r for r in results if r and r.get("schema_version") == contracts.BLOCKED_SCHEMA]
+    return ok, bad
+
+
+def test_race_same_id_two_roots_exactly_one_proceeds_other_conflicts(world):
+    other = second_root(world)
+    results, starts = race(world, [role_request(world), role_request(world, root=str(other))])
+    ok, bad = split(results)
+    assert len(ok) == 1 and len(bad) == 1, results
+    assert bad[0]["reason"] in ("REQUEST_ID_CONFLICT", "REQUEST_LOCKED")
+    assert len(starts) == 1, "AEVE must run exactly once"
+    assert identity_file(world).read_text(encoding="utf-8") in (root_sha(world["root"]), root_sha(other))
+    assert not list((world["state"] / "uc-requests").glob("*.tmp"))
+
+
+def test_race_same_id_same_iteration_two_contents_exactly_one_proceeds(world):
+    a = role_request(world, iteration_of="req-0")
+    b = role_request(world, iteration_of="req-0", changed_paths=["a.py", "b.py"])
+    results, starts = race(world, [a, b])
+    ok, bad = split(results)
+    assert len(ok) == 1 and len(bad) == 1, results
+    assert bad[0]["reason"] in ("REQUEST_ID_CONFLICT", "REQUEST_LOCKED")
+    assert len(starts) == 1
+    assert fingerprint_file(world, iteration="req-0").read_text(encoding="utf-8") in (content_sha(a), content_sha(b))
+
+
+def test_race_same_id_same_root_different_iterations_both_proceed_serialised(world):
+    a = role_request(world)
+    b = role_request(world, iteration_of="req-0", changed_paths=["a.py", "b.py"])
+    results, starts = race(world, [a, b], sleep=0.6)
+    for r in results:
+        contracts.validate_result(r)
+    assert len(starts) == 2
+    assert fingerprint_file(world).exists() and fingerprint_file(world, iteration="req-0").exists()
