@@ -65,7 +65,7 @@ def _run(argv: list[str], *, cwd: pathlib.Path, env: dict[str, str], timeout: fl
         raise AeveProbeError("EXEC_FAILED", f"{argv[0]}: {exc}") from exc
 
 
-def _find_git() -> str:
+def _find_git() -> str | None:
     """git from an absolute PATH entry only: never the current directory, which CreateProcess searches first."""
     for entry in os.environ.get("PATH", "").split(os.pathsep):
         if not entry or not os.path.isabs(entry):
@@ -74,13 +74,15 @@ def _find_git() -> str:
             candidate = os.path.join(entry, name)
             if os.path.isfile(candidate):
                 return candidate
-    return "git"
+    return None  # no bare "git" fallback: CreateProcess would search the current directory first
 
 
 _GIT = _find_git()
 
 
 def _git(aeve_root: pathlib.Path, args: list[str], env: dict[str, str], timeout: float) -> str:
+    if _GIT is None:
+        raise AeveProbeError("GIT_NOT_FOUND", "no git executable on an absolute PATH entry")
     result = _run([_GIT, "-C", str(aeve_root), *args], cwd=aeve_root, env=env, timeout=timeout)
     if result.returncode != 0:
         raise AeveProbeError("GIT_FAILED", (result.stderr or "").strip()[:200])

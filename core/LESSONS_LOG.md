@@ -1823,3 +1823,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SUCCESS: a one-task review with a scope note naming the task, the acceptance text, the evidence and the already-taken decisions was approved in one round.
 - Rule: name the single task, its files and the decisions already settled in the scope note; keep prohibited checks out of the request.
+
+
+## 2026-11-08 — U1-2 git resolution
+
+- Kind: SHORTCOMING caught by the security review and then by GPT-PM: the probe kept a bare "git" fallback after the rest of the code resolved executables by absolute path, so the same planting risk survived in one file.
+- Rule: when one file is hardened against a risk, grep the sibling files for the same pattern in the same commit.

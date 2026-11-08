@@ -277,7 +277,7 @@ def test_find_git_ignores_relative_path_entries_and_the_current_directory(tmp_pa
         (trap / name).write_text("planted")
     monkeypatch.chdir(trap)
     monkeypatch.setenv("PATH", os.pathsep.join([".", "", "trap", str(pathlib.Path("."))]))
-    assert aeve_probe._find_git() == "git"  # nothing absolute on PATH: bare fallback, never the planted file
+    assert aeve_probe._find_git() is None  # nothing absolute on PATH: no bare fallback, never the planted file
 
 
 def test_find_git_skips_relative_entry_but_takes_a_later_absolute_one(tmp_path, monkeypatch):
@@ -305,11 +305,19 @@ def test_find_git_takes_first_absolute_entry_in_path_order(tmp_path, monkeypatch
     assert pathlib.Path(aeve_probe._find_git()).parent == first
 
 
-def test_find_git_without_any_git_on_absolute_path_falls_back(tmp_path, monkeypatch):
+def test_find_git_without_any_git_on_absolute_path_returns_none(tmp_path, monkeypatch):
     empty = tmp_path / "empty"
     empty.mkdir()
     monkeypatch.setenv("PATH", str(empty))
-    assert aeve_probe._find_git() == "git"
+    assert aeve_probe._find_git() is None
+
+
+def test_probe_and_git_helper_raise_git_not_found_when_no_git(fake, monkeypatch):
+    monkeypatch.setattr(aeve_probe, "_GIT", None)
+    assert blocked_reason(fake) == "GIT_NOT_FOUND"
+    with pytest.raises(aeve_probe.AeveProbeError) as info:
+        aeve_probe._git(fake, ["rev-parse", "HEAD"], aeve_probe.build_child_env(fake), 10.0)
+    assert info.value.reason == "GIT_NOT_FOUND"
 
 
 def _record_argv(monkeypatch):

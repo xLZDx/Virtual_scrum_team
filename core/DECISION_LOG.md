@@ -2294,3 +2294,8 @@ Operator decision: this session leads U1 (the parallel session stops). Statuses:
 ## 2026-11-08 — GPT-PM APPROVE for U1-5 (request 1007b1b8)
 
 One-task review of tools/uc/adapter.py and tests/uc/test_adapter.py (scope note docs/sdlc/evidence/u1-5-gptpm-scope-note.md, base 9587052, head 98696f5): verdict APPROVE, no BLOCKER or MAJOR. GPT-PM stated that its approval does not cover aeve_probe.py (U1-2); it noted the bare "git" fallback there. Fix in progress: _find_git returns None and the probe blocks with GIT_NOT_FOUND. U1-5 is ACCEPTED, not pushed. Next: U1-2 (aeve_probe.py) to GPT-PM after the test update.
+
+
+## 2026-11-08 — U1-2: no bare git fallback in the AEVE probe
+
+Following the U1-5 approval note, aeve_probe._find_git() returns None when no absolute PATH entry has git, and the probe blocks with GIT_NOT_FOUND instead of running a bare "git" (which CreateProcess would resolve from the current directory first). The test agent updated the matching test and added one for GIT_NOT_FOUND; tests/uc: 806 passed, 0 failed, 3 skipped (symlink creation not permitted). Next: U1-2 (aeve_probe.py and its tests) to GPT-PM as one task.
