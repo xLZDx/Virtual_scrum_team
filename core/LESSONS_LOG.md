@@ -1859,3 +1859,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SHORTCOMING (test agents and me): fixtures used credential-shaped strings (Stripe-style) to prove masking; they survive in git history and GitHub push protection rejects the push. Found only at the push attempt.
 - Rule: build secret-shaped fixtures at run time from parts (for example "sk_" + "live_" + ...) so the literal never appears in a tracked file; check a push dry-run against secret scanning before the final review, not after.
+
+
+## 2026-11-08 — two sessions on one branch
+
+- Kind: FAILURE (process): a second session kept committing status changes and a review record that contradict the receipts, after the operator had assigned the work to this session. Recorded and corrected; the status flips cost several review cycles.
+- Rule: when a sibling session writes to the same repository, check git log before every commit and verify any claimed review id against the tool's own output before trusting it.

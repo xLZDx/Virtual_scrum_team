@@ -2408,3 +2408,8 @@ Scope note docs/sdlc/evidence/u1-7-gptpm-scope-note.md limits the review to the 
 ## 2026-11-08 — GPT-PM APPROVE for U1-7 (request 7a6776ac)
 
 One-task review of the entry command of tools/uc/router.py and tests/uc_e2e (base 9587052, head 08a3774): APPROVE, no BLOCKER or MAJOR. U1-7 is ACCEPTED, not pushed. Accepted: U1-2, U1-3, U1-4, U1-5, U1-6, U1-7. Left in review: U1-1 and U1-8, which wait for the subprocess CLI tests of token_baseline and measure from the test agent. U1-9 stays BLOCKED_OPERATOR (OD-3).
+
+
+## 2026-11-08 — Correction of the parallel session's entries (cfdc363, 5655e26)
+
+The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request a4c8e7f2-9b2d-4c1f-b5d9-7e3c2a6f1b4d) is not backed by any receipt seen in this session. The authoritative GPT-PM results for U1-4 are request c92e0b7f (BLOCKER and MAJOR, fixed in 2a197a1) and request 876746cf (APPROVE, receipt written). The same session set U1-1, U1-7 and U1-8 to BLOCKED_EXTERNAL because of GitHub push protection; that blocks the eventual push, not the review of those tasks (U1-7 was approved in request 7a6776ac while marked blocked). Statuses restored: U1-7 ACCEPTED, U1-1 and U1-8 IN_REVIEW. The operator was asked to stop the parallel session.
