@@ -44,6 +44,7 @@ TEST_FILE_CATEGORIES = {
 # full repository path; an unlisted module fails closed in _category_for_test_file.
 MAIN_TEST_FILE_CATEGORIES = {
     "tests/qa/test_s4a_registry.py": "functional",
+    "tests/qa/test_s4b_runner.py": "functional",
     "tests/af/test_s2_review_source_fidelity.py": "functional",
     "tests/uc/test_adapter.py": "functional",
     "tests/uc/test_aeve_probe.py": "functional",

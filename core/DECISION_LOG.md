@@ -2632,3 +2632,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: python-reviewer (4 MAJOR, 4 MINOR) and security-reviewer (4 MAJOR, 4 MINOR) read the runner; the test agent found an extra unlocked wheel accepted; fixes applied in one batch: isolated interpreter and pinned pytest config, hook allowlist, ignored-file and index-flag checks, git admin files hash, append-only evidence snapshot and lock, bounds, token redaction, Job Object limits.
 - Decision: operator decision recorded as accepted limits: no identity separation for the pytest child (single-user machine) and in-process reporting is candidate-attested evidence; the report has a trust_model field saying so. The root-level ignored-file rule was narrowed to files that can change pytest behavior because the broad rule broke validate_registry on the real repo (harmless ignored .tmp/.bak files at the root).
+
+## 2026-11-08 — S4-B tests committed
+
+- Evidence: functional agent on d69c824: tests/qa/test_s4b_runner.py full file 223 passed and 5 failed (all five were test mistakes), the five fixed tests plus four conftest tests rerun 15 passed; the full file was not rerun after the test-only fixes (about 48 minutes). No product defect left open; the real lock downloaded and verified once with no TLS workaround.
+- Decision: trust model stays candidate-attested with no identity separation (operator decision); root conftest.py is never loaded because of --confcutdir, a tests/ conftest with guarded hooks is refused.
