@@ -2558,3 +2558,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 ## 2026-11-08 — program report re-rendered after PR 5
 
 - Evidence: project_plan.py render rewrote both reports after PR 5 was opened (U1 8 of 9 tasks accepted, U1-9 parked).
+
+## 2026-11-08 — S3 closed with the built-in hand-written worker
+
+- Evidence: S3-A (GPT-PM request 5f62e471, APPROVE) and S3-C (request c1867dbe, APPROVE, bounded) were merged in PR 4 (state MERGED, 2026-11-07) but still showed BLOCKED_EXTERNAL; the operator decision of 2026-11-08 (no Temporal or BMad Loop acquisition, close S3 with the single built-in worker, Windows-local sandbox only if ever needed) removes the blocker.
+- Decision: S3-A and S3-C ACCEPTED (bounded, limits stay NOT_RUN); S3-B and S3-E SUPERSEDED by that decision; S3-D stays PARKED (sandbox proof only if a sandbox is ever needed). Nothing is claimed as run that was not.

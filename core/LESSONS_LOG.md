@@ -1911,3 +1911,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SUCCESS: the CLI produced a MEASURED baseline on a real 6.7 MB session with 20 sub-agent transcripts on the first run; per-role fields stay separate. A push blocked by secret scanning was resolved by the operator through the GitHub exception, not by rewriting history.
 - Rule: a baseline is evidence only for roles that actually appear in it; do not extrapolate savings to roles with no messages.
+
+## 2026-11-08 — S3 statuses lagged behind decisions
+
+- Kind: SHORTCOMING: S3 tasks stayed BLOCKED_EXTERNAL after the PR was merged and the operator had decided the open question, so the sprint bar looked unfinished. Missed by the author when recording the decision.
+- Rule: when an operator decision removes a blocker, update the task status in the same commit as the decision record.
