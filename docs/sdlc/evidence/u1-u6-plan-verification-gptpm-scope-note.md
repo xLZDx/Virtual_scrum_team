@@ -1,0 +1,5 @@
+REVIEW ITEM: verification round of your plan-bundle review a3325339 (MODIFY, 3 MAJOR). As you recommended, please verify only these three corrections and regressions they directly cause (the operator's one-time bundle exception covers this round):
+1. U2-2: the trusted component never trusts a worker-supplied AEVE response; it runs aeve review itself inside the trusted boundary or accepts only analyzer output authenticated by a key the worker cannot use; a deterministic case substitutes a fabricated FULL-coverage response for a real PARTIAL one and the receipt is refused.
+2. U3-7: depends on U3-5, U3-6 and OD-2 (permission to compare both executors); the operator's selection is the task outcome after the report.
+3. U5-6: the CLEAN control uses only fully covered local roles with no model-residual obligation; a separate LOCAL_PLUS_MODEL fixture with the model part disabled returns PARTIAL or another non-approving status, never CLEAN.
+Source: PROJECT_PLAN.md rows U2-2, U3-7, U5-6 at HEAD. Do not ask for tests, lint or typecheck. Style and wording are out of scope.

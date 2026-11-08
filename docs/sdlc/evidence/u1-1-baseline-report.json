@@ -1,0 +1,54 @@
+{
+  "attribution_rule": "main transcript usage -> role orchestrator; sub-agent transcript usage -> agentType from the sibling meta file, else unknown-subagent; a message id on several lines is counted once with its last usage",
+  "roles": {
+    "claude-code-guide": {
+      "cache_creation_input_tokens": 64616,
+      "cache_read_input_tokens": 267173,
+      "input_tokens": 12,
+      "messages": 6,
+      "output_tokens": 11181
+    },
+    "functional-test-reviewer": {
+      "cache_creation_input_tokens": 147953,
+      "cache_read_input_tokens": 1752456,
+      "input_tokens": 56,
+      "messages": 28,
+      "output_tokens": 50967
+    },
+    "implementation-engineer": {
+      "cache_creation_input_tokens": 1002659,
+      "cache_read_input_tokens": 6654465,
+      "input_tokens": 300,
+      "messages": 140,
+      "output_tokens": 124105
+    },
+    "orchestrator": {
+      "cache_creation_input_tokens": 1073187,
+      "cache_read_input_tokens": 45034832,
+      "input_tokens": 390,
+      "messages": 192,
+      "output_tokens": 238495
+    },
+    "python-reviewer": {
+      "cache_creation_input_tokens": 55669,
+      "cache_read_input_tokens": 64469,
+      "input_tokens": 6,
+      "messages": 3,
+      "output_tokens": 13448
+    },
+    "silent-failure-hunter": {
+      "cache_creation_input_tokens": 47364,
+      "cache_read_input_tokens": 141198,
+      "input_tokens": 10,
+      "messages": 5,
+      "output_tokens": 8993
+    }
+  },
+  "status": "MEASURED",
+  "token_fields": [
+    "input_tokens",
+    "output_tokens",
+    "cache_read_input_tokens",
+    "cache_creation_input_tokens"
+  ]
+}

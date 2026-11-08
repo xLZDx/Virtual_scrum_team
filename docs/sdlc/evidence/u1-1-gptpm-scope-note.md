@@ -1,0 +1,11 @@
+REVIEW ITEM: U1-1 "[VST] Token baseline capture" (one task; the diff is limited to tools/uc/token_baseline.py, tests/uc/test_token_baseline.py and tests/uc/test_cli_token_baseline.py).
+
+Context: Unified Core sprint U1. A script computes tokens per role from Claude Code session transcripts, against a manifest that pins the exact transcript files by SHA-256. It feeds the later measured-effect comparison (U1-8). Transcripts are local data written by this machine's sessions, but their content and file names are treated as untrusted input.
+
+Acceptance for U1-1: the manifest pins existing session transcripts (identifiers plus content hashes), the four token fields (input, output, cache read, cache write) are summed separately and never combined, the attribution rule is stated in the manifest (main transcript -> orchestrator; sub-agent transcript -> agentType from the sibling meta file, else unknown-subagent; a message id on several lines is counted once with its last usage), tokens per role are computed, and a missing, empty, hash-mismatched or rule-changed baseline returns NOT_RUN, never an estimate. Session identifiers that could escape the project directory are refused (BAD_SESSION_ID); an unwritable output gives OUTPUT_UNWRITABLE, not a traceback.
+
+Evidence already in hand: hand-computed fixture transcripts in tests/uc/test_token_baseline.py; subprocess tests of both CLI commands in tests/uc/test_cli_token_baseline.py (a bulk edit once broke an entry point that unit tests did not exercise, so each CLI has a subprocess test). Tried on one real session transcript: status MEASURED, role orchestrator. Three internal reviews (security, silent failures, reliability) were done and their BLOCKER/MAJOR findings fixed. NOT_RUN: the pinned real baseline session set (the operator has not chosen it), mutation checks.
+
+Decisions already taken (do not reopen without new evidence): token fields are never summed into one number; a baseline is NOT_RUN rather than partial when any pinned file is missing or changed.
+
+Please review ONLY token_baseline.py and its tests for BLOCKER/MAJOR defects with a concrete failing input. Do not ask for full test runs, lint, typecheck or verification scripts (prohibited by the operator); documentation findings are out of scope.
