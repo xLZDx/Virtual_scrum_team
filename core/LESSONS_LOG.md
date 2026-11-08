@@ -1731,3 +1731,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SHORTCOMING: two review requests were spent on a package the PM chat does not accept; the first time I had not read its one-task-per-review rule and the second time the reframing did not change its answer.
 - Rule: send GPT-PM only a single task with code and its contract; documents are reviewed by internal agents. Do not resend after a protocol refusal.
+
+
+## 2026-11-08 — U1-3 contracts
+
+- Kind: NEUTRAL with a SHORTCOMING note: my first hand test of the backslash case reported the wrong refusal code because the shell heredoc altered the escape; I rechecked with chr(92) before trusting it.
+- Rule: never build test inputs with escapes inside a shell heredoc; use explicit characters or a file.

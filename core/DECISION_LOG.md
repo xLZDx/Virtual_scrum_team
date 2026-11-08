@@ -1954,3 +1954,8 @@ Operator (chat, 2026-11-08): AEVE was designed as a project for coding and testi
 ## 2026-11-08 — GPT-PM refused the plan package twice; internal review stands
 
 Requests ee47b993 (round 1, head 725d5e7) and 88206080 (round 2, head af98502, one named review item UC-PLAN) both returned only the header and "RESEND: one task per review" with no verdict. I do not resend again: the PM chat accepts one task per review, so a plan-and-design package is not reviewable there as a unit, consistent with the standing rule that GPT-PM reviews code and contracts per task. No GPT approval exists for the plan; the plan rests on the operator approval and four internal agent reviews. GPT-PM will review code per task (first candidate: U1-2, after agent tests). Task U1-1 code (tools/uc/token_baseline.py) written and tried on one real transcript; agent tests NOT_RUN.
+
+
+## 2026-11-08 — U1-3 contracts written
+
+Task U1-3: tools/uc/contracts.py validates uc.role-request.v1 and uc.role-result.v1 strictly (unknown fields rejected, root allowlist, validated relative POSIX paths, result only enums, integers, hashes and validated paths, consistency rules between status, findings, residual and exit code). Exercised by hand on valid and hostile inputs; agent tests are NOT_RUN and follow the sprint code. One hand-test artifact was a shell heredoc turning a backslash into a control character, not a validator defect (rechecked with an explicit character).
