@@ -1774,3 +1774,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Kind: FAILURE found by the test agents, not by me: 9 defects in code I had hand-tested only on friendly inputs (junction path escape, request-id check outside the lock, credential-shaped text copied into results, a result that broke its own contract when one executor blocked).
 - Layer: author and hand tests missed them; the agent tests caught them.
 - Rule: hostile-path and concurrency cases belong in the first test list for any code that handles repository-controlled names; do not call hand tests on a fixture "tested".
+
+
+## 2026-11-08 — U1 review batch and a truncated log
+
+- Kind: FAILURE (reviewers found, not my tests): the router ignored AEVE's own PARTIAL/ERROR status and could say CLEAN; findings could be dropped or merged by lossy dedupe; paths came from the repository verbatim. Layer: author and agent tests missed them; internal reviewers caught them. Rule: normalize against the external tool's whole response (status, gaps, counts), never only the parts I decided to read.
+- Kind: FAILURE (parallel session): commit f44fe5c replaced core/DECISION_LOG.md (2073 lines) with 14 lines. Caught by comparing line counts of the file across HEAD history. Rule: logs are append-only; check the line count of a log in the diff before committing; two sessions on one branch need an owner.

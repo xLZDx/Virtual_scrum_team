@@ -70,7 +70,9 @@ def compare(before: object, after: object, result: object) -> dict:
     priority = {"NOT_MEASURED": 2, "NO_GAIN": 1, "LOCAL_FIRST": 0}
     for entry in role_result["roles"]:
         name = entry["canonical_role"]
-        local_ran = entry["class"] in LOCAL_RAN_CLASSES and entry["status"] not in LOCAL_DID_NOT_RUN
+        local_ran = (entry["class"] in LOCAL_RAN_CLASSES and entry["status"] not in LOCAL_DID_NOT_RUN
+                     and any(e["status"] == "COMPLETE" for e in entry["executors"])
+                     and not any(e["status"] == "BLOCKED" for e in entry["executors"]))
         verdict = _verdict(before_roles.get(name), after_roles.get(name), local_ran)
         previous = verdicts.get(name)
         if previous is None or priority[verdict["verdict"]] > priority[previous["verdict"]]:

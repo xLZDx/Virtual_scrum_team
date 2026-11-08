@@ -113,22 +113,32 @@ def verify_manifest(manifest: object, project_dir: pathlib.Path) -> None:
                 raise BaselineNotRun("HASH_MISMATCH", str(entry.get("path")))
 
 
-def _last_usage_per_message(path: pathlib.Path) -> dict[str, dict]:
-    """message id -> usage of its last occurrence; lines without a message id or usage are skipped."""
+def _last_usage_per_message(path: pathlib.Path, defects: dict[str, int]) -> dict[str, dict]:
+    """message id -> usage of its last occurrence; every skipped or incomplete record is counted in ``defects``."""
     last: dict[str, dict] = {}
     with path.open(encoding="utf-8", errors="replace") as handle:
         for line in handle:
+            if not line.strip():
+                continue
             try:
                 record = json.loads(line)
             except ValueError:
+                defects["unparsable_lines"] += 1
                 continue
             message = record.get("message") if isinstance(record, dict) else None
             if not isinstance(message, dict):
                 continue
             usage = message.get("usage")
+            if usage is None:
+                continue
             message_id = message.get("id")
-            if isinstance(usage, dict) and isinstance(message_id, str):
-                last[message_id] = usage
+            if not isinstance(usage, dict) or not isinstance(message_id, str):
+                defects["usage_without_id"] += 1
+                continue
+            if any(not isinstance(usage.get(f), int) or isinstance(usage.get(f), bool) or usage.get(f) < 0
+                   for f in TOKEN_FIELDS):
+                defects["usage_missing_fields"] += 1
+            last[message_id] = usage
     return last
 
 
@@ -154,6 +164,7 @@ def _add(totals: dict[str, dict[str, int]], role: str, usage: dict) -> None:
 def compute(manifest: dict, project_dir: pathlib.Path) -> dict:
     verify_manifest(manifest, project_dir)
     totals: dict[str, dict[str, int]] = {}
+    defects = {"unparsable_lines": 0, "usage_without_id": 0, "usage_missing_fields": 0}
     for session in manifest["sessions"]:
         for entry in session["files"]:
             path = project_dir / entry["path"]
@@ -161,10 +172,13 @@ def compute(manifest: dict, project_dir: pathlib.Path) -> dict:
                 continue
             in_subagents = path.parent.name == "subagents"
             role = _role_of_subagent(path) if in_subagents else ORCHESTRATOR_ROLE
-            for usage in _last_usage_per_message(path).values():
+            for usage in _last_usage_per_message(path, defects).values():
                 _add(totals, role, usage)
     if not totals:
         raise BaselineNotRun("NO_USAGE_FOUND", "no message with a usage block in the pinned transcripts")
+    if any(defects.values()):
+        # A count built from damaged records would understate tokens and could fake a saving.
+        raise BaselineNotRun("DAMAGED_RECORDS", json.dumps(defects, sort_keys=True))
     return {
         "status": "MEASURED",
         "token_fields": list(TOKEN_FIELDS),

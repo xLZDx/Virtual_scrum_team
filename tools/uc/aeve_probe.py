@@ -65,8 +65,23 @@ def _run(argv: list[str], *, cwd: pathlib.Path, env: dict[str, str], timeout: fl
         raise AeveProbeError("EXEC_FAILED", f"{argv[0]}: {exc}") from exc
 
 
+def _find_git() -> str:
+    """git from an absolute PATH entry only: never the current directory, which CreateProcess searches first."""
+    for entry in os.environ.get("PATH", "").split(os.pathsep):
+        if not entry or not os.path.isabs(entry):
+            continue
+        for name in ("git.exe", "git"):
+            candidate = os.path.join(entry, name)
+            if os.path.isfile(candidate):
+                return candidate
+    return "git"
+
+
+_GIT = _find_git()
+
+
 def _git(aeve_root: pathlib.Path, args: list[str], env: dict[str, str], timeout: float) -> str:
-    result = _run(["git", "-C", str(aeve_root), *args], cwd=aeve_root, env=env, timeout=timeout)
+    result = _run([_GIT, "-C", str(aeve_root), *args], cwd=aeve_root, env=env, timeout=timeout)
     if result.returncode != 0:
         raise AeveProbeError("GIT_FAILED", (result.stderr or "").strip()[:200])
     return result.stdout
@@ -97,7 +112,7 @@ def load_matrix(
     aeve_root = aeve_root.resolve()
     if not (aeve_root / "src" / "aeve" / "__main__.py").is_file():
         raise AeveProbeError("NOT_AN_AEVE_CHECKOUT", str(aeve_root))
-    result = _run([python or sys.executable, "-m", "aeve", "matrix"], cwd=pathlib.Path(tempfile.gettempdir()),
+    result = _run([python or sys.executable, "-P", "-s", "-B", "-m", "aeve", "matrix"], cwd=pathlib.Path(tempfile.gettempdir()),
                   env=build_child_env(aeve_root), timeout=timeout)
     if result.returncode != 0:
         raise AeveProbeError("MATRIX_FAILED", f"exit {result.returncode}: {(result.stderr or '').strip()[:200]}")
@@ -137,12 +152,12 @@ def probe(
     status_lines = [line for line in _git(aeve_root, ["status", "--porcelain"], env, timeout).splitlines() if line]
     tracked_dirty = [line for line in status_lines if not line.startswith("??")]
 
-    doctor_run = _run([interpreter, "-m", "aeve", "doctor"], cwd=scratch, env=env, timeout=timeout)
+    doctor_run = _run([interpreter, "-P", "-s", "-B", "-m", "aeve", "doctor"], cwd=scratch, env=env, timeout=timeout)
     if doctor_run.returncode != 0:
         raise AeveProbeError("DOCTOR_FAILED", f"exit {doctor_run.returncode}: {(doctor_run.stderr or '').strip()[:200]}")
     doctor = _parse_json(doctor_run.stdout, "aeve doctor")
 
-    matrix_run = _run([interpreter, "-m", "aeve", "matrix"], cwd=scratch, env=env, timeout=timeout)
+    matrix_run = _run([interpreter, "-P", "-s", "-B", "-m", "aeve", "matrix"], cwd=scratch, env=env, timeout=timeout)
     if matrix_run.returncode != 0:
         raise AeveProbeError("MATRIX_FAILED", f"exit {matrix_run.returncode}: {(matrix_run.stderr or '').strip()[:200]}")
     matrix = _parse_json(matrix_run.stdout, "aeve matrix")

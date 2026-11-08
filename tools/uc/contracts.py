@@ -146,6 +146,8 @@ def validate_request(document: object, allowed_roots: list[str], *, check_symlin
     if doc["schema_version"] != REQUEST_SCHEMA:
         raise ContractError("WRONG_SCHEMA", "request.schema_version")
     _string(doc["request_id"], "request.request_id", _ID)
+    if doc["request_id"].split(".", 1)[0].lower() in _RESERVED_NAMES:
+        raise ContractError("BAD_FORMAT", "request.request_id")
     root = _string(doc["root"], "request.root", max_len=1024)
     if not os.path.isabs(root):
         raise ContractError("ROOT_NOT_ABSOLUTE", "request.root")
@@ -223,14 +225,13 @@ def _validate_role_entry(value: object, where: str) -> dict:
             raise ContractError("CLEAN_WITH_OPEN_ITEMS", where)
         if not executors or any(e["status"] != "COMPLETE" for e in executors):
             raise ContractError("CLEAN_WITHOUT_COMPLETE_EXECUTORS", where)
-        if item["class"] in ("MODEL_ONLY", "OUT_OF_SCOPE", "UNKNOWN"):
+        if item["class"] != "LOCAL":
+            # A model-assisted role is never CLEAN: the model slice is always still open.
             raise ContractError("CLEAN_FOR_NON_LOCAL_CLASS", where)
     if status == "FINDINGS" and not findings:
         raise ContractError("FINDINGS_WITHOUT_FINDINGS", where)
     if status != "FINDINGS" and status != "PARTIAL" and findings:
         raise ContractError("FINDINGS_WITH_WRONG_STATUS", where)
-    if item["class"] == "LOCAL_PLUS_MODEL" and residual and status == "CLEAN":
-        raise ContractError("RESIDUAL_BUT_CLEAN", where)
     return item
 
 
@@ -252,6 +253,10 @@ def validate_result(document: object) -> dict:
     if not roles:
         raise ContractError("EMPTY_LIST", "result.roles")
     entries = [_validate_role_entry(r, f"result.roles[{i}]") for i, r in enumerate(roles)]
+    for index, entry in enumerate(entries):
+        for e in entry["executors"]:
+            if e["snapshot_hash"] != doc["snapshot_hash"]:
+                raise ContractError("EXECUTOR_SNAPSHOT_MISMATCH", f"result.roles[{index}].executors")
     names = [e["role"] for e in entries]
     if len(set(names)) != len(names):
         raise ContractError("DUPLICATE_ROLE", "result.roles")

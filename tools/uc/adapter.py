@@ -87,10 +87,13 @@ def build_aeve_request(
     }
 
 
+_TASKKILL = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "taskkill.exe")
+
+
 def _kill_tree(process: subprocess.Popen) -> None:
     try:
         if os.name == "nt":
-            subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
+            subprocess.run([_TASKKILL, "/PID", str(process.pid), "/T", "/F"],
                            capture_output=True, timeout=15, check=False, shell=False)
         else:
             # Kill the entire process group (all children)
@@ -139,11 +142,14 @@ def run_review(
 ) -> dict:
     """Run one review and return the validated AEVE response, or raise AdapterBlocked."""
     aeve_root = aeve_root.resolve()
-    state_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        state_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise AdapterBlocked("STATE_DIR_UNUSABLE", type(exc).__name__) from exc
     if require_clean_tree and aeve_request.get("allow_dirty"):
         raise AdapterBlocked("DIRTY_NOT_ALLOWED_FOR_RECEIPT", "allow_dirty must be false for a receipt request")
     prefix = command_prefix or [python or sys.executable, "-P", "-s", "-B", "-m", "aeve"]
-    with tempfile.TemporaryDirectory(prefix="uc-review-") as private:
+    with tempfile.TemporaryDirectory(prefix="uc-review-", ignore_cleanup_errors=True) as private:
         request_path = pathlib.Path(private) / "request.json"
         request_path.write_text(json.dumps(aeve_request, sort_keys=True), encoding="utf-8")
         argv = [*prefix, "review", "--request", str(request_path)]
@@ -231,6 +237,26 @@ def check_response(response: object, aeve_request: dict, exit_code: int, require
         raise AdapterBlocked("AEVE_CONTRACT_VIOLATION", "results, findings or executor_ids is not a list")
     if require_clean_tree and response["dirty"] is not False:
         raise AdapterBlocked("DIRTY_TREE", "the reviewed tree was dirty")
-    if exit_code == 0 and (response["findings"] or response["status"] != "COMPLETE"):
-        raise AdapterBlocked("AEVE_CONTRACT_VIOLATION", "exit 0 but findings or non-COMPLETE status")
+    status = response["status"]
+    if status not in ("COMPLETE", "PARTIAL", "FINDINGS"):
+        raise AdapterBlocked("AEVE_STATUS", "unexpected overall status")  # ERROR, STALE_INPUT, anything unknown
+    if response.get("ledger_persisted") is False:
+        raise AdapterBlocked("AEVE_LEDGER_NOT_PERSISTED", "AEVE could not record the review")
+    if (exit_code == 0) != (status == "COMPLETE" and not response["findings"]):
+        raise AdapterBlocked("AEVE_CONTRACT_VIOLATION", "exit code disagrees with the status and findings")
+    requested = set(aeve_request.get("executor_ids") or [])
+    seen_ids = set()
+    for item in response["results"]:
+        if not isinstance(item, dict) or not isinstance(item.get("executor_id"), str) or not isinstance(item.get("status"), str):
+            raise AdapterBlocked("AEVE_CONTRACT_VIOLATION", "a result lacks a string executor_id or status")
+        if item["executor_id"] in seen_ids:
+            raise AdapterBlocked("AEVE_CONTRACT_VIOLATION", "duplicate executor result")
+        seen_ids.add(item["executor_id"])
+    if requested and not seen_ids <= requested | set(response["executor_ids"]):
+        raise AdapterBlocked("AEVE_CONTRACT_VIOLATION", "result for an executor that was not requested")
+    for finding in response["findings"]:
+        if not isinstance(finding, dict) or finding.get("executor_id") not in seen_ids:
+            raise AdapterBlocked("AEVE_CONTRACT_VIOLATION", "a finding is not attributed to a returned executor result")
+    if "finding_count" in response and response["finding_count"] != len(response["findings"]):
+        raise AdapterBlocked("AEVE_CONTRACT_VIOLATION", "finding_count differs from the findings list")
     return response
