@@ -2644,3 +2644,5 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: full S4-A file on 5e529a3: 272 passed, 2 failed; both used git update-index --skip-worktree to hide an edit, which the new binding refuses on purpose; the tests were rewritten to assert the refusal (skip-worktree and assume-unchanged, ignored files in guarded paths, ignored bytecode tolerated).
 - Decision: no registry defect; the final check is the changed tests plus the real-manifest test, not another 11-minute full run.
+
+- 2026-11-08: manifest regenerated for the changed S4-A test file.
