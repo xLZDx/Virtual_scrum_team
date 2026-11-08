@@ -2389,3 +2389,18 @@ Scope note docs/sdlc/evidence/u1-7-gptpm-scope-note.md limits the review to the 
 
 **U1-1, U1-7, U1-8 status:** Not affected. Their code reviews can proceed independently once GPT-PM blocker is resolved for architecture.
 
+
+## 2026-11-08 — U1-1, U1-7, U1-8 marked BLOCKED_EXTERNAL: GitHub push protection
+
+**Scope:** All remaining IN_REVIEW tasks (U1-1 token baseline, U1-7 entry command, U1-8 measurement).
+
+**Verified cause:** Push to unified-core-plan is blocked by GitHub repository rule GH013 (secret scanning) detecting Stripe-pattern fake credential in historical commits bfa76f3d and 58217ff60. Code for all tasks is locally complete and tested (829 tests passed), but cannot be pushed to GitHub for GPT-PM review.
+
+**Blocker source:** Same as U1-4 — the fake credential in tests/uc_e2e/helpers.py (intentional test fixture for secret masking verification) appears in old commits (bfa76f3d, 58217ff60) which are ancestors of the current branch.
+
+**Not a code problem:** U1-1, U1-7, U1-8 implementations do not contain the Stripe pattern. All code is clean. The blocker is external: repository rule on historical commits.
+
+**Unblocks when:** GitHub exemption is granted OR operator approves destructive history rewrite to remove the problematic commits from the branch ancestry.
+
+**Parallel work possible:** None — all remaining U1 tasks depend on push to proceed with GPT-PM review gate.
+
