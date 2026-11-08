@@ -1977,3 +1977,6 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - 2026-11-09 S4-C integration lane
 - Kind: SUCCESS: the real run exposed 45 selectors that collect nothing and two red tests, all invisible to earlier per-file runs.
+
+- 2026-11-09 S4-C api lane
+- Kind: SUCCESS: one run per lane named every failure; one failure passes alone, which shows an order dependence that per-file runs never exposed.
