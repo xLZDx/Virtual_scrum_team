@@ -2512,3 +2512,7 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: request 0686f01e, verdict APPROVE, 0 BLOCKER, 0 MAJOR, receipt written. Reviewer note kept as a limit: measure.py compares an already chosen pair; the workflow supplying the three documents must make sure they belong to one paired run. Real paired measurement stays NOT_RUN.
 - Decision: U1-8 ACCEPTED. U1-9 stays BLOCKED_OPERATOR (OD-3). No push: GitHub push protection (GH013) and the parallel sessions need the operator.
+
+## 2026-11-08 — project plan report re-rendered
+
+- Evidence: project_plan.py render rewrote both report files after U1-1 and U1-8 became ACCEPTED (7 of 9 U1 tasks accepted; U1-9 BLOCKED_OPERATOR).
