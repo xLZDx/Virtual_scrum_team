@@ -383,3 +383,36 @@ def test_compute_unexpected_transcript_after_manifest_created_is_not_run(tmp_pat
         tb.compute(manifest, tmp_path)
     assert info.value.reason == "UNEXPECTED_TRANSCRIPT"
 
+
+
+# ------------------------------------------------------------------ regression: manifest session_id must be a valid string
+_MISSING = object()
+
+
+@pytest.mark.parametrize("bad", [None, 7, 1.5, True, ["s1"], {"id": "s1"}, "../x", "a/b", "", ".hidden", "x" * 129, _MISSING],
+                         ids=["null", "int", "float", "bool", "list", "dict", "traversal", "slash", "empty", "dot-lead",
+                              "too-long", "missing-key"])
+def test_manifest_with_invalid_session_id_is_manifest_invalid_not_a_type_error(project, bad):
+    manifest = tb.build_manifest(project, ["s1"])  # hashes of the files are all valid
+    if bad is _MISSING:
+        del manifest["sessions"][0]["session_id"]
+    else:
+        manifest["sessions"][0]["session_id"] = bad
+    for call in (lambda: tb.verify_manifest(manifest, project), lambda: tb.compute(manifest, project)):
+        with pytest.raises(tb.BaselineNotRun) as info:
+            call()
+        assert info.value.reason == "MANIFEST_INVALID"
+
+
+def test_manifest_with_valid_session_id_and_hashes_still_computes(project):
+    manifest = tb.build_manifest(project, ["s1"])
+    assert tb.compute(manifest, project)["status"] == "MEASURED"
+
+
+def test_invalid_session_id_in_second_session_is_also_refused(project):
+    write_lines(project / "s2.jsonl", [line("n1", usage(2, 2, 2, 2))])
+    manifest = tb.build_manifest(project, ["s1", "s2"])
+    manifest["sessions"][1]["session_id"] = None
+    with pytest.raises(tb.BaselineNotRun) as info:
+        tb.compute(manifest, project)
+    assert info.value.reason == "MANIFEST_INVALID"

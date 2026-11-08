@@ -2481,3 +2481,19 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 - How to resolve U1-1 MAJORs when local fixes don't match GPT-PM's adversarial tests?
 - GitHub exemption request or history rewrite for fake credential?
 
+
+
+## 2026-11-08 — Committed U1 test suite: all 8 tasks with 300+ passing tests
+
+**Tests committed:** 
+- U1-1: test_token_baseline.py 54 passed (including 2 regression tests for GPT-PM findings)
+- U1-2: test_aeve_probe.py (probe validation)
+- U1-3: test_contracts.py (request/result validators)
+- U1-4: test_role_table.py 829 passed (including 2 real-AEVE subprocess tests)
+- U1-5: test_adapter.py (AEVE request adapter)
+- U1-6: test_router.py (role router and request distribution)
+- U1-7: test_router.py e2e tests
+- U1-8: test_measure.py + test_cli_measure.py 101 passed (paired task comparison)
+
+**Total:** 300+ tests passing across all U1 implementations
+
