@@ -2589,3 +2589,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 ## 2026-11-08 — verification round for the three plan corrections sent
 
 - Decision: GPT-PM itself recommended a verification round limited to the three corrected rows (U2-2, U3-7, U5-6); sent as one request with the operator's exception noted. Reports re-rendered and the branch of PR 5 updated with plan-only commits.
+
+## 2026-11-08 — U1-U6 task plan approved by GPT-PM
+
+- Evidence: request 8c527065, APPROVE, 0 BLOCKER, 0 MAJOR, receipt written; U2-2, U3-7 and U5-6 corrections verified FIXED, no direct regressions. Together with request d1ca5bcc (U2-1) the planning contract of U1-U6 is approved.
+- Limit: this approves the planning contract only; no U2-U6 implementation, test or sprint start is authorized. Starting U2 (and U3-1, its prerequisite) needs the operator.

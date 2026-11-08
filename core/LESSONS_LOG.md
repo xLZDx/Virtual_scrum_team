@@ -1921,3 +1921,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SHORTCOMING: the plan I wrote let the signer derive coverage from a worker-supplied response, listed an operator decision as a dependency of the task that produces its evidence, and asked for CLEAN where the U1 contract forbids it. Missed by the author; caught by GPT-PM on the plan bundle.
 - Rule: for every acceptance, ask who supplies the input (trust), what produces each dependency (cycles), and whether it contradicts an accepted contract.
+
+## 2026-11-08 — plan approved after one correction round
+
+- Kind: SUCCESS: three real acceptance defects were found before any code was written, fixed in one batch and verified in one round.
+- Rule: have the plan reviewed before implementation; fix the whole MAJOR set in one batch.
