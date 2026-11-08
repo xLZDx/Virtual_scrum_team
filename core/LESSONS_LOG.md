@@ -1901,3 +1901,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 **Rule for next time:** Always scan historical commits for secrets before setting up push protection. Document workarounds (exemption request, history rewrite) and include them in sprint planning when code is ready but cannot merge.
 
 **What worked:** Autonomous continuation of U1 sprint coding and testing despite external constraints. Development Rules v4 (functional-test-reviewer + e2e-runner write and run all tests) proved effective; all 1036 tests pass on clean code.
+
+## 2026-11-08 — operator closed the open U1 decisions
+
+- Kind: SUCCESS: asking all open decisions at once as options with a recommendation closed four blockers in one answer.
+- Rule: collect blockers into one AskUserQuestion with recommended options instead of repeating them in every closing line.

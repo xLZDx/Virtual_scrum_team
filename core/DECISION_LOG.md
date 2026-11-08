@@ -2543,3 +2543,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 **Decision in DECISION_LOG:** (D-1: GitHub blocker — recommend exemption request)
 
 *All U1 implementation complete. Awaiting external blocker resolution.*
+
+## 2026-11-08 — operator answers on U1 closure
+
+- Evidence: operator answers in chat to four questions. (1) GH013 push protection: unblock through the GitHub link, history is not rewritten; the push itself still needs the operator's explicit push command. (2) OD-3 (changes to global Claude settings, routing, hooks): not approved for now, U1-9 PARKED until real measurements exist. (3) U1-1 stays ACCEPTED despite the ambiguous GPT-PM headline. (4) Real measurement: operator will choose the pinned session set; parallel sessions writing to this branch are to be stopped.
+- Decision: U1-9 set to PARKED; no global configuration touched; no push made; no next sprint started.
