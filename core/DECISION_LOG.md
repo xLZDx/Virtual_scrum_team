@@ -2646,3 +2646,7 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 - Decision: no registry defect; the final check is the changed tests plus the real-manifest test, not another 11-minute full run.
 
 - 2026-11-08: manifest regenerated for the changed S4-A test file.
+
+## 2026-11-08 — S4-B GPT-PM request
+
+- Evidence: scope note docs/sdlc/evidence/s4-b-gptpm-scope-note.md lists settled operator decisions, accepted limits and the unrepeated full-file run; one GPT-PM request for the whole task, no further review or fix rounds before the answer.

@@ -1947,3 +1947,6 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - 2026-11-08 S4-B runner tests
 - Kind: SUCCESS: tests found the extra-wheel gap and pinned the new isolation behavior; a full file run costs 48 minutes so fixes to tests are verified by targeted reruns.
+
+- 2026-11-08 S4-B GPT-PM request
+- Kind: NEUTRAL: scope note written with honest evidence limits (full test file not rerun after test-only fixes; mutation, WSL, live category run NOT_RUN).
