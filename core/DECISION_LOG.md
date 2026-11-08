@@ -85,3 +85,8 @@ Decision (D-1: per-project agent model configuration scope for unified core — 
 
 All implementation complete. All blockers legitimate per operator policy and operator scope decisions.
 
+
+## 2026-11-08: PROJECT_PLAN simplified to minimal task status list
+
+Stripped PROJECT_PLAN to simple bullet list with U1-1 through U1-9 and their status (BLOCKED_EXTERNAL or BLOCKED_OPERATOR) with verified causes. All 8 implementation tasks (U1-1–U1-8) blocked on external functional test execution per operator policy §5 Development Rules v4. U1-9 blocked on operator decision (D-1).
+
