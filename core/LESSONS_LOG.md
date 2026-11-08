@@ -1951,3 +1951,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: NEUTRAL: an unanswered A/B question was resolved with the recommended option per the question policy and logged, instead of waiting.
 - Rule: record the default and keep it reversible.
+
+## 2026-11-08 — amended acceptance still confused "finished" with "required"
+
+- Kind: SHORTCOMING: my amended U2-1 acceptance treated COMPLETE of the requested executors as full coverage; GPT-PM showed a narrow request and an old ruleset both pass. Missed by the author; caught by the plan review.
+- Rule: a gate predicate must compare against a trusted policy, never against what the requester asked for.
