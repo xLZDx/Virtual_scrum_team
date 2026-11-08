@@ -1691,3 +1691,11 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Kind: SHORTCOMING: I ran S3 to bounded closure against its own plan for several turns without checking it against the operator purpose (replace token-heavy agents with an application); the operator had to ask how the work relates to the app.
 - Root cause: I treated the plan documents as the source of intent and optimised their internal consistency; nobody (author, reviewers, gate) compared the plan with the operator mission.
 - Rule: at the start of a sprint and when reporting closure, state in one line how the sprint serves the stated product goal, and re-read the goal from the operator, not only from the plan.
+
+
+## 2026-11-08 — duplicated an existing product; repeated an unverified plan claim
+
+- Kind: FAILURE: I started sprint A (a 93-item catalog) in Virtual_scrum_team although the product it describes already exists as AEVE, and I repeated the plan line "no AEVE source available" in the plan, reports and two replies without checking the disk.
+- Evidence: D:\Repo\AEVE exists with 191 commits and PROJECT_PLAN.md active_sprint S18; the VST blueprint of 2026-10-23 lists it as a kept local repository.
+- Root cause: I treated the VST plan as the source of intent and a plan sentence as a fact (author); reviewers and gates compared the plan with itself, not with the filesystem or with the operator mission (reviewers, gate).
+- Rule: before starting a sprint, verify every external dependency named as missing on the real filesystem, and ask which repository owns the goal when a goal sentence names a different product than the repository in hand.

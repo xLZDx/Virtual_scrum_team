@@ -1909,3 +1909,8 @@ Operator said to merge S3 into main; PR 4 was merged as b502c7c with the head 9f
 ## 2026-11-08 — Operator fixes the product goal: an application without agents
 
 Operator decision (chat, 2026-11-08): the product is an application that performs the work of the many token-consuming agents and skills by itself, as deterministic code; the only AI in the loop is an orchestrator that selects which checks to run and reads their results. Consequence: the repository documents (README, master blueprint) still describe AI workers governed by a control plane, so they disagree with this goal until re-scoped. The deterministic control plane from S1 and S2 (store, gate, diff gate, receipts, runner) is kept as the foundation; the worker comparison (Temporal, BMad Loop) stays parked. S4 and S5 are not started and will be re-scoped to this goal only after the operator approves the re-scoped list.
+
+
+## 2026-11-08 — Sprint A started in the wrong project; AEVE is the product the operator means
+
+The operator said the application is AEVE, a fully automated local system of checks that replaces review agents and skills, with a model only as orchestrator. AEVE exists at D:\Repo\AEVE (191 commits, S18 active as of 2026-11-01); its decisions D-003 (zero-LLM default, 2026-10-10), D-071 (AEVE as the local reviewer, 2026-10-19), D-072 (all 57 role and skill contracts as deterministic specialists, 2026-10-21) and D-076 (static-first, no test execution) already hold this goal. Sprint A in Virtual_scrum_team (catalog of 93 agents and skills) duplicates AEVE's existing 57-contract matrix and is paused; its files stay uncommitted on branch sprint-a-check-catalog. The earlier VST plan text "no AEVE source available" was wrong. No change was made in AEVE.
