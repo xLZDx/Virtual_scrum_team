@@ -1968,3 +1968,6 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - 2026-11-09 runner node-ID accounting
 - Kind: FAILURE: S4-B refused a whole lane on one unusual parametrized ID, and its own test pinned that as correct; found by the first end-to-end lane run, missed by author, tests, both internal reviewers and GPT-PM.
 - Rule: a fail-closed check must degrade to a typed, attributable result for the affected item, never discard the evidence of the whole run.
+
+- 2026-11-09 S4-B node-ID tests
+- Kind: SUCCESS: the replaced tests now pin attribution of a failing unusual-ID case, which was the actual lost evidence.

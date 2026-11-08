@@ -436,6 +436,14 @@ import pytest
 def test_x(v):
     assert v
 '''}
+SCENARIOS["nodeid_unsafe_fail"] = {"tests/qa/test_s4_functional_nf.py": '''
+import pytest
+
+
+@pytest.mark.parametrize("v", ["x y"])
+def test_bad(v):
+    assert not v
+'''}
 SCENARIOS["mutate"] = {
     ".gitignore": "__pycache__/\n.pytest_cache/\n*.pyc\nignored_*.txt\n/conftest.py\n",
     "tests/qa/test_s4_functional_mutate.py": '''
@@ -2014,8 +2022,41 @@ def test_node_id_must_match_the_safe_character_set(node_id, safe):
         result = run_mod._resolve_cases(events, [selector], _selectors(selector))
         assert result["collected_node_ids"] == [node_id]
     else:
-        with pytest.raises(run_mod.QARunError, match="safe set"):
-            run_mod._resolve_cases(events, [selector], _selectors(selector))
+        result = run_mod._resolve_cases(events, [selector], _selectors(selector))
+        digest = "<unsafe-node:" + hashlib.sha256(node_id.encode("utf-8")).hexdigest()[:24] + ">"
+        assert result["collected_node_ids"] == [digest]
+        assert [c["node_id"] for c in result["case_outcomes"]] == [digest]
+        assert result["passed_test_ids"] == [selector] and result["failed_test_ids"] == []
+        assert node_id not in json.dumps(result)
+
+
+def test_unsafe_node_id_of_a_failing_case_fails_its_selector():
+    selector = "tests/qa/test_x.py::test_a"
+    raw = "tests/qa/test_x.py::test_a[a b]"
+    events = {"collected": [{"node_id": raw, "selector": selector, "outcome": "failed"},
+                            {"node_id": selector + "[ok]", "selector": selector, "outcome": "passed"}],
+              "duplicates": [], "collection_errors": []}
+    result = run_mod._resolve_cases(events, [selector], _selectors(selector))
+    assert result["failed_test_ids"] == [selector] and result["passed_test_ids"] == []
+    assert {c["outcome"] for c in result["case_outcomes"] if c["node_id"].startswith("<unsafe-node:")} == {"failed"}
+    assert raw not in json.dumps(result)
+
+
+def test_two_distinct_unsafe_node_ids_stay_unique_after_digesting():
+    selector = "tests/qa/test_x.py::test_a"
+    events = {"collected": [{"node_id": selector + "[a b]", "selector": selector, "outcome": "passed"},
+                            {"node_id": selector + "[a,b]", "selector": selector, "outcome": "passed"}],
+              "duplicates": [], "collection_errors": []}
+    result = run_mod._resolve_cases(events, [selector], _selectors(selector))
+    assert len(set(result["collected_node_ids"])) == 2 and result["passed_test_ids"] == [selector]
+
+
+def test_non_string_concrete_node_id_is_still_refused():
+    selector = "tests/qa/test_x.py::test_a"
+    events = {"collected": [{"node_id": 7, "selector": selector, "outcome": "passed"}],
+              "duplicates": [], "collection_errors": []}
+    with pytest.raises(run_mod.QARunError, match="non-string concrete node ID"):
+        run_mod._resolve_cases(events, [selector], _selectors(selector))
 
 
 def test_unsafe_duplicate_and_collection_error_ids_are_masked():
@@ -2584,13 +2625,27 @@ def test_small_planted_events_file_is_parsed_not_rejected_as_oversized(make_repo
     assert "pytest event artifact is missing or invalid" not in run.last["reasons"]  # control for the cap test
 
 
-def test_unsafe_node_id_refuses_the_run_without_listing_cases(make_repo, deps):
+def test_unsafe_node_id_does_not_refuse_the_run_and_is_reported_as_a_digest(make_repo, deps):
     run = run_qa(make_repo("nodeid_unsafe"), deps, "functional", run_id="nid")
     rec = run.last
-    assert run.rc == 1 and rec["result"] == "FAIL"
-    assert any("characters outside the safe set; refused" in r for r in rec["reasons"]), rec["reasons"]
-    assert rec["passed_test_ids"] == [] and rec["case_outcomes"] == [] and rec["collected_node_ids"] == []
+    assert not any("safe set" in r or "refused" in r for r in rec["reasons"]), rec["reasons"]
+    assert rec["passed_test_ids"] == ["tests/qa/test_s4_functional_n.py::test_x"], rec
+    assert rec["failed_test_ids"] == []
+    assert len(rec["collected_node_ids"]) == 1 and rec["collected_node_ids"][0].startswith("<unsafe-node:")
+    assert [c["node_id"] for c in rec["case_outcomes"]] == rec["collected_node_ids"]
+    assert [c["outcome"] for c in rec["case_outcomes"]] == ["passed"]
     assert "a b" not in json.dumps(rec)
+
+
+def test_failing_case_with_unsafe_node_id_lands_its_selector_in_failed_test_ids(make_repo, deps):
+    run = run_qa(make_repo("nodeid_unsafe_fail"), deps, "functional", run_id="nidf")
+    rec = run.last
+    assert run.rc == 1 and rec["result"] == "FAIL"
+    assert rec["failed_test_ids"] == ["tests/qa/test_s4_functional_nf.py::test_bad"], rec
+    assert rec["passed_test_ids"] == []
+    failed = [c for c in rec["case_outcomes"] if c["outcome"] == "failed"]
+    assert len(failed) == 1 and failed[0]["node_id"].startswith("<unsafe-node:")
+    assert "x y" not in json.dumps(rec)
 
 
 def test_secrets_and_user_paths_in_child_output_are_redacted_in_every_artifact(make_repo, deps):

@@ -2679,3 +2679,7 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: functional lane on 60932a5 (test agent, one run): typed FAIL in 179.6 s (so the earlier 900 s timeout was the tests/qa tooling tests); pytest tail 8 failed, 1117 passed, 41 skipped; the runner record has no per-case accounting because "pytest node ID contains characters outside the safe set; refused" aborted _resolve_cases, so the 8 failures are unattributed.
 - Decision: S4-B defect (found by the first real lane run, not by its tests): a parametrized node ID with unusual characters must not abort accounting of the whole lane. tools/qa/run.py now reports such an ID as <unsafe-node:sha256[:24]> of the raw ID; the two S4-B tests that pinned the refusal are to be updated by the test agent. The evidence files of this run are committed as the record of the FAIL.
+
+## 2026-11-09 — S4-B node-ID tests updated
+
+- Evidence: test agent on 6bd1182: six targeted invocations, 14 tests passed (digest form, selector accounting kept, failing unusual-ID case lands in failed_test_ids, non-string node ID still refused). Limit: red-on-revert not demonstrated; full file not rerun.
