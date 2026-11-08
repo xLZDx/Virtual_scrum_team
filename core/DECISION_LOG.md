@@ -2655,3 +2655,5 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: PM Bridge returned "Refusing to send review input containing an unterminated RSA PRIVATE KEY block." (nothing was sent, no verdict). Cause: a redaction test fixture in tests/qa/test_s4b_runner.py wrote the BEGIN marker literally without an END marker.
 - Decision: the fixture now builds the marker by string concatenation (same runtime value, no literal in the diff); manifest regenerated; one targeted run of that test, then the same single request is resent.
+
+- 2026-11-08: manifest regenerated for the changed S4-B test file (PEM fixture).
