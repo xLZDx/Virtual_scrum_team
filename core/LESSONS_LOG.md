@@ -1987,3 +1987,6 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - 2026-11-09 artifact-stage tests
 - Kind: SUCCESS: the per-category rule is pinned by three new tests including the not-a-success PARTIAL state.
+
+- 2026-11-09 S4-C GPT-PM request
+- Kind: NEUTRAL: S4-C is sent as mechanism-works-and-honest-red per the operator; open AC-7/AC-8 items and unrerun full files are stated in the scope note.

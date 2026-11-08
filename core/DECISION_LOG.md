@@ -2714,3 +2714,7 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 - Evidence: test agent on 42e3cdc with the edits uncommitted: s4a "artifact or real_manifest" 22 passed, 1 failed (real_manifest only because of the dirty tree), s4b same filter 18 passed, 214 deselected (595 s). New tests: all 8 categories present is PRESENT 24 of 24, one full category with others absent is PARTIAL not success, two of three files is refused.
 
 - 2026-11-09: manifest regenerated for the changed test files.
+
+## 2026-11-09 — S4-C GPT-PM request
+
+- Evidence: real_manifest 2 passed on the clean tree at dc91522 (test agent). Scope note docs/sdlc/evidence/s4-c-gptpm-scope-note.md lists delivered, settled and open items honestly; one request, no further rounds before the answer.
