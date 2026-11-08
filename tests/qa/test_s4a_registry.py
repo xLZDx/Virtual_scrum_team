@@ -1367,3 +1367,20 @@ def test_real_manifest_at_head_validates():
     assert "tests/qa/test_s4a_registry.py" in {
         i["path"] for i in registry.data["source_inventory"]
     }, "this test module must be registered (MAIN_TEST_FILE_CATEGORIES) and the manifest regenerated"
+
+
+def test_real_manifest_contains_selectors_the_old_collector_missed():
+    data = json.loads((REPO_ROOT / MANIFEST).read_text("utf-8"))
+    ids = {t["test_id"] for t in data["tests"]}
+    fidelity = "tests/af/test_s2_review_source_fidelity.py::FixtureGit::"
+    assert {i for i in ids if i.startswith(fidelity)} == {
+        fidelity + "test_attachment_size_mismatch_fails_closed",
+        fidelity + "test_crlf_and_embedded_markdown_fence_map_to_head_blob",
+        fidelity + "test_unredacted_mismatch_fails_closed",
+    }
+    e2e = (
+        "tests/vst/test_s2_owner_runner_windows_e2e.py::S2OwnerRunnerWindowsProcessE2E::"
+        "test_signed_owner_instruction_completes_in_real_windows_worker_job"
+    )
+    assert e2e in ids
+    assert next(t for t in data["tests"] if t["test_id"] == e2e)["primary_category"] == "e2e"

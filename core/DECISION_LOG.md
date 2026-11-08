@@ -2608,3 +2608,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 - Decision: the collector now follows pytest default collection and fails closed on constructs it cannot resolve; validation requires a clean tree for tests, docs/qa and tools/qa and hashes HEAD blobs; count_passed is per runtime profile; empty or NOT_RUN categories report complete=False. Mutation runs stay NOT_RUN by operator rule.
 
 - 2026-11-08: docs/qa/categories.json regenerated with the pytest-aligned collector (1939 selectors).
+
+## 2026-11-08 — S4-A real-corpus assertion added
+
+- Evidence: functional agent: 273 passed at a247414 incl. the 4 pytest-oracle edge tests and the real-manifest test; one more test pins the 4 selectors the first collector missed (FixtureGit x3, S2OwnerRunnerWindowsProcessE2E x1) and the e2e category of the latter.
+- Decision: test file committed, manifest regenerated, one final full run on the exact head before the GPT-PM request.
