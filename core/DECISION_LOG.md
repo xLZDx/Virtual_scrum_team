@@ -1974,3 +1974,8 @@ Task U1-5: tools/uc/adapter.py runs aeve review in an isolated child (neutral di
 ## 2026-11-08 — U1-6 router and U1-7 entry command written and hand-tested
 
 Tasks U1-6 and U1-7: tools/uc/router.py resolves roles through the role table, sends one combined review to AEVE through the adapter and normalizes the answer into uc.role-result.v1 (enums, hashes and validated paths only; uncovered scope reduced to tokens); the same file is the entry command. Measured facts: AEVE refuses a request.v1 batch outright when it contains any of 15+ executors ("requires request v2"), so the adapter now sends request.v2 (adds only the optional architecture_policy; without a policy the architecture executors report NOT_COVERED inside a normal response); a per-executor retry loop cost 15-30 s per call and was removed; AEVE blocks a reused request_id unless iteration_of names the previous iteration. Agent tests NOT_RUN.
+
+
+## 2026-11-08 — U1-8 measurement script written; real measurement NOT_RUN
+
+Task U1-8: tools/uc/measure.py compares a before and an after token report per role and the entry-command result, and marks a role LOCAL_FIRST only when its local part ran and every token field shrank; fields are never summed. Checked on synthetic inputs only. The real paired measurement stays NOT_RUN until the operator or the plan fixes the U1-1 baseline session set and a residual-only run exists.

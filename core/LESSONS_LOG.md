@@ -1756,3 +1756,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Kind: FAILURE caught by a real run: U1-5 sent request.v1, which AEVE refuses for 15+ executors; I found it only when the router sent a mixed batch. My first fix (a per-executor retry loop) timed out on the real latency of 15-30 s per call, and I only measured the call time after it failed.
 - Layer: author missed it; the U1-5 hand test used a single executor. Rule: measure the latency and the refusal behaviour of the external tool for the full executor set before designing a retry or fallback; prefer the request version that does not refuse.
 - Kind: SUCCESS: treating every short or malformed AEVE envelope as BLOCKED with its reason kept the failures legible instead of silent.
+
+
+## 2026-11-08 — U1-8 measurement script
+
+- Kind: NEUTRAL: the script was exercised on synthetic numbers; I state that in the plan row so synthetic input is never read as a measured token saving.
+- Rule: a comparison tool tested on invented data proves the logic only; the effect claim needs real pinned transcripts.
