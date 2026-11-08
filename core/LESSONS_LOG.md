@@ -1705,3 +1705,10 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SUCCESS: before writing the plan I read the AEVE decision log and ran aeve matrix and the review runbook, so the plan rests on observed facts (44 of 57 partial, 13 uncovered, review contract, no host wiring) instead of the stale VST text.
 - Rule: a cross-repository plan cites the observed command output for each external fact.
+
+
+## 2026-11-08 — plan self-check
+
+- Kind: SHORTCOMING: my first draft of the plan and TDD had five internal inconsistencies (aliases, uncovered names, PASS wording, missing dependency, advisory period) that the operator had to prompt me to look for.
+- Root cause: I wrote both documents in one pass and did not cross-check requirement-to-task and term-to-term before showing them (author); no reviewer had seen them yet.
+- Rule: cross-check a plan against its TDD (terms, dependencies, counts against real command output) before presenting it.

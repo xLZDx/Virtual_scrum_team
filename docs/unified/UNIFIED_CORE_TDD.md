@@ -27,7 +27,7 @@ Ownership rule: one writer per domain. AEVE never writes the reviewed project. V
 - The role matrix names 13 profiles with no executor: `implementation-engineer`, `ml-engineer`, `planner`, `product-ux-reviewer`, `pytorch-build-resolver`, `agent-evaluation`, `codex-consensus`, `git-worktree-ops`, `performance-testing`, `pm-bridge`, `rosetta`, `update-config`, `ux-design-contract`.
 - AEVE also exposes `sandbox run` and `sandbox project-test` (tests and a bounded mutation campaign in a pinned local Docker sandbox, clean exact HEAD, Docker Desktop required). AEVE decision D-076 (2026-10-21) keeps test execution out of the delivered product scope, so how tests are executed is an open decision (section 11, OD-2).
 - AEVE is not referenced from Claude routing, settings, hooks or global rules (grep of `agent_routing.json`, `settings.json`, `CLAUDE.md`, `hooks/` found none). Reviewer roles therefore still run as model agents.
-- VST gate semantics: `StaticAnalysis` carries `coverage`, `covered_rules`, `unsupported_rules`, `covered_acceptance`; the result is PASS only for full coverage with no unsupported rule; otherwise INCONCLUSIVE. Receipt v1/v2 bytes are immutable.
+- VST gate semantics (VERIFIED in `tools/vst/contracts.py` lines 670-719, `derive_result`): `StaticAnalysis` carries `coverage`, `covered_rules`, `unsupported_rules`, `covered_acceptance`; the result is PASS only for full coverage with no unsupported rule; otherwise INCONCLUSIVE. Receipt v1/v2 bytes are immutable.
 - VST test work on the S4 branches: registry source head `3885d8a`, 963 selectors, 53 policy NOT_RUN; category runs on Windows passed functional 90/90, API 688/688 (INCONCLUSIVE because of 14 policy exclusions), integration 41/41, E2E 55/55, regression 874/874; seeded failures 3/3. These are evidence for those heads only.
 - Earlier VST text "no AEVE source available" was a statement about the S5 isolation rule of that time, not about the disk. AEVE exists.
 
@@ -42,7 +42,13 @@ Every requested role belongs to exactly one class, recorded in a machine-readabl
 | MODEL_ONLY | Authoring or judgment; no honest mechanical substitute | implementation-engineer, planner, business-analyst |
 | OUT_OF_SCOPE | Not part of delivery checks | pm-bridge, rosetta, skill-creator |
 
-The status vocabulary for every result is: `PASS`, `FAIL`, `PARTIAL`, `NOT_COVERED`, `NOT_RUN`, `BLOCKED`. Missing, skipped, partial or blocked evidence never becomes `PASS`.
+Aliases: several definitions overlap (for example `code-architect`, `software-architect` and `architect`). The role table gives each alias a `canonical_role`; a request for an alias is answered for its canonical role and says so.
+
+Roles with no AEVE profile: VERIFIED by comparing `catalog/inventory.json` (93 definitions, 92 distinct names because `ml-engineer` is both an agent and a skill) with `aeve matrix` (57 profiles, all of them present in the inventory): 35 names have no AEVE profile at all (for example `business-analyst`, `product-owner`, `technical-writer`, `pr-test-analyzer`, `cpp-reviewer`, `opensource-sanitizer`, `sdlc-orchestrator`). The router answers such a role `NOT_COVERED` with the reason "no AEVE profile" unless the role table marks it MODEL_ONLY or OUT_OF_SCOPE.
+
+Status vocabulary for every role result: `CLEAN` (every mapped executor completed and reported no finding on this exact snapshot; this is not a general review pass), `FINDINGS`, `PARTIAL`, `NOT_COVERED`, `NOT_RUN`, `BLOCKED`. Mapping: AEVE exit 0 with complete executors is `CLEAN`; exit 3 with findings is `FINDINGS`; exit 3 with incomplete executors is `PARTIAL`; exit 2 or an adapter failure is `BLOCKED`. Missing, skipped, partial or blocked evidence is never `CLEAN`. The VST gate keeps its own result names (PASS, INCONCLUSIVE, REJECT) and accepts only a verified receipt, never a role result directly.
+
+Before sprint U2 exists, every local result is advisory: it informs the orchestrator but cannot satisfy a VST gate. Before sprint U3 exists, test roles are answered `NOT_COVERED` with the reason "test core not available".
 
 ## 5. Contracts (PROPOSED)
 

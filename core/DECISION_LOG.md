@@ -1929,3 +1929,13 @@ Operator (chat, 2026-11-08): D:\Repo\AEVE and D:\Repo\Virtual_scrum_team togethe
 ## 2026-11-08 — Unified Core plan and TDD drafted for operator review
 
 On the operator request I drafted docs/unified/UNIFIED_CORE_TDD.md and replaced the future part of PROJECT_PLAN.md: sprints U1-U6 with 34 tasks (local review path, evidence into the gate, testing core, coverage and growth, coding under control, hardening and handover). S4 and S5 are marked SUPERSEDED (their work lands through U3 and U2; the branches are pushed, not merged); the paused sprint A is removed from the plan and its draft role table stays as input in catalog/. The plan is operator_approved: false; no sprint U is started. Open decisions OD-1..OD-5 are listed in the TDD. Nothing was pushed for this commit.
+
+
+## 2026-11-08 — Operator approves the Unified Core plan and starts sprint U1
+
+Operator (chat, 2026-11-08): approved the plan (sprints U1-U6) and started U1. The five open decisions were not answered one by one, so the TDD defaults apply: OD-1 adapter lives in Virtual_scrum_team; OD-2 tests run through the VST native runner (the AEVE Docker sandbox needs a separate approval); OD-4 a model agent replaces a BLOCKED local role only with the operator allowance per run; OD-5 the S4 branches land in parts. OD-3 (changing the global Claude routing and hooks) is NOT covered by this approval and will be asked again with a snapshot before task U1-6. U1 work happens on branch unified-core-plan; U1-2 runs AEVE from its checkout via PYTHONPATH instead of installing it, so the AEVE repository stays untouched.
+
+
+## 2026-11-08 — Plan and TDD cross-check, U1 started, review requested
+
+A cross-check of the plan against the TDD found and fixed: no canonical_role for overlapping roles; 35 of 92 distinct role names have no AEVE profile and needed an explicit NOT_COVERED rule; the status word PASS clashed with AEVE semantics (replaced by CLEAN and a mapping to AEVE exit codes and VST gate results); U1-1 depended on U1-2 (the AEVE matrix) but listed none; results are advisory before U2 and test roles are NOT_COVERED before U3. VST contract claim verified in tools/vst/contracts.py lines 670-719. Operator then asked to run the plan through internal agents and then GPT-PM; this is a documents review requested explicitly by the operator, so it overrides the default that GPT reviews only code. Plan is operator_approved: true with U1 active; no U1 code is written until the review is back.
