@@ -2594,3 +2594,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: request 8c527065, APPROVE, 0 BLOCKER, 0 MAJOR, receipt written; U2-2, U3-7 and U5-6 corrections verified FIXED, no direct regressions. Together with request d1ca5bcc (U2-1) the planning contract of U1-U6 is approved.
 - Limit: this approves the planning contract only; no U2-U6 implementation, test or sprint start is authorized. Starting U2 (and U3-1, its prerequisite) needs the operator.
+
+## 2026-11-08 — S4-A registry and denominator landed on main (code and tests)
+
+- Evidence: tools/qa/registry.py and build_registry.py ported from origin/s4-canonical-continuation with an optional artifact stage (absent reports read as SKIPPED, never as success), denominator and pass counting, and a category map for main modules; functional agent: 144 tests, 143 passed, the one failure was the real-manifest test waiting for the new test file to be registered.
+- Decision: S4 starts with S4-A before the U sprints, by the operator order; the manifest is regenerated in a second commit because the builder needs committed provenance for every test file.

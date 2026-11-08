@@ -1926,3 +1926,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SUCCESS: three real acceptance defects were found before any code was written, fixed in one batch and verified in one round.
 - Rule: have the plan reviewed before implementation; fix the whole MAJOR set in one batch.
+
+- 2026-11-08 S4-A registry on main
+- Kind: SUCCESS: tests caught that the validator refuses a test module with no category, so every new test file needs a map entry before the manifest is rebuilt.
+- Rule: add the map entry and regenerate the manifest in the same task whenever a test file is added.

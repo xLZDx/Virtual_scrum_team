@@ -1,0 +1,837 @@
+"""Functional tests for tools/qa/registry.py and tools/qa/build_registry.py (S4-A).
+
+Tamper, HEAD and builder cases run against throw-away git repositories created
+under pytest's tmp_path, so the real repository is never modified. One test
+validates the real committed manifest at HEAD.
+"""
+
+from __future__ import annotations
+
+import copy
+import hashlib
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from tools.qa import registry as reg  # noqa: E402
+from tools.qa.build_registry import (  # noqa: E402
+    POLICY_NOT_RUN,
+    build_registry,
+)
+from tools.qa.registry import (  # noqa: E402
+    RegistryError,
+    check_artifact_stage,
+    count_passed,
+    denominator,
+    validate_registry,
+)
+
+MANIFEST = "docs/qa/categories.json"
+E4 = "tests/vst/test_e4_runner.py"
+E5 = "tests/vst/test_e5_process_death.py"
+QA_A = "tests/qa/test_s4_functional_a.py"
+ADAPTER = "tests/uc/test_adapter.py"
+IDENTITY_FILE = "tests/qa/test_s4_functional_worker_identity.py"
+LINK_SEL = "tests/vst/test_e4_runner.py::test_link_created_by_the_command_itself_gets_a_zero_digest"
+E4_POLICY = sorted(s for s in POLICY_NOT_RUN if s.startswith(E4 + "::"))
+E4_NORMAL = f"{E4}::test_normal_run"
+QA_A_SELECTORS = {
+    f"{QA_A}::test_top",
+    f"{QA_A}::TestThing::test_method",
+    f"{QA_A}::TestChild::test_inherited",
+    f"{QA_A}::TestChild::test_own",
+}
+ADAPTER_SELECTOR = f"{ADAPTER}::test_one"
+E5_SELECTOR = f"{E5}::test_dies"
+
+
+# ----------------------------------------------------------------- helpers
+
+def git(root: Path, *args: str) -> str:
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
+        "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid",
+    }
+    done = subprocess.run(
+        ["git", "-c", "commit.gpgsign=false", "-c", "core.autocrlf=false", *args],
+        cwd=root, check=True, capture_output=True, env=env,
+    )
+    return done.stdout.decode().strip()
+
+
+def write(root: Path, rel: str, text: str) -> None:
+    path = root / rel
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(text.replace("\r\n", "\n").encode("utf-8"))
+
+
+def commit_all(root: Path, message: str = "c") -> str:
+    git(root, "add", "-A")
+    git(root, "commit", "--allow-empty", "-m", message)
+    return git(root, "rev-parse", "HEAD")
+
+
+def e4_text(omit: str | None = None) -> str:
+    names = [s.split("::")[1] for s in E4_POLICY]
+    names += [LINK_SEL.split("::")[1], "test_normal_run"]
+    return "\n".join(f"def {n}():\n    pass\n" for n in names if n != omit)
+
+
+QA_A_TEXT = """\
+def test_top():
+    pass
+
+
+class TestThing:
+    def test_method(self):
+        pass
+
+    def helper(self):
+        pass
+
+
+class Base:
+    def test_inherited(self):
+        pass
+
+
+class TestChild(Base):
+    def test_own(self):
+        pass
+
+
+class NotCollected:
+    def test_hidden(self):
+        pass
+
+
+def helper_test():
+    pass
+"""
+
+IDENTITY_TEXT = (
+    "def test_s4_worker_helper_drops_runner_identity_and_denies_runner_sentinels():\n    pass\n"
+)
+
+
+def init_repo(root: Path) -> None:
+    root.mkdir(parents=True, exist_ok=True)
+    git(root, "init", "-q")
+    write(root, QA_A, QA_A_TEXT)
+    write(root, ADAPTER, "def test_one():\n    pass\n")
+    write(root, E4, e4_text())
+    write(root, E5, "def test_dies():\n    pass\n")
+    write(root, "docs/S4_QA_AUTOMATION_PLAN_2026-10-24.md", "plan\n")
+    write(root, "tools/vst/__init__.py", "# evidence\n")
+    commit_all(root, "base")
+
+
+def generate(root: Path) -> dict:
+    data = build_registry(root)
+    write(root, MANIFEST, json.dumps(data, indent=2) + "\n")
+    commit_all(root, "manifest")
+    return data
+
+
+def load(root: Path) -> dict:
+    return json.loads((root / MANIFEST).read_text("utf-8"))
+
+
+def save(root: Path, data: object) -> None:
+    write(root, MANIFEST, json.dumps(data, indent=2) + "\n")
+
+
+def tamper(root: Path, fn) -> None:
+    data = load(root)
+    fn(data)
+    save(root, data)
+
+
+def find_entry(data: dict, selector: str) -> dict:
+    return next(t for t in data["tests"] if t["selector"] == selector)
+
+
+@pytest.fixture(scope="module")
+def base_repo(tmp_path_factory) -> Path:
+    root = tmp_path_factory.mktemp("base") / "repo"
+    init_repo(root)
+    generate(root)
+    return root
+
+
+@pytest.fixture
+def repo(base_repo: Path, tmp_path: Path) -> Path:
+    target = tmp_path / "repo"
+    shutil.copytree(base_repo, target)
+    return target
+
+
+@pytest.fixture
+def validated(repo: Path):
+    return validate_registry(repo)
+
+
+# ------------------------------------------- happy path: ids and categories
+
+def test_valid_registry_has_one_primary_category_and_stable_id_per_selector(repo: Path):
+    registry = validate_registry(repo)
+    expected = QA_A_SELECTORS | {ADAPTER_SELECTOR, E5_SELECTOR, LINK_SEL, E4_NORMAL} | set(E4_POLICY)
+    assert set(registry.selectors_by_id) == expected
+    for test_id, item in registry.selectors_by_id.items():
+        assert item["selector"] == test_id  # stable id == canonical selector
+        assert item["primary_category"] in reg.PRIMARY_CATEGORIES
+    per_category = [i for c in reg.PRIMARY_CATEGORIES for i in registry.category_inventory_ids[c]]
+    assert sorted(per_category) == sorted(expected)  # partition: exactly once
+    assert len(per_category) == len(set(per_category))
+    assert registry.selectors_by_id[ADAPTER_SELECTOR]["primary_category"] == "functional"
+    assert registry.selectors_by_id[LINK_SEL]["primary_category"] == "api"
+    assert registry.selectors_by_id[E5_SELECTOR]["primary_category"] == "integration"
+    # class collection: Test* classes only, inherited methods included, helpers excluded
+    assert f"{QA_A}::NotCollected::test_hidden" not in registry.selectors_by_id
+    assert f"{QA_A}::Base::test_inherited" not in registry.selectors_by_id
+
+
+def test_ids_are_deterministic_across_regeneration(repo: Path):
+    first = load(repo)
+    rebuilt = build_registry(repo)
+    assert rebuilt["tests"] == first["tests"]
+    assert rebuilt["categories"] == first["categories"]
+    assert rebuilt["source_inventory"] == first["source_inventory"]
+
+
+def test_runtime_profiles_follow_platform_contract_and_policy_not_run(validated):
+    profiles = {k: v["runtime_profiles"] for k, v in validated.selectors_by_id.items()}
+    assert profiles[LINK_SEL] == [reg.WSL_PROFILE]
+    assert profiles[E4_NORMAL] == sorted([reg.WINDOWS_PROFILE, reg.WSL_PROFILE])
+    assert profiles[E5_SELECTOR] == []
+    for selector in E4_POLICY:
+        assert profiles[selector] == []
+        assert selector in validated.category_not_run["api"]
+    assert validated.category_profile_unassigned_ids["api"][reg.WINDOWS_PROFILE] == sorted(E4_POLICY + [LINK_SEL])
+
+
+# --------------------------------------------------- HEAD / source binding
+
+def test_registry_binds_to_head_and_source_head_is_ancestor(repo: Path):
+    data = load(repo)
+    registry = validate_registry(repo)
+    assert registry.candidate_head == git(repo, "rev-parse", "HEAD")
+    assert data["source_head"] != registry.candidate_head  # manifest commit came after
+    git(repo, "merge-base", "--is-ancestor", data["source_head"], registry.candidate_head)
+    commit_all(repo, "later unrelated commit")
+    later = validate_registry(repo)
+    assert later.candidate_head != registry.candidate_head
+    assert later.sha256 == registry.sha256  # manifest bytes unchanged
+
+
+def test_builder_records_current_head_and_per_file_sha256(repo: Path):
+    head = git(repo, "rev-parse", "HEAD")
+    data = build_registry(repo)
+    assert data["source_head"] == head
+    by_path = {i["path"]: i for i in data["source_inventory"]}
+    assert set(by_path) == {QA_A, ADAPTER, E4, E5}
+    for path, item in by_path.items():
+        assert item["sha256"] == hashlib.sha256((repo / path).read_bytes()).hexdigest()
+        assert item["source_commit"] == git(repo, "log", "-1", "--format=%H", "--", path)
+
+
+def test_non_ancestor_source_head_is_refused(repo: Path):
+    tree = git(repo, "rev-parse", "HEAD^{tree}")
+    orphan = git(repo, "commit-tree", tree, "-m", "orphan")
+    tamper(repo, lambda d: d.__setitem__("source_head", orphan))
+    with pytest.raises(RegistryError, match="not an ancestor"):
+        validate_registry(repo)
+
+
+def test_source_head_ahead_of_head_is_refused(repo: Path):
+    head = git(repo, "rev-parse", "HEAD")
+    tree = git(repo, "rev-parse", "HEAD^{tree}")
+    child = git(repo, "commit-tree", tree, "-p", head, "-m", "future")
+    tamper(repo, lambda d: d.__setitem__("source_head", child))
+    with pytest.raises(RegistryError, match="not an ancestor"):
+        validate_registry(repo)
+
+
+@pytest.mark.parametrize("value", ["0" * 40, "abc", "A" * 40, 123, None])
+def test_unresolvable_or_non_canonical_source_head_is_refused(repo: Path, value):
+    tamper(repo, lambda d: d.__setitem__("source_head", value))
+    with pytest.raises(RegistryError):
+        validate_registry(repo)
+
+
+def test_uncommitted_edit_to_source_file_is_refused(repo: Path):
+    (repo / QA_A).write_bytes((repo / QA_A).read_bytes() + b"\ndef test_new():\n    pass\n")
+    with pytest.raises(RegistryError, match="changed after registry generation"):
+        validate_registry(repo)
+
+
+def test_committed_edit_to_source_file_is_refused(repo: Path):
+    write(repo, ADAPTER, "def test_one():\n    assert True\n")
+    commit_all(repo, "edit")
+    with pytest.raises(RegistryError, match="changed after registry generation"):
+        validate_registry(repo)
+
+
+def test_crlf_conversion_does_not_invalidate_registry(repo: Path):
+    path = repo / QA_A
+    path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+    assert validate_registry(repo).selectors_by_id  # line-ending normalization is intended
+
+
+def test_edit_then_revert_with_same_bytes_is_stale_provenance(repo: Path):
+    original = (repo / ADAPTER).read_bytes()
+    write(repo, ADAPTER, "def test_one():\n    pass\n# x\n")
+    commit_all(repo, "edit")
+    (repo / ADAPTER).write_bytes(original)
+    commit_all(repo, "revert")
+    with pytest.raises(RegistryError, match="provenance is stale"):
+        validate_registry(repo)
+
+
+def test_deleted_source_file_is_refused(repo: Path):
+    (repo / ADAPTER).unlink()
+    with pytest.raises(RegistryError, match="missing"):
+        validate_registry(repo)
+
+
+def test_new_unregistered_test_module_is_refused(repo: Path):
+    write(repo, "tests/qa/test_s4_functional_b.py", "def test_b():\n    pass\n")
+    commit_all(repo, "new module")
+    with pytest.raises(RegistryError, match="does not cover every committed test module"):
+        validate_registry(repo)
+
+
+def test_unparseable_source_is_refused(repo: Path):
+    broken = b"def test_one(:\n"
+    (repo / ADAPTER).write_bytes(broken)
+
+    def fix(d):
+        next(i for i in d["source_inventory"] if i["path"] == ADAPTER)["sha256"] = hashlib.sha256(broken).hexdigest()
+
+    tamper(repo, fix)
+    with pytest.raises(RegistryError, match="cannot be statically parsed"):
+        validate_registry(repo)
+
+
+def test_selector_added_to_source_but_not_registry_is_refused(repo: Path):
+    # registry carries a fully consistent source hash but one selector too few
+    tamper(repo, lambda d: d["tests"].remove(find_entry(d, ADAPTER_SELECTOR)))
+    with pytest.raises(RegistryError, match="differs from source"):
+        validate_registry(repo)
+
+
+def test_extra_selector_not_in_source_is_refused(repo: Path):
+    def add(d):
+        extra = copy.deepcopy(find_entry(d, ADAPTER_SELECTOR))
+        extra["selector"] = extra["test_id"] = f"{ADAPTER}::test_ghost"
+        d["tests"].append(extra)
+
+    tamper(repo, add)
+    with pytest.raises(RegistryError, match="differs from source"):
+        validate_registry(repo)
+
+
+# ------------------------------------------------ manifest structure tamper
+
+def _set(key, value):
+    return lambda d: d.__setitem__(key, value)
+
+
+def _del(key):
+    return lambda d: d.pop(key)
+
+
+TOP_LEVEL_TAMPER = [
+    ("schema_version_1", _set("schema_version", 1), "unsupported"),
+    ("schema_version_3", _set("schema_version", 3), "unsupported"),
+    ("registry_version_1", _set("registry_version", "1"), "unsupported"),
+    ("registry_version_int", _set("registry_version", 2), "unsupported"),
+    ("profiles_reordered", lambda d: d["runtime_profiles"].reverse(), "runtime profiles"),
+    ("profiles_missing", lambda d: d["runtime_profiles"].pop(), "runtime profiles"),
+    ("profiles_extra", lambda d: d["runtime_profiles"].append("macos"), "runtime profiles"),
+    ("profiles_renamed", lambda d: d["runtime_profiles"].__setitem__(0, "windows-cpython-3.13"), "runtime profiles"),
+    ("unknown_top_key", _set("surprise", 1), "expected exact fields"),
+    ("missing_aggregates", _del("aggregates"), "expected exact fields"),
+    ("missing_tests", _del("tests"), "expected exact fields"),
+    ("missing_source_head", _del("source_head"), "expected exact fields"),
+    ("artifact_path_changed", lambda d: d["artifacts"]["api"].__setitem__("report", "x.jsonl"), "artifact paths"),
+    ("artifact_category_removed", lambda d: d["artifacts"].pop("e2e"), "artifact paths"),
+    ("inventory_not_list", _set("source_inventory", {}), "must be a list"),
+    ("tests_not_list", _set("tests", {}), "must be a list"),
+    ("categories_missing_regression", lambda d: d["categories"].pop("regression"), "categories must declare"),
+    ("categories_unknown", lambda d: d["categories"].__setitem__("smoke", {}), "categories must declare"),
+    ("category_unknown_field", lambda d: d["categories"]["api"].__setitem__("x", 1), "expected exact fields"),
+    ("category_bad_status", lambda d: d["categories"]["api"].__setitem__("status", "GREEN"), "status is invalid"),
+    ("supported_without_tests", lambda d: d["categories"]["e2e"].__setitem__("status", "SUPPORTED"), "cannot be SUPPORTED"),
+    ("not_run_without_reason", lambda d: d["categories"]["e2e"].__setitem__("reason", " "), "non-approving reason"),
+    ("aggregates_order", lambda d: d["aggregates"]["regression_members"].reverse(), "regression_members"),
+    ("aggregates_extra_key", lambda d: d["aggregates"].__setitem__("x", 1), "expected exact fields"),
+    ("http_supported", lambda d: d["unsupported_apis"]["http"].__setitem__("status", "SUPPORTED"), "UNSUPPORTED"),
+    ("http_blank_reason", lambda d: d["unsupported_apis"]["http"].__setitem__("reason", ""), "UNSUPPORTED"),
+    ("http_no_evidence", lambda d: d["unsupported_apis"]["http"].__setitem__("evidence_paths", []), "evidence paths"),
+    ("http_missing_evidence_file", lambda d: d["unsupported_apis"]["http"]["evidence_paths"].append("docs/nope.md"), "missing"),
+    ("http_traversal_evidence", lambda d: d["unsupported_apis"]["http"]["evidence_paths"].append("../x"), "non-canonical"),
+    ("http_unknown_key", lambda d: d["unsupported_apis"].__setitem__("grpc", {}), "expected exact fields"),
+]
+
+
+@pytest.mark.parametrize("fn,match", [(f, m) for _, f, m in TOP_LEVEL_TAMPER], ids=[n for n, _, _ in TOP_LEVEL_TAMPER])
+def test_tampered_manifest_top_level_is_refused(repo: Path, fn, match):
+    tamper(repo, fn)
+    with pytest.raises(RegistryError, match=match):
+        validate_registry(repo)
+
+
+def _inv(d, idx=0):
+    return d["source_inventory"][idx]
+
+
+INVENTORY_TAMPER = [
+    ("inventory_entry_dropped", lambda d: d["source_inventory"].pop(), "does not cover every"),
+    ("inventory_duplicate", lambda d: d["source_inventory"].append(copy.deepcopy(_inv(d))), "duplicate source inventory path"),
+    ("inventory_bad_sha_format", lambda d: _inv(d).__setitem__("sha256", "xyz"), "sha256 is invalid"),
+    ("inventory_wrong_sha", lambda d: _inv(d).__setitem__("sha256", "0" * 64), "changed after registry generation"),
+    ("inventory_upper_sha", lambda d: _inv(d).__setitem__("sha256", _inv(d)["sha256"].upper()), "sha256 is invalid"),
+    ("inventory_bad_commit_format", lambda d: _inv(d).__setitem__("source_commit", "abc"), "source_commit is invalid"),
+    ("inventory_wrong_commit", lambda d: _inv(d).__setitem__("source_commit", "0" * 40), "provenance is stale"),
+    ("inventory_non_test_path", lambda d: _inv(d).__setitem__("path", "tools/vst/__init__.py"), "not a test module"),
+    ("inventory_unknown_key", lambda d: _inv(d).__setitem__("extra", 1), "expected exact fields"),
+    ("inventory_missing_key", lambda d: _inv(d).pop("sha256"), "expected exact fields"),
+    ("inventory_traversal_path", lambda d: _inv(d).__setitem__("path", "tests/../tests/test_x.py"), "non-canonical"),
+]
+
+
+@pytest.mark.parametrize("fn,match", [(f, m) for _, f, m in INVENTORY_TAMPER], ids=[n for n, _, _ in INVENTORY_TAMPER])
+def test_tampered_source_inventory_is_refused(repo: Path, fn, match):
+    tamper(repo, fn)
+    with pytest.raises(RegistryError, match=match):
+        validate_registry(repo)
+
+
+def _t(d, selector=ADAPTER_SELECTOR):
+    return find_entry(d, selector)
+
+
+def _dup_other_category(d):
+    other = copy.deepcopy(_t(d))
+    other["primary_category"] = "api"
+    d["tests"].append(other)
+
+
+def _move_category_only(d):
+    _t(d)["primary_category"] = "api"
+
+
+def _id_in_two_lists(d):
+    d["categories"]["api"]["test_ids"].append(ADAPTER_SELECTOR)
+
+
+TEST_TAMPER = [
+    ("test_unknown_key", lambda d: _t(d).__setitem__("extra", 1), "expected exact fields"),
+    ("test_missing_key", lambda d: _t(d).pop("primary_category"), "expected exact fields"),
+    ("test_id_differs", lambda d: _t(d).__setitem__("test_id", "other"), "not canonical"),
+    ("selector_not_canonical", lambda d: _t(d).update(selector="tests/uc/test_adapter.py::one", test_id="tests/uc/test_adapter.py::one"), "not canonical"),
+    ("selector_not_str", lambda d: _t(d).__setitem__("selector", 5), "not canonical"),
+    ("duplicate_selector", lambda d: d["tests"].append(copy.deepcopy(_t(d))), "duplicate selector"),
+    ("selector_in_two_categories_entries", _dup_other_category, "duplicate selector"),
+    ("category_reassigned_without_lists", _move_category_only, "disagree with test assignments"),
+    ("id_listed_in_two_categories", _id_in_two_lists, "disagree with test assignments"),
+    ("category_list_duplicate_id", lambda d: d["categories"]["functional"]["test_ids"].append(ADAPTER_SELECTOR), "disagree with test assignments"),
+    ("invalid_primary_category", lambda d: _t(d).__setitem__("primary_category", "regression"), "primary category is invalid"),
+    ("source_path_mismatch", lambda d: _t(d).__setitem__("source_path", E4), "source_path does not match"),
+    ("source_commit_stale", lambda d: _t(d).__setitem__("source_commit", "1" * 40), "source_commit is stale"),
+    ("profiles_unsorted", lambda d: _t(d).__setitem__("runtime_profiles", [reg.WSL_PROFILE, reg.WINDOWS_PROFILE]), "runtime_profiles is invalid"),
+    ("profiles_unknown_name", lambda d: _t(d).__setitem__("runtime_profiles", ["beos"]), "runtime_profiles is invalid"),
+    ("profiles_not_list", lambda d: _t(d).__setitem__("runtime_profiles", "all"), "runtime_profiles is invalid"),
+    ("profiles_duplicate_entries", lambda d: _t(d).__setitem__("runtime_profiles", [reg.WSL_PROFILE, reg.WSL_PROFILE]), "runtime_profiles is invalid"),
+    ("profiles_drop_wsl", lambda d: _t(d).__setitem__("runtime_profiles", [reg.WINDOWS_PROFILE]), "platform contract"),
+    ("posix_only_given_windows", lambda d: _t(d, LINK_SEL).__setitem__("runtime_profiles", sorted([reg.WINDOWS_PROFILE, reg.WSL_PROFILE])), "platform contract"),
+    ("runnable_with_empty_profiles", lambda d: _t(d).__setitem__("runtime_profiles", []), "policy disagree"),
+    ("policy_not_run_given_profiles", lambda d: _t(d, E4_POLICY[0]).__setitem__("runtime_profiles", [reg.WSL_PROFILE]), "platform contract|policy disagree"),
+    ("policy_not_run_reason_removed", lambda d: d["categories"]["api"]["not_run_reasons"].pop(E4_POLICY[0]), "policy disagree"),
+    ("blank_not_run_reason", lambda d: d["categories"]["api"]["not_run_reasons"].__setitem__(E4_POLICY[0], "  "), "not_run_reasons is invalid"),
+    ("not_run_reason_for_foreign_id", lambda d: d["categories"]["api"]["not_run_reasons"].__setitem__(ADAPTER_SELECTOR, "x"), "not_run_reasons is invalid"),
+    ("not_run_reason_non_str", lambda d: d["categories"]["api"]["not_run_reasons"].__setitem__(E4_POLICY[0], None), "not_run_reasons is invalid"),
+    ("runnable_marked_not_run", lambda d: d["categories"]["functional"]["not_run_reasons"].__setitem__(ADAPTER_SELECTOR, "NOT_RUN: x"), "policy disagree"),
+    ("regression_id_dropped", lambda d: d["categories"]["regression"]["test_ids"].pop(), "must exactly aggregate"),
+    ("regression_wrong_status", lambda d: d["categories"]["regression"].__setitem__("status", "SUPPORTED"), "must exactly aggregate"),
+    ("regression_reason_set", lambda d: d["categories"]["regression"].__setitem__("reason", "x"), "must exactly aggregate"),
+    ("regression_not_run_dropped", lambda d: d["categories"]["regression"]["not_run_reasons"].clear(), "must exactly aggregate"),
+    ("regression_includes_not_run_id", lambda d: d["categories"]["regression"]["test_ids"].append(E4_POLICY[0]), "must exactly aggregate"),
+]
+
+
+@pytest.mark.parametrize("fn,match", [(f, m) for _, f, m in TEST_TAMPER], ids=[n for n, _, _ in TEST_TAMPER])
+def test_tampered_test_assignments_are_refused(repo: Path, fn, match):
+    tamper(repo, fn)
+    with pytest.raises(RegistryError, match=match):
+        validate_registry(repo)
+
+
+@pytest.mark.parametrize("raw", ["not json", "\xef\xbb\xbf{", "[]", "null", '"s"'])
+def test_garbage_manifest_is_refused(repo: Path, raw: str):
+    write(repo, MANIFEST, raw)
+    with pytest.raises(RegistryError):
+        validate_registry(repo)
+
+
+def test_non_utf8_manifest_is_refused(repo: Path):
+    (repo / MANIFEST).write_bytes(b"\xff\xfe{}")
+    with pytest.raises(RegistryError, match="not valid UTF-8 JSON"):
+        validate_registry(repo)
+
+
+def test_missing_manifest_and_path_escape_are_refused(repo: Path):
+    (repo / MANIFEST).unlink()
+    with pytest.raises(RegistryError, match="missing"):
+        validate_registry(repo)
+    with pytest.raises(RegistryError, match="non-canonical"):
+        validate_registry(repo, "../outside.json")
+    with pytest.raises(RegistryError, match="non-canonical"):
+        validate_registry(repo, "docs\\qa\\categories.json")
+
+
+def test_directory_outside_a_git_repository_is_refused(tmp_path: Path):
+    plain = tmp_path / "plain"
+    plain.mkdir()
+    with pytest.raises(RegistryError):
+        validate_registry(plain)
+
+
+def test_repository_without_commits_is_refused(tmp_path: Path):
+    root = tmp_path / "empty"
+    root.mkdir()
+    git(root, "init", "-q")
+    write(root, MANIFEST, "{}")
+    with pytest.raises(RegistryError):
+        validate_registry(root)
+
+
+# ------------------------------------------------------ platform contract
+
+def test_platform_contract_selector_missing_from_present_module_is_refused(tmp_path: Path):
+    root = tmp_path / "r"
+    init_repo(root)
+    # the module is present but lacks the POSIX-only selector named by the contract
+    write(root, E4, e4_text(omit=LINK_SEL.split("::")[1]))
+    commit_all(root, "drop link test")
+    generate(root)
+    with pytest.raises(RegistryError, match="platform contract names a selector absent"):
+        validate_registry(root)
+
+
+def test_platform_contract_ignores_modules_not_in_the_tree(tmp_path: Path):
+    root = tmp_path / "r"
+    init_repo(root)
+    (root / E4).unlink()
+    commit_all(root, "no e4")
+    generate(root)
+    registry = validate_registry(root)
+    assert LINK_SEL not in registry.selectors_by_id
+
+
+def test_platform_constants_are_well_formed_and_disjoint():
+    groups = [reg.POSIX_ONLY_SELECTORS, reg.WSL_ROOT_ONLY_SELECTORS, reg.WINDOWS_ONLY_SELECTORS]
+    for group in groups:
+        assert group, "an empty platform constant would silently grant every profile"
+        for selector in group:
+            assert reg._SELECTOR.fullmatch(selector), selector
+    assert not (groups[0] & groups[1]) and not (groups[0] & groups[2]) and not (groups[1] & groups[2])
+    assert reg.IDENTITY_SELECTOR in reg.POSIX_ONLY_SELECTORS
+
+
+def test_required_runtime_profiles_per_constant_group():
+    for s in reg.WSL_ROOT_ONLY_SELECTORS:
+        assert reg.required_runtime_profiles(s) == [reg.WSL_ROOT_PROFILE]
+    for s in reg.POSIX_ONLY_SELECTORS:
+        assert reg.required_runtime_profiles(s) == [reg.WSL_PROFILE]
+    for s in reg.WINDOWS_ONLY_SELECTORS:
+        assert reg.required_runtime_profiles(s) == [reg.WINDOWS_PROFILE]
+    assert reg.required_runtime_profiles("tests/x/test_a.py::test_b") == [reg.WINDOWS_PROFILE, reg.WSL_PROFILE]
+    assert reg.RUNTIME_PROFILES == (reg.WINDOWS_PROFILE, reg.WSL_PROFILE, reg.WSL_ROOT_PROFILE)
+
+
+def test_platform_constants_are_registered_as_not_windows_runnable():
+    # fail-closed: a POSIX/root only selector must never be assigned to the Windows profile
+    for s in reg.POSIX_ONLY_SELECTORS | reg.WSL_ROOT_ONLY_SELECTORS:
+        assert reg.WINDOWS_PROFILE not in reg.required_runtime_profiles(s)
+    for s in reg.WINDOWS_ONLY_SELECTORS:
+        assert reg.WSL_PROFILE not in reg.required_runtime_profiles(s)
+
+
+# ---------------------------------------------------------------- identity
+
+def test_identity_module_with_exact_selector_is_categorized_identity(tmp_path: Path):
+    root = tmp_path / "r"
+    init_repo(root)
+    write(root, IDENTITY_FILE, IDENTITY_TEXT)
+    commit_all(root, "identity")
+    generate(root)
+    registry = validate_registry(root)
+    assert registry.category_inventory_ids["identity"] == [reg.IDENTITY_SELECTOR]
+    assert registry.selectors_by_id[reg.IDENTITY_SELECTOR]["runtime_profiles"] == [reg.WSL_PROFILE]
+
+
+def test_identity_module_with_extra_selector_is_refused(tmp_path: Path):
+    root = tmp_path / "r"
+    init_repo(root)
+    write(root, IDENTITY_FILE, IDENTITY_TEXT + "\ndef test_extra():\n    pass\n")
+    commit_all(root, "identity+extra")
+    generate(root)
+    with pytest.raises(RegistryError, match="identity test module must contain exactly"):
+        validate_registry(root)
+
+
+def test_identity_selector_recategorized_is_refused(tmp_path: Path):
+    root = tmp_path / "r"
+    init_repo(root)
+    write(root, IDENTITY_FILE, IDENTITY_TEXT)
+    commit_all(root, "identity")
+    generate(root)
+
+    def move(d):
+        d["categories"]["identity"]["test_ids"].remove(reg.IDENTITY_SELECTOR)
+        d["categories"]["functional"]["test_ids"].append(reg.IDENTITY_SELECTOR)
+        d["categories"]["regression"]["test_ids"].append(reg.IDENTITY_SELECTOR)
+        find_entry(d, reg.IDENTITY_SELECTOR)["primary_category"] = "functional"
+
+    tamper(root, move)
+    with pytest.raises(RegistryError, match="identity category must contain exactly"):
+        validate_registry(root)
+
+
+# ------------------------------------------------------------ denominator
+
+def test_denominator_per_category_and_regression_aggregate(validated):
+    assert len(E4_POLICY) == 13
+    assert denominator(validated) == {
+        "api": {"expected": 15, "runnable": 2, "not_run": 13},
+        "e2e": {"expected": 0, "runnable": 0, "not_run": 0},
+        "functional": {"expected": 5, "runnable": 5, "not_run": 0},
+        "identity": {"expected": 0, "runnable": 0, "not_run": 0},
+        "integration": {"expected": 1, "runnable": 0, "not_run": 1},
+        "regression": {"expected": 21, "runnable": 7, "not_run": 14},
+        "seeded-failure": {"expected": 0, "runnable": 0, "not_run": 0},
+    }
+
+
+def test_denominator_invariant_expected_equals_runnable_plus_not_run(validated):
+    for name, row in denominator(validated).items():
+        assert row["expected"] == row["runnable"] + row["not_run"], name
+
+
+# ------------------------------------------------------------ count_passed
+
+def _all_passed(registry) -> dict[str, str]:
+    runnable = {i for c in reg.PRIMARY_CATEGORIES for i in registry.category_test_ids[c]}
+    return {i: "passed" for i in runnable}
+
+
+def test_count_passed_all_runnable_passed_keeps_not_run_in_denominator(validated):
+    result = count_passed(validated, _all_passed(validated))
+    assert result["functional"] == {"expected": 5, "passed": 5, "not_passed": 0}
+    assert result["api"] == {"expected": 15, "passed": 2, "not_passed": 13}
+    assert result["integration"] == {"expected": 1, "passed": 0, "not_passed": 1}
+    assert result["regression"] == {"expected": 21, "passed": 7, "not_passed": 14}
+    assert result["e2e"] == {"expected": 0, "passed": 0, "not_passed": 0}
+
+
+def test_count_passed_empty_outcomes_counts_nothing(validated):
+    result = count_passed(validated, {})
+    assert all(row["passed"] == 0 for row in result.values())
+    assert result["functional"]["not_passed"] == 5
+    assert result["regression"]["not_passed"] == 21
+
+
+@pytest.mark.parametrize("outcome", ["failed", "skipped", "xfailed", "xpassed", "error", "NOT_RUN", "PASSED", "passed ", "pass", "", "ok"])
+def test_count_passed_only_exact_passed_counts(validated, outcome: str):
+    result = count_passed(validated, {ADAPTER_SELECTOR: outcome})
+    assert result["functional"] == {"expected": 5, "passed": 0, "not_passed": 5}
+    assert result["regression"]["passed"] == 0
+
+
+def test_count_passed_single_pass_counts_once_and_missing_stay_not_passed(validated):
+    result = count_passed(validated, {ADAPTER_SELECTOR: "passed", E4_NORMAL: "skipped"})
+    assert result["functional"] == {"expected": 5, "passed": 1, "not_passed": 4}
+    assert result["api"] == {"expected": 15, "passed": 0, "not_passed": 15}
+    assert result["regression"]["passed"] == 1
+
+
+def test_count_passed_policy_not_run_selector_never_counts_even_if_reported_passed(validated):
+    result = count_passed(validated, {E4_POLICY[0]: "passed", E5_SELECTOR: "passed"})
+    assert result["api"]["passed"] == 0
+    assert result["integration"]["passed"] == 0
+    assert result["regression"]["passed"] == 0
+    assert result["api"]["not_passed"] == 15
+
+
+def test_count_passed_unknown_selector_raises(validated):
+    with pytest.raises(RegistryError, match="absent from the registry"):
+        count_passed(validated, {**_all_passed(validated), "tests/uc/test_adapter.py::test_ghost": "passed"})
+
+
+# ---------------------------------------------------------- artifact stage
+
+def _artifact_paths(data: dict) -> list[str]:
+    return [p for c in sorted(data["artifacts"]) for p in data["artifacts"][c].values()]
+
+
+def test_artifact_stage_skipped_when_no_evidence_exists(repo: Path, validated):
+    stage = validated.artifact_stage
+    assert stage["status"] == "SKIPPED"
+    assert stage["present"] == 0 and stage["expected"] == 21
+    assert "not evidence of a passing run" in stage["reason"]
+
+
+def test_artifact_stage_present_when_all_evidence_exists(repo: Path):
+    for rel in _artifact_paths(load(repo)):
+        write(repo, rel, "x\n")
+    registry = validate_registry(repo)
+    assert registry.artifact_stage == {"status": "PRESENT", "reason": None, "expected": 21, "present": 21}
+
+
+def test_artifact_stage_partial_set_is_refused(repo: Path):
+    paths = _artifact_paths(load(repo))
+    for rel in paths[:-1]:
+        write(repo, rel, "x\n")
+    with pytest.raises(RegistryError, match="partially present"):
+        validate_registry(repo)
+    with pytest.raises(RegistryError, match="partially present"):
+        check_artifact_stage(repo.resolve(), load(repo)["artifacts"])
+
+
+def test_artifact_stage_single_file_is_partial_not_present(repo: Path):
+    artifacts = load(repo)["artifacts"]
+    write(repo, artifacts["api"]["stderr"], "")
+    with pytest.raises(RegistryError, match="partially present"):
+        check_artifact_stage(repo.resolve(), artifacts)
+
+
+def test_artifact_stage_direct_skipped_and_present(tmp_path: Path):
+    root = tmp_path.resolve()
+    artifacts = {"api": {"report": "r.jsonl", "stdout": "o.txt", "stderr": "e.txt"}}
+    assert check_artifact_stage(root, artifacts)["status"] == "SKIPPED"
+    for name in ("r.jsonl", "o.txt", "e.txt"):
+        (root / name).write_bytes(b"")
+    assert check_artifact_stage(root, artifacts) == {"status": "PRESENT", "reason": None, "expected": 3, "present": 3}
+
+
+# --------------------------------------------------------------- builder
+
+def test_builder_unmapped_test_module_raises(repo: Path):
+    write(repo, "tests/vst/test_brand_new_unmapped.py", "def test_a():\n    pass\n")
+    commit_all(repo, "unmapped")
+    with pytest.raises(ValueError, match="no primary category"):
+        build_registry(repo)
+
+
+def test_builder_qa_module_without_s4_convention_raises(repo: Path):
+    write(repo, "tests/qa/test_s4a_misnamed.py", "def test_a():\n    pass\n")
+    commit_all(repo, "misnamed")
+    with pytest.raises(ValueError, match="test_s4_"):
+        build_registry(repo)
+
+
+def test_builder_categorizes_qa_modules_by_convention(repo: Path):
+    for rel in (
+        "tests/qa/test_s4_e2e_x.py",
+        "tests/qa/test_s4_api_y.py",
+        "tests/qa/test_s4_integration_z.py",
+        "tests/qa/test_s4_plain.py",
+        "tests/qa/test_s4_seeded_failure_q.py",
+        "tests/qa/seeded_failure/test_s4_anything.py",
+    ):
+        write(repo, rel, "def test_a():\n    pass\n")
+    commit_all(repo, "qa modules")
+    data = build_registry(repo)
+    got = {t["source_path"]: t["primary_category"] for t in data["tests"]}
+    assert got["tests/qa/test_s4_e2e_x.py"] == "e2e"
+    assert got["tests/qa/test_s4_api_y.py"] == "api"
+    assert got["tests/qa/test_s4_integration_z.py"] == "integration"
+    assert got["tests/qa/test_s4_plain.py"] == "functional"
+    assert got["tests/qa/test_s4_seeded_failure_q.py"] == "seeded-failure"
+    assert got["tests/qa/seeded_failure/test_s4_anything.py"] == "seeded-failure"
+    assert data["categories"]["seeded-failure"]["status"] == "SUPPORTED"
+    assert data["categories"]["seeded-failure"]["not_run_reasons"] == {}
+
+
+def test_builder_stale_policy_not_run_selector_raises(repo: Path):
+    missing = E4_POLICY[0].split("::")[1]
+    write(repo, E4, e4_text(omit=missing))
+    commit_all(repo, "e4 without a policy selector")
+    with pytest.raises(ValueError, match="POLICY_NOT_RUN names selectors absent from source") as info:
+        build_registry(repo)
+    assert E4_POLICY[0] in str(info.value)
+
+
+def test_builder_policy_for_module_absent_from_tree_is_ignored(repo: Path):
+    (repo / E4).unlink()
+    commit_all(repo, "no e4")
+    data = build_registry(repo)
+    assert not any(t["source_path"] == E4 for t in data["tests"])
+    assert data["categories"]["api"]["not_run_reasons"] == {}
+    assert data["categories"]["api"]["status"] == "NOT_RUN"
+
+
+def test_builder_uncommitted_test_module_has_no_provenance(repo: Path):
+    write(repo, "tests/qa/test_s4_functional_c.py", "def test_c():\n    pass\n")
+    with pytest.raises(RegistryError, match="no committed provenance"):
+        build_registry(repo)
+
+
+def test_builder_syntax_error_module_raises_registry_error(repo: Path):
+    write(repo, "tests/qa/test_s4_functional_bad.py", "def test_x(:\n")
+    commit_all(repo, "bad")
+    with pytest.raises(RegistryError, match="cannot be statically parsed"):
+        build_registry(repo)
+
+
+def test_builder_policy_and_process_death_selectors_are_not_run_with_empty_profiles(repo: Path):
+    data = build_registry(repo)
+    api = data["categories"]["api"]
+    assert sorted(api["not_run_reasons"]) == E4_POLICY
+    assert all(r.startswith("NOT_RUN:") for r in api["not_run_reasons"].values())
+    assert find_entry(data, E5_SELECTOR)["runtime_profiles"] == []
+    assert E5_SELECTOR in data["categories"]["integration"]["not_run_reasons"]
+    assert find_entry(data, E4_NORMAL)["runtime_profiles"] == [reg.WINDOWS_PROFILE, reg.WSL_PROFILE]
+    reg_cat = data["categories"]["regression"]
+    assert E4_POLICY[0] not in reg_cat["test_ids"] and E4_POLICY[0] in reg_cat["not_run_reasons"]
+
+
+def test_builder_empty_categories_are_not_run_with_reason_never_supported(repo: Path):
+    data = build_registry(repo)
+    for name in ("e2e", "identity", "seeded-failure"):
+        entry = data["categories"][name]
+        assert entry["status"] == "NOT_RUN" and entry["test_ids"] == [] and entry["reason"]
+
+
+def test_builder_output_round_trips_through_validator_even_with_new_module(tmp_path: Path):
+    root = tmp_path / "r"
+    init_repo(root)
+    write(root, "tests/qa/test_s4_e2e_x.py", "class TestX:\n    def test_y(self):\n        pass\n")
+    commit_all(root, "e2e module")
+    generate(root)
+    registry = validate_registry(root)
+    assert registry.category_inventory_ids["e2e"] == ["tests/qa/test_s4_e2e_x.py::TestX::test_y"]
+    assert denominator(registry)["e2e"] == {"expected": 1, "runnable": 1, "not_run": 0}
+
+
+# --------------------------------------------------------- real repository
+
+def test_real_manifest_at_head_validates():
+    registry = validate_registry(REPO_ROOT)
+    assert registry.candidate_head == git(REPO_ROOT, "rev-parse", "HEAD")
+    assert registry.selectors_by_id
+    assert "tests/qa/test_s4a_registry.py" in {
+        i["path"] for i in registry.data["source_inventory"]
+    }, "this test module must be registered (MAIN_TEST_FILE_CATEGORIES) and the manifest regenerated"
