@@ -2404,3 +2404,7 @@ Scope note docs/sdlc/evidence/u1-7-gptpm-scope-note.md limits the review to the 
 
 **Parallel work possible:** None — all remaining U1 tasks depend on push to proceed with GPT-PM review gate.
 
+
+## 2026-11-08 — GPT-PM APPROVE for U1-7 (request 7a6776ac)
+
+One-task review of the entry command of tools/uc/router.py and tests/uc_e2e (base 9587052, head 08a3774): APPROVE, no BLOCKER or MAJOR. U1-7 is ACCEPTED, not pushed. Accepted: U1-2, U1-3, U1-4, U1-5, U1-6, U1-7. Left in review: U1-1 and U1-8, which wait for the subprocess CLI tests of token_baseline and measure from the test agent. U1-9 stays BLOCKED_OPERATOR (OD-3).
