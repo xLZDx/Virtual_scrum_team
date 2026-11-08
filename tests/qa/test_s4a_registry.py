@@ -1037,6 +1037,25 @@ def test_modified_tracked_file_in_guarded_paths_is_refused(repo: Path, fn):
         fn(repo)
 
 
+@pytest.mark.parametrize("rel", ["tests/uc/ignored_fixture.txt", "docs/qa/ignored_note.txt", "tools/qa/ignored_tool.py"])
+def test_ignored_file_in_guarded_paths_is_refused(repo: Path, rel: str):
+    write(repo, ".gitignore", "ignored_*\n")
+    commit_all(repo, "ignore rule")
+    write(repo, rel, "x\n")
+    assert git(repo, "status", "--porcelain", "--", "tests", "docs/qa", "tools/qa") == ""  # invisible to status
+    with pytest.raises(RegistryError, match="ignored"):
+        validate_registry(repo)
+    with pytest.raises(RegistryError, match="ignored"):
+        build_registry(repo)
+
+
+def test_ignored_bytecode_cache_is_tolerated(repo: Path):
+    write(repo, ".gitignore", "__pycache__/\n")
+    commit_all(repo, "ignore caches")
+    write(repo, "tests/uc/__pycache__/test_adapter.cpython-314.pyc", "x")
+    assert validate_registry(repo).selectors_by_id
+
+
 def test_modified_manifest_in_worktree_is_refused(repo: Path):
     (repo / MANIFEST).write_bytes((repo / MANIFEST).read_bytes() + b" ")
     with pytest.raises(RegistryError, match="uncommitted or untracked"):
@@ -1056,15 +1075,16 @@ def test_untracked_file_in_a_directory_with_spaces_is_refused(repo: Path):
         validate_registry(repo)
 
 
-def test_inventory_is_hashed_from_head_blob_not_the_worktree(repo: Path):
-    # skip-worktree hides a working-tree edit from `git status`; the registry must still
-    # judge the committed bytes and therefore stay valid.
-    git(repo, "update-index", "--skip-worktree", ADAPTER)
+@pytest.mark.parametrize("flag", ["--skip-worktree", "--assume-unchanged"])
+def test_index_flags_that_hide_worktree_edits_are_refused(repo: Path, flag: str):
+    # these flags hide a working-tree edit from `git status`; the binding must fail closed
+    git(repo, "update-index", flag, ADAPTER)
     (repo / ADAPTER).write_bytes(b"def test_one(:\n   garbage that would break hash and parse\n")
-    assert git(repo, "status", "--porcelain", "--", "tests") == ""
-    registry = validate_registry(repo)
-    assert ADAPTER_SELECTOR in registry.selectors_by_id
-    assert build_registry(repo)["source_inventory"] == load(repo)["source_inventory"]
+    assert git(repo, "status", "--porcelain", "--", "tests") == ""  # the edit really is invisible
+    with pytest.raises(RegistryError, match="ignored or hidden paths"):
+        validate_registry(repo)
+    with pytest.raises(RegistryError, match="ignored or hidden paths"):
+        build_registry(repo)
 
 
 def test_head_blob_that_differs_from_manifest_is_refused_even_if_worktree_matches(repo: Path):
@@ -1073,6 +1093,13 @@ def test_head_blob_that_differs_from_manifest_is_refused_even_if_worktree_matche
     commit_all(repo, "change committed bytes")
     git(repo, "update-index", "--skip-worktree", ADAPTER)
     (repo / ADAPTER).write_bytes(original)  # worktree looks like the manifest's source; HEAD does not
+    with pytest.raises(RegistryError):  # hidden flag or changed HEAD blob: never accepted
+        validate_registry(repo)
+    git(repo, "update-index", "--no-skip-worktree", ADAPTER)
+    (repo / ADAPTER).write_bytes(original)
+    with pytest.raises(RegistryError):  # without the flag the dirty worktree is refused
+        validate_registry(repo)
+    git(repo, "checkout", "--", ADAPTER)
     with pytest.raises(RegistryError, match="changed after registry generation"):
         validate_registry(repo)
 
