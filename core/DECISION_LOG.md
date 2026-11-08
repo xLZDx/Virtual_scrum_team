@@ -2637,3 +2637,5 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: functional agent on d69c824: tests/qa/test_s4b_runner.py full file 223 passed and 5 failed (all five were test mistakes), the five fixed tests plus four conftest tests rerun 15 passed; the full file was not rerun after the test-only fixes (about 48 minutes). No product defect left open; the real lock downloaded and verified once with no TLS workaround.
 - Decision: trust model stays candidate-attested with no identity separation (operator decision); root conftest.py is never loaded because of --confcutdir, a tests/ conftest with guarded hooks is refused.
+
+- 2026-11-08: manifest regenerated for the S4-B test file.

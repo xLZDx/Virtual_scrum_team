@@ -43,7 +43,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "2151732c8b9fcdebcd0467b2b8df8549a1e614b2",
+  "source_head": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
   "source_inventory": [
     {
       "path": "tests/af/test_s2_review_source_fidelity.py",
@@ -54,6 +54,11 @@
       "path": "tests/qa/test_s4a_registry.py",
       "source_commit": "2151732c8b9fcdebcd0467b2b8df8549a1e614b2",
       "sha256": "7c195259493756b83b353763b3a7337fc890dc46ae30fc9b5d23f8bfb9c20d83"
+    },
+    {
+      "path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "sha256": "5a1872f3cdc0af88b1aed07ae91ee8a6a0c33172430cf9436efed302aea1fad1"
     },
     {
       "path": "tests/uc/test_adapter.py",
@@ -1460,6 +1465,1249 @@
       "selector": "tests/qa/test_s4a_registry.py::test_validator_accepts_non_supported_category_with_no_ids",
       "source_path": "tests/qa/test_s4a_registry.py",
       "source_commit": "2151732c8b9fcdebcd0467b2b8df8549a1e614b2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_append_rechecks_links_and_hardlinks_immediately_before_writing",
+      "selector": "tests/qa/test_s4b_runner.py::test_append_rechecks_links_and_hardlinks_immediately_before_writing",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_artifact_paths_other_than_the_fixed_ones_are_refused",
+      "selector": "tests/qa/test_s4b_runner.py::test_artifact_paths_other_than_the_fixed_ones_are_refused",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_audit_reasons_accept_a_clean_audit_and_record_it",
+      "selector": "tests/qa/test_s4b_runner.py::test_audit_reasons_accept_a_clean_audit_and_record_it",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_audit_reasons_reject_untrusted_origin_and_hooks",
+      "selector": "tests/qa/test_s4b_runner.py::test_audit_reasons_reject_untrusted_origin_and_hooks",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_candidate_tree_mutations_during_the_run_fail_it",
+      "selector": "tests/qa/test_s4b_runner.py::test_candidate_tree_mutations_during_the_run_fail_it",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_category_without_a_windows_assigned_selector_is_not_run",
+      "selector": "tests/qa/test_s4b_runner.py::test_category_without_a_windows_assigned_selector_is_not_run",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_changed_lock_in_candidate_blocks_the_run",
+      "selector": "tests/qa/test_s4b_runner.py::test_changed_lock_in_candidate_blocks_the_run",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_check_artifacts_default_and_signature",
+      "selector": "tests/qa/test_s4b_runner.py::test_check_artifacts_default_and_signature",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_check_artifacts_false_does_not_weaken_other_validation",
+      "selector": "tests/qa/test_s4b_runner.py::test_check_artifacts_false_does_not_weaken_other_validation",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_check_artifacts_false_returns_not_checked_even_for_partial_or_empty_sets",
+      "selector": "tests/qa/test_s4b_runner.py::test_check_artifacts_false_returns_not_checked_even_for_partial_or_empty_sets",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_check_artifacts_full_set_is_present_by_default_but_not_checked_when_disabled",
+      "selector": "tests/qa/test_s4b_runner.py::test_check_artifacts_full_set_is_present_by_default_but_not_checked_when_disabled",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_child_changing_other_categories_evidence_fails_the_run",
+      "selector": "tests/qa/test_s4b_runner.py::test_child_changing_other_categories_evidence_fails_the_run",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_child_creating_other_category_evidence_fails_the_run",
+      "selector": "tests/qa/test_s4b_runner.py::test_child_creating_other_category_evidence_fails_the_run",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_child_tampering_with_own_evidence_during_the_run_fails_it_and_prefix_is_verified",
+      "selector": "tests/qa/test_s4b_runner.py::test_child_tampering_with_own_evidence_during_the_run_fails_it_and_prefix_is_verified",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_collection_error_fails_the_run_and_nothing_passes",
+      "selector": "tests/qa/test_s4b_runner.py::test_collection_error_fails_the_run_and_nothing_passes",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_commit_evidence_appends_report_line_before_the_raw_artifacts",
+      "selector": "tests/qa/test_s4b_runner.py::test_commit_evidence_appends_report_line_before_the_raw_artifacts",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_commit_evidence_detects_a_broken_append_only_prefix",
+      "selector": "tests/qa/test_s4b_runner.py::test_commit_evidence_detects_a_broken_append_only_prefix",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_commit_evidence_failure_after_the_report_line_leaves_a_superseding_blocked_record",
+      "selector": "tests/qa/test_s4b_runner.py::test_commit_evidence_failure_after_the_report_line_leaves_a_superseding_blocked_record",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_committed_evidence_of_other_categories_is_allowed_and_left_byte_identical",
+      "selector": "tests/qa/test_s4b_runner.py::test_committed_evidence_of_other_categories_is_allowed_and_left_byte_identical",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_committed_not_run_category_writes_not_run_record",
+      "selector": "tests/qa/test_s4b_runner.py::test_committed_not_run_category_writes_not_run_record",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_committed_unsupported_category_writes_unsupported_record",
+      "selector": "tests/qa/test_s4b_runner.py::test_committed_unsupported_category_writes_unsupported_record",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_concurrent_runner_on_the_same_repo_is_refused_while_the_lock_is_held",
+      "selector": "tests/qa/test_s4b_runner.py::test_concurrent_runner_on_the_same_repo_is_refused_while_the_lock_is_held",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_conftest_with_a_guarded_hook_fails_the_run",
+      "selector": "tests/qa/test_s4b_runner.py::test_conftest_with_a_guarded_hook_fails_the_run",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_conftest_without_guarded_hooks_is_allowed",
+      "selector": "tests/qa/test_s4b_runner.py::test_conftest_without_guarded_hooks_is_allowed",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_control_run_of_the_mutating_scenario_without_a_mutation_passes",
+      "selector": "tests/qa/test_s4b_runner.py::test_control_run_of_the_mutating_scenario_without_a_mutation_passes",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_dangerous_ignored_root_entries_are_rejected",
+      "selector": "tests/qa/test_s4b_runner.py::test_dangerous_ignored_root_entries_are_rejected",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_deleted_manifest_blocks_the_run",
+      "selector": "tests/qa/test_s4b_runner.py::test_deleted_manifest_blocks_the_run",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_dependency_dirs_must_be_external_real_and_disjoint",
+      "selector": "tests/qa/test_s4b_runner.py::test_dependency_dirs_must_be_external_real_and_disjoint",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_dependency_target_tampering_blocks_the_run",
+      "selector": "tests/qa/test_s4b_runner.py::test_dependency_target_tampering_blocks_the_run",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_descendant_left_behind_after_normal_exit_is_killed",
+      "selector": "tests/qa/test_s4b_runner.py::test_descendant_left_behind_after_normal_exit_is_killed",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_events_file_requires_the_audit_key_and_is_size_capped",
+      "selector": "tests/qa/test_s4b_runner.py::test_events_file_requires_the_audit_key_and_is_size_capped",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_evidence_snapshot_refuses_linked_and_multi_linked_files",
+      "selector": "tests/qa/test_s4b_runner.py::test_evidence_snapshot_refuses_linked_and_multi_linked_files",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_expected_head_match_is_accepted",
+      "selector": "tests/qa/test_s4b_runner.py::test_expected_head_match_is_accepted",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_extra_wheel_error_also_blocks_prepare_and_leaves_no_target",
+      "selector": "tests/qa/test_s4b_runner.py::test_extra_wheel_error_also_blocks_prepare_and_leaves_no_target",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_git_config_or_info_change_during_the_run_fails_it",
+      "selector": "tests/qa/test_s4b_runner.py::test_git_config_or_info_change_during_the_run_fails_it",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_guarded_paths_dirty_blocks_the_run",
+      "selector": "tests/qa/test_s4b_runner.py::test_guarded_paths_dirty_blocks_the_run",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_harmless_ignored_root_entries_do_not_block",
+      "selector": "tests/qa/test_s4b_runner.py::test_harmless_ignored_root_entries_do_not_block",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_head_moving_during_the_run_fails_it",
+      "selector": "tests/qa/test_s4b_runner.py::test_head_moving_during_the_run_fails_it",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_hostile_repo_config_and_shadow_packages_do_not_affect_the_child",
+      "selector": "tests/qa/test_s4b_runner.py::test_hostile_repo_config_and_shadow_packages_do_not_affect_the_child",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_ignored_files_in_scoped_trees_are_rejected",
+      "selector": "tests/qa/test_s4b_runner.py::test_ignored_files_in_scoped_trees_are_rejected",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_interpreter_and_pytest_caches_are_the_only_allowed_ignored_scoped_files",
+      "selector": "tests/qa/test_s4b_runner.py::test_interpreter_and_pytest_caches_are_the_only_allowed_ignored_scoped_files",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_invalid_run_id_is_refused_with_a_record_that_never_echoes_it",
+      "selector": "tests/qa/test_s4b_runner.py::test_invalid_run_id_is_refused_with_a_record_that_never_echoes_it",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_job_close_is_retried_once_then_fails_closed",
+      "selector": "tests/qa/test_s4b_runner.py::test_job_close_is_retried_once_then_fails_closed",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_job_limit_failure_fails_closed_before_the_child_runs",
+      "selector": "tests/qa/test_s4b_runner.py::test_job_limit_failure_fails_closed_before_the_child_runs",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_job_object_limits_are_enforced_on_the_child_tree",
+      "selector": "tests/qa/test_s4b_runner.py::test_job_object_limits_are_enforced_on_the_child_tree",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_malformed_lock_is_rejected",
+      "selector": "tests/qa/test_s4b_runner.py::test_malformed_lock_is_rejected",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_node_id_must_match_the_safe_character_set",
+      "selector": "tests/qa/test_s4b_runner.py::test_node_id_must_match_the_safe_character_set",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_non_default_index_flags_are_rejected",
+      "selector": "tests/qa/test_s4b_runner.py::test_non_default_index_flags_are_rejected",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_non_default_manifest_is_refused_with_a_record",
+      "selector": "tests/qa/test_s4b_runner.py::test_non_default_manifest_is_refused_with_a_record",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_normalized_digest_ignores_volatile_fields_only",
+      "selector": "tests/qa/test_s4b_runner.py::test_normalized_digest_ignores_volatile_fields_only",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_out_of_bound_limits_are_refused_with_a_record",
+      "selector": "tests/qa/test_s4b_runner.py::test_out_of_bound_limits_are_refused_with_a_record",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_output_is_capped_and_truncation_prevents_pass",
+      "selector": "tests/qa/test_s4b_runner.py::test_output_is_capped_and_truncation_prevents_pass",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_oversized_events_file_is_not_trusted",
+      "selector": "tests/qa/test_s4b_runner.py::test_oversized_events_file_is_not_trusted",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_own_category_files_from_an_earlier_run_remain_allowed",
+      "selector": "tests/qa/test_s4b_runner.py::test_own_category_files_from_an_earlier_run_remain_allowed",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_param_one_failing_case_fails_the_whole_selector",
+      "selector": "tests/qa/test_s4b_runner.py::test_param_one_failing_case_fails_the_whole_selector",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_pass_run_writes_fixed_record_and_artifacts",
+      "selector": "tests/qa/test_s4b_runner.py::test_pass_run_writes_fixed_record_and_artifacts",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_plugin_audit_flags_conftest_implementing_a_guarded_hook",
+      "selector": "tests/qa/test_s4b_runner.py::test_plugin_audit_flags_conftest_implementing_a_guarded_hook",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_plugin_audit_ignores_conftest_without_guarded_hooks",
+      "selector": "tests/qa/test_s4b_runner.py::test_plugin_audit_ignores_conftest_without_guarded_hooks",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_plugin_audit_records_origin_and_allows_pinned_pytest_and_itself",
+      "selector": "tests/qa/test_s4b_runner.py::test_plugin_audit_records_origin_and_allows_pinned_pytest_and_itself",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_plugin_audit_rejects_pytest_that_is_not_under_the_dependency_target",
+      "selector": "tests/qa/test_s4b_runner.py::test_plugin_audit_rejects_pytest_that_is_not_under_the_dependency_target",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_plugin_fails_closed_on_missing_or_inconsistent_selection",
+      "selector": "tests/qa/test_s4b_runner.py::test_plugin_fails_closed_on_missing_or_inconsistent_selection",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_plugin_flags_collection_errors_and_parametrization_node_ids",
+      "selector": "tests/qa/test_s4b_runner.py::test_plugin_flags_collection_errors_and_parametrization_node_ids",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_plugin_never_overwrites_an_existing_events_file",
+      "selector": "tests/qa/test_s4b_runner.py::test_plugin_never_overwrites_an_existing_events_file",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_plugin_records_every_outcome_and_deselects_known_foreign_selectors",
+      "selector": "tests/qa/test_s4b_runner.py::test_plugin_records_every_outcome_and_deselects_known_foreign_selectors",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_plugin_requires_the_dependency_target_option",
+      "selector": "tests/qa/test_s4b_runner.py::test_plugin_requires_the_dependency_target_option",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_policy_not_run_and_wsl_only_selectors_make_the_category_inconclusive_never_pass",
+      "selector": "tests/qa/test_s4b_runner.py::test_policy_not_run_and_wsl_only_selectors_make_the_category_inconclusive_never_pass",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_prepare_cli_creates_verified_target",
+      "selector": "tests/qa/test_s4b_runner.py::test_prepare_cli_creates_verified_target",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_prepare_cli_refuses_existing_target_and_leaves_it_untouched",
+      "selector": "tests/qa/test_s4b_runner.py::test_prepare_cli_refuses_existing_target_and_leaves_it_untouched",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_prepare_cli_refuses_missing_wheelhouse_and_repo",
+      "selector": "tests/qa/test_s4b_runner.py::test_prepare_cli_refuses_missing_wheelhouse_and_repo",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_prepare_cli_refuses_target_or_wheelhouse_inside_repo_and_nested_layout",
+      "selector": "tests/qa/test_s4b_runner.py::test_prepare_cli_refuses_target_or_wheelhouse_inside_repo_and_nested_layout",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_prepare_cli_refuses_wheelhouse_mismatch_without_creating_target",
+      "selector": "tests/qa/test_s4b_runner.py::test_prepare_cli_refuses_wheelhouse_mismatch_without_creating_target",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_real_lock_pins_every_wheel_by_sha256_and_is_exact",
+      "selector": "tests/qa/test_s4b_runner.py::test_real_lock_pins_every_wheel_by_sha256_and_is_exact",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_real_lock_wheels_download_verify_and_prepare",
+      "selector": "tests/qa/test_s4b_runner.py::test_real_lock_wheels_download_verify_and_prepare",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_redaction_removes_every_secret_class_and_keeps_markers",
+      "selector": "tests/qa/test_s4b_runner.py::test_redaction_removes_every_secret_class_and_keeps_markers",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_redaction_token_classes_each_independently",
+      "selector": "tests/qa/test_s4b_runner.py::test_redaction_token_classes_each_independently",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_registry_validation_failure_blocks_the_run",
+      "selector": "tests/qa/test_s4b_runner.py::test_registry_validation_failure_blocks_the_run",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_repeated_run_id_is_refused_and_leaves_earlier_evidence_intact",
+      "selector": "tests/qa/test_s4b_runner.py::test_repeated_run_id_is_refused_and_leaves_earlier_evidence_intact",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_repo_root_conftest_with_a_guarded_hook_is_neutralised_or_refused",
+      "selector": "tests/qa/test_s4b_runner.py::test_repo_root_conftest_with_a_guarded_hook_is_neutralised_or_refused",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_report_encoding_is_canonical_single_line_with_trailing_newline",
+      "selector": "tests/qa/test_s4b_runner.py::test_report_encoding_is_canonical_single_line_with_trailing_newline",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_reports_and_artifacts_are_append_only_across_runs",
+      "selector": "tests/qa/test_s4b_runner.py::test_reports_and_artifacts_are_append_only_across_runs",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_run_lock_is_exclusive_per_repository_and_released",
+      "selector": "tests/qa/test_s4b_runner.py::test_run_lock_is_exclusive_per_repository_and_released",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_runner_blocks_on_ignored_dangerous_root_file_but_not_on_harmless_ones",
+      "selector": "tests/qa/test_s4b_runner.py::test_runner_blocks_on_ignored_dangerous_root_file_but_not_on_harmless_ones",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_runner_blocks_when_a_tracked_test_file_is_hidden_by_skip_worktree",
+      "selector": "tests/qa/test_s4b_runner.py::test_runner_blocks_when_a_tracked_test_file_is_hidden_by_skip_worktree",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_scratch_root_inside_repo_is_refused_with_a_record_and_creates_nothing",
+      "selector": "tests/qa/test_s4b_runner.py::test_scratch_root_inside_repo_is_refused_with_a_record_and_creates_nothing",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_scratch_root_that_contains_the_repo_is_refused_with_a_record",
+      "selector": "tests/qa/test_s4b_runner.py::test_scratch_root_that_contains_the_repo_is_refused_with_a_record",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_secrets_and_user_paths_in_child_output_are_redacted_in_every_artifact",
+      "selector": "tests/qa/test_s4b_runner.py::test_secrets_and_user_paths_in_child_output_are_redacted_in_every_artifact",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_skip_scenario_keeps_the_passing_selector_and_partial_param_skip_is_not_passed",
+      "selector": "tests/qa/test_s4b_runner.py::test_skip_scenario_keeps_the_passing_selector_and_partial_param_skip_is_not_passed",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_small_planted_events_file_is_parsed_not_rejected_as_oversized",
+      "selector": "tests/qa/test_s4b_runner.py::test_small_planted_events_file_is_parsed_not_rejected_as_oversized",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_target_file_size_cap_is_64_mib",
+      "selector": "tests/qa/test_s4b_runner.py::test_target_file_size_cap_is_64_mib",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_timeout_kills_the_whole_process_tree_and_yields_fail",
+      "selector": "tests/qa/test_s4b_runner.py::test_timeout_kills_the_whole_process_tree_and_yields_fail",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_uncapped_noise_within_cap_still_passes",
+      "selector": "tests/qa/test_s4b_runner.py::test_uncapped_noise_within_cap_still_passes",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_uncommitted_evidence_of_other_categories_blocks_as_unrelated",
+      "selector": "tests/qa/test_s4b_runner.py::test_uncommitted_evidence_of_other_categories_blocks_as_unrelated",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_unexpected_exception_becomes_a_blocked_record_and_exit_2",
+      "selector": "tests/qa/test_s4b_runner.py::test_unexpected_exception_becomes_a_blocked_record_and_exit_2",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_unknown_category_is_rejected_by_the_cli",
+      "selector": "tests/qa/test_s4b_runner.py::test_unknown_category_is_rejected_by_the_cli",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_unmapped_runtime_collected_cases_fail_the_run",
+      "selector": "tests/qa/test_s4b_runner.py::test_unmapped_runtime_collected_cases_fail_the_run",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_unproven_selectors_are_never_counted_as_passed",
+      "selector": "tests/qa/test_s4b_runner.py::test_unproven_selectors_are_never_counted_as_passed",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_unrelated_dirty_path_blocks_the_run_before_pytest",
+      "selector": "tests/qa/test_s4b_runner.py::test_unrelated_dirty_path_blocks_the_run_before_pytest",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_unresolvable_repo_root_exits_2_without_a_record",
+      "selector": "tests/qa/test_s4b_runner.py::test_unresolvable_repo_root_exits_2_without_a_record",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_unsafe_duplicate_and_collection_error_ids_are_masked",
+      "selector": "tests/qa/test_s4b_runner.py::test_unsafe_duplicate_and_collection_error_ids_are_masked",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_unsafe_node_id_refuses_the_run_without_listing_cases",
+      "selector": "tests/qa/test_s4b_runner.py::test_unsafe_node_id_refuses_the_run_without_listing_cases",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_verify_accepts_exact_target_and_binds_lock_digest",
+      "selector": "tests/qa/test_s4b_runner.py::test_verify_accepts_exact_target_and_binds_lock_digest",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_verify_rejects_changed_lock",
+      "selector": "tests/qa/test_s4b_runner.py::test_verify_rejects_changed_lock",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_verify_rejects_extra_unlocked_wheel_in_wheelhouse",
+      "selector": "tests/qa/test_s4b_runner.py::test_verify_rejects_extra_unlocked_wheel_in_wheelhouse",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_verify_rejects_missing_changed_wrong_and_duplicate_wheels",
+      "selector": "tests/qa/test_s4b_runner.py::test_verify_rejects_missing_changed_wrong_and_duplicate_wheels",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_verify_rejects_missing_lock_and_non_directory_wheelhouse",
+      "selector": "tests/qa/test_s4b_runner.py::test_verify_rejects_missing_lock_and_non_directory_wheelhouse",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_verify_rejects_tampered_target",
+      "selector": "tests/qa/test_s4b_runner.py::test_verify_rejects_tampered_target",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_verify_rejects_unsafe_or_inconsistent_wheel_content",
+      "selector": "tests/qa/test_s4b_runner.py::test_verify_rejects_unsafe_or_inconsistent_wheel_content",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_verify_target_digest_changes_with_content",
+      "selector": "tests/qa/test_s4b_runner.py::test_verify_target_digest_changes_with_content",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_wheelhouse_extra_wheel_with_uppercase_extension_is_also_rejected",
+      "selector": "tests/qa/test_s4b_runner.py::test_wheelhouse_extra_wheel_with_uppercase_extension_is_also_rejected",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_wheelhouse_mismatch_blocks_the_run",
+      "selector": "tests/qa/test_s4b_runner.py::test_wheelhouse_mismatch_blocks_the_run",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_wrong_expected_head_blocks_the_run",
+      "selector": "tests/qa/test_s4b_runner.py::test_wrong_expected_head_blocks_the_run",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_wrong_python_profile_blocks_the_run",
+      "selector": "tests/qa/test_s4b_runner.py::test_wrong_python_profile_blocks_the_run",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4b_runner.py::test_wsl_only_selector_alone_makes_the_category_inconclusive",
+      "selector": "tests/qa/test_s4b_runner.py::test_wsl_only_selector_alone_makes_the_category_inconclusive",
+      "source_path": "tests/qa/test_s4b_runner.py",
+      "source_commit": "ce3be1bd0eea7fc6839779eb3652ff17befc2382",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -22057,6 +23305,119 @@
         "tests/qa/test_s4a_registry.py::test_untracked_file_in_guarded_paths_is_refused",
         "tests/qa/test_s4a_registry.py::test_valid_registry_has_one_primary_category_and_stable_id_per_selector",
         "tests/qa/test_s4a_registry.py::test_validator_accepts_non_supported_category_with_no_ids",
+        "tests/qa/test_s4b_runner.py::test_append_rechecks_links_and_hardlinks_immediately_before_writing",
+        "tests/qa/test_s4b_runner.py::test_artifact_paths_other_than_the_fixed_ones_are_refused",
+        "tests/qa/test_s4b_runner.py::test_audit_reasons_accept_a_clean_audit_and_record_it",
+        "tests/qa/test_s4b_runner.py::test_audit_reasons_reject_untrusted_origin_and_hooks",
+        "tests/qa/test_s4b_runner.py::test_candidate_tree_mutations_during_the_run_fail_it",
+        "tests/qa/test_s4b_runner.py::test_category_without_a_windows_assigned_selector_is_not_run",
+        "tests/qa/test_s4b_runner.py::test_changed_lock_in_candidate_blocks_the_run",
+        "tests/qa/test_s4b_runner.py::test_check_artifacts_default_and_signature",
+        "tests/qa/test_s4b_runner.py::test_check_artifacts_false_does_not_weaken_other_validation",
+        "tests/qa/test_s4b_runner.py::test_check_artifacts_false_returns_not_checked_even_for_partial_or_empty_sets",
+        "tests/qa/test_s4b_runner.py::test_check_artifacts_full_set_is_present_by_default_but_not_checked_when_disabled",
+        "tests/qa/test_s4b_runner.py::test_child_changing_other_categories_evidence_fails_the_run",
+        "tests/qa/test_s4b_runner.py::test_child_creating_other_category_evidence_fails_the_run",
+        "tests/qa/test_s4b_runner.py::test_child_tampering_with_own_evidence_during_the_run_fails_it_and_prefix_is_verified",
+        "tests/qa/test_s4b_runner.py::test_collection_error_fails_the_run_and_nothing_passes",
+        "tests/qa/test_s4b_runner.py::test_commit_evidence_appends_report_line_before_the_raw_artifacts",
+        "tests/qa/test_s4b_runner.py::test_commit_evidence_detects_a_broken_append_only_prefix",
+        "tests/qa/test_s4b_runner.py::test_commit_evidence_failure_after_the_report_line_leaves_a_superseding_blocked_record",
+        "tests/qa/test_s4b_runner.py::test_committed_evidence_of_other_categories_is_allowed_and_left_byte_identical",
+        "tests/qa/test_s4b_runner.py::test_committed_not_run_category_writes_not_run_record",
+        "tests/qa/test_s4b_runner.py::test_committed_unsupported_category_writes_unsupported_record",
+        "tests/qa/test_s4b_runner.py::test_concurrent_runner_on_the_same_repo_is_refused_while_the_lock_is_held",
+        "tests/qa/test_s4b_runner.py::test_conftest_with_a_guarded_hook_fails_the_run",
+        "tests/qa/test_s4b_runner.py::test_conftest_without_guarded_hooks_is_allowed",
+        "tests/qa/test_s4b_runner.py::test_control_run_of_the_mutating_scenario_without_a_mutation_passes",
+        "tests/qa/test_s4b_runner.py::test_dangerous_ignored_root_entries_are_rejected",
+        "tests/qa/test_s4b_runner.py::test_deleted_manifest_blocks_the_run",
+        "tests/qa/test_s4b_runner.py::test_dependency_dirs_must_be_external_real_and_disjoint",
+        "tests/qa/test_s4b_runner.py::test_dependency_target_tampering_blocks_the_run",
+        "tests/qa/test_s4b_runner.py::test_descendant_left_behind_after_normal_exit_is_killed",
+        "tests/qa/test_s4b_runner.py::test_events_file_requires_the_audit_key_and_is_size_capped",
+        "tests/qa/test_s4b_runner.py::test_evidence_snapshot_refuses_linked_and_multi_linked_files",
+        "tests/qa/test_s4b_runner.py::test_expected_head_match_is_accepted",
+        "tests/qa/test_s4b_runner.py::test_extra_wheel_error_also_blocks_prepare_and_leaves_no_target",
+        "tests/qa/test_s4b_runner.py::test_git_config_or_info_change_during_the_run_fails_it",
+        "tests/qa/test_s4b_runner.py::test_guarded_paths_dirty_blocks_the_run",
+        "tests/qa/test_s4b_runner.py::test_harmless_ignored_root_entries_do_not_block",
+        "tests/qa/test_s4b_runner.py::test_head_moving_during_the_run_fails_it",
+        "tests/qa/test_s4b_runner.py::test_hostile_repo_config_and_shadow_packages_do_not_affect_the_child",
+        "tests/qa/test_s4b_runner.py::test_ignored_files_in_scoped_trees_are_rejected",
+        "tests/qa/test_s4b_runner.py::test_interpreter_and_pytest_caches_are_the_only_allowed_ignored_scoped_files",
+        "tests/qa/test_s4b_runner.py::test_invalid_run_id_is_refused_with_a_record_that_never_echoes_it",
+        "tests/qa/test_s4b_runner.py::test_job_close_is_retried_once_then_fails_closed",
+        "tests/qa/test_s4b_runner.py::test_job_limit_failure_fails_closed_before_the_child_runs",
+        "tests/qa/test_s4b_runner.py::test_job_object_limits_are_enforced_on_the_child_tree",
+        "tests/qa/test_s4b_runner.py::test_malformed_lock_is_rejected",
+        "tests/qa/test_s4b_runner.py::test_node_id_must_match_the_safe_character_set",
+        "tests/qa/test_s4b_runner.py::test_non_default_index_flags_are_rejected",
+        "tests/qa/test_s4b_runner.py::test_non_default_manifest_is_refused_with_a_record",
+        "tests/qa/test_s4b_runner.py::test_normalized_digest_ignores_volatile_fields_only",
+        "tests/qa/test_s4b_runner.py::test_out_of_bound_limits_are_refused_with_a_record",
+        "tests/qa/test_s4b_runner.py::test_output_is_capped_and_truncation_prevents_pass",
+        "tests/qa/test_s4b_runner.py::test_oversized_events_file_is_not_trusted",
+        "tests/qa/test_s4b_runner.py::test_own_category_files_from_an_earlier_run_remain_allowed",
+        "tests/qa/test_s4b_runner.py::test_param_one_failing_case_fails_the_whole_selector",
+        "tests/qa/test_s4b_runner.py::test_pass_run_writes_fixed_record_and_artifacts",
+        "tests/qa/test_s4b_runner.py::test_plugin_audit_flags_conftest_implementing_a_guarded_hook",
+        "tests/qa/test_s4b_runner.py::test_plugin_audit_ignores_conftest_without_guarded_hooks",
+        "tests/qa/test_s4b_runner.py::test_plugin_audit_records_origin_and_allows_pinned_pytest_and_itself",
+        "tests/qa/test_s4b_runner.py::test_plugin_audit_rejects_pytest_that_is_not_under_the_dependency_target",
+        "tests/qa/test_s4b_runner.py::test_plugin_fails_closed_on_missing_or_inconsistent_selection",
+        "tests/qa/test_s4b_runner.py::test_plugin_flags_collection_errors_and_parametrization_node_ids",
+        "tests/qa/test_s4b_runner.py::test_plugin_never_overwrites_an_existing_events_file",
+        "tests/qa/test_s4b_runner.py::test_plugin_records_every_outcome_and_deselects_known_foreign_selectors",
+        "tests/qa/test_s4b_runner.py::test_plugin_requires_the_dependency_target_option",
+        "tests/qa/test_s4b_runner.py::test_policy_not_run_and_wsl_only_selectors_make_the_category_inconclusive_never_pass",
+        "tests/qa/test_s4b_runner.py::test_prepare_cli_creates_verified_target",
+        "tests/qa/test_s4b_runner.py::test_prepare_cli_refuses_existing_target_and_leaves_it_untouched",
+        "tests/qa/test_s4b_runner.py::test_prepare_cli_refuses_missing_wheelhouse_and_repo",
+        "tests/qa/test_s4b_runner.py::test_prepare_cli_refuses_target_or_wheelhouse_inside_repo_and_nested_layout",
+        "tests/qa/test_s4b_runner.py::test_prepare_cli_refuses_wheelhouse_mismatch_without_creating_target",
+        "tests/qa/test_s4b_runner.py::test_real_lock_pins_every_wheel_by_sha256_and_is_exact",
+        "tests/qa/test_s4b_runner.py::test_real_lock_wheels_download_verify_and_prepare",
+        "tests/qa/test_s4b_runner.py::test_redaction_removes_every_secret_class_and_keeps_markers",
+        "tests/qa/test_s4b_runner.py::test_redaction_token_classes_each_independently",
+        "tests/qa/test_s4b_runner.py::test_registry_validation_failure_blocks_the_run",
+        "tests/qa/test_s4b_runner.py::test_repeated_run_id_is_refused_and_leaves_earlier_evidence_intact",
+        "tests/qa/test_s4b_runner.py::test_repo_root_conftest_with_a_guarded_hook_is_neutralised_or_refused",
+        "tests/qa/test_s4b_runner.py::test_report_encoding_is_canonical_single_line_with_trailing_newline",
+        "tests/qa/test_s4b_runner.py::test_reports_and_artifacts_are_append_only_across_runs",
+        "tests/qa/test_s4b_runner.py::test_run_lock_is_exclusive_per_repository_and_released",
+        "tests/qa/test_s4b_runner.py::test_runner_blocks_on_ignored_dangerous_root_file_but_not_on_harmless_ones",
+        "tests/qa/test_s4b_runner.py::test_runner_blocks_when_a_tracked_test_file_is_hidden_by_skip_worktree",
+        "tests/qa/test_s4b_runner.py::test_scratch_root_inside_repo_is_refused_with_a_record_and_creates_nothing",
+        "tests/qa/test_s4b_runner.py::test_scratch_root_that_contains_the_repo_is_refused_with_a_record",
+        "tests/qa/test_s4b_runner.py::test_secrets_and_user_paths_in_child_output_are_redacted_in_every_artifact",
+        "tests/qa/test_s4b_runner.py::test_skip_scenario_keeps_the_passing_selector_and_partial_param_skip_is_not_passed",
+        "tests/qa/test_s4b_runner.py::test_small_planted_events_file_is_parsed_not_rejected_as_oversized",
+        "tests/qa/test_s4b_runner.py::test_target_file_size_cap_is_64_mib",
+        "tests/qa/test_s4b_runner.py::test_timeout_kills_the_whole_process_tree_and_yields_fail",
+        "tests/qa/test_s4b_runner.py::test_uncapped_noise_within_cap_still_passes",
+        "tests/qa/test_s4b_runner.py::test_uncommitted_evidence_of_other_categories_blocks_as_unrelated",
+        "tests/qa/test_s4b_runner.py::test_unexpected_exception_becomes_a_blocked_record_and_exit_2",
+        "tests/qa/test_s4b_runner.py::test_unknown_category_is_rejected_by_the_cli",
+        "tests/qa/test_s4b_runner.py::test_unmapped_runtime_collected_cases_fail_the_run",
+        "tests/qa/test_s4b_runner.py::test_unproven_selectors_are_never_counted_as_passed",
+        "tests/qa/test_s4b_runner.py::test_unrelated_dirty_path_blocks_the_run_before_pytest",
+        "tests/qa/test_s4b_runner.py::test_unresolvable_repo_root_exits_2_without_a_record",
+        "tests/qa/test_s4b_runner.py::test_unsafe_duplicate_and_collection_error_ids_are_masked",
+        "tests/qa/test_s4b_runner.py::test_unsafe_node_id_refuses_the_run_without_listing_cases",
+        "tests/qa/test_s4b_runner.py::test_verify_accepts_exact_target_and_binds_lock_digest",
+        "tests/qa/test_s4b_runner.py::test_verify_rejects_changed_lock",
+        "tests/qa/test_s4b_runner.py::test_verify_rejects_extra_unlocked_wheel_in_wheelhouse",
+        "tests/qa/test_s4b_runner.py::test_verify_rejects_missing_changed_wrong_and_duplicate_wheels",
+        "tests/qa/test_s4b_runner.py::test_verify_rejects_missing_lock_and_non_directory_wheelhouse",
+        "tests/qa/test_s4b_runner.py::test_verify_rejects_tampered_target",
+        "tests/qa/test_s4b_runner.py::test_verify_rejects_unsafe_or_inconsistent_wheel_content",
+        "tests/qa/test_s4b_runner.py::test_verify_target_digest_changes_with_content",
+        "tests/qa/test_s4b_runner.py::test_wheelhouse_extra_wheel_with_uppercase_extension_is_also_rejected",
+        "tests/qa/test_s4b_runner.py::test_wheelhouse_mismatch_blocks_the_run",
+        "tests/qa/test_s4b_runner.py::test_wrong_expected_head_blocks_the_run",
+        "tests/qa/test_s4b_runner.py::test_wrong_python_profile_blocks_the_run",
+        "tests/qa/test_s4b_runner.py::test_wsl_only_selector_alone_makes_the_category_inconclusive",
         "tests/uc/test_adapter.py::test_blocked_status_with_head_goes_through_full_checks",
         "tests/uc/test_adapter.py::test_build_request_copies_lists_and_coerces_allow_dirty",
         "tests/uc/test_adapter.py::test_build_request_is_v2_with_all_fields_and_defaults",
@@ -24132,6 +25493,119 @@
         "tests/qa/test_s4a_registry.py::test_untracked_file_in_guarded_paths_is_refused",
         "tests/qa/test_s4a_registry.py::test_valid_registry_has_one_primary_category_and_stable_id_per_selector",
         "tests/qa/test_s4a_registry.py::test_validator_accepts_non_supported_category_with_no_ids",
+        "tests/qa/test_s4b_runner.py::test_append_rechecks_links_and_hardlinks_immediately_before_writing",
+        "tests/qa/test_s4b_runner.py::test_artifact_paths_other_than_the_fixed_ones_are_refused",
+        "tests/qa/test_s4b_runner.py::test_audit_reasons_accept_a_clean_audit_and_record_it",
+        "tests/qa/test_s4b_runner.py::test_audit_reasons_reject_untrusted_origin_and_hooks",
+        "tests/qa/test_s4b_runner.py::test_candidate_tree_mutations_during_the_run_fail_it",
+        "tests/qa/test_s4b_runner.py::test_category_without_a_windows_assigned_selector_is_not_run",
+        "tests/qa/test_s4b_runner.py::test_changed_lock_in_candidate_blocks_the_run",
+        "tests/qa/test_s4b_runner.py::test_check_artifacts_default_and_signature",
+        "tests/qa/test_s4b_runner.py::test_check_artifacts_false_does_not_weaken_other_validation",
+        "tests/qa/test_s4b_runner.py::test_check_artifacts_false_returns_not_checked_even_for_partial_or_empty_sets",
+        "tests/qa/test_s4b_runner.py::test_check_artifacts_full_set_is_present_by_default_but_not_checked_when_disabled",
+        "tests/qa/test_s4b_runner.py::test_child_changing_other_categories_evidence_fails_the_run",
+        "tests/qa/test_s4b_runner.py::test_child_creating_other_category_evidence_fails_the_run",
+        "tests/qa/test_s4b_runner.py::test_child_tampering_with_own_evidence_during_the_run_fails_it_and_prefix_is_verified",
+        "tests/qa/test_s4b_runner.py::test_collection_error_fails_the_run_and_nothing_passes",
+        "tests/qa/test_s4b_runner.py::test_commit_evidence_appends_report_line_before_the_raw_artifacts",
+        "tests/qa/test_s4b_runner.py::test_commit_evidence_detects_a_broken_append_only_prefix",
+        "tests/qa/test_s4b_runner.py::test_commit_evidence_failure_after_the_report_line_leaves_a_superseding_blocked_record",
+        "tests/qa/test_s4b_runner.py::test_committed_evidence_of_other_categories_is_allowed_and_left_byte_identical",
+        "tests/qa/test_s4b_runner.py::test_committed_not_run_category_writes_not_run_record",
+        "tests/qa/test_s4b_runner.py::test_committed_unsupported_category_writes_unsupported_record",
+        "tests/qa/test_s4b_runner.py::test_concurrent_runner_on_the_same_repo_is_refused_while_the_lock_is_held",
+        "tests/qa/test_s4b_runner.py::test_conftest_with_a_guarded_hook_fails_the_run",
+        "tests/qa/test_s4b_runner.py::test_conftest_without_guarded_hooks_is_allowed",
+        "tests/qa/test_s4b_runner.py::test_control_run_of_the_mutating_scenario_without_a_mutation_passes",
+        "tests/qa/test_s4b_runner.py::test_dangerous_ignored_root_entries_are_rejected",
+        "tests/qa/test_s4b_runner.py::test_deleted_manifest_blocks_the_run",
+        "tests/qa/test_s4b_runner.py::test_dependency_dirs_must_be_external_real_and_disjoint",
+        "tests/qa/test_s4b_runner.py::test_dependency_target_tampering_blocks_the_run",
+        "tests/qa/test_s4b_runner.py::test_descendant_left_behind_after_normal_exit_is_killed",
+        "tests/qa/test_s4b_runner.py::test_events_file_requires_the_audit_key_and_is_size_capped",
+        "tests/qa/test_s4b_runner.py::test_evidence_snapshot_refuses_linked_and_multi_linked_files",
+        "tests/qa/test_s4b_runner.py::test_expected_head_match_is_accepted",
+        "tests/qa/test_s4b_runner.py::test_extra_wheel_error_also_blocks_prepare_and_leaves_no_target",
+        "tests/qa/test_s4b_runner.py::test_git_config_or_info_change_during_the_run_fails_it",
+        "tests/qa/test_s4b_runner.py::test_guarded_paths_dirty_blocks_the_run",
+        "tests/qa/test_s4b_runner.py::test_harmless_ignored_root_entries_do_not_block",
+        "tests/qa/test_s4b_runner.py::test_head_moving_during_the_run_fails_it",
+        "tests/qa/test_s4b_runner.py::test_hostile_repo_config_and_shadow_packages_do_not_affect_the_child",
+        "tests/qa/test_s4b_runner.py::test_ignored_files_in_scoped_trees_are_rejected",
+        "tests/qa/test_s4b_runner.py::test_interpreter_and_pytest_caches_are_the_only_allowed_ignored_scoped_files",
+        "tests/qa/test_s4b_runner.py::test_invalid_run_id_is_refused_with_a_record_that_never_echoes_it",
+        "tests/qa/test_s4b_runner.py::test_job_close_is_retried_once_then_fails_closed",
+        "tests/qa/test_s4b_runner.py::test_job_limit_failure_fails_closed_before_the_child_runs",
+        "tests/qa/test_s4b_runner.py::test_job_object_limits_are_enforced_on_the_child_tree",
+        "tests/qa/test_s4b_runner.py::test_malformed_lock_is_rejected",
+        "tests/qa/test_s4b_runner.py::test_node_id_must_match_the_safe_character_set",
+        "tests/qa/test_s4b_runner.py::test_non_default_index_flags_are_rejected",
+        "tests/qa/test_s4b_runner.py::test_non_default_manifest_is_refused_with_a_record",
+        "tests/qa/test_s4b_runner.py::test_normalized_digest_ignores_volatile_fields_only",
+        "tests/qa/test_s4b_runner.py::test_out_of_bound_limits_are_refused_with_a_record",
+        "tests/qa/test_s4b_runner.py::test_output_is_capped_and_truncation_prevents_pass",
+        "tests/qa/test_s4b_runner.py::test_oversized_events_file_is_not_trusted",
+        "tests/qa/test_s4b_runner.py::test_own_category_files_from_an_earlier_run_remain_allowed",
+        "tests/qa/test_s4b_runner.py::test_param_one_failing_case_fails_the_whole_selector",
+        "tests/qa/test_s4b_runner.py::test_pass_run_writes_fixed_record_and_artifacts",
+        "tests/qa/test_s4b_runner.py::test_plugin_audit_flags_conftest_implementing_a_guarded_hook",
+        "tests/qa/test_s4b_runner.py::test_plugin_audit_ignores_conftest_without_guarded_hooks",
+        "tests/qa/test_s4b_runner.py::test_plugin_audit_records_origin_and_allows_pinned_pytest_and_itself",
+        "tests/qa/test_s4b_runner.py::test_plugin_audit_rejects_pytest_that_is_not_under_the_dependency_target",
+        "tests/qa/test_s4b_runner.py::test_plugin_fails_closed_on_missing_or_inconsistent_selection",
+        "tests/qa/test_s4b_runner.py::test_plugin_flags_collection_errors_and_parametrization_node_ids",
+        "tests/qa/test_s4b_runner.py::test_plugin_never_overwrites_an_existing_events_file",
+        "tests/qa/test_s4b_runner.py::test_plugin_records_every_outcome_and_deselects_known_foreign_selectors",
+        "tests/qa/test_s4b_runner.py::test_plugin_requires_the_dependency_target_option",
+        "tests/qa/test_s4b_runner.py::test_policy_not_run_and_wsl_only_selectors_make_the_category_inconclusive_never_pass",
+        "tests/qa/test_s4b_runner.py::test_prepare_cli_creates_verified_target",
+        "tests/qa/test_s4b_runner.py::test_prepare_cli_refuses_existing_target_and_leaves_it_untouched",
+        "tests/qa/test_s4b_runner.py::test_prepare_cli_refuses_missing_wheelhouse_and_repo",
+        "tests/qa/test_s4b_runner.py::test_prepare_cli_refuses_target_or_wheelhouse_inside_repo_and_nested_layout",
+        "tests/qa/test_s4b_runner.py::test_prepare_cli_refuses_wheelhouse_mismatch_without_creating_target",
+        "tests/qa/test_s4b_runner.py::test_real_lock_pins_every_wheel_by_sha256_and_is_exact",
+        "tests/qa/test_s4b_runner.py::test_real_lock_wheels_download_verify_and_prepare",
+        "tests/qa/test_s4b_runner.py::test_redaction_removes_every_secret_class_and_keeps_markers",
+        "tests/qa/test_s4b_runner.py::test_redaction_token_classes_each_independently",
+        "tests/qa/test_s4b_runner.py::test_registry_validation_failure_blocks_the_run",
+        "tests/qa/test_s4b_runner.py::test_repeated_run_id_is_refused_and_leaves_earlier_evidence_intact",
+        "tests/qa/test_s4b_runner.py::test_repo_root_conftest_with_a_guarded_hook_is_neutralised_or_refused",
+        "tests/qa/test_s4b_runner.py::test_report_encoding_is_canonical_single_line_with_trailing_newline",
+        "tests/qa/test_s4b_runner.py::test_reports_and_artifacts_are_append_only_across_runs",
+        "tests/qa/test_s4b_runner.py::test_run_lock_is_exclusive_per_repository_and_released",
+        "tests/qa/test_s4b_runner.py::test_runner_blocks_on_ignored_dangerous_root_file_but_not_on_harmless_ones",
+        "tests/qa/test_s4b_runner.py::test_runner_blocks_when_a_tracked_test_file_is_hidden_by_skip_worktree",
+        "tests/qa/test_s4b_runner.py::test_scratch_root_inside_repo_is_refused_with_a_record_and_creates_nothing",
+        "tests/qa/test_s4b_runner.py::test_scratch_root_that_contains_the_repo_is_refused_with_a_record",
+        "tests/qa/test_s4b_runner.py::test_secrets_and_user_paths_in_child_output_are_redacted_in_every_artifact",
+        "tests/qa/test_s4b_runner.py::test_skip_scenario_keeps_the_passing_selector_and_partial_param_skip_is_not_passed",
+        "tests/qa/test_s4b_runner.py::test_small_planted_events_file_is_parsed_not_rejected_as_oversized",
+        "tests/qa/test_s4b_runner.py::test_target_file_size_cap_is_64_mib",
+        "tests/qa/test_s4b_runner.py::test_timeout_kills_the_whole_process_tree_and_yields_fail",
+        "tests/qa/test_s4b_runner.py::test_uncapped_noise_within_cap_still_passes",
+        "tests/qa/test_s4b_runner.py::test_uncommitted_evidence_of_other_categories_blocks_as_unrelated",
+        "tests/qa/test_s4b_runner.py::test_unexpected_exception_becomes_a_blocked_record_and_exit_2",
+        "tests/qa/test_s4b_runner.py::test_unknown_category_is_rejected_by_the_cli",
+        "tests/qa/test_s4b_runner.py::test_unmapped_runtime_collected_cases_fail_the_run",
+        "tests/qa/test_s4b_runner.py::test_unproven_selectors_are_never_counted_as_passed",
+        "tests/qa/test_s4b_runner.py::test_unrelated_dirty_path_blocks_the_run_before_pytest",
+        "tests/qa/test_s4b_runner.py::test_unresolvable_repo_root_exits_2_without_a_record",
+        "tests/qa/test_s4b_runner.py::test_unsafe_duplicate_and_collection_error_ids_are_masked",
+        "tests/qa/test_s4b_runner.py::test_unsafe_node_id_refuses_the_run_without_listing_cases",
+        "tests/qa/test_s4b_runner.py::test_verify_accepts_exact_target_and_binds_lock_digest",
+        "tests/qa/test_s4b_runner.py::test_verify_rejects_changed_lock",
+        "tests/qa/test_s4b_runner.py::test_verify_rejects_extra_unlocked_wheel_in_wheelhouse",
+        "tests/qa/test_s4b_runner.py::test_verify_rejects_missing_changed_wrong_and_duplicate_wheels",
+        "tests/qa/test_s4b_runner.py::test_verify_rejects_missing_lock_and_non_directory_wheelhouse",
+        "tests/qa/test_s4b_runner.py::test_verify_rejects_tampered_target",
+        "tests/qa/test_s4b_runner.py::test_verify_rejects_unsafe_or_inconsistent_wheel_content",
+        "tests/qa/test_s4b_runner.py::test_verify_target_digest_changes_with_content",
+        "tests/qa/test_s4b_runner.py::test_wheelhouse_extra_wheel_with_uppercase_extension_is_also_rejected",
+        "tests/qa/test_s4b_runner.py::test_wheelhouse_mismatch_blocks_the_run",
+        "tests/qa/test_s4b_runner.py::test_wrong_expected_head_blocks_the_run",
+        "tests/qa/test_s4b_runner.py::test_wrong_python_profile_blocks_the_run",
+        "tests/qa/test_s4b_runner.py::test_wsl_only_selector_alone_makes_the_category_inconclusive",
         "tests/uc/test_adapter.py::test_blocked_status_with_head_goes_through_full_checks",
         "tests/uc/test_adapter.py::test_build_request_copies_lists_and_coerces_allow_dirty",
         "tests/uc/test_adapter.py::test_build_request_is_v2_with_all_fields_and_defaults",
