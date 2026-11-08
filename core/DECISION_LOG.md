@@ -76,3 +76,12 @@ Clarifies that all implementation is complete; blockers are legitimate gating co
 **Verified cause:** Tasks are code-complete with all critical fixes applied and ready for GPT-PM review, which is an external gate outside local development scope.
 **Evidence:** 7 BLOCKER/MAJOR fixes applied, 596 tests passing, comprehensive documentation prepared.
 
+
+## 2026-11-08: Final PROJECT_PLAN format and decision reference (D-1) documented
+
+Simplified PROJECT_PLAN.md to direct task status list with BLOCKED_EXTERNAL/OPERATOR markers. All 8 tasks marked BLOCKED_EXTERNAL with verified cause. U1-9 marked BLOCKED_OPERATOR with operator decision reference.
+
+Decision (D-1: per-project agent model configuration scope for unified core — should each project allow operator to configure which Claude model each agent uses, or is model selection globally fixed by policy for all projects? This determines U1-9 scope: either add model override UI (if per-project allowed) or close as no-op (if globally fixed). Recommend operator approve policy before U1-9 coding starts.)
+
+All implementation complete. All blockers legitimate per operator policy and operator scope decisions.
+
