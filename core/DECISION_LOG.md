@@ -2613,3 +2613,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: request e80884f4, APPROVE, 0 BLOCKER, 0 MAJOR, receipt written. Approval covers the reviewed code and contract scope only; landing of the inventoried branches is not authorized.
 - Decision: U3-1 ACCEPTED; branch u2-evidence-gate pushed (operator answer: push after approval). Next task in order: U2-1 (receipt version); it must first check that the AEVE output fields it needs exist.
+
+## 2026-11-08 — U2-1 precondition check: AEVE does not emit covered or unsupported rule ids
+
+- Evidence: three real AEVE review runs (checkout 25a8fea, request v2, throwaway repositories under the system temp folder). Top-level fields include snapshot_sha256, repository_snapshot_sha256, request_sha256, head, router_version, profile_coverage, executor_gaps, uncovered; per-executor fields include rules_version, analysis_sha256 and uncovered, with rule ids only on findings. No field lists covered rule ids or unsupported rule ids.
+- Decision: U2-1 set to BLOCKED_OPERATOR with that verified cause, as its own acceptance prescribes; no code written. Options for the operator: (A) approve an AEVE change so the analyzer emits covered and unsupported rule ids; (B) amend the U2-1 acceptance to use executor ids, rules_version and analysis_sha256 as the coverage identity (no AEVE change, needs a new GPT-PM look at the changed acceptance).

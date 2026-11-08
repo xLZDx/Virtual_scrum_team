@@ -1941,3 +1941,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SUCCESS: independent internal review before the GPT round removed six defects, so the GPT-PM round was clean; the one-task scope note again named settled decisions and known limits.
 - Rule: keep internal review before the GPT round.
+
+## 2026-11-08 — U2-1 acceptance assumed a field AEVE does not have
+
+- Kind: SHORTCOMING: the plan I wrote asked for explicit covered and unsupported rule ids from AEVE; a real run shows they are not emitted. The plan itself had a clause for this case, which is why the check was done before coding. Missed by the author and by the GPT-PM plan review (neither ran AEVE); caught by the precondition check.
+- Rule: check that a required external field exists on a real response before writing acceptance that depends on it.
