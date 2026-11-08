@@ -2516,3 +2516,7 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 ## 2026-11-08 — project plan report re-rendered
 
 - Evidence: project_plan.py render rewrote both report files after U1-1 and U1-8 became ACCEPTED (7 of 9 U1 tasks accepted; U1-9 BLOCKED_OPERATOR).
+
+## 2026-11-08 — PROJECT_PLAN.md trailing blank line committed
+
+- Evidence: the plan file differed from HEAD by one trailing blank line produced by the render step; committed so the plan and reports are in sync. Push stays an explicit operator command (GH013 push protection also blocks it).
