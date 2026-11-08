@@ -1712,3 +1712,10 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - Kind: SHORTCOMING: my first draft of the plan and TDD had five internal inconsistencies (aliases, uncovered names, PASS wording, missing dependency, advisory period) that the operator had to prompt me to look for.
 - Root cause: I wrote both documents in one pass and did not cross-check requirement-to-task and term-to-term before showing them (author); no reviewer had seen them yet.
 - Rule: cross-check a plan against its TDD (terms, dependencies, counts against real command output) before presenting it.
+
+
+## 2026-11-08 — internal reviews of the plan
+
+- Kind: SUCCESS with FAILURE inside: four independent reviews found one BLOCKER-class design hole I had not seen (a findings-bearing review could become a PASS receipt) and several untestable criteria; my own cross-check earlier found only terminology problems.
+- Root cause: I designed the receipt from the gate contract and never asked what the gate does with findings (author); the cross-check compared words, not behavior.
+- Rule: for every producer-to-gate hand-off, state what the gate does with the producer worst-case output before approving the contract.
