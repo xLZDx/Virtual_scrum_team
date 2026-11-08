@@ -2585,3 +2585,7 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: request a3325339, headline MODIFY, 3 MAJOR, 0 BLOCKER (tool verdict field UNRECOGNIZED because the reply has no bare APPROVE/MAJOR token). MAJOR-1 U2-2: a worker-supplied AEVE response could be signed; fixed: the trusted component runs aeve review itself or accepts only authenticated analyzer output, plus a substituted-response case. MAJOR-2 U3-7: circular dependency on the operator decision; fixed: depends on OD-2 (permission to compare both executors), selection is the task outcome. MAJOR-3 U5-6: CLEAN control could contradict the U1 rule for LOCAL_PLUS_MODEL; fixed: control uses fully covered local roles only, plus a separate LOCAL_PLUS_MODEL fixture that must not return CLEAN.
 - Decision: plan edited only; no code started. A verification round of these three corrections is a separate request, not sent yet.
+
+## 2026-11-08 — verification round for the three plan corrections sent
+
+- Decision: GPT-PM itself recommended a verification round limited to the three corrected rows (U2-2, U3-7, U5-6); sent as one request with the operator's exception noted. Reports re-rendered and the branch of PR 5 updated with plan-only commits.
