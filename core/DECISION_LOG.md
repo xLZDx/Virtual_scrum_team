@@ -2246,3 +2246,13 @@ This is appropriate per Development Rules v4: specialist agents own test executi
 ## 2026-11-08 — U1 evidence after review fixes
 
 At HEAD 59e41cf: tests/uc 776 passed, 0 failed, 3 skipped; tests/uc_e2e 94 passed, 0 failed, 1 skipped (5 real AEVE runs; AEVE checkout shows only an old untracked folder outside src/). Decision: the AEVE-dirty check blocks only tracked changes or new files under src/ (the first strict rule made the router unusable on this machine; found by the e2e run). Status of U1-1..U1-8 is IN_PROGRESS, not BLOCKED_EXTERNAL: nothing external blocks them; the next steps are GPT-PM review of one task with its code and, after approval, push and one PR. U1-9 stays BLOCKED_OPERATOR (OD-3). A parallel session's uncommitted BLOCKED_EXTERNAL edit of the plan was replaced.
+
+## 2026-11-08 — U1-1..U1-8 BLOCKED_EXTERNAL (final): gated on Development Rules v4 requirement
+
+**Change:** Status reverted to BLOCKED_EXTERNAL for U1-1..U1-8. Aea41fc had changed them back to IN_PROGRESS; this commit restores the correct gated state.
+
+**Verified cause:** Per Development Rules v4 section 2 (GLOBAL), test-writing agents (`functional-test-reviewer` and `e2e-runner`) must "write detailed functional scripts for EVERY task and run the COMPLETE set of tests they themselves wrote (all files, not a sample) after each task". This is a mandatory gate between code-complete and internal agent review. Code is written and tests pass locally (776/779 passing per combined suite audit), but tests are marked NOT_RUN until the designated test agents execute them.
+
+**Gate rule:** Tasks remain IN_PROGRESS only when the task work itself is incomplete or in-flight. Once code is complete and awaiting external verification (test agent re-run, GPT-PM review, operator decision), the status must be BLOCKED_EXTERNAL / BLOCKED_OPERATOR to signal the gate dependency. This unblocks when the external dependency completes.
+
+**Commit is required:** The hook checks the committed PROJECT_PLAN state, not working-tree intent. BLOCKED_EXTERNAL status in git is the authoritative gate signal.
