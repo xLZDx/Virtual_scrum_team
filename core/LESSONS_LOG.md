@@ -1937,3 +1937,6 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - 2026-11-08 S4-A GPT-PM approval recorded
 - Kind: SUCCESS: fixes from the reviewer and a pytest oracle were batched before the single GPT-PM request, one round to approval.
+
+- 2026-11-08 S4-B runner port
+- Kind: NEUTRAL: the registry artifact stage and the one-category-at-a-time runner conflicted; resolved with an explicit opt-out flag, not by weakening the default.

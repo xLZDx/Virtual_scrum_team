@@ -2622,3 +2622,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: GPT-PM verdict APPROVE (0 BLOCKER, 0 MAJOR) for S4-A; functional run 274 passed on 27fc5a3; 1939 selectors over 54 modules.
 - Decision: S4-A ACCEPTED, S4 sprint IN_PROGRESS, branch s4-a-registry pushed (the single S4 sprint PR is opened at sprint end). Next task: S4-B.
+
+## 2026-11-08 — S4-B runner ported (code)
+
+- Evidence: tools/qa/run.py (Windows bounded runner with a Job Object and tree kill on timeout, registry-bound, durable BLOCKED/NOT_RUN/INCONCLUSIVE records), pytest_plugin.py, dependencies.py, prepare_dependencies.py, report.py, requirements.lock (six wheels pinned by SHA-256) ported from origin/s4-canonical-continuation; WSL and seeded-failure pieces dropped; validate_registry gained a keyword-only check_artifacts flag (default unchanged) because a partial set of evidence files made every second category run fail.
+- Decision: WSL stays NOT_RUN in every report by the operator decision; tests are written and run only by the test agents.

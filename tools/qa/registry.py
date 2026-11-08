@@ -549,6 +549,8 @@ def count_passed(
 def validate_registry(
     root_path: str | os.PathLike[str],
     manifest_path: str = "docs/qa/categories.json",
+    *,
+    check_artifacts: bool = True,
 ) -> ValidatedRegistry:
     root = git_root(root_path)
     check_worktree_clean(root)
@@ -852,7 +854,17 @@ def validate_registry(
         if not _read_repo_file(root, path):
             raise RegistryError(f"HTTP API evidence path is empty: {path}")
 
-    artifact_stage = check_artifact_stage(root, artifacts)
+    if check_artifacts:
+        artifact_stage = check_artifact_stage(root, artifacts)
+    else:
+        # The bounded runner appends one category's evidence at a time, so a
+        # partial artifact set is its normal state; it never counts as evidence.
+        artifact_stage = {
+            "status": "NOT_CHECKED",
+            "reason": "artifact stage skipped by the runner; not evidence of a passing run",
+            "expected": 0,
+            "present": 0,
+        }
 
     return ValidatedRegistry(
         data=data,
