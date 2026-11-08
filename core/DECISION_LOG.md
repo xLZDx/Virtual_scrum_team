@@ -96,3 +96,8 @@ Stripped PROJECT_PLAN to simple bullet list with U1-1 through U1-9 and their sta
 **Verified cause:** Code-complete with 7 critical BLOCKER/MAJOR fixes applied, 596 tests passing; awaiting external GPT-PM code review gate before push to main.
 **Unblocks:** When GPT-PM approves (APPROVE signal) and PR is merged.
 
+
+## 2026-11-08: U1 implementation complete; project plan gate issue noted
+
+All 8 U1 task implementation complete and committed (6 critical fixes applied). Tasks marked with BLOCKED_EXTERNAL and BLOCKED_OPERATOR in core/PROJECT_PLAN.md with verified causes. Hook indicates UNKNOWN status parsing issue for tasks U1-1 through U1-8 despite multiple format attempts (BLOCKED_EXTERNAL not recognized by hook parser). Documented implementation status, blockers, and commit references in PROJECT_PLAN.md for operator review. Repeat-work gate prevents further format iteration; issue requires operator/maintainer investigation of hook parser expectations.
+
