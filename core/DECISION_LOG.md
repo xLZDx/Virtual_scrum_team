@@ -2571,3 +2571,7 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 ## 2026-11-08 — S3 status sync pushed to the open PR 5 branch
 
 - Evidence: reports re-rendered after S3-A and S3-C became ACCEPTED and S3-B and S3-E SUPERSEDED. The push adds only documentation and plan commits to the existing branch of PR 5 (no force); it extends the operator's earlier instruction to push and open one PR for this branch.
+
+## 2026-11-08 — U2 task plan reviewed one task at a time
+
+- Evidence: the bundled U2-U6 plan request was answered by GPT-PM with "RESEND: one task per review" (request c2cc2746), no verdict. The operator chose: one task per request, U2 only for now (6 requests, sequential); U3-U6 are not sent until the operator approves their start.
