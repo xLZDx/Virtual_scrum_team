@@ -1725,3 +1725,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SHORTCOMING: I sent a six-sprint plan as one review and GPT-PM refused it with "one task per review"; I had not read its per-review protocol before sending.
 - Rule: frame a review as one named review item and state the item id on the first line of the scope note.
+
+
+## 2026-11-08 — GPT-PM plan review not accepted by protocol
+
+- Kind: SHORTCOMING: two review requests were spent on a package the PM chat does not accept; the first time I had not read its one-task-per-review rule and the second time the reframing did not change its answer.
+- Rule: send GPT-PM only a single task with code and its contract; documents are reviewed by internal agents. Do not resend after a protocol refusal.
