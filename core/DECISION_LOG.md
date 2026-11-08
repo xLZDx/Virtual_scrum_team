@@ -2567,3 +2567,7 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 ## 2026-11-08 — U2-U6 task plan sent to GPT-PM at the operator's request
 
 - Decision: on the operator's instruction ("send all the tasks you invented to GPT review and approval"), one documentation review request covers the U2-U6 task decomposition (PROJECT_PLAN.md and docs/unified/UNIFIED_CORE_TDD.md). This is a one-time explicit exception to the rule that GPT reviews only code; findings that are valid are fixed in the plan, others recorded. No U2-U6 work is started by this.
+
+## 2026-11-08 — S3 status sync pushed to the open PR 5 branch
+
+- Evidence: reports re-rendered after S3-A and S3-C became ACCEPTED and S3-B and S3-E SUPERSEDED. The push adds only documentation and plan commits to the existing branch of PR 5 (no force); it extends the operator's earlier instruction to push and open one PR for this branch.
