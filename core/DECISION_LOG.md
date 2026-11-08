@@ -2706,3 +2706,5 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 - Evidence: test agent on c8b79a9: s4b node-ID tests 14 passed; s4a subset 4 passed, 1 failed: test_real_manifest_at_head_validates -> RegistryError: evidence artifacts are partially present (present=9, absent=15). e2e-runner smoke: first 5 of 37 tests in tests/vst/test_e5_slice.py passed (other 32 NOT_RUN by operator size limit).
 - Cause: committing the evidence of the three lanes made the S4-A artifact stage see some categories present and others absent, which it rejected as a partial set, so the real repository stopped validating. Found only because the committed lane evidence met the real-manifest test.
 - Decision: the artifact stage is now all-or-nothing per category (three files of one category), categories may be present or absent independently, and a mixed state is reported as status PARTIAL (not success) with the present and absent categories. Tests to be adapted by the test agent (24 artifacts now, 8 categories).
+
+- 2026-11-09: manifest regenerated after the artifact-stage change.
