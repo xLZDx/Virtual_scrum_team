@@ -2599,3 +2599,5 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: tools/qa/registry.py and build_registry.py ported from origin/s4-canonical-continuation with an optional artifact stage (absent reports read as SKIPPED, never as success), denominator and pass counting, and a category map for main modules; functional agent: 144 tests, 143 passed, the one failure was the real-manifest test waiting for the new test file to be registered.
 - Decision: S4 starts with S4-A before the U sprints, by the operator order; the manifest is regenerated in a second commit because the builder needs committed provenance for every test file.
+
+- 2026-11-08: docs/qa/categories.json regenerated after the S4-A code commit so the registry covers the new test file.
