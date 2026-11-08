@@ -25,6 +25,7 @@ import argparse
 import hashlib
 import json
 import pathlib
+import re
 import sys
 
 MANIFEST_VERSION = 1
@@ -54,8 +55,13 @@ def sha256_file(path: pathlib.Path) -> str:
     return digest.hexdigest()
 
 
+_SESSION_ID = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$")
+
+
 def session_files(project_dir: pathlib.Path, session_id: str) -> list[pathlib.Path]:
     """Main transcript, then the sub-agent transcripts and their meta files, in stable order."""
+    if not _SESSION_ID.match(session_id):
+        raise BaselineNotRun("BAD_SESSION_ID", "a session id may contain only letters, digits, dot, dash and underscore")
     main = project_dir / f"{session_id}.jsonl"
     if not main.is_file():
         raise BaselineNotRun("SESSION_MISSING", session_id)
@@ -202,7 +208,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "build-manifest":
             ids = [s.strip() for s in args.sessions.split(",") if s.strip()]
             manifest = build_manifest(args.project_dir, ids)
-            args.out.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            try:
+                args.out.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            except OSError as exc:
+                raise BaselineNotRun("OUTPUT_UNWRITABLE", type(exc).__name__) from exc
             print(json.dumps({"status": "WRITTEN", "sessions": len(ids), "out": str(args.out)}))
             return 0
         try:
