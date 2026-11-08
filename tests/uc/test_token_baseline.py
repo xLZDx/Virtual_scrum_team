@@ -38,8 +38,7 @@ def project(tmp_path):
         line("m1", usage(10, 20, 300, 4000)),              # last usage of m1
         line("m2", usage(5, 6, 7, 8)),
         json.dumps({"type": "user", "message": {"role": "user", "content": "hi"}}),   # no usage
-        "not json at all",
-        json.dumps({"message": {"usage": usage(99, 99, 99, 99)}}),                      # usage without id
+        json.dumps([1, 2]),                                                             # not an object: ignored
     ])
     write_lines(d / "s1" / "subagents" / "agent-a1.jsonl", [line("m3", usage(100, 200, 3000, 40000))])
     (d / "s1" / "subagents" / "agent-a1.meta.json").write_text(json.dumps({"agentType": "python-reviewer"}), encoding="utf-8")
@@ -147,22 +146,60 @@ def test_unreadable_or_malformed_meta_falls_back_to_unknown_subagent(tmp_path, m
     assert roles["unknown-subagent"]["input_tokens"] == 3
 
 
+def damaged(tmp_path, lines, **counts):
+    write_lines(tmp_path / "d.jsonl", lines)
+    with pytest.raises(tb.BaselineNotRun) as info:
+        tb.compute(tb.build_manifest(tmp_path, ["d"]), tmp_path)
+    assert info.value.reason == "DAMAGED_RECORDS"
+    defects = json.loads(info.value.detail)
+    expected = {"unparsable_lines": 0, "usage_without_id": 0, "usage_missing_fields": 0, **counts}
+    assert defects == expected
+
+
+def test_clean_transcript_with_ignorable_records_is_still_measured(tmp_path):
+    write_lines(tmp_path / "d.jsonl", [json.dumps({"type": "user", "message": {"content": "x"}}), json.dumps([1]),
+                                       "", line("m1", usage(1, 2, 3, 4))])
+    assert tb.compute(tb.build_manifest(tmp_path, ["d"]), tmp_path)["status"] == "MEASURED"
+
+
+def test_unparsable_line_makes_baseline_not_run_even_with_good_usage_elsewhere(tmp_path):
+    damaged(tmp_path, [line("m1", usage(1, 1, 1, 1)), "not json at all"], unparsable_lines=1)
+
+
+def test_usage_block_without_message_id_makes_baseline_not_run(tmp_path):
+    damaged(tmp_path, [line("m1", usage(1, 1, 1, 1)), json.dumps({"message": {"usage": usage(99, 99, 99, 99)}})],
+            usage_without_id=1)
+
+
+def test_usage_not_dict_or_id_not_string_makes_baseline_not_run(tmp_path):
+    damaged(tmp_path, [json.dumps({"message": {"id": "m1", "usage": "lots"}}),
+                       json.dumps({"message": {"id": 7, "usage": usage(1, 1, 1, 1)}}), line("m9", usage(2, 0, 0, 0))],
+            usage_without_id=2)
+
+
 @pytest.mark.parametrize("bad", [-5, True, "7", 1.5, None])
-def test_invalid_token_values_contribute_zero_not_garbage(tmp_path, bad):
-    write_lines(tmp_path / "d.jsonl", [line("m1", {"input_tokens": bad, "output_tokens": 4})])
-    bucket = tb.compute(tb.build_manifest(tmp_path, ["d"]), tmp_path)["roles"]["orchestrator"]
-    assert bucket["input_tokens"] == 0 and bucket["output_tokens"] == 4 and bucket["cache_read_input_tokens"] == 0
+def test_invalid_token_value_makes_baseline_not_run(tmp_path, bad):
+    damaged(tmp_path, [line("m1", usage(bad, 4, 0, 0))], usage_missing_fields=1)
 
 
-def test_usage_not_dict_or_id_not_string_is_skipped(tmp_path):
-    write_lines(tmp_path / "d.jsonl", [
-        json.dumps({"message": {"id": "m1", "usage": "lots"}}),
-        json.dumps({"message": {"id": 7, "usage": usage(1, 1, 1, 1)}}),
-        json.dumps([1, 2]),
-        line("m9", usage(2, 0, 0, 0)),
-    ])
-    roles = tb.compute(tb.build_manifest(tmp_path, ["d"]), tmp_path)["roles"]
-    assert roles["orchestrator"]["input_tokens"] == 2 and roles["orchestrator"]["messages"] == 1
+@pytest.mark.parametrize("field", list(FIELDS))
+def test_each_missing_token_field_makes_baseline_not_run(tmp_path, field):
+    u = usage(1, 1, 1, 1)
+    del u[field]
+    damaged(tmp_path, [line("m1", u)], usage_missing_fields=1)
+
+
+def test_damage_in_a_subagent_transcript_also_makes_baseline_not_run(project):
+    with (project / "s1" / "subagents" / "agent-a2.jsonl").open("a", encoding="utf-8") as h:
+        h.write("garbage" + chr(10))
+    with pytest.raises(tb.BaselineNotRun) as info:
+        tb.compute(tb.build_manifest(project, ["s1"]), project)
+    assert info.value.reason == "DAMAGED_RECORDS"
+
+
+def test_zero_tokens_are_valid_not_damaged(tmp_path):
+    write_lines(tmp_path / "d.jsonl", [line("m1", usage(0, 0, 0, 0))])
+    assert tb.compute(tb.build_manifest(tmp_path, ["d"]), tmp_path)["roles"]["orchestrator"]["messages"] == 1
 
 
 def test_two_sessions_are_summed(tmp_path):
@@ -290,6 +327,16 @@ def test_cli_report_not_run_exit_2_with_reason(project, tmp_path):
     assert report.returncode == 2
     doc = json.loads(report.stdout)
     assert doc["status"] == "NOT_RUN" and doc["reason"] == "HASH_MISMATCH" and "roles" not in doc
+
+
+def test_cli_damaged_records_exit_2_without_numbers(project, tmp_path):
+    with (project / "s1.jsonl").open("a", encoding="utf-8") as h:
+        h.write("garbage" + chr(10))
+    out = tmp_path / "manifest.json"
+    assert run_cli("build-manifest", "--project-dir", str(project), "--sessions", "s1", "--out", str(out)).returncode == 0
+    report = run_cli("report", "--manifest", str(out), "--project-dir", str(project))
+    doc = json.loads(report.stdout)
+    assert report.returncode == 2 and doc["reason"] == "DAMAGED_RECORDS" and "roles" not in doc
 
 
 def test_cli_unreadable_manifest_not_run(project, tmp_path):

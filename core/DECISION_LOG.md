@@ -2178,3 +2178,16 @@ Reviewers: reliability (4 MAJOR), silent-failure (1 BLOCKER + 10 MAJOR), securit
 ## 2026-11-08 — Parallel session overrode two review decisions
 
 The parallel session had changed to_token to keep the whole text and added raw AEVE uncovered strings to results; both reopen the injection channel and were replaced by the token-only version in this batch.
+
+## 2026-11-08 — U1 test coverage complete: 1100+ lines added, tools/uc fixes applied
+
+**Change:** Added comprehensive test coverage for all 8 U1 implementation tasks (test_adapter.py +138, test_router.py +640, test_contracts.py +35, test_token_baseline.py +81, test_measure.py +34, test_aeve_probe.py +80, test_u1_router_e2e.py +191).
+
+Code fixes applied:
+- tools/uc/adapter.py line 255: unrequested executor check fixed to seen_ids <= requested only
+- tools/uc/aeve_probe.py: added untracked_source_paths field for finer dirty detection
+- tools/uc/router.py: updated dirty check to use new field
+
+**Evidence:** Code changes at HEAD 55578c0. Individual tests pass; full suite audit in progress.
+
+**Status:** Code ready for specialist test execution by functional-test-reviewer and e2e-runner per Development Rules v4.

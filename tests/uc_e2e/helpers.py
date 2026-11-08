@@ -87,16 +87,17 @@ def request(root: pathlib.Path, head: str, request_id: str, roles: list[str], ch
 def run_router(request_doc, work: pathlib.Path, *, state_dir: pathlib.Path | None, allowed_roots: list[str],
                cwd: pathlib.Path | None = None, aeve_root: pathlib.Path = AEVE_ROOT,
                request_file: pathlib.Path | None = None, extra_args: list[str] | None = None,
-               omit_state_dir: bool = False, with_python: bool = True) -> subprocess.CompletedProcess:
+               omit_state_dir: bool = False, with_python: bool = True,
+               table: pathlib.Path | None = None) -> subprocess.CompletedProcess:
     """Run the entry command exactly as an orchestrator would and return the completed process."""
     work.mkdir(parents=True, exist_ok=True)
     if request_file is None:
         request_file = work / f"request-{abs(hash(json.dumps(request_doc, sort_keys=True, default=str))) % 10**8}.json"
         request_file.write_text(json.dumps(request_doc), encoding="utf-8")
     argv = [PYTHON, str(ROUTER), "review", "--request", str(request_file), "--aeve-root", str(aeve_root),
-            "--table", str(TABLE)]
+            "--table", str(table or TABLE)]
     if not omit_state_dir:
-        argv += ["--state-dir", str(state_dir)]
+        argv += ["--state-dir", str(state_dir)]  # str(): a relative Path stays relative, as an orchestrator might pass it
     for item in allowed_roots:
         argv += ["--allowed-root", item]
     if with_python:

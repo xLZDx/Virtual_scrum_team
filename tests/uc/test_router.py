@@ -10,6 +10,9 @@ import pathlib
 import threading
 import time
 
+if os.name == "nt":
+    import msvcrt
+
 import pytest
 
 from uc import adapter, aeve_probe, contracts, router
@@ -24,7 +27,7 @@ FAKE_SECRET = "sk_live_FAKE0123456789SECRET"
 
 
 def req(roles, **over):
-    doc = {"request_id": "req-1", "base_revision": HEAD, "roles": list(roles)}
+    doc = {"request_id": "req-1", "base_revision": HEAD, "changed_paths": ["src/a.py", "docs/b.md"], "roles": list(roles)}
     doc.update(over)
     return doc
 
@@ -185,9 +188,9 @@ def test_iteration_id_is_reduced_to_a_token():
     assert result["iteration_id"] == "iteration-7"
 
 
-def test_results_entries_that_are_not_objects_are_ignored():
-    r = role_of(norm(["python-reviewer"], resp_for("python-reviewer", results=["junk", None, 5])), "python-reviewer")
-    assert r["status"] == "NOT_RUN"
+def test_results_entries_that_are_not_objects_are_refused_by_the_adapter_before_normalize(world):
+    body = "emit(good(results=['junk', None, 5]), 0)"
+    assert_blocked(do_review(world, body), "AEVE_CONTRACT_VIOLATION")
 
 
 # ------------------------------------------------------------------ findings
@@ -267,15 +270,30 @@ def test_bad_finding_path_is_adapter_blocked(path):
     assert info.value.reason == "BAD_FINDING_PATH"
 
 
-def test_non_object_finding_for_a_known_executor_set_is_ignored_but_non_dict_mapped_is_blocked():
-    # a non-dict entry in findings has no executor_id and is skipped (it cannot be attributed)
-    r = role_of(norm(["python-reviewer"], resp_for("python-reviewer", findings=["junk", 7])), "python-reviewer")
-    assert r["findings"] == []
+def test_non_object_findings_are_refused_by_the_adapter_before_normalize(world):
+    body = "emit(good(status='FINDINGS', findings=['junk', 7]), 3)"
+    assert_blocked(do_review(world, body), "AEVE_CONTRACT_VIOLATION")
 
 
-@pytest.mark.parametrize("bad", [-1, True, "3", None, 1.5])
-def test_bad_line_and_column_become_zero(bad):
-    f = S.aeve_finding(line=bad, column=bad)
+@pytest.mark.parametrize("name", ["line", "column"])
+@pytest.mark.parametrize("bad", [-1, True, False, "3", None, 1.5, [1], {"n": 1}])
+def test_non_int_or_negative_line_or_column_is_blocked_bad_finding_position(name, bad):
+    f = S.aeve_finding(**{name: bad})
+    with pytest.raises(adapter.AdapterBlocked) as info:
+        norm(["python-reviewer"], resp_for("python-reviewer", findings=[f]))
+    assert info.value.reason == "BAD_FINDING_POSITION"
+
+
+@pytest.mark.parametrize("line,column", [(0, 0), (1, 0), (0, 1), (10**6, 10**6)])
+def test_zero_and_large_non_negative_positions_are_kept(line, column):
+    f = S.aeve_finding(line=line, column=column)
+    r = role_of(norm(["python-reviewer"], resp_for("python-reviewer", findings=[f])), "python-reviewer")
+    assert (r["findings"][0]["line"], r["findings"][0]["column"]) == (line, column)
+
+
+def test_absent_line_and_column_default_to_zero():
+    f = S.aeve_finding()
+    del f["line"], f["column"]
     r = role_of(norm(["python-reviewer"], resp_for("python-reviewer", findings=[f])), "python-reviewer")
     assert (r["findings"][0]["line"], r["findings"][0]["column"]) == (0, 0)
 
@@ -324,6 +342,13 @@ def test_to_token_properties():
     assert router.to_token(":only-after") == "unspecified"
 
 
+def good_probe(**over):
+    record = {"aeve_head": PIN["head"], "matrix": {"digest_sha256": PIN["matrix_digest_sha256"]},
+              "tracked_dirty_paths": 0, "untracked_paths": 0, "untracked_source_paths": 0}
+    record.update(over)
+    return record
+
+
 # ------------------------------------------------------------------ review(): fixtures
 @pytest.fixture()
 def world(tmp_path, monkeypatch):
@@ -338,7 +363,7 @@ def world(tmp_path, monkeypatch):
 
     def fake_probe(aeve_root, python=None, timeout=60.0):
         probe_calls.append(str(aeve_root))
-        return {"aeve_head": PIN["head"], "matrix": {"digest_sha256": PIN["matrix_digest_sha256"]}}
+        return good_probe()
 
     monkeypatch.setattr(router.aeve_probe, "probe", fake_probe)
     return {"root": root, "aeve": aeve, "state": state, "stubs": tmp_path / "stubs", "tmp": tmp_path,
@@ -358,6 +383,32 @@ def do_review(world, body, request=None, table=None, timeout=20.0, **kw):
                          timeout=timeout, **kw)
 
 
+def hold_lock(world, request_id="req-1"):
+    """Take the router's per-request OS lock from the test, as a second process would. Returns a release callable."""
+    directory = world["state"] / "uc-requests"
+    directory.mkdir(parents=True, exist_ok=True)
+    handle = open(directory / f"{request_id}.lock", "a+b")
+    handle.seek(0)
+    msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+
+    def release():
+        handle.seek(0)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+        handle.close()
+    return release
+
+
+def assert_lock_free(world, request_id="req-1"):
+    """The lock is not held: a fresh acquisition succeeds immediately (the empty .lock file itself may remain)."""
+    directory = world["state"] / "uc-requests"
+    lock = router._RequestLock(directory, request_id)
+    lock.release()
+
+
+def fingerprint_file(world, request_id="req-1", iteration="first"):
+    return world["state"] / "uc-requests" / f"{request_id}.{iteration}.sha256"
+
+
 def assert_blocked(doc, reason):
     assert doc.get("schema_version") == contracts.BLOCKED_SCHEMA, f"expected a blocked envelope, got {str(doc)[:300]}"
     contracts.validate_blocked(doc)
@@ -375,7 +426,7 @@ def test_review_happy_path_returns_valid_result_with_mixed_roles(world):
                   "tdd-guide": "PARTIAL"}
     assert result["exit_code"] == 3
     assert len(world["probe_calls"]) == 1
-    assert not list((world["state"] / "uc-requests").glob("*.lock")), "lock must be released"
+    assert_lock_free(world)
 
 
 def test_review_sends_one_combined_sorted_unique_executor_list_and_forwards_fields(world):
@@ -454,7 +505,7 @@ def test_review_aeve_pin_mismatch_head_and_digest(world, monkeypatch):
 def test_review_table_without_pin_is_blocked(world):
     table = dict(TABLE)
     table.pop("aeve_pin")
-    assert_blocked(do_review(world, "emit(good(), 0)", table=table), "AEVE_PIN_MISMATCH")
+    assert_blocked(do_review(world, "emit(good(), 0)", table=table), "ROLE_TABLE_INVALID")
 
 
 def test_review_probe_failure_is_blocked_with_probe_reason(world, monkeypatch):
@@ -551,7 +602,7 @@ def test_same_request_id_different_content_is_refused_and_does_not_run(world):
 
 
 @pytest.mark.parametrize("change", [{"roles": ["silent-failure-hunter"]}, {"base_revision": "b" * 40},
-                                    {"purpose": "receipt"}, {"criteria": ["new"]}, {"iteration_of": "zz"}])
+                                    {"purpose": "receipt"}, {"criteria": ["new"]}])
 def test_any_content_change_with_same_id_conflicts(world, change):
     do_review(world, "emit(good(), 0)")
     assert_blocked(do_review(world, "emit(good(), 0)", role_request(world, **change)), "REQUEST_ID_CONFLICT")
@@ -570,43 +621,74 @@ def test_key_order_in_request_does_not_change_content_identity(world):
     contracts.validate_result(do_review(world, "emit(good(), 0)", reordered))
 
 
-def test_fresh_foreign_lock_makes_request_locked_and_is_left_alone(world, monkeypatch):
+def test_second_holder_of_the_request_lock_waits_then_request_locked(world, monkeypatch):
     monkeypatch.setattr(router, "LOCK_WAIT_SECONDS", 0.4)
-    lock_dir = world["state"] / "uc-requests"
-    lock_dir.mkdir(parents=True)
-    lock = lock_dir / "req-1.lock"
-    lock.write_text("held")
-    start = time.monotonic()
-    out = do_review(world, "emit(good(), 0)")
+    marker = world["tmp"] / "ran"
+    release = hold_lock(world)
+    try:
+        start = time.monotonic()
+        body = f"import pathlib; pathlib.Path({str(marker)!r}).write_text('x'); emit(good(), 0)"
+        out = do_review(world, body)
+        elapsed = time.monotonic() - start
+    finally:
+        release()
     assert_blocked(out, "REQUEST_LOCKED")
-    assert time.monotonic() - start < 5
-    assert lock.exists(), "a lock owned by someone else must not be removed"
+    assert 0.3 <= elapsed < 5, elapsed  # it waited for the lock, it did not fail instantly
+    assert not marker.exists(), "AEVE must not run without the lock"
+    assert not fingerprint_file(world).exists()
 
 
-def test_stale_lock_is_taken_over(world, monkeypatch):
-    monkeypatch.setattr(router, "LOCK_STALE_SECONDS", 1.0)
-    monkeypatch.setattr(router, "LOCK_WAIT_SECONDS", 3.0)
-    lock_dir = world["state"] / "uc-requests"
-    lock_dir.mkdir(parents=True)
-    lock = lock_dir / "req-1.lock"
+def test_lock_of_another_request_id_does_not_block(world, monkeypatch):
+    monkeypatch.setattr(router, "LOCK_WAIT_SECONDS", 0.4)
+    release = hold_lock(world, "some-other-id")
+    try:
+        contracts.validate_result(do_review(world, "emit(good(), 0)"))
+    finally:
+        release()
+
+
+def test_waiting_review_proceeds_when_the_lock_is_released_within_the_wait(world, monkeypatch):
+    monkeypatch.setattr(router, "LOCK_WAIT_SECONDS", 10.0)
+    release = hold_lock(world)
+    out = {}
+    thread = threading.Thread(target=lambda: out.update(r=do_review(world, "emit(good(), 0)")))
+    thread.start()
+    time.sleep(0.6)
+    assert "r" not in out
+    release()
+    thread.join(30)
+    contracts.validate_result(out["r"])
+
+
+def test_leftover_lock_file_from_a_dead_owner_does_not_block(world, monkeypatch):
+    """No stale-lock logic: an unlocked leftover .lock file (any age, any content) is simply acquired."""
+    monkeypatch.setattr(router, "LOCK_WAIT_SECONDS", 0.4)
+    directory = world["state"] / "uc-requests"
+    directory.mkdir(parents=True)
+    lock = directory / "req-1.lock"
     lock.write_text("dead owner")
-    old = time.time() - 120
+    old = time.time() - 100000
     os.utime(lock, (old, old))
-    out = do_review(world, "emit(good(), 0)")
-    contracts.validate_result(out)
-    assert not lock.exists()
+    contracts.validate_result(do_review(world, "emit(good(), 0)"))
+    assert lock.exists(), "the router never deletes lock files"
 
 
 def test_lock_released_after_blocked_run(world):
     assert_blocked(do_review(world, "print('bad')"), "BAD_OUTPUT")
-    assert not list((world["state"] / "uc-requests").glob("*.lock"))
+    assert_lock_free(world)
 
 
-def test_lock_released_after_conflict_does_not_remove_anything_else(world):
+def test_lock_released_after_conflict(world):
+    do_review(world, "emit(good(), 0)")
+    assert_blocked(do_review(world, "emit(good(), 0)", role_request(world, changed_paths=["b.py"])), "REQUEST_ID_CONFLICT")
+    assert_lock_free(world)
+
+
+def test_state_after_conflict_holds_only_the_original_fingerprint_and_the_lock_file(world):
     do_review(world, "emit(good(), 0)")
     do_review(world, "emit(good(), 0)", role_request(world, changed_paths=["b.py"]))  # conflict
     files = sorted(p.name for p in (world["state"] / "uc-requests").iterdir())
-    assert files == ["req-1.sha256"]
+    assert files == ["req-1.first.sha256", "req-1.lock"]
 
 
 def test_concurrent_same_id_same_content_is_serialized_not_overlapped(world):
@@ -635,29 +717,108 @@ def test_concurrent_same_id_same_content_is_serialized_not_overlapped(world):
     assert len(spans) == 2 and spans[0][1] <= spans[1][0] + 0.05, f"runs overlapped: {spans}"
 
 
-def test_request_id_conflict_check_is_made_under_the_lock(tmp_path, monkeypatch):
-    """Interleaving: B (different content) checks the seen file before A has written it, then waits for A's lock.
-    After A releases, B must still be refused; today B overwrites the fingerprint and proceeds."""
+def test_request_id_conflict_check_is_made_under_the_lock(world, monkeypatch):
+    """B (different content) waits for A's lock; A records its fingerprint and releases; B must then be refused."""
     monkeypatch.setattr(router, "LOCK_WAIT_SECONDS", 10.0)
-    directory = tmp_path / "state" / "uc-requests"
-    directory.mkdir(parents=True)
-    lock = directory / "r.lock"
-    lock.write_text("A holds the lock but has not written its fingerprint yet")
-    outcome = {}
-
-    def b():
-        try:
-            outcome["lock"] = router._acquire(tmp_path / "state", "r", "2" * 64)
-        except adapter.AdapterBlocked as exc:
-            outcome["error"] = exc.reason
-
-    thread = threading.Thread(target=b)
+    marker = world["tmp"] / "b-ran"
+    release = hold_lock(world)
+    out = {}
+    body = f"import pathlib; pathlib.Path({str(marker)!r}).write_text('x'); emit(good(), 0)"
+    thread = threading.Thread(target=lambda: out.update(r=do_review(world, body, role_request(world, changed_paths=["b.py"]))))
     thread.start()
-    time.sleep(0.4)  # B has done its (empty) seen-file check and is polling the lock
-    (directory / "r.sha256").write_text("1" * 64)  # A writes its fingerprint
-    lock.unlink()  # A finishes
-    thread.join(10)
-    assert outcome.get("error") == "REQUEST_ID_CONFLICT", outcome
+    time.sleep(0.5)  # B is now polling the lock
+    fingerprint_file(world).write_text("1" * 64)  # A records its content
+    release()
+    thread.join(30)
+    assert_blocked(out["r"], "REQUEST_ID_CONFLICT")
+    assert not marker.exists()
+    assert fingerprint_file(world).read_text() == "1" * 64, "B must not overwrite A's fingerprint"
+
+
+# ------------------------------------------------------------------ fingerprint file lifecycle
+def content_sha(request):
+    return hashlib.sha256(json.dumps(request, sort_keys=True).encode("utf-8")).hexdigest()
+
+
+def test_fingerprint_is_written_after_success_named_by_id_and_first_iteration(world):
+    request = role_request(world)
+    do_review(world, "emit(good(), 0)", request)
+    assert fingerprint_file(world).read_text(encoding="utf-8") == content_sha(request)
+    assert not list((world["state"] / "uc-requests").glob("*.tmp")), "atomic write leaves no temporary file"
+
+
+def test_fingerprint_for_iteration_is_named_by_iteration_of(world):
+    request = role_request(world, iteration_of="req-0")
+    do_review(world, "emit(good(), 0)", request)
+    assert fingerprint_file(world, iteration="req-0").read_text(encoding="utf-8") == content_sha(request)
+    assert not fingerprint_file(world).exists()
+
+
+@pytest.mark.parametrize("body,reason", [("print('bad')", "BAD_OUTPUT"), ("emit(good(), 2)", "AEVE_EXIT"),
+                                         ("emit(good(head='e' * 40), 0)", "HEAD_MOVED")])
+def test_blocked_first_run_does_not_record_a_fingerprint_so_the_id_is_not_poisoned(world, body, reason):
+    assert_blocked(do_review(world, body), reason)
+    assert not fingerprint_file(world).exists()
+    # the same id with different content is now a legitimate first run
+    contracts.validate_result(do_review(world, "emit(good(), 0)", role_request(world, changed_paths=["a.py", "b.py"])))
+
+
+def test_pin_mismatch_leaves_no_fingerprint(world, monkeypatch):
+    monkeypatch.setattr(router.aeve_probe, "probe", lambda *a, **k: good_probe(aeve_head="9" * 40))
+    assert_blocked(do_review(world, "emit(good(), 0)"), "AEVE_PIN_MISMATCH")
+    assert not fingerprint_file(world).exists()
+
+
+def test_uncovered_only_request_that_returns_a_result_records_its_fingerprint(world):
+    request = role_request(world, roles=["business-analyst"])
+    contracts.validate_result(do_review(world, "emit(good(), 0)", request))
+    assert fingerprint_file(world).read_text(encoding="utf-8") == content_sha(request)
+
+
+@pytest.mark.parametrize("stored", ["", "   \n", "garbage", "xyz" * 30, "A" * 64, "1" * 63, "1" * 65, "\x00\x01"])
+def test_empty_or_garbled_fingerprint_counts_as_absent_and_is_repaired(world, stored):
+    path = fingerprint_file(world)
+    path.parent.mkdir(parents=True)
+    path.write_text(stored, encoding="utf-8")
+    request = role_request(world)
+    contracts.validate_result(do_review(world, "emit(good(), 0)", request))
+    assert path.read_text(encoding="utf-8") == content_sha(request)
+
+
+def test_non_utf8_fingerprint_counts_as_absent(world):
+    path = fingerprint_file(world)
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"\xff\xfe\x00garbage")
+    contracts.validate_result(do_review(world, "emit(good(), 0)"))
+
+
+def test_valid_fingerprint_of_other_content_conflicts_and_is_left_untouched(world):
+    path = fingerprint_file(world)
+    path.parent.mkdir(parents=True)
+    path.write_text("a" * 64, encoding="utf-8")
+    marker = world["tmp"] / "ran"
+    body = f"import pathlib; pathlib.Path({str(marker)!r}).write_text('x'); emit(good(), 0)"
+    assert_blocked(do_review(world, body), "REQUEST_ID_CONFLICT")
+    assert path.read_text(encoding="utf-8") == "a" * 64 and not marker.exists()
+
+
+def test_same_id_with_a_different_iteration_of_is_allowed_even_with_different_content(world):
+    contracts.validate_result(do_review(world, "emit(good(), 0)", role_request(world)))
+    second = role_request(world, iteration_of="req-0", changed_paths=["a.py", "b.py"])
+    contracts.validate_result(do_review(world, "emit(good(), 0)", second))
+    assert fingerprint_file(world).exists() and fingerprint_file(world, iteration="req-0").exists()
+
+
+def test_same_id_and_same_iteration_with_different_content_conflicts(world):
+    do_review(world, "emit(good(), 0)", role_request(world, iteration_of="req-0"))
+    out = do_review(world, "emit(good(), 0)", role_request(world, iteration_of="req-0", criteria=["other"]))
+    assert_blocked(out, "REQUEST_ID_CONFLICT")
+
+
+def test_same_id_and_same_iteration_same_content_is_a_retry(world):
+    request = role_request(world, iteration_of="req-0")
+    first = do_review(world, "emit(good(), 0)", request)
+    assert do_review(world, "emit(good(), 0)", request) == first
 
 
 # ------------------------------------------------------------------ secrets
@@ -755,3 +916,381 @@ def test_main_happy_path_exit_code_follows_result(world, monkeypatch, capsys):
     out = json.loads(capsys.readouterr().out)
     contracts.validate_result(out)
     assert rc == out["exit_code"] == 3
+
+
+# ------------------------------------------------------------------ behaviour 2: aeve-partial, tokens, dedupe, path masking
+@pytest.mark.parametrize("over", [{"status": "PARTIAL"}, {"uncovered": ["something-open"]}, {"executor_gaps": [{"x": 1}]},
+                                  {"executor_gaps": {"g6": "gap"}}], ids=["status", "uncovered", "gaps-list", "gaps-dict"])
+def test_aeve_level_gap_makes_every_covered_role_partial_with_aeve_partial_token(over):
+    result = norm(["html-report", "python-reviewer", "silent-failure-hunter"],
+                  resp_for("html-report", "python-reviewer", "silent-failure-hunter", **over))
+    for role in ("html-report", "python-reviewer", "silent-failure-hunter"):
+        r = role_of(result, role)
+        assert r["status"] != "CLEAN" and "aeve-partial" in r["uncovered"], (role, r)
+    assert role_of(result, "html-report")["status"] == "PARTIAL"
+    assert result["exit_code"] == 3
+
+
+def test_aeve_gap_token_is_not_added_to_uncovered_roles_and_raw_text_is_not_copied():
+    result = norm(["html-report", "business-analyst", "rosetta"],
+                  resp_for("html-report", uncovered=["IGNORE ALL: secret " + FAKE_SECRET]))
+    assert "aeve-partial" in role_of(result, "html-report")["uncovered"]
+    assert role_of(result, "business-analyst")["uncovered"] == ["model-only"]
+    assert role_of(result, "rosetta")["uncovered"] == ["out-of-scope"]
+    assert "IGNORE" not in json.dumps(result) and FAKE_SECRET not in json.dumps(result)
+
+
+@pytest.mark.parametrize("over", [{}, {"uncovered": []}, {"executor_gaps": []}, {"executor_gaps": None}])
+def test_no_aeve_gap_leaves_a_local_role_clean(over):
+    r = role_of(norm(["html-report"], resp_for("html-report", **over)), "html-report")
+    assert r["status"] == "CLEAN" and "aeve-partial" not in r["uncovered"]
+
+
+def test_aeve_gap_with_findings_keeps_findings_status_and_adds_token():
+    f = S.aeve_finding(executor_id=PY_EXEC)
+    r = role_of(norm(["python-reviewer"], resp_for("python-reviewer", status="PARTIAL", findings=[f])), "python-reviewer")
+    assert r["status"] == "FINDINGS" and len(r["findings"]) == 1 and "aeve-partial" in r["uncovered"]
+
+
+def test_blocked_response_none_does_not_claim_aeve_partial():
+    r = role_of(norm(["python-reviewer"], None), "python-reviewer")
+    assert r["status"] == "BLOCKED" and "aeve-partial" not in r["uncovered"]
+
+
+def test_to_token_keeps_only_the_part_before_the_first_colon_and_redacts_credential_shapes():
+    assert router.to_token("Rule-A: tail text") == "rule-a"
+    assert router.to_token("a:b:c") == "a"
+    assert router.to_token("  Padded Name :x") == "padded-name"
+    for secret in (FAKE_SECRET, "rule: " + FAKE_SECRET, "AKIAABCDEFGH1234", "ghp_abcdefghij123", "password=abcdefgh12",
+                   "api_key=abcdefgh1234", "-----BEGIN PRIVATE KEY", "xoxb-123-abc", "AIzaSyABCDEFGHIJK", "sk-abcdefghijklmnop1234"):
+        assert router.to_token(secret) == "redacted", secret
+    assert router.to_token(FAKE_SECRET, "fb") == "redacted"
+    assert router.has_secret(FAKE_SECRET) and not router.has_secret("plain text")
+
+
+def test_rule_ids_that_differ_only_after_a_colon_stay_separate_findings():
+    fs = [S.aeve_finding(rule_id="py-rule: first variant"), S.aeve_finding(rule_id="py-rule: second variant")]
+    r = role_of(norm(["python-reviewer"], resp_for("python-reviewer", findings=fs)), "python-reviewer")
+    assert len(r["findings"]) == 2
+    assert {f["rule_id"] for f in r["findings"]} == {"py-rule"}
+
+
+def test_identical_raw_rule_id_still_deduplicates():
+    fs = [S.aeve_finding(rule_id="py-rule: same"), S.aeve_finding(rule_id="py-rule: same")]
+    assert len(role_of(norm(["python-reviewer"], resp_for("python-reviewer", findings=fs)), "python-reviewer")["findings"]) == 1
+
+
+@pytest.mark.parametrize("order", [("MINOR", "BLOCKER"), ("BLOCKER", "MINOR"), ("NIT", "MAJOR", "MINOR"),
+                                   ("MAJOR", "NIT", "BLOCKER", "MINOR")])
+def test_dedupe_keeps_the_most_severe_report_whatever_the_order(order):
+    fs = [S.aeve_finding(severity=sev) for sev in order]
+    r = role_of(norm(["python-reviewer"], resp_for("python-reviewer", findings=fs)), "python-reviewer")
+    expected = min(order, key=lambda x: router.SEVERITY_RANK[x])
+    assert [f["severity"] for f in r["findings"]] == [expected]
+
+
+def test_dedupe_across_executors_keeps_most_severe_and_different_evidence_is_kept():
+    a, b = execs_of("functional-test-reviewer")
+    fs = [S.aeve_finding(executor_id=a, severity="NIT"), S.aeve_finding(executor_id=b, severity="MAJOR"),
+          S.aeve_finding(executor_id=b, severity="MAJOR", evidence={"line_sha256": "d" * 64})]
+    r = role_of(norm(["functional-test-reviewer"], resp_for("functional-test-reviewer", findings=fs)), "functional-test-reviewer")
+    assert sorted((f["severity"], f["evidence_hash"]) for f in r["findings"]) == [("MAJOR", S.HASH_C), ("MAJOR", "d" * 64)]
+
+
+def shown(file, changed=("src/a.py", "docs/b.md")):
+    result = norm(["python-reviewer"], resp_for("python-reviewer", findings=[S.aeve_finding(file=file)]),
+                  changed_paths=list(changed))
+    return role_of(result, "python-reviewer")["findings"][0]["path"]
+
+
+def masked(file):
+    return "masked/" + hashlib.sha256(file.encode("utf-8")).hexdigest()[:16]
+
+
+def test_requested_plain_path_is_shown_verbatim():
+    assert shown("src/a.py") == "src/a.py" and shown("docs/b.md") == "docs/b.md"
+
+
+def test_path_not_in_changed_paths_is_masked_even_when_plain():
+    assert shown("src/other.py") == masked("src/other.py")
+
+
+def test_masked_digest_is_stable_16_hex_and_differs_by_path():
+    one, two = shown("src/x1.py"), shown("src/x2.py")
+    assert one != two and len(one) == len("masked/") + 16 and shown("src/x1.py") == one
+
+
+@pytest.mark.parametrize("name", ["docs/with space.md", "docs/caf\u00e9.md", "docs/tag\U000E0041.md", "docs/a\u200bb.md", "docs/a;b.md",
+                                  "docs/a\'b.md", "docs/$x.md", "docs/a b/c.md"])
+def test_requested_path_outside_the_safe_alphabet_is_masked(name):
+    try:
+        out = shown(name, changed=("src/a.py", name))
+    except adapter.AdapterBlocked as exc:  # a stricter path validator may refuse it outright; it must not pass through
+        assert exc.reason in ("BAD_FINDING_PATH", "INVALID_REQUEST")
+        return
+    assert out == masked(name)
+    assert name not in out
+
+
+def test_credential_shaped_requested_path_is_masked():
+    name = f"config/{FAKE_SECRET}.env"
+    out = shown(name, changed=("src/a.py", name))
+    assert out == masked(name) and FAKE_SECRET not in out
+
+
+def test_requested_path_boundary_120_chars_shown_121_masked():
+    ok = "d/" + "a" * 118
+    long_ = "d/" + "a" * 119
+    assert len(ok) == 120 and len(long_) == 121
+    assert shown(ok, changed=(ok,)) == ok
+    assert shown(long_, changed=(long_,)) == masked(long_)
+
+
+@pytest.mark.parametrize("name", ["a@b+c/x_y-z.py", "A.B/C-d.TXT"])
+def test_requested_path_with_allowed_punctuation_is_shown(name):
+    assert shown(name, changed=(name,)) == name
+
+
+def test_masked_and_shown_paths_satisfy_the_result_contract():
+    for name in ("src/a.py", "src/zzz.py"):
+        norm(["python-reviewer"], resp_for("python-reviewer", findings=[S.aeve_finding(file=name)]))
+
+
+# ------------------------------------------------------------------ behaviour 3: review() guards
+def test_review_bad_finding_position_from_aeve_is_blocked_envelope(world):
+    finding = S.aeve_finding(executor_id=PY_EXEC, file="a.py", line=-1)
+    body = f"emit(good(status='FINDINGS', findings=[{finding!r}]), 3)"
+    assert_blocked(do_review(world, body), "BAD_FINDING_POSITION")
+
+
+def test_review_masks_unrequested_and_credential_paths_end_to_end(world):
+    findings = [S.aeve_finding(executor_id=PY_EXEC, file="a.py"), S.aeve_finding(executor_id=PY_EXEC, file="not-requested.py"),
+                S.aeve_finding(executor_id=PY_EXEC, file=f"{FAKE_SECRET}.env")]
+    body = f"emit(good(status='FINDINGS', findings={findings!r}), 3)"
+    result = do_review(world, body)
+    contracts.validate_result(result)
+    paths = sorted(f["path"] for f in result["roles"][0]["findings"])
+    assert "a.py" in paths and sum(x.startswith("masked/") for x in paths) == 2
+    assert "not-requested" not in json.dumps(result) and FAKE_SECRET not in json.dumps(result)
+
+
+def test_review_aeve_partial_status_end_to_end_is_never_clean(world):
+    body = "emit(good(status='PARTIAL'), 3)"
+    result = do_review(world, body, role_request(world, roles=["html-report"]))
+    contracts.validate_result(result)
+    assert result["roles"][0]["status"] == "PARTIAL" and result["exit_code"] == 3
+
+
+def test_review_clean_local_role_exit_zero_end_to_end(world):
+    result = do_review(world, "emit(good(), 0)", role_request(world, roles=["html-report"]))
+    contracts.validate_result(result)
+    assert result["roles"][0]["status"] == "CLEAN" and result["exit_code"] == 0
+
+
+BAD_TABLES = {
+    "none": lambda t: None,
+    "list": lambda t: ["x"],
+    "string": lambda t: "table",
+    "entries-not-list": lambda t: dict(t, entries={"a": 1}),
+    "entries-missing": lambda t: {k: v for k, v in t.items() if k != "entries"},
+    "pin-missing": lambda t: {k: v for k, v in t.items() if k != "aeve_pin"},
+    "pin-not-dict": lambda t: dict(t, aeve_pin="x"),
+    "entry-not-dict": lambda t: dict(t, entries=["python-reviewer"]),
+    "entry-without-name": lambda t: dict(t, entries=[{k: v for k, v in e.items() if k != "name"} for e in t["entries"]]),
+    "bad-class": lambda t: dict(t, entries=[dict(e, **{"class": "WEIRD"}) for e in t["entries"]]),
+    "bad-coverage": lambda t: dict(t, entries=[dict(e, coverage_state="MAYBE") for e in t["entries"]]),
+    "executors-not-list": lambda t: dict(t, entries=[dict(e, executors="g2.x") for e in t["entries"]]),
+    "executor-not-str": lambda t: dict(t, entries=[dict(e, executors=[1]) for e in t["entries"]]),
+    "canonical-not-str": lambda t: dict(t, entries=[dict(e, canonical_role=None) for e in t["entries"]]),
+}
+
+
+@pytest.mark.parametrize("name", sorted(BAD_TABLES))
+def test_malformed_table_is_role_table_invalid_not_a_crash(world, name):
+    marker = world["tmp"] / "ran"
+    body = f"import pathlib; pathlib.Path({str(marker)!r}).write_text('x'); emit(good(), 0)"
+    assert_blocked(do_review(world, body, table=BAD_TABLES[name](TABLE) if name != "none" else _NoTable()), "ROLE_TABLE_INVALID")
+    assert not marker.exists() and world["probe_calls"] == []
+
+
+class _NoTable:
+    """do_review treats a falsy table as 'use the default'; this is truthy but not a dict."""
+
+    def __bool__(self):
+        return True
+
+
+def inconsistent_entry(**over):
+    entry = next(dict(e) for e in TABLE["entries"] if e["coverage_state"] == "COVERED_PARTIAL" and e["class"] == "LOCAL_PLUS_MODEL")
+    entry.update(over)
+    return entry
+
+
+@pytest.mark.parametrize("over", [{"class": "MODEL_ONLY"}, {"class": "OUT_OF_SCOPE"}, {"executors": []}],
+                         ids=["model-only-covered", "out-of-scope-covered", "covered-without-executors"])
+def test_covered_partial_entry_that_cannot_run_is_role_table_invalid(world, over):
+    table = dict(TABLE, entries=[*TABLE["entries"], inconsistent_entry(name="zz-extra", canonical_role="zz-extra", **over)])
+    out = do_review(world, "emit(good(), 0)", role_request(world, roles=["python-reviewer"]), table=table)
+    assert_blocked(out, "ROLE_TABLE_INVALID")
+
+
+def test_table_is_checked_even_when_no_requested_role_uses_the_bad_entry(world):
+    table = dict(TABLE, entries=[*TABLE["entries"], inconsistent_entry(name="zz-extra", canonical_role="zz-extra", executors=[])])
+    assert_blocked(do_review(world, "emit(good(), 0)", role_request(world, roles=["business-analyst"]), table=table),
+                   "ROLE_TABLE_INVALID")
+
+
+def test_check_table_accepts_the_committed_table_and_not_covered_entries_without_executors():
+    router.check_table(TABLE)
+    router.check_table(dict(TABLE, entries=[inconsistent_entry(coverage_state="NOT_COVERED_NO_EXECUTOR", executors=[],
+                                                              **{"class": "MODEL_ONLY"})]))
+
+
+def test_main_table_file_with_wrong_json_shape_is_a_blocked_envelope(tmp_path, capsys):
+    t = tmp_path / "t.json"
+    t.write_text("[1, 2]", encoding="utf-8")
+    root = tmp_path / "repo"
+    root.mkdir()
+    r = tmp_path / "r.json"
+    r.write_text(json.dumps(S.valid_request(str(root), changed_paths=["a.py"])), encoding="utf-8")
+    rc = router.main(["review", "--request", str(r), "--aeve-root", str(tmp_path), "--table", str(t),
+                      "--state-dir", str(tmp_path / "state"), "--allowed-root", str(root)])
+    assert rc == 2
+    assert_blocked(json.loads(capsys.readouterr().out), "ROLE_TABLE_INVALID")
+
+
+def test_main_request_file_with_wrong_json_shape_is_a_blocked_envelope(tmp_path, capsys):
+    r = tmp_path / "r.json"
+    r.write_text("[1, 2]", encoding="utf-8")
+    rc = router.main(["review", "--request", str(r), "--aeve-root", str(tmp_path), "--table", str(S.TABLE_PATH),
+                      "--state-dir", str(tmp_path / "state"), "--allowed-root", str(tmp_path)])
+    assert rc == 2
+    assert_blocked(json.loads(capsys.readouterr().out), "INVALID_REQUEST")
+
+
+# ---- state_dir
+def test_relative_state_dir_is_bad_state_dir(world):
+    out = router.review(role_request(world), table=TABLE, aeve_root=world["aeve"], state_dir=pathlib.Path("relative/state"),
+                        allowed_roots=[str(world["root"])], command_prefix=S.write_stub(world["stubs"], "emit(good(), 0)"))
+    assert_blocked(out, "BAD_STATE_DIR")
+    assert world["probe_calls"] == [] and not pathlib.Path("relative").exists()
+
+
+@pytest.mark.parametrize("sub", ["", "state", "deep/er/state"])
+def test_state_dir_inside_or_equal_to_an_allowed_root_is_bad_state_dir(world, sub):
+    state = world["root"] / sub if sub else world["root"]
+    out = router.review(role_request(world), table=TABLE, aeve_root=world["aeve"], state_dir=state,
+                        allowed_roots=[str(world["root"])], command_prefix=S.write_stub(world["stubs"], "emit(good(), 0)"))
+    assert_blocked(out, "BAD_STATE_DIR")
+    assert not (world["root"] / "uc-requests").exists() and world["probe_calls"] == []
+
+
+def test_state_dir_inside_any_of_several_allowed_roots_is_refused(world):
+    other = world["tmp"] / "other-root"
+    other.mkdir()
+    out = router.review(role_request(world), table=TABLE, aeve_root=world["aeve"], state_dir=other / "st",
+                        allowed_roots=[str(world["root"]), str(other)], command_prefix=S.write_stub(world["stubs"], "emit(good(), 0)"))
+    assert_blocked(out, "BAD_STATE_DIR")
+
+
+def test_state_dir_in_a_sibling_whose_name_merely_starts_with_the_root_name_is_allowed(world):
+    sibling = world["tmp"] / "repo2" / "state"  # shares the textual prefix "repo" but is not inside it
+    out = router.review(role_request(world), table=TABLE, aeve_root=world["aeve"], state_dir=sibling,
+                        allowed_roots=[str(world["root"])], command_prefix=S.write_stub(world["stubs"], "emit(good(), 0)"))
+    contracts.validate_result(out)
+
+
+def test_state_dir_with_dotdot_that_resolves_into_the_root_is_refused(world):
+    sneaky = world["tmp"] / "elsewhere" / ".." / "repo" / "state"
+    out = router.review(role_request(world), table=TABLE, aeve_root=world["aeve"], state_dir=sneaky,
+                        allowed_roots=[str(world["root"])], command_prefix=S.write_stub(world["stubs"], "emit(good(), 0)"))
+    assert_blocked(out, "BAD_STATE_DIR")
+
+
+# ---- dirty AEVE checkout
+@pytest.mark.parametrize("over", [{"tracked_dirty_paths": 1}, {"untracked_source_paths": 1},
+                                  {"tracked_dirty_paths": 3, "untracked_source_paths": 2, "untracked_paths": 2}])
+def test_dirty_aeve_checkout_is_blocked_before_any_review_runs(world, monkeypatch, over):
+    monkeypatch.setattr(router.aeve_probe, "probe", lambda *a, **k: good_probe(**over))
+    marker = world["tmp"] / "ran"
+    body = f"import pathlib; pathlib.Path({str(marker)!r}).write_text('x'); emit(good(), 0)"
+    assert_blocked(do_review(world, body), "AEVE_CHECKOUT_DIRTY")
+    assert not marker.exists() and not fingerprint_file(world).exists()
+
+
+def test_missing_untracked_source_key_counts_as_dirty(world, monkeypatch):
+    record = good_probe()
+    del record["untracked_source_paths"]
+    monkeypatch.setattr(router.aeve_probe, "probe", lambda *a, **k: record)
+    assert_blocked(do_review(world, "emit(good(), 0)"), "AEVE_CHECKOUT_DIRTY")
+
+
+def test_untracked_files_outside_src_do_not_block(world, monkeypatch):
+    monkeypatch.setattr(router.aeve_probe, "probe", lambda *a, **k: good_probe(untracked_paths=5, untracked_source_paths=0))
+    contracts.validate_result(do_review(world, "emit(good(), 0)"))
+
+
+def test_clean_aeve_checkout_proceeds(world, monkeypatch):
+    monkeypatch.setattr(router.aeve_probe, "probe", lambda *a, **k: good_probe())
+    contracts.validate_result(do_review(world, "emit(good(), 0)"))
+
+
+def test_pin_mismatch_is_reported_before_dirty(world, monkeypatch):
+    monkeypatch.setattr(router.aeve_probe, "probe", lambda *a, **k: good_probe(aeve_head="9" * 40, untracked_source_paths=4))
+    assert_blocked(do_review(world, "emit(good(), 0)"), "AEVE_PIN_MISMATCH")
+
+
+# ---- unexpected exceptions never escape
+@pytest.mark.parametrize("exc", [RuntimeError("boom " + FAKE_SECRET), TypeError("bad"), KeyError("k"), ZeroDivisionError(),
+                                 RecursionError(), AttributeError("x")])
+def test_unexpected_exception_in_normalize_is_internal_error_envelope(world, monkeypatch, exc):
+    def boom(*a, **k):
+        raise exc
+    monkeypatch.setattr(router, "normalize", boom)
+    out = do_review(world, "emit(good(), 0)")
+    assert_blocked(out, "INTERNAL_ERROR")
+    assert out["detail"] == type(exc).__name__ and FAKE_SECRET not in json.dumps(out)
+    assert not fingerprint_file(world).exists(), "a crashed run must not record a fingerprint"
+    assert_lock_free(world)
+
+
+def test_unexpected_exception_in_adapter_is_internal_error_envelope(world, monkeypatch):
+    def boom(*a, **k):
+        raise TypeError("not an AdapterBlocked")
+    monkeypatch.setattr(router.adapter, "run_review", boom)
+    assert_blocked(do_review(world, "emit(good(), 0)"), "INTERNAL_ERROR")
+    assert_lock_free(world)
+
+
+def test_unexpected_exception_in_probe_is_internal_error_envelope(world, monkeypatch):
+    def boom(*a, **k):
+        raise RuntimeError("probe exploded")
+    monkeypatch.setattr(router.aeve_probe, "probe", boom)
+    assert_blocked(do_review(world, "emit(good(), 0)"), "INTERNAL_ERROR")
+
+
+def test_unexpected_exception_while_writing_the_fingerprint_is_internal_error(world, monkeypatch):
+    def boom(*a, **k):
+        raise PermissionError("disk")
+    monkeypatch.setattr(router, "_write_fingerprint", boom)
+    assert_blocked(do_review(world, "emit(good(), 0)"), "INTERNAL_ERROR")
+
+
+def test_unexpected_exception_in_request_validation_is_invalid_request_not_a_crash(world, monkeypatch):
+    def boom(*a, **k):
+        raise RuntimeError("validator exploded")
+    monkeypatch.setattr(router.contracts, "validate_request", boom)
+    assert_blocked(do_review(world, "emit(good(), 0)"), "INVALID_REQUEST")
+
+
+def test_main_converts_internal_error_to_exit_2_with_json_not_a_traceback(world, monkeypatch, capsys):
+    monkeypatch.setattr(router, "normalize", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("x")))
+    prefix = S.write_stub(world["stubs"], "emit(good(), 0)")
+    real_run = adapter.run_review
+    monkeypatch.setattr(router.adapter, "run_review", lambda *a, **k: real_run(*a, **dict(k, command_prefix=prefix)))
+    p = world["tmp"] / "r.json"
+    p.write_text(json.dumps(role_request(world)), encoding="utf-8")
+    rc = router.main(["review", "--request", str(p), "--aeve-root", str(world["aeve"]), "--table", str(S.TABLE_PATH),
+                      "--state-dir", str(world["state"]), "--allowed-root", str(world["root"])])
+    assert rc == 2
+    assert_blocked(json.loads(capsys.readouterr().out), "INTERNAL_ERROR")

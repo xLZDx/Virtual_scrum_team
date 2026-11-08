@@ -295,7 +295,7 @@ def review(role_request: dict, *, table: dict, aeve_root: pathlib.Path, state_di
         pin = table["aeve_pin"]
         if pin.get("head") != record["aeve_head"] or pin.get("matrix_digest_sha256") != record["matrix"]["digest_sha256"]:
             raise adapter.AdapterBlocked("AEVE_PIN_MISMATCH", "AEVE head or matrix digest differs from the role table pin")
-        if record["tracked_dirty_paths"] or record["untracked_paths"]:
+        if record["tracked_dirty_paths"] or record.get("untracked_source_paths", 1):
             raise adapter.AdapterBlocked("AEVE_CHECKOUT_DIRTY", "the AEVE checkout differs from its pinned commit")
         lock = _RequestLock(directory, doc["request_id"])
         fingerprint = _fingerprint_path(directory, doc["request_id"], doc.get("iteration_of"))

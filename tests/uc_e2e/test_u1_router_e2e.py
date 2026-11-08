@@ -1,13 +1,15 @@
 """U1-6 / U1-7 end-to-end tests: the single entry command `tools/uc/router.py review`.
 
-Real AEVE is invoked at most FIVE times in this module (session fixtures below):
+Real AEVE is touched by at most FIVE router runs in this module (session fixtures below; every
+run that passes request validation also runs the AEVE probe: doctor + matrix):
   A  mixed roles on a seeded-defect repository      (fresh state dir S_A)
   B  hostile repository (json.py, aeve/ package)    (fresh state dir S_B)
   C  same request_id, different content, state S_A  (probe only, refused before any review)
-  D  fake base_revision of 40 zeros                 (fresh state dir S_D)
-  E  identical resubmission of A, state S_A         (retryability)
+  D  fake base_revision of 40 zeros                 (fresh state dir S_D; blocked, leaves no fingerprint)
+  E  same request_id as D with the real head        (state S_D; retry after a blocked run returns a result)
 All other tests are refusals that return before AEVE is touched; they point --aeve-root at a
 directory that does not exist, so a test that reached AEVE would fail with a different reason.
+Fingerprint files are <request_id>.<iteration_of or first>.sha256 and exist only after a result.
 """
 
 from __future__ import annotations
@@ -28,6 +30,8 @@ pytestmark = pytest.mark.skipif(not (h.AEVE_ROOT / "src" / "aeve" / "__main__.py
 ROLES_A = ["silent-failure-hunter", "python-reviewer", "code-architect", "functional-test-reviewer",
            "business-analyst", "planner", "zz-unknown-role"]
 NO_AEVE = pathlib.Path("D:/nonexistent-aeve-root-for-uc-e2e")
+UNREQUESTED_PATH = "src/other_unrequested.py"  # committed with the same silent except, never listed in changed_paths
+FP_A = "uc-e2e-a.first.sha256"
 
 
 # --------------------------------------------------------------------------- real-call fixtures
@@ -52,7 +56,7 @@ def base(tmp_path_factory):
 @pytest.fixture(scope="session")
 def repo_a(base):
     root = base / "repo_a"
-    head = h.make_repo(root, {h.APP_PATH: h.APP_SOURCE})
+    head = h.make_repo(root, {h.APP_PATH: h.APP_SOURCE, UNREQUESTED_PATH: h.APP_SOURCE})
     return root, head
 
 
@@ -87,7 +91,7 @@ def run_b(base, sentinel_dir):
 @pytest.fixture(scope="session")
 def run_c(base, run_a):
     """Same request_id as A, different content (different role set); reuses A's state dir."""
-    sha_file = run_a.state / "uc-requests" / "uc-e2e-a.sha256"
+    sha_file = run_a.state / "uc-requests" / FP_A
     before = sha_file.read_text(encoding="utf-8") if sha_file.is_file() else None
     req = h.request(run_a.repo, run_a.head, "uc-e2e-a", ["planner"], [h.APP_PATH])
     done = h.run_router(req, base / "work_c", state_dir=run_a.state, allowed_roots=[str(run_a.repo)])
@@ -103,25 +107,44 @@ def run_d(base, repo_a):
     state = base / "state_d"
     req = h.request(root, "0" * 40, "uc-e2e-d", ["silent-failure-hunter"], [h.APP_PATH])
     done = h.run_router(req, base / "work_d", state_dir=state, allowed_roots=[str(root)])
-    return Run(done, _parsed(done), state, root, "0" * 40, req)
+    run = Run(done, _parsed(done), state, root, "0" * 40, req)
+    requests_dir = state / "uc-requests"
+    run.fingerprints = sorted(p.name for p in requests_dir.glob("*.sha256*")) if requests_dir.is_dir() else None
+    return run
 
 
 @pytest.fixture(scope="session")
-def run_e(base, run_a):
-    """Identical resubmission of A (same id, same content) into A's state dir."""
-    done = h.run_router(run_a.request_doc, base / "work_e", state_dir=run_a.state,
-                        allowed_roots=[str(run_a.repo)])
-    return Run(done, _parsed(done), run_a.state, run_a.repo, run_a.head, run_a.request_doc)
+def run_e(base, run_d, repo_a):
+    """Retry of D's request_id with the real head (different content) after D was blocked."""
+    root, head = repo_a
+    req = h.request(root, head, "uc-e2e-d", ["silent-failure-hunter"], [h.APP_PATH])
+    done = h.run_router(req, base / "work_e", state_dir=run_d.state, allowed_roots=[str(root)])
+    return Run(done, _parsed(done), run_d.state, root, head, req)
 
 
 def assert_blocked(run: Run, reason: str | None = None) -> dict:
     assert run.done.returncode == 2, (run.done.returncode, run.done.stdout[-800:], run.done.stderr[-800:])
     assert run.doc is not None, run.done.stderr[-800:]
+    assert "Traceback" not in run.done.stderr, run.done.stderr[-800:]
     contracts.validate_blocked(run.doc)
     assert run.doc["schema_version"] == "uc.blocked.v1" and run.doc["status"] == "BLOCKED"
     if reason is not None:
         assert run.doc["reason"] == reason, run.doc
     return run.doc
+
+
+def assert_lock_not_held(lock_file: pathlib.Path) -> None:
+    """The lock file may remain on disk (OS-level lock); it must not be held once the router exited."""
+    if not lock_file.exists():
+        return
+    import msvcrt
+    with open(lock_file, "a+b") as handle:
+        handle.seek(0)
+        try:
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        except OSError:
+            pytest.fail(f"request lock still held after the run: {lock_file}")
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
 
 
 def assert_repo_untouched(repo: pathlib.Path, head: str) -> None:
@@ -156,7 +179,7 @@ class TestMixedRolesRealCall:
         assert [e["id"] for e in entry["executors"]] == ["g2.python-rules"]
         assert entry["executors"][0]["status"] == "COMPLETE"
         assert entry["executors"][0]["snapshot_hash"] == run_a.doc["snapshot_hash"]
-        seeded = [f for f in entry["findings"] if f["rule_id"] == "py-silent-except-swallow"]
+        seeded = [f for f in entry["findings"] if f["rule_id"] == "py-silent-except-swallow" and f["path"] == h.APP_PATH]
         assert len(seeded) == 1, entry["findings"]
         finding = seeded[0]
         assert finding["path"] == h.APP_PATH
@@ -218,8 +241,28 @@ class TestMixedRolesRealCall:
 
     def test_lock_released_and_request_fingerprint_retained(self, run_a):
         directory = run_a.state / "uc-requests"
-        assert (directory / "uc-e2e-a.sha256").is_file()
-        assert not (directory / "uc-e2e-a.lock").exists(), "request lock leaked after the run"
+        fingerprint = directory / FP_A
+        assert fingerprint.is_file()
+        assert re.fullmatch(r"[0-9a-f]{64}", fingerprint.read_text(encoding="utf-8").strip())
+        assert not (directory / "uc-e2e-a.sha256").exists(), "old fingerprint name must not be used"
+        assert_lock_not_held(directory / "uc-e2e-a.lock")
+
+    def test_no_temporary_fingerprint_files_left(self, run_a):
+        assert [p.name for p in (run_a.state / "uc-requests").iterdir() if p.name.endswith(".tmp")] == []
+
+    def test_every_finding_path_is_requested_plain_name_or_masked(self, run_a):
+        for entry in run_a.doc["roles"]:
+            for f in entry["findings"]:
+                assert f["path"] == h.APP_PATH or re.fullmatch(r"masked/[0-9a-f]{16}", f["path"]), f
+
+    def test_unrequested_path_name_never_appears_in_output(self, run_a):
+        """other_unrequested.py is in the repository but not in changed_paths: it may only appear as masked/<hex>."""
+        assert "other_unrequested" not in run_a.done.stdout + run_a.done.stderr
+        assert h.tree_contains(run_a.state / "uc-requests", "other_unrequested") == []
+
+    def test_no_role_is_clean_with_model_residual_or_partial_aeve(self, run_a):
+        for entry in run_a.doc["roles"]:
+            assert entry["status"] != "CLEAN", entry
 
     def test_reviewed_repository_is_untouched(self, run_a):
         assert_repo_untouched(run_a.repo, run_a.head)
@@ -263,7 +306,7 @@ class TestRequestIdAndHead:
         assert run_c.sha_before is not None and run_c.sha_before == run_c.sha_after
 
     def test_conflict_leaves_no_lock(self, run_c):
-        assert not (run_c.state / "uc-requests" / "uc-e2e-a.lock").exists()
+        assert_lock_not_held(run_c.state / "uc-requests" / "uc-e2e-a.lock")
 
     def test_moved_head_is_blocked_not_a_result(self, run_d):
         doc = assert_blocked(run_d)
@@ -272,19 +315,29 @@ class TestRequestIdAndHead:
         assert "roles" not in doc
 
     def test_moved_head_leaves_no_lock(self, run_d):
-        assert not (run_d.state / "uc-requests" / "uc-e2e-d.lock").exists()
+        assert_lock_not_held(run_d.state / "uc-requests" / "uc-e2e-d.lock")
 
-    def test_identical_resubmission_is_retryable(self, run_e):
-        """PROJECT_PLAN U1-6: 'request_id is retryable'. A second identical run must not be BLOCKED."""
+    def test_blocked_run_leaves_no_fingerprint(self, run_d):
+        assert run_d.fingerprints == [], run_d.fingerprints
+
+    def test_retry_of_a_blocked_request_id_returns_a_result(self, run_e):
+        """PROJECT_PLAN U1-6: 'request_id is retryable'. D was blocked, so the id is free for different content."""
         assert run_e.done.returncode == 3, (run_e.done.returncode, run_e.done.stdout[-1200:], run_e.done.stderr[-600:])
         doc = contracts.validate_result(run_e.doc)
-        assert doc["request_id"] == "uc-e2e-a"
+        assert doc["request_id"] == "uc-e2e-d"
+        assert doc["base_revision"] == run_e.head
         entry = h.role(doc, "silent-failure-hunter")
         assert entry["status"] == "FINDINGS"
+        assert any(f["path"] == h.APP_PATH and f["rule_id"] == "py-silent-except-swallow" for f in entry["findings"])
 
-    def test_retry_result_matches_first_run_snapshot(self, run_a, run_e):
-        assert run_e.doc is not None and run_e.doc.get("schema_version") == "uc.role-result.v1", run_e.doc
-        assert run_e.doc["snapshot_hash"] == run_a.doc["snapshot_hash"]
+    def test_retry_writes_fingerprint_only_after_the_result(self, run_d, run_e):
+        directory = run_d.state / "uc-requests"
+        assert run_e.doc.get("schema_version") == "uc.role-result.v1"
+        assert re.fullmatch(r"[0-9a-f]{64}", (directory / "uc-e2e-d.first.sha256").read_text(encoding="utf-8").strip())
+        assert_lock_not_held(directory / "uc-e2e-d.lock")
+
+    def test_retry_leaves_repository_untouched(self, run_e):
+        assert_repo_untouched(run_e.repo, run_e.head)
 
 
 # ------------------------------------------------- scenario 3b: cheap refusals (AEVE never reached)
@@ -293,10 +346,11 @@ class TestRequestIdAndHead:
 def cheap(repo_a, tmp_path):
     root, head = repo_a
 
-    def go(doc, *, roots=None, **kw):
-        done = h.run_router(doc, tmp_path, state_dir=tmp_path / "state", allowed_roots=roots or [str(root)],
+    def go(doc, *, roots=None, state_dir_override=None, **kw):
+        state = state_dir_override or tmp_path / "state"
+        done = h.run_router(doc, tmp_path, state_dir=state, allowed_roots=roots or [str(root)],
                             aeve_root=NO_AEVE, **kw)
-        return Run(done, _parsed(done), tmp_path / "state", root, head, doc)
+        return Run(done, _parsed(done), state, root, head, doc)
     go.root, go.head, go.tmp = root, head, tmp_path
     return go
 
@@ -428,3 +482,90 @@ class TestUnreadableRequestAndUsage:
         run = cheap(good(cheap, purpose="deploy"))
         assert_blocked(run, "INVALID_REQUEST")
         assert not (run.state / "uc-requests").exists()
+
+
+# ------------------------------------------------ scenario 3c: state_dir and role table (AEVE never reached)
+
+class TestStateDirRules:
+    def test_relative_state_dir_is_resolved_by_main_against_the_cwd(self, cheap):
+        """No BAD_STATE_DIR: main resolved 'rel-state' to <cwd>/rel-state; the run only stops at the missing AEVE."""
+        work = cheap.tmp / "cwd_rel"
+        work.mkdir()
+        done = h.run_router(good(cheap), work, state_dir=pathlib.Path("rel-state"), allowed_roots=[str(cheap.root)],
+                            aeve_root=NO_AEVE, cwd=work)
+        run = Run(done, _parsed(done), work / "rel-state", cheap.root, cheap.head, None)
+        assert_blocked(run, "NOT_AN_AEVE_CHECKOUT")
+        assert (work / "rel-state" / "uc-requests").is_dir(), "state was not created under <cwd>/rel-state"
+
+    def test_relative_state_dir_resolving_inside_an_allowed_root_is_refused(self, cheap):
+        done = h.run_router(good(cheap), cheap.tmp / "w", state_dir=pathlib.Path("st"), allowed_roots=[str(cheap.root)],
+                            aeve_root=NO_AEVE, cwd=cheap.root)
+        assert_blocked(Run(done, _parsed(done), None, cheap.root, cheap.head, None), "BAD_STATE_DIR")
+        assert_repo_untouched(cheap.root, cheap.head)
+
+    @pytest.mark.parametrize("rel", ["state", "src/state", "src/../state2", ""])
+    def test_absolute_state_dir_inside_allowed_root_is_refused(self, cheap, rel):
+        target = (cheap.root / rel) if rel else cheap.root
+        run = cheap(good(cheap), state_dir_override=target)
+        assert_blocked(run, "BAD_STATE_DIR")
+        assert_repo_untouched(cheap.root, cheap.head)
+
+    def test_state_dir_inside_any_one_of_several_allowed_roots_is_refused(self, cheap, tmp_path_factory):
+        second = tmp_path_factory.mktemp("second_root")
+        run = cheap(good(cheap), roots=[str(cheap.root), str(second)], state_dir_override=second / "s")
+        assert_blocked(run, "BAD_STATE_DIR")
+        assert not (second / "s").exists()
+
+    def test_state_dir_that_is_a_regular_file_is_blocked_without_traceback(self, cheap):
+        victim = cheap.tmp / "state-is-a-file"
+        victim.write_text("x", encoding="utf-8")
+        run = cheap(good(cheap), state_dir_override=victim)
+        doc = assert_blocked(run)
+        assert doc["reason"] in ("INTERNAL_ERROR", "STATE_DIR_UNUSABLE"), doc
+        assert victim.read_text(encoding="utf-8") == "x"
+
+
+def _entry(klass="LOCAL", coverage="COVERED_PARTIAL", executors=("x",)):
+    return {"name": "a", "canonical_role": "a", "class": klass, "coverage_state": coverage, "executors": list(executors)}
+
+
+class TestMalformedRoleTable:
+    @pytest.mark.parametrize("label,content", [
+        ("entries_not_list", {"entries": {"a": 1}, "aeve_pin": {}}),
+        ("entries_string", {"entries": "planner", "aeve_pin": {}}),
+        ("entries_missing", {"aeve_pin": {}}),
+        ("pin_not_dict", {"entries": [], "aeve_pin": []}),
+        ("pin_missing", {"entries": []}),
+        ("table_is_list", []),
+        ("table_is_null", None),
+        ("table_is_number", 7),
+        ("entry_not_dict", {"entries": [1, "x"], "aeve_pin": {}}),
+        ("entry_bad_class", {"entries": [_entry("WIZARD", "NOT_APPLICABLE", ())], "aeve_pin": {}}),
+        ("covered_without_executors", {"entries": [_entry("LOCAL", "COVERED_PARTIAL", ())], "aeve_pin": {}}),
+        ("covered_model_only", {"entries": [_entry("MODEL_ONLY", "COVERED_PARTIAL", ("x",))], "aeve_pin": {}}),
+        ("executors_not_strings", {"entries": [dict(_entry(), executors=[1])], "aeve_pin": {}}),
+    ])
+    def test_wrong_shape_is_blocked_with_no_traceback_and_no_state(self, cheap, tmp_path, label, content):
+        path = tmp_path / f"table-{label}.json"
+        path.write_text(json.dumps(content), encoding="utf-8")
+        run = cheap(good(cheap), table=path)
+        doc = assert_blocked(run, "ROLE_TABLE_INVALID")
+        assert doc["request_id"] == "uc-cheap"
+        assert run.done.stderr.strip() == "", run.done.stderr[-500:]
+        assert not (run.state / "uc-requests").exists(), "state created for a request with an unusable role table"
+
+    def test_missing_table_file(self, cheap, tmp_path):
+        doc = assert_blocked(cheap(good(cheap), table=tmp_path / "nope.json"), "UNREADABLE_TABLE")
+        assert doc["request_id"] == "uc-cheap"
+
+    @pytest.mark.parametrize("payload", [b"\xff\xfe{", b"{not json", b""])
+    def test_table_that_is_not_json(self, cheap, tmp_path, payload):
+        path = tmp_path / "bad-table.json"
+        path.write_bytes(payload)
+        assert_blocked(cheap(good(cheap), table=path), "UNREADABLE_TABLE")
+
+    def test_invalid_request_wins_over_a_bad_table(self, cheap, tmp_path):
+        """Request validation runs first: the caller learns about the request error."""
+        path = tmp_path / "t.json"
+        path.write_text("[]", encoding="utf-8")
+        assert_blocked(cheap(good(cheap, purpose="deploy"), table=path), "INVALID_REQUEST")

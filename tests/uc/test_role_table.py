@@ -271,7 +271,7 @@ def test_class_describes_the_role_and_coverage_state_what_the_matrix_covers(buil
     entry = by_key(built)[("agent", "profile-no-exec")]
     assert entry["coverage_state"].startswith("NOT_COVERED") and entry["class"] == "LOCAL"
     assert problems(built) == []
-    result = router.normalize({"request_id": "r", "base_revision": HEAD_FOR_ROUTER, "roles": ["profile-no-exec"]}, built, None, None)
+    result = router.normalize({"request_id": "r", "base_revision": HEAD_FOR_ROUTER, "changed_paths": ["a.py"], "roles": ["profile-no-exec"]}, built, None, None)
     assert result["roles"][0]["status"] == "NOT_COVERED" and result["roles"][0]["uncovered"] == ["no-executor"]
 
 

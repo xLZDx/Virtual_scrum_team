@@ -267,3 +267,110 @@ def test_REAL_AEVE_probe_matrix_and_committed_role_table_validate_and_aeve_uncha
     inventory = json.loads((S.REPO_ROOT / "catalog" / "inventory.json").read_text(encoding="utf-8"))
     problems = role_table.validate_role_table(S.real_table(), inventory, matrix, record)
     assert problems == [], problems
+
+
+# ------------------------------------------------------------------ behaviour 7: git lookup and child interpreter flags
+def test_find_git_ignores_relative_path_entries_and_the_current_directory(tmp_path, monkeypatch):
+    trap = tmp_path / "trap"
+    trap.mkdir()
+    for name in ("git.exe", "git"):
+        (trap / name).write_text("planted")
+    monkeypatch.chdir(trap)
+    monkeypatch.setenv("PATH", os.pathsep.join([".", "", "trap", str(pathlib.Path("."))]))
+    assert aeve_probe._find_git() == "git"  # nothing absolute on PATH: bare fallback, never the planted file
+
+
+def test_find_git_skips_relative_entry_but_takes_a_later_absolute_one(tmp_path, monkeypatch):
+    trap = tmp_path / "trap"
+    good = tmp_path / "good"
+    trap.mkdir()
+    good.mkdir()
+    (trap / "git.exe").write_text("planted")
+    (trap / "git").write_text("planted")
+    (good / "git.exe").write_text("real")
+    (good / "git").write_text("real")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("PATH", os.pathsep.join(["trap", str(good)]))
+    found = aeve_probe._find_git()
+    assert os.path.isabs(found) and pathlib.Path(found).parent == good
+
+
+def test_find_git_takes_first_absolute_entry_in_path_order(tmp_path, monkeypatch):
+    first, second = tmp_path / "first", tmp_path / "second"
+    for d in (first, second):
+        d.mkdir()
+        (d / "git.exe").write_text("x")
+        (d / "git").write_text("x")
+    monkeypatch.setenv("PATH", os.pathsep.join([str(first), str(second)]))
+    assert pathlib.Path(aeve_probe._find_git()).parent == first
+
+
+def test_find_git_without_any_git_on_absolute_path_falls_back(tmp_path, monkeypatch):
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    monkeypatch.setenv("PATH", str(empty))
+    assert aeve_probe._find_git() == "git"
+
+
+def _record_argv(monkeypatch):
+    calls = []
+    real = aeve_probe._run
+
+    def spy(argv, **kw):
+        calls.append(list(argv))
+        return real(argv, **kw)
+
+    monkeypatch.setattr(aeve_probe, "_run", spy)
+    return calls
+
+
+def test_probe_doctor_and_matrix_children_use_isolation_flags(fake, monkeypatch):
+    calls = _record_argv(monkeypatch)
+    aeve_probe.probe(fake)
+    aeve_children = [c for c in calls if "-m" in c and "aeve" in c]
+    assert [c[-1] for c in aeve_children] == ["doctor", "matrix"]
+    for argv in aeve_children:
+        assert argv[1:6] == ["-P", "-s", "-B", "-m", "aeve"], argv
+
+
+def test_load_matrix_child_uses_isolation_flags(fake, monkeypatch):
+    calls = _record_argv(monkeypatch)
+    aeve_probe.load_matrix(fake)
+    assert len(calls) == 1 and calls[0][1:6] == ["-P", "-s", "-B", "-m", "aeve"] and calls[0][-1] == "matrix"
+
+
+def test_probe_children_do_not_import_from_the_scratch_directory(fake, monkeypatch, tmp_path):
+    """-P keeps the child's working directory off sys.path: a planted aeve package in the scratch dir must not win."""
+    scratch = tmp_path / "scratch"
+    (scratch / "aeve").mkdir(parents=True)
+    (scratch / "aeve" / "__init__.py").write_text("raise SystemExit(77)")
+    (scratch / "aeve" / "__main__.py").write_text("raise SystemExit(77)")
+    monkeypatch.setattr(aeve_probe.tempfile, "gettempdir", lambda: str(scratch))
+    assert aeve_probe.probe(fake)["matrix"]["total_profiles"] == 2
+
+
+# ------------------------------------------------------------------ untracked_source_paths
+def test_untracked_source_paths_counts_only_untracked_under_src(fake):
+    (fake / "reports" / "behavior-eval").mkdir(parents=True)
+    (fake / "reports" / "behavior-eval" / "x.json").write_text("{}")
+    (fake / "notes.txt").write_text("x")
+    rec = aeve_probe.probe(fake)
+    assert rec["untracked_paths"] == 2 and rec["untracked_source_paths"] == 0 and rec["tracked_dirty_paths"] == 0
+
+
+def test_untracked_file_under_src_is_counted(fake):
+    (fake / "src" / "x.py").write_text("x = 1")
+    rec = aeve_probe.probe(fake)
+    assert rec["untracked_source_paths"] == 1 and rec["untracked_paths"] == 1
+
+
+def test_tracked_change_under_src_is_not_an_untracked_source_path(fake):
+    (fake / "src" / "aeve" / "__init__.py").write_text("# changed2")
+    rec = aeve_probe.probe(fake)
+    assert rec["tracked_dirty_paths"] == 1 and rec["untracked_source_paths"] == 0
+
+
+def test_untracked_directory_under_src_is_counted_once_per_status_line(fake):
+    (fake / "src" / "newpkg").mkdir()
+    (fake / "src" / "newpkg" / "m.py").write_text("x")
+    assert aeve_probe.probe(fake)["untracked_source_paths"] == 1

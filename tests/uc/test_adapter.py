@@ -396,3 +396,141 @@ def test_check_response_is_pure_and_rejects_non_dict():
     with pytest.raises(adapter.AdapterBlocked) as info:
         adapter.check_response([1], {"request_id": "r1", "base_revision": HEAD}, 0)
     assert info.value.reason == "BAD_OUTPUT"
+
+
+# ------------------------------------------------------------------ behaviour 1: check_response strictness
+A, B = "g2.python-rules", "g3.sql-migration"
+REQ = {"request_id": "req-1", "base_revision": HEAD, "executor_ids": [A]}
+
+
+def check(response, exit_code=0, request=None, **kw):
+    return adapter.check_response(response, request or REQ, exit_code, **kw)
+
+
+def reason_of(response, exit_code=0, request=None, **kw):
+    with pytest.raises(adapter.AdapterBlocked) as info:
+        check(response, exit_code, request, **kw)
+    return info.value.reason
+
+
+def finding(executor_id=A):
+    return S.aeve_finding(executor_id=executor_id)
+
+
+def test_check_response_accepts_complete_without_findings_exit_zero():
+    assert check(S.aeve_response(executor_ids=[A]))["status"] == "COMPLETE"
+
+
+@pytest.mark.parametrize("status", ["COMPLETE", "PARTIAL", "FINDINGS"])
+def test_check_response_accepts_each_allowed_overall_status(status):
+    findings = [finding()] if status != "COMPLETE" else []
+    exit_code = 0 if status == "COMPLETE" else 3
+    assert check(S.aeve_response(executor_ids=[A], status=status, findings=findings), exit_code)["status"] == status
+
+
+@pytest.mark.parametrize("status", ["ERROR", "STALE_INPUT", "NOT_RUN", "complete", "", None, 5, "SOMETHING_NEW"])
+@pytest.mark.parametrize("code", [0, 3])
+def test_overall_status_outside_allowed_set_is_aeve_status(status, code):
+    assert reason_of(S.aeve_response(executor_ids=[A], status=status), code) == "AEVE_STATUS"
+
+
+def test_ledger_not_persisted_false_is_blocked_even_when_everything_else_is_clean():
+    assert reason_of(S.aeve_response(executor_ids=[A], ledger_persisted=False)) == "AEVE_LEDGER_NOT_PERSISTED"
+
+
+@pytest.mark.parametrize("value", [True, None, 0, "no"])
+def test_ledger_persisted_other_than_false_is_not_blocked_by_that_check(value):
+    # only an explicit False is a refusal; absence or a truthy value is accepted by this check
+    assert check(S.aeve_response(executor_ids=[A], ledger_persisted=value))["status"] == "COMPLETE"
+
+
+def test_status_check_precedes_ledger_check():
+    assert reason_of(S.aeve_response(executor_ids=[A], status="ERROR", ledger_persisted=False)) == "AEVE_STATUS"
+
+
+@pytest.mark.parametrize("status,findings,code,ok", [
+    ("COMPLETE", [], 0, True), ("COMPLETE", [], 3, False),
+    ("COMPLETE", ["f"], 0, False), ("COMPLETE", ["f"], 3, True),
+    ("PARTIAL", [], 0, False), ("PARTIAL", [], 3, True),
+    ("PARTIAL", ["f"], 0, False), ("PARTIAL", ["f"], 3, True),
+    ("FINDINGS", ["f"], 0, False), ("FINDINGS", ["f"], 3, True), ("FINDINGS", [], 0, False),
+])
+def test_exit_code_zero_iff_complete_and_no_findings(status, findings, code, ok):
+    response = S.aeve_response(executor_ids=[A], status=status, findings=[finding() for _ in findings])
+    if ok:
+        assert check(response, code)["status"] == status
+    else:
+        assert reason_of(response, code) == "AEVE_CONTRACT_VIOLATION"
+
+
+@pytest.mark.parametrize("item", ["junk", None, 5, ["executor_id"], {"status": "COMPLETE"}, {"executor_id": A},
+                                  {"executor_id": 7, "status": "COMPLETE"}, {"executor_id": A, "status": None},
+                                  {"executor_id": None, "status": "COMPLETE"}])
+def test_result_must_be_dict_with_string_executor_id_and_status(item):
+    assert reason_of(S.aeve_response(executor_ids=[A], results=[item])) == "AEVE_CONTRACT_VIOLATION"
+
+
+def test_duplicate_executor_results_are_rejected():
+    results = [{"executor_id": A, "status": "COMPLETE"}, {"executor_id": A, "status": "BLOCKED"}]
+    assert reason_of(S.aeve_response(executor_ids=[A], results=results)) == "AEVE_CONTRACT_VIOLATION"
+
+
+def test_result_for_an_unrequested_executor_is_rejected():
+    results = [{"executor_id": A, "status": "COMPLETE"}, {"executor_id": B, "status": "COMPLETE"}]
+    assert reason_of(S.aeve_response(executor_ids=[A], results=results)) == "AEVE_CONTRACT_VIOLATION"
+
+
+def test_result_for_an_unrequested_executor_is_rejected_even_if_the_response_lists_it_in_executor_ids():
+    """AEVE's own executor_ids field must not widen what the caller asked for."""
+    results = [{"executor_id": A, "status": "COMPLETE"}, {"executor_id": B, "status": "COMPLETE"}]
+    assert reason_of(S.aeve_response(executor_ids=[A, B], results=results)) == "AEVE_CONTRACT_VIOLATION"
+
+
+def test_fewer_results_than_requested_is_accepted_here_and_left_to_the_router():
+    assert check(S.aeve_response(executor_ids=[A], results=[]))["results"] == []
+
+
+def test_every_requested_executor_result_is_accepted():
+    request = dict(REQ, executor_ids=[A, B])
+    assert len(check(S.aeve_response(executor_ids=[A, B]), request=request)["results"]) == 2
+
+
+@pytest.mark.parametrize("bad", [None, "x", 5, [1], ["other"], {"executor_id": "g9"}, {"rule_id": "no-executor"}])
+def test_finding_must_carry_executor_id_present_in_results(bad):
+    assert reason_of(S.aeve_response(executor_ids=[A], status="FINDINGS", findings=[bad]), 3) == "AEVE_CONTRACT_VIOLATION"
+
+
+def test_finding_for_executor_without_a_result_is_rejected():
+    response = S.aeve_response(executor_ids=[A], status="FINDINGS", findings=[finding(B)], results=[
+        {"executor_id": A, "status": "COMPLETE"}])
+    assert reason_of(response, 3) == "AEVE_CONTRACT_VIOLATION"
+
+
+def test_finding_for_a_returned_executor_is_accepted():
+    assert len(check(S.aeve_response(executor_ids=[A], status="FINDINGS", findings=[finding()]), 3)["findings"]) == 1
+
+
+@pytest.mark.parametrize("count,ok", [(1, True), (0, False), (2, False), ("1", False), (None, False)])
+def test_finding_count_must_match_findings(count, ok):
+    response = S.aeve_response(executor_ids=[A], status="FINDINGS", findings=[finding()], finding_count=count)
+    if ok:
+        assert check(response, 3)["finding_count"] == 1
+    else:
+        assert reason_of(response, 3) == "AEVE_CONTRACT_VIOLATION"
+
+
+def test_finding_count_absent_is_accepted():
+    assert "finding_count" not in check(S.aeve_response(executor_ids=[A], status="FINDINGS", findings=[finding()]), 3)
+
+
+def test_stub_child_end_to_end_error_status_is_aeve_status(env):
+    assert blocked(env, "emit(good(status='ERROR'), 3)").reason == "AEVE_STATUS"
+
+
+def test_stub_child_end_to_end_ledger_not_persisted(env):
+    assert blocked(env, "emit(good(ledger_persisted=False), 0)").reason == "AEVE_LEDGER_NOT_PERSISTED"
+
+
+def test_stub_child_end_to_end_result_for_unrequested_executor(env):
+    body = "emit(good(results=[{'executor_id': 'g2.python-rules', 'status': 'COMPLETE'}, {'executor_id': 'g9.x', 'status': 'COMPLETE'}]), 0)"
+    assert blocked(env, body).reason == "AEVE_CONTRACT_VIOLATION"

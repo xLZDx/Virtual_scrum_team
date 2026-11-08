@@ -61,6 +61,17 @@ def test_bad_request_id(root, rid):
     assert req_error(S.valid_request(root, request_id=rid), root).where == "request.request_id"
 
 
+@pytest.mark.parametrize("rid", ["con", "nul", "NUL", "com1", "COM9", "lpt1", "aux", "prn", "con.txt", "nul.v2.json", "Com1.x"])
+def test_windows_device_name_request_id_rejected(root, rid):
+    err = req_error(S.valid_request(root, request_id=rid), root)
+    assert (err.code, err.where) == ("BAD_FORMAT", "request.request_id")
+
+
+@pytest.mark.parametrize("rid", ["console", "nul-1", "com10", "xcon", "a.con", "req-1"])
+def test_request_id_near_device_names_accepted(root, rid):
+    contracts.validate_request(S.valid_request(root, request_id=rid), [root])
+
+
 def test_request_id_boundary_128_accepted(root):
     contracts.validate_request(S.valid_request(root, request_id="x" * 128), [root])
 
@@ -393,7 +404,7 @@ def test_role_entry_enums():
 
 # ---- CLEAN consistency
 def clean_entry(**over):
-    base = dict(status="CLEAN", model_residual=[], uncovered=[], findings=[])
+    base = dict(status="CLEAN", model_residual=[], uncovered=[], findings=[], **{"class": "LOCAL"})
     base.update(over)
     return S.valid_role_entry(**base)
 
@@ -421,6 +432,28 @@ def test_clean_requires_all_executors_complete(executors):
 @pytest.mark.parametrize("cls", ["MODEL_ONLY", "OUT_OF_SCOPE"])
 def test_clean_for_non_local_class_rejected(cls):
     assert err_of(S.valid_result(exit_code=0, roles=[clean_entry(**{"class": cls})])).code == "CLEAN_FOR_NON_LOCAL_CLASS"
+
+
+def test_clean_for_local_plus_model_rejected_even_with_nothing_open():
+    """Behaviour 4: CLEAN is allowed for LOCAL only; a model-assisted role cannot be CLEAN."""
+    entry = clean_entry(**{"class": "LOCAL_PLUS_MODEL"})
+    assert err_of(S.valid_result(exit_code=0, roles=[entry])).code == "CLEAN_FOR_NON_LOCAL_CLASS"
+
+
+def test_clean_for_local_class_accepted():
+    contracts.validate_result(S.valid_result(exit_code=0, roles=[clean_entry(**{"class": "LOCAL"})]))
+
+
+def test_executor_snapshot_hash_must_equal_result_snapshot_hash():
+    entry = S.valid_role_entry(executors=[{"id": "g2.python-rules", "status": "COMPLETE", "snapshot_hash": S.HASH_C}])
+    err = err_of(S.valid_result(roles=[entry]))
+    assert err.code == "EXECUTOR_SNAPSHOT_MISMATCH" and err.where == "result.roles[0].executors"
+
+
+def test_snapshot_mismatch_in_second_role_is_located():
+    bad = S.valid_role_entry(role="other", executors=[{"id": "g2.x", "status": "COMPLETE", "snapshot_hash": S.HASH_C}])
+    err = err_of(S.valid_result(roles=[S.valid_role_entry(), bad]))
+    assert (err.code, err.where) == ("EXECUTOR_SNAPSHOT_MISMATCH", "result.roles[1].executors")
 
 
 def test_clean_for_unknown_class_rejected():

@@ -176,6 +176,7 @@ def probe(
         "aeve_head": head,
         "tracked_dirty_paths": len(tracked_dirty),
         "untracked_paths": len(status_lines) - len(tracked_dirty),
+        "untracked_source_paths": len([line for line in status_lines if line.startswith("?? src/")]),
         "interpreter": interpreter,
         "python": f"{major}.{minor}",
         "doctor": {

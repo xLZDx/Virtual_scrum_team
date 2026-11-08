@@ -252,7 +252,7 @@ def check_response(response: object, aeve_request: dict, exit_code: int, require
         if item["executor_id"] in seen_ids:
             raise AdapterBlocked("AEVE_CONTRACT_VIOLATION", "duplicate executor result")
         seen_ids.add(item["executor_id"])
-    if requested and not seen_ids <= requested | set(response["executor_ids"]):
+    if requested and not seen_ids <= requested:
         raise AdapterBlocked("AEVE_CONTRACT_VIOLATION", "result for an executor that was not requested")
     for finding in response["findings"]:
         if not isinstance(finding, dict) or finding.get("executor_id") not in seen_ids:

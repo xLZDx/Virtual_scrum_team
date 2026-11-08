@@ -242,3 +242,37 @@ def test_cli_missing_and_unparsable_inputs_are_not_run(tmp_path):
     assert res.returncode == 2 and json.loads(res.stdout)["status"] == "NOT_RUN"
     res = run_cli(tmp_path, "{oops", report(), VALID)
     assert res.returncode == 2 and json.loads(res.stdout)["status"] == "NOT_RUN"
+
+
+# ------------------------------------------------------------------ behaviour 6: COMPLETE executor required, no BLOCKED one
+SHRUNK = (report(**{"python-reviewer": toks(100, 100, 100, 100)}), report(**{"python-reviewer": toks(1, 1, 1, 1)}))
+
+
+def ex(status, ident="g2.python-rules"):
+    return {"id": ident, "status": status, "snapshot_hash": S.HASH_A}
+
+
+@pytest.mark.parametrize("statuses", [["PARTIAL"], ["NOT_RUN"], ["NOT_COVERED"], ["PARTIAL", "NOT_RUN"], []])
+def test_no_gain_without_any_complete_executor(statuses):
+    executors = [ex(s, f"g2.x{i}") for i, s in enumerate(statuses)]
+    v = verdict(*SHRUNK, entry("python-reviewer", status="PARTIAL", executors=executors))
+    assert v["verdict"] == "NO_GAIN" and v["local_ran"] is False
+
+
+@pytest.mark.parametrize("other", ["BLOCKED"])
+def test_no_gain_when_one_executor_is_blocked_even_if_another_completed(other):
+    executors = [ex("COMPLETE", "g2.a"), ex(other, "g2.b")]
+    v = verdict(*SHRUNK, entry("python-reviewer", status="PARTIAL", executors=executors))
+    assert v["verdict"] == "NO_GAIN" and v["local_ran"] is False
+
+
+def test_local_first_with_complete_and_partial_executors_and_no_blocked_one():
+    executors = [ex("COMPLETE", "g2.a"), ex("PARTIAL", "g2.b"), ex("NOT_RUN", "g2.c")]
+    v = verdict(*SHRUNK, entry("python-reviewer", status="PARTIAL", executors=executors))
+    assert v["verdict"] == "LOCAL_FIRST" and v["local_ran"] is True
+
+
+def test_blocked_executor_with_findings_role_status_partial_is_not_local_first():
+    executors = [ex("COMPLETE", "g2.a"), ex("BLOCKED", "g2.b")]
+    v = verdict(*SHRUNK, entry("python-reviewer", status="FINDINGS", executors=executors))
+    assert v["verdict"] == "NO_GAIN"
