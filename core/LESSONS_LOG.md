@@ -1954,3 +1954,6 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - 2026-11-08 S4-B sender refusal
 - Kind: SHORTCOMING: a deliberately unterminated PEM fixture made the review sender refuse the whole input; caught by the sender (gate), not by author or tests.
 - Rule: build secret-looking fixtures by concatenation, and scan the review diff for such markers before sending.
+
+- 2026-11-08 S4-B accepted
+- Kind: SUCCESS: one internal review pair plus one GPT-PM request closed the task; the only extra round was the sender refusing a literal unterminated key fixture.

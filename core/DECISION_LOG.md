@@ -2657,3 +2657,7 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 - Decision: the fixture now builds the marker by string concatenation (same runtime value, no literal in the diff); manifest regenerated; one targeted run of that test, then the same single request is resent.
 
 - 2026-11-08: manifest regenerated for the changed S4-B test file (PEM fixture).
+
+## 2026-11-08 — S4-B accepted
+
+- Evidence: GPT-PM APPROVE (0 BLOCKER, 0 MAJOR), request dd824ba7-b26b-4a93-8f0d-0e0780a2e160, head ebc47de; plan row S4-B set to ACCEPTED with the honest evidence limits.
