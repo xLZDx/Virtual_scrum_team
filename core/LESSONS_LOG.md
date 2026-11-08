@@ -1743,3 +1743,9 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SUCCESS: the validator written from the TDD rule caught seven wrong draft classifications on the first real run, which my draft reading had missed.
 - Rule: build the validator before trusting a hand-classified table; run it on the real data first.
+
+
+## 2026-11-08 — U1-5 adapter
+
+- Kind: SHORTCOMING caught early: my contract enum for severity (INFO to CRITICAL) did not match the real AEVE scale; I found it only after running a real review.
+- Rule: read one real output of the external tool before fixing enum values in a contract.

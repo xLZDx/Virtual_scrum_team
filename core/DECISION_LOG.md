@@ -1964,3 +1964,8 @@ Task U1-3: tools/uc/contracts.py validates uc.role-request.v1 and uc.role-result
 ## 2026-11-08 — U1-4 role table built and validated
 
 Task U1-4: tools/uc/role_table.py builds catalog/role_table.json from the inventory, the draft decisions and the live AEVE matrix, pinned to AEVE head 25a8fea and matrix digest 357592f3. The validator first refused the draft in 7 places: roles the draft called model-only or out of scope (architect, code-architect, architecture-contract, software-architect, technical-design, financial-ml-contract, skill-creator) for which AEVE lists executors. Decision: class follows evidence, so those become LOCAL_PLUS_MODEL with draft_class and an upgrade flag kept; TDD section 4 now states the coverage_state rule. Counts: 93 entries; LOCAL 9, LOCAL_PLUS_MODEL 58, MODEL_ONLY 18, OUT_OF_SCOPE 8. The draft classification itself stays unreviewed. Agent tests NOT_RUN.
+
+
+## 2026-11-08 — U1-5 AEVE CLI adapter written and hand-tested
+
+Task U1-5: tools/uc/adapter.py runs aeve review in an isolated child (neutral directory, -P -s -B, minimal environment, pinned application-data folder, shell off, stdout cap, timeout with process-tree kill) and treats every anomaly as BLOCKED. AEVE severity names (NIT, MINOR, MAJOR, BLOCKER) replaced my invented scale in the contracts. Observed response shape: aeve.review.result.v1 with status COMPLETE or PARTIAL, findings with rule_id, severity, file, line and an evidence hash. Hand tests passed as listed in the plan row; process-tree death of grandchildren and the changed_paths coverage rule are not verified. Agent tests NOT_RUN.
