@@ -2554,3 +2554,7 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 - Evidence: operator allowed the GitHub secret-scanning exception (test string in tests/uc_e2e/helpers.py) and the push; `git push -u origin unified-core-plan` created the remote branch (77 commits over origin/main, history not rewritten). No pull request opened yet.
 - Evidence: operator allowed real measurements. token_baseline.py on session 557da842-4774-4321-afaa-c4fe8ecf9f85 (project folder D--Repo): status MEASURED, roles orchestrator, implementation-engineer, functional-test-reviewer, python-reviewer, silent-failure-hunter, claude-code-guide; manifest and report saved in docs/sdlc/evidence/u1-1-baseline-*.json. Review roles in this session are small (python-reviewer 3 messages, silent-failure-hunter 5 messages), so the largest possible local saving is limited.
 - Limit: U1-8 (paired comparison) stays NOT_RUN. It needs an "after" token report from a run where the entry command went first and models handled only the residual; no such run exists and none was invented.
+
+## 2026-11-08 — program report re-rendered after PR 5
+
+- Evidence: project_plan.py render rewrote both reports after PR 5 was opened (U1 8 of 9 tasks accepted, U1-9 parked).
