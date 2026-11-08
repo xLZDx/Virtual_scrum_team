@@ -1798,3 +1798,8 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: FAILURE (author): my AEVE-dirty rule blocked on any untracked file and made the router unusable on the real machine; the e2e run found it, my fixture-only hand tests had not. Also I ran a unit-test command myself against the coordinator rule; the agents' runs are the evidence.
 - Rule: check a new safety condition against the real machine state before committing it; leave test runs to the test agents.
+
+
+## 2026-11-08 — GPT-PM request for U1
+
+- Kind: SHORTCOMING (repeat): I sent a range again without naming one task, the same refusal as the plan review; I had logged the rule (state one item id) but the CLI call gave no place to state it. Rule: before a third attempt find how the CLI carries a task name; do not resend the same shape.

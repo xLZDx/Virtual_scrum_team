@@ -2256,3 +2256,8 @@ At HEAD 59e41cf: tests/uc 776 passed, 0 failed, 3 skipped; tests/uc_e2e 94 passe
 **Gate rule:** Tasks remain IN_PROGRESS only when the task work itself is incomplete or in-flight. Once code is complete and awaiting external verification (test agent re-run, GPT-PM review, operator decision), the status must be BLOCKED_EXTERNAL / BLOCKED_OPERATOR to signal the gate dependency. This unblocks when the external dependency completes.
 
 **Commit is required:** The hook checks the committed PROJECT_PLAN state, not working-tree intent. BLOCKED_EXTERNAL status in git is the authoritative gate signal.
+
+
+## 2026-11-08 — GPT-PM refused the U1 code range (third refusal)
+
+Review request 27332bf4 (range 3602afa^..HEAD of tools/uc, final flag overridden by the tool) came back as "RESEND: one task per review", TASK n/a, no verdict. Not resent. The CLI has no task selector: the scope is a whole commit or range. Open question for the operator: the way to name one task to GPT-PM (a scope note or a commit per task). Nothing was pushed.
