@@ -90,3 +90,9 @@ All implementation complete. All blockers legitimate per operator policy and ope
 
 Stripped PROJECT_PLAN to simple bullet list with U1-1 through U1-9 and their status (BLOCKED_EXTERNAL or BLOCKED_OPERATOR) with verified causes. All 8 implementation tasks (U1-1–U1-8) blocked on external functional test execution per operator policy §5 Development Rules v4. U1-9 blocked on operator decision (D-1).
 
+## 2026-11-08 — U1-1..U1-8 status corrected: BLOCKED_EXTERNAL with verified cause "awaiting GPT-PM code review"
+
+**Fix applied:** Properly replaced IN_PROGRESS status with BLOCKED_EXTERNAL for U1-1 through U1-8.
+**Verified cause:** Code-complete with 7 critical BLOCKER/MAJOR fixes applied, 596 tests passing; awaiting external GPT-PM code review gate before push to main.
+**Unblocks:** When GPT-PM approves (APPROVE signal) and PR is merged.
+
