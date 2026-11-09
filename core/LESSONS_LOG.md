@@ -2032,3 +2032,6 @@ Kind: SUCCESS. The remediation of three MAJOR findings was accepted in one verif
 
 ## 2026-11-09 Plan report re-render
 Kind: NEUTRAL. Routine re-render after PR 6; no defect.
+
+## 2026-11-09 S5-A code
+Kind: NEUTRAL. Contract coded without any run; verification is review only.

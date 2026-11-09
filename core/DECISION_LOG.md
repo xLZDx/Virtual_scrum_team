@@ -2778,3 +2778,6 @@ GPT-PM returned APPROVE with 0 BLOCKER, 0 MAJOR, 0 MINOR at head 0975728 for the
 
 ## 2026-11-09 Plan report re-render after PR 6
 Re-rendered the project plan reports after the S4 PR was opened, as the close gate requires. No content change.
+
+## 2026-11-09 S5 started: S5-A v3 provenance contract coded
+Operator authorized merging PR 6 and starting S5. PR 6 merged (f52069b). S5-A (VST-038) implemented by implementation-engineer in tools/vst/contracts.py and the schema guide. Not run, not tested (pytest forbidden); specialist review and GPT-PM pending. gate.py wiring and v3 signing are later S5 tasks. AEVE integration stays NOT_RUN (no authorized source).
