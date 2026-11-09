@@ -2799,3 +2799,6 @@ security-reviewer and functional-test-reviewer found: key distinctness opt-in, b
 
 ## 2026-11-09 S5-B accepted (GPT-PM APPROVE)
 GPT-PM APPROVE, 0 BLOCKER, 0 MAJOR, reply 9584e4bf, head 85b03da, static review only. Non-blocking note: exceptions from the consume_nonce callback propagate to the caller (no approval bypass). NOT_RUN: tests (pytest forbidden). Next: S5-C (adapter and snapshot hashing); AEVE source in D:/Repo/AEVE is in scope per operator.
+
+## 2026-11-09 S5-C coded: bounded AEVE adapter (VST-040)
+Added tools/vst/analyzer_adapter.py: deterministic scope validation and source-tree digest, bounded subprocess runner for aeve analyze (argv list, scrubbed env, caps, typed outcomes), parser to a closed report using the real AEVE g2 rule inventory (anything outside it is UNSUPPORTED), payload assembly without signing. AEVE facts: analyze takes no scope or profile option, analyzes the whole git root, license file missing (UNKNOWN). OS-level network and resource enforcement NOT_RUN (S2 sandbox). Not run (pytest forbidden); reviewers and GPT-PM pending.
