@@ -2764,3 +2764,9 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 - CORRECTION 2026-11-09: commit 487ec89 (pushed) is titled as if it contained the S4-F code, but its denied command never staged tools/qa/gate_check.py and tests/qa/test_s4f_gate_check.py; that commit holds only the S4-E acceptance, plan, reports and logs. The S4-F code is committed in the next commit.
 
 - 2026-11-09: manifest regenerated for the new S4-F test file.
+
+## 2026-11-09 — S4-F GPT-PM verdict MODIFY and remediation
+
+- Evidence: GPT-PM (request fcace703-9856-4ba0-8871-92443b591fde, head f3c8ddb) returned MODIFY with three MAJOR findings, all verified against the code and accepted: (1) malformed report fields could crash check_report instead of returning NON_APPROVING (for example profile_status null raised AttributeError); (2) the artifact inventory was not exact and artifact_sizes null skipped the size check; (3) an absolute path embedded in a command argument (--rootdir=C:\Users\x, --config=/home/x) passed because re.match checked only the start.
+- Fix in one batch (tools/qa/gate_check.py): type pre-validation returns a single SCHEMA reason and any unexpected exception also becomes SCHEMA; artifact digests, sizes and paths must be exactly stderr and stdout with mandatory sizes checked against the bytes (new code ARTIFACT_INVENTORY, 36 codes); the absolute-path pattern now finds a path after =, whitespace or a quote. Checked only by a plain python script (11 path examples all as expected, an all-None record returns SCHEMA without raising), NOT by pytest.
+- Tests: adapted and extended by the test agent by reading code only. NOT_RUN: tests/qa/test_s4f_gate_check.py was not executed after this change (the operator forbade pytest on 2026-11-09), so the adapted and new tests are unverified.

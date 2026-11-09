@@ -39,8 +39,17 @@ NON_APPROVING_CODES = frozenset({
     "XFAIL_IDS", "UNCOLLECTED_IDS", "UNEXPECTED_CASES", "NOT_ALL_PASSED", "NO_EXECUTION",
     "EXIT_NONZERO", "STALE_HEAD", "REGISTRY_MISMATCH", "DIRTY_TREE", "STATE_CHANGED",
     "LOCK_MISSING", "DEPENDENCY_UNVERIFIED", "HASH_MISMATCH", "ARTIFACT_DIGEST_INVALID",
-    "ARTIFACT_UNVERIFIED", "ARTIFACT_MISMATCH", "SECRET_OR_ABS_PATH",
+    "ARTIFACT_UNVERIFIED", "ARTIFACT_MISMATCH", "ARTIFACT_INVENTORY", "SECRET_OR_ABS_PATH",
 })
+
+# The runner records digests and sizes of exactly its two raw outputs; the report
+# record itself cannot hash itself (it is bound by normalized_sha256 instead).
+REQUIRED_ARTIFACTS = ("stderr", "stdout")
+ID_LIST_FIELDS = (
+    "expected_test_ids", "passed_test_ids", "failed_test_ids", "skipped_test_ids",
+    "xfail_test_ids", "unexpected_node_ids", "uncollected_test_ids", "unassigned_test_ids",
+    "executed_node_ids",
+)
 
 REQUIRED_KEYS = (
     "schema_version", "category", "runtime_profile", "candidate_head", "head_after",
@@ -53,7 +62,11 @@ REQUIRED_KEYS = (
     "artifact_sizes", "result", "command", "manifest_path", "normalized_sha256",
 )
 _HEX64 = re.compile(r"[0-9a-f]{64}\Z")
-_ABS_PATH = re.compile(r"(?:[A-Za-z]:[\\/]|/|\\\\)")
+# An absolute path anywhere inside a value: at its start, or after '=', whitespace or a
+# quote (covers --option=C:\x, --option=/x and a value passed as its own argument).
+# Placeholders such as <scratch>\x or <candidate-root>/tests never match because the
+# separator follows '>' and not one of those introducers.
+_ABS_PATH = re.compile(r"(?:^|[=\s'\"])(?:[A-Za-z]:[\\/]|/|\\\\)")
 _ALLOWED_ABSOLUTE = frozenset({("interpreter", "executable")})
 
 
@@ -126,7 +139,7 @@ def _secret_or_path_hits(report: dict[str, Any]) -> list[str]:
             hits.append("/".join(path))
     for field in ("command", "artifact_paths", "manifest_path"):
         for path, text in _strings(report.get(field), (field,)):
-            if _ABS_PATH.match(text) and path[:2] not in _ALLOWED_ABSOLUTE:
+            if _ABS_PATH.search(text) and path[:2] not in _ALLOWED_ABSOLUTE:
                 hits.append("/".join(path))
     return sorted(set(hits))
 
@@ -135,7 +148,60 @@ def _dups(values: list[Any]) -> bool:
     return len(values) != len(set(values))
 
 
+def _is_str_list(value: Any) -> bool:
+    return isinstance(value, list) and all(isinstance(item, str) for item in value)
+
+
+def _is_str_map(value: Any) -> bool:
+    return isinstance(value, dict) and all(isinstance(k, str) and isinstance(v, str) for k, v in value.items())
+
+
+def _type_problems(report: dict[str, Any]) -> list[str]:
+    """Names of fields whose type would make later lookups, set operations or hashing unsafe."""
+    problems: list[str] = []
+    for name in ("category", "runtime_profile", "candidate_head", "head_after", "registry_sha256",
+                 "source_head", "lock_sha256", "result", "manifest_path", "normalized_sha256"):
+        if not isinstance(report[name], str):
+            problems.append(name)
+    for name in ID_LIST_FIELDS + ("command",):
+        if not _is_str_list(report[name]):
+            problems.append(name)
+    for name in ("profile_status", "not_run_test_reasons", "dirty_tree"):
+        if not isinstance(report[name], dict):
+            problems.append(name)
+    for name in ("artifact_paths", "artifact_digests"):
+        if not _is_str_map(report[name]):
+            problems.append(name)
+    sizes = report["artifact_sizes"]
+    if not isinstance(sizes, dict) or not all(
+        isinstance(k, str) and isinstance(v, int) and not isinstance(v, bool) and v >= 0
+        for k, v in sizes.items()
+    ):
+        problems.append("artifact_sizes")
+    if isinstance(report["exit_code"], bool) or not isinstance(report["exit_code"], int):
+        problems.append("exit_code")
+    return problems
+
+
 def check_report(
+    report: Any,
+    registry: ValidatedRegistry,
+    *,
+    expected_head: str,
+    artifact_bytes: Mapping[str, bytes] | None = None,
+) -> GateCheck:
+    """Never raises: a malformed or unexpected record is NON_APPROVING with SCHEMA."""
+    if isinstance(report, dict) and all(key in report for key in REQUIRED_KEYS):
+        problems = _type_problems(report)
+        if problems:
+            return GateCheck(NON_APPROVING, (("SCHEMA", f"fields with an invalid type: {sorted(problems)}"),))
+    try:
+        return _check_report(report, registry, expected_head=expected_head, artifact_bytes=artifact_bytes)
+    except Exception as error:  # fail closed: an evaluation failure is never an approval
+        return GateCheck(NON_APPROVING, (("SCHEMA", f"record could not be evaluated: {type(error).__name__}"),))
+
+
+def _check_report(
     report: Any,
     registry: ValidatedRegistry,
     *,
@@ -224,18 +290,26 @@ def check_report(
     if recomputed != report["normalized_sha256"]:
         fail("HASH_MISMATCH", "normalized_sha256 does not match the record content")
 
-    digests, sizes = report["artifact_digests"], report["artifact_sizes"]
-    if not isinstance(digests, dict) or not digests or not all(_is_hex_digest(v) for v in digests.values()):
+    digests, sizes, paths = report["artifact_digests"], report["artifact_sizes"], report["artifact_paths"]
+    required = set(REQUIRED_ARTIFACTS)
+    if set(digests) != required or set(sizes) != required or not required <= set(paths):
+        fail(
+            "ARTIFACT_INVENTORY",
+            f"artifact inventory must be exactly {sorted(required)} in digests, sizes and paths "
+            f"(digests={sorted(digests)}, sizes={sorted(sizes)}, paths={sorted(paths)})",
+        )
+    if not digests or not all(_is_hex_digest(v) for v in digests.values()):
         fail("ARTIFACT_DIGEST_INVALID", "artifact digests are missing, malformed or all-zero")
-    elif artifact_bytes is None:
-        fail("ARTIFACT_UNVERIFIED", "raw artifact bytes were not supplied for digest verification")
-    else:
-        for key, digest in digests.items():
-            data = artifact_bytes.get(key)
-            if data is None or sha256_bytes(data) != digest or (
-                isinstance(sizes, dict) and sizes.get(key) != len(data)
-            ):
-                fail("ARTIFACT_MISMATCH", f"artifact {key} differs from the recorded digest or size")
+    elif set(digests) == required and set(sizes) == required:
+        if artifact_bytes is None:
+            fail("ARTIFACT_UNVERIFIED", "raw artifact bytes were not supplied for digest verification")
+        else:
+            for key in sorted(required):
+                data = artifact_bytes.get(key)
+                if not isinstance(data, (bytes, bytearray)) or sha256_bytes(bytes(data)) != digests[key] or (
+                    sizes[key] != len(data)
+                ):
+                    fail("ARTIFACT_MISMATCH", f"artifact {key} differs from the recorded digest or size")
 
     hits = _secret_or_path_hits(report)
     if hits:

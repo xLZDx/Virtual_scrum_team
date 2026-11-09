@@ -2022,3 +2022,7 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 - 2026-11-09 commit message mismatch
 - Kind: FAILURE: commit 487ec89 claims the S4-F code, which was not staged because the staging command was denied by a hook and I did not re-check git status before committing. Caught by the manifest builder refusing a dirty tree.
 - Rule: after any denied compound command, re-run git status and verify the index before the next commit; write commit messages from git diff --cached --stat.
+
+- 2026-11-09 S4-F remediation
+- Kind: FAILURE: three MAJOR defects of my own verifier (untyped lookups, loose artifact inventory, re.match on a path) were found by GPT-PM, not by the author tests; the author tests covered values that start with an absolute path and fields that exist but never wrong types.
+- Rule: for a fail-closed verifier test the wrong type of every field and every path position, not only wrong values of the right type.

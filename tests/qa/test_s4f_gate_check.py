@@ -67,6 +67,12 @@ def assert_fires(result, *codes):
         assert code in result.codes(), (code, result.reasons)
 
 
+def assert_only_schema(result):
+    """A type-invalid record yields exactly one SCHEMA reason (the type pre-validation)."""
+    assert result.verdict == gc.NON_APPROVING and not result.approvable
+    assert [code for code, _ in result.reasons] == ["SCHEMA"], result.reasons
+
+
 # ------------------------------------------------------------------ baseline
 
 
@@ -125,15 +131,20 @@ def test_profile_not_executed(baseline):
 @pytest.mark.parametrize("value,code", [
     ("FAIL", "RESULT_FAIL"), ("NOT_RUN", "RESULT_NOT_RUN"), ("INCONCLUSIVE", "RESULT_INCONCLUSIVE"),
     ("BLOCKED", "RESULT_BLOCKED"), ("UNSUPPORTED", "RESULT_UNSUPPORTED"),
-    ("MAYBE", "RESULT_UNKNOWN"), (None, "RESULT_UNKNOWN"),
+    ("MAYBE", "RESULT_UNKNOWN"), ("", "RESULT_UNKNOWN"),
 ])
 def test_every_non_pass_result_is_typed_and_non_approving(baseline, value, code):
     assert_fires(check(baseline, lambda r: r.update(result=value)), code)
 
 
-@pytest.mark.parametrize("value", [1, 2, -1, None])
-def test_exit_code_nonzero_or_null(baseline, value):
+@pytest.mark.parametrize("value", [1, 2, -1])
+def test_exit_code_nonzero(baseline, value):
     assert_fires(check(baseline, lambda r: r.update(exit_code=value)), "EXIT_NONZERO")
+
+
+@pytest.mark.parametrize("value", [None, True, False, "0", 0.0])
+def test_exit_code_wrong_type_is_schema(baseline, value):
+    assert_only_schema(check(baseline, lambda r: r.update(exit_code=value)))
 
 
 # ------------------------------------------------------------------ ID accounting
@@ -184,20 +195,20 @@ def test_stale_head_wrong_expected_and_head_after_moved(baseline):
     assert_fires(check(baseline, head="1" * 40), "STALE_HEAD")
     assert_fires(check(baseline, lambda r: r.update(head_after="2" * 40)), "STALE_HEAD")
     assert_fires(check(baseline, lambda r: r.update(candidate_head="3" * 40)), "STALE_HEAD")
-    assert_fires(check(baseline, lambda r: r.update(head_after=None)), "STALE_HEAD")
+    assert_only_schema(check(baseline, lambda r: r.update(head_after=None)))  # null head is a type error
 
 
 def test_registry_mismatch_on_digest_and_source_head(baseline):
     assert_fires(check(baseline, lambda r: r.update(registry_sha256=GOOD)), "REGISTRY_MISMATCH")
     assert_fires(check(baseline, lambda r: r.update(source_head="4" * 40)), "REGISTRY_MISMATCH")
-    assert_fires(check(baseline, lambda r: r.update(registry_sha256=None)), "REGISTRY_MISMATCH")
+    assert_only_schema(check(baseline, lambda r: r.update(registry_sha256=None)))
 
 
 def test_dirty_tree_before_after_and_malformed(baseline):
     assert_fires(check(baseline, lambda r: r["dirty_tree"].update(before=True)), "DIRTY_TREE")
     assert_fires(check(baseline, lambda r: r["dirty_tree"].update(after=True)), "DIRTY_TREE")
     assert_fires(check(baseline, lambda r: r["dirty_tree"].pop("after")), "DIRTY_TREE")
-    assert_fires(check(baseline, lambda r: r.update(dirty_tree=None)), "DIRTY_TREE")
+    assert_only_schema(check(baseline, lambda r: r.update(dirty_tree=None)))  # not a mapping: type error
 
 
 def test_state_changed(baseline):
@@ -206,9 +217,13 @@ def test_state_changed(baseline):
     assert_fires(check(baseline, lambda r: r.update(evidence_unchanged=False)), "STATE_CHANGED")
 
 
-@pytest.mark.parametrize("value", [None, "", ZERO, "ABCD", "ab" * 31, "g" * 64])
+@pytest.mark.parametrize("value", ["", ZERO, "ABCD", "ab" * 31, "g" * 64])
 def test_lock_missing_or_invalid(baseline, value):
     assert_fires(check(baseline, lambda r: r.update(lock_sha256=value)), "LOCK_MISSING")
+
+
+def test_lock_null_is_schema(baseline):
+    assert_only_schema(check(baseline, lambda r: r.update(lock_sha256=None)))
 
 
 def test_dependency_unverified_before_or_after(baseline):
@@ -229,17 +244,22 @@ def test_hash_mismatch_on_edit_without_rehash_and_clears_when_rehashed(baseline)
     # the digest check is real: recomputing the digest removes exactly this code
     assert "HASH_MISMATCH" not in check(baseline, edit, rehash=True).codes()
     assert_fires(check(baseline, lambda r: r.update(normalized_sha256=GOOD)), "HASH_MISMATCH")
-    assert_fires(check(baseline, lambda r: r.update(normalized_sha256=None)), "HASH_MISMATCH")
+    assert_only_schema(check(baseline, lambda r: r.update(normalized_sha256=None)))
 
 
-@pytest.mark.parametrize("bad", [ZERO, "", "xyz", None, "AB" * 32])
+@pytest.mark.parametrize("bad", [ZERO, "", "xyz", "AB" * 32])
 def test_artifact_digest_invalid(baseline, bad):
     assert_fires(check(baseline, lambda r: r["artifact_digests"].update(stdout=bad)), "ARTIFACT_DIGEST_INVALID")
 
 
-def test_artifact_digest_invalid_when_empty_or_not_a_mapping(baseline):
-    assert_fires(check(baseline, lambda r: r.update(artifact_digests={})), "ARTIFACT_DIGEST_INVALID")
-    assert_fires(check(baseline, lambda r: r.update(artifact_digests=None)), "ARTIFACT_DIGEST_INVALID")
+def test_artifact_digest_null_value_is_schema(baseline):
+    assert_only_schema(check(baseline, lambda r: r["artifact_digests"].update(stdout=None)))
+
+
+def test_artifact_digest_empty_is_invalid_and_inventory_and_non_mapping_is_schema(baseline):
+    assert_fires(check(baseline, lambda r: r.update(artifact_digests={})), "ARTIFACT_DIGEST_INVALID", "ARTIFACT_INVENTORY")
+    assert_only_schema(check(baseline, lambda r: r.update(artifact_digests=None)))
+    assert_only_schema(check(baseline, lambda r: r.update(artifact_digests=[])))
 
 
 def test_artifact_unverified_when_bytes_not_supplied(baseline):
@@ -254,6 +274,57 @@ def test_artifact_mismatch_altered_truncated_missing_and_wrong_size(baseline):
     assert_fires(check(baseline, lambda r: r["artifact_sizes"].update(stdout=1)), "ARTIFACT_MISMATCH")
 
 
+def test_artifact_inventory_missing_extra_or_malformed_keys(baseline):
+    assert_fires(check(baseline, lambda r: r["artifact_digests"].pop("stderr")), "ARTIFACT_INVENTORY")
+    assert_fires(check(baseline, lambda r: r["artifact_digests"].pop("stdout")), "ARTIFACT_INVENTORY")
+    assert_fires(check(baseline, lambda r: r["artifact_sizes"].pop("stderr")), "ARTIFACT_INVENTORY")
+    assert_fires(check(baseline, lambda r: r["artifact_sizes"].pop("stdout")), "ARTIFACT_INVENTORY")
+    assert_fires(check(baseline, lambda r: r["artifact_paths"].pop("stderr")), "ARTIFACT_INVENTORY")
+    assert_fires(check(baseline, lambda r: r["artifact_digests"].update(extra=GOOD)), "ARTIFACT_INVENTORY")
+    assert_fires(check(baseline, lambda r: r["artifact_sizes"].update(extra=1)), "ARTIFACT_INVENTORY")
+    # malformed size mapping: empty, or keyed by names other than the two raw outputs
+    assert_fires(check(baseline, lambda r: r.update(artifact_sizes={})), "ARTIFACT_INVENTORY")
+    assert_fires(check(baseline, lambda r: r.update(artifact_sizes={"out": 1, "err": 2})), "ARTIFACT_INVENTORY")
+
+
+# ------------------------------------------------------------------ type pre-validation (never raises)
+
+
+@pytest.mark.parametrize("value", [None, [], ["x"], 0, 7, "EXECUTED"])
+def test_profile_status_non_mapping_is_schema(baseline, value):
+    assert_only_schema(check(baseline, lambda r: r.update(profile_status=value)))
+
+
+@pytest.mark.parametrize("value", [["functional"], {"a": 1}, 5, None])
+def test_category_wrong_type_is_schema_not_a_crash(baseline, value):
+    assert_only_schema(check(baseline, lambda r: r.update(category=value)))
+
+
+@pytest.mark.parametrize("field", list(gc.ID_LIST_FIELDS))
+@pytest.mark.parametrize("element", [["nested"], {"k": "v"}, 5, None])
+def test_id_list_with_non_string_or_unhashable_element_is_schema(baseline, field, element):
+    assert_only_schema(check(baseline, lambda r: r[field].append(element)))
+
+
+@pytest.mark.parametrize("value", [None, [], 5, "x"])
+def test_artifact_sizes_non_mapping_is_schema(baseline, value):
+    assert_only_schema(check(baseline, lambda r: r.update(artifact_sizes=value)))
+
+
+def test_artifact_sizes_bad_value_types_are_schema(baseline):
+    for bad in (True, -1, "5", None, 1.5):
+        assert_only_schema(check(baseline, lambda r, b=bad: r["artifact_sizes"].update(stdout=b)))
+
+
+def test_other_mapping_and_list_fields_wrong_type_are_schema(baseline):
+    assert_only_schema(check(baseline, lambda r: r.update(not_run_test_reasons=[])))
+    assert_only_schema(check(baseline, lambda r: r.update(artifact_paths=None)))
+    assert_only_schema(check(baseline, lambda r: r["artifact_paths"].update(stdout=5)))
+    assert_only_schema(check(baseline, lambda r: r.update(command="pytest -q")))
+    assert_only_schema(check(baseline, lambda r: r["command"].append(3)))
+    assert_only_schema(check(baseline, lambda r: r.update(manifest_path=None)))
+
+
 # ------------------------------------------------------------------ secret / absolute path
 
 
@@ -266,6 +337,34 @@ def test_secret_like_value_user_path_and_absolute_command_path(baseline):
     assert_fires(check(baseline, lambda r: r.update(command=["/usr/bin/python"])), "SECRET_OR_ABS_PATH")
     assert_fires(check(baseline, lambda r: r["artifact_paths"].update(stdout="C:/abs/out.txt")), "SECRET_OR_ABS_PATH")
     assert_fires(check(baseline, lambda r: r.update(manifest_path="/etc/manifest.json")), "SECRET_OR_ABS_PATH")
+
+
+@pytest.mark.parametrize("extra", [
+    ["--rootdir=C:\\Users\\alice\\project"],
+    ["--qa-selection-file=D:\\private\\selection.json"],
+    ["--config=/home/alice/config.json"],
+    ["--rootdir", "/home/alice/project"],
+    ["--qa-selection-file", "D:\\private\\selection.json"],
+    ["--rootdir=\\\\server\\share\\x"],
+    ["--opt 'C:/data/x'"],
+])
+def test_absolute_path_in_command_in_every_form_is_flagged(baseline, extra):
+    result = check(baseline, lambda r: r.update(command=r["command"] + extra))
+    assert_fires(result, "SECRET_OR_ABS_PATH")
+    rec = copy.deepcopy(baseline["record"])
+    rec["command"] = rec["command"] + extra
+    assert any(hit.startswith("command") for hit in gc._secret_or_path_hits(rec))
+
+
+def test_placeholder_arguments_do_not_trigger_secret_or_abs_path(baseline):
+    placeholders = ["--rootdir=<candidate-root>", "--confcutdir=<candidate-root>/tests",
+                    "--qa-repo-root=<candidate-root>", "<scratch>\\pytest.ini", "<scratch>/pytest.ini"]
+    rec = copy.deepcopy(baseline["record"])
+    rec["command"] = rec["command"] + placeholders
+    assert gc._secret_or_path_hits(rec) == []
+    assert gc._ABS_PATH.search("--rootdir=<candidate-root>/tests") is None
+    assert gc._ABS_PATH.search("<scratch>\\pytest.ini") is None
+    assert gc._ABS_PATH.search("--rootdir=C:\\Users\\x") is not None
 
 
 # ------------------------------------------------------------------ select_record / digests
