@@ -2733,3 +2733,7 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 - Limits: the NOT_RUN selector is declared in a throwaway registry copy, not a real e2e selector; real e2e and regression lanes are NOT_RUN by the operator decision (mechanism and a small slice only); e2e-runner smoke earlier: first 5 of 37 tests in tests/vst/test_e5_slice.py passed.
 
 - 2026-11-09: manifest regenerated for the new S4-D test file.
+
+## 2026-11-09 — S4-D GPT-PM request and plan refresh
+
+- Evidence: real_manifest 2 passed on 5781e08 (test agent). Scope note docs/sdlc/evidence/s4-d-gptpm-scope-note.md states that the real e2e and regression lanes were not run by the operator decision (mechanism and a small slice), the 14 lane tests, the one test-authoring mistake and the throwaway-registry limit; one request, no further rounds before the answer. Plan and report refreshed in the same commit because the repeat-work gate lets only one commit through per operator message.

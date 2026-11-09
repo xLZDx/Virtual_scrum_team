@@ -2000,3 +2000,6 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - 2026-11-09 S4-D lane tests
 - Kind: SUCCESS: AC-10 and AC-11 are pinned at runner level with small synthetic repos instead of a 1830-test run.
+
+- 2026-11-09 S4-D GPT-PM request
+- Kind: NEUTRAL: S4-D goes to review with explicit NOT_RUN for the real e2e and regression lanes.
