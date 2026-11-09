@@ -2009,3 +2009,6 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - 2026-11-09 S4-E catalog
 - Kind: SUCCESS: 8 seeded failures run in under a second without changing product code; SHORTCOMING noted: expected rejections come from observed behavior.
+
+- 2026-11-09 S4-E GPT-PM request
+- Kind: NEUTRAL: S4-E goes to review with its oracle limit stated openly.

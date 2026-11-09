@@ -2748,3 +2748,7 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 - Limits: expected_rejection values were generated once from the observed behavior of the current product (so they pin current behavior, not an independent oracle); SF-005 covers _resolve_cases only, not count_passed; SF-007 needs DROP TRIGGER first (events are append-only), modelling an attacker with file access; a wrong-event-key fixture is covered by an existing test in test_e3_store.py instead.
 
 - 2026-11-09: manifest regenerated for the new seeded-failure tests.
+
+## 2026-11-09 — S4-E GPT-PM request
+
+- Evidence: confirmation by a second test agent on 0d6f9b6: seeded-failure catalog tests 9 passed in 1.21 s; real_manifest, denominator_per_category and builder_empty_categories 4 passed in 36.66 s. Scope note docs/sdlc/evidence/s4-e-gptpm-scope-note.md lists the limits (expected rejections taken from observed behavior, SF-005 covers _resolve_cases only). One request, no further rounds before the answer.
