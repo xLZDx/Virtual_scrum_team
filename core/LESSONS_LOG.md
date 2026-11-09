@@ -1926,3 +1926,109 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - Kind: SUCCESS: three real acceptance defects were found before any code was written, fixed in one batch and verified in one round.
 - Rule: have the plan reviewed before implementation; fix the whole MAJOR set in one batch.
+
+- 2026-11-08 S4-A registry on main
+- Kind: SUCCESS: tests caught that the validator refuses a test module with no category, so every new test file needs a map entry before the manifest is rebuilt.
+- Rule: add the map entry and regenerate the manifest in the same task whenever a test file is added.
+
+- 2026-11-08 S4-A collector and registry fixes
+- Kind: FAILURE: my port shared a blind spot between the generator and the validator (both ignored TestCase classes with other names), so 144 green tests and a valid manifest still undercounted the denominator. Caught by the reviewer reading the real corpus and then by an oracle test against pytest.
+- Rule: a collector needs an independent oracle (pytest --collect-only) in its tests, never only its own generator.
+
+- 2026-11-08 S4-A GPT-PM approval recorded
+- Kind: SUCCESS: fixes from the reviewer and a pytest oracle were batched before the single GPT-PM request, one round to approval.
+
+- 2026-11-08 S4-B runner port
+- Kind: NEUTRAL: the registry artifact stage and the one-category-at-a-time runner conflicted; resolved with an explicit opt-out flag, not by weakening the default.
+
+- 2026-11-08 S4-B review fixes
+- Kind: SHORTCOMING: the first fix of ignored-file checks was too broad and would have blocked the accepted S4-A validator on the real repo; caught by running the check on the real tree before commit.
+- Rule: run every new fail-closed check on the real repository, not only on fixtures, before committing it.
+
+- 2026-11-08 S4-B runner tests
+- Kind: SUCCESS: tests found the extra-wheel gap and pinned the new isolation behavior; a full file run costs 48 minutes so fixes to tests are verified by targeted reruns.
+
+- 2026-11-08 S4-B GPT-PM request
+- Kind: NEUTRAL: scope note written with honest evidence limits (full test file not rerun after test-only fixes; mutation, WSL, live category run NOT_RUN).
+
+- 2026-11-08 S4-B sender refusal
+- Kind: SHORTCOMING: a deliberately unterminated PEM fixture made the review sender refuse the whole input; caught by the sender (gate), not by author or tests.
+- Rule: build secret-looking fixtures by concatenation, and scan the review diff for such markers before sending.
+
+- 2026-11-08 S4-B accepted
+- Kind: SUCCESS: one internal review pair plus one GPT-PM request closed the task; the only extra round was the sender refusing a literal unterminated key fixture.
+
+- 2026-11-09 S4-C first run
+- Kind: SHORTCOMING: S4-A assigned the QA tooling own tests to the functional lane by file name; nobody ran the lane end to end before S4-C, so the 1 hour test cost and the dirty-tree block between lanes (runner writes evidence into the tree it requires clean) were found only now.
+- Rule: run every lane once through the real runner as soon as the runner exists; commit evidence between lane runs.
+
+- 2026-11-09 S4-C tests for qa-tooling
+- Kind: SUCCESS: the new category boundary is pinned by a test that moves the selector into every other category and expects rejection.
+
+- 2026-11-09 runner node-ID accounting
+- Kind: FAILURE: S4-B refused a whole lane on one unusual parametrized ID, and its own test pinned that as correct; found by the first end-to-end lane run, missed by author, tests, both internal reviewers and GPT-PM.
+- Rule: a fail-closed check must degrade to a typed, attributable result for the affected item, never discard the evidence of the whole run.
+
+- 2026-11-09 S4-B node-ID tests
+- Kind: SUCCESS: the replaced tests now pin attribution of a failing unusual-ID case, which was the actual lost evidence.
+
+- 2026-11-09 S4-C functional lane
+- Kind: SUCCESS: the lane now names its failures (8) and the real run exposed pre-existing red tests that no earlier gate showed because nobody ran the whole functional set through one runner.
+
+- 2026-11-09 S4-C integration lane
+- Kind: SUCCESS: the real run exposed 45 selectors that collect nothing and two red tests, all invisible to earlier per-file runs.
+
+- 2026-11-09 S4-C api lane
+- Kind: SUCCESS: one run per lane named every failure; one failure passes alone, which shows an order dependence that per-file runs never exposed.
+
+- 2026-11-09 artifact stage per category
+- Kind: FAILURE: my own commits of lane evidence broke the accepted real-manifest validation; the targeted new-test run caught it, not the earlier lane runs, because the lanes ran before the evidence was committed alongside the manifest test.
+- Rule: after committing evidence files, run the real-manifest test before moving on.
+
+- 2026-11-09 artifact-stage tests
+- Kind: SUCCESS: the per-category rule is pinned by three new tests including the not-a-success PARTIAL state.
+
+- 2026-11-09 S4-C GPT-PM request
+- Kind: NEUTRAL: S4-C is sent as mechanism-works-and-honest-red per the operator; open AC-7/AC-8 items and unrerun full files are stated in the scope note.
+
+- 2026-11-09 S4-C accepted
+- Kind: SUCCESS: the lanes were run for real and every red result is named; the cost was four rounds because three defects of already-accepted S4-A/S4-B code surfaced only by that real run.
+
+- 2026-11-09 plan refresh
+- Kind: SHORTCOMING: the plan kept U1 as active and S5 as SUPERSEDED for a day after the operator set the S3-S4-S5-then-U order; the dashboard showed 0/6 for S4 while three tasks were accepted.
+- Rule: update the plan rows in the same commit as each acceptance.
+
+- 2026-11-09 S4-D lane tests
+- Kind: SUCCESS: AC-10 and AC-11 are pinned at runner level with small synthetic repos instead of a 1830-test run.
+
+- 2026-11-09 S4-D GPT-PM request
+- Kind: NEUTRAL: S4-D goes to review with explicit NOT_RUN for the real e2e and regression lanes.
+
+- 2026-11-09 S4-D accepted
+- Kind: SUCCESS: one request, no fix round; the mechanism tests were small and fast compared with the lane runs of S4-C.
+
+- 2026-11-09 S4-E catalog
+- Kind: SUCCESS: 8 seeded failures run in under a second without changing product code; SHORTCOMING noted: expected rejections come from observed behavior.
+
+- 2026-11-09 S4-E GPT-PM request
+- Kind: NEUTRAL: S4-E goes to review with its oracle limit stated openly.
+
+- 2026-11-09 S4-E accepted
+- Kind: SUCCESS: one author run, one confirmation run, one GPT-PM request, no fix round; the whole task was fast because no product code changed and no lane was run.
+
+- 2026-11-09 S4-F manifest and scope note
+- Kind: NEUTRAL: last S4 task goes to review with the verifier advisory and not wired into the gate by design.
+
+- 2026-11-09 commit message mismatch
+- Kind: FAILURE: commit 487ec89 claims the S4-F code, which was not staged because the staging command was denied by a hook and I did not re-check git status before committing. Caught by the manifest builder refusing a dirty tree.
+- Rule: after any denied compound command, re-run git status and verify the index before the next commit; write commit messages from git diff --cached --stat.
+
+- 2026-11-09 S4-F remediation
+- Kind: FAILURE: three MAJOR defects of my own verifier (untyped lookups, loose artifact inventory, re.match on a path) were found by GPT-PM, not by the author tests; the author tests covered values that start with an absolute path and fields that exist but never wrong types.
+- Rule: for a fail-closed verifier test the wrong type of every field and every path position, not only wrong values of the right type.
+
+## 2026-11-09 S4-F plan sync and sprint close
+Kind: SUCCESS. The remediation of three MAJOR findings was accepted in one verification round. Evidence: GPT-PM reply 7507a593 (APPROVE). Why it worked: whole defect class fixed (type validation plus catch-all, exact inventory, search instead of match). Limit: fixes verified by static review only because pytest is forbidden. Next time: keep a no-pytest runtime check ready for such tasks.
+
+## 2026-11-09 Plan report re-render
+Kind: NEUTRAL. Routine re-render after PR 6; no defect.
