@@ -2784,3 +2784,6 @@ Operator authorized merging PR 6 and starting S5. PR 6 merged (f52069b). S5-A (V
 
 ## 2026-11-09 S5-A remediation of three reviewer MAJOR findings
 Reviewers (python-reviewer, functional-test-reviewer) found: gate treated v3 as v1 and let a v3 receipt satisfy a v1 manifest; derive_result ignored HIGH/CRITICAL findings; rule set not bound to the manifest. Fixed: exact version compare and fail-closed NO_GO for v3 in gate.py (wiring is S5-E); FAIL on HIGH/CRITICAL; required_rule_ids plus require_static_rule_set_matches_manifest. Verified by reading only (pytest forbidden); tests NOT_RUN.
+
+## 2026-11-09 S5-A GPT-PM scope note
+Added the review scope note for S5-A and requested the GPT-PM code review for the exact head.
