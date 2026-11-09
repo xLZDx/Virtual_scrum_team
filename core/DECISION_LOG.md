@@ -2722,3 +2722,12 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 ## 2026-11-09 — S4-C accepted
 
 - Evidence: GPT-PM APPROVE (0 BLOCKER, 0 MAJOR), request 39952367-c14a-4e2d-bf24-d411eb9cca05, head 15754ed; plan row S4-C set to ACCEPTED with the honest FAIL of the three lanes and the open AC-7/AC-8 items.
+
+## 2026-11-09 — plan and report refreshed
+
+- Evidence: PROJECT_PLAN.md: active sprint set to S4 (S4-A, S4-B, S4-C accepted and pushed, S4-D in progress); the stale U1 row parked by the operator order "U1-U6 only after S3-S5"; the unauthorized SUPERSEDED mark on S5 withdrawn (NOT_STARTED, next after S4); reports re-rendered.
+
+## 2026-11-09 — S4-D lane tests written and green
+
+- Evidence: tests/qa/test_s4d_lanes.py (test agent, HEAD cd5a8d0): 14 passed in 407.6 s (4 end-to-end on tiny repos, 10 unit-level); first run 10 passed and 4 failed because of a test-authoring mistake (NOT_RUN policy line appended after the __main__ guard of the throwaway builder), fixed by the agent; the file was run twice. They pin AC-11 (skipped, xfail, failed, uncollected, unexpected each non-approving in the regression lane), AC-10 (a declared NOT_RUN e2e selector stays in the denominator, INCONCLUSIVE never PASS) and the exact-union regression denominator. No product defect found in tools/qa.
+- Limits: the NOT_RUN selector is declared in a throwaway registry copy, not a real e2e selector; real e2e and regression lanes are NOT_RUN by the operator decision (mechanism and a small slice only); e2e-runner smoke earlier: first 5 of 37 tests in tests/vst/test_e5_slice.py passed.

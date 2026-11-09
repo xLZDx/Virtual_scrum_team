@@ -45,6 +45,7 @@ TEST_FILE_CATEGORIES = {
 MAIN_TEST_FILE_CATEGORIES = {
     "tests/qa/test_s4a_registry.py": "qa-tooling",
     "tests/qa/test_s4b_runner.py": "qa-tooling",
+    "tests/qa/test_s4d_lanes.py": "qa-tooling",
     "tests/af/test_s2_review_source_fidelity.py": "functional",
     "tests/uc/test_adapter.py": "functional",
     "tests/uc/test_aeve_probe.py": "functional",

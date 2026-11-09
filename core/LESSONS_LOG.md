@@ -1993,3 +1993,10 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - 2026-11-09 S4-C accepted
 - Kind: SUCCESS: the lanes were run for real and every red result is named; the cost was four rounds because three defects of already-accepted S4-A/S4-B code surfaced only by that real run.
+
+- 2026-11-09 plan refresh
+- Kind: SHORTCOMING: the plan kept U1 as active and S5 as SUPERSEDED for a day after the operator set the S3-S4-S5-then-U order; the dashboard showed 0/6 for S4 while three tasks were accepted.
+- Rule: update the plan rows in the same commit as each acceptance.
+
+- 2026-11-09 S4-D lane tests
+- Kind: SUCCESS: AC-10 and AC-11 are pinned at runner level with small synthetic repos instead of a 1830-test run.
