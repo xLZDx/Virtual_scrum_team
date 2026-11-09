@@ -2,32 +2,34 @@
 
 Everything here is deterministic, token-free stdlib Python: no model call, no
 network call, no signing and no key material. VST trusted code computes every
-digest itself (source tree, analyzer files, profile, report); nothing the
-analyzer prints is trusted as a digest of VST-owned data. Signing stays in
-analyzer_authority.sign_analyzer_evidence (never called from this module).
+digest itself (source tree from git blob content, analyzer files, profile,
+report); nothing the analyzer prints is trusted as a digest of VST-owned data.
+Signing stays in analyzer_authority.sign_analyzer_evidence (never called here).
 
 What AEVE actually exposes (read from D:\\Repo\\AEVE, never imported or executed
 by this module's author):
   * ``aeve analyze --root PATH [--allow-dirty]`` captures the tracked files of
     the WHOLE git root at HEAD and prints one JSON document (schema
     ``g2.analysis.v1``, rules ``g2.rules.v15``). It has NO scope option, NO
-    profile option, and prints NO rule inventory and NO head. Exit 0 = COMPLETE,
-    3 = PARTIAL, 2 = blocked (stderr). This adapter never passes --allow-dirty.
+    profile option, and prints NO rule inventory, NO head and NO per-file list.
+    Exit 0 = COMPLETE, 3 = PARTIAL, 2 = blocked (stderr). --allow-dirty is never
+    passed; VST additionally requires HEAD == candidate_head and a clean tree
+    before and after the run, using its own git calls.
   * The only machine-readable inventory is the ``g2.*`` analysis executors in
     ``aeve.governance.matrix.EXECUTORS`` (a declaration, not proof that every
-    id is emitted for every file). It is pinned below as AEVE_G2_RULE_INVENTORY
-    together with the rules version it was read at.
+    id is emitted for every file). It is pinned below as AEVE_G2_RULE_INVENTORY.
   * AEVE provides no license text, no evidence artifacts and no signature.
-    The analyzer version is read by VST from ``__version__`` in a file, the
-    executable digest is computed by VST from explicit files, the license is
-    reported as UNKNOWN.
 
-Resource boundaries enforced HERE: argv list (no shell), scrubbed environment,
-wall-clock timeout, stdout/stderr byte caps, per-file and total input caps, a
-post-run source-tree recheck. NOT enforced here (NOT_RUN, belongs to the S2
-sandbox): OS-level network denial, read-only mounts, CPU/memory limits and
-killing grandchild processes. "No network use" holds by construction only in
-the sense that this module opens no socket and passes no endpoint or credential.
+Boundaries enforced HERE: argv list (no shell), scrubbed environment, neutral
+empty cwd, isolated interpreter flags, analyzer pinned under analyzer_root and
+re-hashed after the run, wall-clock timeout, stdout/stderr caps, input caps,
+Windows Job Object (kill-on-close) or taskkill /T /F or killpg tree kill, and a
+local git-config allowlist. NOT enforced here (NOT_RUN, S2 sandbox): OS-level
+network denial, read-only mounts, CPU/memory limits. AEVE removes GIT_CONFIG_*
+variables from its own git environment, so VST cannot inject -c overrides into
+AEVE's git calls; the defence is the .git/config allowlist checked before and
+after the run (residual risk: a config change inside the run window, and any
+AEVE-internal git behaviour, is outside this module).
 """
 
 from __future__ import annotations
@@ -35,10 +37,14 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import posixpath
 import re
+import shutil
+import signal
 import stat
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import unicodedata
@@ -58,7 +64,8 @@ from .contracts import (
     canonical_bytes,
 )
 
-SOURCE_TREE_LABEL = b"vst-source-tree-v1\0"
+SOURCE_TREE_LABEL = b"vst-git-blob-tree-v1\0"
+ANALYZER_FILES_LABEL = b"vst-analyzer-files-v1\0"
 REPORT_LABEL = "vst-analyzer-report-v1"
 PROFILE_LABEL = "vst-aeve-profile-v1"
 AEVE_SCHEMA_VERSION = "g2.analysis.v1"
@@ -66,9 +73,10 @@ AEVE_RULES_VERSION = "g2.rules.v15"
 LICENSE_STATUS_UNKNOWN = "UNKNOWN"
 
 # AEVE severity -> VST closed enum. AEVE has no MEDIUM tier; MINOR->LOW is a
-# conservative, documented choice (see the hand-off ambiguity list).
+# conservative, documented choice.
 SEVERITY_MAP = {"BLOCKER": "CRITICAL", "MAJOR": "HIGH", "MINOR": "LOW", "INFO": "INFO"}
-assert set(SEVERITY_MAP.values()) <= FINDING_SEVERITY
+if not set(SEVERITY_MAP.values()) <= FINDING_SEVERITY:
+    raise ImportError("SEVERITY_MAP leaves the closed VST severity enum")
 
 # Capabilities of the ``g2.*`` analysis executors in AEVE's governance matrix at
 # rules version g2.rules.v15, minus the *-ANALYSIS-ERROR guard ids (those signal
@@ -134,25 +142,43 @@ _ENV_FIXED = {
     "PYTHONNOUSERSITE": "1",
     "PYTHONUTF8": "1",
     "PYTHONIOENCODING": "utf-8",
+    # Never honour system/user/candidate-independent git configuration.
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_CONFIG_GLOBAL": os.devnull,
+    "GIT_TERMINAL_PROMPT": "0",
+    "GIT_OPTIONAL_LOCKS": "0",
+    "GIT_NO_REPLACE_OBJECTS": "1",
+    "GIT_ATTR_NOSYSTEM": "1",
 }
 _REPARSE_POINT = 0x400
 _WINDOWS_RESERVED = frozenset(
     {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
 )
 _HEX64 = re.compile(r"[0-9a-f]{64}")
+_HEX40 = re.compile(r"[0-9a-f]{40}")
 _AEVE_TOP_KEYS = frozenset({
     "schema_version", "rules_version", "status", "snapshot_sha256", "analysis_sha256",
     "findings", "summary", "diagnostics", "uncovered", "executed_project_code", "llm_calls",
 })
 _AEVE_FINDING_KEYS = frozenset({"rule_id", "severity", "confidence", "file", "line", "message", "detail"})
 _STDERR_TAIL_BYTES = 2000
+# Local .git/config allowlist: anything that can name a program or load more config is refused.
+_GIT_CONFIG_ALLOWED = {
+    "core": frozenset({
+        "repositoryformatversion", "filemode", "bare", "logallrefupdates", "symlinks",
+        "ignorecase", "precomposeunicode", "autocrlf", "eol", "safecrlf", "longpaths",
+    }),
+    "remote": frozenset({"url", "fetch", "pushurl", "tagopt", "prune"}),
+    "branch": frozenset({"remote", "merge", "rebase"}),
+}
+_GIT_REGULAR_MODES = frozenset({"100644", "100755"})
 
 
 # ----------------------------------------------------------------- errors/types
 
 
 class AdapterError(ValueError):
-    """Typed refusal raised before or around a run (scope, input, digest problems)."""
+    """Typed refusal raised before or around a run (scope, input, digest, binding problems)."""
 
     def __init__(self, code: str, message: str) -> None:
         super().__init__(f"{code}: {message}")
@@ -161,11 +187,15 @@ class AdapterError(ValueError):
 
 class Outcome(str, Enum):
     OK = "OK"
+    PARTIAL_WITH_FINDINGS = "PARTIAL_WITH_FINDINGS"
     TIMEOUT = "TIMEOUT"
     OUTPUT_CAP = "OUTPUT_CAP"
     CRASH = "CRASH"
     MISSING_EXECUTABLE = "MISSING_EXECUTABLE"
     INVALID_OUTPUT = "INVALID_OUTPUT"
+
+
+_PAYLOAD_OUTCOMES = frozenset({Outcome.OK, Outcome.PARTIAL_WITH_FINDINGS})
 
 
 @dataclass(frozen=True)
@@ -177,15 +207,23 @@ class Limits:
     max_total_input_bytes: int = 64_000_000
     max_analyzer_file_bytes: int = 16_000_000
     max_analyzer_total_bytes: int = 256_000_000
+    git_timeout_seconds: float = 30.0
+    max_git_listing_bytes: int = 24_000_000
 
 
 @dataclass(frozen=True)
 class AnalyzerSpec:
-    """Pinned analyzer identity. argv_prefix e.g. (python, "-m", "aeve") or (aeve_exe,)."""
+    """Pinned analyzer identity.
+
+    argv_prefix is either (python, "-m", "aeve") together with a non-empty
+    ``pythonpath`` under analyzer_root, or (path_to_launcher,) located under
+    analyzer_root. Either way the executed module/launcher must be listed in
+    ``analyzer_files`` (explicit sorted files hashed as the analyzer).
+    """
 
     argv_prefix: tuple[str, ...]
     analyzer_root: Path
-    analyzer_files: tuple[str, ...]  # explicit sorted repo-relative files hashed as the analyzer
+    analyzer_files: tuple[str, ...]
     version_file: str  # relative to analyzer_root, contains __version__ = "x"
     profile_id: str
     analyzer_id: str = "aeve"
@@ -243,8 +281,12 @@ class AdapterResult:
     analyzer_sha256: str | None
     profile_sha256: str | None
     analyzer_version: str | None
+    candidate_head: str | None = None
     license_status: str = LICENSE_STATUS_UNKNOWN
+    # Informational limits (never invented away): license, per-file confirmation, rule emission.
     unknown: tuple[str, ...] = field(default_factory=tuple)
+    # Bindings that are missing; assemble_analyzer_payload refuses while any is present.
+    blocking_unknown: tuple[str, ...] = field(default_factory=tuple)
 
 
 # ------------------------------------------------------------ scope / path rules
@@ -304,13 +346,30 @@ def _resolve_regular_file(real_root: str, rel: str) -> str:
         if not last and not stat.S_ISDIR(st.st_mode):
             raise AdapterError("SCOPE_NOT_REGULAR", f"{rel}: parent {segment!r} is not a directory")
     real = os.path.realpath(current)
-    try:
-        inside = os.path.commonpath([os.path.normcase(real_root), os.path.normcase(real)]) == os.path.normcase(real_root)
-    except ValueError:
-        inside = False
-    if not inside:
+    if not _is_under(real_root, real):
         raise AdapterError("SCOPE_ESCAPE", f"{rel}: resolves outside the root")
     return current
+
+
+def _is_under(root: str, candidate: str) -> bool:
+    try:
+        return os.path.commonpath([os.path.normcase(root), os.path.normcase(candidate)]) == os.path.normcase(root)
+    except ValueError:
+        return False
+
+
+def _combine(label: bytes, items: Sequence[tuple[str, int, bytes]]) -> str:
+    """Layout: label | count(8) | per file: len(path)(8) path size(8) sha256(32)."""
+    outer = hashlib.sha256()
+    outer.update(label)
+    outer.update(len(items).to_bytes(8, "big"))
+    for rel, size, inner in items:
+        path_bytes = rel.encode("utf-8")
+        outer.update(len(path_bytes).to_bytes(8, "big"))
+        outer.update(path_bytes)
+        outer.update(size.to_bytes(8, "big"))
+        outer.update(inner)
+    return outer.hexdigest()
 
 
 def tree_digest(
@@ -319,19 +378,14 @@ def tree_digest(
     *,
     max_file_bytes: int,
     max_total_bytes: int,
-    label: bytes = SOURCE_TREE_LABEL,
+    label: bytes = ANALYZER_FILES_LABEL,
 ) -> TreeDigest:
-    """Deterministic digest over an explicit sorted file list (versioned by ``label``).
-
-    Layout: label | count(8) | per file: len(path)(8) path size(8) sha256(32).
-    """
+    """Deterministic digest over explicit working-tree files (used for the analyzer files)."""
     paths = validate_scope(list(files))
     real_root = os.path.realpath(os.fspath(root))
     if not os.path.isdir(real_root):
         raise AdapterError("ROOT_INVALID", "root is not a directory")
-    outer = hashlib.sha256()
-    outer.update(label)
-    outer.update(len(paths).to_bytes(8, "big"))
+    items: list[tuple[str, int, bytes]] = []
     digests: dict[str, str] = {}
     sizes: dict[str, int] = {}
     total = 0
@@ -356,19 +410,184 @@ def tree_digest(
             raise AdapterError("SCOPE_FILE_UNREADABLE", f"{rel}: {type(exc).__name__}") from exc
         digests[rel] = inner.hexdigest()
         sizes[rel] = size
-        path_bytes = rel.encode("utf-8")
-        outer.update(len(path_bytes).to_bytes(8, "big"))
-        outer.update(path_bytes)
-        outer.update(size.to_bytes(8, "big"))
-        outer.update(inner.digest())
-    return TreeDigest(outer.hexdigest(), digests, sizes, total)
+        items.append((rel, size, inner.digest()))
+    return TreeDigest(_combine(label, items), digests, sizes, total)
 
 
-def source_tree_digest(root: str | os.PathLike[str], scope: Sequence[str], limits: Limits = Limits()) -> TreeDigest:
-    """Source-tree digest over the manifest scope (the value bound as source_tree_sha256)."""
-    return tree_digest(
-        root, scope, max_file_bytes=limits.max_file_bytes, max_total_bytes=limits.max_total_input_bytes
+# ---------------------------------------------------------------- VST-run git
+
+
+def _which(name: str) -> str | None:
+    """PATH lookup that never consults the current directory."""
+    pathext = [".exe"] if sys.platform == "win32" and not os.path.splitext(name)[1] else [""]
+    for directory in os.environ.get("PATH", "").split(os.pathsep):
+        if not directory or not os.path.isabs(directory):
+            continue
+        for ext in pathext:
+            candidate = os.path.join(directory, name + ext)
+            if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+                return candidate
+    return None
+
+
+def _git_exe() -> str:
+    exe = _which("git")
+    if exe is None:
+        raise AdapterError("GIT_UNAVAILABLE", "git executable not found on PATH")
+    return os.path.realpath(exe)
+
+
+def _git(
+    real_root: str, args: Sequence[str], limits: Limits, *, max_out: int | None = None
+) -> bytes:
+    """Run git with explicit --git-dir/--work-tree, neutral config and no pager/hooks/fsmonitor."""
+    gitdir = os.path.join(real_root, ".git")
+    cmd = [
+        _git_exe(), "--no-optional-locks", "--literal-pathspecs",
+        "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false",
+        "-c", f"core.hooksPath={os.devnull}", "-c", "core.quotepath=false",
+        f"--git-dir={gitdir}", f"--work-tree={real_root}", *args,
+    ]
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
+    try:
+        done = subprocess.run(
+            cmd, shell=False, stdin=subprocess.DEVNULL, capture_output=True,
+            timeout=limits.git_timeout_seconds, env=scrubbed_environment(), cwd=real_root,
+            creationflags=flags, check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise AdapterError("GIT_TIMEOUT", args[0]) from exc
+    except OSError as exc:
+        raise AdapterError("GIT_UNAVAILABLE", f"{args[0]}: {type(exc).__name__}") from exc
+    if done.returncode != 0:
+        raise AdapterError("GIT_FAILED", f"{args[0]} exit {done.returncode}")
+    if len(done.stdout) > (max_out if max_out is not None else limits.max_git_listing_bytes):
+        raise AdapterError("GIT_OUTPUT_LIMIT", args[0])
+    return done.stdout
+
+
+def _check_git_config(real_root: str) -> None:
+    """Refuse a candidate .git whose local config could make git run a program or load more config."""
+    gitdir = os.path.join(real_root, ".git")
+    try:
+        st = os.lstat(gitdir)
+    except OSError as exc:
+        raise AdapterError("GIT_LAYOUT_REFUSED", f".git: {type(exc).__name__}") from exc
+    if _is_link(st) or not stat.S_ISDIR(st.st_mode):
+        raise AdapterError("GIT_LAYOUT_REFUSED", ".git must be a real directory")
+    config = os.path.join(gitdir, "config")
+    if not os.path.exists(config):
+        return
+    try:
+        with open(config, "rb") as handle:
+            data = handle.read(65537)
+        if len(data) > 65536:
+            raise AdapterError("GIT_CONFIG_REFUSED", "config too large")
+        text = data.decode("utf-8")
+    except (OSError, UnicodeError) as exc:
+        raise AdapterError("GIT_CONFIG_REFUSED", type(exc).__name__) from exc
+    section: str | None = None
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line[0] in "#;":
+            continue
+        if line.endswith("\\"):
+            raise AdapterError("GIT_CONFIG_REFUSED", "line continuation is not allowed")
+        header = re.fullmatch(r'\[\s*([A-Za-z0-9-]+)(?:\s+"[^"\\]*"|\.[^\s\]"]+)?\s*\]\s*(.*)', line)
+        if header:
+            section = header.group(1).lower()
+            if section not in _GIT_CONFIG_ALLOWED:
+                raise AdapterError("GIT_CONFIG_REFUSED", f"section [{section}] is not allowed")
+            line = header.group(2).strip()
+            if not line or line[0] in "#;":
+                continue
+        entry = re.fullmatch(r"([A-Za-z][A-Za-z0-9-]*)\s*(?:=.*)?", line)
+        if section is None or entry is None:
+            raise AdapterError("GIT_CONFIG_REFUSED", "unparsable or out-of-section config line")
+        if entry.group(1).lower() not in _GIT_CONFIG_ALLOWED[section]:
+            raise AdapterError("GIT_CONFIG_REFUSED", f"{section}.{entry.group(1).lower()} is not allowed")
+
+
+def _check_git_binding(real_root: str, candidate_head: str, limits: Limits) -> None:
+    """HEAD must equal candidate_head and the tree must be clean (tracked and untracked)."""
+    if not isinstance(candidate_head, str) or _HEX40.fullmatch(candidate_head) is None:
+        raise AdapterError("HEAD_INVALID", "candidate_head must be 40 lowercase hex characters")
+    head = _git(real_root, ["rev-parse", "--verify", "HEAD"], limits, max_out=1000).decode("ascii", "replace").strip()
+    if head != candidate_head:
+        raise AdapterError("HEAD_MISMATCH", "git HEAD differs from candidate_head")
+    status = _git(
+        real_root,
+        ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=none"],
+        limits,
     )
+    if status:
+        raise AdapterError("TREE_DIRTY", "working tree is not clean")
+
+
+def _tracked_entries(real_root: str, limits: Limits) -> dict[str, tuple[str, str, str]]:
+    listing = _git(real_root, ["ls-tree", "-r", "-z", "--full-tree", "HEAD"], limits)
+    entries: dict[str, tuple[str, str, str]] = {}
+    for record in listing.split(b"\0"):
+        if not record:
+            continue
+        meta, sep, raw_path = record.partition(b"\t")
+        parts = meta.decode("ascii", "replace").split(" ")
+        if not sep or len(parts) != 3:
+            raise AdapterError("GIT_LISTING_INVALID", "unparsable ls-tree record")
+        entries[raw_path.decode("utf-8", "surrogateescape")] = (parts[0], parts[1], parts[2])
+    return entries
+
+
+def source_tree_digest(
+    root: str | os.PathLike[str], scope: Sequence[str], candidate_head: str, limits: Limits = Limits()
+) -> TreeDigest:
+    """Source-tree digest over the manifest scope, hashed as git blob content at HEAD.
+
+    Refuses: untracked scope paths, case spellings that differ from the tracked
+    spelling, non-regular modes (symlink/submodule), dirty tree, HEAD mismatch.
+    """
+    paths = validate_scope(list(scope))
+    real_root = os.path.realpath(os.fspath(root))
+    if not os.path.isdir(real_root):
+        raise AdapterError("ROOT_INVALID", "root is not a directory")
+    _check_git_config(real_root)
+    _check_git_binding(real_root, candidate_head, limits)
+    tracked = _tracked_entries(real_root, limits)
+    fold: dict[str, int] = {}
+    for name in tracked:
+        fold[name.casefold()] = fold.get(name.casefold(), 0) + 1
+    items: list[tuple[str, int, bytes]] = []
+    digests: dict[str, str] = {}
+    sizes: dict[str, int] = {}
+    total = 0
+    for rel in paths:
+        entry = tracked.get(rel)
+        if entry is None:
+            if rel.casefold() in fold:
+                raise AdapterError("SCOPE_CASE_MISMATCH", f"{rel}: spelling differs from the tracked path")
+            raise AdapterError("SCOPE_NOT_TRACKED", f"{rel}: not tracked at HEAD")
+        mode, kind, blob = entry
+        if kind != "blob" or mode not in _GIT_REGULAR_MODES:
+            raise AdapterError("SCOPE_NOT_REGULAR", f"{rel}: tracked as {mode} {kind}")
+        if _HEX40.fullmatch(blob) is None:
+            raise AdapterError("GIT_OBJECT_FORMAT_UNSUPPORTED", "only 40-hex object ids are supported")
+        _resolve_regular_file(real_root, rel)  # parent junction / escape defence
+        size_text = _git(real_root, ["cat-file", "-s", blob], limits, max_out=64).decode("ascii", "replace").strip()
+        if not size_text.isdigit():
+            raise AdapterError("GIT_LISTING_INVALID", f"{rel}: blob size unreadable")
+        if int(size_text) > limits.max_file_bytes:
+            raise AdapterError("INPUT_FILE_TOO_LARGE", f"{rel}: exceeds {limits.max_file_bytes} bytes")
+        if total + int(size_text) > limits.max_total_input_bytes:
+            raise AdapterError("INPUT_TOTAL_TOO_LARGE", f"total exceeds {limits.max_total_input_bytes} bytes")
+        data = _git(real_root, ["cat-file", "blob", blob], limits, max_out=limits.max_file_bytes)
+        if hashlib.sha1(b"blob %d\0" % len(data) + data, usedforsecurity=False).hexdigest() != blob:
+            raise AdapterError("GIT_OBJECT_MISMATCH", f"{rel}: blob bytes do not match their object id")
+        total += len(data)
+        inner = hashlib.sha256(data)
+        digests[rel] = inner.hexdigest()
+        sizes[rel] = len(data)
+        items.append((rel, len(data), inner.digest()))
+    return TreeDigest(_combine(SOURCE_TREE_LABEL, items), digests, sizes, total)
 
 
 # ------------------------------------------------------------- identity digests
@@ -381,7 +600,7 @@ def analyzer_digest(spec: AnalyzerSpec, limits: Limits = Limits()) -> str:
         spec.analyzer_files,
         max_file_bytes=limits.max_analyzer_file_bytes,
         max_total_bytes=limits.max_analyzer_total_bytes,
-        label=b"vst-analyzer-files-v1\0",
+        label=ANALYZER_FILES_LABEL,
     ).sha256
 
 
@@ -435,6 +654,60 @@ def _file_sha256(path: str, cap: int) -> str | None:
         return None
 
 
+# ------------------------------------------------------------ argv / pinning
+
+
+def _rel_posix(base: str, target: str) -> str:
+    return os.path.relpath(target, base).replace(os.sep, "/")
+
+
+def resolve_argv(spec: AnalyzerSpec, real_root: str) -> tuple[list[str], str]:
+    """Return (argv, resolved_executable) exactly as it will be executed and hashed.
+
+    The executable is resolved here (never by Popen against the cwd), isolation
+    flags are added for a Python interpreter, and the analyzer module/launcher
+    must be pinned under analyzer_root and listed in analyzer_files.
+    Raises AdapterError('MISSING_EXECUTABLE') or ('ANALYZER_NOT_PINNED'/'ARGV_INVALID').
+    """
+    prefix = list(spec.argv_prefix)
+    if not prefix or not all(isinstance(a, str) and a and "\0" not in a for a in prefix):
+        raise AdapterError("ARGV_INVALID", "argv_prefix must be non-empty strings")
+    first = prefix[0]
+    if os.path.dirname(first):
+        if not os.path.isabs(first):
+            raise AdapterError("ARGV_INVALID", "executable path must be absolute or a bare name")
+        resolved = first
+    else:
+        resolved = _which(first) or ""
+    if not resolved or not os.path.isfile(resolved):
+        raise AdapterError("MISSING_EXECUTABLE", "executable not found")
+    resolved = os.path.realpath(resolved)
+    analyzer_root = os.path.realpath(os.fspath(spec.analyzer_root))
+    listed = set(spec.analyzer_files)
+    flags: list[str] = []
+    if os.path.basename(resolved).lower().startswith("python"):
+        if len(prefix) < 3 or prefix[1] != "-m" or not spec.pythonpath:
+            raise AdapterError("ANALYZER_NOT_PINNED", "python needs '-m MODULE' and a pythonpath under analyzer_root")
+        module = prefix[2].replace(".", "/")
+        pinned = False
+        for entry in spec.pythonpath:
+            real_entry = os.path.realpath(os.fspath(entry))
+            if not _is_under(analyzer_root, real_entry):
+                raise AdapterError("ANALYZER_NOT_PINNED", "pythonpath entry lies outside analyzer_root")
+            candidate = os.path.join(real_entry, *module.split("/"), "__main__.py")
+            if os.path.isfile(candidate) and _rel_posix(analyzer_root, os.path.realpath(candidate)) in listed:
+                pinned = True
+                break
+        if not pinned:
+            raise AdapterError("ANALYZER_NOT_PINNED", "module __main__.py is not a listed analyzer file under pythonpath")
+        # -P/-s keep cwd and user site off sys.path while PYTHONPATH stays honoured.
+        flags = ["-P", "-s"]
+    else:
+        if not _is_under(analyzer_root, resolved) or _rel_posix(analyzer_root, resolved) not in listed:
+            raise AdapterError("ANALYZER_NOT_PINNED", "launcher is not a listed analyzer file under analyzer_root")
+    return [resolved, *flags, *prefix[1:], "analyze", "--root", real_root], resolved
+
+
 # ----------------------------------------------------------------- bounded runner
 
 
@@ -443,7 +716,98 @@ def scrubbed_environment(pythonpath: Sequence[Path] = ()) -> dict[str, str]:
     env.update(_ENV_FIXED)
     if pythonpath:
         env["PYTHONPATH"] = os.pathsep.join(os.fspath(p) for p in pythonpath)
+        env["PYTHONSAFEPATH"] = "1"
     return env
+
+
+class _WinJob:
+    """Windows Job Object with kill-on-close (ctypes, stdlib only)."""
+
+    def __init__(self, k32: Any, handle: Any) -> None:
+        self._k32, self._handle = k32, handle
+
+    def terminate(self) -> None:
+        if self._handle:
+            self._k32.TerminateJobObject(self._handle, 1)
+
+    def close(self) -> None:
+        if self._handle:
+            self._k32.CloseHandle(self._handle)  # kill-on-close reaps any survivors
+            self._handle = None
+
+
+def _attach_job(proc: subprocess.Popen) -> _WinJob | None:
+    if sys.platform != "win32":
+        return None
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class _Basic(ctypes.Structure):
+            _fields_ = [
+                ("PerProcessUserTimeLimit", ctypes.c_longlong), ("PerJobUserTimeLimit", ctypes.c_longlong),
+                ("LimitFlags", wintypes.DWORD), ("MinimumWorkingSetSize", ctypes.c_size_t),
+                ("MaximumWorkingSetSize", ctypes.c_size_t), ("ActiveProcessLimit", wintypes.DWORD),
+                ("Affinity", ctypes.c_size_t), ("PriorityClass", wintypes.DWORD),
+                ("SchedulingClass", wintypes.DWORD),
+            ]
+
+        class _IoCounters(ctypes.Structure):
+            _fields_ = [(n, ctypes.c_ulonglong) for n in (
+                "ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
+                "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
+
+        class _Extended(ctypes.Structure):
+            _fields_ = [
+                ("BasicLimitInformation", _Basic), ("IoInfo", _IoCounters),
+                ("ProcessMemoryLimit", ctypes.c_size_t), ("JobMemoryLimit", ctypes.c_size_t),
+                ("PeakProcessMemoryUsed", ctypes.c_size_t), ("PeakJobMemoryUsed", ctypes.c_size_t),
+            ]
+
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.CreateJobObjectW.restype = wintypes.HANDLE
+        k32.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+        k32.SetInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD]
+        k32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+        k32.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
+        k32.CloseHandle.argtypes = [wintypes.HANDLE]
+        handle = k32.CreateJobObjectW(None, None)
+        if not handle:
+            return None
+        info = _Extended()
+        info.BasicLimitInformation.LimitFlags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        if not k32.SetInformationJobObject(handle, 9, ctypes.byref(info), ctypes.sizeof(info)) or not (
+            k32.AssignProcessToJobObject(handle, int(proc._handle))  # type: ignore[attr-defined]
+        ):
+            k32.CloseHandle(handle)
+            return None
+        return _WinJob(k32, handle)
+    except Exception:  # fall back to taskkill /T /F
+        return None
+
+
+def _kill_tree(proc: subprocess.Popen, job: _WinJob | None) -> None:
+    if job is not None:
+        job.terminate()
+    elif sys.platform == "win32":
+        taskkill = os.path.join(os.environ.get("SYSTEMROOT", r"C:\Windows"), "System32", "taskkill.exe")
+        try:
+            subprocess.run(
+                [taskkill, "/T", "/F", "/PID", str(proc.pid)], shell=False, stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            pass
+    else:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (OSError, ProcessLookupError):
+            pass
+    try:
+        proc.kill()
+    except OSError:
+        pass
 
 
 def _drain(stream: Any, cap: int, sink: bytearray, exceeded: threading.Event) -> None:
@@ -462,66 +826,95 @@ def _drain(stream: Any, cap: int, sink: bytearray, exceeded: threading.Event) ->
         return
 
 
-def run_analyzer(spec: AnalyzerSpec, root: str | os.PathLike[str], limits: Limits = Limits()) -> RunResult:
-    """Run ``<argv_prefix> analyze --root ROOT`` with an argv list, no shell, scrubbed env."""
-    if not spec.argv_prefix or not all(isinstance(a, str) and a and "\0" not in a for a in spec.argv_prefix):
-        raise AdapterError("ARGV_INVALID", "argv_prefix must be non-empty strings")
-    argv = [*spec.argv_prefix, "analyze", "--root", os.fspath(root)]
+def _execute(argv: list[str], pythonpath: Sequence[Path], limits: Limits) -> RunResult:
     started = time.monotonic()
+    neutral = tempfile.mkdtemp(prefix="vst-aeve-")  # empty cwd: nothing from the candidate on sys.path
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
-    try:
-        proc = subprocess.Popen(
-            argv,
-            shell=False,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=scrubbed_environment(spec.pythonpath),
-            cwd=os.fspath(root),
-            creationflags=flags,
-        )
-    except (FileNotFoundError, PermissionError, NotADirectoryError) as exc:
-        return RunResult(Outcome.MISSING_EXECUTABLE, None, b"", "", 0.0, tuple(argv), type(exc).__name__)
-    except OSError as exc:
-        return RunResult(Outcome.CRASH, None, b"", "", 0.0, tuple(argv), f"LAUNCH_FAILED: {type(exc).__name__}")
-
+    proc: subprocess.Popen | None = None
+    job: _WinJob | None = None
     out, err = bytearray(), bytearray()
     out_over, err_over = threading.Event(), threading.Event()
-    threads = [
-        threading.Thread(target=_drain, args=(proc.stdout, limits.max_stdout_bytes, out, out_over), daemon=True),
-        threading.Thread(target=_drain, args=(proc.stderr, limits.max_stderr_bytes, err, err_over), daemon=True),
-    ]
-    for t in threads:
-        t.start()
-    deadline = started + limits.timeout_seconds
+    threads: list[threading.Thread] = []
     outcome: Outcome | None = None
-    while True:
-        if out_over.is_set() or err_over.is_set():
-            outcome = Outcome.OUTPUT_CAP
-            break
-        if proc.poll() is not None:
-            break
-        if time.monotonic() >= deadline:
-            outcome = Outcome.TIMEOUT
-            break
-        time.sleep(0.02)
-    if outcome is not None:
-        proc.kill()  # grandchildren are the S2 sandbox's job (NOT_RUN here)
     try:
-        proc.wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        outcome = outcome or Outcome.CRASH
-    for t in threads:
-        t.join(timeout=5)
+        try:
+            proc = subprocess.Popen(
+                argv, shell=False, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                env=scrubbed_environment(pythonpath), cwd=neutral, creationflags=flags,
+                start_new_session=sys.platform != "win32",
+            )
+        except (FileNotFoundError, PermissionError, NotADirectoryError) as exc:
+            return RunResult(Outcome.MISSING_EXECUTABLE, None, b"", "", 0.0, tuple(argv), type(exc).__name__)
+        except OSError as exc:
+            return RunResult(Outcome.CRASH, None, b"", "", 0.0, tuple(argv), f"LAUNCH_FAILED: {type(exc).__name__}")
+        job = _attach_job(proc)
+        threads = [
+            threading.Thread(target=_drain, args=(proc.stdout, limits.max_stdout_bytes, out, out_over), daemon=True),
+            threading.Thread(target=_drain, args=(proc.stderr, limits.max_stderr_bytes, err, err_over), daemon=True),
+        ]
+        for t in threads:
+            t.start()
+        deadline = started + limits.timeout_seconds
+        while True:
+            if out_over.is_set() or err_over.is_set():
+                outcome = Outcome.OUTPUT_CAP
+                break
+            if proc.poll() is not None:
+                break
+            if time.monotonic() >= deadline:
+                outcome = Outcome.TIMEOUT
+                break
+            time.sleep(0.02)
+        if outcome is not None:
+            _kill_tree(proc, job)
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            _kill_tree(proc, job)
+            outcome = outcome or Outcome.CRASH
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                pass
+    finally:
+        if proc is not None:
+            if proc.poll() is None:
+                _kill_tree(proc, job)
+            for stream in (proc.stdout, proc.stderr):
+                try:
+                    if stream is not None:
+                        stream.close()
+                except OSError:
+                    pass
+        for t in threads:
+            t.join(timeout=5)
+        if job is not None:
+            job.close()
+        try:
+            os.rmdir(neutral)
+        except OSError:
+            pass
     if outcome is None and (out_over.is_set() or err_over.is_set()):
         outcome = Outcome.OUTPUT_CAP
-    elapsed = time.monotonic() - started
-    tail = bytes(err[-_STDERR_TAIL_BYTES:]).decode("utf-8", "replace")
-    code = proc.returncode
+    code = proc.returncode if proc is not None else None
     if outcome is None:
         # AEVE: 0 = COMPLETE, 3 = PARTIAL (both print the JSON document); anything else is not a report.
         outcome = Outcome.OK if code in (0, 3) else Outcome.CRASH
-    return RunResult(outcome, code, bytes(out), tail, elapsed, tuple(argv), "")
+    tail = bytes(err[-_STDERR_TAIL_BYTES:]).decode("utf-8", "replace")
+    return RunResult(outcome, code, bytes(out), tail, time.monotonic() - started, tuple(argv), "")
+
+
+def run_analyzer(spec: AnalyzerSpec, root: str | os.PathLike[str], limits: Limits = Limits()) -> RunResult:
+    """Run ``<python flags / launcher> analyze --root ROOT``: argv list, no shell, scrubbed env,
+    empty cwd, whole process tree killed on timeout/cap."""
+    real_root = os.path.realpath(os.fspath(root))
+    try:
+        argv, _ = resolve_argv(spec, real_root)
+    except AdapterError as exc:
+        if exc.code == "MISSING_EXECUTABLE":
+            return RunResult(Outcome.MISSING_EXECUTABLE, None, b"", "", 0.0, tuple(spec.argv_prefix), str(exc))
+        raise
+    return _execute(argv, spec.pythonpath, limits)
 
 
 # ------------------------------------------------------------------------ parser
@@ -543,6 +936,18 @@ def _aeve_analysis_digest(doc: Mapping[str, Any]) -> str:
     return hashlib.sha256(
         json.dumps(obj, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
+
+
+def _flagged_paths(uncovered: Sequence[str], diagnostics: Sequence[Any]) -> set[str]:
+    """Paths AEVE names in 'uncovered' ("KIND: path") or diagnostics ({"file": path})."""
+    paths: set[str] = set()
+    for item in uncovered:
+        _, sep, rest = item.partition(": ")
+        paths.add(rest if sep else item)
+    for item in diagnostics:
+        if isinstance(item, dict) and isinstance(item.get("file"), str):
+            paths.add(item["file"])
+    return paths
 
 
 def parse_aeve_output(
@@ -567,6 +972,7 @@ def parse_aeve_output(
         raise AdapterError("RULES_INVALID", "required_rule_ids must be unique non-empty strings")
     scope_list = validate_scope(list(scope))
     scope_set = set(scope_list)
+    scope_fold = {p.casefold() for p in scope_list}
 
     try:
         doc = json.loads(stdout.decode("utf-8"))
@@ -586,35 +992,52 @@ def parse_aeve_output(
     aeve_analysis = _hex64(doc["analysis_sha256"], "analysis_sha256")
     if _aeve_analysis_digest(doc) != aeve_analysis:
         raise _invalid("analysis_sha256 does not recompute from the document")
-    uncovered = doc["uncovered"]
+    uncovered, diagnostics = doc["uncovered"], doc["diagnostics"]
     if not isinstance(uncovered, list) or not all(isinstance(u, str) for u in uncovered):
         raise _invalid("uncovered must be a list of strings")
-    if not isinstance(doc["diagnostics"], list) or not isinstance(doc["summary"], dict):
+    if not isinstance(diagnostics, list) or not isinstance(doc["summary"], dict):
         raise _invalid("diagnostics/summary have the wrong type")
     raw_findings = doc["findings"]
     if not isinstance(raw_findings, list):
         raise _invalid("findings must be a list")
 
-    complete = doc["status"] == "COMPLETE"
+    # Why SUPPORTED_AND_CHECKED is withheld for inventory rules (first applicable reason wins).
+    flagged_scope = sorted(_flagged_paths(uncovered, diagnostics) & scope_set)
+    non_python = [p for p in scope_list if not p.lower().endswith(".py")]
+    if non_python:
+        downgrade = "SCOPE_NOT_ANALYZED_BY_AEVE"  # AEVE analyzes only *.py; non-.py files are never checked
+    elif flagged_scope:
+        downgrade = "SCOPE_PATH_UNCOVERED"
+    elif doc["status"] != "COMPLETE":
+        downgrade = "AEVE_STATUS_PARTIAL"
+    elif uncovered or diagnostics:
+        downgrade = "AEVE_UNCOVERED_PRESENT"
+    else:
+        downgrade = ""
+
     inventory = spec.rule_inventory
     statuses: list[dict[str, str]] = []
     reasons: dict[str, str] = {}
     for rule_id in sorted(required):
         if rule_id not in inventory:
             status, reason = "UNSUPPORTED", "NOT_IN_AEVE_INVENTORY"
-        elif not complete:
-            status, reason = "UNSUPPORTED", "AEVE_STATUS_PARTIAL"
+        elif downgrade:
+            status, reason = "UNSUPPORTED", downgrade
         else:
             status, reason = "SUPPORTED_AND_CHECKED", ""
-        assert status in RULE_STATUS
+        if status not in RULE_STATUS:
+            raise AdapterError("INTERNAL", f"status {status!r} outside RULE_STATUS")
         statuses.append({"rule_id": rule_id, "status": status})
         if reason:
             reasons[rule_id] = reason
     checked = [s["rule_id"] for s in statuses if s["status"] == "SUPPORTED_AND_CHECKED"]
     unsupported = [s["rule_id"] for s in statuses if s["status"] == "UNSUPPORTED"]
     coverage = "FULL" if not unsupported else ("PARTIAL" if checked else "NOT_COVERED")
+    if downgrade and coverage == "FULL":
+        raise AdapterError("INTERNAL", "downgraded run must never be FULL")
 
     findings: list[dict[str, Any]] = []
+    partial_findings: list[dict[str, Any]] = []
     seen: set[str] = set()
     dropped_out_of_scope = dropped_non_required = merged_duplicates = 0
     for index, item in enumerate(raw_findings):
@@ -630,12 +1053,14 @@ def parse_aeve_output(
             raise _invalid(f"{ctx}: invalid file")
         if not isinstance(line, int) or isinstance(line, bool) or line < 1:
             raise _invalid(f"{ctx}: invalid line")
-        if rule_id in unsupported:
-            raise _invalid(f"{ctx}: finding for rule {rule_id!r} that VST marks UNSUPPORTED")
-        if rule_id not in checked:
+        if reasons.get(rule_id) == "NOT_IN_AEVE_INVENTORY":
+            raise _invalid(f"{ctx}: AEVE emitted rule {rule_id!r} that is missing from the pinned inventory")
+        if rule_id not in checked and rule_id not in reasons:
             dropped_non_required += 1
             continue
         if path not in scope_set:
+            if path.casefold() in scope_fold or posixpath.normpath(path) in scope_set:
+                raise _invalid(f"{ctx}: finding path {path!r} aliases a scope file but is not its exact spelling")
             dropped_out_of_scope += 1
             continue
         entry = {
@@ -646,14 +1071,17 @@ def parse_aeve_output(
             "path": path,
             "line": line,
         }
-        assert tuple(sorted(entry)) == tuple(sorted(FINDING_FIELDS))
+        if tuple(sorted(entry)) != tuple(sorted(FINDING_FIELDS)):
+            raise AdapterError("INTERNAL", "finding fields drifted from FINDING_FIELDS")
         key = canonical_bytes(entry).decode("ascii")
         if key in seen:
             merged_duplicates += 1
             continue
         seen.add(key)
-        findings.append(entry)
-    findings.sort(key=lambda f: (f["path"], f["line"], f["rule_id"], f["severity"]))
+        (findings if rule_id in checked else partial_findings).append(entry)
+    order = lambda f: (f["path"], f["line"], f["rule_id"], f["severity"])  # noqa: E731
+    findings.sort(key=order)
+    partial_findings.sort(key=order)
 
     body = {
         "label": REPORT_LABEL,
@@ -672,12 +1100,15 @@ def parse_aeve_output(
         "aeve_snapshot_sha256": aeve_snapshot,
         "aeve_analysis_sha256": aeve_analysis,
         "aeve_uncovered": sorted(set(uncovered)),
+        "scope_flagged_paths": flagged_scope,
+        "scope_non_python_paths": non_python,
         "coverage": coverage,
         "rule_statuses": statuses,
         "covered_rules": checked,
         "unsupported_rules": unsupported,
         "unsupported_reasons": {k: reasons[k] for k in sorted(reasons)},
         "findings": findings,
+        "partial_findings": partial_findings,
         "accounting": {
             "aeve_findings_total": len(raw_findings),
             "dropped_not_required_rule": dropped_non_required,
@@ -690,36 +1121,68 @@ def parse_aeve_output(
 
 # ------------------------------------------------------------------ orchestration
 
+_INFORMATIONAL_UNKNOWN = (
+    "license",
+    "per_file_analysis_confirmation",  # AEVE prints no list of analyzed files
+    "rule_emission_not_proven",  # inventory is a declaration; COMPLETE is the only evidence of checking
+)
+
 
 def analyze_snapshot(
     spec: AnalyzerSpec,
     snapshot_root: str | os.PathLike[str],
     scope: Sequence[str],
     required_rule_ids: Sequence[str],
+    candidate_head: str,
     limits: Limits = Limits(),
 ) -> AdapterResult:
-    """Digest inputs, run AEVE, parse, recheck the source tree. Never signs, never holds keys.
+    """Digest inputs, run AEVE, parse, then re-verify HEAD/clean tree/source/analyzer.
 
-    ``snapshot_root`` must be the clean git root of the immutable candidate snapshot
-    (AEVE refuses a dirty tree because --allow-dirty is never passed). Input
-    refusals raise AdapterError; run/parse outcomes are returned typed.
+    Never signs, never holds keys. ``snapshot_root`` is the exact git root of the
+    candidate snapshot. Input/binding refusals before the run raise AdapterError;
+    run, parse and post-run recheck failures are returned as typed outcomes.
     """
-    source = source_tree_digest(snapshot_root, scope, limits)
+    real_root = os.path.realpath(os.fspath(snapshot_root))
+    source = source_tree_digest(real_root, scope, candidate_head, limits)
     a_sha = analyzer_digest(spec, limits)
     version = read_declared_version(spec)
     p_sha = profile_digest(spec)
-    interpreter = spec.argv_prefix[0]
-    interp_sha = _file_sha256(interpreter, limits.max_analyzer_file_bytes) if os.path.isfile(interpreter) else None
-    unknown = ["license"] + ([] if interp_sha else ["interpreter_sha256"]) + ["aeve_head_binding"]
+    blocking: list[str] = []
+    interp_sha: str | None = None
+    run: RunResult | None = None
 
-    def failed(outcome: Outcome, detail: str, run: RunResult | None) -> AdapterResult:
+    def result(outcome: Outcome, detail: str, report: AnalysisReport | None = None) -> AdapterResult:
         return AdapterResult(
-            outcome, detail, run, None, source.sha256, a_sha, p_sha, version, unknown=tuple(unknown)
+            outcome, detail, run, report, source.sha256, a_sha, p_sha, version, candidate_head,
+            unknown=_INFORMATIONAL_UNKNOWN, blocking_unknown=tuple(blocking),
         )
 
-    run = run_analyzer(spec, snapshot_root, limits)
+    try:
+        argv, resolved = resolve_argv(spec, real_root)
+    except AdapterError as exc:
+        if exc.code != "MISSING_EXECUTABLE":
+            raise
+        return result(Outcome.MISSING_EXECUTABLE, str(exc))
+    interp_sha = _file_sha256(resolved, limits.max_analyzer_file_bytes)
+    if interp_sha is None:
+        blocking.append("interpreter_sha256")
+
+    run = _execute(argv, spec.pythonpath, limits)
     if run.outcome is not Outcome.OK:
-        return failed(run.outcome, run.detail or run.stderr_tail, run)
+        return result(run.outcome, run.detail or run.stderr_tail)
+
+    # Post-run: the analyzer, interpreter, git state and scope bytes must be unchanged.
+    try:
+        if analyzer_digest(spec, limits) != a_sha:
+            return result(Outcome.INVALID_OUTPUT, "ANALYZER_MODIFIED_DURING_ANALYSIS")
+        if _file_sha256(resolved, limits.max_analyzer_file_bytes) != interp_sha:
+            return result(Outcome.INVALID_OUTPUT, "INTERPRETER_MODIFIED_DURING_ANALYSIS")
+        after = source_tree_digest(real_root, scope, candidate_head, limits)
+    except AdapterError as exc:
+        return result(Outcome.INVALID_OUTPUT, f"POST_RUN_RECHECK_FAILED: {exc}")
+    if after.sha256 != source.sha256:
+        return result(Outcome.INVALID_OUTPUT, "SOURCE_MODIFIED_DURING_ANALYSIS")
+
     try:
         report = parse_aeve_output(
             run.stdout,
@@ -733,20 +1196,17 @@ def analyze_snapshot(
             interpreter_sha256=interp_sha,
         )
     except AdapterError as exc:
-        if exc.code == "RULES_INVALID":
+        if exc.code in ("RULES_INVALID", "INTERNAL"):
             raise
-        return failed(Outcome.INVALID_OUTPUT, str(exc), run)
-    after = source_tree_digest(snapshot_root, scope, limits)
-    if after.sha256 != source.sha256:
-        return failed(Outcome.INVALID_OUTPUT, "SOURCE_MODIFIED_DURING_ANALYSIS", run)
-    return AdapterResult(
-        Outcome.OK, "", run, report, source.sha256, a_sha, p_sha, version, unknown=tuple(unknown)
-    )
+        return result(Outcome.INVALID_OUTPUT, str(exc))
+    if report.body["partial_findings"]:
+        return result(Outcome.PARTIAL_WITH_FINDINGS, "findings exist for rules whose coverage was withheld", report)
+    return result(Outcome.OK, "", report)
 
 
 def static_analysis_fields(report: AnalysisReport) -> dict[str, Any]:
     """v3 StaticAnalysis receipt fields derivable from the report (covered_acceptance is
-    manifest-derived and intentionally absent)."""
+    manifest-derived and intentionally absent; partial_findings stay only in the report)."""
     b = report.body
     return {
         "analyzer_id": b["analyzer_id"],
@@ -774,10 +1234,18 @@ def assemble_analyzer_payload(
     candidate_head: str,
     epoch: int,
 ) -> dict[str, Any]:
-    """Unsigned payload for analyzer_authority.sign_analyzer_evidence. Raises if the run was
-    not OK. Manifest digest, run id, nonce, head and epoch come from VST, never from AEVE."""
-    if result.outcome is not Outcome.OK or result.report is None:
+    """Unsigned payload for analyzer_authority.sign_analyzer_evidence.
+
+    Refuses when the run was not OK/PARTIAL_WITH_FINDINGS, when any binding is still
+    unknown (``blocking_unknown``), or when candidate_head differs from the head the
+    run was bound to. Manifest digest, run id, nonce, head and epoch come from VST.
+    """
+    if result.outcome not in _PAYLOAD_OUTCOMES or result.report is None:
         raise AdapterError("NOT_OK", f"cannot assemble payload for outcome {result.outcome.value}")
+    if result.blocking_unknown:
+        raise AdapterError("BINDING_UNKNOWN", f"unknown bindings: {', '.join(result.blocking_unknown)}")
+    if result.candidate_head is None or candidate_head != result.candidate_head:
+        raise AdapterError("HEAD_MISMATCH", "candidate_head differs from the head the analysis was bound to")
     fields = static_analysis_fields(result.report)
     return build_analyzer_payload(
         analyzer_id=fields["analyzer_id"],
