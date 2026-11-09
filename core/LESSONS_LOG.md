@@ -1990,3 +1990,6 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - 2026-11-09 S4-C GPT-PM request
 - Kind: NEUTRAL: S4-C is sent as mechanism-works-and-honest-red per the operator; open AC-7/AC-8 items and unrerun full files are stated in the scope note.
+
+- 2026-11-09 S4-C accepted
+- Kind: SUCCESS: the lanes were run for real and every red result is named; the cost was four rounds because three defects of already-accepted S4-A/S4-B code surfaced only by that real run.
