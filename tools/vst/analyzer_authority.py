@@ -9,14 +9,21 @@ reviewer, runner signer, ...).
 
 The signed payload binds analyzer identity/version/executable digest, profile,
 source-tree digest, report digest, manifest digest, run id, one-shot nonce,
-candidate head, epoch and the exact analysis scope. verify_analyzer_evidence()
-returns False (never raises) for any altered field, wrong role key, or replayed
-request; it raises ContractError only for an invalid key or a key collision.
+candidate head, epoch and the exact analysis scope.
+
+Fail-closed API: sign and verify REQUIRE every other role key (REQUIRED_OTHER_ROLES)
+and reject a missing/invalid key or a collision with the analyzer key. verify
+REQUIRES verifier-owned expected values for every payload field and an atomic
+consume_nonce callback invoked only after signature and binding pass.
+Programmer errors (bad keys, bad binding, non-callable consume) raise
+ContractError. Hostile or tampered evidence (any shape, any altered field,
+wrong signer, replay) returns False and never raises.
 """
 
 from __future__ import annotations
 
-from typing import Any, Iterable, Mapping
+import hmac
+from typing import Any, Callable, Mapping
 
 from .contracts import (
     ContractError,
@@ -27,7 +34,7 @@ from .contracts import (
     _req_str,
     _validate_repo_path,
 )
-from .signing import ANALYZER_AUTHORITY_LABEL, MIN_KEY_BYTES, sign, verify
+from .signing import ANALYZER_AUTHORITY_LABEL, MIN_KEY_BYTES, sign
 
 ANALYZER_EVIDENCE_TYPE = "analyzer_authority_evidence_v1"
 ANALYZER_PAYLOAD_FIELDS = (
@@ -46,6 +53,11 @@ ANALYZER_PAYLOAD_FIELDS = (
     "epoch",
     "analysis_scope",
 )
+MIN_NONCE_CHARS = 16
+# Roles whose keys the analyzer authority key must differ from (gate.py: key=worker,
+# supervisor_key, operator_key, event_key, reviewer keys, signer_key=runner signer).
+REQUIRED_OTHER_ROLES = ("worker", "supervisor", "operator", "event", "reviewer", "runner_signer")
+_BINDING_FIELDS = tuple(f for f in ANALYZER_PAYLOAD_FIELDS if f != "type")
 _HEX64_FIELDS = (
     "analyzer_sha256",
     "profile_sha256",
@@ -99,6 +111,8 @@ def validate_analyzer_payload(payload: object) -> dict[str, Any]:
         raise ContractError(f"analyzer payload.type: must be {ANALYZER_EVIDENCE_TYPE!r}")
     for name in ("analyzer_id", "analyzer_version", "profile_id", "run_id", "nonce"):
         _req_str(payload[name], f"analyzer payload.{name}")
+    if len(payload["nonce"]) < MIN_NONCE_CHARS:
+        raise ContractError(f"analyzer payload.nonce: must be >= {MIN_NONCE_CHARS} characters")
     for name in _HEX64_FIELDS:
         _req_hex(payload[name], f"analyzer payload.{name}", 64)
     _req_hex(payload["candidate_head"], "analyzer payload.candidate_head", 40)
@@ -115,16 +129,25 @@ def validate_analyzer_payload(payload: object) -> dict[str, Any]:
     return payload
 
 
-def _check_authority_key(analyzer_key: object, other_role_keys: Mapping[str, object] | None) -> bytes:
-    if not isinstance(analyzer_key, (bytes, bytearray)) or len(analyzer_key) < MIN_KEY_BYTES:
-        raise ContractError(f"analyzer key: must be bytes of length >= {MIN_KEY_BYTES}")
-    raw = bytes(analyzer_key)
-    for role, other in (other_role_keys or {}).items():
-        if other is None:
-            continue
-        if not isinstance(other, (bytes, bytearray)):
-            raise ContractError(f"{role} key: must be bytes")
-        if bytes(other) == raw:
+def _key_bytes(value: object, name: str) -> bytes:
+    if not isinstance(value, (bytes, bytearray)) or len(value) < MIN_KEY_BYTES:
+        raise ContractError(f"{name}: must be bytes of length >= {MIN_KEY_BYTES}")
+    return bytes(value)
+
+
+def _check_authority_key(analyzer_key: object, other_role_keys: object) -> bytes:
+    """Fail closed: every required role key must be present, valid and different."""
+    raw = _key_bytes(analyzer_key, "analyzer key")
+    if not isinstance(other_role_keys, Mapping):
+        raise ContractError("other_role_keys: required mapping of role name to key")
+    unknown = sorted(str(r) for r in other_role_keys if r not in REQUIRED_OTHER_ROLES)
+    if unknown:
+        raise ContractError(f"other_role_keys: unknown role(s): {', '.join(unknown)}")
+    for role in REQUIRED_OTHER_ROLES:
+        if role not in other_role_keys:
+            raise ContractError(f"other_role_keys: missing role {role!r}")
+        other = _key_bytes(other_role_keys[role], f"{role} key")
+        if hmac.compare_digest(other, raw):
             raise ContractError(f"analyzer key must be distinct from the {role} key")
     return raw
 
@@ -132,44 +155,74 @@ def _check_authority_key(analyzer_key: object, other_role_keys: Mapping[str, obj
 def sign_analyzer_evidence(
     payload: dict[str, Any],
     analyzer_key: bytes,
-    other_role_keys: Mapping[str, bytes] | None = None,
+    other_role_keys: Mapping[str, bytes],
 ) -> dict[str, Any]:
     """Return payload + signature under the analyzer-authority key and domain label only."""
     raw = _check_authority_key(analyzer_key, other_role_keys)
+    if not isinstance(payload, dict):
+        raise ContractError("analyzer payload: must be a dict")
     body = validate_analyzer_payload(dict(payload))
     return {**body, "signature": sign(body, raw, ANALYZER_AUTHORITY_LABEL)}
+
+
+def _strict_equal(a: Any, b: Any) -> bool:
+    """Equality with exact types (bool never equals int); lists compared element-wise."""
+    if type(a) is not type(b):
+        return False
+    if isinstance(a, list):
+        return len(a) == len(b) and all(_strict_equal(x, y) for x, y in zip(a, b))
+    if isinstance(a, str):
+        return hmac.compare_digest(a.encode("utf-8", "surrogatepass"), b.encode("utf-8", "surrogatepass"))
+    return a == b
 
 
 def verify_analyzer_evidence(
     evidence: object,
     analyzer_key: bytes,
     *,
-    expected_run_id: str,
-    expected_nonce: str,
-    expected_binding: Mapping[str, Any] | None = None,
-    consumed_nonces: Iterable[str] = (),
-    other_role_keys: Mapping[str, bytes] | None = None,
+    expected_binding: Mapping[str, Any],
+    consume_nonce: Callable[[str], bool],
+    other_role_keys: Mapping[str, bytes],
 ) -> bool:
-    """True iff evidence is a well-formed analyzer payload signed by the analyzer authority.
+    """True iff evidence is signed by the analyzer authority and matches the verifier's binding.
 
-    Replay protection: run_id and nonce must equal the caller's expected values
-    and the nonce must not be in consumed_nonces. expected_binding optionally
-    pins other payload fields (manifest_sha256, candidate_head, epoch,
-    source_tree_sha256, ...) that the verifier computed itself; any mismatch is False.
+    expected_binding must hold a verifier-owned value for EVERY payload field
+    except signature and type (see ANALYZER_PAYLOAD_FIELDS), including run_id
+    and nonce; each is compared with strict type equality. consume_nonce(nonce)
+    is an atomic one-shot callback (True = first use) called only after the
+    signature and binding pass; False rejects the replay.
+
+    Raises ContractError only for programmer errors (keys, binding, callback).
+    Any hostile or tampered evidence returns False.
     """
     raw = _check_authority_key(analyzer_key, other_role_keys)
-    if not isinstance(evidence, dict) or not isinstance(evidence.get("signature"), str):
-        return False
-    body = {k: v for k, v in evidence.items() if k != "signature"}
+    if not callable(consume_nonce):
+        raise ContractError("consume_nonce: must be callable")
+    if not isinstance(expected_binding, Mapping):
+        raise ContractError("expected_binding: must be a mapping")
+    missing = [f for f in _BINDING_FIELDS if f not in expected_binding]
+    extra = sorted(str(k) for k in expected_binding if k not in _BINDING_FIELDS)
+    if missing or extra:
+        raise ContractError(
+            f"expected_binding: missing {missing}, unknown {extra}; must cover every payload field"
+        )
+    # The verifier's own expectation must itself be a valid payload.
+    validate_analyzer_payload({"type": ANALYZER_EVIDENCE_TYPE, **{f: expected_binding[f] for f in _BINDING_FIELDS}})
+
     try:
-        validate_analyzer_payload(body)
-    except ContractError:
-        return False
-    if body["run_id"] != expected_run_id or body["nonce"] != expected_nonce:
-        return False
-    if expected_nonce in set(consumed_nonces):
-        return False
-    for name, value in (expected_binding or {}).items():
-        if name not in body or body[name] != value:
+        if not isinstance(evidence, dict):
             return False
-    return verify(evidence, raw, ANALYZER_AUTHORITY_LABEL)
+        signature = evidence.get("signature")
+        if not isinstance(signature, str) or not signature.isascii():
+            return False
+        body = {k: v for k, v in evidence.items() if k != "signature"}
+        validate_analyzer_payload(body)  # exact keys, types, hex, scope, nonce length
+        if not all(_strict_equal(body[f], expected_binding[f]) for f in _BINDING_FIELDS):
+            return False
+        if not hmac.compare_digest(
+            sign(body, raw, ANALYZER_AUTHORITY_LABEL).encode("ascii"), signature.encode("ascii")
+        ):
+            return False
+    except Exception:  # hostile evidence must never raise
+        return False
+    return consume_nonce(body["nonce"]) is True

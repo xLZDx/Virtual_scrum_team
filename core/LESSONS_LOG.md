@@ -2044,3 +2044,6 @@ Kind: SUCCESS. Two read-only reviewer passes before GPT-PM found the real gate h
 
 ## 2026-11-09 S5-B code
 Kind: NEUTRAL. Coded without a run; verification is review only.
+
+## 2026-11-09 S5-B review findings
+Kind: SHORTCOMING. First pass made every safety check optional, so omitting an argument silently weakened trust. Caught by two reviewers. Rule: trust-boundary arguments are required and fail closed, never defaulted.

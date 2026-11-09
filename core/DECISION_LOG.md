@@ -2793,3 +2793,6 @@ GPT-PM APPROVE, 0 BLOCKER, 0 MAJOR, reply d8f744e0, head 56887a6, static review 
 
 ## 2026-11-09 S5-B coded: analyzer authority signing (VST-039)
 Operator decision: VST trusted code signs the AEVE report with a dedicated analyzer-authority key; AEVE never gets keys. Added ANALYZER_AUTHORITY_LABEL in tools/vst/signing.py and tools/vst/analyzer_authority.py (payload binding, sign, verify with key distinctness and replay checks). gate.py untouched, v3 stays fail-closed until S5-E. Not run (pytest forbidden); reviewers and GPT-PM pending.
+
+## 2026-11-09 S5-B remediation of four reviewer MAJOR findings
+security-reviewer and functional-test-reviewer found: key distinctness opt-in, binding optional, replay passive and non-atomic, hostile input raising wrong exceptions. Fixed in analyzer_authority.py: required six-role key roster, required full expected_binding with strict types, required consume_nonce callback, verify returns False on hostile input. Reading only (pytest forbidden); tests NOT_RUN.
