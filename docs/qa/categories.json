@@ -48,7 +48,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "914672a5055215209b19f7c4a15ae655c549b49a",
+  "source_head": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
   "source_inventory": [
     {
       "path": "tests/af/test_s2_review_source_fidelity.py",
@@ -74,6 +74,11 @@
       "path": "tests/qa/test_s4d_lanes.py",
       "source_commit": "4ca1139362ed354e62290272f9470fd7aa67ef2a",
       "sha256": "d26265ca8eb273402625714d36f6d71e61c8d581129bddbfd829abd8fa866aad"
+    },
+    {
+      "path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "sha256": "1ef00ecc93a58dcc12140b7ae6f3ae292f8ca30a56cf0251f2b51cd619145d45"
     },
     {
       "path": "tests/uc/test_adapter.py",
@@ -3053,6 +3058,325 @@
       "selector": "tests/qa/test_s4d_lanes.py::test_resolve_cases_selector_outside_the_expected_lane_is_unexpected_not_passed",
       "source_path": "tests/qa/test_s4d_lanes.py",
       "source_commit": "4ca1139362ed354e62290272f9470fd7aa67ef2a",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_approved_report_digests_only_for_approvable_checks",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_approved_report_digests_only_for_approvable_checks",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_artifact_digest_invalid",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_artifact_digest_invalid",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_artifact_digest_invalid_when_empty_or_not_a_mapping",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_artifact_digest_invalid_when_empty_or_not_a_mapping",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_artifact_mismatch_altered_truncated_missing_and_wrong_size",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_artifact_mismatch_altered_truncated_missing_and_wrong_size",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_artifact_unverified_when_bytes_not_supplied",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_artifact_unverified_when_bytes_not_supplied",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_baseline_interpreter_absolute_executable_alone_is_not_secret_or_abs_path",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_baseline_interpreter_absolute_executable_alone_is_not_secret_or_abs_path",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_baseline_real_runner_record_is_approvable_with_no_reasons",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_baseline_real_runner_record_is_approvable_with_no_reasons",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_dependency_unverified_before_or_after",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_dependency_unverified_before_or_after",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_dirty_tree_before_after_and_malformed",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_dirty_tree_before_after_and_malformed",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_every_non_pass_result_is_typed_and_non_approving",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_every_non_pass_result_is_typed_and_non_approving",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_exit_code_nonzero_or_null",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_exit_code_nonzero_or_null",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_hash_mismatch_on_edit_without_rehash_and_clears_when_rehashed",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_hash_mismatch_on_edit_without_rehash_and_clears_when_rehashed",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_lock_missing_or_invalid",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_lock_missing_or_invalid",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_malformed_id_lists_are_schema_not_a_crash",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_malformed_id_lists_are_schema_not_a_crash",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_missing_unknown_duplicate_and_not_all_passed_ids",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_missing_unknown_duplicate_and_not_all_passed_ids",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_no_execution",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_no_execution",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_not_run_unassigned_failed_skipped_xfail_uncollected_unexpected",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_not_run_unassigned_failed_skipped_xfail_uncollected_unexpected",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_profile_not_executed",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_profile_not_executed",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_real_committed_fail_records_are_all_non_approving",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_real_committed_fail_records_are_all_non_approving",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_registry_level_not_run_selectors_block_even_if_report_claims_none",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_registry_level_not_run_selectors_block_even_if_report_claims_none",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_registry_mismatch_on_digest_and_source_head",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_registry_mismatch_on_digest_and_source_head",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_schema_missing_key_and_wrong_version_and_non_object",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_schema_missing_key_and_wrong_version_and_non_object",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_secret_like_value_user_path_and_absolute_command_path",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_secret_like_value_user_path_and_absolute_command_path",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_select_record_refuses_undecodable_non_object_duplicate_keys_and_empty",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_select_record_refuses_undecodable_non_object_duplicate_keys_and_empty",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_select_record_takes_last_line_and_skips_blank_lines",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_select_record_takes_last_line_and_skips_blank_lines",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_stale_head_wrong_expected_and_head_after_moved",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_stale_head_wrong_expected_and_head_after_moved",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_state_changed",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_state_changed",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_unknown_category_and_unknown_profile",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_unknown_category_and_unknown_profile",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4f_gate_check.py::test_unsupported_category_status_in_registry",
+      "selector": "tests/qa/test_s4f_gate_check.py::test_unsupported_category_status_in_registry",
+      "source_path": "tests/qa/test_s4f_gate_check.py",
+      "source_commit": "07f61a0ce6d78d96a2a35b971f4033377de158f1",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -25748,7 +26072,36 @@
         "tests/qa/test_s4d_lanes.py::test_resolve_cases_digests_unsafe_node_ids_and_keeps_duplicates_and_collection_errors",
         "tests/qa/test_s4d_lanes.py::test_resolve_cases_failed_case_dominates_a_sibling_pass_and_skip",
         "tests/qa/test_s4d_lanes.py::test_resolve_cases_rejects_malformed_event_files",
-        "tests/qa/test_s4d_lanes.py::test_resolve_cases_selector_outside_the_expected_lane_is_unexpected_not_passed"
+        "tests/qa/test_s4d_lanes.py::test_resolve_cases_selector_outside_the_expected_lane_is_unexpected_not_passed",
+        "tests/qa/test_s4f_gate_check.py::test_approved_report_digests_only_for_approvable_checks",
+        "tests/qa/test_s4f_gate_check.py::test_artifact_digest_invalid",
+        "tests/qa/test_s4f_gate_check.py::test_artifact_digest_invalid_when_empty_or_not_a_mapping",
+        "tests/qa/test_s4f_gate_check.py::test_artifact_mismatch_altered_truncated_missing_and_wrong_size",
+        "tests/qa/test_s4f_gate_check.py::test_artifact_unverified_when_bytes_not_supplied",
+        "tests/qa/test_s4f_gate_check.py::test_baseline_interpreter_absolute_executable_alone_is_not_secret_or_abs_path",
+        "tests/qa/test_s4f_gate_check.py::test_baseline_real_runner_record_is_approvable_with_no_reasons",
+        "tests/qa/test_s4f_gate_check.py::test_dependency_unverified_before_or_after",
+        "tests/qa/test_s4f_gate_check.py::test_dirty_tree_before_after_and_malformed",
+        "tests/qa/test_s4f_gate_check.py::test_every_non_pass_result_is_typed_and_non_approving",
+        "tests/qa/test_s4f_gate_check.py::test_exit_code_nonzero_or_null",
+        "tests/qa/test_s4f_gate_check.py::test_hash_mismatch_on_edit_without_rehash_and_clears_when_rehashed",
+        "tests/qa/test_s4f_gate_check.py::test_lock_missing_or_invalid",
+        "tests/qa/test_s4f_gate_check.py::test_malformed_id_lists_are_schema_not_a_crash",
+        "tests/qa/test_s4f_gate_check.py::test_missing_unknown_duplicate_and_not_all_passed_ids",
+        "tests/qa/test_s4f_gate_check.py::test_no_execution",
+        "tests/qa/test_s4f_gate_check.py::test_not_run_unassigned_failed_skipped_xfail_uncollected_unexpected",
+        "tests/qa/test_s4f_gate_check.py::test_profile_not_executed",
+        "tests/qa/test_s4f_gate_check.py::test_real_committed_fail_records_are_all_non_approving",
+        "tests/qa/test_s4f_gate_check.py::test_registry_level_not_run_selectors_block_even_if_report_claims_none",
+        "tests/qa/test_s4f_gate_check.py::test_registry_mismatch_on_digest_and_source_head",
+        "tests/qa/test_s4f_gate_check.py::test_schema_missing_key_and_wrong_version_and_non_object",
+        "tests/qa/test_s4f_gate_check.py::test_secret_like_value_user_path_and_absolute_command_path",
+        "tests/qa/test_s4f_gate_check.py::test_select_record_refuses_undecodable_non_object_duplicate_keys_and_empty",
+        "tests/qa/test_s4f_gate_check.py::test_select_record_takes_last_line_and_skips_blank_lines",
+        "tests/qa/test_s4f_gate_check.py::test_stale_head_wrong_expected_and_head_after_moved",
+        "tests/qa/test_s4f_gate_check.py::test_state_changed",
+        "tests/qa/test_s4f_gate_check.py::test_unknown_category_and_unknown_profile",
+        "tests/qa/test_s4f_gate_check.py::test_unsupported_category_status_in_registry"
       ],
       "not_run_reasons": {},
       "reason": null
