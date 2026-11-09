@@ -2038,3 +2038,6 @@ Kind: NEUTRAL. Contract coded without any run; verification is review only.
 
 ## 2026-11-09 S5-A review findings
 Kind: SHORTCOMING. The first coding pass left the gate treating v3 as v1 (a safety hole) because the brief said not to touch gate.py. Caught by python-reviewer. Rule: a contract version bump must fail closed in every consumer in the same task.
+
+## 2026-11-09 S5-A accepted
+Kind: SUCCESS. Two read-only reviewer passes before GPT-PM found the real gate hole; GPT-PM then approved in one round. Limit: static review only.
