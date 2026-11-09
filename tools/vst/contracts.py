@@ -82,6 +82,8 @@ MANIFEST_V2_FIELDS = MANIFEST_FIELDS + (
     "contract_version", "reviewer_registry", "mandatory_commands", "change_scope",
 )
 
+MANIFEST_V3_FIELDS = MANIFEST_V2_FIELDS + ("required_rule_ids",)
+
 # Reserved slot name for supervisor-written receipts (WORKER_LOST,
 # RETRY_EXHAUSTED, BUDGET_EXCEEDED). Never a manifest slot; receipts in it are
 # always Documentation receipts signed with the supervisor key.
@@ -387,8 +389,13 @@ def validate_task_manifest_v3(obj: Any) -> dict:
 
 
 def _validate_task_manifest_v2_body(obj: Any, version: int) -> dict:
-    _check_keys(obj, MANIFEST_V2_FIELDS, f"task_manifest_v{version}")
+    fields = MANIFEST_V3_FIELDS if version == 3 else MANIFEST_V2_FIELDS
+    _check_keys(obj, fields, f"task_manifest_v{version}")
     _req_int(obj["contract_version"], "contract_version", version, version)
+    if version == 3:
+        ids = _req_str_list(obj["required_rule_ids"], "required_rule_ids", nonempty=True, unique=True)
+        if ids != sorted(ids):
+            raise ContractError("required_rule_ids: must be sorted")
     core = {k: obj[k] for k in MANIFEST_FIELDS}
     _validate_task_manifest_v1(core)
     registry = obj["reviewer_registry"]
@@ -711,6 +718,26 @@ def require_receipt_version_for_manifest(manifest: dict, receipt: dict) -> None:
         )
 
 
+def require_static_rule_set_matches_manifest(manifest: dict, receipt: dict) -> None:
+    """Raise ContractError unless the v3 receipt's declared rule set equals the
+    v3 manifest's required_rule_ids (exact set equality)."""
+    if not isinstance(manifest, dict) or manifest.get("contract_version") != 3:
+        raise ContractError("manifest: must be a v3 manifest")
+    if (
+        not isinstance(receipt, dict)
+        or receipt.get("contract_version") != 3
+        or receipt.get("receipt_type") != "StaticAnalysis"
+    ):
+        raise ContractError("receipt: must be a v3 StaticAnalysis receipt")
+    required = manifest.get("required_rule_ids")
+    statuses = receipt.get("rule_statuses")
+    if not isinstance(required, list) or not isinstance(statuses, list):
+        raise ContractError("required_rule_ids/rule_statuses: must be lists")
+    declared = [s.get("rule_id") if isinstance(s, dict) else None for s in statuses]
+    if len(set(declared)) != len(declared) or set(declared) != set(required):
+        raise ContractError("rule_statuses: rule set does not equal manifest required_rule_ids")
+
+
 def _req_nonzero_hex64(value: Any, name: str) -> str:
     _req_hex(value, name, 64)
     if value == MISSING_ARTIFACT_DIGEST:
@@ -867,6 +894,10 @@ def _derive_test_run(receipt: dict) -> str:
 
 
 def _derive_static_analysis(receipt: dict) -> str:
+    if receipt.get("contract_version") == 3 and any(
+        f["severity"] in ("HIGH", "CRITICAL") for f in receipt["findings"]
+    ):
+        return "FAIL"
     if (
         receipt["coverage"] == "FULL"
         and not receipt["unsupported_rules"]

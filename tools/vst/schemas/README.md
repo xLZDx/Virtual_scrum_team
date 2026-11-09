@@ -159,7 +159,13 @@ not waivable. The gate rejects a waiver unless each unmet result is explicitly i
 ### Explicit v3 manifest and StaticAnalysis provenance (opt-in)
 
 V3 is selected only by `contract_version: 3` (`validate_task_manifest_v3`); its manifest field set is
-identical to v2. V1/v2 validators, field sets, signed bodies and canonical hashes are unchanged, and a
+the v2 set plus `required_rule_ids` (non-empty, sorted, unique list of non-empty rule-id str;
+`MANIFEST_V3_FIELDS`). `require_static_rule_set_matches_manifest(manifest, receipt)` raises
+`ContractError` unless the set of `rule_id`s in the v3 receipt's `rule_statuses` equals the manifest's
+`required_rule_ids`. For v3 StaticAnalysis, `derive_result` returns FAIL when any finding has severity
+HIGH or CRITICAL; INFO/LOW/MEDIUM findings with FULL coverage still PASS. The gate does not implement v3
+yet: any v3 manifest or v3 receipt gives a non-approving reason `v3 gate wiring not implemented (S5-E)`
+(`NO_GO` for a v3 manifest), and receipt and manifest contract versions must match exactly. V1/v2 validators, field sets, signed bodies and canonical hashes are unchanged, and a
 v2 receipt can never gain provenance fields (unknown fields are rejected).
 `require_receipt_version_for_manifest(manifest, receipt)` raises `ContractError` unless both carry the
 same contract version, so a v3 manifest never accepts a v1/v2 receipt as equivalent.

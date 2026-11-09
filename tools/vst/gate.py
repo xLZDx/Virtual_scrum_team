@@ -273,6 +273,9 @@ def _check_receipt(
     if receipt["manifest_sha256"] != manifest_hash:
         hard.append(f"{label} manifest_sha256 does not match the manifest")
         return None, True, False
+    if receipt.get("contract_version") == 3:
+        hard.append(f"{label} v3 gate wiring not implemented (S5-E)")
+        return None, True, False
     if (receipt.get("contract_version") == 2) != v2:
         hard.append(f"{label} contract version does not match manifest")
         return None, True, False
@@ -697,6 +700,14 @@ def evaluate(
             task_id, current_head, current_epoch, "NO_GO",
             hashes=[], findings=[], approvals=[], waiver_record=None,
             acceptance_unmet=[], reasons=hard,
+        )
+
+    if valid_manifest.get("contract_version") == 3:
+        hard.append("v3 manifest: v3 gate wiring not implemented (S5-E)")
+        return _build_decision(
+            task_id, current_head, current_epoch, "NO_GO",
+            hashes=[], findings=[], approvals=[], waiver_record=None,
+            acceptance_unmet=list(valid_manifest["acceptance"]), reasons=hard,
         )
 
     if fatal:
