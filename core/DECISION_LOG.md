@@ -2790,3 +2790,6 @@ Added the review scope note for S5-A and requested the GPT-PM code review for th
 
 ## 2026-11-09 S5-A accepted (GPT-PM APPROVE)
 GPT-PM APPROVE, 0 BLOCKER, 0 MAJOR, reply d8f744e0, head 56887a6, static review only. NOT_RUN: tests (pytest forbidden), AEVE runtime. S5-B..D depend on an authorized AEVE source identity, analyzer and signer owner that the plan records as missing; S5-E depends on S5-A..D. Plan row updates are deferred to the end of S5 (operator rule: plan once per sprint).
+
+## 2026-11-09 S5-B coded: analyzer authority signing (VST-039)
+Operator decision: VST trusted code signs the AEVE report with a dedicated analyzer-authority key; AEVE never gets keys. Added ANALYZER_AUTHORITY_LABEL in tools/vst/signing.py and tools/vst/analyzer_authority.py (payload binding, sign, verify with key distinctness and replay checks). gate.py untouched, v3 stays fail-closed until S5-E. Not run (pytest forbidden); reviewers and GPT-PM pending.
