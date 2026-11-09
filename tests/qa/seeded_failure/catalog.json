@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "note": "Synthetic seeded-failure fixtures; not mutation testing.",
+  "fixtures": [
+    {
+      "fixture_id": "SF-001",
+      "failure_class": "stale-head-evidence",
+      "input_sha256": "6f1656149d5785586fe97bf14bcd34c5f83e797da3c0f9aa27686c470aa3dc55",
+      "expected_rejection": "NO_GO: stale head",
+      "test_id": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf001_stale_head_evidence_is_not_approved"
+    },
+    {
+      "fixture_id": "SF-002",
+      "failure_class": "missing-required-receipt",
+      "input_sha256": "c652738a30f52d9dd7d9393cedf81ba9e4a897eab235bc43ce5c2b20840d299c",
+      "expected_rejection": "MODIFY: missing receipt for slot 'review'",
+      "test_id": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf002_missing_required_receipt_is_not_approved"
+    },
+    {
+      "fixture_id": "SF-003",
+      "failure_class": "invalid-signature",
+      "input_sha256": "95ff440d77c0e57fd0321b76dfe3e1982088b0e91424f05c0a9b0c56125df37b",
+      "expected_rejection": "MODIFY: invalid signature",
+      "test_id": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf003_invalid_signature_receipt_is_not_approved"
+    },
+    {
+      "fixture_id": "SF-004",
+      "failure_class": "out-of-scope-diff",
+      "input_sha256": "818a1478da3d9e56aeb9e26af19278fb2a002a85c4542207479b57f69e698f94",
+      "expected_rejection": "FAIL: OUT_OF_SCOPE_PATH",
+      "test_id": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf004_out_of_scope_diff_fails_the_diff_gate"
+    },
+    {
+      "fixture_id": "SF-005",
+      "failure_class": "skipped-required-test-id",
+      "input_sha256": "882190a9c231a5d9a52b344c12d4820914799997672f21b02e76daa3cf62a2af",
+      "expected_rejection": "NOT_PASSED: skipped_test_ids=T-REQ",
+      "test_id": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf005_skipped_required_test_id_is_not_counted_as_passed"
+    },
+    {
+      "fixture_id": "SF-006",
+      "failure_class": "artifact-digest-mismatch",
+      "input_sha256": "636df099b785066049f0b6dc6625ee570c0eefce4662476b45c74a52db40a7e2",
+      "expected_rejection": "MODIFY: digest mismatch",
+      "test_id": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf006_artifact_digest_mismatch_is_not_approved"
+    },
+    {
+      "fixture_id": "SF-007",
+      "failure_class": "tampered-event-chain",
+      "input_sha256": "7013870212f608a330eda3940c72f65d4ab962fc1e4cad717cb6b68eea064472",
+      "expected_rejection": "verify_event_chain=False",
+      "test_id": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf007_tampered_event_chain_fails_verification"
+    },
+    {
+      "fixture_id": "SF-008",
+      "failure_class": "stale-epoch",
+      "input_sha256": "630416d7830888b043602b0cf08ba1a9366caec8ca83be4daad67a034b815e7f",
+      "expected_rejection": "MODIFY: slot 'tests' needs a current-epoch attempt",
+      "test_id": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf008_stale_epoch_receipts_are_not_approved"
+    }
+  ]
+}

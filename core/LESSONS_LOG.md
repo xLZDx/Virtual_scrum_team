@@ -2006,3 +2006,6 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - 2026-11-09 S4-D accepted
 - Kind: SUCCESS: one request, no fix round; the mechanism tests were small and fast compared with the lane runs of S4-C.
+
+- 2026-11-09 S4-E catalog
+- Kind: SUCCESS: 8 seeded failures run in under a second without changing product code; SHORTCOMING noted: expected rejections come from observed behavior.

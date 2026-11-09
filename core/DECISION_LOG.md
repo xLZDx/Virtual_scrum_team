@@ -2741,3 +2741,8 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 ## 2026-11-09 — S4-D accepted
 
 - Evidence: GPT-PM APPROVE (0 BLOCKER, 0 MAJOR), request 4546322f-67b7-43eb-8634-80889c9bf80c, head f050a3b; plan row S4-D set to ACCEPTED with the real e2e and regression lanes explicitly NOT_RUN by the operator decision.
+
+## 2026-11-09 — S4-E seeded-failure catalog written and green
+
+- Evidence: tests/qa/seeded_failure/catalog.json (8 fixtures SF-001..SF-008) and tests/qa/test_s4_seeded_failure_catalog.py (9 tests, 9 passed in 0.96 s, test agent, HEAD fd99821, one run). Each fixture is an input record fed to the unchanged product interface (gate stale head, missing receipt, invalid signature, diffgate out-of-scope path, QA accounting skipped required ID, artifact digest mismatch, tampered event chain on a copy of a real store, stale epoch) and each test first checks the input sha256 against the catalog. No product source changed, no patching, docstring says this is NOT mutation testing (AC-13).
+- Limits: expected_rejection values were generated once from the observed behavior of the current product (so they pin current behavior, not an independent oracle); SF-005 covers _resolve_cases only, not count_passed; SF-007 needs DROP TRIGGER first (events are append-only), modelling an attacker with file access; a wrong-event-key fixture is covered by an existing test in test_e3_store.py instead.
