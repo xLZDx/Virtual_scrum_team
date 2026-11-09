@@ -48,7 +48,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "a048393d4c63512b6cd168b73040fe3e40fad294",
+  "source_head": "4ca1139362ed354e62290272f9470fd7aa67ef2a",
   "source_inventory": [
     {
       "path": "tests/af/test_s2_review_source_fidelity.py",
@@ -64,6 +64,11 @@
       "path": "tests/qa/test_s4b_runner.py",
       "source_commit": "a048393d4c63512b6cd168b73040fe3e40fad294",
       "sha256": "1c4630a80fde6d6fba1cbebc932b00e3e15d8c44690ece08666551e85d76e812"
+    },
+    {
+      "path": "tests/qa/test_s4d_lanes.py",
+      "source_commit": "4ca1139362ed354e62290272f9470fd7aa67ef2a",
+      "sha256": "d26265ca8eb273402625714d36f6d71e61c8d581129bddbfd829abd8fa866aad"
     },
     {
       "path": "tests/uc/test_adapter.py",
@@ -2823,6 +2828,127 @@
       "selector": "tests/qa/test_s4b_runner.py::test_wsl_only_selector_alone_makes_the_category_inconclusive",
       "source_path": "tests/qa/test_s4b_runner.py",
       "source_commit": "a048393d4c63512b6cd168b73040fe3e40fad294",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4d_lanes.py::test_count_passed_never_counts_the_not_run_selector_even_if_an_outcome_claims_passed",
+      "selector": "tests/qa/test_s4d_lanes.py::test_count_passed_never_counts_the_not_run_selector_even_if_an_outcome_claims_passed",
+      "source_path": "tests/qa/test_s4d_lanes.py",
+      "source_commit": "4ca1139362ed354e62290272f9470fd7aa67ef2a",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4d_lanes.py::test_denominator_regression_is_exact_union_of_four_members_and_complete_only_when_all_runnable",
+      "selector": "tests/qa/test_s4d_lanes.py::test_denominator_regression_is_exact_union_of_four_members_and_complete_only_when_all_runnable",
+      "source_path": "tests/qa/test_s4d_lanes.py",
+      "source_commit": "4ca1139362ed354e62290272f9470fd7aa67ef2a",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4d_lanes.py::test_e2e_sandbox_selector_declared_not_run_stays_in_denominator_and_never_passes",
+      "selector": "tests/qa/test_s4d_lanes.py::test_e2e_sandbox_selector_declared_not_run_stays_in_denominator_and_never_passes",
+      "source_path": "tests/qa/test_s4d_lanes.py",
+      "source_commit": "4ca1139362ed354e62290272f9470fd7aa67ef2a",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4d_lanes.py::test_regression_aggregate_also_goes_inconclusive_when_its_e2e_member_has_a_not_run_selector",
+      "selector": "tests/qa/test_s4d_lanes.py::test_regression_aggregate_also_goes_inconclusive_when_its_e2e_member_has_a_not_run_selector",
+      "source_path": "tests/qa/test_s4d_lanes.py",
+      "source_commit": "4ca1139362ed354e62290272f9470fd7aa67ef2a",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4d_lanes.py::test_regression_all_members_pass_is_a_typed_pass_over_the_whole_aggregate",
+      "selector": "tests/qa/test_s4d_lanes.py::test_regression_all_members_pass_is_a_typed_pass_over_the_whole_aggregate",
+      "source_path": "tests/qa/test_s4d_lanes.py",
+      "source_commit": "4ca1139362ed354e62290272f9470fd7aa67ef2a",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4d_lanes.py::test_regression_skip_xfail_fail_uncollected_and_extra_case_each_make_it_non_approving",
+      "selector": "tests/qa/test_s4d_lanes.py::test_regression_skip_xfail_fail_uncollected_and_extra_case_each_make_it_non_approving",
+      "source_path": "tests/qa/test_s4d_lanes.py",
+      "source_commit": "4ca1139362ed354e62290272f9470fd7aa67ef2a",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4d_lanes.py::test_resolve_cases_classifies_every_outcome_into_exactly_one_list",
+      "selector": "tests/qa/test_s4d_lanes.py::test_resolve_cases_classifies_every_outcome_into_exactly_one_list",
+      "source_path": "tests/qa/test_s4d_lanes.py",
+      "source_commit": "4ca1139362ed354e62290272f9470fd7aa67ef2a",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4d_lanes.py::test_resolve_cases_digests_unsafe_node_ids_and_keeps_duplicates_and_collection_errors",
+      "selector": "tests/qa/test_s4d_lanes.py::test_resolve_cases_digests_unsafe_node_ids_and_keeps_duplicates_and_collection_errors",
+      "source_path": "tests/qa/test_s4d_lanes.py",
+      "source_commit": "4ca1139362ed354e62290272f9470fd7aa67ef2a",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4d_lanes.py::test_resolve_cases_failed_case_dominates_a_sibling_pass_and_skip",
+      "selector": "tests/qa/test_s4d_lanes.py::test_resolve_cases_failed_case_dominates_a_sibling_pass_and_skip",
+      "source_path": "tests/qa/test_s4d_lanes.py",
+      "source_commit": "4ca1139362ed354e62290272f9470fd7aa67ef2a",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4d_lanes.py::test_resolve_cases_rejects_malformed_event_files",
+      "selector": "tests/qa/test_s4d_lanes.py::test_resolve_cases_rejects_malformed_event_files",
+      "source_path": "tests/qa/test_s4d_lanes.py",
+      "source_commit": "4ca1139362ed354e62290272f9470fd7aa67ef2a",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4d_lanes.py::test_resolve_cases_selector_outside_the_expected_lane_is_unexpected_not_passed",
+      "selector": "tests/qa/test_s4d_lanes.py::test_resolve_cases_selector_outside_the_expected_lane_is_unexpected_not_passed",
+      "source_path": "tests/qa/test_s4d_lanes.py",
+      "source_commit": "4ca1139362ed354e62290272f9470fd7aa67ef2a",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -25507,7 +25633,18 @@
         "tests/qa/test_s4b_runner.py::test_wheelhouse_mismatch_blocks_the_run",
         "tests/qa/test_s4b_runner.py::test_wrong_expected_head_blocks_the_run",
         "tests/qa/test_s4b_runner.py::test_wrong_python_profile_blocks_the_run",
-        "tests/qa/test_s4b_runner.py::test_wsl_only_selector_alone_makes_the_category_inconclusive"
+        "tests/qa/test_s4b_runner.py::test_wsl_only_selector_alone_makes_the_category_inconclusive",
+        "tests/qa/test_s4d_lanes.py::test_count_passed_never_counts_the_not_run_selector_even_if_an_outcome_claims_passed",
+        "tests/qa/test_s4d_lanes.py::test_denominator_regression_is_exact_union_of_four_members_and_complete_only_when_all_runnable",
+        "tests/qa/test_s4d_lanes.py::test_e2e_sandbox_selector_declared_not_run_stays_in_denominator_and_never_passes",
+        "tests/qa/test_s4d_lanes.py::test_regression_aggregate_also_goes_inconclusive_when_its_e2e_member_has_a_not_run_selector",
+        "tests/qa/test_s4d_lanes.py::test_regression_all_members_pass_is_a_typed_pass_over_the_whole_aggregate",
+        "tests/qa/test_s4d_lanes.py::test_regression_skip_xfail_fail_uncollected_and_extra_case_each_make_it_non_approving",
+        "tests/qa/test_s4d_lanes.py::test_resolve_cases_classifies_every_outcome_into_exactly_one_list",
+        "tests/qa/test_s4d_lanes.py::test_resolve_cases_digests_unsafe_node_ids_and_keeps_duplicates_and_collection_errors",
+        "tests/qa/test_s4d_lanes.py::test_resolve_cases_failed_case_dominates_a_sibling_pass_and_skip",
+        "tests/qa/test_s4d_lanes.py::test_resolve_cases_rejects_malformed_event_files",
+        "tests/qa/test_s4d_lanes.py::test_resolve_cases_selector_outside_the_expected_lane_is_unexpected_not_passed"
       ],
       "not_run_reasons": {},
       "reason": null

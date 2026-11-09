@@ -2731,3 +2731,5 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 
 - Evidence: tests/qa/test_s4d_lanes.py (test agent, HEAD cd5a8d0): 14 passed in 407.6 s (4 end-to-end on tiny repos, 10 unit-level); first run 10 passed and 4 failed because of a test-authoring mistake (NOT_RUN policy line appended after the __main__ guard of the throwaway builder), fixed by the agent; the file was run twice. They pin AC-11 (skipped, xfail, failed, uncollected, unexpected each non-approving in the regression lane), AC-10 (a declared NOT_RUN e2e selector stays in the denominator, INCONCLUSIVE never PASS) and the exact-union regression denominator. No product defect found in tools/qa.
 - Limits: the NOT_RUN selector is declared in a throwaway registry copy, not a real e2e selector; real e2e and regression lanes are NOT_RUN by the operator decision (mechanism and a small slice only); e2e-runner smoke earlier: first 5 of 37 tests in tests/vst/test_e5_slice.py passed.
+
+- 2026-11-09: manifest regenerated for the new S4-D test file.
