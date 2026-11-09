@@ -2003,3 +2003,6 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - 2026-11-09 S4-D GPT-PM request
 - Kind: NEUTRAL: S4-D goes to review with explicit NOT_RUN for the real e2e and regression lanes.
+
+- 2026-11-09 S4-D accepted
+- Kind: SUCCESS: one request, no fix round; the mechanism tests were small and fast compared with the lane runs of S4-C.
