@@ -2015,3 +2015,10 @@ A retained pass/skip summary is not enough to establish selector-level acceptanc
 
 - 2026-11-09 S4-E accepted
 - Kind: SUCCESS: one author run, one confirmation run, one GPT-PM request, no fix round; the whole task was fast because no product code changed and no lane was run.
+
+- 2026-11-09 S4-F manifest and scope note
+- Kind: NEUTRAL: last S4 task goes to review with the verifier advisory and not wired into the gate by design.
+
+- 2026-11-09 commit message mismatch
+- Kind: FAILURE: commit 487ec89 claims the S4-F code, which was not staged because the staging command was denied by a hook and I did not re-check git status before committing. Caught by the manifest builder refusing a dirty tree.
+- Rule: after any denied compound command, re-run git status and verify the index before the next commit; write commit messages from git diff --cached --stat.

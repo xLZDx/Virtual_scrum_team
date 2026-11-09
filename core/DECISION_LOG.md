@@ -2756,3 +2756,9 @@ The parallel session's entry "U1-4 GPT-PM review attempt: NOT VERIFIED" (request
 ## 2026-11-09 — S4-E accepted
 
 - Evidence: GPT-PM APPROVE (0 BLOCKER, 0 MAJOR), request 2f95ff57-b87b-42e4-a51c-88b8a997e11c, head d620fdc; plan row S4-E set to ACCEPTED with the oracle limits stated.
+
+## 2026-11-09 — S4-F manifest and GPT-PM request
+
+- Evidence: manifest regenerated for tests/qa/test_s4f_gate_check.py; scope note docs/sdlc/evidence/s4-f-gptpm-scope-note.md lists the delta, the delegated design decisions and the limits (real-registry test path not yet run on a clean tree at note time). One request after a confirmation run, no further rounds before the answer.
+
+- CORRECTION 2026-11-09: commit 487ec89 (pushed) is titled as if it contained the S4-F code, but its denied command never staged tools/qa/gate_check.py and tests/qa/test_s4f_gate_check.py; that commit holds only the S4-E acceptance, plan, reports and logs. The S4-F code is committed in the next commit.
