@@ -48,12 +48,17 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "4ca1139362ed354e62290272f9470fd7aa67ef2a",
+  "source_head": "914672a5055215209b19f7c4a15ae655c549b49a",
   "source_inventory": [
     {
       "path": "tests/af/test_s2_review_source_fidelity.py",
       "source_commit": "206a746fdae942fd6ab6f36c882bb0c3d18ec539",
       "sha256": "f3b44778a9a89bb298c9f68b5f64bbbf517cd4e022f12691686129b1e998b220"
+    },
+    {
+      "path": "tests/qa/test_s4_seeded_failure_catalog.py",
+      "source_commit": "914672a5055215209b19f7c4a15ae655c549b49a",
+      "sha256": "170f8f9ffe96f597d1838d2671fcef2759926b4841b7ff58739b829383c79fbd"
     },
     {
       "path": "tests/qa/test_s4a_registry.py",
@@ -387,6 +392,105 @@
       "source_path": "tests/af/test_s2_review_source_fidelity.py",
       "source_commit": "206a746fdae942fd6ab6f36c882bb0c3d18ec539",
       "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_seeded_failure_catalog.py::test_catalog_shape_unique_ids_and_linked_tests_exist",
+      "selector": "tests/qa/test_s4_seeded_failure_catalog.py::test_catalog_shape_unique_ids_and_linked_tests_exist",
+      "source_path": "tests/qa/test_s4_seeded_failure_catalog.py",
+      "source_commit": "914672a5055215209b19f7c4a15ae655c549b49a",
+      "primary_category": "seeded-failure",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf001_stale_head_evidence_is_not_approved",
+      "selector": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf001_stale_head_evidence_is_not_approved",
+      "source_path": "tests/qa/test_s4_seeded_failure_catalog.py",
+      "source_commit": "914672a5055215209b19f7c4a15ae655c549b49a",
+      "primary_category": "seeded-failure",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf002_missing_required_receipt_is_not_approved",
+      "selector": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf002_missing_required_receipt_is_not_approved",
+      "source_path": "tests/qa/test_s4_seeded_failure_catalog.py",
+      "source_commit": "914672a5055215209b19f7c4a15ae655c549b49a",
+      "primary_category": "seeded-failure",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf003_invalid_signature_receipt_is_not_approved",
+      "selector": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf003_invalid_signature_receipt_is_not_approved",
+      "source_path": "tests/qa/test_s4_seeded_failure_catalog.py",
+      "source_commit": "914672a5055215209b19f7c4a15ae655c549b49a",
+      "primary_category": "seeded-failure",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf004_out_of_scope_diff_fails_the_diff_gate",
+      "selector": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf004_out_of_scope_diff_fails_the_diff_gate",
+      "source_path": "tests/qa/test_s4_seeded_failure_catalog.py",
+      "source_commit": "914672a5055215209b19f7c4a15ae655c549b49a",
+      "primary_category": "seeded-failure",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf005_skipped_required_test_id_is_not_counted_as_passed",
+      "selector": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf005_skipped_required_test_id_is_not_counted_as_passed",
+      "source_path": "tests/qa/test_s4_seeded_failure_catalog.py",
+      "source_commit": "914672a5055215209b19f7c4a15ae655c549b49a",
+      "primary_category": "seeded-failure",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf006_artifact_digest_mismatch_is_not_approved",
+      "selector": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf006_artifact_digest_mismatch_is_not_approved",
+      "source_path": "tests/qa/test_s4_seeded_failure_catalog.py",
+      "source_commit": "914672a5055215209b19f7c4a15ae655c549b49a",
+      "primary_category": "seeded-failure",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf007_tampered_event_chain_fails_verification",
+      "selector": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf007_tampered_event_chain_fails_verification",
+      "source_path": "tests/qa/test_s4_seeded_failure_catalog.py",
+      "source_commit": "914672a5055215209b19f7c4a15ae655c549b49a",
+      "primary_category": "seeded-failure",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf008_stale_epoch_receipts_are_not_approved",
+      "selector": "tests/qa/test_s4_seeded_failure_catalog.py::test_sf008_stale_epoch_receipts_are_not_approved",
+      "source_path": "tests/qa/test_s4_seeded_failure_catalog.py",
+      "source_commit": "914672a5055215209b19f7c4a15ae655c549b49a",
+      "primary_category": "seeded-failure",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
         "wsl-ubuntu-24.04-cpython-3.12.3"
@@ -25650,10 +25754,20 @@
       "reason": null
     },
     "seeded-failure": {
-      "status": "NOT_RUN",
-      "test_ids": [],
+      "status": "SUPPORTED",
+      "test_ids": [
+        "tests/qa/test_s4_seeded_failure_catalog.py::test_catalog_shape_unique_ids_and_linked_tests_exist",
+        "tests/qa/test_s4_seeded_failure_catalog.py::test_sf001_stale_head_evidence_is_not_approved",
+        "tests/qa/test_s4_seeded_failure_catalog.py::test_sf002_missing_required_receipt_is_not_approved",
+        "tests/qa/test_s4_seeded_failure_catalog.py::test_sf003_invalid_signature_receipt_is_not_approved",
+        "tests/qa/test_s4_seeded_failure_catalog.py::test_sf004_out_of_scope_diff_fails_the_diff_gate",
+        "tests/qa/test_s4_seeded_failure_catalog.py::test_sf005_skipped_required_test_id_is_not_counted_as_passed",
+        "tests/qa/test_s4_seeded_failure_catalog.py::test_sf006_artifact_digest_mismatch_is_not_approved",
+        "tests/qa/test_s4_seeded_failure_catalog.py::test_sf007_tampered_event_chain_fails_verification",
+        "tests/qa/test_s4_seeded_failure_catalog.py::test_sf008_stale_epoch_receipts_are_not_approved"
+      ],
       "not_run_reasons": {},
-      "reason": "The test-author phase has not added committed fixture-consuming tests yet."
+      "reason": null
     },
     "regression": {
       "status": "AGGREGATE",
