@@ -9,3 +9,6 @@ Already fixed after two read-only reviewer passes (python-reviewer 7 MAJOR, secu
 Settled, do not reopen: signing is S5-B (accepted); gate wiring is S5-E; AEVE has no scope/profile option and analyzes the whole git root (scope filtering applies to findings); OS-level network denial and resource limits are NOT_RUN (S2 sandbox). Tests NOT_RUN (operator forbids pytest); evidence is static review only.
 
 Ask: the complete BLOCKER/MAJOR set for this delta only.
+
+## Verification round (after GPT-PM round 1, reply 3319eee9, MAJOR x4)
+Base: cdf5e1e. Fixed: git invocations use capped streaming with kill and typed refusal (GIT_OUTPUT_LIMIT, GIT_KILL_FAILED); Windows analyzer starts suspended, is assigned to a kill-on-close Job Object and resumed only afterwards, fail closed (CONTAINMENT_FAILED, TERMINATION_FAILED); analyzer_files must cover every importable file under each pythonpath entry except explicit documented exclusions, links refused; version_file must be pinned, verified before and re-read after the run. Ask: verify these four and regressions they caused only.

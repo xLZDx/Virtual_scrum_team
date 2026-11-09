@@ -23,7 +23,8 @@ by this module's author):
 Boundaries enforced HERE: argv list (no shell), scrubbed environment, neutral
 empty cwd, isolated interpreter flags, analyzer pinned under analyzer_root and
 re-hashed after the run, wall-clock timeout, stdout/stderr caps, input caps,
-Windows Job Object (kill-on-close) or taskkill /T /F or killpg tree kill, and a
+Windows: child created suspended, put in a kill-on-close Job Object, then resumed (fail
+closed otherwise); POSIX: killpg of a new session (best effort, setsid escapes); and a
 local git-config allowlist. NOT enforced here (NOT_RUN, S2 sandbox): OS-level
 network denial, read-only mounts, CPU/memory limits. AEVE removes GIT_CONFIG_*
 variables from its own git environment, so VST cannot inject -c overrides into
@@ -172,6 +173,9 @@ _GIT_CONFIG_ALLOWED = {
     "branch": frozenset({"remote", "merge", "rebase"}),
 }
 _GIT_REGULAR_MODES = frozenset({"100644", "100755"})
+_GIT_STDERR_CAP = 65536
+# Importable file types: every one found under a pythonpath directory must be pinned.
+_IMPORTABLE_SUFFIXES = (".py", ".pyc", ".pyd", ".so", ".pth", ".dll")
 
 
 # ----------------------------------------------------------------- errors/types
@@ -193,6 +197,11 @@ class Outcome(str, Enum):
     CRASH = "CRASH"
     MISSING_EXECUTABLE = "MISSING_EXECUTABLE"
     INVALID_OUTPUT = "INVALID_OUTPUT"
+    # Windows containment (suspended start + kill-on-close Job Object) could not be established; the
+    # analyzer was NOT run.
+    CONTAINMENT_FAILED = "CONTAINMENT_FAILED"
+    # A kill was required (timeout/cap) but termination of the process (tree) was not confirmed.
+    TERMINATION_FAILED = "TERMINATION_FAILED"
 
 
 _PAYLOAD_OUTCOMES = frozenset({Outcome.OK, Outcome.PARTIAL_WITH_FINDINGS})
@@ -232,6 +241,10 @@ class AnalyzerSpec:
     expected_schema_version: str = AEVE_SCHEMA_VERSION
     expected_rules_version: str = AEVE_RULES_VERSION
     version_pattern: str = r'^__version__\s*=\s*"([^"\n]+)"\s*$'
+    # Explicit, documented exclusions from the pinned closure: exact repo-relative (to analyzer_root)
+    # importable files under a pythonpath directory that are deliberately NOT hashed (e.g. tests).
+    # They stay importable by the analyzer, so each one is a recorded gap, not a silent pass.
+    pythonpath_exclusions: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -449,21 +462,63 @@ def _git(
         f"--git-dir={gitdir}", f"--work-tree={real_root}", *args,
     ]
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
+    cap = max_out if max_out is not None else limits.max_git_listing_bytes
+    out, err = bytearray(), bytearray()
+    out_over, err_over = threading.Event(), threading.Event()
     try:
-        done = subprocess.run(
-            cmd, shell=False, stdin=subprocess.DEVNULL, capture_output=True,
-            timeout=limits.git_timeout_seconds, env=scrubbed_environment(), cwd=real_root,
-            creationflags=flags, check=False,
+        proc = subprocess.Popen(
+            cmd, shell=False, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env=scrubbed_environment(), cwd=real_root, creationflags=flags,
         )
-    except subprocess.TimeoutExpired as exc:
-        raise AdapterError("GIT_TIMEOUT", args[0]) from exc
     except OSError as exc:
         raise AdapterError("GIT_UNAVAILABLE", f"{args[0]}: {type(exc).__name__}") from exc
-    if done.returncode != 0:
-        raise AdapterError("GIT_FAILED", f"{args[0]} exit {done.returncode}")
-    if len(done.stdout) > (max_out if max_out is not None else limits.max_git_listing_bytes):
+    threads = [
+        threading.Thread(target=_drain, args=(proc.stdout, cap, out, out_over), daemon=True),
+        threading.Thread(target=_drain, args=(proc.stderr, _GIT_STDERR_CAP, err, err_over), daemon=True),
+    ]
+    timed_out = over = False
+    try:
+        for t in threads:
+            t.start()
+        deadline = time.monotonic() + limits.git_timeout_seconds
+        while True:
+            if out_over.is_set() or err_over.is_set():
+                over = True
+                break
+            if proc.poll() is not None:
+                break
+            if time.monotonic() >= deadline:
+                timed_out = True
+                break
+            time.sleep(0.005)
+        if over or timed_out:
+            proc.kill()
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired as exc:
+            proc.kill()
+            raise AdapterError("GIT_KILL_FAILED", f"{args[0]}: git did not terminate") from exc
+    finally:
+        if proc.poll() is None:
+            try:
+                proc.kill()
+            except OSError:
+                pass
+        for stream in (proc.stdout, proc.stderr):
+            try:
+                if stream is not None:
+                    stream.close()
+            except OSError:
+                pass
+        for t in threads:
+            t.join(timeout=5)
+    if over or out_over.is_set() or err_over.is_set():
         raise AdapterError("GIT_OUTPUT_LIMIT", args[0])
-    return done.stdout
+    if timed_out:
+        raise AdapterError("GIT_TIMEOUT", args[0])
+    if proc.returncode != 0:
+        raise AdapterError("GIT_FAILED", f"{args[0]} exit {proc.returncode}")
+    return bytes(out)
 
 
 def _check_git_config(real_root: str) -> None:
@@ -593,20 +648,31 @@ def source_tree_digest(
 # ------------------------------------------------------------- identity digests
 
 
-def analyzer_digest(spec: AnalyzerSpec, limits: Limits = Limits()) -> str:
-    """analyzer_sha256: VST-computed digest of the explicit analyzer file list."""
+def analyzer_tree_digest(spec: AnalyzerSpec, limits: Limits = Limits()) -> TreeDigest:
+    """Digest (with per-file digests) of the explicit analyzer file list."""
     return tree_digest(
         spec.analyzer_root,
         spec.analyzer_files,
         max_file_bytes=limits.max_analyzer_file_bytes,
         max_total_bytes=limits.max_analyzer_total_bytes,
         label=ANALYZER_FILES_LABEL,
-    ).sha256
+    )
 
 
-def read_declared_version(spec: AnalyzerSpec) -> str:
-    """Read ``__version__`` by regex from the version file (never imports the analyzer)."""
+def analyzer_digest(spec: AnalyzerSpec, limits: Limits = Limits()) -> str:
+    """analyzer_sha256: VST-computed digest of the explicit analyzer file list."""
+    return analyzer_tree_digest(spec, limits).sha256
+
+
+def read_declared_version(spec: AnalyzerSpec, expected_sha256: str | None = None) -> str:
+    """Read ``__version__`` by regex from the version file (never imports the analyzer).
+
+    The version file must be one of analyzer_files; when ``expected_sha256`` is given the
+    bytes actually read must hash to it, so the version comes from the pinned bytes.
+    """
     validate_scope([spec.version_file])
+    if spec.version_file not in spec.analyzer_files:
+        raise AdapterError("VERSION_FILE_NOT_PINNED", "version_file must be listed in analyzer_files")
     real_root = os.path.realpath(os.fspath(spec.analyzer_root))
     full = _resolve_regular_file(real_root, spec.version_file)
     try:
@@ -614,6 +680,8 @@ def read_declared_version(spec: AnalyzerSpec) -> str:
             data = handle.read(1_000_001)
         if len(data) > 1_000_000:
             raise AdapterError("VERSION_FILE_TOO_LARGE", spec.version_file)
+        if expected_sha256 is not None and hashlib.sha256(data).hexdigest() != expected_sha256:
+            raise AdapterError("VERSION_FILE_CHANGED", "version file bytes differ from the pinned digest")
         match = re.search(spec.version_pattern, data.decode("utf-8"), re.MULTILINE)
     except (OSError, UnicodeError) as exc:
         raise AdapterError("VERSION_UNREADABLE", type(exc).__name__) from exc
@@ -661,6 +729,36 @@ def _rel_posix(base: str, target: str) -> str:
     return os.path.relpath(target, base).replace(os.sep, "/")
 
 
+def _require_closure(analyzer_root: str, entry: str, listed: set[str], excluded: set[str]) -> None:
+    """Every importable file on disk under a pythonpath directory must be pinned (listed in
+    analyzer_files) or explicitly excluded; links and unreadable directories are refused.
+    __pycache__ is skipped because PYTHONPYCACHEPREFIX redirects bytecode to an empty dir."""
+    problems: list[str] = []
+
+    def walk_error(exc: OSError) -> None:
+        raise AdapterError("ANALYZER_NOT_PINNED", f"cannot enumerate pythonpath directory: {type(exc).__name__}")
+
+    for current, dirs, files in os.walk(entry, followlinks=False, onerror=walk_error):
+        dirs[:] = sorted(d for d in dirs if d != "__pycache__")
+        for name in dirs:
+            if _is_link(os.lstat(os.path.join(current, name))):
+                raise AdapterError("ANALYZER_NOT_PINNED", f"link or reparse point at {name!r} under pythonpath")
+        for name in sorted(files):
+            full = os.path.join(current, name)
+            if _is_link(os.lstat(full)):
+                raise AdapterError("ANALYZER_NOT_PINNED", f"link or reparse point at {name!r} under pythonpath")
+            if not name.lower().endswith(_IMPORTABLE_SUFFIXES):
+                continue
+            rel = _rel_posix(analyzer_root, full)
+            if rel not in listed and rel not in excluded:
+                problems.append(rel)
+    if problems:
+        raise AdapterError(
+            "ANALYZER_NOT_PINNED",
+            f"{len(problems)} importable file(s) under pythonpath are not in analyzer_files; first: {problems[0]}",
+        )
+
+
 def resolve_argv(spec: AnalyzerSpec, real_root: str) -> tuple[list[str], str]:
     """Return (argv, resolved_executable) exactly as it will be executed and hashed.
 
@@ -690,10 +788,12 @@ def resolve_argv(spec: AnalyzerSpec, real_root: str) -> tuple[list[str], str]:
             raise AdapterError("ANALYZER_NOT_PINNED", "python needs '-m MODULE' and a pythonpath under analyzer_root")
         module = prefix[2].replace(".", "/")
         pinned = False
+        excluded = set(spec.pythonpath_exclusions)
         for entry in spec.pythonpath:
             real_entry = os.path.realpath(os.fspath(entry))
-            if not _is_under(analyzer_root, real_entry):
-                raise AdapterError("ANALYZER_NOT_PINNED", "pythonpath entry lies outside analyzer_root")
+            if not _is_under(analyzer_root, real_entry) or not os.path.isdir(real_entry):
+                raise AdapterError("ANALYZER_NOT_PINNED", "pythonpath entry is not a directory under analyzer_root")
+            _require_closure(analyzer_root, real_entry, listed, excluded)
             candidate = os.path.join(real_entry, *module.split("/"), "__main__.py")
             if os.path.isfile(candidate) and _rel_posix(analyzer_root, os.path.realpath(candidate)) in listed:
                 pinned = True
@@ -721,14 +821,17 @@ def scrubbed_environment(pythonpath: Sequence[Path] = ()) -> dict[str, str]:
 
 
 class _WinJob:
-    """Windows Job Object with kill-on-close (ctypes, stdlib only)."""
+    """Windows Job Object with kill-on-close (ctypes, stdlib only). The child is created
+    suspended, assigned here, and only then resumed, so no descendant can predate containment."""
 
-    def __init__(self, k32: Any, handle: Any) -> None:
-        self._k32, self._handle = k32, handle
+    def __init__(self, k32: Any, handle: Any, resume: Any) -> None:
+        self._k32, self._handle, self._resume = k32, handle, resume
 
-    def terminate(self) -> None:
-        if self._handle:
-            self._k32.TerminateJobObject(self._handle, 1)
+    def resume(self, proc: subprocess.Popen) -> bool:
+        return self._resume(int(proc._handle)) == 0  # type: ignore[attr-defined]  # NtResumeProcess
+
+    def terminate(self) -> bool:
+        return bool(self._handle) and bool(self._k32.TerminateJobObject(self._handle, 1))
 
     def close(self) -> None:
         if self._handle:
@@ -771,6 +874,9 @@ def _attach_job(proc: subprocess.Popen) -> _WinJob | None:
         k32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
         k32.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
         k32.CloseHandle.argtypes = [wintypes.HANDLE]
+        ntdll = ctypes.WinDLL("ntdll")
+        ntdll.NtResumeProcess.argtypes = [wintypes.HANDLE]
+        ntdll.NtResumeProcess.restype = ctypes.c_long
         handle = k32.CreateJobObjectW(None, None)
         if not handle:
             return None
@@ -781,33 +887,35 @@ def _attach_job(proc: subprocess.Popen) -> _WinJob | None:
         ):
             k32.CloseHandle(handle)
             return None
-        return _WinJob(k32, handle)
-    except Exception:  # fall back to taskkill /T /F
+        return _WinJob(k32, handle, ntdll.NtResumeProcess)
+    except Exception:  # containment unavailable: the caller fails closed and does not run the analyzer
         return None
 
 
-def _kill_tree(proc: subprocess.Popen, job: _WinJob | None) -> None:
+def _kill_tree(proc: subprocess.Popen, job: _WinJob | None) -> bool:
+    """Kill the child and its descendants; True only if the kill call(s) reported success.
+
+    Windows: TerminateJobObject (kernel-enforced for every process in the job, no breakaway
+    allowed). POSIX: killpg of the child's own session, which is BEST EFFORT only: a descendant
+    that calls setsid/setpgid escapes. A False return must be treated as an unsuccessful kill.
+    """
+    ok = True
     if job is not None:
-        job.terminate()
+        ok = job.terminate()
     elif sys.platform == "win32":
-        taskkill = os.path.join(os.environ.get("SYSTEMROOT", r"C:\Windows"), "System32", "taskkill.exe")
-        try:
-            subprocess.run(
-                [taskkill, "/T", "/F", "/PID", str(proc.pid)], shell=False, stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10,
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), check=False,
-            )
-        except (OSError, subprocess.SubprocessError):
-            pass
+        ok = False  # no containment object: never claim a tree kill
     else:
         try:
             os.killpg(proc.pid, signal.SIGKILL)
-        except (OSError, ProcessLookupError):
-            pass
+        except ProcessLookupError:
+            pass  # group already gone
+        except OSError:
+            ok = False
     try:
         proc.kill()
     except OSError:
         pass
+    return ok
 
 
 def _drain(stream: Any, cap: int, sink: bytearray, exceeded: threading.Event) -> None:
@@ -829,7 +937,9 @@ def _drain(stream: Any, cap: int, sink: bytearray, exceeded: threading.Event) ->
 def _execute(argv: list[str], pythonpath: Sequence[Path], limits: Limits) -> RunResult:
     started = time.monotonic()
     neutral = tempfile.mkdtemp(prefix="vst-aeve-")  # empty cwd: nothing from the candidate on sys.path
-    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
+    # Windows: start suspended (0x4) so the Job Object is in place before the first instruction runs.
+    flags = (getattr(subprocess, "CREATE_NO_WINDOW", 0) | 0x4) if sys.platform == "win32" else 0
+    detail = ""
     proc: subprocess.Popen | None = None
     job: _WinJob | None = None
     out, err = bytearray(), bytearray()
@@ -840,14 +950,22 @@ def _execute(argv: list[str], pythonpath: Sequence[Path], limits: Limits) -> Run
         try:
             proc = subprocess.Popen(
                 argv, shell=False, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                env=scrubbed_environment(pythonpath), cwd=neutral, creationflags=flags,
-                start_new_session=sys.platform != "win32",
+                # PYTHONPYCACHEPREFIX -> empty dir: no candidate/planted .pyc is ever read.
+                env={**scrubbed_environment(pythonpath), "PYTHONPYCACHEPREFIX": neutral},
+                cwd=neutral, creationflags=flags, start_new_session=sys.platform != "win32",
             )
         except (FileNotFoundError, PermissionError, NotADirectoryError) as exc:
             return RunResult(Outcome.MISSING_EXECUTABLE, None, b"", "", 0.0, tuple(argv), type(exc).__name__)
         except OSError as exc:
             return RunResult(Outcome.CRASH, None, b"", "", 0.0, tuple(argv), f"LAUNCH_FAILED: {type(exc).__name__}")
-        job = _attach_job(proc)
+        if sys.platform == "win32":
+            job = _attach_job(proc)  # assigned while still suspended
+            if job is None or not job.resume(proc):
+                _kill_tree(proc, job)  # the analyzer never ran: fail closed
+                return RunResult(
+                    Outcome.CONTAINMENT_FAILED, None, b"", "", time.monotonic() - started, tuple(argv),
+                    "Job Object containment or resume failed; analyzer was not run",
+                )
         threads = [
             threading.Thread(target=_drain, args=(proc.stdout, limits.max_stdout_bytes, out, out_over), daemon=True),
             threading.Thread(target=_drain, args=(proc.stderr, limits.max_stderr_bytes, err, err_over), daemon=True),
@@ -865,17 +983,20 @@ def _execute(argv: list[str], pythonpath: Sequence[Path], limits: Limits) -> Run
                 outcome = Outcome.TIMEOUT
                 break
             time.sleep(0.02)
+        kill_ok = True
         if outcome is not None:
-            _kill_tree(proc, job)
+            kill_ok = _kill_tree(proc, job)
         try:
             proc.wait(timeout=10)
         except subprocess.TimeoutExpired:
-            _kill_tree(proc, job)
-            outcome = outcome or Outcome.CRASH
+            kill_ok = _kill_tree(proc, job) and kill_ok
             try:
                 proc.wait(timeout=10)
             except subprocess.TimeoutExpired:
-                pass
+                kill_ok = False
+        if proc.poll() is None or not kill_ok:
+            outcome = Outcome.TERMINATION_FAILED
+            detail = "termination of the analyzer process tree was not confirmed"
     finally:
         if proc is not None:
             if proc.poll() is None:
@@ -901,12 +1022,13 @@ def _execute(argv: list[str], pythonpath: Sequence[Path], limits: Limits) -> Run
         # AEVE: 0 = COMPLETE, 3 = PARTIAL (both print the JSON document); anything else is not a report.
         outcome = Outcome.OK if code in (0, 3) else Outcome.CRASH
     tail = bytes(err[-_STDERR_TAIL_BYTES:]).decode("utf-8", "replace")
-    return RunResult(outcome, code, bytes(out), tail, time.monotonic() - started, tuple(argv), "")
+    return RunResult(outcome, code, bytes(out), tail, time.monotonic() - started, tuple(argv), detail)
 
 
 def run_analyzer(spec: AnalyzerSpec, root: str | os.PathLike[str], limits: Limits = Limits()) -> RunResult:
     """Run ``<python flags / launcher> analyze --root ROOT``: argv list, no shell, scrubbed env,
-    empty cwd, whole process tree killed on timeout/cap."""
+    empty cwd. Windows: fail-closed Job Object containment (tree kill is kernel-enforced);
+    POSIX: killpg of a new session only (best effort). Unconfirmed kill => TERMINATION_FAILED."""
     real_root = os.path.realpath(os.fspath(root))
     try:
         argv, _ = resolve_argv(spec, real_root)
@@ -1125,6 +1247,10 @@ _INFORMATIONAL_UNKNOWN = (
     "license",
     "per_file_analysis_confirmation",  # AEVE prints no list of analyzed files
     "rule_emission_not_proven",  # inventory is a declaration; COMPLETE is the only evidence of checking
+    # Not part of the pinned closure (only the interpreter file itself is hashed):
+    "interpreter_runtime_and_stdlib_not_in_closure",
+    "interpreter_site_packages_not_in_closure",
+    "pythonpath_exclusions_are_unhashed_but_importable",  # only meaningful when exclusions are used
 )
 
 
@@ -1144,8 +1270,12 @@ def analyze_snapshot(
     """
     real_root = os.path.realpath(os.fspath(snapshot_root))
     source = source_tree_digest(real_root, scope, candidate_head, limits)
-    a_sha = analyzer_digest(spec, limits)
-    version = read_declared_version(spec)
+    a_tree = analyzer_tree_digest(spec, limits)
+    a_sha = a_tree.sha256
+    if spec.version_file not in a_tree.file_sha256:
+        raise AdapterError("VERSION_FILE_NOT_PINNED", "version_file must be listed in analyzer_files")
+    version_sha = a_tree.file_sha256[spec.version_file]
+    version = read_declared_version(spec, version_sha)  # version comes from the pinned bytes
     p_sha = profile_digest(spec)
     blocking: list[str] = []
     interp_sha: str | None = None
@@ -1175,6 +1305,8 @@ def analyze_snapshot(
     try:
         if analyzer_digest(spec, limits) != a_sha:
             return result(Outcome.INVALID_OUTPUT, "ANALYZER_MODIFIED_DURING_ANALYSIS")
+        if read_declared_version(spec, version_sha) != version:
+            return result(Outcome.INVALID_OUTPUT, "VERSION_CHANGED_DURING_ANALYSIS")
         if _file_sha256(resolved, limits.max_analyzer_file_bytes) != interp_sha:
             return result(Outcome.INVALID_OUTPUT, "INTERPRETER_MODIFIED_DURING_ANALYSIS")
         after = source_tree_digest(real_root, scope, candidate_head, limits)

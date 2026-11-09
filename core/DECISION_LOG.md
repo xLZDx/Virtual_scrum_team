@@ -2805,3 +2805,6 @@ Added tools/vst/analyzer_adapter.py: deterministic scope validation and source-t
 
 ## 2026-11-09 S5-C remediation of reviewer MAJOR findings
 python-reviewer (7 MAJOR) and security-reviewer (5 MAJOR) found: candidate code could run via python -m from the candidate cwd, process tree not killed on Windows, coverage could be FULL for files AEVE never analyzed, head/tree binding unverified, case-fold finding drop, untyped exception after run. Fixed in analyzer_adapter.py: neutral cwd and isolated interpreter, Job Object kill, scope downgrade to UNSUPPORTED, VST-run git HEAD/clean checks and blob hashing, case check, typed outcomes incl. PARTIAL_WITH_FINDINGS. Residual: .git/config change inside the run window; OS-level network denial NOT_RUN (S2 sandbox). Reading only; tests NOT_RUN.
+
+## 2026-11-09 S5-C GPT-PM round 1: MAJOR x4, remediated
+GPT-PM (reply 3319eee9) returned 4 MAJOR at head cdf5e1e: git output cap applied after allocation, Job Object attached after process start, analyzer digest not covering the whole import closure, version file outside the pinned digest. Fixed in analyzer_adapter.py: capped streaming git, suspended start plus Job Object (fail closed), closure requirement with explicit exclusions, version file pinned and re-read. Reading only; tests NOT_RUN. One verification round requested.

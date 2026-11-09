@@ -2056,3 +2056,6 @@ Kind: NEUTRAL. Coded without a run; verification is review only.
 
 ## 2026-11-09 S5-C review findings
 Kind: SHORTCOMING. First pass trusted a declared rule inventory plus AEVE status COMPLETE as proof of coverage, and ran the analyzer inside the candidate cwd. Caught by two reviewers. Rule: coverage claims need positive evidence per scope file; never execute analyzers with the candidate as cwd or import path.
+
+## 2026-11-09 S5-C GPT-PM findings
+Kind: SHORTCOMING. Two reviewer passes missed the git-capture memory bound, the process-creation race and the incomplete analyzer file closure; GPT-PM found them. Layer that missed: reviewers (they checked behaviour, not identity completeness). Rule: for any digest claimed as identity, check its input set is complete, and apply caps while reading, not after.
