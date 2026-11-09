@@ -2062,3 +2062,6 @@ Kind: SHORTCOMING. Two reviewer passes missed the git-capture memory bound, the 
 
 ## 2026-11-09 S5-C accepted
 Kind: SUCCESS after two review passes plus one GPT-PM remediation round. Limit: static review only; the bridge showed different commit labels for the delta.
+
+## 2026-11-09 S5-D code
+Kind: SHORTCOMING (of the plan chain). The S4 seeded catalog was named a prerequisite for S5 but covers VST gate failures, not AEVE rules. Rule: check that a prerequisite artifact really covers the next sprint needs when planning.

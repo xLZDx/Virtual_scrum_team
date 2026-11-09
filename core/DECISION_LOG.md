@@ -2811,3 +2811,6 @@ GPT-PM (reply 3319eee9) returned 4 MAJOR at head cdf5e1e: git output cap applied
 
 ## 2026-11-09 S5-C accepted (GPT-PM APPROVE, verification round)
 GPT-PM APPROVE, 0 BLOCKER, 0 MAJOR, reply 95dbffd0, for the delta of the four round-1 findings (head 502ea7e). Static review only. The reply names the delta as 24ed4f9..9994a40, which are not my commit ids (bridge-side diff labels; correlated=true); noted, not blocking. MAJOR-03 closed with documented limits (interpreter and stdlib not part of the analyzer digest). NOT_RUN: tests, Windows runtime, OS-level sandbox. Next: S5-D (truthful rule coverage and finding evidence map).
+
+## 2026-11-09 S5-D coded: rule coverage map (VST-041), catalog is empty on purpose
+Added tools/vst/rule_coverage.py and docs/qa/aeve_required_rules.json. Finding: none of the 8 S4 seeded fixtures (SF-001..SF-008) seeds a defect that an AEVE rule rejects, so under the plan rule (a rule is mandatory only if linked to committed seeded-defect evidence) the required-rule set is empty, and build_static_coverage / catalog-vs-manifest checks refuse an empty required set (truthful, not a pass). To make S5 acceptable, synthetic known-issue fixtures for AEVE rules must be authored (plan AC-7 allows fixed fixture inputs). Not run; reviewers and GPT-PM pending.

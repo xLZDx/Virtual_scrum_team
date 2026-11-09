@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "catalog_id": "vst-aeve-required-rules",
+  "aeve_rules_version": "g2.rules.v15",
+  "s4_catalog": "tests/qa/seeded_failure/catalog.json",
+  "note": "No AEVE rule is required yet. Every S4 fixture (SF-001..SF-008) seeds a VST gate failure class (stale head, missing receipt, signature, diff scope, skipped test, digest, event chain, epoch), none seeds a defect that an AEVE rule rejects, so no rule id can be linked to committed seeded-defect evidence. Rules are added here as REQUIRED only together with a committed S4 fixture; nothing is mapped by assumption.",
+  "rules": []
+}
