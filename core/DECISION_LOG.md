@@ -2796,3 +2796,6 @@ Operator decision: VST trusted code signs the AEVE report with a dedicated analy
 
 ## 2026-11-09 S5-B remediation of four reviewer MAJOR findings
 security-reviewer and functional-test-reviewer found: key distinctness opt-in, binding optional, replay passive and non-atomic, hostile input raising wrong exceptions. Fixed in analyzer_authority.py: required six-role key roster, required full expected_binding with strict types, required consume_nonce callback, verify returns False on hostile input. Reading only (pytest forbidden); tests NOT_RUN.
+
+## 2026-11-09 S5-B accepted (GPT-PM APPROVE)
+GPT-PM APPROVE, 0 BLOCKER, 0 MAJOR, reply 9584e4bf, head 85b03da, static review only. Non-blocking note: exceptions from the consume_nonce callback propagate to the caller (no approval bypass). NOT_RUN: tests (pytest forbidden). Next: S5-C (adapter and snapshot hashing); AEVE source in D:/Repo/AEVE is in scope per operator.
