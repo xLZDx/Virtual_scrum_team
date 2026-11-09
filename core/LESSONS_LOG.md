@@ -2059,3 +2059,6 @@ Kind: SHORTCOMING. First pass trusted a declared rule inventory plus AEVE status
 
 ## 2026-11-09 S5-C GPT-PM findings
 Kind: SHORTCOMING. Two reviewer passes missed the git-capture memory bound, the process-creation race and the incomplete analyzer file closure; GPT-PM found them. Layer that missed: reviewers (they checked behaviour, not identity completeness). Rule: for any digest claimed as identity, check its input set is complete, and apply caps while reading, not after.
+
+## 2026-11-09 S5-C accepted
+Kind: SUCCESS after two review passes plus one GPT-PM remediation round. Limit: static review only; the bridge showed different commit labels for the delta.
