@@ -29,12 +29,14 @@ MAX_CRITERIA = 50
 MAX_CRITERION_LENGTH = 2000
 MAX_FINDINGS_PER_ROLE = 10000
 MAX_LIST = 1000
+MAX_MODEL_RESIDUAL = 8
 
 _ID = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 _ROLE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 _TOKEN = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,63}$")
 _HEAD = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
 _HASH = re.compile(r"^[0-9a-f]{64}$")
+_HEAD40 = re.compile(r"^[0-9a-f]{40}$")  # result.aeve_head only; _HEAD (40 or 64) stays for the other heads
 _DRIVE = re.compile(r"^[A-Za-z]:")
 _FORMAT_CHARS = frozenset("  ‪‫‬‭‮⁦⁧⁨⁩‎‏﻿")
 _RESERVED_NAMES = frozenset({"con", "prn", "aux", "nul", *(f"com{i}" for i in range(1, 10)), *(f"lpt{i}" for i in range(1, 10))})
@@ -220,6 +222,9 @@ def _validate_role_entry(value: object, where: str) -> dict:
         for i, token in enumerate(_list(item[field], f"{where}.{field}", MAX_LIST)):
             _string(token, f"{where}.{field}[{i}]", _TOKEN)
     residual = item["model_residual"]
+    # Same rule as the VST bridge: at most 8 tokens, sorted, unique (checked exactly, never repaired).
+    if len(residual) > MAX_MODEL_RESIDUAL or residual != sorted(set(residual)):
+        raise ContractError("BAD_MODEL_RESIDUAL", f"{where}.model_residual")
     if status == "CLEAN":
         if findings or residual or item["uncovered"]:
             raise ContractError("CLEAN_WITH_OPEN_ITEMS", where)
@@ -250,7 +255,7 @@ def validate_result(document: object) -> dict:
     # U2-1: bridge facts. sha256 of the exact role_table.json bytes the router loaded, and the AEVE
     # source head the router probed and matched against the table pin before the review ran.
     _string(doc["role_table_sha256"], "result.role_table_sha256", _HASH)
-    _string(doc["aeve_head"], "result.aeve_head", _HEAD)
+    _string(doc["aeve_head"], "result.aeve_head", _HEAD40)
     _string(doc["iteration_id"], "result.iteration_id", _ID)
     exit_code = _int(doc["exit_code"], "result.exit_code", 0, 3)
     _enum(exit_code, "result.exit_code", EXIT_CODES)

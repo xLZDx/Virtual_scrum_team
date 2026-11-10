@@ -306,8 +306,10 @@ def review(role_request: dict, *, table: dict, aeve_root: pathlib.Path, state_di
     """Validate, check the AEVE pin, run one combined review and return a validated result or a blocked envelope.
 
     ``table_sha256`` is the digest of the exact role_table.json bytes ``table`` was parsed from (see
-    ``load_table_with_digest``); without it no result is produced (BLOCKED ROLE_TABLE_HASH_MISSING),
-    because the digest is never reconstructed from the parsed table.
+    ``load_table_with_digest``); without it, or with an all-zero or malformed value, no result is produced
+    (BLOCKED ROLE_TABLE_HASH_MISSING), because the digest is never reconstructed from the parsed table.
+    The exact-bytes guarantee holds only for the CLI path (``main`` uses ``load_table_with_digest``); a
+    library caller of ``review()`` is trusted to pass the digest of the bytes it parsed ``table`` from.
 
     Never raises: any unexpected failure becomes a BLOCKED envelope with reason INTERNAL_ERROR.
     """
@@ -322,7 +324,8 @@ def review(role_request: dict, *, table: dict, aeve_root: pathlib.Path, state_di
     lock = None
     try:
         check_table(table)
-        if not isinstance(table_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", table_sha256):
+        if (not isinstance(table_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", table_sha256)
+                or table_sha256 == "0" * 64):
             raise adapter.AdapterBlocked("ROLE_TABLE_HASH_MISSING", "the digest of the loaded role table bytes was not supplied")
         state_dir = pathlib.Path(state_dir)
         if not state_dir.is_absolute() or _inside(state_dir, allowed_roots):

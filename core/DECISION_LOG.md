@@ -2853,3 +2853,6 @@ Operator chose "continue in order, next U2"; U1-9 stays PARKED and the token com
 
 ## 2026-11-10 U2-1 implemented (static only, tests NOT_RUN)
 uc.role-result.v1 gains role_table_sha256 (hash of exact table file bytes) and aeve_head (from aeve_probe record); v3 StaticAnalysis receipt and signed analyzer payload gain role_table_sha256, aeve_head, model_residual, reviewed_paths_sha256, findings_count, highest_severity. v1/v2 code paths untouched (additions only in contracts.py). Residual: callers of assemble_analyzer_payload must pass bridge= (U2-3 builder).
+
+## 2026-11-10 U2-1 review remediation
+Reviewers (python, security, functional-test) found 1 MAJOR and several MINOR; fixed in one batch: bridge_facts_from_role_result now validates the whole uc result, exact base revision, role status CLEAN/FINDINGS only, empty uncovered, non-empty residual for LOCAL_PLUS_MODEL, unique repo paths; uc residual sorted/unique max 8; aeve_head 40-hex; zero table digest refused; evidence marks role_table_sha256 and aeve_head pin_check NOT_RUN. Deferred by design to U2-4: pin comparison, findings cross-check, any-finding refusal. Deferred to U2-6: all negative tests (none exist for the v3 path).

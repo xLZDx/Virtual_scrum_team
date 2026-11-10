@@ -216,8 +216,12 @@ def _build(manifest: Any, receipt: Any, decision: Any, facts_in: Any) -> dict[st
         "runtime_identity": fact("runtime_identity"),
         "limits": fact("limits"),
         "report_sha256": rcpt("report_sha256"),
+        # Signed receipt values, NOT verified provenance: nothing compares them to a pinned role table
+        # or AEVE head yet (U2-4), so the pin check is labeled NOT_RUN and must not be read as a pass.
         "role_table_sha256": rcpt("role_table_sha256"),
+        "role_table_sha256_pin_check": NOT_RUN,
         "aeve_head": rcpt("aeve_head"),
+        "aeve_head_pin_check": NOT_RUN,
         "model_residual": rcpt("model_residual"),
         "reviewed_paths_sha256": rcpt("reviewed_paths_sha256"),
         "findings_count": rcpt("findings_count"),

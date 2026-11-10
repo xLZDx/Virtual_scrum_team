@@ -195,7 +195,15 @@ most 8 unique lowercase tokens, sorted, may be empty); `reviewed_paths_sha256` (
 the canonical bytes of the sorted reviewed path list); `findings_count` (int >= 0, bool rejected);
 `highest_severity` in `BRIDGE_SEVERITY` = NONE, LOW, MEDIUM, HIGH, CRITICAL, where NONE if and only if
 `findings_count == 0` (U1 NIT/MINOR/MAJOR/BLOCKER map to LOW/MEDIUM/HIGH/CRITICAL).
-`bridge_facts_from_role_result` in `analyzer_adapter.py` derives them for one role. The gate only binds them
+`bridge_facts_from_role_result(role_result, role, reviewed_paths, expected_base_revision=<candidate head>)` in
+`analyzer_adapter.py` derives them for one role and refuses (ContractError) when: the whole result fails
+`tools.uc.contracts.validate_result` (exact containers; `model_residual` sorted, unique, at most 8 tokens;
+`aeve_head` 40 lowercase hex; `role_table_sha256` 64 hex); the result `base_revision` differs from
+`expected_base_revision`; the role has no entry or more than one; the entry status is not CLEAN or FINDINGS;
+the entry `uncovered` list is non-empty; a LOCAL_PLUS_MODEL entry has an empty `model_residual`;
+`reviewed_paths` is not a non-empty list/tuple of unique plain repo-relative paths. `model_residual` is
+never repaired. The evidence record (`analyzer_evidence.py`) carries `role_table_sha256_pin_check` and
+`aeve_head_pin_check` set to `NOT_RUN`: both values are signed but not compared with any pin yet. The gate only binds them
 (they must match the verifier-owned expectation); it does not yet refuse on their values (task U2-4).
 
 Consistency: `covered_rules` equals the sorted checked rules and `unsupported_rules` the sorted

@@ -1362,41 +1362,69 @@ _UC_SEVERITY_ORDER = ("NIT", "MINOR", "MAJOR", "BLOCKER")
 
 
 def bridge_facts_from_role_result(
-    role_result: Mapping[str, Any], role: str, reviewed_paths: Sequence[str]
+    role_result: Mapping[str, Any],
+    role: str,
+    reviewed_paths: Sequence[str],
+    *,
+    expected_base_revision: str,
 ) -> dict[str, Any]:
-    """U2-1 bridge facts for one role of a uc.role-result.v1 (plain dict; tools/uc is not imported).
+    """U2-1 bridge facts for one role of a uc.role-result.v1, strictly validated.
 
-    ``role_table_sha256`` and ``aeve_head`` are the result's top-level facts; ``model_residual`` is the
-    named role entry's own list; ``reviewed_paths_sha256`` is the sha256 of the canonical bytes of the
-    sorted reviewed path list; ``findings_count`` and ``highest_severity`` summarize that role's findings
-    (U1 NIT/MINOR/MAJOR/BLOCKER map to LOW/MEDIUM/HIGH/CRITICAL; no findings -> 0 / NONE). The result is
-    shape-checked with validate_bridge_facts; any problem raises ContractError.
+    The whole result goes through tools.uc.contracts.validate_result first (exact containers, closed
+    key sets, token formats, sorted unique model_residual of at most 8 tokens, 40-hex aeve_head).
+    Refused with ContractError: a result that fails that validation; a result whose base_revision
+    differs from ``expected_base_revision`` (the caller passes the candidate head); no entry or more
+    than one entry for ``role``; an entry whose status is not CLEAN or FINDINGS; an entry with a
+    non-empty ``uncovered`` list; a LOCAL_PLUS_MODEL entry with an empty ``model_residual``;
+    ``reviewed_paths`` that is not a non-empty list/tuple of unique plain repo-relative paths (a bare
+    str, duplicates and an empty list are refused). model_residual is never repaired or reordered.
+
+    Facts: ``role_table_sha256`` and ``aeve_head`` are the result's top-level values; ``model_residual``
+    is the entry's list; ``reviewed_paths_sha256`` is the sha256 of the canonical bytes of the sorted
+    path list; ``findings_count``/``highest_severity`` summarize that role's findings (U1
+    NIT/MINOR/MAJOR/BLOCKER map to LOW/MEDIUM/HIGH/CRITICAL; none -> 0 / NONE). The output is also
+    checked with validate_bridge_facts. No gate decision and no pin comparison happen here (U2-4).
     """
-    from .contracts import validate_bridge_facts
+    from ..uc import contracts as uc_contracts
+    from .contracts import _req_hex, _req_plain_repo_path, validate_bridge_facts
 
+    _req_hex(expected_base_revision, "expected_base_revision", 40)
+    if not isinstance(role, str) or not role:
+        raise ContractError("role: must be a non-empty string")
     try:
-        entries = [e for e in role_result["roles"] if e["role"] == role]
-        if len(entries) != 1:
-            raise ContractError(f"role result: expected exactly one entry for role {role!r}")
-        entry = entries[0]
-        severities = [f["severity"] for f in entry["findings"]]
-        unknown = [s for s in severities if s not in _UC_TO_BRIDGE_SEVERITY]
-        if unknown:
-            raise ContractError("role result: finding severity outside the closed enum")
-        highest = (
-            _UC_TO_BRIDGE_SEVERITY[max(severities, key=_UC_SEVERITY_ORDER.index)] if severities else "NONE"
-        )
-        paths = sorted(reviewed_paths)
-        facts = {
-            "role_table_sha256": role_result["role_table_sha256"],
-            "aeve_head": role_result["aeve_head"],
-            "model_residual": list(entry["model_residual"]),
-            "reviewed_paths_sha256": hashlib.sha256(canonical_bytes(paths)).hexdigest(),
-            "findings_count": len(severities),
-            "highest_severity": highest,
-        }
-    except (KeyError, TypeError) as exc:
-        raise ContractError(f"role result: malformed ({type(exc).__name__})") from exc
+        uc_contracts.validate_result(role_result)
+    except uc_contracts.ContractError as exc:
+        raise ContractError(f"role result: invalid ({exc.code} at {exc.where})") from exc
+    if role_result["base_revision"] != expected_base_revision:
+        raise ContractError("role result: base_revision differs from expected_base_revision")
+    entries = [e for e in role_result["roles"] if e["role"] == role]
+    if len(entries) != 1:
+        raise ContractError(f"role result: expected exactly one entry for role {role!r}")
+    entry = entries[0]
+    if entry["status"] not in ("CLEAN", "FINDINGS"):
+        raise ContractError(f"role result: entry status {entry['status']!r} is neither CLEAN nor FINDINGS")
+    if entry["uncovered"]:
+        raise ContractError("role result: entry has uncovered scope")
+    if entry["class"] == "LOCAL_PLUS_MODEL" and not entry["model_residual"]:
+        raise ContractError("role result: LOCAL_PLUS_MODEL entry without a model_residual")
+    if not isinstance(reviewed_paths, (list, tuple)) or not reviewed_paths:
+        raise ContractError("reviewed_paths: must be a non-empty list of paths")
+    for index, path in enumerate(reviewed_paths):
+        _req_plain_repo_path(path, f"reviewed_paths[{index}]")
+    if len(set(reviewed_paths)) != len(reviewed_paths):
+        raise ContractError("reviewed_paths: must not contain duplicates")
+    severities = [f["severity"] for f in entry["findings"]]  # validate_result closed the enum
+    highest = (
+        _UC_TO_BRIDGE_SEVERITY[max(severities, key=_UC_SEVERITY_ORDER.index)] if severities else "NONE"
+    )
+    facts = {
+        "role_table_sha256": role_result["role_table_sha256"],
+        "aeve_head": role_result["aeve_head"],
+        "model_residual": list(entry["model_residual"]),
+        "reviewed_paths_sha256": hashlib.sha256(canonical_bytes(sorted(reviewed_paths))).hexdigest(),
+        "findings_count": len(severities),
+        "highest_severity": highest,
+    }
     validate_bridge_facts(facts)
     return facts
 

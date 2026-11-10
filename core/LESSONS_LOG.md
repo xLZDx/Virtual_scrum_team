@@ -2101,3 +2101,6 @@ Kind: NEUTRAL. Routine re-render after PR 7.
 
 ## 2026-11-10 U2-1 bridge fields
 Kind: SUCCESS (implementation), review pending. Facts: 12 files, v1/v2 paths additive-only. Rule: keep v3 closed field sets in sync across contracts, authority payload and gate _V3_RUN_FIELDS in one change.
+
+## 2026-11-10 U2-1 remediation
+Kind: SHORTCOMING. Facts: author function accepted any iterable and dropped role status/uncovered, so a BLOCKED role looked clean; found by python-reviewer and security-reviewer. Root cause: facts built from a dict without re-validating the source contract. Missed by: author. Caught by: reviewers. Rule: any bridge from one contract to a signed record re-validates the source contract and carries or refuses coverage state.
