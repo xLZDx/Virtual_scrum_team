@@ -2191,6 +2191,11 @@ Kind: NEUTRAL. Append-only logs conflict on every parallel branch; keep both sid
 ## 2026-11-10 report re-render
 Kind: NEUTRAL. Render after the PR so provenance matches the pushed head.
 
+## 2026-11-10 U2 merged
+Kind: SUCCESS with limit. U2 is merged on static review only; no U2 test has ever been executed. Rule: say not run in every handover.
+
+## 2026-11-10 report refresh
+Kind: NEUTRAL.
 ## 2026-11-10 U3 start
 Kind: NEUTRAL. Rule: before landing from an old branch, count what main already has.
 
