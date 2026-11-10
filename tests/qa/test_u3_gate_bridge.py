@@ -29,8 +29,9 @@ CATEGORIES = ("functional", "api", "qa-tooling")
 ID_A = "tests/qa/test_x.py::test_a"
 ID_B = "tests/qa/test_x.py::test_b"
 STDOUT = b"PASS tests/qa/test_x.py::test_a\nPASS tests/qa/test_x.py::test_b\n"
-STDERR = b"(no stderr)\n"
+STDERR = b"PASS stderr line one\n(no stderr)\n"
 EVIDENCE = "docs/sdlc/evidence/qa"
+FALLBACK_DIGEST = "f" * 64
 
 
 def functional_path(kind: str = "report.jsonl") -> str:
@@ -89,14 +90,14 @@ def make_record(registry, category="functional", head=HEAD, stdout=STDOUT, stder
 
 
 def write_lane(root: Path, registry, category="functional", *, head=HEAD, mutate=None, file_stdout=None,
-               prefix=(b"", b""), older_lines=(), record=None):
-    """Write the three fixed artifacts of one lane. file_stdout overrides the bytes on disk (tampering)."""
+               file_stderr=None, prefix=(b"", b""), older_lines=(), record=None):
+    """Write the three fixed artifacts of one lane. file_stdout/file_stderr override the bytes on disk (tampering)."""
     record = record if record is not None else make_record(registry, category, head, prefix=prefix, mutate=mutate)
     directory = root / EVIDENCE
     directory.mkdir(parents=True, exist_ok=True)
     (directory / f"{category}.report.jsonl").write_bytes(b"".join(older_lines) + encode_report(record))
     (directory / f"{category}.stdout.txt").write_bytes(prefix[0] + (STDOUT if file_stdout is None else file_stdout))
-    (directory / f"{category}.stderr.txt").write_bytes(prefix[1] + STDERR)
+    (directory / f"{category}.stderr.txt").write_bytes(prefix[1] + (STDERR if file_stderr is None else file_stderr))
     return record
 
 
@@ -110,7 +111,12 @@ def registry():
 
 
 def resolver(root, registry, head=HEAD, fallback=None):
+    """A NEW resolver per call: a resolver instance memoizes one snapshot per category."""
     return gb.make_qa_artifact_resolver(root, expected_head=head, registry=registry, fallback=fallback)
+
+
+def reasons(root, registry, head=HEAD, category="functional"):
+    return gb.qa_gate_reasons(root, category, expected_head=head, registry=registry)
 
 
 def skip_one(record):
@@ -124,13 +130,32 @@ def uncollect_one(record):
     record["executed_node_ids"] = [ID_A]
 
 
+class _StatWith:
+    """A stat result copy with some attributes overridden."""
+
+    def __init__(self, info, **over):
+        self._info, self._over = info, over
+
+    def __getattr__(self, name):
+        return self._over[name] if name in self._over else getattr(self._info, name)
+
+
+class _OsProxy:
+    """Stands in for the os module inside gate_bridge only; delegates everything not overridden."""
+
+    def __init__(self, **over):
+        self._over = over
+
+    def __getattr__(self, name):
+        return self._over[name] if name in self._over else getattr(os, name)
+
+
 # ------------------------------------------------------------------ approvable
 def test_approvable_report_resolves_to_the_sha256_of_its_raw_bytes(tmp_path, registry):
     write_lane(tmp_path, registry)
-    resolve = resolver(tmp_path, registry)
     path = functional_path()
-    assert resolve(path) == file_digest(tmp_path, path)
-    check = gb.qa_gate_reasons(tmp_path, "functional", expected_head=HEAD, registry=registry)
+    assert resolver(tmp_path, registry)(path) == file_digest(tmp_path, path)
+    check = reasons(tmp_path, registry)
     assert check.verdict == APPROVABLE and check.reasons == ()
 
 
@@ -148,10 +173,30 @@ def test_append_only_artifacts_are_verified_by_their_recorded_range(tmp_path, re
     assert resolve(functional_path("stdout.txt")) == file_digest(tmp_path, functional_path("stdout.txt"))
 
 
+def test_a_full_64_hex_head_is_accepted(tmp_path, registry):
+    head = "ab" * 32
+    write_lane(tmp_path, registry, head=head)
+    assert resolver(tmp_path, registry, head=head)(functional_path()) == file_digest(tmp_path, functional_path())
+
+
 def test_last_record_wins_so_a_newer_non_approving_run_withdraws_the_digest(tmp_path, registry):
     good = encode_report(make_record(registry))
     write_lane(tmp_path, registry, older_lines=(good,), mutate=skip_one)
     assert resolver(tmp_path, registry)(functional_path()) is None
+
+
+def test_older_bad_record_then_newer_good_record_is_approvable(tmp_path, registry):
+    bad = encode_report(make_record(registry, mutate=skip_one))
+    write_lane(tmp_path, registry, older_lines=(bad,))
+    assert reasons(tmp_path, registry).verdict == APPROVABLE
+    assert resolver(tmp_path, registry)(functional_path()) == file_digest(tmp_path, functional_path())
+
+
+def test_a_garbage_line_anywhere_refuses_the_whole_file(tmp_path, registry):
+    good = encode_report(make_record(registry))
+    write_lane(tmp_path, registry, older_lines=(b"{garbage\n", good))
+    assert resolver(tmp_path, registry)(functional_path()) is None
+    assert "REPORT_UNREADABLE" in reasons(tmp_path, registry).codes()
 
 
 # ------------------------------------------------------------------ non-approving records
@@ -161,24 +206,40 @@ def test_skipped_or_uncollected_required_id_resolves_to_none(tmp_path, registry,
     resolve = resolver(tmp_path, registry)
     for kind in ("report.jsonl", "stdout.txt", "stderr.txt"):
         assert resolve(functional_path(kind)) is None
-    check = gb.qa_gate_reasons(tmp_path, "functional", expected_head=HEAD, registry=registry)
+    check = reasons(tmp_path, registry)
     assert check.verdict == NON_APPROVING and code in check.codes()
 
 
-def test_stale_head_resolves_to_none(tmp_path, registry):
+def test_stale_candidate_head_resolves_to_none(tmp_path, registry):
     write_lane(tmp_path, registry, head="b" * 40)
     assert resolver(tmp_path, registry)(functional_path()) is None
-    check = gb.qa_gate_reasons(tmp_path, "functional", expected_head=HEAD, registry=registry)
-    assert "STALE_HEAD" in check.codes()
+    assert "STALE_HEAD" in reasons(tmp_path, registry).codes()
 
 
-def test_tampered_stdout_resolves_to_none(tmp_path, registry):
-    write_lane(tmp_path, registry, file_stdout=b"PASS something else entirely\nxx\n")
+def test_head_after_differing_alone_resolves_to_none(tmp_path, registry):
+    write_lane(tmp_path, registry, mutate=lambda r: r.update(head_after="b" * 40))
+    assert resolver(tmp_path, registry)(functional_path()) is None
+    assert reasons(tmp_path, registry).codes() == {"STALE_HEAD"}
+
+
+def test_tampered_stdout_same_length_resolves_to_none_for_all_three_paths(tmp_path, registry):
+    tampered = STDOUT.replace(b"PASS", b"FAIL")
+    assert len(tampered) == len(STDOUT) and tampered != STDOUT
+    write_lane(tmp_path, registry, file_stdout=tampered)
     resolve = resolver(tmp_path, registry)
-    assert resolve(functional_path()) is None
-    assert resolve(functional_path("stdout.txt")) is None
-    assert "ARTIFACT_MISMATCH" in gb.qa_gate_reasons(
-        tmp_path, "functional", expected_head=HEAD, registry=registry).codes()
+    for kind in ("report.jsonl", "stdout.txt", "stderr.txt"):
+        assert resolve(functional_path(kind)) is None
+    assert "ARTIFACT_MISMATCH" in reasons(tmp_path, registry).codes()
+
+
+def test_tampered_stderr_same_length_resolves_to_none_for_all_three_paths(tmp_path, registry):
+    tampered = STDERR.replace(b"PASS", b"FAIL")
+    assert len(tampered) == len(STDERR) and tampered != STDERR
+    write_lane(tmp_path, registry, file_stderr=tampered)
+    resolve = resolver(tmp_path, registry)
+    for kind in ("report.jsonl", "stdout.txt", "stderr.txt"):
+        assert resolve(functional_path(kind)) is None
+    assert "ARTIFACT_MISMATCH" in reasons(tmp_path, registry).codes()
 
 
 def test_missing_or_out_of_range_artifact_range_resolves_to_none(tmp_path, registry):
@@ -191,15 +252,23 @@ def test_missing_or_out_of_range_artifact_range_resolves_to_none(tmp_path, regis
     for mutate in (no_ranges, past_end):
         write_lane(tmp_path, registry, mutate=mutate)
         assert resolver(tmp_path, registry)(functional_path()) is None
+        assert "ARTIFACT_UNVERIFIED" in reasons(tmp_path, registry).codes()
 
 
-def test_category_path_mismatch_resolves_to_none(tmp_path, registry):
-    # An approvable "api" record planted at the functional report path.
-    record = make_record(registry, category="api")
+def test_bytes_after_the_recorded_range_are_refused(tmp_path, registry):
+    write_lane(tmp_path, registry)
+    with (tmp_path / functional_path("stdout.txt")).open("ab") as handle:
+        handle.write(b"appended later\n")
+    assert resolver(tmp_path, registry)(functional_path()) is None
+    assert "ARTIFACT_UNVERIFIED" in reasons(tmp_path, registry).codes()
+
+
+def test_category_path_mismatch_is_the_only_extra_code(tmp_path, registry):
+    # The record keeps the functional artifact paths and digests; only its category field changes.
+    record = make_record(registry, "functional", mutate=lambda r: r.update(category="api"))
     write_lane(tmp_path, registry, "functional", record=record)
     assert resolver(tmp_path, registry)(functional_path()) is None
-    check = gb.qa_gate_reasons(tmp_path, "functional", expected_head=HEAD, registry=registry)
-    assert "CATEGORY_PATH_MISMATCH" in check.codes()
+    assert reasons(tmp_path, registry).codes() == {"CATEGORY_PATH_MISMATCH"}
 
 
 def test_recorded_artifact_paths_must_be_the_fixed_category_paths(tmp_path, registry):
@@ -208,28 +277,47 @@ def test_recorded_artifact_paths_must_be_the_fixed_category_paths(tmp_path, regi
 
     write_lane(tmp_path, registry, mutate=foreign_paths)
     assert resolver(tmp_path, registry)(functional_path()) is None
+    assert reasons(tmp_path, registry).codes() == {"ARTIFACT_INVENTORY"}
 
 
 def test_missing_files_and_unparseable_report_resolve_to_none(tmp_path, registry):
-    resolve = resolver(tmp_path, registry)
-    assert resolve(functional_path()) is None  # nothing on disk
+    assert resolver(tmp_path, registry)(functional_path()) is None  # nothing on disk
     write_lane(tmp_path, registry)
     (tmp_path / functional_path()).write_bytes(b"{not json\n")
-    assert resolve(functional_path()) is None
+    assert resolver(tmp_path, registry)(functional_path()) is None
     (tmp_path / functional_path()).write_bytes(b"")
-    assert resolve(functional_path()) is None
+    assert resolver(tmp_path, registry)(functional_path()) is None
+    write_lane(tmp_path, registry)
     (tmp_path / functional_path("stderr.txt")).unlink()
-    assert resolve(functional_path("stderr.txt")) is None
+    assert resolver(tmp_path, registry)(functional_path("stderr.txt")) is None
 
 
 def test_bad_expected_head_resolves_to_none(tmp_path, registry):
     write_lane(tmp_path, registry)
     for head in ("", "A" * 40, "a" * 39, None):
         assert resolver(tmp_path, registry, head=head)(functional_path()) is None
+    assert "BAD_EXPECTED_HEAD" in reasons(tmp_path, registry, head="zz").codes()
 
 
-# ------------------------------------------------------------------ path handling
-@pytest.mark.parametrize("path", [
+# ------------------------------------------------------------------ _range_slice
+@pytest.mark.parametrize("rng", [
+    {"start": True, "end": 3}, {"start": 0, "end": True}, {"start": "0", "end": 3}, {"start": 0.0, "end": 3},
+    {"start": 2, "end": 1}, {"start": -1, "end": 3}, {"start": 0, "end": 2},  # end != len(data): not the tail
+    {"start": 0, "end": 3, "extra": 1}, {"start": 0}, {}, [0, 3], "0-3", None, 3,
+])
+def test_range_slice_refuses_bad_inputs(rng):
+    with pytest.raises(gb._BridgeReadError):
+        gb._range_slice(b"abc", rng)
+
+
+def test_range_slice_returns_the_tail_bytes():
+    assert gb._range_slice(b"abc", {"start": 1, "end": 3}) == b"bc"
+    assert gb._range_slice(bytearray(b"abc"), {"start": 0, "end": 3}) == b"abc"
+    assert gb._range_slice(b"", {"start": 0, "end": 0}) == b""
+
+
+# ------------------------------------------------------------------ path ownership
+QA_OWNED_SPELLINGS = [
     f"{EVIDENCE}/../../../README.md",
     f"{EVIDENCE}/../qa/functional.report.jsonl",
     f"{EVIDENCE}/./functional.report.jsonl",
@@ -248,23 +336,39 @@ def test_bad_expected_head_resolves_to_none(tmp_path, registry):
     functional_path().upper(),
     "./" + functional_path(),
     f"{EVIDENCE}/",
-])
-def test_non_report_and_traversal_spellings_resolve_to_none_and_never_reach_the_fallback(tmp_path, registry, path):
+    # normalization-only spellings (the raw form does not contain the QA segments in order)
+    "docs/sdlc/evidence/x/../qa/functional.report.jsonl",
+    "zzz/../docs/sdlc/evidence/qa/functional.stdout.txt",
+    "docs/sdlc/evidence/qa/zzz/../functional.report.jsonl",
+]
+NOT_ELIGIBLE_FOR_FALLBACK = [
+    # not owned by the QA directory but not canonical either: refused without calling the fallback
+    "docs/sdlc/evidence/qa./functional.report.jsonl",
+    "docs/sdlc/evidence/qa::$DATA/functional.report.jsonl",
+    "docs/sdlc/evidence/qa::$INDEX_ALLOCATION/functional.report.jsonl",
+    "docs/sdlc/evidence/qa /functional.report.jsonl",
+    "docs/sdlc/evidence/qa~1/functional.report.jsonl",
+    "a//b", "a/./b", "a/b/", "./a", "../a", "a/../b", "/a", "a\\b", "~x", "a~1/b", "a:b", "a b", "dir./x",
+    "x.", "", ".", "..", "a/b\n", "\u0430/b",
+]
+
+
+@pytest.mark.parametrize("path", QA_OWNED_SPELLINGS + NOT_ELIGIBLE_FOR_FALLBACK)
+def test_qa_owned_and_non_canonical_paths_resolve_to_none_and_never_reach_the_fallback(tmp_path, registry, path):
     write_lane(tmp_path, registry)
     seen = []
 
     def fallback(p):
         seen.append(p)
-        return "f" * 64
+        return FALLBACK_DIGEST
 
-    # Every spelling here names the QA directory: strict-or-None, the fallback must never see it.
     assert resolver(tmp_path, registry, fallback=fallback)(path) is None
     assert seen == []
     assert resolver(tmp_path, registry)(path) is None
 
 
 def test_non_str_path_resolves_to_none(tmp_path, registry):
-    resolve = resolver(tmp_path, registry, fallback=lambda p: "f" * 64)
+    resolve = resolver(tmp_path, registry, fallback=lambda p: FALLBACK_DIGEST)
     for bad in (None, 3, b"docs/x", ["a"]):
         assert resolve(bad) is None
 
@@ -274,16 +378,16 @@ def test_unknown_category_report_path_resolves_to_none_even_when_files_exist(tmp
     directory = tmp_path / EVIDENCE
     (directory / "regression.report.jsonl").write_bytes((directory / "functional.report.jsonl").read_bytes())
     assert resolver(tmp_path, registry)(f"{EVIDENCE}/regression.report.jsonl") is None
-    check = gb.qa_gate_reasons(tmp_path, "regression", expected_head=HEAD, registry=registry)
+    check = reasons(tmp_path, registry, category="regression")
     assert check.verdict == NON_APPROVING and "UNKNOWN_CATEGORY" in check.codes()
 
 
-def test_non_qa_path_uses_the_fallback_when_given_and_none_otherwise(tmp_path, registry):
+def test_plain_non_qa_paths_use_the_fallback_when_given_and_none_otherwise(tmp_path, registry):
     write_lane(tmp_path, registry)
     assert resolver(tmp_path, registry)("src/a.py") is None
-    assert resolver(tmp_path, registry, fallback=lambda p: "e" * 64 if p == "src/a.py" else None)("src/a.py") == "e" * 64
+    assert resolver(tmp_path, registry, fallback=lambda p: FALLBACK_DIGEST if p == "src/a.py" else None)(
+        "src/a.py") == FALLBACK_DIGEST
     assert resolver(tmp_path, registry, fallback=lambda p: None)("src/a.py") is None
-    assert resolver(tmp_path, registry, fallback=lambda p: 5)("src/a.py") is None
 
     def boom(p):
         raise OSError("disk gone")
@@ -291,17 +395,46 @@ def test_non_qa_path_uses_the_fallback_when_given_and_none_otherwise(tmp_path, r
     assert resolver(tmp_path, registry, fallback=boom)("src/a.py") is None
 
 
+def test_qa_other_directory_is_not_qa_owned_and_reaches_the_fallback(tmp_path, registry):
+    seen = []
+
+    def fallback(p):
+        seen.append(p)
+        return FALLBACK_DIGEST
+
+    resolve = resolver(tmp_path, registry, fallback=fallback)
+    assert resolve("docs/sdlc/evidence/qa-other/x.txt") == FALLBACK_DIGEST
+    assert resolve("docs/sdlc/evidence/qax/functional.report.jsonl") == FALLBACK_DIGEST
+    assert seen == ["docs/sdlc/evidence/qa-other/x.txt", "docs/sdlc/evidence/qax/functional.report.jsonl"]
+
+
+@pytest.mark.parametrize("bad", ["x", "", "F" * 64, "f" * 63, "f" * 65, " " + "f" * 63, "f" * 64 + "\n", 5, None, b"f" * 64])
+def test_fallback_result_must_be_64_lowercase_hex(tmp_path, registry, bad):
+    assert resolver(tmp_path, registry, fallback=lambda p: bad)("src/a.py") is None
+
+
 # ------------------------------------------------------------------ filesystem safety
-def test_symlinked_report_is_refused_when_the_platform_can_create_one(tmp_path, registry):
+def test_symlinked_report_is_refused(tmp_path, registry):
     write_lane(tmp_path, registry)
     target = tmp_path / functional_path()
+    assert resolver(tmp_path, registry)(functional_path()) is not None  # positive control before the link
     real = tmp_path / "real.report.jsonl"
     real.write_bytes(target.read_bytes())
     target.unlink()
     try:
         os.symlink(real, target)
     except (OSError, NotImplementedError):
-        return  # no symlink privilege here; the deterministic link test below still guards the code path
+        pytest.skip("this platform or account cannot create symlinks; the deterministic link tests below cover the check")
+    assert resolver(tmp_path, registry)(functional_path()) is None
+
+
+def test_hard_linked_report_is_refused(tmp_path, registry):
+    write_lane(tmp_path, registry)
+    assert resolver(tmp_path, registry)(functional_path()) is not None  # positive control before the link
+    try:
+        os.link(tmp_path / functional_path(), tmp_path / "alias.jsonl")
+    except (OSError, NotImplementedError):
+        pytest.skip("this platform or account cannot create hard links; the deterministic nlink tests cover the check")
     assert resolver(tmp_path, registry)(functional_path()) is None
 
 
@@ -313,12 +446,39 @@ def test_link_like_component_is_refused_on_the_read_path(tmp_path, registry, mon
     assert resolver(tmp_path, registry)(functional_path("stdout.txt")) is None
 
 
-def test_hard_linked_report_is_refused(tmp_path, registry):
+def test_reparse_point_attribute_counts_as_a_link():
+    class Info:
+        st_mode = 0o100644
+        st_file_attributes = 0x400
+
+    assert gb._is_link_like(Info()) is True
+
+
+def test_nlink_two_seen_by_lstat_is_refused(tmp_path, registry, monkeypatch):
     write_lane(tmp_path, registry)
-    try:
-        os.link(tmp_path / functional_path(), tmp_path / "alias.jsonl")
-    except (OSError, NotImplementedError):
-        return
+    real = os.lstat
+
+    def lstat(path, *a, **k):
+        info = real(path, *a, **k)
+        return _StatWith(info, st_nlink=2) if str(path).endswith(".report.jsonl") else info
+
+    assert resolver(tmp_path, registry)(functional_path()) is not None  # positive control
+    monkeypatch.setattr(gb, "os", _OsProxy(lstat=lstat))
+    assert resolver(tmp_path, registry)(functional_path()) is None
+
+
+def test_nlink_two_seen_by_fstat_is_refused(tmp_path, registry, monkeypatch):
+    write_lane(tmp_path, registry)
+    real = os.fstat
+    assert resolver(tmp_path, registry)(functional_path()) is not None  # positive control
+    monkeypatch.setattr(gb, "os", _OsProxy(fstat=lambda fd: _StatWith(real(fd), st_nlink=2)))
+    assert resolver(tmp_path, registry)(functional_path()) is None
+
+
+def test_file_swapped_between_lstat_and_open_is_refused(tmp_path, registry, monkeypatch):
+    write_lane(tmp_path, registry)
+    real = os.fstat
+    monkeypatch.setattr(gb, "os", _OsProxy(fstat=lambda fd: _StatWith(real(fd), st_ino=real(fd).st_ino + 1)))
     assert resolver(tmp_path, registry)(functional_path()) is None
 
 
@@ -330,24 +490,90 @@ def test_directory_in_place_of_a_file_is_refused(tmp_path, registry):
     assert resolver(tmp_path, registry)(functional_path()) is None
 
 
-def test_oversized_report_and_artifact_resolve_to_none(tmp_path, registry, monkeypatch):
+def test_public_reader_returns_bytes_and_refuses_links(tmp_path, registry, monkeypatch):
+    write_lane(tmp_path, registry)
+    root = tmp_path.resolve()
+    assert bytes(gb.read_regular_file(root, functional_path("stdout.txt"), 1024)) == STDOUT
+    monkeypatch.setattr(gb, "_is_link_like", lambda info: True)
+    with pytest.raises(gb._BridgeReadError):
+        gb.read_regular_file(root, functional_path("stdout.txt"), 1024)
+
+
+# ------------------------------------------------------------------ size caps
+def test_report_over_the_cap_is_a_typed_evidence_too_large(tmp_path, registry, monkeypatch):
+    write_lane(tmp_path, registry)
+    size = (tmp_path / functional_path()).stat().st_size
+    assert resolver(tmp_path, registry)(functional_path()) is not None  # exactly at the limit is fine below
+    monkeypatch.setattr(gb, "MAX_REPORT_BYTES", size)
+    assert reasons(tmp_path, registry).verdict == APPROVABLE
+    monkeypatch.setattr(gb, "MAX_REPORT_BYTES", size - 1)  # cap + 1
+    check = reasons(tmp_path, registry)
+    assert check.verdict == NON_APPROVING and check.codes() == {"EVIDENCE_TOO_LARGE"}
+    assert resolver(tmp_path, registry)(functional_path()) is None
+
+
+def test_artifact_over_the_cap_is_a_typed_evidence_too_large(tmp_path, registry, monkeypatch):
+    write_lane(tmp_path, registry)
+    size = (tmp_path / functional_path("stdout.txt")).stat().st_size
+    monkeypatch.setattr(gb, "MAX_ARTIFACT_FILE_BYTES", size - 1)
+    assert reasons(tmp_path, registry).codes() == {"EVIDENCE_TOO_LARGE"}
+    for kind in ("report.jsonl", "stdout.txt", "stderr.txt"):
+        assert resolver(tmp_path, registry)(functional_path(kind)) is None
+
+
+def test_file_larger_than_stat_size_is_treated_as_changed(tmp_path, registry, monkeypatch):
+    write_lane(tmp_path, registry)
+    real = os.fstat
+    monkeypatch.setattr(gb, "os", _OsProxy(fstat=lambda fd: _StatWith(real(fd), st_size=real(fd).st_size - 1)))
+    assert resolver(tmp_path, registry)(functional_path()) is None
+    assert reasons(tmp_path, registry).codes() == {"REPORT_UNREADABLE"}
+
+
+def test_resolver_never_raises_for_a_bad_repo_root(tmp_path, registry):
+    assert resolver(tmp_path / "does-not-exist", registry)(functional_path()) is None
+    check = reasons(tmp_path / "does-not-exist", registry)
+    assert check.verdict == NON_APPROVING
+
+
+# ------------------------------------------------------------------ snapshot reuse
+def test_one_snapshot_serves_the_three_digests_of_a_receipt(tmp_path, registry, monkeypatch):
+    write_lane(tmp_path, registry)
+    calls = []
+    real = gb._load
+
+    def counting(*args, **kwargs):
+        calls.append(1)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(gb, "_load", counting)
+    resolve = resolver(tmp_path, registry)
+    digests = [resolve(functional_path(kind)) for kind in ("report.jsonl", "stdout.txt", "stderr.txt")]
+    assert all(d is not None for d in digests) and len(calls) == 1
+
+
+def test_a_changed_file_invalidates_the_snapshot(tmp_path, registry):
     write_lane(tmp_path, registry)
     resolve = resolver(tmp_path, registry)
     assert resolve(functional_path()) is not None
-    monkeypatch.setattr(gb, "MAX_REPORT_BYTES", 16)
-    assert resolve(functional_path()) is None
-    monkeypatch.undo()
-    assert resolve(functional_path()) is not None
-    monkeypatch.setattr(gb, "MAX_ARTIFACT_FILE_BYTES", 16)
+    with (tmp_path / functional_path("stdout.txt")).open("ab") as handle:
+        handle.write(b"x")
     assert resolve(functional_path()) is None
     assert resolve(functional_path("stdout.txt")) is None
 
 
-def test_resolver_never_raises_for_a_bad_repo_root(tmp_path, registry):
-    resolve = resolver(tmp_path / "does-not-exist", registry)
-    assert resolve(functional_path()) is None
-    check = gb.qa_gate_reasons(tmp_path / "does-not-exist", "functional", expected_head=HEAD, registry=registry)
+# ------------------------------------------------------------------ reasons are bounded and redacted
+def test_sanitize_bounds_and_redacts():
+    text = "password=hunter2222 at C:\\Users\\bob\\secret.txt and /home/bob/x " + "y" * 500
+    cleaned = gb._sanitize(text)
+    assert len(cleaned) <= gb.MAX_DETAIL_CHARS
+    assert "hunter2222" not in cleaned and "bob" not in cleaned
+
+
+def test_reason_details_are_bounded(tmp_path, registry):
+    write_lane(tmp_path, registry, mutate=lambda r: r.update(result="X" * 5000))
+    check = reasons(tmp_path, registry)
     assert check.verdict == NON_APPROVING
+    assert all(len(detail) <= gb.MAX_DETAIL_CHARS for _, detail in check.reasons)
 
 
 # ------------------------------------------------------------------ gate level

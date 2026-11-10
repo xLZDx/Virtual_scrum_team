@@ -2994,3 +2994,6 @@ Decision: GPT-PM APPROVE on verification round (request c9dac85f-b09c-4606-b4ce-
 
 ## 2026-11-10 U3-5 implementation
 Decision: gate wiring done as a pure resolver factory tools/qa/gate_bridge.py (make_qa_artifact_resolver) feeding the existing artifact_resolver hook; gate.py authority model untouched. Resolver returns a digest only for an APPROVABLE report; stdout/stderr sliced by artifact_ranges. Limit: no caller of gate.evaluate is wired yet; receipt/path-list comparison stays the U2 open limit. Tests written, NOT_RUN.
+
+## 2026-11-10 U3-5 review remediation
+Decision: one remediation batch after python (1 MAJOR), security (2 MAJOR), test (2 MAJOR) reviews: fallback allowlist, EVIDENCE_TOO_LARGE, snapshot cache, tail range, reason redaction, real tamper and link tests. Residual limits documented in GATE_BRIDGE.md. NOT_RUN.
