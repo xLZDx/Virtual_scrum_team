@@ -2877,3 +2877,6 @@ GPT-PM reply 9bc917d3: pin-check FAIL was rejected only under plain APPROVE, not
 
 ## 2026-11-10 U2-4 verification note
 Appended verification round to the scope note.
+
+## 2026-11-10 U2-4 GPT-PM APPROVE
+GPT-PM reply bd899066 on base 8c145d3 to 97cfa9...: APPROVE (verification of the pin-check fix). U2-4 accepted (static review, tests NOT_RUN). Next: U2-3 receipt builder.
