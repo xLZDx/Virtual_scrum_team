@@ -2927,3 +2927,14 @@ GPT-PM request acde99d6 reported an undefined identifier in a test; verified in 
 
 ## 2026-11-10 U2-6 GPT-PM APPROVE
 GPT-PM request dfedcebf on base c497e90: APPROVE, 0 BLOCKER, 0 MAJOR (the round 1 MAJOR was a packet redaction artifact, verified in source). U2-6 accepted. All U2 tasks are accepted by static review; every U2 test is NOT_RUN.
+## 2026-11-10 S5 merged; plan synced
+PR 7 merged into main (bcdd25f) at the operator go. PROJECT_PLAN.md: S5 marked merged, active_sprint set to NONE until the operator starts the next sprint (U1-U6 stay parked). Reports re-rendered.
+
+## 2026-11-10 Plan corrected: stale statuses after merges
+Operator found the plan report wrong (S0-S2 shown 0, U1 0/9, S4 still in progress). Cause: after the work was merged into main (PR 1 d5cd7f5, PR 2 7c94c6c, U1 merge 83cfd64, PR 6 f52069b, PR 7 bcdd25f) 26 tasks (S0-1..3, S1-E1..6, S2-1..5 incl. 4A-4E, U1-1..8) still carried BLOCKED_EXTERNAL set while GitHub push protection (GH013) blocked pushes, and sprint rows S0, S1, S4 had old text; I also had not checked the plan against git after the merges. Fixed: those tasks ACCEPTED with the merge evidence (GPT-PM APPROVE is recorded for each in this log), sprint rows S0, S1, S4, S5, U1 updated, as_of 2026-11-10, approved sprints include S4 and S5. Accepted tasks now 39 of 71. U1-9 stays PARKED.
+
+## 2026-11-10 Report re-render after PR 8
+Re-rendered the plan reports after the plan-correction PR was opened, as the close gate requires. No content change.
+
+## 2026-11-10 plan-sync merged into the U2 branch
+PR #8 (plan sync, docs only) is not merged into main; the U2 branch needs the corrected plan to record U2, so origin/plan-sync-s5 was merged here (conflicts only in the two append-only logs, both sides kept). If PR #8 is merged first, nothing changes.
