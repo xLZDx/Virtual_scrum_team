@@ -2941,3 +2941,6 @@ PR #8 (plan sync, docs only) is not merged into main; the U2 branch needs the co
 
 ## 2026-11-10 program report re-rendered after the U2 PR
 Re-render only updated the Git provenance and pushed-count to HEAD 29f1276; no status changed.
+
+## 2026-11-10 U2 merged
+PR #9 merged into main as fa26e3c on the operator order "merge PR #9". Plan wording updated from pending merge to merged. PR #8 (plan sync) content is already in main through PR #9 and is superseded; left open for the operator to close.

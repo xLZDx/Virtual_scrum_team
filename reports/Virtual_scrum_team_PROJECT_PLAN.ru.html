@@ -48,7 +48,7 @@
   <dl>
     <dt>Проект</dt><dd>Virtual_scrum_team</dd>
     <dt>Папка</dt><dd>D:\Repo\Virtual_scrum_team</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; u2-evidence-gate-2 @ 29f1276</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/Virtual_scrum_team.git &mdash; plan-u2-merged @ fa26e3c</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
@@ -77,7 +77,7 @@
 <tr><td>S4</td><td>QA automation</td><td>ACCEPTED (merged) - S4-A..S4-F accepted by GPT-PM and merged into main by PR #6 (f52069b); real e2e and regression lanes, mutation checks and WSL NOT_RUN by operator decision; 13 red pre-existing S2 tests left as is.</td><td>Real native runners for functional, integration, API, E2E, regression and seeded failures with reproducible artifacts; a skipped test never satisfies DoD.</td></tr>
 <tr><td>S5</td><td>AEVE gate</td><td>ACCEPTED (merged) - S5-A..S5-E accepted by GPT-PM on static review and merged into main by PR #7 (bcdd25f); no test was run (pytest forbidden by the operator), AEVE runtime beyond eight fixture runs, Windows runtime of the adapter and OS sandbox enforcement NOT_RUN. AEVE at D:\Repo\AEVE is in scope by the operator order of 2026-11-09.</td><td>Bounded static review with hashes and an independent evidence/coverage receipt; truthful analyzer status; stale HEAD fails.</td></tr>
 <tr><td>U1</td><td>Local review path</td><td>ACCEPTED (merged) for U1-1..U1-8 (GPT-PM APPROVE each, merged into main by the U1 sprint merge 83cfd64); U1-9 PARKED (OD-3 not approved). Further U-sprints (U2-U6) start only on the operator order.</td><td>AEVE performs requested review roles locally with no model call; the orchestrator has one entry point; savings are measured against a pinned baseline; wiring into the Claude host is an optional last task.</td></tr>
-<tr><td>U2</td><td>Evidence into the gate</td><td>ACCEPTED on static review (pending merge: branch u2-evidence-gate-2) - U2-1..U2-6 each approved by GPT-PM; no test was run (pytest forbidden); U2-2 satisfied by S5-B and OD-7.</td><td>Local review results become signed receipts bound to the exact head; the VST gate fails closed on stale, forged, partial, findings-bearing or residual-bearing evidence.</td></tr>
+<tr><td>U2</td><td>Evidence into the gate</td><td>ACCEPTED (merged into main by PR #9, fa26e3c) on static review - U2-1..U2-6 each approved by GPT-PM; no test was run (pytest forbidden); U2-2 satisfied by S5-B and OD-7.</td><td>Local review results become signed receipts bound to the exact head; the VST gate fails closed on stale, forged, partial, findings-bearing or residual-bearing evidence.</td></tr>
 <tr><td>U3</td><td>Testing core</td><td>NOT_STARTED</td><td>Test-ID accounting, hash-pinned native runner and the no-skip gate land from the pushed S4 branches in reviewable parts; one local test executor is wired.</td></tr>
 <tr><td>U4</td><td>Coverage and growth</td><td>NOT_STARTED</td><td>Roles without an executor are explicit; project-scope roles register without code changes and start as NOT_COVERED; selected executors added.</td></tr>
 <tr><td>U5</td><td>Coding under control</td><td>NOT_STARTED</td><td>Story to worker to diff gate to review loop to tests to receipts to the final GPT-PM package, proved on a synthetic story and one small real change.</td></tr>
