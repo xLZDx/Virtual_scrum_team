@@ -2253,3 +2253,15 @@ Kind: SUCCESS. Facts: the real run found that main registry is stale and that th
 
 ## 2026-11-10 Operator selection: keep both executors
 Kind: SUCCESS. Facts: decision taken after a real comparison run, not a static guess.
+
+## 2026-11-10 U4 start and U4-1 implementation
+Kind: NEUTRAL. Implementation agent output is unexecuted; reviewers next.
+
+## 2026-11-10 U4-1 review remediation
+Kind: SHORTCOMING. Facts: first implementation derived the label from the folder name and hashed raw bytes, so pins would drift per checkout; validators raised on malformed input. Root cause: brief did not demand reproducibility across checkouts. Missed by: author. Caught by: python and security reviewers. Next time: state "digest must be identical on any checkout" in the brief of any hash-pinned artifact.
+
+## 2026-11-10 U4-1 GPT-PM round 1 MAJOR fixed
+Kind: FAILURE. Facts: three read-only reviewers missed that the validator reconstructed the expected entry from the untrusted entry. Root cause: reviewers checked the builder path and forgery shape, not who authorizes a promotion. Missed by: author, python, security and test reviewers; caught by GPT-PM. Next time: ask every reviewer "what independent evidence authorizes this state change, and does the validator receive it?".
+
+## 2026-11-10 U4-1 GPT-PM approval
+Kind: SUCCESS. Facts: approved on the verification round after the mapping fix.

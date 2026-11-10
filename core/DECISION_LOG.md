@@ -3012,3 +3012,15 @@ Evidence: four real runs recorded in docs/sdlc/u3/EXECUTOR_COMPARISON.md section
 
 ## 2026-11-10 Operator selection: keep both executors
 Decision: operator answered "Оба" (AskUserQuestion-style wrap-up) after the measured comparison; both vst-native and aeve-sandbox stay. U3-7 moved to ACCEPTED, sprint U3 complete. Follow-ups noted: regenerate docs/qa/categories.json on main before executor A can run there; B fits only stdlib-only suites until a hash-pinned offline wheel set exists.
+
+## 2026-11-10 U4 start and U4-1 implementation
+Decision: operator ordered "GO start U4" and chose U4-1 only (AEVE edits for U4-2..U4-6 not approved yet; they wait for a separate yes). U4-1 written statically in scratch worktree D:/tmp/scratch_worktrees/u4 (branch u4-coverage-growth): tools/uc/project_roles.py scan/register/validate, tests/uc/test_u4_project_roles.py, docs/sdlc/u4/PROJECT_ROLES.md. Gate unchanged: the pin owner re-pins role_table_sha256 after a role is added. Tests NOT_RUN.
+
+## 2026-11-10 U4-1 review remediation
+Decision: one remediation batch after python (3 MAJOR), security (2 MAJOR) and test (2 MAJOR) reviews: required label, newline-normalized digest, no-raise validators, fail-closed names, exact project-entry validation, bounded descriptor reads, redaction, real link tests. NOT_RUN.
+
+## 2026-11-10 U4-1 GPT-PM round 1 MAJOR fixed
+Decision: GPT-PM request d6aa746b found the extended-table validator derived coverage authorization from the entry itself. Verified against the code, fixed by binding COVERED_PARTIAL project entries to the explicit mapping (validate --mapping). Verification round follows. NOT_RUN.
+
+## 2026-11-10 U4-1 GPT-PM approval and sprint-end plan
+Decision: GPT-PM APPROVE for U4-1 (request 3d0841e6) after one MAJOR round. U4-2..U4-6 not started: they modify AEVE and need the separate AEVE approval the operator did not give. Plan updated once: U4-1 ACCEPTED, U4 PARTIAL. Tests NOT_RUN.
