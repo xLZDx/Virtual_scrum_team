@@ -2223,3 +2223,6 @@ Kind: NEUTRAL.
 
 ## 2026-11-10 U3-2 worktree check parity
 Kind: SHORTCOMING. Facts: two executors, only the native one checked the worktree; python and security reviewers missed the asymmetry, GPT-PM caught it. Rule: when two implementations share an interface, diff their checks against each other.
+
+## 2026-11-10 U3-2 verification note
+Kind: NEUTRAL.

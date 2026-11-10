@@ -2974,3 +2974,6 @@ Added docs/sdlc/u3/u3-2-gptpm-scope-note.md; GPT-PM review requested, base 58ed3
 
 ## 2026-11-10 U3-2 GPT-PM round 1: MAJOR x1
 GPT-PM reply a6c11da7: the AEVE executor did not check candidate worktree cleanliness before or after the run. Fixed: shared worktree_dirty_paths (porcelain -z, untracked included, trusted git) in executor.py; CANDIDATE_DIRTY_BEFORE_RUN before launch and CANDIDATE_DIRTY_AFTER_RUN after, no exceptions (AEVE writes nothing into the candidate). Verification round requested.
+
+## 2026-11-10 U3-2 verification note
+Appended verification round to the scope note.
