@@ -2190,3 +2190,6 @@ Kind: NEUTRAL. Append-only logs conflict on every parallel branch; keep both sid
 
 ## 2026-11-10 report re-render
 Kind: NEUTRAL. Render after the PR so provenance matches the pushed head.
+
+## 2026-11-10 U3 start
+Kind: NEUTRAL. Rule: before landing from an old branch, count what main already has.

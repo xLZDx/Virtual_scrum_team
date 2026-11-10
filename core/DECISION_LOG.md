@@ -2941,3 +2941,6 @@ PR #8 (plan sync, docs only) is not merged into main; the U2 branch needs the co
 
 ## 2026-11-10 program report re-rendered after the U2 PR
 Re-render only updated the Git provenance and pushed-count to HEAD 29f1276; no status changed.
+
+## 2026-11-10 U3 started (operator order "Начинаем U3")
+Branch u3-testing-core from main fa26e3c. Order: U3-1 inventory of the pushed branches (read-only, no merge), then U3-2.. as the plan lists. Fact found before starting: main already contains tools/qa, tests/qa and the S4 results (S4 accepted and merged), so U3 landing work is mostly about what the old branches hold beyond main (s4-canonical-continuation 349 commits ahead, 724 files vs main; s4-native-qa-runner 123/197; s4-reproducible-qa-automation 105/175; s4-e2e-snapshot 122/194; s5-bounded-aeve-evidence 29/69; all 413 behind main). Current task: U3-1; next step: write the classification and the machine-checked completeness check. Executor decision OD-2 (build both executors, compare) is already recorded for U3-2 and U3-7.
