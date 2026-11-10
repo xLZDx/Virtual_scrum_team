@@ -183,8 +183,14 @@ def verify_analyzer_evidence(
     expected_binding: Mapping[str, Any],
     consume_nonce: Callable[[str], bool],
     other_role_keys: Mapping[str, bytes],
+    consume: bool = True,
 ) -> bool:
     """True iff evidence is signed by the analyzer authority and matches the verifier's binding.
+
+    consume=True (default, safe) consumes the one-shot nonce after signature and
+    binding pass. consume=False verifies WITHOUT touching the nonce store (the
+    caller must then call consume_nonce itself exactly once, e.g. the gate only
+    after its final verdict); consume_nonce is not called in that mode.
 
     expected_binding must hold a verifier-owned value for EVERY payload field
     except signature and type (see ANALYZER_PAYLOAD_FIELDS), including run_id
@@ -198,6 +204,8 @@ def verify_analyzer_evidence(
     raw = _check_authority_key(analyzer_key, other_role_keys)
     if not callable(consume_nonce):
         raise ContractError("consume_nonce: must be callable")
+    if not isinstance(consume, bool):
+        raise ContractError("consume: must be a bool")
     if not isinstance(expected_binding, Mapping):
         raise ContractError("expected_binding: must be a mapping")
     missing = [f for f in _BINDING_FIELDS if f not in expected_binding]
@@ -225,4 +233,6 @@ def verify_analyzer_evidence(
             return False
     except Exception:  # hostile evidence must never raise
         return False
+    if not consume:
+        return True
     return consume_nonce(body["nonce"]) is True

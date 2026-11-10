@@ -82,7 +82,7 @@ MANIFEST_V2_FIELDS = MANIFEST_FIELDS + (
     "contract_version", "reviewer_registry", "mandatory_commands", "change_scope",
 )
 
-MANIFEST_V3_FIELDS = MANIFEST_V2_FIELDS + ("required_rule_ids",)
+MANIFEST_V3_FIELDS = MANIFEST_V2_FIELDS + ("required_rule_ids", "static_acceptance_ids")
 
 # Reserved slot name for supervisor-written receipts (WORKER_LOST,
 # RETRY_EXHAUSTED, BUDGET_EXCEEDED). Never a manifest slot; receipts in it are
@@ -396,8 +396,22 @@ def _validate_task_manifest_v2_body(obj: Any, version: int) -> dict:
         ids = _req_str_list(obj["required_rule_ids"], "required_rule_ids", nonempty=True, unique=True)
         if ids != sorted(ids):
             raise ContractError("required_rule_ids: must be sorted")
+        static_ids = _req_str_list(obj["static_acceptance_ids"], "static_acceptance_ids", nonempty=True, unique=True)
+        if static_ids != sorted(static_ids):
+            raise ContractError("static_acceptance_ids: must be sorted")
     core = {k: obj[k] for k in MANIFEST_FIELDS}
     _validate_task_manifest_v1(core)
+    if version == 3:
+        if not any(s["receipt_type"] == "StaticAnalysis" for s in obj["required_receipts"]):
+            raise ContractError("v3 manifest requires a static-analysis slot")
+        if not set(static_ids) <= set(obj["acceptance"]):
+            raise ContractError("static_acceptance_ids: must be a subset of acceptance")
+        mapped = {a for t in obj["required_tests"] for a in t["acceptance"]}
+        if set(static_ids) & mapped:
+            raise ContractError("static_acceptance_ids: must be disjoint from acceptance mapped to required tests")
+        review_slots = {s["slot"] for s in obj["required_receipts"] if s["receipt_type"] == "IndependentReview"}
+        if review_slots and set(static_ids) == set(obj["acceptance"]):
+            raise ContractError("static_acceptance_ids: must leave acceptance for the independent review")
     registry = obj["reviewer_registry"]
     _check_keys(registry, ("version", "sha256"), "reviewer_registry")
     _req_str(registry["version"], "reviewer_registry.version")

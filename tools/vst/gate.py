@@ -440,18 +440,25 @@ def _check_static_v3(
     hard: list[str],
     soft: list[str],
     trust: Any,
+    pending: list | None = None,
 ) -> tuple[bool, set[str]]:
     """Deciding v3 StaticAnalysis receipt (current head and epoch already checked).
 
-    Satisfied only by analyzer-authority evidence that verifies with the full
-    role-key roster and the full verifier-owned binding; the one-shot nonce is
-    consumed last, only when every other check passed. Returns (ok, acceptance).
+    Satisfied only by analyzer-authority evidence that verifies (WITHOUT
+    consuming the nonce) with the full role-key roster and the full binding.
+    On success (receipt_id, nonce) is appended to ``pending``; evaluate()
+    consumes each nonce exactly once at the very end, only when the final
+    verdict is APPROVE or APPROVED_WITH_WAIVER. Gate-owned anchors: manifest
+    required_rule_ids, the frozen rule catalog (body re-hashed here), the
+    pinned analyzer/profile identity of ``trust["pinned"]``, the manifest
+    scope, and manifest static_acceptance_ids. ``trust["runs"][receipt_id]
+    ["expected"]`` run_id, nonce, source_tree_sha256 and report_sha256 MUST come
+    from the runner's own snapshot/run record, never from the evidence.
+    Returns (ok, acceptance).
     """
     from .analyzer_authority import verify_analyzer_evidence
     from .contracts import require_static_rule_set_matches_manifest
-    from .rule_coverage import (
-        FROZEN_CATALOG_SHA256, CoverageError, require_catalog_matches_manifest,
-    )
+    from .rule_coverage import FROZEN_CATALOG_SHA256, RuleCatalog
 
     label = f"slot {slot!r}"
     try:
@@ -479,11 +486,42 @@ def _check_static_v3(
         return False, set()
     try:
         catalog = trust["catalog"]
-        if catalog.sha256 != FROZEN_CATALOG_SHA256:
-            raise CoverageError("CATALOG_PIN_MISMATCH", "catalog is not the frozen catalog")
-        require_catalog_matches_manifest(manifest, catalog)
+        if not isinstance(catalog, RuleCatalog):
+            raise ContractError("catalog must be a RuleCatalog from load_catalog")
+        body = dict(catalog.body)
+        digest = hashlib.sha256(canonical_bytes(body)).hexdigest()
+        if digest != FROZEN_CATALOG_SHA256 or digest != catalog.sha256:
+            raise ContractError("catalog body does not match the frozen pin")
+        derived = sorted(
+            r["rule_id"] for r in body["rules"] if r["requirement"] == "REQUIRED"
+        )
+        if (derived != list(catalog.required_rule_ids)
+                or derived != list(manifest["required_rule_ids"])):
+            raise ContractError("manifest required_rule_ids differ from the verified catalog")
     except Exception as exc:
         hard.append(f"{label}: frozen rule catalog check failed: {type(exc).__name__}")
+        return False, set()
+    pinned = trust.get("pinned")
+    pin_names = ("analyzer_id", "analyzer_version", "analyzer_sha256", "profile_id", "profile_sha256")
+    if not isinstance(pinned, dict) or any(
+            n not in pinned or type(pinned[n]) is not str or pinned[n] != latest[n]
+            for n in pin_names):
+        hard.append(f"{label}: analyzer/profile identity differs from the gate-pinned values")
+        return False, set()
+    manifest_scope = list(manifest["scope"])
+    allowed = manifest_scope + list(manifest["change_scope"]["allowed_paths"])
+
+    def under(path: str, base: str) -> bool:
+        return path == base or path.startswith(base.rstrip("/") + "/")
+
+    receipt_scope = latest["analysis_scope"]
+    if (any(not any(under(p, b) for b in allowed) for p in receipt_scope)
+            or any(not any(under(p, b) for p in receipt_scope) for b in manifest_scope)):
+        hard.append(f"{label}: receipt analysis_scope does not cover the manifest scope")
+        return False, set()
+    claimed = set(latest["covered_acceptance"])
+    if not claimed <= set(manifest["static_acceptance_ids"]):
+        hard.append(f"{label}: receipt claims acceptance outside manifest static_acceptance_ids")
         return False, set()
     expected = run["expected"]
     for name in _V3_RECEIPT_FIELDS:
@@ -501,6 +539,7 @@ def _check_static_v3(
         ok = verify_analyzer_evidence(
             run["evidence"], trust["analyzer_key"], expected_binding=binding,
             consume_nonce=trust["consume_nonce"], other_role_keys=trust["other_role_keys"],
+            consume=False,
         )
     except Exception as exc:  # programmer error in trust config: default-deny
         hard.append(f"{label}: analyzer trust configuration invalid: {type(exc).__name__}")
@@ -508,9 +547,10 @@ def _check_static_v3(
     if not ok:
         hard.append(f"{label}: analyzer authority evidence rejected (forged, mismatched or replayed)")
         return False, set()
-    # AC-9: static evidence never contributes functional-test acceptance.
-    test_ids = {a for t in manifest["required_tests"] for a in t["acceptance"]}
-    return True, (set(latest["covered_acceptance"]) & set(manifest["acceptance"])) - test_ids
+    if pending is not None:
+        pending.append((latest["receipt_id"], run["evidence"]["nonce"]))
+    # AC-9: credit only manifest-declared static acceptance ids.
+    return True, claimed & set(manifest["static_acceptance_ids"])
 
 
 def _check_latest(
@@ -523,6 +563,7 @@ def _check_latest(
     parser_catalog: Any,
     signer_key: bytes | None,
     analyzer_trust: Any = None,
+    pending_nonces: list | None = None,
 ) -> tuple[bool, set[str]]:
     """Per-type checks on the latest current-epoch attempt.
 
@@ -602,7 +643,7 @@ def _check_latest(
     if rtype == "StaticAnalysis":
         if latest.get("contract_version") == 3:
             return _check_static_v3(
-                slot, latest, manifest, findings, hard, soft, analyzer_trust
+                slot, latest, manifest, findings, hard, soft, analyzer_trust, pending_nonces
             )
         required_rules = {
             r["rule_id"] for r in manifest["required_rules"] if r["slot"] == slot
@@ -807,11 +848,11 @@ def evaluate(
     if valid_manifest.get("contract_version") == 3:
         trust = analyzer_trust
         if (not isinstance(trust, dict)
-                or not {"analyzer_key", "other_role_keys", "consume_nonce", "catalog", "runs"} <= set(trust)
+                or not {"analyzer_key", "other_role_keys", "consume_nonce", "catalog", "runs", "pinned"} <= set(trust)
                 or not _key_ok(trust.get("analyzer_key"))
                 or not isinstance(trust.get("other_role_keys"), dict)):
             hard.append("v3 gate requires analyzer_trust with analyzer_key, other_role_keys, "
-                        "consume_nonce, catalog and runs")
+                        "consume_nonce, catalog, runs and pinned")
             fatal = True
         else:
             analyzer_key = bytes(trust["analyzer_key"])
@@ -888,6 +929,7 @@ def evaluate(
     # they never count toward the "all receipts stale" test below.
     own_count -= len(supervisor)
 
+    pending_nonces: list[tuple[str, str]] = []
     covered: set[str] = set()
     unmet_slots: list[str] = []
     unmet_results: list[str | None] = []
@@ -949,7 +991,7 @@ def evaluate(
             continue
         slot_ok, contribution = _check_latest(
             slot, latest, valid_manifest, findings, hard, soft,
-            TRUSTED_PARSER_CATALOG, signer_key, analyzer_trust,
+            TRUSTED_PARSER_CATALOG, signer_key, analyzer_trust, pending_nonces,
         )
         if latest["result"] != "PASS":
             soft.append(
@@ -996,6 +1038,22 @@ def evaluate(
         else:
             verdict = "MODIFY"
             soft.extend(problems)
+
+    # One-shot nonces are burned exactly once, only for a final accepting
+    # verdict with no hard reason; a failed consume is a replay -> NO_GO.
+    if pending_nonces and verdict in ("APPROVE", "APPROVED_WITH_WAIVER") and not hard:
+        consume = analyzer_trust["consume_nonce"]
+        for receipt_id, nonce in pending_nonces:
+            try:
+                fresh = consume(nonce) is True
+            except Exception:
+                fresh = False
+            if not fresh:
+                hard.append(f"receipt {receipt_id}: analyzer evidence nonce replayed or not consumable")
+                verdict = "NO_GO"
+                approvals = []
+                waiver_record = None
+                break
 
     return _build_decision(
         valid_manifest["task_id"], current_head, current_epoch, verdict,

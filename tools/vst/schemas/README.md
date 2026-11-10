@@ -163,9 +163,13 @@ the v2 set plus `required_rule_ids` (non-empty, sorted, unique list of non-empty
 `MANIFEST_V3_FIELDS`). `require_static_rule_set_matches_manifest(manifest, receipt)` raises
 `ContractError` unless the set of `rule_id`s in the v3 receipt's `rule_statuses` equals the manifest's
 `required_rule_ids`. For v3 StaticAnalysis, `derive_result` returns FAIL when any finding has severity
-HIGH or CRITICAL; INFO/LOW/MEDIUM findings with FULL coverage still PASS. The gate does not implement v3
-yet: any v3 manifest or v3 receipt gives a non-approving reason `v3 gate wiring not implemented (S5-E)`
-(`NO_GO` for a v3 manifest), and receipt and manifest contract versions must match exactly. V1/v2 validators, field sets, signed bodies and canonical hashes are unchanged, and a
+HIGH or CRITICAL; INFO/LOW/MEDIUM findings with FULL coverage still PASS. A v3 manifest also carries
+`static_acceptance_ids` (non-empty, sorted, unique; a subset of `acceptance`, disjoint from the ids
+mapped to required tests) and must contain a StaticAnalysis slot. The gate verifies a v3 static receipt
+under the analyzer authority (`evaluate(..., analyzer_trust=...)`: analyzer key, full role roster,
+pinned analyzer/profile identity, frozen catalog, verifier-owned expected values), credits only
+`static_acceptance_ids`, and consumes the nonce once, at the end, only on an approving verdict.
+Receipt and manifest contract versions must match exactly. V1/v2 validators, field sets, signed bodies and canonical hashes are unchanged, and a
 v2 receipt can never gain provenance fields (unknown fields are rejected).
 `require_receipt_version_for_manifest(manifest, receipt)` raises `ContractError` unless both carry the
 same contract version, so a v3 manifest never accepts a v1/v2 receipt as equivalent.
