@@ -2944,3 +2944,6 @@ Re-render only updated the Git provenance and pushed-count to HEAD 29f1276; no s
 
 ## 2026-11-10 U2 merged
 PR #9 merged into main as fa26e3c on the operator order "merge PR #9". Plan wording updated from pending merge to merged. PR #8 (plan sync) content is already in main through PR #9 and is superseded; left open for the operator to close.
+
+## 2026-11-10 report re-render after PR 10
+Provenance refresh to HEAD only; no status changed.
