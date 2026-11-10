@@ -2173,3 +2173,6 @@ Kind: NEUTRAL. Rule: fixtures built from the gate source are the likeliest first
 
 ## 2026-11-10 U2-6 sanitizer artifact
 Kind: NEUTRAL. A secret-like test literal is redacted in review packets and looks like a NameError to the reviewer. Rule: name seeded secret constants so the packet shows the definition, or explain in the scope note up front.
+
+## 2026-11-10 U2-6 approved
+Kind: SUCCESS with limit. Facts: GPT-PM approved on static review; no U2 test has been executed. Rule: report U2 as accepted-by-static-review, not runtime-proven.
