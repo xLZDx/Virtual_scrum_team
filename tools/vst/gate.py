@@ -427,6 +427,9 @@ _V3_RUN_FIELDS = (
     "analyzer_id", "analyzer_version", "analyzer_sha256", "profile_id",
     "profile_sha256", "source_tree_sha256", "report_sha256", "run_id", "nonce",
     "analysis_scope",
+    # U2-1 bridge facts: part of the signed payload binding; no refusal rule uses them yet (U2-4).
+    "role_table_sha256", "aeve_head", "model_residual", "reviewed_paths_sha256",
+    "findings_count", "highest_severity",
 )
 _V3_RECEIPT_FIELDS = tuple(f for f in _V3_RUN_FIELDS if f not in ("run_id", "nonce"))
 _BLOCKING_SEVERITIES = frozenset({"HIGH", "CRITICAL"})

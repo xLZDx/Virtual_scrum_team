@@ -186,6 +186,18 @@ sorted, unique list of repo-relative `/` paths: no glob characters, no `..`, no 
 `evidence_ref`/`path` are plain repo-relative paths, `path` is in `analysis_scope`, `evidence_sha256`
 is non-zero 64 hex and `line` is an int >= 1 (bool rejected); duplicate findings are rejected.
 
+Bridge facts (sprint U2, task U2-1; v3 StaticAnalysis only, `BRIDGE_FACT_FIELDS`), carried from the U1
+`uc.role-result.v1` and also inside the signed analyzer payload (`ANALYZER_PAYLOAD_FIELDS`, verified by
+exact strict-type equality against the verifier-owned expectation): `role_table_sha256` (non-zero 64
+hex: sha256 of the exact `role_table.json` bytes the router loaded); `aeve_head` (40 lowercase hex: the
+AEVE source head the router probed and matched against the role table pin); `model_residual` (list of at
+most 8 unique lowercase tokens, sorted, may be empty); `reviewed_paths_sha256` (non-zero 64 hex: sha256 of
+the canonical bytes of the sorted reviewed path list); `findings_count` (int >= 0, bool rejected);
+`highest_severity` in `BRIDGE_SEVERITY` = NONE, LOW, MEDIUM, HIGH, CRITICAL, where NONE if and only if
+`findings_count == 0` (U1 NIT/MINOR/MAJOR/BLOCKER map to LOW/MEDIUM/HIGH/CRITICAL).
+`bridge_facts_from_role_result` in `analyzer_adapter.py` derives them for one role. The gate only binds them
+(they must match the verifier-owned expectation); it does not yet refuse on their values (task U2-4).
+
 Consistency: `covered_rules` equals the sorted checked rules and `unsupported_rules` the sorted
 unsupported rules (so the two are disjoint and their union is the declared rule set). `coverage` must
 equal FULL (no unsupported rule), PARTIAL (both sets non-empty) or NOT_COVERED (no checked rule). The
@@ -201,7 +213,7 @@ Common fields: `manifest_sha256` (64 hex, REQUIRED, must equal `manifest_sha256(
 Per type (lists contain non-empty str unless stated):
 
 - TestRun: `expected_test_ids`, `executed_test_ids`, `skipped_test_ids`, `xfail_test_ids`, `covered_acceptance`; `commands` = non-empty list of `{argv: non-empty list of str, exit_code: int}`; `artifact_digests` (REQUIRED, may be empty) = dict mapping a repo-relative path str (same rules as manifest `scope`: no absolute path, no `:`, no empty / `.` / `..` segments, no surrounding whitespace) to a 64-hex sha256 of that artifact as it was after the commands ran. The all-zero digest (`MISSING_ARTIFACT_DIGEST`, 64 zeros) means "artifact missing after the run".
-- StaticAnalysis: `coverage` in COVERAGE; `covered_rules`, `unsupported_rules`, `covered_acceptance`.
+- StaticAnalysis: `coverage` in COVERAGE; `covered_rules`, `unsupported_rules`, `covered_acceptance` (v3 adds the provenance and bridge fields described above).
 - IndependentReview: `reviewer_principal`, `author_principal` (non-empty str); `covered_acceptance`, `findings`; `signed_verdict` in {MODIFY, NO_GO, APPROVE}.
 - Documentation: `check_description` non-empty str; `covered_acceptance`.
 

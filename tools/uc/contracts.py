@@ -239,13 +239,18 @@ def validate_result(document: object) -> dict:
     """Return the result as validated; raise ContractError on the first violation."""
     doc = _object(
         document, "result",
-        {"schema_version", "request_id", "base_revision", "snapshot_hash", "iteration_id", "exit_code", "roles"},
+        {"schema_version", "request_id", "base_revision", "snapshot_hash", "iteration_id", "exit_code", "roles",
+         "role_table_sha256", "aeve_head"},
     )
     if doc["schema_version"] != RESULT_SCHEMA:
         raise ContractError("WRONG_SCHEMA", "result.schema_version")
     _string(doc["request_id"], "result.request_id", _ID)
     _string(doc["base_revision"], "result.base_revision", _HEAD)
     _string(doc["snapshot_hash"], "result.snapshot_hash", _HASH)
+    # U2-1: bridge facts. sha256 of the exact role_table.json bytes the router loaded, and the AEVE
+    # source head the router probed and matched against the table pin before the review ran.
+    _string(doc["role_table_sha256"], "result.role_table_sha256", _HASH)
+    _string(doc["aeve_head"], "result.aeve_head", _HEAD)
     _string(doc["iteration_id"], "result.iteration_id", _ID)
     exit_code = _int(doc["exit_code"], "result.exit_code", 0, 3)
     _enum(exit_code, "result.exit_code", EXIT_CODES)

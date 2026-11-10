@@ -1357,6 +1357,50 @@ def static_analysis_fields(report: AnalysisReport) -> dict[str, Any]:
     }
 
 
+_UC_TO_BRIDGE_SEVERITY = {"NIT": "LOW", "MINOR": "MEDIUM", "MAJOR": "HIGH", "BLOCKER": "CRITICAL"}
+_UC_SEVERITY_ORDER = ("NIT", "MINOR", "MAJOR", "BLOCKER")
+
+
+def bridge_facts_from_role_result(
+    role_result: Mapping[str, Any], role: str, reviewed_paths: Sequence[str]
+) -> dict[str, Any]:
+    """U2-1 bridge facts for one role of a uc.role-result.v1 (plain dict; tools/uc is not imported).
+
+    ``role_table_sha256`` and ``aeve_head`` are the result's top-level facts; ``model_residual`` is the
+    named role entry's own list; ``reviewed_paths_sha256`` is the sha256 of the canonical bytes of the
+    sorted reviewed path list; ``findings_count`` and ``highest_severity`` summarize that role's findings
+    (U1 NIT/MINOR/MAJOR/BLOCKER map to LOW/MEDIUM/HIGH/CRITICAL; no findings -> 0 / NONE). The result is
+    shape-checked with validate_bridge_facts; any problem raises ContractError.
+    """
+    from .contracts import validate_bridge_facts
+
+    try:
+        entries = [e for e in role_result["roles"] if e["role"] == role]
+        if len(entries) != 1:
+            raise ContractError(f"role result: expected exactly one entry for role {role!r}")
+        entry = entries[0]
+        severities = [f["severity"] for f in entry["findings"]]
+        unknown = [s for s in severities if s not in _UC_TO_BRIDGE_SEVERITY]
+        if unknown:
+            raise ContractError("role result: finding severity outside the closed enum")
+        highest = (
+            _UC_TO_BRIDGE_SEVERITY[max(severities, key=_UC_SEVERITY_ORDER.index)] if severities else "NONE"
+        )
+        paths = sorted(reviewed_paths)
+        facts = {
+            "role_table_sha256": role_result["role_table_sha256"],
+            "aeve_head": role_result["aeve_head"],
+            "model_residual": list(entry["model_residual"]),
+            "reviewed_paths_sha256": hashlib.sha256(canonical_bytes(paths)).hexdigest(),
+            "findings_count": len(severities),
+            "highest_severity": highest,
+        }
+    except (KeyError, TypeError) as exc:
+        raise ContractError(f"role result: malformed ({type(exc).__name__})") from exc
+    validate_bridge_facts(facts)
+    return facts
+
+
 def assemble_analyzer_payload(
     result: AdapterResult,
     *,
@@ -1365,8 +1409,12 @@ def assemble_analyzer_payload(
     nonce: str,
     candidate_head: str,
     epoch: int,
+    bridge: Mapping[str, Any],
 ) -> dict[str, Any]:
     """Unsigned payload for analyzer_authority.sign_analyzer_evidence.
+
+    ``bridge`` holds exactly the BRIDGE_FACT_FIELDS (see bridge_facts_from_role_result); the same dict
+    must be merged into the receipt body next to static_analysis_fields(report).
 
     Refuses when the run was not OK/PARTIAL_WITH_FINDINGS, when any binding is still
     unknown (``blocking_unknown``), or when candidate_head differs from the head the
@@ -1379,6 +1427,10 @@ def assemble_analyzer_payload(
     if result.candidate_head is None or candidate_head != result.candidate_head:
         raise AdapterError("HEAD_MISMATCH", "candidate_head differs from the head the analysis was bound to")
     fields = static_analysis_fields(result.report)
+    from .contracts import BRIDGE_FACT_FIELDS
+
+    if not isinstance(bridge, Mapping) or set(bridge) != set(BRIDGE_FACT_FIELDS):
+        raise AdapterError("BRIDGE_FACTS", f"bridge must hold exactly {list(BRIDGE_FACT_FIELDS)}")
     return build_analyzer_payload(
         analyzer_id=fields["analyzer_id"],
         analyzer_version=fields["analyzer_version"],
@@ -1393,4 +1445,5 @@ def assemble_analyzer_payload(
         candidate_head=candidate_head,
         epoch=epoch,
         analysis_scope=fields["analysis_scope"],
+        **{name: bridge[name] for name in BRIDGE_FACT_FIELDS},
     )

@@ -74,7 +74,7 @@ Validation: `root` must be on an allowlist of registered roots; `changed_paths` 
 
 ### 5.2 Role result (router to orchestrator)
 
-One entry per requested role: `role`, `canonical_role`, `class`, `status` (section 4), `executors` (id, status, snapshot hash), `findings`, `uncovered`, `model_residual`, `request_id`, `iteration_id`, `base_revision`, `snapshot_hash`. Top-level `exit_code` follows the AEVE convention.
+One entry per requested role: `role`, `canonical_role`, `class`, `status` (section 4), `executors` (id, status, snapshot hash), `findings`, `uncovered`, `model_residual`, `request_id`, `iteration_id`, `base_revision`, `snapshot_hash`. Top-level `exit_code` follows the AEVE convention. Top-level bridge facts (sprint U2, task U2-1; no persisted v1 result existed, so `schema_version` stays `uc.role-result.v1`): `role_table_sha256` (sha256 of the exact `role_table.json` bytes the router loaded) and `aeve_head` (the AEVE source head the router probed and matched against the table pin before the review).
 
 Injection-safe shape: a finding contains only enumerated values (rule id, severity), integers (line, column), hashes, and a relative path that passed the same charset and length check as `changed_paths`. Evidence is a hash plus a line reference, never source text. Unknown fields are rejected. The orchestrator renders a result as quoted data and never as instructions. Retained raw executor output (kept only for BLOCKED diagnosis) is size-capped, redacted for secrets, access-restricted and excluded from model context.
 

@@ -2098,3 +2098,6 @@ Kind: SUCCESS with a standing limit. Every S5 task was accepted by GPT-PM only o
 
 ## 2026-11-10 Report re-render
 Kind: NEUTRAL. Routine re-render after PR 7.
+
+## 2026-11-10 U2-1 bridge fields
+Kind: SUCCESS (implementation), review pending. Facts: 12 files, v1/v2 paths additive-only. Rule: keep v3 closed field sets in sync across contracts, authority payload and gate _V3_RUN_FIELDS in one change.
