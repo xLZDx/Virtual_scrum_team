@@ -2941,3 +2941,68 @@ PR #8 (plan sync, docs only) is not merged into main; the U2 branch needs the co
 
 ## 2026-11-10 program report re-rendered after the U2 PR
 Re-render only updated the Git provenance and pushed-count to HEAD 29f1276; no status changed.
+
+## 2026-11-10 U3 started (operator order "Начинаем U3")
+Branch u3-testing-core from main fa26e3c. Order: U3-1 inventory of the pushed branches (read-only, no merge), then U3-2.. as the plan lists. Fact found before starting: main already contains tools/qa, tests/qa and the S4 results (S4 accepted and merged), so U3 landing work is mostly about what the old branches hold beyond main (s4-canonical-continuation 349 commits ahead, 724 files vs main; s4-native-qa-runner 123/197; s4-reproducible-qa-automation 105/175; s4-e2e-snapshot 122/194; s5-bounded-aeve-evidence 29/69; all 413 behind main). Current task: U3-1; next step: write the classification and the machine-checked completeness check. Executor decision OD-2 (build both executors, compare) is already recorded for U3-2 and U3-7.
+
+## 2026-11-10 U3-1 implemented
+Read-only inventory of five pushed branches (docs/sdlc/u3/BRANCH_INVENTORY.md, branch_inventory_rules.json, tools/qa/branch_inventory_check.py). Result: LAND is empty for every branch; per branch (files: evidence-only / dropped / already on main): s4-canonical-continuation 724: 344/89/291; s4-native-qa-runner 197: 176/21/0; s4-reproducible-qa-automation 175: 139/31/5; s4-e2e-snapshot 194: 173/21/0; s5-bounded-aeve-evidence 69: 46/23/0. Reason: main already ships the S4 testing core (tools/qa registry, runner, report, gate_check, tests/qa seeded-failure catalog). Consequence for the sprint (my decision, to be confirmed by a read-only check): U3-3..U3-6 are land tasks with nothing to land; they reduce to confirming that main already satisfies each acceptance text, with the re-earned counts NOT_RUN (pytest forbidden). Real new work is U3-2 (one executor interface, two executors) and U3-7 (comparison, authorized by OD-2). Checker was run by the agent three times with exit 0 and two broken rule sets were rejected; review pending.
+
+## 2026-11-10 U3-1 review remediation
+Python review (2 MAJOR, 7 MINOR) fixed in one batch: --inventory now compares the whole header (rules hash, tips, merge-bases, per-class totals; STALE_INVENTORY on any drift; tested by flipping LAND=0 to 1); main_state split into identical / differs_conflict / differs_clean / absent_new / absent_removed_on_main / deleted_in_branch; the 12 clean-edit files were read and each got its own EVIDENCE_ONLY rule (plan documents, 8 re-stamped reports, tools/vst/sandbox.py POSIX hardening, outside U3); git calls bounded and SHA-pinned; typed errors for bad rules, empty branch, dead glob. LAND stays 0 on all five branches. Added docs/sdlc/u3/MAIN_COVERS_U3_3_TO_U3_6.md: U3-3, U3-4, U3-6 are implemented on main by S4 (re-earned counts NOT_RUN); U3-5 has the no-skip verifier in tools/qa/gate_check.py but it is advisory and not wired into tools/vst/gate.py (real work); no executor interface exists (U3-2 real work). Decision (mine, reversible): U3-3, U3-4, U3-6 get no new code; they are recorded as satisfied by S4 with the re-earn NOT_RUN. U3-5 keeps its wiring work.
+
+## 2026-11-10 U3-1 scope note
+Added docs/sdlc/u3/u3-1-gptpm-scope-note.md; GPT-PM review requested, base fa26e3c.
+
+## 2026-11-10 U3-1 GPT-PM round 1: MAJOR x1
+GPT-PM reply d37d86c4: freshness check covered only the header. Fixed: the checker now renders the whole BRANCH_INVENTORY.md (narrative in the rules notes section so the rules hash covers it) and --inventory compares the entire file byte for byte; three mutations (table cell, conflict row, narrative) each failed with STALE_INVENTORY on a temporary copy. Verification round requested.
+
+## 2026-11-10 U3-1 verification note
+Appended verification round to the scope note.
+
+## 2026-11-10 U3-1 GPT-PM APPROVE
+GPT-PM request d6892070 on base cafcb1a: APPROVE (round 1 MAJOR on whole-body freshness fixed). U3-1 accepted on static review plus the checker own runs; no pytest. Next: U3-2 executor interface; U3-3, U3-4, U3-6 recorded as satisfied by S4 (re-earn NOT_RUN); U3-5 gate wiring after U3-2.
+
+## 2026-11-10 U3-2 implemented (static only, tests NOT_RUN)
+One executor interface (tools/qa/executor.py: ExecutorReport, TestExecutor, judge with APPROVABLE / COARSE_ONLY / NON_APPROVING, closed registry vst-native and aeve-sandbox), executor A wrapping the native runner as a bounded child process (tools/qa/executor_native.py), executor B wrapping aeve sandbox project-test as a bounded child (tools/qa/executor_aeve.py; refuses any profile with mutants; compares source_head itself; per-test ids NOT_AVAILABLE so B can never be APPROVABLE by id rules), docs/sdlc/u3/EXECUTORS.md. Decisions: aeve_pin is a required argument (no default source found); native run appends evidence files into the candidate repo (documented). Not verified: AEVE exit code 1 semantics, Docker env needs, cleanup_state value set. Review pending.
+
+## 2026-11-10 U3-2 review remediation
+Python (2 MAJOR) and security (2 MAJOR) reviews fixed in one batch: native approval is candidate-attested (candidate runs its own tools.qa.run and registry), so it is capped at COARSE_ONLY unless both caller pins (registry sha256, tools/qa tree sha256) are supplied and match; HEAD and tree status re-read by the executor after the child; native record selected by run_id and category with a size-capped read from a saved offset; clean-tree precondition before launch; AEVE pin check now mirrors the router (untracked source paths), runs before reading the profile and again after the run; profile hash compared on every status; judge caps aeve-sandbox at COARSE_ONLY unconditionally; bounds and typed errors for hostile records; container cleanup unconfirmed noted on timeouts. Limits recorded: git resolution is checked (GIT_UNTRUSTED) not replaced; the VST process must run with -P and not with cwd on the candidate; reviewed behaviour is unexecuted.
+
+## 2026-11-10 U3-2 scope note
+Added docs/sdlc/u3/u3-2-gptpm-scope-note.md; GPT-PM review requested, base 58ed30c.
+
+## 2026-11-10 U3-2 GPT-PM round 1: MAJOR x1
+GPT-PM reply a6c11da7: the AEVE executor did not check candidate worktree cleanliness before or after the run. Fixed: shared worktree_dirty_paths (porcelain -z, untracked included, trusted git) in executor.py; CANDIDATE_DIRTY_BEFORE_RUN before launch and CANDIDATE_DIRTY_AFTER_RUN after, no exceptions (AEVE writes nothing into the candidate). Verification round requested.
+
+## 2026-11-10 U3-2 verification note
+Appended verification round to the scope note.
+
+## 2026-11-10 U3-2 GPT-PM review: citation verification
+Citation review of d960893 GPT-PM findings: 7 citations analyzed.
+- Native argv (run.py:114-128): SUPPORTS - all args match executor_native.py
+- AEVE argv (cli.py:198-228): UNRELATED - cli.py does not exist in this repository (AEVE is external read-only project)
+- Imports/signatures: SUPPORTS - all functions found with correct signatures
+- Native field mapping: SUPPORTS - all schema-3 record fields verified
+- Evidence ordering: SUPPORTS - appending pattern consistent
+- AEVE envelope (project_test.py:290-313): UNRELATED - external file not in this repo
+- MAJOR Finding (second category BLOCKED): SUPPORTS - fully verified
+Critical finding: GPT-PM cites cli.py:198-228 as evidence that AEVE argv matches a hand-rolled parser, but cli.py does not exist in Virtual_scrum_team; the AEVE parser is in external D:\Repo\AEVE project. This is a citation error in the review. Remaining evidence (executor_aeve.py argv pattern) is verifiable but the cited parser location is incorrect.
+
+## 2026-11-10 U3-2 GPT-PM approval
+Decision: GPT-PM APPROVE on verification round (request c9dac85f-b09c-4606-b4ce-4f787807e1d8); the dirty-worktree MAJOR is resolved by pre/post AEVE run cleanliness checks. Static review only; all tests NOT_RUN.
+
+## 2026-11-10 U3-5 implementation
+Decision: gate wiring done as a pure resolver factory tools/qa/gate_bridge.py (make_qa_artifact_resolver) feeding the existing artifact_resolver hook; gate.py authority model untouched. Resolver returns a digest only for an APPROVABLE report; stdout/stderr sliced by artifact_ranges. Limit: no caller of gate.evaluate is wired yet; receipt/path-list comparison stays the U2 open limit. Tests written, NOT_RUN.
+
+## 2026-11-10 U3-5 review remediation
+Decision: one remediation batch after python (1 MAJOR), security (2 MAJOR), test (2 MAJOR) reviews: fallback allowlist, EVIDENCE_TOO_LARGE, snapshot cache, tail range, reason redaction, real tamper and link tests. Residual limits documented in GATE_BRIDGE.md. NOT_RUN.
+
+## 2026-11-10 U3-5 GPT-PM approval
+Decision: GPT-PM APPROVE for U3-5 (request 88d868e2-afc8-4229-85b0-ad6d465dfe12) on static review; no BLOCKER/MAJOR. Tests NOT_RUN.
+
+## 2026-11-10 U3-7 static comparison
+Decision: operator chose static comparison only (AskUserQuestion); docs/sdlc/u3/EXECUTOR_COMPARISON.md written from code, no run, no numbers; selection of executor stays with operator. Found and fixed two stale statements in EXECUTORS.md (COARSE_ONLY ceiling c, AEVE PASS mapping). Real comparison run stays NOT_RUN: executor A runs pytest (forbidden), executor B has no profile file and needs Docker.
+
+## 2026-11-10 U3 sprint end plan update
+Decision: PROJECT_PLAN.md updated once for sprint U3 (U3-1..U3-6 ACCEPTED, U3-3/4/6 by S4 on main, U3-7 PARTIAL static); reports re-rendered; U2 row corrected to merged. Sprint PR to be opened; merge is the operator order.
