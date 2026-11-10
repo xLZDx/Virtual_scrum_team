@@ -2256,3 +2256,6 @@ Kind: SUCCESS. Facts: decision taken after a real comparison run, not a static g
 
 ## 2026-11-10 U4 start and U4-1 implementation
 Kind: NEUTRAL. Implementation agent output is unexecuted; reviewers next.
+
+## 2026-11-10 U4-1 review remediation
+Kind: SHORTCOMING. Facts: first implementation derived the label from the folder name and hashed raw bytes, so pins would drift per checkout; validators raised on malformed input. Root cause: brief did not demand reproducibility across checkouts. Missed by: author. Caught by: python and security reviewers. Next time: state "digest must be identical on any checkout" in the brief of any hash-pinned artifact.

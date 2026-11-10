@@ -3015,3 +3015,6 @@ Decision: operator answered "Оба" (AskUserQuestion-style wrap-up) after the m
 
 ## 2026-11-10 U4 start and U4-1 implementation
 Decision: operator ordered "GO start U4" and chose U4-1 only (AEVE edits for U4-2..U4-6 not approved yet; they wait for a separate yes). U4-1 written statically in scratch worktree D:/tmp/scratch_worktrees/u4 (branch u4-coverage-growth): tools/uc/project_roles.py scan/register/validate, tests/uc/test_u4_project_roles.py, docs/sdlc/u4/PROJECT_ROLES.md. Gate unchanged: the pin owner re-pins role_table_sha256 after a role is added. Tests NOT_RUN.
+
+## 2026-11-10 U4-1 review remediation
+Decision: one remediation batch after python (3 MAJOR), security (2 MAJOR) and test (2 MAJOR) reviews: required label, newline-normalized digest, no-raise validators, fail-closed names, exact project-entry validation, bounded descriptor reads, redaction, real link tests. NOT_RUN.
