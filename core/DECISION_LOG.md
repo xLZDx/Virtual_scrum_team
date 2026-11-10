@@ -3033,3 +3033,7 @@ Decision: GPT-PM APPROVE for U4-1 (request 3d0841e6) after one MAJOR round. U4-2
 ## 2026-11-10 Sprint U4 closed on static review
 
 U4-1 merged (PR 13). U4-2..U4-6 were implemented on AEVE branch u4-aeve-executors, each approved by GPT-PM, AEVE PR 16 opened and not merged. Plan marks U4 ACCEPTED on static review; tests NOT_RUN (operator ban). Owner step left: re-issue the VST role-table pin after the AEVE merge because the matrix digest changed.
+
+## 2026-11-11 Role-table pin re-issued after AEVE U4 merge
+
+Rebuilt catalog/role_table.json with tools/uc/role_table.py build against AEVE main 8a9f6c1 (matrix digest 9822b853...). Validator printed VALID; counts COVERED_PARTIAL 50, NOT_COVERED_NO_EXECUTOR 2, NOT_COVERED_NO_PROFILE 15, total 93. Before the rebuild validate reported 6 problems (pin head, digest, executors of a11y-architect, a11y-contract, agent-evaluation, git-worktree-ops). Old head/digest in historical docs and the seeded-failure fixture are left as records. PR 10 conflict resolved by merging main (plan from main, both log sides kept) and merged as cff9804; PR 8 was already merged, my earlier note that it was open was wrong.
