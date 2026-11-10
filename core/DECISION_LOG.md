@@ -2892,3 +2892,6 @@ Added docs/sdlc/evidence/u2-3-gptpm-scope-note.md; GPT-PM review requested, base
 
 ## 2026-11-10 U2-3 GPT-PM APPROVE
 GPT-PM request 2f54763c on base 38cc4ea to 283273f: APPROVE, 0 BLOCKER, 0 MAJOR (static review, tests NOT_RUN). U2-3 accepted. Next: U2-5 truthful coverage report with pass-token scanner.
+
+## 2026-11-10 U2-5 implemented (static only, tests NOT_RUN)
+tools/uc/coverage_report.py: uc.coverage-report.v1 per-role report with closed verdict vocabulary (CLEAN_LOCAL, FINDINGS, PARTIAL_CODE_ONLY, MODEL_RESIDUAL_OPEN, BLOCKED, NOT_COVERED), text and markdown renderings that self-check with a whole-word pass-token scanner (English and Russian), CLI, TDD section 5.4. Pass tokens are refused in any rendering of a report with a partial, residual-bearing or uncovered role; the only exemption is the exact CLEAN_LOCAL cell of a fully clean role. Known limits: ids containing pass words fail closed; no Unicode normalization; JSON format not scanned. The scanning test is written in U2-6 by the test agents. Review pending.

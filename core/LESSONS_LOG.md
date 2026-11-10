@@ -2140,3 +2140,6 @@ Kind: NEUTRAL.
 
 ## 2026-11-10 U2-3 approved
 Kind: SUCCESS. Facts: reviewer batch of three before GPT-PM left it no findings. Rule: keep reviewer batch before the GPT-PM request.
+
+## 2026-11-10 U2-5 coverage report
+Kind: NEUTRAL (review pending).
