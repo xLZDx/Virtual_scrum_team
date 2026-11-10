@@ -2817,3 +2817,6 @@ Added tools/vst/rule_coverage.py and docs/qa/aeve_required_rules.json. Finding: 
 
 ## 2026-11-10 Plan and report refresh at operator request
 Operator asked for a refreshed report and to continue. PROJECT_PLAN.md: active sprint S5; S5-A, S5-B, S5-C ACCEPTED (GPT-PM APPROVE, static review); S5-D PARTIAL (code committed, required-rule catalog empty until AEVE rule fixtures exist); S5-E NOT_STARTED. Reports re-rendered.
+
+## 2026-11-10 S5-D: four AEVE rule fixtures confirmed, required-rule catalog filled
+Synthetic fixtures AF-001..AF-004 (tests/qa/seeded_failure/aeve_fixtures) for PY-BARE-EXCEPT, PY-MUTABLE-DEFAULT-ARG, PY-RETURN-IN-FINALLY, PY-IDENTITY-LITERAL-COMPARISON; each defective variant produced the expected finding and each clean variant did not, by one aeve analyze run per variant (8 runs, AEVE HEAD 25a8fea) in temp git repos outside the repo. This was the only execution; no pytest. docs/qa/aeve_required_rules.json now lists these four as FIXTURE_LINKED; rule_coverage.py resolves AF ids from the fixture index. Residual: AEVE scans the whole git root, so any unrelated uncovered file prevents FULL coverage. Reviewers and GPT-PM pending.

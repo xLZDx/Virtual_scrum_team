@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "note": "Fixed synthetic AEVE known-issue inputs; no production code touched, no mutation. Clean PY-BARE-EXCEPT variant still yields unrelated PY-EXCEPT-SWALLOW-RETURN (not the checked rule).",
+  "aeve_head": "25a8fea79f00885d8b4e019c755020848fb981c0",
+  "command": "python -m aeve analyze --root <fresh git-init temp repo with fixture copied to src/mod.py, committed> (PYTHONPATH=D:/Repo/AEVE/src), run once per variant, 2026-11-10",
+  "outcome": "all 4 defective variants: status COMPLETE, expected finding at expected line; all 4 clean variants: expected rule absent",
+  "fixtures": [
+    {
+      "fixture_id": "AF-001",
+      "rule_slug": "py-bare-except",
+      "rule_id": "PY-BARE-EXCEPT",
+      "defective": "py-bare-except/defective/mod.py",
+      "defective_sha256": "f651306358d72d9507ac26e841d42e91641dd1fd525ed7f25948b34192c815f9",
+      "clean": "py-bare-except/clean/mod.py",
+      "clean_sha256": "a1f5a58dba8ec005f4bbd5a3d0cad4329b694859e471b2a53abd2c83fa69e267",
+      "copy_to": "src/mod.py",
+      "expected_finding": {
+        "rule_id": "PY-BARE-EXCEPT",
+        "path": "src/mod.py",
+        "line": 4
+      },
+      "defective_outcome": "finding present",
+      "clean_outcome": "no finding for this rule_id"
+    },
+    {
+      "fixture_id": "AF-002",
+      "rule_slug": "py-mutable-default-arg",
+      "rule_id": "PY-MUTABLE-DEFAULT-ARG",
+      "defective": "py-mutable-default-arg/defective/mod.py",
+      "defective_sha256": "0996d89683796dae4306bd1f438377052b379c023fc2e79d44ea50fb0428f6db",
+      "clean": "py-mutable-default-arg/clean/mod.py",
+      "clean_sha256": "d2008432d2262528ffc0b0b18edae1a44de963e3572a30a2b54a935f5c434430",
+      "copy_to": "src/mod.py",
+      "expected_finding": {
+        "rule_id": "PY-MUTABLE-DEFAULT-ARG",
+        "path": "src/mod.py",
+        "line": 1
+      },
+      "defective_outcome": "finding present",
+      "clean_outcome": "no finding for this rule_id"
+    },
+    {
+      "fixture_id": "AF-003",
+      "rule_slug": "py-return-in-finally",
+      "rule_id": "PY-RETURN-IN-FINALLY",
+      "defective": "py-return-in-finally/defective/mod.py",
+      "defective_sha256": "496d9b28ce93d431e369439901cad5743c881e7a27857a2b1489e6877ea85c20",
+      "clean": "py-return-in-finally/clean/mod.py",
+      "clean_sha256": "df21681ddd232f12e785903885bb52f3035042b3cff7f5160e69bf7e04cc7159",
+      "copy_to": "src/mod.py",
+      "expected_finding": {
+        "rule_id": "PY-RETURN-IN-FINALLY",
+        "path": "src/mod.py",
+        "line": 5
+      },
+      "defective_outcome": "finding present",
+      "clean_outcome": "no finding for this rule_id"
+    },
+    {
+      "fixture_id": "AF-004",
+      "rule_slug": "py-identity-literal-comparison",
+      "rule_id": "PY-IDENTITY-LITERAL-COMPARISON",
+      "defective": "py-identity-literal-comparison/defective/mod.py",
+      "defective_sha256": "a2a00dddde91bc1e7789b3d5aced0ffc9f5107b7e922d2c981ec32c71083c3c1",
+      "clean": "py-identity-literal-comparison/clean/mod.py",
+      "clean_sha256": "0fbc2a79da79efb5db4b9bfda8027f804928e45dbb8a7faac08ebb77be428a66",
+      "copy_to": "src/mod.py",
+      "expected_finding": {
+        "rule_id": "PY-IDENTITY-LITERAL-COMPARISON",
+        "path": "src/mod.py",
+        "line": 2
+      },
+      "defective_outcome": "finding present",
+      "clean_outcome": "no finding for this rule_id"
+    }
+  ]
+}

@@ -38,7 +38,15 @@ from .contracts import (
 )
 
 CATALOG_SCHEMA_VERSION = 1
-CATALOG_FIELDS = ("schema_version", "catalog_id", "aeve_rules_version", "s4_catalog", "note", "rules")
+CATALOG_FIELDS = (
+    "schema_version", "catalog_id", "aeve_rules_version", "s4_catalog", "aeve_fixture_index", "note", "rules",
+)
+AEVE_INDEX_FIELDS = ("schema_version", "note", "aeve_head", "command", "outcome", "fixtures")
+AEVE_FIXTURE_FIELDS = (
+    "fixture_id", "rule_slug", "rule_id", "defective", "defective_sha256", "clean", "clean_sha256",
+    "copy_to", "expected_finding", "defective_outcome", "clean_outcome",
+)
+AEVE_EXPECTED_FINDING_FIELDS = ("rule_id", "path", "line")
 ENTRY_FIELDS = ("rule_id", "requirement", "fixture_id", "marker")
 REQUIREMENTS = frozenset({"REQUIRED", "OPTIONAL"})
 MARKERS = frozenset({"FIXTURE_LINKED", "NO_FIXTURE"})
@@ -46,6 +54,7 @@ DEFAULT_CATALOG_PATH = Path("docs/qa/aeve_required_rules.json")
 MAX_CATALOG_BYTES = 1_000_000
 _HEX64 = re.compile(r"[0-9a-f]{64}")
 _FIXTURE_ID = re.compile(r"SF-[0-9]{3,}")
+_AEVE_FIXTURE_ID = re.compile(r"AF-[0-9]{3,}")
 
 
 class CoverageError(ValueError):
@@ -97,27 +106,66 @@ def s4_fixture_ids(s4_catalog: object) -> frozenset[str]:
     return frozenset(ids)
 
 
+def aeve_fixture_rules(index: object) -> dict[str, str]:
+    """AF-### fixture id -> the AEVE rule id it seeds, from a parsed aeve_fixtures/index.json.
+    Closed shape; the fixture's expected_finding must name the same rule id."""
+    if not isinstance(index, dict) or tuple(sorted(index)) != tuple(sorted(AEVE_INDEX_FIELDS)):
+        raise CoverageError("AEVE_INDEX_INVALID", "top-level keys do not match the index shape")
+    if type(index["schema_version"]) is not int or index["schema_version"] != 1:
+        raise CoverageError("AEVE_INDEX_INVALID", "schema_version must be 1")
+    fixtures = index["fixtures"]
+    if not isinstance(fixtures, list) or not fixtures:
+        raise CoverageError("AEVE_INDEX_INVALID", "fixtures must be a non-empty list")
+    out: dict[str, str] = {}
+    for position, item in enumerate(fixtures):
+        ctx = f"fixtures[{position}]"
+        if not isinstance(item, dict) or tuple(sorted(item)) != tuple(sorted(AEVE_FIXTURE_FIELDS)):
+            raise CoverageError("AEVE_INDEX_INVALID", f"{ctx}: keys do not match the fixture shape")
+        fid, rule_id = item["fixture_id"], item["rule_id"]
+        if not isinstance(fid, str) or _AEVE_FIXTURE_ID.fullmatch(fid) is None:
+            raise CoverageError("AEVE_INDEX_INVALID", f"{ctx}.fixture_id is invalid")
+        if not isinstance(rule_id, str) or not rule_id:
+            raise CoverageError("AEVE_INDEX_INVALID", f"{ctx}.rule_id is invalid")
+        for name in ("defective_sha256", "clean_sha256"):
+            if not isinstance(item[name], str) or _HEX64.fullmatch(item[name]) is None:
+                raise CoverageError("AEVE_INDEX_INVALID", f"{ctx}.{name}: must be a sha256")
+        expected = item["expected_finding"]
+        if (
+            not isinstance(expected, dict)
+            or tuple(sorted(expected)) != tuple(sorted(AEVE_EXPECTED_FINDING_FIELDS))
+            or expected["rule_id"] != rule_id
+        ):
+            raise CoverageError("AEVE_INDEX_INVALID", f"{ctx}.expected_finding must name the fixture rule_id")
+        if fid in out:
+            raise CoverageError("AEVE_INDEX_INVALID", f"{ctx}: duplicate fixture_id")
+        out[fid] = rule_id
+    if len(set(out.values())) != len(out):
+        raise CoverageError("AEVE_INDEX_INVALID", "two fixtures seed the same rule_id")
+    return out
+
+
 def validate_catalog(
     obj: object,
     *,
-    fixture_ids: Collection[str],
+    fixtures: Mapping[str, str | None],
     inventory: Collection[str] = AEVE_G2_RULE_INVENTORY,
     expected_sha256: str | None = None,
 ) -> RuleCatalog:
-    """Closed-shape validation. ``fixture_ids`` is mandatory: a REQUIRED rule must name a
-    fixture that exists in the S4 catalog, and every rule id must exist in ``inventory``."""
+    """Closed-shape validation. ``fixtures`` maps every known fixture id to the rule id it
+    seeds (AF-### from aeve_fixture_rules) or None (SF-### from the S4 catalog). A REQUIRED
+    rule must name a known fixture; an AF-### fixture must seed that very rule. Every rule id
+    must exist in ``inventory``."""
     if not isinstance(obj, dict) or tuple(sorted(obj)) != tuple(sorted(CATALOG_FIELDS)):
         raise CoverageError("CATALOG_INVALID", "top-level keys do not match the catalog shape")
     version = obj["schema_version"]
     if type(version) is not int or version != CATALOG_SCHEMA_VERSION:
         raise CoverageError("CATALOG_INVALID", f"schema_version must be {CATALOG_SCHEMA_VERSION}")
-    for name in ("catalog_id", "aeve_rules_version", "s4_catalog", "note"):
+    for name in ("catalog_id", "aeve_rules_version", "s4_catalog", "aeve_fixture_index", "note"):
         if not isinstance(obj[name], str) or not obj[name].strip():
             raise CoverageError("CATALOG_INVALID", f"{name}: must be a non-empty string")
     rules = obj["rules"]
     if not isinstance(rules, list):
         raise CoverageError("CATALOG_INVALID", "rules must be a list")
-    known_fixtures = frozenset(fixture_ids)
     known_rules = frozenset(inventory)
     ids: list[str] = []
     required: list[str] = []
@@ -135,10 +183,13 @@ def validate_catalog(
         if requirement not in REQUIREMENTS or marker not in MARKERS:
             raise CoverageError("CATALOG_INVALID", f"{ctx}: requirement/marker outside the closed enums")
         if requirement == "REQUIRED":
-            if marker != "FIXTURE_LINKED" or not isinstance(fixture_id, str) or fixture_id not in known_fixtures:
+            if marker != "FIXTURE_LINKED" or not isinstance(fixture_id, str) or fixture_id not in fixtures:
                 raise CoverageError(
-                    "REQUIRED_WITHOUT_FIXTURE", f"{ctx}: a REQUIRED rule needs a FIXTURE_LINKED S4 fixture id"
+                    "REQUIRED_WITHOUT_FIXTURE", f"{ctx}: a REQUIRED rule needs a FIXTURE_LINKED known fixture id"
                 )
+            seeded = fixtures[fixture_id]
+            if seeded is not None and seeded != rule_id:
+                raise CoverageError("FIXTURE_RULE_MISMATCH", f"{ctx}: fixture {fixture_id} seeds {seeded!r}")
             required.append(rule_id)
             fixture_by_rule[rule_id] = fixture_id
         else:
@@ -187,14 +238,22 @@ def load_catalog(
     expected_sha256: str | None = None,
     inventory: Collection[str] = AEVE_G2_RULE_INVENTORY,
 ) -> RuleCatalog:
-    """Read the committed catalog and the S4 catalog it names (relative to ``repo_root``)."""
+    """Read the committed catalog plus the S4 catalog and AEVE fixture index it names
+    (paths relative to ``repo_root``)."""
     root = Path(repo_root)
     body = _read_json(root / catalog_path)
-    s4_rel = body.get("s4_catalog") if isinstance(body, dict) else None
-    if not isinstance(s4_rel, str) or not s4_rel or s4_rel.startswith(("/", "\\")) or ".." in Path(s4_rel).parts:
-        raise CoverageError("CATALOG_INVALID", "s4_catalog must be a repo-relative path")
-    fixtures = s4_fixture_ids(_read_json(root / s4_rel))
-    return validate_catalog(body, fixture_ids=fixtures, inventory=inventory, expected_sha256=expected_sha256)
+    rels: list[str] = []
+    for name in ("s4_catalog", "aeve_fixture_index"):
+        rel = body.get(name) if isinstance(body, dict) else None
+        if not isinstance(rel, str) or not rel or rel.startswith(("/", "\\")) or ".." in Path(rel).parts or "\\" in rel:
+            raise CoverageError("CATALOG_INVALID", f"{name} must be a repo-relative '/' path")
+        rels.append(rel)
+    fixtures: dict[str, str | None] = {fid: None for fid in s4_fixture_ids(_read_json(root / rels[0]))}
+    for fid, seeded_rule in aeve_fixture_rules(_read_json(root / rels[1])).items():
+        if fid in fixtures:
+            raise CoverageError("CATALOG_INVALID", f"fixture id {fid} exists in both fixture sources")
+        fixtures[fid] = seeded_rule
+    return validate_catalog(body, fixtures=fixtures, inventory=inventory, expected_sha256=expected_sha256)
 
 
 def require_catalog_matches_manifest(manifest_v3: object, catalog: RuleCatalog) -> None:
