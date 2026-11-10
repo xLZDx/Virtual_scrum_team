@@ -2262,3 +2262,6 @@ Kind: SHORTCOMING. Facts: first implementation derived the label from the folder
 
 ## 2026-11-10 U4-1 GPT-PM round 1 MAJOR fixed
 Kind: FAILURE. Facts: three read-only reviewers missed that the validator reconstructed the expected entry from the untrusted entry. Root cause: reviewers checked the builder path and forgery shape, not who authorizes a promotion. Missed by: author, python, security and test reviewers; caught by GPT-PM. Next time: ask every reviewer "what independent evidence authorizes this state change, and does the validator receive it?".
+
+## 2026-11-10 U4-1 GPT-PM approval
+Kind: SUCCESS. Facts: approved on the verification round after the mapping fix.

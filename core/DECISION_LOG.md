@@ -3021,3 +3021,6 @@ Decision: one remediation batch after python (3 MAJOR), security (2 MAJOR) and t
 
 ## 2026-11-10 U4-1 GPT-PM round 1 MAJOR fixed
 Decision: GPT-PM request d6aa746b found the extended-table validator derived coverage authorization from the entry itself. Verified against the code, fixed by binding COVERED_PARTIAL project entries to the explicit mapping (validate --mapping). Verification round follows. NOT_RUN.
+
+## 2026-11-10 U4-1 GPT-PM approval and sprint-end plan
+Decision: GPT-PM APPROVE for U4-1 (request 3d0841e6) after one MAJOR round. U4-2..U4-6 not started: they modify AEVE and need the separate AEVE approval the operator did not give. Plan updated once: U4-1 ACCEPTED, U4 PARTIAL. Tests NOT_RUN.
