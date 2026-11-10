@@ -2104,3 +2104,6 @@ Kind: SUCCESS (implementation), review pending. Facts: 12 files, v1/v2 paths add
 
 ## 2026-11-10 U2-1 remediation
 Kind: SHORTCOMING. Facts: author function accepted any iterable and dropped role status/uncovered, so a BLOCKED role looked clean; found by python-reviewer and security-reviewer. Root cause: facts built from a dict without re-validating the source contract. Missed by: author. Caught by: reviewers. Rule: any bridge from one contract to a signed record re-validates the source contract and carries or refuses coverage state.
+
+## 2026-11-10 U2-1 scope note
+Kind: NEUTRAL. Routine scope note for the GPT-PM review.

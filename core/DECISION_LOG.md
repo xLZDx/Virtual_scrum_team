@@ -2856,3 +2856,6 @@ uc.role-result.v1 gains role_table_sha256 (hash of exact table file bytes) and a
 
 ## 2026-11-10 U2-1 review remediation
 Reviewers (python, security, functional-test) found 1 MAJOR and several MINOR; fixed in one batch: bridge_facts_from_role_result now validates the whole uc result, exact base revision, role status CLEAN/FINDINGS only, empty uncovered, non-empty residual for LOCAL_PLUS_MODEL, unique repo paths; uc residual sorted/unique max 8; aeve_head 40-hex; zero table digest refused; evidence marks role_table_sha256 and aeve_head pin_check NOT_RUN. Deferred by design to U2-4: pin comparison, findings cross-check, any-finding refusal. Deferred to U2-6: all negative tests (none exist for the v3 path).
+
+## 2026-11-10 U2-1 scope note for GPT-PM
+Added docs/sdlc/evidence/u2-1-gptpm-scope-note.md; GPT-PM review requested for base bcdd25f to HEAD.
