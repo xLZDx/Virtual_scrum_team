@@ -1,4 +1,4 @@
-# U3-7 executor comparison (static form)
+# U3-7 executor comparison (static form, plus measured results in section 6)
 
 Scope: operator decision 2026-11-10, STATIC COMPARISON ONLY. Nothing was executed while writing this
 document: no pytest, no Docker, no AEVE command, no mutation run, no project code. Every statement comes
@@ -181,3 +181,56 @@ or more reliable on real categories; that needs the section 3 runs.
 6. Not a contradiction but a gap: EXECUTORS.md does not say that the report `exit_code` for A is the pytest
    exit code from the record rather than the runner process exit code (executor_native.py:352 versus
    run.py:1185), and does not say B has no duration.
+
+## 6. Measured results (real runs, 2026-11-10, operator order)
+
+After the static report the operator ordered the real run. Both executors were run from a scratch
+worktree of origin/main 8525ce5 plus probe commits; the probe commits are on scratch branches and are
+not part of main. Mutation was excluded (profile `max_mutants` 0, `mutation_paths` empty). AEVE was not
+modified (head 25a8fea, probe READY, matrix digest 357592f3...). Docker 29.9.2, AEVE pinned image present
+locally. These are single runs, not statistics.
+
+Selected tests: executor B runs the unittest target `tests/cmp/test_compare_probe.py` (2 cases). Executor A
+runs a whole registry category; the probe was registered in the smallest category `seeded-failure`
+(9 catalog tests + 2 probe tests = 11). So the two executors did NOT run an identical test set: the unit of
+selection differs (B: profile targets; A: a registry category). The two probe cases ran in both.
+
+| Run | Head | Result | Exit | Wall time | Per-test accounting | judge verdict |
+|---|---|---|---|---|---|---|
+| A, healthy | aae2b81 | PASS | 0 | 73.4 s | expected/collected/passed 11/11/11, skipped/failed/uncollected none | COARSE_ONLY (candidate-attested; registry and runner-tree pins not supplied) |
+| B, healthy | ef8526c | PASS | 0 | 28.9 s | all per-id fields NOT_AVAILABLE | COARSE_ONLY (B is always capped) |
+| A, seeded failure | b1d200e | FAIL | 1 | 79.7 s | expected/collected 13, passed 12, failed id `tests/cmp/test_compare_probe_seeded.py::SeededFailingTests::test_seeded_failure` | NON_APPROVING (RESULT_FAIL, EXIT_NONZERO, FAILED_IDS, NOT_ALL_PASSED) |
+| B, seeded failure | 73b224a | FAIL | 3 | 25.3 s | per-id NOT_AVAILABLE; AEVE reason BASELINE_FAILED | NON_APPROVING (RESULT_FAIL, EXIT_NONZERO) |
+
+Seeded failure: one assertion `is_positive(-2)` that must fail, in a separate file on a scratch branch only.
+Both executors refused to approve. A names the exact failing test id; B reports only that the baseline
+failed. The existing catalog `tests/qa/seeded_failure/catalog.json` has no failing test, so a purpose-made
+failing case was needed.
+
+Setup cost actually paid:
+
+- A: (1) prepare a locked dependency target from the existing wheelhouse `D:/tmp/qa_s4c/wheelhouse`
+  (one command, PREPARED, pytest 9.0.3 and five more wheels); the earlier note that no trusted wheelhouse
+  exists is stale. (2) The probe had to be registered in `tools/qa/build_registry.py` and
+  `docs/qa/categories.json` regenerated on a clean tree. That regeneration added about 600 lines,
+  because main's registry was stale for the U2 and U3 test modules: executor A would refuse on main as it
+  stands until the registry is regenerated.
+- B: (1) a tracked profile file `g4.project_test_profile.v1` plus a hash-pinned installer wheel (the
+  pip 25.3 wheel from `ensurepip`, 1.7 MB, committed) and an empty requirements lock; (2) AEVE probe values
+  for the pin; (3) limits met on the way: category must be a registry category, `wall_timeout_seconds` is
+  1..60. The profile only fits stdlib-only tests (unittest, no third-party wheels); a pytest-based suite
+  would need a hash-pinned offline wheel set for the sandbox.
+
+What the real runs showed that the static report could not:
+
+- A gives full per-test accounting and names failed tests; B gives none. Both stay COARSE_ONLY or lower
+  without extra pins, so neither run yields an APPROVABLE verdict as run.
+- B was faster here (about 29 s against about 75 s), but A ran 11 tests and B 2; time is not comparable per
+  test, and each figure is one run.
+- A's host run is candidate-attested (the candidate's own runner and registry); B runs the project code in
+  a no-network container.
+
+Not measured: AEVE-side resource use, repeat-run variance, any pytest-based suite through B, any larger
+category through A, the APPROVABLE path of A with both pins supplied.
+
+The selection (keep A, keep B or keep both) remains the operator's decision.

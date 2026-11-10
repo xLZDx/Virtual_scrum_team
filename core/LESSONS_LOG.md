@@ -2247,3 +2247,6 @@ Kind: SHORTCOMING. Facts: EXECUTORS.md drifted from executor.py/executor_aeve.py
 
 ## 2026-11-10 U3 sprint end plan update
 Kind: NEUTRAL. Plan updated once at sprint end as ordered.
+
+## 2026-11-10 U3-7 measured results recorded
+Kind: SUCCESS. Facts: the real run found that main registry is stale and that the two executors do not select the same unit of tests; neither was visible in the static report. Next time: a static report is a plan, not a substitute for one cheap real run.
