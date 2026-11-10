@@ -48,7 +48,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+  "source_head": "c00ddda711904a87c1cdd02accf2597d493e9a21",
   "source_inventory": [
     {
       "path": "tests/af/test_s2_review_source_fidelity.py",
@@ -377,8 +377,8 @@
     },
     {
       "path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
-      "sha256": "b3ad0166217ca3846f9d1502e0754edc741db12451c7f11093008357a19f59ec"
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
+      "sha256": "1c5e1f18c3f7073e68c49d8a0beb6abb46bdf13c70d843536ceb5a18b8f76595"
     }
   ],
   "tests": [
@@ -27413,7 +27413,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_a_bad_protected_entry_does_not_hide_a_refusal",
       "selector": "tests/vst/test_u5_worker_gate.py::test_a_bad_protected_entry_does_not_hide_a_refusal",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27424,7 +27424,29 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_a_gate_fail_result_is_refused_with_its_reason",
       "selector": "tests/vst/test_u5_worker_gate.py::test_a_gate_fail_result_is_refused_with_its_reason",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_binary_files_differ_marker_is_accepted_as_a_path_touch",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_binary_files_differ_marker_is_accepted_as_a_path_touch",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_binary_marker_for_an_out_of_scope_path_is_still_refused",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_binary_marker_for_an_out_of_scope_path_is_still_refused",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27435,7 +27457,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_caller_protected_entries_are_refused_case_insensitively",
       "selector": "tests/vst/test_u5_worker_gate.py::test_caller_protected_entries_are_refused_case_insensitively",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27446,7 +27468,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_case_variant_of_an_allowed_path_is_refused",
       "selector": "tests/vst/test_u5_worker_gate.py::test_case_variant_of_an_allowed_path_is_refused",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27457,7 +27479,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_changed_path_missing_from_the_worktree_leaves_the_link_check_unproven",
       "selector": "tests/vst/test_u5_worker_gate.py::test_changed_path_missing_from_the_worktree_leaves_the_link_check_unproven",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27468,7 +27490,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_declared_path_absent_from_the_diff_is_refused",
       "selector": "tests/vst/test_u5_worker_gate.py::test_declared_path_absent_from_the_diff_is_refused",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27479,7 +27501,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_deleted_file_missing_from_the_worktree_is_accepted",
       "selector": "tests/vst/test_u5_worker_gate.py::test_deleted_file_missing_from_the_worktree_is_accepted",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27490,7 +27512,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_diffgate_exception_or_junk_result_is_blocked",
       "selector": "tests/vst/test_u5_worker_gate.py::test_diffgate_exception_or_junk_result_is_blocked",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27501,7 +27523,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_diffgate_loader_error_is_blocked",
       "selector": "tests/vst/test_u5_worker_gate.py::test_diffgate_loader_error_is_blocked",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27512,7 +27534,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_diffgate_missing_from_modules_is_blocked",
       "selector": "tests/vst/test_u5_worker_gate.py::test_diffgate_missing_from_modules_is_blocked",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27523,7 +27545,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_diffgate_without_check_diff_is_blocked",
       "selector": "tests/vst/test_u5_worker_gate.py::test_diffgate_without_check_diff_is_blocked",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27534,7 +27556,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_dot_git_is_a_valid_caller_protected_entry",
       "selector": "tests/vst/test_u5_worker_gate.py::test_dot_git_is_a_valid_caller_protected_entry",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27545,7 +27567,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_dot_git_path_is_refused_outside_scope_and_when_listed_as_allowed",
       "selector": "tests/vst/test_u5_worker_gate.py::test_dot_git_path_is_refused_outside_scope_and_when_listed_as_allowed",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27556,7 +27578,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_duplicate_changed_paths_are_accepted_once",
       "selector": "tests/vst/test_u5_worker_gate.py::test_duplicate_changed_paths_are_accepted_once",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27567,7 +27589,18 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_failed_isolation_property_is_refused_and_not_listed_as_verified",
       "selector": "tests/vst/test_u5_worker_gate.py::test_failed_isolation_property_is_refused_and_not_listed_as_verified",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_git_binary_patch_is_unsupported_and_blocked",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_git_binary_patch_is_unsupported_and_blocked",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27578,7 +27611,18 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_hazardous_allowed_entry_never_matches_and_does_not_block",
       "selector": "tests/vst/test_u5_worker_gate.py::test_hazardous_allowed_entry_never_matches_and_does_not_block",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_header_only_first_block_before_a_good_block_is_blocked",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_header_only_first_block_before_a_good_block_is_blocked",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27589,7 +27633,18 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_in_scope_change_is_accepted_with_gate_evidence",
       "selector": "tests/vst/test_u5_worker_gate.py::test_in_scope_change_is_accepted_with_gate_evidence",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_incomplete_blocks_are_blocked_with_the_header_only_reason",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_incomplete_blocks_are_blocked_with_the_header_only_reason",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27600,7 +27655,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_junction_on_a_changed_path_is_refused",
       "selector": "tests/vst/test_u5_worker_gate.py::test_junction_on_a_changed_path_is_refused",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27611,7 +27666,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_link_check_counts_inspected_components",
       "selector": "tests/vst/test_u5_worker_gate.py::test_link_check_counts_inspected_components",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27622,7 +27677,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_malformed_input_is_blocked_never_accepted",
       "selector": "tests/vst/test_u5_worker_gate.py::test_malformed_input_is_blocked_never_accepted",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27633,7 +27688,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_malformed_worker_output_is_blocked",
       "selector": "tests/vst/test_u5_worker_gate.py::test_malformed_worker_output_is_blocked",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27644,7 +27699,18 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_missing_or_different_worktree_head_is_not_verified_and_blocks",
       "selector": "tests/vst/test_u5_worker_gate.py::test_missing_or_different_worktree_head_is_not_verified_and_blocks",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_mode_only_block_is_accepted",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_mode_only_block_is_accepted",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27655,7 +27721,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_more_than_128_paths_is_blocked",
       "selector": "tests/vst/test_u5_worker_gate.py::test_more_than_128_paths_is_blocked",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27666,7 +27732,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_network_flag_is_described_as_a_flag_not_enforcement",
       "selector": "tests/vst/test_u5_worker_gate.py::test_network_flag_is_described_as_a_flag_not_enforcement",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27677,7 +27743,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_non_ascii_path_is_echoed_as_ascii",
       "selector": "tests/vst/test_u5_worker_gate.py::test_non_ascii_path_is_echoed_as_ascii",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27688,7 +27754,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_non_boolean_network_flag_is_not_verified",
       "selector": "tests/vst/test_u5_worker_gate.py::test_non_boolean_network_flag_is_not_verified",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27699,7 +27765,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_nonstandard_file_mode_is_refused",
       "selector": "tests/vst/test_u5_worker_gate.py::test_nonstandard_file_mode_is_refused",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27710,7 +27776,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_not_verified_items_stay_listed_even_when_the_change_is_refused",
       "selector": "tests/vst/test_u5_worker_gate.py::test_not_verified_items_stay_listed_even_when_the_change_is_refused",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27721,7 +27787,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_out_of_scope_change_is_refused",
       "selector": "tests/vst/test_u5_worker_gate.py::test_out_of_scope_change_is_refused",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27732,7 +27798,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_over_long_header_line_is_blocked",
       "selector": "tests/vst/test_u5_worker_gate.py::test_over_long_header_line_is_blocked",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27743,7 +27809,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_oversized_diff_is_blocked",
       "selector": "tests/vst/test_u5_worker_gate.py::test_oversized_diff_is_blocked",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27754,7 +27820,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_pass_evidence_for_another_candidate_head_is_blocked",
       "selector": "tests/vst/test_u5_worker_gate.py::test_pass_evidence_for_another_candidate_head_is_blocked",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27765,7 +27831,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_pass_evidence_for_other_paths_is_blocked",
       "selector": "tests/vst/test_u5_worker_gate.py::test_pass_evidence_for_other_paths_is_blocked",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27776,7 +27842,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_path_trick_is_refused",
       "selector": "tests/vst/test_u5_worker_gate.py::test_path_trick_is_refused",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27787,7 +27853,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_path_trick_listed_as_allowed_is_refused_not_blocked",
       "selector": "tests/vst/test_u5_worker_gate.py::test_path_trick_listed_as_allowed_is_refused_not_blocked",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27798,7 +27864,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_path_trick_reports_its_named_hazard",
       "selector": "tests/vst/test_u5_worker_gate.py::test_path_trick_reports_its_named_hazard",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27809,7 +27875,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_promoting_a_proof_entry_is_detected",
       "selector": "tests/vst/test_u5_worker_gate.py::test_promoting_a_proof_entry_is_detected",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27820,7 +27886,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_proof_separates_verified_caller_asserted_and_not_verified",
       "selector": "tests/vst/test_u5_worker_gate.py::test_proof_separates_verified_caller_asserted_and_not_verified",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27831,7 +27897,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_protected_name_alias_is_refused_as_hazard_and_as_protected",
       "selector": "tests/vst/test_u5_worker_gate.py::test_protected_name_alias_is_refused_as_hazard_and_as_protected",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27842,7 +27908,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_protected_path_is_refused_even_when_listed_as_allowed",
       "selector": "tests/vst/test_u5_worker_gate.py::test_protected_path_is_refused_even_when_listed_as_allowed",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27853,7 +27919,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_refusal_outranks_a_blocking_isolation_reason",
       "selector": "tests/vst/test_u5_worker_gate.py::test_refusal_outranks_a_blocking_isolation_reason",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27864,7 +27930,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_refusal_outranks_an_unparsable_diff",
       "selector": "tests/vst/test_u5_worker_gate.py::test_refusal_outranks_an_unparsable_diff",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27875,7 +27941,18 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_rename_into_protected_path_is_refused",
       "selector": "tests/vst/test_u5_worker_gate.py::test_rename_into_protected_path_is_refused",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_rename_only_block_is_accepted",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_rename_only_block_is_accepted",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27886,7 +27963,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_rename_out_of_a_protected_path_is_refused_on_the_source",
       "selector": "tests/vst/test_u5_worker_gate.py::test_rename_out_of_a_protected_path_is_refused_on_the_source",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27897,7 +27974,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_rename_source_omitted_from_declared_paths_is_refused",
       "selector": "tests/vst/test_u5_worker_gate.py::test_rename_source_omitted_from_declared_paths_is_refused",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27908,7 +27985,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_resolved_path_leaving_the_worktree_is_refused",
       "selector": "tests/vst/test_u5_worker_gate.py::test_resolved_path_leaving_the_worktree_is_refused",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27919,7 +27996,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_response_bound_to_another_manifest_is_blocked",
       "selector": "tests/vst/test_u5_worker_gate.py::test_response_bound_to_another_manifest_is_blocked",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27930,7 +28007,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_roots_on_different_drives_are_disjoint",
       "selector": "tests/vst/test_u5_worker_gate.py::test_roots_on_different_drives_are_disjoint",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27941,7 +28018,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_submodule_change_is_refused",
       "selector": "tests/vst/test_u5_worker_gate.py::test_submodule_change_is_refused",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27952,7 +28029,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_symlink_mode_change_is_refused",
       "selector": "tests/vst/test_u5_worker_gate.py::test_symlink_mode_change_is_refused",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27963,7 +28040,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_text_outside_the_git_block_grammar_is_not_accepted",
       "selector": "tests/vst/test_u5_worker_gate.py::test_text_outside_the_git_block_grammar_is_not_accepted",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27974,7 +28051,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_truncated_or_inconsistent_hunks_are_not_accepted",
       "selector": "tests/vst/test_u5_worker_gate.py::test_truncated_or_inconsistent_hunks_are_not_accepted",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27985,7 +28062,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_understated_changed_paths_are_refused",
       "selector": "tests/vst/test_u5_worker_gate.py::test_understated_changed_paths_are_refused",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -27996,7 +28073,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_uninspectable_worktree_blocks_and_link_check_is_not_verified",
       "selector": "tests/vst/test_u5_worker_gate.py::test_uninspectable_worktree_blocks_and_link_check_is_not_verified",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -28007,7 +28084,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_unparsable_diff_is_blocked",
       "selector": "tests/vst/test_u5_worker_gate.py::test_unparsable_diff_is_blocked",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -28018,7 +28095,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_unrelated_path_next_to_a_protected_prefix_is_not_protected",
       "selector": "tests/vst/test_u5_worker_gate.py::test_unrelated_path_next_to_a_protected_prefix_is_not_protected",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -28029,7 +28106,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_worker_response_in_scope_is_accepted",
       "selector": "tests/vst/test_u5_worker_gate.py::test_worker_response_in_scope_is_accepted",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -28040,7 +28117,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_worker_response_out_of_scope_is_refused",
       "selector": "tests/vst/test_u5_worker_gate.py::test_worker_response_out_of_scope_is_refused",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -28051,7 +28128,7 @@
       "test_id": "tests/vst/test_u5_worker_gate.py::test_worker_that_did_not_succeed_is_blocked",
       "selector": "tests/vst/test_u5_worker_gate.py::test_worker_that_did_not_succeed_is_blocked",
       "source_path": "tests/vst/test_u5_worker_gate.py",
-      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -28928,6 +29005,8 @@
         "tests/vst/test_u2_gate.py::test_v2_gate_behaviour_is_unchanged_by_the_presence_of_analyzer_trust",
         "tests/vst/test_u5_worker_gate.py::test_a_bad_protected_entry_does_not_hide_a_refusal",
         "tests/vst/test_u5_worker_gate.py::test_a_gate_fail_result_is_refused_with_its_reason",
+        "tests/vst/test_u5_worker_gate.py::test_binary_files_differ_marker_is_accepted_as_a_path_touch",
+        "tests/vst/test_u5_worker_gate.py::test_binary_marker_for_an_out_of_scope_path_is_still_refused",
         "tests/vst/test_u5_worker_gate.py::test_caller_protected_entries_are_refused_case_insensitively",
         "tests/vst/test_u5_worker_gate.py::test_case_variant_of_an_allowed_path_is_refused",
         "tests/vst/test_u5_worker_gate.py::test_changed_path_missing_from_the_worktree_leaves_the_link_check_unproven",
@@ -28941,13 +29020,17 @@
         "tests/vst/test_u5_worker_gate.py::test_dot_git_path_is_refused_outside_scope_and_when_listed_as_allowed",
         "tests/vst/test_u5_worker_gate.py::test_duplicate_changed_paths_are_accepted_once",
         "tests/vst/test_u5_worker_gate.py::test_failed_isolation_property_is_refused_and_not_listed_as_verified",
+        "tests/vst/test_u5_worker_gate.py::test_git_binary_patch_is_unsupported_and_blocked",
         "tests/vst/test_u5_worker_gate.py::test_hazardous_allowed_entry_never_matches_and_does_not_block",
+        "tests/vst/test_u5_worker_gate.py::test_header_only_first_block_before_a_good_block_is_blocked",
         "tests/vst/test_u5_worker_gate.py::test_in_scope_change_is_accepted_with_gate_evidence",
+        "tests/vst/test_u5_worker_gate.py::test_incomplete_blocks_are_blocked_with_the_header_only_reason",
         "tests/vst/test_u5_worker_gate.py::test_junction_on_a_changed_path_is_refused",
         "tests/vst/test_u5_worker_gate.py::test_link_check_counts_inspected_components",
         "tests/vst/test_u5_worker_gate.py::test_malformed_input_is_blocked_never_accepted",
         "tests/vst/test_u5_worker_gate.py::test_malformed_worker_output_is_blocked",
         "tests/vst/test_u5_worker_gate.py::test_missing_or_different_worktree_head_is_not_verified_and_blocks",
+        "tests/vst/test_u5_worker_gate.py::test_mode_only_block_is_accepted",
         "tests/vst/test_u5_worker_gate.py::test_more_than_128_paths_is_blocked",
         "tests/vst/test_u5_worker_gate.py::test_network_flag_is_described_as_a_flag_not_enforcement",
         "tests/vst/test_u5_worker_gate.py::test_non_ascii_path_is_echoed_as_ascii",
@@ -28969,6 +29052,7 @@
         "tests/vst/test_u5_worker_gate.py::test_refusal_outranks_a_blocking_isolation_reason",
         "tests/vst/test_u5_worker_gate.py::test_refusal_outranks_an_unparsable_diff",
         "tests/vst/test_u5_worker_gate.py::test_rename_into_protected_path_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_rename_only_block_is_accepted",
         "tests/vst/test_u5_worker_gate.py::test_rename_out_of_a_protected_path_is_refused_on_the_source",
         "tests/vst/test_u5_worker_gate.py::test_rename_source_omitted_from_declared_paths_is_refused",
         "tests/vst/test_u5_worker_gate.py::test_resolved_path_leaving_the_worktree_is_refused",
@@ -32788,6 +32872,8 @@
         "tests/vst/test_u2_gate.py::test_v2_gate_behaviour_is_unchanged_by_the_presence_of_analyzer_trust",
         "tests/vst/test_u5_worker_gate.py::test_a_bad_protected_entry_does_not_hide_a_refusal",
         "tests/vst/test_u5_worker_gate.py::test_a_gate_fail_result_is_refused_with_its_reason",
+        "tests/vst/test_u5_worker_gate.py::test_binary_files_differ_marker_is_accepted_as_a_path_touch",
+        "tests/vst/test_u5_worker_gate.py::test_binary_marker_for_an_out_of_scope_path_is_still_refused",
         "tests/vst/test_u5_worker_gate.py::test_caller_protected_entries_are_refused_case_insensitively",
         "tests/vst/test_u5_worker_gate.py::test_case_variant_of_an_allowed_path_is_refused",
         "tests/vst/test_u5_worker_gate.py::test_changed_path_missing_from_the_worktree_leaves_the_link_check_unproven",
@@ -32801,13 +32887,17 @@
         "tests/vst/test_u5_worker_gate.py::test_dot_git_path_is_refused_outside_scope_and_when_listed_as_allowed",
         "tests/vst/test_u5_worker_gate.py::test_duplicate_changed_paths_are_accepted_once",
         "tests/vst/test_u5_worker_gate.py::test_failed_isolation_property_is_refused_and_not_listed_as_verified",
+        "tests/vst/test_u5_worker_gate.py::test_git_binary_patch_is_unsupported_and_blocked",
         "tests/vst/test_u5_worker_gate.py::test_hazardous_allowed_entry_never_matches_and_does_not_block",
+        "tests/vst/test_u5_worker_gate.py::test_header_only_first_block_before_a_good_block_is_blocked",
         "tests/vst/test_u5_worker_gate.py::test_in_scope_change_is_accepted_with_gate_evidence",
+        "tests/vst/test_u5_worker_gate.py::test_incomplete_blocks_are_blocked_with_the_header_only_reason",
         "tests/vst/test_u5_worker_gate.py::test_junction_on_a_changed_path_is_refused",
         "tests/vst/test_u5_worker_gate.py::test_link_check_counts_inspected_components",
         "tests/vst/test_u5_worker_gate.py::test_malformed_input_is_blocked_never_accepted",
         "tests/vst/test_u5_worker_gate.py::test_malformed_worker_output_is_blocked",
         "tests/vst/test_u5_worker_gate.py::test_missing_or_different_worktree_head_is_not_verified_and_blocks",
+        "tests/vst/test_u5_worker_gate.py::test_mode_only_block_is_accepted",
         "tests/vst/test_u5_worker_gate.py::test_more_than_128_paths_is_blocked",
         "tests/vst/test_u5_worker_gate.py::test_network_flag_is_described_as_a_flag_not_enforcement",
         "tests/vst/test_u5_worker_gate.py::test_non_ascii_path_is_echoed_as_ascii",
@@ -32829,6 +32919,7 @@
         "tests/vst/test_u5_worker_gate.py::test_refusal_outranks_a_blocking_isolation_reason",
         "tests/vst/test_u5_worker_gate.py::test_refusal_outranks_an_unparsable_diff",
         "tests/vst/test_u5_worker_gate.py::test_rename_into_protected_path_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_rename_only_block_is_accepted",
         "tests/vst/test_u5_worker_gate.py::test_rename_out_of_a_protected_path_is_refused_on_the_source",
         "tests/vst/test_u5_worker_gate.py::test_rename_source_omitted_from_declared_paths_is_refused",
         "tests/vst/test_u5_worker_gate.py::test_resolved_path_leaving_the_worktree_is_refused",

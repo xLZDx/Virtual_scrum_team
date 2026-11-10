@@ -3053,3 +3053,7 @@ Regenerated docs/qa/categories.json with tools.qa.build_registry --write after t
 ## 2026-11-11 U5-1 GPT-PM verification round
 
 Decision: worker_gate.py now requires every diff block to carry a complete change (hunk, rename/copy pair, mode-only, new/deleted file mode, or Binary marker) and treats `GIT binary patch` as unsupported (BLOCKED). Binary-files markers are path-touch only. Tests NOT_RUN.
+
+## 2026-11-11 U5-1 registry regenerated after the GPT-PM fix
+
+Regenerated docs/qa/categories.json after the parser fix commit so the registry matches the committed test file. Tests NOT_RUN.

@@ -2291,3 +2291,7 @@ The registry needs the committed test file, so it is regenerated in its own comm
 
 ## 2026-11-11 U5-1 GPT-PM incomplete-block finding
 Kind: FAILURE. Facts: GPT-PM found that a header-only diff block and bytes after a binary patch marker were accepted; the three reviewers missed it. Root cause: reviewers and tests checked mismatch cases, not under-specified blocks. Missed by: author and three reviewers; caught by GPT-PM. Next time: for any parser, ask what the smallest accepted input is and test it, plus every terminal state at end of input.
+
+## 2026-11-11 SUCCESS registry regenerated again
+
+The registry follows every change to a registered test file; regenerate after each such commit. Rule: run build_registry --write after the commit that touches tests.
