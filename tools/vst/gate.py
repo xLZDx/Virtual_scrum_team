@@ -110,6 +110,7 @@ import hashlib
 from typing import Any, Callable
 
 from .contracts import (
+    RECEIPT_V3_LABEL,
     SUPERVISOR_SLOT,
     ContractError,
     derive_result,
@@ -250,6 +251,7 @@ def _check_receipt(
     v2: bool,
     signer_key: bytes | None,
     hard: list[str],
+    analyzer_key: bytes | None = None,
 ) -> tuple[dict | None, bool, bool]:
     """Return (good_receipt_or_None, belongs_to_task, is_future_epoch).
 
@@ -273,12 +275,11 @@ def _check_receipt(
     if receipt["manifest_sha256"] != manifest_hash:
         hard.append(f"{label} manifest_sha256 does not match the manifest")
         return None, True, False
-    if receipt.get("contract_version") == 3:
-        hard.append(f"{label} v3 gate wiring not implemented (S5-E)")
-        return None, True, False
-    if (receipt.get("contract_version") == 2) != v2:
+    # Exact version compare: v1 receipts carry no contract_version (version 1).
+    if receipt.get("contract_version", 1) != manifest.get("contract_version", 1):
         hard.append(f"{label} contract version does not match manifest")
         return None, True, False
+    v3 = manifest.get("contract_version") == 3
     if receipt["role_sha256"] != manifest["role_sha256"]:
         hard.append(f"{label} role_sha256 does not match the manifest")
         return None, True, False
@@ -289,7 +290,11 @@ def _check_receipt(
         future = True
         if not is_supervisor:
             return None, True, True
-    if receipt["receipt_type"] == "IndependentReview" and v2:
+    if v3 and receipt["receipt_type"] == "StaticAnalysis":
+        # Only the analyzer authority may sign a v3 StaticAnalysis receipt.
+        signing_key = analyzer_key
+        signature_label = RECEIPT_V3_LABEL
+    elif receipt["receipt_type"] == "IndependentReview" and v2:
         signing_key = reviewer_keys.get(receipt["reviewer_key_id"])
         signature_label = REVIEWER_LABEL
     elif receipt["receipt_type"] == "TestRun" and v2:
@@ -297,7 +302,7 @@ def _check_receipt(
         signature_label = None
     else:
         signing_key = supervisor_key if is_supervisor else key
-        signature_label = RECEIPT_V2_LABEL if v2 else RECEIPT_LABEL
+        signature_label = RECEIPT_V3_LABEL if v3 else (RECEIPT_V2_LABEL if v2 else RECEIPT_LABEL)
     if receipt["receipt_type"] == "TestRun" and v2:
         att = receipt["runner_attestation"]
         signed_request = {**att["request"], "signature": att["signature"]}
@@ -418,6 +423,96 @@ def _check_supervisor_chain(
             )
 
 
+_V3_RUN_FIELDS = (
+    "analyzer_id", "analyzer_version", "analyzer_sha256", "profile_id",
+    "profile_sha256", "source_tree_sha256", "report_sha256", "run_id", "nonce",
+    "analysis_scope",
+)
+_V3_RECEIPT_FIELDS = tuple(f for f in _V3_RUN_FIELDS if f not in ("run_id", "nonce"))
+_BLOCKING_SEVERITIES = frozenset({"HIGH", "CRITICAL"})
+
+
+def _check_static_v3(
+    slot: str,
+    latest: dict,
+    manifest: dict,
+    findings: list[str],
+    hard: list[str],
+    soft: list[str],
+    trust: Any,
+) -> tuple[bool, set[str]]:
+    """Deciding v3 StaticAnalysis receipt (current head and epoch already checked).
+
+    Satisfied only by analyzer-authority evidence that verifies with the full
+    role-key roster and the full verifier-owned binding; the one-shot nonce is
+    consumed last, only when every other check passed. Returns (ok, acceptance).
+    """
+    from .analyzer_authority import verify_analyzer_evidence
+    from .contracts import require_static_rule_set_matches_manifest
+    from .rule_coverage import (
+        FROZEN_CATALOG_SHA256, CoverageError, require_catalog_matches_manifest,
+    )
+
+    label = f"slot {slot!r}"
+    try:
+        require_static_rule_set_matches_manifest(manifest, latest)
+    except ContractError as exc:
+        hard.append(f"{label}: {exc}")
+        return False, set()
+    required = set(manifest["required_rule_ids"])
+    if (latest["coverage"] != "FULL" or latest["unsupported_rules"]
+            or set(latest["covered_rules"]) != required):
+        soft.append(f"{label}: static analysis coverage is not FULL for the required rules")
+        return False, set()
+    blocking = [f for f in latest["findings"] if f["severity"] in _BLOCKING_SEVERITIES]
+    for f in latest["findings"]:
+        findings.append(
+            f"static finding: {f['rule_id']} {f['severity']} {f['path']}:{f['line']}"
+        )
+    if blocking:
+        soft.append(f"{label}: HIGH/CRITICAL static findings present")
+        return False, set()
+    run = trust["runs"].get(latest["receipt_id"]) if isinstance(trust, dict) and isinstance(trust.get("runs"), dict) else None
+    if not isinstance(run, dict) or not isinstance(run.get("evidence"), dict) \
+            or not isinstance(run.get("expected"), dict):
+        hard.append(f"{label}: analyzer authority evidence missing for the receipt")
+        return False, set()
+    try:
+        catalog = trust["catalog"]
+        if catalog.sha256 != FROZEN_CATALOG_SHA256:
+            raise CoverageError("CATALOG_PIN_MISMATCH", "catalog is not the frozen catalog")
+        require_catalog_matches_manifest(manifest, catalog)
+    except Exception as exc:
+        hard.append(f"{label}: frozen rule catalog check failed: {type(exc).__name__}")
+        return False, set()
+    expected = run["expected"]
+    for name in _V3_RECEIPT_FIELDS:
+        if name not in expected or type(expected[name]) is not type(latest[name]) \
+                or expected[name] != latest[name]:
+            hard.append(f"{label}: receipt {name} does not match the verifier-owned expectation")
+            return False, set()
+    binding = {name: expected.get(name) for name in _V3_RUN_FIELDS}
+    binding.update(
+        manifest_sha256=latest["manifest_sha256"],
+        candidate_head=latest["candidate_head"],
+        epoch=latest["epoch"],
+    )
+    try:
+        ok = verify_analyzer_evidence(
+            run["evidence"], trust["analyzer_key"], expected_binding=binding,
+            consume_nonce=trust["consume_nonce"], other_role_keys=trust["other_role_keys"],
+        )
+    except Exception as exc:  # programmer error in trust config: default-deny
+        hard.append(f"{label}: analyzer trust configuration invalid: {type(exc).__name__}")
+        return False, set()
+    if not ok:
+        hard.append(f"{label}: analyzer authority evidence rejected (forged, mismatched or replayed)")
+        return False, set()
+    # AC-9: static evidence never contributes functional-test acceptance.
+    test_ids = {a for t in manifest["required_tests"] for a in t["acceptance"]}
+    return True, (set(latest["covered_acceptance"]) & set(manifest["acceptance"])) - test_ids
+
+
 def _check_latest(
     slot: str,
     latest: dict,
@@ -427,6 +522,7 @@ def _check_latest(
     soft: list[str],
     parser_catalog: Any,
     signer_key: bytes | None,
+    analyzer_trust: Any = None,
 ) -> tuple[bool, set[str]]:
     """Per-type checks on the latest current-epoch attempt.
 
@@ -504,6 +600,10 @@ def _check_latest(
                 contribution.update(test["acceptance"])
         return ok, contribution
     if rtype == "StaticAnalysis":
+        if latest.get("contract_version") == 3:
+            return _check_static_v3(
+                slot, latest, manifest, findings, hard, soft, analyzer_trust
+            )
         required_rules = {
             r["rule_id"] for r in manifest["required_rules"] if r["slot"] == slot
         }
@@ -629,6 +729,7 @@ def evaluate(
     signer_key: bytes | None = None,
     event_key: bytes | None = None,
     verified_successor_attempts: dict[str, set[int]] | None = None,
+    analyzer_trust: dict | None = None,
 ) -> dict:
     """Compute the GateDecision for one task candidate. See module docstring.
 
@@ -702,13 +803,32 @@ def evaluate(
             acceptance_unmet=[], reasons=hard,
         )
 
+    analyzer_key: bytes | None = None
     if valid_manifest.get("contract_version") == 3:
-        hard.append("v3 manifest: v3 gate wiring not implemented (S5-E)")
-        return _build_decision(
-            task_id, current_head, current_epoch, "NO_GO",
-            hashes=[], findings=[], approvals=[], waiver_record=None,
-            acceptance_unmet=list(valid_manifest["acceptance"]), reasons=hard,
-        )
+        trust = analyzer_trust
+        if (not isinstance(trust, dict)
+                or not {"analyzer_key", "other_role_keys", "consume_nonce", "catalog", "runs"} <= set(trust)
+                or not _key_ok(trust.get("analyzer_key"))
+                or not isinstance(trust.get("other_role_keys"), dict)):
+            hard.append("v3 gate requires analyzer_trust with analyzer_key, other_role_keys, "
+                        "consume_nonce, catalog and runs")
+            fatal = True
+        else:
+            analyzer_key = bytes(trust["analyzer_key"])
+            roster = trust["other_role_keys"]
+            gate_roles = {"worker": key, "supervisor": supervisor_key, "operator": operator_key,
+                          "event": event_key, "runner_signer": signer_key}
+            for role, gate_value in gate_roles.items():
+                if gate_value is not None and _key_ok(gate_value) and not (
+                        isinstance(roster.get(role), (bytes, bytearray))
+                        and bytes(roster[role]) == bytes(gate_value)):
+                    hard.append(f"analyzer_trust.other_role_keys[{role!r}] does not match the gate key")
+                    fatal = True
+            for name, value in list(gate_roles.items()) + [
+                    (f"reviewer:{k}", v) for k, v in (reviewer_keys.items() if isinstance(reviewer_keys, dict) else [])]:
+                if _key_ok(value) and bytes(value) == analyzer_key:
+                    hard.append(f"analyzer key must differ from the {name} key")
+                    fatal = True
 
     if fatal:
         return _build_decision(
@@ -718,7 +838,7 @@ def evaluate(
         )
 
     manifest_hash = manifest_sha256(valid_manifest)
-    is_v2 = valid_manifest.get("contract_version") == 2
+    is_v2 = valid_manifest.get("contract_version") in (2, 3)
     registry_map: dict[str, str] = {}
     trusted_reviewers = reviewer_keys or {}
     if is_v2:
@@ -742,6 +862,7 @@ def evaluate(
             index, raw, valid_manifest, manifest_hash, current_epoch,
             bytes(key), bytes(supervisor_key), trusted_reviewers, is_v2,
             bytes(signer_key) if _key_ok(signer_key) else None, hard,
+            analyzer_key,
         )
         own_count += 1 if own else 0
         stale_count += 1 if future else 0
@@ -828,7 +949,7 @@ def evaluate(
             continue
         slot_ok, contribution = _check_latest(
             slot, latest, valid_manifest, findings, hard, soft,
-            TRUSTED_PARSER_CATALOG, signer_key,
+            TRUSTED_PARSER_CATALOG, signer_key, analyzer_trust,
         )
         if latest["result"] != "PASS":
             soft.append(

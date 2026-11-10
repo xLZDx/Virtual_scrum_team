@@ -2832,3 +2832,6 @@ GPT-PM (reply 6e459700) returned 1 MAJOR at head 3cd5ad3: load_catalog accepted 
 
 ## 2026-11-10 S5-D accepted (GPT-PM APPROVE, verification round)
 GPT-PM APPROVE, 0 BLOCKER, 0 MAJOR, reply da4d7998, for the correction at head 757d7ba (round 1 had MAJOR x1: the loader did not compare the pin). Static review only; fixture confirmation runs were not independently reproduced by GPT-PM. NOT_RUN: tests. Next: S5-E (exact-head gate and reproducible evidence integration), the last S5 task.
+
+## 2026-11-10 S5-E coded: exact-head gate wiring and evidence record (VST-042)
+Replaced the v3 fail-closed stubs in tools/vst/gate.py by real handling: evaluate(..., analyzer_trust=None) with caller-injected analyzer key, full role roster, consume_nonce, frozen catalog and verifier-owned expected values per run; static v3 evidence must verify under the analyzer authority, match the manifest rule set, be FULL, and cannot cover acceptance ids that required tests map to. New tools/vst/analyzer_evidence.py builds a deterministic evidence record with NOT_RUN/UNSUPPORTED labels. v1/v2 unchanged. Open design points: the gate has no natural source for analyzer key, roster and nonce store (injected by the caller), and the caller must fill expected values from its own snapshot, not from the evidence. Not run (pytest forbidden); reviewers and GPT-PM pending.
