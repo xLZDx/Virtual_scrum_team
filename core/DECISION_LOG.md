@@ -3000,3 +3000,6 @@ Decision: one remediation batch after python (1 MAJOR), security (2 MAJOR), test
 
 ## 2026-11-10 U3-5 GPT-PM approval
 Decision: GPT-PM APPROVE for U3-5 (request 88d868e2-afc8-4229-85b0-ad6d465dfe12) on static review; no BLOCKER/MAJOR. Tests NOT_RUN.
+
+## 2026-11-10 U3-7 static comparison
+Decision: operator chose static comparison only (AskUserQuestion); docs/sdlc/u3/EXECUTOR_COMPARISON.md written from code, no run, no numbers; selection of executor stays with operator. Found and fixed two stale statements in EXECUTORS.md (COARSE_ONLY ceiling c, AEVE PASS mapping). Real comparison run stays NOT_RUN: executor A runs pytest (forbidden), executor B has no profile file and needs Docker.

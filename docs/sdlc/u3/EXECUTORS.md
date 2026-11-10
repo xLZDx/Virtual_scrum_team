@@ -31,7 +31,7 @@ Verdict rules (`judge`):
   carry one).
 - COARSE_ONLY: nothing above fails, but the ceiling applies. Ceilings: (a) `aeve-sandbox` is capped
   at COARSE_ONLY unconditionally; (b) a native report that is candidate-attested (see below), reason
-  `NATIVE_CANDIDATE_ATTESTED`; (c) any report with a per-id field NOT_AVAILABLE.
+  `NATIVE_CANDIDATE_ATTESTED`; (c) a per-id field NOT_AVAILABLE is reserved for COARSE_ONLY, but neither known executor reaches it today: a native report with a missing field is NON_APPROVING (NATIVE_FIELDS_MISSING, executor.py:344-345).
 - APPROVABLE: only a native report, with every per-id field available, everything passed, the native
   gate APPROVABLE, and both caller pins supplied and matching.
 
@@ -118,7 +118,7 @@ Preconditions: Docker Desktop CLI at `C:\Program Files\Docker\Docker\resources\b
 
 Mapping: COMPLETE with every baseline exit code 0, CLI exit 0, cleanup AUTO_REMOVED, all digests
 present, image digest `sha256:<64 hex>` (prefix stripped in the report) and matching vetted profile
-hash is PASS (coarse, still COARSE_ONLY in `judge`); a non-zero baseline is FAIL; INVALID is NOT_RUN;
+hash is PASS (coarse, still COARSE_ONLY in `judge`) only when also `baseline_runs == len(codes)`, `executed_project_code` is true and `source_head` and `head_after` equal `expected_head`, otherwise INCONCLUSIVE (executor_aeve.py:234-260); a non-zero baseline is reported by AEVE as NEEDS_REVIEW/BASELINE_FAILED and mapped to FAIL (executor_aeve.py:271-272); INVALID is NOT_RUN;
 BLOCKED is BLOCKED; TIMEOUT and CANCELLED are INCONCLUSIVE; FAILED is FAIL if project code ran, else
 BLOCKED; NEEDS_REVIEW is FAIL for BASELINE_FAILED, else INCONCLUSIVE. The AEVE reason_code is kept
 in `not_run_reasons["project-test"]` for every non-PASS result. A `profile_sha256` in the envelope

@@ -2241,3 +2241,6 @@ Kind: SHORTCOMING. Facts: first implementation had a blacklist-style path owners
 
 ## 2026-11-10 U3-5 GPT-PM approval
 Kind: SUCCESS. Facts: approved on first GPT-PM round after three-reviewer remediation. Why: pre-review by python, security and test reviewers removed the MAJORs.
+
+## 2026-11-10 U3-7 static comparison
+Kind: SHORTCOMING. Facts: EXECUTORS.md drifted from executor.py/executor_aeve.py after remediation rounds (found by the comparison writer). Root cause: remediation edits changed behavior without re-reading the doc. Missed by: author and reviewers. Next time: after each remediation batch, diff the doc claims against the code.
