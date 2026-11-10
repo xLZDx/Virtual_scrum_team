@@ -1,7 +1,7 @@
 ---
 project: Virtual_scrum_team
 as_of: 2026-11-08
-active_sprint: S5
+active_sprint: NONE
 scope: single_sprint
 approved_sprints: S2, S3, U1
 operator_approved: true
@@ -18,7 +18,7 @@ Sources: docs/sdlc/backlog.md (ordered S2 queue), docs/sdlc/acceptance.md (curre
 | S2 | Isolated worker sandbox | ACCEPTED (merged) | All S2 tasks are accepted. The bounded source/test scope (S2-1..S2-5) and the real Windows-local Owner-to-Runner process E2E (S2-4E, run 4 green) are merged into main with PR #2 (7c94c6c). Current E5 and production qualification remain NOT_RUN; do not report production readiness. |
 | S3 | Worker pilot | CLOSED_BOUNDED — S3-A and the local part of S3-C accepted; S3-B, S3-D, S3-E parked by the operator's decision of 2026-11-08 (no external candidates, single built-in worker) | Single isolated story adapter on the S2 sandbox; compare BMad Loop, hand-written loop and a durable engine on one crash/resume fixture; vendor-neutral worker interface. Existing PR #3 predates this work; it is not evidence that S3 has started or that S2 is closed. |
 | S4 | QA automation | IN_PROGRESS - active sprint by the operator's order of 2026-11-08 (S4-A, S4-B and S4-C accepted and pushed on branch s4-a-registry, S4-D active; the earlier SUPERSEDED mark was set without the operator's decision and is withdrawn); five branches are pushed to origin (s4-canonical-continuation +349 commits, s4-native-qa-runner, s4-reproducible-qa-automation, s4-e2e-snapshot-20261025-180e330) but none is on main and none is BLOCKED_EXTERNAL | Real native runners for functional, integration, API, E2E, regression and seeded failures with reproducible artifacts; a skipped test never satisfies DoD. |
-| S5 | AEVE gate | CODE_COMPLETE - S5-A..S5-E all accepted by GPT-PM on static review; no test was run (pytest forbidden by the operator), AEVE runtime and OS sandbox enforcement NOT_RUN; one sprint PR opened. Operator order of 2026-11-09: AEVE at D:\Repo\AEVE is in scope. | Bounded static review with hashes and an independent evidence/coverage receipt; truthful analyzer status; stale HEAD fails. |
+| S5 | AEVE gate | CODE_COMPLETE - S5-A..S5-E all accepted by GPT-PM on static review; no test was run (pytest forbidden by the operator), AEVE runtime and OS sandbox enforcement NOT_RUN; merged into main by PR #7 (merge commit bcdd25f). Operator order of 2026-11-09: AEVE at D:\Repo\AEVE is in scope. | Bounded static review with hashes and an independent evidence/coverage receipt; truthful analyzer status; stale HEAD fails. |
 | U1 | Local review path | PARKED - paused by the operator's order of 2026-11-09: sprints U1-U6 start only after S3, S4 and S5 are finished; the U1 tasks already approved by GPT-PM stay recorded in core/DECISION_LOG.md | AEVE performs requested review roles locally with no model call; the orchestrator has one entry point; savings are measured against a pinned baseline; wiring into the Claude host is an optional last task. |
 | U2 | Evidence into the gate | NOT_STARTED | Local review results become signed receipts bound to the exact head; the VST gate fails closed on stale, forged, partial, findings-bearing or residual-bearing evidence. |
 | U3 | Testing core | NOT_STARTED | Test-ID accounting, hash-pinned native runner and the no-skip gate land from the pushed S4 branches in reviewable parts; one local test executor is wired. |

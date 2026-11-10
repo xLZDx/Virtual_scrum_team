@@ -2847,3 +2847,6 @@ GPT-PM APPROVE, 0 BLOCKER, 0 MAJOR, reply 4b8dfd61, for the correction at head a
 
 ## 2026-11-10 Program report re-render after PR 7
 Re-rendered the project plan reports after the S5 PR was opened, as the close gate requires. No content change.
+
+## 2026-11-10 S5 merged; plan synced
+PR 7 merged into main (bcdd25f) at the operator go. PROJECT_PLAN.md: S5 marked merged, active_sprint set to NONE until the operator starts the next sprint (U1-U6 stay parked). Reports re-rendered.
