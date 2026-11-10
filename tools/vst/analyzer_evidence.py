@@ -84,13 +84,32 @@ def _missing(field: str, owners: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
-def _pin_check(pin: Any, receipt: Any, field: str) -> str:
-    """PASS/FAIL from a strict comparison of the gate pin with the receipt value; NOT_RUN if either is absent."""
+_DRIFT_CODES = {"role_table_sha256": "ROLE_TABLE_DRIFT", "aeve_head": "AEVE_HEAD_DRIFT"}
+
+
+def _pin_check(pin: Any, receipt: Any, field: str, decision: Any, satisfied: bool) -> str:
+    """Pin check label from a strict comparison of the gate pin with the receipt value.
+
+    The pin type is checked first. NOT_RUN if the pin or receipt is absent. PASS is emitted only
+    when the decision verdict is exactly APPROVE and the receipt is accepted, else NOT_RUN; FAIL
+    is emitted for a computed mismatch. A computed PASS contradicting a *_DRIFT decision reason,
+    or a computed FAIL under a plain APPROVE verdict, raises ContractError.
+    """
+    if pin is not None and type(pin) is not str:
+        raise ContractError(f"facts.pinned_{field}: must be a string")
     if pin is None or receipt is None:
         return NOT_RUN
-    if type(pin) is not str:
-        raise ContractError(f"facts.pinned_{field}: must be a string")
-    return "PASS" if receipt[field] == pin else "FAIL"
+    computed = "PASS" if receipt[field] == pin else "FAIL"
+    verdict = decision["verdict"] if decision is not None else None
+    reasons = decision["reasons"] if decision is not None else []
+    code = _DRIFT_CODES[field]
+    if computed == "PASS" and any(code in str(r) for r in reasons):
+        raise ContractError(f"facts.pinned_{field}: PASS contradicts the decision reason {code}")
+    if computed == "FAIL" and verdict == "APPROVE":
+        raise ContractError(f"facts.pinned_{field}: FAIL contradicts an APPROVE decision")
+    if computed == "PASS":
+        return "PASS" if verdict == "APPROVE" and satisfied else NOT_RUN
+    return computed
 
 
 def _derive_coverage(statuses: list[dict]) -> str:
@@ -229,9 +248,11 @@ def _build(manifest: Any, receipt: Any, decision: Any, facts_in: Any) -> dict[st
         # Signed receipt values. The pin check is PASS/FAIL only when the caller supplies the gate pin
         # (strict str equality with the receipt value); without a pin or a receipt it stays NOT_RUN.
         "role_table_sha256": rcpt("role_table_sha256"),
-        "role_table_sha256_pin_check": _pin_check(facts.get("pinned_role_table_sha256"), vr, "role_table_sha256"),
+        "role_table_sha256_pin_check": _pin_check(
+            facts.get("pinned_role_table_sha256"), vr, "role_table_sha256", vd, satisfied),
         "aeve_head": rcpt("aeve_head"),
-        "aeve_head_pin_check": _pin_check(facts.get("pinned_aeve_head"), vr, "aeve_head"),
+        "aeve_head_pin_check": _pin_check(
+            facts.get("pinned_aeve_head"), vr, "aeve_head", vd, satisfied),
         "model_residual": rcpt("model_residual"),
         "reviewed_paths_sha256": rcpt("reviewed_paths_sha256"),
         "findings_count": rcpt("findings_count"),

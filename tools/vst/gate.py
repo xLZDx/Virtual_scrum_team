@@ -432,7 +432,6 @@ _V3_RUN_FIELDS = (
     "findings_count", "highest_severity",
 )
 _V3_RECEIPT_FIELDS = tuple(f for f in _V3_RUN_FIELDS if f not in ("run_id", "nonce"))
-_BLOCKING_SEVERITIES = frozenset({"HIGH", "CRITICAL"})
 
 
 def _check_static_v3(
@@ -464,6 +463,44 @@ def _check_static_v3(
     from .rule_coverage import FROZEN_CATALOG_SHA256, RuleCatalog
 
     label = f"slot {slot!r}"
+    for f in latest["findings"]:
+        findings.append(
+            f"static finding: {f['rule_id']} {f['severity']} {f['path']}:{f['line']}"
+        )
+    # U2-4 (v3 only): these four refusals are HARD for every receipt result and coverage state,
+    # collected in one pass (none masks another) and before any other early return, so a waiver on
+    # an unmet slot can never hide them. Not waivable: the operator waiver only covers unmet
+    # NOT_RUN/INCONCLUSIVE/BLOCKED results, and hard reasons always keep the verdict at MODIFY.
+    refused = False
+    # ANY finding of ANY severity, or a signed findings_count > 0 (behaviour change vs. the
+    # former waivable soft HIGH/CRITICAL reason).
+    if latest["findings"] or latest["findings_count"] > 0:
+        hard.append(
+            f"{label}: STATIC_FINDINGS_PRESENT: {len(latest['findings'])} receipt finding(s), "
+            f"findings_count {latest['findings_count']}"
+        )
+        refused = True
+    if latest["model_residual"]:
+        hard.append(
+            f"{label}: MODEL_RESIDUAL_OPEN: {', '.join(latest['model_residual'])}"
+        )
+        refused = True
+    # Gate-owned pins: presence, type, format and strict equality; never from run["expected"].
+    pinned_early = trust.get("pinned") if isinstance(trust, dict) else None
+
+    def _is_lower_hex(value: Any, length: int, nonzero: bool) -> bool:
+        return (type(value) is str and len(value) == length
+                and all(c in "0123456789abcdef" for c in value)
+                and not (nonzero and set(value) == {"0"}))
+
+    for pin_name, code, length, nonzero in (
+            ("role_table_sha256", "ROLE_TABLE_DRIFT", 64, True),
+            ("aeve_head", "AEVE_HEAD_DRIFT", 40, False)):
+        pin = pinned_early.get(pin_name) if isinstance(pinned_early, dict) else None
+        if not _is_lower_hex(pin, length, nonzero) or pin != latest[pin_name]:
+            hard.append(f"{label}: {code}: {pin_name} differs from, or is missing/malformed in, "
+                        "the gate-pinned values")
+            refused = True
     try:
         require_static_rule_set_matches_manifest(manifest, latest)
     except ContractError as exc:
@@ -474,26 +511,9 @@ def _check_static_v3(
             or set(latest["covered_rules"]) != required):
         soft.append(f"{label}: static analysis coverage is not FULL for the required rules")
         return False, set()
-    for f in latest["findings"]:
-        findings.append(
-            f"static finding: {f['rule_id']} {f['severity']} {f['path']}:{f['line']}"
-        )
-    # U2-4 (v3 only): ANY finding of ANY severity, or a signed findings_count > 0, refuses.
-    if latest["findings"] or latest["findings_count"] > 0:
-        hard.append(
-            f"{label}: STATIC_FINDINGS_PRESENT: {len(latest['findings'])} receipt finding(s), "
-            f"findings_count {latest['findings_count']}"
-        )
+    if refused:
         return False, set()
-    # U2-4: an open model residual needs a model review that this slot cannot supply. Hard (not
-    # waivable): the operator waiver only covers NOT_RUN/INCONCLUSIVE/BLOCKED results, and this
-    # receipt result is PASS, so no existing waiver path can legitimately cover it.
-    if latest["model_residual"]:
-        hard.append(
-            f"{label}: MODEL_RESIDUAL_OPEN: {', '.join(latest['model_residual'])}"
-        )
-        return False, set()
-    run = trust["runs"].get(latest["receipt_id"]) if isinstance(trust, dict) and isinstance(trust.get("runs"), dict) else None
+    run =trust["runs"].get(latest["receipt_id"]) if isinstance(trust, dict) and isinstance(trust.get("runs"), dict) else None
     if not isinstance(run, dict) or not isinstance(run.get("evidence"), dict) \
             or not isinstance(run.get("expected"), dict):
         hard.append(f"{label}: analyzer authority evidence missing for the receipt")
@@ -522,14 +542,8 @@ def _check_static_v3(
             for n in pin_names):
         hard.append(f"{label}: analyzer/profile identity differs from the gate-pinned values")
         return False, set()
-    # U2-4: gate-owned role table and AEVE head pins; strict str equality, a missing pin refuses.
-    for pin_name, code in (("role_table_sha256", "ROLE_TABLE_DRIFT"), ("aeve_head", "AEVE_HEAD_DRIFT")):
-        if pin_name not in pinned or type(pinned[pin_name]) is not str \
-                or pinned[pin_name] != latest[pin_name]:
-            hard.append(f"{label}: {code}: {pin_name} differs from, or is missing in, the gate-pinned values")
-            return False, set()
     manifest_scope = list(manifest["scope"])
-    allowed =manifest_scope + list(manifest["change_scope"]["allowed_paths"])
+    allowed = manifest_scope + list(manifest["change_scope"]["allowed_paths"])
 
     def under(path: str, base: str) -> bool:
         return path == base or path.startswith(base.rstrip("/") + "/")
