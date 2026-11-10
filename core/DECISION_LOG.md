@@ -2962,3 +2962,6 @@ Appended verification round to the scope note.
 
 ## 2026-11-10 U3-1 GPT-PM APPROVE
 GPT-PM request d6892070 on base cafcb1a: APPROVE (round 1 MAJOR on whole-body freshness fixed). U3-1 accepted on static review plus the checker own runs; no pytest. Next: U3-2 executor interface; U3-3, U3-4, U3-6 recorded as satisfied by S4 (re-earn NOT_RUN); U3-5 gate wiring after U3-2.
+
+## 2026-11-10 U3-2 implemented (static only, tests NOT_RUN)
+One executor interface (tools/qa/executor.py: ExecutorReport, TestExecutor, judge with APPROVABLE / COARSE_ONLY / NON_APPROVING, closed registry vst-native and aeve-sandbox), executor A wrapping the native runner as a bounded child process (tools/qa/executor_native.py), executor B wrapping aeve sandbox project-test as a bounded child (tools/qa/executor_aeve.py; refuses any profile with mutants; compares source_head itself; per-test ids NOT_AVAILABLE so B can never be APPROVABLE by id rules), docs/sdlc/u3/EXECUTORS.md. Decisions: aeve_pin is a required argument (no default source found); native run appends evidence files into the candidate repo (documented). Not verified: AEVE exit code 1 semantics, Docker env needs, cleanup_state value set. Review pending.

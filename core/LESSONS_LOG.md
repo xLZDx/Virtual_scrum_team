@@ -2211,3 +2211,6 @@ Kind: NEUTRAL.
 
 ## 2026-11-10 U3-1 approved
 Kind: SUCCESS. Facts: reviewer pass plus two GPT-PM rounds. Rule: render generated documents in the checker.
+
+## 2026-11-10 U3-2 executors
+Kind: NEUTRAL (review pending). Rule: an executor that cannot supply per-test ids must be unable to reach the full approval verdict.
