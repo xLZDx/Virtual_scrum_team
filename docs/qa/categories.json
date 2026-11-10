@@ -48,7 +48,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "bd381073fb828e46e4ee24b54836737555706cb1",
+  "source_head": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
   "source_inventory": [
     {
       "path": "tests/af/test_s2_review_source_fidelity.py",
@@ -79,6 +79,11 @@
       "path": "tests/qa/test_s4f_gate_check.py",
       "source_commit": "cb0dff99157d1fd1ec7e54b3c76f533d34f963b2",
       "sha256": "ec306b5a35f7d1b551628fbc32c5accf290910aa238e1cdce8bcdb2b0535f3de"
+    },
+    {
+      "path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "sha256": "8349d9b7f989a99cee13ee2f7035b2f61f5d69eb758e8bdd45be9806bc3e218e"
     },
     {
       "path": "tests/uc/test_adapter.py",
@@ -134,6 +139,11 @@
       "path": "tests/uc/test_u2_result_bridge.py",
       "source_commit": "1e45905da2e092ba536eb6d709504bda648f1184",
       "sha256": "5a8c82b007c0e47c51e8d54a8d5edbddb4a2591e5ccc9f92260a74e9459b9774"
+    },
+    {
+      "path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "sha256": "c7e1db1468b162d46589f061576f6d2796413dc08632221708861a686a397c19"
     },
     {
       "path": "tests/uc_e2e/test_u1_router_e2e.py",
@@ -364,6 +374,11 @@
       "path": "tests/vst/test_u2_gate.py",
       "source_commit": "1e45905da2e092ba536eb6d709504bda648f1184",
       "sha256": "8640965049350ec47785645620039a518e86611afde12d0e20ef7ea3b0eeb292"
+    },
+    {
+      "path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "sha256": "b3ad0166217ca3846f9d1502e0754edc741db12451c7f11093008357a19f59ec"
     }
   ],
   "tests": [
@@ -3529,6 +3544,523 @@
       "selector": "tests/qa/test_s4f_gate_check.py::test_unsupported_category_status_in_registry",
       "source_path": "tests/qa/test_s4f_gate_check.py",
       "source_commit": "cb0dff99157d1fd1ec7e54b3c76f533d34f963b2",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_a_changed_file_invalidates_the_snapshot",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_a_changed_file_invalidates_the_snapshot",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_a_full_64_hex_head_is_accepted",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_a_full_64_hex_head_is_accepted",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_a_garbage_line_anywhere_refuses_the_whole_file",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_a_garbage_line_anywhere_refuses_the_whole_file",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_append_only_artifacts_are_verified_by_their_recorded_range",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_append_only_artifacts_are_verified_by_their_recorded_range",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_approvable_report_resolves_to_the_sha256_of_its_raw_bytes",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_approvable_report_resolves_to_the_sha256_of_its_raw_bytes",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_artifact_over_the_cap_is_a_typed_evidence_too_large",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_artifact_over_the_cap_is_a_typed_evidence_too_large",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_bad_expected_head_resolves_to_none",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_bad_expected_head_resolves_to_none",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_bytes_after_the_recorded_range_are_refused",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_bytes_after_the_recorded_range_are_refused",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_category_path_mismatch_is_the_only_extra_code",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_category_path_mismatch_is_the_only_extra_code",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_directory_in_place_of_a_file_is_refused",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_directory_in_place_of_a_file_is_refused",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_fallback_result_must_be_64_lowercase_hex",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_fallback_result_must_be_64_lowercase_hex",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_file_larger_than_stat_size_is_treated_as_changed",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_file_larger_than_stat_size_is_treated_as_changed",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_file_swapped_between_lstat_and_open_is_refused",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_file_swapped_between_lstat_and_open_is_refused",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_gate_accepts_a_receipt_listing_an_approvable_qa_report_digest",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_gate_accepts_a_receipt_listing_an_approvable_qa_report_digest",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_gate_hard_refuses_a_receipt_listing_a_non_approving_qa_report_digest",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_gate_hard_refuses_a_receipt_listing_a_non_approving_qa_report_digest",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_gate_hard_refuses_a_stale_head_qa_report",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_gate_hard_refuses_a_stale_head_qa_report",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_gate_still_denies_qa_digests_without_a_resolver",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_gate_still_denies_qa_digests_without_a_resolver",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_hard_linked_report_is_refused",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_hard_linked_report_is_refused",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_head_after_differing_alone_resolves_to_none",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_head_after_differing_alone_resolves_to_none",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_last_record_wins_so_a_newer_non_approving_run_withdraws_the_digest",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_last_record_wins_so_a_newer_non_approving_run_withdraws_the_digest",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_link_like_component_is_refused_on_the_read_path",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_link_like_component_is_refused_on_the_read_path",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_missing_files_and_unparseable_report_resolve_to_none",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_missing_files_and_unparseable_report_resolve_to_none",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_missing_or_out_of_range_artifact_range_resolves_to_none",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_missing_or_out_of_range_artifact_range_resolves_to_none",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_nlink_two_seen_by_fstat_is_refused",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_nlink_two_seen_by_fstat_is_refused",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_nlink_two_seen_by_lstat_is_refused",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_nlink_two_seen_by_lstat_is_refused",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_non_str_path_resolves_to_none",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_non_str_path_resolves_to_none",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_older_bad_record_then_newer_good_record_is_approvable",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_older_bad_record_then_newer_good_record_is_approvable",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_one_snapshot_serves_the_three_digests_of_a_receipt",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_one_snapshot_serves_the_three_digests_of_a_receipt",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_plain_non_qa_paths_use_the_fallback_when_given_and_none_otherwise",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_plain_non_qa_paths_use_the_fallback_when_given_and_none_otherwise",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_public_reader_returns_bytes_and_refuses_links",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_public_reader_returns_bytes_and_refuses_links",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_qa_other_directory_is_not_qa_owned_and_reaches_the_fallback",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_qa_other_directory_is_not_qa_owned_and_reaches_the_fallback",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_qa_owned_and_non_canonical_paths_resolve_to_none_and_never_reach_the_fallback",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_qa_owned_and_non_canonical_paths_resolve_to_none_and_never_reach_the_fallback",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_range_slice_refuses_bad_inputs",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_range_slice_refuses_bad_inputs",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_range_slice_returns_the_tail_bytes",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_range_slice_returns_the_tail_bytes",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_reason_details_are_bounded",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_reason_details_are_bounded",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_recorded_artifact_paths_must_be_the_fixed_category_paths",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_recorded_artifact_paths_must_be_the_fixed_category_paths",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_reparse_point_attribute_counts_as_a_link",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_reparse_point_attribute_counts_as_a_link",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_report_over_the_cap_is_a_typed_evidence_too_large",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_report_over_the_cap_is_a_typed_evidence_too_large",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_resolver_never_raises_for_a_bad_repo_root",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_resolver_never_raises_for_a_bad_repo_root",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_sanitize_bounds_and_redacts",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_sanitize_bounds_and_redacts",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_sibling_stdout_and_stderr_resolve_only_for_an_approvable_report",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_sibling_stdout_and_stderr_resolve_only_for_an_approvable_report",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_skipped_or_uncollected_required_id_resolves_to_none",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_skipped_or_uncollected_required_id_resolves_to_none",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_stale_candidate_head_resolves_to_none",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_stale_candidate_head_resolves_to_none",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_symlinked_report_is_refused",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_symlinked_report_is_refused",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_tampered_stderr_same_length_resolves_to_none_for_all_three_paths",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_tampered_stderr_same_length_resolves_to_none_for_all_three_paths",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_tampered_stdout_same_length_resolves_to_none_for_all_three_paths",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_tampered_stdout_same_length_resolves_to_none_for_all_three_paths",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
+      "primary_category": "qa-tooling",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/qa/test_u3_gate_bridge.py::test_unknown_category_report_path_resolves_to_none_even_when_files_exist",
+      "selector": "tests/qa/test_u3_gate_bridge.py::test_unknown_category_report_path_resolves_to_none_even_when_files_exist",
+      "source_path": "tests/qa/test_u3_gate_bridge.py",
+      "source_commit": "b47fbe89432f33267abc4708d6da21972d05cae4",
       "primary_category": "qa-tooling",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -9810,6 +10342,556 @@
       "selector": "tests/uc/test_u2_result_bridge.py::test_the_residual_is_never_repaired_or_reordered",
       "source_path": "tests/uc/test_u2_result_bridge.py",
       "source_commit": "1e45905da2e092ba536eb6d709504bda648f1184",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_a_hard_linked_agent_file_is_refused",
+      "selector": "tests/uc/test_u4_project_roles.py::test_a_hard_linked_agent_file_is_refused",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_a_mapped_table_validates_only_with_the_same_mapping",
+      "selector": "tests/uc/test_u4_project_roles.py::test_a_mapped_table_validates_only_with_the_same_mapping",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_a_mapping_entry_matching_no_manifest_entry_or_no_applied_entry_is_a_problem",
+      "selector": "tests/uc/test_u4_project_roles.py::test_a_mapping_entry_matching_no_manifest_entry_or_no_applied_entry_is_a_problem",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_a_missing_project_root_and_a_bad_label_are_refused",
+      "selector": "tests/uc/test_u4_project_roles.py::test_a_missing_project_root_and_a_bad_label_are_refused",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_a_name_equal_to_a_global_role_ignoring_case_is_refused_at_registration",
+      "selector": "tests/uc/test_u4_project_roles.py::test_a_name_equal_to_a_global_role_ignoring_case_is_refused_at_registration",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_a_quoted_key_cannot_hide_a_global_name",
+      "selector": "tests/uc/test_u4_project_roles.py::test_a_quoted_key_cannot_hide_a_global_name",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_a_symlinked_agent_file_is_refused",
+      "selector": "tests/uc/test_u4_project_roles.py::test_a_symlinked_agent_file_is_refused",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_a_symlinked_agents_directory_is_refused",
+      "selector": "tests/uc/test_u4_project_roles.py::test_a_symlinked_agents_directory_is_refused",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_a_symlinked_claude_directory_is_refused",
+      "selector": "tests/uc/test_u4_project_roles.py::test_a_symlinked_claude_directory_is_refused",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_a_symlinked_skill_directory_is_refused",
+      "selector": "tests/uc/test_u4_project_roles.py::test_a_symlinked_skill_directory_is_refused",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_a_windows_junction_is_refused",
+      "selector": "tests/uc/test_u4_project_roles.py::test_a_windows_junction_is_refused",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_adding_a_skill_editing_a_body_and_deleting_a_role_each_change_both_hashes",
+      "selector": "tests/uc/test_u4_project_roles.py::test_adding_a_skill_editing_a_body_and_deleting_a_role_each_change_both_hashes",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_adding_one_agent_changes_manifest_registers_not_covered_and_changes_table_hash",
+      "selector": "tests/uc/test_u4_project_roles.py::test_adding_one_agent_changes_manifest_registers_not_covered_and_changes_table_hash",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_bad_names_are_refused",
+      "selector": "tests/uc/test_u4_project_roles.py::test_bad_names_are_refused",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_case_sensitive_filters_ignore_other_spellings",
+      "selector": "tests/uc/test_u4_project_roles.py::test_case_sensitive_filters_ignore_other_spellings",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_cli_refuses_an_output_equal_to_an_input_and_leaves_it_untouched",
+      "selector": "tests/uc/test_u4_project_roles.py::test_cli_refuses_an_output_equal_to_an_input_and_leaves_it_untouched",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_cli_refuses_an_output_inside_the_role_directory",
+      "selector": "tests/uc/test_u4_project_roles.py::test_cli_refuses_an_output_inside_the_role_directory",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_cli_register_out_writes_the_table_and_the_summary_digest_equals_the_file_digest",
+      "selector": "tests/uc/test_u4_project_roles.py::test_cli_register_out_writes_the_table_and_the_summary_digest_equals_the_file_digest",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_cli_scan_print_writes_nothing_and_reports_the_manifest_digest",
+      "selector": "tests/uc/test_u4_project_roles.py::test_cli_scan_print_writes_nothing_and_reports_the_manifest_digest",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_cli_scan_requires_an_explicit_label",
+      "selector": "tests/uc/test_u4_project_roles.py::test_cli_scan_requires_an_explicit_label",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_cli_turns_unreadable_input_into_a_refused_line_not_a_traceback",
+      "selector": "tests/uc/test_u4_project_roles.py::test_cli_turns_unreadable_input_into_a_refused_line_not_a_traceback",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_cli_validate_reports_drift_after_a_role_is_added",
+      "selector": "tests/uc/test_u4_project_roles.py::test_cli_validate_reports_drift_after_a_role_is_added",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_cli_validate_with_and_without_the_mapping",
+      "selector": "tests/uc/test_u4_project_roles.py::test_cli_validate_with_and_without_the_mapping",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_duplicate_names_are_refused_including_across_kinds_and_case",
+      "selector": "tests/uc/test_u4_project_roles.py::test_duplicate_names_are_refused_including_across_kinds_and_case",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_error_details_never_echo_raw_names",
+      "selector": "tests/uc/test_u4_project_roles.py::test_error_details_never_echo_raw_names",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_every_scanned_manifest_passes_its_own_validator",
+      "selector": "tests/uc/test_u4_project_roles.py::test_every_scanned_manifest_passes_its_own_validator",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_explicit_mapping_to_matrix_executors_lifts_a_role_to_covered_partial",
+      "selector": "tests/uc/test_u4_project_roles.py::test_explicit_mapping_to_matrix_executors_lifts_a_role_to_covered_partial",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_gate_reports_role_table_drift_for_the_old_pin_after_a_role_is_added",
+      "selector": "tests/uc/test_u4_project_roles.py::test_gate_reports_role_table_drift_for_the_old_pin_after_a_role_is_added",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_hand_promoting_an_unmapped_role_to_covered_partial_is_rejected",
+      "selector": "tests/uc/test_u4_project_roles.py::test_hand_promoting_an_unmapped_role_to_covered_partial_is_rejected",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_irregular_frontmatter_fails_closed",
+      "selector": "tests/uc/test_u4_project_roles.py::test_irregular_frontmatter_fails_closed",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_label_is_explicit_and_independent_of_the_folder_name",
+      "selector": "tests/uc/test_u4_project_roles.py::test_label_is_explicit_and_independent_of_the_folder_name",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_manifest_lists_project_agents_and_skills_deterministically",
+      "selector": "tests/uc/test_u4_project_roles.py::test_manifest_lists_project_agents_and_skills_deterministically",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_mapping_claiming_an_executor_the_matrix_lacks_is_refused",
+      "selector": "tests/uc/test_u4_project_roles.py::test_mapping_claiming_an_executor_the_matrix_lacks_is_refused",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_mapping_for_a_role_not_in_the_manifest_or_without_a_matrix_is_refused",
+      "selector": "tests/uc/test_u4_project_roles.py::test_mapping_for_a_role_not_in_the_manifest_or_without_a_matrix_is_refused",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_mapping_must_carry_the_manifest_source_digest",
+      "selector": "tests/uc/test_u4_project_roles.py::test_mapping_must_carry_the_manifest_source_digest",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_name_falls_back_to_the_file_stem_without_frontmatter",
+      "selector": "tests/uc/test_u4_project_roles.py::test_name_falls_back_to_the_file_stem_without_frontmatter",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_oversize_and_non_utf8_files_are_refused",
+      "selector": "tests/uc/test_u4_project_roles.py::test_oversize_and_non_utf8_files_are_refused",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_project_without_claude_directory_has_an_empty_manifest",
+      "selector": "tests/uc/test_u4_project_roles.py::test_project_without_claude_directory_has_an_empty_manifest",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_register_raises_only_project_roles_error_on_malformed_input",
+      "selector": "tests/uc/test_u4_project_roles.py::test_register_raises_only_project_roles_error_on_malformed_input",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_registering_against_an_already_extended_table_is_refused",
+      "selector": "tests/uc/test_u4_project_roles.py::test_registering_against_an_already_extended_table_is_refused",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_source_digest_does_not_depend_on_line_endings_or_bom",
+      "selector": "tests/uc/test_u4_project_roles.py::test_source_digest_does_not_depend_on_line_endings_or_bom",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_table_hash_equals_the_digest_of_the_written_file_bytes",
+      "selector": "tests/uc/test_u4_project_roles.py::test_table_hash_equals_the_digest_of_the_written_file_bytes",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_too_many_entries_abort_the_scan",
+      "selector": "tests/uc/test_u4_project_roles.py::test_too_many_entries_abort_the_scan",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_unmapped_project_name_equal_to_an_aeve_profile_is_refused",
+      "selector": "tests/uc/test_u4_project_roles.py::test_unmapped_project_name_equal_to_an_aeve_profile_is_refused",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_validate_manifest_cross_checks_kind_path_and_name_and_never_raises",
+      "selector": "tests/uc/test_u4_project_roles.py::test_validate_manifest_cross_checks_kind_path_and_name_and_never_raises",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_validator_rejects_a_hand_edited_table_claiming_coverage_the_matrix_lacks",
+      "selector": "tests/uc/test_u4_project_roles.py::test_validator_rejects_a_hand_edited_table_claiming_coverage_the_matrix_lacks",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_validator_rejects_a_project_entry_without_a_class_without_raising",
+      "selector": "tests/uc/test_u4_project_roles.py::test_validator_rejects_a_project_entry_without_a_class_without_raising",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_validator_rejects_missing_extra_and_stale_project_entries",
+      "selector": "tests/uc/test_u4_project_roles.py::test_validator_rejects_missing_extra_and_stale_project_entries",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_validator_requires_exactly_the_builder_shape",
+      "selector": "tests/uc/test_u4_project_roles.py::test_validator_requires_exactly_the_builder_shape",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/uc/test_u4_project_roles.py::test_validator_returns_problems_and_never_raises_on_malformed_tables",
+      "selector": "tests/uc/test_u4_project_roles.py::test_validator_returns_problems_and_never_raises_on_malformed_tables",
+      "source_path": "tests/uc/test_u4_project_roles.py",
+      "source_commit": "c3f96bdd5f37dc803fedbf4b1e25b571ee10d1cd",
       "primary_category": "functional",
       "runtime_profiles": [
         "windows-cpython-3.14.3",
@@ -26326,6 +27408,655 @@
         "windows-cpython-3.14.3",
         "wsl-ubuntu-24.04-cpython-3.12.3"
       ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_a_bad_protected_entry_does_not_hide_a_refusal",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_a_bad_protected_entry_does_not_hide_a_refusal",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_a_gate_fail_result_is_refused_with_its_reason",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_a_gate_fail_result_is_refused_with_its_reason",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_caller_protected_entries_are_refused_case_insensitively",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_caller_protected_entries_are_refused_case_insensitively",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_case_variant_of_an_allowed_path_is_refused",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_case_variant_of_an_allowed_path_is_refused",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_changed_path_missing_from_the_worktree_leaves_the_link_check_unproven",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_changed_path_missing_from_the_worktree_leaves_the_link_check_unproven",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_declared_path_absent_from_the_diff_is_refused",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_declared_path_absent_from_the_diff_is_refused",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_deleted_file_missing_from_the_worktree_is_accepted",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_deleted_file_missing_from_the_worktree_is_accepted",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_diffgate_exception_or_junk_result_is_blocked",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_diffgate_exception_or_junk_result_is_blocked",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_diffgate_loader_error_is_blocked",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_diffgate_loader_error_is_blocked",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_diffgate_missing_from_modules_is_blocked",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_diffgate_missing_from_modules_is_blocked",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_diffgate_without_check_diff_is_blocked",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_diffgate_without_check_diff_is_blocked",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_dot_git_is_a_valid_caller_protected_entry",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_dot_git_is_a_valid_caller_protected_entry",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_dot_git_path_is_refused_outside_scope_and_when_listed_as_allowed",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_dot_git_path_is_refused_outside_scope_and_when_listed_as_allowed",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_duplicate_changed_paths_are_accepted_once",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_duplicate_changed_paths_are_accepted_once",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_failed_isolation_property_is_refused_and_not_listed_as_verified",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_failed_isolation_property_is_refused_and_not_listed_as_verified",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_hazardous_allowed_entry_never_matches_and_does_not_block",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_hazardous_allowed_entry_never_matches_and_does_not_block",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_in_scope_change_is_accepted_with_gate_evidence",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_in_scope_change_is_accepted_with_gate_evidence",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_junction_on_a_changed_path_is_refused",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_junction_on_a_changed_path_is_refused",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_link_check_counts_inspected_components",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_link_check_counts_inspected_components",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_malformed_input_is_blocked_never_accepted",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_malformed_input_is_blocked_never_accepted",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_malformed_worker_output_is_blocked",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_malformed_worker_output_is_blocked",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_missing_or_different_worktree_head_is_not_verified_and_blocks",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_missing_or_different_worktree_head_is_not_verified_and_blocks",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_more_than_128_paths_is_blocked",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_more_than_128_paths_is_blocked",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_network_flag_is_described_as_a_flag_not_enforcement",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_network_flag_is_described_as_a_flag_not_enforcement",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_non_ascii_path_is_echoed_as_ascii",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_non_ascii_path_is_echoed_as_ascii",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_non_boolean_network_flag_is_not_verified",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_non_boolean_network_flag_is_not_verified",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_nonstandard_file_mode_is_refused",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_nonstandard_file_mode_is_refused",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_not_verified_items_stay_listed_even_when_the_change_is_refused",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_not_verified_items_stay_listed_even_when_the_change_is_refused",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_out_of_scope_change_is_refused",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_out_of_scope_change_is_refused",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_over_long_header_line_is_blocked",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_over_long_header_line_is_blocked",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_oversized_diff_is_blocked",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_oversized_diff_is_blocked",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_pass_evidence_for_another_candidate_head_is_blocked",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_pass_evidence_for_another_candidate_head_is_blocked",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_pass_evidence_for_other_paths_is_blocked",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_pass_evidence_for_other_paths_is_blocked",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_path_trick_is_refused",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_path_trick_is_refused",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_path_trick_listed_as_allowed_is_refused_not_blocked",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_path_trick_listed_as_allowed_is_refused_not_blocked",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_path_trick_reports_its_named_hazard",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_path_trick_reports_its_named_hazard",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_promoting_a_proof_entry_is_detected",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_promoting_a_proof_entry_is_detected",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_proof_separates_verified_caller_asserted_and_not_verified",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_proof_separates_verified_caller_asserted_and_not_verified",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_protected_name_alias_is_refused_as_hazard_and_as_protected",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_protected_name_alias_is_refused_as_hazard_and_as_protected",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_protected_path_is_refused_even_when_listed_as_allowed",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_protected_path_is_refused_even_when_listed_as_allowed",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_refusal_outranks_a_blocking_isolation_reason",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_refusal_outranks_a_blocking_isolation_reason",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_refusal_outranks_an_unparsable_diff",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_refusal_outranks_an_unparsable_diff",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_rename_into_protected_path_is_refused",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_rename_into_protected_path_is_refused",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_rename_out_of_a_protected_path_is_refused_on_the_source",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_rename_out_of_a_protected_path_is_refused_on_the_source",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_rename_source_omitted_from_declared_paths_is_refused",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_rename_source_omitted_from_declared_paths_is_refused",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_resolved_path_leaving_the_worktree_is_refused",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_resolved_path_leaving_the_worktree_is_refused",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_response_bound_to_another_manifest_is_blocked",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_response_bound_to_another_manifest_is_blocked",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_roots_on_different_drives_are_disjoint",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_roots_on_different_drives_are_disjoint",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_submodule_change_is_refused",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_submodule_change_is_refused",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_symlink_mode_change_is_refused",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_symlink_mode_change_is_refused",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_text_outside_the_git_block_grammar_is_not_accepted",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_text_outside_the_git_block_grammar_is_not_accepted",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_truncated_or_inconsistent_hunks_are_not_accepted",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_truncated_or_inconsistent_hunks_are_not_accepted",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_understated_changed_paths_are_refused",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_understated_changed_paths_are_refused",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_uninspectable_worktree_blocks_and_link_check_is_not_verified",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_uninspectable_worktree_blocks_and_link_check_is_not_verified",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_unparsable_diff_is_blocked",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_unparsable_diff_is_blocked",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_unrelated_path_next_to_a_protected_prefix_is_not_protected",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_unrelated_path_next_to_a_protected_prefix_is_not_protected",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_worker_response_in_scope_is_accepted",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_worker_response_in_scope_is_accepted",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_worker_response_out_of_scope_is_refused",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_worker_response_out_of_scope_is_refused",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_worker_gate.py::test_worker_that_did_not_succeed_is_blocked",
+      "selector": "tests/vst/test_u5_worker_gate.py::test_worker_that_did_not_succeed_is_blocked",
+      "source_path": "tests/vst/test_u5_worker_gate.py",
+      "source_commit": "27b2eccb9666362aa3dea883ce2cc6c6cd7a6c94",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
     }
   ],
   "categories": {
@@ -26908,6 +28639,56 @@
         "tests/uc/test_u2_result_bridge.py::test_the_digest_check_comes_after_request_validation_and_before_the_probe",
         "tests/uc/test_u2_result_bridge.py::test_the_digest_is_not_a_digest_of_the_parsed_table",
         "tests/uc/test_u2_result_bridge.py::test_the_residual_is_never_repaired_or_reordered",
+        "tests/uc/test_u4_project_roles.py::test_a_hard_linked_agent_file_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_a_mapped_table_validates_only_with_the_same_mapping",
+        "tests/uc/test_u4_project_roles.py::test_a_mapping_entry_matching_no_manifest_entry_or_no_applied_entry_is_a_problem",
+        "tests/uc/test_u4_project_roles.py::test_a_missing_project_root_and_a_bad_label_are_refused",
+        "tests/uc/test_u4_project_roles.py::test_a_name_equal_to_a_global_role_ignoring_case_is_refused_at_registration",
+        "tests/uc/test_u4_project_roles.py::test_a_quoted_key_cannot_hide_a_global_name",
+        "tests/uc/test_u4_project_roles.py::test_a_symlinked_agent_file_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_a_symlinked_agents_directory_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_a_symlinked_claude_directory_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_a_symlinked_skill_directory_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_a_windows_junction_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_adding_a_skill_editing_a_body_and_deleting_a_role_each_change_both_hashes",
+        "tests/uc/test_u4_project_roles.py::test_adding_one_agent_changes_manifest_registers_not_covered_and_changes_table_hash",
+        "tests/uc/test_u4_project_roles.py::test_bad_names_are_refused",
+        "tests/uc/test_u4_project_roles.py::test_case_sensitive_filters_ignore_other_spellings",
+        "tests/uc/test_u4_project_roles.py::test_cli_refuses_an_output_equal_to_an_input_and_leaves_it_untouched",
+        "tests/uc/test_u4_project_roles.py::test_cli_refuses_an_output_inside_the_role_directory",
+        "tests/uc/test_u4_project_roles.py::test_cli_register_out_writes_the_table_and_the_summary_digest_equals_the_file_digest",
+        "tests/uc/test_u4_project_roles.py::test_cli_scan_print_writes_nothing_and_reports_the_manifest_digest",
+        "tests/uc/test_u4_project_roles.py::test_cli_scan_requires_an_explicit_label",
+        "tests/uc/test_u4_project_roles.py::test_cli_turns_unreadable_input_into_a_refused_line_not_a_traceback",
+        "tests/uc/test_u4_project_roles.py::test_cli_validate_reports_drift_after_a_role_is_added",
+        "tests/uc/test_u4_project_roles.py::test_cli_validate_with_and_without_the_mapping",
+        "tests/uc/test_u4_project_roles.py::test_duplicate_names_are_refused_including_across_kinds_and_case",
+        "tests/uc/test_u4_project_roles.py::test_error_details_never_echo_raw_names",
+        "tests/uc/test_u4_project_roles.py::test_every_scanned_manifest_passes_its_own_validator",
+        "tests/uc/test_u4_project_roles.py::test_explicit_mapping_to_matrix_executors_lifts_a_role_to_covered_partial",
+        "tests/uc/test_u4_project_roles.py::test_gate_reports_role_table_drift_for_the_old_pin_after_a_role_is_added",
+        "tests/uc/test_u4_project_roles.py::test_hand_promoting_an_unmapped_role_to_covered_partial_is_rejected",
+        "tests/uc/test_u4_project_roles.py::test_irregular_frontmatter_fails_closed",
+        "tests/uc/test_u4_project_roles.py::test_label_is_explicit_and_independent_of_the_folder_name",
+        "tests/uc/test_u4_project_roles.py::test_manifest_lists_project_agents_and_skills_deterministically",
+        "tests/uc/test_u4_project_roles.py::test_mapping_claiming_an_executor_the_matrix_lacks_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_mapping_for_a_role_not_in_the_manifest_or_without_a_matrix_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_mapping_must_carry_the_manifest_source_digest",
+        "tests/uc/test_u4_project_roles.py::test_name_falls_back_to_the_file_stem_without_frontmatter",
+        "tests/uc/test_u4_project_roles.py::test_oversize_and_non_utf8_files_are_refused",
+        "tests/uc/test_u4_project_roles.py::test_project_without_claude_directory_has_an_empty_manifest",
+        "tests/uc/test_u4_project_roles.py::test_register_raises_only_project_roles_error_on_malformed_input",
+        "tests/uc/test_u4_project_roles.py::test_registering_against_an_already_extended_table_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_source_digest_does_not_depend_on_line_endings_or_bom",
+        "tests/uc/test_u4_project_roles.py::test_table_hash_equals_the_digest_of_the_written_file_bytes",
+        "tests/uc/test_u4_project_roles.py::test_too_many_entries_abort_the_scan",
+        "tests/uc/test_u4_project_roles.py::test_unmapped_project_name_equal_to_an_aeve_profile_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_validate_manifest_cross_checks_kind_path_and_name_and_never_raises",
+        "tests/uc/test_u4_project_roles.py::test_validator_rejects_a_hand_edited_table_claiming_coverage_the_matrix_lacks",
+        "tests/uc/test_u4_project_roles.py::test_validator_rejects_a_project_entry_without_a_class_without_raising",
+        "tests/uc/test_u4_project_roles.py::test_validator_rejects_missing_extra_and_stale_project_entries",
+        "tests/uc/test_u4_project_roles.py::test_validator_requires_exactly_the_builder_shape",
+        "tests/uc/test_u4_project_roles.py::test_validator_returns_problems_and_never_raises_on_malformed_tables",
         "tests/vst/test_s2_assignment_basis.py::test_assignment_basis_reads_verified_handoff_and_live_basis_without_store_mutation",
         "tests/vst/test_s2_assignment_basis.py::test_assignment_basis_refuses_changed_or_missing_trusted_policy_provider",
         "tests/vst/test_s2_assignment_basis.py::test_assignment_basis_refuses_expired_root_policy",
@@ -27144,7 +28925,66 @@
         "tests/vst/test_u2_gate.py::test_the_receipt_signed_by_a_non_authority_key_is_rejected",
         "tests/vst/test_u2_gate.py::test_unknown_facts_are_refused_and_the_record_digest_catches_tampering",
         "tests/vst/test_u2_gate.py::test_v1_gate_behaviour_is_unchanged_and_ignores_analyzer_trust",
-        "tests/vst/test_u2_gate.py::test_v2_gate_behaviour_is_unchanged_by_the_presence_of_analyzer_trust"
+        "tests/vst/test_u2_gate.py::test_v2_gate_behaviour_is_unchanged_by_the_presence_of_analyzer_trust",
+        "tests/vst/test_u5_worker_gate.py::test_a_bad_protected_entry_does_not_hide_a_refusal",
+        "tests/vst/test_u5_worker_gate.py::test_a_gate_fail_result_is_refused_with_its_reason",
+        "tests/vst/test_u5_worker_gate.py::test_caller_protected_entries_are_refused_case_insensitively",
+        "tests/vst/test_u5_worker_gate.py::test_case_variant_of_an_allowed_path_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_changed_path_missing_from_the_worktree_leaves_the_link_check_unproven",
+        "tests/vst/test_u5_worker_gate.py::test_declared_path_absent_from_the_diff_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_deleted_file_missing_from_the_worktree_is_accepted",
+        "tests/vst/test_u5_worker_gate.py::test_diffgate_exception_or_junk_result_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_diffgate_loader_error_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_diffgate_missing_from_modules_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_diffgate_without_check_diff_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_dot_git_is_a_valid_caller_protected_entry",
+        "tests/vst/test_u5_worker_gate.py::test_dot_git_path_is_refused_outside_scope_and_when_listed_as_allowed",
+        "tests/vst/test_u5_worker_gate.py::test_duplicate_changed_paths_are_accepted_once",
+        "tests/vst/test_u5_worker_gate.py::test_failed_isolation_property_is_refused_and_not_listed_as_verified",
+        "tests/vst/test_u5_worker_gate.py::test_hazardous_allowed_entry_never_matches_and_does_not_block",
+        "tests/vst/test_u5_worker_gate.py::test_in_scope_change_is_accepted_with_gate_evidence",
+        "tests/vst/test_u5_worker_gate.py::test_junction_on_a_changed_path_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_link_check_counts_inspected_components",
+        "tests/vst/test_u5_worker_gate.py::test_malformed_input_is_blocked_never_accepted",
+        "tests/vst/test_u5_worker_gate.py::test_malformed_worker_output_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_missing_or_different_worktree_head_is_not_verified_and_blocks",
+        "tests/vst/test_u5_worker_gate.py::test_more_than_128_paths_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_network_flag_is_described_as_a_flag_not_enforcement",
+        "tests/vst/test_u5_worker_gate.py::test_non_ascii_path_is_echoed_as_ascii",
+        "tests/vst/test_u5_worker_gate.py::test_non_boolean_network_flag_is_not_verified",
+        "tests/vst/test_u5_worker_gate.py::test_nonstandard_file_mode_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_not_verified_items_stay_listed_even_when_the_change_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_out_of_scope_change_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_over_long_header_line_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_oversized_diff_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_pass_evidence_for_another_candidate_head_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_pass_evidence_for_other_paths_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_path_trick_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_path_trick_listed_as_allowed_is_refused_not_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_path_trick_reports_its_named_hazard",
+        "tests/vst/test_u5_worker_gate.py::test_promoting_a_proof_entry_is_detected",
+        "tests/vst/test_u5_worker_gate.py::test_proof_separates_verified_caller_asserted_and_not_verified",
+        "tests/vst/test_u5_worker_gate.py::test_protected_name_alias_is_refused_as_hazard_and_as_protected",
+        "tests/vst/test_u5_worker_gate.py::test_protected_path_is_refused_even_when_listed_as_allowed",
+        "tests/vst/test_u5_worker_gate.py::test_refusal_outranks_a_blocking_isolation_reason",
+        "tests/vst/test_u5_worker_gate.py::test_refusal_outranks_an_unparsable_diff",
+        "tests/vst/test_u5_worker_gate.py::test_rename_into_protected_path_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_rename_out_of_a_protected_path_is_refused_on_the_source",
+        "tests/vst/test_u5_worker_gate.py::test_rename_source_omitted_from_declared_paths_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_resolved_path_leaving_the_worktree_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_response_bound_to_another_manifest_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_roots_on_different_drives_are_disjoint",
+        "tests/vst/test_u5_worker_gate.py::test_submodule_change_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_symlink_mode_change_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_text_outside_the_git_block_grammar_is_not_accepted",
+        "tests/vst/test_u5_worker_gate.py::test_truncated_or_inconsistent_hunks_are_not_accepted",
+        "tests/vst/test_u5_worker_gate.py::test_understated_changed_paths_are_refused",
+        "tests/vst/test_u5_worker_gate.py::test_uninspectable_worktree_blocks_and_link_check_is_not_verified",
+        "tests/vst/test_u5_worker_gate.py::test_unparsable_diff_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_unrelated_path_next_to_a_protected_prefix_is_not_protected",
+        "tests/vst/test_u5_worker_gate.py::test_worker_response_in_scope_is_accepted",
+        "tests/vst/test_u5_worker_gate.py::test_worker_response_out_of_scope_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_worker_that_did_not_succeed_is_blocked"
       ],
       "not_run_reasons": {},
       "reason": null
@@ -28785,7 +30625,54 @@
         "tests/qa/test_s4f_gate_check.py::test_stale_head_wrong_expected_and_head_after_moved",
         "tests/qa/test_s4f_gate_check.py::test_state_changed",
         "tests/qa/test_s4f_gate_check.py::test_unknown_category_and_unknown_profile",
-        "tests/qa/test_s4f_gate_check.py::test_unsupported_category_status_in_registry"
+        "tests/qa/test_s4f_gate_check.py::test_unsupported_category_status_in_registry",
+        "tests/qa/test_u3_gate_bridge.py::test_a_changed_file_invalidates_the_snapshot",
+        "tests/qa/test_u3_gate_bridge.py::test_a_full_64_hex_head_is_accepted",
+        "tests/qa/test_u3_gate_bridge.py::test_a_garbage_line_anywhere_refuses_the_whole_file",
+        "tests/qa/test_u3_gate_bridge.py::test_append_only_artifacts_are_verified_by_their_recorded_range",
+        "tests/qa/test_u3_gate_bridge.py::test_approvable_report_resolves_to_the_sha256_of_its_raw_bytes",
+        "tests/qa/test_u3_gate_bridge.py::test_artifact_over_the_cap_is_a_typed_evidence_too_large",
+        "tests/qa/test_u3_gate_bridge.py::test_bad_expected_head_resolves_to_none",
+        "tests/qa/test_u3_gate_bridge.py::test_bytes_after_the_recorded_range_are_refused",
+        "tests/qa/test_u3_gate_bridge.py::test_category_path_mismatch_is_the_only_extra_code",
+        "tests/qa/test_u3_gate_bridge.py::test_directory_in_place_of_a_file_is_refused",
+        "tests/qa/test_u3_gate_bridge.py::test_fallback_result_must_be_64_lowercase_hex",
+        "tests/qa/test_u3_gate_bridge.py::test_file_larger_than_stat_size_is_treated_as_changed",
+        "tests/qa/test_u3_gate_bridge.py::test_file_swapped_between_lstat_and_open_is_refused",
+        "tests/qa/test_u3_gate_bridge.py::test_gate_accepts_a_receipt_listing_an_approvable_qa_report_digest",
+        "tests/qa/test_u3_gate_bridge.py::test_gate_hard_refuses_a_receipt_listing_a_non_approving_qa_report_digest",
+        "tests/qa/test_u3_gate_bridge.py::test_gate_hard_refuses_a_stale_head_qa_report",
+        "tests/qa/test_u3_gate_bridge.py::test_gate_still_denies_qa_digests_without_a_resolver",
+        "tests/qa/test_u3_gate_bridge.py::test_hard_linked_report_is_refused",
+        "tests/qa/test_u3_gate_bridge.py::test_head_after_differing_alone_resolves_to_none",
+        "tests/qa/test_u3_gate_bridge.py::test_last_record_wins_so_a_newer_non_approving_run_withdraws_the_digest",
+        "tests/qa/test_u3_gate_bridge.py::test_link_like_component_is_refused_on_the_read_path",
+        "tests/qa/test_u3_gate_bridge.py::test_missing_files_and_unparseable_report_resolve_to_none",
+        "tests/qa/test_u3_gate_bridge.py::test_missing_or_out_of_range_artifact_range_resolves_to_none",
+        "tests/qa/test_u3_gate_bridge.py::test_nlink_two_seen_by_fstat_is_refused",
+        "tests/qa/test_u3_gate_bridge.py::test_nlink_two_seen_by_lstat_is_refused",
+        "tests/qa/test_u3_gate_bridge.py::test_non_str_path_resolves_to_none",
+        "tests/qa/test_u3_gate_bridge.py::test_older_bad_record_then_newer_good_record_is_approvable",
+        "tests/qa/test_u3_gate_bridge.py::test_one_snapshot_serves_the_three_digests_of_a_receipt",
+        "tests/qa/test_u3_gate_bridge.py::test_plain_non_qa_paths_use_the_fallback_when_given_and_none_otherwise",
+        "tests/qa/test_u3_gate_bridge.py::test_public_reader_returns_bytes_and_refuses_links",
+        "tests/qa/test_u3_gate_bridge.py::test_qa_other_directory_is_not_qa_owned_and_reaches_the_fallback",
+        "tests/qa/test_u3_gate_bridge.py::test_qa_owned_and_non_canonical_paths_resolve_to_none_and_never_reach_the_fallback",
+        "tests/qa/test_u3_gate_bridge.py::test_range_slice_refuses_bad_inputs",
+        "tests/qa/test_u3_gate_bridge.py::test_range_slice_returns_the_tail_bytes",
+        "tests/qa/test_u3_gate_bridge.py::test_reason_details_are_bounded",
+        "tests/qa/test_u3_gate_bridge.py::test_recorded_artifact_paths_must_be_the_fixed_category_paths",
+        "tests/qa/test_u3_gate_bridge.py::test_reparse_point_attribute_counts_as_a_link",
+        "tests/qa/test_u3_gate_bridge.py::test_report_over_the_cap_is_a_typed_evidence_too_large",
+        "tests/qa/test_u3_gate_bridge.py::test_resolver_never_raises_for_a_bad_repo_root",
+        "tests/qa/test_u3_gate_bridge.py::test_sanitize_bounds_and_redacts",
+        "tests/qa/test_u3_gate_bridge.py::test_sibling_stdout_and_stderr_resolve_only_for_an_approvable_report",
+        "tests/qa/test_u3_gate_bridge.py::test_skipped_or_uncollected_required_id_resolves_to_none",
+        "tests/qa/test_u3_gate_bridge.py::test_stale_candidate_head_resolves_to_none",
+        "tests/qa/test_u3_gate_bridge.py::test_symlinked_report_is_refused",
+        "tests/qa/test_u3_gate_bridge.py::test_tampered_stderr_same_length_resolves_to_none_for_all_three_paths",
+        "tests/qa/test_u3_gate_bridge.py::test_tampered_stdout_same_length_resolves_to_none_for_all_three_paths",
+        "tests/qa/test_u3_gate_bridge.py::test_unknown_category_report_path_resolves_to_none_even_when_files_exist"
       ],
       "not_run_reasons": {},
       "reason": null
@@ -29385,6 +31272,56 @@
         "tests/uc/test_u2_result_bridge.py::test_the_digest_check_comes_after_request_validation_and_before_the_probe",
         "tests/uc/test_u2_result_bridge.py::test_the_digest_is_not_a_digest_of_the_parsed_table",
         "tests/uc/test_u2_result_bridge.py::test_the_residual_is_never_repaired_or_reordered",
+        "tests/uc/test_u4_project_roles.py::test_a_hard_linked_agent_file_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_a_mapped_table_validates_only_with_the_same_mapping",
+        "tests/uc/test_u4_project_roles.py::test_a_mapping_entry_matching_no_manifest_entry_or_no_applied_entry_is_a_problem",
+        "tests/uc/test_u4_project_roles.py::test_a_missing_project_root_and_a_bad_label_are_refused",
+        "tests/uc/test_u4_project_roles.py::test_a_name_equal_to_a_global_role_ignoring_case_is_refused_at_registration",
+        "tests/uc/test_u4_project_roles.py::test_a_quoted_key_cannot_hide_a_global_name",
+        "tests/uc/test_u4_project_roles.py::test_a_symlinked_agent_file_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_a_symlinked_agents_directory_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_a_symlinked_claude_directory_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_a_symlinked_skill_directory_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_a_windows_junction_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_adding_a_skill_editing_a_body_and_deleting_a_role_each_change_both_hashes",
+        "tests/uc/test_u4_project_roles.py::test_adding_one_agent_changes_manifest_registers_not_covered_and_changes_table_hash",
+        "tests/uc/test_u4_project_roles.py::test_bad_names_are_refused",
+        "tests/uc/test_u4_project_roles.py::test_case_sensitive_filters_ignore_other_spellings",
+        "tests/uc/test_u4_project_roles.py::test_cli_refuses_an_output_equal_to_an_input_and_leaves_it_untouched",
+        "tests/uc/test_u4_project_roles.py::test_cli_refuses_an_output_inside_the_role_directory",
+        "tests/uc/test_u4_project_roles.py::test_cli_register_out_writes_the_table_and_the_summary_digest_equals_the_file_digest",
+        "tests/uc/test_u4_project_roles.py::test_cli_scan_print_writes_nothing_and_reports_the_manifest_digest",
+        "tests/uc/test_u4_project_roles.py::test_cli_scan_requires_an_explicit_label",
+        "tests/uc/test_u4_project_roles.py::test_cli_turns_unreadable_input_into_a_refused_line_not_a_traceback",
+        "tests/uc/test_u4_project_roles.py::test_cli_validate_reports_drift_after_a_role_is_added",
+        "tests/uc/test_u4_project_roles.py::test_cli_validate_with_and_without_the_mapping",
+        "tests/uc/test_u4_project_roles.py::test_duplicate_names_are_refused_including_across_kinds_and_case",
+        "tests/uc/test_u4_project_roles.py::test_error_details_never_echo_raw_names",
+        "tests/uc/test_u4_project_roles.py::test_every_scanned_manifest_passes_its_own_validator",
+        "tests/uc/test_u4_project_roles.py::test_explicit_mapping_to_matrix_executors_lifts_a_role_to_covered_partial",
+        "tests/uc/test_u4_project_roles.py::test_gate_reports_role_table_drift_for_the_old_pin_after_a_role_is_added",
+        "tests/uc/test_u4_project_roles.py::test_hand_promoting_an_unmapped_role_to_covered_partial_is_rejected",
+        "tests/uc/test_u4_project_roles.py::test_irregular_frontmatter_fails_closed",
+        "tests/uc/test_u4_project_roles.py::test_label_is_explicit_and_independent_of_the_folder_name",
+        "tests/uc/test_u4_project_roles.py::test_manifest_lists_project_agents_and_skills_deterministically",
+        "tests/uc/test_u4_project_roles.py::test_mapping_claiming_an_executor_the_matrix_lacks_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_mapping_for_a_role_not_in_the_manifest_or_without_a_matrix_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_mapping_must_carry_the_manifest_source_digest",
+        "tests/uc/test_u4_project_roles.py::test_name_falls_back_to_the_file_stem_without_frontmatter",
+        "tests/uc/test_u4_project_roles.py::test_oversize_and_non_utf8_files_are_refused",
+        "tests/uc/test_u4_project_roles.py::test_project_without_claude_directory_has_an_empty_manifest",
+        "tests/uc/test_u4_project_roles.py::test_register_raises_only_project_roles_error_on_malformed_input",
+        "tests/uc/test_u4_project_roles.py::test_registering_against_an_already_extended_table_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_source_digest_does_not_depend_on_line_endings_or_bom",
+        "tests/uc/test_u4_project_roles.py::test_table_hash_equals_the_digest_of_the_written_file_bytes",
+        "tests/uc/test_u4_project_roles.py::test_too_many_entries_abort_the_scan",
+        "tests/uc/test_u4_project_roles.py::test_unmapped_project_name_equal_to_an_aeve_profile_is_refused",
+        "tests/uc/test_u4_project_roles.py::test_validate_manifest_cross_checks_kind_path_and_name_and_never_raises",
+        "tests/uc/test_u4_project_roles.py::test_validator_rejects_a_hand_edited_table_claiming_coverage_the_matrix_lacks",
+        "tests/uc/test_u4_project_roles.py::test_validator_rejects_a_project_entry_without_a_class_without_raising",
+        "tests/uc/test_u4_project_roles.py::test_validator_rejects_missing_extra_and_stale_project_entries",
+        "tests/uc/test_u4_project_roles.py::test_validator_requires_exactly_the_builder_shape",
+        "tests/uc/test_u4_project_roles.py::test_validator_returns_problems_and_never_raises_on_malformed_tables",
         "tests/uc_e2e/test_u1_router_e2e.py::TestHostileRepository::test_fake_secret_absent",
         "tests/uc_e2e/test_u1_router_e2e.py::TestHostileRepository::test_planted_modules_were_not_executed",
         "tests/uc_e2e/test_u1_router_e2e.py::TestHostileRepository::test_review_completes_with_findings",
@@ -30848,7 +32785,66 @@
         "tests/vst/test_u2_gate.py::test_the_receipt_signed_by_a_non_authority_key_is_rejected",
         "tests/vst/test_u2_gate.py::test_unknown_facts_are_refused_and_the_record_digest_catches_tampering",
         "tests/vst/test_u2_gate.py::test_v1_gate_behaviour_is_unchanged_and_ignores_analyzer_trust",
-        "tests/vst/test_u2_gate.py::test_v2_gate_behaviour_is_unchanged_by_the_presence_of_analyzer_trust"
+        "tests/vst/test_u2_gate.py::test_v2_gate_behaviour_is_unchanged_by_the_presence_of_analyzer_trust",
+        "tests/vst/test_u5_worker_gate.py::test_a_bad_protected_entry_does_not_hide_a_refusal",
+        "tests/vst/test_u5_worker_gate.py::test_a_gate_fail_result_is_refused_with_its_reason",
+        "tests/vst/test_u5_worker_gate.py::test_caller_protected_entries_are_refused_case_insensitively",
+        "tests/vst/test_u5_worker_gate.py::test_case_variant_of_an_allowed_path_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_changed_path_missing_from_the_worktree_leaves_the_link_check_unproven",
+        "tests/vst/test_u5_worker_gate.py::test_declared_path_absent_from_the_diff_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_deleted_file_missing_from_the_worktree_is_accepted",
+        "tests/vst/test_u5_worker_gate.py::test_diffgate_exception_or_junk_result_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_diffgate_loader_error_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_diffgate_missing_from_modules_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_diffgate_without_check_diff_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_dot_git_is_a_valid_caller_protected_entry",
+        "tests/vst/test_u5_worker_gate.py::test_dot_git_path_is_refused_outside_scope_and_when_listed_as_allowed",
+        "tests/vst/test_u5_worker_gate.py::test_duplicate_changed_paths_are_accepted_once",
+        "tests/vst/test_u5_worker_gate.py::test_failed_isolation_property_is_refused_and_not_listed_as_verified",
+        "tests/vst/test_u5_worker_gate.py::test_hazardous_allowed_entry_never_matches_and_does_not_block",
+        "tests/vst/test_u5_worker_gate.py::test_in_scope_change_is_accepted_with_gate_evidence",
+        "tests/vst/test_u5_worker_gate.py::test_junction_on_a_changed_path_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_link_check_counts_inspected_components",
+        "tests/vst/test_u5_worker_gate.py::test_malformed_input_is_blocked_never_accepted",
+        "tests/vst/test_u5_worker_gate.py::test_malformed_worker_output_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_missing_or_different_worktree_head_is_not_verified_and_blocks",
+        "tests/vst/test_u5_worker_gate.py::test_more_than_128_paths_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_network_flag_is_described_as_a_flag_not_enforcement",
+        "tests/vst/test_u5_worker_gate.py::test_non_ascii_path_is_echoed_as_ascii",
+        "tests/vst/test_u5_worker_gate.py::test_non_boolean_network_flag_is_not_verified",
+        "tests/vst/test_u5_worker_gate.py::test_nonstandard_file_mode_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_not_verified_items_stay_listed_even_when_the_change_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_out_of_scope_change_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_over_long_header_line_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_oversized_diff_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_pass_evidence_for_another_candidate_head_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_pass_evidence_for_other_paths_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_path_trick_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_path_trick_listed_as_allowed_is_refused_not_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_path_trick_reports_its_named_hazard",
+        "tests/vst/test_u5_worker_gate.py::test_promoting_a_proof_entry_is_detected",
+        "tests/vst/test_u5_worker_gate.py::test_proof_separates_verified_caller_asserted_and_not_verified",
+        "tests/vst/test_u5_worker_gate.py::test_protected_name_alias_is_refused_as_hazard_and_as_protected",
+        "tests/vst/test_u5_worker_gate.py::test_protected_path_is_refused_even_when_listed_as_allowed",
+        "tests/vst/test_u5_worker_gate.py::test_refusal_outranks_a_blocking_isolation_reason",
+        "tests/vst/test_u5_worker_gate.py::test_refusal_outranks_an_unparsable_diff",
+        "tests/vst/test_u5_worker_gate.py::test_rename_into_protected_path_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_rename_out_of_a_protected_path_is_refused_on_the_source",
+        "tests/vst/test_u5_worker_gate.py::test_rename_source_omitted_from_declared_paths_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_resolved_path_leaving_the_worktree_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_response_bound_to_another_manifest_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_roots_on_different_drives_are_disjoint",
+        "tests/vst/test_u5_worker_gate.py::test_submodule_change_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_symlink_mode_change_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_text_outside_the_git_block_grammar_is_not_accepted",
+        "tests/vst/test_u5_worker_gate.py::test_truncated_or_inconsistent_hunks_are_not_accepted",
+        "tests/vst/test_u5_worker_gate.py::test_understated_changed_paths_are_refused",
+        "tests/vst/test_u5_worker_gate.py::test_uninspectable_worktree_blocks_and_link_check_is_not_verified",
+        "tests/vst/test_u5_worker_gate.py::test_unparsable_diff_is_blocked",
+        "tests/vst/test_u5_worker_gate.py::test_unrelated_path_next_to_a_protected_prefix_is_not_protected",
+        "tests/vst/test_u5_worker_gate.py::test_worker_response_in_scope_is_accepted",
+        "tests/vst/test_u5_worker_gate.py::test_worker_response_out_of_scope_is_refused",
+        "tests/vst/test_u5_worker_gate.py::test_worker_that_did_not_succeed_is_blocked"
       ],
       "not_run_reasons": {
         "tests/vst/test_s2_runner_lifecycle.py::test_e4_platform_containment_scenarios_not_run": "NOT_RUN: process-kill/kill-table containment scenarios are explicitly prohibited for this S4 run.",

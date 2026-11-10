@@ -3045,3 +3045,7 @@ Decision: new tools/vst/worker_gate.py reuses diffgate.check_diff and only adds 
 ## 2026-11-11 U5-1 review remediation
 
 Decision: protected-path matching in worker_gate.py is by case-folded component and basename at any depth (plus root prefixes tools/vst and .harness-tools); `.git` is handled as a protected path instead of a malformed one; the diff text must be fully valid git grammar with size caps; isolation entries derived only from caller values are CALLER_ASSERTED, never VERIFIED. The registry map in tools/qa/build_registry.py lists the new test; docs/qa/categories.json needs regeneration after commit. Tests NOT_RUN.
+
+## 2026-11-11 U5-1 QA registry regenerated
+
+Regenerated docs/qa/categories.json with tools.qa.build_registry --write after the test file was committed (27b2ecc); the registry now lists tests/vst/test_u5_worker_gate.py as functional. Tests NOT_RUN.

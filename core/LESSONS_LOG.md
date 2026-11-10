@@ -2284,3 +2284,7 @@ Kind: NEUTRAL. Implementation is unexecuted and untested by design; reviewers ne
 
 ## 2026-11-11 U5-1 review findings
 Kind: FAILURE. Facts: reviewers found that the .git default made every call BLOCKED, protected matching was root-only, the diff grammar was not fully validated, isolation properties derived from caller strings were reported VERIFIED, and the test file was unregistered. Root cause: nothing was executed and the default list was never traced through its own validator. Missed by: author. Caught by: three read-only reviewers. Next time: trace every default constant through every validator it meets, and give caller-supplied facts a distinct status from computed ones.
+
+## 2026-11-11 SUCCESS registry regenerated in a follow-up commit
+
+The registry needs the committed test file, so it is regenerated in its own commit right after. Rule: add new test files to build_registry.py maps in the task commit and regenerate right after.
