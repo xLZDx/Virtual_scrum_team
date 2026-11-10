@@ -2149,3 +2149,6 @@ Kind: SHORTCOMING. Facts: first version guaranteed no pass token only for dicts 
 
 ## 2026-11-10 U2-5 scope note
 Kind: NEUTRAL.
+
+## 2026-11-10 U2-5 approved
+Kind: SUCCESS. Facts: reviewer batch before GPT-PM left no findings. Rule: keep the batch before the GPT-PM request.

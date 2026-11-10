@@ -2901,3 +2901,6 @@ Reviewers (python 1 conditional MAJOR, functional-test none) fixed in one batch:
 
 ## 2026-11-10 U2-5 scope note
 Added docs/sdlc/evidence/u2-5-gptpm-scope-note.md; GPT-PM review requested, base 40b12ad.
+
+## 2026-11-10 U2-5 GPT-PM APPROVE
+GPT-PM request ddcda0ee on base 40b12ad to 294f14b+scope note: APPROVE, 0 BLOCKER, 0 MAJOR (static review, tests NOT_RUN). U2-5 accepted. Next: U2-6 negative-case fixture catalog and the tests for U2-1..U2-5 written by the test agents.
