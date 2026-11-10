@@ -3024,3 +3024,7 @@ Decision: GPT-PM request d6aa746b found the extended-table validator derived cov
 
 ## 2026-11-10 U4-1 GPT-PM approval and sprint-end plan
 Decision: GPT-PM APPROVE for U4-1 (request 3d0841e6) after one MAJOR round. U4-2..U4-6 not started: they modify AEVE and need the separate AEVE approval the operator did not give. Plan updated once: U4-1 ACCEPTED, U4 PARTIAL. Tests NOT_RUN.
+
+## 2026-11-10 Sprint U4 closed on static review
+
+U4-1 merged (PR 13). U4-2..U4-6 were implemented on AEVE branch u4-aeve-executors, each approved by GPT-PM, AEVE PR 16 opened and not merged. Plan marks U4 ACCEPTED on static review; tests NOT_RUN (operator ban). Owner step left: re-issue the VST role-table pin after the AEVE merge because the matrix digest changed.

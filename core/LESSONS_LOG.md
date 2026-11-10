@@ -2265,3 +2265,7 @@ Kind: FAILURE. Facts: three read-only reviewers missed that the validator recons
 
 ## 2026-11-10 U4-1 GPT-PM approval
 Kind: SUCCESS. Facts: approved on the verification round after the mapping fix.
+
+## 2026-11-10 SUCCESS U4 delivered in order with per-task reviews
+
+Each AEVE task went implementation, three reviewers, one remediation batch, GPT-PM; reviewers caught tag-echo, a non-failing budget test and a stale doc count before GPT-PM. Rule: keep the reviewer set per task and grep all current docs for restated numbers.
