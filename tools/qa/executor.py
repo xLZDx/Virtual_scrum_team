@@ -30,7 +30,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Protocol, runtime_checkable
 
-from tools.qa.registry import ALL_CATEGORIES, RegistryError, git_executable
+from tools.qa.registry import ALL_CATEGORIES, RegistryError, git_executable, safe_git
 from tools.uc import aeve_probe
 
 EXECUTOR_NATIVE = "vst-native"
@@ -446,6 +446,30 @@ def assert_trusted_git(root: Path) -> None:
 
     if norm(used) != norm(trusted):
         raise ExecutorError("GIT_UNTRUSTED", "registry git differs from the trusted PATH git")
+
+
+def worktree_dirty_paths(root: Path) -> list[str]:
+    """Sorted paths git reports as modified, staged, renamed, deleted or untracked (read-only `git status
+    --porcelain=v1 -z --untracked-files=all`; only what .gitignore ignores is exempt). Raises
+    ExecutorError(REPO_UNUSABLE) if the state cannot be determined."""
+    try:
+        output = safe_git(root, "status", "--porcelain=v1", "-z", "--untracked-files=all")
+    except RegistryError:
+        raise ExecutorError("REPO_UNUSABLE", "worktree state could not be determined") from None
+    tokens = output.decode("utf-8", errors="replace").split("\0")
+    paths: set[str] = set()
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        index += 1
+        if not token:
+            continue
+        paths.add((token[3:] if len(token) >= 4 else token).replace("\\", "/"))
+        if ("R" in token[:2] or "C" in token[:2]) and index < len(tokens):
+            if tokens[index]:
+                paths.add(tokens[index].replace("\\", "/"))
+            index += 1
+    return sorted(paths)
 
 
 _TASKKILL = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "taskkill.exe")

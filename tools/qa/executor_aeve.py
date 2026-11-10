@@ -27,7 +27,7 @@ from typing import Any
 
 from tools.qa.executor import (
     EXECUTOR_AEVE, ExecutorError, ExecutorReport, assert_trusted_git, build_report, loads_strict,
-    require_category, require_head, require_options, run_child,
+    require_category, require_head, require_options, run_child, worktree_dirty_paths,
 )
 from tools.qa.registry import RegistryError, git_head, git_root, safe_git
 from tools.uc import aeve_probe
@@ -41,6 +41,7 @@ MAX_WALL_TIMEOUT_SECONDS = 60
 CHILD_GRACE_SECONDS = 180          # image/container setup and cleanup around AEVE's own wall bound
 CHILD_STDOUT_CAP = 64 * 1024       # AEVE prints ONE compact JSON line
 CHILD_STDERR_CAP = 64 * 1024
+MAX_REPORTED_PATHS = 8
 CLEANUP_UNCONFIRMED = "container cleanup unconfirmed; inspect Docker for a leftover container"
 
 STATUSES = frozenset({"COMPLETE", "INVALID", "BLOCKED", "TIMEOUT", "CANCELLED", "FAILED", "NEEDS_REVIEW"})
@@ -344,6 +345,13 @@ class AeveSandboxExecutor:
                 raise ExecutorError("STALE_HEAD", "HEAD moved before launch; nothing was run")
         except RegistryError as exc:
             raise ExecutorError("REPO_UNUSABLE", str(exc)[:200]) from None
+        # AEVE writes nothing into the candidate, so no path is exempt: any dirty or untracked path refuses.
+        dirty = worktree_dirty_paths(root)
+        if dirty:
+            raise ExecutorError(
+                "CANDIDATE_DIRTY_BEFORE_RUN",
+                f"{len(dirty)} modified or untracked path(s) before launch: {dirty[:MAX_REPORTED_PATHS]}",
+            )
         with tempfile.TemporaryDirectory(prefix="vst-aeve-exec-", ignore_cleanup_errors=True) as private:
             env = aeve_probe.build_child_env(self._aeve_root.resolve())
             env["LOCALAPPDATA"] = private      # same private state location as tools/uc/adapter.py
@@ -365,6 +373,12 @@ class AeveSandboxExecutor:
             head_after = git_head(root)
         except RegistryError:
             head_after = None
+        dirty_after = worktree_dirty_paths(root)
+        if dirty_after:
+            raise ExecutorError(
+                "CANDIDATE_DIRTY_AFTER_RUN",
+                f"{len(dirty_after)} modified or untracked path(s) after the run: {dirty_after[:MAX_REPORTED_PATHS]}",
+            )
         envelope = parse_envelope(child.stdout)
         return report_from_envelope(
             envelope, category=category, expected_head=expected_head, returncode=child.returncode,

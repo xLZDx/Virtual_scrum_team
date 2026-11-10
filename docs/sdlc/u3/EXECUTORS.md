@@ -99,7 +99,15 @@ candidate, bounded time and output, process tree killed on breach.
 
 Order: AEVE probe and pin check (head, matrix digest, no tracked changes, no untracked source files,
 missing counts refused, as in `tools/uc/router.py`), then the profile is read and vetted, HEAD is
-re-read immediately before launch, and the probe and pin check run again after the child exits.
+re-read immediately before launch together with a candidate worktree check, and after the child
+exits the probe and pin check, the HEAD re-read and the worktree check run again.
+
+Candidate worktree: read-only `git status --porcelain=v1 -z --untracked-files=all` (trusted git, only
+`.gitignore`d paths are exempt). AEVE writes nothing into the candidate, so ANY modified, staged,
+deleted or untracked path refuses with CANDIDATE_DIRTY_BEFORE_RUN (nothing launched) or
+CANDIDATE_DIRTY_AFTER_RUN (no report, so a PASS is never returned for a changed tree); the detail
+names up to 8 paths. There are no exceptions, unlike the native executor, which allows its own
+category's three evidence artifacts.
 
 Options: `profile` (repo-relative tracked JSON path starting with an alphanumeric character) and
 `aeve_pin` (required); `wall_timeout_seconds` (optional).
@@ -116,7 +124,7 @@ BLOCKED; NEEDS_REVIEW is FAIL for BASELINE_FAILED, else INCONCLUSIVE. The AEVE r
 in `not_run_reasons["project-test"]` for every non-PASS result. A `profile_sha256` in the envelope
 that differs from the vetted bytes is refused for every status.
 
-Refusal codes specific to B: MUTATION_PROFILE_REFUSED, MUTATION_REPORTED, PROFILE_INVALID,
+Refusal codes specific to B: CANDIDATE_DIRTY_BEFORE_RUN, CANDIDATE_DIRTY_AFTER_RUN, MUTATION_PROFILE_REFUSED, MUTATION_REPORTED, PROFILE_INVALID,
 PROFILE_NOT_TRACKED, PROFILE_HASH_MISMATCH, AEVE_PIN_REQUIRED, AEVE_PIN_MISMATCH, AEVE_PROBE_FAILED,
 AEVE_CHECKOUT_DIRTY, DOCKER_CLI_MISSING, AEVE_CHILD_TIMEOUT, AEVE_OUTPUT_TOO_LARGE, AEVE_NO_EXIT
 (these three state that container cleanup is unconfirmed), AEVE_BAD_OUTPUT, AEVE_CONTRACT_VIOLATION.
