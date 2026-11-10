@@ -2281,3 +2281,6 @@ I carried PR 8 as open for several turns without querying GitHub; it had been me
 
 ## 2026-11-11 U5-1 worker gate implementation
 Kind: NEUTRAL. Implementation is unexecuted and untested by design; reviewers next. Risk noted: diffgate passes a protected path that is also in the allowed list, so the new module re-checks protection on its own. Rule: when reusing a gate, list what it cannot express and fail closed on those in the wrapper.
+
+## 2026-11-11 U5-1 review findings
+Kind: FAILURE. Facts: reviewers found that the .git default made every call BLOCKED, protected matching was root-only, the diff grammar was not fully validated, isolation properties derived from caller strings were reported VERIFIED, and the test file was unregistered. Root cause: nothing was executed and the default list was never traced through its own validator. Missed by: author. Caught by: three read-only reviewers. Next time: trace every default constant through every validator it meets, and give caller-supplied facts a distinct status from computed ones.

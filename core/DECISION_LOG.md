@@ -3041,3 +3041,7 @@ Rebuilt catalog/role_table.json with tools/uc/role_table.py build against AEVE m
 ## 2026-11-11 U5-1 worker output through the diff gate
 
 Decision: new tools/vst/worker_gate.py reuses diffgate.check_diff and only adds refusals (protected path even when allowed, case variants, Windows aliases, diff text versus declared paths, gitlinks). Verdict is ACCEPTED, REFUSED or BLOCKED; every error and every unverifiable required isolation property is BLOCKED. The isolation proof lists five checked properties and nine always NOT_VERIFIED ones (no OS sandbox or process containment without WSL). WSL path not used. Tests written, NOT_RUN (operator ban).
+
+## 2026-11-11 U5-1 review remediation
+
+Decision: protected-path matching in worker_gate.py is by case-folded component and basename at any depth (plus root prefixes tools/vst and .harness-tools); `.git` is handled as a protected path instead of a malformed one; the diff text must be fully valid git grammar with size caps; isolation entries derived only from caller values are CALLER_ASSERTED, never VERIFIED. The registry map in tools/qa/build_registry.py lists the new test; docs/qa/categories.json needs regeneration after commit. Tests NOT_RUN.
