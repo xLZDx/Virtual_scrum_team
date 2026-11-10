@@ -2167,3 +2167,6 @@ Kind: NEUTRAL.
 - Layer that caught it: N/A (no blocking issues).
 - Rule: N/A (standard registry update process).
 - Fix status: registry regenerated and committed.
+
+## 2026-11-10 U2-6 review
+Kind: NEUTRAL. Rule: fixtures built from the gate source are the likeliest first-run failure; no runtime evidence exists for any U2 test.

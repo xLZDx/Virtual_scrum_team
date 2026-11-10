@@ -2918,3 +2918,6 @@ Ran tools.qa.build_registry --write after registering the four modules; docs/qa/
 ## 2026-11-10 — U2-6: Regenerate document registry after registering test modules
 
 Registry generator completed successfully without errors or unintended side effects. The four new test modules (test_coverage_report.py, test_u2_result_bridge.py, test_u2_bridge.py, test_u2_gate.py) are now discoverable by the documentation indexing system. No product code changes were made; this is a configuration and documentation update only.
+
+## 2026-11-10 U2-6 static test review and scope note
+Static reviewer traced the gate test base APPROVE path against product code: no BLOCKER or MAJOR, 3 MINOR (a test name claims two directions but checks one; weak v2-unchanged assertion; unused arg). Not covered by the reviewer: test_coverage_report.py and test_u2_result_bridge.py against the router. Scope note added; GPT-PM review requested on base d4d1543.
