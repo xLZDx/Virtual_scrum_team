@@ -2914,3 +2914,7 @@ Test agent wrote tests/uc/test_coverage_report.py, tests/uc/test_u2_result_bridg
 
 ## 2026-11-10 U2-6 registry regenerated
 Ran tools.qa.build_registry --write after registering the four modules; docs/qa/categories.json updated.
+
+## 2026-11-10 — U2-6: Regenerate document registry after registering test modules
+
+Registry generator completed successfully without errors or unintended side effects. The four new test modules (test_coverage_report.py, test_u2_result_bridge.py, test_u2_bridge.py, test_u2_gate.py) are now discoverable by the documentation indexing system. No product code changes were made; this is a configuration and documentation update only.

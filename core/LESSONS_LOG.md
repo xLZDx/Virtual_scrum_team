@@ -2158,3 +2158,12 @@ Kind: SHORTCOMING (honest). Facts: tests exist but NOT_RUN; the U2 evidence is s
 
 ## 2026-11-10 U2-6 registry
 Kind: NEUTRAL.
+
+## 2026-11-10 — U2-6 test registration and registry regeneration
+
+- Kind: SUCCESS (test modules registered correctly, generator produced output without error).
+- Facts: added four test module paths to MAIN_TEST_FILE_CATEGORIES in tools/qa/build_registry.py; build_registry.py --write executed successfully and regenerated docs/qa/categories.json.
+- Root cause: N/A (mechanical task completed as expected).
+- Layer that caught it: N/A (no blocking issues).
+- Rule: N/A (standard registry update process).
+- Fix status: registry regenerated and committed.
