@@ -2071,3 +2071,6 @@ Kind: NEUTRAL. Operator-requested refresh mid-sprint.
 
 ## 2026-11-10 S5-D fixtures
 Kind: SUCCESS. Fixture confirmation by one real aeve run per variant avoided declaring rules required on a guess; a fixture that did not fire would have been dropped. Unrelated rule PY-EXCEPT-SWALLOW-RETURN fires on the clean AF-001 variant and is noted in the index.
+
+## 2026-11-10 S5-D manifest
+Kind: NEUTRAL. Routine manifest regeneration.
