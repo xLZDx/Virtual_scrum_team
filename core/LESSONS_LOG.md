@@ -2170,3 +2170,6 @@ Kind: NEUTRAL.
 
 ## 2026-11-10 U2-6 review
 Kind: NEUTRAL. Rule: fixtures built from the gate source are the likeliest first-run failure; no runtime evidence exists for any U2 test.
+
+## 2026-11-10 U2-6 sanitizer artifact
+Kind: NEUTRAL. A secret-like test literal is redacted in review packets and looks like a NameError to the reviewer. Rule: name seeded secret constants so the packet shows the definition, or explain in the scope note up front.

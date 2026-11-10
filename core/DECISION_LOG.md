@@ -2921,3 +2921,6 @@ Registry generator completed successfully without errors or unintended side effe
 
 ## 2026-11-10 U2-6 static test review and scope note
 Static reviewer traced the gate test base APPROVE path against product code: no BLOCKER or MAJOR, 3 MINOR (a test name claims two directions but checks one; weak v2-unchanged assertion; unused arg). Not covered by the reviewer: test_coverage_report.py and test_u2_result_bridge.py against the router. Scope note added; GPT-PM review requested on base d4d1543.
+
+## 2026-11-10 U2-6 GPT-PM round 1: MAJOR x1 (redaction artifact)
+GPT-PM request acde99d6 reported an undefined identifier in a test; verified in source that the line is valid (defined constant, f-string); the marker came from the packet sanitizer. Disposition: not a defect; narrow verification round sent with the source explanation. MINOR accepted: one test name claims two directions but checks one.
