@@ -2152,3 +2152,6 @@ Kind: NEUTRAL.
 
 ## 2026-11-10 U2-5 approved
 Kind: SUCCESS. Facts: reviewer batch before GPT-PM left no findings. Rule: keep the batch before the GPT-PM request.
+
+## 2026-11-10 U2-6 tests
+Kind: SHORTCOMING (honest). Facts: tests exist but NOT_RUN; the U2 evidence is static review only. Docstring of coverage_report overstated the rule (found while pinning behaviour in tests). Rule: write the docstring from the code behaviour, and record NOT_RUN plainly.

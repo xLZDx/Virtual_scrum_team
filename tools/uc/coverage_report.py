@@ -4,10 +4,12 @@ Turns a validated ``uc.role-result.v1`` plus the role table into a ``uc.coverage
 that says, per role, what the code covered and what remains for a model, and renders it as text or
 markdown. Deterministic, stdlib only, no model, no network, no file writes.
 
-Honesty rule: a pass-like word may appear in a rendering only when every role in the report is fully
-clean (status CLEAN, class LOCAL, empty model residual, empty uncovered). A rendering is scanned for pass
-tokens before it is returned; the only exemption is the exact verdict word CLEAN_LOCAL of a fully clean
-role, at the verdict cell position of that role's own body row, recorded while the rendering is built.
+Honesty rule: a pass-like word may appear in a rendering only as the verdict word of a role that is itself
+fully clean (status CLEAN, class LOCAL, empty model residual, empty uncovered); no other cell, header or
+row may carry one. A rendering is scanned for pass tokens before it is returned; the only exemption is the
+exact verdict word CLEAN_LOCAL of a fully clean role, at the verdict cell position of that role's own body
+row, recorded while the rendering is built. In a mixed report the clean role's own row keeps CLEAN_LOCAL and
+every partial, residual-bearing, findings or uncovered role stays free of pass words.
 
 Usage:
     python -m tools.uc.coverage_report --result result.json --table role_table.json [--format text|markdown|json]
