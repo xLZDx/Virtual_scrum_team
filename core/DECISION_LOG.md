@@ -2911,3 +2911,6 @@ Five test modules created and registered in MAIN_TEST_FILE_CATEGORIES: test_cove
 
 ## 2026-11-10 U2-6 tests written (NOT_RUN)
 Test agent wrote tests/uc/test_coverage_report.py, tests/uc/test_u2_result_bridge.py, tests/vst/test_u2_bridge.py, tests/vst/test_u2_gate.py and tests/vst/u2_helpers.py covering all U2-1..U2-5 refusals; only a syntax parse was done, nothing run (operator forbids pytest). No product defect found. Seeded-failure catalog entries were not added: catalog.json is pinned by raw-byte hash in the frozen rule catalog and the S4 catalog test pins 8 fixtures, so adding fixtures needs a product pin change; U2 refusals are covered by the new tests instead. Registered the four test modules in tools/qa/build_registry.py. coverage_report docstring corrected to match the code (clean role keeps its CLEAN_LOCAL cell in a mixed report; that is the intended per-row rule). Test fixtures in u2_helpers are the most likely place for a first-run bug.
+
+## 2026-11-10 U2-6 registry regenerated
+Ran tools.qa.build_registry --write after registering the four modules; docs/qa/categories.json updated.
