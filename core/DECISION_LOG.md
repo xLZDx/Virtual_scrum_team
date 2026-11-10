@@ -2868,3 +2868,6 @@ Gate v3 static check now refuses with hard reasons: STATIC_FINDINGS_PRESENT (any
 
 ## 2026-11-10 U2-4 review remediation
 Reviewers (python none, functional-test none, security 1 MAJOR): early return on non-FULL coverage skipped findings/residual/pin refusals so a waiver could hide them. Fixed: receipt findings surfaced first; findings, residual, role-table pin and AEVE-head pin refusals collected in one pass for every result and coverage state (hard, no waiver, no masking among them); pin format validated (64-hex non-zero / 40-hex); evidence pin-check PASS only on exact APPROVE and raises on contradiction with the decision; dead _BLOCKING_SEVERITIES removed. Behaviour change recorded: findings moved from waivable soft reason to hard reason in v3. Limits kept: reviewed_paths_sha256 is bound by signature only (no gate-owned list), no receipt expiry, trust pinned must come from an independent caller source (no in-tree builder yet).
+
+## 2026-11-10 U2-4 scope note
+Added docs/sdlc/evidence/u2-4-gptpm-scope-note.md; GPT-PM review requested, base 1b40bbb.

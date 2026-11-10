@@ -2116,3 +2116,6 @@ Kind: NEUTRAL (implementation, review pending). Rule: residual open is a hard re
 
 ## 2026-11-10 U2-4 remediation
 Kind: SHORTCOMING. Facts: author put refusals after a coverage early return, so a waivable INCONCLUSIVE could hide them; found by security-reviewer. Root cause: new hard checks added behind an existing terminating branch. Missed by: author. Caught by: reviewer. Rule: a refusal that must be unconditional runs before any early return of the same check.
+
+## 2026-11-10 U2-4 scope note
+Kind: NEUTRAL. Routine scope note.
