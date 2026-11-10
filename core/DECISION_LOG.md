@@ -2938,3 +2938,6 @@ Re-rendered the plan reports after the plan-correction PR was opened, as the clo
 
 ## 2026-11-10 plan-sync merged into the U2 branch
 PR #8 (plan sync, docs only) is not merged into main; the U2 branch needs the corrected plan to record U2, so origin/plan-sync-s5 was merged here (conflicts only in the two append-only logs, both sides kept). If PR #8 is merged first, nothing changes.
+
+## 2026-11-10 program report re-rendered after the U2 PR
+Re-render only updated the Git provenance and pushed-count to HEAD 29f1276; no status changed.

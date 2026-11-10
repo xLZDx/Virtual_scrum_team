@@ -2187,3 +2187,6 @@ Kind: NEUTRAL. Routine re-render.
 
 ## 2026-11-10 plan-sync merge
 Kind: NEUTRAL. Append-only logs conflict on every parallel branch; keep both sides.
+
+## 2026-11-10 report re-render
+Kind: NEUTRAL. Render after the PR so provenance matches the pushed head.
