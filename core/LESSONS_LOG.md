@@ -2089,3 +2089,6 @@ Kind: NEUTRAL. Coded without a run; verification is review only.
 
 ## 2026-11-10 S5-E review findings
 Kind: SHORTCOMING. First pass let the gate trust a caller-supplied expected blob and consumed a one-shot nonce mid-evaluation; the evidence record asserted success without derivation. Caught by three reviewers. Rule: gate decisions must derive from verified inputs and side effects (nonce use) must happen once after the verdict.
+
+## 2026-11-10 S5-E GPT-PM finding
+Kind: SHORTCOMING. I allowed N static slots while consuming nonces sequentially, which is not atomic. Missed by three reviewers; caught by GPT-PM. Rule: when a side effect cannot be rolled back, restrict cardinality to one or make it atomic.

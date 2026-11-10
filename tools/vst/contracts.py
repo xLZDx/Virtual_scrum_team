@@ -402,8 +402,11 @@ def _validate_task_manifest_v2_body(obj: Any, version: int) -> dict:
     core = {k: obj[k] for k in MANIFEST_FIELDS}
     _validate_task_manifest_v1(core)
     if version == 3:
-        if not any(s["receipt_type"] == "StaticAnalysis" for s in obj["required_receipts"]):
-            raise ContractError("v3 manifest requires a static-analysis slot")
+        static_slots = sum(1 for s in obj["required_receipts"] if s["receipt_type"] == "StaticAnalysis")
+        if static_slots != 1:
+            # Exactly one slot: the gate consumes a single one-shot nonce per decision, so a
+            # multi-slot manifest could leave a partial nonce state after a refusal.
+            raise ContractError("v3 manifest requires exactly one static-analysis slot")
         if not set(static_ids) <= set(obj["acceptance"]):
             raise ContractError("static_acceptance_ids: must be a subset of acceptance")
         mapped = {a for t in obj["required_tests"] for a in t["acceptance"]}

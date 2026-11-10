@@ -165,7 +165,7 @@ the v2 set plus `required_rule_ids` (non-empty, sorted, unique list of non-empty
 `required_rule_ids`. For v3 StaticAnalysis, `derive_result` returns FAIL when any finding has severity
 HIGH or CRITICAL; INFO/LOW/MEDIUM findings with FULL coverage still PASS. A v3 manifest also carries
 `static_acceptance_ids` (non-empty, sorted, unique; a subset of `acceptance`, disjoint from the ids
-mapped to required tests) and must contain a StaticAnalysis slot. The gate verifies a v3 static receipt
+mapped to required tests) and must contain exactly one StaticAnalysis slot (one one-shot nonce per decision). The gate verifies a v3 static receipt
 under the analyzer authority (`evaluate(..., analyzer_trust=...)`: analyzer key, full role roster,
 pinned analyzer/profile identity, frozen catalog, verifier-owned expected values), credits only
 `static_acceptance_ids`, and consumes the nonce once, at the end, only on an approving verdict.
