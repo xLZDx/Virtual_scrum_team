@@ -3003,3 +3003,6 @@ Decision: GPT-PM APPROVE for U3-5 (request 88d868e2-afc8-4229-85b0-ad6d465dfe12)
 
 ## 2026-11-10 U3-7 static comparison
 Decision: operator chose static comparison only (AskUserQuestion); docs/sdlc/u3/EXECUTOR_COMPARISON.md written from code, no run, no numbers; selection of executor stays with operator. Found and fixed two stale statements in EXECUTORS.md (COARSE_ONLY ceiling c, AEVE PASS mapping). Real comparison run stays NOT_RUN: executor A runs pytest (forbidden), executor B has no profile file and needs Docker.
+
+## 2026-11-10 U3 sprint end plan update
+Decision: PROJECT_PLAN.md updated once for sprint U3 (U3-1..U3-6 ACCEPTED, U3-3/4/6 by S4 on main, U3-7 PARTIAL static); reports re-rendered; U2 row corrected to merged. Sprint PR to be opened; merge is the operator order.
