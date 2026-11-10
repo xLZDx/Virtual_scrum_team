@@ -325,6 +325,8 @@ def load_catalog(
     The catalog also pins the raw-byte sha256 of the S4 catalog and of the fixture index, and
     those are verified here. Every path must stay under ``repo_root``; the fixture index must be
     ``AEVE_FIXTURES_DIR/index.json`` and its files are integrity-checked."""
+    if expected_sha256 != FROZEN_CATALOG_SHA256:
+        raise CoverageError("CATALOG_PIN_MISMATCH", "expected_sha256 differs from the frozen catalog pin")
     root = Path(repo_root)
     body = _parse_json(
         _read_bytes(_resolve_under(root, catalog_path, "catalog_path", "CATALOG_PATH_REFUSED"), "CATALOG_UNREADABLE"),

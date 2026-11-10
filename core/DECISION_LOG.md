@@ -2826,3 +2826,6 @@ Regenerated docs/qa/categories.json after the new fixture files (build_registry 
 
 ## 2026-11-10 S5-D remediation of reviewer MAJOR findings
 python-reviewer (6 MAJOR) and functional-test-reviewer (3 MAJOR) found: SF fixtures linkable to required rules, fixture integrity unchecked, Windows drive path escape, unhashable values crash, optional pin and body-only digest, scope not validated, unreachable overlap status. Fixed in rule_coverage.py; mandatory pin FROZEN_CATALOG_SHA256 plus s4 catalog and fixture index digests stored in the catalog (computed by hashing file bytes, not by running the module). Reading only; tests NOT_RUN.
+
+## 2026-11-10 S5-D GPT-PM round 1: MAJOR x1, remediated
+GPT-PM (reply 6e459700) returned 1 MAJOR at head 3cd5ad3: load_catalog accepted any caller-supplied digest without comparing it to FROZEN_CATALOG_SHA256. Fixed: load_catalog raises CATALOG_PIN_MISMATCH unless expected_sha256 equals the frozen pin; the computed catalog digest is still verified against it. Everything else in the S5-D review passed. Reading only; tests NOT_RUN. One narrow verification round requested.

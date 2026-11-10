@@ -9,3 +9,6 @@ Already fixed after two read-only reviewer passes (python-reviewer 6 MAJOR, func
 Settled, do not reopen: gate wiring is S5-E; signing S5-B; adapter S5-C; AEVE scans the whole git root so unrelated uncovered files prevent FULL (documented); only 4 rules are required, others optional. Tests NOT_RUN (operator forbids pytest); the module was not executed; evidence is static review plus the fixture confirmation runs.
 
 Ask: the complete BLOCKER/MAJOR set for this delta only.
+
+## Verification round (after GPT-PM round 1, reply 6e459700, MAJOR x1)
+Base: 3cd5ad3. Fixed: load_catalog now raises CATALOG_PIN_MISMATCH unless expected_sha256 equals FROZEN_CATALOG_SHA256 (one added check at the start of load_catalog in tools/vst/rule_coverage.py). Ask: verify this one correction and direct regressions only.

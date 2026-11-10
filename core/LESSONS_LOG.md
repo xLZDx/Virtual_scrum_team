@@ -2077,3 +2077,6 @@ Kind: NEUTRAL. Routine manifest regeneration.
 
 ## 2026-11-10 S5-D review findings
 Kind: SHORTCOMING. The first catalog loader trusted the fixture index without reading the fixtures, and the pin was optional. Caught by two reviewers. Rule: a frozen catalog must verify every file it depends on and make its pin mandatory.
+
+## 2026-11-10 S5-D GPT-PM finding
+Kind: SHORTCOMING. I made the pin a mandatory argument but never compared it with the frozen constant, so the pin proved agreement with the caller, not with the committed identity. Missed by author and both reviewers; caught by GPT-PM. Rule: a pin constant must be compared inside the loader, not delegated to callers.
