@@ -2898,3 +2898,6 @@ tools/uc/coverage_report.py: uc.coverage-report.v1 per-role report with closed v
 
 ## 2026-11-10 U2-5 review remediation
 Reviewers (python 1 conditional MAJOR, functional-test none) fixed in one batch: the no-pass-token guarantee now holds for any dict passed to the public renderers (full contract-pattern revalidation, ASCII-only, no duplicates, NFKC second pass), exemption is structural (recorded while rendering, byte-identical layout check), wider token list with digits as separators, ids with pass words refused (PASS_WORD_IN_ID, fail closed), table digest check, CLEAN_LOCAL requires class LOCAL, import fallback narrowed, CLI reads utf-8-sig and maps recursion errors. Limits kept: json format not scanned; availability: ids containing pass words fail closed.
+
+## 2026-11-10 U2-5 scope note
+Added docs/sdlc/evidence/u2-5-gptpm-scope-note.md; GPT-PM review requested, base 40b12ad.
