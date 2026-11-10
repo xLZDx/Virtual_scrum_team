@@ -3061,3 +3061,7 @@ Regenerated docs/qa/categories.json after the parser fix commit so the registry 
 ## 2026-11-11 U5-1 GPT-PM approval
 
 GPT-PM APPROVE (0 BLOCKER, 0 MAJOR) for U5-1 at head 45f6f0d after one MAJOR round (incomplete diff blocks); reply 419b86f6-537d-5959-a07b-ac86e26f4129, request e7522f18-ee4d-49c9-811e-eeb63960898b. Tests NOT_RUN (operator ban). Limits kept: no OS sandbox, no process containment, caller-supplied diff bytes.
+
+## 2026-11-11 U5-2 AEVE patch proposals through the diff gate
+
+Decision: tools/vst/patch_proposals.py takes the AEVE `g6.patch.v1` JSON document (AEVE has no CLI command that emits it and the document has no base identity), validates it strictly, applies the patches to a throw-away git index, builds a candidate commit object, runs the real diff through worker_gate.gate_worker_change and only then writes the worktree with a rollback. Base identity is enforced by VST: caller-reported proposal head equals the pinned base, worktree HEAD equals the pinned base, and every patch must apply to the base content (REFUSED STALE_BASE). The share of proposal versus model lines is counted per hunk on the real diff; a model change on a patched path is REFUSED unless an explicit recorded override reason is given. Tests NOT_RUN (operator ban); git commands unproven. See docs/sdlc/u5/PATCH_PROPOSALS.md.

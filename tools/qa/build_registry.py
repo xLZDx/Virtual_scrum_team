@@ -59,6 +59,7 @@ MAIN_TEST_FILE_CATEGORIES = {
     "tests/vst/test_u2_bridge.py": "functional",
     "tests/vst/test_u2_gate.py": "integration",
     "tests/vst/test_u5_worker_gate.py": "functional",
+    "tests/vst/test_u5_patch_proposals.py": "functional",
     "tests/uc/test_measure.py": "functional",
     "tests/uc/test_role_table.py": "functional",
     "tests/uc/test_router.py": "functional",
@@ -98,6 +99,7 @@ MAIN_TEST_FILE_CATEGORIES = {
     "tests/vst/test_u2_bridge.py": "functional",
     "tests/vst/test_u2_gate.py": "functional",
     "tests/vst/test_u5_worker_gate.py": "functional",
+    "tests/vst/test_u5_patch_proposals.py": "functional",
     "tests/uc/test_u4_project_roles.py": "functional",
 }
 PRIMARY_CATEGORIES = ("functional", "integration", "api", "e2e", "identity", "qa-tooling", "seeded-failure")

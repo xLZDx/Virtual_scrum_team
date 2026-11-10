@@ -2299,3 +2299,7 @@ The registry follows every change to a registered test file; regenerate after ea
 ## 2026-11-11 SHORTCOMING reviewers missed under-specified diff blocks
 
 Three reviewers tested mismatched paths but none tried a header-only block or a binary payload; GPT-PM found it. Layer: reviewers and author tests. Rule: for every parser, ask what the smallest well-formed-looking input is and test that it is rejected.
+
+## 2026-11-11 SHORTCOMING proposal format assumed richer than it is
+
+The task text expected base hashes and bounds in the AEVE proposal; the real g6.patch.v1 has neither and no CLI. Layer: reading the producer source before designing. Rule: read the producer's code via git first and state in the doc which guarantees the producer does not give, then enforce them on the consumer side.
