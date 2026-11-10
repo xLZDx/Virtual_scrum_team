@@ -93,7 +93,8 @@ def _pin_check(pin: Any, receipt: Any, field: str, decision: Any, satisfied: boo
     The pin type is checked first. NOT_RUN if the pin or receipt is absent. PASS is emitted only
     when the decision verdict is exactly APPROVE and the receipt is accepted, else NOT_RUN; FAIL
     is emitted for a computed mismatch. A computed PASS contradicting a *_DRIFT decision reason,
-    or a computed FAIL under a plain APPROVE verdict, raises ContractError.
+    or a computed FAIL under an accepting verdict (APPROVE or APPROVED_WITH_WAIVER), raises
+    ContractError.
     """
     if pin is not None and type(pin) is not str:
         raise ContractError(f"facts.pinned_{field}: must be a string")
@@ -105,8 +106,8 @@ def _pin_check(pin: Any, receipt: Any, field: str, decision: Any, satisfied: boo
     code = _DRIFT_CODES[field]
     if computed == "PASS" and any(code in str(r) for r in reasons):
         raise ContractError(f"facts.pinned_{field}: PASS contradicts the decision reason {code}")
-    if computed == "FAIL" and verdict == "APPROVE":
-        raise ContractError(f"facts.pinned_{field}: FAIL contradicts an APPROVE decision")
+    if computed == "FAIL" and verdict in _ACCEPTING:
+        raise ContractError(f"facts.pinned_{field}: FAIL contradicts an accepting decision")
     if computed == "PASS":
         return "PASS" if verdict == "APPROVE" and satisfied else NOT_RUN
     return computed
