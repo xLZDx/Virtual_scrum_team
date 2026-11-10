@@ -2829,3 +2829,6 @@ python-reviewer (6 MAJOR) and functional-test-reviewer (3 MAJOR) found: SF fixtu
 
 ## 2026-11-10 S5-D GPT-PM round 1: MAJOR x1, remediated
 GPT-PM (reply 6e459700) returned 1 MAJOR at head 3cd5ad3: load_catalog accepted any caller-supplied digest without comparing it to FROZEN_CATALOG_SHA256. Fixed: load_catalog raises CATALOG_PIN_MISMATCH unless expected_sha256 equals the frozen pin; the computed catalog digest is still verified against it. Everything else in the S5-D review passed. Reading only; tests NOT_RUN. One narrow verification round requested.
+
+## 2026-11-10 S5-D accepted (GPT-PM APPROVE, verification round)
+GPT-PM APPROVE, 0 BLOCKER, 0 MAJOR, reply da4d7998, for the correction at head 757d7ba (round 1 had MAJOR x1: the loader did not compare the pin). Static review only; fixture confirmation runs were not independently reproduced by GPT-PM. NOT_RUN: tests. Next: S5-E (exact-head gate and reproducible evidence integration), the last S5 task.

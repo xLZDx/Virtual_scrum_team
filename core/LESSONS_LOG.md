@@ -2080,3 +2080,6 @@ Kind: SHORTCOMING. The first catalog loader trusted the fixture index without re
 
 ## 2026-11-10 S5-D GPT-PM finding
 Kind: SHORTCOMING. I made the pin a mandatory argument but never compared it with the frozen constant, so the pin proved agreement with the caller, not with the committed identity. Missed by author and both reviewers; caught by GPT-PM. Rule: a pin constant must be compared inside the loader, not delegated to callers.
+
+## 2026-11-10 S5-D accepted
+Kind: SUCCESS after reviewer rounds and one GPT-PM correction. Limit: static review only.
