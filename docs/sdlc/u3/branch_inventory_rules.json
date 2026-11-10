@@ -1,0 +1,427 @@
+{
+  "schema_version": 1,
+  "base_ref": "origin/main",
+  "branches": [
+    "origin/s4-canonical-continuation",
+    "origin/s4-native-qa-runner",
+    "origin/s4-reproducible-qa-automation",
+    "origin/s4-e2e-snapshot-20261025-180e330",
+    "origin/s5-bounded-aeve-evidence"
+  ],
+  "rules": [
+    {
+      "rule_id": "R01-identical",
+      "branch": "*",
+      "globs": [
+        "**"
+      ],
+      "main_state": [
+        "identical"
+      ],
+      "class": "ALREADY_ON_MAIN",
+      "reason": "Blob hash equals the blob at the same path on origin/main; nothing to land.",
+      "lands_in": null
+    },
+    {
+      "rule_id": "R02-core-logs",
+      "branch": "*",
+      "globs": [
+        "core/**"
+      ],
+      "main_state": [
+        "absent_new",
+        "differs_conflict"
+      ],
+      "class": "DROPPED",
+      "reason": "Branch-era state/decision/lesson logs; main's core logs carry the U1/U2 history and are authoritative. Main and the branch both changed this path since the merge-base (or both added it) with different content; copying it would overwrite main's version or conflict, and the branch edit is not rebased onto main.",
+      "lands_in": null,
+      "flags": [
+        "CONFLICT_WITH_MAIN"
+      ]
+    },
+    {
+      "rule_id": "R03-doc-registry",
+      "branch": "*",
+      "globs": [
+        "governance/DOCUMENT_REGISTRY.md"
+      ],
+      "main_state": [
+        "absent_new",
+        "differs_conflict"
+      ],
+      "class": "DROPPED",
+      "reason": "Generated file; it is regenerated on main by tools/build_document_registry.py, never merged.",
+      "lands_in": null
+    },
+    {
+      "rule_id": "R04-change-records-new",
+      "branch": "*",
+      "globs": [
+        "docs/changes/**"
+      ],
+      "main_state": [
+        "absent_new"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Per-commit change records of the retired record-per-commit process; kept on the branch ref as history, not landed.",
+      "lands_in": null
+    },
+    {
+      "rule_id": "R05-change-records-conflict",
+      "branch": "*",
+      "globs": [
+        "docs/changes/**"
+      ],
+      "main_state": [
+        "differs_conflict"
+      ],
+      "class": "DROPPED",
+      "reason": "Change record number already used on main with other content. Main and the branch both changed this path since the merge-base (or both added it) with different content; copying it would overwrite main's version or conflict, and the branch edit is not rebased onto main.",
+      "lands_in": null,
+      "flags": [
+        "CONFLICT_WITH_MAIN"
+      ]
+    },
+    {
+      "rule_id": "R06-evidence-new",
+      "branch": "*",
+      "globs": [
+        "docs/sdlc/evidence/**"
+      ],
+      "main_state": [
+        "absent_new"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Recorded S2/S3/S4/S5 run outputs, reviews and snapshots bound to old heads; history only, not product behavior.",
+      "lands_in": null
+    },
+    {
+      "rule_id": "R07-evidence-conflict",
+      "branch": "*",
+      "globs": [
+        "docs/sdlc/evidence/**"
+      ],
+      "main_state": [
+        "differs_conflict"
+      ],
+      "class": "DROPPED",
+      "reason": "Evidence file at a path where main holds different content, for example the docs/sdlc/evidence/qa lane outputs. Main and the branch both changed this path since the merge-base (or both added it) with different content; copying it would overwrite main's version or conflict, and the branch edit is not rebased onto main.",
+      "lands_in": null,
+      "flags": [
+        "CONFLICT_WITH_MAIN"
+      ]
+    },
+    {
+      "rule_id": "R08-sdlc-docs-new",
+      "branch": "*",
+      "globs": [
+        "docs/sdlc/**",
+        "docs/*.md"
+      ],
+      "main_state": [
+        "absent_new"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "S2/S3/S4 design and plan documents outside U3 scope; kept as design reference.",
+      "lands_in": null,
+      "exclude": [
+        "docs/sdlc/evidence/**"
+      ]
+    },
+    {
+      "rule_id": "R09-sdlc-docs-conflict",
+      "branch": "*",
+      "globs": [
+        "docs/sdlc/**",
+        "docs/*.md"
+      ],
+      "main_state": [
+        "differs_conflict"
+      ],
+      "class": "DROPPED",
+      "reason": "Plan/design/state document changed on both sides since the merge-base with different content. Main and the branch both changed this path since the merge-base (or both added it) with different content; copying it would overwrite main's version or conflict, and the branch edit is not rebased onto main.",
+      "lands_in": null,
+      "exclude": [
+        "docs/sdlc/evidence/**"
+      ],
+      "flags": [
+        "CONFLICT_WITH_MAIN"
+      ]
+    },
+    {
+      "rule_id": "R09b-plan-docs-clean-edit",
+      "branch": "*",
+      "globs": [
+        "docs/*.md"
+      ],
+      "main_state": [
+        "differs_clean"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Read: S3, S4 and S5 plan documents edited on the branch with status narrative of the old branch (S4 'implemented, acceptance open', REJECT dispositions, continuation notes) that describes the older docs/qa/categories.json registry and tools/qa/build_registry.py; main's S4 was accepted separately with a different registry, so landing would add contradictory status text. Not a code asset and no U3 scope.",
+      "lands_in": null,
+      "flags": [
+        "CLEAN_EDIT_NOT_LANDED"
+      ]
+    },
+    {
+      "rule_id": "R10-reports-new",
+      "branch": "*",
+      "globs": [
+        "reports/**"
+      ],
+      "main_state": [
+        "absent_new"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Generated HTML status snapshots that do not exist on main; regenerable artifacts, not landed.",
+      "lands_in": null
+    },
+    {
+      "rule_id": "R11-reports-clean-edit",
+      "branch": "*",
+      "globs": [
+        "reports/**"
+      ],
+      "main_state": [
+        "differs_clean"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Read: the S0/S1, status and baseline HTML reports were re-stamped on the branch (the Git line now reads 's4-canonical-continuation @ 4e0deef') plus blank-line padding. Main did not change them, but landing would put a stale branch name and hash into main's reports; generated artifacts are regenerated, not merged.",
+      "lands_in": null,
+      "flags": [
+        "CLEAN_EDIT_NOT_LANDED"
+      ]
+    },
+    {
+      "rule_id": "R12-docs-qa-new",
+      "branch": "*",
+      "globs": [
+        "docs/qa/**"
+      ],
+      "main_state": [
+        "absent_new"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Branch-era fixture/seeded-failure/API inventory data bound to the old registry schema and old test selectors; main keeps its own catalog in tests/qa/seeded_failure/catalog.json. Reference only.",
+      "lands_in": null,
+      "reference_for": "U3-6"
+    },
+    {
+      "rule_id": "R13-docs-qa-conflict",
+      "branch": "*",
+      "globs": [
+        "docs/qa/**"
+      ],
+      "main_state": [
+        "differs_conflict"
+      ],
+      "class": "DROPPED",
+      "reason": "Old categories registry (small, old schema) versus main's schema 2 registry at the same path. Main and the branch both changed this path since the merge-base (or both added it) with different content; copying it would overwrite main's version or conflict, and the branch edit is not rebased onto main.",
+      "lands_in": null,
+      "flags": [
+        "CONFLICT_WITH_MAIN",
+        "DUPLICATES_MAIN_TOOLS_QA"
+      ]
+    },
+    {
+      "rule_id": "R14-qa-pass-line",
+      "branch": "*",
+      "globs": [
+        "tools/qa/pytest_pass_plugin.py",
+        "tests/qa/test_s4_pass_line_parser.py"
+      ],
+      "main_state": [
+        "absent_new"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Trusted PASS-line emitter and its parser test. The parser test needs the quiet-dot change in tools/vst/contracts.py, which conflicts with main and alters a hash-pinned parser; main already has a no-skip verdict in tools/qa/gate_check.py. Re-derive in U3-5 if needed.",
+      "lands_in": null,
+      "reference_for": "U3-5",
+      "flags": [
+        "DUPLICATES_MAIN_TOOLS_QA"
+      ]
+    },
+    {
+      "rule_id": "R15-qa-seeded-fixtures",
+      "branch": "*",
+      "globs": [
+        "tools/qa/fixtures.py",
+        "tests/qa/test_s4_seeded_failure*.py"
+      ],
+      "main_state": [
+        "absent_new"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Hash-bound seeded-failure fixture validator and tests built on the branch registry; main has its own accepted seeded-failure catalog and tests. Compatibility with main's registry is unproven, so conservative class.",
+      "lands_in": null,
+      "reference_for": "U3-6",
+      "flags": [
+        "DUPLICATES_MAIN_TOOLS_QA"
+      ]
+    },
+    {
+      "rule_id": "R16-qa-matrix",
+      "branch": "*",
+      "globs": [
+        "tools/qa/matrix.py"
+      ],
+      "main_state": [
+        "absent_new"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Exact-head platform-matrix report validator against the branch registry and report formats; unproven against main's report envelope, so conservative class.",
+      "lands_in": null,
+      "reference_for": "U3-4",
+      "flags": [
+        "DUPLICATES_MAIN_TOOLS_QA"
+      ]
+    },
+    {
+      "rule_id": "R17-qa-wsl-root",
+      "branch": "*",
+      "globs": [
+        "tools/qa/**"
+      ],
+      "main_state": [
+        "absent_new"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "WSL snapshot transfer, root harness and requirements.in for the WSL runtime path; runtime-bootstrap scope, not U3.",
+      "lands_in": null,
+      "exclude": [
+        "tools/qa/pytest_pass_plugin.py",
+        "tools/qa/fixtures.py",
+        "tools/qa/matrix.py"
+      ]
+    },
+    {
+      "rule_id": "R18-qa-tools-conflict",
+      "branch": "*",
+      "globs": [
+        "tools/qa/**"
+      ],
+      "main_state": [
+        "differs_conflict"
+      ],
+      "class": "DROPPED",
+      "reason": "Older branch implementation of modules main already ships and has accepted (registry, runner, report, plugin, dependencies, WSL scripts). Landing it would silently duplicate or regress main's tools/qa. Main and the branch both changed this path since the merge-base (or both added it) with different content; copying it would overwrite main's version or conflict, and the branch edit is not rebased onto main.",
+      "lands_in": null,
+      "flags": [
+        "CONFLICT_WITH_MAIN",
+        "DUPLICATES_MAIN_TOOLS_QA"
+      ]
+    },
+    {
+      "rule_id": "R19-qa-tests-new",
+      "branch": "*",
+      "globs": [
+        "tests/qa/**"
+      ],
+      "main_state": [
+        "absent_new"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Tests for the old branch runner, registry and worker; they target code that is not landed.",
+      "lands_in": null,
+      "exclude": [
+        "tests/qa/test_s4_pass_line_parser.py",
+        "tests/qa/test_s4_seeded_failure*.py"
+      ]
+    },
+    {
+      "rule_id": "R20-vst-tests-new",
+      "branch": "*",
+      "globs": [
+        "tests/vst/**"
+      ],
+      "main_state": [
+        "absent_new"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "S2/S3/S5 tests for unlanded VST changes; outside U3 scope.",
+      "lands_in": null
+    },
+    {
+      "rule_id": "R21-vst-tests-conflict",
+      "branch": "*",
+      "globs": [
+        "tests/vst/**"
+      ],
+      "main_state": [
+        "differs_conflict"
+      ],
+      "class": "DROPPED",
+      "reason": "Branch edits of S2/S3 VST tests matching the branch's own tools/vst changes. Main and the branch both changed this path since the merge-base (or both added it) with different content; copying it would overwrite main's version or conflict, and the branch edit is not rebased onto main.",
+      "lands_in": null,
+      "flags": [
+        "CONFLICT_WITH_MAIN"
+      ]
+    },
+    {
+      "rule_id": "R22-vst-tools-new",
+      "branch": "*",
+      "globs": [
+        "tools/vst/**"
+      ],
+      "main_state": [
+        "absent_new"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Worker capability-drop helper and S5 source-tree code; S2/S3/S5 scope, not U3.",
+      "lands_in": null
+    },
+    {
+      "rule_id": "R23-vst-tools-conflict",
+      "branch": "*",
+      "globs": [
+        "tools/vst/**"
+      ],
+      "main_state": [
+        "differs_conflict"
+      ],
+      "class": "DROPPED",
+      "reason": "Branch edits of VST runner/store/gate/pilot/dispatch/supervisor modules where main also changed the file since the merge-base. S2/S3/S5 scope; resolving needs a manual three-way merge in a VST sprint, not U3. Main and the branch both changed this path since the merge-base (or both added it) with different content; copying it would overwrite main's version or conflict, and the branch edit is not rebased onto main.",
+      "lands_in": null,
+      "flags": [
+        "CONFLICT_WITH_MAIN"
+      ]
+    },
+    {
+      "rule_id": "R24-vst-sandbox-clean-edit",
+      "branch": "*",
+      "globs": [
+        "tools/vst/sandbox.py"
+      ],
+      "main_state": [
+        "differs_clean"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Read: identical edit in s4-native-qa-runner and s4-e2e-snapshot (+80/-4). Adds require_no_extended_acl and stricter ancestor/ACL checks for the signer IPC path (POSIX hardening of the VST worker sandbox). Main did not change the file, so it applies cleanly, but it is S2/S3 sandbox security code outside the U3 testing-core scope and unverifiable here without POSIX tests (none were run); it does not touch tools/qa. Candidate for a separate VST hardening item, not U3.",
+      "lands_in": null,
+      "flags": [
+        "CLEAN_EDIT_NOT_LANDED"
+      ]
+    }
+  ],
+  "notes": {
+    "title": "U3-1 Branch inventory and landing plan",
+    "intro": "Read-only map of the five pushed branches against origin/main. Nothing was merged, checked out or changed on those branches.",
+    "verify": "The block above is the exact first block of `python -I tools/qa/branch_inventory_check.py --print-inventory`. This whole file is rendered by that checker from `docs/sdlc/u3/branch_inventory_rules.json` (rules, notes and live git state); `python -I tools/qa/branch_inventory_check.py --inventory docs/sdlc/u3/BRANCH_INVENTORY.md` compares it byte for byte (only the trailing newline is normalized) and exits 1 with STALE_INVENTORY and the first differing line number on any drift. Do not edit this file by hand: change the rules file or the code and regenerate it with `--print-inventory`.",
+    "result": "No file qualifies for LAND by static evidence. Main already ships its own accepted S4 testing core (tools/qa registry, runner, report, pytest plugin, gate_check no-skip verdict, build_registry, dependencies; tests/qa seeded-failure catalog; tools/uc and tools/vst from U1/U2). Every branch file is either byte-identical to main (ALREADY_ON_MAIN), an edit of a file main also changed (DROPPED, conflict), a clean edit that was read and judged out of U3 scope (EVIDENCE_ONLY), or branch-only material tied to the retired registry schema, WSL runtime or S2/S3/S5 scope (EVIDENCE_ONLY). Uncertain items were classed EVIDENCE_ONLY and carry a reference_for note naming the U3 task that may re-derive them; U3-2 executors are new work.",
+    "states": "Main states: identical (same mode and blob as main); differs_conflict (main has the path with other content and changed it since the merge-base, or both sides added it: conflict-prone); differs_clean (the branch edited it, main still holds the merge-base content); absent_new (not on main and not at the merge-base); absent_removed_on_main (at the merge-base, removed on main: conflict-prone) and deleted_in_branch. The last two states have no files today and therefore no rule; if one appears the checker reports it as UNCLASSIFIED. Conflict-prone = differs_conflict + absent_removed_on_main.",
+    "main_has": [
+      "`tools/qa`: registry.py, run.py, report.py, pytest_plugin.py, build_registry.py, dependencies.py, gate_check.py (S4-F no-skip/fail-closed verdict), prepare/verify/WSL runtime scripts, worker_exec.c. Same module names as the branches' older versions, so any copy would duplicate or overwrite them.",
+      "`docs/qa/categories.json` (schema 2 registry, large) and `docs/qa/aeve_required_rules.json`.",
+      "`tests/qa`: test_s4a_registry, test_s4b_runner, test_s4d_lanes, test_s4f_gate_check, test_s4_seeded_failure_catalog and `tests/qa/seeded_failure/` (catalog.json plus aeve fixtures).",
+      "`tools/uc` (U1/U2) and the VST modules under `tools/vst`."
+    ],
+    "clean_edits": "Twelve distinct paths, each with its own explicit rule, were opened and diffed against main: the S3/S4/S5 plan documents (R09b-plan-docs-clean-edit), eight re-stamped HTML reports in s4-canonical-continuation only (R11-reports-clean-edit), and tools/vst/sandbox.py in s4-native-qa-runner and s4-e2e-snapshot (R24-vst-sandbox-clean-edit; POSIX signer-IPC ACL hardening, outside U3 scope). All are EVIDENCE_ONLY. None is LAND because none is U3 testing-core code and none was verified (no tests were run).",
+    "flags": [
+      "CONFLICT_WITH_MAIN: path exists on main with different content that main also changed; not landed.",
+      "DUPLICATES_MAIN_TOOLS_QA: the file would add a second mechanism next to main's accepted tools/qa or its seeded-failure catalog.",
+      "CLEAN_EDIT_NOT_LANDED: branch edit that applies cleanly (main did not change the file) but was read and not landed, for the stated reason.",
+      "REMOVED_ON_MAIN: path was at the merge-base and main removed it."
+    ]
+  }
+}

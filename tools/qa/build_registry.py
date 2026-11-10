@@ -47,6 +47,7 @@ MAIN_TEST_FILE_CATEGORIES = {
     "tests/qa/test_s4b_runner.py": "qa-tooling",
     "tests/qa/test_s4d_lanes.py": "qa-tooling",
     "tests/qa/test_s4f_gate_check.py": "qa-tooling",
+    "tests/qa/test_u3_gate_bridge.py": "qa-tooling",
     "tests/af/test_s2_review_source_fidelity.py": "functional",
     "tests/uc/test_adapter.py": "functional",
     "tests/uc/test_aeve_probe.py": "functional",
@@ -95,6 +96,7 @@ MAIN_TEST_FILE_CATEGORIES = {
     "tests/uc/test_u2_result_bridge.py": "functional",
     "tests/vst/test_u2_bridge.py": "functional",
     "tests/vst/test_u2_gate.py": "functional",
+    "tests/uc/test_u4_project_roles.py": "functional",
 }
 PRIMARY_CATEGORIES = ("functional", "integration", "api", "e2e", "identity", "qa-tooling", "seeded-failure")
 POLICY_NOT_RUN = {

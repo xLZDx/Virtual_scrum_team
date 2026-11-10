@@ -2196,3 +2196,81 @@ Kind: SUCCESS with limit. U2 is merged on static review only; no U2 test has eve
 
 ## 2026-11-10 report refresh
 Kind: NEUTRAL.
+## 2026-11-10 U3 start
+Kind: NEUTRAL. Rule: before landing from an old branch, count what main already has.
+
+## 2026-11-10 U3-1 inventory
+Kind: SUCCESS (review pending). The inventory prevented landing 700+ stale files over a newer main. Rule: map before landing.
+
+## 2026-11-10 U3-1 remediation
+Kind: SHORTCOMING. Facts: the first checker compared only a rules hash with the markdown and lumped clean edits with conflicts under a false reason; found by python-reviewer. Root cause: an inventory check that proves classification but not freshness or the stated reason. Missed by: author. Caught by: reviewer. Rule: bind a generated map to exact tips and recompute its totals on every check.
+
+## 2026-11-10 U3-1 scope note
+Kind: NEUTRAL.
+
+## 2026-11-10 U3-1 whole-body freshness
+Kind: SHORTCOMING. Facts: the first two versions verified the header only; GPT-PM found the body unguarded. Root cause: generated document partly hand-written. Missed by: author and python-reviewer. Caught by: GPT-PM. Rule: a generated map is rendered entirely by the checker and compared whole.
+
+## 2026-11-10 U3-1 verification note
+Kind: NEUTRAL.
+
+## 2026-11-10 U3-1 approved
+Kind: SUCCESS. Facts: reviewer pass plus two GPT-PM rounds. Rule: render generated documents in the checker.
+
+## 2026-11-10 U3-2 executors
+Kind: NEUTRAL (review pending). Rule: an executor that cannot supply per-test ids must be unable to reach the full approval verdict.
+
+## 2026-11-10 U3-2 remediation
+Kind: SHORTCOMING. Facts: first version let a candidate-written record reach APPROVABLE through a candidate-controlled registry and runner; found by security-reviewer. Root cause: trusting a record produced by the code under test. Missed by: author. Caught by: reviewer. Rule: the verdict producer must not be the code under test; otherwise pin it from outside or cap the verdict.
+
+## 2026-11-10 U3-2 scope note
+Kind: NEUTRAL.
+
+## 2026-11-10 U3-2 worktree check parity
+Kind: SHORTCOMING. Facts: two executors, only the native one checked the worktree; python and security reviewers missed the asymmetry, GPT-PM caught it. Rule: when two implementations share an interface, diff their checks against each other.
+
+## 2026-11-10 U3-2 verification note
+Kind: NEUTRAL.
+
+## 2026-11-10 U3-2 citation verification
+Kind: SUCCESS. Facts: citation verification on d960893 GPT-PM findings showed 5/7 citations are verifiable in-repo and support the claims (native argv, imports, field mapping, evidence ordering, MAJOR finding on second category). 2/7 citations point to external AEVE project files (cli.py, project_test.py) which cannot be verified against Virtual_scrum_team code. Root cause: GPT-PM reviewed an external dependency (AEVE) and cited its code as evidence, but those files don't exist in this repository. Rule: when a review cites external code, verify the citation points to a file reachable from the reviewed repository, or note it as external evidence with a direct link.
+
+## 2026-11-10 U3-2 GPT-PM approval
+Kind: SUCCESS. Facts: one remediation round closed the worktree-integrity MAJOR. Why it worked: the narrow verification round targeted only the fix. Next time: add worktree-cleanliness checks whenever HEAD is pinned as candidate identity.
+
+## 2026-11-10 U3-5 implementation
+Kind: NEUTRAL. Facts: implementation agent found that append-only stdout/stderr need range slicing before digest check; this was not in my brief. Next time: read the runner artifact layout before specifying a verifier.
+
+## 2026-11-10 U3-5 review remediation
+Kind: SHORTCOMING. Facts: first implementation had a blacklist-style path ownership test (raw segments only) and a tamper test that could not pass; found by python, security and test reviewers. Root cause: author specified ownership as a blacklist; tests were never executed. Missed by: author. Caught by: reviewers. Next time: specify path ownership as an allowlist and require a length-preserving tamper in verifier tests.
+
+## 2026-11-10 U3-5 GPT-PM approval
+Kind: SUCCESS. Facts: approved on first GPT-PM round after three-reviewer remediation. Why: pre-review by python, security and test reviewers removed the MAJORs.
+
+## 2026-11-10 U3-7 static comparison
+Kind: SHORTCOMING. Facts: EXECUTORS.md drifted from executor.py/executor_aeve.py after remediation rounds (found by the comparison writer). Root cause: remediation edits changed behavior without re-reading the doc. Missed by: author and reviewers. Next time: after each remediation batch, diff the doc claims against the code.
+
+## 2026-11-10 U3 sprint end plan update
+Kind: NEUTRAL. Plan updated once at sprint end as ordered.
+
+## 2026-11-10 U3-7 measured results recorded
+Kind: SUCCESS. Facts: the real run found that main registry is stale and that the two executors do not select the same unit of tests; neither was visible in the static report. Next time: a static report is a plan, not a substitute for one cheap real run.
+
+## 2026-11-10 Operator selection: keep both executors
+Kind: SUCCESS. Facts: decision taken after a real comparison run, not a static guess.
+
+## 2026-11-10 U4 start and U4-1 implementation
+Kind: NEUTRAL. Implementation agent output is unexecuted; reviewers next.
+
+## 2026-11-10 U4-1 review remediation
+Kind: SHORTCOMING. Facts: first implementation derived the label from the folder name and hashed raw bytes, so pins would drift per checkout; validators raised on malformed input. Root cause: brief did not demand reproducibility across checkouts. Missed by: author. Caught by: python and security reviewers. Next time: state "digest must be identical on any checkout" in the brief of any hash-pinned artifact.
+
+## 2026-11-10 U4-1 GPT-PM round 1 MAJOR fixed
+Kind: FAILURE. Facts: three read-only reviewers missed that the validator reconstructed the expected entry from the untrusted entry. Root cause: reviewers checked the builder path and forgery shape, not who authorizes a promotion. Missed by: author, python, security and test reviewers; caught by GPT-PM. Next time: ask every reviewer "what independent evidence authorizes this state change, and does the validator receive it?".
+
+## 2026-11-10 U4-1 GPT-PM approval
+Kind: SUCCESS. Facts: approved on the verification round after the mapping fix.
+
+## 2026-11-10 SUCCESS U4 delivered in order with per-task reviews
+
+Each AEVE task went implementation, three reviewers, one remediation batch, GPT-PM; reviewers caught tag-echo, a non-failing budget test and a stale doc count before GPT-PM. Rule: keep the reviewer set per task and grep all current docs for restated numbers.
