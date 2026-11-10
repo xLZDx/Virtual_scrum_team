@@ -1,7 +1,7 @@
 {
   "aeve_pin": {
-    "head": "25a8fea79f00885d8b4e019c755020848fb981c0",
-    "matrix_digest_sha256": "357592f3de7b3000695488d0e38b7d8af8d27841a794d0c4cec09724838dd2a8"
+    "head": "8a9f6c1a684e03eac252b285a96a11d363dbc9e6",
+    "matrix_digest_sha256": "9822b8531f740527b9ddd4c6f6abf9adfd3bc3675a4d4556f6ef826594217561"
   },
   "counts": {
     "by_class": {
@@ -11,9 +11,9 @@
       "OUT_OF_SCOPE": 8
     },
     "by_coverage_state": {
-      "COVERED_PARTIAL": 48,
+      "COVERED_PARTIAL": 50,
       "NOT_APPLICABLE": 26,
-      "NOT_COVERED_NO_EXECUTOR": 4,
+      "NOT_COVERED_NO_EXECUTOR": 2,
       "NOT_COVERED_NO_PROFILE": 15
     },
     "total": 93
@@ -27,6 +27,7 @@
       "coverage_state": "COVERED_PARTIAL",
       "draft_class": "LOCAL_PLUS_MODEL",
       "executors": [
+        "g4.ux-a11y-static-rules",
         "g5.a11y-markup",
         "g5.a11y-status-template"
       ],
@@ -684,6 +685,7 @@
       "coverage_state": "COVERED_PARTIAL",
       "draft_class": "LOCAL_PLUS_MODEL",
       "executors": [
+        "g4.ux-a11y-static-rules",
         "g5.a11y-markup",
         "g5.a11y-status-template"
       ],
@@ -738,13 +740,15 @@
       "canonical_role": "agent-evaluation",
       "class": "LOCAL",
       "class_upgraded_by_evidence": false,
-      "coverage_state": "NOT_COVERED_NO_EXECUTOR",
+      "coverage_state": "COVERED_PARTIAL",
       "draft_class": "LOCAL",
-      "executors": [],
+      "executors": [
+        "g4.recorded-agent-evaluation"
+      ],
       "kind": "skill",
       "model_remainder_hint": "",
       "name": "agent-evaluation",
-      "reason": "AEVE has a profile but no deterministic executor"
+      "reason": "AEVE lists deterministic executors for this role"
     },
     {
       "aeve_profile": "architect",
@@ -942,13 +946,15 @@
       "canonical_role": "git-worktree-ops",
       "class": "LOCAL",
       "class_upgraded_by_evidence": false,
-      "coverage_state": "NOT_COVERED_NO_EXECUTOR",
+      "coverage_state": "COVERED_PARTIAL",
       "draft_class": "LOCAL",
-      "executors": [],
+      "executors": [
+        "g4.worktree-facts"
+      ],
       "kind": "skill",
       "model_remainder_hint": "",
       "name": "git-worktree-ops",
-      "reason": "AEVE has a profile but no deterministic executor"
+      "reason": "AEVE lists deterministic executors for this role"
     },
     {
       "aeve_profile": "html-report",
