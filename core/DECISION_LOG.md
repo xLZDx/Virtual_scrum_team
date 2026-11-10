@@ -2904,3 +2904,7 @@ Added docs/sdlc/evidence/u2-5-gptpm-scope-note.md; GPT-PM review requested, base
 
 ## 2026-11-10 U2-5 GPT-PM APPROVE
 GPT-PM request ddcda0ee on base 40b12ad to 294f14b+scope note: APPROVE, 0 BLOCKER, 0 MAJOR (static review, tests NOT_RUN). U2-5 accepted. Next: U2-6 negative-case fixture catalog and the tests for U2-1..U2-5 written by the test agents.
+
+## 2026-11-10 — U2-6: Register functional tests for U2 gate and evidence logic
+
+Five test modules created and registered in MAIN_TEST_FILE_CATEGORIES: test_coverage_report.py (53 tests, covers pass-token scanning and verdict validation), test_u2_result_bridge.py (30 tests, covers role table hashing and result validation), test_u2_bridge.py (86 tests, covers evidence binding and tampering detection), test_u2_gate.py (41 tests, covers gate verdicts and nonce/waiver logic), and u2_helpers.py (shared test builders). Registry configuration updated to allow generator to proceed. Tests not executed (syntax validation only). Catalog entry (seeded-failure) remains out of scope; requires product constant update and is tracked separately. See changes TBD.

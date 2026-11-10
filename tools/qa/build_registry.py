@@ -87,6 +87,10 @@ MAIN_TEST_FILE_CATEGORIES = {
     "tests/vst/test_s2_stage_only_install.py": "integration",
     "tests/vst/test_s2_store_backed_pubsub.py": "integration",
     "tests/vst/test_s2_wsl_bundle_verifiers.py": "functional",
+    "tests/uc/test_coverage_report.py": "functional",
+    "tests/uc/test_u2_result_bridge.py": "functional",
+    "tests/vst/test_u2_bridge.py": "functional",
+    "tests/vst/test_u2_gate.py": "functional",
 }
 PRIMARY_CATEGORIES = ("functional", "integration", "api", "e2e", "identity", "qa-tooling", "seeded-failure")
 POLICY_NOT_RUN = {
@@ -303,3 +307,4 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":  # pragma: no cover - code-generation CLI
     raise SystemExit(main())
+
