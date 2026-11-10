@@ -96,6 +96,7 @@ MAIN_TEST_FILE_CATEGORIES = {
     "tests/uc/test_u2_result_bridge.py": "functional",
     "tests/vst/test_u2_bridge.py": "functional",
     "tests/vst/test_u2_gate.py": "functional",
+    "tests/uc/test_u4_project_roles.py": "functional",
 }
 PRIMARY_CATEGORIES = ("functional", "integration", "api", "e2e", "identity", "qa-tooling", "seeded-failure")
 POLICY_NOT_RUN = {

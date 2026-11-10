@@ -2253,3 +2253,6 @@ Kind: SUCCESS. Facts: the real run found that main registry is stale and that th
 
 ## 2026-11-10 Operator selection: keep both executors
 Kind: SUCCESS. Facts: decision taken after a real comparison run, not a static guess.
+
+## 2026-11-10 U4 start and U4-1 implementation
+Kind: NEUTRAL. Implementation agent output is unexecuted; reviewers next.

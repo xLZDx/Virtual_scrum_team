@@ -3012,3 +3012,6 @@ Evidence: four real runs recorded in docs/sdlc/u3/EXECUTOR_COMPARISON.md section
 
 ## 2026-11-10 Operator selection: keep both executors
 Decision: operator answered "Оба" (AskUserQuestion-style wrap-up) after the measured comparison; both vst-native and aeve-sandbox stay. U3-7 moved to ACCEPTED, sprint U3 complete. Follow-ups noted: regenerate docs/qa/categories.json on main before executor A can run there; B fits only stdlib-only suites until a hash-pinned offline wheel set exists.
+
+## 2026-11-10 U4 start and U4-1 implementation
+Decision: operator ordered "GO start U4" and chose U4-1 only (AEVE edits for U4-2..U4-6 not approved yet; they wait for a separate yes). U4-1 written statically in scratch worktree D:/tmp/scratch_worktrees/u4 (branch u4-coverage-growth): tools/uc/project_roles.py scan/register/validate, tests/uc/test_u4_project_roles.py, docs/sdlc/u4/PROJECT_ROLES.md. Gate unchanged: the pin owner re-pins role_table_sha256 after a role is added. Tests NOT_RUN.
