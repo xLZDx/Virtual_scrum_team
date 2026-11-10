@@ -2968,3 +2968,6 @@ One executor interface (tools/qa/executor.py: ExecutorReport, TestExecutor, judg
 
 ## 2026-11-10 U3-2 review remediation
 Python (2 MAJOR) and security (2 MAJOR) reviews fixed in one batch: native approval is candidate-attested (candidate runs its own tools.qa.run and registry), so it is capped at COARSE_ONLY unless both caller pins (registry sha256, tools/qa tree sha256) are supplied and match; HEAD and tree status re-read by the executor after the child; native record selected by run_id and category with a size-capped read from a saved offset; clean-tree precondition before launch; AEVE pin check now mirrors the router (untracked source paths), runs before reading the profile and again after the run; profile hash compared on every status; judge caps aeve-sandbox at COARSE_ONLY unconditionally; bounds and typed errors for hostile records; container cleanup unconfirmed noted on timeouts. Limits recorded: git resolution is checked (GIT_UNTRUSTED) not replaced; the VST process must run with -P and not with cwd on the candidate; reviewed behaviour is unexecuted.
+
+## 2026-11-10 U3-2 scope note
+Added docs/sdlc/u3/u3-2-gptpm-scope-note.md; GPT-PM review requested, base 58ed30c.

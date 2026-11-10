@@ -2217,3 +2217,6 @@ Kind: NEUTRAL (review pending). Rule: an executor that cannot supply per-test id
 
 ## 2026-11-10 U3-2 remediation
 Kind: SHORTCOMING. Facts: first version let a candidate-written record reach APPROVABLE through a candidate-controlled registry and runner; found by security-reviewer. Root cause: trusting a record produced by the code under test. Missed by: author. Caught by: reviewer. Rule: the verdict producer must not be the code under test; otherwise pin it from outside or cap the verdict.
+
+## 2026-11-10 U3-2 scope note
+Kind: NEUTRAL.
