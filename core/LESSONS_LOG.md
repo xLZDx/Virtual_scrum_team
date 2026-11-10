@@ -2137,3 +2137,6 @@ Kind: SHORTCOMING. Facts: first builder discarded the tree digest it computed an
 
 ## 2026-11-10 U2-3 scope note
 Kind: NEUTRAL.
+
+## 2026-11-10 U2-3 approved
+Kind: SUCCESS. Facts: reviewer batch of three before GPT-PM left it no findings. Rule: keep reviewer batch before the GPT-PM request.

@@ -2889,3 +2889,6 @@ Three reviewers (python 1 MAJOR, functional-test 2 MAJOR, security 3 MAJOR) conv
 
 ## 2026-11-10 U2-3 scope note
 Added docs/sdlc/evidence/u2-3-gptpm-scope-note.md; GPT-PM review requested, base 38cc4ea.
+
+## 2026-11-10 U2-3 GPT-PM APPROVE
+GPT-PM request 2f54763c on base 38cc4ea to 283273f: APPROVE, 0 BLOCKER, 0 MAJOR (static review, tests NOT_RUN). U2-3 accepted. Next: U2-5 truthful coverage report with pass-token scanner.
