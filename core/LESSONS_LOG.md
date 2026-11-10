@@ -2074,3 +2074,6 @@ Kind: SUCCESS. Fixture confirmation by one real aeve run per variant avoided dec
 
 ## 2026-11-10 S5-D manifest
 Kind: NEUTRAL. Routine manifest regeneration.
+
+## 2026-11-10 S5-D review findings
+Kind: SHORTCOMING. The first catalog loader trusted the fixture index without reading the fixtures, and the pin was optional. Caught by two reviewers. Rule: a frozen catalog must verify every file it depends on and make its pin mandatory.

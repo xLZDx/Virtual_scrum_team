@@ -3,7 +3,9 @@
   "catalog_id": "vst-aeve-required-rules",
   "aeve_rules_version": "g2.rules.v15",
   "s4_catalog": "tests/qa/seeded_failure/catalog.json",
+  "s4_catalog_sha256": "83be7e322fca3a69d2c52295ac6f49535d7b413f3bb116523cf73d4b45eca8dd",
   "aeve_fixture_index": "tests/qa/seeded_failure/aeve_fixtures/index.json",
+  "aeve_fixture_index_sha256": "d4cbd87df55c689d18a7e95c8f99f804c31dd3077cf29e32523df04eaa520bba",
   "note": "Exactly four AEVE rules are REQUIRED, each linked to a committed AF fixture that seeds that very rule. The S4 SF-001..SF-008 fixtures seed VST gate failures and are linked to no rule. All other AEVE rules are optional and implicitly NO_FIXTURE: they are not listed and never widen the mandatory denominator. Add a rule here as REQUIRED only together with a committed fixture.",
   "rules": [
     {"rule_id": "PY-BARE-EXCEPT", "requirement": "REQUIRED", "fixture_id": "AF-001", "marker": "FIXTURE_LINKED"},

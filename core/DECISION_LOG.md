@@ -2823,3 +2823,6 @@ Synthetic fixtures AF-001..AF-004 (tests/qa/seeded_failure/aeve_fixtures) for PY
 
 ## 2026-11-10 S5-D manifest regenerated
 Regenerated docs/qa/categories.json after the new fixture files (build_registry --write, not a test run).
+
+## 2026-11-10 S5-D remediation of reviewer MAJOR findings
+python-reviewer (6 MAJOR) and functional-test-reviewer (3 MAJOR) found: SF fixtures linkable to required rules, fixture integrity unchecked, Windows drive path escape, unhashable values crash, optional pin and body-only digest, scope not validated, unreachable overlap status. Fixed in rule_coverage.py; mandatory pin FROZEN_CATALOG_SHA256 plus s4 catalog and fixture index digests stored in the catalog (computed by hashing file bytes, not by running the module). Reading only; tests NOT_RUN.
