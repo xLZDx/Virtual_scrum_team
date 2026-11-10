@@ -2956,3 +2956,6 @@ Added docs/sdlc/u3/u3-1-gptpm-scope-note.md; GPT-PM review requested, base fa26e
 
 ## 2026-11-10 U3-1 GPT-PM round 1: MAJOR x1
 GPT-PM reply d37d86c4: freshness check covered only the header. Fixed: the checker now renders the whole BRANCH_INVENTORY.md (narrative in the rules notes section so the rules hash covers it) and --inventory compares the entire file byte for byte; three mutations (table cell, conflict row, narrative) each failed with STALE_INVENTORY on a temporary copy. Verification round requested.
+
+## 2026-11-10 U3-1 verification note
+Appended verification round to the scope note.

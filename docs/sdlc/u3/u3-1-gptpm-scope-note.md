@@ -9,3 +9,6 @@ Already fixed after one read-only review (python-reviewer: 2 MAJOR, 7 MINOR): in
 Ask: verify (a) the checker enforces what the rules claim (completeness, exactly-once, freshness), (b) no LAND-worthy file is hidden behind a false reason, (c) the claims in MAIN_COVERS_U3_3_TO_U3_6.md against the cited code. The checker proves classification, not that each reason is true for every file; tests NOT_RUN (operator forbids pytest); evidence is static review plus the checker's own runs.
 
 Ask: the complete BLOCKER/MAJOR set for this delta only.
+
+## Verification round (after GPT-PM round 1, reply d37d86c4, MAJOR x1)
+Base: fa26e3c with the delta since the first request. Fixed: tools/qa/branch_inventory_check.py now renders the whole docs/sdlc/u3/BRANCH_INVENTORY.md (header, totals, narrative from the rules notes section, per-branch rule tables, conflict-prone table, summary) and --inventory compares the entire file byte for byte (trailing newline normalized), failing with STALE_INVENTORY and the first differing line. Three mutations on temporary copies (a table cell, a conflict row, a narrative word) each failed. Ask: verify this one correction and direct regressions only.

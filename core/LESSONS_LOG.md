@@ -2205,3 +2205,6 @@ Kind: NEUTRAL.
 
 ## 2026-11-10 U3-1 whole-body freshness
 Kind: SHORTCOMING. Facts: the first two versions verified the header only; GPT-PM found the body unguarded. Root cause: generated document partly hand-written. Missed by: author and python-reviewer. Caught by: GPT-PM. Rule: a generated map is rendered entirely by the checker and compared whole.
+
+## 2026-11-10 U3-1 verification note
+Kind: NEUTRAL.
