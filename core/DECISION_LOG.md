@@ -2847,3 +2847,6 @@ GPT-PM APPROVE, 0 BLOCKER, 0 MAJOR, reply 4b8dfd61, for the correction at head a
 
 ## 2026-11-10 Program report re-render after PR 7
 Re-rendered the project plan reports after the S5 PR was opened, as the close gate requires. No content change.
+
+## 2026-11-10 U2 started (operator order: next in sequence after S5)
+Operator chose "continue in order, next U2"; U1-9 stays PARKED and the token comparison (U1-1/U1-8 measurement) is dropped by the operator in favour of connecting AEVE (U1-9 design: skill instruction in sdlc-orchestrator needs separate approval, not given). Mapping of U2 against S5 (read-only agent): S5 already provides the analyzer key and trust chain (U2-2), the v3 receipt (U2-1 partly), most gate refusals (U2-4 partly); the real residual is the bridge from the U1 role result (model_residual, role-table hash, AEVE head) into the signed evidence and gate, the any-finding and residual and role-table-drift refusals, the receipt builder from a uc result, the pass-token scan (U2-5) and negative fixtures (U2-6). Decisions taken by me: extend v3 in place (no v4) because S5 was just merged and nothing stores v3 receipts; any finding blocks (stricter than the HIGH/CRITICAL threshold of S5). Current task: U2-1 reconciled (bridge fields). Branch u2-evidence-gate-2 from origin/main.
