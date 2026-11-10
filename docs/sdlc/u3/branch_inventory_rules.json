@@ -29,11 +29,11 @@
         "core/**"
       ],
       "main_state": [
-        "absent",
-        "differs"
+        "absent_new",
+        "differs_conflict"
       ],
       "class": "DROPPED",
-      "reason": "Branch-era state/decision/lesson logs; main's core logs carry the U1/U2 history and are authoritative. Same path exists on main with different content, so copying it would overwrite or conflict with main.",
+      "reason": "Branch-era state/decision/lesson logs; main's core logs carry the U1/U2 history and are authoritative. Main and the branch both changed this path since the merge-base (or both added it) with different content; copying it would overwrite main's version or conflict, and the branch edit is not rebased onto main.",
       "lands_in": null,
       "flags": [
         "CONFLICT_WITH_MAIN"
@@ -46,8 +46,8 @@
         "governance/DOCUMENT_REGISTRY.md"
       ],
       "main_state": [
-        "absent",
-        "differs"
+        "absent_new",
+        "differs_conflict"
       ],
       "class": "DROPPED",
       "reason": "Generated file; it is regenerated on main by tools/build_document_registry.py, never merged.",
@@ -60,7 +60,7 @@
         "docs/changes/**"
       ],
       "main_state": [
-        "absent"
+        "absent_new"
       ],
       "class": "EVIDENCE_ONLY",
       "reason": "Per-commit change records of the retired record-per-commit process; kept on the branch ref as history, not landed.",
@@ -73,10 +73,10 @@
         "docs/changes/**"
       ],
       "main_state": [
-        "differs"
+        "differs_conflict"
       ],
       "class": "DROPPED",
-      "reason": "Change record number already used on main with other content. Same path exists on main with different content, so copying it would overwrite or conflict with main.",
+      "reason": "Change record number already used on main with other content. Main and the branch both changed this path since the merge-base (or both added it) with different content; copying it would overwrite main's version or conflict, and the branch edit is not rebased onto main.",
       "lands_in": null,
       "flags": [
         "CONFLICT_WITH_MAIN"
@@ -89,7 +89,7 @@
         "docs/sdlc/evidence/**"
       ],
       "main_state": [
-        "absent"
+        "absent_new"
       ],
       "class": "EVIDENCE_ONLY",
       "reason": "Recorded S2/S3/S4/S5 run outputs, reviews and snapshots bound to old heads; history only, not product behavior.",
@@ -102,10 +102,10 @@
         "docs/sdlc/evidence/**"
       ],
       "main_state": [
-        "differs"
+        "differs_conflict"
       ],
       "class": "DROPPED",
-      "reason": "Evidence file at a path where main holds different accepted evidence (for example docs/sdlc/evidence/qa lane outputs). Same path exists on main with different content, so copying it would overwrite or conflict with main.",
+      "reason": "Evidence file at a path where main holds different content, for example the docs/sdlc/evidence/qa lane outputs. Main and the branch both changed this path since the merge-base (or both added it) with different content; copying it would overwrite main's version or conflict, and the branch edit is not rebased onto main.",
       "lands_in": null,
       "flags": [
         "CONFLICT_WITH_MAIN"
@@ -119,7 +119,7 @@
         "docs/*.md"
       ],
       "main_state": [
-        "absent"
+        "absent_new"
       ],
       "class": "EVIDENCE_ONLY",
       "reason": "S2/S3/S4 design and plan documents outside U3 scope; kept as design reference.",
@@ -136,10 +136,10 @@
         "docs/*.md"
       ],
       "main_state": [
-        "differs"
+        "differs_conflict"
       ],
       "class": "DROPPED",
-      "reason": "Older version of a plan/design/state document that main already holds in a newer form. Same path exists on main with different content, so copying it would overwrite or conflict with main.",
+      "reason": "Plan/design/state document changed on both sides since the merge-base with different content. Main and the branch both changed this path since the merge-base (or both added it) with different content; copying it would overwrite main's version or conflict, and the branch edit is not rebased onto main.",
       "lands_in": null,
       "exclude": [
         "docs/sdlc/evidence/**"
@@ -149,32 +149,48 @@
       ]
     },
     {
+      "rule_id": "R09b-plan-docs-clean-edit",
+      "branch": "*",
+      "globs": [
+        "docs/*.md"
+      ],
+      "main_state": [
+        "differs_clean"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Read: S3, S4 and S5 plan documents edited on the branch with status narrative of the old branch (S4 'implemented, acceptance open', REJECT dispositions, continuation notes) that describes the older docs/qa/categories.json registry and tools/qa/build_registry.py; main's S4 was accepted separately with a different registry, so landing would add contradictory status text. Not a code asset and no U3 scope.",
+      "lands_in": null,
+      "flags": [
+        "CLEAN_EDIT_NOT_LANDED"
+      ]
+    },
+    {
       "rule_id": "R10-reports-new",
       "branch": "*",
       "globs": [
         "reports/**"
       ],
       "main_state": [
-        "absent"
+        "absent_new"
       ],
       "class": "EVIDENCE_ONLY",
-      "reason": "Generated HTML status snapshots; regenerable artifacts, not landed.",
+      "reason": "Generated HTML status snapshots that do not exist on main; regenerable artifacts, not landed.",
       "lands_in": null
     },
     {
-      "rule_id": "R11-reports-conflict",
+      "rule_id": "R11-reports-clean-edit",
       "branch": "*",
       "globs": [
         "reports/**"
       ],
       "main_state": [
-        "differs"
+        "differs_clean"
       ],
-      "class": "DROPPED",
-      "reason": "Older generated report at a path main regenerated since. Same path exists on main with different content, so copying it would overwrite or conflict with main.",
+      "class": "EVIDENCE_ONLY",
+      "reason": "Read: the S0/S1, status and baseline HTML reports were re-stamped on the branch (the Git line now reads 's4-canonical-continuation @ 4e0deef') plus blank-line padding. Main did not change them, but landing would put a stale branch name and hash into main's reports; generated artifacts are regenerated, not merged.",
       "lands_in": null,
       "flags": [
-        "CONFLICT_WITH_MAIN"
+        "CLEAN_EDIT_NOT_LANDED"
       ]
     },
     {
@@ -184,7 +200,7 @@
         "docs/qa/**"
       ],
       "main_state": [
-        "absent"
+        "absent_new"
       ],
       "class": "EVIDENCE_ONLY",
       "reason": "Branch-era fixture/seeded-failure/API inventory data bound to the old registry schema and old test selectors; main keeps its own catalog in tests/qa/seeded_failure/catalog.json. Reference only.",
@@ -198,10 +214,10 @@
         "docs/qa/**"
       ],
       "main_state": [
-        "differs"
+        "differs_conflict"
       ],
       "class": "DROPPED",
-      "reason": "Old categories registry (small, old schema) versus main's schema 2 registry at the same path. Same path exists on main with different content, so copying it would overwrite or conflict with main.",
+      "reason": "Old categories registry (small, old schema) versus main's schema 2 registry at the same path. Main and the branch both changed this path since the merge-base (or both added it) with different content; copying it would overwrite main's version or conflict, and the branch edit is not rebased onto main.",
       "lands_in": null,
       "flags": [
         "CONFLICT_WITH_MAIN",
@@ -216,7 +232,7 @@
         "tests/qa/test_s4_pass_line_parser.py"
       ],
       "main_state": [
-        "absent"
+        "absent_new"
       ],
       "class": "EVIDENCE_ONLY",
       "reason": "Trusted PASS-line emitter and its parser test. The parser test needs the quiet-dot change in tools/vst/contracts.py, which conflicts with main and alters a hash-pinned parser; main already has a no-skip verdict in tools/qa/gate_check.py. Re-derive in U3-5 if needed.",
@@ -234,7 +250,7 @@
         "tests/qa/test_s4_seeded_failure*.py"
       ],
       "main_state": [
-        "absent"
+        "absent_new"
       ],
       "class": "EVIDENCE_ONLY",
       "reason": "Hash-bound seeded-failure fixture validator and tests built on the branch registry; main has its own accepted seeded-failure catalog and tests. Compatibility with main's registry is unproven, so conservative class.",
@@ -251,7 +267,7 @@
         "tools/qa/matrix.py"
       ],
       "main_state": [
-        "absent"
+        "absent_new"
       ],
       "class": "EVIDENCE_ONLY",
       "reason": "Exact-head platform-matrix report validator against the branch registry and report formats; unproven against main's report envelope, so conservative class.",
@@ -268,7 +284,7 @@
         "tools/qa/**"
       ],
       "main_state": [
-        "absent"
+        "absent_new"
       ],
       "class": "EVIDENCE_ONLY",
       "reason": "WSL snapshot transfer, root harness and requirements.in for the WSL runtime path; runtime-bootstrap scope, not U3.",
@@ -286,10 +302,10 @@
         "tools/qa/**"
       ],
       "main_state": [
-        "differs"
+        "differs_conflict"
       ],
       "class": "DROPPED",
-      "reason": "Older branch implementation of modules main already ships and has accepted (registry, runner, report, plugin, dependencies, WSL scripts). Landing it would silently duplicate or regress main's tools/qa. Same path exists on main with different content, so copying it would overwrite or conflict with main.",
+      "reason": "Older branch implementation of modules main already ships and has accepted (registry, runner, report, plugin, dependencies, WSL scripts). Landing it would silently duplicate or regress main's tools/qa. Main and the branch both changed this path since the merge-base (or both added it) with different content; copying it would overwrite main's version or conflict, and the branch edit is not rebased onto main.",
       "lands_in": null,
       "flags": [
         "CONFLICT_WITH_MAIN",
@@ -303,7 +319,7 @@
         "tests/qa/**"
       ],
       "main_state": [
-        "absent"
+        "absent_new"
       ],
       "class": "EVIDENCE_ONLY",
       "reason": "Tests for the old branch runner, registry and worker; they target code that is not landed.",
@@ -320,7 +336,7 @@
         "tests/vst/**"
       ],
       "main_state": [
-        "absent"
+        "absent_new"
       ],
       "class": "EVIDENCE_ONLY",
       "reason": "S2/S3/S5 tests for unlanded VST changes; outside U3 scope.",
@@ -333,10 +349,10 @@
         "tests/vst/**"
       ],
       "main_state": [
-        "differs"
+        "differs_conflict"
       ],
       "class": "DROPPED",
-      "reason": "Branch edits of S2/S3 VST tests matching the branch's own tools/vst changes. Same path exists on main with different content, so copying it would overwrite or conflict with main.",
+      "reason": "Branch edits of S2/S3 VST tests matching the branch's own tools/vst changes. Main and the branch both changed this path since the merge-base (or both added it) with different content; copying it would overwrite main's version or conflict, and the branch edit is not rebased onto main.",
       "lands_in": null,
       "flags": [
         "CONFLICT_WITH_MAIN"
@@ -349,7 +365,7 @@
         "tools/vst/**"
       ],
       "main_state": [
-        "absent"
+        "absent_new"
       ],
       "class": "EVIDENCE_ONLY",
       "reason": "Worker capability-drop helper and S5 source-tree code; S2/S3/S5 scope, not U3.",
@@ -362,13 +378,29 @@
         "tools/vst/**"
       ],
       "main_state": [
-        "differs"
+        "differs_conflict"
       ],
       "class": "DROPPED",
-      "reason": "Branch edits of VST runner/store/gate/pilot/dispatch modules; S2/S3/S5 scope and main's tools/vst is accepted and newer. Same path exists on main with different content, so copying it would overwrite or conflict with main.",
+      "reason": "Branch edits of VST runner/store/gate/pilot/dispatch/supervisor modules where main also changed the file since the merge-base. S2/S3/S5 scope; resolving needs a manual three-way merge in a VST sprint, not U3. Main and the branch both changed this path since the merge-base (or both added it) with different content; copying it would overwrite main's version or conflict, and the branch edit is not rebased onto main.",
       "lands_in": null,
       "flags": [
         "CONFLICT_WITH_MAIN"
+      ]
+    },
+    {
+      "rule_id": "R24-vst-sandbox-clean-edit",
+      "branch": "*",
+      "globs": [
+        "tools/vst/sandbox.py"
+      ],
+      "main_state": [
+        "differs_clean"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Read: identical edit in s4-native-qa-runner and s4-e2e-snapshot (+80/-4). Adds require_no_extended_acl and stricter ancestor/ACL checks for the signer IPC path (POSIX hardening of the VST worker sandbox). Main did not change the file, so it applies cleanly, but it is S2/S3 sandbox security code outside the U3 testing-core scope and unverifiable here without POSIX tests (none were run); it does not touch tools/qa. Candidate for a separate VST hardening item, not U3.",
+      "lands_in": null,
+      "flags": [
+        "CLEAN_EDIT_NOT_LANDED"
       ]
     }
   ]

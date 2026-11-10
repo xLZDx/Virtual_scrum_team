@@ -2196,3 +2196,6 @@ Kind: NEUTRAL. Rule: before landing from an old branch, count what main already 
 
 ## 2026-11-10 U3-1 inventory
 Kind: SUCCESS (review pending). The inventory prevented landing 700+ stale files over a newer main. Rule: map before landing.
+
+## 2026-11-10 U3-1 remediation
+Kind: SHORTCOMING. Facts: the first checker compared only a rules hash with the markdown and lumped clean edits with conflicts under a false reason; found by python-reviewer. Root cause: an inventory check that proves classification but not freshness or the stated reason. Missed by: author. Caught by: reviewer. Rule: bind a generated map to exact tips and recompute its totals on every check.
