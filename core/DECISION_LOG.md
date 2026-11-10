@@ -3006,3 +3006,9 @@ Decision: operator chose static comparison only (AskUserQuestion); docs/sdlc/u3/
 
 ## 2026-11-10 U3 sprint end plan update
 Decision: PROJECT_PLAN.md updated once for sprint U3 (U3-1..U3-6 ACCEPTED, U3-3/4/6 by S4 on main, U3-7 PARTIAL static); reports re-rendered; U2 row corrected to merged. Sprint PR to be opened; merge is the operator order.
+
+## 2026-11-10 U3-7 measured results recorded
+Evidence: four real runs recorded in docs/sdlc/u3/EXECUTOR_COMPARISON.md section 6 (A pass 73.4 s 11/11/11, B pass 28.9 s, A seeded fail 79.7 s, B seeded fail 25.3 s). Executor selection stays with the operator. Probe commits stay on scratch branches u3-7-run, u3-7-a.
+
+## 2026-11-10 Operator selection: keep both executors
+Decision: operator answered "Оба" (AskUserQuestion-style wrap-up) after the measured comparison; both vst-native and aeve-sandbox stay. U3-7 moved to ACCEPTED, sprint U3 complete. Follow-ups noted: regenerate docs/qa/categories.json on main before executor A can run there; B fits only stdlib-only suites until a hash-pinned offline wheel set exists.
