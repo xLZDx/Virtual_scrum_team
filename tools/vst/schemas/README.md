@@ -236,20 +236,49 @@ minus `signature` (sign it with `RECEIPT_V3_LABEL`), the payload is the input of
 `analyzer_authority.sign_analyzer_evidence`. It reuses `bridge_facts_from_role_result` (called once; independent
 deep copies of the same dict go into both outputs), `static_analysis_fields`, `assemble_analyzer_payload`,
 `source_tree_digest` and `derive_result`. It never signs, never calls a model and uses no network.
-`required_paths` is the diff-gate changed-path list.
+`required_paths` is the diff-gate changed-path list and `reviewed_paths` must EQUAL it as a set (no superset), so
+a gate can later compare `reviewed_paths_sha256` with the hash of the verified diff-gate list. That gate-side
+comparison is an explicit U2-5/U2-6 dependency and is NOT done here. A deleted or renamed path cannot be covered
+(the adapter requires every reviewed path to be a tracked regular file at the candidate head), so such a change
+fails closed.
 
-Refusals (`ContractError`, message starts with the code): `RB_ARG_INVALID` (scalar shape, hex lengths,
-epoch/attempt, prev hash null iff attempt 1, covered_acceptance); `RB_PATHS_INVALID` (reviewed/required paths not
-a non-empty unique list of plain repo-relative paths); `RB_REQUIRED_PATH_UNCOVERED` (a required path is not in
-`reviewed_paths`); `RB_SECRET_LIKE_VALUE` (`tools.uc.router.has_secret` matches any string value in the role
-result, the caller's text, or the produced receipt/payload; this can also reject a path such as
-`token_validation.py`, which is fail-closed by design); `RB_BRIDGE_REFUSED` (any U2-1 bridge refusal);
-`RB_TREE_NOT_CLEAN` (the adapter's `source_tree_digest` refused: HEAD differs from `candidate_head`, tracked or
-untracked changes anywhere in the tree, or a reviewed path that is untracked or not a regular file);
-`RB_ANALYZER_REFUSED` (`assemble_analyzer_payload` refused: outcome not OK/PARTIAL, unknown binding, head
-mismatch); `RB_NON_CLEAN_PASS` (defensive). A non-CLEAN (FINDINGS) role entry is not refused but yields result
-INCONCLUSIVE, never PASS; for a CLEAN entry the result is whatever `derive_result` computes. The builder does not
-run `validate_receipt` (the signature is absent) and does not compare `reviewed_paths_sha256` with any gate pin.
+U2-3 additions to the U1 result: `uc.role-result.v1` now carries `purpose` (the request enum, copied) and
+`changed_paths_sha256` (sha256 of the canonical bytes of the request's sorted `changed_paths`, computed by
+`router.normalize` from the validated request; `tools/uc/contracts.changed_paths_sha256`). The U2-1
+`bridge_facts_from_role_result` now also refuses a result whose `purpose` is not `receipt` or whose
+`changed_paths_sha256` differs from the hash of `sorted(reviewed_paths)` (same canonical hashing as
+`reviewed_paths_sha256`). The secret-shape regex lives in the side-effect-free `tools/uc/secret_patterns.py`
+(re-exported by `router`). `source_tree_digest` now lists the tree of the verified candidate head, not symbolic HEAD.
+
+Refusals (`ContractError`, message starts with the code):
+- `RB_ARG_INVALID`: ids (`receipt_id`, `task_id`, `slot`, `runner_id`, `resolved_model`, `invocation_id`, `run_id`,
+  each `covered_acceptance` item) must match `[A-Za-z0-9._:-]{1,128}`; `created_at` an RFC 3339 UTC timestamp
+  ending in `Z`; `nonce` at least `MIN_NONCE_CHARS`; int `epoch`/`attempt` >= 1 (bool rejected); prev hash null iff
+  attempt 1; 40/64 hex lengths; `adapter_result` must be an `AdapterResult`; over-nested input.
+- `RB_PATHS_INVALID`: `reviewed_paths`/`required_paths` not a non-empty unique list of plain repo-relative paths,
+  or the adapter refused the path list (glob, case collision, reserved name and similar).
+- `RB_REQUIRED_PATH_UNCOVERED`: a required path is not reviewed. `RB_REVIEWED_PATH_EXTRA`: a reviewed path is not
+  required.
+- `RB_SECRET_LIKE_VALUE`: `has_secret` matches any string value in the role result, the caller's text, or the
+  produced receipt/payload (it can also reject a path such as `token_validation.py`: fail-closed by design). The
+  ID patterns above are the first layer, `has_secret` the second.
+- `RB_BRIDGE_REFUSED`: any bridge refusal, including non-`receipt` purpose and a `changed_paths_sha256` mismatch,
+  and a structurally malformed role result.
+- `RB_TREE_NOT_CLEAN`: tree state only (HEAD differs from `candidate_head`, tracked or untracked changes anywhere,
+  a reviewed path untracked or not a regular file, git failure).
+- `RB_REPORT_TREE_MISMATCH`: the adapter result head differs from `candidate_head`; the digest of the reviewed
+  paths differs from `adapter_result.source_tree_sha256` or the report's `source_tree_sha256`; or
+  `sorted(reviewed_paths)` differs from the report `analysis_scope`.
+- `RB_ANALYZER_REFUSED`: no report, or `static_analysis_fields`/`assemble_analyzer_payload`/payload validation
+  refused (outcome not OK/PARTIAL, unknown binding, malformed report).
+- `RB_RECEIPT_INVALID`: `derive_result` or `validate_receipt` (run with a placeholder all-zero signature, shape
+  only) refused the body.
+
+The result is never hard-coded to PASS: it is `derive_result` of the body. The value offered to it is INCONCLUSIVE
+whenever the role entry is not CLEAN, the role entry or the report has any finding of any severity, or the role
+entry has a non-empty `model_residual` (so a FINDINGS entry yields INCONCLUSIVE, not a refusal); otherwise PASS is
+offered and `derive_result` decides. The builder does not compare `reviewed_paths_sha256`, `role_table_sha256` or
+`aeve_head` with any gate pin.
 
 ## Receipt (`validate_receipt`)
 

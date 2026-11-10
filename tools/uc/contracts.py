@@ -240,12 +240,26 @@ def _validate_role_entry(value: object, where: str) -> dict:
     return item
 
 
+def changed_paths_sha256(paths: list[str]) -> str:
+    """sha256 of the canonical bytes of the sorted path list.
+
+    Canonical bytes are json.dumps(sorted(paths), sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+    allow_nan=False) as UTF-8: byte-identical to tools.vst.contracts.canonical_bytes, so the VST side can
+    compare it with its own reviewed_paths_sha256. The router computes it from the validated request.
+    """
+    import hashlib
+    import json
+
+    blob = json.dumps(sorted(paths), sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
 def validate_result(document: object) -> dict:
     """Return the result as validated; raise ContractError on the first violation."""
     doc = _object(
         document, "result",
         {"schema_version", "request_id", "base_revision", "snapshot_hash", "iteration_id", "exit_code", "roles",
-         "role_table_sha256", "aeve_head"},
+         "role_table_sha256", "aeve_head", "purpose", "changed_paths_sha256"},
     )
     if doc["schema_version"] != RESULT_SCHEMA:
         raise ContractError("WRONG_SCHEMA", "result.schema_version")
@@ -256,6 +270,10 @@ def validate_result(document: object) -> dict:
     # source head the router probed and matched against the table pin before the review ran.
     _string(doc["role_table_sha256"], "result.role_table_sha256", _HASH)
     _string(doc["aeve_head"], "result.aeve_head", _HEAD40)
+    # U2-3: the request purpose and the digest of the request's sorted changed_paths, copied by the router
+    # from the validated request, so a receipt builder can refuse an advisory result or a different path set.
+    _enum(doc["purpose"], "result.purpose", PURPOSES)
+    _string(doc["changed_paths_sha256"], "result.changed_paths_sha256", _HASH)
     _string(doc["iteration_id"], "result.iteration_id", _ID)
     exit_code = _int(doc["exit_code"], "result.exit_code", 0, 3)
     _enum(exit_code, "result.exit_code", EXIT_CODES)

@@ -2883,3 +2883,9 @@ GPT-PM reply bd899066 on base 8c145d3 to 97cfa9...: APPROVE (verification of the
 
 ## 2026-11-10 U2-3 implemented (static only, tests NOT_RUN)
 tools/vst/receipt_builder.py build_static_receipt returns an unsigned v3 StaticAnalysis receipt body plus analyzer payload from a validated uc result; bridge facts computed once and copied into both; refuses dirty tree, uncovered required paths, secret-like values (router.has_secret), analyzer refusal; FINDINGS role gives INCONCLUSIVE never PASS; signing stays in analyzer_authority. Review pending.
+
+## 2026-11-10 U2-3 review remediation
+Three reviewers (python 1 MAJOR, functional-test 2 MAJOR, security 3 MAJOR) converged on: analyzer report not bound to the reviewed set, role result not bound to purpose and path set, required_paths a free caller list, RB code contract not true. Fixed in one batch: TreeDigest vs report source_tree_sha256 and analysis_scope == sorted(reviewed) (RB_REPORT_TREE_MISMATCH); uc result gains purpose and changed_paths_sha256, bridge refuses purpose != receipt and a changed-paths hash mismatch; reviewed must equal required exactly (RB_REVIEWED_PATH_EXTRA); every failure mapped to RB codes; validate_receipt and payload validation run before return; PASS offered only for CLEAN with no findings and empty residual; id grammar; has_secret moved to tools/uc/secret_patterns.py (not secrets.py: would shadow stdlib when router runs as script); ls-tree uses the verified head. Open dependency recorded for U2-5/U2-6: gate-side comparison of reviewed_paths_sha256 with the verified diff-gate list, and deleted paths cannot be covered (fail closed).
+
+## 2026-11-10 U2-3 scope note
+Added docs/sdlc/evidence/u2-3-gptpm-scope-note.md; GPT-PM review requested, base 38cc4ea.

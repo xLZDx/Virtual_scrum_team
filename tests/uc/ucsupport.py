@@ -63,6 +63,7 @@ def valid_result(**over) -> dict:
         "schema_version": "uc.role-result.v1", "request_id": "req-1", "base_revision": HEAD,
         "snapshot_hash": HASH_A, "iteration_id": "it-1", "exit_code": 3, "roles": [valid_role_entry()],
         "role_table_sha256": HASH_C, "aeve_head": "d" * 40,
+        "purpose": "advisory", "changed_paths_sha256": HASH_A,
     }
     doc.update(over)
     return doc

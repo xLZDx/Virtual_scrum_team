@@ -26,6 +26,7 @@ import time
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 from uc import adapter, aeve_probe, contracts  # noqa: E402
+from uc.secret_patterns import _SECRET, has_secret  # noqa: E402,F401  (re-exported; defined side-effect free)
 
 if os.name == "nt":
     import msvcrt
@@ -39,11 +40,6 @@ TEST_ROLE_NAMES = frozenset({
 })
 LOCK_WAIT_SECONDS = 30.0
 _TOKEN_CLEAN = re.compile(r"[^a-z0-9_.-]+")
-# Shapes of well-known credentials; text that matches is never copied into a result.
-_SECRET = re.compile(
-    r"sk_(?:live|test)_[A-Za-z0-9]+|sk-[A-Za-z0-9]{16,}|AKIA[0-9A-Z]{8,}|gh[pousr]_[A-Za-z0-9]{10,}"
-    r"|xox[abprs]-[A-Za-z0-9-]+|AIza[0-9A-Za-z_-]{10,}|-----BEGIN"
-    r"|(?i:secret|passwd|password|api[_-]?key|token)[=_:-]*[A-Za-z0-9]{8,}")
 # A result path is copied only when it is a plain short name; anything else becomes an opaque digest.
 _SAFE_PATH = re.compile(r"^[A-Za-z0-9._@+/-]{1,120}$")
 SEVERITY_RANK = {"BLOCKER": 0, "MAJOR": 1, "MINOR": 2, "NIT": 3}
@@ -51,10 +47,6 @@ _EXECUTOR_STATUS = {"COMPLETE": "COMPLETE", "PARTIAL": "PARTIAL", "BLOCKED": "BL
                     "NOT_COVERED": "NOT_COVERED", "NOT_RUN": "NOT_RUN"}
 _ROLE_CLASSES = ("LOCAL", "LOCAL_PLUS_MODEL", "MODEL_ONLY", "OUT_OF_SCOPE")
 _COVERAGE_STATES = ("COVERED_PARTIAL", "NOT_COVERED_NO_EXECUTOR", "NOT_COVERED_NO_PROFILE", "NOT_APPLICABLE")
-
-
-def has_secret(text: object) -> bool:
-    return _SECRET.search(str(text)) is not None
 
 
 def to_token(text: object, fallback: str = "unspecified") -> str:
@@ -212,6 +204,7 @@ def normalize(role_request: dict, table: dict, response: dict | None, adapter_er
 
     ``role_table_sha256`` and ``aeve_head`` are the bridge facts (U2-1) and are copied into the result
     as given; the caller supplies the digest of the exact table bytes it loaded and the probed, pin-matched AEVE head.
+    ``purpose`` and ``changed_paths_sha256`` (U2-3) are derived from the validated request itself.
     """
     snapshot = response["snapshot_sha256"] if response else "0" * 64
     results_by_executor = {r["executor_id"]: r for r in (response["results"] if response else [])}
@@ -283,6 +276,8 @@ def normalize(role_request: dict, table: dict, response: dict | None, adapter_er
         "roles": roles_out,
         "role_table_sha256": role_table_sha256,
         "aeve_head": aeve_head,
+        "purpose": role_request["purpose"],
+        "changed_paths_sha256": contracts.changed_paths_sha256(role_request["changed_paths"]),
     }
 
 

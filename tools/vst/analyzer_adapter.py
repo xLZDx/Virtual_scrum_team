@@ -579,8 +579,8 @@ def _check_git_binding(real_root: str, candidate_head: str, limits: Limits) -> N
         raise AdapterError("TREE_DIRTY", "working tree is not clean")
 
 
-def _tracked_entries(real_root: str, limits: Limits) -> dict[str, tuple[str, str, str]]:
-    listing = _git(real_root, ["ls-tree", "-r", "-z", "--full-tree", "HEAD"], limits)
+def _tracked_entries(real_root: str, limits: Limits, rev: str) -> dict[str, tuple[str, str, str]]:
+    listing = _git(real_root, ["ls-tree", "-r", "-z", "--full-tree", rev], limits)
     entries: dict[str, tuple[str, str, str]] = {}
     for record in listing.split(b"\0"):
         if not record:
@@ -607,7 +607,7 @@ def source_tree_digest(
         raise AdapterError("ROOT_INVALID", "root is not a directory")
     _check_git_config(real_root)
     _check_git_binding(real_root, candidate_head, limits)
-    tracked = _tracked_entries(real_root, limits)
+    tracked = _tracked_entries(real_root, limits, candidate_head)  # the verified 40-hex head, not symbolic HEAD
     fold: dict[str, int] = {}
     for name in tracked:
         fold[name.casefold()] = fold.get(name.casefold(), 0) + 1
@@ -1377,7 +1377,10 @@ def bridge_facts_from_role_result(
     than one entry for ``role``; an entry whose status is not CLEAN or FINDINGS; an entry with a
     non-empty ``uncovered`` list; a LOCAL_PLUS_MODEL entry with an empty ``model_residual``;
     ``reviewed_paths`` that is not a non-empty list/tuple of unique plain repo-relative paths (a bare
-    str, duplicates and an empty list are refused). model_residual is never repaired or reordered.
+    str, duplicates and an empty list are refused); (U2-3) a result whose ``purpose`` is not "receipt";
+    a result whose ``changed_paths_sha256`` differs from the sha256 of the canonical bytes of
+    sorted(reviewed_paths) (the same hashing as ``reviewed_paths_sha256``). model_residual is never
+    repaired or reordered.
 
     Facts: ``role_table_sha256`` and ``aeve_head`` are the result's top-level values; ``model_residual``
     is the entry's list; ``reviewed_paths_sha256`` is the sha256 of the canonical bytes of the sorted
@@ -1397,6 +1400,8 @@ def bridge_facts_from_role_result(
         raise ContractError(f"role result: invalid ({exc.code} at {exc.where})") from exc
     if role_result["base_revision"] != expected_base_revision:
         raise ContractError("role result: base_revision differs from expected_base_revision")
+    if role_result["purpose"] != "receipt":
+        raise ContractError("role result: purpose is not 'receipt' (an advisory review cannot back a receipt)")
     entries = [e for e in role_result["roles"] if e["role"] == role]
     if len(entries) != 1:
         raise ContractError(f"role result: expected exactly one entry for role {role!r}")
@@ -1413,6 +1418,9 @@ def bridge_facts_from_role_result(
         _req_plain_repo_path(path, f"reviewed_paths[{index}]")
     if len(set(reviewed_paths)) != len(reviewed_paths):
         raise ContractError("reviewed_paths: must not contain duplicates")
+    reviewed_hash = hashlib.sha256(canonical_bytes(sorted(reviewed_paths))).hexdigest()
+    if role_result["changed_paths_sha256"] != reviewed_hash:
+        raise ContractError("role result: changed_paths_sha256 differs from the hash of the reviewed paths")
     severities = [f["severity"] for f in entry["findings"]]  # validate_result closed the enum
     highest = (
         _UC_TO_BRIDGE_SEVERITY[max(severities, key=_UC_SEVERITY_ORDER.index)] if severities else "NONE"
@@ -1421,7 +1429,7 @@ def bridge_facts_from_role_result(
         "role_table_sha256": role_result["role_table_sha256"],
         "aeve_head": role_result["aeve_head"],
         "model_residual": list(entry["model_residual"]),
-        "reviewed_paths_sha256": hashlib.sha256(canonical_bytes(sorted(reviewed_paths))).hexdigest(),
+        "reviewed_paths_sha256": reviewed_hash,
         "findings_count": len(severities),
         "highest_severity": highest,
     }

@@ -2131,3 +2131,9 @@ Kind: SUCCESS. Facts: gate rules passed GPT-PM; one MAJOR in the evidence builde
 
 ## 2026-11-10 U2-3 receipt builder
 Kind: NEUTRAL (review pending).
+
+## 2026-11-10 U2-3 remediation
+Kind: SHORTCOMING. Facts: first builder discarded the tree digest it computed and trusted caller lists, so a clean-tree check proved nothing about what was analyzed; all three reviewers found it. Root cause: the builder checked inputs against each other, not against the evidence. Missed by: author. Caught by: reviewers. Rule: a binding check compares the artifact with independently computed evidence, never two caller-supplied values.
+
+## 2026-11-10 U2-3 scope note
+Kind: NEUTRAL.

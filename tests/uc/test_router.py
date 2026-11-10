@@ -28,7 +28,8 @@ FAKE_SECRET = "sk_live_FAKE0123456789SECRET"
 
 
 def req(roles, **over):
-    doc = {"request_id": "req-1", "base_revision": HEAD, "changed_paths": ["src/a.py", "docs/b.md"], "roles": list(roles)}
+    doc = {"request_id": "req-1", "base_revision": HEAD, "changed_paths": ["src/a.py", "docs/b.md"], "roles": list(roles),
+           "purpose": "advisory"}
     doc.update(over)
     return doc
 
