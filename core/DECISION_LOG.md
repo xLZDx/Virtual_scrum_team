@@ -3018,3 +3018,6 @@ Decision: operator ordered "GO start U4" and chose U4-1 only (AEVE edits for U4-
 
 ## 2026-11-10 U4-1 review remediation
 Decision: one remediation batch after python (3 MAJOR), security (2 MAJOR) and test (2 MAJOR) reviews: required label, newline-normalized digest, no-raise validators, fail-closed names, exact project-entry validation, bounded descriptor reads, redaction, real link tests. NOT_RUN.
+
+## 2026-11-10 U4-1 GPT-PM round 1 MAJOR fixed
+Decision: GPT-PM request d6aa746b found the extended-table validator derived coverage authorization from the entry itself. Verified against the code, fixed by binding COVERED_PARTIAL project entries to the explicit mapping (validate --mapping). Verification round follows. NOT_RUN.

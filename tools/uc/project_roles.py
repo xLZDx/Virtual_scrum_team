@@ -438,24 +438,34 @@ def table_sha256(table: dict) -> str:
 
 
 def validate_extended_table(table: object, inventory: dict, manifest: dict, matrix: dict,
-                            probe_record: dict) -> list[str]:
+                            probe_record: dict, mapping: dict | None = None) -> list[str]:
     """Return problems with an extended table; empty means valid. Never raises on malformed input.
 
     The global part must pass ``role_table.validate_role_table`` unchanged. Every manifest item must appear
     exactly once as a ``scope: project`` entry that equals, key for key, what the builder produces: unmapped
     (``NOT_COVERED_NO_PROFILE``, class and draft_class ``LOCAL_PLUS_MODEL``, exact reason, no executors) or
     mapped (``COVERED_PARTIAL`` with exactly the matrix's executors for its canonical role).
+
+    Authorization comes only from ``mapping`` (``uc.project-role-mapping.v1``; None means no mapping): every
+    ``COVERED_PARTIAL`` project entry needs a mapping entry whose kind, name, source_sha256 (equal to the
+    manifest's), canonical_role and executors match both the table entry and the matrix, and every mapping entry
+    must match a manifest entry that the table actually maps.
     """
     try:
-        return _validate_extended(table, inventory, manifest, matrix, probe_record)
+        return _validate_extended(table, inventory, manifest, matrix, probe_record, mapping)
     except _MALFORMED as exc:
         return [f"validator: malformed input ({type(exc).__name__})"]
 
 
-def _validate_extended(table: object, inventory: dict, manifest: dict, matrix: dict, probe_record: dict) -> list[str]:
+def _validate_extended(table: object, inventory: dict, manifest: dict, matrix: dict, probe_record: dict,
+                       mapping: dict | None = None) -> list[str]:
     problems = [f"manifest: {p}" for p in validate_manifest(manifest)]
     if problems:
         return problems
+    try:
+        mapping_index = _mapping_index(mapping)
+    except ProjectRolesError as exc:
+        return [f"mapping: {exc.code}: {exc.detail}"]
     if not isinstance(table, dict) or not isinstance(table.get("entries"), list):
         return ["table: entries is not a list"]
     entries = [e for e in table["entries"] if isinstance(e, dict)]
@@ -497,6 +507,11 @@ def _validate_extended(table: object, inventory: dict, manifest: dict, matrix: d
             if not listed or entry.get("executors") != listed:
                 problems.append(f"{label}: claims coverage the matrix does not list")
                 continue
+            granted = mapping_index.get(key)
+            if (granted is None or granted["source_sha256"] != source["source_sha256"]
+                    or granted["canonical_role"] != canonical or sorted(granted["executors"]) != listed):
+                problems.append(f"{label}: COVERED_PARTIAL without a matching mapping entry")
+                continue
             expected = _covered_entry(source, canonical, listed)
         else:
             if state not in ("NOT_COVERED_NO_PROFILE", "NOT_COVERED_NO_EXECUTOR"):
@@ -511,6 +526,12 @@ def _validate_extended(table: object, inventory: dict, manifest: dict, matrix: d
             problems.append(f"{label}: differs from the builder shape in: {', '.join(differing)}")
     for key in sorted(set(wanted) - seen):
         problems.append(f"missing project entry {key[0]} {_safe(key[1])}")
+    covered = {(e.get("kind"), e.get("name")) for e in project_entries if e.get("coverage_state") == "COVERED_PARTIAL"}
+    for key in sorted(mapping_index):
+        if key not in wanted:
+            problems.append(f"mapping: entry {key[0]} {_safe(key[1])} matches no manifest entry")
+        elif key not in covered:
+            problems.append(f"mapping: entry {key[0]} {_safe(key[1])} is not applied by the table")
     return problems
 
 
@@ -573,7 +594,8 @@ def _build_parser() -> argparse.ArgumentParser:
         cmd.add_argument("--aeve-root", required=True, type=pathlib.Path)
         cmd.add_argument("--inventory", required=True, type=pathlib.Path)
     reg.add_argument("--base-table", required=True, type=pathlib.Path)
-    reg.add_argument("--mapping", type=pathlib.Path)
+    for cmd in (reg, val):
+        cmd.add_argument("--mapping", type=pathlib.Path)
     val.add_argument("--table", required=True, type=pathlib.Path)
     return parser
 
@@ -595,14 +617,14 @@ def _run(args: argparse.Namespace) -> int:
             print(_line(json.dumps({"status": "BLOCKED", "reason": exc.reason, "detail": exc.detail}, sort_keys=True)))
             return 2
         inventory = _load(args.inventory)
+        mapping = _load(args.mapping) if args.mapping else None
         if args.command == "register":
-            mapping = _load(args.mapping) if args.mapping else None
             table = register_project_roles(_load(args.base_table), manifest, mapping, matrix)
             payload = serialize_table(table)
         else:
             raw = args.table.read_bytes()
             table, payload = json.loads(raw.decode("utf-8")), None
-        problems = validate_extended_table(table, inventory, manifest, matrix, record)
+        problems = validate_extended_table(table, inventory, manifest, matrix, record, mapping)
         if problems:
             _print_problems(problems)
             return 1

@@ -44,7 +44,14 @@ Module: `tools/uc/project_roles.py`. Tests: `tests/uc/test_u4_project_roles.py`.
    class and draft_class `LOCAL_PLUS_MODEL`, `class_upgraded_by_evidence` false, `model_remainder_hint` empty, exact
    reason, no executors, no profile) or mapped (`COVERED_PARTIAL`, exactly the matrix's executors, exact mapped
    reason). It also checks path and source digest against the manifest, no missing or extra entries, the stamp and
-   the counts. `validate_manifest` cross-checks kind against path and name against the file or directory name, and
+   the counts. **Authorization comes only from the mapping document, never from the table entry itself:** the
+   function takes an optional `mapping` (same `uc.project-role-mapping.v1` format; None means no mapping). Every
+   `COVERED_PARTIAL` project entry needs a mapping entry whose kind, name, `source_sha256` (equal to the manifest's),
+   `canonical_role` and executors match both the table entry and the matrix; otherwise the problem is
+   `COVERED_PARTIAL without a matching mapping entry`. A mapping entry that matches no manifest entry, or whose
+   role the table does not map, is also a problem, and a malformed mapping is a problem string, not an exception.
+   A hand-edited unmapped entry promoted to `COVERED_PARTIAL` therefore fails, and a properly mapped table
+   validates only when the same mapping is supplied. `validate_manifest` cross-checks kind against path and name against the file or directory name, and
    never raises.
 5. **Hash and drift.** `table_sha256(table)` is the sha256 of `serialize_table(table)` (the same bytes
    `role_table.py build` writes). Written to a file and loaded with `router.load_table_with_digest`, the router
@@ -62,8 +69,11 @@ python tools/uc/project_roles.py scan     --project-root <repo> --project-label 
 python tools/uc/project_roles.py register --project-root <repo> --project-label <label> --base-table catalog/role_table.json \
     --aeve-root <AEVE> --inventory catalog/inventory.json [--mapping mapping.json] (--print | --out table.json)
 python tools/uc/project_roles.py validate --project-root <repo> --project-label <label> --table table.json \
-    --aeve-root <AEVE> --inventory catalog/inventory.json
+    --aeve-root <AEVE> --inventory catalog/inventory.json [--mapping mapping.json]
 ```
+
+`register` validates its own output against the mapping it was given. `validate --mapping` is optional; without it
+a table with any `COVERED_PARTIAL` project entry is invalid.
 
 `--print` writes nothing and prints a JSON summary (manifest digest, or table digest, counts and stamp). `validate`
 also checks that the table file bytes are the canonical serialization, so the reported digest is the file digest.

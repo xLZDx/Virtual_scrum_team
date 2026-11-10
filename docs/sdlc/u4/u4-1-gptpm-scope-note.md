@@ -9,3 +9,6 @@ Already fixed after three read-only reviews (python 3 MAJOR, security 2 MAJOR, t
 Settled, do not reopen: no AEVE change (U4-2..U4-6 not approved); wiring the extended table into the live router run and re-pinning the gate are owner steps outside this task; the race between link pre-check and open is documented and only partly closed; no test, mutation or CI run (pytest forbidden), evidence is static.
 
 Ask: the complete BLOCKER/MAJOR set for this delta only.
+
+## Verification round (after GPT-PM round 1, reply d6aa746b, MAJOR x1)
+Base: e004584. Fixed: validate_extended_table takes the mapping document; every COVERED_PARTIAL project entry needs a mapping entry whose kind, name, source_sha256 (equal to the manifest), canonical_role and executors match both the table entry and the AEVE matrix, otherwise a problem string; a mapping entry that matches no manifest entry or is not applied by the table is a problem; the validate subcommand gains --mapping (absent means any COVERED_PARTIAL project entry is invalid); register passes its mapping to the post-build validation; tests include a hand-promoted unmapped role being rejected. Files: tools/uc/project_roles.py, tests/uc/test_u4_project_roles.py, docs/sdlc/u4/PROJECT_ROLES.md. Ask: confirm this MAJOR is resolved and name any regression caused by the fix; nothing else.

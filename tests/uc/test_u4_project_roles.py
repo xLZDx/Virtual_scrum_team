@@ -72,8 +72,8 @@ def register(project, mapping=None, base=None):
     return manifest, table
 
 
-def valid(table, manifest):
-    return pr.validate_extended_table(table, INVENTORY, manifest, MATRIX, PROBE)
+def valid(table, manifest, mapping=None):
+    return pr.validate_extended_table(table, INVENTORY, manifest, MATRIX, PROBE, mapping)
 
 
 def refusal(call, *args, **kw) -> str:
@@ -244,13 +244,49 @@ def mapping_for(project, **over):
 
 
 def test_explicit_mapping_to_matrix_executors_lifts_a_role_to_covered_partial(project):
-    manifest, table = register(project, mapping_for(project))
+    mapping = mapping_for(project)
+    manifest, table = register(project, mapping)
     entry = project_entry(table, "proj-alpha")
     assert entry["coverage_state"] == "COVERED_PARTIAL" and entry["executors"] == ["g2.python-rules"]
     assert entry["canonical_role"] == "python-reviewer" and entry["scope"] == "project"
-    assert valid(table, manifest) == []
+    assert valid(table, manifest, mapping) == []
     assert project_entry(table, "proj-skill")["coverage_state"] == "NOT_COVERED_NO_PROFILE"
     router.check_table(table)
+
+
+def test_a_mapped_table_validates_only_with_the_same_mapping(project):
+    mapping = mapping_for(project)
+    manifest, table = register(project, mapping)
+    assert valid(table, manifest, mapping) == []
+    for missing in (None, {"schema": pr.MAPPING_SCHEMA, "entries": []}):
+        assert any("COVERED_PARTIAL without a matching mapping entry" in p for p in valid(table, manifest, missing))
+    for field, value in (("canonical_role", "security-reviewer"), ("source_sha256", "0" * 64),
+                         ("executors", ["g2.python-rules", "g2.secrets"])):
+        other = mapping_for(project, **{field: value})
+        assert valid(table, manifest, other), field
+
+
+def test_hand_promoting_an_unmapped_role_to_covered_partial_is_rejected(project):
+    manifest, table = register(project)
+    forged = copy.deepcopy(table)
+    project_entry(forged, "proj-alpha").update(
+        coverage_state="COVERED_PARTIAL", canonical_role="python-reviewer", aeve_profile="python-reviewer",
+        executors=["g2.python-rules"], reason=pr.MAPPED_REASON)
+    forged["counts"] = rt._counts(forged["entries"])
+    problems = valid(forged, manifest)
+    assert any("COVERED_PARTIAL without a matching mapping entry" in p for p in problems)
+    assert valid(forged, manifest, {"schema": pr.MAPPING_SCHEMA, "entries": []})
+
+
+def test_a_mapping_entry_matching_no_manifest_entry_or_no_applied_entry_is_a_problem(project):
+    mapping = mapping_for(project)
+    manifest, table = register(project, mapping)
+    ghost = copy.deepcopy(mapping)
+    ghost["entries"].append({**ghost["entries"][0], "name": "ghost"})
+    assert any("matches no manifest entry" in p for p in valid(table, manifest, ghost))
+    manifest_u, table_u = register(project)
+    assert any("is not applied by the table" in p for p in valid(table_u, manifest_u, mapping))
+    assert valid(table, manifest, {"schema": "bad"})  # a malformed mapping is a problem string, not an exception
 
 
 def test_mapping_claiming_an_executor_the_matrix_lacks_is_refused(project):
@@ -585,6 +621,22 @@ def test_cli_register_out_writes_the_table_and_the_summary_digest_equals_the_fil
     assert pr.main(["validate", "--project-root", str(project), "--project-label", LABEL, "--table", str(out),
                     "--aeve-root", str(tmp_path), "--inventory", str(inputs / "inventory.json")]) == 0
     assert json.loads(capsys.readouterr().out)["role_table_sha256"] == summary["role_table_sha256"]
+
+
+def test_cli_validate_with_and_without_the_mapping(project, tmp_path, capsys, monkeypatch):
+    stub_probe(monkeypatch)
+    inputs = cli_inputs(tmp_path)
+    mapping_path = inputs / "mapping.json"
+    mapping_path.write_text(json.dumps(mapping_for(project)), encoding="utf-8")
+    out = tmp_path / "out" / "mapped.json"
+    assert pr.main(register_args(project, tmp_path, inputs, "--mapping", str(mapping_path), "--out", str(out))) == 0
+    registered = json.loads(capsys.readouterr().out)
+    common = ["validate", "--project-root", str(project), "--project-label", LABEL, "--table", str(out),
+              "--aeve-root", str(tmp_path), "--inventory", str(inputs / "inventory.json")]
+    assert pr.main([*common, "--mapping", str(mapping_path)]) == 0
+    assert json.loads(capsys.readouterr().out)["role_table_sha256"] == registered["role_table_sha256"]
+    assert pr.main(common) == 1
+    assert "COVERED_PARTIAL without a matching mapping entry" in capsys.readouterr().out
 
 
 def test_cli_validate_reports_drift_after_a_role_is_added(project, tmp_path, capsys, monkeypatch):
