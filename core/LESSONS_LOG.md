@@ -2101,3 +2101,6 @@ Kind: NEUTRAL. Routine re-render after PR 7.
 
 ## 2026-11-10 Plan sync after S5 merge
 Kind: NEUTRAL. Routine plan sync on a separate branch because the sprint branch was already merged.
+
+## 2026-11-10 Stale plan statuses
+Kind: FAILURE (mine). I rendered and sent the plan report three times without comparing it with git; it showed S0-S2 at 0/N and S4 in progress after they were merged. Missed by author; caught by the operator from a screenshot. Rule: before sending a plan report, check the per-sprint counts against git merges and decision log, and reconcile any BLOCKED_* status whose cause is gone.
