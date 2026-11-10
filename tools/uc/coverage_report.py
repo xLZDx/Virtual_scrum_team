@@ -7,7 +7,7 @@ markdown. Deterministic, stdlib only, no model, no network, no file writes.
 Honesty rule: a pass-like word may appear in a rendering only when every role in the report is fully
 clean (status CLEAN, class LOCAL, empty model residual, empty uncovered). A rendering is scanned for pass
 tokens before it is returned; the only exemption is the exact verdict word CLEAN_LOCAL of a fully clean
-role, in the verdict cell of that role's own row.
+role, at the verdict cell position of that role's own body row, recorded while the rendering is built.
 
 Usage:
     python -m tools.uc.coverage_report --result result.json --table role_table.json [--format text|markdown|json]
@@ -16,15 +16,19 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import pathlib
 import re
 import sys
+import unicodedata
 
 try:
     from tools.uc import contracts
-except ImportError:  # run as a script from tools/uc: mirror the router's import style
-    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+except ModuleNotFoundError as _exc:  # run as a script from tools/uc: mirror the router's import style
+    if _exc.name not in ("tools", "tools.uc"):
+        raise
+    sys.path.append(str(pathlib.Path(__file__).resolve().parent.parent))
     from uc import contracts  # type: ignore[no-redef]
 
 REPORT_SCHEMA = "uc.coverage-report.v1"
@@ -39,20 +43,24 @@ _ROLE_KEYS = {
     "role", "canonical_role", "class", "status", "covered_by_code", "uncovered", "model_residual",
     "findings_count", "highest_severity", "verdict_word",
 }
+# Labels used in the renderings; a role with one of these names is refused (fail closed).
+_RESERVED_ROLE_NAMES = frozenset({"request", "role", "coverage", "base", "snapshot", "role_table_sha256"})
 
 # Case-insensitive pass-like words (regex sources, matched as whole words; see scan_pass_tokens).
-# Includes a few inflections of the Russian words (e/yo spelling, gender and number endings).
 PASS_TOKENS = (
-    r"PASS", r"PASSED", r"OK", r"SUCCESS", r"GREEN", r"APPROVED", r"ALL\s+CLEAR", r"CLEAN", r"COMPLETE",
-    r"DONE", r"LGTM", r"SAFE", r"VERIFIED",
-    r"пройден", r"пройдено", r"пройдена", r"пройдены", r"успешно", r"зелёный", r"зеленый", r"одобрено", r"чисто",
+    r"PASS", r"PASSES", r"PASSED", r"PASSING", r"OK", r"OKAY", r"SUCCESS", r"SUCCESSFUL", r"SUCCEEDED",
+    r"GREEN", r"APPROVE", r"APPROVED", r"ALL\s+CLEAR", r"CLEAN", r"COMPLETE", r"COMPLETED", r"DONE", r"LGTM",
+    r"SAFE", r"VERIFIED", r"FIXED", r"READY", r"GOOD", r"FINE",
+    r"пройден", r"пройдено", r"пройдена", r"пройдены", r"успешно", r"успешный", r"зелёный", r"зеленый",
+    r"одобрено", r"одобрен", r"чисто", r"чистый", r"ок", r"окей", r"готово", r"завершено", r"выполнено",
+    r"проверено", r"безопасно",
 )
 
-# Whole word: not preceded and not followed by a Unicode letter or digit. The underscore, the hyphen and
-# every other non-alphanumeric character count as separators, so CLEAN inside CLEAN_LOCAL or clean-code is a
-# hit (the lookarounds use [^\W_], which is "letter or digit" and works for Cyrillic in a str pattern).
+# Whole word: not adjacent to a Unicode LETTER. Digits, underscore, hyphen and every other character are
+# separators, so CLEAN inside CLEAN_LOCAL, clean-code, OK1 and pass2 are hits ([^\W\d_] is "a letter", and
+# works for Cyrillic in a str pattern).
 _PASS_RE = re.compile(
-    r"(?<![^\W_])(?:" + "|".join(sorted(PASS_TOKENS, key=len, reverse=True)) + r")(?![^\W_])",
+    r"(?<![^\W\d_])(?:" + "|".join(sorted(PASS_TOKENS, key=len, reverse=True)) + r")(?![^\W\d_])",
     re.IGNORECASE,
 )
 
@@ -67,7 +75,9 @@ class CoverageReportError(ValueError):
         self.cause = cause
 
 
-def _verdict_word(status: str, findings_count: int, residual: list, uncovered: list) -> str:
+def _verdict_word(status: str, role_class: str, findings_count: int, residual: list, uncovered: list) -> str:
+    if status == "CLEAN" and role_class != "LOCAL":
+        raise CoverageReportError("BAD_REPORT", "status CLEAN needs class LOCAL")
     if status == "BLOCKED":
         return "BLOCKED"
     if status in ("NOT_COVERED", "NOT_RUN"):
@@ -102,12 +112,18 @@ def _lookup(table: object, role: str, canonical: str, role_class: str, where: st
         raise CoverageReportError("TABLE_MISMATCH", where)
 
 
-def render_coverage_report(role_result: dict, role_table: dict) -> dict:
-    """Build the report; re-validates the result and checks every role against the table."""
+def render_coverage_report(role_result: dict, role_table: dict, table_sha256: str | None = None) -> dict:
+    """Build the report; re-validates the result and checks every role against the table.
+
+    When ``table_sha256`` (sha256 of the exact table bytes) is given it must equal ``role_table_sha256`` of the
+    result, otherwise TABLE_DIGEST_MISMATCH.
+    """
     try:
         result = contracts.validate_result(role_result)
     except contracts.ContractError as exc:
         raise CoverageReportError("INVALID_RESULT", exc.where, exc.code) from exc
+    if table_sha256 is not None and (not isinstance(table_sha256, str) or table_sha256 != result["role_table_sha256"]):
+        raise CoverageReportError("TABLE_DIGEST_MISMATCH", "result.role_table_sha256")
     severity_rank = {name: index for index, name in enumerate(contracts.SEVERITIES)}
     roles = []
     for index, entry in enumerate(result["roles"]):
@@ -117,7 +133,6 @@ def render_coverage_report(role_result: dict, role_table: dict) -> dict:
         highest = None
         if findings:
             highest = max((f["severity"] for f in findings), key=severity_rank.__getitem__)
-        covered = [e["id"] for e in entry["executors"] if e["status"] == "COMPLETE"]
         residual = list(entry["model_residual"])
         uncovered = list(entry["uncovered"])
         roles.append({
@@ -125,14 +140,14 @@ def render_coverage_report(role_result: dict, role_table: dict) -> dict:
             "canonical_role": entry["canonical_role"],
             "class": entry["class"],
             "status": entry["status"],
-            "covered_by_code": covered,
+            "covered_by_code": [e["id"] for e in entry["executors"] if e["status"] == "COMPLETE"],
             "uncovered": uncovered,
             "model_residual": residual,
             "findings_count": len(findings),
             "highest_severity": highest,
-            "verdict_word": _verdict_word(entry["status"], len(findings), residual, uncovered),
+            "verdict_word": _verdict_word(entry["status"], entry["class"], len(findings), residual, uncovered),
         })
-    return {
+    report = {
         "schema_version": REPORT_SCHEMA,
         "request_id": result["request_id"],
         "base_revision": result["base_revision"],
@@ -140,35 +155,68 @@ def render_coverage_report(role_result: dict, role_table: dict) -> dict:
         "role_table_sha256": result["role_table_sha256"],
         "roles": roles,
     }
+    return _check_report(report)
+
+
+def _ident(value: object, pattern, where: str) -> str:
+    """A report string: str, pure printable ASCII, no pipe, and a full match of the contract pattern."""
+    if (not isinstance(value, str) or not value.isascii() or "|" in value
+            or any(ord(ch) < 32 or ord(ch) == 127 for ch in value) or not pattern.fullmatch(value)):
+        raise CoverageReportError("BAD_REPORT", where)
+    if value.casefold() == CLEAN_VERDICT.casefold():
+        raise CoverageReportError("BAD_REPORT", where)
+    return value
+
+
+def _id_list(value: object, where: str) -> list:
+    if not isinstance(value, list) or len(value) > contracts.MAX_LIST:
+        raise CoverageReportError("BAD_REPORT", where)
+    for index, item in enumerate(value):
+        _ident(item, contracts._TOKEN, f"{where}[{index}]")
+    return value
 
 
 def _check_report(report: object) -> dict:
-    """Strict shape check of a report dict; the verdict word is recomputed, never trusted."""
+    """Strict check of ANY report dict: shape, every string against its contract pattern, verdict recomputed."""
     if not isinstance(report, dict) or set(report) != _REPORT_KEYS:
         raise CoverageReportError("BAD_REPORT", "report")
     if report["schema_version"] != REPORT_SCHEMA:
         raise CoverageReportError("WRONG_SCHEMA", "report.schema_version")
+    _ident(report["request_id"], contracts._ID, "report.request_id")
+    _ident(report["base_revision"], contracts._HEAD, "report.base_revision")
+    _ident(report["snapshot_hash"], contracts._HASH, "report.snapshot_hash")
+    _ident(report["role_table_sha256"], contracts._HASH, "report.role_table_sha256")
     roles = report["roles"]
-    if not isinstance(roles, list) or not roles:
+    if not isinstance(roles, list) or not roles or len(roles) > contracts.MAX_ROLES:
         raise CoverageReportError("BAD_REPORT", "report.roles")
+    seen: set = set()
     for index, entry in enumerate(roles):
         where = f"report.roles[{index}]"
         if not isinstance(entry, dict) or set(entry) != _ROLE_KEYS:
             raise CoverageReportError("BAD_REPORT", where)
+        role = _ident(entry["role"], contracts._ROLE, f"{where}.role")
+        _ident(entry["canonical_role"], contracts._ROLE, f"{where}.canonical_role")
+        if role in seen or role in _RESERVED_ROLE_NAMES:
+            raise CoverageReportError("BAD_REPORT", f"{where}.role")
+        seen.add(role)
         if entry["status"] not in contracts.ROLE_STATUSES or entry["class"] not in _TABLE_CLASSES:
             raise CoverageReportError("BAD_REPORT", where)
         for field in ("covered_by_code", "uncovered", "model_residual"):
-            if not isinstance(entry[field], list) or not all(isinstance(x, str) for x in entry[field]):
-                raise CoverageReportError("BAD_REPORT", f"{where}.{field}")
+            _id_list(entry[field], f"{where}.{field}")
+        residual = entry["model_residual"]
+        if len(residual) > contracts.MAX_MODEL_RESIDUAL or residual != sorted(set(residual)):
+            raise CoverageReportError("BAD_REPORT", f"{where}.model_residual")
         count = entry["findings_count"]
-        if not isinstance(count, int) or isinstance(count, bool) or count < 0:
+        if not isinstance(count, int) or isinstance(count, bool) or not 0 <= count <= contracts.MAX_FINDINGS_PER_ROLE:
             raise CoverageReportError("BAD_REPORT", f"{where}.findings_count")
-        if entry["highest_severity"] is not None and entry["highest_severity"] not in contracts.SEVERITIES:
+        severity = entry["highest_severity"]
+        if severity is not None and severity not in contracts.SEVERITIES:
             raise CoverageReportError("BAD_REPORT", f"{where}.highest_severity")
-        for field in ("role", "canonical_role"):
-            if not isinstance(entry[field], str):
-                raise CoverageReportError("BAD_REPORT", f"{where}.{field}")
-        expected = _verdict_word(entry["status"], count, entry["model_residual"], entry["uncovered"])
+        if (severity is None) != (count == 0):
+            raise CoverageReportError("BAD_REPORT", f"{where}.highest_severity")
+        if entry["status"] == "CLEAN" and (count or residual or entry["uncovered"]):
+            raise CoverageReportError("BAD_REPORT", where)
+        expected = _verdict_word(entry["status"], entry["class"], count, residual, entry["uncovered"])
         if entry["verdict_word"] not in VERDICT_WORDS or entry["verdict_word"] != expected:
             raise CoverageReportError("BAD_VERDICT_WORD", f"{where}.verdict_word")
     return report
@@ -179,33 +227,22 @@ def scan_pass_tokens(text: str) -> list[tuple[str, int]]:
     return [(m.group(0), m.start()) for m in _PASS_RE.finditer(text)]
 
 
-def _exempt_spans(rendering: str, report: dict) -> set[int]:
-    """Offsets of CLEAN_LOCAL that are the verdict cell (second cell) of a fully clean role's own row."""
-    clean_roles = {e["role"] for e in report["roles"] if is_fully_clean(e)}
-    exempt: set[int] = set()
-    position = 0
-    for line in rendering.splitlines(keepends=True):
-        cells = list(re.finditer(r"[^\s|]+", line))
-        if len(cells) >= 2 and cells[0].group(0) in clean_roles and cells[1].group(0) == CLEAN_VERDICT:
-            exempt.add(position + cells[1].start())
-        position += len(line)
-    return exempt
-
-
-def assert_no_pass_token(rendering: str, report: dict) -> None:
-    """Raise PASS_TOKEN_IN_PARTIAL_REPORT if a pass token appears while any role is not fully clean.
-
-    Rule: when every role is fully clean, nothing is checked. Otherwise every scanner hit is a violation,
-    except a CLEAN_LOCAL hit at the verdict cell of the row of a fully clean role. No substring whitelist.
-    """
-    checked = _check_report(report)
-    if all(is_fully_clean(e) for e in checked["roles"]):
+def _scan_check(text: str, report: dict, exempt: frozenset | set) -> None:
+    """Raise if a pass token appears while any role is not fully clean; ``exempt`` are structural offsets."""
+    if all(is_fully_clean(e) for e in report["roles"]):
         return
-    exempt = _exempt_spans(rendering, checked)
-    for token, offset in scan_pass_tokens(rendering):
-        if offset in exempt and token == "CLEAN":
+    for token, offset in scan_pass_tokens(text):
+        if offset in exempt and text.startswith(CLEAN_VERDICT, offset) and token == "CLEAN":
             continue
         raise CoverageReportError("PASS_TOKEN_IN_PARTIAL_REPORT", f"offset {offset}")
+    # Second pass on NFKC-normalized, case-folded text (belt and braces for non-ASCII input). Offsets only
+    # line up when the length is unchanged; otherwise nothing is exempt.
+    normal = unicodedata.normalize("NFKC", text).casefold()
+    aligned = len(normal) == len(text)
+    for token, offset in scan_pass_tokens(normal):
+        if aligned and offset in exempt and text.startswith(CLEAN_VERDICT, offset) and token == "clean":
+            continue
+        raise CoverageReportError("PASS_TOKEN_IN_PARTIAL_REPORT", f"offset {offset} (normalized)")
 
 
 def _cell(items: list) -> str:
@@ -213,56 +250,113 @@ def _cell(items: list) -> str:
 
 
 def _rows(report: dict) -> list[list[str]]:
-    rows = []
-    for e in report["roles"]:
-        rows.append([
-            e["role"], e["verdict_word"], e["class"], e["canonical_role"], _cell(e["covered_by_code"]),
-            _cell(e["uncovered"]), _cell(e["model_residual"]), str(e["findings_count"]),
-            e["highest_severity"] or "-",
-        ])
-    return rows
+    return [[
+        e["role"], e["verdict_word"], e["class"], e["canonical_role"], _cell(e["covered_by_code"]),
+        _cell(e["uncovered"]), _cell(e["model_residual"]), str(e["findings_count"]), e["highest_severity"] or "-",
+    ] for e in report["roles"]]
 
 
-# The verdict word comes second in every row (the scanner exemption relies on it). The raw status is not
-# printed: it is derivable, and the status value CLEAN is itself a pass token.
+# The verdict word is the second cell of every row (the structural exemption uses that known position). The raw
+# status is not printed: it is derivable, and the status value CLEAN is itself a pass token.
 _HEADERS = ["role", "verdict", "class", "canonical", "covered_by_code", "uncovered", "model_residual",
             "findings", "highest_severity"]
 
 
-def render_text(report: dict) -> str:
-    checked = _check_report(report)
-    table = [_HEADERS] + _rows(checked)
+def _layout_text(report: dict) -> tuple[str, set]:
+    rows = _rows(report)
+    table = [_HEADERS] + rows
     widths = [max(len(row[i]) for row in table) for i in range(len(_HEADERS))]
     lines = [
-        f"coverage report {checked['schema_version']}",
-        f"request {checked['request_id']} base {checked['base_revision']} snapshot {checked['snapshot_hash']}",
-        f"role_table_sha256 {checked['role_table_sha256']}",
+        f"coverage report {report['schema_version']}",
+        f"request {report['request_id']} base {report['base_revision']} snapshot {report['snapshot_hash']}",
+        f"role_table_sha256 {report['role_table_sha256']}",
     ]
-    for row in table:
-        lines.append("  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)).rstrip())
-    text = "\n".join(lines) + "\n"
-    assert_no_pass_token(text, checked)
+    position = sum(len(line) + 1 for line in lines)
+    exempt: set = set()
+    for index, row in enumerate(table):
+        line = "  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)).rstrip()
+        if index > 0 and is_fully_clean(report["roles"][index - 1]):  # header (index 0) is never exempt
+            exempt.add(position + widths[0] + 2)
+        lines.append(line)
+        position += len(line) + 1
+    return "\n".join(lines) + "\n", exempt
+
+
+def _layout_markdown(report: dict) -> tuple[str, set]:
+    lines = [
+        f"# Coverage report {report['schema_version']}",
+        "",
+        f"- request: {report['request_id']}",
+        f"- base revision: {report['base_revision']}",
+        f"- snapshot: {report['snapshot_hash']}",
+        f"- role_table_sha256: {report['role_table_sha256']}",
+        "",
+        "| " + " | ".join(_HEADERS) + " |",
+        "|" + "|".join("---" for _ in _HEADERS) + "|",
+    ]
+    position = sum(len(line) + 1 for line in lines)
+    exempt: set = set()
+    for index, row in enumerate(_rows(report)):
+        line = "| " + " | ".join(row) + " |"
+        if is_fully_clean(report["roles"][index]):
+            exempt.add(position + 2 + len(row[0]) + 3)
+        lines.append(line)
+        position += len(line) + 1
+    return "\n".join(lines) + "\n", exempt
+
+
+def render_text(report: dict) -> str:
+    checked = _check_report(report)
+    text, exempt = _layout_text(checked)
+    _scan_check(text, checked, exempt)
     return text
 
 
 def render_markdown(report: dict) -> str:
     checked = _check_report(report)
-    lines = [
-        f"# Coverage report {checked['schema_version']}",
-        "",
-        f"- request: {checked['request_id']}",
-        f"- base revision: {checked['base_revision']}",
-        f"- snapshot: {checked['snapshot_hash']}",
-        f"- role_table_sha256: {checked['role_table_sha256']}",
-        "",
-        "| " + " | ".join(_HEADERS) + " |",
-        "|" + "|".join("---" for _ in _HEADERS) + "|",
-    ]
-    for row in _rows(checked):
-        lines.append("| " + " | ".join(row) + " |")
-    text = "\n".join(lines) + "\n"
-    assert_no_pass_token(text, checked)
+    text, exempt = _layout_markdown(checked)
+    _scan_check(text, checked, exempt)
     return text
+
+
+def assert_no_pass_token(rendering: str, report: dict) -> None:
+    """Raise PASS_TOKEN_IN_PARTIAL_REPORT if a pass token appears while any role is not fully clean.
+
+    Rule: when every role is fully clean nothing is checked. Otherwise every scanner hit is a violation, except
+    CLEAN_LOCAL at the verdict cell of a fully clean role's body row. That position is known only structurally:
+    the rendering must be byte-identical to the text or markdown layout built from this report; any other string
+    gets no exemption at all. There is no substring whitelist.
+    """
+    checked = _check_report(report)
+    if not isinstance(rendering, str):
+        raise CoverageReportError("BAD_REPORT", "rendering")
+    exempt: set = set()
+    for build in (_layout_text, _layout_markdown):
+        text, offsets = build(checked)
+        if text == rendering:
+            exempt = offsets
+            break
+    _scan_check(rendering, checked, exempt)
+
+
+def check_ids_have_no_pass_word(report: dict) -> None:
+    """Fail closed on any id (request, role, executor, uncovered, residual) that itself contains a pass word."""
+    checked = _check_report(report)
+    values = [checked["request_id"]]
+    for entry in checked["roles"]:
+        values += [entry["role"], entry["canonical_role"], *entry["covered_by_code"], *entry["uncovered"],
+                   *entry["model_residual"]]
+    for value in values:
+        if scan_pass_tokens(value) or scan_pass_tokens(unicodedata.normalize("NFKC", value).casefold()):
+            raise CoverageReportError("PASS_WORD_IN_ID", "report")
+
+
+def _load_json(path: pathlib.Path) -> tuple[object, bytes]:
+    try:
+        raw = path.read_bytes()
+        return json.loads(raw.decode("utf-8-sig")), raw
+    except (OSError, ValueError, RecursionError) as exc:
+        raise CoverageReportError("UNREADABLE_INPUT", type(exc).__name__) from exc
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -270,14 +364,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--result", required=True, type=pathlib.Path)
     parser.add_argument("--table", required=True, type=pathlib.Path)
     parser.add_argument("--format", choices=("text", "markdown", "json"), default="text")
-    args = parser.parse_args(argv)
+    args = parser.parse_args(argv)  # argparse usage errors exit with status 2, like a typed report error
     try:
+        result, _ = _load_json(args.result)
+        table, table_bytes = _load_json(args.table)
         try:
-            result = json.loads(args.result.read_text(encoding="utf-8"))
-            table = json.loads(args.table.read_text(encoding="utf-8"))
-        except (OSError, ValueError) as exc:
-            raise CoverageReportError("UNREADABLE_INPUT", type(exc).__name__) from exc
-        report = render_coverage_report(result, table)
+            report = render_coverage_report(result, table, hashlib.sha256(table_bytes).hexdigest())
+            check_ids_have_no_pass_word(report)
+        except RecursionError as exc:
+            raise CoverageReportError("INVALID_RESULT", "nesting", "RecursionError") from exc
         if args.format == "json":
             # Machine form: enumerated field values only, not a human rendering; the scanner does not apply.
             output = json.dumps(report, indent=2, sort_keys=True) + "\n"

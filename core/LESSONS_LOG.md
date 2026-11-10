@@ -2143,3 +2143,6 @@ Kind: SUCCESS. Facts: reviewer batch of three before GPT-PM left it no findings.
 
 ## 2026-11-10 U2-5 coverage report
 Kind: NEUTRAL (review pending).
+
+## 2026-11-10 U2-5 remediation
+Kind: SHORTCOMING. Facts: first version guaranteed no pass token only for dicts it built itself, public renderers accepted any dict. Root cause: guarantee placed in the builder, not at the output boundary. Missed by: author. Caught by: python-reviewer. Rule: enforce an output invariant in the function that emits the output, over its own inputs.
