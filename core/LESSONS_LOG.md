@@ -2032,3 +2032,69 @@ Kind: SUCCESS. The remediation of three MAJOR findings was accepted in one verif
 
 ## 2026-11-09 Plan report re-render
 Kind: NEUTRAL. Routine re-render after PR 6; no defect.
+
+## 2026-11-09 S5-A code
+Kind: NEUTRAL. Contract coded without any run; verification is review only.
+
+## 2026-11-09 S5-A review findings
+Kind: SHORTCOMING. The first coding pass left the gate treating v3 as v1 (a safety hole) because the brief said not to touch gate.py. Caught by python-reviewer. Rule: a contract version bump must fail closed in every consumer in the same task.
+
+## 2026-11-09 S5-A accepted
+Kind: SUCCESS. Two read-only reviewer passes before GPT-PM found the real gate hole; GPT-PM then approved in one round. Limit: static review only.
+
+## 2026-11-09 S5-B code
+Kind: NEUTRAL. Coded without a run; verification is review only.
+
+## 2026-11-09 S5-B review findings
+Kind: SHORTCOMING. First pass made every safety check optional, so omitting an argument silently weakened trust. Caught by two reviewers. Rule: trust-boundary arguments are required and fail closed, never defaulted.
+
+## 2026-11-09 S5-B accepted
+Kind: SUCCESS. Two reviewer passes before GPT-PM turned optional safety arguments into required ones; GPT-PM approved in one round. Limit: static review only.
+
+## 2026-11-09 S5-C code
+Kind: NEUTRAL. Coded without a run; verification is review only.
+
+## 2026-11-09 S5-C review findings
+Kind: SHORTCOMING. First pass trusted a declared rule inventory plus AEVE status COMPLETE as proof of coverage, and ran the analyzer inside the candidate cwd. Caught by two reviewers. Rule: coverage claims need positive evidence per scope file; never execute analyzers with the candidate as cwd or import path.
+
+## 2026-11-09 S5-C GPT-PM findings
+Kind: SHORTCOMING. Two reviewer passes missed the git-capture memory bound, the process-creation race and the incomplete analyzer file closure; GPT-PM found them. Layer that missed: reviewers (they checked behaviour, not identity completeness). Rule: for any digest claimed as identity, check its input set is complete, and apply caps while reading, not after.
+
+## 2026-11-09 S5-C accepted
+Kind: SUCCESS after two review passes plus one GPT-PM remediation round. Limit: static review only; the bridge showed different commit labels for the delta.
+
+## 2026-11-09 S5-D code
+Kind: SHORTCOMING (of the plan chain). The S4 seeded catalog was named a prerequisite for S5 but covers VST gate failures, not AEVE rules. Rule: check that a prerequisite artifact really covers the next sprint needs when planning.
+
+## 2026-11-10 Plan refresh
+Kind: NEUTRAL. Operator-requested refresh mid-sprint.
+
+## 2026-11-10 S5-D fixtures
+Kind: SUCCESS. Fixture confirmation by one real aeve run per variant avoided declaring rules required on a guess; a fixture that did not fire would have been dropped. Unrelated rule PY-EXCEPT-SWALLOW-RETURN fires on the clean AF-001 variant and is noted in the index.
+
+## 2026-11-10 S5-D manifest
+Kind: NEUTRAL. Routine manifest regeneration.
+
+## 2026-11-10 S5-D review findings
+Kind: SHORTCOMING. The first catalog loader trusted the fixture index without reading the fixtures, and the pin was optional. Caught by two reviewers. Rule: a frozen catalog must verify every file it depends on and make its pin mandatory.
+
+## 2026-11-10 S5-D GPT-PM finding
+Kind: SHORTCOMING. I made the pin a mandatory argument but never compared it with the frozen constant, so the pin proved agreement with the caller, not with the committed identity. Missed by author and both reviewers; caught by GPT-PM. Rule: a pin constant must be compared inside the loader, not delegated to callers.
+
+## 2026-11-10 S5-D accepted
+Kind: SUCCESS after reviewer rounds and one GPT-PM correction. Limit: static review only.
+
+## 2026-11-10 S5-E code
+Kind: NEUTRAL. Coded without a run; verification is review only.
+
+## 2026-11-10 S5-E review findings
+Kind: SHORTCOMING. First pass let the gate trust a caller-supplied expected blob and consumed a one-shot nonce mid-evaluation; the evidence record asserted success without derivation. Caught by three reviewers. Rule: gate decisions must derive from verified inputs and side effects (nonce use) must happen once after the verdict.
+
+## 2026-11-10 S5-E GPT-PM finding
+Kind: SHORTCOMING. I allowed N static slots while consuming nonces sequentially, which is not atomic. Missed by three reviewers; caught by GPT-PM. Rule: when a side effect cannot be rolled back, restrict cardinality to one or make it atomic.
+
+## 2026-11-10 S5 closed (code complete)
+Kind: SUCCESS with a standing limit. Every S5 task was accepted by GPT-PM only on static review; reviewers found real holes in each task (gate treated v3 as v1, optional trust arguments, candidate-cwd execution, unpinned catalog, nonce burn). The defect class common to all: safety arguments that were optional or caller-supplied. Rule: make trust inputs mandatory and gate-owned from the first draft.
+
+## 2026-11-10 Report re-render
+Kind: NEUTRAL. Routine re-render after PR 7.

@@ -156,6 +156,44 @@ V2 waivers add `waived_results`; its non-empty list may contain only `NOT_RUN`,
 `INCONCLUSIVE`, or `BLOCKED`. Missing evidence, `FAIL`, reviewer `MODIFY`, and `NO_GO` are
 not waivable. The gate rejects a waiver unless each unmet result is explicitly in that list.
 
+### Explicit v3 manifest and StaticAnalysis provenance (opt-in)
+
+V3 is selected only by `contract_version: 3` (`validate_task_manifest_v3`); its manifest field set is
+the v2 set plus `required_rule_ids` (non-empty, sorted, unique list of non-empty rule-id str;
+`MANIFEST_V3_FIELDS`). `require_static_rule_set_matches_manifest(manifest, receipt)` raises
+`ContractError` unless the set of `rule_id`s in the v3 receipt's `rule_statuses` equals the manifest's
+`required_rule_ids`. For v3 StaticAnalysis, `derive_result` returns FAIL when any finding has severity
+HIGH or CRITICAL; INFO/LOW/MEDIUM findings with FULL coverage still PASS. A v3 manifest also carries
+`static_acceptance_ids` (non-empty, sorted, unique; a subset of `acceptance`, disjoint from the ids
+mapped to required tests) and must contain exactly one StaticAnalysis slot (one one-shot nonce per decision). The gate verifies a v3 static receipt
+under the analyzer authority (`evaluate(..., analyzer_trust=...)`: analyzer key, full role roster,
+pinned analyzer/profile identity, frozen catalog, verifier-owned expected values), credits only
+`static_acceptance_ids`, and consumes the nonce once, at the end, only on an approving verdict.
+Receipt and manifest contract versions must match exactly. V1/v2 validators, field sets, signed bodies and canonical hashes are unchanged, and a
+v2 receipt can never gain provenance fields (unknown fields are rejected).
+`require_receipt_version_for_manifest(manifest, receipt)` raises `ContractError` unless both carry the
+same contract version, so a v3 manifest never accepts a v1/v2 receipt as equivalent.
+
+A v3 receipt has `contract_version: 3`, the v2 field set (TestRun and IndependentReview keep their v2
+additions) and, for `StaticAnalysis` only, these exact additional fields: `analyzer_id`,
+`analyzer_version`, `profile_id` (non-empty str); `analyzer_sha256`, `profile_sha256`,
+`source_tree_sha256`, `report_sha256` (64 lowercase hex, not all zeros); `analysis_scope` (non-empty,
+sorted, unique list of repo-relative `/` paths: no glob characters, no `..`, no absolute path, no `:`);
+`rule_statuses` (non-empty list of `{rule_id, status}` sorted by `rule_id`, one entry per rule,
+`status` in `RULE_STATUS` = SUPPORTED_AND_CHECKED, UNSUPPORTED); `findings` (list, may be empty) of
+`{rule_id, severity, evidence_ref, evidence_sha256, path, line}` where `severity` is in
+`FINDING_SEVERITY` = INFO, LOW, MEDIUM, HIGH, CRITICAL, `rule_id` is a SUPPORTED_AND_CHECKED rule,
+`evidence_ref`/`path` are plain repo-relative paths, `path` is in `analysis_scope`, `evidence_sha256`
+is non-zero 64 hex and `line` is an int >= 1 (bool rejected); duplicate findings are rejected.
+
+Consistency: `covered_rules` equals the sorted checked rules and `unsupported_rules` the sorted
+unsupported rules (so the two are disjoint and their union is the declared rule set). `coverage` must
+equal FULL (no unsupported rule), PARTIAL (both sets non-empty) or NOT_COVERED (no checked rule). The
+gate-side check that every manifest-required rule is checked remains the existing `covered_rules`
+check. An empty `findings` list never implies full coverage. `derive_result` is unchanged and still
+returns PASS only for FULL coverage with no unsupported rules. V3 signatures use the distinct domain
+label `RECEIPT_V3_LABEL = b"vst-receipt-v3\0"`.
+
 ## Receipt (`validate_receipt`)
 
 Common fields: `manifest_sha256` (64 hex, REQUIRED, must equal `manifest_sha256(manifest)` at the gate); a receipt whose `slot` is `SUPERVISOR_SLOT` must be a Documentation receipt; `receipt_id`, `task_id`, `slot` (matches a manifest slot or `SUPERVISOR_SLOT`), `runner_id`, `resolved_model`, `invocation_id`, `created_at` are non-empty str; `receipt_type` in RECEIPT_TYPES; `attempt` int >= 1; `prev_receipt_sha256` is null iff attempt == 1, else 64 hex; `candidate_head` 40 hex; `epoch` int >= 1; `role_sha256` 64 hex; `result` in RESULT; `signature` 64 hex.

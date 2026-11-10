@@ -2778,3 +2778,72 @@ GPT-PM returned APPROVE with 0 BLOCKER, 0 MAJOR, 0 MINOR at head 0975728 for the
 
 ## 2026-11-09 Plan report re-render after PR 6
 Re-rendered the project plan reports after the S4 PR was opened, as the close gate requires. No content change.
+
+## 2026-11-09 S5 started: S5-A v3 provenance contract coded
+Operator authorized merging PR 6 and starting S5. PR 6 merged (f52069b). S5-A (VST-038) implemented by implementation-engineer in tools/vst/contracts.py and the schema guide. Not run, not tested (pytest forbidden); specialist review and GPT-PM pending. gate.py wiring and v3 signing are later S5 tasks. AEVE integration stays NOT_RUN (no authorized source).
+
+## 2026-11-09 S5-A remediation of three reviewer MAJOR findings
+Reviewers (python-reviewer, functional-test-reviewer) found: gate treated v3 as v1 and let a v3 receipt satisfy a v1 manifest; derive_result ignored HIGH/CRITICAL findings; rule set not bound to the manifest. Fixed: exact version compare and fail-closed NO_GO for v3 in gate.py (wiring is S5-E); FAIL on HIGH/CRITICAL; required_rule_ids plus require_static_rule_set_matches_manifest. Verified by reading only (pytest forbidden); tests NOT_RUN.
+
+## 2026-11-09 S5-A GPT-PM scope note
+Added the review scope note for S5-A and requested the GPT-PM code review for the exact head.
+
+## 2026-11-09 S5-A accepted (GPT-PM APPROVE)
+GPT-PM APPROVE, 0 BLOCKER, 0 MAJOR, reply d8f744e0, head 56887a6, static review only. NOT_RUN: tests (pytest forbidden), AEVE runtime. S5-B..D depend on an authorized AEVE source identity, analyzer and signer owner that the plan records as missing; S5-E depends on S5-A..D. Plan row updates are deferred to the end of S5 (operator rule: plan once per sprint).
+
+## 2026-11-09 S5-B coded: analyzer authority signing (VST-039)
+Operator decision: VST trusted code signs the AEVE report with a dedicated analyzer-authority key; AEVE never gets keys. Added ANALYZER_AUTHORITY_LABEL in tools/vst/signing.py and tools/vst/analyzer_authority.py (payload binding, sign, verify with key distinctness and replay checks). gate.py untouched, v3 stays fail-closed until S5-E. Not run (pytest forbidden); reviewers and GPT-PM pending.
+
+## 2026-11-09 S5-B remediation of four reviewer MAJOR findings
+security-reviewer and functional-test-reviewer found: key distinctness opt-in, binding optional, replay passive and non-atomic, hostile input raising wrong exceptions. Fixed in analyzer_authority.py: required six-role key roster, required full expected_binding with strict types, required consume_nonce callback, verify returns False on hostile input. Reading only (pytest forbidden); tests NOT_RUN.
+
+## 2026-11-09 S5-B accepted (GPT-PM APPROVE)
+GPT-PM APPROVE, 0 BLOCKER, 0 MAJOR, reply 9584e4bf, head 85b03da, static review only. Non-blocking note: exceptions from the consume_nonce callback propagate to the caller (no approval bypass). NOT_RUN: tests (pytest forbidden). Next: S5-C (adapter and snapshot hashing); AEVE source in D:/Repo/AEVE is in scope per operator.
+
+## 2026-11-09 S5-C coded: bounded AEVE adapter (VST-040)
+Added tools/vst/analyzer_adapter.py: deterministic scope validation and source-tree digest, bounded subprocess runner for aeve analyze (argv list, scrubbed env, caps, typed outcomes), parser to a closed report using the real AEVE g2 rule inventory (anything outside it is UNSUPPORTED), payload assembly without signing. AEVE facts: analyze takes no scope or profile option, analyzes the whole git root, license file missing (UNKNOWN). OS-level network and resource enforcement NOT_RUN (S2 sandbox). Not run (pytest forbidden); reviewers and GPT-PM pending.
+
+## 2026-11-09 S5-C remediation of reviewer MAJOR findings
+python-reviewer (7 MAJOR) and security-reviewer (5 MAJOR) found: candidate code could run via python -m from the candidate cwd, process tree not killed on Windows, coverage could be FULL for files AEVE never analyzed, head/tree binding unverified, case-fold finding drop, untyped exception after run. Fixed in analyzer_adapter.py: neutral cwd and isolated interpreter, Job Object kill, scope downgrade to UNSUPPORTED, VST-run git HEAD/clean checks and blob hashing, case check, typed outcomes incl. PARTIAL_WITH_FINDINGS. Residual: .git/config change inside the run window; OS-level network denial NOT_RUN (S2 sandbox). Reading only; tests NOT_RUN.
+
+## 2026-11-09 S5-C GPT-PM round 1: MAJOR x4, remediated
+GPT-PM (reply 3319eee9) returned 4 MAJOR at head cdf5e1e: git output cap applied after allocation, Job Object attached after process start, analyzer digest not covering the whole import closure, version file outside the pinned digest. Fixed in analyzer_adapter.py: capped streaming git, suspended start plus Job Object (fail closed), closure requirement with explicit exclusions, version file pinned and re-read. Reading only; tests NOT_RUN. One verification round requested.
+
+## 2026-11-09 S5-C accepted (GPT-PM APPROVE, verification round)
+GPT-PM APPROVE, 0 BLOCKER, 0 MAJOR, reply 95dbffd0, for the delta of the four round-1 findings (head 502ea7e). Static review only. The reply names the delta as 24ed4f9..9994a40, which are not my commit ids (bridge-side diff labels; correlated=true); noted, not blocking. MAJOR-03 closed with documented limits (interpreter and stdlib not part of the analyzer digest). NOT_RUN: tests, Windows runtime, OS-level sandbox. Next: S5-D (truthful rule coverage and finding evidence map).
+
+## 2026-11-09 S5-D coded: rule coverage map (VST-041), catalog is empty on purpose
+Added tools/vst/rule_coverage.py and docs/qa/aeve_required_rules.json. Finding: none of the 8 S4 seeded fixtures (SF-001..SF-008) seeds a defect that an AEVE rule rejects, so under the plan rule (a rule is mandatory only if linked to committed seeded-defect evidence) the required-rule set is empty, and build_static_coverage / catalog-vs-manifest checks refuse an empty required set (truthful, not a pass). To make S5 acceptable, synthetic known-issue fixtures for AEVE rules must be authored (plan AC-7 allows fixed fixture inputs). Not run; reviewers and GPT-PM pending.
+
+## 2026-11-10 Plan and report refresh at operator request
+Operator asked for a refreshed report and to continue. PROJECT_PLAN.md: active sprint S5; S5-A, S5-B, S5-C ACCEPTED (GPT-PM APPROVE, static review); S5-D PARTIAL (code committed, required-rule catalog empty until AEVE rule fixtures exist); S5-E NOT_STARTED. Reports re-rendered.
+
+## 2026-11-10 S5-D: four AEVE rule fixtures confirmed, required-rule catalog filled
+Synthetic fixtures AF-001..AF-004 (tests/qa/seeded_failure/aeve_fixtures) for PY-BARE-EXCEPT, PY-MUTABLE-DEFAULT-ARG, PY-RETURN-IN-FINALLY, PY-IDENTITY-LITERAL-COMPARISON; each defective variant produced the expected finding and each clean variant did not, by one aeve analyze run per variant (8 runs, AEVE HEAD 25a8fea) in temp git repos outside the repo. This was the only execution; no pytest. docs/qa/aeve_required_rules.json now lists these four as FIXTURE_LINKED; rule_coverage.py resolves AF ids from the fixture index. Residual: AEVE scans the whole git root, so any unrelated uncovered file prevents FULL coverage. Reviewers and GPT-PM pending.
+
+## 2026-11-10 S5-D manifest regenerated
+Regenerated docs/qa/categories.json after the new fixture files (build_registry --write, not a test run).
+
+## 2026-11-10 S5-D remediation of reviewer MAJOR findings
+python-reviewer (6 MAJOR) and functional-test-reviewer (3 MAJOR) found: SF fixtures linkable to required rules, fixture integrity unchecked, Windows drive path escape, unhashable values crash, optional pin and body-only digest, scope not validated, unreachable overlap status. Fixed in rule_coverage.py; mandatory pin FROZEN_CATALOG_SHA256 plus s4 catalog and fixture index digests stored in the catalog (computed by hashing file bytes, not by running the module). Reading only; tests NOT_RUN.
+
+## 2026-11-10 S5-D GPT-PM round 1: MAJOR x1, remediated
+GPT-PM (reply 6e459700) returned 1 MAJOR at head 3cd5ad3: load_catalog accepted any caller-supplied digest without comparing it to FROZEN_CATALOG_SHA256. Fixed: load_catalog raises CATALOG_PIN_MISMATCH unless expected_sha256 equals the frozen pin; the computed catalog digest is still verified against it. Everything else in the S5-D review passed. Reading only; tests NOT_RUN. One narrow verification round requested.
+
+## 2026-11-10 S5-D accepted (GPT-PM APPROVE, verification round)
+GPT-PM APPROVE, 0 BLOCKER, 0 MAJOR, reply da4d7998, for the correction at head 757d7ba (round 1 had MAJOR x1: the loader did not compare the pin). Static review only; fixture confirmation runs were not independently reproduced by GPT-PM. NOT_RUN: tests. Next: S5-E (exact-head gate and reproducible evidence integration), the last S5 task.
+
+## 2026-11-10 S5-E coded: exact-head gate wiring and evidence record (VST-042)
+Replaced the v3 fail-closed stubs in tools/vst/gate.py by real handling: evaluate(..., analyzer_trust=None) with caller-injected analyzer key, full role roster, consume_nonce, frozen catalog and verifier-owned expected values per run; static v3 evidence must verify under the analyzer authority, match the manifest rule set, be FULL, and cannot cover acceptance ids that required tests map to. New tools/vst/analyzer_evidence.py builds a deterministic evidence record with NOT_RUN/UNSUPPORTED labels. v1/v2 unchanged. Open design points: the gate has no natural source for analyzer key, roster and nonce store (injected by the caller), and the caller must fill expected values from its own snapshot, not from the evidence. Not run (pytest forbidden); reviewers and GPT-PM pending.
+
+## 2026-11-10 S5-E remediation of reviewer MAJOR findings
+security-reviewer (5), python-reviewer (3) and functional-test-reviewer (4) found: nonce consumed before the verdict was settled, v3 manifest without a static slot approving with no analyzer evidence, static evidence credited from its own acceptance claim, gate trusting caller-built catalog/expected/scope, evidence builder accepting invented values and crashing on malformed input. Fixed: verify without consuming and consume once at the end on an approving verdict, mandatory static slot, manifest field static_acceptance_ids, catalog re-hash against the frozen pin, pinned analyzer/profile identity, scope check, validated evidence builder with derived fields and head/manifest-bound verify. Schema README updated. Reading only; tests NOT_RUN.
+
+## 2026-11-10 S5-E GPT-PM round 1: MAJOR x1, remediated
+GPT-PM (reply a451e617) returned 1 MAJOR at head 4732f27: with several StaticAnalysis slots the gate consumes nonces one by one, so a later failure leaves earlier nonces burned after a final NO_GO. Smallest fix chosen: a v3 manifest must contain exactly one StaticAnalysis slot (contracts.validate_task_manifest_v3), so only one nonce exists per decision; the plan describes a single static slot. README updated. Note: the first request failed with PM Bridge mode OFF (turned off by another session, hold respected, then mode_on and resend). Reading only; tests NOT_RUN.
+
+## 2026-11-10 S5-E accepted (GPT-PM APPROVE, verification round); sprint S5 code-complete
+GPT-PM APPROVE, 0 BLOCKER, 0 MAJOR, reply 4b8dfd61, for the correction at head a2bc0e9. All of S5-A..S5-E are accepted on static review. NOT_RUN: all tests (pytest forbidden), AEVE runtime beyond the eight fixture runs, Windows runtime of the adapter, OS-level sandbox. Plan and reports refreshed at sprint end; one S5 PR opened from s5-a-provenance. Open follow-ups for the operator: an S5 test run needs the operator to lift the pytest ban; U1..U6 stay parked until the operator says otherwise.
+
+## 2026-11-10 Program report re-render after PR 7
+Re-rendered the project plan reports after the S5 PR was opened, as the close gate requires. No content change.
