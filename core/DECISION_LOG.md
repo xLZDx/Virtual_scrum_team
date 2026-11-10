@@ -2991,3 +2991,6 @@ Critical finding: GPT-PM cites cli.py:198-228 as evidence that AEVE argv matches
 
 ## 2026-11-10 U3-2 GPT-PM approval
 Decision: GPT-PM APPROVE on verification round (request c9dac85f-b09c-4606-b4ce-4f787807e1d8); the dirty-worktree MAJOR is resolved by pre/post AEVE run cleanliness checks. Static review only; all tests NOT_RUN.
+
+## 2026-11-10 U3-5 implementation
+Decision: gate wiring done as a pure resolver factory tools/qa/gate_bridge.py (make_qa_artifact_resolver) feeding the existing artifact_resolver hook; gate.py authority model untouched. Resolver returns a digest only for an APPROVABLE report; stdout/stderr sliced by artifact_ranges. Limit: no caller of gate.evaluate is wired yet; receipt/path-list comparison stays the U2 open limit. Tests written, NOT_RUN.

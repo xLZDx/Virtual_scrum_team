@@ -2232,3 +2232,6 @@ Kind: SUCCESS. Facts: citation verification on d960893 GPT-PM findings showed 5/
 
 ## 2026-11-10 U3-2 GPT-PM approval
 Kind: SUCCESS. Facts: one remediation round closed the worktree-integrity MAJOR. Why it worked: the narrow verification round targeted only the fix. Next time: add worktree-cleanliness checks whenever HEAD is pinned as candidate identity.
+
+## 2026-11-10 U3-5 implementation
+Kind: NEUTRAL. Facts: implementation agent found that append-only stdout/stderr need range slicing before digest check; this was not in my brief. Next time: read the runner artifact layout before specifying a verifier.
