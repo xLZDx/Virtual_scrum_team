@@ -2238,3 +2238,6 @@ Kind: NEUTRAL. Facts: implementation agent found that append-only stdout/stderr 
 
 ## 2026-11-10 U3-5 review remediation
 Kind: SHORTCOMING. Facts: first implementation had a blacklist-style path ownership test (raw segments only) and a tamper test that could not pass; found by python, security and test reviewers. Root cause: author specified ownership as a blacklist; tests were never executed. Missed by: author. Caught by: reviewers. Next time: specify path ownership as an allowlist and require a length-preserving tamper in verifier tests.
+
+## 2026-11-10 U3-5 GPT-PM approval
+Kind: SUCCESS. Facts: approved on first GPT-PM round after three-reviewer remediation. Why: pre-review by python, security and test reviewers removed the MAJORs.

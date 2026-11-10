@@ -2997,3 +2997,6 @@ Decision: gate wiring done as a pure resolver factory tools/qa/gate_bridge.py (m
 
 ## 2026-11-10 U3-5 review remediation
 Decision: one remediation batch after python (1 MAJOR), security (2 MAJOR), test (2 MAJOR) reviews: fallback allowlist, EVIDENCE_TOO_LARGE, snapshot cache, tail range, reason redaction, real tamper and link tests. Residual limits documented in GATE_BRIDGE.md. NOT_RUN.
+
+## 2026-11-10 U3-5 GPT-PM approval
+Decision: GPT-PM APPROVE for U3-5 (request 88d868e2-afc8-4229-85b0-ad6d465dfe12) on static review; no BLOCKER/MAJOR. Tests NOT_RUN.
