@@ -2977,3 +2977,17 @@ GPT-PM reply a6c11da7: the AEVE executor did not check candidate worktree cleanl
 
 ## 2026-11-10 U3-2 verification note
 Appended verification round to the scope note.
+
+## 2026-11-10 U3-2 GPT-PM review: citation verification
+Citation review of d960893 GPT-PM findings: 7 citations analyzed.
+- Native argv (run.py:114-128): SUPPORTS - all args match executor_native.py
+- AEVE argv (cli.py:198-228): UNRELATED - cli.py does not exist in this repository (AEVE is external read-only project)
+- Imports/signatures: SUPPORTS - all functions found with correct signatures
+- Native field mapping: SUPPORTS - all schema-3 record fields verified
+- Evidence ordering: SUPPORTS - appending pattern consistent
+- AEVE envelope (project_test.py:290-313): UNRELATED - external file not in this repo
+- MAJOR Finding (second category BLOCKED): SUPPORTS - fully verified
+Critical finding: GPT-PM cites cli.py:198-228 as evidence that AEVE argv matches a hand-rolled parser, but cli.py does not exist in Virtual_scrum_team; the AEVE parser is in external D:\Repo\AEVE project. This is a citation error in the review. Remaining evidence (executor_aeve.py argv pattern) is verifiable but the cited parser location is incorrect.
+
+## 2026-11-10 U3-2 GPT-PM approval
+Decision: GPT-PM APPROVE on verification round (request c9dac85f-b09c-4606-b4ce-4f787807e1d8); the dirty-worktree MAJOR is resolved by pre/post AEVE run cleanliness checks. Static review only; all tests NOT_RUN.

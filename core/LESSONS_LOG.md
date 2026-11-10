@@ -2226,3 +2226,9 @@ Kind: SHORTCOMING. Facts: two executors, only the native one checked the worktre
 
 ## 2026-11-10 U3-2 verification note
 Kind: NEUTRAL.
+
+## 2026-11-10 U3-2 citation verification
+Kind: SUCCESS. Facts: citation verification on d960893 GPT-PM findings showed 5/7 citations are verifiable in-repo and support the claims (native argv, imports, field mapping, evidence ordering, MAJOR finding on second category). 2/7 citations point to external AEVE project files (cli.py, project_test.py) which cannot be verified against Virtual_scrum_team code. Root cause: GPT-PM reviewed an external dependency (AEVE) and cited its code as evidence, but those files don't exist in this repository. Rule: when a review cites external code, verify the citation points to a file reachable from the reviewed repository, or note it as external evidence with a direct link.
+
+## 2026-11-10 U3-2 GPT-PM approval
+Kind: SUCCESS. Facts: one remediation round closed the worktree-integrity MAJOR. Why it worked: the narrow verification round targeted only the fix. Next time: add worktree-cleanliness checks whenever HEAD is pinned as candidate identity.
