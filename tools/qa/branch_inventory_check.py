@@ -7,8 +7,8 @@ that every file is matched by exactly one classification rule.
 
 Exit codes: 0 = complete, 1 = inventory check failed, 2 = usage, git or
 rules-file error, 3 = unexpected internal error. A failure prints one typed JSON
-object on stderr; success prints a JSON summary on stdout. ``--print-header``
-prints the exact text that must be the first fenced block of the inventory.
+object on stderr; success prints a JSON summary on stdout. ``--print-inventory``
+prints the whole inventory document; ``--inventory FILE`` requires FILE to equal it byte for byte.
 This is an inventory check, not a test suite.
 """
 
@@ -41,7 +41,6 @@ RULE_KEYS = {"rule_id", "branch", "globs", "exclude", "main_state", "class", "re
 REQUIRED_RULE_KEYS = {"rule_id", "branch", "globs", "main_state", "class", "reason", "lands_in"}
 REF_PATTERN = re.compile(r"origin/[A-Za-z0-9][A-Za-z0-9._/-]{0,127}\Z")
 SHA_PATTERN = re.compile(r"[0-9a-f]{40}\Z")
-FENCE_PATTERN = re.compile(r"^```[A-Za-z]*\n(.*?)\n```[ \t]*$", re.MULTILINE | re.DOTALL)
 GIT_TIMEOUT_SECONDS = 120
 MAX_GIT_OUTPUT_BYTES = 64 * 1024 * 1024
 MAX_LISTED_PATHS = 500
@@ -132,8 +131,9 @@ def load_rules(rules_path: Path) -> tuple[dict[str, Any], str]:
         raise CheckError("BAD_RULES", f"rules file is not valid UTF-8 JSON: {exc}", code=2) from exc
     if not isinstance(doc, dict) or doc.get("schema_version") != SCHEMA_VERSION:
         raise CheckError("BAD_RULES", f"schema_version must be {SCHEMA_VERSION}", code=2)
-    if set(doc) != {"schema_version", "base_ref", "branches", "rules"}:
-        raise CheckError("BAD_RULES", "top-level keys must be schema_version, base_ref, branches, rules", code=2)
+    if set(doc) != {"schema_version", "base_ref", "branches", "rules", "notes"}:
+        raise CheckError("BAD_RULES", "top-level keys must be schema_version, base_ref, branches, rules, notes", code=2)
+    validate_notes(doc["notes"])
     require_ref(doc["base_ref"])
     if doc["base_ref"] != "origin/main":
         raise CheckError("BAD_REF", "base_ref must be origin/main", code=2)
@@ -147,6 +147,21 @@ def load_rules(rules_path: Path) -> tuple[dict[str, Any], str]:
     if not isinstance(doc["rules"], list) or not doc["rules"] or len(doc["rules"]) > MAX_RULES:
         raise CheckError("BAD_RULES", "rules must be a non-empty bounded list", code=2)
     return doc, digest
+
+
+NOTE_TEXT_KEYS = ("title", "intro", "verify", "result", "states", "clean_edits")
+NOTE_LIST_KEYS = ("main_has", "flags")
+
+
+def validate_notes(notes: Any) -> None:
+    ok = isinstance(notes, dict) and set(notes) == set(NOTE_TEXT_KEYS + NOTE_LIST_KEYS)
+    if ok:
+        ok = (all(isinstance(notes[k], str) and notes[k].strip() for k in NOTE_TEXT_KEYS)
+              and all(isinstance(notes[k], list) and notes[k] and all(isinstance(v, str) and v.strip() for v in notes[k])
+                      for k in NOTE_LIST_KEYS))
+    if not ok:
+        raise CheckError("BAD_RULES", f"notes must have text keys {NOTE_TEXT_KEYS} and non-empty string-list keys {NOTE_LIST_KEYS}",
+                         code=2)
 
 
 def _str_list(value: Any, allowed: tuple[str, ...] | None = None, allow_empty: bool = True) -> bool:
@@ -248,20 +263,91 @@ def build_header(summary: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def verify_inventory(inventory_path: Path, summary: dict[str, Any]) -> None:
-    text = inventory_path.read_text(encoding="utf-8")
-    match = FENCE_PATTERN.search(text)
-    if not match:
-        raise CheckError("STALE_INVENTORY", "inventory has no fenced header block")
-    recorded, live = match.group(1).split("\n"), build_header(summary).split("\n")
-    if recorded[0] != live[0]:
-        raise CheckError("HASH_MISMATCH", "inventory header rules_sha256 does not match the rules file",
-                         [{"recorded": recorded[0], "live": live[0]}])
-    if recorded != live:
-        diff = [{"recorded": r, "live": l} for r, l in zip(recorded + [""] * len(live), live + [""] * len(recorded))
-                if r != l]
-        raise CheckError("STALE_INVENTORY", "inventory header differs from the live run (tips, merge-bases or totals)",
-                         diff)
+def render_inventory(summary: dict[str, Any], doc: dict[str, Any]) -> str:
+    """Render the entire inventory document from the rules, the notes and the live git summary."""
+    notes, rules = doc["notes"], {r["rule_id"]: r for r in doc["rules"]}
+    fence, out = "`" * 3, []
+    add = out.append
+    add(f"# {notes['title']}\n")
+    add(notes["intro"] + "\n")
+    add(fence)
+    add(build_header(summary))
+    add(fence + "\n")
+    add(notes["verify"] + "\n")
+    add("## Result in one paragraph\n")
+    add(notes["result"] + "\n")
+    add(f"## Totals per branch (file universe = `git diff --name-status --no-renames {summary['base_ref']}...<branch> --`)\n")
+    add("| branch | files | LAND | EVIDENCE_ONLY | DROPPED | ALREADY_ON_MAIN | " + " | ".join(ALLOWED_MAIN_STATES)
+        + " | conflict-prone |")
+    add("|" + "---|" * (7 + len(ALLOWED_MAIN_STATES)))
+    for ref, b in summary["branches"].items():
+        c, m = b["class_counts"], b["main_state_counts"]
+        add(f"| {ref} | {b['files']} | {c['LAND']} | {c['EVIDENCE_ONLY']} | {c['DROPPED']} | {c['ALREADY_ON_MAIN']} | "
+            + " | ".join(str(m.get(st, 0)) for st in ALLOWED_MAIN_STATES) + f" | {b['conflict_prone_count']} |")
+    add("")
+    add(notes["states"] + "\n")
+    add("## What main already has\n")
+    for line in notes["main_has"]:
+        add("- " + line)
+    ident = ", ".join(f"{b['class_counts']['ALREADY_ON_MAIN']} of {ref}" for ref, b in summary["branches"].items()
+                      if b["class_counts"]["ALREADY_ON_MAIN"])
+    add(f"- Already landed by identity (byte-identical to main, computed): {ident or 'none'}.\n")
+    add("## Clean edits (differs_clean) that were read and not landed\n")
+    add(notes["clean_edits"] + "\n")
+    add("## Rules and file counts per branch\n")
+    add("Every rule applies to all branches (`branch: *`) and is split by the file's state on main, so one file "
+        "matches exactly one rule. Counts are files per branch.\n")
+    for ref, b in summary["branches"].items():
+        add(f"### {ref}\n")
+        add("| rule | path globs | main state | files | class | reason | lands in / reference for |")
+        add("|---|---|---|---|---|---|---|")
+        for rid, n in b["rule_counts"].items():
+            r = rules[rid]
+            g = ", ".join("`" + x + "`" for x in r["globs"])
+            if r.get("exclude"):
+                g += " (except " + ", ".join("`" + x + "`" for x in r["exclude"]) + ")"
+            tgt = r["lands_in"] or ("ref: " + r["reference_for"] if r.get("reference_for") else "-")
+            fl = ("; flags: " + ", ".join(r["flags"])) if r.get("flags") else ""
+            add(f"| {rid} | {g} | {'/'.join(r['main_state'])} | {n} | {r['class']} | {r['reason']}{fl} | {tgt} |")
+        add("")
+    add("## Conflict-prone files (main also changed them)\n")
+    where: dict[str, list[str]] = {}
+    for ref, b in summary["branches"].items():
+        for p in b["conflict_prone_paths"]:
+            where.setdefault(p, []).append(ref.replace("origin/", ""))
+    add(f"{len(where)} distinct paths. Branch names are listed without the origin/ prefix.\n")
+    add("| path | in branches |")
+    add("|---|---|")
+    for p in sorted(where):
+        add(f"| `{p}` | {', '.join(where[p])} |")
+    add("")
+    add("## Flags used\n")
+    for line in notes["flags"]:
+        add("- " + line)
+    add("")
+    add("## Checker summary (output of one run, rules file unchanged)\n")
+    slim = json.loads(json.dumps(summary))
+    for b in slim["branches"].values():
+        b.pop("conflict_prone_paths")
+        b.pop("rule_counts")
+    add(fence + "json")
+    add(json.dumps(slim, indent=2, sort_keys=True))
+    add(fence)
+    return "\n".join(out) + "\n"
+
+
+def verify_inventory(inventory_path: Path, rendered: str) -> None:
+    """Byte-for-byte comparison of the whole file; only the trailing newline is normalized."""
+    recorded = inventory_path.read_bytes().decode("utf-8", "surrogateescape").rstrip("\n").split("\n")
+    live = rendered.rstrip("\n").split("\n")
+    if recorded == live:
+        return
+    for n in range(max(len(recorded), len(live))):
+        r = recorded[n] if n < len(recorded) else None
+        li = live[n] if n < len(live) else None
+        if r != li:
+            raise CheckError("STALE_INVENTORY", f"inventory differs from the rendered document at line {n + 1}",
+                             [{"line": n + 1, "recorded": r, "live": li}])
 
 
 def check(rules_path: Path, inventory_path: Path | None) -> dict[str, Any]:
@@ -346,7 +432,8 @@ def check(rules_path: Path, inventory_path: Path | None) -> dict[str, Any]:
                "base_ref": base_ref, "base_tip": main_sha, "rule_count": len(doc["rules"]),
                "branches": branches_out}
     if inventory_path is not None:
-        verify_inventory(inventory_path, summary)
+        verify_inventory(inventory_path, render_inventory(summary, doc))
+    summary["_doc"] = doc
     return summary
 
 
@@ -354,7 +441,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="U3 branch inventory completeness check (read-only).")
     parser.add_argument("--rules", default=DEFAULT_RULES, help="rules file, relative to the repo root")
     parser.add_argument("--inventory", default=None,
-                        help="inventory markdown whose first fenced block must equal the live header")
+                        help="inventory markdown that must equal the rendered document byte for byte")
+    parser.add_argument("--print-inventory", action="store_true", help="print the full rendered inventory and exit")
     parser.add_argument("--print-header", action="store_true", help="print the header block text and exit")
     args = parser.parse_args(argv)
     try:
@@ -373,7 +461,10 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:  # noqa: BLE001 - typed last resort so no traceback escapes
         print(json.dumps({"error": "INTERNAL", "detail": f"{type(exc).__name__}: {exc}", "items": []}), file=sys.stderr)
         return 3
-    if args.print_header:
+    doc = summary.pop("_doc")
+    if args.print_inventory:
+        sys.stdout.buffer.write(render_inventory(summary, doc).encode("utf-8"))  # bytes: no CRLF translation
+    elif args.print_header:
         print(build_header(summary))
     else:
         print(json.dumps(summary, indent=2, sort_keys=True))
