@@ -2122,3 +2122,6 @@ Kind: NEUTRAL. Routine scope note.
 
 ## 2026-11-10 U2-4 pin-check verdict set
 Kind: SHORTCOMING. Facts: remediation used verdict == "APPROVE" where the module already had _ACCEPTING; GPT-PM found it. Root cause: reused a literal instead of the existing set when fixing the previous review. Missed by: author and three reviewers. Caught by: GPT-PM. Rule: when a check is about accepting decisions use the shared accepting set, and grep for sibling literals after a remediation.
+
+## 2026-11-10 U2-4 verification note
+Kind: NEUTRAL.

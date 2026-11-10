@@ -2874,3 +2874,6 @@ Added docs/sdlc/evidence/u2-4-gptpm-scope-note.md; GPT-PM review requested, base
 
 ## 2026-11-10 U2-4 GPT-PM round 1: MAJOR x1
 GPT-PM reply 9bc917d3: pin-check FAIL was rejected only under plain APPROVE, not under APPROVED_WITH_WAIVER. Fixed in analyzer_evidence._pin_check: FAIL now contradicts any accepting verdict. Gate refusal rules themselves passed review. Verification round requested for this one correction.
+
+## 2026-11-10 U2-4 verification note
+Appended verification round to the scope note.

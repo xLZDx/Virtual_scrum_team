@@ -9,3 +9,6 @@ Already fixed after three read-only reviewer passes (python none, functional-tes
 Settled, do not reopen: consequence that a role with an open model slice (LOCAL_PLUS_MODEL) cannot be approved by static evidence alone is intended. Recorded limits, not defects of this delta: reviewed_paths_sha256 is bound by the analyzer signature only (the gate has no own changed-path list for the static slot); no receipt expiry (no clock source; replay is covered by epoch, head and one-shot nonce); trust["pinned"] is supplied by the caller and must come from a source independent of run["expected"] (no in-tree builder yet). Negative tests are task U2-6. Tests NOT_RUN (operator forbids pytest); evidence is static review only.
 
 Ask: the complete BLOCKER/MAJOR set for this delta only.
+
+## Verification round (after GPT-PM round 1, reply 9bc917d3, MAJOR x1)
+Base: 8c145d3. Fixed: analyzer_evidence._pin_check now raises when a computed pin FAIL meets any accepting verdict (APPROVE or APPROVED_WITH_WAIVER) using the existing _ACCEPTING set; docstring updated. Ask: verify this one correction and direct regressions only.
