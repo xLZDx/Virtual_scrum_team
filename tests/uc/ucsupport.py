@@ -20,6 +20,12 @@ def real_table() -> dict:
     return json.loads(TABLE_PATH.read_text(encoding="utf-8"))
 
 
+def real_table_sha256() -> str:
+    """sha256 of the exact bytes of the committed catalog/role_table.json (what router.load_table_with_digest reports)."""
+    import hashlib
+    return hashlib.sha256(TABLE_PATH.read_bytes()).hexdigest()
+
+
 def valid_request(root: str, **over) -> dict:
     doc = {
         "schema_version": "uc.role-request.v1",
@@ -56,6 +62,8 @@ def valid_result(**over) -> dict:
     doc = {
         "schema_version": "uc.role-result.v1", "request_id": "req-1", "base_revision": HEAD,
         "snapshot_hash": HASH_A, "iteration_id": "it-1", "exit_code": 3, "roles": [valid_role_entry()],
+        "role_table_sha256": HASH_C, "aeve_head": "d" * 40,
+        "purpose": "advisory", "changed_paths_sha256": HASH_A,
     }
     doc.update(over)
     return doc

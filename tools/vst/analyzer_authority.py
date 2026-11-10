@@ -9,7 +9,8 @@ reviewer, runner signer, ...).
 
 The signed payload binds analyzer identity/version/executable digest, profile,
 source-tree digest, report digest, manifest digest, run id, one-shot nonce,
-candidate head, epoch and the exact analysis scope.
+candidate head, epoch, the exact analysis scope and the U2-1 bridge facts (role table digest,
+AEVE head, model residual, reviewed-paths digest, findings count and highest severity).
 
 Fail-closed API: sign and verify REQUIRE every other role key (REQUIRED_OTHER_ROLES)
 and reject a missing/invalid key or a collision with the analyzer key. verify
@@ -33,6 +34,7 @@ from .contracts import (
     _req_int,
     _req_str,
     _validate_repo_path,
+    validate_bridge_facts,
 )
 from .signing import ANALYZER_AUTHORITY_LABEL, MIN_KEY_BYTES, sign
 
@@ -52,6 +54,13 @@ ANALYZER_PAYLOAD_FIELDS = (
     "candidate_head",
     "epoch",
     "analysis_scope",
+    # U2-1 bridge facts; identical to the v3 StaticAnalysis receipt fields of the same names.
+    "role_table_sha256",
+    "aeve_head",
+    "model_residual",
+    "reviewed_paths_sha256",
+    "findings_count",
+    "highest_severity",
 )
 MIN_NONCE_CHARS = 16
 # Roles whose keys the analyzer authority key must differ from (gate.py: key=worker,
@@ -82,6 +91,12 @@ def build_analyzer_payload(
     candidate_head: str,
     epoch: int,
     analysis_scope: list[str],
+    role_table_sha256: str,
+    aeve_head: str,
+    model_residual: list[str],
+    reviewed_paths_sha256: str,
+    findings_count: int,
+    highest_severity: str,
 ) -> dict[str, Any]:
     """Pure: validate and return the canonical unsigned payload (AC-4)."""
     payload: dict[str, Any] = {
@@ -99,6 +114,12 @@ def build_analyzer_payload(
         "candidate_head": candidate_head,
         "epoch": epoch,
         "analysis_scope": list(analysis_scope) if isinstance(analysis_scope, (list, tuple)) else analysis_scope,
+        "role_table_sha256": role_table_sha256,
+        "aeve_head": aeve_head,
+        "model_residual": list(model_residual) if isinstance(model_residual, (list, tuple)) else model_residual,
+        "reviewed_paths_sha256": reviewed_paths_sha256,
+        "findings_count": findings_count,
+        "highest_severity": highest_severity,
     }
     return validate_analyzer_payload(payload)
 
@@ -126,6 +147,7 @@ def validate_analyzer_payload(payload: object) -> dict[str, Any]:
             raise ContractError(f"analyzer payload.analysis_scope[{index}]: globs are not allowed")
     if len(set(scope)) != len(scope):
         raise ContractError("analyzer payload.analysis_scope: must not contain duplicates")
+    validate_bridge_facts(payload, "analyzer payload.")
     return payload
 
 

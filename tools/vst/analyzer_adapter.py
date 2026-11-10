@@ -579,8 +579,8 @@ def _check_git_binding(real_root: str, candidate_head: str, limits: Limits) -> N
         raise AdapterError("TREE_DIRTY", "working tree is not clean")
 
 
-def _tracked_entries(real_root: str, limits: Limits) -> dict[str, tuple[str, str, str]]:
-    listing = _git(real_root, ["ls-tree", "-r", "-z", "--full-tree", "HEAD"], limits)
+def _tracked_entries(real_root: str, limits: Limits, rev: str) -> dict[str, tuple[str, str, str]]:
+    listing = _git(real_root, ["ls-tree", "-r", "-z", "--full-tree", rev], limits)
     entries: dict[str, tuple[str, str, str]] = {}
     for record in listing.split(b"\0"):
         if not record:
@@ -607,7 +607,7 @@ def source_tree_digest(
         raise AdapterError("ROOT_INVALID", "root is not a directory")
     _check_git_config(real_root)
     _check_git_binding(real_root, candidate_head, limits)
-    tracked = _tracked_entries(real_root, limits)
+    tracked = _tracked_entries(real_root, limits, candidate_head)  # the verified 40-hex head, not symbolic HEAD
     fold: dict[str, int] = {}
     for name in tracked:
         fold[name.casefold()] = fold.get(name.casefold(), 0) + 1
@@ -1357,6 +1357,86 @@ def static_analysis_fields(report: AnalysisReport) -> dict[str, Any]:
     }
 
 
+_UC_TO_BRIDGE_SEVERITY = {"NIT": "LOW", "MINOR": "MEDIUM", "MAJOR": "HIGH", "BLOCKER": "CRITICAL"}
+_UC_SEVERITY_ORDER = ("NIT", "MINOR", "MAJOR", "BLOCKER")
+
+
+def bridge_facts_from_role_result(
+    role_result: Mapping[str, Any],
+    role: str,
+    reviewed_paths: Sequence[str],
+    *,
+    expected_base_revision: str,
+) -> dict[str, Any]:
+    """U2-1 bridge facts for one role of a uc.role-result.v1, strictly validated.
+
+    The whole result goes through tools.uc.contracts.validate_result first (exact containers, closed
+    key sets, token formats, sorted unique model_residual of at most 8 tokens, 40-hex aeve_head).
+    Refused with ContractError: a result that fails that validation; a result whose base_revision
+    differs from ``expected_base_revision`` (the caller passes the candidate head); no entry or more
+    than one entry for ``role``; an entry whose status is not CLEAN or FINDINGS; an entry with a
+    non-empty ``uncovered`` list; a LOCAL_PLUS_MODEL entry with an empty ``model_residual``;
+    ``reviewed_paths`` that is not a non-empty list/tuple of unique plain repo-relative paths (a bare
+    str, duplicates and an empty list are refused); (U2-3) a result whose ``purpose`` is not "receipt";
+    a result whose ``changed_paths_sha256`` differs from the sha256 of the canonical bytes of
+    sorted(reviewed_paths) (the same hashing as ``reviewed_paths_sha256``). model_residual is never
+    repaired or reordered.
+
+    Facts: ``role_table_sha256`` and ``aeve_head`` are the result's top-level values; ``model_residual``
+    is the entry's list; ``reviewed_paths_sha256`` is the sha256 of the canonical bytes of the sorted
+    path list; ``findings_count``/``highest_severity`` summarize that role's findings (U1
+    NIT/MINOR/MAJOR/BLOCKER map to LOW/MEDIUM/HIGH/CRITICAL; none -> 0 / NONE). The output is also
+    checked with validate_bridge_facts. No gate decision and no pin comparison happen here (U2-4).
+    """
+    from ..uc import contracts as uc_contracts
+    from .contracts import _req_hex, _req_plain_repo_path, validate_bridge_facts
+
+    _req_hex(expected_base_revision, "expected_base_revision", 40)
+    if not isinstance(role, str) or not role:
+        raise ContractError("role: must be a non-empty string")
+    try:
+        uc_contracts.validate_result(role_result)
+    except uc_contracts.ContractError as exc:
+        raise ContractError(f"role result: invalid ({exc.code} at {exc.where})") from exc
+    if role_result["base_revision"] != expected_base_revision:
+        raise ContractError("role result: base_revision differs from expected_base_revision")
+    if role_result["purpose"] != "receipt":
+        raise ContractError("role result: purpose is not 'receipt' (an advisory review cannot back a receipt)")
+    entries = [e for e in role_result["roles"] if e["role"] == role]
+    if len(entries) != 1:
+        raise ContractError(f"role result: expected exactly one entry for role {role!r}")
+    entry = entries[0]
+    if entry["status"] not in ("CLEAN", "FINDINGS"):
+        raise ContractError(f"role result: entry status {entry['status']!r} is neither CLEAN nor FINDINGS")
+    if entry["uncovered"]:
+        raise ContractError("role result: entry has uncovered scope")
+    if entry["class"] == "LOCAL_PLUS_MODEL" and not entry["model_residual"]:
+        raise ContractError("role result: LOCAL_PLUS_MODEL entry without a model_residual")
+    if not isinstance(reviewed_paths, (list, tuple)) or not reviewed_paths:
+        raise ContractError("reviewed_paths: must be a non-empty list of paths")
+    for index, path in enumerate(reviewed_paths):
+        _req_plain_repo_path(path, f"reviewed_paths[{index}]")
+    if len(set(reviewed_paths)) != len(reviewed_paths):
+        raise ContractError("reviewed_paths: must not contain duplicates")
+    reviewed_hash = hashlib.sha256(canonical_bytes(sorted(reviewed_paths))).hexdigest()
+    if role_result["changed_paths_sha256"] != reviewed_hash:
+        raise ContractError("role result: changed_paths_sha256 differs from the hash of the reviewed paths")
+    severities = [f["severity"] for f in entry["findings"]]  # validate_result closed the enum
+    highest = (
+        _UC_TO_BRIDGE_SEVERITY[max(severities, key=_UC_SEVERITY_ORDER.index)] if severities else "NONE"
+    )
+    facts = {
+        "role_table_sha256": role_result["role_table_sha256"],
+        "aeve_head": role_result["aeve_head"],
+        "model_residual": list(entry["model_residual"]),
+        "reviewed_paths_sha256": reviewed_hash,
+        "findings_count": len(severities),
+        "highest_severity": highest,
+    }
+    validate_bridge_facts(facts)
+    return facts
+
+
 def assemble_analyzer_payload(
     result: AdapterResult,
     *,
@@ -1365,8 +1445,12 @@ def assemble_analyzer_payload(
     nonce: str,
     candidate_head: str,
     epoch: int,
+    bridge: Mapping[str, Any],
 ) -> dict[str, Any]:
     """Unsigned payload for analyzer_authority.sign_analyzer_evidence.
+
+    ``bridge`` holds exactly the BRIDGE_FACT_FIELDS (see bridge_facts_from_role_result); the same dict
+    must be merged into the receipt body next to static_analysis_fields(report).
 
     Refuses when the run was not OK/PARTIAL_WITH_FINDINGS, when any binding is still
     unknown (``blocking_unknown``), or when candidate_head differs from the head the
@@ -1379,6 +1463,10 @@ def assemble_analyzer_payload(
     if result.candidate_head is None or candidate_head != result.candidate_head:
         raise AdapterError("HEAD_MISMATCH", "candidate_head differs from the head the analysis was bound to")
     fields = static_analysis_fields(result.report)
+    from .contracts import BRIDGE_FACT_FIELDS
+
+    if not isinstance(bridge, Mapping) or set(bridge) != set(BRIDGE_FACT_FIELDS):
+        raise AdapterError("BRIDGE_FACTS", f"bridge must hold exactly {list(BRIDGE_FACT_FIELDS)}")
     return build_analyzer_payload(
         analyzer_id=fields["analyzer_id"],
         analyzer_version=fields["analyzer_version"],
@@ -1393,4 +1481,5 @@ def assemble_analyzer_payload(
         candidate_head=candidate_head,
         epoch=epoch,
         analysis_scope=fields["analysis_scope"],
+        **{name: bridge[name] for name in BRIDGE_FACT_FIELDS},
     )

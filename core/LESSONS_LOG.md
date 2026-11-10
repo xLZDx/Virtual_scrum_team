@@ -2098,3 +2098,95 @@ Kind: SUCCESS with a standing limit. Every S5 task was accepted by GPT-PM only o
 
 ## 2026-11-10 Report re-render
 Kind: NEUTRAL. Routine re-render after PR 7.
+
+## 2026-11-10 U2-1 bridge fields
+Kind: SUCCESS (implementation), review pending. Facts: 12 files, v1/v2 paths additive-only. Rule: keep v3 closed field sets in sync across contracts, authority payload and gate _V3_RUN_FIELDS in one change.
+
+## 2026-11-10 U2-1 remediation
+Kind: SHORTCOMING. Facts: author function accepted any iterable and dropped role status/uncovered, so a BLOCKED role looked clean; found by python-reviewer and security-reviewer. Root cause: facts built from a dict without re-validating the source contract. Missed by: author. Caught by: reviewers. Rule: any bridge from one contract to a signed record re-validates the source contract and carries or refuses coverage state.
+
+## 2026-11-10 U2-1 scope note
+Kind: NEUTRAL. Routine scope note for the GPT-PM review.
+
+## 2026-11-10 U2-1 approved
+Kind: SUCCESS. Facts: reviewer pass (3 agents) before GPT-PM left GPT-PM no findings. Why it worked: reviewers caught the unvalidated-bridge MAJOR first. Rule: keep the reviewer batch before the GPT-PM request.
+
+## 2026-11-10 U2-4 gate refusals
+Kind: NEUTRAL (implementation, review pending). Rule: residual open is a hard refusal, which makes the model gap visible instead of hiding it.
+
+## 2026-11-10 U2-4 remediation
+Kind: SHORTCOMING. Facts: author put refusals after a coverage early return, so a waivable INCONCLUSIVE could hide them; found by security-reviewer. Root cause: new hard checks added behind an existing terminating branch. Missed by: author. Caught by: reviewer. Rule: a refusal that must be unconditional runs before any early return of the same check.
+
+## 2026-11-10 U2-4 scope note
+Kind: NEUTRAL. Routine scope note.
+
+## 2026-11-10 U2-4 pin-check verdict set
+Kind: SHORTCOMING. Facts: remediation used verdict == "APPROVE" where the module already had _ACCEPTING; GPT-PM found it. Root cause: reused a literal instead of the existing set when fixing the previous review. Missed by: author and three reviewers. Caught by: GPT-PM. Rule: when a check is about accepting decisions use the shared accepting set, and grep for sibling literals after a remediation.
+
+## 2026-11-10 U2-4 verification note
+Kind: NEUTRAL.
+
+## 2026-11-10 U2-4 approved
+Kind: SUCCESS. Facts: gate rules passed GPT-PM; one MAJOR in the evidence builder fixed in one narrow round. Rule: see U2-4 pin-check verdict set entry.
+
+## 2026-11-10 U2-3 receipt builder
+Kind: NEUTRAL (review pending).
+
+## 2026-11-10 U2-3 remediation
+Kind: SHORTCOMING. Facts: first builder discarded the tree digest it computed and trusted caller lists, so a clean-tree check proved nothing about what was analyzed; all three reviewers found it. Root cause: the builder checked inputs against each other, not against the evidence. Missed by: author. Caught by: reviewers. Rule: a binding check compares the artifact with independently computed evidence, never two caller-supplied values.
+
+## 2026-11-10 U2-3 scope note
+Kind: NEUTRAL.
+
+## 2026-11-10 U2-3 approved
+Kind: SUCCESS. Facts: reviewer batch of three before GPT-PM left it no findings. Rule: keep reviewer batch before the GPT-PM request.
+
+## 2026-11-10 U2-5 coverage report
+Kind: NEUTRAL (review pending).
+
+## 2026-11-10 U2-5 remediation
+Kind: SHORTCOMING. Facts: first version guaranteed no pass token only for dicts it built itself, public renderers accepted any dict. Root cause: guarantee placed in the builder, not at the output boundary. Missed by: author. Caught by: python-reviewer. Rule: enforce an output invariant in the function that emits the output, over its own inputs.
+
+## 2026-11-10 U2-5 scope note
+Kind: NEUTRAL.
+
+## 2026-11-10 U2-5 approved
+Kind: SUCCESS. Facts: reviewer batch before GPT-PM left no findings. Rule: keep the batch before the GPT-PM request.
+
+## 2026-11-10 U2-6 tests
+Kind: SHORTCOMING (honest). Facts: tests exist but NOT_RUN; the U2 evidence is static review only. Docstring of coverage_report overstated the rule (found while pinning behaviour in tests). Rule: write the docstring from the code behaviour, and record NOT_RUN plainly.
+
+## 2026-11-10 U2-6 registry
+Kind: NEUTRAL.
+
+## 2026-11-10 — U2-6 test registration and registry regeneration
+
+- Kind: SUCCESS (test modules registered correctly, generator produced output without error).
+- Facts: added four test module paths to MAIN_TEST_FILE_CATEGORIES in tools/qa/build_registry.py; build_registry.py --write executed successfully and regenerated docs/qa/categories.json.
+- Root cause: N/A (mechanical task completed as expected).
+- Layer that caught it: N/A (no blocking issues).
+- Rule: N/A (standard registry update process).
+- Fix status: registry regenerated and committed.
+
+## 2026-11-10 U2-6 review
+Kind: NEUTRAL. Rule: fixtures built from the gate source are the likeliest first-run failure; no runtime evidence exists for any U2 test.
+
+## 2026-11-10 U2-6 sanitizer artifact
+Kind: NEUTRAL. A secret-like test literal is redacted in review packets and looks like a NameError to the reviewer. Rule: name seeded secret constants so the packet shows the definition, or explain in the scope note up front.
+
+## 2026-11-10 U2-6 approved
+Kind: SUCCESS with limit. Facts: GPT-PM approved on static review; no U2 test has been executed. Rule: report U2 as accepted-by-static-review, not runtime-proven.
+## 2026-11-10 Plan sync after S5 merge
+Kind: NEUTRAL. Routine plan sync on a separate branch because the sprint branch was already merged.
+
+## 2026-11-10 Stale plan statuses
+Kind: FAILURE (mine). I rendered and sent the plan report three times without comparing it with git; it showed S0-S2 at 0/N and S4 in progress after they were merged. Missed by author; caught by the operator from a screenshot. Rule: before sending a plan report, check the per-sprint counts against git merges and decision log, and reconcile any BLOCKED_* status whose cause is gone.
+
+## 2026-11-10 Report re-render
+Kind: NEUTRAL. Routine re-render.
+
+## 2026-11-10 plan-sync merge
+Kind: NEUTRAL. Append-only logs conflict on every parallel branch; keep both sides.
+
+## 2026-11-10 report re-render
+Kind: NEUTRAL. Render after the PR so provenance matches the pushed head.

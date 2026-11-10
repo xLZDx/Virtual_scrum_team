@@ -2847,3 +2847,97 @@ GPT-PM APPROVE, 0 BLOCKER, 0 MAJOR, reply 4b8dfd61, for the correction at head a
 
 ## 2026-11-10 Program report re-render after PR 7
 Re-rendered the project plan reports after the S5 PR was opened, as the close gate requires. No content change.
+
+## 2026-11-10 U2 started (operator order: next in sequence after S5)
+Operator chose "continue in order, next U2"; U1-9 stays PARKED and the token comparison (U1-1/U1-8 measurement) is dropped by the operator in favour of connecting AEVE (U1-9 design: skill instruction in sdlc-orchestrator needs separate approval, not given). Mapping of U2 against S5 (read-only agent): S5 already provides the analyzer key and trust chain (U2-2), the v3 receipt (U2-1 partly), most gate refusals (U2-4 partly); the real residual is the bridge from the U1 role result (model_residual, role-table hash, AEVE head) into the signed evidence and gate, the any-finding and residual and role-table-drift refusals, the receipt builder from a uc result, the pass-token scan (U2-5) and negative fixtures (U2-6). Decisions taken by me: extend v3 in place (no v4) because S5 was just merged and nothing stores v3 receipts; any finding blocks (stricter than the HIGH/CRITICAL threshold of S5). Current task: U2-1 reconciled (bridge fields). Branch u2-evidence-gate-2 from origin/main.
+
+## 2026-11-10 U2-1 implemented (static only, tests NOT_RUN)
+uc.role-result.v1 gains role_table_sha256 (hash of exact table file bytes) and aeve_head (from aeve_probe record); v3 StaticAnalysis receipt and signed analyzer payload gain role_table_sha256, aeve_head, model_residual, reviewed_paths_sha256, findings_count, highest_severity. v1/v2 code paths untouched (additions only in contracts.py). Residual: callers of assemble_analyzer_payload must pass bridge= (U2-3 builder).
+
+## 2026-11-10 U2-1 review remediation
+Reviewers (python, security, functional-test) found 1 MAJOR and several MINOR; fixed in one batch: bridge_facts_from_role_result now validates the whole uc result, exact base revision, role status CLEAN/FINDINGS only, empty uncovered, non-empty residual for LOCAL_PLUS_MODEL, unique repo paths; uc residual sorted/unique max 8; aeve_head 40-hex; zero table digest refused; evidence marks role_table_sha256 and aeve_head pin_check NOT_RUN. Deferred by design to U2-4: pin comparison, findings cross-check, any-finding refusal. Deferred to U2-6: all negative tests (none exist for the v3 path).
+
+## 2026-11-10 U2-1 scope note for GPT-PM
+Added docs/sdlc/evidence/u2-1-gptpm-scope-note.md; GPT-PM review requested for base bcdd25f to HEAD.
+
+## 2026-11-10 U2-1 GPT-PM APPROVE
+GPT-PM reply d70ad516 on base bcdd25f to ac9eb4a: APPROVE, 0 BLOCKER, 0 MAJOR (static review, tests NOT_RUN). U2-1 accepted. Next task: U2-4 gate refusals.
+
+## 2026-11-10 U2-4 implemented (static only, tests NOT_RUN)
+Gate v3 static check now refuses with hard reasons: STATIC_FINDINGS_PRESENT (any finding, any severity, or bridge findings_count > 0), MODEL_RESIDUAL_OPEN (hard, not waivable: the waiver covers only NOT_RUN/INCONCLUSIVE/BLOCKED results), ROLE_TABLE_DRIFT and AEVE_HEAD_DRIFT (strict compare to trust pinned values, never run expected). Consequence stated to the operator: any role with a model slice (LOCAL_PLUS_MODEL, always has residual) cannot be approved by static evidence alone; only fully LOCAL roles can. Not done: reviewed-paths comparison (no gate-owned changed-path list for the static slot; would need a new gate input) and receipt expiry (no clock source; replay already covered by epoch, head and one-shot nonce). Both recorded as limits, not silently dropped.
+
+## 2026-11-10 U2-4 review remediation
+Reviewers (python none, functional-test none, security 1 MAJOR): early return on non-FULL coverage skipped findings/residual/pin refusals so a waiver could hide them. Fixed: receipt findings surfaced first; findings, residual, role-table pin and AEVE-head pin refusals collected in one pass for every result and coverage state (hard, no waiver, no masking among them); pin format validated (64-hex non-zero / 40-hex); evidence pin-check PASS only on exact APPROVE and raises on contradiction with the decision; dead _BLOCKING_SEVERITIES removed. Behaviour change recorded: findings moved from waivable soft reason to hard reason in v3. Limits kept: reviewed_paths_sha256 is bound by signature only (no gate-owned list), no receipt expiry, trust pinned must come from an independent caller source (no in-tree builder yet).
+
+## 2026-11-10 U2-4 scope note
+Added docs/sdlc/evidence/u2-4-gptpm-scope-note.md; GPT-PM review requested, base 1b40bbb.
+
+## 2026-11-10 U2-4 GPT-PM round 1: MAJOR x1
+GPT-PM reply 9bc917d3: pin-check FAIL was rejected only under plain APPROVE, not under APPROVED_WITH_WAIVER. Fixed in analyzer_evidence._pin_check: FAIL now contradicts any accepting verdict. Gate refusal rules themselves passed review. Verification round requested for this one correction.
+
+## 2026-11-10 U2-4 verification note
+Appended verification round to the scope note.
+
+## 2026-11-10 U2-4 GPT-PM APPROVE
+GPT-PM reply bd899066 on base 8c145d3 to 97cfa9...: APPROVE (verification of the pin-check fix). U2-4 accepted (static review, tests NOT_RUN). Next: U2-3 receipt builder.
+
+## 2026-11-10 U2-3 implemented (static only, tests NOT_RUN)
+tools/vst/receipt_builder.py build_static_receipt returns an unsigned v3 StaticAnalysis receipt body plus analyzer payload from a validated uc result; bridge facts computed once and copied into both; refuses dirty tree, uncovered required paths, secret-like values (router.has_secret), analyzer refusal; FINDINGS role gives INCONCLUSIVE never PASS; signing stays in analyzer_authority. Review pending.
+
+## 2026-11-10 U2-3 review remediation
+Three reviewers (python 1 MAJOR, functional-test 2 MAJOR, security 3 MAJOR) converged on: analyzer report not bound to the reviewed set, role result not bound to purpose and path set, required_paths a free caller list, RB code contract not true. Fixed in one batch: TreeDigest vs report source_tree_sha256 and analysis_scope == sorted(reviewed) (RB_REPORT_TREE_MISMATCH); uc result gains purpose and changed_paths_sha256, bridge refuses purpose != receipt and a changed-paths hash mismatch; reviewed must equal required exactly (RB_REVIEWED_PATH_EXTRA); every failure mapped to RB codes; validate_receipt and payload validation run before return; PASS offered only for CLEAN with no findings and empty residual; id grammar; has_secret moved to tools/uc/secret_patterns.py (not secrets.py: would shadow stdlib when router runs as script); ls-tree uses the verified head. Open dependency recorded for U2-5/U2-6: gate-side comparison of reviewed_paths_sha256 with the verified diff-gate list, and deleted paths cannot be covered (fail closed).
+
+## 2026-11-10 U2-3 scope note
+Added docs/sdlc/evidence/u2-3-gptpm-scope-note.md; GPT-PM review requested, base 38cc4ea.
+
+## 2026-11-10 U2-3 GPT-PM APPROVE
+GPT-PM request 2f54763c on base 38cc4ea to 283273f: APPROVE, 0 BLOCKER, 0 MAJOR (static review, tests NOT_RUN). U2-3 accepted. Next: U2-5 truthful coverage report with pass-token scanner.
+
+## 2026-11-10 U2-5 implemented (static only, tests NOT_RUN)
+tools/uc/coverage_report.py: uc.coverage-report.v1 per-role report with closed verdict vocabulary (CLEAN_LOCAL, FINDINGS, PARTIAL_CODE_ONLY, MODEL_RESIDUAL_OPEN, BLOCKED, NOT_COVERED), text and markdown renderings that self-check with a whole-word pass-token scanner (English and Russian), CLI, TDD section 5.4. Pass tokens are refused in any rendering of a report with a partial, residual-bearing or uncovered role; the only exemption is the exact CLEAN_LOCAL cell of a fully clean role. Known limits: ids containing pass words fail closed; no Unicode normalization; JSON format not scanned. The scanning test is written in U2-6 by the test agents. Review pending.
+
+## 2026-11-10 U2-5 review remediation
+Reviewers (python 1 conditional MAJOR, functional-test none) fixed in one batch: the no-pass-token guarantee now holds for any dict passed to the public renderers (full contract-pattern revalidation, ASCII-only, no duplicates, NFKC second pass), exemption is structural (recorded while rendering, byte-identical layout check), wider token list with digits as separators, ids with pass words refused (PASS_WORD_IN_ID, fail closed), table digest check, CLEAN_LOCAL requires class LOCAL, import fallback narrowed, CLI reads utf-8-sig and maps recursion errors. Limits kept: json format not scanned; availability: ids containing pass words fail closed.
+
+## 2026-11-10 U2-5 scope note
+Added docs/sdlc/evidence/u2-5-gptpm-scope-note.md; GPT-PM review requested, base 40b12ad.
+
+## 2026-11-10 U2-5 GPT-PM APPROVE
+GPT-PM request ddcda0ee on base 40b12ad to 294f14b+scope note: APPROVE, 0 BLOCKER, 0 MAJOR (static review, tests NOT_RUN). U2-5 accepted. Next: U2-6 negative-case fixture catalog and the tests for U2-1..U2-5 written by the test agents.
+
+## 2026-11-10 — U2-6: Register functional tests for U2 gate and evidence logic
+
+Five test modules created and registered in MAIN_TEST_FILE_CATEGORIES: test_coverage_report.py (53 tests, covers pass-token scanning and verdict validation), test_u2_result_bridge.py (30 tests, covers role table hashing and result validation), test_u2_bridge.py (86 tests, covers evidence binding and tampering detection), test_u2_gate.py (41 tests, covers gate verdicts and nonce/waiver logic), and u2_helpers.py (shared test builders). Registry configuration updated to allow generator to proceed. Tests not executed (syntax validation only). Catalog entry (seeded-failure) remains out of scope; requires product constant update and is tracked separately. See changes TBD.
+
+## 2026-11-10 U2-6 tests written (NOT_RUN)
+Test agent wrote tests/uc/test_coverage_report.py, tests/uc/test_u2_result_bridge.py, tests/vst/test_u2_bridge.py, tests/vst/test_u2_gate.py and tests/vst/u2_helpers.py covering all U2-1..U2-5 refusals; only a syntax parse was done, nothing run (operator forbids pytest). No product defect found. Seeded-failure catalog entries were not added: catalog.json is pinned by raw-byte hash in the frozen rule catalog and the S4 catalog test pins 8 fixtures, so adding fixtures needs a product pin change; U2 refusals are covered by the new tests instead. Registered the four test modules in tools/qa/build_registry.py. coverage_report docstring corrected to match the code (clean role keeps its CLEAN_LOCAL cell in a mixed report; that is the intended per-row rule). Test fixtures in u2_helpers are the most likely place for a first-run bug.
+
+## 2026-11-10 U2-6 registry regenerated
+Ran tools.qa.build_registry --write after registering the four modules; docs/qa/categories.json updated.
+
+## 2026-11-10 — U2-6: Regenerate document registry after registering test modules
+
+Registry generator completed successfully without errors or unintended side effects. The four new test modules (test_coverage_report.py, test_u2_result_bridge.py, test_u2_bridge.py, test_u2_gate.py) are now discoverable by the documentation indexing system. No product code changes were made; this is a configuration and documentation update only.
+
+## 2026-11-10 U2-6 static test review and scope note
+Static reviewer traced the gate test base APPROVE path against product code: no BLOCKER or MAJOR, 3 MINOR (a test name claims two directions but checks one; weak v2-unchanged assertion; unused arg). Not covered by the reviewer: test_coverage_report.py and test_u2_result_bridge.py against the router. Scope note added; GPT-PM review requested on base d4d1543.
+
+## 2026-11-10 U2-6 GPT-PM round 1: MAJOR x1 (redaction artifact)
+GPT-PM request acde99d6 reported an undefined identifier in a test; verified in source that the line is valid (defined constant, f-string); the marker came from the packet sanitizer. Disposition: not a defect; narrow verification round sent with the source explanation. MINOR accepted: one test name claims two directions but checks one.
+
+## 2026-11-10 U2-6 GPT-PM APPROVE
+GPT-PM request dfedcebf on base c497e90: APPROVE, 0 BLOCKER, 0 MAJOR (the round 1 MAJOR was a packet redaction artifact, verified in source). U2-6 accepted. All U2 tasks are accepted by static review; every U2 test is NOT_RUN.
+## 2026-11-10 S5 merged; plan synced
+PR 7 merged into main (bcdd25f) at the operator go. PROJECT_PLAN.md: S5 marked merged, active_sprint set to NONE until the operator starts the next sprint (U1-U6 stay parked). Reports re-rendered.
+
+## 2026-11-10 Plan corrected: stale statuses after merges
+Operator found the plan report wrong (S0-S2 shown 0, U1 0/9, S4 still in progress). Cause: after the work was merged into main (PR 1 d5cd7f5, PR 2 7c94c6c, U1 merge 83cfd64, PR 6 f52069b, PR 7 bcdd25f) 26 tasks (S0-1..3, S1-E1..6, S2-1..5 incl. 4A-4E, U1-1..8) still carried BLOCKED_EXTERNAL set while GitHub push protection (GH013) blocked pushes, and sprint rows S0, S1, S4 had old text; I also had not checked the plan against git after the merges. Fixed: those tasks ACCEPTED with the merge evidence (GPT-PM APPROVE is recorded for each in this log), sprint rows S0, S1, S4, S5, U1 updated, as_of 2026-11-10, approved sprints include S4 and S5. Accepted tasks now 39 of 71. U1-9 stays PARKED.
+
+## 2026-11-10 Report re-render after PR 8
+Re-rendered the plan reports after the plan-correction PR was opened, as the close gate requires. No content change.
+
+## 2026-11-10 plan-sync merged into the U2 branch
+PR #8 (plan sync, docs only) is not merged into main; the U2 branch needs the corrected plan to record U2, so origin/plan-sync-s5 was merged here (conflicts only in the two append-only logs, both sides kept). If PR #8 is merged first, nothing changes.
+
+## 2026-11-10 program report re-rendered after the U2 PR
+Re-render only updated the Git provenance and pushed-count to HEAD 29f1276; no status changed.

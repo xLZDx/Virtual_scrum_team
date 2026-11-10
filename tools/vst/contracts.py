@@ -153,8 +153,27 @@ RECEIPT_V3_TYPE_FIELDS = {
         "report_sha256",
         "rule_statuses",
         "findings",
+        # U2-1 bridge facts from the U1 role result (see BRIDGE_FACT_FIELDS).
+        "role_table_sha256",
+        "aeve_head",
+        "model_residual",
+        "reviewed_paths_sha256",
+        "findings_count",
+        "highest_severity",
     ),
 }
+# Bridge facts carried by a v3 StaticAnalysis receipt and, identically, by the signed analyzer payload.
+BRIDGE_FACT_FIELDS = (
+    "role_table_sha256",
+    "aeve_head",
+    "model_residual",
+    "reviewed_paths_sha256",
+    "findings_count",
+    "highest_severity",
+)
+BRIDGE_SEVERITY = frozenset({"NONE", "LOW", "MEDIUM", "HIGH", "CRITICAL"})
+MAX_MODEL_RESIDUAL = 8
+_RESIDUAL_TOKEN = re.compile(r"[a-z0-9][a-z0-9_.-]{0,63}")
 # Distinct signature domain separator for v3 receipts (v1/v2 use RECEIPT_LABEL).
 RECEIPT_V3_LABEL = b"vst-receipt-v3\0"
 RULE_STATUS = frozenset({"SUPPORTED_AND_CHECKED", "UNSUPPORTED"})
@@ -772,9 +791,34 @@ def _req_plain_repo_path(value: Any, name: str) -> str:
     return value
 
 
+def validate_bridge_facts(obj: dict, ctx: str = "") -> None:
+    """Shape check of the U2-1 bridge facts; shared by the v3 receipt and the signed analyzer payload.
+
+    ``obj`` must already contain every BRIDGE_FACT_FIELDS key. No gate decision is made here."""
+    def n(name: str) -> str:
+        return f"{ctx}{name}"
+
+    _req_nonzero_hex64(obj["role_table_sha256"], n("role_table_sha256"))
+    _req_hex(obj["aeve_head"], n("aeve_head"), 40)
+    _req_nonzero_hex64(obj["reviewed_paths_sha256"], n("reviewed_paths_sha256"))
+    residual = obj["model_residual"]
+    if not isinstance(residual, list) or len(residual) > MAX_MODEL_RESIDUAL:
+        raise ContractError(f"{n('model_residual')}: must be a list of at most {MAX_MODEL_RESIDUAL} tokens")
+    for index, token in enumerate(residual):
+        if not isinstance(token, str) or _RESIDUAL_TOKEN.fullmatch(token) is None:
+            raise ContractError(f"{n('model_residual')}[{index}]: must be a lowercase token")
+    if residual != sorted(set(residual)):
+        raise ContractError(f"{n('model_residual')}: must be sorted and unique")
+    count = _req_int(obj["findings_count"], n("findings_count"), 0)
+    severity = _req_enum(obj["highest_severity"], BRIDGE_SEVERITY, n("highest_severity"))
+    if (count == 0) != (severity == "NONE"):
+        raise ContractError(f"{n('highest_severity')}: NONE if and only if findings_count is 0")
+
+
 def _validate_static_analysis_v3(obj: dict) -> None:
     for name in ("analyzer_id", "analyzer_version", "profile_id"):
         _req_str(obj[name], name)
+    validate_bridge_facts(obj)
     for name in ("analyzer_sha256", "profile_sha256", "source_tree_sha256", "report_sha256"):
         _req_nonzero_hex64(obj[name], name)
 

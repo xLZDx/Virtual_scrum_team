@@ -186,6 +186,37 @@ sorted, unique list of repo-relative `/` paths: no glob characters, no `..`, no 
 `evidence_ref`/`path` are plain repo-relative paths, `path` is in `analysis_scope`, `evidence_sha256`
 is non-zero 64 hex and `line` is an int >= 1 (bool rejected); duplicate findings are rejected.
 
+Bridge facts (sprint U2, task U2-1; v3 StaticAnalysis only, `BRIDGE_FACT_FIELDS`), carried from the U1
+`uc.role-result.v1` and also inside the signed analyzer payload (`ANALYZER_PAYLOAD_FIELDS`, verified by
+exact strict-type equality against the verifier-owned expectation): `role_table_sha256` (non-zero 64
+hex: sha256 of the exact `role_table.json` bytes the router loaded); `aeve_head` (40 lowercase hex: the
+AEVE source head the router probed and matched against the role table pin); `model_residual` (list of at
+most 8 unique lowercase tokens, sorted, may be empty); `reviewed_paths_sha256` (non-zero 64 hex: sha256 of
+the canonical bytes of the sorted reviewed path list); `findings_count` (int >= 0, bool rejected);
+`highest_severity` in `BRIDGE_SEVERITY` = NONE, LOW, MEDIUM, HIGH, CRITICAL, where NONE if and only if
+`findings_count == 0` (U1 NIT/MINOR/MAJOR/BLOCKER map to LOW/MEDIUM/HIGH/CRITICAL).
+`bridge_facts_from_role_result(role_result, role, reviewed_paths, expected_base_revision=<candidate head>)` in
+`analyzer_adapter.py` derives them for one role and refuses (ContractError) when: the whole result fails
+`tools.uc.contracts.validate_result` (exact containers; `model_residual` sorted, unique, at most 8 tokens;
+`aeve_head` 40 lowercase hex; `role_table_sha256` 64 hex); the result `base_revision` differs from
+`expected_base_revision`; the role has no entry or more than one; the entry status is not CLEAN or FINDINGS;
+the entry `uncovered` list is non-empty; a LOCAL_PLUS_MODEL entry has an empty `model_residual`;
+`reviewed_paths` is not a non-empty list/tuple of unique plain repo-relative paths. `model_residual` is
+never repaired. U2-4 gate refusals (v3 StaticAnalysis only; v1/v2 unchanged), all hard reasons for every receipt result and
+coverage state (a waiver on an INCONCLUSIVE/non-FULL slot cannot hide them; all are collected in one pass,
+none masks another): `STATIC_FINDINGS_PRESENT` (any receipt finding of any severity, or `findings_count` > 0;
+behaviour change: findings were a waivable soft HIGH/CRITICAL reason in v3 before, now hard),
+`MODEL_RESIDUAL_OPEN` (non-empty `model_residual`), `ROLE_TABLE_DRIFT` and `AEVE_HEAD_DRIFT`
+(`role_table_sha256` / `aeve_head` must strictly equal the gate-owned `analyzer_trust["pinned"]` values of
+the same names; a missing, non-string or malformed pin (64 non-zero lowercase hex / 40 lowercase hex) refuses).
+`trust["pinned"]` must come from a source independent of `run["expected"]` (caller obligation; there is no
+in-tree builder yet). Evidence-record pin checks emit PASS only under an exact APPROVE verdict with the receipt
+accepted, and raise on contradictions with the decision. NOT done:
+`reviewed_paths_sha256` is only bound, not compared (no gate-owned changed-path list for the static slot), and
+there is no receipt expiry (no clock source; replay is covered by the epoch/candidate_head/nonce binding). The
+evidence record (`analyzer_evidence.py`) sets `role_table_sha256_pin_check` / `aeve_head_pin_check` to PASS or
+FAIL when the optional facts `pinned_role_table_sha256` / `pinned_aeve_head` are supplied with a receipt, else `NOT_RUN`.
+
 Consistency: `covered_rules` equals the sorted checked rules and `unsupported_rules` the sorted
 unsupported rules (so the two are disjoint and their union is the declared rule set). `coverage` must
 equal FULL (no unsupported rule), PARTIAL (both sets non-empty) or NOT_COVERED (no checked rule). The
@@ -194,6 +225,61 @@ check. An empty `findings` list never implies full coverage. `derive_result` is 
 returns PASS only for FULL coverage with no unsupported rules. V3 signatures use the distinct domain
 label `RECEIPT_V3_LABEL = b"vst-receipt-v3\0"`.
 
+### v3 StaticAnalysis receipt builder (sprint U2, task U2-3)
+
+`tools/vst/receipt_builder.py` exposes one function, `build_static_receipt(*, role_result, role,
+candidate_head, reviewed_paths, required_paths, snapshot_root, adapter_result, manifest_sha256, epoch,
+run_id, nonce, receipt_id, task_id, slot, attempt, prev_receipt_sha256, runner_id, role_sha256,
+resolved_model, invocation_id, created_at, covered_acceptance, limits=Limits())`. It returns
+`(receipt_body, analyzer_payload)`, both UNSIGNED: the body is the exact v3 StaticAnalysis receipt field set
+minus `signature` (sign it with `RECEIPT_V3_LABEL`), the payload is the input of
+`analyzer_authority.sign_analyzer_evidence`. It reuses `bridge_facts_from_role_result` (called once; independent
+deep copies of the same dict go into both outputs), `static_analysis_fields`, `assemble_analyzer_payload`,
+`source_tree_digest` and `derive_result`. It never signs, never calls a model and uses no network.
+`required_paths` is the diff-gate changed-path list and `reviewed_paths` must EQUAL it as a set (no superset), so
+a gate can later compare `reviewed_paths_sha256` with the hash of the verified diff-gate list. That gate-side
+comparison is an explicit U2-5/U2-6 dependency and is NOT done here. A deleted or renamed path cannot be covered
+(the adapter requires every reviewed path to be a tracked regular file at the candidate head), so such a change
+fails closed.
+
+U2-3 additions to the U1 result: `uc.role-result.v1` now carries `purpose` (the request enum, copied) and
+`changed_paths_sha256` (sha256 of the canonical bytes of the request's sorted `changed_paths`, computed by
+`router.normalize` from the validated request; `tools/uc/contracts.changed_paths_sha256`). The U2-1
+`bridge_facts_from_role_result` now also refuses a result whose `purpose` is not `receipt` or whose
+`changed_paths_sha256` differs from the hash of `sorted(reviewed_paths)` (same canonical hashing as
+`reviewed_paths_sha256`). The secret-shape regex lives in the side-effect-free `tools/uc/secret_patterns.py`
+(re-exported by `router`). `source_tree_digest` now lists the tree of the verified candidate head, not symbolic HEAD.
+
+Refusals (`ContractError`, message starts with the code):
+- `RB_ARG_INVALID`: ids (`receipt_id`, `task_id`, `slot`, `runner_id`, `resolved_model`, `invocation_id`, `run_id`,
+  each `covered_acceptance` item) must match `[A-Za-z0-9._:-]{1,128}`; `created_at` an RFC 3339 UTC timestamp
+  ending in `Z`; `nonce` at least `MIN_NONCE_CHARS`; int `epoch`/`attempt` >= 1 (bool rejected); prev hash null iff
+  attempt 1; 40/64 hex lengths; `adapter_result` must be an `AdapterResult`; over-nested input.
+- `RB_PATHS_INVALID`: `reviewed_paths`/`required_paths` not a non-empty unique list of plain repo-relative paths,
+  or the adapter refused the path list (glob, case collision, reserved name and similar).
+- `RB_REQUIRED_PATH_UNCOVERED`: a required path is not reviewed. `RB_REVIEWED_PATH_EXTRA`: a reviewed path is not
+  required.
+- `RB_SECRET_LIKE_VALUE`: `has_secret` matches any string value in the role result, the caller's text, or the
+  produced receipt/payload (it can also reject a path such as `token_validation.py`: fail-closed by design). The
+  ID patterns above are the first layer, `has_secret` the second.
+- `RB_BRIDGE_REFUSED`: any bridge refusal, including non-`receipt` purpose and a `changed_paths_sha256` mismatch,
+  and a structurally malformed role result.
+- `RB_TREE_NOT_CLEAN`: tree state only (HEAD differs from `candidate_head`, tracked or untracked changes anywhere,
+  a reviewed path untracked or not a regular file, git failure).
+- `RB_REPORT_TREE_MISMATCH`: the adapter result head differs from `candidate_head`; the digest of the reviewed
+  paths differs from `adapter_result.source_tree_sha256` or the report's `source_tree_sha256`; or
+  `sorted(reviewed_paths)` differs from the report `analysis_scope`.
+- `RB_ANALYZER_REFUSED`: no report, or `static_analysis_fields`/`assemble_analyzer_payload`/payload validation
+  refused (outcome not OK/PARTIAL, unknown binding, malformed report).
+- `RB_RECEIPT_INVALID`: `derive_result` or `validate_receipt` (run with a placeholder all-zero signature, shape
+  only) refused the body.
+
+The result is never hard-coded to PASS: it is `derive_result` of the body. The value offered to it is INCONCLUSIVE
+whenever the role entry is not CLEAN, the role entry or the report has any finding of any severity, or the role
+entry has a non-empty `model_residual` (so a FINDINGS entry yields INCONCLUSIVE, not a refusal); otherwise PASS is
+offered and `derive_result` decides. The builder does not compare `reviewed_paths_sha256`, `role_table_sha256` or
+`aeve_head` with any gate pin.
+
 ## Receipt (`validate_receipt`)
 
 Common fields: `manifest_sha256` (64 hex, REQUIRED, must equal `manifest_sha256(manifest)` at the gate); a receipt whose `slot` is `SUPERVISOR_SLOT` must be a Documentation receipt; `receipt_id`, `task_id`, `slot` (matches a manifest slot or `SUPERVISOR_SLOT`), `runner_id`, `resolved_model`, `invocation_id`, `created_at` are non-empty str; `receipt_type` in RECEIPT_TYPES; `attempt` int >= 1; `prev_receipt_sha256` is null iff attempt == 1, else 64 hex; `candidate_head` 40 hex; `epoch` int >= 1; `role_sha256` 64 hex; `result` in RESULT; `signature` 64 hex.
@@ -201,7 +287,7 @@ Common fields: `manifest_sha256` (64 hex, REQUIRED, must equal `manifest_sha256(
 Per type (lists contain non-empty str unless stated):
 
 - TestRun: `expected_test_ids`, `executed_test_ids`, `skipped_test_ids`, `xfail_test_ids`, `covered_acceptance`; `commands` = non-empty list of `{argv: non-empty list of str, exit_code: int}`; `artifact_digests` (REQUIRED, may be empty) = dict mapping a repo-relative path str (same rules as manifest `scope`: no absolute path, no `:`, no empty / `.` / `..` segments, no surrounding whitespace) to a 64-hex sha256 of that artifact as it was after the commands ran. The all-zero digest (`MISSING_ARTIFACT_DIGEST`, 64 zeros) means "artifact missing after the run".
-- StaticAnalysis: `coverage` in COVERAGE; `covered_rules`, `unsupported_rules`, `covered_acceptance`.
+- StaticAnalysis: `coverage` in COVERAGE; `covered_rules`, `unsupported_rules`, `covered_acceptance` (v3 adds the provenance and bridge fields described above).
 - IndependentReview: `reviewer_principal`, `author_principal` (non-empty str); `covered_acceptance`, `findings`; `signed_verdict` in {MODIFY, NO_GO, APPROVE}.
 - Documentation: `check_description` non-empty str; `covered_acceptance`.
 

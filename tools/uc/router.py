@@ -26,6 +26,7 @@ import time
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 from uc import adapter, aeve_probe, contracts  # noqa: E402
+from uc.secret_patterns import _SECRET, has_secret  # noqa: E402,F401  (re-exported; defined side-effect free)
 
 if os.name == "nt":
     import msvcrt
@@ -39,11 +40,6 @@ TEST_ROLE_NAMES = frozenset({
 })
 LOCK_WAIT_SECONDS = 30.0
 _TOKEN_CLEAN = re.compile(r"[^a-z0-9_.-]+")
-# Shapes of well-known credentials; text that matches is never copied into a result.
-_SECRET = re.compile(
-    r"sk_(?:live|test)_[A-Za-z0-9]+|sk-[A-Za-z0-9]{16,}|AKIA[0-9A-Z]{8,}|gh[pousr]_[A-Za-z0-9]{10,}"
-    r"|xox[abprs]-[A-Za-z0-9-]+|AIza[0-9A-Za-z_-]{10,}|-----BEGIN"
-    r"|(?i:secret|passwd|password|api[_-]?key|token)[=_:-]*[A-Za-z0-9]{8,}")
 # A result path is copied only when it is a plain short name; anything else becomes an opaque digest.
 _SAFE_PATH = re.compile(r"^[A-Za-z0-9._@+/-]{1,120}$")
 SEVERITY_RANK = {"BLOCKER": 0, "MAJOR": 1, "MINOR": 2, "NIT": 3}
@@ -51,10 +47,6 @@ _EXECUTOR_STATUS = {"COMPLETE": "COMPLETE", "PARTIAL": "PARTIAL", "BLOCKED": "BL
                     "NOT_COVERED": "NOT_COVERED", "NOT_RUN": "NOT_RUN"}
 _ROLE_CLASSES = ("LOCAL", "LOCAL_PLUS_MODEL", "MODEL_ONLY", "OUT_OF_SCOPE")
 _COVERAGE_STATES = ("COVERED_PARTIAL", "NOT_COVERED_NO_EXECUTOR", "NOT_COVERED_NO_PROFILE", "NOT_APPLICABLE")
-
-
-def has_secret(text: object) -> bool:
-    return _SECRET.search(str(text)) is not None
 
 
 def to_token(text: object, fallback: str = "unspecified") -> str:
@@ -66,8 +58,14 @@ def to_token(text: object, fallback: str = "unspecified") -> str:
     return token if re.match(r"^[a-z0-9][a-z0-9_.-]{0,63}$", token) else fallback
 
 
+def load_table_with_digest(path: pathlib.Path) -> tuple[dict, str]:
+    """Read the role table once: return the parsed table and the sha256 of the exact bytes that were parsed."""
+    raw = path.read_bytes()
+    return json.loads(raw.decode("utf-8")), hashlib.sha256(raw).hexdigest()
+
+
 def load_table(path: pathlib.Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return load_table_with_digest(path)[0]
 
 
 def check_table(table: object) -> None:
@@ -200,8 +198,14 @@ def _map_finding(raw: object, where: str, request_paths: frozenset[str]) -> tupl
     return finding, (str(raw.get("rule_id")), path, numbers[0], numbers[1], evidence_hash)
 
 
-def normalize(role_request: dict, table: dict, response: dict | None, adapter_error: adapter.AdapterBlocked | None) -> dict:
-    """Build the role result. ``response`` is the adapter-validated AEVE response, or None when blocked."""
+def normalize(role_request: dict, table: dict, response: dict | None, adapter_error: adapter.AdapterBlocked | None,
+              *, role_table_sha256: str, aeve_head: str) -> dict:
+    """Build the role result. ``response`` is the adapter-validated AEVE response, or None when blocked.
+
+    ``role_table_sha256`` and ``aeve_head`` are the bridge facts (U2-1) and are copied into the result
+    as given; the caller supplies the digest of the exact table bytes it loaded and the probed, pin-matched AEVE head.
+    ``purpose`` and ``changed_paths_sha256`` (U2-3) are derived from the validated request itself.
+    """
     snapshot = response["snapshot_sha256"] if response else "0" * 64
     results_by_executor = {r["executor_id"]: r for r in (response["results"] if response else [])}
     request_paths = frozenset(role_request["changed_paths"])
@@ -270,6 +274,10 @@ def normalize(role_request: dict, table: dict, response: dict | None, adapter_er
         "iteration_id": to_token(response["iteration_id"], "none") if response else f"blocked-{role_request['request_id']}"[:128],
         "exit_code": 0 if all_clean else 3,
         "roles": roles_out,
+        "role_table_sha256": role_table_sha256,
+        "aeve_head": aeve_head,
+        "purpose": role_request["purpose"],
+        "changed_paths_sha256": contracts.changed_paths_sha256(role_request["changed_paths"]),
     }
 
 
@@ -288,9 +296,15 @@ def _inside(path: pathlib.Path, roots: list[str]) -> bool:
 
 
 def review(role_request: dict, *, table: dict, aeve_root: pathlib.Path, state_dir: pathlib.Path,
-           allowed_roots: list[str], python: str | None = None, command_prefix: list[str] | None = None,
-           timeout: float = adapter.DEFAULT_TIMEOUT_SECONDS) -> dict:
+           allowed_roots: list[str], table_sha256: str | None = None, python: str | None = None,
+           command_prefix: list[str] | None = None, timeout: float = adapter.DEFAULT_TIMEOUT_SECONDS) -> dict:
     """Validate, check the AEVE pin, run one combined review and return a validated result or a blocked envelope.
+
+    ``table_sha256`` is the digest of the exact role_table.json bytes ``table`` was parsed from (see
+    ``load_table_with_digest``); without it, or with an all-zero or malformed value, no result is produced
+    (BLOCKED ROLE_TABLE_HASH_MISSING), because the digest is never reconstructed from the parsed table.
+    The exact-bytes guarantee holds only for the CLI path (``main`` uses ``load_table_with_digest``); a
+    library caller of ``review()`` is trusted to pass the digest of the bytes it parsed ``table`` from.
 
     Never raises: any unexpected failure becomes a BLOCKED envelope with reason INTERNAL_ERROR.
     """
@@ -305,6 +319,9 @@ def review(role_request: dict, *, table: dict, aeve_root: pathlib.Path, state_di
     lock = None
     try:
         check_table(table)
+        if (not isinstance(table_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", table_sha256)
+                or table_sha256 == "0" * 64):
+            raise adapter.AdapterBlocked("ROLE_TABLE_HASH_MISSING", "the digest of the loaded role table bytes was not supplied")
         state_dir = pathlib.Path(state_dir)
         if not state_dir.is_absolute() or _inside(state_dir, allowed_roots):
             raise adapter.AdapterBlocked("BAD_STATE_DIR", "state_dir must be absolute and outside every allowed root")
@@ -326,7 +343,7 @@ def review(role_request: dict, *, table: dict, aeve_root: pathlib.Path, state_di
         if executor_ids:
             response = _call(doc, executor_ids, aeve_root=aeve_root, state_dir=state_dir, python=python,
                              command_prefix=command_prefix, timeout=timeout)
-        result = normalize(doc, table, response, None)
+        result = normalize(doc, table, response, None, role_table_sha256=table_sha256, aeve_head=record["aeve_head"])
         contracts.validate_result(result)
         # recorded only after a result exists, so a failed run never poisons the id
         _write_record(_identity_path(directory, doc["request_id"]), identity_sha)
@@ -381,13 +398,14 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(_blocked("invalid", "UNREADABLE_REQUEST", "request file is not readable JSON"), sort_keys=True))
         return 2
     try:
-        table = load_table(args.table)
+        table, table_sha256 = load_table_with_digest(args.table)
     except (OSError, ValueError):
         print(json.dumps(_blocked(request.get("request_id", "invalid") if isinstance(request, dict) else "invalid",
                                   "UNREADABLE_TABLE", "role table is not readable JSON"), sort_keys=True))
         return 2
     result = review(request, table=table, aeve_root=args.aeve_root, state_dir=args.state_dir.resolve(),
-                    allowed_roots=args.allowed_root, python=args.python, timeout=args.timeout)
+                    allowed_roots=args.allowed_root, table_sha256=table_sha256, python=args.python,
+                    timeout=args.timeout)
     print(json.dumps(result, indent=2, sort_keys=True))
     if result.get("schema_version") == contracts.BLOCKED_SCHEMA:
         return 2

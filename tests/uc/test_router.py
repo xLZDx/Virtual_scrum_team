@@ -21,13 +21,15 @@ from tests.uc import ucsupport as S
 
 HEAD = S.HEAD
 TABLE = S.real_table()
+TABLE_SHA = S.real_table_sha256()
 PIN = TABLE["aeve_pin"]
 PY_EXEC = "g2.python-rules"
 FAKE_SECRET = "sk_live_FAKE0123456789SECRET"
 
 
 def req(roles, **over):
-    doc = {"request_id": "req-1", "base_revision": HEAD, "changed_paths": ["src/a.py", "docs/b.md"], "roles": list(roles)}
+    doc = {"request_id": "req-1", "base_revision": HEAD, "changed_paths": ["src/a.py", "docs/b.md"], "roles": list(roles),
+           "purpose": "advisory"}
     doc.update(over)
     return doc
 
@@ -42,7 +44,8 @@ def resp_for(*roles, findings=None, results=None, **over):
 
 
 def norm(roles, response, **kw):
-    result = router.normalize(req(roles, **kw), TABLE, response, None)
+    result = router.normalize(req(roles, **kw), TABLE, response, None,
+                              role_table_sha256=TABLE_SHA, aeve_head=PIN["head"])
     contracts.validate_result(result)  # output must always satisfy the contract
     return result
 
@@ -378,7 +381,7 @@ def role_request(world, **over):
 
 def do_review(world, body, request=None, table=None, timeout=20.0, **kw):
     prefix = S.write_stub(world["stubs"], body)
-    return router.review(request or role_request(world), table=table or TABLE, aeve_root=world["aeve"],
+    return router.review(request or role_request(world), table=table or TABLE, table_sha256=TABLE_SHA, aeve_root=world["aeve"],
                          state_dir=world["state"], allowed_roots=[str(world["root"])], command_prefix=prefix,
                          timeout=timeout, **kw)
 
@@ -552,7 +555,7 @@ def test_review_unknown_field_blocked(world):
 
 @pytest.mark.parametrize("bad,expected_id", [(None, "unknown"), ([], "unknown"), ("str", "unknown")])
 def test_review_non_object_request(world, bad, expected_id):
-    out = router.review(bad, table=TABLE, aeve_root=world["aeve"], state_dir=world["state"], allowed_roots=[str(world["root"])])
+    out = router.review(bad, table=TABLE, table_sha256=TABLE_SHA, aeve_root=world["aeve"], state_dir=world["state"], allowed_roots=[str(world["root"])])
     assert_blocked(out, "INVALID_REQUEST")
     assert out["request_id"] == expected_id
 
@@ -564,7 +567,7 @@ def test_review_blocked_envelope_sanitises_hostile_request_id(world):
 
 
 def test_review_non_string_request_id_in_blocked_envelope(world):
-    out = router.review({"request_id": ["a"]}, table=TABLE, aeve_root=world["aeve"], state_dir=world["state"],
+    out = router.review({"request_id": ["a"]}, table=TABLE, table_sha256=TABLE_SHA, aeve_root=world["aeve"], state_dir=world["state"],
                         allowed_roots=[str(world["root"])])
     assert_blocked(out, "INVALID_REQUEST")
     assert out["request_id"] == "invalid"
@@ -714,7 +717,7 @@ def test_concurrent_same_id_same_content_is_serialized_not_overlapped(world):
     results = []
 
     def go():
-        results.append(router.review(role_request(world), table=TABLE, aeve_root=world["aeve"], state_dir=world["state"],
+        results.append(router.review(role_request(world), table=TABLE, table_sha256=TABLE_SHA, aeve_root=world["aeve"], state_dir=world["state"],
                                      allowed_roots=[str(world["root"])], command_prefix=prefix, timeout=30))
 
     threads = [threading.Thread(target=go) for _ in range(2)]
@@ -795,7 +798,7 @@ def run_marked(world, request=None, roots=None):
     marker.unlink(missing_ok=True)
     body = f"import pathlib; pathlib.Path({str(marker)!r}).write_text('x'); emit(good(), 0)"
     prefix = S.write_stub(world["stubs"], body)
-    out = router.review(request or role_request(world), table=TABLE, aeve_root=world["aeve"], state_dir=world["state"],
+    out = router.review(request or role_request(world), table=TABLE, table_sha256=TABLE_SHA, aeve_root=world["aeve"], state_dir=world["state"],
                         allowed_roots=roots or [str(world["root"])], command_prefix=prefix, timeout=20.0)
     return out, marker
 
@@ -1246,7 +1249,7 @@ def test_main_request_file_with_wrong_json_shape_is_a_blocked_envelope(tmp_path,
 
 # ---- state_dir
 def test_relative_state_dir_is_bad_state_dir(world):
-    out = router.review(role_request(world), table=TABLE, aeve_root=world["aeve"], state_dir=pathlib.Path("relative/state"),
+    out = router.review(role_request(world), table=TABLE, table_sha256=TABLE_SHA, aeve_root=world["aeve"], state_dir=pathlib.Path("relative/state"),
                         allowed_roots=[str(world["root"])], command_prefix=S.write_stub(world["stubs"], "emit(good(), 0)"))
     assert_blocked(out, "BAD_STATE_DIR")
     assert world["probe_calls"] == [] and not pathlib.Path("relative").exists()
@@ -1255,7 +1258,7 @@ def test_relative_state_dir_is_bad_state_dir(world):
 @pytest.mark.parametrize("sub", ["", "state", "deep/er/state"])
 def test_state_dir_inside_or_equal_to_an_allowed_root_is_bad_state_dir(world, sub):
     state = world["root"] / sub if sub else world["root"]
-    out = router.review(role_request(world), table=TABLE, aeve_root=world["aeve"], state_dir=state,
+    out = router.review(role_request(world), table=TABLE, table_sha256=TABLE_SHA, aeve_root=world["aeve"], state_dir=state,
                         allowed_roots=[str(world["root"])], command_prefix=S.write_stub(world["stubs"], "emit(good(), 0)"))
     assert_blocked(out, "BAD_STATE_DIR")
     assert not (world["root"] / "uc-requests").exists() and world["probe_calls"] == []
@@ -1264,21 +1267,21 @@ def test_state_dir_inside_or_equal_to_an_allowed_root_is_bad_state_dir(world, su
 def test_state_dir_inside_any_of_several_allowed_roots_is_refused(world):
     other = world["tmp"] / "other-root"
     other.mkdir()
-    out = router.review(role_request(world), table=TABLE, aeve_root=world["aeve"], state_dir=other / "st",
+    out = router.review(role_request(world), table=TABLE, table_sha256=TABLE_SHA, aeve_root=world["aeve"], state_dir=other / "st",
                         allowed_roots=[str(world["root"]), str(other)], command_prefix=S.write_stub(world["stubs"], "emit(good(), 0)"))
     assert_blocked(out, "BAD_STATE_DIR")
 
 
 def test_state_dir_in_a_sibling_whose_name_merely_starts_with_the_root_name_is_allowed(world):
     sibling = world["tmp"] / "repo2" / "state"  # shares the textual prefix "repo" but is not inside it
-    out = router.review(role_request(world), table=TABLE, aeve_root=world["aeve"], state_dir=sibling,
+    out = router.review(role_request(world), table=TABLE, table_sha256=TABLE_SHA, aeve_root=world["aeve"], state_dir=sibling,
                         allowed_roots=[str(world["root"])], command_prefix=S.write_stub(world["stubs"], "emit(good(), 0)"))
     contracts.validate_result(out)
 
 
 def test_state_dir_with_dotdot_that_resolves_into_the_root_is_refused(world):
     sneaky = world["tmp"] / "elsewhere" / ".." / "repo" / "state"
-    out = router.review(role_request(world), table=TABLE, aeve_root=world["aeve"], state_dir=sneaky,
+    out = router.review(role_request(world), table=TABLE, table_sha256=TABLE_SHA, aeve_root=world["aeve"], state_dir=sneaky,
                         allowed_roots=[str(world["root"])], command_prefix=S.write_stub(world["stubs"], "emit(good(), 0)"))
     assert_blocked(out, "BAD_STATE_DIR")
 
@@ -1507,7 +1510,7 @@ def test_waiter_with_a_different_root_is_refused_after_the_holder_records_its_id
     prefix = S.write_stub(world["stubs"], body)
 
     def waiter():
-        out["r"] = router.review(role_request(world, root=str(other)), table=TABLE, aeve_root=world["aeve"],
+        out["r"] = router.review(role_request(world, root=str(other)), table=TABLE, table_sha256=TABLE_SHA, aeve_root=world["aeve"],
                                  state_dir=world["state"], allowed_roots=both_roots(world, other),
                                  command_prefix=prefix, timeout=20.0)
     thread = threading.Thread(target=waiter)
@@ -1535,7 +1538,7 @@ def race(world, requests, sleep=1.0):
     results = [None] * len(requests)
 
     def go(i):
-        results[i] = router.review(requests[i], table=TABLE, aeve_root=world["aeve"], state_dir=world["state"],
+        results[i] = router.review(requests[i], table=TABLE, table_sha256=TABLE_SHA, aeve_root=world["aeve"], state_dir=world["state"],
                                    allowed_roots=allowed, command_prefix=prefix, timeout=30)
     threads = [threading.Thread(target=go, args=(i,)) for i in range(len(requests))]
     for t in threads:
