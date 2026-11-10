@@ -2844,3 +2844,6 @@ GPT-PM (reply a451e617) returned 1 MAJOR at head 4732f27: with several StaticAna
 
 ## 2026-11-10 S5-E accepted (GPT-PM APPROVE, verification round); sprint S5 code-complete
 GPT-PM APPROVE, 0 BLOCKER, 0 MAJOR, reply 4b8dfd61, for the correction at head a2bc0e9. All of S5-A..S5-E are accepted on static review. NOT_RUN: all tests (pytest forbidden), AEVE runtime beyond the eight fixture runs, Windows runtime of the adapter, OS-level sandbox. Plan and reports refreshed at sprint end; one S5 PR opened from s5-a-provenance. Open follow-ups for the operator: an S5 test run needs the operator to lift the pytest ban; U1..U6 stay parked until the operator says otherwise.
+
+## 2026-11-10 Program report re-render after PR 7
+Re-rendered the project plan reports after the S5 PR was opened, as the close gate requires. No content change.
