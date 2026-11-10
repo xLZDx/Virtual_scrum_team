@@ -2278,3 +2278,6 @@ Each AEVE task went implementation, three reviewers, one remediation batch, GPT-
 ## 2026-11-11 SHORTCOMING stale PR 8 note
 
 I carried PR 8 as open for several turns without querying GitHub; it had been merged. Root cause: author trusted the earlier summary. Rule: query gh pr view before listing a PR as open.
+
+## 2026-11-11 U5-1 worker gate implementation
+Kind: NEUTRAL. Implementation is unexecuted and untested by design; reviewers next. Risk noted: diffgate passes a protected path that is also in the allowed list, so the new module re-checks protection on its own. Rule: when reusing a gate, list what it cannot express and fail closed on those in the wrapper.

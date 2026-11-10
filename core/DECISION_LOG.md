@@ -3037,3 +3037,7 @@ U4-1 merged (PR 13). U4-2..U4-6 were implemented on AEVE branch u4-aeve-executor
 ## 2026-11-11 Role-table pin re-issued after AEVE U4 merge
 
 Rebuilt catalog/role_table.json with tools/uc/role_table.py build against AEVE main 8a9f6c1 (matrix digest 9822b853...). Validator printed VALID; counts COVERED_PARTIAL 50, NOT_COVERED_NO_EXECUTOR 2, NOT_COVERED_NO_PROFILE 15, total 93. Before the rebuild validate reported 6 problems (pin head, digest, executors of a11y-architect, a11y-contract, agent-evaluation, git-worktree-ops). Old head/digest in historical docs and the seeded-failure fixture are left as records. PR 10 conflict resolved by merging main (plan from main, both log sides kept) and merged as cff9804; PR 8 was already merged, my earlier note that it was open was wrong.
+
+## 2026-11-11 U5-1 worker output through the diff gate
+
+Decision: new tools/vst/worker_gate.py reuses diffgate.check_diff and only adds refusals (protected path even when allowed, case variants, Windows aliases, diff text versus declared paths, gitlinks). Verdict is ACCEPTED, REFUSED or BLOCKED; every error and every unverifiable required isolation property is BLOCKED. The isolation proof lists five checked properties and nine always NOT_VERIFIED ones (no OS sandbox or process containment without WSL). WSL path not used. Tests written, NOT_RUN (operator ban).
