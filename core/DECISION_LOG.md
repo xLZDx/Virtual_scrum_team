@@ -2862,3 +2862,6 @@ Added docs/sdlc/evidence/u2-1-gptpm-scope-note.md; GPT-PM review requested for b
 
 ## 2026-11-10 U2-1 GPT-PM APPROVE
 GPT-PM reply d70ad516 on base bcdd25f to ac9eb4a: APPROVE, 0 BLOCKER, 0 MAJOR (static review, tests NOT_RUN). U2-1 accepted. Next task: U2-4 gate refusals.
+
+## 2026-11-10 U2-4 implemented (static only, tests NOT_RUN)
+Gate v3 static check now refuses with hard reasons: STATIC_FINDINGS_PRESENT (any finding, any severity, or bridge findings_count > 0), MODEL_RESIDUAL_OPEN (hard, not waivable: the waiver covers only NOT_RUN/INCONCLUSIVE/BLOCKED results), ROLE_TABLE_DRIFT and AEVE_HEAD_DRIFT (strict compare to trust pinned values, never run expected). Consequence stated to the operator: any role with a model slice (LOCAL_PLUS_MODEL, always has residual) cannot be approved by static evidence alone; only fully LOCAL roles can. Not done: reviewed-paths comparison (no gate-owned changed-path list for the static slot; would need a new gate input) and receipt expiry (no clock source; replay already covered by epoch, head and one-shot nonce). Both recorded as limits, not silently dropped.

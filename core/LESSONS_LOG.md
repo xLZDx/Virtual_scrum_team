@@ -2110,3 +2110,6 @@ Kind: NEUTRAL. Routine scope note for the GPT-PM review.
 
 ## 2026-11-10 U2-1 approved
 Kind: SUCCESS. Facts: reviewer pass (3 agents) before GPT-PM left GPT-PM no findings. Why it worked: reviewers caught the unvalidated-bridge MAJOR first. Rule: keep the reviewer batch before the GPT-PM request.
+
+## 2026-11-10 U2-4 gate refusals
+Kind: NEUTRAL (implementation, review pending). Rule: residual open is a hard refusal, which makes the model gap visible instead of hiding it.

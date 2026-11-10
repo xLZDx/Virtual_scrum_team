@@ -53,6 +53,7 @@ FACT_FIELDS = (
     "signature_verified",  # may only agree with the decision-derived value
     "test_command", "test_ids", "test_counts", "test_outcome",
     "skipped_xfail_ids",
+    "pinned_role_table_sha256", "pinned_aeve_head",  # gate pins; drive the *_pin_check fields
     "not_run_owners",      # {field: owner} for unavailable proofs
 )
 _SORTED_STR_LISTS = ("test_ids", "skipped_xfail_ids")
@@ -81,6 +82,15 @@ def _missing(field: str, owners: Mapping[str, Any]) -> dict[str, Any]:
     if isinstance(owner, str) and owner:
         out["owner"] = owner
     return out
+
+
+def _pin_check(pin: Any, receipt: Any, field: str) -> str:
+    """PASS/FAIL from a strict comparison of the gate pin with the receipt value; NOT_RUN if either is absent."""
+    if pin is None or receipt is None:
+        return NOT_RUN
+    if type(pin) is not str:
+        raise ContractError(f"facts.pinned_{field}: must be a string")
+    return "PASS" if receipt[field] == pin else "FAIL"
 
 
 def _derive_coverage(statuses: list[dict]) -> str:
@@ -216,12 +226,12 @@ def _build(manifest: Any, receipt: Any, decision: Any, facts_in: Any) -> dict[st
         "runtime_identity": fact("runtime_identity"),
         "limits": fact("limits"),
         "report_sha256": rcpt("report_sha256"),
-        # Signed receipt values, NOT verified provenance: nothing compares them to a pinned role table
-        # or AEVE head yet (U2-4), so the pin check is labeled NOT_RUN and must not be read as a pass.
+        # Signed receipt values. The pin check is PASS/FAIL only when the caller supplies the gate pin
+        # (strict str equality with the receipt value); without a pin or a receipt it stays NOT_RUN.
         "role_table_sha256": rcpt("role_table_sha256"),
-        "role_table_sha256_pin_check": NOT_RUN,
+        "role_table_sha256_pin_check": _pin_check(facts.get("pinned_role_table_sha256"), vr, "role_table_sha256"),
         "aeve_head": rcpt("aeve_head"),
-        "aeve_head_pin_check": NOT_RUN,
+        "aeve_head_pin_check": _pin_check(facts.get("pinned_aeve_head"), vr, "aeve_head"),
         "model_residual": rcpt("model_residual"),
         "reviewed_paths_sha256": rcpt("reviewed_paths_sha256"),
         "findings_count": rcpt("findings_count"),

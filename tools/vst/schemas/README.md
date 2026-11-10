@@ -202,9 +202,16 @@ the canonical bytes of the sorted reviewed path list); `findings_count` (int >= 
 `expected_base_revision`; the role has no entry or more than one; the entry status is not CLEAN or FINDINGS;
 the entry `uncovered` list is non-empty; a LOCAL_PLUS_MODEL entry has an empty `model_residual`;
 `reviewed_paths` is not a non-empty list/tuple of unique plain repo-relative paths. `model_residual` is
-never repaired. The evidence record (`analyzer_evidence.py`) carries `role_table_sha256_pin_check` and
-`aeve_head_pin_check` set to `NOT_RUN`: both values are signed but not compared with any pin yet. The gate only binds them
-(they must match the verifier-owned expectation); it does not yet refuse on their values (task U2-4).
+never repaired. U2-4 gate refusals (v3 StaticAnalysis only; v1/v2 unchanged), all hard reasons:
+`STATIC_FINDINGS_PRESENT` (any receipt finding of any severity, or `findings_count` > 0),
+`MODEL_RESIDUAL_OPEN` (non-empty `model_residual`; not waivable, because the operator waiver covers only
+NOT_RUN/INCONCLUSIVE/BLOCKED results and this receipt result is PASS), `ROLE_TABLE_DRIFT` and
+`AEVE_HEAD_DRIFT` (`role_table_sha256` / `aeve_head` must strictly equal the gate-owned
+`analyzer_trust["pinned"]` values of the same names; a missing or non-string pin refuses). NOT done:
+`reviewed_paths_sha256` is only bound, not compared (no gate-owned changed-path list for the static slot), and
+there is no receipt expiry (no clock source; replay is covered by the epoch/candidate_head/nonce binding). The
+evidence record (`analyzer_evidence.py`) sets `role_table_sha256_pin_check` / `aeve_head_pin_check` to PASS or
+FAIL when the optional facts `pinned_role_table_sha256` / `pinned_aeve_head` are supplied with a receipt, else `NOT_RUN`.
 
 Consistency: `covered_rules` equals the sorted checked rules and `unsupported_rules` the sorted
 unsupported rules (so the two are disjoint and their union is the declared rule set). `coverage` must
