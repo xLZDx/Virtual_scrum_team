@@ -1,0 +1,375 @@
+{
+  "schema_version": 1,
+  "base_ref": "origin/main",
+  "branches": [
+    "origin/s4-canonical-continuation",
+    "origin/s4-native-qa-runner",
+    "origin/s4-reproducible-qa-automation",
+    "origin/s4-e2e-snapshot-20261025-180e330",
+    "origin/s5-bounded-aeve-evidence"
+  ],
+  "rules": [
+    {
+      "rule_id": "R01-identical",
+      "branch": "*",
+      "globs": [
+        "**"
+      ],
+      "main_state": [
+        "identical"
+      ],
+      "class": "ALREADY_ON_MAIN",
+      "reason": "Blob hash equals the blob at the same path on origin/main; nothing to land.",
+      "lands_in": null
+    },
+    {
+      "rule_id": "R02-core-logs",
+      "branch": "*",
+      "globs": [
+        "core/**"
+      ],
+      "main_state": [
+        "absent",
+        "differs"
+      ],
+      "class": "DROPPED",
+      "reason": "Branch-era state/decision/lesson logs; main's core logs carry the U1/U2 history and are authoritative. Same path exists on main with different content, so copying it would overwrite or conflict with main.",
+      "lands_in": null,
+      "flags": [
+        "CONFLICT_WITH_MAIN"
+      ]
+    },
+    {
+      "rule_id": "R03-doc-registry",
+      "branch": "*",
+      "globs": [
+        "governance/DOCUMENT_REGISTRY.md"
+      ],
+      "main_state": [
+        "absent",
+        "differs"
+      ],
+      "class": "DROPPED",
+      "reason": "Generated file; it is regenerated on main by tools/build_document_registry.py, never merged.",
+      "lands_in": null
+    },
+    {
+      "rule_id": "R04-change-records-new",
+      "branch": "*",
+      "globs": [
+        "docs/changes/**"
+      ],
+      "main_state": [
+        "absent"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Per-commit change records of the retired record-per-commit process; kept on the branch ref as history, not landed.",
+      "lands_in": null
+    },
+    {
+      "rule_id": "R05-change-records-conflict",
+      "branch": "*",
+      "globs": [
+        "docs/changes/**"
+      ],
+      "main_state": [
+        "differs"
+      ],
+      "class": "DROPPED",
+      "reason": "Change record number already used on main with other content. Same path exists on main with different content, so copying it would overwrite or conflict with main.",
+      "lands_in": null,
+      "flags": [
+        "CONFLICT_WITH_MAIN"
+      ]
+    },
+    {
+      "rule_id": "R06-evidence-new",
+      "branch": "*",
+      "globs": [
+        "docs/sdlc/evidence/**"
+      ],
+      "main_state": [
+        "absent"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Recorded S2/S3/S4/S5 run outputs, reviews and snapshots bound to old heads; history only, not product behavior.",
+      "lands_in": null
+    },
+    {
+      "rule_id": "R07-evidence-conflict",
+      "branch": "*",
+      "globs": [
+        "docs/sdlc/evidence/**"
+      ],
+      "main_state": [
+        "differs"
+      ],
+      "class": "DROPPED",
+      "reason": "Evidence file at a path where main holds different accepted evidence (for example docs/sdlc/evidence/qa lane outputs). Same path exists on main with different content, so copying it would overwrite or conflict with main.",
+      "lands_in": null,
+      "flags": [
+        "CONFLICT_WITH_MAIN"
+      ]
+    },
+    {
+      "rule_id": "R08-sdlc-docs-new",
+      "branch": "*",
+      "globs": [
+        "docs/sdlc/**",
+        "docs/*.md"
+      ],
+      "main_state": [
+        "absent"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "S2/S3/S4 design and plan documents outside U3 scope; kept as design reference.",
+      "lands_in": null,
+      "exclude": [
+        "docs/sdlc/evidence/**"
+      ]
+    },
+    {
+      "rule_id": "R09-sdlc-docs-conflict",
+      "branch": "*",
+      "globs": [
+        "docs/sdlc/**",
+        "docs/*.md"
+      ],
+      "main_state": [
+        "differs"
+      ],
+      "class": "DROPPED",
+      "reason": "Older version of a plan/design/state document that main already holds in a newer form. Same path exists on main with different content, so copying it would overwrite or conflict with main.",
+      "lands_in": null,
+      "exclude": [
+        "docs/sdlc/evidence/**"
+      ],
+      "flags": [
+        "CONFLICT_WITH_MAIN"
+      ]
+    },
+    {
+      "rule_id": "R10-reports-new",
+      "branch": "*",
+      "globs": [
+        "reports/**"
+      ],
+      "main_state": [
+        "absent"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Generated HTML status snapshots; regenerable artifacts, not landed.",
+      "lands_in": null
+    },
+    {
+      "rule_id": "R11-reports-conflict",
+      "branch": "*",
+      "globs": [
+        "reports/**"
+      ],
+      "main_state": [
+        "differs"
+      ],
+      "class": "DROPPED",
+      "reason": "Older generated report at a path main regenerated since. Same path exists on main with different content, so copying it would overwrite or conflict with main.",
+      "lands_in": null,
+      "flags": [
+        "CONFLICT_WITH_MAIN"
+      ]
+    },
+    {
+      "rule_id": "R12-docs-qa-new",
+      "branch": "*",
+      "globs": [
+        "docs/qa/**"
+      ],
+      "main_state": [
+        "absent"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Branch-era fixture/seeded-failure/API inventory data bound to the old registry schema and old test selectors; main keeps its own catalog in tests/qa/seeded_failure/catalog.json. Reference only.",
+      "lands_in": null,
+      "reference_for": "U3-6"
+    },
+    {
+      "rule_id": "R13-docs-qa-conflict",
+      "branch": "*",
+      "globs": [
+        "docs/qa/**"
+      ],
+      "main_state": [
+        "differs"
+      ],
+      "class": "DROPPED",
+      "reason": "Old categories registry (small, old schema) versus main's schema 2 registry at the same path. Same path exists on main with different content, so copying it would overwrite or conflict with main.",
+      "lands_in": null,
+      "flags": [
+        "CONFLICT_WITH_MAIN",
+        "DUPLICATES_MAIN_TOOLS_QA"
+      ]
+    },
+    {
+      "rule_id": "R14-qa-pass-line",
+      "branch": "*",
+      "globs": [
+        "tools/qa/pytest_pass_plugin.py",
+        "tests/qa/test_s4_pass_line_parser.py"
+      ],
+      "main_state": [
+        "absent"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Trusted PASS-line emitter and its parser test. The parser test needs the quiet-dot change in tools/vst/contracts.py, which conflicts with main and alters a hash-pinned parser; main already has a no-skip verdict in tools/qa/gate_check.py. Re-derive in U3-5 if needed.",
+      "lands_in": null,
+      "reference_for": "U3-5",
+      "flags": [
+        "DUPLICATES_MAIN_TOOLS_QA"
+      ]
+    },
+    {
+      "rule_id": "R15-qa-seeded-fixtures",
+      "branch": "*",
+      "globs": [
+        "tools/qa/fixtures.py",
+        "tests/qa/test_s4_seeded_failure*.py"
+      ],
+      "main_state": [
+        "absent"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Hash-bound seeded-failure fixture validator and tests built on the branch registry; main has its own accepted seeded-failure catalog and tests. Compatibility with main's registry is unproven, so conservative class.",
+      "lands_in": null,
+      "reference_for": "U3-6",
+      "flags": [
+        "DUPLICATES_MAIN_TOOLS_QA"
+      ]
+    },
+    {
+      "rule_id": "R16-qa-matrix",
+      "branch": "*",
+      "globs": [
+        "tools/qa/matrix.py"
+      ],
+      "main_state": [
+        "absent"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Exact-head platform-matrix report validator against the branch registry and report formats; unproven against main's report envelope, so conservative class.",
+      "lands_in": null,
+      "reference_for": "U3-4",
+      "flags": [
+        "DUPLICATES_MAIN_TOOLS_QA"
+      ]
+    },
+    {
+      "rule_id": "R17-qa-wsl-root",
+      "branch": "*",
+      "globs": [
+        "tools/qa/**"
+      ],
+      "main_state": [
+        "absent"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "WSL snapshot transfer, root harness and requirements.in for the WSL runtime path; runtime-bootstrap scope, not U3.",
+      "lands_in": null,
+      "exclude": [
+        "tools/qa/pytest_pass_plugin.py",
+        "tools/qa/fixtures.py",
+        "tools/qa/matrix.py"
+      ]
+    },
+    {
+      "rule_id": "R18-qa-tools-conflict",
+      "branch": "*",
+      "globs": [
+        "tools/qa/**"
+      ],
+      "main_state": [
+        "differs"
+      ],
+      "class": "DROPPED",
+      "reason": "Older branch implementation of modules main already ships and has accepted (registry, runner, report, plugin, dependencies, WSL scripts). Landing it would silently duplicate or regress main's tools/qa. Same path exists on main with different content, so copying it would overwrite or conflict with main.",
+      "lands_in": null,
+      "flags": [
+        "CONFLICT_WITH_MAIN",
+        "DUPLICATES_MAIN_TOOLS_QA"
+      ]
+    },
+    {
+      "rule_id": "R19-qa-tests-new",
+      "branch": "*",
+      "globs": [
+        "tests/qa/**"
+      ],
+      "main_state": [
+        "absent"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Tests for the old branch runner, registry and worker; they target code that is not landed.",
+      "lands_in": null,
+      "exclude": [
+        "tests/qa/test_s4_pass_line_parser.py",
+        "tests/qa/test_s4_seeded_failure*.py"
+      ]
+    },
+    {
+      "rule_id": "R20-vst-tests-new",
+      "branch": "*",
+      "globs": [
+        "tests/vst/**"
+      ],
+      "main_state": [
+        "absent"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "S2/S3/S5 tests for unlanded VST changes; outside U3 scope.",
+      "lands_in": null
+    },
+    {
+      "rule_id": "R21-vst-tests-conflict",
+      "branch": "*",
+      "globs": [
+        "tests/vst/**"
+      ],
+      "main_state": [
+        "differs"
+      ],
+      "class": "DROPPED",
+      "reason": "Branch edits of S2/S3 VST tests matching the branch's own tools/vst changes. Same path exists on main with different content, so copying it would overwrite or conflict with main.",
+      "lands_in": null,
+      "flags": [
+        "CONFLICT_WITH_MAIN"
+      ]
+    },
+    {
+      "rule_id": "R22-vst-tools-new",
+      "branch": "*",
+      "globs": [
+        "tools/vst/**"
+      ],
+      "main_state": [
+        "absent"
+      ],
+      "class": "EVIDENCE_ONLY",
+      "reason": "Worker capability-drop helper and S5 source-tree code; S2/S3/S5 scope, not U3.",
+      "lands_in": null
+    },
+    {
+      "rule_id": "R23-vst-tools-conflict",
+      "branch": "*",
+      "globs": [
+        "tools/vst/**"
+      ],
+      "main_state": [
+        "differs"
+      ],
+      "class": "DROPPED",
+      "reason": "Branch edits of VST runner/store/gate/pilot/dispatch modules; S2/S3/S5 scope and main's tools/vst is accepted and newer. Same path exists on main with different content, so copying it would overwrite or conflict with main.",
+      "lands_in": null,
+      "flags": [
+        "CONFLICT_WITH_MAIN"
+      ]
+    }
+  ]
+}
