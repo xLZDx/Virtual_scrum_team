@@ -2295,3 +2295,7 @@ Kind: FAILURE. Facts: GPT-PM found that a header-only diff block and bytes after
 ## 2026-11-11 SUCCESS registry regenerated again
 
 The registry follows every change to a registered test file; regenerate after each such commit. Rule: run build_registry --write after the commit that touches tests.
+
+## 2026-11-11 SHORTCOMING reviewers missed under-specified diff blocks
+
+Three reviewers tested mismatched paths but none tried a header-only block or a binary payload; GPT-PM found it. Layer: reviewers and author tests. Rule: for every parser, ask what the smallest well-formed-looking input is and test that it is rejected.

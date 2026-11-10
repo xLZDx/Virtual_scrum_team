@@ -3057,3 +3057,7 @@ Decision: worker_gate.py now requires every diff block to carry a complete chang
 ## 2026-11-11 U5-1 registry regenerated after the GPT-PM fix
 
 Regenerated docs/qa/categories.json after the parser fix commit so the registry matches the committed test file. Tests NOT_RUN.
+
+## 2026-11-11 U5-1 GPT-PM approval
+
+GPT-PM APPROVE (0 BLOCKER, 0 MAJOR) for U5-1 at head 45f6f0d after one MAJOR round (incomplete diff blocks); reply 419b86f6-537d-5959-a07b-ac86e26f4129, request e7522f18-ee4d-49c9-811e-eeb63960898b. Tests NOT_RUN (operator ban). Limits kept: no OS sandbox, no process containment, caller-supplied diff bytes.
