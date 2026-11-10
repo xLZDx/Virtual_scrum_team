@@ -2950,3 +2950,6 @@ Read-only inventory of five pushed branches (docs/sdlc/u3/BRANCH_INVENTORY.md, b
 
 ## 2026-11-10 U3-1 review remediation
 Python review (2 MAJOR, 7 MINOR) fixed in one batch: --inventory now compares the whole header (rules hash, tips, merge-bases, per-class totals; STALE_INVENTORY on any drift; tested by flipping LAND=0 to 1); main_state split into identical / differs_conflict / differs_clean / absent_new / absent_removed_on_main / deleted_in_branch; the 12 clean-edit files were read and each got its own EVIDENCE_ONLY rule (plan documents, 8 re-stamped reports, tools/vst/sandbox.py POSIX hardening, outside U3); git calls bounded and SHA-pinned; typed errors for bad rules, empty branch, dead glob. LAND stays 0 on all five branches. Added docs/sdlc/u3/MAIN_COVERS_U3_3_TO_U3_6.md: U3-3, U3-4, U3-6 are implemented on main by S4 (re-earned counts NOT_RUN); U3-5 has the no-skip verifier in tools/qa/gate_check.py but it is advisory and not wired into tools/vst/gate.py (real work); no executor interface exists (U3-2 real work). Decision (mine, reversible): U3-3, U3-4, U3-6 get no new code; they are recorded as satisfied by S4 with the re-earn NOT_RUN. U3-5 keeps its wiring work.
+
+## 2026-11-10 U3-1 scope note
+Added docs/sdlc/u3/u3-1-gptpm-scope-note.md; GPT-PM review requested, base fa26e3c.
