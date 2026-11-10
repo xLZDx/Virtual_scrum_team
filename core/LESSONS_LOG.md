@@ -2208,3 +2208,6 @@ Kind: SHORTCOMING. Facts: the first two versions verified the header only; GPT-P
 
 ## 2026-11-10 U3-1 verification note
 Kind: NEUTRAL.
+
+## 2026-11-10 U3-1 approved
+Kind: SUCCESS. Facts: reviewer pass plus two GPT-PM rounds. Rule: render generated documents in the checker.

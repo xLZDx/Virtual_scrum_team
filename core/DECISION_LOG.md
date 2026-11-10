@@ -2959,3 +2959,6 @@ GPT-PM reply d37d86c4: freshness check covered only the header. Fixed: the check
 
 ## 2026-11-10 U3-1 verification note
 Appended verification round to the scope note.
+
+## 2026-11-10 U3-1 GPT-PM APPROVE
+GPT-PM request d6892070 on base cafcb1a: APPROVE (round 1 MAJOR on whole-body freshness fixed). U3-1 accepted on static review plus the checker own runs; no pytest. Next: U3-2 executor interface; U3-3, U3-4, U3-6 recorded as satisfied by S4 (re-earn NOT_RUN); U3-5 gate wiring after U3-2.
