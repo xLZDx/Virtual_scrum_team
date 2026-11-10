@@ -221,12 +221,26 @@ def _is_protected(path: str, caller_keys: list[tuple[str, ...]]) -> bool:
 
 
 # ---------------------------------------------------------------------------- diff text
+def _block_complete(block: dict) -> bool:
+    """A block must carry a recognised complete change, not only a header or an index line."""
+    kinds = {kind for kind, _ in block["modes"]}
+    return bool(
+        block["hunks"] > 0
+        or all(block["rename"]) or all(block["copy"])
+        or {"old mode", "new mode"} <= kinds
+        or "new file mode" in kinds or "deleted file mode" in kinds
+        or block["binary"]
+    )
+
+
 def parse_diff_paths(diff_bytes: bytes) -> dict:
     """Validate the whole diff as git diff grammar and extract path facts.
 
     Accepted grammar only: optional blank lines, then `diff --git` blocks made of extended
     header lines (modes, index, similarity, rename/copy), optional `---`/`+++`, hunks whose
-    line counts match their `@@` header, `Binary files ... differ`, or `GIT binary patch`.
+    line counts match their `@@` header, or `Binary files ... differ` (path-touch only).
+    Every block needs a complete change: a hunk, a rename/copy pair, a mode-only change, a
+    new/deleted file mode, or a Binary marker. `GIT binary patch` is unsupported (raises).
     Anything else (preamble text, stray `---`/`+++`, `diff --cc`, truncated or over-long
     hunks, quoted paths, oversize input) raises _Blocked.
     """
@@ -258,14 +272,15 @@ def parse_diff_paths(diff_bytes: bytes) -> dict:
                 raise _Blocked("hunk body is longer than its header says")
             if old_rem == 0 and new_rem == 0:
                 state = "between"
-            continue
-        if state == "binary" and not line.startswith("diff --git "):
+                blocks[-1]["hunks"] += 1
             continue
         if len(line) > MAX_HEADER_LINE:
             raise _Blocked("header line exceeds the size cap")
         if line.startswith("diff --git "):
             if state in ("minus", "post"):
                 raise _Blocked("block ends after --- without hunks")
+            if blocks and not _block_complete(blocks[-1]):
+                raise _Blocked("diff block carries no complete change (header-only block)")
             rest = line[len("diff --git "):]
             if '"' in rest or not rest.startswith("a/"):
                 raise _Blocked("diff header is quoted or not in a/ b/ form")
@@ -273,7 +288,8 @@ def parse_diff_paths(diff_bytes: bytes) -> dict:
             equal = [p for p in pairs if p[0] == p[1]]
             pair = pairs[0] if len(pairs) == 1 else (equal[0] if len(equal) == 1 else None)
             blocks.append({"pair": pair, "rename": [None, None], "copy": [None, None],
-                           "modes": [], "minus": None, "plus": None})
+                           "modes": [], "minus": None, "plus": None,
+                           "hunks": 0, "binary": False})
             state = "head"
             continue
         if state == "pre":
@@ -300,9 +316,10 @@ def parse_diff_paths(diff_bytes: bytes) -> dict:
                 block["minus"] = line[4:]
                 state = "minus"
             elif _BINARY_FILES.fullmatch(line):
+                block["binary"] = True
                 state = "done"
             elif line == "GIT binary patch":
-                state = "binary"
+                raise _Blocked("GIT binary patch payloads are unsupported")
             else:
                 raise _Blocked("unrecognised diff header line")
             continue
@@ -320,11 +337,17 @@ def parse_diff_paths(diff_bytes: bytes) -> dict:
                 raise _Blocked("line outside any recognised diff block grammar")
             old_rem = int(match.group(2)) if match.group(2) is not None else 1
             new_rem = int(match.group(4)) if match.group(4) is not None else 1
-            state = "between" if old_rem == 0 and new_rem == 0 else "hunk"
+            if old_rem == 0 and new_rem == 0:
+                state = "between"
+                block["hunks"] += 1
+            else:
+                state = "hunk"
             continue
         raise _Blocked("line outside any recognised diff block grammar")
     if state in ("hunk", "minus", "post") or not blocks:
         raise _Blocked("diff is empty, truncated or has no diff header")
+    if not _block_complete(blocks[-1]):
+        raise _Blocked("diff block carries no complete change (header-only block)")
 
     paths: set[str] = set()
     renames: list[tuple[str, str]] = []

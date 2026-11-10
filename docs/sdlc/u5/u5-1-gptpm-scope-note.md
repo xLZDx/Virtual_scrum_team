@@ -26,3 +26,11 @@ Three read-only reviewers reported; one batch fixed (static only, tests NOT_RUN)
 - MAJOR: isolation properties derived from caller strings were reported VERIFIED. New status CALLER_ASSERTED, a real two-root existence and disjointness check, worktree HEAD recorded and required, link walk counts inspected components and requires existing paths.
 - MINOR: evidence path comparison uses `sorted(set(changed))`; reason details are `ascii()` cut to 200; docstrings and docs corrected.
 - The test file was not registered: `tools/qa/build_registry.py` now maps it as functional. `docs/qa/categories.json` is generated (per-test entries, `source_commit` and file sha256 that exist only after the test file is committed) and was NOT updated by hand; it must be regenerated with the generator after commit.
+
+## GPT-PM verification round
+
+GPT-PM review of 6955e84 returned one MAJOR: `parse_diff_paths` accepted incomplete blocks (a lone `diff --git` header; bytes after `GIT binary patch` ignored). Fixed (static only, tests NOT_RUN):
+- Every block now needs a complete change (a hunk, a rename/copy pair, `old mode`+`new mode`, `new file mode`/`deleted file mode`, or a `Binary files ... differ` line), checked at each block boundary and at end of input; header-only and index-only blocks are BLOCKED `DIFF_UNPARSABLE`.
+- `GIT binary patch` is unsupported: BLOCKED `DIFF_UNPARSABLE` ("GIT binary patch payloads are unsupported"); the opaque-payload state is removed. `Binary files differ` is a path-touch only.
+- Direct regressions checked by reading: mode-only, rename-only, new/deleted file, symlink and submodule tests still hold a complete change.
+- Tests added: header-only, header+index-only, last block header-only after a good block, header-only first block, binary patch truncated/with trailing garbage, mode-only and rename-only accepted, Binary marker accepted and refused when out of scope.

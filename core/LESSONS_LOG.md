@@ -2288,3 +2288,6 @@ Kind: FAILURE. Facts: reviewers found that the .git default made every call BLOC
 ## 2026-11-11 SUCCESS registry regenerated in a follow-up commit
 
 The registry needs the committed test file, so it is regenerated in its own commit right after. Rule: add new test files to build_registry.py maps in the task commit and regenerate right after.
+
+## 2026-11-11 U5-1 GPT-PM incomplete-block finding
+Kind: FAILURE. Facts: GPT-PM found that a header-only diff block and bytes after a binary patch marker were accepted; the three reviewers missed it. Root cause: reviewers and tests checked mismatch cases, not under-specified blocks. Missed by: author and three reviewers; caught by GPT-PM. Next time: for any parser, ask what the smallest accepted input is and test it, plus every terminal state at end of input.

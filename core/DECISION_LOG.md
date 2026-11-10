@@ -3049,3 +3049,7 @@ Decision: protected-path matching in worker_gate.py is by case-folded component 
 ## 2026-11-11 U5-1 QA registry regenerated
 
 Regenerated docs/qa/categories.json with tools.qa.build_registry --write after the test file was committed (27b2ecc); the registry now lists tests/vst/test_u5_worker_gate.py as functional. Tests NOT_RUN.
+
+## 2026-11-11 U5-1 GPT-PM verification round
+
+Decision: worker_gate.py now requires every diff block to carry a complete change (hunk, rename/copy pair, mode-only, new/deleted file mode, or Binary marker) and treats `GIT binary patch` as unsupported (BLOCKED). Binary-files markers are path-touch only. Tests NOT_RUN.

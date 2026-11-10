@@ -278,6 +278,73 @@ def test_more_than_128_paths_is_blocked(tmp_path):
     assert codes(verdict) == ["MALFORMED_INPUT"]
 
 
+HEADER = b"diff --git a/src/app.py b/src/app.py\n"
+INDEX = b"index 1111111..2222222 100644\n"
+
+
+@pytest.mark.parametrize("diff", [
+    HEADER,
+    HEADER + INDEX,
+    diff_for("src/app.py") + HEADER,
+    diff_for("src/app.py") + HEADER + INDEX,
+    HEADER + b"similarity index 100%\n",
+    HEADER + b"old mode 100644\n",
+    HEADER + b"--- a/src/app.py\n",
+])
+def test_incomplete_blocks_are_blocked_with_the_header_only_reason(tmp_path, diff):
+    verdict = run(tmp_path, diff=diff)
+    assert verdict.verdict == "BLOCKED"
+    assert codes(verdict)[0] == "DIFF_UNPARSABLE"
+    assert verdict.reasons[0][1] in ("diff block carries no complete change (header-only block)",
+                                     "diff is empty, truncated or has no diff header")
+
+
+def test_header_only_first_block_before_a_good_block_is_blocked(tmp_path):
+    verdict = run(tmp_path, diff=HEADER + diff_for("src/app.py"))
+    assert verdict.verdict == "BLOCKED"
+    assert verdict.reasons == (("DIFF_UNPARSABLE", "diff block carries no complete change (header-only block)"),)
+
+
+@pytest.mark.parametrize("diff", [
+    HEADER + INDEX + b"GIT binary patch\n",
+    HEADER + INDEX + b"GIT binary patch\nliteral 3\nzcmZQz\n",
+    HEADER + INDEX + b"GIT binary patch\nliteral 3\nzcmZQz\n\ngarbage after the payload\n",
+    HEADER + INDEX + b"GIT binary patch\nliteral 0\nHcmV?d00001\n\ndiff --git a/src/app.py b/src/app.py\n",
+])
+def test_git_binary_patch_is_unsupported_and_blocked(tmp_path, diff):
+    verdict = run(tmp_path, diff=diff)
+    assert verdict.verdict == "BLOCKED"
+    assert verdict.reasons == (("DIFF_UNPARSABLE", "GIT binary patch payloads are unsupported"),)
+
+
+def test_mode_only_block_is_accepted(tmp_path):
+    diff = HEADER + b"old mode 100644\nnew mode 100755\n"
+    assert run(tmp_path, diff=diff).verdict == "ACCEPTED"
+
+
+def test_rename_only_block_is_accepted(tmp_path):
+    diff = (b"diff --git a/src/old.py b/src/app.py\nsimilarity index 100%\n"
+            b"rename from src/old.py\nrename to src/app.py\n")
+    verdict = run(tmp_path, changed=("src/old.py", "src/app.py"), allowed=("src/old.py", "src/app.py"), diff=diff,
+                  isolation=make_isolation(tmp_path, missing={"old.py"}))
+    assert verdict.verdict == "ACCEPTED"
+
+
+def test_binary_files_differ_marker_is_accepted_as_a_path_touch(tmp_path):
+    diff = HEADER + INDEX + b"Binary files a/src/app.py and b/src/app.py differ\n"
+    verdict = run(tmp_path, diff=diff)
+    assert verdict.verdict == "ACCEPTED"
+    assert verdict.diff_evidence["changed_paths"] == ["src/app.py"]
+
+
+def test_binary_marker_for_an_out_of_scope_path_is_still_refused(tmp_path):
+    diff = (b"diff --git a/src/other.py b/src/other.py\nindex 1111111..2222222 100644\n"
+            b"Binary files a/src/other.py and b/src/other.py differ\n")
+    verdict = run(tmp_path, changed=("src/other.py",), diff=diff)
+    assert verdict.verdict == "REFUSED"
+    assert ("OUT_OF_SCOPE_PATH", shown("src/other.py")) in verdict.reasons
+
+
 # ------------------------------------------------------------------ REFUSED outranks BLOCKED
 def test_refusal_outranks_a_blocking_isolation_reason(tmp_path):
     verdict = run(tmp_path, changed=("src/other.py",), isolation=make_isolation(tmp_path, network="no"))
