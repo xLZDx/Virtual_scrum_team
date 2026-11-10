@@ -2128,3 +2128,6 @@ Kind: NEUTRAL.
 
 ## 2026-11-10 U2-4 approved
 Kind: SUCCESS. Facts: gate rules passed GPT-PM; one MAJOR in the evidence builder fixed in one narrow round. Rule: see U2-4 pin-check verdict set entry.
+
+## 2026-11-10 U2-3 receipt builder
+Kind: NEUTRAL (review pending).

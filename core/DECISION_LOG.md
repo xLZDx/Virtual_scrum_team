@@ -2880,3 +2880,6 @@ Appended verification round to the scope note.
 
 ## 2026-11-10 U2-4 GPT-PM APPROVE
 GPT-PM reply bd899066 on base 8c145d3 to 97cfa9...: APPROVE (verification of the pin-check fix). U2-4 accepted (static review, tests NOT_RUN). Next: U2-3 receipt builder.
+
+## 2026-11-10 U2-3 implemented (static only, tests NOT_RUN)
+tools/vst/receipt_builder.py build_static_receipt returns an unsigned v3 StaticAnalysis receipt body plus analyzer payload from a validated uc result; bridge facts computed once and copied into both; refuses dirty tree, uncovered required paths, secret-like values (router.has_secret), analyzer refusal; FINDINGS role gives INCONCLUSIVE never PASS; signing stays in analyzer_authority. Review pending.

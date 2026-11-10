@@ -225,6 +225,32 @@ check. An empty `findings` list never implies full coverage. `derive_result` is 
 returns PASS only for FULL coverage with no unsupported rules. V3 signatures use the distinct domain
 label `RECEIPT_V3_LABEL = b"vst-receipt-v3\0"`.
 
+### v3 StaticAnalysis receipt builder (sprint U2, task U2-3)
+
+`tools/vst/receipt_builder.py` exposes one function, `build_static_receipt(*, role_result, role,
+candidate_head, reviewed_paths, required_paths, snapshot_root, adapter_result, manifest_sha256, epoch,
+run_id, nonce, receipt_id, task_id, slot, attempt, prev_receipt_sha256, runner_id, role_sha256,
+resolved_model, invocation_id, created_at, covered_acceptance, limits=Limits())`. It returns
+`(receipt_body, analyzer_payload)`, both UNSIGNED: the body is the exact v3 StaticAnalysis receipt field set
+minus `signature` (sign it with `RECEIPT_V3_LABEL`), the payload is the input of
+`analyzer_authority.sign_analyzer_evidence`. It reuses `bridge_facts_from_role_result` (called once; independent
+deep copies of the same dict go into both outputs), `static_analysis_fields`, `assemble_analyzer_payload`,
+`source_tree_digest` and `derive_result`. It never signs, never calls a model and uses no network.
+`required_paths` is the diff-gate changed-path list.
+
+Refusals (`ContractError`, message starts with the code): `RB_ARG_INVALID` (scalar shape, hex lengths,
+epoch/attempt, prev hash null iff attempt 1, covered_acceptance); `RB_PATHS_INVALID` (reviewed/required paths not
+a non-empty unique list of plain repo-relative paths); `RB_REQUIRED_PATH_UNCOVERED` (a required path is not in
+`reviewed_paths`); `RB_SECRET_LIKE_VALUE` (`tools.uc.router.has_secret` matches any string value in the role
+result, the caller's text, or the produced receipt/payload; this can also reject a path such as
+`token_validation.py`, which is fail-closed by design); `RB_BRIDGE_REFUSED` (any U2-1 bridge refusal);
+`RB_TREE_NOT_CLEAN` (the adapter's `source_tree_digest` refused: HEAD differs from `candidate_head`, tracked or
+untracked changes anywhere in the tree, or a reviewed path that is untracked or not a regular file);
+`RB_ANALYZER_REFUSED` (`assemble_analyzer_payload` refused: outcome not OK/PARTIAL, unknown binding, head
+mismatch); `RB_NON_CLEAN_PASS` (defensive). A non-CLEAN (FINDINGS) role entry is not refused but yields result
+INCONCLUSIVE, never PASS; for a CLEAN entry the result is whatever `derive_result` computes. The builder does not
+run `validate_receipt` (the signature is absent) and does not compare `reviewed_paths_sha256` with any gate pin.
+
 ## Receipt (`validate_receipt`)
 
 Common fields: `manifest_sha256` (64 hex, REQUIRED, must equal `manifest_sha256(manifest)` at the gate); a receipt whose `slot` is `SUPERVISOR_SLOT` must be a Documentation receipt; `receipt_id`, `task_id`, `slot` (matches a manifest slot or `SUPERVISOR_SLOT`), `runner_id`, `resolved_model`, `invocation_id`, `created_at` are non-empty str; `receipt_type` in RECEIPT_TYPES; `attempt` int >= 1; `prev_receipt_sha256` is null iff attempt == 1, else 64 hex; `candidate_head` 40 hex; `epoch` int >= 1; `role_sha256` 64 hex; `result` in RESULT; `signature` 64 hex.
