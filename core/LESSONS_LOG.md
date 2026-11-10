@@ -2107,3 +2107,6 @@ Kind: SHORTCOMING. Facts: author function accepted any iterable and dropped role
 
 ## 2026-11-10 U2-1 scope note
 Kind: NEUTRAL. Routine scope note for the GPT-PM review.
+
+## 2026-11-10 U2-1 approved
+Kind: SUCCESS. Facts: reviewer pass (3 agents) before GPT-PM left GPT-PM no findings. Why it worked: reviewers caught the unvalidated-bridge MAJOR first. Rule: keep the reviewer batch before the GPT-PM request.

@@ -2859,3 +2859,6 @@ Reviewers (python, security, functional-test) found 1 MAJOR and several MINOR; f
 
 ## 2026-11-10 U2-1 scope note for GPT-PM
 Added docs/sdlc/evidence/u2-1-gptpm-scope-note.md; GPT-PM review requested for base bcdd25f to HEAD.
+
+## 2026-11-10 U2-1 GPT-PM APPROVE
+GPT-PM reply d70ad516 on base bcdd25f to ac9eb4a: APPROVE, 0 BLOCKER, 0 MAJOR (static review, tests NOT_RUN). U2-1 accepted. Next task: U2-4 gate refusals.
