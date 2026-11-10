@@ -26,10 +26,12 @@ import threading
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Protocol, runtime_checkable
 
-from tools.qa.registry import ALL_CATEGORIES
+from tools.qa.registry import ALL_CATEGORIES, RegistryError, git_executable
+from tools.uc import aeve_probe
 
 EXECUTOR_NATIVE = "vst-native"
 EXECUTOR_AEVE = "aeve-sandbox"
@@ -58,7 +60,7 @@ PASS_THROUGH_ENV = ("PATH", "SYSTEMROOT", "SystemRoot", "WINDIR", "TEMP", "TMP",
 
 _HEX_HEAD = re.compile(r"[0-9a-f]{40}\Z")
 _HEX64 = re.compile(r"[0-9a-f]{64}\Z")
-_DIGEST = re.compile(r"(?:sha256:)?[0-9a-f]{64}\Z")
+_PROFILE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.@+/-]{0,239}\Z")
 _CODE = re.compile(r"[A-Z0-9_]{1,64}\Z")
 
 
@@ -114,8 +116,12 @@ def thaw(value: Any) -> Any:
 
 
 def canonical_sha256(value: Any) -> str:
-    payload = json.dumps(thaw(value), sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    """sha256 of the canonical JSON (sorted keys, compact, ASCII-escaped). Never raises anything but ExecutorError."""
+    try:
+        payload = json.dumps(thaw(value), sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+        return hashlib.sha256(payload.encode("ascii")).hexdigest()
+    except (TypeError, ValueError, RecursionError, MemoryError, UnicodeError) as exc:
+        raise ExecutorError("REPORT_INVALID", f"record is not canonical JSON ({type(exc).__name__})") from None
 
 
 # ---------------------------------------------------------------- the envelope
@@ -138,6 +144,8 @@ class ExecutorReport:
     failed_ids: tuple[str, ...] | None
     uncollected_ids: tuple[str, ...] | None
     xfail_ids: tuple[str, ...] | None
+    profile: str | None                     # tracked profile path (aeve-sandbox only)
+    candidate_attested: bool                # True: relies on the candidate's own runner/registry, unpinned
     artifact_digests: Mapping[str, str]
     not_run_reasons: Mapping[str, str]
     not_available: tuple[str, ...]          # exactly the NOT_AVAILABLE_FIELDS that are None
@@ -164,32 +172,39 @@ def build_report(
     native_verdict: str | None,
     native_reason_codes: tuple[str, ...] | list[str],
     raw_record: Mapping[str, Any],
+    profile: str | None = None,
+    candidate_attested: bool = False,
 ) -> ExecutorReport:
     """Assemble and strictly validate a report; not_available and the raw digest are computed here."""
     unknown = set(ids) - set(ID_FIELDS)
     if unknown:
         raise ExecutorError("REPORT_INVALID", f"unknown id field(s): {sorted(unknown)}")
-    values = {name: (None if ids.get(name) is None else tuple(ids[name])) for name in ID_FIELDS}
-    probe = {"head_after": head_after, "exit_code": exit_code, **values}
-    not_available = tuple(name for name in NOT_AVAILABLE_FIELDS if probe[name] is None)
-    report = ExecutorReport(
-        category=category,
-        executor_id=executor_id,
-        expected_head=expected_head,
-        candidate_head=candidate_head,
-        head_after=head_after,
-        result=result,
-        exit_code=exit_code,
-        artifact_digests=MappingProxyType(dict(artifact_digests)),
-        not_run_reasons=MappingProxyType(dict(not_run_reasons)),
-        not_available=not_available,
-        reasons=tuple(reasons),
-        native_verdict=native_verdict,
-        native_reason_codes=tuple(native_reason_codes),
-        raw_record_sha256=canonical_sha256(raw_record),
-        raw_record=freeze(raw_record),
-        **values,
-    )
+    try:
+        values = {name: (None if ids.get(name) is None else tuple(ids[name])) for name in ID_FIELDS}
+        probe = {"head_after": head_after, "exit_code": exit_code, **values}
+        not_available = tuple(name for name in NOT_AVAILABLE_FIELDS if probe[name] is None)
+        report = ExecutorReport(
+            category=category,
+            executor_id=executor_id,
+            expected_head=expected_head,
+            candidate_head=candidate_head,
+            head_after=head_after,
+            result=result,
+            exit_code=exit_code,
+            profile=profile,
+            candidate_attested=candidate_attested,
+            artifact_digests=MappingProxyType(dict(artifact_digests)),
+            not_run_reasons=MappingProxyType(dict(not_run_reasons)),
+            not_available=not_available,
+            reasons=tuple(reasons),
+            native_verdict=native_verdict,
+            native_reason_codes=tuple(native_reason_codes),
+            raw_record_sha256=canonical_sha256(raw_record),
+            raw_record=freeze(raw_record),
+            **values,
+        )
+    except (TypeError, ValueError, RecursionError, MemoryError) as exc:
+        raise ExecutorError("REPORT_INVALID", f"report could not be assembled ({type(exc).__name__})") from None
     validate_report(report)
     return report
 
@@ -237,8 +252,12 @@ def validate_report(report: Any) -> None:
     expected_na = tuple(name for name in NOT_AVAILABLE_FIELDS if getattr(report, name) is None)
     if tuple(report.not_available) != expected_na:
         raise _bad(f"not_available {report.not_available!r} differs from the None fields {expected_na!r}")
+    if report.profile is not None and not (isinstance(report.profile, str) and _PROFILE.fullmatch(report.profile)):
+        raise _bad("profile must be None or a canonical relative path starting with an alphanumeric character")
+    if not isinstance(report.candidate_attested, bool):
+        raise _bad("candidate_attested must be a bool")
     if not isinstance(report.artifact_digests, Mapping) or not all(
-        isinstance(k, str) and k and isinstance(v, str) and _DIGEST.fullmatch(v)
+        isinstance(k, str) and k and isinstance(v, str) and _HEX64.fullmatch(v)
         for k, v in report.artifact_digests.items()
     ):
         raise _bad("artifact_digests must map names to sha256 digests")
@@ -316,14 +335,30 @@ def judge(report: ExecutorReport) -> tuple[str, tuple[tuple[str, str], ...]]:
         if passed - expected:
             fail("UNKNOWN_ID", f"{len(passed - expected)} passed id(s) were not expected")
 
+    # Any executor that carries its own gate verdict must carry APPROVABLE; the native executor must carry one.
+    if report.native_verdict is not None and report.native_verdict != APPROVABLE:
+        fail("NATIVE_NON_APPROVING", f"native gate verdict is {report.native_verdict}")
     if report.executor_id == EXECUTOR_NATIVE:
-        if report.native_verdict != APPROVABLE:
-            fail("NATIVE_NON_APPROVING", f"native gate verdict is {report.native_verdict}")
+        if report.native_verdict is None:
+            fail("NATIVE_NON_APPROVING", "the native executor carried no gate verdict")
         if report.not_available:
             fail("NATIVE_FIELDS_MISSING", f"native record lacks {list(report.not_available)}")
 
     if reasons:
         return NON_APPROVING, tuple(reasons)
+    if report.executor_id == EXECUTOR_AEVE:
+        # Unconditional ceiling: AEVE returns no per-test accounting, whatever the envelope claims.
+        return COARSE_ONLY, (
+            ("COARSE_ONLY", "aeve-sandbox is capped at COARSE_ONLY: no per-id accounting, no registry binding"),
+        )
+    if report.candidate_attested:
+        # The native runner and registry came from the candidate itself; without BOTH caller pins
+        # (registry sha256 and tools/qa tree sha256) the record is candidate-attested only.
+        return COARSE_ONLY, (
+            ("NATIVE_CANDIDATE_ATTESTED",
+             "native record is candidate-attested: supply matching expected_registry_sha256 and "
+             "expected_runner_tree_sha256 to lift the cap"),
+        )
     missing_ids = [name for name in ID_FIELDS if name not in available]
     if missing_ids:
         return COARSE_ONLY, (
@@ -386,6 +421,31 @@ class ChildResult:
     timed_out: bool
     stdout_truncated: bool
     stderr_truncated: bool
+    pump_incomplete: bool = False   # a reader thread failed or did not finish: the capture cannot be trusted
+
+    @property
+    def output_incomplete(self) -> bool:
+        return self.stdout_truncated or self.stderr_truncated or self.pump_incomplete
+
+
+def assert_trusted_git(root: Path) -> None:
+    """Refuse unless the git the registry helpers will use is the first git on an absolute PATH entry
+    outside the candidate (aeve_probe._find_git style). shutil.which can also pick git from the current
+    directory on Windows, so the VST process must not run with cwd on the candidate and should be
+    started with `python -P`."""
+    trusted = aeve_probe._find_git(exclude=root)
+    if trusted is None:
+        raise ExecutorError("GIT_UNTRUSTED", "no git on an absolute PATH entry outside the candidate")
+    try:
+        used = git_executable()
+    except RegistryError:
+        raise ExecutorError("GIT_UNTRUSTED", "git cannot be resolved") from None
+
+    def norm(path: str) -> str:
+        return os.path.normcase(os.path.realpath(path))
+
+    if norm(used) != norm(trusted):
+        raise ExecutorError("GIT_UNTRUSTED", "registry git differs from the trusted PATH git")
 
 
 _TASKKILL = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "taskkill.exe")
@@ -406,15 +466,18 @@ def _kill_tree(process: subprocess.Popen) -> None:
 
 def _pump(stream: Any, cap: int, sink: list[bytes], flags: dict[str, bool], key: str) -> None:
     total = 0
-    while True:
-        chunk = stream.read(65536)
-        if not chunk:
-            return
-        total += len(chunk)
-        if total > cap:
-            flags[key] = True
-            return
-        sink.append(chunk)
+    try:
+        while True:
+            chunk = stream.read(65536)
+            if not chunk:
+                return
+            total += len(chunk)
+            if total > cap:
+                flags[key] = True
+                return
+            sink.append(chunk)
+    except (OSError, ValueError):
+        flags["pump_error"] = True
 
 
 def run_child(
@@ -431,7 +494,7 @@ def run_child(
             argv, cwd=cwd, env=dict(env), stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
         )
-    except OSError as exc:
+    except (OSError, ValueError) as exc:   # ValueError: embedded NUL in an argument or path
         raise ExecutorError("EXEC_FAILED", f"{type(exc).__name__}: {str(exc)[:160]}") from exc
     out: list[bytes] = []
     err: list[bytes] = []
@@ -463,4 +526,5 @@ def run_child(
         returncode=process.returncode, stdout=b"".join(out), stderr=b"".join(err),
         timed_out=timed_out, stdout_truncated=bool(flags.get("stdout")),
         stderr_truncated=bool(flags.get("stderr")),
+        pump_incomplete=bool(flags.get("pump_error")) or any(t.is_alive() for t in threads),
     )

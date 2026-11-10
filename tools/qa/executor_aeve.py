@@ -5,12 +5,14 @@ launched in the style of tools/uc/aeve_probe.py and tools/uc/adapter.py: `python
 the minimal environment from aeve_probe.build_child_env (AEVE src on PYTHONPATH, no bytecode, no user
 site), a neutral working directory outside the candidate, shell=False, wall-clock bound, output caps and
 process-tree kill. The AEVE pin check mirrors tools/uc/router.py: the probed AEVE head and matrix digest
-must equal the caller-supplied pin and the AEVE checkout must have no tracked changes.
+must equal the caller-supplied pin, and the AEVE checkout must have NO tracked changes and NO untracked
+source files (a missing count is a refusal). The probe and pin check run BEFORE the profile is read and
+again AFTER the child exits.
 
 No mutation run is ever performed or accepted. Before anything starts, the tracked profile is read and
-REFUSED unless max_mutants == 0 and mutation_paths == []; a result that nevertheless reports mutations
-is refused too. The envelope carries no per-test ids: every id field is NOT_AVAILABLE, so judge() can
-return COARSE_ONLY at best for this executor.
+REFUSED unless max_mutants == 0 and mutation_paths == []; a result that nevertheless reports mutations,
+or whose profile_sha256 differs from the vetted bytes, is refused too. The envelope carries no per-test
+ids: every id field is NOT_AVAILABLE and judge() caps this executor at COARSE_ONLY unconditionally.
 """
 
 from __future__ import annotations
@@ -24,8 +26,8 @@ from pathlib import Path
 from typing import Any
 
 from tools.qa.executor import (
-    EXECUTOR_AEVE, ExecutorError, ExecutorReport, build_report, loads_strict, require_category,
-    require_head, require_options, run_child,
+    EXECUTOR_AEVE, ExecutorError, ExecutorReport, assert_trusted_git, build_report, loads_strict,
+    require_category, require_head, require_options, run_child,
 )
 from tools.qa.registry import RegistryError, git_head, git_root, safe_git
 from tools.uc import aeve_probe
@@ -39,6 +41,7 @@ MAX_WALL_TIMEOUT_SECONDS = 60
 CHILD_GRACE_SECONDS = 180          # image/container setup and cleanup around AEVE's own wall bound
 CHILD_STDOUT_CAP = 64 * 1024       # AEVE prints ONE compact JSON line
 CHILD_STDERR_CAP = 64 * 1024
+CLEANUP_UNCONFIRMED = "container cleanup unconfirmed; inspect Docker for a leftover container"
 
 STATUSES = frozenset({"COMPLETE", "INVALID", "BLOCKED", "TIMEOUT", "CANCELLED", "FAILED", "NEEDS_REVIEW"})
 _REQUIRED_KEYS = frozenset({"schema_version", "status", "reason_code", "executed_project_code", "llm_calls"})
@@ -50,8 +53,9 @@ _ALLOWED_KEYS = _REQUIRED_KEYS | frozenset({
 _DIGEST_KEYS = ("profile_sha256", "bundle_sha256", "output_sha256", "result_sha256")
 _HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 _HEX40 = re.compile(r"[0-9a-f]{40}\Z")
+_IMAGE = re.compile(r"(?:sha256:)?([0-9a-f]{64})\Z")
 _CODE = re.compile(r"[A-Z0-9_]{1,64}\Z")
-_PROFILE_PATH = re.compile(r"[A-Za-z0-9_.@+/-]{1,240}\Z")
+_PROFILE_PATH = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.@+/-]{0,239}\Z")
 _REQUIRED_OPTIONS = ("profile", "aeve_pin")
 _OPTIONAL_OPTIONS = ("wall_timeout_seconds",)
 
@@ -60,7 +64,9 @@ _OPTIONAL_OPTIONS = ("wall_timeout_seconds",)
 
 def _profile_path(value: Any) -> str:
     if not isinstance(value, str) or not _PROFILE_PATH.fullmatch(value) or "\\" in value or ":" in value:
-        raise ExecutorError("PROFILE_INVALID", "profile must be a canonical repository-relative POSIX path")
+        raise ExecutorError(
+            "PROFILE_INVALID", "profile must be a canonical repository-relative POSIX path starting with [A-Za-z0-9]"
+        )
     if any(part in ("", ".", "..") for part in value.split("/")):
         raise ExecutorError("PROFILE_INVALID", "profile path must not contain empty, '.' or '..' parts")
     return value
@@ -72,7 +78,7 @@ def check_profile_bytes(raw: bytes) -> dict[str, Any]:
         raise ExecutorError("PROFILE_INVALID", "profile exceeds the size bound")
     try:
         profile = loads_strict(raw.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError, RecursionError):
+    except (UnicodeError, ValueError, RecursionError, MemoryError):
         raise ExecutorError("PROFILE_INVALID", "profile is not strict UTF-8 JSON") from None
     if not isinstance(profile, dict) or profile.get("schema_version") != PROFILE_SCHEMA:
         raise ExecutorError("PROFILE_INVALID", f"profile schema_version must be {PROFILE_SCHEMA}")
@@ -105,6 +111,33 @@ def _read_profile(root: Path, relative: str) -> bytes:
     return raw
 
 
+# ---------------------------------------------------------------- AEVE pin (mirrors tools/uc/router.py)
+
+def check_aeve_pin(record: dict[str, Any], pin: dict[str, Any]) -> None:
+    """Same rules as router.py: head and matrix digest equal the pin; no tracked changes; no untracked
+    source files; a missing count is a refusal."""
+    if pin["head"] != record.get("aeve_head") or pin["matrix_digest_sha256"] != (record.get("matrix") or {}).get(
+        "digest_sha256"
+    ):
+        raise ExecutorError("AEVE_PIN_MISMATCH", "AEVE head or matrix digest differs from the supplied pin")
+    tracked, untracked = record.get("tracked_dirty_paths"), record.get("untracked_source_paths")
+    if (
+        isinstance(tracked, bool) or not isinstance(tracked, int) or tracked != 0
+        or isinstance(untracked, bool) or not isinstance(untracked, int) or untracked != 0
+    ):
+        raise ExecutorError(
+            "AEVE_CHECKOUT_DIRTY", "the AEVE checkout has tracked changes or untracked source files (or counts are missing)"
+        )
+
+
+def _probe_and_check(aeve_root: Path, python: str, pin: dict[str, Any]) -> None:
+    try:
+        record = aeve_probe.probe(aeve_root, python=python)
+    except aeve_probe.AeveProbeError as exc:
+        raise ExecutorError("AEVE_PROBE_FAILED", f"{exc.reason}: {exc.detail}"[:200]) from None
+    check_aeve_pin(record, pin)
+
+
 # ---------------------------------------------------------------- envelope parsing and mapping
 
 def parse_envelope(stdout: bytes) -> dict[str, Any]:
@@ -116,7 +149,7 @@ def parse_envelope(stdout: bytes) -> dict[str, Any]:
         if len(lines) != 1:
             raise ValueError("expected exactly one JSON line")
         envelope = loads_strict(lines[0])
-    except (UnicodeDecodeError, ValueError, RecursionError):
+    except (UnicodeError, ValueError, RecursionError, MemoryError):
         raise ExecutorError("AEVE_BAD_OUTPUT", "output is not exactly one strict JSON line") from None
     if not isinstance(envelope, dict):
         raise ExecutorError("AEVE_BAD_OUTPUT", "output is not a JSON object")
@@ -138,7 +171,7 @@ def _validate_envelope(envelope: dict[str, Any]) -> None:
 
     if envelope["schema_version"] != RESULT_SCHEMA:
         raise violation(f"schema_version must be {RESULT_SCHEMA}")
-    if envelope["status"] not in STATUSES:
+    if not isinstance(envelope["status"], str) or envelope["status"] not in STATUSES:
         raise violation("unknown status")
     if not isinstance(envelope["reason_code"], str) or not _CODE.fullmatch(envelope["reason_code"]):
         raise violation("reason_code is not a well-formed code")
@@ -179,7 +212,7 @@ def _validate_envelope(envelope: dict[str, Any]) -> None:
 
 def report_from_envelope(
     envelope: dict[str, Any], *, category: str, expected_head: str, returncode: int,
-    head_after: str | None, profile_sha256: str | None,
+    head_after: str | None, profile_sha256: str | None, profile: str | None = None,
 ) -> ExecutorReport:
     """Pure mapping of a parsed AEVE envelope to ExecutorReport (no I/O, runs nothing)."""
     _validate_envelope(envelope)
@@ -187,22 +220,25 @@ def report_from_envelope(
     source_head = envelope.get("source_head")
     if source_head is not None and source_head != expected_head:
         raise ExecutorError("STALE_HEAD", "AEVE source_head differs from expected_head")
+    # Whatever the status, a profile hash AEVE reports must be the hash of the profile vetted for mutation exclusion.
+    if envelope.get("profile_sha256") is not None and envelope["profile_sha256"] != profile_sha256:
+        raise ExecutorError("PROFILE_HASH_MISMATCH", "AEVE reports a profile hash different from the vetted profile")
     if returncode == 0 and status != "COMPLETE":
         raise ExecutorError("AEVE_CONTRACT_VIOLATION", f"exit 0 with status {status}")
     notes: list[str] = [f"AEVE status {status}, reason {reason}"]
+    image = envelope.get("image_digest")
+    image_match = _IMAGE.fullmatch(image) if isinstance(image, str) else None
 
     if status == "COMPLETE":
         if envelope["executed_project_code"] is not True or source_head is None:
             raise ExecutorError("AEVE_CONTRACT_VIOLATION", "COMPLETE without executed project code or source_head")
         codes = envelope.get("baseline_exit_codes") or []
         runs = envelope.get("baseline_runs")
-        flat = [c for run in codes for c in run]
-        problems: list[str] = []
-        if any(c != 0 for c in flat):
+        if any(c != 0 for run in codes for c in run):
             result = "FAIL"
             notes.append("a baseline run exited non-zero")
         else:
-            result = "PASS"
+            problems: list[str] = []
             if not codes or runs != len(codes) or any(not run for run in codes):
                 problems.append("baseline exit codes are missing or incomplete")
             if returncode != 0:
@@ -211,16 +247,17 @@ def report_from_envelope(
                 problems.append("container cleanup is not confirmed AUTO_REMOVED")
             if any(not (isinstance(envelope.get(k), str) and _HEX64.fullmatch(envelope[k])) for k in _DIGEST_KEYS):
                 problems.append("result digests are missing or malformed")
-            if not envelope.get("image_digest"):
-                problems.append("image digest is missing")
+            if image_match is None:
+                problems.append("image digest is missing or not sha256:<64 hex>")
             if profile_sha256 is None or envelope.get("profile_sha256") != profile_sha256:
-                problems.append("profile_sha256 differs from the profile vetted for mutation exclusion")
+                problems.append("profile_sha256 is absent or differs from the profile vetted for mutation exclusion")
             if head_after != expected_head:
                 problems.append("HEAD after the run is not the expected head")
             if problems:
                 result = "INCONCLUSIVE"
                 notes.extend(problems)
             else:
+                result = "PASS"
                 notes.append("coarse result: tracked-profile baseline passed; per-id accounting is NOT_AVAILABLE")
     elif status == "INVALID":
         result = "NOT_RUN"
@@ -237,8 +274,8 @@ def report_from_envelope(
         key: envelope[key] for key in _DIGEST_KEYS
         if isinstance(envelope.get(key), str) and _HEX64.fullmatch(envelope[key])
     }
-    if envelope.get("image_digest"):
-        digests["image_digest"] = envelope["image_digest"]
+    if image_match is not None:
+        digests["image_digest"] = image_match.group(1)    # the sha256: prefix is stripped
     return build_report(
         category=category, executor_id=EXECUTOR_AEVE, expected_head=expected_head,
         candidate_head=source_head, head_after=head_after, result=result, exit_code=returncode,
@@ -246,13 +283,14 @@ def report_from_envelope(
         artifact_digests=digests,
         not_run_reasons={} if result == "PASS" else {"project-test": reason},
         reasons=notes, native_verdict=None, native_reason_codes=(), raw_record=envelope,
+        profile=profile, candidate_attested=False,
     )
 
 
 # ---------------------------------------------------------------- the executor
 
 class AeveSandboxExecutor:
-    """Executor B (`aeve-sandbox`): coarse only; id fields are NOT_AVAILABLE by construction."""
+    """Executor B (`aeve-sandbox`): coarse only; id fields are NOT_AVAILABLE and the verdict ceiling is COARSE_ONLY."""
 
     executor_id = EXECUTOR_AEVE
 
@@ -283,31 +321,29 @@ class AeveSandboxExecutor:
             root = git_root(repo_root)
             if root != Path(repo_root).resolve(strict=True):
                 raise ExecutorError("NOT_REPO_ROOT", "repo_root must be the repository root")
-            head = git_head(root)
+            assert_trusted_git(root)
+            if git_head(root) != expected_head:
+                raise ExecutorError("STALE_HEAD", "repository HEAD differs from expected_head; nothing was run")
         except RegistryError as exc:
             raise ExecutorError("REPO_UNUSABLE", str(exc)[:200]) from None
-        if head != expected_head:
-            raise ExecutorError("STALE_HEAD", "repository HEAD differs from expected_head; nothing was run")
 
-        # 1. Mutation exclusion is decided from the exact profile bytes AEVE will read, before any launch.
+        # 1. AEVE identity and pin first, before any candidate content is read.
+        _probe_and_check(self._aeve_root, self._python, pin)
+
+        # 2. Mutation exclusion is decided from the exact profile bytes AEVE will read, before any launch.
         raw_profile = _read_profile(root, relative)
         check_profile_bytes(raw_profile)
         profile_sha256 = hashlib.sha256(raw_profile).hexdigest()
-
-        # 2. AEVE identity and pin (same checks as tools/uc/router.py).
-        try:
-            record = aeve_probe.probe(self._aeve_root, python=self._python)
-        except aeve_probe.AeveProbeError as exc:
-            raise ExecutorError("AEVE_PROBE_FAILED", f"{exc.reason}: {exc.detail}"[:200]) from None
-        if pin["head"] != record["aeve_head"] or pin["matrix_digest_sha256"] != record["matrix"]["digest_sha256"]:
-            raise ExecutorError("AEVE_PIN_MISMATCH", "AEVE head or matrix digest differs from the supplied pin")
-        if record["tracked_dirty_paths"] != 0:
-            raise ExecutorError("AEVE_CHECKOUT_DIRTY", "the AEVE checkout has tracked changes")
 
         argv = [
             self._python, "-P", "-s", "-B", "-m", "aeve", "sandbox", "project-test",
             "--root", os.fspath(root), "--profile", relative, "--wall-timeout-seconds", str(wall),
         ]
+        try:
+            if git_head(root) != expected_head:       # immediately before launch
+                raise ExecutorError("STALE_HEAD", "HEAD moved before launch; nothing was run")
+        except RegistryError as exc:
+            raise ExecutorError("REPO_UNUSABLE", str(exc)[:200]) from None
         with tempfile.TemporaryDirectory(prefix="vst-aeve-exec-", ignore_cleanup_errors=True) as private:
             env = aeve_probe.build_child_env(self._aeve_root.resolve())
             env["LOCALAPPDATA"] = private      # same private state location as tools/uc/adapter.py
@@ -317,17 +353,20 @@ class AeveSandboxExecutor:
                 stdout_cap=CHILD_STDOUT_CAP, stderr_cap=CHILD_STDERR_CAP,
             )
         if child.timed_out:
-            raise ExecutorError("AEVE_CHILD_TIMEOUT", "AEVE exceeded its outer bound; process tree killed")
-        if child.stdout_truncated or child.stderr_truncated:
-            raise ExecutorError("AEVE_OUTPUT_TOO_LARGE", "AEVE output exceeded its cap")
+            raise ExecutorError("AEVE_CHILD_TIMEOUT", f"AEVE exceeded its outer bound; process tree killed; {CLEANUP_UNCONFIRMED}")
+        if child.output_incomplete:
+            raise ExecutorError("AEVE_OUTPUT_TOO_LARGE", f"AEVE output was truncated or incomplete; {CLEANUP_UNCONFIRMED}")
         if child.returncode is None:
-            raise ExecutorError("AEVE_NO_EXIT", "AEVE exit status is unknown")
-        envelope = parse_envelope(child.stdout)
+            raise ExecutorError("AEVE_NO_EXIT", f"AEVE exit status is unknown; {CLEANUP_UNCONFIRMED}")
+
+        # 3. Re-check AEVE identity/cleanliness and the candidate HEAD after the run.
+        _probe_and_check(self._aeve_root, self._python, pin)
         try:
             head_after = git_head(root)
         except RegistryError:
             head_after = None
+        envelope = parse_envelope(child.stdout)
         return report_from_envelope(
             envelope, category=category, expected_head=expected_head, returncode=child.returncode,
-            head_after=head_after, profile_sha256=profile_sha256,
+            head_after=head_after, profile_sha256=profile_sha256, profile=relative,
         )
