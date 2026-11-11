@@ -3085,3 +3085,7 @@ Regenerated docs/qa/categories.json because the U5-2 test file changed. Tests NO
 ## 2026-11-11 U5-2 GPT-PM approval
 
 GPT-PM APPROVE (0 BLOCKER, 0 MAJOR) for U5-2 at head 8639910 after one MAJOR round (attempted versus applied attribution); reply 614e783a-2f9d-5ce7-8fb8-57f5eb849909, request 3745919f-ff1e-475e-8227-408fbd5cca7f. Tests NOT_RUN, git commands NOT_EXECUTED. Stale-base guard stays on the VST side (operator choice); AEVE proposals carry no base identity.
+
+## 2026-11-11 U5-3 pipeline state and store migration
+
+Decision: the pipeline state is an additive extension of the store's SQLite file (nine `pl_` tables, own version in `pl_schema_version`, store `SCHEMA_VERSION` 7 unchanged) so no existing table, API or test changes. Every mutating call is a step with the epoch (checked first, stale refused with no write), an idempotency ledger (same id and payload replays, other payload conflicts) and a stop path (marker row, open attempt STOPPED, idempotent, only a stop acknowledgment accepted afterwards). `migrate_pipeline` takes a lock file, writes a rollback point (online backup plus manifest with versions, sha256 and a row digest), runs the DDL in one transaction after proving the old content unchanged, and keeps a journal; `restore_rollback_point` verifies the point and restores the exact rows. Tests written, NOT_RUN (operator ban); nothing was executed.

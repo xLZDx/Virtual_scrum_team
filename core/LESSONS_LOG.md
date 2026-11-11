@@ -2323,3 +2323,7 @@ Registry regenerated after the test file changed. Rule: regenerate after every c
 ## 2026-11-11 SHORTCOMING reviewers missed attempted versus applied mixing
 
 Three reviewers checked refusal paths but not that the audit record counted only verified writes; GPT-PM found it. Layer: reviewers and author. Rule: for every record of what happened, check it against the failure and rollback paths, not only the success path.
+
+## 2026-11-11 SHORTCOMING migration and restore paths proven by reading only
+
+U5-3 adds a migration, a rollback point and a restore that were never executed (operator ban on running tests), so SQLite online backup into a WAL database, trigger behaviour and Windows file replace are unproven. Layer: author, no runtime check available. Rule: for a data-moving change, state the first runtime check to run when the ban is lifted (restore comparison of table dumps) and keep the design reversible by a verified backup taken before the first write.
