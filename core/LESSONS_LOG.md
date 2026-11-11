@@ -2495,3 +2495,7 @@ The U6-4 row and the hook text cite section 9 checks; the writer found no such s
 ## 2026-11-11 SUCCESS cleanup proposal checked by recomputing the delete list
 
 The coordinator re-ran ancestry and unpushed checks on the 19 branches proposed for removal instead of trusting the report. Rule: recheck any list that leads to a deletion.
+
+## 2026-11-11 SUCCESS U6-4 passed GPT-PM with the limits stated up front
+
+The scope note named what was and was not re-checked (19 VST yes, 11 AEVE no) and the reviewer asked only for a re-check before deleting. Rule: state the unchecked part of a deletion list in the scope note.

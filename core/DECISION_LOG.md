@@ -3245,3 +3245,7 @@ Added docs/sdlc/u6/CLEANUP_PROPOSALS.md, a read-only inventory: 12 KEEP, 30 PROP
 ## 2026-11-11 U6-4 QA registry and scope note
 
 Registry regenerated after the U6-4 document; GPT-PM scope note added. Tests NOT_RUN.
+
+## 2026-11-11 U6-4 GPT-PM APPROVE (parser said UNRECOGNIZED)
+
+GPT-PM reply text: VERDICT: APPROVE, 0 BLOCKER, 0 MAJOR, head b7c5d37 base 0ac012a (reply f4314222-fc5e-5a7d-b2d6-0491ada4f07b); CLI verdict field UNRECOGNIZED for the third reply in a row, approval taken from the reply text. MINOR: AEVE proposals are less verified than VST ones; before deleting any AEVE branch repeat the ancestry, unpushed and checkout checks on fresh refs. The approval authorises no deletion.
