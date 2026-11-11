@@ -2427,3 +2427,7 @@ The python-reviewer could not run code, so expected path digests in tests were r
 ## 2026-11-11 SUCCESS U6-0 passed GPT-PM in the first round
 
 Small scoped task with a scope note and recomputed literals got APPROVE with no findings. Rule: keep a follow-up task to one gap and write the scope note before the review.
+
+## 2026-11-11 SHORTCOMING the plan named a rollback point in pipeline_state.py that does not exist
+
+The U6-1 brief said pipeline_state.py has a rollback point; the agent found it lives in pipeline_migration.create_rollback_point. Root cause: the brief was written from memory of the U5 summary, not from the code (author layer). Rule: grep the symbol before naming it in a brief.

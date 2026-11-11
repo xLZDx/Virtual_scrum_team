@@ -3177,3 +3177,7 @@ Registry rebuilt after the U6-0 test changes; python-reviewer found no BLOCKER o
 ## 2026-11-11 U6-0 GPT-PM APPROVE
 
 GPT-PM verdict APPROVE, 0 BLOCKER, 0 MAJOR, for head c3479c9 against base 7855ef4 (reply b7decfbc-32d7-5d4d-947e-7915164de15c). Limits stated by GPT-PM: path digest is not authentication; review was of the supplied diff only. Tests NOT_RUN.
+
+## 2026-11-11 U6-1 rollback exercise helper and runbook
+
+Added tools/vst/rollback_exercise.py (snapshot hash over sorted paths and bytes, .git excluded; proof is before == after_rollback and after_change != before), tests/vst/test_u6_rollback_exercise.py and docs/sdlc/u6/RUNBOOK.md. When the change fails or has no effect the rollback is not called (documented). Tests and runbook commands NOT_RUN.
