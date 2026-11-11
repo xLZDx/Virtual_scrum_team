@@ -48,7 +48,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "55d1db569383efd83366e42fade70db96fc112e3",
+  "source_head": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
   "source_inventory": [
     {
       "path": "tests/af/test_s2_review_source_fidelity.py",
@@ -409,6 +409,11 @@
       "path": "tests/vst/test_u6_rollback_exercise.py",
       "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
       "sha256": "b0a14d4aa3f59fbef2dca0106a9e5bcdaa3779511d390080cd38ad98e987e421"
+    },
+    {
+      "path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "sha256": "cc0e1f4bfca262ccc8402f953a89cf9f01a797312067bae146cfc0d2fea99d4c"
     }
   ],
   "tests": [
@@ -32135,6 +32140,501 @@
         "windows-cpython-3.14.3",
         "wsl-ubuntu-24.04-cpython-3.12.3"
       ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_after_larger_than_before_and_zero_before_field",
+      "selector": "tests/vst/test_u6_savings_report.py::test_after_larger_than_before_and_zero_before_field",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_bad_project_dir_is_not_run",
+      "selector": "tests/vst/test_u6_savings_report.py::test_bad_project_dir_is_not_run",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_cli_measured_writes_json_and_markdown_with_lf",
+      "selector": "tests/vst/test_u6_savings_report.py::test_cli_measured_writes_json_and_markdown_with_lf",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_cli_not_run_exit_code_and_no_numbers",
+      "selector": "tests/vst/test_u6_savings_report.py::test_cli_not_run_exit_code_and_no_numbers",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_cli_unreadable_paired_task_file_has_its_own_code",
+      "selector": "tests/vst/test_u6_savings_report.py::test_cli_unreadable_paired_task_file_has_its_own_code",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_cli_unwritable_output_leaves_neither_file",
+      "selector": "tests/vst/test_u6_savings_report.py::test_cli_unwritable_output_leaves_neither_file",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_cli_with_price_table_reports_cost",
+      "selector": "tests/vst/test_u6_savings_report.py::test_cli_with_price_table_reports_cost",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_cost_from_a_price_table_with_source",
+      "selector": "tests/vst/test_u6_savings_report.py::test_cost_from_a_price_table_with_source",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_cost_is_not_run_without_a_price_table",
+      "selector": "tests/vst/test_u6_savings_report.py::test_cost_is_not_run_without_a_price_table",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_cost_sums_over_two_tasks",
+      "selector": "tests/vst/test_u6_savings_report.py::test_cost_sums_over_two_tasks",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_counts_and_models_must_describe_the_same_bytes",
+      "selector": "tests/vst/test_u6_savings_report.py::test_counts_and_models_must_describe_the_same_bytes",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_delta_convention_and_saving_are_reported_per_field",
+      "selector": "tests/vst/test_u6_savings_report.py::test_delta_convention_and_saving_are_reported_per_field",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_duplicate_task_id_is_not_run",
+      "selector": "tests/vst/test_u6_savings_report.py::test_duplicate_task_id_is_not_run",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_hash_mismatch_is_not_run_without_numbers",
+      "selector": "tests/vst/test_u6_savings_report.py::test_hash_mismatch_is_not_run_without_numbers",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_hash_mismatch_on_the_current_side_is_also_not_run",
+      "selector": "tests/vst/test_u6_savings_report.py::test_hash_mismatch_on_the_current_side_is_also_not_run",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_invalid_price_table_keeps_tokens_but_cost_is_not_run",
+      "selector": "tests/vst/test_u6_savings_report.py::test_invalid_price_table_keeps_tokens_but_cost_is_not_run",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_invalid_role_result_gives_not_run_verdicts",
+      "selector": "tests/vst/test_u6_savings_report.py::test_invalid_role_result_gives_not_run_verdicts",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_limits_state_the_required_caveats",
+      "selector": "tests/vst/test_u6_savings_report.py::test_limits_state_the_required_caveats",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_measured_two_roles_with_per_field_deltas",
+      "selector": "tests/vst/test_u6_savings_report.py::test_measured_two_roles_with_per_field_deltas",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_message_without_model_is_refused_as_unknown",
+      "selector": "tests/vst/test_u6_savings_report.py::test_message_without_model_is_refused_as_unknown",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_missing_baseline_manifest",
+      "selector": "tests/vst/test_u6_savings_report.py::test_missing_baseline_manifest",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_missing_current_manifest",
+      "selector": "tests/vst/test_u6_savings_report.py::test_missing_current_manifest",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_missing_price_table_file_is_cost_not_run",
+      "selector": "tests/vst/test_u6_savings_report.py::test_missing_price_table_file_is_cost_not_run",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_missing_transcript_is_not_run",
+      "selector": "tests/vst/test_u6_savings_report.py::test_missing_transcript_is_not_run",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_mixed_priced_and_unpriced_roles_report_partial_cost",
+      "selector": "tests/vst/test_u6_savings_report.py::test_mixed_priced_and_unpriced_roles_report_partial_cost",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_model_mismatch_on_every_role_is_not_run",
+      "selector": "tests/vst/test_u6_savings_report.py::test_model_mismatch_on_every_role_is_not_run",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_model_mismatch_on_one_role_refuses_only_that_role",
+      "selector": "tests/vst/test_u6_savings_report.py::test_model_mismatch_on_one_role_refuses_only_that_role",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_no_or_bad_paired_tasks_is_not_run",
+      "selector": "tests/vst/test_u6_savings_report.py::test_no_or_bad_paired_tasks_is_not_run",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_refusal_priority_is_independent_of_task_order",
+      "selector": "tests/vst/test_u6_savings_report.py::test_refusal_priority_is_independent_of_task_order",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_report_is_a_frozen_value",
+      "selector": "tests/vst/test_u6_savings_report.py::test_report_is_a_frozen_value",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_role_on_one_side_only_is_unpaired_and_has_no_numbers",
+      "selector": "tests/vst/test_u6_savings_report.py::test_role_on_one_side_only_is_unpaired_and_has_no_numbers",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_role_paired_in_one_task_and_one_sided_in_another_is_refused_whole",
+      "selector": "tests/vst/test_u6_savings_report.py::test_role_paired_in_one_task_and_one_sided_in_another_is_refused_whole",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_role_result_gives_per_role_verdicts",
+      "selector": "tests/vst/test_u6_savings_report.py::test_role_result_gives_per_role_verdicts",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_role_with_two_models_has_no_cost_while_the_other_role_is_priced",
+      "selector": "tests/vst/test_u6_savings_report.py::test_role_with_two_models_has_no_cost_while_the_other_role_is_priced",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_role_without_meta_file_is_unknown_subagent_and_still_paired",
+      "selector": "tests/vst/test_u6_savings_report.py::test_role_without_meta_file_is_unknown_subagent_and_still_paired",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_same_pinned_transcripts_on_both_sides_is_not_run",
+      "selector": "tests/vst/test_u6_savings_report.py::test_same_pinned_transcripts_on_both_sides_is_not_run",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_session_used_by_two_tasks_is_not_run",
+      "selector": "tests/vst/test_u6_savings_report.py::test_session_used_by_two_tasks_is_not_run",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_sums_over_two_tasks_are_made_field_by_field",
+      "selector": "tests/vst/test_u6_savings_report.py::test_sums_over_two_tasks_are_made_field_by_field",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_token_fields_are_never_combined",
+      "selector": "tests/vst/test_u6_savings_report.py::test_token_fields_are_never_combined",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_transcript_not_in_the_manifest_is_not_run",
+      "selector": "tests/vst/test_u6_savings_report.py::test_transcript_not_in_the_manifest_is_not_run",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_unknown_session_in_a_pair_is_not_run",
+      "selector": "tests/vst/test_u6_savings_report.py::test_unknown_session_in_a_pair_is_not_run",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_unpriced_model_gives_no_cost",
+      "selector": "tests/vst/test_u6_savings_report.py::test_unpriced_model_gives_no_cost",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_unreadable_manifest_is_not_run",
+      "selector": "tests/vst/test_u6_savings_report.py::test_unreadable_manifest_is_not_run",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_unreadable_paired_task_marker_is_its_own_code",
+      "selector": "tests/vst/test_u6_savings_report.py::test_unreadable_paired_task_marker_is_its_own_code",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_savings_report.py::test_unreadable_role_result_gives_not_run_verdicts_but_keeps_tokens",
+      "selector": "tests/vst/test_u6_savings_report.py::test_unreadable_role_result_gives_not_run_verdicts_but_keeps_tokens",
+      "source_path": "tests/vst/test_u6_savings_report.py",
+      "source_commit": "9c927a58dc60844c7a16491a203bed721ba9f0c2",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
     }
   ],
   "categories": {
@@ -33399,7 +33899,52 @@
         "tests/vst/test_u6_rollback_exercise.py::test_snapshot_failure_after_the_rollback",
         "tests/vst/test_u6_rollback_exercise.py::test_snapshot_failure_before_the_change",
         "tests/vst/test_u6_rollback_exercise.py::test_str_root_is_accepted_and_callables_get_a_path",
-        "tests/vst/test_u6_rollback_exercise.py::test_unlistable_directory_fails_the_snapshot"
+        "tests/vst/test_u6_rollback_exercise.py::test_unlistable_directory_fails_the_snapshot",
+        "tests/vst/test_u6_savings_report.py::test_after_larger_than_before_and_zero_before_field",
+        "tests/vst/test_u6_savings_report.py::test_bad_project_dir_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_cli_measured_writes_json_and_markdown_with_lf",
+        "tests/vst/test_u6_savings_report.py::test_cli_not_run_exit_code_and_no_numbers",
+        "tests/vst/test_u6_savings_report.py::test_cli_unreadable_paired_task_file_has_its_own_code",
+        "tests/vst/test_u6_savings_report.py::test_cli_unwritable_output_leaves_neither_file",
+        "tests/vst/test_u6_savings_report.py::test_cli_with_price_table_reports_cost",
+        "tests/vst/test_u6_savings_report.py::test_cost_from_a_price_table_with_source",
+        "tests/vst/test_u6_savings_report.py::test_cost_is_not_run_without_a_price_table",
+        "tests/vst/test_u6_savings_report.py::test_cost_sums_over_two_tasks",
+        "tests/vst/test_u6_savings_report.py::test_counts_and_models_must_describe_the_same_bytes",
+        "tests/vst/test_u6_savings_report.py::test_delta_convention_and_saving_are_reported_per_field",
+        "tests/vst/test_u6_savings_report.py::test_duplicate_task_id_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_hash_mismatch_is_not_run_without_numbers",
+        "tests/vst/test_u6_savings_report.py::test_hash_mismatch_on_the_current_side_is_also_not_run",
+        "tests/vst/test_u6_savings_report.py::test_invalid_price_table_keeps_tokens_but_cost_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_invalid_role_result_gives_not_run_verdicts",
+        "tests/vst/test_u6_savings_report.py::test_limits_state_the_required_caveats",
+        "tests/vst/test_u6_savings_report.py::test_measured_two_roles_with_per_field_deltas",
+        "tests/vst/test_u6_savings_report.py::test_message_without_model_is_refused_as_unknown",
+        "tests/vst/test_u6_savings_report.py::test_missing_baseline_manifest",
+        "tests/vst/test_u6_savings_report.py::test_missing_current_manifest",
+        "tests/vst/test_u6_savings_report.py::test_missing_price_table_file_is_cost_not_run",
+        "tests/vst/test_u6_savings_report.py::test_missing_transcript_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_mixed_priced_and_unpriced_roles_report_partial_cost",
+        "tests/vst/test_u6_savings_report.py::test_model_mismatch_on_every_role_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_model_mismatch_on_one_role_refuses_only_that_role",
+        "tests/vst/test_u6_savings_report.py::test_no_or_bad_paired_tasks_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_refusal_priority_is_independent_of_task_order",
+        "tests/vst/test_u6_savings_report.py::test_report_is_a_frozen_value",
+        "tests/vst/test_u6_savings_report.py::test_role_on_one_side_only_is_unpaired_and_has_no_numbers",
+        "tests/vst/test_u6_savings_report.py::test_role_paired_in_one_task_and_one_sided_in_another_is_refused_whole",
+        "tests/vst/test_u6_savings_report.py::test_role_result_gives_per_role_verdicts",
+        "tests/vst/test_u6_savings_report.py::test_role_with_two_models_has_no_cost_while_the_other_role_is_priced",
+        "tests/vst/test_u6_savings_report.py::test_role_without_meta_file_is_unknown_subagent_and_still_paired",
+        "tests/vst/test_u6_savings_report.py::test_same_pinned_transcripts_on_both_sides_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_session_used_by_two_tasks_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_sums_over_two_tasks_are_made_field_by_field",
+        "tests/vst/test_u6_savings_report.py::test_token_fields_are_never_combined",
+        "tests/vst/test_u6_savings_report.py::test_transcript_not_in_the_manifest_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_unknown_session_in_a_pair_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_unpriced_model_gives_no_cost",
+        "tests/vst/test_u6_savings_report.py::test_unreadable_manifest_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_unreadable_paired_task_marker_is_its_own_code",
+        "tests/vst/test_u6_savings_report.py::test_unreadable_role_result_gives_not_run_verdicts_but_keeps_tokens"
       ],
       "not_run_reasons": {},
       "reason": null
@@ -37658,7 +38203,52 @@
         "tests/vst/test_u6_rollback_exercise.py::test_snapshot_failure_after_the_rollback",
         "tests/vst/test_u6_rollback_exercise.py::test_snapshot_failure_before_the_change",
         "tests/vst/test_u6_rollback_exercise.py::test_str_root_is_accepted_and_callables_get_a_path",
-        "tests/vst/test_u6_rollback_exercise.py::test_unlistable_directory_fails_the_snapshot"
+        "tests/vst/test_u6_rollback_exercise.py::test_unlistable_directory_fails_the_snapshot",
+        "tests/vst/test_u6_savings_report.py::test_after_larger_than_before_and_zero_before_field",
+        "tests/vst/test_u6_savings_report.py::test_bad_project_dir_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_cli_measured_writes_json_and_markdown_with_lf",
+        "tests/vst/test_u6_savings_report.py::test_cli_not_run_exit_code_and_no_numbers",
+        "tests/vst/test_u6_savings_report.py::test_cli_unreadable_paired_task_file_has_its_own_code",
+        "tests/vst/test_u6_savings_report.py::test_cli_unwritable_output_leaves_neither_file",
+        "tests/vst/test_u6_savings_report.py::test_cli_with_price_table_reports_cost",
+        "tests/vst/test_u6_savings_report.py::test_cost_from_a_price_table_with_source",
+        "tests/vst/test_u6_savings_report.py::test_cost_is_not_run_without_a_price_table",
+        "tests/vst/test_u6_savings_report.py::test_cost_sums_over_two_tasks",
+        "tests/vst/test_u6_savings_report.py::test_counts_and_models_must_describe_the_same_bytes",
+        "tests/vst/test_u6_savings_report.py::test_delta_convention_and_saving_are_reported_per_field",
+        "tests/vst/test_u6_savings_report.py::test_duplicate_task_id_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_hash_mismatch_is_not_run_without_numbers",
+        "tests/vst/test_u6_savings_report.py::test_hash_mismatch_on_the_current_side_is_also_not_run",
+        "tests/vst/test_u6_savings_report.py::test_invalid_price_table_keeps_tokens_but_cost_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_invalid_role_result_gives_not_run_verdicts",
+        "tests/vst/test_u6_savings_report.py::test_limits_state_the_required_caveats",
+        "tests/vst/test_u6_savings_report.py::test_measured_two_roles_with_per_field_deltas",
+        "tests/vst/test_u6_savings_report.py::test_message_without_model_is_refused_as_unknown",
+        "tests/vst/test_u6_savings_report.py::test_missing_baseline_manifest",
+        "tests/vst/test_u6_savings_report.py::test_missing_current_manifest",
+        "tests/vst/test_u6_savings_report.py::test_missing_price_table_file_is_cost_not_run",
+        "tests/vst/test_u6_savings_report.py::test_missing_transcript_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_mixed_priced_and_unpriced_roles_report_partial_cost",
+        "tests/vst/test_u6_savings_report.py::test_model_mismatch_on_every_role_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_model_mismatch_on_one_role_refuses_only_that_role",
+        "tests/vst/test_u6_savings_report.py::test_no_or_bad_paired_tasks_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_refusal_priority_is_independent_of_task_order",
+        "tests/vst/test_u6_savings_report.py::test_report_is_a_frozen_value",
+        "tests/vst/test_u6_savings_report.py::test_role_on_one_side_only_is_unpaired_and_has_no_numbers",
+        "tests/vst/test_u6_savings_report.py::test_role_paired_in_one_task_and_one_sided_in_another_is_refused_whole",
+        "tests/vst/test_u6_savings_report.py::test_role_result_gives_per_role_verdicts",
+        "tests/vst/test_u6_savings_report.py::test_role_with_two_models_has_no_cost_while_the_other_role_is_priced",
+        "tests/vst/test_u6_savings_report.py::test_role_without_meta_file_is_unknown_subagent_and_still_paired",
+        "tests/vst/test_u6_savings_report.py::test_same_pinned_transcripts_on_both_sides_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_session_used_by_two_tasks_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_sums_over_two_tasks_are_made_field_by_field",
+        "tests/vst/test_u6_savings_report.py::test_token_fields_are_never_combined",
+        "tests/vst/test_u6_savings_report.py::test_transcript_not_in_the_manifest_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_unknown_session_in_a_pair_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_unpriced_model_gives_no_cost",
+        "tests/vst/test_u6_savings_report.py::test_unreadable_manifest_is_not_run",
+        "tests/vst/test_u6_savings_report.py::test_unreadable_paired_task_marker_is_its_own_code",
+        "tests/vst/test_u6_savings_report.py::test_unreadable_role_result_gives_not_run_verdicts_but_keeps_tokens"
       ],
       "not_run_reasons": {
         "tests/vst/test_s2_runner_lifecycle.py::test_e4_platform_containment_scenarios_not_run": "NOT_RUN: process-kill/kill-table containment scenarios are explicitly prohibited for this S4 run.",

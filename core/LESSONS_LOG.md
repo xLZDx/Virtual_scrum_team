@@ -2459,3 +2459,7 @@ The manifest pinned the main transcript of a session that was still in use, so i
 ## 2026-11-11 SHORTCOMING first savings report summed a role over only the tasks where it was paired
 
 A role one-sided in one task silently dropped that task, overstating savings; found by python-reviewer. Layer missed: author and tests. Rule: a total over tasks must either cover every task or refuse the role.
+
+## 2026-11-11 SUCCESS category map committed with the test, registry regenerated after
+
+This time the build_registry entry was in the implementation commit, so regeneration ran at once. Rule kept from U6-1.

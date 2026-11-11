@@ -3209,3 +3209,7 @@ Added tools/uc/savings_report.py (reuses token_baseline and measure; four token 
 ## 2026-11-11 U6-2 remediation after reviewers
 
 One batch applied: ROLE_ONE_SIDED refuses roles that are one-sided in any task; JSON gets delta_convention and per-field saving; PAIRED_TASKS_UNREADABLE; order-independent refusal precedence; pinned hashes re-verified after model read; JSON+markdown written as an atomic pair; cost status PARTIAL when only some roles are priced (agent addition, accepted). Tests rewritten and NOT_RUN. Limits: a pre-existing first output cannot be restored if the second replace fails; a file changed and restored between reads is not detected.
+
+## 2026-11-11 U6-2 QA registry regenerated
+
+Registry rebuilt with the savings report tests; GPT-PM review next. The savings report itself stays NOT_RUN (inputs missing). Tests NOT_RUN.
