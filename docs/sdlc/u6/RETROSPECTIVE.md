@@ -169,7 +169,7 @@ ID gaps: R-09..R-11 and R-37..R-39 are unused. IDs were assigned in blocks per s
 
 ## 4. Limits of this document
 
-- No test, script or tool was run to produce it; git/gh commands were read-only.
+- No tests or mutating commands were run to produce it; read-only git/gh inspection was performed.
 - Rows marked UNVERIFIED name what would verify them.
 - Line numbers were checked at head `08cecbb`; two line numbers in `REAL_CHANGE.md` (R-03, R-05) and one description (R-01) are off by one or inexact. `REAL_CHANGE.md` was not edited.
 - LESSONS_LOG entries from before 2026-11-08 (S1-S5) were not individually triaged; the 248 matching lines are mostly from there.

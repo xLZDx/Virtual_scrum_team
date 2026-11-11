@@ -3233,3 +3233,7 @@ One batch applied: register now 62 rows (DEFECT 11, SHORTCOMING 25, NOT_RUN 14, 
 ## 2026-11-11 U6-3 QA registry and scope note
 
 Registry regenerated after the U6-3 documents and the GPT-PM scope note added. Tests NOT_RUN.
+
+## 2026-11-11 U6-3 GPT-PM APPROVE (parser said UNRECOGNIZED)
+
+GPT-PM reply text: VERDICT: APPROVE, 0 BLOCKER, 0 MAJOR, head 3be6676 base 08cecbb (reply ab745c3f-30fa-5f83-8290-2b258715d105); the CLI verdict field again read UNRECOGNIZED, approval recorded from the reply text. One MINOR (limits wording in RETROSPECTIVE.md section 4) fixed in this commit. Documentation only; no cleanup is authorised by the register.

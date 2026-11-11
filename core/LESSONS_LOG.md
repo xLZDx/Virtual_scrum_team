@@ -2483,3 +2483,7 @@ The fact-checker found the missing pkill row, the sentence that every task has a
 ## 2026-11-11 SUCCESS fact-check by a read-only reviewer before GPT-PM
 
 Three MAJOR statements in a documentation task were caught by one reviewer reading cited lines. Rule: documents that make factual claims get a fact-check pass, not only code.
+
+## 2026-11-11 SHORTCOMING review CLI verdict parser fails on the current GPT-PM reply format
+
+U6-2 and U6-3 replies say VERDICT: APPROVE but the CLI field is UNRECOGNIZED (U6-0 and U6-1 parsed). Layer: gate parser, not investigated. Rule: record the raw reply id and text verdict; ask the operator to fix the parser before relying on a hook that reads the parsed field.
