@@ -2419,3 +2419,7 @@ Every task passed reviewers then GPT-PM; four of seven needed one GPT-PM or revi
 ## 2026-11-11 SHORTCOMING the final package could not prove the review covered the packaged paths
 
 U5-4 stored the paths digest in step facts but left it out of `ReviewLoopResult.to_dict`, so U5-5 only had head equality; the gap was noted in a scope note and closed in U6-0. Rule: when a loop checks an input against its reports, expose that input in the result the next stage consumes, and make a missing value a refusal, not a skip.
+
+## 2026-11-11 SUCCESS reviewer-flagged literals were recomputed instead of trusted
+
+The python-reviewer could not run code, so expected path digests in tests were recomputed with hashlib and matched. Rule: expected values in tests come from an independent formula run, not from the implementing agent.

@@ -3169,3 +3169,7 @@ U5-1..U5-7 are each approved by GPT-PM and recorded in PROJECT_PLAN.md; reports 
 ## 2026-11-11 U6-0 review result bound to the packaged path set
 
 `ReviewLoopResult` now carries `changed_paths_sha256` (loop input; stored fact on replay; a CLEAN result cannot be built without it) and `final_package.build_final_package` refuses `REVIEW_PATHS_MISMATCH` when the review digest is missing, malformed or different from `uc.contracts.changed_paths_sha256` of its own `changed_paths`. The package records the digest in `diff` and `review`, `verify_package_current` recomputes it, the scope note lists it. This closes the U5-5 open gap. Limits: unsigned evidence, path list only. Tests NOT_RUN.
+
+## 2026-11-11 U6-0 QA registry regenerated
+
+Registry rebuilt after the U6-0 test changes; python-reviewer found no BLOCKER or MAJOR, literal path digests were recomputed with hashlib and match. Tests NOT_RUN (prohibited by operator).
