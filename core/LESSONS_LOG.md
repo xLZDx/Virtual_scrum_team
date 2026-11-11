@@ -2371,3 +2371,11 @@ Registry regenerated right after the test commit. Rule: regenerate after each co
 ## 2026-11-11 SUCCESS U5-5 approved first round
 
 Python and test reviewers found READY with zero PASS tests, missing story/receipt/share binding and secret-scan false positives before GPT-PM. Rule: for every READY-style gate ask what the minimum input is that still returns READY, and refuse it.
+
+## 2026-11-11 SHORTCOMING U5-6 a negative control needs a function seam
+
+Several checks (the stale head test in `gate.evaluate`, the pin comparison inside `router.review`, the coverage family in `judge_report`) are inline code, so "disable the one check" needs either a wrapper written in the test or a relaxed input, and two rows have no function-level control. Layer: author reading before any run. Rule: when a check must be provable by a control, give it a named function or an injectable predicate; document each control as wrapper, patch or relaxed input.
+
+## 2026-11-11 SHORTCOMING U5-6 no model-fallback switch exists in the repository
+
+The acceptance text assumes a "model fallback" flag, but neither `tools/uc` nor `tools/vst` has one; only the harness seams are guarded, so "model-call count 0" proves nothing about the real AEVE or host. Layer: grep before design. Rule: state in the evidence what the guard covers, and add a real switch before claiming a model-free run of the real pipeline (U5-7).

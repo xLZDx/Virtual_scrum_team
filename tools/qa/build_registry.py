@@ -63,6 +63,7 @@ MAIN_TEST_FILE_CATEGORIES = {
     "tests/vst/test_u5_pipeline_state.py": "functional",
     "tests/vst/test_u5_review_loop.py": "functional",
     "tests/vst/test_u5_final_package.py": "functional",
+    "tests/vst/test_u5_e2e_story.py": "e2e",
     "tests/uc/test_measure.py": "functional",
     "tests/uc/test_role_table.py": "functional",
     "tests/uc/test_router.py": "functional",
@@ -106,6 +107,7 @@ MAIN_TEST_FILE_CATEGORIES = {
     "tests/vst/test_u5_pipeline_state.py": "functional",
     "tests/vst/test_u5_review_loop.py": "functional",
     "tests/vst/test_u5_final_package.py": "functional",
+    "tests/vst/test_u5_e2e_story.py": "e2e",
     "tests/uc/test_u4_project_roles.py": "functional",
 }
 PRIMARY_CATEGORIES = ("functional", "integration", "api", "e2e", "identity", "qa-tooling", "seeded-failure")
