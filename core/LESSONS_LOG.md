@@ -2535,3 +2535,7 @@ I decided no GPT-PM round was needed because the skill says documents are not re
 ## 2026-11-11 SHORTCOMING U6-5 diff sent to GPT-PM had its token_fields key masked
 
 The review channel redacts strings that look like secrets, so a key named token_fields arrived as REDACTED and was read as invalid JSON; cost one review round. Layer: gate tooling, not the author. Rule: put a parse check of every changed JSON file in the scope note up front.
+
+## 2026-11-11 SUCCESS U6-5 approved in round 2 after evidence for a masked line
+
+The round 1 MAJOR was cleared by parsing the committed blob and quoting the result in the scope note, with no manifest change. Layer: reviewer saw a transmission artifact. Rule: answer a doubted-file finding with a parse of the committed blob, not a rebuild.

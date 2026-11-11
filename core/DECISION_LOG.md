@@ -3285,3 +3285,7 @@ The operator ordered one GPT-PM round for PR 19 although the change has no code;
 ## 2026-11-11 U6-5 GPT-PM round 1 finding was a transmission mask
 
 Round 1 verdict MAJOR (reply 1d2d4951-b0ac-50f3-ba0f-ec029d3b883d): the manifest looked invalid because the bridge masks the word token in the diff. Verified the committed blob is valid JSON (61 files, no REDACTED string). Round 2 sent with that evidence; manifest unchanged.
+
+## 2026-11-11 U6-5 GPT-PM approval
+
+GPT-PM round 2: VERDICT APPROVE, head 6e05df0, base 6dc50d0 (reply 8ffdf344-6bfa-570d-8b73-581b081f42da, request f4e27ea4-9c68-4c9d-8bf7-a4e5707189cd; CLI verdict field APPROVE, no contradiction). Round 1 (reply 1d2d4951-b0ac-50f3-ba0f-ec029d3b883d) was MAJOR on a masked token_fields line; resolved by evidence. Limit stated by the reviewer: hashes and the Windows transcripts were not independently read.
