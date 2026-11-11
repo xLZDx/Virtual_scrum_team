@@ -2387,3 +2387,7 @@ Reviewers found: the guard counted only calls the harness made itself, the model
 ## 2026-11-11 SUCCESS registry kept in step for U5-6
 
 Registry regenerated right after the test commit. Rule: regenerate after each commit that touches a registered test file.
+
+## 2026-11-11 SUCCESS U5-6 approved first round
+
+Test and python reviewers found the vacuous model-count assertion, the unsupported-versus-unknown rule confusion and pooled substring assertions before GPT-PM. Rule: a counter that only the test code can increment proves nothing; patch the real escape points and add a test that trips each one.

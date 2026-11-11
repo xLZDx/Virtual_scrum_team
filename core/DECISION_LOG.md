@@ -3145,3 +3145,7 @@ Decision: after two reviewers on a54dd8f the U5-6 story guards the real escape p
 ## 2026-11-11 U5-6 QA registry regenerated
 
 Regenerated docs/qa/categories.json after the U5-6 review fixes so it lists tests/vst/test_u5_e2e_story.py. Tests NOT_RUN.
+
+## 2026-11-11 U5-6 GPT-PM approval
+
+GPT-PM APPROVE (0 BLOCKER, 0 MAJOR) for U5-6 at head 15f00a7 on the first round after reviewer fixes; reply 705ffe79-34f4-562e-bf7c-ffa88a834393, request 7ba55618-45af-417b-9d9b-f484416bac64. Tests NOT_RUN. Limits kept: real AEVE checkout and Claude host are outside the harness, escape-point coverage is bounded to instrumented entry points, gate stale-head and forged-receipt rows have no function-level negative control.
