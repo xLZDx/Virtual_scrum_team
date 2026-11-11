@@ -2439,3 +2439,7 @@ os.walk dropped scandir errors and is_symlink missed NTFS junctions, so the fail
 ## 2026-11-11 SHORTCOMING new test file had no QA category and the registry build failed
 
 build_registry raised no primary category for the new U6 test; the agent brief did not mention the category map. Layer missed: author. Rule: a new test file also needs its entry in tools/qa/build_registry.py in the same commit.
+
+## 2026-11-11 SUCCESS registry regeneration kept as its own commit
+
+The builder refuses a dirty tests/docs/qa tree, which forces the regenerated registry into a separate commit and keeps the diff reviewable. Rule: commit inputs first, then regenerate.

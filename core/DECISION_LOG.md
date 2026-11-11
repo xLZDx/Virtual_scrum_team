@@ -3189,3 +3189,7 @@ One batch applied: os.walk errors and Windows junctions/reparse points now fail 
 ## 2026-11-11 U6-1 QA category for the rollback tests
 
 Added tests/vst/test_u6_rollback_exercise.py as functional in tools/qa/build_registry.py; the registry builder requires a committed tree, so the map change is its own commit before regeneration.
+
+## 2026-11-11 U6-1 QA registry regenerated
+
+Registry rebuilt with the rollback tests; ready for GPT-PM. Tests NOT_RUN.

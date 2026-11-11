@@ -48,7 +48,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "575460fcded9febf53179cd9a4f71e03c9322567",
+  "source_head": "55d1db569383efd83366e42fade70db96fc112e3",
   "source_inventory": [
     {
       "path": "tests/af/test_s2_review_source_fidelity.py",
@@ -404,6 +404,11 @@
       "path": "tests/vst/test_u5_worker_gate.py",
       "source_commit": "c00ddda711904a87c1cdd02accf2597d493e9a21",
       "sha256": "1c5e1f18c3f7073e68c49d8a0beb6abb46bdf13c70d843536ceb5a18b8f76595"
+    },
+    {
+      "path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "sha256": "b0a14d4aa3f59fbef2dca0106a9e5bcdaa3779511d390080cd38ad98e987e421"
     }
   ],
   "tests": [
@@ -31833,6 +31838,303 @@
         "windows-cpython-3.14.3",
         "wsl-ubuntu-24.04-cpython-3.12.3"
       ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_bad_callable_with_bad_root_reports_the_root",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_bad_callable_with_bad_root_reports_the_root",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_change_raising_is_a_result_not_an_exception",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_change_raising_is_a_result_not_an_exception",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_change_that_changes_nothing_is_not_proven",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_change_that_changes_nothing_is_not_proven",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_change_that_mutates_then_raises_leaves_tree_changed",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_change_that_mutates_then_raises_leaves_tree_changed",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_coroutine_functions_are_refused",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_coroutine_functions_are_refused",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_empty_directory_rules",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_empty_directory_rules",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_git_directory_is_excluded",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_git_directory_is_excluded",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_hash_does_not_depend_on_creation_order",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_hash_does_not_depend_on_creation_order",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_hash_sees_content_and_path_changes",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_hash_sees_content_and_path_changes",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_literal_single_file_formula",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_literal_single_file_formula",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_nested_git_excluded_and_lookalikes_hashed",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_nested_git_excluded_and_lookalikes_hashed",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_non_callable_arguments_are_refused",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_non_callable_arguments_are_refused",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_non_directory_root_is_refused_without_calling_anything",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_non_directory_root_is_refused_without_calling_anything",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_proven_rollback",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_proven_rollback",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_real_symlinks_are_refused",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_real_symlinks_are_refused",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_reparse_attribute_is_detected",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_reparse_attribute_is_detected",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_reparse_point_is_refused_for_root_directory_and_file",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_reparse_point_is_refused_for_root_directory_and_file",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_result_invariants_and_dict_keys",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_result_invariants_and_dict_keys",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_result_is_frozen_and_guarded",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_result_is_frozen_and_guarded",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_rollback_leaving_a_stray_file_is_not_proven",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_rollback_leaving_a_stray_file_is_not_proven",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_rollback_raising_is_a_result_not_an_exception",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_rollback_raising_is_a_result_not_an_exception",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_root_that_is_not_a_path_is_refused",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_root_that_is_not_a_path_is_refused",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_snapshot_failure_after_the_change_skips_the_rollback",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_snapshot_failure_after_the_change_skips_the_rollback",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_snapshot_failure_after_the_rollback",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_snapshot_failure_after_the_rollback",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_snapshot_failure_before_the_change",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_snapshot_failure_before_the_change",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_str_root_is_accepted_and_callables_get_a_path",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_str_root_is_accepted_and_callables_get_a_path",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u6_rollback_exercise.py::test_unlistable_directory_fails_the_snapshot",
+      "selector": "tests/vst/test_u6_rollback_exercise.py::test_unlistable_directory_fails_the_snapshot",
+      "source_path": "tests/vst/test_u6_rollback_exercise.py",
+      "source_commit": "2bd59f1f44824337778524a0734db4cd9b3ba674",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
     }
   ],
   "categories": {
@@ -33070,7 +33372,34 @@
         "tests/vst/test_u5_worker_gate.py::test_unrelated_path_next_to_a_protected_prefix_is_not_protected",
         "tests/vst/test_u5_worker_gate.py::test_worker_response_in_scope_is_accepted",
         "tests/vst/test_u5_worker_gate.py::test_worker_response_out_of_scope_is_refused",
-        "tests/vst/test_u5_worker_gate.py::test_worker_that_did_not_succeed_is_blocked"
+        "tests/vst/test_u5_worker_gate.py::test_worker_that_did_not_succeed_is_blocked",
+        "tests/vst/test_u6_rollback_exercise.py::test_bad_callable_with_bad_root_reports_the_root",
+        "tests/vst/test_u6_rollback_exercise.py::test_change_raising_is_a_result_not_an_exception",
+        "tests/vst/test_u6_rollback_exercise.py::test_change_that_changes_nothing_is_not_proven",
+        "tests/vst/test_u6_rollback_exercise.py::test_change_that_mutates_then_raises_leaves_tree_changed",
+        "tests/vst/test_u6_rollback_exercise.py::test_coroutine_functions_are_refused",
+        "tests/vst/test_u6_rollback_exercise.py::test_empty_directory_rules",
+        "tests/vst/test_u6_rollback_exercise.py::test_git_directory_is_excluded",
+        "tests/vst/test_u6_rollback_exercise.py::test_hash_does_not_depend_on_creation_order",
+        "tests/vst/test_u6_rollback_exercise.py::test_hash_sees_content_and_path_changes",
+        "tests/vst/test_u6_rollback_exercise.py::test_literal_single_file_formula",
+        "tests/vst/test_u6_rollback_exercise.py::test_nested_git_excluded_and_lookalikes_hashed",
+        "tests/vst/test_u6_rollback_exercise.py::test_non_callable_arguments_are_refused",
+        "tests/vst/test_u6_rollback_exercise.py::test_non_directory_root_is_refused_without_calling_anything",
+        "tests/vst/test_u6_rollback_exercise.py::test_proven_rollback",
+        "tests/vst/test_u6_rollback_exercise.py::test_real_symlinks_are_refused",
+        "tests/vst/test_u6_rollback_exercise.py::test_reparse_attribute_is_detected",
+        "tests/vst/test_u6_rollback_exercise.py::test_reparse_point_is_refused_for_root_directory_and_file",
+        "tests/vst/test_u6_rollback_exercise.py::test_result_invariants_and_dict_keys",
+        "tests/vst/test_u6_rollback_exercise.py::test_result_is_frozen_and_guarded",
+        "tests/vst/test_u6_rollback_exercise.py::test_rollback_leaving_a_stray_file_is_not_proven",
+        "tests/vst/test_u6_rollback_exercise.py::test_rollback_raising_is_a_result_not_an_exception",
+        "tests/vst/test_u6_rollback_exercise.py::test_root_that_is_not_a_path_is_refused",
+        "tests/vst/test_u6_rollback_exercise.py::test_snapshot_failure_after_the_change_skips_the_rollback",
+        "tests/vst/test_u6_rollback_exercise.py::test_snapshot_failure_after_the_rollback",
+        "tests/vst/test_u6_rollback_exercise.py::test_snapshot_failure_before_the_change",
+        "tests/vst/test_u6_rollback_exercise.py::test_str_root_is_accepted_and_callables_get_a_path",
+        "tests/vst/test_u6_rollback_exercise.py::test_unlistable_directory_fails_the_snapshot"
       ],
       "not_run_reasons": {},
       "reason": null
@@ -37302,7 +37631,34 @@
         "tests/vst/test_u5_worker_gate.py::test_unrelated_path_next_to_a_protected_prefix_is_not_protected",
         "tests/vst/test_u5_worker_gate.py::test_worker_response_in_scope_is_accepted",
         "tests/vst/test_u5_worker_gate.py::test_worker_response_out_of_scope_is_refused",
-        "tests/vst/test_u5_worker_gate.py::test_worker_that_did_not_succeed_is_blocked"
+        "tests/vst/test_u5_worker_gate.py::test_worker_that_did_not_succeed_is_blocked",
+        "tests/vst/test_u6_rollback_exercise.py::test_bad_callable_with_bad_root_reports_the_root",
+        "tests/vst/test_u6_rollback_exercise.py::test_change_raising_is_a_result_not_an_exception",
+        "tests/vst/test_u6_rollback_exercise.py::test_change_that_changes_nothing_is_not_proven",
+        "tests/vst/test_u6_rollback_exercise.py::test_change_that_mutates_then_raises_leaves_tree_changed",
+        "tests/vst/test_u6_rollback_exercise.py::test_coroutine_functions_are_refused",
+        "tests/vst/test_u6_rollback_exercise.py::test_empty_directory_rules",
+        "tests/vst/test_u6_rollback_exercise.py::test_git_directory_is_excluded",
+        "tests/vst/test_u6_rollback_exercise.py::test_hash_does_not_depend_on_creation_order",
+        "tests/vst/test_u6_rollback_exercise.py::test_hash_sees_content_and_path_changes",
+        "tests/vst/test_u6_rollback_exercise.py::test_literal_single_file_formula",
+        "tests/vst/test_u6_rollback_exercise.py::test_nested_git_excluded_and_lookalikes_hashed",
+        "tests/vst/test_u6_rollback_exercise.py::test_non_callable_arguments_are_refused",
+        "tests/vst/test_u6_rollback_exercise.py::test_non_directory_root_is_refused_without_calling_anything",
+        "tests/vst/test_u6_rollback_exercise.py::test_proven_rollback",
+        "tests/vst/test_u6_rollback_exercise.py::test_real_symlinks_are_refused",
+        "tests/vst/test_u6_rollback_exercise.py::test_reparse_attribute_is_detected",
+        "tests/vst/test_u6_rollback_exercise.py::test_reparse_point_is_refused_for_root_directory_and_file",
+        "tests/vst/test_u6_rollback_exercise.py::test_result_invariants_and_dict_keys",
+        "tests/vst/test_u6_rollback_exercise.py::test_result_is_frozen_and_guarded",
+        "tests/vst/test_u6_rollback_exercise.py::test_rollback_leaving_a_stray_file_is_not_proven",
+        "tests/vst/test_u6_rollback_exercise.py::test_rollback_raising_is_a_result_not_an_exception",
+        "tests/vst/test_u6_rollback_exercise.py::test_root_that_is_not_a_path_is_refused",
+        "tests/vst/test_u6_rollback_exercise.py::test_snapshot_failure_after_the_change_skips_the_rollback",
+        "tests/vst/test_u6_rollback_exercise.py::test_snapshot_failure_after_the_rollback",
+        "tests/vst/test_u6_rollback_exercise.py::test_snapshot_failure_before_the_change",
+        "tests/vst/test_u6_rollback_exercise.py::test_str_root_is_accepted_and_callables_get_a_path",
+        "tests/vst/test_u6_rollback_exercise.py::test_unlistable_directory_fails_the_snapshot"
       ],
       "not_run_reasons": {
         "tests/vst/test_s2_runner_lifecycle.py::test_e4_platform_containment_scenarios_not_run": "NOT_RUN: process-kill/kill-table containment scenarios are explicitly prohibited for this S4 run.",
