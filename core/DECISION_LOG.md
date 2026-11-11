@@ -3237,3 +3237,7 @@ Registry regenerated after the U6-3 documents and the GPT-PM scope note added. T
 ## 2026-11-11 U6-3 GPT-PM APPROVE (parser said UNRECOGNIZED)
 
 GPT-PM reply text: VERDICT: APPROVE, 0 BLOCKER, 0 MAJOR, head 3be6676 base 08cecbb (reply ab745c3f-30fa-5f83-8290-2b258715d105); the CLI verdict field again read UNRECOGNIZED, approval recorded from the reply text. One MINOR (limits wording in RETROSPECTIVE.md section 4) fixed in this commit. Documentation only; no cleanup is authorised by the register.
+
+## 2026-11-11 U6-4 cleanup proposals (nothing deleted)
+
+Added docs/sdlc/u6/CLEANUP_PROPOSALS.md, a read-only inventory: 12 KEEP, 30 PROPOSE_REMOVE (local branches merged into origin/main, 0 unpushed, not checked out), 98 NEEDS_OPERATOR_DECISION. I re-checked the 19 VST PROPOSE_REMOVE branches with merge-base --is-ancestor and rev-list --not --remotes: all ancestors, 0 unpushed. The AEVE 11 were not re-checked by me. The plan row cites a CLAUDE.md section 9 that does not exist; the real rules are C:/Users/koros/.claude/CLAUDE.md:55-58 and the git-worktree-ops skill. No worktree qualifies for removal; WSL Ubuntu-24.04 contents UNVERIFIED. Operator decides every deletion.

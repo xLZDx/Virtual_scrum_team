@@ -2487,3 +2487,7 @@ Three MAJOR statements in a documentation task were caught by one reviewer readi
 ## 2026-11-11 SHORTCOMING review CLI verdict parser fails on the current GPT-PM reply format
 
 U6-2 and U6-3 replies say VERDICT: APPROVE but the CLI field is UNRECOGNIZED (U6-0 and U6-1 parsed). Layer: gate parser, not investigated. Rule: record the raw reply id and text verdict; ask the operator to fix the parser before relying on a hook that reads the parsed field.
+
+## 2026-11-11 SHORTCOMING the plan referenced a CLAUDE.md section 9 that does not exist
+
+The U6-4 row and the hook text cite section 9 checks; the writer found no such section in any CLAUDE.md or AGENTS.md. Layer: plan author (me). Rule: quote the rule with file and line instead of a section number.
