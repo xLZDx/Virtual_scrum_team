@@ -3173,3 +3173,7 @@ U5-1..U5-7 are each approved by GPT-PM and recorded in PROJECT_PLAN.md; reports 
 ## 2026-11-11 U6-0 QA registry regenerated
 
 Registry rebuilt after the U6-0 test changes; python-reviewer found no BLOCKER or MAJOR, literal path digests were recomputed with hashlib and match. Tests NOT_RUN (prohibited by operator).
+
+## 2026-11-11 U6-0 GPT-PM APPROVE
+
+GPT-PM verdict APPROVE, 0 BLOCKER, 0 MAJOR, for head c3479c9 against base 7855ef4 (reply b7decfbc-32d7-5d4d-947e-7915164de15c). Limits stated by GPT-PM: path digest is not authentication; review was of the supplied diff only. Tests NOT_RUN.

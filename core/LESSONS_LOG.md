@@ -2423,3 +2423,7 @@ U5-4 stored the paths digest in step facts but left it out of `ReviewLoopResult.
 ## 2026-11-11 SUCCESS reviewer-flagged literals were recomputed instead of trusted
 
 The python-reviewer could not run code, so expected path digests in tests were recomputed with hashlib and matched. Rule: expected values in tests come from an independent formula run, not from the implementing agent.
+
+## 2026-11-11 SUCCESS U6-0 passed GPT-PM in the first round
+
+Small scoped task with a scope note and recomputed literals got APPROVE with no findings. Rule: keep a follow-up task to one gap and write the scope note before the review.
