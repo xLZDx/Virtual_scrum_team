@@ -2447,3 +2447,7 @@ The builder refuses a dirty tests/docs/qa tree, which forces the regenerated reg
 ## 2026-11-11 SUCCESS scope note written before the review request
 
 The note states limits (links in parents, quiescent tree) up front so the reviewer does not rediscover them. Rule: write the scope note with the known limits for every GPT-PM request.
+
+## 2026-11-11 SUCCESS the exercise requirement was met with a tiny run, not a test suite
+
+GPT-PM flagged missing execution proof; running the helper once on a temp tree with python -s stayed inside the operator ban on test suites. Rule: run the smallest real exercise that answers the acceptance question and state its limits.
