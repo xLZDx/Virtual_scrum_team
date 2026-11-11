@@ -3157,3 +3157,7 @@ Decision: the U5-7 acceptance is met by an honest measured run, not by a green r
 ## 2026-11-11 U5-7 QA registry regenerated
 
 Regenerated docs/qa/categories.json after the U5-7 commit (source commit changed). Tests NOT_RUN.
+
+## 2026-11-11 U5-7 GPT-PM approval
+
+GPT-PM APPROVE (0 BLOCKER, 0 MAJOR) for U5-7 at head 35434d3 on the first round; reply edf5c8b7-0933-5c7a-a1ab-3a6fa33b214c, request 39b9ae34-cd27-44f3-b1f5-48fc88b616b8. Approved as a report of a blocked real experiment, not as proof of a working end-to-end pipeline; production readiness NOT ESTABLISHED. Tests NOT_RUN. Open design question for the operator: the repository .gitattributes (*.py text eol=lf) makes U5-2 refuse every AEVE patch (UNTRUSTED_GIT_CONFIG).

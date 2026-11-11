@@ -2407,3 +2407,7 @@ The driver stopped at the first non-ACCEPTED stage, marked later stages NOT_RUN 
 ## 2026-11-11 SUCCESS registry regenerated for U5-7
 
 Registry regenerated after the U5-7 commit. Rule: regenerate after the last commit that changes tracked sources.
+
+## 2026-11-11 SUCCESS the real run found eight pipeline defects the synthetic story could not
+
+The synthetic story (U5-6) passed review, but the real run was blocked by the repository own .gitattributes and by a redaction marker in an unrelated proposal. Rule: a synthetic end-to-end story does not replace one real run; run the real change before calling a pipeline usable.
