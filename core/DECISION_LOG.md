@@ -3261,3 +3261,7 @@ Operator decision (2026-11-11): U5-2 no longer refuses `text`, `eol=lf|crlf`, `-
 ## 2026-11-11 R-27 QA registry
 
 Registry regenerated after the R-27 tests; tests NOT_RUN.
+
+## 2026-11-11 R-27 GPT-PM scope note
+
+Added docs/sdlc/u5/r27-gptpm-scope-note.md for the GPT-PM review of R-27. Tests NOT_RUN.
