@@ -2331,3 +2331,7 @@ U5-3 adds a migration, a rollback point and a restore that were never executed (
 ## 2026-11-11 SHORTCOMING reviewers found what author tests missed in the migration design
 
 Reviewers found: rollback point not bound to the migrated state, unfenced whole-store restore, unfrozen schema, a long lock, applied derived from a caller flag, a raw IntegrityError escaping, and untested crash paths. Layer: author design and tests (no runtime available). Rule: for a data-moving change write down which state each safety copy belongs to, who may call the destructive path and how it is fenced, derive recorded figures from verified facts instead of caller flags, and add a crash-half-way test for every multi-write step.
+
+## 2026-11-11 SUCCESS registry kept in step for U5-3
+
+Registry regenerated right after the test commit. Rule: regenerate after each commit that touches a registered test file.

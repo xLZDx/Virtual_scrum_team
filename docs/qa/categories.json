@@ -48,7 +48,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "7a476bf6244e4c3248eb7ea158258ec5dd7d674f",
+  "source_head": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
   "source_inventory": [
     {
       "path": "tests/af/test_s2_review_source_fidelity.py",
@@ -379,6 +379,11 @@
       "path": "tests/vst/test_u5_patch_proposals.py",
       "source_commit": "7a476bf6244e4c3248eb7ea158258ec5dd7d674f",
       "sha256": "7eb53b4c38cb2ec3aa617d0a9fffbf8868e833f6c60c5b7b92361509c5e51906"
+    },
+    {
+      "path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "sha256": "ab53b696e1a2801649215ccfb3587e55636fcd87cdef397b817fa68f81d49521"
     },
     {
       "path": "tests/vst/test_u5_worker_gate.py",
@@ -28592,6 +28597,567 @@
       ]
     },
     {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_a_receipt_of_another_story_cannot_be_linked_and_numeric_keys_are_canonical",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_a_receipt_of_another_story_cannot_be_linked_and_numeric_keys_are_canonical",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_acknowledge_requires_a_stop_and_stop_without_attempt_stops_nothing",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_acknowledge_requires_a_stop_and_stop_without_attempt_stops_nothing",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_applied_is_derived_from_the_verdict_and_the_verified_write",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_applied_is_derived_from_the_verdict_and_the_verified_write",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_concurrent_migration_is_refused_by_the_lock",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_concurrent_migration_is_refused_by_the_lock",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_corrupted_backup_is_refused_on_restore_and_the_store_is_untouched",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_corrupted_backup_is_refused_on_restore_and_the_store_is_untouched",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_crash_after_commit_is_detected_and_closed_by_the_next_run",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_crash_after_commit_is_detected_and_closed_by_the_next_run",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_crash_during_stop_records_no_stop_and_the_retry_works",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_crash_during_stop_records_no_stop_and_the_retry_works",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_crash_inside_a_step_leaves_nothing_and_the_retry_succeeds_once",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_crash_inside_a_step_leaves_nothing_and_the_retry_succeeds_once",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_database_rejects_a_second_started_attempt_and_a_succeeded_attempt_without_candidate",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_database_rejects_a_second_started_attempt_and_a_succeeded_attempt_without_candidate",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_diff_gate_refusals_and_object_input",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_diff_gate_refusals_and_object_input",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_diff_gate_roundtrip_keeps_proof_statuses_unpromoted",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_diff_gate_roundtrip_keeps_proof_statuses_unpromoted",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_down_migration_restores_the_previous_dump_and_guards_pipeline_data",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_down_migration_restores_the_previous_dump_and_guards_pipeline_data",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_dropped_trigger_or_index_is_reported_as_partial",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_dropped_trigger_or_index_is_reported_as_partial",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_duplicate_ids_under_a_new_step_are_typed_errors_and_write_nothing",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_duplicate_ids_under_a_new_step_are_typed_errors_and_write_nothing",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_failure_inside_the_migration_leaves_the_old_version",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_failure_inside_the_migration_leaves_the_old_version",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_interrupted_migration_is_detected_and_resumed",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_interrupted_migration_is_detected_and_resumed",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_lock_release_never_removes_a_lock_that_carries_another_token",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_lock_release_never_removes_a_lock_that_carries_another_token",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_manifest_naming_a_file_outside_the_rollback_directory_is_refused",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_manifest_naming_a_file_outside_the_rollback_directory_is_refused",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_migrating_twice_is_a_no_op_without_a_new_rollback_point",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_migrating_twice_is_a_no_op_without_a_new_rollback_point",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_migration_adds_the_tables_and_preserves_every_existing_row",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_migration_adds_the_tables_and_preserves_every_existing_row",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_missing_store_file_is_refused_and_not_created",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_missing_store_file_is_refused_and_not_created",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_newer_unknown_pipeline_schema_is_refused",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_newer_unknown_pipeline_schema_is_refused",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_newer_unknown_store_schema_is_refused_before_anything_is_written",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_newer_unknown_store_schema_is_refused_before_anything_is_written",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_open_pipeline_state_notices_a_down_migration_underneath",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_open_pipeline_state_notices_a_down_migration_underneath",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_partially_applied_pipeline_schema_is_detected_not_adopted",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_partially_applied_pipeline_schema_is_detected_not_adopted",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_patch_proposal_roundtrip_derives_counts_from_the_run_record",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_patch_proposal_roundtrip_derives_counts_from_the_run_record",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_pipeline_rows_are_append_only_in_the_database",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_pipeline_rows_are_append_only_in_the_database",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_pipeline_state_refuses_a_store_without_the_pipeline_schema",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_pipeline_state_refuses_a_store_without_the_pipeline_schema",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_previous_schema_fixture_has_no_pipeline_tables",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_previous_schema_fixture_has_no_pipeline_tables",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_proposals_attach_only_to_a_started_attempt_with_its_base_head",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_proposals_attach_only_to_a_started_attempt_with_its_base_head",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_receipt_link_points_at_the_existing_receipt_and_copies_nothing",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_receipt_link_points_at_the_existing_receipt_and_copies_nothing",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_refused_patch_proposal_has_no_applied_hunks_and_inconsistent_records_are_refused",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_refused_patch_proposal_has_no_applied_hunks_and_inconsistent_records_are_refused",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_replay_returns_the_original_result_and_writes_nothing",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_replay_returns_the_original_result_and_writes_nothing",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_restore_failure_paths",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_restore_failure_paths",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_restore_refuses_a_point_of_another_store_schema_version_unless_overridden",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_restore_refuses_a_point_of_another_store_schema_version_unless_overridden",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_restore_returns_the_exact_previous_rows",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_restore_returns_the_exact_previous_rows",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_review_iterations_roundtrip_and_rules",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_review_iterations_roundtrip_and_rules",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_rollback_point_is_written_before_the_migration_and_describes_the_old_state",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_rollback_point_is_written_before_the_migration_and_describes_the_old_state",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_rollback_point_taken_from_another_state_aborts_the_migration",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_rollback_point_taken_from_another_state_aborts_the_migration",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_same_step_id_with_another_payload_or_kind_is_a_conflict",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_same_step_id_with_another_payload_or_kind_is_a_conflict",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_schema_is_frozen_and_the_hash_is_stored",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_schema_is_frozen_and_the_hash_is_stored",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_stale_and_future_epoch_are_refused_and_nothing_is_written",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_stale_and_future_epoch_are_refused_and_nothing_is_written",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_stop_path",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_stop_path",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_tampered_manifest_and_foreign_manifest_are_refused",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_tampered_manifest_and_foreign_manifest_are_refused",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_test_evidence_roundtrip_including_not_run",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_test_evidence_roundtrip_including_not_run",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_the_rollback_point_records_the_state_invariant_of_the_migrated_state",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_the_rollback_point_records_the_state_invariant_of_the_migrated_state",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_two_concurrent_requests_with_the_same_step_write_once",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_two_concurrent_requests_with_the_same_step_write_once",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_two_simultaneous_migrations_apply_the_change_once",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_two_simultaneous_migrations_apply_the_change_once",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_unknown_story_is_refused",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_unknown_story_is_refused",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_worker_attempt_roundtrip_and_numbering",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_worker_attempt_roundtrip_and_numbering",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_pipeline_state.py::test_worker_attempt_rules",
+      "selector": "tests/vst/test_u5_pipeline_state.py::test_worker_attempt_rules",
+      "source_path": "tests/vst/test_u5_pipeline_state.py",
+      "source_commit": "ce05329503487b69e6ef503c9cf0758ba2f7a420",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
       "test_id": "tests/vst/test_u5_worker_gate.py::test_a_bad_protected_entry_does_not_hide_a_refusal",
       "selector": "tests/vst/test_u5_worker_gate.py::test_a_bad_protected_entry_does_not_hide_a_refusal",
       "source_path": "tests/vst/test_u5_worker_gate.py",
@@ -30292,6 +30858,57 @@
         "tests/vst/test_u5_patch_proposals.py::test_worktree_level_config_and_info_attributes_are_scanned",
         "tests/vst/test_u5_patch_proposals.py::test_worktree_that_is_edited_between_the_gate_and_the_write_is_blocked_and_the_edit_survives",
         "tests/vst/test_u5_patch_proposals.py::test_write_failure_is_rolled_back_to_the_base_bytes",
+        "tests/vst/test_u5_pipeline_state.py::test_a_receipt_of_another_story_cannot_be_linked_and_numeric_keys_are_canonical",
+        "tests/vst/test_u5_pipeline_state.py::test_acknowledge_requires_a_stop_and_stop_without_attempt_stops_nothing",
+        "tests/vst/test_u5_pipeline_state.py::test_applied_is_derived_from_the_verdict_and_the_verified_write",
+        "tests/vst/test_u5_pipeline_state.py::test_concurrent_migration_is_refused_by_the_lock",
+        "tests/vst/test_u5_pipeline_state.py::test_corrupted_backup_is_refused_on_restore_and_the_store_is_untouched",
+        "tests/vst/test_u5_pipeline_state.py::test_crash_after_commit_is_detected_and_closed_by_the_next_run",
+        "tests/vst/test_u5_pipeline_state.py::test_crash_during_stop_records_no_stop_and_the_retry_works",
+        "tests/vst/test_u5_pipeline_state.py::test_crash_inside_a_step_leaves_nothing_and_the_retry_succeeds_once",
+        "tests/vst/test_u5_pipeline_state.py::test_database_rejects_a_second_started_attempt_and_a_succeeded_attempt_without_candidate",
+        "tests/vst/test_u5_pipeline_state.py::test_diff_gate_refusals_and_object_input",
+        "tests/vst/test_u5_pipeline_state.py::test_diff_gate_roundtrip_keeps_proof_statuses_unpromoted",
+        "tests/vst/test_u5_pipeline_state.py::test_down_migration_restores_the_previous_dump_and_guards_pipeline_data",
+        "tests/vst/test_u5_pipeline_state.py::test_dropped_trigger_or_index_is_reported_as_partial",
+        "tests/vst/test_u5_pipeline_state.py::test_duplicate_ids_under_a_new_step_are_typed_errors_and_write_nothing",
+        "tests/vst/test_u5_pipeline_state.py::test_failure_inside_the_migration_leaves_the_old_version",
+        "tests/vst/test_u5_pipeline_state.py::test_interrupted_migration_is_detected_and_resumed",
+        "tests/vst/test_u5_pipeline_state.py::test_lock_release_never_removes_a_lock_that_carries_another_token",
+        "tests/vst/test_u5_pipeline_state.py::test_manifest_naming_a_file_outside_the_rollback_directory_is_refused",
+        "tests/vst/test_u5_pipeline_state.py::test_migrating_twice_is_a_no_op_without_a_new_rollback_point",
+        "tests/vst/test_u5_pipeline_state.py::test_migration_adds_the_tables_and_preserves_every_existing_row",
+        "tests/vst/test_u5_pipeline_state.py::test_missing_store_file_is_refused_and_not_created",
+        "tests/vst/test_u5_pipeline_state.py::test_newer_unknown_pipeline_schema_is_refused",
+        "tests/vst/test_u5_pipeline_state.py::test_newer_unknown_store_schema_is_refused_before_anything_is_written",
+        "tests/vst/test_u5_pipeline_state.py::test_open_pipeline_state_notices_a_down_migration_underneath",
+        "tests/vst/test_u5_pipeline_state.py::test_partially_applied_pipeline_schema_is_detected_not_adopted",
+        "tests/vst/test_u5_pipeline_state.py::test_patch_proposal_roundtrip_derives_counts_from_the_run_record",
+        "tests/vst/test_u5_pipeline_state.py::test_pipeline_rows_are_append_only_in_the_database",
+        "tests/vst/test_u5_pipeline_state.py::test_pipeline_state_refuses_a_store_without_the_pipeline_schema",
+        "tests/vst/test_u5_pipeline_state.py::test_previous_schema_fixture_has_no_pipeline_tables",
+        "tests/vst/test_u5_pipeline_state.py::test_proposals_attach_only_to_a_started_attempt_with_its_base_head",
+        "tests/vst/test_u5_pipeline_state.py::test_receipt_link_points_at_the_existing_receipt_and_copies_nothing",
+        "tests/vst/test_u5_pipeline_state.py::test_refused_patch_proposal_has_no_applied_hunks_and_inconsistent_records_are_refused",
+        "tests/vst/test_u5_pipeline_state.py::test_replay_returns_the_original_result_and_writes_nothing",
+        "tests/vst/test_u5_pipeline_state.py::test_restore_failure_paths",
+        "tests/vst/test_u5_pipeline_state.py::test_restore_refuses_a_point_of_another_store_schema_version_unless_overridden",
+        "tests/vst/test_u5_pipeline_state.py::test_restore_returns_the_exact_previous_rows",
+        "tests/vst/test_u5_pipeline_state.py::test_review_iterations_roundtrip_and_rules",
+        "tests/vst/test_u5_pipeline_state.py::test_rollback_point_is_written_before_the_migration_and_describes_the_old_state",
+        "tests/vst/test_u5_pipeline_state.py::test_rollback_point_taken_from_another_state_aborts_the_migration",
+        "tests/vst/test_u5_pipeline_state.py::test_same_step_id_with_another_payload_or_kind_is_a_conflict",
+        "tests/vst/test_u5_pipeline_state.py::test_schema_is_frozen_and_the_hash_is_stored",
+        "tests/vst/test_u5_pipeline_state.py::test_stale_and_future_epoch_are_refused_and_nothing_is_written",
+        "tests/vst/test_u5_pipeline_state.py::test_stop_path",
+        "tests/vst/test_u5_pipeline_state.py::test_tampered_manifest_and_foreign_manifest_are_refused",
+        "tests/vst/test_u5_pipeline_state.py::test_test_evidence_roundtrip_including_not_run",
+        "tests/vst/test_u5_pipeline_state.py::test_the_rollback_point_records_the_state_invariant_of_the_migrated_state",
+        "tests/vst/test_u5_pipeline_state.py::test_two_concurrent_requests_with_the_same_step_write_once",
+        "tests/vst/test_u5_pipeline_state.py::test_two_simultaneous_migrations_apply_the_change_once",
+        "tests/vst/test_u5_pipeline_state.py::test_unknown_story_is_refused",
+        "tests/vst/test_u5_pipeline_state.py::test_worker_attempt_roundtrip_and_numbering",
+        "tests/vst/test_u5_pipeline_state.py::test_worker_attempt_rules",
         "tests/vst/test_u5_worker_gate.py::test_a_bad_protected_entry_does_not_hide_a_refusal",
         "tests/vst/test_u5_worker_gate.py::test_a_gate_fail_result_is_refused_with_its_reason",
         "tests/vst/test_u5_worker_gate.py::test_binary_files_differ_marker_is_accepted_as_a_path_touch",
@@ -34266,6 +34883,57 @@
         "tests/vst/test_u5_patch_proposals.py::test_worktree_level_config_and_info_attributes_are_scanned",
         "tests/vst/test_u5_patch_proposals.py::test_worktree_that_is_edited_between_the_gate_and_the_write_is_blocked_and_the_edit_survives",
         "tests/vst/test_u5_patch_proposals.py::test_write_failure_is_rolled_back_to_the_base_bytes",
+        "tests/vst/test_u5_pipeline_state.py::test_a_receipt_of_another_story_cannot_be_linked_and_numeric_keys_are_canonical",
+        "tests/vst/test_u5_pipeline_state.py::test_acknowledge_requires_a_stop_and_stop_without_attempt_stops_nothing",
+        "tests/vst/test_u5_pipeline_state.py::test_applied_is_derived_from_the_verdict_and_the_verified_write",
+        "tests/vst/test_u5_pipeline_state.py::test_concurrent_migration_is_refused_by_the_lock",
+        "tests/vst/test_u5_pipeline_state.py::test_corrupted_backup_is_refused_on_restore_and_the_store_is_untouched",
+        "tests/vst/test_u5_pipeline_state.py::test_crash_after_commit_is_detected_and_closed_by_the_next_run",
+        "tests/vst/test_u5_pipeline_state.py::test_crash_during_stop_records_no_stop_and_the_retry_works",
+        "tests/vst/test_u5_pipeline_state.py::test_crash_inside_a_step_leaves_nothing_and_the_retry_succeeds_once",
+        "tests/vst/test_u5_pipeline_state.py::test_database_rejects_a_second_started_attempt_and_a_succeeded_attempt_without_candidate",
+        "tests/vst/test_u5_pipeline_state.py::test_diff_gate_refusals_and_object_input",
+        "tests/vst/test_u5_pipeline_state.py::test_diff_gate_roundtrip_keeps_proof_statuses_unpromoted",
+        "tests/vst/test_u5_pipeline_state.py::test_down_migration_restores_the_previous_dump_and_guards_pipeline_data",
+        "tests/vst/test_u5_pipeline_state.py::test_dropped_trigger_or_index_is_reported_as_partial",
+        "tests/vst/test_u5_pipeline_state.py::test_duplicate_ids_under_a_new_step_are_typed_errors_and_write_nothing",
+        "tests/vst/test_u5_pipeline_state.py::test_failure_inside_the_migration_leaves_the_old_version",
+        "tests/vst/test_u5_pipeline_state.py::test_interrupted_migration_is_detected_and_resumed",
+        "tests/vst/test_u5_pipeline_state.py::test_lock_release_never_removes_a_lock_that_carries_another_token",
+        "tests/vst/test_u5_pipeline_state.py::test_manifest_naming_a_file_outside_the_rollback_directory_is_refused",
+        "tests/vst/test_u5_pipeline_state.py::test_migrating_twice_is_a_no_op_without_a_new_rollback_point",
+        "tests/vst/test_u5_pipeline_state.py::test_migration_adds_the_tables_and_preserves_every_existing_row",
+        "tests/vst/test_u5_pipeline_state.py::test_missing_store_file_is_refused_and_not_created",
+        "tests/vst/test_u5_pipeline_state.py::test_newer_unknown_pipeline_schema_is_refused",
+        "tests/vst/test_u5_pipeline_state.py::test_newer_unknown_store_schema_is_refused_before_anything_is_written",
+        "tests/vst/test_u5_pipeline_state.py::test_open_pipeline_state_notices_a_down_migration_underneath",
+        "tests/vst/test_u5_pipeline_state.py::test_partially_applied_pipeline_schema_is_detected_not_adopted",
+        "tests/vst/test_u5_pipeline_state.py::test_patch_proposal_roundtrip_derives_counts_from_the_run_record",
+        "tests/vst/test_u5_pipeline_state.py::test_pipeline_rows_are_append_only_in_the_database",
+        "tests/vst/test_u5_pipeline_state.py::test_pipeline_state_refuses_a_store_without_the_pipeline_schema",
+        "tests/vst/test_u5_pipeline_state.py::test_previous_schema_fixture_has_no_pipeline_tables",
+        "tests/vst/test_u5_pipeline_state.py::test_proposals_attach_only_to_a_started_attempt_with_its_base_head",
+        "tests/vst/test_u5_pipeline_state.py::test_receipt_link_points_at_the_existing_receipt_and_copies_nothing",
+        "tests/vst/test_u5_pipeline_state.py::test_refused_patch_proposal_has_no_applied_hunks_and_inconsistent_records_are_refused",
+        "tests/vst/test_u5_pipeline_state.py::test_replay_returns_the_original_result_and_writes_nothing",
+        "tests/vst/test_u5_pipeline_state.py::test_restore_failure_paths",
+        "tests/vst/test_u5_pipeline_state.py::test_restore_refuses_a_point_of_another_store_schema_version_unless_overridden",
+        "tests/vst/test_u5_pipeline_state.py::test_restore_returns_the_exact_previous_rows",
+        "tests/vst/test_u5_pipeline_state.py::test_review_iterations_roundtrip_and_rules",
+        "tests/vst/test_u5_pipeline_state.py::test_rollback_point_is_written_before_the_migration_and_describes_the_old_state",
+        "tests/vst/test_u5_pipeline_state.py::test_rollback_point_taken_from_another_state_aborts_the_migration",
+        "tests/vst/test_u5_pipeline_state.py::test_same_step_id_with_another_payload_or_kind_is_a_conflict",
+        "tests/vst/test_u5_pipeline_state.py::test_schema_is_frozen_and_the_hash_is_stored",
+        "tests/vst/test_u5_pipeline_state.py::test_stale_and_future_epoch_are_refused_and_nothing_is_written",
+        "tests/vst/test_u5_pipeline_state.py::test_stop_path",
+        "tests/vst/test_u5_pipeline_state.py::test_tampered_manifest_and_foreign_manifest_are_refused",
+        "tests/vst/test_u5_pipeline_state.py::test_test_evidence_roundtrip_including_not_run",
+        "tests/vst/test_u5_pipeline_state.py::test_the_rollback_point_records_the_state_invariant_of_the_migrated_state",
+        "tests/vst/test_u5_pipeline_state.py::test_two_concurrent_requests_with_the_same_step_write_once",
+        "tests/vst/test_u5_pipeline_state.py::test_two_simultaneous_migrations_apply_the_change_once",
+        "tests/vst/test_u5_pipeline_state.py::test_unknown_story_is_refused",
+        "tests/vst/test_u5_pipeline_state.py::test_worker_attempt_roundtrip_and_numbering",
+        "tests/vst/test_u5_pipeline_state.py::test_worker_attempt_rules",
         "tests/vst/test_u5_worker_gate.py::test_a_bad_protected_entry_does_not_hide_a_refusal",
         "tests/vst/test_u5_worker_gate.py::test_a_gate_fail_result_is_refused_with_its_reason",
         "tests/vst/test_u5_worker_gate.py::test_binary_files_differ_marker_is_accepted_as_a_path_touch",

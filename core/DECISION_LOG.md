@@ -3093,3 +3093,7 @@ Decision: the pipeline state is an additive extension of the store's SQLite file
 ## 2026-11-11 U5-3 review remediation
 
 Decision: after three reviewers on 039493f, `migrate_pipeline` opens the write transaction first and refuses a rollback point whose state invariant differs from the locked state; restore needs `confirm_stopped=True`, an exclusive probe and a matching store schema version (override recorded); a scoped `down_migrate_pipeline` drops only the pl_ objects and refuses while pl_ rows exist; pipeline schema v1 is frozen by literal enums and a stored and checked schema hash, with a partial unique index (one STARTED attempt) and a SUCCEEDED-needs-candidate CHECK; the lock release compares the token; `applied` is derived from the verdict and the verified write; every IntegrityError becomes a typed StoreError; every step re-checks the schema. Store `SCHEMA_VERSION` stays 7 by operator decision. Tests added, NOT_RUN (operator ban).
+
+## 2026-11-11 U5-3 QA registry regenerated
+
+Regenerated docs/qa/categories.json after the U5-3 review fixes so it lists tests/vst/test_u5_pipeline_state.py. Tests NOT_RUN.
