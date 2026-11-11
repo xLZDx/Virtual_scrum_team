@@ -3297,3 +3297,7 @@ Decision (operator, AskUserQuestion): build the mode switch skeleton now. Modes:
 ## 2026-11-12 LINK-1 registry regeneration
 
 The QA categories registry was regenerated with python -m tools.qa.build_registry --write after the test file and its category entry were committed (the builder refuses a dirty tree). Diff checked: one source_head replacement plus new entries for tests/vst/test_link_mode.py.
+
+## 2026-11-12 LINK-1 scope note for GPT-PM
+
+Wrote docs/sdlc/LINK_1_GPTPM_SCOPE_NOTE.md (what changed, trust boundary, prior reviews, NOT_RUN items) before the GPT-PM round, following the U6 convention of one scope note per task.

@@ -2551,3 +2551,7 @@ Two reviewers named the same weak point (router flag) plus lone-surrogate and CL
 ## 2026-11-12 SUCCESS LINK-1 registry regenerated after a clean commit of the test file
 
 The builder needs a clean tests tree and a category entry first, so the sequence entry commit, then regenerate, then separate commit worked on the first try. The large diff was checked line by line (one deletion). Rule: inspect a generated diff for deletions before committing it.
+
+## 2026-11-12 SUCCESS LINK-1 scope note written before the review round
+
+Following the convention from every U6 task, the note states what was not run and which tests are only hand-traced. Rule: put NOT_RUN and the simulated-versus-observed distinction in the scope note up front.
