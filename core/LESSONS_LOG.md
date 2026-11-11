@@ -2339,3 +2339,7 @@ Registry regenerated right after the test commit. Rule: regenerate after each co
 ## 2026-11-11 SUCCESS U5-3 approved first round
 
 Three reviewers (database, python, tests) found rollback-binding, restore fencing, frozen schema and attribution defects before GPT-PM; one batch fixed them and GPT-PM approved without findings. Rule: use the database reviewer for any schema or migration task.
+
+## 2026-11-11 SHORTCOMING U5-4 replay needs data the store does not hold
+
+The U5-3 review rows keep an iteration index, a count and a verdict but not the AEVE iteration id or the head, so a crash-safe loop cannot rebuild `iteration_of` from the store alone; the driver asks the caller for the earlier summaries and cross-checks them with the rows. Layer: author design (no runtime available, static only). Rule: when a state table is designed, list what a replay of the next component must read back and store it, or document who holds it.
