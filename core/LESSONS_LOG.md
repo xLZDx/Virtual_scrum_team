@@ -2363,3 +2363,7 @@ The `tools/uc/secret_patterns.py` keyword rule (`secret`, `token`, `password` fo
 ## 2026-11-11 FAILURE U5-5 first version could be READY with zero PASS tests
 
 Reviewers found: READY with no PASS test and no required list (a record could mark itself not required), story, receipt and run-record binding gaps, a secret scan that refused ordinary identifiers, unescaped Markdown from evidence text, an optional package hash in the currency check and a doubled mismatch reason. Layer: author design, caught by python and test reviewers before GPT-PM. Rule: a ready verdict needs positive evidence (at least one PASS and every required id), the requirement list comes from the caller and never from the evidence, every binding field is required and compared, scan free text and validate identifiers by shape, escape every untrusted string that reaches a document.
+
+## 2026-11-11 SUCCESS registry kept in step for U5-5
+
+Registry regenerated right after the test commit. Rule: regenerate after each commit that touches a registered test file.

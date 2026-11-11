@@ -3125,3 +3125,7 @@ Decision: `tools/vst/final_package.py` builds the final package as a pure functi
 ## 2026-11-11 U5-5 review remediation
 
 Decision: after two reviewers on 1195be3 the final package builder takes a caller-supplied `required_test_ids` list (each id needs a record and PASS, or NOT_RUN/SKIPPED with an `allow_not_run` reason); a package with no PASS record is REFUSED NO_PASS_EVIDENCE, a record cannot downgrade its own required flag, the review story id must match, the patch origin record must be bound to the head and diff and be an ACCEPTED applied complete run, a receipt result must be exactly PASS, only free text is secret-scanned (identifiers and paths are validated by shape), all evidence text in the scope note is Markdown-escaped, `verify_package_current` requires the package digest and checks every embedded head, a CLEAN review also needs empty untruncated findings and a matching iteration count, and `PackageResult` is immutable with copied packages and fixed-text refusal details. Tests extended, NOT_RUN (operator ban). Open gap: the review result carries no changed-paths digest (later U5-4 follow-up).
+
+## 2026-11-11 U5-5 QA registry regenerated
+
+Regenerated docs/qa/categories.json after the U5-5 review fixes so it lists tests/vst/test_u5_final_package.py. Tests NOT_RUN.
