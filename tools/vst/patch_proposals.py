@@ -8,21 +8,23 @@ only for what AEVE proposed no patch for. Everything here fails closed. Verdicts
   passed ``worker_gate.gate_worker_change`` and the worktree now holds exactly that change.
 * REFUSED  - a definite policy violation: stale base, out-of-scope or protected path, path trick,
   a gate refusal, or a model change on a path AEVE proposed a patch for.
-* BLOCKED  - the decision cannot be made: malformed or oversized proposal, git failure, dirty
-  worktree, timeout, unexpected exception. BLOCKED is never an acceptance.
+* BLOCKED  - the decision cannot be made: malformed or oversized proposal, recipe label that does
+  not match the diff, untrusted repository configuration, lock held, git failure, dirty worktree,
+  timeout, unexpected exception. BLOCKED is never an acceptance.
 
 The real AEVE proposal format (``g6.patch.v1``, AEVE origin/main src/aeve/repair/patch.py) carries
 no base identity and no machine-readable bounds: each proposal is ``{file, recipe, detail, diff,
 changed}`` with a per-file unified diff that has ``--- file`` / ``+++ file`` headers (no ``a/``,
-``b/`` prefix, no ``diff --git`` line). The only integrity field is ``report_sha256``. AEVE has no
-CLI command that emits the document; ``aeve review`` runs only diagnosis and dead-code executors.
-So this module takes the JSON document as input and validates it strictly. Base identity is
-therefore enforced by VST: the caller states the head AEVE analysed (``proposal_base_head``), the
-worktree HEAD must equal the pinned base, and every hunk must apply to the base content
-(``git apply`` context and removed lines are compared with the real file bytes).
+``b/`` prefix, no ``diff --git`` line). The only integrity field is ``report_sha256``; it is an
+integrity check of the document, not proof of who made it. AEVE has no CLI command that emits the
+document, so this module takes the JSON as input and validates it strictly. Base identity is
+enforced by VST: the caller states the head AEVE analysed, the worktree HEAD must equal the pinned
+base, the base file bytes must be representable by AEVE's diffs, and every hunk must apply to the
+base content. The recipe label is checked against the diff text (RECIPE_MISMATCH).
 
-Nothing touches the worktree until the whole change was built in a throw-away index, turned into
-a candidate commit object and accepted by the gate. See docs/sdlc/u5/PATCH_PROPOSALS.md.
+Nothing touches the worktree until the whole change was built in a throw-away index and object
+directory and accepted by the gate. The write itself is done in Python (temp file plus os.replace),
+never by git, so no smudge filter or hook can run. See docs/sdlc/u5/PATCH_PROPOSALS.md.
 """
 from __future__ import annotations
 
@@ -32,8 +34,10 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import tempfile
+import time
 import unicodedata
 from dataclasses import dataclass
 from typing import Any, Callable, Iterable, Mapping, Sequence
@@ -43,6 +47,7 @@ from .worker_gate import ACCEPTED, BLOCKED, REFUSED, IsolationContext, WorkerGat
 
 PROPOSAL_SCHEMA = "g6.patch.v1"
 SHARE_SCHEMA = "vst-change-origin-share-v1"
+RUN_RECORD_SCHEMA = "vst-patch-run-record-v1"
 
 MAX_DOCUMENT_BYTES = 4 * 1024 * 1024
 MAX_PROPOSALS = 256
@@ -51,9 +56,15 @@ MAX_TOTAL_DIFF_BYTES = 4 * 1024 * 1024
 MAX_FIELD_CHARS = 2000
 MAX_HUNK_LINES = 100000
 MAX_GIT_OUTPUT = 16 * 1024 * 1024
+MAX_FILE_BYTES = 8 * 1024 * 1024
+MAX_CONFIG_BYTES = 1024 * 1024
 DEFAULT_GIT_TIMEOUT = 30.0
 MIN_OVERRIDE_REASON = 10
 MAX_OVERRIDE_REASON = 500
+MAX_AUTHORIZED_BY = 100
+MAX_OVERRIDES = 16
+LOCK_NAME = "vst-u5-2.lock"
+JOURNAL_NAME = "vst-u5-2.journal"
 
 # Recipes AEVE can emit (patch.py:175-222) and the ones that carry a diff.
 PATCH_RECIPES = ("trailing-whitespace", "final-newline")
@@ -68,13 +79,39 @@ _HUNK = re.compile(r"@@ -(\d{1,9})(?:,(\d{1,9}))? \+(\d{1,9})(?:,(\d{1,9}))? @@\
 _NO_NEWLINE = "\\ No newline at end of file"
 _GLOB_CHARS = set("*?[]")
 _REDACTION_MARKER = "[REDACTED]"
+# Characters AEVE's str.splitlines() treats as line ends besides \n (and \r), plus the BOM it strips.
+_SPLITLINES_ONLY = set("\r\x0b\x0c\x1c\x1d\x1e\x85  ")
+_BOM = b"\xef\xbb\xbf"
+_STALE_TEXT = re.compile(r"patch does not apply|patch failed|does not match index")
 
-# Prefix of every git call: literal pathspecs, no fsmonitor hook, no signing.
-_GIT_PREFIX = ("--literal-pathspecs", "-c", "core.fsmonitor=false", "-c", "commit.gpgsign=false")
+_NULL = os.devnull
+# Prefix of every git call. Repository-local filters, attributes, hooks, line-ending rewrites and
+# fsmonitor are switched off on the command line; the repository config is also scanned (see below).
+GIT_PREFIX = (
+    "--literal-pathspecs",
+    "-c", "core.fsmonitor=false",
+    "-c", "commit.gpgsign=false",
+    "-c", f"core.attributesFile={_NULL}",
+    "-c", f"core.hooksPath={_NULL}",
+    "-c", "core.autocrlf=false",
+    "-c", "core.safecrlf=false",
+    "-c", "core.quotepath=false",
+)
+
+# Repository-local configuration that can make git run a program or change content: refused.
+_CONFIG_HAZARDS = (
+    ("filter section", re.compile(r"^\s*\[\s*filter\b", re.I | re.M)),
+    ("include or includeIf", re.compile(r"^\s*\[\s*include", re.I | re.M)),
+    ("extensions", re.compile(r"^\s*\[\s*extensions\b", re.I | re.M)),
+    ("diff driver section", re.compile(r"^\s*\[\s*diff\s+\"", re.I | re.M)),
+    ("core.attributesFile / hooksPath / fsmonitor / worktree", re.compile(r"^\s*(attributesfile|hookspath|fsmonitor|worktree)\s*=", re.I | re.M)),
+    ("textconv or command", re.compile(r"^\s*(textconv|command)\s*=", re.I | re.M)),
+)
+_ATTRIBUTE_HAZARD = re.compile(r"(?:^|\s)[-!]?(?:filter|eol|text|ident|working-tree-encoding|crlf)(?:=|\s|$)", re.I)
 
 
 class ProposalError(Exception):
-    """The proposal document or an input is malformed; the result is BLOCKED."""
+    """The proposal document or an input is malformed or untrusted; the result is BLOCKED."""
 
     def __init__(self, code: str, detail: str = "") -> None:
         super().__init__(f"{code}: {detail}" if detail else code)
@@ -143,7 +180,7 @@ def parse_proposal_json(raw: object) -> dict:
 
 
 def _report_hash(doc: Mapping[str, Any]) -> str:
-    # Same canonical form as AEVE patch.py:245-248.
+    # Same canonical form as AEVE patch.py:245-248. An integrity check, not authenticity: anyone can recompute it.
     body = {k: v for k, v in doc.items() if k != "report_sha256"}
     return hashlib.sha256(
         json.dumps(body, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
@@ -164,8 +201,12 @@ def _check_file(path: object) -> str:
     return path
 
 
-def _check_diff(file: str, diff: object) -> tuple[str, int, int]:
-    """Validate one AEVE per-file unified diff; return (text, added, deleted)."""
+def _check_diff(file: str, diff: object) -> tuple[str, int, int, list[tuple[int, int, list[str]]]]:
+    """Validate one AEVE per-file unified diff; return (text, added, deleted, hunks).
+
+    Each hunk is ``(old_len, new_len, body)`` where body holds every line after the ``@@`` line,
+    including the ``\\ No newline`` markers.
+    """
     if not isinstance(diff, str) or not diff:
         raise ProposalError("PROPOSAL_MALFORMED", f"empty or non-string diff for {_show(file)}")
     try:
@@ -181,7 +222,8 @@ def _check_diff(file: str, diff: object) -> tuple[str, int, int]:
     lines = (diff[:-1] if diff.endswith("\n") else diff).split("\n")
     if len(lines) < 3 or lines[0] != f"--- {file}" or lines[1] != f"+++ {file}":
         raise ProposalError("PROPOSAL_MALFORMED", f"diff headers do not name {_show(file)}")
-    index, added, deleted, hunks = 2, 0, 0, 0
+    index, added, deleted = 2, 0, 0
+    hunks: list[tuple[int, int, list[str]]] = []
     while index < len(lines):
         match = _HUNK.fullmatch(lines[index])
         if not match:
@@ -191,16 +233,16 @@ def _check_diff(file: str, diff: object) -> tuple[str, int, int]:
         if old_len > MAX_HUNK_LINES or new_len > MAX_HUNK_LINES:
             raise ProposalError("PROPOSAL_TOO_LARGE", "hunk length exceeds the cap")
         index += 1
-        hunks += 1
         old_seen = new_seen = 0
-        body_started = False
-        while old_seen < old_len or new_seen < new_len or (index < len(lines) and lines[index] == _NO_NEWLINE and body_started):
+        body: list[str] = []
+        while old_seen < old_len or new_seen < new_len or (index < len(lines) and lines[index] == _NO_NEWLINE and body):
             if index >= len(lines):
                 raise ProposalError("PROPOSAL_MALFORMED", "hunk is shorter than its header says")
             line = lines[index]
             if line == _NO_NEWLINE:
-                if not body_started:
+                if not body:
                     raise ProposalError("PROPOSAL_MALFORMED", "no-newline marker before any hunk line")
+                body.append(line)
                 index += 1
                 continue
             kind = line[:1]
@@ -217,11 +259,66 @@ def _check_diff(file: str, diff: object) -> tuple[str, int, int]:
                 raise ProposalError("PROPOSAL_MALFORMED", "hunk line is not context, removal or addition")
             if old_seen > old_len or new_seen > new_len:
                 raise ProposalError("PROPOSAL_MALFORMED", "hunk is longer than its header says")
-            body_started = True
+            body.append(line)
             index += 1
-    if hunks == 0 or added + deleted == 0:
+        hunks.append((old_len, new_len, body))
+    if not hunks or added + deleted == 0:
         raise ProposalError("PROPOSAL_MALFORMED", f"diff for {_show(file)} changes nothing")
-    return diff[:-1] if diff.endswith("\n") else diff, added, deleted
+    return (diff[:-1] if diff.endswith("\n") else diff), added, deleted, hunks
+
+
+def _sides(body: Sequence[str]) -> tuple[list[str], list[str]]:
+    old: list[str] = []
+    new: list[str] = []
+    for line in body:
+        if line == _NO_NEWLINE:
+            continue
+        if line[0] == " ":
+            old.append(line[1:])
+            new.append(line[1:])
+        elif line[0] == "-":
+            old.append(line[1:])
+        else:
+            new.append(line[1:])
+    return old, new
+
+
+def _check_recipe(file: str, recipe: str, hunks: Sequence[tuple[int, int, list[str]]]) -> None:
+    """The recipe label must describe the diff (mirrors AEVE patch.py:57-115): anything else is RECIPE_MISMATCH."""
+
+    def mismatch(why: str) -> ProposalError:
+        return ProposalError("RECIPE_MISMATCH", f"{recipe} for {_show(file)}: {why}")
+
+    if recipe == "trailing-whitespace":
+        # patch.py:_strip_trailing_whitespace keeps the line count and strips " \t" from line ends only.
+        changed = False
+        for _, _, body in hunks:
+            if _NO_NEWLINE in body:
+                raise mismatch("end-of-file marker in a whitespace diff")
+            old, new = _sides(body)
+            if len(old) != len(new):
+                raise mismatch("a hunk changes the line count")
+            for before, after in zip(old, new):
+                if after != before.rstrip(" \t"):
+                    raise mismatch("a line changes by more than trailing spaces and tabs")
+                changed = changed or after != before
+        if not changed:
+            raise mismatch("no trailing whitespace is removed")
+        return
+    if recipe == "final-newline":
+        # patch.py:_normalize_final_newline: either only the last line's end-of-file newline changes
+        # (the marker form of patch.py:_diff), or surplus empty lines at the end are removed.
+        if len(hunks) != 1:
+            raise mismatch("expected exactly one hunk")
+        body = hunks[0][2]
+        if (len(body) >= 3 and body[-2] == _NO_NEWLINE and body[-3][:1] == "-" and body[-1][:1] == "+"
+                and body[-3][1:] == body[-1][1:] and all(line[:1] == " " for line in body[:-3])):
+            return
+        cut = next((i for i, line in enumerate(body) if line[:1] != " "), None)
+        if cut is None or any(line != "-" for line in body[cut:]):
+            raise mismatch("not an end-of-file newline change")
+        return
+    raise mismatch("recipe carries no patch")
 
 
 def validate_proposal_document(doc: object) -> ProposalSet:
@@ -244,9 +341,8 @@ def validate_proposal_document(doc: object) -> ProposalSet:
         raise ProposalError("PROPOSAL_TOO_LARGE", f"more than {MAX_PROPOSALS} proposals")
     if not _is_int(doc.get("proposal_count")) or doc["proposal_count"] != len(raw_list):
         raise ProposalError("PROPOSAL_MALFORMED", "proposal_count differs from the proposals list")
-    for key in ("note",):
-        if key in doc and (not isinstance(doc[key], str) or len(doc[key]) > MAX_FIELD_CHARS):
-            raise ProposalError("PROPOSAL_MALFORMED", f"{key} is not a short string")
+    if "note" in doc and (not isinstance(doc["note"], str) or len(doc["note"]) > MAX_FIELD_CHARS):
+        raise ProposalError("PROPOSAL_MALFORMED", "note is not a short string")
     partial = False
     if "status" in doc:
         if doc["status"] != "PARTIAL":
@@ -269,6 +365,7 @@ def validate_proposal_document(doc: object) -> ProposalSet:
 
     proposals: list[ValidProposal] = []
     seen: set[tuple[str, str]] = set()
+    finalised: set[str] = set()
     total = 0
     for item in raw_list:
         if not isinstance(item, dict) or set(item) != _PROPOSAL_KEYS:
@@ -288,7 +385,13 @@ def validate_proposal_document(doc: object) -> ProposalSet:
         if changed:
             if recipe not in PATCH_RECIPES:
                 raise ProposalError("PROPOSAL_MALFORMED", f"recipe {recipe} cannot carry a patch")
-            text, added, deleted = _check_diff(file, item["diff"])
+            text, added, deleted, hunks = _check_diff(file, item["diff"])
+            _check_recipe(file, recipe, hunks)
+            # AEVE emits trailing-whitespace first; final-newline is computed on its output (patch.py:196-208).
+            if recipe == "final-newline":
+                finalised.add(_fold(file))
+            elif _fold(file) in finalised:
+                raise ProposalError("RECIPE_MISMATCH", f"trailing-whitespace for {_show(file)} follows final-newline")
             total += len(text.encode("utf-8"))
             if total > MAX_TOTAL_DIFF_BYTES:
                 raise ProposalError("PROPOSAL_TOO_LARGE", "total diff size exceeds the cap")
@@ -302,7 +405,7 @@ def validate_proposal_document(doc: object) -> ProposalSet:
     flagged = sorted({p.file for p in proposals if not p.changed and _fold(p.file) not in patched_keys})
     if len(patched) > wg.MAX_CHANGED_PATHS:
         raise ProposalError("PROPOSAL_TOO_LARGE", "more patched files than the changed-path cap")
-    if len({_fold(f) for f in patched}) != len(patched):
+    if len(patched_keys) != len(patched):
         raise ProposalError("PROPOSAL_MALFORMED", "two patched file names differ only by case")
     return ProposalSet(tuple(proposals), tuple(patched), tuple(flagged), digest, partial)
 
@@ -319,13 +422,35 @@ class GitResult:
 GitRunner = Callable[..., GitResult]
 
 
-def build_git_env(scratch: str, *, index_file: str | None = None) -> dict[str, str]:
-    """Fixed minimal environment for every git call; nothing is inherited except system paths."""
-    git_path = shutil.which("git")
+def _inside(path: str, folder: str) -> bool:
+    try:
+        a = os.path.normcase(os.path.realpath(path))
+        b = os.path.normcase(os.path.realpath(folder))
+        return os.path.commonpath([a, b]) == b
+    except ValueError:
+        return False
+
+
+def find_git(exclude: str | None = None) -> str | None:
+    """git from an absolute PATH entry only: never the current directory, never inside ``exclude``."""
+    for entry in os.environ.get("PATH", "").split(os.pathsep):
+        if not entry or not os.path.isabs(entry):
+            continue
+        for name in ("git.exe", "git"):
+            candidate = os.path.join(entry, name)
+            if os.path.isfile(candidate) and not (exclude is not None and _inside(candidate, exclude)):
+                return candidate
+    return None  # no bare "git" fallback: process creation could search the current directory first
+
+
+def build_git_env(scratch: str, *, index_file: str | None = None, objects: str | None = None,
+                  alternates: str | None = None) -> dict[str, str]:
+    """Fixed minimal environment for every git call; nothing is inherited except SystemRoot."""
+    git_path = find_git()
     env = {
         "PATH": os.path.dirname(git_path) if git_path else "",
         "HOME": scratch, "USERPROFILE": scratch, "TEMP": scratch, "TMP": scratch,
-        "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
+        "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": _NULL,
         "GIT_TERMINAL_PROMPT": "0", "GIT_OPTIONAL_LOCKS": "0", "LC_ALL": "C",
         "GIT_AUTHOR_NAME": "vst-u5-2", "GIT_AUTHOR_EMAIL": "vst-u5-2@invalid",
         "GIT_COMMITTER_NAME": "vst-u5-2", "GIT_COMMITTER_EMAIL": "vst-u5-2@invalid",
@@ -336,15 +461,19 @@ def build_git_env(scratch: str, *, index_file: str | None = None) -> dict[str, s
         env["SystemRoot"] = system_root
     if index_file is not None:
         env["GIT_INDEX_FILE"] = index_file
+    if objects is not None:
+        env["GIT_OBJECT_DIRECTORY"] = objects
+    if alternates is not None:
+        env["GIT_ALTERNATE_OBJECT_DIRECTORIES"] = alternates
     return env
 
 
 def default_git_runner(args: Sequence[str], *, cwd: str, env: Mapping[str, str],
                        stdin: bytes | None = None, timeout: float = DEFAULT_GIT_TIMEOUT) -> GitResult:
-    """Run git with shell=False, an explicit environment, cwd and timeout; never raises on git errors."""
-    exe = shutil.which("git", path=env.get("PATH") or None)
+    """Run git with shell=False, an absolute git path, an explicit environment, cwd and timeout; never raises on git errors."""
+    exe = find_git(exclude=cwd)
     if exe is None:
-        return GitResult(-1, b"", b"git executable not found")
+        return GitResult(-1, b"", b"no trusted git executable on an absolute PATH entry")
     try:
         done = subprocess.run(
             [exe, *args], cwd=cwd, env=dict(env), input=stdin, capture_output=True, timeout=timeout,
@@ -367,13 +496,15 @@ class _GitFail(Exception):
 
 def _git(runner: GitRunner, args: Sequence[str], *, cwd: str, env: Mapping[str, str],
          timeout: float, stdin: bytes | None = None, ok: Sequence[int] = (0,)) -> GitResult:
-    result = runner([*_GIT_PREFIX, *args], cwd=cwd, env=env, stdin=stdin, timeout=timeout)
+    result = runner([*GIT_PREFIX, *args], cwd=cwd, env=env, stdin=stdin, timeout=timeout)
     if not isinstance(result, GitResult):
         raise _GitFail("GIT_RUNNER_MALFORMED", "runner did not return a GitResult")
     if result.timed_out:
         raise _GitFail("GIT_TIMEOUT", f"git {args[0]} exceeded {timeout}s")
     if len(result.stdout) > MAX_GIT_OUTPUT:
         raise _GitFail("GIT_OUTPUT_TOO_LARGE", f"git {args[0]} output exceeds the cap")
+    if b"dubious ownership" in result.stderr:
+        raise _GitFail("GIT_UNSAFE_DIRECTORY", "git refuses the repository owner (safe.directory)", result.returncode)
     if result.returncode not in ok:
         raise _GitFail("GIT_FAILED", f"git {args[0]} exit {result.returncode}", result.returncode, result.stderr)
     return result
@@ -407,23 +538,38 @@ class ApplyResult:
     reasons: tuple[tuple[str, str], ...]
     stage: str                                  # last stage reached, see PATCH_PROPOSALS.md
     worktree_state: str                         # UNCHANGED | MODIFIED | UNKNOWN
-    candidate_head: str | None = None
+    candidate_head: str | None = None           # identifier of the candidate commit; its objects are not kept
+    candidate_tree: str | None = None
     changed_paths: tuple[str, ...] = ()
     diff_bytes: bytes | None = None
     diff_sha256: str | None = None
     report_sha256: str | None = None
     hunks_by_file: dict | None = None           # input for change_origin_share (proposal side)
     no_patch_paths: tuple[str, ...] = ()
+    patched_paths: tuple[str, ...] = ()         # files the document proposes a patch for (validated)
+    partial: bool = False                       # AEVE marked the document PARTIAL
+    file_digests: dict | None = None            # path -> {"base_sha256", "candidate_sha256"}
     gate: WorkerGateVerdict | None = None
+    isolation_stage: str = "pre_materialize"
+    post_materialize_verified: bool | None = None  # None: the write was never reached
 
     def to_dict(self) -> dict:
+        gate = self.gate.to_dict() if self.gate else None
+        if gate and isinstance(gate.get("isolation_proof"), dict):
+            gate["isolation_proof"] = dict(
+                gate["isolation_proof"], isolation_stage="pre_materialize",
+                worktree_head_note=("worktree_head was set to the candidate commit id (a placeholder) before the files "
+                                    "were written; it is not the real HEAD of the worktree, which is unchanged"))
         return {
             "verdict": self.verdict, "stage": self.stage, "worktree_state": self.worktree_state,
             "reasons": [{"code": c, "detail": d} for c, d in self.reasons],
-            "candidate_head": self.candidate_head, "changed_paths": list(self.changed_paths),
-            "diff_sha256": self.diff_sha256, "report_sha256": self.report_sha256,
-            "hunks_by_file": self.hunks_by_file, "no_patch_paths": list(self.no_patch_paths),
-            "gate": self.gate.to_dict() if self.gate else None,
+            "candidate_head": self.candidate_head, "candidate_tree": self.candidate_tree,
+            "changed_paths": list(self.changed_paths), "diff_sha256": self.diff_sha256,
+            "report_sha256": self.report_sha256, "hunks_by_file": self.hunks_by_file,
+            "no_patch_paths": list(self.no_patch_paths), "patched_paths": list(self.patched_paths),
+            "partial": self.partial, "file_digests": self.file_digests,
+            "isolation_stage": self.isolation_stage,
+            "post_materialize_verified": self.post_materialize_verified, "gate": gate,
         }
 
 
@@ -431,44 +577,244 @@ def _result(verdict: str, reasons: Iterable[tuple[str, str]], stage: str, state:
     return ApplyResult(verdict, tuple(reasons), stage, state, **extra)
 
 
-# ---------------------------------------------------------------------------- applying
+# ---------------------------------------------------------------------------- repository trust and files
 def _norm_root(path: str) -> str:
     return os.path.normcase(os.path.normpath(os.path.realpath(path)))
 
 
+def _read_small(path: str, cap: int) -> bytes | None:
+    """Bytes of a regular file up to ``cap``; None when missing; ProposalError when unreadable or too large."""
+    try:
+        info = os.lstat(path)
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise ProposalError("UNTRUSTED_GIT_CONFIG", f"cannot inspect {_show(os.path.basename(path))}: {type(exc).__name__}") from exc
+    if not stat.S_ISREG(info.st_mode) or info.st_size > cap:
+        raise ProposalError("UNTRUSTED_GIT_CONFIG", f"{_show(os.path.basename(path))} is not a regular file within the size cap")
+    try:
+        with open(path, "rb") as handle:
+            return handle.read(cap + 1)
+    except OSError as exc:
+        raise ProposalError("UNTRUSTED_GIT_CONFIG", f"cannot read {_show(os.path.basename(path))}: {type(exc).__name__}") from exc
+
+
+def _resolve_git_dirs(root: str) -> tuple[str, str]:
+    """git-dir and common-dir of the worktree, from the `.git` entry itself (a directory or a gitdir pointer file)."""
+    dot = os.path.join(root, ".git")
+    try:
+        info = os.lstat(dot)
+    except OSError as exc:
+        raise ProposalError("UNTRUSTED_GIT_CONFIG", "the worktree has no readable .git entry") from exc
+    if stat.S_ISDIR(info.st_mode):
+        git_dir = dot
+    elif stat.S_ISREG(info.st_mode):
+        data = _read_small(dot, 4096)
+        text = (data or b"").decode("utf-8", "replace").strip()
+        if not text.startswith("gitdir:") or "\n" in text:
+            raise ProposalError("UNTRUSTED_GIT_CONFIG", ".git file is not a single gitdir pointer")
+        target = text[len("gitdir:"):].strip()
+        git_dir = os.path.normpath(target if os.path.isabs(target) else os.path.join(root, target))
+    else:
+        raise ProposalError("UNTRUSTED_GIT_CONFIG", ".git is a link or special file")
+    if not os.path.isdir(git_dir):
+        raise ProposalError("UNTRUSTED_GIT_CONFIG", "git-dir does not exist")
+    common = git_dir
+    pointer = _read_small(os.path.join(git_dir, "commondir"), 4096)
+    if pointer is not None:
+        rel = pointer.decode("utf-8", "replace").strip()
+        common = os.path.normpath(rel if os.path.isabs(rel) else os.path.join(git_dir, rel))
+    if not os.path.isdir(common):
+        raise ProposalError("UNTRUSTED_GIT_CONFIG", "common git dir does not exist")
+    if _norm_root(git_dir) != _norm_root(common) and not _inside(git_dir, os.path.join(common, "worktrees")):
+        raise ProposalError("UNTRUSTED_GIT_CONFIG", "the worktree git-dir is not under the expected repository")
+    return git_dir, common
+
+
+def _scan_git_config(git_dir: str, common_dir: str) -> None:
+    """Refuse repository or worktree config that can run a program or change content (read directly, no git)."""
+    seen: set[str] = set()
+    for folder in (common_dir, git_dir):
+        for name in ("config", "config.worktree"):
+            path = os.path.join(folder, name)
+            if _norm_root(path) in seen:
+                continue
+            seen.add(_norm_root(path))
+            data = _read_small(path, MAX_CONFIG_BYTES)
+            if data is None:
+                continue
+            text = data.decode("utf-8", "replace")
+            for label, pattern in _CONFIG_HAZARDS:
+                if pattern.search(text):
+                    raise ProposalError("UNTRUSTED_GIT_CONFIG", f"{name} in the repository holds {label}")
+    for folder in (common_dir, git_dir):
+        data = _read_small(os.path.join(folder, "info", "attributes"), MAX_CONFIG_BYTES)
+        if data is not None:
+            _scan_attribute_text(data, "info/attributes")
+
+
+def _scan_attribute_text(data: bytes, label: str) -> None:
+    for line in data.decode("utf-8", "replace").splitlines():
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#") and _ATTRIBUTE_HAZARD.search(stripped):
+            raise ProposalError("UNTRUSTED_GIT_CONFIG", f"{label} sets filter, eol, text, ident or working-tree-encoding")
+
+
+def _scan_attributes(root: str, paths: Iterable[str]) -> None:
+    """Every .gitattributes from the worktree root down to each touched file's directory must be free of content attributes."""
+    folders = {""}
+    for path in paths:
+        parts = path.split("/")[:-1]
+        for i in range(1, len(parts) + 1):
+            folders.add("/".join(parts[:i]))
+    for folder in sorted(folders):
+        target = os.path.join(root, *(folder.split("/") if folder else []), ".gitattributes")
+        data = _read_small(target, MAX_CONFIG_BYTES)
+        if data is not None:
+            _scan_attribute_text(data, f"{folder + '/' if folder else ''}.gitattributes")
+
+
+def _read_worktree_file(root: str, rel: str) -> bytes:
+    path = os.path.join(root, *rel.split("/"))
+    try:
+        info = os.lstat(path)
+        if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_FILE_BYTES:
+            raise ProposalError("DIRTY_WORKTREE", f"{_show(rel)} is not a regular file within the size cap")
+        with open(path, "rb") as handle:
+            return handle.read(MAX_FILE_BYTES + 1)
+    except OSError as exc:
+        raise ProposalError("DIRTY_WORKTREE", f"{_show(rel)} cannot be read: {type(exc).__name__}") from exc
+
+
+def _check_clean(root: str, paths: Iterable[str], base_blobs: Mapping[str, bytes]) -> None:
+    """Every touched worktree file must equal its base blob byte for byte."""
+    for rel in paths:
+        if _read_worktree_file(root, rel) != base_blobs[rel]:
+            raise ProposalError("DIRTY_WORKTREE", f"{_show(rel)} differs from the base content")
+
+
+def _check_representable(rel: str, blob: bytes) -> None:
+    """AEVE built its diffs from str.splitlines() of a BOM-stripped decode; other sources cannot match them."""
+    if blob.startswith(_BOM):
+        raise ProposalError("PATCH_NOT_REPRESENTABLE", f"{_show(rel)} starts with a UTF-8 BOM")
+    try:
+        text = blob.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ProposalError("PATCH_NOT_REPRESENTABLE", f"{_show(rel)} is not UTF-8") from exc
+    if _SPLITLINES_ONLY & set(text):
+        raise ProposalError("PATCH_NOT_REPRESENTABLE", f"{_show(rel)} holds a carriage return or a splitlines-only separator")
+
+
+def _atomic_write(root: str, rel: str, data: bytes) -> None:
+    """Temp file in the same directory, flush, fsync, os.replace (retried: Windows may refuse briefly)."""
+    target = os.path.join(root, *rel.split("/"))
+    temp = f"{target}.vst-{os.getpid()}.tmp"
+    try:
+        with open(temp, "xb") as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        try:
+            shutil.copymode(target, temp)
+        except OSError:
+            pass
+        for attempt in range(6):
+            try:
+                os.replace(temp, target)
+                return
+            except PermissionError:
+                if attempt == 5:
+                    raise
+                time.sleep(0.05)
+    finally:
+        try:
+            os.unlink(temp)
+        except OSError:
+            pass
+
+
+def _acquire_lock(git_dir: str) -> int:
+    path = os.path.join(git_dir, LOCK_NAME)
+    try:
+        fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError as exc:
+        raise ProposalError("WORKTREE_LOCKED", "another apply holds the worktree lock (or a crashed one left it)") from exc
+    except OSError as exc:
+        raise ProposalError("WORKTREE_LOCKED", f"lock cannot be created: {type(exc).__name__}") from exc
+    try:
+        os.write(fd, str(os.getpid()).encode("ascii"))
+    except OSError:
+        pass
+    return fd
+
+
+def _release_lock(git_dir: str, fd: int) -> None:
+    try:
+        os.close(fd)
+    except OSError:
+        pass
+    try:
+        os.unlink(os.path.join(git_dir, LOCK_NAME))
+    except OSError:
+        pass
+
+
+def _rollback_files(root: str, attempted: Sequence[str], base_blobs: Mapping[str, bytes], cand_blobs: Mapping[str, bytes]) -> list[str]:
+    """Compare-and-restore: a path goes back to the base bytes only if it still holds the candidate bytes."""
+    conflicts: list[str] = []
+    for rel in attempted:
+        try:
+            current = _read_worktree_file(root, rel)
+            if current == base_blobs[rel]:
+                continue
+            if current == cand_blobs[rel]:
+                _atomic_write(root, rel, base_blobs[rel])
+            else:
+                conflicts.append(rel)
+        except Exception:
+            conflicts.append(rel)
+    return conflicts
+
+
+# ---------------------------------------------------------------------------- applying
 def apply_proposals(
     *, document: object, manifest_sha256: object, base_head: object, proposal_base_head: object,
     allowed_paths: object, protected_paths: object, isolation: object,
     git_runner: GitRunner = default_git_runner, timeout: float = DEFAULT_GIT_TIMEOUT,
 ) -> ApplyResult:
-    """Apply the patches of one AEVE proposal document in the isolated worktree; never raises.
+    """Apply the patches of one AEVE proposal document in the isolated worktree; never raises (except KeyboardInterrupt).
 
     ``document`` is the parsed ``g6.patch.v1`` object or its raw bytes. ``proposal_base_head`` is the
     head AEVE analysed when it produced the document (caller-reported, for example the ``head`` of
     the AEVE review response of the same run); ``base_head`` is the pinned base of the worktree.
-    The worktree is written only after the gate accepted the change (stage ``MATERIALIZE``);
-    a failure in that last stage is rolled back and, if the rollback fails, reported as UNKNOWN.
+    The call holds an exclusive per-worktree lock (a file in the git-dir). The worktree is written
+    only after the gate accepted the change (stage ``MATERIALIZE``), with a journal, and a failure
+    there is rolled back by compare-and-restore.
     """
     scratch: str | None = None
+    lock: tuple[str, int] | None = None
+    stage = "VALIDATE"
     try:
         if isinstance(document, bytes):
             document = parse_proposal_json(document)
         pset = validate_proposal_document(document)
+        common = {"report_sha256": pset.report_sha256, "no_patch_paths": pset.no_patch_paths,
+                  "patched_paths": pset.patched_paths, "partial": pset.partial}
         patches = pset.patches
         if not patches:
             return _result(BLOCKED, [("NO_PATCH_IN_PROPOSAL", "the document holds no patch; the model may write these paths")],
-                           "VALIDATE", report_sha256=pset.report_sha256, no_patch_paths=pset.no_patch_paths)
+                           "VALIDATE", **common)
         for name, value in (("base_head", base_head), ("proposal_base_head", proposal_base_head)):
             if not (isinstance(value, str) and _HEX40.fullmatch(value)):
                 raise ProposalError("MALFORMED_INPUT", f"{name} must be a lowercase 40-hex commit id")
         if not isinstance(isolation, IsolationContext):
             raise ProposalError("MALFORMED_INPUT", "isolation context is missing")
-        common = {"report_sha256": pset.report_sha256, "no_patch_paths": pset.no_patch_paths}
         if proposal_base_head != base_head:
             return _result(REFUSED, [("STALE_BASE", "the proposal was made for another head than the worktree base")],
                            "BASE_HEAD", **common)
 
         # Stage PRESCREEN: scope, protected paths and path hazards on the claimed diff, before any git call.
+        stage = "PRESCREEN"
         claimed = b"".join(git_patch_bytes(p) for p in patches)
         synthetic = hashlib.sha1(f"{base_head}:{pset.report_sha256}:prescreen".encode("ascii")).hexdigest()
         screen = wg.gate_worker_change(
@@ -478,107 +824,160 @@ def apply_proposals(
         if screen.verdict != ACCEPTED:
             return _result(screen.verdict, screen.reasons, "PRESCREEN", gate=screen, **common)
 
+        # Stage WORKTREE_CHECK: trusted repository, lock, base head, byte-identical clean files.
+        stage = "WORKTREE_CHECK"
         root = isolation.worktree_root
         if not (isinstance(root, str) and os.path.isdir(root)):
             raise ProposalError("MALFORMED_INPUT", "worktree_root is not an existing directory")
         scratch = tempfile.mkdtemp(prefix="vst-u5-2-")
-        try:
-            inside = os.path.commonpath([_norm_root(scratch), _norm_root(root)]) == _norm_root(root)
-        except ValueError:  # different drives: disjoint
-            inside = False
-        if inside:
+        if _inside(scratch, root):
             raise ProposalError("MALFORMED_INPUT", "scratch directory would be inside the worktree")
-        env = build_git_env(scratch)
-        index_env = build_git_env(scratch, index_file=os.path.join(scratch, "vst-throwaway-index"))
+        git_dir, common_dir = _resolve_git_dirs(root)
+        lock = (git_dir, _acquire_lock(git_dir))
+        if os.path.lexists(os.path.join(git_dir, JOURNAL_NAME)):
+            raise ProposalError("JOURNAL_PRESENT", "an earlier apply left a journal; discard or inspect the worktree")
+        _scan_git_config(git_dir, common_dir)
+        _scan_attributes(root, pset.patched_paths)
+        objects = os.path.join(scratch, "objects")
+        os.mkdir(objects)
+        env = build_git_env(scratch, objects=objects, alternates=os.path.join(common_dir, "objects"))
+        index_env = dict(env, GIT_INDEX_FILE=os.path.join(scratch, "vst-throwaway-index"))
 
-        def git(args: Sequence[str], *, use_index: bool = False, stdin: bytes | None = None, ok: Sequence[int] = (0,)) -> GitResult:
+        def git(args: Sequence[str], *, use_index: bool = False, stdin: bytes | None = None,
+                ok: Sequence[int] = (0,)) -> GitResult:
             return _git(git_runner, args, cwd=root, env=index_env if use_index else env, timeout=timeout, stdin=stdin, ok=ok)
 
-        # Stage WORKTREE_CHECK: the cwd is the worktree top level, HEAD is the pinned base, touched paths are clean.
         top = _git_text(git(["rev-parse", "--show-toplevel"]))
         if _norm_root(top) != _norm_root(root):
-            return _result(BLOCKED, [("WORKTREE_ROOT_MISMATCH", "git top level differs from the isolation worktree root")], "WORKTREE_CHECK", **common)
+            return _result(BLOCKED, [("WORKTREE_ROOT_MISMATCH", "git top level differs from the isolation worktree root")], stage, **common)
+        reported = _git_text(git(["rev-parse", "--git-dir", "--git-common-dir"])).splitlines()
+        expected = (git_dir, common_dir)
+        if len(reported) != 2 or any(
+                _norm_root(r if os.path.isabs(r) else os.path.join(root, r)) != _norm_root(e) for r, e in zip(reported, expected)):
+            raise ProposalError("UNTRUSTED_GIT_CONFIG", "git reports other git directories than the .git entry names")
         head = _git_object(git(["rev-parse", "--verify", "--quiet", "HEAD^{commit}"]))
         if head != base_head:
-            return _result(REFUSED, [("STALE_BASE", "worktree HEAD differs from the pinned base head")], "WORKTREE_CHECK", **common)
-        status = git(["status", "--porcelain=v1", "-z", "--untracked-files=no", "--", *pset.patched_paths])
-        if status.stdout:
-            return _result(BLOCKED, [("DIRTY_WORKTREE", "a path to patch already has uncommitted changes")], "WORKTREE_CHECK", **common)
+            return _result(REFUSED, [("STALE_BASE", "worktree HEAD differs from the pinned base head")], stage, **common)
+        paths = list(pset.patched_paths)
+        if git(["status", "--porcelain=v1", "-z", "--untracked-files=no", "--", *paths]).stdout:
+            raise ProposalError("DIRTY_WORKTREE", "a path to patch already has uncommitted changes")
+        flags = git(["ls-files", "-v", "-z", "--", *paths]).stdout.decode("utf-8", "replace").split("\0")
+        tagged = {entry[2:]: entry[:1] for entry in flags if len(entry) > 2 and entry[1] == " "}
+        if set(tagged) != set(paths) or any(tag != "H" for tag in tagged.values()):
+            raise ProposalError("DIRTY_WORKTREE", "a path is untracked, assume-unchanged or skip-worktree")
+        base_blobs = {rel: git(["cat-file", "blob", f"{base_head}:{rel}"]).stdout for rel in paths}
+        _check_clean(root, paths, base_blobs)
+        for rel in paths:
+            _check_representable(rel, base_blobs[rel])
         base_tree = _git_object(git(["rev-parse", "--verify", "--quiet", f"{base_head}^{{tree}}"]))
 
-        # Stage BUILD: apply every patch, in document order, to a throw-away index. The worktree is not touched.
+        # Stage BUILD: apply every patch, in document order, to a throw-away index and object directory.
+        stage = "BUILD"
         git(["read-tree", base_head], use_index=True)
         for proposal in patches:
             patch = git_patch_bytes(proposal)
             apply_args = ["apply", "--cached", "--whitespace=nowarn", f"--include={proposal.file}", "-"]
-            checked = git([apply_args[0], "--check", *apply_args[1:]], use_index=True, stdin=patch, ok=(0, 1))
-            if checked.returncode == 1:
+            checked = git([apply_args[0], "--check", *apply_args[1:]], use_index=True, stdin=patch, ok=tuple(range(256)))
+            if checked.returncode != 0:
                 text = checked.stderr.decode("utf-8", "replace")
-                if "corrupt patch" in text or "malformed patch" in text:
-                    return _result(BLOCKED, [("PROPOSAL_MALFORMED", f"git rejected the patch for {_show(proposal.file)} as corrupt")], "BUILD", **common)
-                return _result(REFUSED, [("STALE_BASE", f"patch for {_show(proposal.file)} ({proposal.recipe}) does not apply to the base content")],
-                               "BUILD", **common)
+                if checked.returncode == 1 and _STALE_TEXT.search(text):
+                    return _result(REFUSED, [("STALE_BASE", f"patch for {_show(proposal.file)} ({proposal.recipe}) does not apply to the base content")],
+                                   stage, **common)
+                return _result(BLOCKED, [("PATCH_DOES_NOT_APPLY", f"{_show(proposal.file)}: git exit {checked.returncode}: {ascii(text[-200:])}")],
+                               stage, **common)
             git(apply_args, use_index=True, stdin=patch)
         tree = _git_object(git(["write-tree"], use_index=True))
         if tree == base_tree:
-            return _result(BLOCKED, [("NO_EFFECT", "the patches leave the base tree unchanged")], "BUILD", **common)
+            return _result(BLOCKED, [("NO_EFFECT", "the patches leave the base tree unchanged")], stage, **common)
         candidate = _git_object(git(["commit-tree", tree, "-p", base_head, "-m", f"VST U5-2 candidate {pset.report_sha256}"]))
         if candidate == base_head:
-            return _result(BLOCKED, [("NO_EFFECT", "candidate equals base")], "BUILD", **common)
+            return _result(BLOCKED, [("NO_EFFECT", "candidate equals base")], stage, **common)
         diff = git(["diff", "--no-color", "--no-ext-diff", "--no-textconv", "--no-renames",
                     "--src-prefix=a/", "--dst-prefix=b/", base_head, candidate]).stdout
         names = git(["diff", "--name-only", "-z", "--no-renames", base_head, candidate]).stdout
         changed = sorted(n for n in names.decode("utf-8").split("\0") if n)
         if not diff or not changed:
-            return _result(BLOCKED, [("NO_EFFECT", "empty resulting diff")], "BUILD", **common)
+            return _result(BLOCKED, [("NO_EFFECT", "empty resulting diff")], stage, **common)
         if set(changed) != set(pset.patched_paths):
-            return _result(REFUSED, [("DIFF_PATH_MISMATCH", "resulting changed paths differ from the proposed files")], "BUILD", **common)
-        facts = {**common, "candidate_head": candidate, "changed_paths": tuple(changed), "diff_bytes": diff,
-                 "diff_sha256": hashlib.sha256(diff).hexdigest()}
+            return _result(REFUSED, [("DIFF_PATH_MISMATCH", "resulting changed paths differ from the proposed files")], stage, **common)
+        cand_blobs = {rel: git(["cat-file", "blob", f"{candidate}:{rel}"]).stdout for rel in changed}
+        facts = {**common, "candidate_head": candidate, "candidate_tree": tree, "changed_paths": tuple(changed),
+                 "diff_bytes": diff, "diff_sha256": hashlib.sha256(diff).hexdigest(),
+                 "file_digests": {rel: {"base_sha256": hashlib.sha256(base_blobs[rel]).hexdigest(),
+                                        "candidate_sha256": hashlib.sha256(cand_blobs[rel]).hexdigest()} for rel in changed}}
 
         # Stage GATE: the real resulting diff goes through worker_gate (diff gate, scope, protected paths, isolation proof).
-        verdict = wg.gate_worker_change(
+        # isolation.worktree_head is set to the candidate id: a placeholder, the real HEAD is unchanged (see to_dict).
+        stage = "GATE"
+        gate_args = dict(
             manifest_sha256=manifest_sha256, base_head=base_head, candidate_head=candidate,
             changed_paths=changed, allowed_paths=allowed_paths, protected_paths=protected_paths,
             diff_bytes=diff, isolation=dataclasses.replace(isolation, worktree_head=candidate))
+        verdict = wg.gate_worker_change(**gate_args)
         if verdict.verdict != ACCEPTED:
-            return _result(verdict.verdict, verdict.reasons, "GATE", gate=verdict, **facts)
-        hunks = hunk_counts_from_diff(diff)
-        facts["hunks_by_file"] = hunks
+            return _result(verdict.verdict, verdict.reasons, stage, gate=verdict, **facts)
+        facts["hunks_by_file"] = hunk_counts_from_diff(diff)
 
-        # Stage MATERIALIZE: the only stage that writes the worktree (working files only, index and HEAD stay).
-        paths_nul = b"".join(p.encode("utf-8") + b"\0" for p in changed)
-        restore = ["restore", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"]
+        # Stage MATERIALIZE: the only stage that writes the worktree. Re-check, journal, write, verify, roll back on failure.
+        stage = "MATERIALIZE"
         try:
-            git([restore[0], f"--source={candidate}", *restore[1:]], stdin=paths_nul)
-            same = git(["diff", "--quiet", "--no-ext-diff", "--no-textconv", candidate, "--", *changed], ok=(0, 1))
-        except Exception as exc:  # any failure after the first write attempt must roll back
-            detail = getattr(exc, "detail", type(exc).__name__)
-            return _rollback(git, restore, base_head, paths_nul,
-                             [(getattr(exc, "code", "MATERIALIZE_FAILED"), str(detail))], verdict, facts)
-        if same.returncode != 0:
-            return _rollback(git, restore, base_head, paths_nul,
-                             [("MATERIALIZE_VERIFY_FAILED", "worktree files differ from the candidate after writing")], verdict, facts)
-        return _result(ACCEPTED, verdict.reasons, "MATERIALIZE", "MODIFIED", gate=verdict, **facts)
+            _check_clean(root, changed, base_blobs)
+            again = wg.gate_worker_change(**gate_args)  # link and scope checks repeated right before the write
+        except ProposalError as exc:
+            return _result(BLOCKED, [(exc.code, exc.detail)], stage, gate=verdict, **facts)
+        if again.verdict != ACCEPTED:
+            return _result(again.verdict, again.reasons, stage, gate=again, **facts)
+        journal = os.path.join(git_dir, JOURNAL_NAME)
+        entry = {"report_sha256": pset.report_sha256, "candidate_head": candidate,
+                 "paths": [{"path": rel, **facts["file_digests"][rel]} for rel in changed]}
+        try:
+            fd = os.open(journal, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            with os.fdopen(fd, "wb") as handle:
+                handle.write(json.dumps(entry, sort_keys=True).encode("utf-8"))
+                handle.flush()
+                os.fsync(handle.fileno())
+        except OSError as exc:
+            return _result(BLOCKED, [("JOURNAL_UNAVAILABLE", type(exc).__name__)], stage, gate=verdict, **facts)
+        attempted: list[str] = []
+        try:
+            for rel in changed:
+                attempted.append(rel)
+                _atomic_write(root, rel, cand_blobs[rel])
+            for rel in changed:
+                if _read_worktree_file(root, rel) != cand_blobs[rel]:
+                    raise ProposalError("MATERIALIZE_VERIFY_FAILED", f"{_show(rel)} differs from the candidate after writing")
+        except BaseException as exc:
+            conflicts = _rollback_files(root, attempted, base_blobs, cand_blobs)
+            reasons = [(getattr(exc, "code", "MATERIALIZE_FAILED"), str(getattr(exc, "detail", type(exc).__name__)))]
+            if conflicts:
+                reasons += [("ROLLBACK_CONFLICT", _show(rel)) for rel in conflicts]  # journal stays: the next call is blocked
+                outcome = _result(BLOCKED, reasons, stage, "UNKNOWN", gate=verdict, post_materialize_verified=False, **facts)
+            else:
+                reasons.append(("ROLLED_BACK", "touched files were restored to the base bytes"))
+                try:
+                    os.unlink(journal)
+                except OSError:
+                    pass
+                outcome = _result(BLOCKED, reasons, stage, "UNCHANGED", gate=verdict, post_materialize_verified=False, **facts)
+            if not isinstance(exc, Exception):
+                raise
+            return outcome
+        try:
+            os.unlink(journal)
+        except OSError:
+            pass
+        return _result(ACCEPTED, verdict.reasons, stage, "MODIFIED", gate=verdict, post_materialize_verified=True, **facts)
     except ProposalError as exc:
-        return _result(BLOCKED, [(exc.code, exc.detail)], "VALIDATE")
+        return _result(BLOCKED, [(exc.code, exc.detail)], stage)
     except _GitFail as exc:
-        return _result(BLOCKED, [(exc.code, exc.detail)], "GIT")
+        return _result(BLOCKED, [(exc.code, exc.detail)], stage)
     except Exception as exc:  # fail closed on anything unexpected
         return _result(BLOCKED, [("INTERNAL_ERROR", type(exc).__name__)], "INTERNAL")
     finally:
+        if lock is not None:
+            _release_lock(*lock)
         if scratch is not None:
             shutil.rmtree(scratch, ignore_errors=True)
-
-
-def _rollback(git: Callable[..., GitResult], restore: list[str], base_head: str, paths_nul: bytes,
-              reasons: list[tuple[str, str]], gate: WorkerGateVerdict, facts: dict) -> ApplyResult:
-    """Restore the touched files from the pinned base; UNKNOWN when even that fails."""
-    try:
-        git([restore[0], f"--source={base_head}", *restore[1:]], stdin=paths_nul)
-    except Exception as exc:
-        return _result(BLOCKED, reasons + [("ROLLBACK_FAILED", type(exc).__name__)], "MATERIALIZE", "UNKNOWN", gate=gate, **facts)
-    return _result(BLOCKED, reasons + [("ROLLED_BACK", "touched files were restored from the base head")], "MATERIALIZE", "UNCHANGED", gate=gate, **facts)
 
 
 # ---------------------------------------------------------------------------- origin share
@@ -683,12 +1082,38 @@ def change_origin_share(proposal_lines_by_file: object, model_lines_by_file: obj
     }
 
 
+def build_run_record(apply_result: object, model_hunks_by_file: object, overrides: Iterable[Mapping[str, Any]] | None = None) -> dict:
+    """JSON-able per-run record: proposal versus model line counts and fractions, shared files, overrides.
+
+    ``overrides`` is ``ModelChangeVerdict.overrides``. Raises ValueError on bad input. A run whose
+    proposal was refused or blocked has no applied hunks: its proposal side is empty and the verdict says why.
+    """
+    if not isinstance(apply_result, ApplyResult):
+        raise ValueError("apply_result must be an ApplyResult")
+    share = change_origin_share(apply_result.hunks_by_file or {}, model_hunks_by_file)
+    recorded = [dict(item) for item in (overrides or [])]
+    return {
+        "schema": RUN_RECORD_SCHEMA,
+        "verdict": apply_result.verdict, "stage": apply_result.stage,
+        "worktree_state": apply_result.worktree_state,
+        "report_sha256": apply_result.report_sha256, "candidate_head": apply_result.candidate_head,
+        "diff_sha256": apply_result.diff_sha256, "partial": apply_result.partial,
+        "post_materialize_verified": apply_result.post_materialize_verified,
+        "patched_paths": list(apply_result.patched_paths), "no_patch_paths": list(apply_result.no_patch_paths),
+        "proposal_lines": share["proposal"]["lines"], "model_lines": share["model"]["lines"],
+        "total_lines": share["total_lines"],
+        "proposal_fraction": share["proposal_fraction"], "model_fraction": share["model_fraction"],
+        "files_touched_by_both": share["files_touched_by_both"], "model_only_paths": share["model_only_paths"],
+        "overrides": recorded,
+    }
+
+
 # ---------------------------------------------------------------------------- model must not override proposals
 @dataclass(frozen=True)
 class ModelChangeVerdict:
     verdict: str
     reasons: tuple[tuple[str, str], ...]
-    overrides: tuple[dict, ...]        # recorded explicit overrides: {"path", "reason"}
+    overrides: tuple[dict, ...]        # recorded explicit overrides: {"path", "reason", "authorized_by"}
     model_only_paths: tuple[str, ...]  # model paths with no proposed patch
 
     def to_dict(self) -> dict:
@@ -696,37 +1121,51 @@ class ModelChangeVerdict:
                 "overrides": [dict(o) for o in self.overrides], "model_only_paths": list(self.model_only_paths)}
 
 
-def _reason_problem(reason: object) -> str | None:
-    if not isinstance(reason, str):
-        return "reason is not a string"
-    text = reason.strip()
-    if not MIN_OVERRIDE_REASON <= len(text) <= MAX_OVERRIDE_REASON:
-        return f"reason must have {MIN_OVERRIDE_REASON} to {MAX_OVERRIDE_REASON} characters after trimming"
-    if any(ord(ch) < 32 or ord(ch) == 0x7F for ch in text):
-        return "reason contains control characters"
+def _text_problem(value: object, low: int, high: int, what: str) -> str | None:
+    if not isinstance(value, str):
+        return f"{what} is not a string"
+    text = value.strip()
+    if not low <= len(text) <= high:
+        return f"{what} must have {low} to {high} characters after trimming"
+    if any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp") for ch in text):
+        return f"{what} contains control, format or line-separator characters"
     return None
 
 
 def check_model_changes(
-    *, proposal_patched_paths: object, model_changed_paths: object, override_reasons: object = None,
+    *, model_changed_paths: object, apply_result: object = None, proposal_patched_paths: object = None,
+    override_reasons: object = None, authorized_by: object = None,
 ) -> ModelChangeVerdict:
     """The model may write only paths AEVE proposed no patch for; never raises.
 
+    The patched paths come from ``apply_result.patched_paths`` (the validated document of this run);
+    ``proposal_patched_paths`` is an unbound alternative and exactly one of the two must be given.
     A model change on a patched path is REFUSED (MODEL_OVERRIDES_PROPOSAL) unless
-    ``override_reasons`` maps that exact model path to a stated reason; then it is ACCEPTED with the
-    override recorded (MODEL_OVERRIDE_RECORDED and ``overrides``). An override for a path
-    that is not in conflict is BLOCKED (OVERRIDE_WITHOUT_CONFLICT). Whether the model change is also
-    in scope is the business of worker_gate, not of this function.
+    ``override_reasons`` maps that exact model path to a stated reason AND ``authorized_by`` names the
+    operator who authorised it; then it is ACCEPTED with the override recorded (MODEL_OVERRIDE_RECORDED
+    and ``overrides``). Without ``authorized_by`` the path stays refused (OVERRIDE_AUTHORIZATION_MISSING).
+    At most MAX_OVERRIDES overrides; an override for a path not in conflict is BLOCKED
+    (OVERRIDE_WITHOUT_CONFLICT). Scope of the model change is the business of worker_gate.
     """
     try:
-        patched = _paths("proposal_patched_paths", proposal_patched_paths)
+        if (apply_result is None) == (proposal_patched_paths is None):
+            raise ProposalError("MALFORMED_INPUT", "give exactly one of apply_result and proposal_patched_paths")
+        if apply_result is not None:
+            if not isinstance(apply_result, ApplyResult) or apply_result.report_sha256 is None:
+                raise ProposalError("MALFORMED_INPUT", "apply_result carries no validated proposal")
+            patched = _paths("apply_result.patched_paths", list(apply_result.patched_paths))
+        else:
+            patched = _paths("proposal_patched_paths", proposal_patched_paths)
         model = _paths("model_changed_paths", model_changed_paths)
         if override_reasons is None:
             override_reasons = {}
         if not isinstance(override_reasons, Mapping) or any(not isinstance(k, str) for k in override_reasons):
             raise ProposalError("MALFORMED_INPUT", "override_reasons must map model paths to reason strings")
+        if len(override_reasons) > MAX_OVERRIDES:
+            raise ProposalError("OVERRIDE_CAP_EXCEEDED", f"more than {MAX_OVERRIDES} overrides")
         patched_keys = {_fold(p) for p in patched}
         conflicts = sorted({m for m in model if _fold(m) in patched_keys})
+        author_problem = _text_problem(authorized_by, 1, MAX_AUTHORIZED_BY, "authorized_by")
         refuse: list[tuple[str, str]] = []
         block: list[tuple[str, str]] = []
         recorded: list[dict] = []
@@ -734,11 +1173,14 @@ def check_model_changes(
             if path not in override_reasons:
                 refuse.append(("MODEL_OVERRIDES_PROPOSAL", _show(path)))
                 continue
-            problem = _reason_problem(override_reasons[path])
+            if author_problem:
+                refuse.append(("OVERRIDE_AUTHORIZATION_MISSING", f"{_show(path)}: {author_problem}"))
+                continue
+            problem = _text_problem(override_reasons[path], MIN_OVERRIDE_REASON, MAX_OVERRIDE_REASON, "reason")
             if problem:
                 refuse.append(("OVERRIDE_REASON_INVALID", f"{_show(path)}: {problem}"))
                 continue
-            recorded.append({"path": path, "reason": override_reasons[path].strip()})
+            recorded.append({"path": path, "reason": override_reasons[path].strip(), "authorized_by": authorized_by.strip()})
         for path in sorted(set(override_reasons) - set(conflicts)):
             block.append(("OVERRIDE_WITHOUT_CONFLICT", _show(path)))
         model_only = tuple(sorted(m for m in model if _fold(m) not in patched_keys))

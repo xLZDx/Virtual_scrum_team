@@ -2303,3 +2303,7 @@ Three reviewers tested mismatched paths but none tried a header-only block or a 
 ## 2026-11-11 SHORTCOMING proposal format assumed richer than it is
 
 The task text expected base hashes and bounds in the AEVE proposal; the real g6.patch.v1 has neither and no CLI. Layer: reading the producer source before designing. Rule: read the producer's code via git first and state in the doc which guarantees the producer does not give, then enforce them on the consumer side.
+
+## 2026-11-11 SHORTCOMING reviewers found what the first pass trusted
+
+Reviewers found: recipe label unenforced, repo-local git config trusted, no lock, CRLF/BOM false STALE_BASE, wrong exit-1 mapping, a test that passed doc=None but ran a valid document, and no real-git tests. Layer: author review of the first pass. Rule: for every input the code trusts, ask who can write it and what runs on it; a test parameter that a helper silently replaces (None as default) needs a sentinel; add at least one real-tool test next to every scripted-tool test.

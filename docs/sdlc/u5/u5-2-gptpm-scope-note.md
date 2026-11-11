@@ -20,3 +20,19 @@ Limits: git commands unproven (nothing was run); no file hashes from AEVE so a b
 Tests: written, NOT_RUN (running tests is forbidden by the operator). Evidence is static reading only.
 
 Ask: the complete BLOCKER/MAJOR set for this delta only.
+
+## Review remediation
+
+Three reviewers (python, security, tests) reported on 49bbe61; one batch was applied (static only, tests NOT_RUN). Operator decision: a stale base is guarded on the VST side because AEVE proposals carry no base identity; AEVE is unchanged.
+- Recipe label unenforced (security MAJOR): each diff is checked against its recipe before any git call (`RECIPE_MISMATCH`); chaining order enforced; `report_sha256` documented as integrity, not authenticity.
+- Repository-local git config trusted (security MAJOR): command-line overrides for attributes, hooks, autocrlf, safecrlf, quotepath; direct scan of config, `config.worktree`, `info/attributes` and `.gitattributes` (`UNTRUSTED_GIT_CONFIG`); git-dir and common-dir derived from `.git` and cross-checked; the worktree is now written by Python (temp file plus `os.replace`) and compared byte for byte with `git cat-file` blobs, so the git checkout-style write and its filters are gone.
+- No lock, TOCTOU, rollback by overwrite (security MAJOR): exclusive lock file in the git-dir, journal, re-check of bytes and gate right before the write, compare-and-restore rollback (`ROLLBACK_CONFLICT`), rollback also on `KeyboardInterrupt`; assume-unchanged and skip-worktree paths refused.
+- Override too weak (security): `authorized_by` required and recorded, Cc/Cf/Zl/Zp rejected, cap of 16, patched paths bound to the `ApplyResult`.
+- Dangling objects (security): scratch object directory with alternates; consequence: `candidate_head` is an identifier only.
+- git lookup (security): `find_git` uses absolute PATH entries outside the worktree.
+- CRLF, BOM and separators gave a false `STALE_BASE` (python MAJOR): `PATCH_NOT_REPRESENTABLE`; exit-1 mapping split into `STALE_BASE` and `PATCH_DOES_NOT_APPLY`; `GIT_UNSAFE_DIRECTORY`.
+- False isolation wording (python MAJOR): the proof is marked `pre_materialize` with the placeholder note, plus `post_materialize_verified`.
+- Run record (python): `build_run_record`; `ApplyResult` exposes `partial` and `patched_paths`.
+- Tests: the `doc=None` blocker fixed with a sentinel; gate-stage, rollback, lock, config, recipe, exit-code, override, record tests added; real-git tests (skipped without git) added. All NOT_RUN.
+
+Still open: git commands unproven; a base differing only outside the hunk context is not detected; the lock is advisory.
