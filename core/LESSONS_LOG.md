@@ -2431,3 +2431,7 @@ Small scoped task with a scope note and recomputed literals got APPROVE with no 
 ## 2026-11-11 SHORTCOMING the plan named a rollback point in pipeline_state.py that does not exist
 
 The U6-1 brief said pipeline_state.py has a rollback point; the agent found it lives in pipeline_migration.create_rollback_point. Root cause: the brief was written from memory of the U5 summary, not from the code (author layer). Rule: grep the symbol before naming it in a brief.
+
+## 2026-11-11 SHORTCOMING first version of the snapshot hash hid unreadable directories and junctions
+
+os.walk dropped scandir errors and is_symlink missed NTFS junctions, so the fail-closed claim in the docstring was false; found by python-reviewer and the tests reviewer (no test for SNAPSHOT_FAILED). Layer missed: author and tests. Rule: every fail-closed claim needs a test that forces the failure, and Windows link checks must cover reparse points.

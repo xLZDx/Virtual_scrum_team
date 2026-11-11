@@ -11,8 +11,13 @@ paths (plain string order). Per file the hashed bytes are
 `<path as UTF-8> 0x00 <decimal byte length> 0x00 <file bytes>`. Empty directories, timestamps, permissions and
 line-ending conversions are not part of the hash: bytes are hashed as they are on disk.
 
+The tree must be quiescent while it is hashed: the hash is a point-in-time read (files are listed and then read one
+by one), so a writer that changes the tree meanwhile can make the hash match no real state (time of check versus
+time of use). Run the exercise on a scratch copy that nothing else touches.
+
 Fail closed, no raise for expected failures: a root that is not a directory, an unreadable tree, a symlink or other
-non-regular entry, a non-callable argument, an exception in the change or in the rollback, a change that changed
+non-regular entry, a link, junction or other reparse point (on the root, a directory or a file), a directory that
+cannot be listed, a file that cannot be read, a non-callable or coroutine-function argument, an exception in the change or in the rollback, a change that changed
 nothing and a rollback that left a different tree all give a result with `rollback_proven` False and an error code.
 Exception messages are never echoed (only the exception type name), because they may hold file content or paths.
 `KeyboardInterrupt` and `SystemExit` are not caught. The helper reads and writes nothing itself and uses no
@@ -24,7 +29,9 @@ Standard library only. Details: docs/sdlc/u6/RUNBOOK.md.
 from __future__ import annotations
 
 import hashlib
+import inspect
 import os
+import stat
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -39,6 +46,7 @@ ROLLBACK_FAILED = "ROLLBACK_FAILED"
 ROLLBACK_INCOMPLETE = "ROLLBACK_INCOMPLETE"
 
 GIT_DIR_NAME = ".git"
+FILE_ATTRIBUTE_REPARSE_POINT = 0x400  # Windows: symlink, NTFS junction, mount point and other reparse points
 _HEX64 = frozenset("0123456789abcdef")
 
 
@@ -87,24 +95,42 @@ class RollbackExerciseResult:
         }
 
 
+def _is_reparse_or_link(path: Path) -> bool:
+    """True for a symlink, an NTFS junction or any other reparse point. An unreadable entry raises _SnapshotError."""
+    try:
+        info = os.lstat(path)
+    except OSError:
+        raise _SnapshotError("an entry could not be inspected") from None
+    if stat.S_ISLNK(info.st_mode):
+        return True
+    if getattr(info, "st_file_attributes", 0) & FILE_ATTRIBUTE_REPARSE_POINT:
+        return True
+    isjunction = getattr(os.path, "isjunction", None)  # Python 3.12+
+    return bool(isjunction is not None and isjunction(path))
+
+
+def _walk_error(exc: OSError) -> None:
+    raise _SnapshotError("a directory could not be listed")
+
+
 def _walk_files(root: Path) -> list[tuple[str, Path]]:
     """(relative POSIX path, absolute path) of every regular file, `.git` excluded, sorted by the relative path."""
     found: list[tuple[str, Path]] = []
-    for current, dirnames, filenames in os.walk(root, followlinks=False):
+    for current, dirnames, filenames in os.walk(root, followlinks=False, onerror=_walk_error):
         here = Path(current)
         kept = []
         for name in dirnames:
             if name == GIT_DIR_NAME:
                 continue
-            if (here / name).is_symlink():
-                raise _SnapshotError("a directory link is not allowed in the tree")
+            if _is_reparse_or_link(here / name):
+                raise _SnapshotError("a link or junction is not allowed in the tree")
             kept.append(name)
         dirnames[:] = kept
         for name in filenames:
             if name == GIT_DIR_NAME:
                 continue
             path = here / name
-            if path.is_symlink() or not path.is_file():
+            if _is_reparse_or_link(path) or not path.is_file():
                 raise _SnapshotError("a link or a non-regular file is not allowed in the tree")
             found.append((path.relative_to(root).as_posix(), path))
     found.sort(key=lambda item: item[0])
@@ -115,13 +141,15 @@ def snapshot_hash(root: str | os.PathLike) -> str:
     """Deterministic SHA-256 of the tree under `root` (format in the module docstring).
 
     Raises NotADirectoryError when `root` is not a directory and OSError or ValueError when the tree cannot be read
-    or holds a link; `exercise_rollback` turns every one of them into an error code.
+    or holds a link, junction or reparse point; `exercise_rollback` turns every one of them into an error code.
     """
     base = Path(root)
     if not base.is_dir():
         raise NotADirectoryError("root is not a directory")
     digest = hashlib.sha256()
     try:
+        if _is_reparse_or_link(base):
+            raise _SnapshotError("the root is a link, junction or reparse point")
         for relative, path in _walk_files(base):
             data = path.read_bytes()
             digest.update(relative.encode("utf-8"))
@@ -156,7 +184,9 @@ def exercise_rollback(root: str | os.PathLike, change: Callable[[Path], object],
     Both callables receive `root` as a `pathlib.Path`. Order: snapshot, change, snapshot, rollback, snapshot.
     The rollback is run only after a change that raised nothing and altered the tree; when the change raises or
     changes nothing, the result is not proven and the rollback callable is NOT called (the tree may then be left
-    in a half-changed state: restore it with the real rollback procedure). Never raises for these expected failures.
+    in a half-changed state: restore it with the real rollback procedure). A snapshot that fails after the change
+    (SNAPSHOT_FAILED, possibly transient on Windows) also skips the rollback and may leave the tree changed; a
+    failure of the first snapshot happens before anything is called. Never raises for these expected failures.
     """
     try:
         base = Path(root)
@@ -165,8 +195,9 @@ def exercise_rollback(root: str | os.PathLike, change: Callable[[Path], object],
         return _failure(ROOT_NOT_DIRECTORY, "root is not a usable path")
     if not is_dir:
         return _failure(ROOT_NOT_DIRECTORY, "root is not an existing directory")
-    if not callable(change) or not callable(rollback):
-        return _failure(BAD_CALLABLE, "change and rollback must be callable")
+    if (not callable(change) or not callable(rollback) or inspect.iscoroutinefunction(change)
+            or inspect.iscoroutinefunction(rollback)):
+        return _failure(BAD_CALLABLE, "change and rollback must be plain callables (no coroutine functions)")
 
     before, problem = _snap(base)
     if before is None:

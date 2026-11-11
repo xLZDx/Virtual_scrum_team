@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import dataclasses
 import hashlib
+import os
+import pathlib
 from pathlib import Path
 
 import pytest
@@ -79,10 +81,12 @@ def test_proven_rollback(tmp_path):
 def test_rollback_leaving_a_stray_file_is_not_proven(tmp_path):
     make_tree(tmp_path)
     before = expected_hash(tmp_path)
+    seen = {}
 
     def change(root):
         (root / "a.txt").write_bytes(b"changed")
         (root / "stray.txt").write_bytes(b"x")
+        seen["after_change"] = expected_hash(root)
 
     def rollback(root):
         (root / "a.txt").write_bytes(b"alpha")  # stray.txt stays
@@ -92,6 +96,7 @@ def test_rollback_leaving_a_stray_file_is_not_proven(tmp_path):
     assert result.rollback_proven is False
     assert result.error_code == rx.ROLLBACK_INCOMPLETE
     assert result.snapshot_before == before
+    assert result.snapshot_after_change == seen["after_change"]
     assert result.snapshot_after_rollback == expected_hash(tmp_path)
     assert result.snapshot_after_rollback != before
 
@@ -186,12 +191,63 @@ def test_non_directory_root_is_refused_without_calling_anything(tmp_path):
 
 def test_non_callable_arguments_are_refused(tmp_path):
     make_tree(tmp_path)
-    result = rx.exercise_rollback(tmp_path, None, lambda root: None)
+    for change, rollback in ((None, lambda root: None), (lambda root: None, "not callable")):
+        result = rx.exercise_rollback(tmp_path, change, rollback)
+        assert result.rollback_proven is False
+        assert result.error_code == rx.BAD_CALLABLE
+        assert result.snapshot_before is None
+        assert result.snapshot_after_change is None
+        assert result.snapshot_after_rollback is None
+
+
+def test_coroutine_functions_are_refused(tmp_path):
+    make_tree(tmp_path)
+    before = expected_hash(tmp_path)
+
+    async def coroutine(root):
+        (root / "never.txt").write_bytes(b"x")
+
+    for change, rollback in ((coroutine, lambda root: None), (lambda root: None, coroutine)):
+        result = rx.exercise_rollback(tmp_path, change, rollback)
+        assert result.rollback_proven is False
+        assert result.error_code == rx.BAD_CALLABLE
+        assert result.snapshot_before is None
+    assert expected_hash(tmp_path) == before
+
+
+def test_bad_callable_with_bad_root_reports_the_root(tmp_path):
+    result = rx.exercise_rollback(tmp_path / "missing", None, None)
     assert result.rollback_proven is False
-    assert result.error_code == rx.BAD_CALLABLE
-    result = rx.exercise_rollback(tmp_path, lambda root: None, "not callable")
-    assert result.rollback_proven is False
-    assert result.error_code == rx.BAD_CALLABLE
+    assert result.error_code == rx.ROOT_NOT_DIRECTORY
+
+
+def test_root_that_is_not_a_path_is_refused():
+    for bad in (None, 123):
+        result = rx.exercise_rollback(bad, lambda root: None, lambda root: None)
+        assert result.rollback_proven is False
+        assert result.error_code == rx.ROOT_NOT_DIRECTORY
+
+
+def test_str_root_is_accepted_and_callables_get_a_path(tmp_path):
+    make_tree(tmp_path)
+    before = expected_hash(tmp_path)
+    received = []
+
+    def change(root):
+        received.append(root)
+        (root / "n.txt").write_bytes(b"1")
+
+    def rollback(root):
+        received.append(root)
+        (root / "n.txt").unlink()
+
+    result = rx.exercise_rollback(str(tmp_path), change, rollback)
+
+    assert result.rollback_proven is True
+    assert result.snapshot_before == before
+    assert len(received) == 2
+    assert all(isinstance(item, pathlib.Path) for item in received)
+    assert all(item == tmp_path for item in received)
 
 
 def test_git_directory_is_excluded(tmp_path):
@@ -261,3 +317,253 @@ def test_result_is_frozen_and_guarded(tmp_path):
     with pytest.raises(ValueError):
         rx.RollbackExerciseResult(None, None, None, False)
     assert result.to_dict()["rollback_proven"] is True
+
+
+def test_result_invariants_and_dict_keys():
+    a, b = "a" * 64, "b" * 64
+    ok = rx.RollbackExerciseResult(a, b, a, True)
+    assert ok.to_dict() == {"snapshot_before": a, "snapshot_after_change": b, "snapshot_after_rollback": a,
+                            "rollback_proven": True, "error_code": None, "error_detail": None}
+    bad_cases = [
+        ("XYZ", None, None, False, "E"),       # not hex
+        (a.upper(), None, None, False, "E"),   # uppercase hex
+        ("a" * 63, None, None, False, "E"),    # wrong length
+        (a, a, a, True),                       # proven with after_change == before
+        (a, b, a, True, "SOME_CODE"),          # proven with an error code
+        (a, b, b, True),                       # proven with before != after_rollback
+        (None, b, a, True),                    # proven without a snapshot
+        (a, b, a, 1),                          # non-bool proven
+        (None, None, None, False),             # not proven without an error code
+    ]
+    for args in bad_cases:
+        with pytest.raises(ValueError):
+            rx.RollbackExerciseResult(*args)
+
+
+def test_nested_git_excluded_and_lookalikes_hashed(tmp_path):
+    make_tree(tmp_path)
+    (tmp_path / "sub" / ".git").mkdir()
+    (tmp_path / "sub" / ".git" / "x").write_bytes(b"inside nested git")
+    (tmp_path / ".gitignore").write_bytes(b"*.pyc\n")
+    (tmp_path / ".github").mkdir()
+    (tmp_path / ".github" / "x").write_bytes(b"workflow")
+    (tmp_path / "x.git").write_bytes(b"lookalike")
+    base = rx.snapshot_hash(tmp_path)
+    assert base == expected_hash(tmp_path)
+    assert base != expected_hash(tmp_path, include_git=True)
+
+    (tmp_path / "sub" / ".git" / "x").write_bytes(b"edited")
+    assert rx.snapshot_hash(tmp_path) == base  # excluded
+    for lookalike in (".gitignore", ".github/x", "x.git"):
+        target = tmp_path / lookalike
+        original = target.read_bytes()
+        target.write_bytes(original + b"!")
+        assert rx.snapshot_hash(tmp_path) != base, lookalike  # hashed
+        target.write_bytes(original)
+    assert rx.snapshot_hash(tmp_path) == base
+
+
+def test_empty_directory_rules(tmp_path):
+    make_tree(tmp_path)
+    before = expected_hash(tmp_path)
+
+    # a change that only creates an empty directory changes nothing the hash sees
+    result = rx.exercise_rollback(tmp_path, lambda root: (root / "empty").mkdir(), lambda root: None)
+    assert result.rollback_proven is False
+    assert result.error_code == rx.CHANGE_NO_EFFECT
+    assert result.snapshot_before == result.snapshot_after_change == before
+
+    # a rollback that leaves an empty directory behind is still proven
+    def change(root):
+        (root / "newdir").mkdir()
+        (root / "newdir" / "f.txt").write_bytes(b"f")
+
+    def rollback(root):
+        (root / "newdir" / "f.txt").unlink()  # newdir stays, empty
+
+    result = rx.exercise_rollback(tmp_path, change, rollback)
+    assert result.rollback_proven is True
+    assert result.snapshot_before == result.snapshot_after_rollback == before
+    assert (tmp_path / "newdir").is_dir()
+
+
+def test_change_that_mutates_then_raises_leaves_tree_changed(tmp_path):
+    make_tree(tmp_path)
+    before = expected_hash(tmp_path)
+    calls = []
+
+    def change(root):
+        (root / "a.txt").write_bytes(b"half done")
+        raise RuntimeError("late failure")
+
+    result = rx.exercise_rollback(tmp_path, change, lambda root: calls.append("rollback"))
+
+    assert result.rollback_proven is False
+    assert result.error_code == rx.CHANGE_FAILED
+    assert result.snapshot_before == before
+    assert result.snapshot_after_change is None
+    assert result.snapshot_after_rollback is None
+    assert calls == []
+    assert expected_hash(tmp_path) != before  # the tree is left changed, as documented
+
+
+def _fail_read_of(monkeypatch, name):
+    original = pathlib.Path.read_bytes
+
+    def failing(self):
+        if self.name == name:
+            raise PermissionError("locked by another process")
+        return original(self)
+
+    monkeypatch.setattr(pathlib.Path, "read_bytes", failing)
+
+
+def test_snapshot_failure_before_the_change(tmp_path, monkeypatch):
+    make_tree(tmp_path)
+    calls = []
+    _fail_read_of(monkeypatch, "a.txt")
+
+    result = rx.exercise_rollback(tmp_path, lambda root: calls.append("change"), lambda root: calls.append("rollback"))
+
+    assert result.rollback_proven is False
+    assert result.error_code == rx.SNAPSHOT_FAILED
+    assert result.snapshot_before is None
+    assert result.snapshot_after_change is None
+    assert result.snapshot_after_rollback is None
+    assert "PermissionError" in result.error_detail
+    assert "locked by another" not in result.error_detail
+    assert calls == []
+
+
+def test_snapshot_failure_after_the_change_skips_the_rollback(tmp_path, monkeypatch):
+    make_tree(tmp_path)
+    before = expected_hash(tmp_path)
+    calls = []
+
+    def change(root):
+        (root / "a" / "b.txt").write_bytes(b"changed")
+        _fail_read_of(monkeypatch, "a.txt")
+
+    result = rx.exercise_rollback(tmp_path, change, lambda root: calls.append("rollback"))
+
+    assert result.rollback_proven is False
+    assert result.error_code == rx.SNAPSHOT_FAILED
+    assert result.snapshot_before == before
+    assert result.snapshot_after_change is None
+    assert result.snapshot_after_rollback is None
+    assert calls == []
+    monkeypatch.undo()
+    assert (tmp_path / "a" / "b.txt").read_bytes() == b"changed"  # the tree is left changed
+
+
+def test_snapshot_failure_after_the_rollback(tmp_path, monkeypatch):
+    make_tree(tmp_path)
+    before = expected_hash(tmp_path)
+    seen = {}
+
+    def change(root):
+        (root / "a" / "b.txt").write_bytes(b"changed")
+        seen["after_change"] = expected_hash(root)
+
+    def rollback(root):
+        (root / "a" / "b.txt").write_bytes(b"bravo\r\nline2\n")
+        _fail_read_of(monkeypatch, "a.txt")
+
+    result = rx.exercise_rollback(tmp_path, change, rollback)
+
+    assert result.rollback_proven is False
+    assert result.error_code == rx.SNAPSHOT_FAILED
+    assert result.snapshot_before == before
+    assert result.snapshot_after_change == seen["after_change"]
+    assert result.snapshot_after_rollback is None
+
+
+def test_unlistable_directory_fails_the_snapshot(tmp_path, monkeypatch):
+    make_tree(tmp_path)
+    seen = {}
+
+    def fake_walk(top, topdown=True, onerror=None, followlinks=False):
+        seen["onerror"] = onerror
+        if onerror is not None:
+            onerror(PermissionError("cannot list"))  # what os.walk does when scandir fails
+        return iter(())
+
+    monkeypatch.setattr(os, "walk", fake_walk)
+
+    with pytest.raises(ValueError):
+        rx.snapshot_hash(tmp_path)
+    assert seen["onerror"] is not None  # the helper must not let os.walk swallow listing errors
+
+    calls = []
+    result = rx.exercise_rollback(tmp_path, lambda root: calls.append("change"), lambda root: None)
+    assert result.rollback_proven is False
+    assert result.error_code == rx.SNAPSHOT_FAILED
+    assert result.snapshot_before is None
+    assert calls == []
+
+
+def test_reparse_point_is_refused_for_root_directory_and_file(tmp_path, monkeypatch):
+    make_tree(tmp_path)
+    real = rx._is_reparse_or_link
+
+    for flagged in (tmp_path.name, "sub", "a.txt"):  # the root, a directory, a file
+        def fake(path, flagged=flagged):
+            return path.name == flagged or real(path)
+
+        monkeypatch.setattr(rx, "_is_reparse_or_link", fake)
+        with pytest.raises(ValueError):
+            rx.snapshot_hash(tmp_path)
+        calls = []
+        result = rx.exercise_rollback(tmp_path, lambda root: calls.append("change"), lambda root: None)
+        assert result.rollback_proven is False, flagged
+        assert result.error_code == rx.SNAPSHOT_FAILED, flagged
+        assert result.snapshot_before is None, flagged
+        assert calls == [], flagged
+
+    monkeypatch.setattr(rx, "_is_reparse_or_link", real)
+    assert rx.snapshot_hash(tmp_path) == expected_hash(tmp_path)  # a real tree without links is accepted
+
+
+def test_reparse_attribute_is_detected(tmp_path, monkeypatch):
+    (tmp_path / "f.txt").write_bytes(b"x")
+    real_lstat = os.lstat
+
+    class FakeStat:
+        st_mode = 0o100644
+        st_file_attributes = 0x400  # FILE_ATTRIBUTE_REPARSE_POINT
+
+    def fake_lstat(path, *args, **kwargs):
+        if os.fspath(path).endswith("f.txt"):
+            return FakeStat()
+        return real_lstat(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "lstat", fake_lstat)
+    assert rx._is_reparse_or_link(tmp_path / "f.txt") is True
+    with pytest.raises(ValueError):
+        rx.snapshot_hash(tmp_path)
+
+
+def test_real_symlinks_are_refused(tmp_path):
+    tree = tmp_path / "tree"
+    make_tree(tree)
+    outside = tmp_path / "outside"
+    make_tree(outside)
+    try:
+        os.symlink(outside / "a.txt", tree / "link.txt")
+        os.symlink(outside, tree / "dirlink", target_is_directory=True)
+        os.symlink(tree, tmp_path / "rootlink", target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("cannot create symlinks here (Windows WinError 1314 without privilege)")
+
+    with pytest.raises(ValueError):
+        rx.snapshot_hash(tree)
+    result = rx.exercise_rollback(tree, lambda root: None, lambda root: None)
+    assert result.error_code == rx.SNAPSHOT_FAILED
+    assert result.rollback_proven is False
+
+    (tree / "link.txt").unlink()
+    (tree / "dirlink").unlink()
+    assert rx.snapshot_hash(tree) == expected_hash(tree)  # clean again
+    root_result = rx.exercise_rollback(tmp_path / "rootlink", lambda root: None, lambda root: None)
+    assert root_result.error_code == rx.SNAPSHOT_FAILED  # a linked root passes is_dir but is refused
+    assert root_result.rollback_proven is False

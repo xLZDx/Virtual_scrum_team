@@ -3181,3 +3181,7 @@ GPT-PM verdict APPROVE, 0 BLOCKER, 0 MAJOR, for head c3479c9 against base 7855ef
 ## 2026-11-11 U6-1 rollback exercise helper and runbook
 
 Added tools/vst/rollback_exercise.py (snapshot hash over sorted paths and bytes, .git excluded; proof is before == after_rollback and after_change != before), tests/vst/test_u6_rollback_exercise.py and docs/sdlc/u6/RUNBOOK.md. When the change fails or has no effect the rollback is not called (documented). Tests and runbook commands NOT_RUN.
+
+## 2026-11-11 U6-1 remediation after reviewers
+
+One batch applied: os.walk errors and Windows junctions/reparse points now fail the snapshot (SNAPSHOT_FAILED), coroutine callables rejected, SNAPSHOT_FAILED and link paths tested, runbook corrected. Not done: chunked hashing; parents of root are not checked for links. Tests NOT_RUN.

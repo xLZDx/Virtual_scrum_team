@@ -12,7 +12,7 @@ Scope: how to set the pipeline up on a Windows machine, how to pin the AEVE role
 Windows notes:
 
 - **CRLF versus LF.** `.gitattributes` pins `* text=auto` and `eol=lf` for `*.md`, `*.py`, `*.json`, `*.yml`, `*.yaml`. Python on this machine writes CRLF with `write_text` and `open(..., "w")`; pass `newline="\n"` (or write bytes) when a file is pinned to LF. Digests that must not depend on line endings normalize them explicitly (the project-role `source_sha256` converts CRLF and CR to LF); other digests hash raw bytes, so a CRLF checkout of a file gives another digest. The patch writer refuses any repository that sets `text` or `eol` attributes on the target (`UNTRUSTED_GIT_CONFIG`, see `docs/sdlc/u5/REAL_CHANGE.md`, defect 1); this repository does, so the pipeline cannot apply a patch here today.
-- **Long paths (more than 260 characters).** A path longer than the Windows limit fails with WinError 3 or 206 inside `os.replace` and file opens. The AEVE ledger under a deep state directory failed this way (`docs/sdlc/u5/REAL_CHANGE.md`, defect 4). Use a short state directory such as `D:/tmp/u5-7-aeve-state`, and a short worktree path. The rollback directory `<db>.rollback/` adds a manifest and backup name of about 60 characters to the database path.
+- **Long paths (more than 260 characters).** A path longer than the Windows limit fails with WinError 3 in `os.replace` (observed in `docs/sdlc/u5/REAL_CHANGE.md`, defect 4); other file operations can fail the same way. The AEVE ledger under a deep state directory failed this way (`docs/sdlc/u5/REAL_CHANGE.md`, defect 4). Use a short state directory such as `D:/tmp/u5-7-aeve-state`, and a short worktree path. The rollback directory `<db>.rollback/` adds a manifest and backup name of about 60 characters to the database path.
 - **`os.replace` transient refusals.** `os.replace` and file deletion can be refused briefly (WinError 5 or 32) while another process, an indexer or an antivirus holds the file. `pipeline_migration` replaces files through its own `_replace` helper; if a step still fails, wait a few seconds and run it again. All steps below are safe to repeat unless a step says otherwise. Never delete a lock file by hand: use `clear_stale_lock` (section 4).
 - Windows reserves some TCP ports (8054-8153 on this machine); not used here.
 
@@ -90,10 +90,21 @@ Steps (NOT_RUN):
 
 `tools/vst/rollback_exercise.py` exercises a rollback on a directory tree and compares hashes. Tests: `tests/vst/test_u6_rollback_exercise.py` (written, NOT_RUN).
 
-- `snapshot_hash(root)`: SHA-256 over the regular files under `root`, `.git` (file or directory, any depth) excluded, in the order of the sorted relative POSIX paths; per file the bytes `<path UTF-8> 0x00 <decimal length> 0x00 <file bytes>`. Empty directories, timestamps and permissions are not hashed. A symlink or other non-regular entry makes the snapshot fail (fail closed).
-- `exercise_rollback(root, change, rollback)`: takes a snapshot, calls `change(Path(root))`, takes a snapshot, calls `rollback(Path(root))`, takes a snapshot. Returns a frozen `RollbackExerciseResult` with `snapshot_before`, `snapshot_after_change`, `snapshot_after_rollback`, `rollback_proven` (before equals after-rollback AND after-change differs from before), `error_code`, `error_detail`. It never raises for expected failures. Error codes: `ROOT_NOT_DIRECTORY`, `BAD_CALLABLE`, `SNAPSHOT_FAILED`, `CHANGE_FAILED` (rollback not run), `CHANGE_NO_EFFECT` (rollback not run; a rollback proves nothing then), `ROLLBACK_FAILED`, `ROLLBACK_INCOMPLETE` (a stray or changed file remains).
-- Example (run against a scratch copy, never the live tree):
-  `C:/Python314/python.exe -s -c "from tools.vst.rollback_exercise import exercise_rollback; r = exercise_rollback(r'<scratch_copy>', change_fn, rollback_fn); print(r.to_dict())"` where `change_fn` and `rollback_fn` are Python callables that take the root path.
+- `snapshot_hash(root)`: SHA-256 over the regular files under `root`, `.git` (file or directory, any depth) excluded, in the order of the sorted relative POSIX paths; per file the bytes `<path UTF-8> 0x00 <decimal length> 0x00 <file bytes>`. Empty directories, timestamps and permissions are not hashed. The tree must be quiescent while it is hashed (a point-in-time read: files are listed, then read one by one). Fail closed, the snapshot fails (`SNAPSHOT_FAILED`) on: a symlink, an NTFS junction or any other reparse point on the root, a directory or a file (checked with `lstat`, the reparse attribute 0x400 and `os.path.isjunction`); a non-regular entry; a directory that cannot be listed; a file that cannot be read. A snapshot failure can be transient on Windows (WinError 5 or 32, a file held by another process): wait and run the exercise again on the same scratch copy.
+- `exercise_rollback(root, change, rollback)`: takes a snapshot, calls `change(Path(root))`, takes a snapshot, calls `rollback(Path(root))`, takes a snapshot. Returns a frozen `RollbackExerciseResult` with `snapshot_before`, `snapshot_after_change`, `snapshot_after_rollback`, `rollback_proven` (before equals after-rollback AND after-change differs from before), `error_code`, `error_detail`. It never raises for expected failures. `change` and `rollback` must be plain callables; coroutine functions are refused. Error codes: `ROOT_NOT_DIRECTORY`, `BAD_CALLABLE`, `SNAPSHOT_FAILED` (a failure of the first snapshot happens before anything is called; a failure after the change also skips the rollback and may leave the tree changed, so restore the scratch copy by the real rollback procedure or discard it), `CHANGE_FAILED` (rollback not run), `CHANGE_NO_EFFECT` (rollback not run; a rollback proves nothing then), `ROLLBACK_FAILED`, `ROLLBACK_INCOMPLETE` (a stray or changed file remains).
+- Example (pseudo-code for the callables; run against a scratch copy, never the live tree). Save as a script `exercise.py` outside the repository and run it with `PYTHONPATH` set to the repo root:
+  ```python
+  from tools.vst.rollback_exercise import exercise_rollback
+
+  def change_fn(root):      # root is a pathlib.Path; apply the real change here
+      (root / "example.txt").write_bytes(b"changed")
+
+  def rollback_fn(root):    # run the real rollback procedure here
+      (root / "example.txt").unlink()
+
+  print(exercise_rollback(r"<scratch_copy>", change_fn, rollback_fn).to_dict())
+  ```
+  Command: `C:/Python314/python.exe -s exercise.py` (NOT_RUN).
 
 ## 7. Verify
 
