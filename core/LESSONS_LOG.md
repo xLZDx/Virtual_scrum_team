@@ -2435,3 +2435,7 @@ The U6-1 brief said pipeline_state.py has a rollback point; the agent found it l
 ## 2026-11-11 SHORTCOMING first version of the snapshot hash hid unreadable directories and junctions
 
 os.walk dropped scandir errors and is_symlink missed NTFS junctions, so the fail-closed claim in the docstring was false; found by python-reviewer and the tests reviewer (no test for SNAPSHOT_FAILED). Layer missed: author and tests. Rule: every fail-closed claim needs a test that forces the failure, and Windows link checks must cover reparse points.
+
+## 2026-11-11 SHORTCOMING new test file had no QA category and the registry build failed
+
+build_registry raised no primary category for the new U6 test; the agent brief did not mention the category map. Layer missed: author. Rule: a new test file also needs its entry in tools/qa/build_registry.py in the same commit.

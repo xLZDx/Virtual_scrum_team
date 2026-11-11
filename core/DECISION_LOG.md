@@ -3185,3 +3185,7 @@ Added tools/vst/rollback_exercise.py (snapshot hash over sorted paths and bytes,
 ## 2026-11-11 U6-1 remediation after reviewers
 
 One batch applied: os.walk errors and Windows junctions/reparse points now fail the snapshot (SNAPSHOT_FAILED), coroutine callables rejected, SNAPSHOT_FAILED and link paths tested, runbook corrected. Not done: chunked hashing; parents of root are not checked for links. Tests NOT_RUN.
+
+## 2026-11-11 U6-1 QA category for the rollback tests
+
+Added tests/vst/test_u6_rollback_exercise.py as functional in tools/qa/build_registry.py; the registry builder requires a committed tree, so the map change is its own commit before regeneration.
