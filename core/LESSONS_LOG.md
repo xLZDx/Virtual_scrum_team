@@ -2391,3 +2391,15 @@ Registry regenerated right after the test commit. Rule: regenerate after each co
 ## 2026-11-11 SUCCESS U5-6 approved first round
 
 Test and python reviewers found the vacuous model-count assertion, the unsupported-versus-unknown rule confusion and pooled substring assertions before GPT-PM. Rule: a counter that only the test code can increment proves nothing; patch the real escape points and add a test that trips each one.
+
+## 2026-11-11 FAILURE U5-7 U5-2 cannot apply any AEVE patch in this repository
+
+The first real run was BLOCKED: U5-2 refuses any `eol` or `text` attribute, AEVE patches only cover `.py`, and this repository pins `*.py text eol=lf`; separately one redacted diff blocks a whole document. Six U5 stages passed review as written and no synthetic story could show this. Layer: first real run, not review or tests. Rule: run each gate against the real repository's own configuration before calling a stage done; a refusal rule that the host repository always trips is a design defect to decide on, not to bypass.
+
+## 2026-11-11 SHORTCOMING U5-7 adapter hides the real AEVE error
+
+`adapter.check_response` checks required keys before the status, so an AEVE ERROR (ledger write failed because the state path exceeded the Windows 260-character limit) was reported as "response lacks iteration_id". Layer: real run. Rule: report the AEVE status and reason before contract-shape errors, and check state-dir length before calling AEVE.
+
+## 2026-11-11 SUCCESS U5-7 a block was recorded, not bypassed
+
+The driver stopped at the first non-ACCEPTED stage, marked later stages NOT_RUN and kept a read-only replica of the prescreen to show the isolation statuses. Rule: a measured refusal is the result; do not edit gitattributes, scans or inputs to turn it green.
