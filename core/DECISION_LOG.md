@@ -3129,3 +3129,7 @@ Decision: after two reviewers on 1195be3 the final package builder takes a calle
 ## 2026-11-11 U5-5 QA registry regenerated
 
 Regenerated docs/qa/categories.json after the U5-5 review fixes so it lists tests/vst/test_u5_final_package.py. Tests NOT_RUN.
+
+## 2026-11-11 U5-5 GPT-PM approval
+
+GPT-PM APPROVE (0 BLOCKER, 0 MAJOR) for U5-5 at head 882a728 on the first round after reviewer fixes; reply c3a650ae-6f67-51cf-bb94-2608e225c3e5, request 36aa56f5-424f-4145-bb42-e535eef9eff3. Tests NOT_RUN. Open gap kept: ReviewLoopResult carries no changed-paths digest, so the package cannot prove the CLEAN review covered exactly this diff beyond head equality (U5-4 follow-up).

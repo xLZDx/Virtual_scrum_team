@@ -2367,3 +2367,7 @@ Reviewers found: READY with no PASS test and no required list (a record could ma
 ## 2026-11-11 SUCCESS registry kept in step for U5-5
 
 Registry regenerated right after the test commit. Rule: regenerate after each commit that touches a registered test file.
+
+## 2026-11-11 SUCCESS U5-5 approved first round
+
+Python and test reviewers found READY with zero PASS tests, missing story/receipt/share binding and secret-scan false positives before GPT-PM. Rule: for every READY-style gate ask what the minimum input is that still returns READY, and refuse it.
