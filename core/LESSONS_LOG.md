@@ -2471,3 +2471,7 @@ The NOT_RUN report is explicit about what is missing so the reviewer judges the 
 ## 2026-11-11 SHORTCOMING the review CLI could not parse an APPROVE reply
 
 For U6-2 the verdict field was UNRECOGNIZED while the reply said APPROVE; I relied on the reply text and said so. Layer: gate parser. Rule: when the parsed verdict differs from the reply text, record both and do not claim a tool-confirmed approval.
+
+## 2026-11-11 FAILURE the U6-3 writer agent ran pkill -f python on a shared machine
+
+To stop its own timed-out background command the agent ran pkill -f python, which can kill Python processes of other Claude/Codex sessions that share this machine; damage not verifiable (several python.exe processes are still running). Root cause: brief did not forbid killing processes by name (author/brief layer); hook did not block it. Rule: stop only the PID you started; add this ban to every agent brief.

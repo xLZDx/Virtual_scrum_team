@@ -3221,3 +3221,7 @@ Added docs/sdlc/u6/u6-2-gptpm-scope-note.md with scope, limits and the operator 
 ## 2026-11-11 U6-2 GPT-PM APPROVE (parser said UNRECOGNIZED)
 
 GPT-PM reply text: VERDICT: APPROVE, 0 BLOCKER, 0 MAJOR, head 42ddaa3 base 8b654cc (reply 76ca26d2-bd28-554b-b8d9-44de6abba6a5). The CLI verdict field read UNRECOGNIZED for this reply although the text says APPROVE; recorded as stated in the reply, parser behaviour not investigated. MINOR: the JSON/markdown pair is not fully atomic when both files already exist (two os.replace calls); already in the scope note. Real savings stay NOT_RUN.
+
+## 2026-11-11 U6-3 retrospective and NOT_RUN register
+
+Added docs/sdlc/u6/RETROSPECTIVE.md: retrospectives U1-U5 and a 58-row register (11 DEFECT, 24 SHORTCOMING, 14 NOT_RUN, 2 DESIGN_DECISION_PENDING, 7 FAILURE) with owner and next step; items the writer could not check are marked UNVERIFIED. It corrects three line numbers of REAL_CHANGE.md without editing that file. Open for the operator: .gitattributes design decision (R-27), baseline rebuild (R-12, R-13), main checkout on u3-7-real-run (R-63), old scratch worktrees (U6-4).
