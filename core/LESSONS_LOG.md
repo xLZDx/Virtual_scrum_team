@@ -2411,3 +2411,7 @@ Registry regenerated after the U5-7 commit. Rule: regenerate after the last comm
 ## 2026-11-11 SUCCESS the real run found eight pipeline defects the synthetic story could not
 
 The synthetic story (U5-6) passed review, but the real run was blocked by the repository own .gitattributes and by a redaction marker in an unrelated proposal. Rule: a synthetic end-to-end story does not replace one real run; run the real change before calling a pipeline usable.
+
+## 2026-11-11 SUCCESS sprint U5 delivered task by task with reviewers before GPT-PM
+
+Every task passed reviewers then GPT-PM; four of seven needed one GPT-PM or reviewer remediation round. Rule: keep the per-task review order and finish with one real run before closing a pipeline sprint.

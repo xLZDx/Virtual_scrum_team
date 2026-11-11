@@ -3161,3 +3161,7 @@ Regenerated docs/qa/categories.json after the U5-7 commit (source commit changed
 ## 2026-11-11 U5-7 GPT-PM approval
 
 GPT-PM APPROVE (0 BLOCKER, 0 MAJOR) for U5-7 at head 35434d3 on the first round; reply edf5c8b7-0933-5c7a-a1ab-3a6fa33b214c, request 39b9ae34-cd27-44f3-b1f5-48fc88b616b8. Approved as a report of a blocked real experiment, not as proof of a working end-to-end pipeline; production readiness NOT ESTABLISHED. Tests NOT_RUN. Open design question for the operator: the repository .gitattributes (*.py text eol=lf) makes U5-2 refuse every AEVE patch (UNTRUSTED_GIT_CONFIG).
+
+## 2026-11-11 Sprint U5 closed on static review, as measured
+
+U5-1..U5-7 are each approved by GPT-PM and recorded in PROJECT_PLAN.md; reports regenerated. The sprint PR comes from branch u5-7-real-change. U5 is accepted as measured: the real change was BLOCKED by the repository .gitattributes, so the pipeline is not shown to work end to end. Tests NOT_RUN (operator ban). Pending design decision: how U5-2 should treat .gitattributes.
