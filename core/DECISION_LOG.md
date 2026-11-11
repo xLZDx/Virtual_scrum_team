@@ -3257,3 +3257,7 @@ PROJECT_PLAN.md: U6-1..U6-4 ACCEPTED on static review (U6-2 as a NOT_RUN measure
 ## 2026-11-11 U6-5 baseline rebuilt on a closed session; savings report stays NOT_RUN
 
 Operator ordered a baseline rebuild on closed sessions. Session 557da842 is closed (about 45 hours idle, no process references it), so a new manifest u6-5-baseline-manifest.json pins its current bytes and verifies. No after-side session, paired-task file or price table exists, so no savings figure was produced and nothing was estimated. The transcript copy stays outside the public repository (D:/tmp/u6-5-baseline-transcripts); committing it needs an operator decision. Reviewer (code-reviewer) found one MAJOR wording defect, fixed.
+
+## 2026-11-11 U6-5 GPT-PM review not requested
+
+The change has no code or contract (a manifest, an evidence document and logs); gpt-pm-gate reviews code and contracts only and never documents, so no GPT-PM round was run. The operator asked for the work to be finished without questions. Merge is left to the operator.

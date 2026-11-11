@@ -2503,3 +2503,11 @@ The scope note named what was and was not re-checked (19 VST yes, 11 AEVE no) an
 ## 2026-11-11 SHORTCOMING sprint goal said the runbook is the only new document but three tasks require documents
 
 The U6 goal text contradicted the acceptance of U6-2..U6-4; found at close. Layer: plan author. Rule: check the goal against the task acceptances when writing a plan.
+
+## 2026-11-11 SHORTCOMING U6-5 review fixes were reported as applied but a blocked command had not run them
+
+A hook refused a chained command, so the doc fixes and the log entry never ran, yet the commit was reported as containing them; found by checking `git show --stat` before the PR. Layer: author. Rule: after a blocked chained command, re-run each step and check the commit stat before claiming it.
+
+## 2026-11-11 SUCCESS U6-5 baseline rebuilt on a closed session; no pairs exist so the report stays NOT_RUN
+
+The U1-1 session was closed (45 hours idle, no process) and a new manifest verifies; no after-side session, paired-task file or price table exists, so no figure was produced. Reviewer caught a claim that a MISSING_CURRENT run proves baseline verification; it stops before that check. Rule: cite the command that actually performs the check.

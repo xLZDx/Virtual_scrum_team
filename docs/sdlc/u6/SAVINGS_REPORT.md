@@ -29,7 +29,7 @@ The operator chose to rebuild the baseline on closed sessions. The pinned sessio
 |---|---|
 | New baseline manifest | `docs/sdlc/evidence/u6-5-baseline-manifest.json` (built by `tools/uc/token_baseline.py build-manifest`; 1 session, 61 files: main transcript 6773135 bytes, sha256 `0088c201c752f194796af5f4ad67e81a957738703b2cbe4df9a06fcdb19482d6`, plus 20 sub-agent transcripts with their meta and prefix files) |
 | Hashed copy of the pinned transcripts | `D:/tmp/u6-5-baseline-transcripts/` (same relative layout as the project directory; copied, the originals were not moved or changed) |
-| Verification | `token_baseline.py report` returned the same output against the original directory and against the copy (hashes match, exit 0) |
+| Verification | `python -s tools/uc/token_baseline.py report --manifest docs/sdlc/evidence/u6-5-baseline-manifest.json --project-dir <dir>` returned byte-identical output (`"status": "MEASURED"`, six roles) for `<dir>` = the original project directory and for `<dir>` = the copy; exit 0 both times |
 | Old manifest `u1-1-baseline-manifest.json` | kept as history; it still fails `HASH_MISMATCH` and is superseded by the new one |
 
 The copy is outside the repository on purpose: the repository is public and the transcripts hold the whole private conversation. Only the manifest (paths, sizes, hashes) is committed. Putting the copy in the repository needs an operator decision; note also that `.gitattributes` normalises line endings of `*.json` and `text=auto` files, which would change the copied bytes and break the hashes unless the files are marked `-text`.
@@ -44,11 +44,11 @@ Baseline roles measured from the verified files (tokens per field, never summed)
 Command run (scratchpad outputs, not in the repository):
 
 ```
-python -s -m tools.uc.savings_report --baseline-manifest docs/sdlc/evidence/u6-5-baseline-manifest.json --current-manifest <missing> --project-dir D:/tmp/u6-5-baseline-transcripts --paired-tasks <missing> --out-json <scratch> --out-md <scratch>
+python -s -m tools.uc.savings_report --baseline-manifest docs/sdlc/evidence/u6-5-baseline-manifest.json --current-manifest <path to a nonexistent file> --project-dir D:/tmp/u6-5-baseline-transcripts --paired-tasks <path to a nonexistent file> --out-json <scratch> --out-md <scratch>
 {"refusals": ["MISSING_CURRENT"], "status": "NOT_RUN", ...}
 ```
 
-Exit code 2. The baseline now verifies; the refusal is the missing after-side manifest.
+Exit code 2. This command stops at `MISSING_CURRENT` before the baseline is checked, so it does not itself prove the baseline verifies; that proof is the `token_baseline.py report` run in the table above.
 
 ## Commands run and output (abridged)
 
