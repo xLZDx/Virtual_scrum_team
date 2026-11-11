@@ -3069,3 +3069,7 @@ Decision: tools/vst/patch_proposals.py takes the AEVE `g6.patch.v1` JSON documen
 ## 2026-11-11 U5-2 review remediation
 
 Decision: after three reviewers on 49bbe61, patch_proposals.py checks each diff against its recipe (RECIPE_MISMATCH), does not trust repository-local git config or attributes (UNTRUSTED_GIT_CONFIG), writes the worktree in Python under an exclusive lock with a journal and compare-and-restore rollback instead of a git checkout-style write, builds the candidate in a scratch object directory, refuses CRLF, BOM and splitlines-only sources as PATCH_NOT_REPRESENTABLE, maps git apply exit 1 to STALE_BASE or PATCH_DOES_NOT_APPLY, marks the isolation proof pre_materialize, requires authorized_by for overrides and binds them to the ApplyResult. Stale base stays guarded on the VST side; AEVE is unchanged. Tests NOT_RUN (operator ban); git commands unproven. See docs/sdlc/u5/PATCH_PROPOSALS.md.
+
+## 2026-11-11 U5-2 QA registry regenerated
+
+Regenerated docs/qa/categories.json after the U5-2 review fixes so the registry lists tests/vst/test_u5_patch_proposals.py. Tests NOT_RUN.
