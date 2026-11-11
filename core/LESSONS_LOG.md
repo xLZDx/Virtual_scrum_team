@@ -2415,3 +2415,91 @@ The synthetic story (U5-6) passed review, but the real run was blocked by the re
 ## 2026-11-11 SUCCESS sprint U5 delivered task by task with reviewers before GPT-PM
 
 Every task passed reviewers then GPT-PM; four of seven needed one GPT-PM or reviewer remediation round. Rule: keep the per-task review order and finish with one real run before closing a pipeline sprint.
+
+## 2026-11-11 SHORTCOMING the final package could not prove the review covered the packaged paths
+
+U5-4 stored the paths digest in step facts but left it out of `ReviewLoopResult.to_dict`, so U5-5 only had head equality; the gap was noted in a scope note and closed in U6-0. Rule: when a loop checks an input against its reports, expose that input in the result the next stage consumes, and make a missing value a refusal, not a skip.
+
+## 2026-11-11 SUCCESS reviewer-flagged literals were recomputed instead of trusted
+
+The python-reviewer could not run code, so expected path digests in tests were recomputed with hashlib and matched. Rule: expected values in tests come from an independent formula run, not from the implementing agent.
+
+## 2026-11-11 SUCCESS U6-0 passed GPT-PM in the first round
+
+Small scoped task with a scope note and recomputed literals got APPROVE with no findings. Rule: keep a follow-up task to one gap and write the scope note before the review.
+
+## 2026-11-11 SHORTCOMING the plan named a rollback point in pipeline_state.py that does not exist
+
+The U6-1 brief said pipeline_state.py has a rollback point; the agent found it lives in pipeline_migration.create_rollback_point. Root cause: the brief was written from memory of the U5 summary, not from the code (author layer). Rule: grep the symbol before naming it in a brief.
+
+## 2026-11-11 SHORTCOMING first version of the snapshot hash hid unreadable directories and junctions
+
+os.walk dropped scandir errors and is_symlink missed NTFS junctions, so the fail-closed claim in the docstring was false; found by python-reviewer and the tests reviewer (no test for SNAPSHOT_FAILED). Layer missed: author and tests. Rule: every fail-closed claim needs a test that forces the failure, and Windows link checks must cover reparse points.
+
+## 2026-11-11 SHORTCOMING new test file had no QA category and the registry build failed
+
+build_registry raised no primary category for the new U6 test; the agent brief did not mention the category map. Layer missed: author. Rule: a new test file also needs its entry in tools/qa/build_registry.py in the same commit.
+
+## 2026-11-11 SUCCESS registry regeneration kept as its own commit
+
+The builder refuses a dirty tests/docs/qa tree, which forces the regenerated registry into a separate commit and keeps the diff reviewable. Rule: commit inputs first, then regenerate.
+
+## 2026-11-11 SUCCESS scope note written before the review request
+
+The note states limits (links in parents, quiescent tree) up front so the reviewer does not rediscover them. Rule: write the scope note with the known limits for every GPT-PM request.
+
+## 2026-11-11 SUCCESS the exercise requirement was met with a tiny run, not a test suite
+
+GPT-PM flagged missing execution proof; running the helper once on a temp tree with python -s stayed inside the operator ban on test suites. Rule: run the smallest real exercise that answers the acceptance question and state its limits.
+
+## 2026-11-11 SHORTCOMING the U1-1 baseline pinned a live session transcript that kept growing
+
+The manifest pinned the main transcript of a session that was still in use, so its hash no longer matches and the baseline cannot be reproduced. Root cause: U1-1 baselined an open session (author, gate did not check closure). Rule: pin only closed or copied transcripts, store a copy with the manifest.
+
+## 2026-11-11 SHORTCOMING first savings report summed a role over only the tasks where it was paired
+
+A role one-sided in one task silently dropped that task, overstating savings; found by python-reviewer. Layer missed: author and tests. Rule: a total over tasks must either cover every task or refuse the role.
+
+## 2026-11-11 SUCCESS category map committed with the test, registry regenerated after
+
+This time the build_registry entry was in the implementation commit, so regeneration ran at once. Rule kept from U6-1.
+
+## 2026-11-11 SUCCESS scope note names the missing operator inputs
+
+The NOT_RUN report is explicit about what is missing so the reviewer judges the generator, not the absent data. Rule: say what blocks a measurement in the scope note.
+
+## 2026-11-11 SHORTCOMING the review CLI could not parse an APPROVE reply
+
+For U6-2 the verdict field was UNRECOGNIZED while the reply said APPROVE; I relied on the reply text and said so. Layer: gate parser. Rule: when the parsed verdict differs from the reply text, record both and do not claim a tool-confirmed approval.
+
+## 2026-11-11 FAILURE the U6-3 writer agent ran pkill -f python on a shared machine
+
+To stop its own timed-out background command the agent ran pkill -f python, which can kill Python processes of other Claude/Codex sessions that share this machine; damage not verifiable (several python.exe processes are still running). Root cause: brief did not forbid killing processes by name (author/brief layer); hook did not block it. Rule: stop only the PID you started; add this ban to every agent brief.
+
+## 2026-11-11 SHORTCOMING the first register omitted a FAILURE logged minutes earlier and a false claim about plan rows
+
+The fact-checker found the missing pkill row, the sentence that every task has an APPROVE in its plan row (three rows say NOT_RUN) and a citation of a document that does not contain the claim, copied from SAVINGS_REPORT.md. Layer missed: author; reviewer caught it. Rule: a register must be diffed against the log before review, and a citation must be opened, not remembered.
+
+## 2026-11-11 SUCCESS fact-check by a read-only reviewer before GPT-PM
+
+Three MAJOR statements in a documentation task were caught by one reviewer reading cited lines. Rule: documents that make factual claims get a fact-check pass, not only code.
+
+## 2026-11-11 SHORTCOMING review CLI verdict parser fails on the current GPT-PM reply format
+
+U6-2 and U6-3 replies say VERDICT: APPROVE but the CLI field is UNRECOGNIZED (U6-0 and U6-1 parsed). Layer: gate parser, not investigated. Rule: record the raw reply id and text verdict; ask the operator to fix the parser before relying on a hook that reads the parsed field.
+
+## 2026-11-11 SHORTCOMING the plan referenced a CLAUDE.md section 9 that does not exist
+
+The U6-4 row and the hook text cite section 9 checks; the writer found no such section in any CLAUDE.md or AGENTS.md. Layer: plan author (me). Rule: quote the rule with file and line instead of a section number.
+
+## 2026-11-11 SUCCESS cleanup proposal checked by recomputing the delete list
+
+The coordinator re-ran ancestry and unpushed checks on the 19 branches proposed for removal instead of trusting the report. Rule: recheck any list that leads to a deletion.
+
+## 2026-11-11 SUCCESS U6-4 passed GPT-PM with the limits stated up front
+
+The scope note named what was and was not re-checked (19 VST yes, 11 AEVE no) and the reviewer asked only for a re-check before deleting. Rule: state the unchecked part of a deletion list in the scope note.
+
+## 2026-11-11 SHORTCOMING sprint goal said the runbook is the only new document but three tasks require documents
+
+The U6 goal text contradicted the acceptance of U6-2..U6-4; found at close. Layer: plan author. Rule: check the goal against the task acceptances when writing a plan.

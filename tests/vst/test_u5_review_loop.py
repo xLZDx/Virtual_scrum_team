@@ -1048,11 +1048,11 @@ def summary_example(**over):
     return IterationSummary(**base)
 
 
-def result_example(verdict, iterations, reasons=(), declared=(EXEC,)):
+def result_example(verdict, iterations, reasons=(), declared=(EXEC,), paths=PATHS):
     return ReviewLoopResult(
         verdict=verdict, reasons=tuple(reasons), iterations=tuple(iterations), story_id=STORY, attempt_no=1,
         declared_coverage=tuple(declared), cap_requested=3, cap_effective=3, cap_clamped=False, final_head=CAND,
-        submit_calls=1, fixer_calls=0, gates=())
+        submit_calls=1, fixer_calls=0, gates=(), changed_paths_sha256=paths)
 
 
 def test_a_clean_result_cannot_be_built_without_a_clean_covering_last_iteration():
@@ -1073,6 +1073,15 @@ def test_a_clean_result_cannot_be_built_without_a_clean_covering_last_iteration(
             result_example("CLEAN", **kw)
     with pytest.raises(ValueError):
         result_example("BLOCKED", [])                    # BLOCKED needs a reason
+    # a CLEAN result must carry the 64-hex paths digest the reports were checked against
+    for bad_digest in (None, "", "xyz", "E" * 64, "e" * 63, "e" * 65, 5):
+        with pytest.raises(ValueError):
+            result_example("CLEAN", [summary_example()], paths=bad_digest)
+    assert result_example("CLEAN", [summary_example()], paths="a" * 64).changed_paths_sha256 == "a" * 64
+    # BLOCKED may lack it (no valid input), but a present value must be well formed
+    assert result_example("BLOCKED", [], reasons=[("BAD_INPUT", "x")], paths=None).changed_paths_sha256 is None
+    with pytest.raises(ValueError):
+        result_example("BLOCKED", [], reasons=[("BAD_INPUT", "x")], paths="xyz")
     with pytest.raises(ValueError):
         result_example("PASS", [summary_example()])      # nothing but CLEAN or BLOCKED
 
@@ -1089,6 +1098,39 @@ def test_the_result_is_json_serialisable_with_the_documented_fields(env):
     assert [i["findings_count"] for i in doc["iterations"]] == [1, 1]
     assert (doc["cap_requested"], doc["cap_effective"], doc["submit_calls"], doc["fixer_calls"]) == (2, 2, 2, 1)
     assert IterationSummary.from_dict(doc["iterations"][0]) == result.iterations[0]
+    assert doc["changed_paths_sha256"] == PATHS == "e" * 64      # the loop input, exposed for the final package
+
+
+def test_a_clean_result_exposes_the_paths_digest_in_to_dict(env):
+    clean = run(env, Submit(clean_report), cap=2)
+    assert clean.verdict == "CLEAN" and clean.changed_paths_sha256 == PATHS
+    assert clean.to_dict()["changed_paths_sha256"] == PATHS
+
+
+def test_a_blocked_result_carries_the_loop_input_digest_not_the_report_digest(env):
+    submit = Submit(lambda r: make_report(r, f"it-{r.local_index}", paths="f" * 64))   # reports for other paths
+    blocked = run(env, submit, cap=1)
+    assert blocked.verdict == "BLOCKED" and codes(blocked) == ("ITERATION_CAP",)
+    assert blocked.changed_paths_sha256 == PATHS and blocked.to_dict()["changed_paths_sha256"] == PATHS
+
+
+def test_a_loop_with_malformed_paths_digest_input_reports_none(env):
+    result = run(env, Submit(clean_report), changed_paths_sha256="xyz")
+    assert codes(result) == ("BAD_INPUT",) and result.changed_paths_sha256 is None
+    assert result.to_dict()["changed_paths_sha256"] is None
+
+
+def test_a_replayed_result_takes_the_digest_from_the_stored_facts_and_a_different_input_is_refused(env):
+    ps = env[0]
+    first, seen = collect_run(env, clean_report, cap=2)
+    assert first.verdict == "CLEAN" and first.changed_paths_sha256 == PATHS
+    stored = ps.get_step(STORY, "rl-a1-i1")["result"]["facts"]["changed_paths_sha256"]
+    again = run(env, Submit(clean_report), cap=2)
+    assert again.replayed is True and again.verdict == "CLEAN"
+    assert again.changed_paths_sha256 == stored == PATHS
+    other = run(env, Submit(clean_report), cap=2, changed_paths_sha256="f" * 64)
+    assert codes(other) == ("RESUME_MISMATCH",) and not other.clean
+    assert other.changed_paths_sha256 == "f" * 64
 
 
 def test_the_finding_set_digest_matches_an_independent_formula():

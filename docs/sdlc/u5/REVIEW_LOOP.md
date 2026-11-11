@@ -63,7 +63,9 @@ iteration i (1-based inside the attempt):
 
 The result verdict is only `CLEAN` or `BLOCKED`. `ReviewLoopResult` refuses at construction a CLEAN without a CLEAN last iteration that covers the declaration, without reasons and without findings, and a BLOCKED without a reason, so no code path can upgrade a verdict. The cap result is BLOCKED `ITERATION_CAP` even when the last report looks clean but is unverifiable.
 
-Result fields: `verdict`, `reasons` (code, ASCII-escaped detail), `iteration_count`, `iterations` (per iteration: id, `iteration_of`, head, findings count and the findings, finding-set digest, coverage, missing coverage, verdict, reasons, replayed, started_at, finished_at), `cap_requested`, `cap_effective`, `cap_clamped`, `final_head`, `submit_calls`, `fixer_calls`, `gates`. `to_dict()` is JSON-serialisable.
+Result fields: `verdict`, `reasons` (code, ASCII-escaped detail), `iteration_count`, `iterations` (per iteration: id, `iteration_of`, head, findings count and the findings, finding-set digest, coverage, missing coverage, verdict, reasons, replayed, started_at, finished_at), `cap_requested`, `cap_effective`, `cap_clamped`, `final_head`, `submit_calls`, `fixer_calls`, `gates`, `replayed`, `changed_paths_sha256` (U6-0). `to_dict()` is JSON-serialisable.
+
+`changed_paths_sha256` is the digest of the sorted reviewed paths every report was checked against: the loop input, or, for a result rebuilt from the store, the digest stored in the review facts (which the replay has already cross-checked against the input; a difference is `RESUME_MISMATCH`). A CLEAN `ReviewLoopResult` cannot be constructed without a 64 lowercase hex value; a BLOCKED one carries it when the input was valid and `None` otherwise (for example `BAD_INPUT`). `tools/vst/final_package.py` compares it with the digest of its own `changed_paths` (`REVIEW_PATHS_MISMATCH`).
 
 ## Bounds
 

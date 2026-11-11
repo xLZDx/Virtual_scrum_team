@@ -50,11 +50,21 @@ def diff_for(*paths: str) -> bytes:
 PATHS = ["docs/a.md", "src/app.py"]
 DIFF = diff_for(*PATHS)
 DIFF_SHA = hashlib.sha256(DIFF).hexdigest()
+# sha256 of the UTF-8 text ["docs/a.md","src/app.py"] (sorted paths, compact JSON), computed once with plain hashlib
+PATHS_SHA_LITERAL = "f71a2128e164fd4c08b3f50cf6520b5b839a6d22dfa311c431dfb6796c1f6642"
 
 
 def canon_sha(obj) -> str:
     blob = json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False)
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def paths_sha(paths) -> str:
+    """The expected changed-paths digest, restated here: sha256 of the compact JSON of the sorted paths."""
+    return canon_sha(sorted(paths))
+
+
+PATHS_SHA = paths_sha(PATHS)
 
 
 def tests_ok():
@@ -79,7 +89,7 @@ def review_ok(**over):
             "started_at": 1.0, "finished_at": 2.0}],
         "story_id": STORY, "attempt_no": 1, "declared_coverage": list(COVERAGE), "cap_requested": 3,
         "cap_effective": 3, "cap_clamped": False, "final_head": HEAD, "submit_calls": 1, "fixer_calls": 0,
-        "gates": [], "replayed": False,
+        "gates": [], "replayed": False, "changed_paths_sha256": PATHS_SHA,
     }
     doc.update(over)
     return doc
@@ -130,6 +140,12 @@ def args(**over):
         isolation_proof=proof_ok(), patch_origin_share=share_ok(), now=NOW,
         declared_limits=["signatures: not verified here"])
     base.update(over)
+    if "review_results" not in over and "changed_paths" in over:
+        # the review of a differently declared path set carries that set's digest, unless a test says otherwise
+        try:
+            base["review_results"] = review_ok(changed_paths_sha256=paths_sha(over["changed_paths"]))
+        except TypeError:
+            pass
     return base
 
 
@@ -166,6 +182,8 @@ def test_ready_on_consistent_input_with_exact_fields():
     assert pkg["review"]["verdict"] == "CLEAN" and pkg["review"]["final_head"] == HEAD
     assert pkg["review"]["replayed"] is False and pkg["review"]["iteration_count"] == 1
     assert pkg["review"]["result_sha256"] == canon_sha(review_ok())
+    assert pkg["review"]["changed_paths_sha256"] == PATHS_SHA == PATHS_SHA_LITERAL
+    assert pkg["diff"]["changed_paths_sha256"] == PATHS_SHA_LITERAL
     assert pkg["receipts"] == [{"receipt_id": "rcpt-1", "head": HEAD, "receipt_sha256": RECEIPT_SHA,
                                 "receipt_type": "StaticAnalysis", "result": "PASS"}]
     assert pkg["isolation"]["proof_sha256"] == canon_sha(proof_ok())
@@ -217,7 +235,8 @@ def test_identifiers_are_not_secret_scanned_but_validated_by_shape():
     sha = hashlib.sha256(text).hexdigest()
     records = [{"test_id": token_id, "status": "PASS", "evidence_sha256": EVID, "head": HEAD},
                {"test_id": param_id, "status": "PASS", "evidence_sha256": EVID2, "head": HEAD}]
-    result = build(story_id="token_validation-1", review_results=review_ok(story_id="token_validation-1"),
+    result = build(story_id="token_validation-1",
+                   review_results=review_ok(story_id="token_validation-1", changed_paths_sha256=paths_sha([path])),
                    test_evidence=records, required_test_ids=[token_id, param_id], diff_bytes=text, diff_sha256=sha,
                    changed_paths=[path], patch_origin_share=share_ok(diff_sha256=sha))
     assert result.verdict == fp.READY, result.reasons
@@ -361,6 +380,64 @@ def test_review_for_another_or_no_story_is_refused(story):
     no_key = review_ok()
     del no_key["story_id"]
     assert codes(build(review_results=no_key)) == [fp.REVIEW_STORY_MISMATCH]
+
+
+def test_known_digest_of_a_tiny_path_list_matches_the_helper_formula():
+    assert paths_sha(["src/app.py", "docs/a.md"]) == PATHS_SHA_LITERAL        # the formula sorts
+    assert paths_sha(["a.py"]) == "af814d93ee8ccb244bb6b153bb98b03c31e6bf49933db489abd21730c75d9c80"
+
+
+@pytest.mark.parametrize("value", [
+    "0" * 64,                      # well formed but another digest
+    paths_sha(["docs/a.md"]),      # digest of a smaller path set
+    paths_sha(PATHS + ["x.py"]),   # digest of a larger path set
+])
+def test_review_for_other_paths_is_refused(value):
+    result = build(review_results=review_ok(changed_paths_sha256=value))
+    assert result.verdict == fp.REFUSED and codes(result) == [fp.REVIEW_PATHS_MISMATCH]
+    assert result.package is None and result.package_sha256 is None
+    assert "differs" in detail(result, fp.REVIEW_PATHS_MISMATCH)
+
+
+@pytest.mark.parametrize("value", [None, "", "xyz", "A" * 64, PATHS_SHA[:63], PATHS_SHA + "0", 5, ["x"]])
+def test_review_with_a_malformed_paths_digest_is_refused(value):
+    result = build(review_results=review_ok(changed_paths_sha256=value))
+    assert result.verdict == fp.REFUSED and codes(result) == [fp.REVIEW_PATHS_MISMATCH]
+    assert "missing or malformed" in detail(result, fp.REVIEW_PATHS_MISMATCH)
+
+
+def test_review_without_a_paths_digest_is_refused_not_skipped():
+    review = review_ok()
+    del review["changed_paths_sha256"]
+    result = build(review_results=review)
+    assert result.verdict == fp.REFUSED and codes(result) == [fp.REVIEW_PATHS_MISMATCH]
+    assert result.package is None
+
+
+def test_review_with_the_matching_paths_digest_is_ready_and_the_package_records_it():
+    result = build(review_results=review_ok(changed_paths_sha256=PATHS_SHA_LITERAL))
+    assert result.ready
+    assert result.package["review"]["changed_paths_sha256"] == PATHS_SHA_LITERAL
+    assert result.package["diff"]["changed_paths_sha256"] == PATHS_SHA_LITERAL
+
+
+def test_the_paths_digest_does_not_depend_on_the_order_of_changed_paths():
+    forward = build()
+    reordered = build(changed_paths=list(reversed(PATHS)))
+    assert forward.ready and reordered.ready
+    assert reordered.package["review"]["changed_paths_sha256"] == PATHS_SHA_LITERAL
+    assert reordered.package["diff"]["changed_paths"] == PATHS
+    assert reordered.package_sha256 == forward.package_sha256
+
+
+def test_a_paths_digest_mismatch_is_listed_next_to_other_refusals():
+    result = build(review_results=review_ok(changed_paths_sha256="0" * 64, final_head=OTHER))
+    assert set(codes(result)) == {fp.REVIEW_PATHS_MISMATCH, fp.STALE_EVIDENCE}
+
+
+def test_the_scope_note_lists_the_reviewed_paths_digest():
+    note = fp.render_scope_note(build().package)
+    assert f"- Reviewed paths sha256: `{PATHS_SHA_LITERAL}`" in note
 
 
 # ----------------------------------------------------------------------------- tests
@@ -545,6 +622,37 @@ def test_verify_package_current_requires_the_package_digest_and_detects_tamperin
     tampered["tests"]["passed"].append("tests/x.py::forged")
     ok, reasons = verify(result, package=tampered)
     assert ok is False and [c for c, _ in reasons] == [fp.PACKAGE_TAMPERED]
+
+
+@pytest.mark.parametrize("path", [("review", "changed_paths_sha256"), ("diff", "changed_paths_sha256")])
+def test_verify_package_current_detects_a_tampered_paths_digest(path):
+    package = build().package
+    package[path[0]][path[1]] = "0" * 64
+    # digest recomputed for the edited package: only the digest coherence can fail
+    ok, reasons = fp.verify_package_current(package, HEAD, DIFF_SHA, canon_sha(package))
+    assert ok is False and [c for c, _ in reasons] == [fp.PACKAGE_INCONSISTENT]
+    assert ".".join(path) in reasons[0][1]
+    # without recomputing, the package digest catches it as well
+    result = build()
+    stale = result.package
+    stale[path[0]][path[1]] = "0" * 64
+    ok, reasons = verify(result, package=stale)
+    assert ok is False and fp.PACKAGE_TAMPERED in [c for c, _ in reasons]
+
+
+def test_verify_package_current_detects_changed_paths_edited_without_their_digest():
+    package = build().package
+    package["diff"]["changed_paths"] = ["docs/a.md", "src/app.py", "src/extra.py"]
+    ok, reasons = fp.verify_package_current(package, HEAD, DIFF_SHA, canon_sha(package))
+    assert ok is False and [c for c, _ in reasons] == [fp.PACKAGE_INCONSISTENT, fp.PACKAGE_INCONSISTENT]
+
+
+def test_verify_package_current_refuses_a_package_without_the_paths_digests():
+    package = build().package
+    del package["review"]["changed_paths_sha256"]
+    del package["diff"]["changed_paths_sha256"]
+    ok, reasons = fp.verify_package_current(package, HEAD, DIFF_SHA, canon_sha(package))
+    assert ok is False and [c for c, _ in reasons] == [fp.PACKAGE_INCONSISTENT, fp.PACKAGE_INCONSISTENT]
 
 
 @pytest.mark.parametrize("path, item", [

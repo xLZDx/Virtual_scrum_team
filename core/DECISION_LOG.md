@@ -3165,3 +3165,91 @@ GPT-PM APPROVE (0 BLOCKER, 0 MAJOR) for U5-7 at head 35434d3 on the first round;
 ## 2026-11-11 Sprint U5 closed on static review, as measured
 
 U5-1..U5-7 are each approved by GPT-PM and recorded in PROJECT_PLAN.md; reports regenerated. The sprint PR comes from branch u5-7-real-change. U5 is accepted as measured: the real change was BLOCKED by the repository .gitattributes, so the pipeline is not shown to work end to end. Tests NOT_RUN (operator ban). Pending design decision: how U5-2 should treat .gitattributes.
+
+## 2026-11-11 U6-0 review result bound to the packaged path set
+
+`ReviewLoopResult` now carries `changed_paths_sha256` (loop input; stored fact on replay; a CLEAN result cannot be built without it) and `final_package.build_final_package` refuses `REVIEW_PATHS_MISMATCH` when the review digest is missing, malformed or different from `uc.contracts.changed_paths_sha256` of its own `changed_paths`. The package records the digest in `diff` and `review`, `verify_package_current` recomputes it, the scope note lists it. This closes the U5-5 open gap. Limits: unsigned evidence, path list only. Tests NOT_RUN.
+
+## 2026-11-11 U6-0 QA registry regenerated
+
+Registry rebuilt after the U6-0 test changes; python-reviewer found no BLOCKER or MAJOR, literal path digests were recomputed with hashlib and match. Tests NOT_RUN (prohibited by operator).
+
+## 2026-11-11 U6-0 GPT-PM APPROVE
+
+GPT-PM verdict APPROVE, 0 BLOCKER, 0 MAJOR, for head c3479c9 against base 7855ef4 (reply b7decfbc-32d7-5d4d-947e-7915164de15c). Limits stated by GPT-PM: path digest is not authentication; review was of the supplied diff only. Tests NOT_RUN.
+
+## 2026-11-11 U6-1 rollback exercise helper and runbook
+
+Added tools/vst/rollback_exercise.py (snapshot hash over sorted paths and bytes, .git excluded; proof is before == after_rollback and after_change != before), tests/vst/test_u6_rollback_exercise.py and docs/sdlc/u6/RUNBOOK.md. When the change fails or has no effect the rollback is not called (documented). Tests and runbook commands NOT_RUN.
+
+## 2026-11-11 U6-1 remediation after reviewers
+
+One batch applied: os.walk errors and Windows junctions/reparse points now fail the snapshot (SNAPSHOT_FAILED), coroutine callables rejected, SNAPSHOT_FAILED and link paths tested, runbook corrected. Not done: chunked hashing; parents of root are not checked for links. Tests NOT_RUN.
+
+## 2026-11-11 U6-1 QA category for the rollback tests
+
+Added tests/vst/test_u6_rollback_exercise.py as functional in tools/qa/build_registry.py; the registry builder requires a committed tree, so the map change is its own commit before regeneration.
+
+## 2026-11-11 U6-1 QA registry regenerated
+
+Registry rebuilt with the rollback tests; ready for GPT-PM. Tests NOT_RUN.
+
+## 2026-11-11 U6-1 GPT-PM scope note
+
+Added docs/sdlc/u6/u6-1-gptpm-scope-note.md listing scope, limits and NOT_RUN items for the GPT-PM review of U6-1.
+
+## 2026-11-11 U6-1 GPT-PM APPROVE and one real exercise
+
+GPT-PM APPROVE, 0 BLOCKER, 0 MAJOR, head 1c9c672 base 8c9ab2c (reply 661b3ca6-fff1-56c9-994e-b4d797c4c325); it states static acceptance only. One real run of exercise_rollback (python -s, not pytest) on a two-file temp tree outside the repo gave rollback_proven True with snapshot_before == snapshot_after_rollback d32066f8...fce62 and snapshot_after_change 96be22e2...e05. This proves the helper on a toy tree only; the runbook commands and a pipeline-schema rollback remain NOT_RUN.
+
+## 2026-11-11 U6-2 savings report generator, report is NOT_RUN
+
+Added tools/uc/savings_report.py (reuses token_baseline and measure; four token fields never combined; cost only from a sourced price table; model mismatch refuses a role), tests/vst/test_u6_savings_report.py, category entry, docs/sdlc/u6/SAVINGS_REPORT.md. The report is NOT_RUN: no after-side manifest, paired-task file or price table exists, and the U1-1 baseline manifest no longer verifies (HASH_MISMATCH, main transcript grew from 6767280 to 6773135 bytes). Tests NOT_RUN.
+
+## 2026-11-11 U6-2 remediation after reviewers
+
+One batch applied: ROLE_ONE_SIDED refuses roles that are one-sided in any task; JSON gets delta_convention and per-field saving; PAIRED_TASKS_UNREADABLE; order-independent refusal precedence; pinned hashes re-verified after model read; JSON+markdown written as an atomic pair; cost status PARTIAL when only some roles are priced (agent addition, accepted). Tests rewritten and NOT_RUN. Limits: a pre-existing first output cannot be restored if the second replace fails; a file changed and restored between reads is not detected.
+
+## 2026-11-11 U6-2 QA registry regenerated
+
+Registry rebuilt with the savings report tests; GPT-PM review next. The savings report itself stays NOT_RUN (inputs missing). Tests NOT_RUN.
+
+## 2026-11-11 U6-2 GPT-PM scope note
+
+Added docs/sdlc/u6/u6-2-gptpm-scope-note.md with scope, limits and the operator inputs still missing.
+
+## 2026-11-11 U6-2 GPT-PM APPROVE (parser said UNRECOGNIZED)
+
+GPT-PM reply text: VERDICT: APPROVE, 0 BLOCKER, 0 MAJOR, head 42ddaa3 base 8b654cc (reply 76ca26d2-bd28-554b-b8d9-44de6abba6a5). The CLI verdict field read UNRECOGNIZED for this reply although the text says APPROVE; recorded as stated in the reply, parser behaviour not investigated. MINOR: the JSON/markdown pair is not fully atomic when both files already exist (two os.replace calls); already in the scope note. Real savings stay NOT_RUN.
+
+## 2026-11-11 U6-3 retrospective and NOT_RUN register
+
+Added docs/sdlc/u6/RETROSPECTIVE.md: retrospectives U1-U5 and a 58-row register (11 DEFECT, 24 SHORTCOMING, 14 NOT_RUN, 2 DESIGN_DECISION_PENDING, 7 FAILURE) with owner and next step; items the writer could not check are marked UNVERIFIED. It corrects three line numbers of REAL_CHANGE.md without editing that file. Open for the operator: .gitattributes design decision (R-27), baseline rebuild (R-12, R-13), main checkout on u3-7-real-run (R-63), old scratch worktrees (U6-4).
+
+## 2026-11-11 U6-3 remediation after fact-check
+
+One batch applied: register now 62 rows (DEFECT 11, SHORTCOMING 25, NOT_RUN 14, DESIGN_DECISION_PENDING 2, FAILURE 10) with new rows for the pkill failure (R-65, open), request v1 (R-66), duplicated product (R-67) and stale plan rows (R-68); wrong citation of u1-final-status corrected here and in SAVINGS_REPORT.md; R-35 resolved by reading; R-21 hashes match git log. Still UNVERIFIED: U1 findings M7/M9/M11, AEVE_CHECKOUT_DIRTY, resolving commits of R-66/R-67, pkill damage.
+
+## 2026-11-11 U6-3 QA registry and scope note
+
+Registry regenerated after the U6-3 documents and the GPT-PM scope note added. Tests NOT_RUN.
+
+## 2026-11-11 U6-3 GPT-PM APPROVE (parser said UNRECOGNIZED)
+
+GPT-PM reply text: VERDICT: APPROVE, 0 BLOCKER, 0 MAJOR, head 3be6676 base 08cecbb (reply ab745c3f-30fa-5f83-8290-2b258715d105); the CLI verdict field again read UNRECOGNIZED, approval recorded from the reply text. One MINOR (limits wording in RETROSPECTIVE.md section 4) fixed in this commit. Documentation only; no cleanup is authorised by the register.
+
+## 2026-11-11 U6-4 cleanup proposals (nothing deleted)
+
+Added docs/sdlc/u6/CLEANUP_PROPOSALS.md, a read-only inventory: 12 KEEP, 30 PROPOSE_REMOVE (local branches merged into origin/main, 0 unpushed, not checked out), 98 NEEDS_OPERATOR_DECISION. I re-checked the 19 VST PROPOSE_REMOVE branches with merge-base --is-ancestor and rev-list --not --remotes: all ancestors, 0 unpushed. The AEVE 11 were not re-checked by me. The plan row cites a CLAUDE.md section 9 that does not exist; the real rules are C:/Users/koros/.claude/CLAUDE.md:55-58 and the git-worktree-ops skill. No worktree qualifies for removal; WSL Ubuntu-24.04 contents UNVERIFIED. Operator decides every deletion.
+
+## 2026-11-11 U6-4 QA registry and scope note
+
+Registry regenerated after the U6-4 document; GPT-PM scope note added. Tests NOT_RUN.
+
+## 2026-11-11 U6-4 GPT-PM APPROVE (parser said UNRECOGNIZED)
+
+GPT-PM reply text: VERDICT: APPROVE, 0 BLOCKER, 0 MAJOR, head b7c5d37 base 0ac012a (reply f4314222-fc5e-5a7d-b2d6-0491ada4f07b); CLI verdict field UNRECOGNIZED for the third reply in a row, approval taken from the reply text. MINOR: AEVE proposals are less verified than VST ones; before deleting any AEVE branch repeat the ancestry, unpushed and checkout checks on fresh refs. The approval authorises no deletion.
+
+## 2026-11-11 Sprint U6 closed as measured in the plan
+
+PROJECT_PLAN.md: U6-1..U6-4 ACCEPTED on static review (U6-2 as a NOT_RUN measurement, U6-4 as proposals only); sprint row ACCEPTED as measured. Reports re-rendered. Plan count: 45 of 46 task rows ACCEPTED, 1 PARKED (U1-9). The plan said the runbook is the only new document of the sprint; the U6-2/U6-3/U6-4 deliverables are documents too (SAVINGS_REPORT, RETROSPECTIVE, CLEANUP_PROPOSALS), recorded here as a deviation. Open for the operator: .gitattributes handling, baseline rebuild, deletions, review CLI parser, pkill damage check.
