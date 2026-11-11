@@ -3193,3 +3193,7 @@ Added tests/vst/test_u6_rollback_exercise.py as functional in tools/qa/build_reg
 ## 2026-11-11 U6-1 QA registry regenerated
 
 Registry rebuilt with the rollback tests; ready for GPT-PM. Tests NOT_RUN.
+
+## 2026-11-11 U6-1 GPT-PM scope note
+
+Added docs/sdlc/u6/u6-1-gptpm-scope-note.md listing scope, limits and NOT_RUN items for the GPT-PM review of U6-1.

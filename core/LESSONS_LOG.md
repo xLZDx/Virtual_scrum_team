@@ -2443,3 +2443,7 @@ build_registry raised no primary category for the new U6 test; the agent brief d
 ## 2026-11-11 SUCCESS registry regeneration kept as its own commit
 
 The builder refuses a dirty tests/docs/qa tree, which forces the regenerated registry into a separate commit and keeps the diff reviewable. Rule: commit inputs first, then regenerate.
+
+## 2026-11-11 SUCCESS scope note written before the review request
+
+The note states limits (links in parents, quiescent tree) up front so the reviewer does not rediscover them. Rule: write the scope note with the known limits for every GPT-PM request.
