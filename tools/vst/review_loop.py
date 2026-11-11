@@ -18,30 +18,33 @@ Verdict. The result is CLEAN or BLOCKED, never anything else, and a verdict neve
 CLEAN needs, for the LAST iteration, all of: a valid report for this request and this head, a fresh iteration
 id (not one already seen in this loop), verified integrity, no findings, no model residual, every role CLEAN
 with nothing uncovered, and every DECLARED executor id reported COMPLETE (reported coverage equals or exceeds
-the declaration). A partial or unsupported role, a missing declared executor, a report for another head, a
-repeated (stale) report or an unverifiable report is never CLEAN. CLEAN is returned only after the CLEAN
+the declaration), and the report's purpose is "receipt" and its changed-paths digest is the expected one. A
+partial or unsupported role, a missing declared executor, a report for another head, an advisory report, a
+report for other paths, a repeated (stale) report or an unverifiable report is never CLEAN. CLEAN is returned only after the CLEAN
 iteration row was recorded in `PipelineState`.
 
 BLOCKED reasons (stable codes): ITERATION_CAP, NO_PROGRESS, NO_FIXER, STOPPED, EPOCH_STALE, DEADLINE,
 SUBMIT_FAILED, SUBMIT_BLOCKED, BAD_REPORT, FIXER_FAILED, GATE_REFUSED, GATE_BLOCKED, GATE_NOT_ACCEPTED,
-GATE_FAILED, STORE_ERROR, RESUME_REQUIRED, RESUME_MISMATCH, CALLBACK_FAILED, CLOCK_FAILED, BAD_INPUT,
+GATE_FAILED, STORE_ERROR, RESUME_MISMATCH, CALLBACK_FAILED, CLOCK_FAILED, BAD_INPUT,
 CAP_INVALID, INTERNAL_ERROR. Details are ASCII-escaped and truncated.
 
 Bounds. The cap is an int >= 1 (otherwise CAP_INVALID, nothing runs) and is clamped to MAX_ITERATIONS. Every
 loop pass either ends or adds one iteration, so at most MAX_ITERATIONS submits happen per call.
 
 Idempotency. Step ids are derived from attempt and story-level iteration index only: review `rl-a<attempt>-i<index>`,
-gate `rl-a<attempt>-i<index>-gate` (gate id `rl-a<attempt>-g<index>`). `PipelineState` replays a step with the same
-id and payload, so a repeated call writes nothing twice. Iterations already recorded for the attempt are NOT
-submitted again: the caller passes their summaries back as `resume` (it receives each one from `on_iteration`
-or from an earlier result); the driver checks them against the recorded rows and refuses on any difference.
-The AEVE iteration id is not stored in the pipeline tables, which is why the summaries are needed.
+gate `rl-a<attempt>-i<index>-gate` (gate id `rl-a<attempt>-g<index>`). The review step and the gate step carry the
+loop's facts (AEVE iteration id, head, coverage, finding digest and findings, reasons; candidate head, diff digest
+and verdict) in the step result, written in the SAME transaction as the row (`facts=` of `PipelineState`). A
+repeated call therefore rebuilds every summary from the store: recorded iterations are never submitted again, a
+recorded gate is adopted (or its refusal reported) without calling the fixer again, and nothing that existed
+only in memory is needed. `resume` is an optional cross-check against what the store returned.
 
 Standard library only. Details: docs/sdlc/u5/REVIEW_LOOP.md.
 """
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import math
@@ -82,7 +85,6 @@ GATE_BLOCKED = "GATE_BLOCKED"
 GATE_NOT_ACCEPTED = "GATE_NOT_ACCEPTED"
 GATE_FAILED = "GATE_FAILED"
 STORE_ERROR = "STORE_ERROR"
-RESUME_REQUIRED = "RESUME_REQUIRED"
 RESUME_MISMATCH = "RESUME_MISMATCH"
 CALLBACK_FAILED = "CALLBACK_FAILED"
 CLOCK_FAILED = "CLOCK_FAILED"
@@ -93,6 +95,8 @@ INTERNAL_ERROR = "INTERNAL_ERROR"
 # per-iteration reasons (why one iteration is not CLEAN)
 REQUEST_MISMATCH = "REQUEST_MISMATCH"
 HEAD_MISMATCH = "HEAD_MISMATCH"
+PURPOSE_NOT_RECEIPT = "PURPOSE_NOT_RECEIPT"
+PATHS_MISMATCH = "PATHS_MISMATCH"
 REPORT_STALE = "REPORT_STALE"
 SIGNATURE_UNVERIFIED = "SIGNATURE_UNVERIFIED"
 FINDINGS_OPEN = "FINDINGS_OPEN"
@@ -100,7 +104,14 @@ MODEL_RESIDUAL_OPEN = "MODEL_RESIDUAL_OPEN"
 COVERAGE_PARTIAL = "COVERAGE_PARTIAL"
 DECLARED_EXECUTOR_MISSING = "DECLARED_EXECUTOR_MISSING"
 EXIT_NOT_ZERO = "EXIT_NOT_ZERO"
-_INTEGRITY_REASONS = (REQUEST_MISMATCH, HEAD_MISMATCH, REPORT_STALE, SIGNATURE_UNVERIFIED)
+_INTEGRITY_REASONS = (REQUEST_MISMATCH, HEAD_MISMATCH, PURPOSE_NOT_RECEIPT, PATHS_MISMATCH, REPORT_STALE,
+                      SIGNATURE_UNVERIFIED)
+FACTS_SCHEMA = "rl-iteration-facts-v1"
+GATE_FACTS_SCHEMA = "rl-gate-facts-v1"
+_FACT_KEYS = frozenset({
+    "schema", "iteration_id", "iteration_of", "head", "coverage", "missing_coverage", "finding_set_sha256",
+    "findings_count", "findings", "findings_truncated", "reasons", "changed_paths_sha256"})
+_GATE_FACT_KEYS = frozenset({"schema", "base_head", "candidate_head", "diff_sha256", "verdict", "reason_codes"})
 _GAP_STATUSES = ("PARTIAL", "NOT_COVERED", "NOT_RUN", "BLOCKED")
 
 _HEAD = re.compile(r"(?:[0-9a-f]{40}|[0-9a-f]{64})\Z")
@@ -175,6 +186,8 @@ class ReviewRequest:
     head: str                 # the candidate head to review
     iteration_of: str | None
     declared_coverage: tuple[str, ...]
+    changed_paths_sha256: str | None = None   # the digest the report must carry (uc.role-result.v1 field)
+    purpose: str = "receipt"                  # the purpose the report must carry for CLEAN
 
 
 @dataclass(frozen=True)
@@ -189,6 +202,7 @@ class FixContext:
     iteration_id: str
     findings: tuple[dict, ...]
     declared_coverage: tuple[str, ...]
+    truncated: bool = False   # True when the loop kept only the first MAX_SUMMARY_FINDINGS findings
 
 
 @dataclass(frozen=True)
@@ -238,6 +252,7 @@ class IterationSummary:
     missing_coverage: tuple[str, ...]
     verdict: str
     reasons: tuple[str, ...]
+    truncated: bool = False
     replayed: bool = False
     started_at: float | None = None
     finished_at: float | None = None
@@ -249,7 +264,7 @@ class IterationSummary:
             "findings_count": self.findings_count, "findings": [dict(f) for f in self.findings],
             "finding_set_sha256": self.finding_set_sha256, "coverage": list(self.coverage),
             "missing_coverage": list(self.missing_coverage), "verdict": self.verdict,
-            "reasons": list(self.reasons), "replayed": self.replayed,
+            "reasons": list(self.reasons), "truncated": self.truncated, "replayed": self.replayed,
             "started_at": self.started_at, "finished_at": self.finished_at,
         }
 
@@ -262,7 +277,7 @@ class IterationSummary:
             raise ValueError("summary must be a mapping")
         names = ("local_index", "iteration_index", "step_id", "iteration_id", "iteration_of", "head",
                  "findings_count", "findings", "finding_set_sha256", "coverage", "missing_coverage",
-                 "verdict", "reasons", "replayed", "started_at", "finished_at")
+                 "verdict", "reasons", "truncated", "replayed", "started_at", "finished_at")
         if set(data) != set(names):
             raise ValueError("summary keys differ from the expected set")
 
@@ -306,15 +321,15 @@ class IterationSummary:
         verdict = data["verdict"]
         if verdict not in ITERATION_VERDICTS:
             raise ValueError("verdict: unknown")
-        if type(data["replayed"]) is not bool:
-            raise ValueError("replayed: not a bool")
+        if type(data["replayed"]) is not bool or type(data["truncated"]) is not bool:
+            raise ValueError("replayed or truncated: not a bool")
         return cls(
             local_index=integer("local_index", 1), iteration_index=integer("iteration_index", 1),
             step_id=text("step_id"), iteration_id=text("iteration_id"), iteration_of=text("iteration_of", True),
             head=head, findings_count=integer("findings_count", 0),
             findings=tuple(dict(item) for item in findings), finding_set_sha256=digest,
             coverage=strings("coverage"), missing_coverage=strings("missing_coverage"), verdict=verdict,
-            reasons=strings("reasons"), replayed=data["replayed"],
+            reasons=strings("reasons"), truncated=data["truncated"], replayed=data["replayed"],
             started_at=moment("started_at"), finished_at=moment("finished_at"),
         )
 
@@ -334,6 +349,7 @@ class ReviewLoopResult:
     submit_calls: int
     fixer_calls: int
     gates: tuple[dict, ...]
+    replayed: bool = False     # True when no new work happened: every iteration came from the store
 
     def __post_init__(self) -> None:
         if self.verdict not in (CLEAN, BLOCKED):
@@ -370,7 +386,7 @@ class ReviewLoopResult:
             "declared_coverage": list(self.declared_coverage), "cap_requested": self.cap_requested,
             "cap_effective": self.cap_effective, "cap_clamped": self.cap_clamped, "final_head": self.final_head,
             "submit_calls": self.submit_calls, "fixer_calls": self.fixer_calls,
-            "gates": [dict(g) for g in self.gates],
+            "gates": [dict(g) for g in self.gates], "replayed": self.replayed,
         }
 
 
@@ -391,12 +407,12 @@ def validate_report(report: Any) -> dict:
 
 def judge_report(
     report: Any, *, request_id: str, head: str, declared: Sequence[str], seen_ids: Sequence[str],
-    verify_report: Callable[[Any], Any],
+    verify_report: Callable[[Any], Any], changed_paths_sha256: str,
 ) -> Judgement:
     """Judge ONE report. CLEAN only when no reason applies; every doubt is a reason. Raises ReportUnusable."""
     doc = validate_report(report)
     try:
-        verified = verify_report(doc) is True
+        verified = verify_report(copy.deepcopy(doc)) is True  # a verifier gets a copy: it cannot alter what is judged
     except Exception:  # noqa: BLE001 - an unverifiable report is a reason, not a crash
         verified = False
     findings: list[dict] = []
@@ -417,6 +433,10 @@ def judge_report(
         reasons.append(REQUEST_MISMATCH)
     if doc["base_revision"] != head:
         reasons.append(HEAD_MISMATCH)
+    if doc["purpose"] != "receipt":
+        reasons.append(PURPOSE_NOT_RECEIPT)
+    if doc["changed_paths_sha256"] != changed_paths_sha256:
+        reasons.append(PATHS_MISMATCH)
     if doc["iteration_id"] in set(seen_ids):
         reasons.append(REPORT_STALE)
     if not verified:
@@ -440,6 +460,84 @@ def judge_report(
     else:
         verdict = CLEAN
     return Judgement(verdict, tuple(reasons), doc["iteration_id"], tuple(findings), covered, missing, doc["exit_code"])
+
+
+def _facts_for(judged: Judgement, request: ReviewRequest, head: str, digest: str, truncated: bool) -> dict:
+    return {
+        "schema": FACTS_SCHEMA, "iteration_id": judged.iteration_id, "iteration_of": request.iteration_of,
+        "head": head, "coverage": list(judged.covered), "missing_coverage": list(judged.missing),
+        "finding_set_sha256": digest, "findings_count": len(judged.findings),
+        "findings": [dict(f) for f in judged.findings[:MAX_SUMMARY_FINDINGS]], "findings_truncated": truncated,
+        "reasons": list(judged.reasons), "changed_paths_sha256": request.changed_paths_sha256,
+    }
+
+
+def _summary_from_facts(facts: Any, *, local_index: int, iteration_index: int, step_id: str, verdict: str) -> IterationSummary:
+    """Rebuild a summary from the facts stored in a review step. Raises ValueError on any deviation."""
+    if not isinstance(facts, Mapping) or set(facts) != _FACT_KEYS or facts["schema"] != FACTS_SCHEMA:
+        raise ValueError("facts: wrong shape or schema")
+
+    def text(name: str, optional: bool = False) -> str | None:
+        value = facts[name]
+        if value is None and optional:
+            return None
+        if not isinstance(value, str) or not value or len(value) > 200:
+            raise ValueError(f"facts.{name}: bad string")
+        return value
+
+    def strings(name: str) -> tuple[str, ...]:
+        value = facts[name]
+        if (not isinstance(value, list) or len(value) > MAX_DECLARED
+                or any(not isinstance(i, str) or not i or len(i) > 200 for i in value)):
+            raise ValueError(f"facts.{name}: bad string list")
+        return tuple(value)
+
+    head, digest, paths = facts["head"], facts["finding_set_sha256"], facts["changed_paths_sha256"]
+    if (not isinstance(head, str) or not _HEAD.match(head) or not isinstance(digest, str) or not _SHA256.match(digest)
+            or not isinstance(paths, str) or not _SHA256.match(paths)):
+        raise ValueError("facts: head or digest malformed")
+    count, findings, truncated = facts["findings_count"], facts["findings"], facts["findings_truncated"]
+    if type(count) is not int or count < 0 or type(truncated) is not bool:
+        raise ValueError("facts: bad count or truncated flag")
+    if (not isinstance(findings, list) or len(findings) > MAX_SUMMARY_FINDINGS
+            or any(not isinstance(f, dict) for f in findings)):
+        raise ValueError("facts.findings: bad list")
+    if truncated:
+        if count <= len(findings):
+            raise ValueError("facts: truncated but nothing was cut")
+    else:
+        if count != len(findings):
+            raise ValueError("facts: finding count differs from the stored findings")
+        try:
+            recomputed = finding_set_sha256(findings)
+        except (KeyError, TypeError) as exc:
+            raise ValueError("facts.findings: malformed finding") from exc
+        if recomputed != digest:
+            raise ValueError("facts: finding digest differs from the stored findings")
+    return IterationSummary(
+        local_index=local_index, iteration_index=iteration_index, step_id=step_id, iteration_id=text("iteration_id"),
+        iteration_of=text("iteration_of", True), head=head, findings_count=count,
+        findings=tuple(dict(f) for f in findings), finding_set_sha256=digest, coverage=strings("coverage"),
+        missing_coverage=strings("missing_coverage"), verdict=verdict, reasons=strings("reasons"),
+        truncated=truncated, replayed=True)
+
+
+def _gate_facts_ok(facts: Any, verdict: Any) -> bool:
+    return (
+        isinstance(facts, Mapping) and set(facts) == _GATE_FACT_KEYS and facts["schema"] == GATE_FACTS_SCHEMA
+        and isinstance(facts["base_head"], str) and bool(_HEAD40.match(facts["base_head"]))
+        and isinstance(facts["candidate_head"], str) and bool(_HEAD40.match(facts["candidate_head"]))
+        and (facts["diff_sha256"] is None
+             or (isinstance(facts["diff_sha256"], str) and bool(_SHA256.match(facts["diff_sha256"]))))
+        and facts["verdict"] == verdict and isinstance(facts["reason_codes"], list)
+        and all(isinstance(c, str) for c in facts["reason_codes"]))
+
+
+def _core(summary: IterationSummary) -> dict:
+    doc = summary.to_dict()
+    for name in ("replayed", "started_at", "finished_at"):
+        doc.pop(name)
+    return doc
 
 
 # ------------------------------------------------------------------ the driver
@@ -494,6 +592,11 @@ class _Loop:
                 or len(set(declared)) != len(declared)):
             _halt(BAD_INPUT, "declared_coverage must be a non-empty collection of unique executor ids")
         self.declared = tuple(sorted(declared))
+        if not isinstance(self.changed_paths_sha256, str) or not _SHA256.match(self.changed_paths_sha256):
+            _halt(BAD_INPUT, "changed_paths_sha256 must be 64 lowercase hex characters")
+        if self.fixer is not None and (
+                not isinstance(self.manifest_sha256, str) or not _SHA256.match(self.manifest_sha256)):
+            _halt(BAD_INPUT, "manifest_sha256 must be 64 lowercase hex characters when a fixer is given")
         for name in ("submit", "verify_report", "clock", "gate"):
             if not callable(getattr(self, name)):
                 _halt(BAD_INPUT, f"{name} must be callable")
@@ -557,7 +660,26 @@ class _Loop:
         if self.max_total_seconds is not None and self._now() - self.t0 > self.max_total_seconds:
             _halt(DEADLINE, f"more than {self.max_total_seconds} seconds since the loop started")
 
-    # ------------------------------------------------------------- replay
+    # ------------------------------------------------------------- replay (from the store)
+    def _get_step(self, step_id: str) -> dict | None:
+        try:
+            return self.state.get_step(self.story_id, step_id)
+        except StoreError as exc:
+            self._store_halt(exc)
+            return None
+
+    def _stored_gate(self, iteration_index: int) -> tuple[str, dict] | None:
+        """The recorded gate step of this iteration as (verdict, facts), or None when there is none."""
+        stored = self._get_step(gate_step_id(self.attempt_no, iteration_index))
+        if stored is None:
+            return None
+        result = stored.get("result") or {}
+        verdict, facts = result.get("verdict"), result.get("facts")
+        if (stored.get("kind") != "DIFF_GATE" or result.get("gate_id") != gate_id_for(self.attempt_no, iteration_index)
+                or not _gate_facts_ok(facts, verdict)):
+            _halt(RESUME_MISMATCH, f"the gate step of iteration {iteration_index} carries no usable review-loop facts")
+        return verdict, dict(facts)
+
     def _load_replay(self) -> None:
         try:
             rows = self.state.list_review_iterations(self.story_id)
@@ -576,40 +698,60 @@ class _Loop:
         if not consecutive or int(mine[-1]["iteration_index"]) != last_index:
             _halt(RESUME_MISMATCH, "recorded iterations of this attempt are not the last consecutive rows of the story")
         self.first_index = first
-        if len(self.resume) < len(mine):
-            _halt(RESUME_REQUIRED, f"{len(mine)} iteration(s) are recorded; pass their summaries as resume")
-        if len(self.resume) > len(mine):
-            _halt(RESUME_MISMATCH, "more resume summaries than recorded iterations")
-        for n, (row, raw) in enumerate(zip(mine, self.resume), 1):
-            try:
-                summary = IterationSummary.from_dict(raw)
-            except ValueError as exc:
-                raise _Halt([(RESUME_MISMATCH, f"summary {n}: {exc}")]) from exc
+        if self.resume and len(self.resume) != len(mine):
+            _halt(RESUME_MISMATCH, f"{len(self.resume)} resume summaries for {len(mine)} recorded iterations")
+        for n, row in enumerate(mine, 1):
             index = int(row["iteration_index"])
             previous = self.history[-1] if self.history else None
+            step_id = review_step_id(self.attempt_no, index)
+            stored = self._get_step(step_id)
+            if stored is None or stored.get("kind") != "REVIEW_ITERATION":
+                _halt(RESUME_MISMATCH, f"iteration {index} has no recorded review step")
+            result = stored.get("result") or {}
+            try:
+                summary = _summary_from_facts(
+                    result.get("facts"), local_index=n, iteration_index=index, step_id=step_id, verdict=row["verdict"])
+            except ValueError as exc:
+                raise _Halt([(RESUME_MISMATCH, f"iteration {index}: {exc}")]) from exc
+            facts = result["facts"]
             problems = []
-            if summary.local_index != n or summary.iteration_index != index:
-                problems.append("index")
-            if summary.step_id != review_step_id(self.attempt_no, index) or row["step_id"] != summary.step_id:
-                problems.append("step id")
-            if row["verdict"] != summary.verdict or int(row["findings_count"]) != summary.findings_count:
-                problems.append("verdict or finding count")
+            if row["step_id"] != step_id or result.get("iteration_index") != index or result.get("verdict") != row["verdict"]:
+                problems.append("step")
+            if int(row["findings_count"]) != summary.findings_count:
+                problems.append("finding count")
             if list(row["coverage_declared"]) != list(self.declared):
                 problems.append("declared coverage")
             if row["iteration_of"] != (index - 1 if index > 1 else None):
                 problems.append("recorded iteration_of")
             if summary.iteration_of != (previous.iteration_id if previous else None):
                 problems.append("iteration_of chain")
+            if facts["changed_paths_sha256"] != self.changed_paths_sha256:
+                problems.append("changed paths digest")
             if n == 1 and summary.head != self.initial_head:
                 problems.append("first head")
+            if previous is not None:
+                expected = previous.head
+                if previous.verdict == "FINDINGS":
+                    gate = self._stored_gate(previous.iteration_index)
+                    ok = gate is not None and gate[0] == GATE_ACCEPTED and gate[1]["base_head"] == previous.head
+                    expected = gate[1]["candidate_head"] if ok else None
+                if summary.head != expected:
+                    problems.append("head continuity")
             if any(summary.iteration_id == s.iteration_id for s in self.history):
                 problems.append("repeated iteration id")
             if summary.verdict == CLEAN and (
                     summary.reasons or summary.findings_count or not set(self.declared) <= set(summary.coverage)):
                 problems.append("CLEAN without proof")
             if problems:
-                _halt(RESUME_MISMATCH, f"summary {n} differs from the recorded row: {', '.join(problems)}")
-            self.history.append(replace(summary, replayed=True))
+                _halt(RESUME_MISMATCH, f"iteration {index} differs from the store: {', '.join(problems)}")
+            if self.resume:
+                try:
+                    given = IterationSummary.from_dict(self.resume[n - 1])
+                except ValueError as exc:
+                    raise _Halt([(RESUME_MISMATCH, f"resume summary {n}: {exc}")]) from exc
+                if _core(given) != _core(summary):
+                    _halt(RESUME_MISMATCH, f"resume summary {n} differs from the stored iteration")
+            self.history.append(summary)
         if any(s.verdict == CLEAN for s in self.history[:-1]):
             _halt(RESUME_MISMATCH, "a CLEAN iteration is followed by another iteration")
         if len(self.history) > self.cap:
@@ -647,12 +789,28 @@ class _Loop:
             self._fix(last)
         # PARTIAL and BLOCKED iterations carry nothing to fix: the same head is reviewed again.
 
+    def _gate_halt(self, verdict: str, codes: Sequence[str]) -> None:
+        code = {GATE_REFUSED_VERDICT: GATE_REFUSED, GATE_BLOCKED_VERDICT: GATE_BLOCKED}.get(verdict, GATE_NOT_ACCEPTED)
+        _halt(code, ", ".join(codes[:5]))
+
     def _fix(self, last: IterationSummary) -> None:
         self._guard()
+        stored = self._stored_gate(last.iteration_index)
+        if stored is not None:
+            # a crash after the gate record: adopt the stored decision, never run the fixer again
+            verdict, facts = stored
+            if facts["base_head"] != last.head:
+                _halt(RESUME_MISMATCH, "the recorded gate was made for another base head")
+            self.gates.append({"gate_id": gate_id_for(self.attempt_no, last.iteration_index), "verdict": verdict,
+                               "candidate_head": facts["candidate_head"], "replayed": True})
+            if verdict != GATE_ACCEPTED:
+                self._gate_halt(verdict, facts["reason_codes"])
+            self.head = facts["candidate_head"]
+            return
         context = FixContext(
             story_id=self.story_id, attempt_no=self.attempt_no, local_index=last.local_index,
             iteration_index=last.iteration_index, head=last.head, iteration_id=last.iteration_id,
-            findings=last.findings, declared_coverage=self.declared)
+            findings=last.findings, declared_coverage=self.declared, truncated=last.truncated)
         self.fixer_calls += 1
         try:
             candidate = self.fixer(context)
@@ -674,19 +832,25 @@ class _Loop:
         if not isinstance(verdict, WorkerGateVerdict):
             _halt(GATE_FAILED, "the gate did not return a WorkerGateVerdict")
         gate_id = gate_id_for(self.attempt_no, last.iteration_index)
+        reason_codes = [c for c, _ in verdict.reasons]
+        facts = {
+            "schema": GATE_FACTS_SCHEMA, "base_head": last.head, "candidate_head": candidate.head,
+            "diff_sha256": hashlib.sha256(candidate.diff_bytes).hexdigest()
+            if isinstance(candidate.diff_bytes, bytes) else None,
+            "verdict": verdict.verdict, "reason_codes": reason_codes}
         try:
             recorded = self.state.record_diff_gate(
                 self.story_id, epoch=self.epoch, step_id=gate_step_id(self.attempt_no, last.iteration_index),
-                gate_id=gate_id, attempt_no=self.attempt_no, gate=verdict)
+                gate_id=gate_id, attempt_no=self.attempt_no, gate=verdict, facts=facts)
         except StoreError as exc:
             self._store_halt(exc)
             return
+        if recorded.replayed:
+            _halt(RESUME_MISMATCH, "another loop recorded this gate step first")
         self.gates.append({"gate_id": gate_id, "verdict": verdict.verdict, "candidate_head": candidate.head,
-                           "replayed": recorded.replayed})
+                           "replayed": False})
         if verdict.verdict != GATE_ACCEPTED:
-            code = {GATE_REFUSED_VERDICT: GATE_REFUSED, GATE_BLOCKED_VERDICT: GATE_BLOCKED}.get(
-                verdict.verdict, GATE_NOT_ACCEPTED)
-            _halt(code, ", ".join(c for c, _ in verdict.reasons[:5]))
+            self._gate_halt(verdict.verdict, reason_codes)
         self.head = candidate.head
 
     def _iterate(self) -> None:
@@ -698,7 +862,8 @@ class _Loop:
         request = ReviewRequest(
             story_id=self.story_id, attempt_no=self.attempt_no, local_index=local, iteration_index=index,
             request_id=request_id_for(self.story_id, self.attempt_no), head=self.head,
-            iteration_of=previous.iteration_id if previous else None, declared_coverage=self.declared)
+            iteration_of=previous.iteration_id if previous else None, declared_coverage=self.declared,
+            changed_paths_sha256=self.changed_paths_sha256, purpose="receipt")
         started = self._now()
         self.submit_calls += 1
         try:
@@ -709,25 +874,33 @@ class _Loop:
         try:
             judged = judge_report(
                 report, request_id=request.request_id, head=self.head, declared=self.declared,
-                seen_ids=[s.iteration_id for s in self.history], verify_report=self.verify_report)
+                seen_ids=[s.iteration_id for s in self.history], verify_report=self.verify_report,
+                changed_paths_sha256=self.changed_paths_sha256)
         except ReportUnusable as exc:
             raise _Halt([(exc.code, exc.detail)]) from exc
+        digest = finding_set_sha256(judged.findings)
+        truncated = len(judged.findings) > MAX_SUMMARY_FINDINGS
+        facts = _facts_for(judged, request, self.head, digest, truncated)
         step_id = review_step_id(self.attempt_no, index)
         try:
-            self.state.record_review_iteration(
+            recorded = self.state.record_review_iteration(
                 self.story_id, epoch=self.epoch, step_id=step_id, attempt_no=self.attempt_no,
                 iteration_index=index, iteration_of=index - 1 if index > 1 else None,
                 findings_count=len(judged.findings), coverage_declared=list(self.declared),
-                verdict=judged.verdict)
+                verdict=judged.verdict, facts=facts)
         except StoreError as exc:
+            if getattr(exc, "kind", "") == "conflict":
+                _halt(RESUME_MISMATCH, "another loop recorded this iteration with other facts")
             self._store_halt(exc)
             return
+        if recorded.replayed:
+            _halt(RESUME_MISMATCH, "another loop already recorded this iteration")
         summary = IterationSummary(
             local_index=local, iteration_index=index, step_id=step_id, iteration_id=judged.iteration_id,
             iteration_of=request.iteration_of, head=self.head, findings_count=len(judged.findings),
-            findings=judged.findings[:MAX_SUMMARY_FINDINGS], finding_set_sha256=finding_set_sha256(judged.findings),
+            findings=tuple(facts["findings"]), finding_set_sha256=digest,
             coverage=judged.covered, missing_coverage=judged.missing, verdict=judged.verdict,
-            reasons=judged.reasons, replayed=False, started_at=started, finished_at=finished)
+            reasons=judged.reasons, truncated=truncated, replayed=False, started_at=started, finished_at=finished)
         self.history.append(summary)
         if self.on_iteration is not None:
             try:
@@ -744,12 +917,14 @@ class _Loop:
             attempt_no=self.attempt_no if type(self.attempt_no) is int else None,
             declared_coverage=self.declared, cap_requested=cap_requested, cap_effective=self.cap,
             cap_clamped=self.clamped, final_head=self.head, submit_calls=self.submit_calls,
-            fixer_calls=self.fixer_calls, gates=tuple(self.gates))
+            fixer_calls=self.fixer_calls, gates=tuple(self.gates),
+            replayed=bool(self.history) and all(s.replayed for s in self.history)
+            and self.submit_calls == 0 and self.fixer_calls == 0)
 
 
 def run_review_loop(
     state: PipelineState, story_id: str, *, epoch: int, attempt_no: int, initial_head: str,
-    declared_coverage: Sequence[str], iteration_cap: int,
+    declared_coverage: Sequence[str], iteration_cap: int, changed_paths_sha256: str,
     submit: Callable[[ReviewRequest], Any], verify_report: Callable[[Any], Any], clock: Callable[[], float],
     fixer: Callable[[FixContext], Candidate] | None = None,
     gate: Callable[..., WorkerGateVerdict] = gate_worker_change,
@@ -760,12 +935,15 @@ def run_review_loop(
     """Drive the loop for one worker attempt and return CLEAN or BLOCKED. Never raises for runtime conditions.
 
     `declared_coverage` is the required set of executor ids (strings matching the contract token pattern).
-    `manifest_sha256`, `allowed_paths` and `protected_paths` are passed to the gate for every fixer candidate.
+    `changed_paths_sha256` is the digest of the sorted reviewed paths (`uc.contracts.changed_paths_sha256`) the
+    report must carry; the report purpose must be "receipt". `manifest_sha256` (64 hex, required with a fixer),
+    `allowed_paths` and `protected_paths` are passed to the gate for every fixer candidate.
     A BaseException that is not an Exception (a simulated or real process death) propagates on purpose.
     """
     loop = _Loop(
         state=state, story_id=story_id, epoch=epoch, attempt_no=attempt_no, initial_head=initial_head,
-        declared_coverage=declared_coverage, iteration_cap=iteration_cap, submit=submit,
+        declared_coverage=declared_coverage, iteration_cap=iteration_cap,
+        changed_paths_sha256=changed_paths_sha256, submit=submit,
         verify_report=verify_report, clock=clock, fixer=fixer, gate=gate, manifest_sha256=manifest_sha256,
         allowed_paths=allowed_paths, protected_paths=protected_paths, max_total_seconds=max_total_seconds,
         resume=resume, on_iteration=on_iteration)

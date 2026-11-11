@@ -125,6 +125,16 @@ def _json(value: Any, name: str) -> str:
     return text
 
 
+def _facts(value: Any) -> dict | None:
+    """Optional facts object: None, or a mapping that survives a JSON round trip within the size cap."""
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise StoreError("facts: must be a mapping", kind="argument")
+    _json(value, "facts")
+    return _plain(dict(value))
+
+
 def _integrity_kind(exc: sqlite3.IntegrityError) -> str:
     text = str(exc)
     if "append-only" in text:
@@ -372,13 +382,16 @@ class PipelineState:
     # -------------------------------------------------------------- diff gate
     def record_diff_gate(
         self, story_id: str, *, epoch: int, step_id: str, gate_id: str, attempt_no: int,
-        gate: Any, proposal_id: str | None = None,
+        gate: Any, proposal_id: str | None = None, facts: Mapping[str, Any] | None = None,
     ) -> StepResult:
         """Record one U5-1 `WorkerGateVerdict` (object with `to_dict()` or the dict itself).
 
         ACCEPTED needs an isolation proof that `worker_gate.proof_is_honest` accepts and that has no
         FAILED entry; REFUSED and BLOCKED need at least one reason. Proof statuses are stored as given
         (VERIFIED, NOT_VERIFIED, CALLER_ASSERTED, FAILED); nothing is promoted.
+
+        `facts` (optional, additive): a JSON object stored in the step result and bound into the payload
+        digest, so a driver can read its own facts back from `get_step` (U5-4). No new table or column.
         """
         attempt_no = _int(attempt_no, "attempt_no", 1)
         gate_id = _id(gate_id, "gate_id")
@@ -419,6 +432,7 @@ class PipelineState:
             if proof is None or not proof_is_honest(proof) or "FAILED" in statuses.values():
                 raise StoreError("gate: ACCEPTED needs an honest isolation proof without FAILED entries", kind="argument")
         proof_json = None if proof is None else _json(proof, "isolation_proof")
+        facts = _facts(facts)
         reasons_json = _json(clean_reasons, "reasons")
         statuses_json = _json(statuses, "proof_statuses")
         sid = story_id
@@ -438,23 +452,28 @@ class PipelineState:
                 (sid, gate_id, attempt_no, proposal_id, epoch, step_id, verdict, reasons_json, proof_json,
                  statuses_json),
             )
-            return {"gate_id": gate_id, "verdict": verdict}
+            out = {"gate_id": gate_id, "verdict": verdict}
+            if facts is not None:
+                out["facts"] = facts
+            return out
 
-        return self._step(
-            story_id, epoch, step_id, "DIFF_GATE",
-            {"attempt_no": attempt_no, "gate_id": gate_id, "proposal_id": proposal_id,
-             "verdict": verdict, "reasons": clean_reasons, "isolation_proof": proof},
-            apply,
-        )
+        payload = {"attempt_no": attempt_no, "gate_id": gate_id, "proposal_id": proposal_id,
+                   "verdict": verdict, "reasons": clean_reasons, "isolation_proof": proof}
+        if facts is not None:
+            payload["facts"] = facts
+        return self._step(story_id, epoch, step_id, "DIFF_GATE", payload, apply)
 
     # -------------------------------------------------------------- review iterations
     def record_review_iteration(
         self, story_id: str, *, epoch: int, step_id: str, attempt_no: int, iteration_index: int,
         iteration_of: int | None, findings_count: int, coverage_declared: Any, verdict: str,
+        facts: Mapping[str, Any] | None = None,
     ) -> StepResult:
         """Iterations are consecutive from 1; index 1 has iteration_of None, later ones name an earlier one.
 
         CLEAN needs zero findings and a non-empty declared coverage; FINDINGS needs at least one finding.
+        `facts` (optional, additive): a JSON object stored in the step result and bound into the payload
+        digest, written in the same transaction as the row (U5-4 reads it back with `get_step`).
         """
         attempt_no = _int(attempt_no, "attempt_no", 1)
         iteration_index = _int(iteration_index, "iteration_index", 1)
@@ -474,6 +493,7 @@ class PipelineState:
         if verdict == "FINDINGS" and findings_count < 1:
             raise StoreError("a FINDINGS iteration needs at least one finding", kind="argument")
         coverage_json = _json(coverage, "coverage_declared")
+        facts = _facts(facts)
         sid = story_id
 
         def apply(conn: sqlite3.Connection, stopped: bool) -> dict:
@@ -488,14 +508,16 @@ class PipelineState:
                 "step_id, findings_count, coverage_declared, verdict) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (sid, iteration_index, iteration_of, attempt_no, epoch, step_id, findings_count, coverage_json, verdict),
             )
-            return {"iteration_index": iteration_index, "verdict": verdict}
+            out = {"iteration_index": iteration_index, "verdict": verdict}
+            if facts is not None:
+                out["facts"] = facts
+            return out
 
-        return self._step(
-            story_id, epoch, step_id, "REVIEW_ITERATION",
-            {"attempt_no": attempt_no, "iteration_index": iteration_index, "iteration_of": iteration_of,
-             "findings_count": findings_count, "coverage_declared": coverage, "verdict": verdict},
-            apply,
-        )
+        payload = {"attempt_no": attempt_no, "iteration_index": iteration_index, "iteration_of": iteration_of,
+                   "findings_count": findings_count, "coverage_declared": coverage, "verdict": verdict}
+        if facts is not None:
+            payload["facts"] = facts
+        return self._step(story_id, epoch, step_id, "REVIEW_ITERATION", payload, apply)
 
     # -------------------------------------------------------------- test evidence
     def record_test_evidence(

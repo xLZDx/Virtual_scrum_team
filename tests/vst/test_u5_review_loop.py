@@ -18,8 +18,11 @@ import hashlib
 import inspect
 import json
 import math
+import os
 import pathlib
 import sqlite3
+import stat
+from types import SimpleNamespace
 
 import pytest
 
@@ -44,6 +47,7 @@ SNAP = "a1" * 32
 EXEC = "g2.python-rules"
 EXTRA = "g9.extra-rule"
 EVIDENCE = "c" * 64
+PATHS = "e" * 64     # changed_paths_sha256 every report must carry
 
 
 class Crash(BaseException):
@@ -84,14 +88,14 @@ def role_entry(name="python-reviewer", klass="LOCAL", status="CLEAN", executors=
     }
 
 
-def make_report(request, iteration_id, roles=None, *, head=None, request_id=None):
+def make_report(request, iteration_id, roles=None, *, head=None, request_id=None, purpose="receipt", paths=None):
     roles = roles if roles is not None else [role_entry()]
     all_clean = all(r["status"] == "CLEAN" for r in roles)
     return {
         "schema_version": "uc.role-result.v1", "request_id": request_id or request.request_id,
         "base_revision": head or request.head, "snapshot_hash": SNAP, "iteration_id": iteration_id,
         "exit_code": 0 if all_clean else 3, "roles": roles, "role_table_sha256": "c" * 64,
-        "aeve_head": "d" * 40, "purpose": "advisory", "changed_paths_sha256": "e" * 64,
+        "aeve_head": "d" * 40, "purpose": purpose, "changed_paths_sha256": paths or PATHS,
     }
 
 
@@ -175,7 +179,7 @@ def run(env, submit, *, cap=3, fixer=None, gate=None, verify=always_true, declar
     ps, _, _, _, epoch = env
     args = dict(
         state=ps, story_id=STORY, epoch=epoch, attempt_no=1, initial_head=CAND, declared_coverage=list(declared),
-        iteration_cap=cap, submit=submit, verify_report=verify, clock=clock or FakeClock(), fixer=fixer,
+        iteration_cap=cap, changed_paths_sha256=PATHS, submit=submit, verify_report=verify, clock=clock or FakeClock(), fixer=fixer,
         manifest_sha256=MANIFEST, allowed_paths=["src/a.py"], protected_paths=[],
     )
     if not real_gate:
@@ -391,7 +395,7 @@ def test_a_missing_declared_executor_is_not_clean_and_is_named(env):
     submit = Submit(clean_report)
     result = run(env, submit, cap=5, declared=(EXEC, EXTRA))
     first = result.iterations[0]
-    assert result.verdict == "BLOCKED"
+    assert result.verdict == "BLOCKED" and codes(result) == ("NO_PROGRESS",)
     assert (first.verdict, first.reasons, first.missing_coverage, first.coverage) == (
         "PARTIAL", ("DECLARED_EXECUTOR_MISSING",), (EXTRA,), (EXEC,))
 
@@ -630,23 +634,87 @@ def _gate_down(**kwargs):
     raise RuntimeError("gate down")
 
 
-FAILURES = {
-    "fixer raises": (Fixer(fail=ValueError("no fix")), None, "FIXER_FAILED"),
-    "fixer returns text": (lambda ctx: "not a candidate", None, "FIXER_FAILED"),
-    "fixer returns a bad head": (
-        lambda ctx: Candidate(head="XYZ", changed_paths=("a",), diff_bytes=b"d", isolation=None), None, "FIXER_FAILED"),
-    "gate raises": (Fixer(), _gate_down, "GATE_FAILED"),
-    "gate returns a dict": (Fixer(), lambda **kw: {"verdict": "ACCEPTED"}, "GATE_FAILED"),
+def _text_fixer():
+    return lambda ctx: "not a candidate"
+
+
+def _bad_head_fixer():
+    return lambda ctx: Candidate(head="XYZ", changed_paths=("a",), diff_bytes=b"d", isolation=None)
+
+
+FAILURES = {   # label -> (fixer factory, gate or None, code); factories give every test a fresh fixer
+    "fixer raises": (lambda: Fixer(fail=ValueError("no fix")), None, "FIXER_FAILED"),
+    "fixer returns text": (_text_fixer, None, "FIXER_FAILED"),
+    "fixer returns a bad head": (_bad_head_fixer, None, "FIXER_FAILED"),
+    "gate raises": (Fixer, _gate_down, "GATE_FAILED"),
+    "gate returns a dict": (Fixer, lambda **kw: {"verdict": "ACCEPTED"}, "GATE_FAILED"),
 }
 
 
 @pytest.mark.parametrize("label", sorted(FAILURES))
 def test_fixer_and_gate_failures_end_the_loop_blocked(env, label):
     path = env[3]
-    fixer, gate, code = FAILURES[label]
-    result = run(env, Submit(findings_report), cap=5, fixer=fixer, gate=gate or Gate())
+    make_fixer, gate, code = FAILURES[label]
+    result = run(env, Submit(findings_report), cap=5, fixer=make_fixer(), gate=gate or Gate())
     assert result.verdict == "BLOCKED" and codes(result) == (code,) and result.submit_calls == 1
     assert count(path, "pl_diff_gates") == 0 and result.final_head == CAND
+
+
+@pytest.mark.parametrize("label", ["failed entry", "missing property"])
+def test_an_accepted_gate_with_a_dishonest_proof_is_a_store_error_and_not_adopted(env, label):
+    path = env[3]
+    proof = honest_proof()
+    if label == "failed entry":
+        proof["properties"][0]["status"] = "FAILED"
+    else:
+        proof["properties"] = proof["properties"][1:]
+
+    def gate(**kwargs):
+        return WorkerGateVerdict("ACCEPTED", (("DIFFGATE_PASS", "all checks passed"),), {"paths": ["src/a.py"]}, proof)
+
+    submit = Submit(findings_report)
+    result = run(env, submit, cap=5, fixer=Fixer(), gate=gate)
+    assert result.verdict == "BLOCKED" and codes(result) == ("STORE_ERROR",)
+    assert result.final_head == CAND and result.submit_calls == 1 and len(submit.requests) == 1
+    assert count(path, "pl_diff_gates") == 0
+
+
+def make_isolation(tmp_path, pinned, head):
+    worktree, main = str(tmp_path / "worktree"), str(tmp_path / "main")
+    roots = {os.path.normcase(worktree), os.path.normcase(main)}
+
+    def lstat(path):
+        norm = os.path.normcase(path)
+        info = SimpleNamespace(st_mode=(stat.S_IFDIR if norm in roots else stat.S_IFREG) | 0o755)
+        info.st_file_attributes = 0
+        return info
+
+    return wg.IsolationContext(worktree, main, False, pinned, head, lstat=lstat)
+
+
+def diff_for(path):
+    return (f"diff --git a/{path} b/{path}\nindex 1111111..2222222 100644\n--- a/{path}\n+++ b/{path}\n"
+            "@@ -1 +1 @@\n-a\n+b\n").encode("utf-8")
+
+
+def test_the_real_worker_gate_accepts_a_valid_candidate_and_the_loop_goes_on(env, tmp_path):
+    ps = env[0]
+
+    def plan(request):
+        return findings_report(request) if request.local_index == 1 else clean_report(request)
+
+    def fixer(context):
+        return Candidate(head=h(3), changed_paths=("src/a.py",), diff_bytes=diff_for("src/a.py"),
+                         isolation=make_isolation(tmp_path, context.head, h(3)))
+
+    submit = Submit(plan)
+    result = run(env, submit, cap=3, fixer=fixer, real_gate=True)
+    assert result.verdict == "CLEAN" and len(submit.requests) == 2 and submit.requests[1].head == h(3)
+    stored = ps.list_diff_gates(STORY)
+    assert [(g["gate_id"], g["verdict"]) for g in stored] == [("rl-a1-g1", "ACCEPTED")]
+    assert stored[0]["proof_statuses"]["base_commit_pinned"] == "CALLER_ASSERTED"
+    assert stored[0]["proof_statuses"]["os_sandbox"] == "NOT_VERIFIED"
+    assert result.gates[0]["verdict"] == "ACCEPTED" and result.gates[0]["replayed"] is False
 
 
 @pytest.mark.parametrize("verdict,code", [("REFUSED", "GATE_REFUSED"), ("BLOCKED", "GATE_BLOCKED")])
@@ -726,6 +794,7 @@ def test_a_broken_clock_is_blocked(env, label):
     ("resume is a string", {"resume": "x"}),
     ("fixer not callable", {"fixer": 5}),
     ("state is not a PipelineState", {"state": object()}),
+    ("paths digest malformed", {"changed_paths_sha256": "xyz"}),
 ])
 def test_bad_input_is_blocked_before_anything_runs(env, label, over):
     path = env[3]
@@ -738,7 +807,7 @@ def test_bad_input_is_blocked_before_anything_runs(env, label, over):
     ps = env[0]
     args = dict(
         state=ps, epoch=env[4], attempt_no=1, initial_head=CAND, declared_coverage=[EXEC], iteration_cap=3,
-        clock=FakeClock(), verify_report=always_true)
+        changed_paths_sha256=PATHS, clock=FakeClock(), verify_report=always_true)
     if "declared" in over:
         args["declared_coverage"] = over.pop("declared")
     args.update(over)
@@ -777,29 +846,54 @@ def test_a_complete_replay_submits_nothing_and_records_nothing_new(env):
     assert third.verdict == "CLEAN" and third.submit_calls == 0
 
 
-def test_a_replay_without_the_summaries_is_refused_and_does_not_submit(env):
+def test_a_replay_without_any_summaries_rebuilds_everything_from_the_store(env):
+    path = env[3]
     first, seen = collect_run(env, find_then_clean, cap=4, fixer=Fixer())
-    submit = Submit(find_then_clean)
-    result = run(env, submit, cap=4, fixer=Fixer())
-    assert result.verdict == "BLOCKED" and codes(result) == ("RESUME_REQUIRED",) and submit.requests == []
-    short = run(env, submit, cap=4, fixer=Fixer(), resume=[seen[0].to_dict()])
-    assert codes(short) == ("RESUME_REQUIRED",) and submit.requests == []
+    submit, fixer = Submit(find_then_clean), Fixer()
+    result = run(env, submit, cap=4, fixer=fixer)          # no resume at all
+    assert result.verdict == "CLEAN" and result.replayed is True
+    assert submit.requests == [] and fixer.contexts == [] and (result.submit_calls, result.fixer_calls) == (0, 0)
+    assert [s.iteration_id for s in result.iterations] == ["it-1", "it-2"]
+    assert [s.iteration_of for s in result.iterations] == [None, "it-1"]
+    assert [s.head for s in result.iterations] == [CAND, h(3)] and result.final_head == h(3)
+    assert [s.verdict for s in result.iterations] == ["FINDINGS", "CLEAN"]
+    assert result.iterations[0].findings_count == 1 and result.iterations[0].coverage == (EXEC,)
+    one = [{"role": "python-reviewer", **finding(3)}]
+    assert result.iterations[0].finding_set_sha256 == rl.finding_set_sha256(one)
+    assert result.iterations[0].findings == tuple(one)
+    assert first.replayed is False
+    assert [r[4] for r in review_rows(path)] == ["rl-a1-i1", "rl-a1-i2"]
+
+
+def test_a_crash_between_the_row_and_the_callback_resumes_from_the_store_alone(env):
+    path = env[3]
+
+    def dying(summary):
+        raise Crash()
+
+    first_submit = Submit(find_then_clean)
+    with pytest.raises(Crash):
+        run(env, first_submit, cap=4, fixer=Fixer(), on_iteration=dying)
+    assert review_rows(path) == [(1, None, 1, "FINDINGS", "rl-a1-i1")]
+    second_submit = Submit(find_then_clean)
+    result = run(env, second_submit, cap=4, fixer=Fixer())     # the summary never left the process: no resume
+    assert result.verdict == "CLEAN" and len(second_submit.requests) == 1
+    request = second_submit.requests[0]
+    assert (request.local_index, request.iteration_of, request.head) == (2, "it-1", h(3))
+    assert result.iterations[0].replayed is True and result.iterations[1].replayed is False
+    assert result.replayed is False
 
 
 def test_a_crash_in_the_fixer_replays_without_resubmitting_the_recorded_iteration(env):
-    ps, _, _, path, _ = env
-
-    def plan(request):
-        return findings_report(request) if request.local_index == 1 else clean_report(request)
-
+    path = env[3]
     seen = []
-    first_submit = Submit(plan)
+    first_submit = Submit(find_then_clean)
     with pytest.raises(Crash):
         run(env, first_submit, cap=4, fixer=Fixer(fail=Crash()), on_iteration=seen.append)
     assert len(first_submit.requests) == 1 and [s.iteration_id for s in seen] == ["it-1"]
     assert review_rows(path) == [(1, None, 1, "FINDINGS", "rl-a1-i1")] and count(path, "pl_diff_gates") == 0
-    second_submit = Submit(plan)
-    result = run(env, second_submit, cap=4, fixer=Fixer(), resume=[s.to_dict() for s in seen])
+    second_submit = Submit(find_then_clean)
+    result = run(env, second_submit, cap=4, fixer=Fixer(), resume=[s.to_dict() for s in seen])   # optional cross-check
     assert result.verdict == "CLEAN"
     assert len(first_submit.requests) + len(second_submit.requests) == 2       # iteration 1 was never re-run
     request = second_submit.requests[0]
@@ -808,7 +902,7 @@ def test_a_crash_in_the_fixer_replays_without_resubmitting_the_recorded_iteratio
     assert [s.replayed for s in result.iterations] == [True, False]
 
 
-def test_a_crash_in_the_next_review_replays_the_recorded_fix_without_duplicates(env):
+def test_a_crash_after_the_gate_record_adopts_the_stored_candidate_and_skips_the_fixer(env):
     ps, _, _, path, _ = env
 
     def crashing(request):
@@ -816,18 +910,58 @@ def test_a_crash_in_the_next_review_replays_the_recorded_fix_without_duplicates(
             return findings_report(request)
         raise Crash()
 
-    seen = []
     with pytest.raises(Crash):
-        run(env, Submit(crashing), cap=4, fixer=Fixer(), on_iteration=seen.append)
+        run(env, Submit(crashing), cap=4, fixer=Fixer())
     assert count(path, "pl_diff_gates") == 1 and count(path, "pl_review_iterations") == 1
     steps_before = count(path, "pl_steps")            # attempt start, review 1, gate 1
     assert steps_before == 3
-    submit, gate = Submit(clean_report), Gate()
-    result = run(env, submit, cap=4, fixer=Fixer(), gate=gate, resume=[s.to_dict() for s in seen])
-    assert result.verdict == "CLEAN" and len(submit.requests) == 1 and submit.requests[0].iteration_of == "it-1"
+    submit, fixer, gate = Submit(clean_report), Fixer(head=h(77)), Gate()   # a new fixer would answer h(77)
+    result = run(env, submit, cap=4, fixer=fixer, gate=gate)               # no resume
+    assert result.verdict == "CLEAN" and fixer.contexts == [] and gate.calls == []
+    assert len(submit.requests) == 1 and submit.requests[0].iteration_of == "it-1"
+    assert submit.requests[0].head == h(3)             # the stored candidate head, not the new fixer's
     assert result.gates[0]["gate_id"] == "rl-a1-g1" and result.gates[0]["replayed"] is True
-    assert count(path, "pl_diff_gates") == 1                       # the same gate step replayed, nothing added
-    assert count(path, "pl_steps") == steps_before + 1             # only review 2 is new
+    assert result.gates[0]["candidate_head"] == h(3) and result.fixer_calls == 0
+    assert count(path, "pl_diff_gates") == 1 and count(path, "pl_steps") == steps_before + 1
+
+
+@pytest.mark.parametrize("verdict,code", [("REFUSED", "GATE_REFUSED"), ("BLOCKED", "GATE_BLOCKED")])
+def test_a_recorded_gate_refusal_is_reported_again_without_calling_the_fixer(env, verdict, code):
+    first = run(env, Submit(findings_report), cap=5, fixer=Fixer(), gate=Gate(verdict))
+    assert codes(first) == (code,)
+    submit, fixer, gate = Submit(findings_report), Fixer(), Gate()
+    again = run(env, submit, cap=5, fixer=fixer, gate=gate)
+    assert codes(again) == (code,) and fixer.contexts == [] and gate.calls == [] and submit.requests == []
+    assert again.reasons[0][1] == "OUT_OF_SCOPE_PATH" and again.final_head == CAND
+    assert again.gates[0]["replayed"] is True
+
+
+def test_a_second_loop_for_the_same_attempt_inside_submit_is_blocked(env):
+    path = env[3]
+    inner_results = []
+
+    def outer_plan(request):
+        inner_results.append(run(env, Submit(lambda r: make_report(r, "it-1")), cap=2))   # same story and attempt
+        return make_report(request, "it-1")
+
+    outer = run(env, Submit(outer_plan), cap=2)
+    assert inner_results[0].verdict == "CLEAN"
+    assert outer.verdict == "BLOCKED" and codes(outer) == ("RESUME_MISMATCH",) and not outer.clean
+    assert count(path, "pl_review_iterations") == 1
+
+
+def test_a_second_loop_that_recorded_other_facts_is_blocked_too(env):
+    path = env[3]
+    inner_results = []
+
+    def outer_plan(request):
+        inner_results.append(run(env, Submit(lambda r: make_report(r, "inner-1")), cap=2))
+        return make_report(request, "outer-1")
+
+    outer = run(env, Submit(outer_plan), cap=2)
+    assert inner_results[0].verdict == "CLEAN"
+    assert outer.verdict == "BLOCKED" and codes(outer) == ("RESUME_MISMATCH",)
+    assert count(path, "pl_review_iterations") == 1
 
 
 def test_a_replayed_cap_result_does_not_submit_or_fix(env):
@@ -854,6 +988,11 @@ def mutated(summaries, index, **changes):
     ("first head changed", lambda s: mutated(s, 0, head=h(55))),
     ("repeated iteration id", lambda s: mutated(s, 1, iteration_id="it-1", iteration_of="it-1")),
     ("unknown verdict", lambda s: mutated(s, 0, verdict="MAYBE")),
+    ("forged head at index 1", lambda s: mutated(s, 0, head=h(55))),
+    ("forged coverage", lambda s: mutated(s, 1, coverage=[EXEC, EXTRA])),
+    ("forged digest", lambda s: mutated(s, 0, finding_set_sha256="1" * 64)),
+    ("forged id", lambda s: mutated(s, 0, iteration_id="it-forged")),
+    ("too few summaries", lambda s: [s[0].to_dict()]),
     ("extra key", lambda s: [dict(d, extra=1) for d in map(lambda x: x.to_dict(), s)]),
     ("extra summary", lambda s: [x.to_dict() for x in s] + [s[0].to_dict()]),
 ])
@@ -922,6 +1061,8 @@ def test_a_clean_result_cannot_be_built_without_a_clean_covering_last_iteration(
         "no iteration": dict(iterations=[]),
         "last not clean": dict(iterations=[summary_example(verdict="PARTIAL", reasons=("COVERAGE_PARTIAL",))]),
         "findings present": dict(iterations=[summary_example(findings_count=1)]),
+        "findings listed with count zero": dict(iterations=[summary_example(findings=({"rule_id": "x"},))]),
+        "clean iteration with a reason": dict(iterations=[summary_example(reasons=("COVERAGE_PARTIAL",))]),
         "declared not covered": dict(iterations=[summary_example()], declared=(EXEC, EXTRA)),
         "missing coverage listed": dict(iterations=[summary_example(missing_coverage=(EXTRA,))]),
         "reasons present": dict(iterations=[summary_example()], reasons=[("ITERATION_CAP", "x")]),
@@ -943,8 +1084,8 @@ def test_the_result_is_json_serialisable_with_the_documented_fields(env):
     assert doc["reasons"][0]["code"] == "ITERATION_CAP"
     assert set(doc["iterations"][0]) == {
         "local_index", "iteration_index", "step_id", "iteration_id", "iteration_of", "head", "findings_count",
-        "findings", "finding_set_sha256", "coverage", "missing_coverage", "verdict", "reasons", "replayed",
-        "started_at", "finished_at"}
+        "findings", "finding_set_sha256", "coverage", "missing_coverage", "verdict", "reasons", "truncated",
+        "replayed", "started_at", "finished_at"}
     assert [i["findings_count"] for i in doc["iterations"]] == [1, 1]
     assert (doc["cap_requested"], doc["cap_effective"], doc["submit_calls"], doc["fixer_calls"]) == (2, 2, 2, 1)
     assert IterationSummary.from_dict(doc["iterations"][0]) == result.iterations[0]
@@ -964,24 +1105,92 @@ def test_judge_report_names_every_reason_for_a_report_that_is_wrong_in_many_ways
     request = rl.ReviewRequest(STORY, 1, 2, 2, "req-x", CAND, "it-1", (EXEC, EXTRA))
     roles = [role_entry(status="FINDINGS", findings=[finding(3)], executors=((EXEC, "COMPLETE"),),
                         uncovered=["gap"], residual=["model-judgment"])]
-    doc = make_report(request, "it-1", roles, head=h(9), request_id="req-other")
+    doc = make_report(request, "it-1", roles, head=h(9), request_id="req-other", purpose="advisory", paths="f" * 64)
     judged = rl.judge_report(doc, request_id="req-x", head=CAND, declared=(EXEC, EXTRA), seen_ids=["it-1"],
-                             verify_report=lambda d: False)
+                             verify_report=lambda d: False, changed_paths_sha256=PATHS)
     assert judged.reasons == (
-        "REQUEST_MISMATCH", "HEAD_MISMATCH", "REPORT_STALE", "SIGNATURE_UNVERIFIED", "FINDINGS_OPEN",
-        "MODEL_RESIDUAL_OPEN", "COVERAGE_PARTIAL", "DECLARED_EXECUTOR_MISSING", "EXIT_NOT_ZERO")
+        "REQUEST_MISMATCH", "HEAD_MISMATCH", "PURPOSE_NOT_RECEIPT", "PATHS_MISMATCH", "REPORT_STALE",
+        "SIGNATURE_UNVERIFIED", "FINDINGS_OPEN", "MODEL_RESIDUAL_OPEN", "COVERAGE_PARTIAL",
+        "DECLARED_EXECUTOR_MISSING", "EXIT_NOT_ZERO")
     assert judged.verdict == "BLOCKED" and judged.missing == (EXTRA,) and judged.covered == (EXEC,)
     assert judged.exit_code == 3 and len(judged.findings) == 1
     with pytest.raises(rl.ReportUnusable):
-        rl.judge_report({"x": 1}, request_id="r", head=CAND, declared=(EXEC,), seen_ids=[], verify_report=always_true)
+        rl.judge_report({"x": 1}, request_id="r", head=CAND, declared=(EXEC,), seen_ids=[], verify_report=always_true,
+                        changed_paths_sha256=PATHS)
 
 
-def test_the_driver_module_has_no_way_to_apply_a_change():
+def test_an_advisory_report_is_never_clean(env):
+    submit = Submit(lambda r: make_report(r, f"it-{r.local_index}", purpose="advisory"))
+    result = run(env, submit, cap=5)
+    assert result.verdict == "BLOCKED" and codes(result) == ("NO_PROGRESS",)
+    assert [(s.verdict, s.reasons) for s in result.iterations] == [("BLOCKED", ("PURPOSE_NOT_RECEIPT",))] * 2
+
+
+def test_a_report_for_other_paths_is_never_clean(env):
+    submit = Submit(lambda r: make_report(r, f"it-{r.local_index}", paths="f" * 64))
+    result = run(env, submit, cap=5)
+    assert result.verdict == "BLOCKED" and codes(result) == ("NO_PROGRESS",)
+    assert [(s.verdict, s.reasons) for s in result.iterations] == [("BLOCKED", ("PATHS_MISMATCH",))] * 2
+
+
+def test_the_request_carries_the_expected_paths_digest_and_purpose(env):
+    submit = Submit(clean_report)
+    run(env, submit)
+    assert (submit.requests[0].changed_paths_sha256, submit.requests[0].purpose) == (PATHS, "receipt")
+
+
+def test_a_manifest_digest_is_required_when_a_fixer_is_given(env):
+    for manifest in (None, "xyz", "A" * 64):
+        submit = Submit(findings_report)
+        result = run(env, submit, cap=3, fixer=Fixer(), manifest_sha256=manifest)
+        assert codes(result) == ("BAD_INPUT",) and submit.requests == []
+    assert run(env, Submit(clean_report), cap=2, manifest_sha256=None).verdict == "CLEAN"   # no fixer: not needed
+
+
+def test_a_verifier_gets_a_copy_and_cannot_change_what_is_judged(env):
+    def meddling(doc):
+        doc["roles"][0]["status"] = "PARTIAL"
+        doc["roles"][0]["executors"][0]["status"] = "PARTIAL"
+        doc["iteration_id"] = "tampered"
+        return True
+
+    result = run(env, Submit(clean_report), cap=2, verify=meddling)
+    assert result.verdict == "CLEAN" and result.iterations[0].iteration_id == "it-1"
+    assert result.iterations[0].coverage == (EXEC,)
+
+
+def test_a_long_finding_list_is_flagged_truncated_but_its_digest_covers_all_findings(env):
+    lines = list(range(1, 202))     # 201 findings, the loop keeps 200
+
+    def plan(request):
+        return findings_report(request, lines=lines) if request.local_index == 1 else clean_report(request)
+
+    fixer = Fixer()
+    first = run(env, Submit(plan), cap=3, fixer=fixer)
+    assert first.verdict == "CLEAN"
+    summary = first.iterations[0]
+    assert summary.truncated is True and summary.findings_count == 201 and len(summary.findings) == 200
+    assert fixer.contexts[0].truncated is True and len(fixer.contexts[0].findings) == 200
+    full = [{"role": "python-reviewer", **finding(x)} for x in lines]
+    assert summary.finding_set_sha256 == rl.finding_set_sha256(full)
+    again = run(env, Submit(plan), cap=3, fixer=Fixer())          # the flag and the digest come back from the store
+    assert again.replayed is True and again.iterations[0].truncated is True
+    assert again.iterations[0].finding_set_sha256 == summary.finding_set_sha256
+    assert again.iterations[1].truncated is False
+
+
+def test_the_driver_imports_only_the_expected_modules():
+    """A guard on the import list (it is not a proof of no side effects): no os, subprocess, shutil or sqlite3,
+    and the only relative imports are the contract, the pipeline state, the store and the worker gate."""
     source = pathlib.Path(rl.__file__).read_text(encoding="utf-8")
-    imported = set()
+    absolute, relative = set(), set()
     for node in ast.walk(ast.parse(source)):
         if isinstance(node, ast.Import):
-            imported |= {a.name.split(".")[0] for a in node.names}
-        elif isinstance(node, ast.ImportFrom) and node.level == 0:
-            imported.add((node.module or "").split(".")[0])
-    assert imported == {"__future__", "hashlib", "json", "math", "re", "dataclasses", "typing"}
+            absolute |= {a.name.split(".")[0] for a in node.names}
+        elif isinstance(node, ast.ImportFrom):
+            if node.level == 0:
+                absolute.add((node.module or "").split(".")[0])
+            else:
+                relative.add((node.level, node.module or "", tuple(sorted(a.name for a in node.names if node.module is None))))
+    assert absolute == {"__future__", "copy", "hashlib", "json", "math", "re", "dataclasses", "typing"}
+    assert relative == {(2, "uc", ()), (1, "pipeline_state", ()), (1, "store", ()), (1, "worker_gate", ())}

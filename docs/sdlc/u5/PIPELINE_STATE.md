@@ -88,3 +88,4 @@ Operator steps: stop every writer; `migrate_pipeline(path)`; keep `<db>.rollback
 - Without an ACCEPTED proposal the candidate head of a SUCCEEDED attempt is a caller report only.
 - The review-loop driver (U5-4) and the final package (U5-5) are not part of this task; only their rows exist.
 - All tests are NOT_RUN; the SQL, the trigger behaviour, the online backup into a WAL database and the Windows file handling were checked by reading only.
+- U5-4 remediation (additive): `record_review_iteration` and `record_diff_gate` accept an optional `facts` JSON object. It is part of the step payload digest and of the stored step result (readable with `get_step`), written in the same transaction as the row. No table, column or trigger changed, so the frozen schema v1 and its hash are untouched; a call without `facts` has the same payload digest as before.
