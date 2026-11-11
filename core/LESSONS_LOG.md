@@ -2491,3 +2491,7 @@ U6-2 and U6-3 replies say VERDICT: APPROVE but the CLI field is UNRECOGNIZED (U6
 ## 2026-11-11 SHORTCOMING the plan referenced a CLAUDE.md section 9 that does not exist
 
 The U6-4 row and the hook text cite section 9 checks; the writer found no such section in any CLAUDE.md or AGENTS.md. Layer: plan author (me). Rule: quote the rule with file and line instead of a section number.
+
+## 2026-11-11 SUCCESS cleanup proposal checked by recomputing the delete list
+
+The coordinator re-ran ancestry and unpushed checks on the 19 branches proposed for removal instead of trusting the report. Rule: recheck any list that leads to a deletion.

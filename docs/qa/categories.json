@@ -48,7 +48,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "1581ce1329f80467b7c8bdcbe7681f294dc273b7",
+  "source_head": "ee70eb86db69d5dc2bdbfbe910ec4a324ec1f527",
   "source_inventory": [
     {
       "path": "tests/af/test_s2_review_source_fidelity.py",

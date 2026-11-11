@@ -3241,3 +3241,7 @@ GPT-PM reply text: VERDICT: APPROVE, 0 BLOCKER, 0 MAJOR, head 3be6676 base 08cec
 ## 2026-11-11 U6-4 cleanup proposals (nothing deleted)
 
 Added docs/sdlc/u6/CLEANUP_PROPOSALS.md, a read-only inventory: 12 KEEP, 30 PROPOSE_REMOVE (local branches merged into origin/main, 0 unpushed, not checked out), 98 NEEDS_OPERATOR_DECISION. I re-checked the 19 VST PROPOSE_REMOVE branches with merge-base --is-ancestor and rev-list --not --remotes: all ancestors, 0 unpushed. The AEVE 11 were not re-checked by me. The plan row cites a CLAUDE.md section 9 that does not exist; the real rules are C:/Users/koros/.claude/CLAUDE.md:55-58 and the git-worktree-ops skill. No worktree qualifies for removal; WSL Ubuntu-24.04 contents UNVERIFIED. Operator decides every deletion.
+
+## 2026-11-11 U6-4 QA registry and scope note
+
+Registry regenerated after the U6-4 document; GPT-PM scope note added. Tests NOT_RUN.
