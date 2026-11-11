@@ -3097,3 +3097,7 @@ Decision: after three reviewers on 039493f, `migrate_pipeline` opens the write t
 ## 2026-11-11 U5-3 QA registry regenerated
 
 Regenerated docs/qa/categories.json after the U5-3 review fixes so it lists tests/vst/test_u5_pipeline_state.py. Tests NOT_RUN.
+
+## 2026-11-11 U5-3 GPT-PM approval
+
+GPT-PM APPROVE (0 BLOCKER, 0 MAJOR) for U5-3 at head 92bf890 on the first round after reviewer fixes; reply 312c0a72-e876-5ee8-8e69-03b50a093e0b, request 4791b907-acb2-45d2-b169-b423a580f327. Tests NOT_RUN. Limits kept: epoch fence without lease check, pipeline rows outside the signed event chain, unsigned rollback manifests, whole-store restore needs stopped writers.

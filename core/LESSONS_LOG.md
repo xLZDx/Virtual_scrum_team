@@ -2335,3 +2335,7 @@ Reviewers found: rollback point not bound to the migrated state, unfenced whole-
 ## 2026-11-11 SUCCESS registry kept in step for U5-3
 
 Registry regenerated right after the test commit. Rule: regenerate after each commit that touches a registered test file.
+
+## 2026-11-11 SUCCESS U5-3 approved first round
+
+Three reviewers (database, python, tests) found rollback-binding, restore fencing, frozen schema and attribution defects before GPT-PM; one batch fixed them and GPT-PM approved without findings. Rule: use the database reviewer for any schema or migration task.
