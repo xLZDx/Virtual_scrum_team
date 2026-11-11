@@ -3253,3 +3253,7 @@ GPT-PM reply text: VERDICT: APPROVE, 0 BLOCKER, 0 MAJOR, head b7c5d37 base 0ac01
 ## 2026-11-11 Sprint U6 closed as measured in the plan
 
 PROJECT_PLAN.md: U6-1..U6-4 ACCEPTED on static review (U6-2 as a NOT_RUN measurement, U6-4 as proposals only); sprint row ACCEPTED as measured. Reports re-rendered. Plan count: 45 of 46 task rows ACCEPTED, 1 PARKED (U1-9). The plan said the runbook is the only new document of the sprint; the U6-2/U6-3/U6-4 deliverables are documents too (SAVINGS_REPORT, RETROSPECTIVE, CLEANUP_PROPOSALS), recorded here as a deviation. Open for the operator: .gitattributes handling, baseline rebuild, deletions, review CLI parser, pkill damage check.
+
+## 2026-11-11 U6-5 baseline rebuilt on a closed session; savings report stays NOT_RUN
+
+Operator ordered a baseline rebuild on closed sessions. Session 557da842 is closed (about 45 hours idle, no process references it), so a new manifest u6-5-baseline-manifest.json pins its current bytes and verifies. No after-side session, paired-task file or price table exists, so no savings figure was produced and nothing was estimated. The transcript copy stays outside the public repository (D:/tmp/u6-5-baseline-transcripts); committing it needs an operator decision. Reviewer (code-reviewer) found one MAJOR wording defect, fixed.
