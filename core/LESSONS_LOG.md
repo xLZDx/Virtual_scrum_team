@@ -2383,3 +2383,7 @@ The acceptance text assumes a "model fallback" flag, but neither `tools/uc` nor 
 ## 2026-11-11 FAILURE U5-6 the model-call count was true by construction
 
 Reviewers found: the guard counted only calls the harness made itself, the model flag was compared with the knob that set it, `llm_calls` was fed from the guard, an unsupported rule and an unknown rule were conflated, and rows asserted substrings of pooled notes. Layer: author design, caught by python and test reviewers after commit. Rule: a "zero" assertion needs a positive test showing the counter can move, patch the real escape points, take expected values from literals in the test, and assert on structured outputs, not on a joined text.
+
+## 2026-11-11 SUCCESS registry kept in step for U5-6
+
+Registry regenerated right after the test commit. Rule: regenerate after each commit that touches a registered test file.

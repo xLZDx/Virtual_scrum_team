@@ -3141,3 +3141,7 @@ Decision: the U5-6 story is an in-process harness (`tests/vst/u5_e2e_support.py`
 ## 2026-11-11 U5-6 review remediation
 
 Decision: after two reviewers on a54dd8f the U5-6 story guards the real escape points (subprocess, socket, `adapter.run_review`, `router._call`, `aeve_probe.probe`, anthropic/openai constructors when importable) so the model-call count 0 is non-vacuous and proven by a positive test per seam; the expected count and model flag are literals per test; the harness flags are split (residual resolver versus fake AEVE fallback) and the MODEL_ROLE fallback case is covered; "required rule UNSUPPORTED" (coverage PARTIAL, not clean) is a defect separate from "unknown rule" (STATUS_UNKNOWN_RULE), each with a control; assertions use structured outputs (gate verdict and reasons, CoverageError.code, PackageResult.reasons, loop reasons) instead of pooled note substrings. Tests written, NOT_RUN (operator ban); categories.json left to the coordinator.
+
+## 2026-11-11 U5-6 QA registry regenerated
+
+Regenerated docs/qa/categories.json after the U5-6 review fixes so it lists tests/vst/test_u5_e2e_story.py. Tests NOT_RUN.

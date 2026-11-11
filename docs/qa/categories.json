@@ -48,7 +48,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "f138a0f1202b91644e8a8acee0c4d59b6bd9fd46",
+  "source_head": "9df1151520ba5edde0b25a6cf71fd000523c1134",
   "source_inventory": [
     {
       "path": "tests/af/test_s2_review_source_fidelity.py",
@@ -374,6 +374,11 @@
       "path": "tests/vst/test_u2_gate.py",
       "source_commit": "1e45905da2e092ba536eb6d709504bda648f1184",
       "sha256": "8640965049350ec47785645620039a518e86611afde12d0e20ef7ea3b0eeb292"
+    },
+    {
+      "path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "sha256": "5cae2f83970b60c2819f55e4ffd858aa9afc2c3e8823096c8af6f033454d27ae"
     },
     {
       "path": "tests/vst/test_u5_final_package.py",
@@ -27430,6 +27435,347 @@
       ]
     },
     {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_aeve_model_fallback_is_blocked_and_counted",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_aeve_model_fallback_is_blocked_and_counted",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_clean_control_story_is_clean_end_to_end",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_clean_control_story_is_clean_end_to_end",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_control_forged_receipt_not_caught_when_the_signature_check_is_off",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_control_forged_receipt_not_caught_when_the_signature_check_is_off",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_control_forged_report_not_caught_when_the_verifier_accepts_everything",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_control_forged_report_not_caught_when_the_verifier_accepts_everything",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_control_moved_head_not_caught_when_the_stale_check_is_off",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_control_moved_head_not_caught_when_the_stale_check_is_off",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_control_partial_coverage_not_caught_when_the_coverage_judgement_is_off",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_control_partial_coverage_not_caught_when_the_coverage_judgement_is_off",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_control_role_table_drift_not_caught_when_validation_is_off",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_control_role_table_drift_not_caught_when_validation_is_off",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_control_secret_in_evidence_text_leaks_when_the_scan_is_off",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_control_secret_in_evidence_text_leaks_when_the_scan_is_off",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_control_secret_in_finding_leaks_when_the_redaction_is_off",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_control_secret_in_finding_leaks_when_the_redaction_is_off",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_control_skipped_test_not_caught_when_the_acknowledgement_is_given",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_control_skipped_test_not_caught_when_the_acknowledgement_is_given",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_control_unknown_rule_not_caught_when_the_catalog_admits_it",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_control_unknown_rule_not_caught_when_the_catalog_admits_it",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_control_unsupported_rule_not_caught_when_the_clean_check_is_relaxed",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_control_unsupported_rule_not_caught_when_the_clean_check_is_relaxed",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_escape_seams_raise_and_count",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_escape_seams_raise_and_count",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_every_harness_model_seam_goes_through_the_guard",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_every_harness_model_seam_goes_through_the_guard",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_fixture_roles_are_the_real_catalog_entries",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_fixture_roles_are_the_real_catalog_entries",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_forged_receipt_signature_is_modify_and_the_slot_is_missing",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_forged_receipt_signature_is_modify_and_the_slot_is_missing",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_forged_report_signature_blocks_the_review_loop",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_forged_report_signature_blocks_the_review_loop",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_guard_counts_and_raises",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_guard_counts_and_raises",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_local_plus_model_fixture_is_never_ready_even_when_the_package_is_forced",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_local_plus_model_fixture_is_never_ready_even_when_the_package_is_forced",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_local_plus_model_role_with_the_model_part_disabled_is_partial_never_clean",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_local_plus_model_role_with_the_model_part_disabled_is_partial_never_clean",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_model_residual_fallback_is_blocked_and_counted",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_model_residual_fallback_is_blocked_and_counted",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_model_writing_fixer_is_blocked_and_counted",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_model_writing_fixer_is_blocked_and_counted",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_moved_head_at_the_gate_is_no_go",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_moved_head_at_the_gate_is_no_go",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_moved_head_in_test_evidence_is_refused_by_the_package",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_moved_head_in_test_evidence_is_refused_by_the_package",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_partial_coverage_names_the_missing_executor",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_partial_coverage_names_the_missing_executor",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_required_rule_marked_unsupported_makes_coverage_partial_and_not_clean",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_required_rule_marked_unsupported_makes_coverage_partial_and_not_clean",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_role_table_drift_is_blocked_with_the_exact_problem",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_role_table_drift_is_blocked_with_the_exact_problem",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_rule_outside_the_required_catalog_is_unknown_rule",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_rule_outside_the_required_catalog_is_unknown_rule",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_secret_in_a_finding_is_redacted_by_the_router",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_secret_in_a_finding_is_redacted_by_the_router",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_secret_in_evidence_text_is_refused_by_the_package",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_secret_in_evidence_text_is_refused_by_the_package",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_u5_e2e_story.py::test_skipped_required_test_is_refused_by_the_package",
+      "selector": "tests/vst/test_u5_e2e_story.py::test_skipped_required_test_is_refused_by_the_package",
+      "source_path": "tests/vst/test_u5_e2e_story.py",
+      "source_commit": "9df1151520ba5edde0b25a6cf71fd000523c1134",
+      "primary_category": "e2e",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
       "test_id": "tests/vst/test_u5_final_package.py::test_acknowledged_required_not_run_is_ready_and_listed_verbatim",
       "selector": "tests/vst/test_u5_final_package.py::test_acknowledged_required_not_run_is_ready_and_listed_verbatim",
       "source_path": "tests/vst/test_u5_final_package.py",
@@ -33898,7 +34244,38 @@
         "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_stop_fences_interrupted_attempt_idempotently_and_rejects_stale_start",
         "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_stop_first_epoch_fence_prevents_late_worker_commit",
         "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_stop_progress_records_adapter_stop_outcome",
-        "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_succeeded_claim_with_bad_candidate_head_is_inconclusive"
+        "tests/vst/test_s3_worker_pilot_e2e.py::test_s3_succeeded_claim_with_bad_candidate_head_is_inconclusive",
+        "tests/vst/test_u5_e2e_story.py::test_aeve_model_fallback_is_blocked_and_counted",
+        "tests/vst/test_u5_e2e_story.py::test_clean_control_story_is_clean_end_to_end",
+        "tests/vst/test_u5_e2e_story.py::test_control_forged_receipt_not_caught_when_the_signature_check_is_off",
+        "tests/vst/test_u5_e2e_story.py::test_control_forged_report_not_caught_when_the_verifier_accepts_everything",
+        "tests/vst/test_u5_e2e_story.py::test_control_moved_head_not_caught_when_the_stale_check_is_off",
+        "tests/vst/test_u5_e2e_story.py::test_control_partial_coverage_not_caught_when_the_coverage_judgement_is_off",
+        "tests/vst/test_u5_e2e_story.py::test_control_role_table_drift_not_caught_when_validation_is_off",
+        "tests/vst/test_u5_e2e_story.py::test_control_secret_in_evidence_text_leaks_when_the_scan_is_off",
+        "tests/vst/test_u5_e2e_story.py::test_control_secret_in_finding_leaks_when_the_redaction_is_off",
+        "tests/vst/test_u5_e2e_story.py::test_control_skipped_test_not_caught_when_the_acknowledgement_is_given",
+        "tests/vst/test_u5_e2e_story.py::test_control_unknown_rule_not_caught_when_the_catalog_admits_it",
+        "tests/vst/test_u5_e2e_story.py::test_control_unsupported_rule_not_caught_when_the_clean_check_is_relaxed",
+        "tests/vst/test_u5_e2e_story.py::test_escape_seams_raise_and_count",
+        "tests/vst/test_u5_e2e_story.py::test_every_harness_model_seam_goes_through_the_guard",
+        "tests/vst/test_u5_e2e_story.py::test_fixture_roles_are_the_real_catalog_entries",
+        "tests/vst/test_u5_e2e_story.py::test_forged_receipt_signature_is_modify_and_the_slot_is_missing",
+        "tests/vst/test_u5_e2e_story.py::test_forged_report_signature_blocks_the_review_loop",
+        "tests/vst/test_u5_e2e_story.py::test_guard_counts_and_raises",
+        "tests/vst/test_u5_e2e_story.py::test_local_plus_model_fixture_is_never_ready_even_when_the_package_is_forced",
+        "tests/vst/test_u5_e2e_story.py::test_local_plus_model_role_with_the_model_part_disabled_is_partial_never_clean",
+        "tests/vst/test_u5_e2e_story.py::test_model_residual_fallback_is_blocked_and_counted",
+        "tests/vst/test_u5_e2e_story.py::test_model_writing_fixer_is_blocked_and_counted",
+        "tests/vst/test_u5_e2e_story.py::test_moved_head_at_the_gate_is_no_go",
+        "tests/vst/test_u5_e2e_story.py::test_moved_head_in_test_evidence_is_refused_by_the_package",
+        "tests/vst/test_u5_e2e_story.py::test_partial_coverage_names_the_missing_executor",
+        "tests/vst/test_u5_e2e_story.py::test_required_rule_marked_unsupported_makes_coverage_partial_and_not_clean",
+        "tests/vst/test_u5_e2e_story.py::test_role_table_drift_is_blocked_with_the_exact_problem",
+        "tests/vst/test_u5_e2e_story.py::test_rule_outside_the_required_catalog_is_unknown_rule",
+        "tests/vst/test_u5_e2e_story.py::test_secret_in_a_finding_is_redacted_by_the_router",
+        "tests/vst/test_u5_e2e_story.py::test_secret_in_evidence_text_is_refused_by_the_package",
+        "tests/vst/test_u5_e2e_story.py::test_skipped_required_test_is_refused_by_the_package"
       ],
       "not_run_reasons": {},
       "reason": null
@@ -36346,6 +36723,37 @@
         "tests/vst/test_u2_gate.py::test_unknown_facts_are_refused_and_the_record_digest_catches_tampering",
         "tests/vst/test_u2_gate.py::test_v1_gate_behaviour_is_unchanged_and_ignores_analyzer_trust",
         "tests/vst/test_u2_gate.py::test_v2_gate_behaviour_is_unchanged_by_the_presence_of_analyzer_trust",
+        "tests/vst/test_u5_e2e_story.py::test_aeve_model_fallback_is_blocked_and_counted",
+        "tests/vst/test_u5_e2e_story.py::test_clean_control_story_is_clean_end_to_end",
+        "tests/vst/test_u5_e2e_story.py::test_control_forged_receipt_not_caught_when_the_signature_check_is_off",
+        "tests/vst/test_u5_e2e_story.py::test_control_forged_report_not_caught_when_the_verifier_accepts_everything",
+        "tests/vst/test_u5_e2e_story.py::test_control_moved_head_not_caught_when_the_stale_check_is_off",
+        "tests/vst/test_u5_e2e_story.py::test_control_partial_coverage_not_caught_when_the_coverage_judgement_is_off",
+        "tests/vst/test_u5_e2e_story.py::test_control_role_table_drift_not_caught_when_validation_is_off",
+        "tests/vst/test_u5_e2e_story.py::test_control_secret_in_evidence_text_leaks_when_the_scan_is_off",
+        "tests/vst/test_u5_e2e_story.py::test_control_secret_in_finding_leaks_when_the_redaction_is_off",
+        "tests/vst/test_u5_e2e_story.py::test_control_skipped_test_not_caught_when_the_acknowledgement_is_given",
+        "tests/vst/test_u5_e2e_story.py::test_control_unknown_rule_not_caught_when_the_catalog_admits_it",
+        "tests/vst/test_u5_e2e_story.py::test_control_unsupported_rule_not_caught_when_the_clean_check_is_relaxed",
+        "tests/vst/test_u5_e2e_story.py::test_escape_seams_raise_and_count",
+        "tests/vst/test_u5_e2e_story.py::test_every_harness_model_seam_goes_through_the_guard",
+        "tests/vst/test_u5_e2e_story.py::test_fixture_roles_are_the_real_catalog_entries",
+        "tests/vst/test_u5_e2e_story.py::test_forged_receipt_signature_is_modify_and_the_slot_is_missing",
+        "tests/vst/test_u5_e2e_story.py::test_forged_report_signature_blocks_the_review_loop",
+        "tests/vst/test_u5_e2e_story.py::test_guard_counts_and_raises",
+        "tests/vst/test_u5_e2e_story.py::test_local_plus_model_fixture_is_never_ready_even_when_the_package_is_forced",
+        "tests/vst/test_u5_e2e_story.py::test_local_plus_model_role_with_the_model_part_disabled_is_partial_never_clean",
+        "tests/vst/test_u5_e2e_story.py::test_model_residual_fallback_is_blocked_and_counted",
+        "tests/vst/test_u5_e2e_story.py::test_model_writing_fixer_is_blocked_and_counted",
+        "tests/vst/test_u5_e2e_story.py::test_moved_head_at_the_gate_is_no_go",
+        "tests/vst/test_u5_e2e_story.py::test_moved_head_in_test_evidence_is_refused_by_the_package",
+        "tests/vst/test_u5_e2e_story.py::test_partial_coverage_names_the_missing_executor",
+        "tests/vst/test_u5_e2e_story.py::test_required_rule_marked_unsupported_makes_coverage_partial_and_not_clean",
+        "tests/vst/test_u5_e2e_story.py::test_role_table_drift_is_blocked_with_the_exact_problem",
+        "tests/vst/test_u5_e2e_story.py::test_rule_outside_the_required_catalog_is_unknown_rule",
+        "tests/vst/test_u5_e2e_story.py::test_secret_in_a_finding_is_redacted_by_the_router",
+        "tests/vst/test_u5_e2e_story.py::test_secret_in_evidence_text_is_refused_by_the_package",
+        "tests/vst/test_u5_e2e_story.py::test_skipped_required_test_is_refused_by_the_package",
         "tests/vst/test_u5_final_package.py::test_acknowledged_required_not_run_is_ready_and_listed_verbatim",
         "tests/vst/test_u5_final_package.py::test_all_required_tests_not_run_and_acknowledged_is_still_refused_for_no_pass_evidence",
         "tests/vst/test_u5_final_package.py::test_allow_not_run_for_a_test_that_ran_or_with_an_empty_reason_is_blocked",
