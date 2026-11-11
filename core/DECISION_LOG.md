@@ -3113,3 +3113,7 @@ Decision: after two reviewers on a4cbcf7, the review-loop facts (AEVE iteration 
 ## 2026-11-11 U5-4 QA registry regenerated
 
 Regenerated docs/qa/categories.json after the U5-4 review fixes so it lists tests/vst/test_u5_review_loop.py. Tests NOT_RUN.
+
+## 2026-11-11 U5-4 GPT-PM approval
+
+GPT-PM APPROVE (0 BLOCKER, 0 MAJOR) for U5-4 at head 12d0386 on the first round after reviewer fixes; reply b2dbdede-0028-55cc-b334-91bc8fde8c7c, request 2175010d-d6e1-4063-98ec-8da4086c596a. Tests NOT_RUN. Limits kept: report authenticity depends on the injected verify_report, stored replay facts are consistency-checked but unsigned, no concrete router/adapter wiring yet.

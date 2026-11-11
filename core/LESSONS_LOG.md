@@ -2351,3 +2351,7 @@ Reviewers found: an unresumable crash window (summaries lived only in memory), a
 ## 2026-11-11 SUCCESS registry kept in step for U5-4
 
 Registry regenerated right after the test commit. Rule: regenerate after each commit that touches a registered test file.
+
+## 2026-11-11 SUCCESS U5-4 approved first round
+
+Python and test reviewers found an unresumable crash window, fixer rerun on resume, caller-asserted replay, advisory reports accepted as CLEAN and missing concurrency tests before GPT-PM; one batch fixed them. Rule: for every loop or resume feature ask what survives a crash between two writes, and store it.
