@@ -3077,3 +3077,7 @@ Regenerated docs/qa/categories.json after the U5-2 review fixes so the registry 
 ## 2026-11-11 U5-2 GPT-PM verification round
 
 Decision: ApplyResult.hunks_by_file now holds applied hunks only (ACCEPTED after the verified write); built-but-not-written hunks are attempted_hunks_by_file. build_run_record counts proposal lines only for ACCEPTED with post_materialize_verified true and reports attempted lines separately, outside the fractions. Fixes the GPT-PM MAJOR on attempted-versus-applied mixing after BLOCKED stages that follow gate acceptance. Tests NOT_RUN (operator ban).
+
+## 2026-11-11 U5-2 registry regenerated after the GPT-PM fix
+
+Regenerated docs/qa/categories.json because the U5-2 test file changed. Tests NOT_RUN.

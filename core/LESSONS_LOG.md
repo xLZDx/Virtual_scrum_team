@@ -2315,3 +2315,7 @@ Registry regenerated right after the test commit. Rule: regenerate the registry 
 ## 2026-11-11 SHORTCOMING reviewers missed attempted-versus-applied mixing
 
 Three reviewers and the author wrote record tests only for ACCEPTED and for early refusals; GPT-PM found that facts gathered before the last stage were counted as applied after a later BLOCKED. Layer: author tests and reviewers. Rule: any figure recorded per run must be derived from the final verified state; test every terminal verdict that can follow the point where the figure was first computed.
+
+## 2026-11-11 SUCCESS registry kept in step
+
+Registry regenerated after the test file changed. Rule: regenerate after every commit touching a registered test file.
