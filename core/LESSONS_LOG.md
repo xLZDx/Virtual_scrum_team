@@ -2355,3 +2355,7 @@ Registry regenerated right after the test commit. Rule: regenerate after each co
 ## 2026-11-11 SUCCESS U5-4 approved first round
 
 Python and test reviewers found an unresumable crash window, fixer rerun on resume, caller-asserted replay, advisory reports accepted as CLEAN and missing concurrency tests before GPT-PM; one batch fixed them. Rule: for every loop or resume feature ask what survives a crash between two writes, and store it.
+
+## 2026-11-11 SHORTCOMING U5-5 the shared secret pattern also matches ordinary identifiers
+
+The `tools/uc/secret_patterns.py` keyword rule (`secret`, `token`, `password` followed by 8 or more word characters) matches names such as `secret_patterns` or `test_token_validation`, so a package scanning paths or test ids would refuse its own change. Layer: author reading of the pattern, before any run. Rule: scan evidence text only, never identifiers validated by another check (paths) and never the diff, and say so in the limits; a precise pattern is a separate task.
