@@ -2278,3 +2278,140 @@ Each AEVE task went implementation, three reviewers, one remediation batch, GPT-
 ## 2026-11-11 SHORTCOMING stale PR 8 note
 
 I carried PR 8 as open for several turns without querying GitHub; it had been merged. Root cause: author trusted the earlier summary. Rule: query gh pr view before listing a PR as open.
+
+## 2026-11-11 U5-1 worker gate implementation
+Kind: NEUTRAL. Implementation is unexecuted and untested by design; reviewers next. Risk noted: diffgate passes a protected path that is also in the allowed list, so the new module re-checks protection on its own. Rule: when reusing a gate, list what it cannot express and fail closed on those in the wrapper.
+
+## 2026-11-11 U5-1 review findings
+Kind: FAILURE. Facts: reviewers found that the .git default made every call BLOCKED, protected matching was root-only, the diff grammar was not fully validated, isolation properties derived from caller strings were reported VERIFIED, and the test file was unregistered. Root cause: nothing was executed and the default list was never traced through its own validator. Missed by: author. Caught by: three read-only reviewers. Next time: trace every default constant through every validator it meets, and give caller-supplied facts a distinct status from computed ones.
+
+## 2026-11-11 SUCCESS registry regenerated in a follow-up commit
+
+The registry needs the committed test file, so it is regenerated in its own commit right after. Rule: add new test files to build_registry.py maps in the task commit and regenerate right after.
+
+## 2026-11-11 U5-1 GPT-PM incomplete-block finding
+Kind: FAILURE. Facts: GPT-PM found that a header-only diff block and bytes after a binary patch marker were accepted; the three reviewers missed it. Root cause: reviewers and tests checked mismatch cases, not under-specified blocks. Missed by: author and three reviewers; caught by GPT-PM. Next time: for any parser, ask what the smallest accepted input is and test it, plus every terminal state at end of input.
+
+## 2026-11-11 SUCCESS registry regenerated again
+
+The registry follows every change to a registered test file; regenerate after each such commit. Rule: run build_registry --write after the commit that touches tests.
+
+## 2026-11-11 SHORTCOMING reviewers missed under-specified diff blocks
+
+Three reviewers tested mismatched paths but none tried a header-only block or a binary payload; GPT-PM found it. Layer: reviewers and author tests. Rule: for every parser, ask what the smallest well-formed-looking input is and test that it is rejected.
+
+## 2026-11-11 SHORTCOMING proposal format assumed richer than it is
+
+The task text expected base hashes and bounds in the AEVE proposal; the real g6.patch.v1 has neither and no CLI. Layer: reading the producer source before designing. Rule: read the producer's code via git first and state in the doc which guarantees the producer does not give, then enforce them on the consumer side.
+
+## 2026-11-11 SHORTCOMING reviewers found what the first pass trusted
+
+Reviewers found: recipe label unenforced, repo-local git config trusted, no lock, CRLF/BOM false STALE_BASE, wrong exit-1 mapping, a test that passed doc=None but ran a valid document, and no real-git tests. Layer: author review of the first pass. Rule: for every input the code trusts, ask who can write it and what runs on it; a test parameter that a helper silently replaces (None as default) needs a sentinel; add at least one real-tool test next to every scripted-tool test.
+
+## 2026-11-11 SUCCESS registry regenerated for U5-2
+
+Registry regenerated right after the test commit. Rule: regenerate the registry in the same task after any commit that changes a registered test file.
+
+## 2026-11-11 SHORTCOMING reviewers missed attempted-versus-applied mixing
+
+Three reviewers and the author wrote record tests only for ACCEPTED and for early refusals; GPT-PM found that facts gathered before the last stage were counted as applied after a later BLOCKED. Layer: author tests and reviewers. Rule: any figure recorded per run must be derived from the final verified state; test every terminal verdict that can follow the point where the figure was first computed.
+
+## 2026-11-11 SUCCESS registry kept in step
+
+Registry regenerated after the test file changed. Rule: regenerate after every commit touching a registered test file.
+
+## 2026-11-11 SHORTCOMING reviewers missed attempted versus applied mixing
+
+Three reviewers checked refusal paths but not that the audit record counted only verified writes; GPT-PM found it. Layer: reviewers and author. Rule: for every record of what happened, check it against the failure and rollback paths, not only the success path.
+
+## 2026-11-11 SHORTCOMING migration and restore paths proven by reading only
+
+U5-3 adds a migration, a rollback point and a restore that were never executed (operator ban on running tests), so SQLite online backup into a WAL database, trigger behaviour and Windows file replace are unproven. Layer: author, no runtime check available. Rule: for a data-moving change, state the first runtime check to run when the ban is lifted (restore comparison of table dumps) and keep the design reversible by a verified backup taken before the first write.
+
+## 2026-11-11 SHORTCOMING reviewers found what author tests missed in the migration design
+
+Reviewers found: rollback point not bound to the migrated state, unfenced whole-store restore, unfrozen schema, a long lock, applied derived from a caller flag, a raw IntegrityError escaping, and untested crash paths. Layer: author design and tests (no runtime available). Rule: for a data-moving change write down which state each safety copy belongs to, who may call the destructive path and how it is fenced, derive recorded figures from verified facts instead of caller flags, and add a crash-half-way test for every multi-write step.
+
+## 2026-11-11 SUCCESS registry kept in step for U5-3
+
+Registry regenerated right after the test commit. Rule: regenerate after each commit that touches a registered test file.
+
+## 2026-11-11 SUCCESS U5-3 approved first round
+
+Three reviewers (database, python, tests) found rollback-binding, restore fencing, frozen schema and attribution defects before GPT-PM; one batch fixed them and GPT-PM approved without findings. Rule: use the database reviewer for any schema or migration task.
+
+## 2026-11-11 SHORTCOMING U5-4 replay needs data the store does not hold
+
+The U5-3 review rows keep an iteration index, a count and a verdict but not the AEVE iteration id or the head, so a crash-safe loop cannot rebuild `iteration_of` from the store alone; the driver asks the caller for the earlier summaries and cross-checks them with the rows. Layer: author design (no runtime available, static only). Rule: when a state table is designed, list what a replay of the next component must read back and store it, or document who holds it.
+
+## 2026-11-11 FAILURE U5-4 first version was not resumable and trusted the caller
+
+Reviewers found: an unresumable crash window (summaries lived only in memory), a fixer rerun after a recorded gate, a caller-asserted replay, an advisory report accepted as CLEAN, no concurrent-loop test and gate acceptance tested only with fakes. Layer: author design, caught by python and test reviewers before GPT-PM. Rule: store every fact a resume needs in the same transaction as the row it describes, check every field of a replay against the store, bind a report to its purpose and paths, and exercise the real gate and a concurrent caller at least once.
+
+## 2026-11-11 SUCCESS registry kept in step for U5-4
+
+Registry regenerated right after the test commit. Rule: regenerate after each commit that touches a registered test file.
+
+## 2026-11-11 SUCCESS U5-4 approved first round
+
+Python and test reviewers found an unresumable crash window, fixer rerun on resume, caller-asserted replay, advisory reports accepted as CLEAN and missing concurrency tests before GPT-PM; one batch fixed them. Rule: for every loop or resume feature ask what survives a crash between two writes, and store it.
+
+## 2026-11-11 SHORTCOMING U5-5 the shared secret pattern also matches ordinary identifiers
+
+The `tools/uc/secret_patterns.py` keyword rule (`secret`, `token`, `password` followed by 8 or more word characters) matches names such as `secret_patterns` or `test_token_validation`, so a package scanning paths or test ids would refuse its own change. Layer: author reading of the pattern, before any run. Rule: scan evidence text only, never identifiers validated by another check (paths) and never the diff, and say so in the limits; a precise pattern is a separate task.
+
+## 2026-11-11 FAILURE U5-5 first version could be READY with zero PASS tests
+
+Reviewers found: READY with no PASS test and no required list (a record could mark itself not required), story, receipt and run-record binding gaps, a secret scan that refused ordinary identifiers, unescaped Markdown from evidence text, an optional package hash in the currency check and a doubled mismatch reason. Layer: author design, caught by python and test reviewers before GPT-PM. Rule: a ready verdict needs positive evidence (at least one PASS and every required id), the requirement list comes from the caller and never from the evidence, every binding field is required and compared, scan free text and validate identifiers by shape, escape every untrusted string that reaches a document.
+
+## 2026-11-11 SUCCESS registry kept in step for U5-5
+
+Registry regenerated right after the test commit. Rule: regenerate after each commit that touches a registered test file.
+
+## 2026-11-11 SUCCESS U5-5 approved first round
+
+Python and test reviewers found READY with zero PASS tests, missing story/receipt/share binding and secret-scan false positives before GPT-PM. Rule: for every READY-style gate ask what the minimum input is that still returns READY, and refuse it.
+
+## 2026-11-11 SHORTCOMING U5-6 a negative control needs a function seam
+
+Several checks (the stale head test in `gate.evaluate`, the pin comparison inside `router.review`, the coverage family in `judge_report`) are inline code, so "disable the one check" needs either a wrapper written in the test or a relaxed input, and two rows have no function-level control. Layer: author reading before any run. Rule: when a check must be provable by a control, give it a named function or an injectable predicate; document each control as wrapper, patch or relaxed input.
+
+## 2026-11-11 SHORTCOMING U5-6 no model-fallback switch exists in the repository
+
+The acceptance text assumes a "model fallback" flag, but neither `tools/uc` nor `tools/vst` has one; only the harness seams are guarded, so "model-call count 0" proves nothing about the real AEVE or host. Layer: grep before design. Rule: state in the evidence what the guard covers, and add a real switch before claiming a model-free run of the real pipeline (U5-7).
+
+## 2026-11-11 FAILURE U5-6 the model-call count was true by construction
+
+Reviewers found: the guard counted only calls the harness made itself, the model flag was compared with the knob that set it, `llm_calls` was fed from the guard, an unsupported rule and an unknown rule were conflated, and rows asserted substrings of pooled notes. Layer: author design, caught by python and test reviewers after commit. Rule: a "zero" assertion needs a positive test showing the counter can move, patch the real escape points, take expected values from literals in the test, and assert on structured outputs, not on a joined text.
+
+## 2026-11-11 SUCCESS registry kept in step for U5-6
+
+Registry regenerated right after the test commit. Rule: regenerate after each commit that touches a registered test file.
+
+## 2026-11-11 SUCCESS U5-6 approved first round
+
+Test and python reviewers found the vacuous model-count assertion, the unsupported-versus-unknown rule confusion and pooled substring assertions before GPT-PM. Rule: a counter that only the test code can increment proves nothing; patch the real escape points and add a test that trips each one.
+
+## 2026-11-11 FAILURE U5-7 U5-2 cannot apply any AEVE patch in this repository
+
+The first real run was BLOCKED: U5-2 refuses any `eol` or `text` attribute, AEVE patches only cover `.py`, and this repository pins `*.py text eol=lf`; separately one redacted diff blocks a whole document. Six U5 stages passed review as written and no synthetic story could show this. Layer: first real run, not review or tests. Rule: run each gate against the real repository's own configuration before calling a stage done; a refusal rule that the host repository always trips is a design defect to decide on, not to bypass.
+
+## 2026-11-11 SHORTCOMING U5-7 adapter hides the real AEVE error
+
+`adapter.check_response` checks required keys before the status, so an AEVE ERROR (ledger write failed because the state path exceeded the Windows 260-character limit) was reported as "response lacks iteration_id". Layer: real run. Rule: report the AEVE status and reason before contract-shape errors, and check state-dir length before calling AEVE.
+
+## 2026-11-11 SUCCESS U5-7 a block was recorded, not bypassed
+
+The driver stopped at the first non-ACCEPTED stage, marked later stages NOT_RUN and kept a read-only replica of the prescreen to show the isolation statuses. Rule: a measured refusal is the result; do not edit gitattributes, scans or inputs to turn it green.
+
+## 2026-11-11 SUCCESS registry regenerated for U5-7
+
+Registry regenerated after the U5-7 commit. Rule: regenerate after the last commit that changes tracked sources.
+
+## 2026-11-11 SUCCESS the real run found eight pipeline defects the synthetic story could not
+
+The synthetic story (U5-6) passed review, but the real run was blocked by the repository own .gitattributes and by a redaction marker in an unrelated proposal. Rule: a synthetic end-to-end story does not replace one real run; run the real change before calling a pipeline usable.
+
+## 2026-11-11 SUCCESS sprint U5 delivered task by task with reviewers before GPT-PM
+
+Every task passed reviewers then GPT-PM; four of seven needed one GPT-PM or reviewer remediation round. Rule: keep the per-task review order and finish with one real run before closing a pipeline sprint.

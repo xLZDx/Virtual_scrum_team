@@ -3037,3 +3037,131 @@ U4-1 merged (PR 13). U4-2..U4-6 were implemented on AEVE branch u4-aeve-executor
 ## 2026-11-11 Role-table pin re-issued after AEVE U4 merge
 
 Rebuilt catalog/role_table.json with tools/uc/role_table.py build against AEVE main 8a9f6c1 (matrix digest 9822b853...). Validator printed VALID; counts COVERED_PARTIAL 50, NOT_COVERED_NO_EXECUTOR 2, NOT_COVERED_NO_PROFILE 15, total 93. Before the rebuild validate reported 6 problems (pin head, digest, executors of a11y-architect, a11y-contract, agent-evaluation, git-worktree-ops). Old head/digest in historical docs and the seeded-failure fixture are left as records. PR 10 conflict resolved by merging main (plan from main, both log sides kept) and merged as cff9804; PR 8 was already merged, my earlier note that it was open was wrong.
+
+## 2026-11-11 U5-1 worker output through the diff gate
+
+Decision: new tools/vst/worker_gate.py reuses diffgate.check_diff and only adds refusals (protected path even when allowed, case variants, Windows aliases, diff text versus declared paths, gitlinks). Verdict is ACCEPTED, REFUSED or BLOCKED; every error and every unverifiable required isolation property is BLOCKED. The isolation proof lists five checked properties and nine always NOT_VERIFIED ones (no OS sandbox or process containment without WSL). WSL path not used. Tests written, NOT_RUN (operator ban).
+
+## 2026-11-11 U5-1 review remediation
+
+Decision: protected-path matching in worker_gate.py is by case-folded component and basename at any depth (plus root prefixes tools/vst and .harness-tools); `.git` is handled as a protected path instead of a malformed one; the diff text must be fully valid git grammar with size caps; isolation entries derived only from caller values are CALLER_ASSERTED, never VERIFIED. The registry map in tools/qa/build_registry.py lists the new test; docs/qa/categories.json needs regeneration after commit. Tests NOT_RUN.
+
+## 2026-11-11 U5-1 QA registry regenerated
+
+Regenerated docs/qa/categories.json with tools.qa.build_registry --write after the test file was committed (27b2ecc); the registry now lists tests/vst/test_u5_worker_gate.py as functional. Tests NOT_RUN.
+
+## 2026-11-11 U5-1 GPT-PM verification round
+
+Decision: worker_gate.py now requires every diff block to carry a complete change (hunk, rename/copy pair, mode-only, new/deleted file mode, or Binary marker) and treats `GIT binary patch` as unsupported (BLOCKED). Binary-files markers are path-touch only. Tests NOT_RUN.
+
+## 2026-11-11 U5-1 registry regenerated after the GPT-PM fix
+
+Regenerated docs/qa/categories.json after the parser fix commit so the registry matches the committed test file. Tests NOT_RUN.
+
+## 2026-11-11 U5-1 GPT-PM approval
+
+GPT-PM APPROVE (0 BLOCKER, 0 MAJOR) for U5-1 at head 45f6f0d after one MAJOR round (incomplete diff blocks); reply 419b86f6-537d-5959-a07b-ac86e26f4129, request e7522f18-ee4d-49c9-811e-eeb63960898b. Tests NOT_RUN (operator ban). Limits kept: no OS sandbox, no process containment, caller-supplied diff bytes.
+
+## 2026-11-11 U5-2 AEVE patch proposals through the diff gate
+
+Decision: tools/vst/patch_proposals.py takes the AEVE `g6.patch.v1` JSON document (AEVE has no CLI command that emits it and the document has no base identity), validates it strictly, applies the patches to a throw-away git index, builds a candidate commit object, runs the real diff through worker_gate.gate_worker_change and only then writes the worktree with a rollback. Base identity is enforced by VST: caller-reported proposal head equals the pinned base, worktree HEAD equals the pinned base, and every patch must apply to the base content (REFUSED STALE_BASE). The share of proposal versus model lines is counted per hunk on the real diff; a model change on a patched path is REFUSED unless an explicit recorded override reason is given. Tests NOT_RUN (operator ban); git commands unproven. See docs/sdlc/u5/PATCH_PROPOSALS.md.
+
+## 2026-11-11 U5-2 review remediation
+
+Decision: after three reviewers on 49bbe61, patch_proposals.py checks each diff against its recipe (RECIPE_MISMATCH), does not trust repository-local git config or attributes (UNTRUSTED_GIT_CONFIG), writes the worktree in Python under an exclusive lock with a journal and compare-and-restore rollback instead of a git checkout-style write, builds the candidate in a scratch object directory, refuses CRLF, BOM and splitlines-only sources as PATCH_NOT_REPRESENTABLE, maps git apply exit 1 to STALE_BASE or PATCH_DOES_NOT_APPLY, marks the isolation proof pre_materialize, requires authorized_by for overrides and binds them to the ApplyResult. Stale base stays guarded on the VST side; AEVE is unchanged. Tests NOT_RUN (operator ban); git commands unproven. See docs/sdlc/u5/PATCH_PROPOSALS.md.
+
+## 2026-11-11 U5-2 QA registry regenerated
+
+Regenerated docs/qa/categories.json after the U5-2 review fixes so the registry lists tests/vst/test_u5_patch_proposals.py. Tests NOT_RUN.
+
+## 2026-11-11 U5-2 GPT-PM verification round
+
+Decision: ApplyResult.hunks_by_file now holds applied hunks only (ACCEPTED after the verified write); built-but-not-written hunks are attempted_hunks_by_file. build_run_record counts proposal lines only for ACCEPTED with post_materialize_verified true and reports attempted lines separately, outside the fractions. Fixes the GPT-PM MAJOR on attempted-versus-applied mixing after BLOCKED stages that follow gate acceptance. Tests NOT_RUN (operator ban).
+
+## 2026-11-11 U5-2 registry regenerated after the GPT-PM fix
+
+Regenerated docs/qa/categories.json because the U5-2 test file changed. Tests NOT_RUN.
+
+## 2026-11-11 U5-2 GPT-PM approval
+
+GPT-PM APPROVE (0 BLOCKER, 0 MAJOR) for U5-2 at head 8639910 after one MAJOR round (attempted versus applied attribution); reply 614e783a-2f9d-5ce7-8fb8-57f5eb849909, request 3745919f-ff1e-475e-8227-408fbd5cca7f. Tests NOT_RUN, git commands NOT_EXECUTED. Stale-base guard stays on the VST side (operator choice); AEVE proposals carry no base identity.
+
+## 2026-11-11 U5-3 pipeline state and store migration
+
+Decision: the pipeline state is an additive extension of the store's SQLite file (nine `pl_` tables, own version in `pl_schema_version`, store `SCHEMA_VERSION` 7 unchanged) so no existing table, API or test changes. Every mutating call is a step with the epoch (checked first, stale refused with no write), an idempotency ledger (same id and payload replays, other payload conflicts) and a stop path (marker row, open attempt STOPPED, idempotent, only a stop acknowledgment accepted afterwards). `migrate_pipeline` takes a lock file, writes a rollback point (online backup plus manifest with versions, sha256 and a row digest), runs the DDL in one transaction after proving the old content unchanged, and keeps a journal; `restore_rollback_point` verifies the point and restores the exact rows. Tests written, NOT_RUN (operator ban); nothing was executed.
+
+## 2026-11-11 U5-3 review remediation
+
+Decision: after three reviewers on 039493f, `migrate_pipeline` opens the write transaction first and refuses a rollback point whose state invariant differs from the locked state; restore needs `confirm_stopped=True`, an exclusive probe and a matching store schema version (override recorded); a scoped `down_migrate_pipeline` drops only the pl_ objects and refuses while pl_ rows exist; pipeline schema v1 is frozen by literal enums and a stored and checked schema hash, with a partial unique index (one STARTED attempt) and a SUCCEEDED-needs-candidate CHECK; the lock release compares the token; `applied` is derived from the verdict and the verified write; every IntegrityError becomes a typed StoreError; every step re-checks the schema. Store `SCHEMA_VERSION` stays 7 by operator decision. Tests added, NOT_RUN (operator ban).
+
+## 2026-11-11 U5-3 QA registry regenerated
+
+Regenerated docs/qa/categories.json after the U5-3 review fixes so it lists tests/vst/test_u5_pipeline_state.py. Tests NOT_RUN.
+
+## 2026-11-11 U5-3 GPT-PM approval
+
+GPT-PM APPROVE (0 BLOCKER, 0 MAJOR) for U5-3 at head 92bf890 on the first round after reviewer fixes; reply 312c0a72-e876-5ee8-8e69-03b50a093e0b, request 4791b907-acb2-45d2-b169-b423a580f327. Tests NOT_RUN. Limits kept: epoch fence without lease check, pipeline rows outside the signed event chain, unsigned rollback manifests, whole-store restore needs stopped writers.
+
+## 2026-11-11 U5-4 review-loop driver
+
+Decision: `tools/vst/review_loop.py` drives the local review loop with every external action injected (submit, report verification, optional fixer, worker gate, clock). It resubmits with `iteration_of` set to the previous report id, records each iteration through `PipelineState.record_review_iteration` under step ids derived from attempt and iteration index, and returns only CLEAN or BLOCKED. CLEAN needs no findings, no model residual, every role CLEAN, every declared executor COMPLETE, the right request and head, a fresh iteration id and a verified report; the cap result is BLOCKED ITERATION_CAP even for an unverifiable clean-looking last report. Also NO_PROGRESS (same head and finding set twice), STOPPED, EPOCH_STALE, a hard cap maximum of 10, a cap below 1 refused, failures as BLOCKED with ASCII-escaped details, and fixer candidates gated by `gate_worker_change` and recorded with `record_diff_gate`. Replay after a crash does not resubmit recorded iterations; it needs the earlier summaries (`resume`) because the pipeline tables do not hold the AEVE iteration id. Tests written, NOT_RUN (operator ban); the QA registry map has the new file, `docs/qa/categories.json` is not regenerated yet.
+
+## 2026-11-11 U5-4 review remediation
+
+Decision: after two reviewers on a4cbcf7, the review-loop facts (AEVE iteration id, head, coverage, finding digest and findings, reasons; gate candidate head, diff digest, verdict) are stored in the pipeline step results through an additive optional `facts` argument of `record_review_iteration` and `record_diff_gate` (same transaction as the row, no schema change), so a replay rebuilds every summary from the store and `resume` is only a cross-check. A recorded gate is adopted without calling the fixer; replayed facts are checked and a mismatch is RESUME_MISMATCH; CLEAN needs a receipt-purpose report with the expected changed-paths digest; a duplicate or concurrent loop is BLOCKED RESUME_MISMATCH; the verifier gets a copy; a fixer needs a 64-hex manifest digest. Tests extended, NOT_RUN (operator ban).
+
+## 2026-11-11 U5-4 QA registry regenerated
+
+Regenerated docs/qa/categories.json after the U5-4 review fixes so it lists tests/vst/test_u5_review_loop.py. Tests NOT_RUN.
+
+## 2026-11-11 U5-4 GPT-PM approval
+
+GPT-PM APPROVE (0 BLOCKER, 0 MAJOR) for U5-4 at head 12d0386 on the first round after reviewer fixes; reply b2dbdede-0028-55cc-b334-91bc8fde8c7c, request 2175010d-d6e1-4063-98ec-8da4086c596a. Tests NOT_RUN. Limits kept: report authenticity depends on the injected verify_report, stored replay facts are consistency-checked but unsigned, no concrete router/adapter wiring yet.
+
+## 2026-11-11 U5-5 final package builder for GPT-PM
+
+Decision: `tools/vst/final_package.py` builds the final package as a pure function (`build_final_package`; git, files, network, clock and model are injected or absent) and returns READY, REFUSED or BLOCKED. The package binds to one head: test evidence, review result (`final_head` and last iteration head), receipts, isolation proof and the patch origin record must all name the package head, otherwise REFUSED `STALE_EVIDENCE` naming the item. `diff_bytes` must hash to the recorded `diff_sha256` and parse (via `worker_gate.parse_diff_paths`) to exactly the declared path set; path hazards, link modes, empty diffs, a review that is not CLEAN, a replayed review without `replay_store_verified`, any FAIL, a required NOT_RUN or SKIPPED test without an `allow_not_run` reason and any secret-like evidence text (`receipt_builder._refuse_secrets`) are REFUSED; malformed or oversized input is BLOCKED. NOT_RUN items are listed under `not_run`, never counted as PASS, and the declared limits are copied verbatim next to derived limits (isolation properties that are not VERIFIED, replay, missing receipts or origin record, no provenance). The package holds the diff digest and path list, not the diff bytes (PM Bridge delivers the diff). `package_sha256` is the sha256 of `contracts.canonical_bytes(package)`; `valid_for_head` is explicit and `verify_package_current` refuses a changed head or diff. `render_scope_note` renders deterministic Markdown that never writes a pass claim for a NOT_RUN item. Tests written, NOT_RUN (operator ban); QA registry map has the new file, `docs/qa/categories.json` is not regenerated.
+
+## 2026-11-11 U5-5 review remediation
+
+Decision: after two reviewers on 1195be3 the final package builder takes a caller-supplied `required_test_ids` list (each id needs a record and PASS, or NOT_RUN/SKIPPED with an `allow_not_run` reason); a package with no PASS record is REFUSED NO_PASS_EVIDENCE, a record cannot downgrade its own required flag, the review story id must match, the patch origin record must be bound to the head and diff and be an ACCEPTED applied complete run, a receipt result must be exactly PASS, only free text is secret-scanned (identifiers and paths are validated by shape), all evidence text in the scope note is Markdown-escaped, `verify_package_current` requires the package digest and checks every embedded head, a CLEAN review also needs empty untruncated findings and a matching iteration count, and `PackageResult` is immutable with copied packages and fixed-text refusal details. Tests extended, NOT_RUN (operator ban). Open gap: the review result carries no changed-paths digest (later U5-4 follow-up).
+
+## 2026-11-11 U5-5 QA registry regenerated
+
+Regenerated docs/qa/categories.json after the U5-5 review fixes so it lists tests/vst/test_u5_final_package.py. Tests NOT_RUN.
+
+## 2026-11-11 U5-5 GPT-PM approval
+
+GPT-PM APPROVE (0 BLOCKER, 0 MAJOR) for U5-5 at head 882a728 on the first round after reviewer fixes; reply c3a650ae-6f67-51cf-bb94-2608e225c3e5, request 36aa56f5-424f-4145-bb42-e535eef9eff3. Tests NOT_RUN. Open gap kept: ReviewLoopResult carries no changed-paths digest, so the package cannot prove the CLEAN review covered exactly this diff beyond head equality (U5-4 follow-up).
+
+## 2026-11-11 U5-6 synthetic end-to-end story, model-forbidden
+
+Decision: the U5-6 story is an in-process harness (`tests/vst/u5_e2e_support.py`) that chains the real role-table validation, worker gate, rule coverage, `router.normalize`, review loop (real SQLite store), `gate.evaluate` and final package builder; AEVE, the isolation `lstat` and the test evidence are canned, signatures are real HMACs. The repository has no model-fallback switch, so the harness defines `StorySpec.model_fallback` (default False) and routes its three model-capable seams (fake AEVE fallback, model-residual resolver, model-writing fixer) through one `ModelGuard` that counts and raises `model invoked`; every scenario asserts the count is 0. Scenarios with hand-written stage, executor, rule and status: clean control (CLEAN, READY), LOCAL_PLUS_MODEL with the model part disabled (iteration PARTIAL, loop BLOCKED), and moved head, forged signature (receipt and report), skipped test, partial coverage, unsupported rule, role-table drift (head, matrix digest, executors), secret in a finding and in evidence text. Each defect has a negative control that disables the one responsible check inside the test's monkeypatch scope. Gaps recorded in `docs/sdlc/u5/E2E_STORY.md` (inline gate checks without a function seam, executor not named by every stage, router pin check needs a real AEVE checkout). Tests written, NOT_RUN (operator ban); `docs/qa/categories.json` is not regenerated.
+
+## 2026-11-11 U5-6 review remediation
+
+Decision: after two reviewers on a54dd8f the U5-6 story guards the real escape points (subprocess, socket, `adapter.run_review`, `router._call`, `aeve_probe.probe`, anthropic/openai constructors when importable) so the model-call count 0 is non-vacuous and proven by a positive test per seam; the expected count and model flag are literals per test; the harness flags are split (residual resolver versus fake AEVE fallback) and the MODEL_ROLE fallback case is covered; "required rule UNSUPPORTED" (coverage PARTIAL, not clean) is a defect separate from "unknown rule" (STATUS_UNKNOWN_RULE), each with a control; assertions use structured outputs (gate verdict and reasons, CoverageError.code, PackageResult.reasons, loop reasons) instead of pooled note substrings. Tests written, NOT_RUN (operator ban); categories.json left to the coordinator.
+
+## 2026-11-11 U5-6 QA registry regenerated
+
+Regenerated docs/qa/categories.json after the U5-6 review fixes so it lists tests/vst/test_u5_e2e_story.py. Tests NOT_RUN.
+
+## 2026-11-11 U5-6 GPT-PM approval
+
+GPT-PM APPROVE (0 BLOCKER, 0 MAJOR) for U5-6 at head 15f00a7 on the first round after reviewer fixes; reply 705ffe79-34f4-562e-bf7c-ffa88a834393, request 7ba55618-45af-417b-9d9b-f484416bac64. Tests NOT_RUN. Limits kept: real AEVE checkout and Claude host are outside the harness, escape-point coverage is bounded to instrumented entry points, gate stale-head and forged-receipt rows have no function-level negative control.
+
+## 2026-11-11 U5-7 one real change run: BLOCKED by U5-2, reported as measured
+
+Decision: the U5-7 acceptance is met by an honest measured run, not by a green result. AEVE proposed a trailing-whitespace patch for tests/uc/test_token_baseline.py (g6.patch.v1, llm_calls 0, no model); apply_proposals returned BLOCKED for the full document (PROPOSAL_REDACTED, another file's diff holds a redaction marker) and BLOCKED for the document narrowed to the declared file (UNTRUSTED_GIT_CONFIG, the repository's `.gitattributes` sets `*.py text eol=lf`). Nothing was applied; the review loop and final package are NOT_RUN; the refusals were not worked around. One real AEVE review through router and adapter on the unchanged file ran (PARTIAL, exit 3). Isolation: Windows-local, no OS sandbox, no process containment; 3 properties VERIFIED, 3 CALLER_ASSERTED, 9 NOT_VERIFIED. Details and eight defects in docs/sdlc/u5/REAL_CHANGE.md; driver tools/vst/u5_real_change_driver.py. Tests NOT_RUN (operator ban). Not production-ready.
+
+## 2026-11-11 U5-7 QA registry regenerated
+
+Regenerated docs/qa/categories.json after the U5-7 commit (source commit changed). Tests NOT_RUN.
+
+## 2026-11-11 U5-7 GPT-PM approval
+
+GPT-PM APPROVE (0 BLOCKER, 0 MAJOR) for U5-7 at head 35434d3 on the first round; reply edf5c8b7-0933-5c7a-a1ab-3a6fa33b214c, request 39b9ae34-cd27-44f3-b1f5-48fc88b616b8. Approved as a report of a blocked real experiment, not as proof of a working end-to-end pipeline; production readiness NOT ESTABLISHED. Tests NOT_RUN. Open design question for the operator: the repository .gitattributes (*.py text eol=lf) makes U5-2 refuse every AEVE patch (UNTRUSTED_GIT_CONFIG).
+
+## 2026-11-11 Sprint U5 closed on static review, as measured
+
+U5-1..U5-7 are each approved by GPT-PM and recorded in PROJECT_PLAN.md; reports regenerated. The sprint PR comes from branch u5-7-real-change. U5 is accepted as measured: the real change was BLOCKED by the repository .gitattributes, so the pipeline is not shown to work end to end. Tests NOT_RUN (operator ban). Pending design decision: how U5-2 should treat .gitattributes.
