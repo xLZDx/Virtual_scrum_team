@@ -2347,3 +2347,7 @@ The U5-3 review rows keep an iteration index, a count and a verdict but not the 
 ## 2026-11-11 FAILURE U5-4 first version was not resumable and trusted the caller
 
 Reviewers found: an unresumable crash window (summaries lived only in memory), a fixer rerun after a recorded gate, a caller-asserted replay, an advisory report accepted as CLEAN, no concurrent-loop test and gate acceptance tested only with fakes. Layer: author design, caught by python and test reviewers before GPT-PM. Rule: store every fact a resume needs in the same transaction as the row it describes, check every field of a replay against the store, bind a report to its purpose and paths, and exercise the real gate and a concurrent caller at least once.
+
+## 2026-11-11 SUCCESS registry kept in step for U5-4
+
+Registry regenerated right after the test commit. Rule: regenerate after each commit that touches a registered test file.

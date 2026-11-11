@@ -3109,3 +3109,7 @@ Decision: `tools/vst/review_loop.py` drives the local review loop with every ext
 ## 2026-11-11 U5-4 review remediation
 
 Decision: after two reviewers on a4cbcf7, the review-loop facts (AEVE iteration id, head, coverage, finding digest and findings, reasons; gate candidate head, diff digest, verdict) are stored in the pipeline step results through an additive optional `facts` argument of `record_review_iteration` and `record_diff_gate` (same transaction as the row, no schema change), so a replay rebuilds every summary from the store and `resume` is only a cross-check. A recorded gate is adopted without calling the fixer; replayed facts are checked and a mismatch is RESUME_MISMATCH; CLEAN needs a receipt-purpose report with the expected changed-paths digest; a duplicate or concurrent loop is BLOCKED RESUME_MISMATCH; the verifier gets a copy; a fixer needs a 64-hex manifest digest. Tests extended, NOT_RUN (operator ban).
+
+## 2026-11-11 U5-4 QA registry regenerated
+
+Regenerated docs/qa/categories.json after the U5-4 review fixes so it lists tests/vst/test_u5_review_loop.py. Tests NOT_RUN.
