@@ -3081,3 +3081,7 @@ Decision: ApplyResult.hunks_by_file now holds applied hunks only (ACCEPTED after
 ## 2026-11-11 U5-2 registry regenerated after the GPT-PM fix
 
 Regenerated docs/qa/categories.json because the U5-2 test file changed. Tests NOT_RUN.
+
+## 2026-11-11 U5-2 GPT-PM approval
+
+GPT-PM APPROVE (0 BLOCKER, 0 MAJOR) for U5-2 at head 8639910 after one MAJOR round (attempted versus applied attribution); reply 614e783a-2f9d-5ce7-8fb8-57f5eb849909, request 3745919f-ff1e-475e-8227-408fbd5cca7f. Tests NOT_RUN, git commands NOT_EXECUTED. Stale-base guard stays on the VST side (operator choice); AEVE proposals carry no base identity.

@@ -2319,3 +2319,7 @@ Three reviewers and the author wrote record tests only for ACCEPTED and for earl
 ## 2026-11-11 SUCCESS registry kept in step
 
 Registry regenerated after the test file changed. Rule: regenerate after every commit touching a registered test file.
+
+## 2026-11-11 SHORTCOMING reviewers missed attempted versus applied mixing
+
+Three reviewers checked refusal paths but not that the audit record counted only verified writes; GPT-PM found it. Layer: reviewers and author. Rule: for every record of what happened, check it against the failure and rollback paths, not only the success path.
