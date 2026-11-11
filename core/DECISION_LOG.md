@@ -3213,3 +3213,7 @@ One batch applied: ROLE_ONE_SIDED refuses roles that are one-sided in any task; 
 ## 2026-11-11 U6-2 QA registry regenerated
 
 Registry rebuilt with the savings report tests; GPT-PM review next. The savings report itself stays NOT_RUN (inputs missing). Tests NOT_RUN.
+
+## 2026-11-11 U6-2 GPT-PM scope note
+
+Added docs/sdlc/u6/u6-2-gptpm-scope-note.md with scope, limits and the operator inputs still missing.

@@ -2463,3 +2463,7 @@ A role one-sided in one task silently dropped that task, overstating savings; fo
 ## 2026-11-11 SUCCESS category map committed with the test, registry regenerated after
 
 This time the build_registry entry was in the implementation commit, so regeneration ran at once. Rule kept from U6-1.
+
+## 2026-11-11 SUCCESS scope note names the missing operator inputs
+
+The NOT_RUN report is explicit about what is missing so the reviewer judges the generator, not the absent data. Rule: say what blocks a measurement in the scope note.
