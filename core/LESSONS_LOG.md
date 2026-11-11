@@ -2499,3 +2499,7 @@ The coordinator re-ran ancestry and unpushed checks on the 19 branches proposed 
 ## 2026-11-11 SUCCESS U6-4 passed GPT-PM with the limits stated up front
 
 The scope note named what was and was not re-checked (19 VST yes, 11 AEVE no) and the reviewer asked only for a re-check before deleting. Rule: state the unchecked part of a deletion list in the scope note.
+
+## 2026-11-11 SHORTCOMING sprint goal said the runbook is the only new document but three tasks require documents
+
+The U6 goal text contradicted the acceptance of U6-2..U6-4; found at close. Layer: plan author. Rule: check the goal against the task acceptances when writing a plan.

@@ -3249,3 +3249,7 @@ Registry regenerated after the U6-4 document; GPT-PM scope note added. Tests NOT
 ## 2026-11-11 U6-4 GPT-PM APPROVE (parser said UNRECOGNIZED)
 
 GPT-PM reply text: VERDICT: APPROVE, 0 BLOCKER, 0 MAJOR, head b7c5d37 base 0ac012a (reply f4314222-fc5e-5a7d-b2d6-0491ada4f07b); CLI verdict field UNRECOGNIZED for the third reply in a row, approval taken from the reply text. MINOR: AEVE proposals are less verified than VST ones; before deleting any AEVE branch repeat the ancestry, unpushed and checkout checks on fresh refs. The approval authorises no deletion.
+
+## 2026-11-11 Sprint U6 closed as measured in the plan
+
+PROJECT_PLAN.md: U6-1..U6-4 ACCEPTED on static review (U6-2 as a NOT_RUN measurement, U6-4 as proposals only); sprint row ACCEPTED as measured. Reports re-rendered. Plan count: 45 of 46 task rows ACCEPTED, 1 PARKED (U1-9). The plan said the runbook is the only new document of the sprint; the U6-2/U6-3/U6-4 deliverables are documents too (SAVINGS_REPORT, RETROSPECTIVE, CLEANUP_PROPOSALS), recorded here as a deviation. Open for the operator: .gitattributes handling, baseline rebuild, deletions, review CLI parser, pkill damage check.
