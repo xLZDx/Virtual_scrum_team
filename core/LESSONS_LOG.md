@@ -2451,3 +2451,7 @@ The note states limits (links in parents, quiescent tree) up front so the review
 ## 2026-11-11 SUCCESS the exercise requirement was met with a tiny run, not a test suite
 
 GPT-PM flagged missing execution proof; running the helper once on a temp tree with python -s stayed inside the operator ban on test suites. Rule: run the smallest real exercise that answers the acceptance question and state its limits.
+
+## 2026-11-11 SHORTCOMING the U1-1 baseline pinned a live session transcript that kept growing
+
+The manifest pinned the main transcript of a session that was still in use, so its hash no longer matches and the baseline cannot be reproduced. Root cause: U1-1 baselined an open session (author, gate did not check closure). Rule: pin only closed or copied transcripts, store a copy with the manifest.

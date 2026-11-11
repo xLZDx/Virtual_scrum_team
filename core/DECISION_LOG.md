@@ -3201,3 +3201,7 @@ Added docs/sdlc/u6/u6-1-gptpm-scope-note.md listing scope, limits and NOT_RUN it
 ## 2026-11-11 U6-1 GPT-PM APPROVE and one real exercise
 
 GPT-PM APPROVE, 0 BLOCKER, 0 MAJOR, head 1c9c672 base 8c9ab2c (reply 661b3ca6-fff1-56c9-994e-b4d797c4c325); it states static acceptance only. One real run of exercise_rollback (python -s, not pytest) on a two-file temp tree outside the repo gave rollback_proven True with snapshot_before == snapshot_after_rollback d32066f8...fce62 and snapshot_after_change 96be22e2...e05. This proves the helper on a toy tree only; the runbook commands and a pipeline-schema rollback remain NOT_RUN.
+
+## 2026-11-11 U6-2 savings report generator, report is NOT_RUN
+
+Added tools/uc/savings_report.py (reuses token_baseline and measure; four token fields never combined; cost only from a sourced price table; model mismatch refuses a role), tests/vst/test_u6_savings_report.py, category entry, docs/sdlc/u6/SAVINGS_REPORT.md. The report is NOT_RUN: no after-side manifest, paired-task file or price table exists, and the U1-1 baseline manifest no longer verifies (HASH_MISMATCH, main transcript grew from 6767280 to 6773135 bytes). Tests NOT_RUN.
