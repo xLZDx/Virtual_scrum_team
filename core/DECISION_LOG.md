@@ -3254,6 +3254,18 @@ GPT-PM reply text: VERDICT: APPROVE, 0 BLOCKER, 0 MAJOR, head b7c5d37 base 0ac01
 
 PROJECT_PLAN.md: U6-1..U6-4 ACCEPTED on static review (U6-2 as a NOT_RUN measurement, U6-4 as proposals only); sprint row ACCEPTED as measured. Reports re-rendered. Plan count: 45 of 46 task rows ACCEPTED, 1 PARKED (U1-9). The plan said the runbook is the only new document of the sprint; the U6-2/U6-3/U6-4 deliverables are documents too (SAVINGS_REPORT, RETROSPECTIVE, CLEANUP_PROPOSALS), recorded here as a deviation. Open for the operator: .gitattributes handling, baseline rebuild, deletions, review CLI parser, pkill damage check.
 
+## 2026-11-11 R-27 .gitattributes scan allows line-ending attributes
+
+Operator decision (2026-11-11): U5-2 no longer refuses `text`, `eol=lf|crlf`, `-text`, `!text`, `text=auto`, `-eol`, `!eol` in .gitattributes or info/attributes; it still refuses `filter`, `ident`, `working-tree-encoding`, `crlf`, `export-subst`, `diff=`/`merge=` drivers, any other `text`/`eol` spelling and malformed quoted patterns. Change in tools/vst/patch_proposals.py (`_scan_attribute_text`); tests in tests/vst/test_u5_patch_proposals.py and docs/sdlc/u5/ updated; RETROSPECTIVE rows R-01 and R-27 marked FIXED_IN_CODE. Tests NOT_RUN (operator ban); the real AEVE-driven change is NOT_RUN until the U5-7 driver is re-run.
+
+## 2026-11-11 R-27 QA registry
+
+Registry regenerated after the R-27 tests; tests NOT_RUN.
+
+## 2026-11-11 R-27 GPT-PM scope note
+
+Added docs/sdlc/u5/r27-gptpm-scope-note.md for the GPT-PM review of R-27. Tests NOT_RUN.
+
 ## 2026-11-11 U6-5 baseline rebuilt on a closed session; savings report stays NOT_RUN
 
 Operator ordered a baseline rebuild on closed sessions. Session 557da842 is closed (about 45 hours idle, no process references it), so a new manifest u6-5-baseline-manifest.json pins its current bytes and verifies. No after-side session, paired-task file or price table exists, so no savings figure was produced and nothing was estimated. The transcript copy stays outside the public repository (D:/tmp/u6-5-baseline-transcripts); committing it needs an operator decision. Reviewer (code-reviewer) found one MAJOR wording defect, fixed.
@@ -3261,3 +3273,7 @@ Operator ordered a baseline rebuild on closed sessions. Session 557da842 is clos
 ## 2026-11-11 U6-5 GPT-PM review not requested
 
 The change has no code or contract (a manifest, an evidence document and logs); gpt-pm-gate reviews code and contracts only and never documents, so no GPT-PM round was run. The operator asked for the work to be finished without questions. Merge is left to the operator.
+
+## 2026-11-11 U6-5 merged origin/main to clear a PR conflict
+
+PR 19 conflicted with main (PR 18) only in the two append-only logs. Resolution: main entries kept first, the U6-5 entries kept after them; docs/qa/categories.json merged without conflict and equals main (this branch never changed it). No code touched.

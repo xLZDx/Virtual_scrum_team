@@ -105,9 +105,22 @@ _CONFIG_HAZARDS = (
     ("extensions", re.compile(r"^\s*\[\s*extensions\b", re.I | re.M)),
     ("diff driver section", re.compile(r"^\s*\[\s*diff\s+\"", re.I | re.M)),
     ("core.attributesFile / hooksPath / fsmonitor / worktree", re.compile(r"^\s*(attributesfile|hookspath|fsmonitor|worktree)\s*=", re.I | re.M)),
+    ("attr section (attr.tree)", re.compile(r"^\s*\[\s*attr\b", re.I | re.M)),
     ("textconv or command", re.compile(r"^\s*(textconv|command)\s*=", re.I | re.M)),
 )
-_ATTRIBUTE_HAZARD = re.compile(r"(?:^|\s)[-!]?(?:filter|eol|text|ident|working-tree-encoding|crlf)(?:=|\s|$)", re.I)
+# Attributes that can run a program or rewrite content, blocked whatever their state or value (names are
+# compared case-insensitively, so a mixed-case spelling cannot slip past). `diff` and `merge` are blocked only
+# with a value (a driver name); the plain `diff`, `-diff`, `merge` and `-merge` forms select no driver.
+_BLOCKED_ATTRIBUTES = frozenset({"filter", "ident", "working-tree-encoding", "crlf", "export-subst"})
+_DRIVER_ATTRIBUTES = frozenset({"diff", "merge"})
+# Line-ending attributes that only describe the file and are allowed in exactly these spellings (operator
+# decision of 2026-11-11, R-27): `text`, `-text`, `!text`, `text=auto`, `eol=lf`, `eol=crlf`, `-eol`, `!eol`.
+_ALLOWED_EOL_TOKENS = frozenset({"text", "-text", "!text", "text=auto", "eol=lf", "eol=crlf", "-eol", "!eol"})
+# git splits a file only at LF and treats exactly space, tab, CR and LF as blanks; \v, \f, \x85, U+2028 and the like
+# are ordinary characters to git, so they must not split a line or a token here (a file holding one is refused).
+_ATTRIBUTE_WHITESPACE = " \t\r\n"
+_ATTRIBUTE_SPLIT = re.compile(r"[ \t\r\n]+")
+_FOREIGN_SEPARATORS = re.compile("[\x0b\x0c\x1c-\x1e\x85\u2028\u2029]")
 
 
 class ProposalError(Exception):
@@ -655,15 +668,45 @@ def _scan_git_config(git_dir: str, common_dir: str) -> None:
             _scan_attribute_text(data, "info/attributes")
 
 
+def _attribute_tokens(line: str) -> list[str] | None:
+    """The attribute tokens of one .gitattributes line (the pattern is dropped); None when the line is malformed."""
+    if line.startswith('"'):
+        # git falls back to an unquoted pattern on a bad escape, so any escape is refused instead of parsed.
+        end = line.find('"', 1)
+        if end < 0 or "\\" in line:
+            return None
+        rest = line[end + 1:]
+    else:
+        parts = _ATTRIBUTE_SPLIT.split(line, 1)
+        rest = parts[1] if len(parts) > 1 else ""
+    return [token for token in _ATTRIBUTE_SPLIT.split(rest) if token]
+
+
 def _scan_attribute_text(data: bytes, label: str) -> None:
-    for line in data.decode("utf-8", "replace").splitlines():
-        stripped = line.strip()
-        if stripped and not stripped.startswith("#") and _ATTRIBUTE_HAZARD.search(stripped):
-            raise ProposalError("UNTRUSTED_GIT_CONFIG", f"{label} sets filter, eol, text, ident or working-tree-encoding")
+    """Refuse an attribute that can run code or rewrite content; text, eol and their off or auto forms pass."""
+    text = data.decode("utf-8", "replace").lstrip("\ufeff")
+    if _FOREIGN_SEPARATORS.search(text):
+        raise ProposalError("UNTRUSTED_GIT_CONFIG", f"{label} holds a separator character that git and this scan could read differently")
+    for line in text.split("\n"):
+        stripped = line.strip(_ATTRIBUTE_WHITESPACE)
+        if not stripped or stripped.startswith("#"):
+            continue
+        tokens = _attribute_tokens(stripped)
+        if tokens is None:
+            raise ProposalError("UNTRUSTED_GIT_CONFIG", f"{label} has a line with an unterminated or escaped quoted pattern")
+        for token in tokens:
+            if token in _ALLOWED_EOL_TOKENS:
+                continue
+            name, has_value, _ = token.lstrip("-!").partition("=")
+            name = name.lower()
+            if name in ("text", "eol"):
+                raise ProposalError("UNTRUSTED_GIT_CONFIG", f"{label} sets {name} in a form other than text, -text, text=auto, eol=lf or eol=crlf")
+            if name in _BLOCKED_ATTRIBUTES or (name in _DRIVER_ATTRIBUTES and has_value):
+                raise ProposalError("UNTRUSTED_GIT_CONFIG", f"{label} sets the {name} attribute, which can run a program or rewrite content")
 
 
 def _scan_attributes(root: str, paths: Iterable[str]) -> None:
-    """Every .gitattributes from the worktree root down to each touched file's directory must be free of content attributes."""
+    """Every .gitattributes from the worktree root down to each touched file's directory must be free of attributes that run code or rewrite content (text and eol are allowed)."""
     folders = {""}
     for path in paths:
         parts = path.split("/")[:-1]

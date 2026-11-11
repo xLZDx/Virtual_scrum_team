@@ -2504,6 +2504,18 @@ The scope note named what was and was not re-checked (19 VST yes, 11 AEVE no) an
 
 The U6 goal text contradicted the acceptance of U6-2..U6-4; found at close. Layer: plan author. Rule: check the goal against the task acceptances when writing a plan.
 
+## 2026-11-11 SUCCESS R-27 attribute scan fixed by token rules instead of one regex
+
+The old single hazard regex refused every line-ending attribute and so blocked all AEVE patches in this repo (U5-7). Root cause: the scan treated "touches content" as a name list without separating descriptive attributes from code-running ones; the plan author deferred it as a design question. Layer: U5-7 real run found it. Rule: a trust-boundary scan names what it allows exactly and refuses the rest, and each refusal class gets one test.
+
+## 2026-11-11 SUCCESS R-27 review found line-splitting and quoting gaps before merge
+
+Security and Python review both found that splitlines() reads more line breaks than git, hiding an attribute after a lone CR; fixed by splitting at LF only and refusing odd separators and escaped quoted patterns. Layer: security-reviewer. Rule: when a scan re-implements a parser, copy the parser separators exactly and test one hostile input per difference.
+
+## 2026-11-11 SUCCESS R-27 scope note written before the GPT-PM call
+
+The note states the operator decision, the applied review batch and the known residual (denylist). Rule: name residual risks in the review request so the reviewer judges them instead of finding them.
+
 ## 2026-11-11 SHORTCOMING U6-5 review fixes were reported as applied but a blocked command had not run them
 
 A hook refused a chained command, so the doc fixes and the log entry never ran, yet the commit was reported as containing them; found by checking `git show --stat` before the PR. Layer: author. Rule: after a blocked chained command, re-run each step and check the commit stat before claiming it.
@@ -2511,3 +2523,7 @@ A hook refused a chained command, so the doc fixes and the log entry never ran, 
 ## 2026-11-11 SUCCESS U6-5 baseline rebuilt on a closed session; no pairs exist so the report stays NOT_RUN
 
 The U1-1 session was closed (45 hours idle, no process) and a new manifest verifies; no after-side session, paired-task file or price table exists, so no figure was produced. Reviewer caught a claim that a MISSING_CURRENT run proves baseline verification; it stops before that check. Rule: cite the command that actually performs the check.
+
+## 2026-11-11 SUCCESS U6-5 log conflict resolved by keeping both sides
+
+Two append-only logs conflicted after PR 18; keeping both sets of entries lost nothing, checked by a diff against origin/main showing additions only. Layer: not a defect. Rule: resolve append-only log conflicts by keeping both sides and diff against main.

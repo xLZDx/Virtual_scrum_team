@@ -820,7 +820,7 @@ def test_lock_that_is_present_blocks_and_is_left_alone(tmp_path):
     b'[filter "lfs"]\n\tclean = evil\n', b"[include]\n\tpath = ../x\n", b'[includeIf "gitdir:/"]\n\tpath = x\n',
     b"[core]\n\tattributesFile = x\n", b"[core]\n\thooksPath = x\n", b"[core]\n\tfsmonitor = evil\n",
     b"[core]\n\tworktree = ..\n", b"[extensions]\n\tworktreeConfig = true\n", b'[diff "x"]\n\ttextconv = evil\n',
-    b"[core]\n\tTextConv = evil\n",
+    b"[core]\n\tTextConv = evil\n", b"[attr]\n\ttree = HEAD\n",
 ])
 def test_hostile_repository_config_is_untrusted(tmp_path, config):
     def prepare(root):
@@ -848,15 +848,77 @@ def test_worktree_level_config_and_info_attributes_are_scanned(tmp_path, prepare
     assert result.verdict == "BLOCKED" and codes(result) == ["UNTRUSTED_GIT_CONFIG"] and fake.calls == []
 
 
-@pytest.mark.parametrize("attributes", [b"*.py text\n", b"* text=auto\n", b"*.py eol=crlf\n", b"*.py filter=lfs\n",
-                                        b"*.py ident\n", b"*.py working-tree-encoding=UTF-16\n", b"*.py -text\n", b"[attr]x text\n"])
-def test_gitattributes_that_touch_content_are_untrusted(tmp_path, attributes):
+@pytest.mark.parametrize("attributes", [
+    b"*.py filter=lfs\n", b"*.py -filter\n", b"*.py ident\n", b"*.py working-tree-encoding=UTF-16\n", b"*.py crlf\n",
+    b"*.py -crlf\n", b"*.py export-subst\n", b"*.py diff=evil\n", b"*.py merge=union\n", b"*.py merge=evil\n",
+    b"*.py text eol=lf filter=lfs\n", b"*.py FILTER=lfs\n", b"[attr]x filter=lfs\n", b"[attr]x ident\n",
+    b'"a b.py" ident\n', b"*.py\tident\n", b"*.py text=yes\n", b"*.py text=input\n", b"*.py eol\n", b"*.py eol=cr\n",
+    b"*.py eol=LF\n", b'"a b.py ident\n', b"\xef\xbb\xbf*.py filter=lfs\n",
+    b"*.py -text=auto\n", b"*.py !text=auto\n", b"*.py -eol=lf\n", b"*.py !filter\n", b"*.py -ident\n",
+    b"*.py -working-tree-encoding\n", b"*.py -export-subst\n", b"*.py !crlf\n",
+    b"*.py text\r\n*.py filter=lfs\r\n", b"* text=auto\n*.md text eol=lf\n*.py ident\n",
+    b"*.py\rfilter=lfs\n", b"*.py\x0b ident\n", b"*.py\xc2\x85 filter=lfs\n", b"\x0b# filter=lfs\n",
+    b"*.py\xe2\x80\xa8ident\n", b'"*\\q" ident\n', b'"x\\q filter=a" text\n', b'"a\\"b.py" text\n',
+    b'"a\\"b.py" ident\n', b'"a\\\\" ident\n', b"# note\n\n  \n*.py text\n*.py diff=evil\n",
+])
+def test_gitattributes_that_run_code_or_rewrite_content_are_untrusted(tmp_path, attributes):
     def prepare(root):
         with open(os.path.join(root, "src", ".gitattributes"), "wb") as handle:
             handle.write(attributes)
     result, fake = run(tmp_path, prepare=prepare)
     assert result.verdict == "BLOCKED" and codes(result) == ["UNTRUSTED_GIT_CONFIG"]
     assert fake.calls == []
+
+
+@pytest.mark.parametrize("attributes", [
+    b"*.py text\n", b"* text=auto\n", b"*.py eol=crlf\n", b"*.py eol=lf\n", b"*.py -text\n", b"*.py !text\n",
+    b"*.py -eol\n", b"*.py !eol\n", b"*.md text eol=lf\n", b"[attr]x text\n", b'"a b.py" text eol=lf\n',
+    b"* text=auto\n*.md text eol=lf\n*.py text eol=lf\n", b"*.py -diff -merge\n",
+    b"*.py diff merge\n", b"*.py binary\n", b"ident text\n", b"filter text eol=lf\n", b"*.py text\r\n*.md eol=lf\r\n",
+    b"# filter=lfs\n\n  \n*.py text\n", b"\xef\xbb\xbf*.py text eol=lf\n",
+])
+def test_gitattributes_with_only_line_ending_attributes_are_accepted(tmp_path, attributes):
+    def prepare(root):
+        with open(os.path.join(root, "src", ".gitattributes"), "wb") as handle:
+            handle.write(attributes)
+    result, _ = run(tmp_path, prepare=prepare)
+    assert result.verdict == "ACCEPTED"
+
+
+def _root_eol_attributes(root):
+    with open(os.path.join(root, ".gitattributes"), "wb") as handle:
+        handle.write(b"* text=auto\n*.py text eol=lf\n")
+
+
+def _info_eol_attributes(root):
+    os.makedirs(os.path.join(root, ".git", "info"), exist_ok=True)
+    with open(os.path.join(root, ".git", "info", "attributes"), "wb") as handle:
+        handle.write(b"*.py text eol=crlf\n")
+
+
+def _root_eol_nested_filter(root):
+    _root_eol_attributes(root)
+    with open(os.path.join(root, "src", ".gitattributes"), "wb") as handle:
+        handle.write(b"*.py filter=lfs\n")
+
+
+def _root_filter_nested_eol(root):
+    with open(os.path.join(root, ".gitattributes"), "wb") as handle:
+        handle.write(b"*.py filter=lfs\n")
+    with open(os.path.join(root, "src", ".gitattributes"), "wb") as handle:
+        handle.write(b"*.py text\n")
+
+
+@pytest.mark.parametrize("prepare", [_root_eol_attributes, _info_eol_attributes], ids=["root", "info/attributes"])
+def test_line_ending_attributes_are_accepted_in_every_scanned_location(tmp_path, prepare):
+    result, _ = run(tmp_path, prepare=prepare)
+    assert result.verdict == "ACCEPTED"
+
+
+@pytest.mark.parametrize("prepare", [_root_eol_nested_filter, _root_filter_nested_eol], ids=["nested-filter", "root-filter"])
+def test_a_hostile_attribute_in_any_level_blocks_even_beside_accepted_eol_attributes(tmp_path, prepare):
+    result, fake = run(tmp_path, prepare=prepare)
+    assert result.verdict == "BLOCKED" and codes(result) == ["UNTRUSTED_GIT_CONFIG"] and fake.calls == []
 
 
 def test_harmless_gitattributes_and_comments_are_accepted(tmp_path):
@@ -1405,8 +1467,17 @@ def test_real_git_hostile_repository_config_is_untrusted(tmp_path):
 
 
 @needs_git
-def test_real_git_committed_gitattributes_with_eol_is_untrusted(tmp_path):
-    root, head, iso = make_repo(tmp_path, {"pkg/m.py": OLD.encode(), ".gitattributes": b"*.py eol=crlf\n"})
+def test_real_git_committed_gitattributes_with_eol_is_accepted(tmp_path):
+    root, head, iso = make_repo(tmp_path, {"pkg/m.py": OLD.encode(), ".gitattributes": b"* text=auto\n*.py text eol=lf\n"})
+    doc = make_doc(proposal(file="pkg/m.py", diff=difflib_diff("pkg/m.py", OLD, expected_strip(OLD))))
+    result = real_apply(root, head, iso, doc)
+    assert result.verdict == "ACCEPTED"
+    assert (root / "pkg" / "m.py").read_bytes() == b"def f():\n    return 1\n\nx = 2\n"
+
+
+@needs_git
+def test_real_git_committed_gitattributes_with_filter_is_untrusted(tmp_path):
+    root, head, iso = make_repo(tmp_path, {"pkg/m.py": OLD.encode(), ".gitattributes": b"*.py filter=evil\n"})
     doc = make_doc(proposal(file="pkg/m.py", diff=difflib_diff("pkg/m.py", OLD, expected_strip(OLD))))
     result = real_apply(root, head, iso, doc)
     assert result.verdict == "BLOCKED" and codes(result) == ["UNTRUSTED_GIT_CONFIG"]
